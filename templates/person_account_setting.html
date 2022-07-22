@@ -21,185 +21,284 @@
     {% elif html_display.warn_code == 2 %}
     <div class="alert alert-success  text-center">{{ html_display.warn_message }}</div>
     {% endif %}
-    <div class="layout-px-spacing">
 
-        <div class="account-settings-container layout-top-spacing">
-            {% if upload_state == True %}
-            <div class="alert alert-success  text-center">修改个人信息成功</div>
-            {% endif %}
-            {% if expr == False %}
-            <div class="alert alert-warning  text-center">没有检测到信息更新</div>
-            {% endif %}
-            <div class="account-content">
-                <div class="scrollspy-example" data-spy="scroll" data-target="#account-settings-scroll"
-                    data-offset="-100">
-                    <form id="general-info" class="section general-info" method="POST"
-                        enctype="multipart/form-data">
-                    <div class="row">
-                        <div class="col-xl-12 col-lg-12 col-md-12 layout-spacing">
-                                
-                                <div class="info">
-                                    <h6 class="">个人信息</h6>
-                                    <div class="row d-flex justify-content-center">
-                                        <div class="upload mr-3" style="border: none;">
-                                            <input type="file" id="avatar" class="dropify" name="avatar"
-                                                data-default-file="{{former_img}}" data-max-file-size="512K" />
-                                            <p class="mt-2 text-center">
-                                                头像
-                                                <a data-toggle="tooltip" data-placement="bottom" title="欢迎尝试gif ･ω･)ﾉ">
-                                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor"
-                                                        class="bi bi-question-circle-fill" viewBox="0 0 22 22">
-                                                        <path
-                                                            d="M16 8A8 8 0 1 1 0 8a8 8 0 0 1 16 0zM5.496 6.033h.825c.138 0 .248-.113.266-.25.09-.656.54-1.134 1.342-1.134.686 0 1.314.343 1.314 1.168 0 .635-.374.927-.965 1.371-.673.489-1.206 1.06-1.168 1.987l.003.217a.25.25 0 0 0 .25.246h.811a.25.25 0 0 0 .25-.25v-.105c0-.718.273-.927 1.01-1.486.609-.463 1.244-.977 1.244-2.056 0-1.511-1.276-2.241-2.673-2.241-1.267 0-2.655.59-2.75 2.286a.237.237 0 0 0 .241.247zm2.325 6.443c.61 0 1.029-.394 1.029-.927 0-.552-.42-.94-1.029-.94-.584 0-1.009.388-1.009.94 0 .533.425.927 1.01.927z" />
-                                                    </svg>
-                                                </a>
-                                            </p>
-                                        </div>
-                                        <div class="upload ml-3" style="border: none;">
-                                            <input type="file" id="wallpaper" class="dropify" name="wallpaper"
-                                                data-default-file="{{former_wallpaper}}" data-max-file-size="2048K" />
-                                            <p class="mt-2 text-center">
-                                                背景图片
-                                                <a data-toggle="tooltip" data-placement="bottom" title="欢迎尝试gif ･ω･)ﾉ">
-                                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor"
-                                                        class="bi bi-question-circle-fill" viewBox="0 0 22 22">
-                                                        <path
-                                                            d="M16 8A8 8 0 1 1 0 8a8 8 0 0 1 16 0zM5.496 6.033h.825c.138 0 .248-.113.266-.25.09-.656.54-1.134 1.342-1.134.686 0 1.314.343 1.314 1.168 0 .635-.374.927-.965 1.371-.673.489-1.206 1.06-1.168 1.987l.003.217a.25.25 0 0 0 .25.246h.811a.25.25 0 0 0 .25-.25v-.105c0-.718.273-.927 1.01-1.486.609-.463 1.244-.977 1.244-2.056 0-1.511-1.276-2.241-2.673-2.241-1.267 0-2.655.59-2.75 2.286a.237.237 0 0 0 .241.247zm2.325 6.443c.61 0 1.029-.394 1.029-.927 0-.552-.42-.94-1.029-.94-.584 0-1.009.388-1.009.94 0 .533.425.927 1.01.927z" />
-                                                    </svg>
-                                                </a>
-                                            </p>
-                                        </div>
-                                    </div>
-                                    <div class="row">
-                                        <div class="col-xl-10 col-lg-12 col-md-8 mt-md-0 mt-4">
-                                            <div class="form mt-4">
-                                                <div class="form-group">
-                                                    <div class="form-check">
-                                                        <!--
-                                                        <label for="fullName">我的昵称</label>
-                                                        <input type="text" class="form-control" id="nickname"
-                                                        name="nickname" placeholder="{{userinfo.nickname}}" onclick="if(this.placeholder != ''){this.value=this.placeholder;}">
-                                                        <div class="form-check mb-4">
-                                                            {% if useroj.show_nickname %}
-                                                            <input type="checkbox" class="form-check-input" id="show_nickname" name='show_nickname' checked>
-                                                            {% else %}
-                                                            <input type="checkbox" class="form-check-input" id="show_nickname" name='show_nickname'>
-                                                            {% endif %}
-                                                            <label class="form-check-label" for="show_nickname">对外展示</label>
-                                                        </div>-->
-                                                        <label class="dob-input">我的性别</label>
-                                                        <div class="d-sm-flex d-block">
-                                                            <div class="form-group mr-1">
-                                                                <select class="form-control" id="select-gender" name="gender">
-                                                                {% if useroj.gender == 1 %}
-                                                                    <option>男</option>
-                                                                    <option selected>女</option>
-                                                                {% else %}
-                                                                <option selected>男</option>
-                                                                    <option>女</option>
-                                                                {% endif %}
-                                                                </select>
-                                                            </div>
-                                                        </div>
-                                                        <div class="form-check mb-4">
-                                                            {% if useroj.show_gender %}
-                                                            <input type="checkbox" class="form-check-input" id="show_gender" name="show_gender" checked>
-                                                            {% else %}
-                                                            <input type="checkbox" class="form-check-input" id="show_gender" name="show_gender">
-                                                            {% endif %}
-                                                            <label class="form-check-label" for="show_gender">对外展示</label>
-                                                        </div>
+    {% if upload_state == True %}
+    <div class="alert alert-success  text-center">修改个人信息成功</div>
+    {% endif %}
+    {% if expr == False %}
+    <div class="alert alert-warning  text-center">没有检测到信息更新</div>
+    {% endif %}
 
-                                                        <label for="birthday">我的生日</label>
-                                                        <input type="date" class="form-control" name="birthday" id="birthday"/>
-                                                        <div class="form-check mb-4">
-                                                            {% if useroj.show_birthday %}
-                                                            <input type="checkbox" class="form-check-input" id="show_birthday" name="show_birthday" checked>
-                                                            {% else %}
-                                                            <input type="checkbox" class="form-check-input" id="show_birthday" name="show_birthday">
-                                                            {% endif %}
-                                                            <label class="form-check-label" for="show_birthday">对外展示</label>
-                                                        </div>
+    <div class="w-100 overflow-hidden" style="height: 200px;">
+        <div class="w-100 overflow-hidden" style="height: 200px; filter: blur(10px); -webkit-filter: blur(10px); background-image: url({{ former_wallpaper }}); background-position: center; background-repeat: no-repeat; background-size: cover; transform: scale(1.1);"></div>
+        <h1 class="text-light" style="position: absolute; left: 8.33%; top: 65px; font-weight: bolder;">{{ userinfo.name }}</h1>
+        <h5 class="text-light" style="position: absolute; left: 8.33%; top: 115px; font-weight: normal;">个人信息与隐私设置</h5>
+    </div>
 
-                                                        <label for="fullName">我的电话</label>
-                                                        <input type="tel" class="form-control" id="tel"
-                                                        name="tel" placeholder="{{userinfo.telephone}}" onclick="if(this.placeholder != ''){this.value=this.placeholder;}">
-                                                        <div class="form-check mb-4">
-                                                            {% if useroj.show_tel %}
-                                                            <input type="checkbox" class="form-check-input" id="show_tel" name="show_tel" checked>
-                                                            {% else %}
-                                                            <input type="checkbox" class="form-check-input" id="show_tel" name="show_tel">
-                                                            {% endif %}
-                                                            <label class="form-check-label" for="show_tel">对外展示</label>
-                                                            
-                                                        </div>
+    <form id="general-info" class="section general-info" method="POST" enctype="multipart/form-data">
+        <div class="row mx-0 pt-5">
+            <div class="col-1 px-0"></div>
+            <div class="col-10 col-md-2 px-0">
+                <h2 class="text-dark pr-4">基本信息</h2>
+            </div>
+            <div class="col-1 px-0 d-md-none"></div>
+            <div class="col-1 px-0 d-md-none"></div>
+            <div class="col-10 col-md-7 px-0">
 
-                                                        <label for="profession">我的专业</label>
-                                                        <input type="text" class="form-control" id="major"
-                                                            name="major" placeholder="{{userinfo.stu_major}}" onclick="if(this.placeholder != ''){this.value=this.placeholder;}">
-                                                        <div class="form-check mb-4">
-                                                            {% if useroj.show_major %}
-                                                            <input type="checkbox" class="form-check-input" id="show_major" name="show_major" checked>
-                                                            {% else %}
-                                                            <input type="checkbox" class="form-check-input" id="show_major" name="show_major">
-                                                            {% endif %}
-                                                            <label class="form-check-label" for="show_major">对外展示</label>
-                                                        </div>
-                                                        <label for="profession">我的宿舍</label>
-                                                        <input type="text" class="form-control" id="dorm"
-                                                            name="dorm" placeholder="{{userinfo.stu_dorm}}" readonly>
-                                                        <div class="form-check mb-4">
-                                                            {% if useroj.show_dorm %}
-                                                            <input type="checkbox" class="form-check-input" id="show_dorm" name="show_dorm" checked>
-                                                            {% else %}
-                                                            <input type="checkbox" class="form-check-input" id="show_dorm" name="show_dorm">
-                                                            {% endif %}
-                                                            <label class="form-check-label" for="show_dorm">对外展示</label>
-                                                        </div>
-                                                        <!-- YWolfeee 请不要把年级和班级放进来了 -->
-                                                        <!--<label for="profession">我的年级</label>
-                                                        <input type="text" class="form-control " id="grade" readonly="readonly"
-                                                            name="grade" value="{{userinfo.stu_grade}}" >
-                                                        <label for="profession">我的班级</label>
-                                                        <input type="text" class="form-control" id="class" readonly="readonly"
-                                                            name="class" value="{{userinfo.stu_class}}">
-                                                        -->
-                                                        <label for="profession">我的邮箱</label>
-                                                        <input type="email" class="form-control" id="email" 
-                                                            name="email" placeholder="{{userinfo.email}}" onclick="if(this.placeholder != ''){this.value=this.placeholder;}">
-                                                            <div class="form-check mb-4">
-                                                                {% if useroj.show_email %}
-                                                                <input type="checkbox" class="form-check-input" id="show_email" name="show_email" checked>
-                                                                {% else %}
-                                                                <input type="checkbox" class="form-check-input" id="show_email" name="show_email">
-                                                                {% endif %}
-                                                                <label class="form-check-label" for="show_email">对外展示</label>
-                                                            </div>
-                                                        <label for="aboutBio">个性签名</label>
-                                                        <textarea class="form-control" id="aboutBio" name="aboutBio"
-                                                            placeholder="{{userinfo.biography}}" rows="10" onclick="if(this.placeholder != ''){this.value=this.placeholder;}"></textarea>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </div>
-
-                                    </div>
-
-                                </div>
-                            
+                <div class="row">
+                    <div class="col-12 col-md-10">
+                        <label for="nickname" style="width: max-content;">我的昵称</label>
+                        <input type="text" class="form-control" id="nickname"
+                            name="nickname" 
+                            {% if userinfo.nickname %}
+                            placeholder="{{ userinfo.nickname }}" onclick="this.value === `` && (this.value = this.placeholder)"
+                            {% else %}
+                            placeholder="快来起个好听的昵称吧~"
+                            {% endif %}
+                            >
+                        <div class="form-check mb-4">
+                            {% if useroj.show_nickname %}
+                            <input type="checkbox" class="form-check-input" id="show_nickname" name='show_nickname' checked>
+                            {% else %}
+                            <input type="checkbox" class="form-check-input" id="show_nickname" name='show_nickname'>
+                            {% endif %}
+                            <label class="form-check-label" for="show_nickname" style="width: max-content;">对外展示</label>
                         </div>
-                        <div class="col-md-12 text-right mb-5">
-                            <button id="submit" class="btn btn-primary" onclick="return confirm('确认提交个人信息变动？')">提交</button>
-                        </div>
-                    
                     </div>
+                    <div class="col-12 col-md-2">
+                        <label for="select-gender" style="width: max-content;">我的性别</label>
+                        <div class="form-group mb-0">
+                            <select class="form-control" id="select-gender" name="gender">
+                            {% if useroj.gender == 1 %}
+                                <option>男</option>
+                                <option selected>女</option>
+                            {% else %}
+                                <option selected>男</option>
+                                <option>女</option>
+                            {% endif %}
+                            </select>
+                        </div>
+                        <div class="form-check mb-4">
+                            {% if useroj.show_gender %}
+                            <input type="checkbox" class="form-check-input" id="show_gender" name="show_gender" checked>
+                            {% else %}
+                            <input type="checkbox" class="form-check-input" id="show_gender" name="show_gender">
+                            {% endif %}
+                            <label class="form-check-label" for="show_gender" style="width: max-content;">对外展示</label>
+                        </div>
+                    </div>
+                </div>
 
-                    </form>
+                <label for="birthday" style="width: max-content;">我的生日</label>
+                <input type="date" class="form-control" id="birthday"
+                    name="birthday" 
+                    {% if userinfo.birthday is not None %}
+                    placeholder="{{ userinfo.birthday }}" onclick="this.value === `` && (this.value = this.placeholder)"
+                    {% else %}
+                    placeholder="选择日期"
+                    {% endif %}
+                    >
+                <script>
+                    /* -------------------- format of date is not guaranteed -------------------- */
+                    const [_match, yyyy, mm, dd] = birthday.placeholder.match(/^(\d\d\d\d).(\d?\d).(\d?\d).$/);
+                    birthday.value = `${yyyy}-${mm.padStart(2, 0)}-${dd.padStart(2, 0)}`;
+                </script>
+                <div class="form-check mb-4">
+                    {% if useroj.show_birthday %}
+                    <input type="checkbox" class="form-check-input" id="show_birthday" name="show_birthday" checked>
+                    {% else %}
+                    <input type="checkbox" class="form-check-input" id="show_birthday" name="show_birthday">
+                    {% endif %}
+                    <label class="form-check-label" for="show_birthday" style="width: max-content;">对外展示</label>
+                </div>
+
+                <label for="major" style="width: max-content;">我的专业</label>
+                <input type="text" class="form-control" id="major"
+                    name="major" 
+                    {% if userinfo.stu_major is not None %}
+                    placeholder="{{ userinfo.stu_major }}" onclick="this.value === `` && (this.value = this.placeholder)"
+                    {% else %}
+                    placeholder="暂无信息"
+                    {% endif %}
+                    >
+                <div class="form-check mb-4">
+                    {% if useroj.show_major %}
+                    <input type="checkbox" class="form-check-input" id="show_major" name="show_major" checked>
+                    {% else %}
+                    <input type="checkbox" class="form-check-input" id="show_major" name="show_major">
+                    {% endif %}
+                    <label class="form-check-label" for="show_major" style="width: max-content;">对外展示</label>
+                </div>
+
+                <label for="dorm" style="width: max-content;">我的宿舍</label>
+                <input type="text" class="form-control" id="dorm"
+                    name="dorm" placeholder="{{ userinfo.stu_dorm }}" readonly>
+                <div class="form-check mb-4">
+                    {% if useroj.show_dorm %}
+                    <input type="checkbox" class="form-check-input" id="show_dorm" name="show_dorm" checked>
+                    {% else %}
+                    <input type="checkbox" class="form-check-input" id="show_dorm" name="show_dorm">
+                    {% endif %}
+                    <label class="form-check-label" for="show_dorm" style="width: max-content;">对外展示</label>
+                </div>
+
+            </div>
+        </div>
+
+        <div class="row mx-0 pt-5">
+            <div class="col-1 px-0"></div>
+            <div class="col-10 col-md-2 px-0">
+                <h2 class="text-dark pr-4">联系方式</h2>
+            </div>
+            <div class="col-1 px-0 d-md-none"></div>
+            <div class="col-1 px-0 d-md-none"></div>
+            <div class="col-10 col-md-7 px-0">
+                <label for="tel" style="width: max-content;">我的电话</label>
+                <input type="tel" class="form-control" id="tel"
+                    name="tel" 
+                    {% if userinfo.telephone is not None %}
+                    placeholder="{{ userinfo.telephone }}" onclick="this.value === `` && (this.value = this.placeholder)"
+                    {% else %}
+                    placeholder="暂无信息"
+                    {% endif %}
+                    >
+                <div class="form-check mb-4">
+                    {% if useroj.show_tel %}
+                    <input type="checkbox" class="form-check-input" id="show_tel" name="show_tel" checked>
+                    {% else %}
+                    <input type="checkbox" class="form-check-input" id="show_tel" name="show_tel">
+                    {% endif %}
+                    <label class="form-check-label" for="show_tel" style="width: max-content;">对外展示</label>
+                </div>
+
+                <label for="email" style="width: max-content;">我的邮箱</label>
+                <input type="email" class="form-control" id="email" 
+                    name="email" 
+                    {% if userinfo.email is not None %}
+                    placeholder="{{ userinfo.email }}" onclick="this.value === `` && (this.value = this.placeholder)"
+                    {% else %}
+                    placeholder="暂无信息"
+                    {% endif %}
+                    >
+                <div class="form-check mb-4">
+                    {% if useroj.show_email %}
+                    <input type="checkbox" class="form-check-input" id="show_email" name="show_email" checked>
+                    {% else %}
+                    <input type="checkbox" class="form-check-input" id="show_email" name="show_email">
+                    {% endif %}
+                    <label class="form-check-label" for="show_email" style="width: max-content;">对外展示</label>
                 </div>
             </div>
         </div>
-    </div>
 
+        <div class="row mx-0 pt-5">
+            <div class="col-1 px-0"></div>
+            <div class="col-10 col-md-2 px-0">
+                <h2 class="text-dark pr-4">消息权限</h2>
+            </div>
+            <div class="col-1 px-0 d-md-none"></div>
+            <div class="col-1 px-0 d-md-none"></div>
+            <div class="col-10 col-md-7 px-0">
+                <label for="select-send" style="width: max-content;">通知提醒设置（仅影响系统消息和内部通知，不影响订阅消息）
+                    <a data-toggle="tooltip" data-placement="bottom" title="重要通知：发生重大变更，需要您亲自处理或做出调整的通知。包括但不限于：审核状态变化、已报名的活动发生变更或意外结束。">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor"
+                            class="bi bi-question-circle-fill" viewBox="0 0 22 22">
+                            <path d="M16 8A8 8 0 1 1 0 8a8 8 0 0 1 16 0zM5.496 6.033h.825c.138 0 .248-.113.266-.25.09-.656.54-1.134 1.342-1.134.686 0 1.314.343 1.314 1.168 0 .635-.374.927-.965 1.371-.673.489-1.206 1.06-1.168 1.987l.003.217a.25.25 0 0 0 .25.246h.811a.25.25 0 0 0 .25-.25v-.105c0-.718.273-.927 1.01-1.486.609-.463 1.244-.977 1.244-2.056 0-1.511-1.276-2.241-2.673-2.241-1.267 0-2.655.59-2.75 2.286a.237.237 0 0 0 .241.247zm2.325 6.443c.61 0 1.029-.394 1.029-.927 0-.552-.42-.94-1.029-.94-.584 0-1.009.388-1.009.94 0 .533.425.927 1.01.927z" />
+                        </svg>
+                    </a>
+                </label>
+                <div class="form-group mb-4">
+                    <select class="form-control" id="select-send" name="wechat_receive_level">
+                    {% if useroj.wechat_receive_level == 0 %}
+                        <option selected>接收全部消息</option>
+                        <option>仅重要通知</option>
+                    {% else %}
+                        <option selected>仅重要通知</option>
+                        <option>接收全部消息</option>
+                    {% endif %}
+                    </select>
+                </div>
+
+                <label for="select-promote" style="width: max-content;">是否接收推广消息？
+                    <a data-toggle="tooltip" data-placement="bottom" title="开启推广意味着你将有一定的概率接收到来自新建学生小组的推广信息。这个概率基于你的活跃度、参加活动的类型因素等计算，我们会为你推送和你兴趣相近的小组的信息~">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor"
+                            class="bi bi-question-circle-fill" viewBox="0 0 22 22">
+                            <path d="M16 8A8 8 0 1 1 0 8a8 8 0 0 1 16 0zM5.496 6.033h.825c.138 0 .248-.113.266-.25.09-.656.54-1.134 1.342-1.134.686 0 1.314.343 1.314 1.168 0 .635-.374.927-.965 1.371-.673.489-1.206 1.06-1.168 1.987l.003.217a.25.25 0 0 0 .25.246h.811a.25.25 0 0 0 .25-.25v-.105c0-.718.273-.927 1.01-1.486.609-.463 1.244-.977 1.244-2.056 0-1.511-1.276-2.241-2.673-2.241-1.267 0-2.655.59-2.75 2.286a.237.237 0 0 0 .241.247zm2.325 6.443c.61 0 1.029-.394 1.029-.927 0-.552-.42-.94-1.029-.94-.584 0-1.009.388-1.009.94 0 .533.425.927 1.01.927z" />
+                        </svg>
+                    </a>
+                </label>
+                <div class="form-group mb-4">
+                    <select class="form-control" id="select-promote" name="accept_promote">
+                    {% if useroj.accept_promote %}
+                        <option selected>是</option>
+                        <option>否</option>
+                    {% else %}
+                        <option selected>否</option>
+                        <option>是</option>
+                    {% endif %}
+                    </select>
+                </div>
+            </div>
+        </div>
+
+        <div class="row mx-0 pt-5">
+            <div class="col-1 px-0"></div>
+            <div class="col-10 col-md-2 px-0">
+                <h2 class="text-dark pr-4">主页外观</h2>
+            </div>
+            <div class="col-1 px-0 d-md-none"></div>
+            <div class="col-1 px-0 d-md-none"></div>
+            <div class="col-10 col-md-7 px-0">
+                <div class="row">
+                    <div class="col-6 upload" style="border: none;">
+                        <label for="avatar" style="width: max-content;">我的头像
+                            <a data-toggle="tooltip" data-placement="bottom" title="欢迎尝试gif格式图片･ω･)ﾉ">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor"
+                                    class="bi bi-question-circle-fill" viewBox="0 0 22 22">
+                                    <path d="M16 8A8 8 0 1 1 0 8a8 8 0 0 1 16 0zM5.496 6.033h.825c.138 0 .248-.113.266-.25.09-.656.54-1.134 1.342-1.134.686 0 1.314.343 1.314 1.168 0 .635-.374.927-.965 1.371-.673.489-1.206 1.06-1.168 1.987l.003.217a.25.25 0 0 0 .25.246h.811a.25.25 0 0 0 .25-.25v-.105c0-.718.273-.927 1.01-1.486.609-.463 1.244-.977 1.244-2.056 0-1.511-1.276-2.241-2.673-2.241-1.267 0-2.655.59-2.75 2.286a.237.237 0 0 0 .241.247zm2.325 6.443c.61 0 1.029-.394 1.029-.927 0-.552-.42-.94-1.029-.94-.584 0-1.009.388-1.009.94 0 .533.425.927 1.01.927z" />
+                                </svg>
+                            </a>
+                        </label>
+                        <input type="file" id="avatar" class="dropify"
+                            name="avatar" data-default-file="{{ former_img }}" data-max-file-size="512K" />
+                    </div>
+
+                    <div class="col-6 upload" style="border: none;">
+                        <label for="wallpaper" style="width: max-content;">主页墙纸
+                            <a data-toggle="tooltip" data-placement="bottom" title="欢迎尝试gif格式图片･ω･)ﾉ">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor"
+                                    class="bi bi-question-circle-fill" viewBox="0 0 22 22">
+                                    <path d="M16 8A8 8 0 1 1 0 8a8 8 0 0 1 16 0zM5.496 6.033h.825c.138 0 .248-.113.266-.25.09-.656.54-1.134 1.342-1.134.686 0 1.314.343 1.314 1.168 0 .635-.374.927-.965 1.371-.673.489-1.206 1.06-1.168 1.987l.003.217a.25.25 0 0 0 .25.246h.811a.25.25 0 0 0 .25-.25v-.105c0-.718.273-.927 1.01-1.486.609-.463 1.244-.977 1.244-2.056 0-1.511-1.276-2.241-2.673-2.241-1.267 0-2.655.59-2.75 2.286a.237.237 0 0 0 .241.247zm2.325 6.443c.61 0 1.029-.394 1.029-.927 0-.552-.42-.94-1.029-.94-.584 0-1.009.388-1.009.94 0 .533.425.927 1.01.927z" />
+                                </svg>
+                            </a>
+                        </label>
+                        <input type="file" id="wallpaper" class="dropify"
+                            name="wallpaper" data-default-file="{{ former_wallpaper }}" data-max-file-size="2048K" />
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="row mx-0 pt-5">
+            <div class="col-1 px-0"></div>
+            <div class="col-10 col-md-2 px-0">
+                <h2 class="text-dark pr-4">个性签名</h2>
+            </div>
+            <div class="col-1 px-0 d-md-none"></div>
+            <div class="col-1 px-0 d-md-none"></div>
+            <div class="col-10 col-md-7 px-0">
+                <label for="aboutBio" style="width: max-content;">个性签名</label>
+                <div class="mb-4">
+                    <textarea class="form-control" id="aboutBio" rows="10"
+                        name="aboutBio" placeholder="{{ userinfo.biography }}" onclick="this.value === `` && (this.value = this.placeholder)"></textarea>
+                </div>
+            </div>
+        </div>
+
+        <div class="row mx-0 pt-5">
+            <button id="submit" class="btn btn-primary mb-5" style="margin: auto;" onclick="return confirm(`确认提交个人信息变动？`)">提交修改</button>
+        </div>
+    </form>
 
 </div>
 

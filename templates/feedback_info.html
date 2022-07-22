@@ -1,0 +1,289 @@
+{% extends "base.html" %}
+
+{% load static %}
+
+{% block mainpage %}
+
+<!--  BEGIN CONTENT AREA  -->
+<div id="content" class="main-content">
+  <div class="container">
+    {% if html_display.warn_code == 2 %}
+      <div class="alert alert-success  text-center">{{html_display.warn_message}}</div>
+    {% elif html_display.warn_code == 1%}
+      <div class="alert alert-warning  text-center">{{html_display.warn_message}}</div>
+    {% endif %}
+    <div class="row layout-top-spacing">
+      <div class="col-lg-12 col-sm-12 col-12 layout-spacing">
+        <div class="row">
+          <div class="col-md-12 mb-4">
+            <div class="statbox widget box box-shadow">
+              <!--  BEGIN HEADER AREA  -->
+              <div class="widget-header">
+                <div class="row">
+                  <div class="col-xl-12 col-md-12 col-sm-12 col-12">
+                    <br>
+                    <br>
+                    <div align="center">
+                      <h3>反馈详情<h3></div>
+                        <div align="center">
+                        <h3>
+                        {% if not is_new_feedback %}
+                        {% with feedback.get_read_status_display as status %}
+                          {%if status == "未读"%}
+                            <span class="badge badge-primary">小组{{status}}</span>
+                          {%elif status == "已读"%}
+                            <span class="badge badge-success">小组{{status}}</span>
+                          {%else%}
+                            <span class="badge badge-danger">{{status}}</span>
+                          {%endif%}
+                        {%endwith%}
+                        {% with feedback.get_solve_status_display as status %}
+                          {%if status == "解决中"%}
+                            <span class="badge badge-primary">{{status}}</span>
+                          {%elif status == "已解决"%}
+                            <span class="badge badge-success">{{status}}</span>
+                          {%elif status == "无法解决"%}
+                            <span class="badge badge-danger">{{status}}</span>
+                          {%else%}
+                            <span class="badge badge-danger">{{status}}</span>
+                          {%endif%}
+                        {%endwith%}
+                        {% with feedback.get_public_status_display as status %}
+                          {%if status == "未公开"%}
+                            <span class="badge badge-primary">{{status}}</span>
+                          {%elif status == "公开"%}
+                            <span class="badge badge-success">{{status}}</span>
+                          {%elif status == "撤销公开"%}
+                            <span class="badge badge-dark">{{status}}</span>
+                          {%else%}
+                            <span class="badge badge-danger">{{status}}</span>
+                          {%endif%}
+                        {%endwith%}
+                        {% if feedback.publisher_public %}
+                        <span class="badge badge-success">发布者同意公开</span>
+                        {% else %}
+                        <span class="badge badge-danger">发布者不同意公开</span>
+                        {% endif %}
+                        {% endif %}
+                      </h3></div>
+                    <div class="d-flex justify-content-between">
+                      <div>
+                        <h4>
+                          <img src={{ feedback.org.get_user_ava }} width="24" height="24" alt="avatar" />
+                          <a href='{{feedback.org.get_absolute_url}}'>
+                            <u>{{feedback.org.oname}}</u>
+                          </a>
+                        </h4>
+                      </div>
+                      <!--<div align="right">
+                        <h4>
+                          <img src={{ feedback.person.get_user_ava }} width="24" height="24" alt="avatar" />
+                          <a href='{{feedback.person.get_absolute_url}}'>
+                            <u>{{feedback.person.name}}</u>
+                          </a>
+                        </h4>
+                      </div>-->
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <!--  BEGIN CONTENT AREA  -->
+              <div class="widget-content widget-content-area">
+                <form action="/viewFeedback/{{feedback.id}}" role="form" name="feedback" method="POST" enctype="multipart/form-data">
+                  <div class="form-group">
+                    <label>反馈类型</label>
+                    <input hidden type="text" name="type" class="form-control" aria-label="Default" value="{{feedback.type}}">
+                    <input type="text" name="show" class="form-control" aria-label="Default" disabled="disabled" value="{{feedback.type}}">
+                  </div>
+
+                  <div class="form-group">
+                    <label>反馈标题</label>
+                    {% if not is_new_feedback %}
+                      <textarea type="text" name="title" rows="1" class="form-control" aria-label="Default" placeholder="标题不能超过30字噢！" {% if not is_new_feedback %}disabled="disabled"{% endif %}>{{feedback.title}}</textarea>
+                    {% else %}
+                      <input type="text" name="title" class="form-control"
+                                                      aria-label="Default" placeholder="标题不能超过30字噢！">
+                    {% endif %}
+                  </div>
+
+                  <div class="form-group">
+                    <label for="aintro">反馈内容</label>
+                    <textarea name="content" class="form-control" rows="6" placeholder="反馈内容不能为空~" {% if not is_new_feedback %}disabled="disabled"{% endif %}>{% if not is_new_feedback %}{{feedback.content}}{% endif %}</textarea>
+                  </div>
+
+
+
+                  {% if is_new_feedback %}
+                  <div class="form-group">
+                    <label for="aintro">是否同意公开
+                      <a data-toggle="tooltip" data-placement="bottom" title="当小组和反馈者均同意公开时，反馈留言将会公开给所有用户，但【不会公开反馈者的身份】。">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-question-circle-fill" viewBox="0 0 22 22">
+                          <path d="M16 8A8 8 0 1 1 0 8a8 8 0 0 1 16 0zM5.496 6.033h.825c.138 0 .248-.113.266-.25.09-.656.54-1.134 1.342-1.134.686 0 1.314.343 1.314 1.168 0 .635-.374.927-.965 1.371-.673.489-1.206 1.06-1.168 1.987l.003.217a.25.25 0 0 0 .25.246h.811a.25.25 0 0 0 .25-.25v-.105c0-.718.273-.927 1.01-1.486.609-.463 1.244-.977 1.244-2.056 0-1.511-1.276-2.241-2.673-2.241-1.267 0-2.655.59-2.75 2.286a.237.237 0 0 0 .241.247zm2.325 6.443c.61 0 1.029-.394 1.029-.927 0-.552-.42-.94-1.029-.94-.584 0-1.009.388-1.009.94 0 .533.425.927 1.01.927z" />
+                        </svg>
+                      </a>
+                    </label>
+                    <select class="form-control selectpicker" data-live-search = "true" id="publisher_public" name="publisher_public" onchange="public_confirm.call(this);">
+                      <option value="public">公开反馈</option>
+                      <option value="private" selected>隐藏反馈</option>
+                    </select>
+                  </div>
+                  {% else %}
+                  {% if read_editable %}
+                  <div class="form-group">
+                    <label for="aintro">标记已读状态</label>
+                    <select class="form-control selectpicker" id="read_status" name="read_status" onchange="read_confirm.call(this);">
+                      <div class="dropdown-menu">
+                        <option value="unread" {%if read == "未读" %}selected{%endif%}>未读</option>
+                        <option value="read" {%if read == "已读" %}selected{%endif%}>已读</option>
+                      </div>
+                    </select>
+                  </div>
+                  {% endif %}
+                  {% if solve_editable %}
+                  <div class="form-group" id="solve_status">
+                    <label for="aintro">标记解决状态</label>
+                    <select class="form-control selectpicker" id="solve_select" name="solve_status" onchange="solve_confirm.call(this);">
+                      <option value="solving" {%if solve == "解决中" %}selected{%endif%}>解决中</option>
+                      <option value="solve" {%if solve == "已解决" %}selected{%endif%}>已解决</option>
+                      <option value="unsolvable" {%if solve == "无法解决" %}selected{%endif%}>无法解决</option>
+                    </select>
+                  </div>
+                  {% endif %}
+                  {% if public_editable %}
+                  <div class="form-group" id="public_status">
+                    {% if login_identity == "publisher" %}
+                    <label for="aintro">本人是否同意公开
+                      <a data-toggle="tooltip" data-placement="bottom" title="“公开”表示当小组和反馈者均同意公开时，反馈留言将会公开给所有用户，但不会公开反馈者的身份。">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-question-circle-fill" viewBox="0 0 22 22">
+                          <path d="M16 8A8 8 0 1 1 0 8a8 8 0 0 1 16 0zM5.496 6.033h.825c.138 0 .248-.113.266-.25.09-.656.54-1.134 1.342-1.134.686 0 1.314.343 1.314 1.168 0 .635-.374.927-.965 1.371-.673.489-1.206 1.06-1.168 1.987l.003.217a.25.25 0 0 0 .25.246h.811a.25.25 0 0 0 .25-.25v-.105c0-.718.273-.927 1.01-1.486.609-.463 1.244-.977 1.244-2.056 0-1.511-1.276-2.241-2.673-2.241-1.267 0-2.655.59-2.75 2.286a.237.237 0 0 0 .241.247zm2.325 6.443c.61 0 1.029-.394 1.029-.927 0-.552-.42-.94-1.029-.94-.584 0-1.009.388-1.009.94 0 .533.425.927 1.01.927z" />
+                        </svg>
+                      </a>
+                    </label>
+                    {% endif %}
+                    {% if login_identity == "org" %}
+                    <label for="aintro">本小组是否同意公开
+                      <a data-toggle="tooltip" data-placement="bottom" title="“公开”表示当小组和反馈者均同意公开时，反馈留言将会公开给所有用户，但不会公开反馈者的身份。">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-question-circle-fill" viewBox="0 0 22 22">
+                          <path d="M16 8A8 8 0 1 1 0 8a8 8 0 0 1 16 0zM5.496 6.033h.825c.138 0 .248-.113.266-.25.09-.656.54-1.134 1.342-1.134.686 0 1.314.343 1.314 1.168 0 .635-.374.927-.965 1.371-.673.489-1.206 1.06-1.168 1.987l.003.217a.25.25 0 0 0 .25.246h.811a.25.25 0 0 0 .25-.25v-.105c0-.718.273-.927 1.01-1.486.609-.463 1.244-.977 1.244-2.056 0-1.511-1.276-2.241-2.673-2.241-1.267 0-2.655.59-2.75 2.286a.237.237 0 0 0 .241.247zm2.325 6.443c.61 0 1.029-.394 1.029-.927 0-.552-.42-.94-1.029-.94-.584 0-1.009.388-1.009.94 0 .533.425.927 1.01.927z" />
+                        </svg>
+                      </a>
+                    </label>
+                    {% endif %}
+                    {% if login_identity == "teacher" %}
+                    <label for="aintro">教师是否同意公开
+                      <a data-toggle="tooltip" data-placement="bottom" title="“公开”表示当小组和反馈者均同意公开时，反馈留言将会公开给所有用户，但不会公开反馈者的身份。教师可以不予公开反馈。">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-question-circle-fill" viewBox="0 0 22 22">
+                          <path d="M16 8A8 8 0 1 1 0 8a8 8 0 0 1 16 0zM5.496 6.033h.825c.138 0 .248-.113.266-.25.09-.656.54-1.134 1.342-1.134.686 0 1.314.343 1.314 1.168 0 .635-.374.927-.965 1.371-.673.489-1.206 1.06-1.168 1.987l.003.217a.25.25 0 0 0 .25.246h.811a.25.25 0 0 0 .25-.25v-.105c0-.718.273-.927 1.01-1.486.609-.463 1.244-.977 1.244-2.056 0-1.511-1.276-2.241-2.673-2.241-1.267 0-2.655.59-2.75 2.286a.237.237 0 0 0 .241.247zm2.325 6.443c.61 0 1.029-.394 1.029-.927 0-.552-.42-.94-1.029-.94-.584 0-1.009.388-1.009.94 0 .533.425.927 1.01.927z" />
+                        </svg>
+                      </a>
+                    </label>
+                    {% endif %}
+                    <select class="form-control selectpicker" data-live-search="true" id="publisher_public" name="public_status" onchange="public_confirm.call(this);">
+                      <option value="private" select>{%if login_identity == "teacher"%}不予公开{%else%}隐藏反馈{%endif%}</option>
+                      <option value="public">公开反馈</option>
+                    </select>
+                  </div>
+                  {% endif %}
+                  {% endif %}
+
+                  <br/>
+                  {% if is_new_feedback %}
+                  <div align="center">
+                    <button type="submit" class="btn btn-primary btn-lg mb-4 mr-2" value="save" name="post_type" onclick="return confirm('确认将反馈保存入草稿箱？')">保存反馈</button>
+                    <button type="submit" class="btn btn-primary btn-lg mb-4 mr-2" value="directly_submit" name="post_type" onclick="return confirm('确认直接提交反馈？提交后将只能发布评论和修改公开状态，不允许修改标题和内容！')">提交反馈</button>
+                  </div>
+                  {% else %}
+                  {% if form_editable %}
+                  <div align="center">
+                    {% if cancel_editable %}
+                    <button type="submit" class="btn btn-warning btn-lg mb-4 mr-2" value="cancel" name="post_type" onclick="return confirm('确认撤销反馈？')">撤销反馈</button>
+                    {% endif %}
+                    <button type="submit" class="btn btn-primary btn-lg mb-4 mr-2" value="submit_draft" name="post_type" onclick="return confirm('确认提交状态修改？{% if not is_person %}注意：当你设置解决状态为【已解决】或【无法解决】时，本反馈将被关闭，无法进行评论。请确保已经在评论区完成沟通！{% endif %}')">提交修改</button>
+                  </div>
+                  {% endif %}
+                  {% endif %}
+
+                </form>
+                {% block comment %}
+                <br>
+                {% include 'comment.html' %}
+                {% endblock %}
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+<!--  END CONTENT AREA  -->
+
+
+{% endblock %}
+
+{% block add_js_file %}
+  <script src={% static "plugins/dropify/dropify.min.js" %}></script>
+  <script src={% static "assets/js/users/account-settings.js" %}></script>
+  <script>
+    var slove_status = document.getElementById("solve_status");
+    var read_status = document.getElementById("read_status");
+    var solve_select = document.getElementById("solve_select");
+    var public_select = document.getElementById("publisher_public");
+    var public_status = document.getElementById("public_status");
+    if(read_status.value == "unread"){
+      solve_status.hidden = true;
+      public_status.hidden = true;
+    }
+    if(solve_select.value == "solving"){
+      public_status.hidden = true;
+    }
+    function public_confirm() {
+      if (this.value == "public")
+        if (!confirm("是否同意公开？个人和小组均同意公开后，该反馈将向所有人公开~"))
+          this.value = "private";
+    }
+    function solve_confirm() {
+      if (this.value == "solve") {
+        if (!confirm("确认修改反馈状态为已解决？")) {
+          this.value = "solving";
+          public_status.hidden = true;
+        }
+        else
+          public_status.hidden = false;
+      }
+      else if(this.value == "unsolvable"){
+        if(!confirm("确认修改反馈状态为【无法解决】？")){
+          this.value = "solving";
+          public_status.hidden = true;
+        }
+        else
+          public_status.hidden = false;
+      }
+      if(this.value=='solving'){
+        public_status.hidden = true;
+        public_select.value = "private";
+      }
+    }
+    function read_confirm(){
+      if (this.value == "read") {
+        if (!confirm("确认修改反馈状态为已读？")) {
+          this.value = "unread";
+          slove_status.hidden = true;
+        }
+        slove_status.hidden = false;
+      }
+      if(this.value== "unread"){
+        slove_status.hidden = true;
+        public_status.hidden = true;
+        solve_select.value = "solving";
+        public_select.value = "private";
+      }
+    }
+    function create_option(name) {
+        var opt = document.createElement("OPTION");
+        opt.value = name;
+        opt.text = name;
+        return opt;
+    }
+  </script>
+{% endblock %}

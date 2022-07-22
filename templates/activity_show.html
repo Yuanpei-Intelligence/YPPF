@@ -26,6 +26,10 @@
     {% elif html_display.warn_code == 2 %}
     <div class="alert alert-success  text-center">{{ html_display.warn_message }}</div>
     {% endif %}
+    {% if YQPoint_Source_Org %}
+    <div class="alert alert-warning  text-center">元培元气值中心仅负责元气值发放，请使用其他账号发布活动。</div>
+    {% endif %}
+
     <div class="container"> 
 
             <div class="row layout-top-spacing">
@@ -36,7 +40,9 @@
                 <div class="col-lg-12 col-12 layout-top-spacing">
                     <div class="bio layout-spacing ">
                         <div class="widget-content widget-content-area">
-                            <h3>{{title}}</h3>
+                            {% if user_type == "Organization" %}
+                            <div class="d-flex justify-content-between">
+                            <h3 class= "">{{title}}</h3>
                             <!-- <div class="col-12">
                                 <p>欢迎来到你的{{title}}列表！这里汇集了你在<strong>Yuanpei Profile</strong>中需要审核的所有活动~</p>
                                 <p>这些事务依据更新的时间和状态由近到远呈现，提供了具体的更新时间和其他信息。</p>
@@ -44,22 +50,40 @@
                                 </br>
                             </div> -->
 
-                            {% if user_type == "Organization" %}
-                            <div class="col-lg-12">
-                                <br />
-                                <br />
-                                <a href="/addActivity/" class="btn btn-info" tabindex="1"
-                                    role="button" style="position:absolute;right:30px;top:4px;">
-                                    发起活动
-                                </a>
-                                <hr style="filter:alpha(opacity=100,finishopacity=0,style=3);" width="80%" color="#0000FF" size="3">
+                                
+                                <button type="button" class="btn btn-info mb-4 mr-2 "
+                                onclick="location.href = '/addActivity/';" 
+                                    >发起活动
+                                </button>
+                                
                             </div>
+                            {% else %}
+                            <h3>{{title}}</h3>
+                            
                             {% endif %}
                             
-                            
+                            <ul id="myTab" class="nav nav-tabs nav-tabs-solid nav-justified">
+                                <li class="nav-item">
+                                    <a class="nav-link active" href="#undone" data-toggle="tab">
+                                        <h5><i class="fa fa-envelope-o"></i> 待审核</h5>
+                                    </a>
+                                </li>
+
+                                <li class="nav-item">
+                                    <a class="nav-link" href="#done" data-toggle="tab">
+                                        <h5><i class="fa fa-envelope-o"></i> 已处理</h5>
+                                    </a>
+                                </li>
+
+                            </ul>
 
                             <div id="myTabContent" class="tab-content">
-                                <div class="tab-pane fade in active show" id="home">
+                                {% for key, shown_instances in all_instances.items %}
+                                
+                                <div class="tab-pane fade  {% if key == "undone" %}in active show {% endif %} " id="{{key}}">
+                                
+                                
+                                    <br />
                                     {% if not shown_instances %}
                                     <br />
                                     <p></p>
@@ -86,15 +110,15 @@
                                                         {% if status is not None %}
                                                         <div>
                                                             {% if status == 'Reviewing' %}
-                                                                <h5 class="text-warning">审核中</h5>
+                                                                <h5 class="text-warning">待审核</h5>
                                                             {% elif status == 'Reject' %}
                                                                 <h5 class="text-danger">未过审</h5>
                                                             {% elif status == 'Abort' %}
                                                                 <h5 class="text-muted">已撤销</h5>
-                                                            {% elif status == 'Canceled' %}
-                                                                <h5 class="text-muted">已取消</h5>
                                                             {% elif instance.recorded and not instance.valid %}
                                                                 <h5 class="text-info">预报备+审核中</h5>
+                                                            {% elif status == 'Canceled' %}
+                                                                <h5 class="text-danger">已取消</h5>
                                                             {% else %}
                                                                 <h5 class="text-success">已通过</h5>
 
@@ -103,27 +127,23 @@
                                                         {% endif %}
                                                     </div>
                                                     <div class="d-flex justify-content-between">
-                                                        {% if instance.extra_display %}
+                                                        {% with instance.organization_id as org %}
                                                         <div>
-                                                            {% for display in instance.extra_display %}
-                                                            {% if display|length == 2 or display|length == 3 %}
                                                             <p style="color: rgb(66, 67, 68);">
-                                                                <i class="fa fa-{{display.2|default:'envelope-o'}}"></i>
-                                                                {{display.0}}：{{display.1}}
+                                                                <img src="{{ org.get_user_ava }}"  style="width: 20px; height: 20px;">{{ org.oname }}
                                                             </p>
-                                                            {% endif %}
-                                                            {% endfor %}
                                                         </div>
-                                                        {% endif %}
+                                                        {% endwith %}
+                                                        <div>
+                                                            <p style="color: rgb(66, 67, 68);">
+                                                                    <i class="fa fa-address-book"></i>
+                                                                    审核: {{instance.examine_teacher.name}}
+                                                               
+                                                            </p>
+                                                        </div>
                                                     </div>
                                                     <div class="d-flex justify-content-between">
                                                         <div>
-                                                            {%if is_teacher%}
-                                                            <p style="color: rgb(66, 67, 68);">
-                                                                 <i class="fa fa-address-book"></i>
-                                                                 {{instance.organization_id.oname}}
-                                                            </p>
-                                                            {% endif %}
                                                             <p style="color: rgb(66, 67, 68);">
                                                                 <i class="fa fa-calendar-plus-o"></i>
                                                                 创建时间：{{instance.time|date:'m/d H:i'}}
@@ -140,6 +160,15 @@
                                                                     onclick="window.location='{%if is_teacher %}{{audit_link}}{%else%}{{link}}{% endif %}{% if query_field %}{{instance.id}}{% endif %}'">
                                                                     {{btn_name}}
                                                                 </a>
+
+                                                                {% if not is_teacher %}
+                                                                <a href="#" class="btn btn-primary my-3 my-sm-2" tabindex="-1"
+                                                                    role="button"
+                                                                    onclick="window.location='/addActivity/?template={{instance.id}}'">
+                                                                    导入
+                                                                </a>
+                                                                {% endif %}
+
                                                             </h5>
                                                         </div>
 
@@ -154,6 +183,7 @@
 
                                     {% endif %}
                                 </div>
+                                {% endfor %}
                             </div>
                         </div>
                     </div>
@@ -166,6 +196,11 @@
         
     </div>
 </div>
+{% if YQPoint_Source_Org %}
+<script type="text/javascript">
+    document.getElementById("add_activity").style.display = "none";
+</script>
+{% endif %}
 <!--  END CONTENT AREA  -->
 
 {% endwith %}

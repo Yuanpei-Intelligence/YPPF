@@ -1,0 +1,287 @@
+{% extends "base.html" %}
+
+{% block mainpage %}
+
+<!-- TODO: Link to related pages -->
+
+{% with title='我的课程' link1='/addSingleCourseActivity' btn_name1='增加课时' link2='/addCourse' btn_name2='发起选课' link3='/showCourseRecord' btn_name3='课程结项' link4='/outputSelectInfo' btn_name4='导出名单' %}
+
+<!--  BEGIN CONTENT AREA  -->
+<div id="content" class="main-content">
+    {% if html_display.warn_code == 1 %}
+    <div class="alert alert-warning  text-center">{{ html_display.warn_message }}</div>
+    {% elif html_display.warn_code == 2 %}
+    <div class="alert alert-success  text-center">{{ html_display.warn_message }}</div>
+    {% endif %}
+
+    <!-- BEGIN BOOTSTRAP GRID -->
+    <div class="container">
+        <div class="row layout-top-spacing">
+            <div class="col-lg-12 col-12 layout-top-spacing">
+                <div class="bio layout-spacing ">
+                    <div class="widget-content widget-content-area">
+                        <!-- BEGIN HEADER -->
+                        <div class="d-flex justify-content-between">
+                            <h3 class="">{{title}}</h3>
+                            <div>
+                                <button type="button"
+                                    class="btn-lg btn-outline-primary dropdown-toggle dropdown-toggle-split"
+                                    data-toggle="dropdown" style="display:block;white-space:nowrap;overflow:hidden; ">
+                                    课程操作
+                                </button>
+                                <div class="dropdown-menu">
+                                    <button class="dropdown-item"
+                                        onclick="location.href = '{{link1}}';">{{btn_name1}}
+                                    </button>
+                                    <button class="dropdown-item" 
+                                        onclick="location.href = '{{link2}}';">{{btn_name2}}
+                                    </button>
+                                    <button class="dropdown-item" 
+                                        onclick="location.href = '{{link3}}';">{{btn_name3}}
+                                    </button>
+                                    <button class="dropdown-item" 
+                                    onclick="location.href = '{{link4}}';">{{btn_name4}}
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                        <!-- END HEADER -->
+
+                        <!-- BEGIN ACTIVITY LIST -->
+                        <div class="row">
+                            <div class="col-12 layout-top-spacing bio">
+                                <ul id="Tab" class="nav nav-tabs nav-tabs-solid nav-justified">
+                                    <!-- BEGIN NAV HEADER -->
+                                    <li class="nav-item">
+                                        <b class="nav-link active" data-toggle="tab" role="tab" href="#futureActivity">
+                                            未开始的活动
+                                            <a data-toggle="tooltip" data-placement="bottom" title="本学期还未开始的课程活动">
+                                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16"
+                                                    fill="currentColor" class="bi bi-question-circle-fill"
+                                                    viewBox="0 0 22 22">
+                                                    <path
+                                                        d="M16 8A8 8 0 1 1 0 8a8 8 0 0 1 16 0zM5.496 6.033h.825c.138 0 .248-.113.266-.25.09-.656.54-1.134 1.342-1.134.686 0 1.314.343 1.314 1.168 0 .635-.374.927-.965 1.371-.673.489-1.206 1.06-1.168 1.987l.003.217a.25.25 0 0 0 .25.246h.811a.25.25 0 0 0 .25-.25v-.105c0-.718.273-.927 1.01-1.486.609-.463 1.244-.977 1.244-2.056 0-1.511-1.276-2.241-2.673-2.241-1.267 0-2.655.59-2.75 2.286a.237.237 0 0 0 .241.247zm2.325 6.443c.61 0 1.029-.394 1.029-.927 0-.552-.42-.94-1.029-.94-.584 0-1.009.388-1.009.94 0 .533.425.927 1.01.927z" />
+                                                </svg>
+                                            </a>
+                                        </b>
+                                    </li>
+
+                                    <li class="nav-item">
+                                        <b class="nav-link" data-toggle="tab" role="tab" href="#finishedActivity">
+                                            已结束的活动
+                                            <a data-toggle="tooltip" data-placement="bottom" title="本学期已结束的课程活动">
+                                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16"
+                                                    fill="currentColor" class="bi bi-question-circle-fill"
+                                                    viewBox="0 0 22 22">
+                                                    <path
+                                                        d="M16 8A8 8 0 1 1 0 8a8 8 0 0 1 16 0zM5.496 6.033h.825c.138 0 .248-.113.266-.25.09-.656.54-1.134 1.342-1.134.686 0 1.314.343 1.314 1.168 0 .635-.374.927-.965 1.371-.673.489-1.206 1.06-1.168 1.987l.003.217a.25.25 0 0 0 .25.246h.811a.25.25 0 0 0 .25-.25v-.105c0-.718.273-.927 1.01-1.486.609-.463 1.244-.977 1.244-2.056 0-1.511-1.276-2.241-2.673-2.241-1.267 0-2.655.59-2.75 2.286a.237.237 0 0 0 .241.247zm2.325 6.443c.61 0 1.029-.394 1.029-.927 0-.552-.42-.94-1.029-.94-.584 0-1.009.388-1.009.94 0 .533.425.927 1.01.927z" />
+                                                </svg>
+                                            </a>
+                                        </b>
+                                    </li>
+                                    <!-- END NAV HEADER -->
+                                </ul>
+
+                                <div class="tab-content" id="activityTabContent">
+                                    <div id="futureActivity" class="tab-pane active">
+                                        <div class="bio-skill-box">
+                                            {% if future_activity_list|length == 0 %}
+                                            <p style="text-align: center;">没有未开始的课程活动！</p>
+                                            {% endif %}
+                                            <div class="row">
+                                                {% for act in future_activity_list %}
+                                                <!-- BEGIN ACTIVITY DISPLAY -->
+                                                <div class="col-12 col-xl-6 col-lg-12 mb-xl-4 mb-4 ">
+                                                    <div class=" b-skills">
+                                                        <div class="d-flex justify-content-between">
+                                                            <div>
+                                                                <h5>
+                                                                    {% if act.status == "等待中" %}
+                                                                    <span class="badge badge-pill badge-warning">
+                                                                        等待开始
+                                                                    {% else %}
+                                                                        {% if act.status == "审核中" %}
+                                                                        <span class="flex badge badge-pill badge-secondary">
+                                                                        {% elif act.status == "未过审" or act.status == "已取消" or act.status == "已撤销" or act.status == "已结束" %}
+                                                                        <span class="badge badge-pill badge-danger">
+                                                                        {% elif act.status == "报名中" %}
+                                                                        <span class="badge badge-pill badge-info">
+                                                                        {% elif act.status == "进行中" %}
+                                                                        <span class="badge badge-pill badge-success">
+                                                                        {% endif %}
+                                                                    {{ act.status }}
+                                                                    {% endif %}
+                                                                    </span>
+                                                                    <a href="/viewActivity/{{ act.id }}">
+                                                                        <u>{{ act.title }}</u>
+                                                                    </a>
+                                                                </h5>
+                                                            </div>
+                                                            <div>
+                                                                <div class="dropdown">
+                                                                    <button type="button" class="btn btn-primary dropdown-toggle" data-toggle="dropdown">
+                                                                        管理
+                                                                    </button>
+                                                                    <div class="dropdown-menu">
+                                                                        <a class="dropdown-item"
+                                                                            href="/editCourseActivity/{{act.id}}">修改活动</a>
+                                                                        <!-- Dropdown item trigger modal -->
+                                                                        <a class="dropdown-item" data-toggle="modal" data-target="#cancelActivityModal">取消活动</a>
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+                                                            <!-- BEIGN cancelActivityModal -->
+                                                            <div class="modal fade" id="cancelActivityModal" tabindex="-1" role="dialog" aria-labelledby="cancelActivityModalLabel" aria-hidden="true">
+                                                                <div class="modal-dialog modal-dialog-centered" role="document">
+                                                                    <div class="modal-content">
+                                                                        <div class="modal-header">
+                                                                            <h5 class="modal-title" id="cancelActivityModalLabel">取消课程活动</h5>
+                                                                            
+                                                                        </div>
+                                                                        {% if act.course_time %}
+                                                                        <form method="POST" id="cancel-details">
+                                                                        <div class="modal-body">
+
+                                                                            <input type="radio" id="cancel_only" name="post_type" value="cancel_only" checked="checked"/>
+                                                                            <label for="cancel_only">仅取消当前活动</label>
+                                                                            <br/>
+                                                                            <input type="radio" id="cancel_all" name="post_type" value="cancel_all"/>
+                                                                            <label for="cancel_all">取消未来同时段所有活动</label>
+                                                                        </div>
+                                                                        <div class="modal-footer">
+                                                                                <input type="hidden" name="cancel-action" value="{{act.id}}">
+                                                                                <button type="button" class="btn btn-info"   data-dismiss="modal">再想想</button>
+                                                                                <button type="button" class="btn btn-danger" onclick="this.form.submit()" data-dismiss="modal">确认取消</button>
+                                                                            
+                                                                        </div>
+                                                                    </form>
+                                                                        {% else %}
+                                                                        <div class="modal-body">
+                                                                            活动取消后不可撤回操作，确认要取消吗？
+                                                                        </div>
+                                                                        <div class="modal-footer">
+                                                                            <button type="button" class="btn btn-secondary" data-dismiss="modal">再想想</button>
+                                                                            <form method="POST" id="cancel-details">
+                                                                                <input type="hidden" name="cancel-action" value="{{act.id}}">
+                                                                                <button type="button" class="btn btn-primary" onclick="this.form.submit()" data-dismiss="modal">确认</button>
+                                                                            </form>
+                                                                        </div>
+                                                                        
+                                                                        {%endif%}
+
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+                                                            <!-- END cancelActivityModal -->
+                                                        </div>
+
+
+                                                        <p style="text-align: left; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+                                                            <i class="fa fa-clock" style="width: 20px;"></i>
+                                                            <span class="ml-1">开始时间：{{ act.start }}&nbsp;</span>
+                                                        </p>
+
+                                                        <p style="text-align: left; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+                                                            <i class="fa fa-location-arrow" style="width: 20px;"></i>
+                                                            <span class="ml-1">{{ act.location }}&nbsp;</span>
+                                                        </p>
+                                                    </div>
+                                                </div>
+
+                                                <!-- END ACTIVITY DISPLAY -->
+                                            {% endfor %}
+                                            </div>
+                                        </div>                                        
+
+                                    </div>
+
+                                    <div id="finishedActivity" class="tab-pane fade">
+                                        <div class="bio-skill-box">
+                                            {% if finished_activity_list|length == 0 %}
+                                            <p style="text-align: center;">没有已结束的课程活动！</p>
+                                            {% endif %}
+                                            <div class="row">
+                                                {% for act in finished_activity_list %}
+                                                <!-- BEGIN ACTIVITY DISPLAY -->
+                                                <div class="col-12 col-xl-6 col-lg-12 mb-xl-4 mb-4 ">
+                                                    <div class=" b-skills">
+                                                        <div class="d-flex justify-content-between">
+                                                            <div>
+                                                                <h5>
+                                                                    {% if act.status == "等待中" %}
+                                                                    <span class="badge badge-pill badge-warning">
+                                                                        等待开始
+                                                                    {% else %}
+                                                                        {% if act.status == "审核中" %}
+                                                                        <span class="flex badge badge-pill badge-secondary">
+                                                                        {% elif act.status == "未过审" or act.status == "已取消" or act.status == "已撤销" or act.status == "已结束" %}
+                                                                        <span class="badge badge-pill badge-danger">
+                                                                        {% elif act.status == "报名中" %}
+                                                                        <span class="badge badge-pill badge-info">
+                                                                        {% elif act.status == "进行中" %}
+                                                                        <span class="badge badge-pill badge-success">
+                                                                    {% endif %}
+                                                                    {{ act.status }}
+                                                                    {% endif %}
+                                                                    </span>
+    
+                                                                    <a href="/viewActivity/{{ act.id }}">
+                                                                        <u>{{ act.title }}</u>
+                                                                    </a>
+                                                                </h5>
+                                                            </div>
+                                                            <div>
+                                                                {% if act.status == "已取消" %}
+                                                                <button type="button" class="btn btn-primary dropdown-toggle" disabled data-toggle="dropdown">
+                                                                    管理
+                                                                </button>
+                                                                {% else %}
+                                                                <div class="dropdown">
+                                                                    <button type="button" class="btn btn-primary dropdown-toggle" data-toggle="dropdown">
+                                                                        管理
+                                                                    </button>
+                                                                    <div class="dropdown-menu">
+                                                                        <a class="dropdown-item" href="/offlineCheckinActivity/{{ act.id }}">手工签到</a>
+                                                                    </div>
+                                                                </div>
+                                                                {% endif %}
+                                                            </div>
+
+                                                        </div>
+
+
+                                                        <p style="text-align: left; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+                                                            <i class="fa fa-clock" style="width: 20px;"></i>
+                                                            <span class="ml-1">结束时间：{{ act.end }}&nbsp;</span>
+                                                        </p>
+
+                                                        <p style="text-align: left; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+                                                            <i class="fa fa-location-arrow" style="width: 20px;"></i>
+                                                            <span class="ml-1">{{ act.location }}&nbsp;</span>
+                                                        </p>
+                                                    </div>
+                                                </div>
+                                                <!-- END ACTIVITY DISPLAY -->
+                                            {% endfor %}
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                            </div>
+
+                        </div>
+                    </div>
+                    <!-- END ACTIVITY LIST -->
+
+                </div>
+            </div>
+        </div>
+    </div>
+    <!-- END BOOTSTRAP GRID-->
+</div>
+<!--  END CONTENT AREA  -->
+
+{% endwith %}
+
+{% endblock %}

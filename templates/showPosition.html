@@ -6,7 +6,7 @@
 
 {% block mainpage %}
 
-{% with title='成员申请' link='/modifyPosition/' new_link='' query_field='pos_id' new_btn_name='新建申请' btn_name='详情' empty_info='列表空空如也！点击按钮进行成员变动申请吧~' %}
+{% with title='成员申请' link='/modifyPosition/' new_link='' query_field='pos_id' new_btn_name='新建申请' btn_name='详情' empty_info='列表空空如也！' %}
 
 <!--  BEGIN CONTENT AREA  -->
 <div id="content" class="main-content">
@@ -27,22 +27,55 @@
                 <div class="col-lg-12 col-12 layout-top-spacing">
                     <div class="bio layout-spacing ">
                         <div class="widget-content widget-content-area">
+                            {% if user_type == "Person" %}
+                            <div class="d-flex justify-content-between">
+                            <h3 class= "">{{title}}</h3>
+                            <div class="btn-group">
+                                <button type="button"
+                                    class="btn btn-info mb-4 mr-2 dropdown-toggle dropdown-toggle-split"
+                                    data-toggle="dropdown" style="display:block;white-space:nowrap;overflow:hidden; ">
+                                    {{new_btn_name}}
+                                </button>
+                                <div class="dropdown-menu" style="max-width: 300%; max-height: 500%; overflow: scroll;">
+                                    {% for org in all_org %}
+                                    <button class="dropdown-item"
+                                    onclick="location.href = '/modifyPosition/?org_name={{org.oname}}';" 
+                                    >{{org.oname}}</button>
+                                    {% endfor %}
+                                </div>
+                            </div>
+                                
+                                
+                            </div>
+                            {% else %}
                             <h3>{{title}}</h3>
                             
-                            <!-- <div class="col-lg-12">
-                                <br />
-                                <br />
-                                <a href="{{link}}{{new_link}}" class="btn btn-info" tabindex="1" role="button"
-                                    style="position:absolute;right:30px;top:4px;">
-                                    {{new_btn_name}}
-                                </a>
-                            </div> 
-                            <hr style="filter:alpha(opacity=100,finishopacity=0,style=3);" width="80%" color="#0000FF"
-                                size="3">
-                        -->
+                            {% endif %}
+                            
+                            <ul id="myTab" class="nav nav-tabs nav-tabs-solid nav-justified">
+                                <li class="nav-item">
+                                    <a class="nav-link active" href="#undone" data-toggle="tab">
+                                        <h5><i class="fa fa-envelope-o"></i> 待处理</h5>
+                                    </a>
+                                </li>
+
+                                <li class="nav-item">
+                                    <a class="nav-link" href="#done" data-toggle="tab">
+                                        <h5><i class="fa fa-envelope-o"></i> 已处理</h5>
+                                    </a>
+                                </li>
+
+                            </ul>
+
                             <div id="myTabContent" class="tab-content">
-                                    {% if not shown_instances %}
-                                    <br />
+                                {% for key, shown_instances in all_instances.items %}
+                                
+                                <div class="tab-pane fade  {% if key == "undone" %}in active show {% endif %} " id="{{key}}">
+                                
+                                
+                                <br />
+                                        
+                                {% if not shown_instances %}
                                     <p></p>
                                     <p style="text-align: center;">{{empty_info}}</p>
                                     <br />
@@ -79,21 +112,17 @@
                                                             {% elif '取消' in status %}
                                                             <h5 class="text-muted">{{status}}</h5>
                                                             {% else %}
-                                                            <h5 class="text-info">审核中</h5>
+                                                            <h5 class="text-info">待审核</h5>
                                                             {% endif %}
                                                         </div>
                                                         {% endif %}
                                                     </div>
                                                     <div class="d-flex justify-content-between">
-                                                        <div>
-                                                            {% for display in instance.extra_display %}
-                                                            {% if display|length == 2 or display|length == 3 %}
-                                                            <p style="color: rgb(66, 67, 68);">
-                                                                <i class="fa fa-{{display.2|default:'envelope-o'}}"></i>
-                                                                {{display.0}}：{{display.1}}
+                                                        <div class="flex" style="max-width: 80%;">
+                                                            <p style="color: rgb(66, 67, 68); word-wrap: break-word;white-space:nowrap;overflow: hidden; text-overflow: ellipsis;">
+                                                                <i class="fa fa-envelope"></i>
+                                                                {{ instance.extra_display }}
                                                             </p>
-                                                            {% endif %}
-                                                            {% endfor %}
                                                         </div>
                                                         {% if instance.get_poster_name %}
                                                         <div>
@@ -135,6 +164,8 @@
 
                                     {% endif %}
                                 
+                                </div>
+                                {% endfor %}
                             </div>
                         </div>
                     </div>

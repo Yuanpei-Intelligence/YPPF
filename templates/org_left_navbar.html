@@ -11,10 +11,25 @@
                         <a href="{{bar_display.profile_url}}" aria-expanded="false" class="dropdown-toggle">
                             <div class="">
                                 <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-home"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg>
-                                <span>团体主页</span>
+                                <span>小组主页</span>
                             </div>
                         </a>
                     </li>
+
+                    <li class="menu">
+                        <a href="/feedback/" aria-expanded="false" class="dropdown-toggle">
+                            <div class="">
+                                <!-- feedbacks -->
+                                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none"
+                                    stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <polyline points="21 8 21 21 3 21 3 8" />
+                                    <rect x="1" y="3" width="22" height="5" />
+                                    <line x1="10" y1="12" x2="14" y2="12" />
+                                </svg>
+                                <span>反馈中心</span>
+                            </div>
+                        </a>
+                    </li>   
 
                     <li class="menu">
                         <a href="/myYQPoint/" aria-expanded="false" class="dropdown-toggle">
@@ -31,7 +46,26 @@
                         </a>
                     </li>
 
+                    <li class="menu">
+                        <a href="/QAcenter/" aria-expanded="false" class="dropdown-toggle">
+                            <div class="">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z" /></svg>                                <span>问答中心</span>
+                            </div>
+                        </a>
+                    </li>
 
+                    <li class="menu">
+                        <a href="/subscribeOrganization/" aria-expanded="false" class="dropdown-toggle">
+                            <div class="">
+                                <!-- check-square -->
+                                <svg viewBox="0 0 24 24" width="24" height="24" stroke="currentColor" stroke-width="2"
+                                    fill="none" stroke-linecap="round" stroke-linejoin="round" class="css-i6dzq1">
+                                    <polyline points="9 11 12 14 22 4"></polyline>
+                                    <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"></path>
+                                </svg> <span>小组一览</span>
+                            </div>
+                        </a>
+                    </li>
                     <!--
                     <li class="menu">
                         <a href="/addActivity/" aria-expanded="false" class="dropdown-toggle">
@@ -55,6 +89,28 @@
                         </a>
                     </li>
                     -->
+                    {% if bar_display.is_course %}
+                    <li class="menu">
+                        <a href="/showCourseActivity/" aria-expanded="false" class="dropdown-toggle">
+                            <div class="">
+                                <svg xmlns="http://www.w3.org/2000/svg"
+                                width="24"
+                                height="24"
+                                viewBox="0 0 24 24"
+                                fill="none"
+                                stroke="currentColor"
+                                stroke-width="2"
+                                stroke-linecap="round"
+                                stroke-linejoin="round">
+                                <path d="M20.24 12.24a6 6 0 0 0-8.49-8.49L5 10.5V19h8.5z" />
+                                <line x1="16" y1="8" x2="2" y2="22" />
+                                <line x1="17.5" y1="15" x2="9" y2="15" />
+                                </svg>
+                                <span>我的课程</span>
+                            </div>
+                        </a>
+                    </li>
+                    {% else %}
                     <li class="menu">
                         <a href="/showActivity/" aria-expanded="false" class="dropdown-toggle">
                             <div class="">
@@ -76,7 +132,7 @@
                         </a>
                     </li>
                     <li class="menu">
-                        <a href="/showReimbursement/" aria-expanded="false" class="dropdown-toggle">
+                        <a href="/endActivity/" aria-expanded="false" class="dropdown-toggle">
                             <div class="">
                                 <svg xmlns="http://www.w3.org/2000/svg"
                                 width="24"
@@ -95,6 +151,7 @@
                             </div>
                         </a>
                     </li>
+                    {% endif %}
                     <!-- <li class="menu">
                         <a href="/personnelMobilization/" aria-expanded="false" class="dropdown-toggle">
                             <div class="">
@@ -147,6 +204,47 @@
                         </a>
                     </li>
 
+
+                    {% if request.session.Incharge or request.session.NP %}
+                    <li class="menu">
+                        <a href="#dashboard2" data-toggle="collapse" aria-expanded="false" class="dropdown-toggle">
+                            <div class="">
+                                <!-- repeat -->
+                                <svg viewBox="0 0 24 24" width="24" height="24" stroke="currentColor" stroke-width="2"
+                                    fill="none" stroke-linecap="round" stroke-linejoin="round" class="css-i6dzq1">
+                                    <polyline points="17 1 21 5 17 9"></polyline>
+                                    <path d="M3 11V9a4 4 0 0 1 4-4h14"></path>
+                                    <polyline points="7 23 3 19 7 15"></polyline>
+                                    <path d="M21 13v2a4 4 0 0 1-4 4H3"></path>
+                                </svg> <span>账号切换</span>
+                            </div>
+                            <div>
+                                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none"
+                                    stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+                                    class="feather feather-chevron-right">
+                                    <polyline points="9 18 15 12 9 6"></polyline>
+                                </svg>
+                            </div>
+                        </a>
+                        <ul class="collapse submenu list-unstyled" id="dashboard2" data-parent="#accordionExample">
+                            {% if request.session.NP %}
+                            <li>
+                                <a href="/shiftAccount/">个人账号</a>
+                            </li>
+                            {% endif %}
+                            {% if request.session.Incharge %}
+                            {% for oname in request.session.Incharge %}
+                            <li>
+                                <!-- TODO   Onclick 添加 origin  但是由于个人和组织能看的页面并不统一，暂且不加了 -->
+                                <a href="/shiftAccount/?oname={{oname}}"> {{oname}}</a>
+                            </li>
+                            {% endfor %}
+                            {% endif %}
+                        </ul>
+                    </li>
+                    {% endif %}
+
+
                     <li class="menu nav-item">
                         <a href="#info" data-toggle="collapse" aria-expanded="false" class="dropdown-toggle nav-link active">
                             <div class="">
@@ -162,7 +260,7 @@
                         </a>
                         <ul class="collapse submenu list-unstyled" id="info" data-parent="#accordionExample">
                             <li>
-                                <a href="/user_account_setting/"> 信息与隐私 </a>
+                                <a href="/userAccountSetting/"> 信息与隐私 </a>
                             </li>
                             <li>
                                 <a href="/modpw/">修改密码</a>
@@ -175,7 +273,7 @@
                         <a href="#d1" data-toggle="tab" aria-expanded="false" class="dropdown-toggle nav-link">
                             <div class="">
                                 <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"> <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" /> <path d="M13.73 21a2 2 0 0 1-3.46 0" /> </svg>
-                                <span>组织活动</span>
+                                <span>小组活动</span>
                             </div>
                         </a>
                     </li>
@@ -184,7 +282,7 @@
                         <a href="#d3" data-toggle="tab" aria-expanded="false" class="dropdown-toggle nav-link">
                             <div class="">
                                 <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" > <polyline points="22 12 18 12 15 21 9 3 6 12 2 12" /> </svg>
-                                <span>组织动态</span>
+                                <span>小组动态</span>
                             </div>
                         </a>
                     </li>

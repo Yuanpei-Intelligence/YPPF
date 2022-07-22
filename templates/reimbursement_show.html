@@ -17,7 +17,7 @@
 
 {% block mainpage %}
 
-{% with title='结项信息' link='/modifyReimbursement/' new_link='' query_field='reimb_id' new_btn_name='新的结项' btn_name='详情' empty_info='列表空空如也！点击按钮开始报销吧~' %}
+{% with title='结项信息' link='/modifyEndActivity/' new_link='' query_field='reimb_id' new_btn_name='新建结项' btn_name='详情' empty_info='列表空空如也~' %}
 
 <!--  BEGIN CONTENT AREA  -->
 <div id="content" class="main-content">
@@ -27,8 +27,7 @@
     <div class="alert alert-success  text-center">{{ html_display.warn_message }}</div>
     {% endif %}
     <div class="container">
-        <div class="container">
-
+        
 
             <div class="row layout-top-spacing">
                 {% if bar_display.help_paragraphs %}
@@ -38,25 +37,48 @@
                 <div class="col-lg-12 col-12 layout-top-spacing">
                     <div class="bio layout-spacing ">
                         <div class="widget-content widget-content-area">
-                            <h3>{{title}}</h3>
+                            {% if user_type == "Organization" %}
+                            <div class="d-flex justify-content-between">
+                            <h3 class= "">{{title}}</h3>
                             <!-- <div class="col-12">
-                                <p>欢迎来到你的{{title}}列表！这里汇集了你在<strong>Yuanpei Profile</strong>中创建的所有{{title}}~</p>
+                                <p>欢迎来到你的{{title}}列表！这里汇集了你在<strong>Yuanpei Profile</strong>中需要审核的所有活动~</p>
                                 <p>这些事务依据更新的时间和状态由近到远呈现，提供了具体的更新时间和其他信息。</p>
                                 <p>您可以点击<u>标题链接</u>查看老师留言、追加评论、取消正在审核的申请或查看已完成事务详情。尽情体验吧！</p>
                                 </br>
                             </div> -->
-                            <div class="col-lg-12">
-                                <br />
-                                <br />
-                                <a href="{{link}}{{new_link}}" class="btn btn-info" tabindex="1"
-                                    role="button" style="position:absolute;right:30px;top:4px;">
-                                    {{new_btn_name}}
-                                </a>
+
+                                
+                                <button type="button" class="btn btn-info mb-4 mr-2 "
+                                onclick="location.href = '{{link}}{{new_link}}';" 
+                                    >{{new_btn_name}}
+                                </button>
+                                
                             </div>
-                            <hr style="filter:alpha(opacity=100,finishopacity=0,style=3);" width="80%" color="#0000FF" size="3">
+                            {% else %}
+                            <h3>{{title}}</h3>
+                            
+                            {% endif %}
+                            
+                            <ul id="myTab" class="nav nav-tabs nav-tabs-solid nav-justified">
+                                <li class="nav-item">
+                                    <a class="nav-link active" href="#undone" data-toggle="tab">
+                                        <h5><i class="fa fa-envelope-o"></i> 待审核</h5>
+                                    </a>
+                                </li>
+
+                                <li class="nav-item">
+                                    <a class="nav-link" href="#done" data-toggle="tab">
+                                        <h5><i class="fa fa-envelope-o"></i> 已处理</h5>
+                                    </a>
+                                </li>
+
+                            </ul>
+
 
                             <div id="myTabContent" class="tab-content">
-                                <div class="tab-pane fade in active show" id="home">
+                                {% for key, shown_instances in all_instances.items %}
+                                
+                                <div class="tab-pane fade  {% if key == "undone" %}in active show {% endif %} " id="{{key}}">
                                     {% if not shown_instances %}
                                     <br />
                                     <p></p>
@@ -94,32 +116,25 @@
                 {% elif '取消' in status %}
                 <h5 class="text-muted">{{status}}</h5>
                 {% else %}
-                <h5 class="text-info">审核中</h5>
+                <h5 class="text-info">待审核</h5>
                 {% endif %}
             </div>
             {% endif %}
         </div>
         <div class="d-flex justify-content-between">
-            {% if instance.extra_display %}
-            <div>
-                {% for display in instance.extra_display %}
-                {% if display|length == 2 or display|length == 3 %}
-                <p style="color: rgb(66, 67, 68);">
-                    <i class="fa fa-{{display.2|default:'envelope-o'}}"></i>
-                    {{display.0}}：{{display.1}}
-                </p>
-                {% endif %}
-                {% endfor %}
-            </div>
-            {% endif %}
-            {% if instance.get_poster_name %}
+            {% with instance.get_poster_name as org %}
             <div>
                 <p style="color: rgb(66, 67, 68);">
-                    <i class="fa fa-address-book"></i>
-                    {{instance.get_poster_name}}
+                    <img src="{{ org.get_user_ava }}"  style="width: 20px; height: 20px;">{{ org.oname }}
                 </p>
             </div>
-            {% endif %}
+            {% endwith %}
+            <div>
+                <p style="color: rgb(66, 67, 68);">
+                        报销: {{instance.amount}}元
+                   
+                </p>
+            </div>
         </div>
         <div class="d-flex justify-content-between">
             <div>
@@ -152,6 +167,8 @@
 
                                     {% endif %}
                                 </div>
+                                {% endfor %}
+
                             </div>
                         </div>
                     </div>
@@ -161,7 +178,7 @@
 
             </div>
 
-        </div>
+        
     </div>
 </div>
 <!--  END CONTENT AREA  -->

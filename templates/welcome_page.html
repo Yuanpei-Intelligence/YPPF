@@ -9,6 +9,9 @@
 
     <div class="layout-px-spacing">
 
+        {% if html_display.first_signin %}
+        <div class="alert alert-success  text-center">今日首次签到，获得0.5积分!</div>
+        {% endif %}
         {% if html_display.warn_code == 2 %}
         <div class="alert alert-success  text-center">{{html_display.warn_message}}</div>
         {% elif html_display.warn_code == 1 %}
@@ -22,34 +25,49 @@
                 <!-- 目前是guidance -->
                 <div id="style1" class="carousel slide style-custom-1" data-ride="carousel">
                     <ol class="carousel-indicators">
-                        <li data-target="#style1 active"></li>
-                        {% for path in paths %}
-                        <li data-target="#style1"></li>
+                        {% for _ in photo_display %}
+                        <li data-target="#style1" {% if forloop.first %}class="active"{% endif %}></li>
                         {% endfor %}
-                        {% for photo in photo_display %}
-                        <li data-target="#style1"></li>
+                        {% for _ in guidepics %}
+                        <li data-target="#style1" {% if forloop.first and not photo_display %}class="active"{% endif %}></li>
                         {% endfor %}
                     </ol>
                     <div class="carousel-inner">
-                        <div class="carousel-item active">
-                            <img class="d-block w-100 slide-image" style="height: 50vh; object-fit: cover;"
-                                    src={% static "assets/img/guidepics/default.jpeg" %}>
-                        </div>
-                        {% for path in paths %}
-                        <div class="carousel-item">
-                            <a href="/{{path}}">
-                                <img class="d-block w-100 slide-image" style="height: 50vh; object-fit: cover;"
-                                    src={% static "assets/img/guidepics/{{path}}.jpeg" %}>
-                            </a>
-                        </div>
-                        {% endfor %}
                         {% for photo in photo_display %}
-                        <div class="carousel-item">
+                        <div class="carousel-item{% if forloop.first %} active{% endif %}">
                             <a href="/viewActivity/{{photo.activity_id}}">
                                 <img class="d-block w-100 slide-image" style="height: 50vh; object-fit: cover;"
                                     src={{photo.image}}>
+                                <div class="caption" style="position: absolute; text-align: center; background-color: #ffffffaa; width: 100%; height: 79px; bottom: 22px; padding: 10px; padding-left: 20%; padding-right: 20%;">
+                                    <h2 class="mb-0 caption-h">{{photo.activity.title}}</h2>
+                                    <p class="mb-0 caption-p" style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">{{photo.activity.introduction}}</p>
+                              </div>
                             </a>
                         </div>
+                        {% endfor %}
+                        <!--
+                        <div class="carousel-item {% if not photo_display %} active{% endif %}">
+                            {% if firsturl %}
+                            <a href="{{ firsturl }}">
+                            {% endif %}
+                                <img class="d-block w-100 slide-image" style="height: 50vh; object-fit: cover;"
+                                    src="/static/assets/img/guidepics/{{ firstpic }}" %}>
+                            {% if firsturl %}
+                            </a>
+                            {% endif %}
+                        </div>
+                        -->
+                        {% for pic, url in guidepics %}
+                        <div class="carousel-item{% if forloop.first and not photo_display %} active{% endif %}">
+                            {% if url %}
+                            <a href="{{ url }}">
+                            {% endif %}
+                                <img class="d-block w-100 slide-image" style="height: 50vh; object-fit: cover;"
+                                    src="/static/assets/img/guidepics/{{ pic }}" %}>
+                            {% if url %}
+                            </a>
+                            {% endif %}
+                            </div>
                         {% endfor %}
                     </div>
                     <a class="carousel-control-prev" href="#style1" role="button" data-slide="prev">
@@ -110,12 +128,21 @@
                     const ref = document.querySelector(`#style1`);
                     const photos = ref.querySelectorAll(`img`);
                     /* ---------------- fit wallpaper according to screen height ---------------- */
+                    setTimeout(resize, 0);
                     window.addEventListener(`load`, resize);
                     window.addEventListener(`resize`, resize);
                     function resize() {
-                        photos.forEach(
-                            (photo) => (photo.style.height = this.innerWidth <= 767 ? `30vh` : `50vh`)
-                        );
+                        if (this.innerWidth <= 767) {
+                            photos.forEach((photo) => (photo.style.height = `30vh`));
+                            document.querySelectorAll(`.caption`).forEach((caption) => caption.style.height = `69px`);
+                            document.querySelectorAll(`.caption-h`).forEach((heading) => (heading.style.fontSize = `22px`, heading.style.lineHeight = `30px`));
+                            document.querySelectorAll(`.caption-p`).forEach((paragraph) => (paragraph.style.fontSize = `12px`, paragraph.style.lineHeight = `19px`));
+                        } else {
+                            photos.forEach((photo) => (photo.style.height = `50vh`));
+                            document.querySelectorAll(`.caption`).forEach((caption) => caption.style.height = `79px`);
+                            document.querySelectorAll(`.caption-h`).forEach((heading) => (heading.style.fontSize = `32px`, heading.style.lineHeight = `38px`));
+                            document.querySelectorAll(`.caption-p`).forEach((paragraph) => (paragraph.style.fontSize = `14px`, paragraph.style.lineHeight = `21px`));
+                        }
                     }
                     /* ---------------------- constrain height of wishwall ---------------------- */
                     const fit = () => {
@@ -150,7 +177,8 @@
                         <span>
                             地区：北京 天气：{{ html_display.weather.description }} <br />
                             气温：{{ html_display.weather.temp }} &#8451
-                            体感温度：{{ html_display.weather.temp_feel }} &#8451
+                            体感温度：{{ html_display.weather.temp_feel }} &#8451 <br />
+                            上次更新：{{last_update}}
                         </span>
                         <div>
                             <!-- <img
@@ -304,15 +332,39 @@
                     <h3>活动一览</h3>
                     <ul id="Tab" class="nav nav-tabs nav-tabs-solid nav-justified">
                         <li class="nav-item">
-                            <b class="nav-link active" data-toggle="tab" role="tab" href="#news">最新发布</b>
+                            <b class="nav-link active" data-toggle="tab" role="tab" href="#news">
+                                最新发布
+                                <a data-toggle="tooltip" data-placement="bottom" title="展示一周内发布的活动">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor"
+                                        class="bi bi-question-circle-fill" viewBox="0 0 22 22">
+                                        <path d="M16 8A8 8 0 1 1 0 8a8 8 0 0 1 16 0zM5.496 6.033h.825c.138 0 .248-.113.266-.25.09-.656.54-1.134 1.342-1.134.686 0 1.314.343 1.314 1.168 0 .635-.374.927-.965 1.371-.673.489-1.206 1.06-1.168 1.987l.003.217a.25.25 0 0 0 .25.246h.811a.25.25 0 0 0 .25-.25v-.105c0-.718.273-.927 1.01-1.486.609-.463 1.244-.977 1.244-2.056 0-1.511-1.276-2.241-2.673-2.241-1.267 0-2.655.59-2.75 2.286a.237.237 0 0 0 .241.247zm2.325 6.443c.61 0 1.029-.394 1.029-.927 0-.552-.42-.94-1.029-.94-.584 0-1.009.388-1.009.94 0 .533.425.927 1.01.927z" />
+                                    </svg>
+                                </a>
+                            </b>
                         </li>
 
                         <li class="nav-item">
-                            <b class="nav-link" data-toggle="tab" role="tab" href="#recentactivity">近期活动</b>
+                            <b class="nav-link" data-toggle="tab" role="tab" href="#recentactivity">
+                                近期活动
+                                <a data-toggle="tooltip" data-placement="bottom" title="展示前后一周内开始的活动">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor"
+                                        class="bi bi-question-circle-fill" viewBox="0 0 22 22">
+                                        <path d="M16 8A8 8 0 1 1 0 8a8 8 0 0 1 16 0zM5.496 6.033h.825c.138 0 .248-.113.266-.25.09-.656.54-1.134 1.342-1.134.686 0 1.314.343 1.314 1.168 0 .635-.374.927-.965 1.371-.673.489-1.206 1.06-1.168 1.987l.003.217a.25.25 0 0 0 .25.246h.811a.25.25 0 0 0 .25-.25v-.105c0-.718.273-.927 1.01-1.486.609-.463 1.244-.977 1.244-2.056 0-1.511-1.276-2.241-2.673-2.241-1.267 0-2.655.59-2.75 2.286a.237.237 0 0 0 .241.247zm2.325 6.443c.61 0 1.029-.394 1.029-.927 0-.552-.42-.94-1.029-.94-.584 0-1.009.388-1.009.94 0 .533.425.927 1.01.927z" />
+                                    </svg>
+                                </a>
+                            </b>
                         </li>
 
-                        <li class="nav-item">
-                            <b class="nav-link" data-toggle="tab" role="tab" href="#recentends">即将截止 </b>
+                        <li class="nav-item" onclick="ModuleTrackFunction(3,'即将截止')">
+                            <b class="nav-link" data-toggle="tab" role="tab" href="#recentends">
+                                即将截止
+                                <a data-toggle="tooltip" data-placement="bottom" title="展示即将截止报名的前十条活动">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor"
+                                        class="bi bi-question-circle-fill" viewBox="0 0 22 22">
+                                        <path d="M16 8A8 8 0 1 1 0 8a8 8 0 0 1 16 0zM5.496 6.033h.825c.138 0 .248-.113.266-.25.09-.656.54-1.134 1.342-1.134.686 0 1.314.343 1.314 1.168 0 .635-.374.927-.965 1.371-.673.489-1.206 1.06-1.168 1.987l.003.217a.25.25 0 0 0 .25.246h.811a.25.25 0 0 0 .25-.25v-.105c0-.718.273-.927 1.01-1.486.609-.463 1.244-.977 1.244-2.056 0-1.511-1.276-2.241-2.673-2.241-1.267 0-2.655.59-2.75 2.286a.237.237 0 0 0 .241.247zm2.325 6.443c.61 0 1.029-.394 1.029-.927 0-.552-.42-.94-1.029-.94-.584 0-1.009.388-1.009.94 0 .533.425.927 1.01.927z" />
+                                    </svg>
+                                </a>
+                            </b>
                         </li>
                     </ul>
 
@@ -331,25 +383,29 @@
                                             <div class="d-flex b-skills">
                                                 <div class="text-nowrap mw-100">
                                                     <div class="d-flex justify-content-between">
-                                                        <h5
-                                                            style="max-width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
-                                                            {% if act.status == "等待中" %}
-                                                            <span class="flex badge badge-pill badge-info">
-                                                                {{ act.status }}
-                                                            </span>
-                                                            {% elif act.status == "已取消" or act.status == "已结束" %}
-                                                            <span class="badge badge-pill badge-danger">
-                                                                {{ act.status }}
-                                                            </span>
-                                                            {% else %}
-                                                            <span class="badge badge-pill badge-success">
-                                                                {{ act.status }}
-                                                            </span>
-                                                            {% endif %}
+                                                        <h5 style="max-width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
 
+                                                            {% if act.status == "等待中" %}
+                                                            <span class="badge badge-pill badge-warning">
+                                                                等待开始
+                                                            {% else %}
+                                                            {% if act.status == "审核中" %}
+                                                            <span class="flex badge badge-pill badge-secondary">
+                                                            {% elif act.status == "未过审" or act.status == "已取消" or act.status == "已撤销" or act.status == "已结束" %}
+                                                            <span class="badge badge-pill badge-danger">
+                                                            {% elif act.status == "报名中" %}
+                                                            <span class="badge badge-pill badge-info">
+                                                            {% elif act.status == "进行中" %}
+                                                            <span class="badge badge-pill badge-success">
+                                                            {% endif %}
+                                                                {{ act.status }}
+                                                            {% endif %}
+                                                            </span>
+        
                                                             {{ act.title }}
                                                         </h5>
                                                     </div>
+                                                    
 
                                                     <p
                                                         style="text-align: left; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
@@ -357,17 +413,55 @@
                                                         <span class="ml-1">{{ act.organization_id }}</span>
                                                     </p>
 
+                                                    {% if act.introduction %}
                                                     <p
                                                         style="text-align: left; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
                                                         <i class="fa fa-info-circle" style="width: 20px;"></i>
                                                         <span class="ml-1">{{ act.introduction }}</span>
                                                     </p>
+                                                    {% endif %}
 
                                                     <p
                                                         style="text-align: left; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
                                                         <i class="fa fa-clock" style="width: 20px;"></i>
                                                         <span class="ml-1">{{ act.start }}&nbsp;活动开始</span>
                                                     </p>
+
+                                                    {% if act.has_tag %}
+                                                    <p
+                                                        style="text-align: left; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+                                                        <i class="fa fa-tag" style="width: 20px;"></i>
+                                                        {% if act.inner %}<!--内部活动-->
+                                                        <span class="badge badge-pill badge-success">内部活动</span>
+                                                        {% endif %}
+                                                        {% if act.need_checkin %}<!--需要签到-->
+                                                        <span class="badge badge-pill badge-info">需要签到</span>
+                                                        {% endif %}
+                                                        {% if act.status == "报名中" %}
+                                                            {% if act.bidding %}<!--抽签-->
+                                                                <span class="badge badge-pill badge-primary">需要抽签</span>
+                                                            {% else %}<!--先到先得-->
+                                                                <span class="badge badge-pill badge-primary">先到先得</span>
+                                                            {% endif %}
+                                                            {% if act.YQPoint != 0 %}<!--需要元气值-->
+                                                            <span class="badge badge-pill badge-info">需要元气值</span>
+                                                            {% endif %}
+                                                            {% if act.current_participants >= act.capacity %}
+                                                                {% if act.bidding %}
+                                                                <span class="badge badge-pill badge-warning">已超额</span>
+                                                                {% else %}
+                                                                <span class="badge badge-pill badge-danger">已报满</span>
+                                                                {% endif %}
+                                                            {% endif %}
+                                                        {% elif act.popular_level %}
+                                                            {% if act.current_participants >= act.capacity %}
+                                                                <span class="badge badge-pill badge-secondary">满员</span>
+                                                            {% else %}
+                                                                <span class="badge badge-pill badge-danger">火爆</span>
+                                                            {% endif %}
+                                                        {% endif %}
+                                                    </p>
+                                                    {% endif %}
                                                 </div>
                                             </div>
                                         </a>
@@ -390,23 +484,27 @@
                                             <div class="d-flex b-skills">
                                                 <div class="text-nowrap mw-100">
                                                     <div class="d-flex justify-content-between">
-                                                        <h5
-                                                            style="max-width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
-                                                            {% if act.status == "等待中" %}
-                                                            <span class="flex badge badge-pill badge-info">
-                                                                {{ act.status }}
-                                                            </span>
-                                                            {% elif act.status == "已取消" or act.status == "已结束" %}
-                                                            <span class="badge badge-pill badge-danger">
-                                                                {{ act.status }}
-                                                            </span>
-                                                            {% else %}
-                                                            <span class="badge badge-pill badge-success">
-                                                                {{ act.status }}
-                                                            </span>
-                                                            {% endif %}
+                                                        <h5 style="max-width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
 
+                                                            {% if act.status == "等待中" %}
+                                                            <span class="badge badge-pill badge-warning">
+                                                                等待开始
+                                                            {% else %}
+                                                            {% if act.status == "审核中" %}
+                                                            <span class="flex badge badge-pill badge-secondary">
+                                                            {% elif act.status == "未过审" or act.status == "已取消" or act.status == "已撤销" or act.status == "已结束" %}
+                                                            <span class="badge badge-pill badge-danger">
+                                                            {% elif act.status == "报名中" %}
+                                                            <span class="badge badge-pill badge-info">
+                                                            {% elif act.status == "进行中" %}
+                                                            <span class="badge badge-pill badge-success">
+                                                            {% endif %}
+                                                                {{ act.status }}
+                                                            {% endif %}
+                                                            </span>
+        
                                                             {{ act.title }}
+
                                                         </h5>
                                                     </div>
 
@@ -416,17 +514,55 @@
                                                         <span class="ml-1">{{ act.organization_id }}</span>
                                                     </p>
 
+                                                    {% if act.introduction %}
                                                     <p
                                                         style="text-align: left; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
                                                         <i class="fa fa-info-circle" style="width: 20px;"></i>
                                                         <span class="ml-1">{{ act.introduction }}</span>
                                                     </p>
+                                                    {% endif %}
 
                                                     <p
                                                         style="text-align: left; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
                                                         <i class="fa fa-clock" style="width: 20px;"></i>
                                                         <span class="ml-1">{{ act.start }}&nbsp;活动开始</span>
                                                     </p>
+
+                                                    {% if act.has_tag %}
+                                                    <p
+                                                        style="text-align: left; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+                                                        <i class="fa fa-tag" style="width: 20px;"></i>
+                                                        {% if act.inner %}<!--内部活动-->
+                                                        <span class="badge badge-pill badge-success">内部活动</span>
+                                                        {% endif %}
+                                                        {% if act.need_checkin %}<!--需要签到-->
+                                                        <span class="badge badge-pill badge-info">需要签到</span>
+                                                        {% endif %}
+                                                        {% if act.status == "报名中" %}
+                                                            {% if act.bidding %}<!--抽签-->
+                                                                <span class="badge badge-pill badge-primary">需要抽签</span>
+                                                            {% else %}<!--先到先得-->
+                                                                <span class="badge badge-pill badge-primary">先到先得</span>
+                                                            {% endif %}
+                                                            {% if act.YQPoint != 0 %}<!--需要元气值-->
+                                                            <span class="badge badge-pill badge-info">需要元气值</span>
+                                                            {% endif %}
+                                                            {% if act.current_participants >= act.capacity %}
+                                                                {% if act.bidding %}
+                                                                <span class="badge badge-pill badge-warning">已超额</span>
+                                                                {% else %}
+                                                                <span class="badge badge-pill badge-danger">已报满</span>
+                                                                {% endif %}
+                                                            {% endif %}
+                                                        {% elif act.popular_level %}
+                                                            {% if act.current_participants >= act.capacity %}
+                                                                <span class="badge badge-pill badge-secondary">满员</span>
+                                                            {% else %}
+                                                                <span class="badge badge-pill badge-danger">火爆</span>
+                                                            {% endif %}
+                                                        {% endif %}
+                                                    </p>
+                                                    {% endif %}
                                                 </div>
                                             </div>
                                         </a>
@@ -450,22 +586,25 @@
                                             <div class="d-flex b-skills">
                                                 <div class="text-nowrap mw-100">
                                                     <div class="d-flex justify-content-between">
-                                                        <h5
-                                                            style="max-width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
-                                                            {% if act.status == "等待中" %}
-                                                            <span class="flex badge badge-pill badge-info">
-                                                                {{ act.status }}
-                                                            </span>
-                                                            {% elif act.status == "已取消" or act.status == "已结束" %}
-                                                            <span class="badge badge-pill badge-danger">
-                                                                {{ act.status }}
-                                                            </span>
-                                                            {% else %}
-                                                            <span class="badge badge-pill badge-success">
-                                                                {{ act.status }}
-                                                            </span>
-                                                            {% endif %}
+                                                        <h5 style="max-width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
 
+                                                            {% if act.status == "等待中" %}
+                                                            <span class="badge badge-pill badge-warning">
+                                                                等待开始
+                                                            {% else %}
+                                                            {% if act.status == "审核中" %}
+                                                            <span class="flex badge badge-pill badge-secondary">
+                                                            {% elif act.status == "未过审" or act.status == "已取消" or act.status == "已撤销" or act.status == "已结束" %}
+                                                            <span class="badge badge-pill badge-danger">
+                                                            {% elif act.status == "报名中" %}
+                                                            <span class="badge badge-pill badge-info">
+                                                            {% elif act.status == "进行中" %}
+                                                            <span class="badge badge-pill badge-success">
+                                                            {% endif %}
+                                                                {{ act.status }}
+                                                            {% endif %}
+                                                            </span>
+        
                                                             {{ act.title }}
                                                         </h5>
                                                     </div>
@@ -476,17 +615,55 @@
                                                         <span class="ml-1">{{ act.organization_id }}</span>
                                                     </p>
 
+                                                    {% if act.introduction %}
                                                     <p
                                                         style="text-align: left; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
                                                         <i class="fa fa-info-circle" style="width: 20px;"></i>
                                                         <span class="ml-1">{{ act.introduction }}</span>
                                                     </p>
+                                                    {% endif %}
 
                                                     <p
                                                         style="text-align: left; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
                                                         <i class="fa fa-clock" style="width: 20px;"></i>
                                                         <span class="ml-1">{{ rec.deadline }}&nbsp;截止报名，还有 {{rec.tobestart}} 小时</span>
                                                     </p>
+
+                                                    {% if act.has_tag %}
+                                                    <p
+                                                        style="text-align: left; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+                                                        <i class="fa fa-tag" style="width: 20px;"></i>
+                                                        {% if act.inner %}<!--内部活动-->
+                                                        <span class="badge badge-pill badge-success">内部活动</span>
+                                                        {% endif %}
+                                                        {% if act.need_checkin %}<!--需要签到-->
+                                                        <span class="badge badge-pill badge-info">需要签到</span>
+                                                        {% endif %}
+                                                        {% if act.status == "报名中" %}
+                                                            {% if act.bidding %}<!--抽签-->
+                                                                <span class="badge badge-pill badge-primary">需要抽签</span>
+                                                            {% else %}<!--先到先得-->
+                                                                <span class="badge badge-pill badge-primary">先到先得</span>
+                                                            {% endif %}
+                                                            {% if act.YQPoint != 0 %}<!--需要元气值-->
+                                                            <span class="badge badge-pill badge-info">需要元气值</span>
+                                                            {% endif %}
+                                                            {% if act.current_participants >= act.capacity %}
+                                                                {% if act.bidding %}
+                                                                <span class="badge badge-pill badge-warning">已超额</span>
+                                                                {% else %}
+                                                                <span class="badge badge-pill badge-danger">已报满</span>
+                                                                {% endif %}
+                                                            {% endif %}
+                                                        {% elif act.popular_level %}
+                                                            {% if act.current_participants >= act.capacity %}
+                                                                <span class="badge badge-pill badge-secondary">满员</span>
+                                                            {% else %}
+                                                                <span class="badge badge-pill badge-danger">火爆</span>
+                                                            {% endif %}
+                                                        {% endif %}
+                                                    </p>
+                                                    {% endif %}
                                                 </div>
                                             </div>
                                         </a>

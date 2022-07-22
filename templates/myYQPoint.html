@@ -14,40 +14,37 @@
         <div class="container">
             <div class="layout-top-spacing">
 
-                <div class="row">
+                <div class="col-12 row mx-0">
                     <div class="col-0 col-xl-2 col-lg-2 col-md-2"></div>
-                    <div class="col-12 col-xl-8 col-lg-8 col-md-8 layout-top-spacing">
+                    <div class="col-sm-12 col-md-8 layout-top-spacing px-0">
                         <div class="card mx-auto">
                             <img class="card-img-top" src="/static/assets/img/YQPointCard.jpeg" alt="Card image" style="width:100%">
                             <div class="card-body">
-                                {% if user_type == "Person" %}
-                                <span style="color: black;">当前元气值：{{quota_and_YQPoint}}</span>
-                                {% else %}
-                                <div class="row">
-                                    <div class="col-8" style="color: black;">
-                                        <div class="">
-                                            <span class="float-left" >当前元气值：</span>
-                                            <span class="float-right" >{{me.YQPoint}}</span>
-                                            <br/>
-                                        </div>
-                                        <div class="">
-                                            <span class="float-left" >待收入元气值：</span>
-                                            <span class="float-right" >{{amount.recv}}</span>
-                                            <br/>
-                                        </div>
-                                        <div class="">
-                                            <span class="float-left" >待支出元气值：</span>
-                                            <span class="float-right" >{{amount.send}}</span>
-                                        </div>
-                                    </div>
-                                </div>
+                                <b class="d-flex">
+                                    <span class="flex">当前元气值</span>
+                                    <span class="flex ml-auto">{{html_display.YQPoint}}</span>
+                                    <br/>
+                                </b>
+                                {% if user_type != "Person" %}
+                                <b class="d-flex">
+                                    <span class="flex">待收入元气值</span>
+                                    <span class="flex ml-auto">{{amount.recv}}</span>
+                                    <br/>
+                                </b>
+                                <b class="d-flex">
+                                    <span class="flex">待支出元气值</span>
+                                    <span class="flex ml-auto">{{amount.send}}</span>
+                                    <br/>
+                                </b>
                                 {% endif %}
                             </div>
                         </div>
                      </div>
                  </div>
-
-                <div class="col-lg-12 col-12 layout-top-spacing">
+                {% if bar_display.help_paragraphs %}
+                    {% include 'help.html' %}
+                {% endif %}
+                <div class="col-12 layout-top-spacing">
                     <div class="bio layout-spacing ">
                         <div class="widget-content widget-content-area">
                             <h3>既存交易</h3>
@@ -64,32 +61,40 @@
                                     </ul>
                                     -->
                             <ul id="myTab" class="nav nav-tabs nav-tabs-solid nav-justified">
+                                
                                 <li class="nav-item">
-                                    <a class="nav-link active" href="#issued" data-toggle="tab">
-                                        <h5>已处理</h5>
+                                    <a class="nav-link active" href="#send" data-toggle="tab">
+                                        <h5>支出</h5>
                                     </a>
                                 </li>
 
+                                <li class="nav-item">
+                                    <a class="nav-link" href="#received" data-toggle="tab">
+                                        <h5>收入</h5>
+                                    </a>
+                                </li>
+                            
+                                {% if user_type != "Person" %}
                                 <li class="nav-item">
                                     <a class="nav-link" href="#unissued" data-toggle="tab">
                                         <h5>待处理</h5>
                                     </a>
                                 </li>
-
+                                {% endif %}
                             </ul>
 
                             <div id="myTabContent" class="tab-content">
-                                <div class="tab-pane fade in active show" id="issued">
-                                    {% if issued_list|length == 0 %}
+                                <div class="tab-pane fade" id="received">
+                                    {% if receive_list|length == 0 %}
                                     <br />
                                     <p></p>
-                                    <p style="text-align: center;">没有已处理的转账记录.</p>
+                                    <p style="text-align: center;">没有收入记录.</p>
                                     <br />
                                     {% else %}
 
                                     <div class="bio-skill-box">
                                         <div class="row">
-                                            {% for record in issued_list %}
+                                            {% for record in receive_list %}
                                             <div class="col-12 col-xl-6 col-lg-12 mb-xl-4 mb-4 ">
 
                                                 <div class=" b-skills">
@@ -143,6 +148,71 @@
                                     </div>
                                     {% endif %}
                                 </div>
+                                <div class="tab-pane fade in active show" id="send">
+                                    {% if send_list|length == 0 %}
+                                    <br />
+                                    <p></p>
+                                    <p style="text-align: center;">没有支出记录.</p>
+                                    <br />
+                                    {% else %}
+
+                                    <div class="bio-skill-box">
+                                        <div class="row">
+                                            {% for record in send_list %}
+                                            <div class="col-12 col-xl-6 col-lg-12 mb-xl-4 mb-4 ">
+
+                                                <div class=" b-skills">
+
+
+                                                    <div class="d-flex justify-content-between">
+                                                        <div>
+                                                            <h5>
+                                                                {{record.obj_direct}} <a
+                                                                    href='{{record.obj_url}}'><u>{{record.obj}}</u></a>
+                                                            </h5>
+                                                        </div>
+                                                        <div>
+                                                            <h5>
+                                                                <i class="	fa fa-rmb"></i>{{record.amount}}
+                                                            </h5>
+                                                        </div>
+                                                    </div>
+                                                    <div class="d-flex justify-content-between">
+                                                        <div>
+                                                            <p style="color: rgb(66, 67, 68);"><i
+                                                                    class="fa fa-calendar-o"></i>
+                                                                {{record.start_time}}发起</p>
+                                                        </div>
+                                                        <div>
+                                                            <p style="color: rgb(66, 67, 68);">
+                                                                {{record.finish_time}}处理</p>
+                                                        </div>
+
+                                                    </div>
+                                                    <div class="d-flex justify-content-between">
+                                                        <div>
+                                                            <p style="color: rgb(66, 67, 68);"><i
+                                                                    class="fa fa-envelope-o"></i>
+                                                                {{record.message}}</p>
+                                                        </div>
+                                                        <div>
+                                                            <p style="color: rgb(66, 67, 68);
+                                                                    margin-left: 8px;
+                                                                    display:block;
+                                                                    white-space:nowrap; 
+                                                                    overflow:hidden; ">
+                                                                {{record.status}}
+                                                            </p>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            {% endfor %}
+                                        </div>
+                                    </div>
+                                    {% endif %}
+                                </div>
+                                {% if user_type != "Person" %}
                                 <div class="tab-pane fade " id="unissued">
                                     {% if to_list|length == 0 %}
                                     <br />
@@ -224,7 +294,7 @@
 
                                     {% endif %}
                                 </div>
-                                
+                                {% endif %}
                             </div>
                         </div>
                     </div>

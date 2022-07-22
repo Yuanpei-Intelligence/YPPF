@@ -11,7 +11,8 @@
     <!-- BEGIN GLOBAL MANDATORY STYLES -->
     <!-- Favicons -->
     <link type="image/x-icon" href="{% static '/assets/img/yp_favicon.png' %}" rel="icon">
-    <link href="https://fonts.googleapis.com/css?family=Nunito:400,600,700" rel="stylesheet">
+    <!-- <link href="fonts.googleapis.com/css?family=Nunito:400,600,700" rel="stylesheet"> -->
+    <link href={% static "outer/fonts.googleapis.com/source1.css" %} rel="stylesheet">
     <link href={% static "bootstrap/css/bootstrap.min.css" %} rel="stylesheet" type="text/css" />
     <link href={% static "assets/css/plugins.css" %} rel="stylesheet" type="text/css" />
     <!-- END GLOBAL MANDATORY STYLES -->
@@ -20,14 +21,26 @@
     <link href={% static "assets/css/users/user-profile.css" %} rel="stylesheet" type="text/css" />
     <!--  END CUSTOM STYLE FILE  -->
 
+    <link href={% static "Font-Awesome/css/all.min.css" %} rel="stylesheet" type="text/css" />
+    <!-- 废弃的外部链接
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css" crossorigin="anonymous" referrerpolicy="no-referrer" />
+    -->
     {% block add_css_file %}
 
     {% endblock %}
 
 </head>
 
-<body>
+{% if load_alert_message %}
+<script>
+    alert('{{load_alert_message}}');
+</script>
+{% endif %}
+
+<script src={% static "assets/js/event_tracking.js" %}></script>
+<!-- <body> -->
+<body onload="PageTrackFunction(0)" onbeforeunload="PageTrackFunction(1)">
+    
 
     <!--  BEGIN NAVBAR  -->
     <div class="header-container fixed-top">
@@ -57,7 +70,7 @@
                         action="/search/" id="search-form">
                         <div class="search-bar">
                             <input type="text" class="form-control search-form-control  ml-lg-auto"
-                                placeholder="搜索活动/团体/个人[姓名/团体名/昵称/专业]" name="Query">
+                                placeholder="搜索活动/小组/个人[姓名/小组名/昵称/专业]" name="Query">
                         </div>
                     </form>
                 </li>
@@ -227,7 +240,7 @@
                                     我的元气值</a>
                             </div>
                             <div class="dropdown-item">
-                                <a class="" href="/user_account_setting/"><svg xmlns="http://www.w3.org/2000/svg"
+                                <a class="" href="/userAccountSetting/"><svg xmlns="http://www.w3.org/2000/svg"
                                         width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor"
                                         stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
                                         class="feather feather-activity">
@@ -299,7 +312,7 @@
                     <div class="page-header">
                         <div class="page-title">
                             <h3>
-                                <a data-toggle="tooltip" data-placement="bottom" title="{{bar_display.help_message}}">
+                                <a data-toggle="tooltip" data-placement="bottom" data-html="true" title="{{bar_display.help_message}}">
                                     <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor"
                                         class="bi bi-question-circle-fill" viewBox="0 0 22 22">
                                         <path

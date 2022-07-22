@@ -54,14 +54,14 @@
                                                         <div>
                                                             <h4>
                                                                 <img src={{ org_avatar_path }} width="24" height="24" alt="avatar">
-                                                                <a href='/orginfo/{{applied_org.oname}}'>
+                                                                <a href='{{applied_org.get_absolute_url}}'>
                                                                     <u>{{applied_org.oname}}</u></a>
                                                                     </h4>
                                                         </div>
                                                     <div align="right">
                                                             <h4>
                                                             <img src={{ app_avatar_path }} width="24" height="24" alt="avatar">
-                                                            <a href='/stuinfo/{{apply_person.name}}'>
+                                                            <a href='{{apply_person.get_absolute_url}}'>
                                                                 <u>{{apply_person.name}}</u></a>
                                                             </h4>
                                                     </div>
@@ -85,9 +85,9 @@
                                                     {% endif %}
                                                     {% endfor %}
                                                     <!--
-                                                    <option  value="JOIN" {% if html.apply_type == "JOIN" %} selected {% endif %}>加入组织</option>
+                                                    <option  value="JOIN" {% if html.apply_type == "JOIN" %} selected {% endif %}>加入小组</option>
                                                     <option  value="TRANSFER" {% if html.apply_type == "TRANSFER" %} selected {% endif %}>修改职位</option>
-                                                    <option  value="WITHDRAW" {% if html.apply_type == "WITHDRAW" %} selected {% endif %}>退出组织</option>
+                                                    <option  value="WITHDRAW" {% if html.apply_type == "WITHDRAW" %} selected {% endif %}>退出小组</option>
                                                     -->
                                                 </select>
                                             </div>
@@ -111,7 +111,7 @@
                                             <div class="form-group">
                                                 <label for="aintro">申请理由或陈述</label>
                                                 <textarea name="apply_reason" class="form-control" rows="7" placeholder=
-                                                        "解释你为什么申请加入，或陈述你的个人情况。发起申请后可以在评论区继续补充或上传图片。"{%if not allow_form_edit %} readonly="readonly"{%endif%}
+                                                        "解释你为什么申请，或陈述你的个人情况。发起申请后可以在评论区继续补充或上传图片。"{%if not allow_form_edit %} readonly="readonly"{%endif%}
                                                 >{% if not is_new_application %}{{application.reason}}{% endif %}</textarea>
                                             </div>
                                             {%if allow_form_edit %}
@@ -171,7 +171,7 @@
     function type_change() {
         //输出选中状态
         var selecter = document.getElementById('apply_type');
-        if ("退出组织" === selecter.value) {
+        if ("退出小组" === selecter.value) {
             document.getElementById('position_group').hidden = true;
         } else {
             document.getElementById('position_group').hidden = false;

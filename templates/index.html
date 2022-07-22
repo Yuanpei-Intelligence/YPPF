@@ -12,7 +12,8 @@
     
 
     <!-- BEGIN GLOBAL MANDATORY STYLES -->
-    <link href="https://fonts.googleapis.com/css?family=Nunito:400,600,700" rel="stylesheet">
+    <!-- <link href="fonts.googleapis.com/css?family=Nunito:400,600,700" rel="stylesheet"> -->
+    <link href={% static "outer/fonts.googleapis.com/source1.css" %} rel="stylesheet">
     <link href={% static "bootstrap/css/bootstrap.min.css" %} rel="stylesheet" type="text/css" />
     <link href={% static "assets/css/plugins.css" %} rel="stylesheet" type="text/css" />
     <link href={% static "assets/css/authentication/form-1.css" %} rel="stylesheet" type="text/css" />
@@ -21,6 +22,12 @@
     <link rel="stylesheet" type="text/css" href={% static "assets/css/forms/switches.css" %}>
 
 </head>
+
+{% if load_alert_message %}
+<script>
+    alert('{{load_alert_message}}');
+</script>
+{% endif %}
 
 <body class="form ">
 
@@ -58,7 +65,7 @@
                                         <circle cx="12" cy="7" r="4"></circle>
                                     </svg>
                                     <input id="username" name="username" type="text" class="form-control"
-                                        placeholder="学号/团体号/团体名">
+                                        placeholder="学号/小组号/小组名">
                                 </div>
 
                                 <div id="password-field" class="field-wrapper input mb-2">
@@ -134,16 +141,16 @@
 
         <div class="form-image">
             <div class="l-image">
-                <div id="style1" class="carousel slide style-custom-1" data-ride="carousel">
-                    <div class="carousel-inner">
-                       <div class="carousel-item active">
-                            <img src="/static/assets/img/ypbg1-square.jpeg">
+                <div id="style1" class="carousel slide style-custom-1 h-100" data-ride="carousel">
+                    <div class="carousel-inner h-100">
+                       <div class="h-100 carousel-item active">
+                            <img src="/static/assets/img/ypbg1-square.jpeg" class="w-100 h-100" style="object-fit: cover;">
                         </div>
-                        <div class="carousel-item ">
-                            <img src="/static/assets/img/ypbg2-square.jpeg">
+                        <div class="h-100 carousel-item">
+                            <img src="/static/assets/img/ypbg2-square.jpeg" class="w-100 h-100" style="object-fit: cover;">
                         </div>
-                        <div class="carousel-item">
-                            <img src="/static/assets/img/ypbg3-square.jpeg">
+                        <div class="h-100 carousel-item">
+                            <img src="/static/assets/img/ypbg3-square.jpeg" class="w-100 h-100" style="object-fit: cover;">
                         </div>
                    </div>
                     <a class="carousel-control-prev" href="#style1" role="button" data-slide="prev">

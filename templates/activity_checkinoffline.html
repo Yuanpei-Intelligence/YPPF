@@ -1,0 +1,87 @@
+{% extends 'base.html' %}
+
+{% block mainpage %}
+<div id="content" class="main-content">
+    <div class="container mt-3">
+
+        {% if html_display.warn_code == 2 %}
+        <div class="alert alert-success text-center mb-0">{{html_display.warn_message}}</div>
+        {% elif html_display.warn_code == 1 %}
+        <div class="alert alert-warning text-center mb-0">{{html_display.warn_message}}</div>
+        {% endif %}
+
+        <div class="row layout-top-spacing">
+            {% if bar_display.help_paragraphs %}
+                {% include 'help.html' %}
+            {% endif %}
+            <div class="col-lg-12 col-12 layout-top-spacing">
+                <div class="bio layout-spacing ">
+                    <div class="widget-content widget-content-area">
+                        <h3>修改签到</h3>
+
+                        <form method="POST">
+                        
+                            <table class="table table-bordered mb-4">
+                            <thead>
+                                <tr>
+                                    <th>成员</th>
+                                    <th>签到状态</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for member in member_list %}
+                                    <tr>
+                                        <td>
+                                            <img src={{ member.person_id.get_user_ava }} width="24" height="24" alt="avatar">
+                                            <a href='{{ member.person_id.get_absolute_url }}'>
+                                                <u>{{ member.person_id }}</u>
+                                            </a>
+                                        </td>
+                                        <td>
+                                            <input type="radio" class="custom-control-inline"
+                                                name="checkin_{{member.person_id_id}}" value="no"
+                                                {% if member.status == "未签到" %} checked {% endif %}
+                                                >
+                                            未参与
+                                            <input type="radio" class="custom-control-inline"
+                                                name="checkin_{{member.person_id_id}}" value="yes"
+                                                {% if member.status == "已参与" %} checked {% endif %}
+                                                >
+                                            已参与
+                                        </td>
+                                    </tr>
+                                {% endfor %}
+                            <tbody>
+                            </table>
+                            <!--变成确认框
+                            <button type="submit" class="btn btn-primary btn-block mb-2"
+                                        name="option" value="saveSituation">
+                                保存
+                            </button>
+                            -->
+                            <button type="button" class="btn btn-primary btn-block mb-2" data-toggle="modal" data-target="#myModal">保存</button>
+                            <div class="modal fade" id="myModal">
+                                <div class="modal-dialog">
+                                  <div class="modal-content">
+                                    <!-- 模态框主体 -->
+                                    <div class="modal-body">
+                                        确定保存更改吗？
+                                    </div>
+                                    <!-- 模态框底部 -->
+                                    <div class="modal-footer">
+                                        <button type="submit" class="btn btn-primary btn-sm" name="option" value="saveSituation">确定</button>
+                                        <button type="button" class="btn btn-secondary btn-sm" data-dismiss="modal">关闭</button>
+                                    </div>
+                                  </div>
+                                </div>
+                            </div>
+                            <br/>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}

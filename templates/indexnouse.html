@@ -10,7 +10,8 @@
 
     <!-- BEGIN GLOBAL MANDATORY STYLES -->
     <link type="image/x-icon" href="{% static '/static/assets/img/yp_favicon.png' %} " rel="icon">
-    <link href="https://fonts.googleapis.com/css?family=Nunito:400,600,700" rel="stylesheet">
+    <!-- <link href="fonts.googleapis.com/css?family=Nunito:400,600,700" rel="stylesheet"> -->
+    <link href={% static "outer/fonts.googleapis.com/source1.css" %} rel="stylesheet">
     <link href={% static "bootstrap/css/bootstrap.min.css" %} rel="stylesheet" type="text/css" />
     <link href={% static "assets/css/plugins.css" %} rel="stylesheet" type="text/css" />
     <link href={% static "assets/css/authentication/form-2.css" %} rel="stylesheet" type="text/css" />
@@ -51,7 +52,7 @@
                                         <circle cx="12" cy="7" r="4"></circle>
                                     </svg>
                                     <input id="username" name="username" type="text" class="form-control"
-                                        placeholder="学号/团体号/团体名">
+                                        placeholder="学号/小组号/小组名">
                                 </div>
 
                                 <div id="password-field" class="field-wrapper input mb-2">

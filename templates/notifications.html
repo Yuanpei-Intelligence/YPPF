@@ -26,10 +26,7 @@
                     <div class="bio layout-spacing ">
                         <div class="widget-content widget-content-area">
                             <h3>通知信箱</h3>
-                            <!-- <p>欢迎来到你的通知信箱！这里汇集了您在<strong>Yuanpei Profile</strong>中「已处理」和「未处理」的事务通知~</p>
-                            <p>对于「知晓类」通知，点击「知道了」按钮，就可以将通知放入「已处理」信箱中啦！当然，你也可以将已读消息设置为未读。</p>
-                            <p>对于需要您手动处理的事务，您可以通过点击<u>标题链接</u>到达相应页面进行事务的处理，处理完毕后，该通知会自动进入「已处理」信箱！</p>
-                            </br> -->
+                            
                             <ul id="myTab" class="nav nav-tabs nav-tabs-solid nav-justified">
                                 <li class="nav-item">
                                     <a class="nav-link active" href="#home" data-toggle="tab">
@@ -47,14 +44,11 @@
 
                             <div id="myTabContent" class="tab-content">
                                 <div class="tab-pane fade in active show" id="home">
-                                    {% if undone_list|length == 0 %}
-                                    <br />
-                                    <p></p>
-                                    <p style="text-align: center;">您的信箱很干净！没有要处理的信息.</p>
-                                    <br />
-                                    {% else %}
+                                    <div id="undone-empty" style="display: none; margin-top: 40px; margin-bottom: -40px;">
+                                        <p style="text-align: center;">您的信箱很干净！没有要处理的信息.</p>
+                                    </div>
                                     <div class="bio-skill-box">
-                                        <div class="row">
+                                        <div id="undone-list" class="row">
                                             {% for note in undone_list %}
                                             <div class="col-12 col-xl-6 col-lg-12 mb-xl-4 mb-4 " id="undone={{note.id}}" {% if not note.status == "待处理" %} hidden {%endif%}>
 
@@ -64,9 +58,9 @@
                                                     <div class="d-flex justify-content-between">
                                                         <div>
                                                             <h5>
-                                                                {%if note.URL %}
-                                                                <a href={{note.URL}} onclick="read.call(this);this.blur();" id={{note.id}}><u>{{note.title}}</u></a><br />
-                                                                {%else%}
+                                                                {% if note.URL %}
+                                                                <a href='{{note.URL}}' {% if note.type == "知晓类" %} onclick="read.call(this);this.blur();" {% endif %} id="{{note.id}}"><u>{{note.title}}</u></a><br />
+                                                                {% else %}
                                                                 <u style="text-decoration: none">{{note.title}}</u><br />
                                                                 {% endif %}
                                                             </h5>
@@ -76,7 +70,7 @@
                                                             <h5>
                                                                 <button class="btn btn-primary" type="submit"
                                                                     name='post_button' value="{{note.id}}"
-                                                                    onclick="read.call(this);this.blur();" id={{note.id}}>知道啦</button>
+                                                                    onclick="read.call(this);this.blur();" id="{{note.id}}">知道啦</button>
                                                             </h5>
                                                             {% else %}
                                                             <h5>
@@ -88,12 +82,20 @@
                                                         </div>
                                                     </div>
                                                     
-                                                    <p style="color: rgb(66, 67, 68);"><i
-                                                                    class="fa fa-address-book"></i>{{note.sender}}</p>
-                                                        
-                                                    <p style="color: rgb(66, 67, 68);"><i
-                                                                    class="fa fa-calendar-o"></i>收信时间：{{note.start_time}}</p>
-                                                    <p style="color: rgb(66, 67, 68);"><i class="fa fa-envelope-o"></i>{{note.content}}</p>
+                                                    <p style="color: rgb(66, 67, 68);">
+                                                        <i class="fa fa-address-book" style="width: 14px;"></i>
+                                                        <span class="ml-1">来自&nbsp;<b>{{note.sender}}</b></span>
+                                                    </p>
+
+                                                    <p style="color: rgb(66, 67, 68);">
+                                                        <i class="fa fa-bell" style="width: 14px;"></i>
+                                                        <span class="ml-1">{{note.start_time}}发出</span>
+                                                    </p>
+
+                                                    <p style="color: rgb(66, 67, 68);">
+                                                        <i class="fa fa-envelope" style="width: 14px;"></i>
+                                                        <span class="ml-1">{{note.content}}</span>
+                                                    </p>
                                                 </div>
                                             </div>
                                             {% endfor %}
@@ -101,17 +103,13 @@
 
                                     </div>
 
-                                    {% endif %}
                                 </div>
                                 <div class="tab-pane fade" id="done">
-                                    {% if done_list|length == 0 %}
-                                    <br />
-                                    <p></p>
-                                    <p style="text-align: center;">没有已处理的消息记录.</p>
-                                    <br />
-                                    {% else %}
+                                    <div id="done-empty" style="display: none; margin-top: 40px; margin-bottom: -40px;">
+                                        <p style="text-align: center;">没有已处理的消息记录.</p>
+                                    </div>
                                     <div class="bio-skill-box">
-                                        <div class="row">
+                                        <div id="done-list" class="row">
                                             {% for note in done_list %}
                                             <div class="col-12 col-xl-6 col-lg-12 mb-xl-4 mb-4 " id="done={{note.id}}" {% if not note.status == "已处理" %} hidden {%endif%}>
 
@@ -120,7 +118,11 @@
                                                     <div class="d-flex justify-content-between">
                                                         <div>
                                                             <h5>
+                                                                {% if note.URL %}
                                                                 <a href='{{note.URL}}'><u>{{note.title}}</u></a>
+                                                                {% else %}
+                                                                <u style="text-decoration: none">{{note.title}}</u>
+                                                                {% endif %}
                                                             </h5>
                                                         </div>
                                                         <div>
@@ -136,11 +138,11 @@
                                                                         <div class="dropdown-menu">
                                                                             <button class="dropdown-item"
                                                                                 type="submit" name='post_button'
-                                                                                value="{{note.id}}" id={{note.id}} onclick="unread.call(this);this.blur();"
+                                                                                value="{{note.id}}" id="{{note.id}}" onclick="unread.call(this);this.blur();"
                                                                             >标记为未读</button>
                                                                             <button class="dropdown-item"
-                                                                                type="submit" name='post_button' id={{note.id}}
-                                                                                value="{{note.id}}+cancel" onclick="confirm('你确定要删除这条消息?');cancel.call(this);this.blur();">删除</button>
+                                                                                type="submit" name='post_button' id="{{note.id}}"
+                                                                                value="{{note.id}}+cancel" onclick="if(confirm('你确定要删除这条消息?')){cancel.call(this);this.blur();}">删除</button>
                                                                         </div>
                                                                     </div>
                                                                 </div>
@@ -156,9 +158,9 @@
                                                                         </button>
                                                                         <div class="dropdown-menu">
                                                                             <button class="dropdown-item"
-                                                                                type="submit" name='post_button' id={{note.id}}
+                                                                                type="submit" name='post_button' id="{{note.id}}"
                                                                                 value="{{note.id}}+cancel"
-                                                                                onclick="confirm('你确定要删除这条消息?');cancel.call(this);this.blur();">删除</button>
+                                                                                onclick="if(confirm('你确定要删除这条消息?')){cancel.call(this);this.blur();}">删除</button>
                                                                         </div>
                                                                     </div>
                                                                 </div>
@@ -166,31 +168,26 @@
                                                             {% endif %}
                                                         </div>
                                                     </div>
-                                                    <div class="d-flex justify-content-between">
-                                                        <div>
-                                                            <p style="color: rgb(66, 67, 68);"><i
-                                                                    class="fa fa-calendar-o"></i>
-                                                                收信时间：{{note.start_time}}</p>
-                                                        </div>
-                                                    </div>
-                                                    <div class="d-flex justify-content-between">
-                                                        <div>
-                                                            <p style="color: rgb(66, 67, 68);"><i
-                                                                    class="fa fa-envelope-o"></i>
-                                                                {{note.content}}</p>
-                                                        </div>
-                                                    </div>
-                                                    <div class="d-flex justify-content-between">
-                                                        <div>
-                                                            <p style="color: rgb(66, 67, 68);"><i
-                                                                    class='fa fa-check'></i>
-                                                                处理时间：{{note.finish_time}}</p>
-                                                        </div>
-                                                        <div>
-                                                            <p style="color: rgb(66, 67, 68);"><i
-                                                                    class="fa fa-address-book"></i> {{note.sender}}</p>
-                                                        </div>
-                                                    </div>
+
+                                                    <p style="color: rgb(66, 67, 68);">
+                                                        <i class="fa fa-address-book" style="width: 14px;"></i>
+                                                        <span class="ml-1">来自&nbsp;<b>{{note.sender}}</b></span>
+                                                    </p>
+
+                                                    <p style="color: rgb(66, 67, 68);">
+                                                        <i class="fa fa-bell" style="width: 14px;"></i>
+                                                        <span class="ml-1">{{note.start_time}}发出</span>
+                                                    </p>
+
+                                                    <p style="color: rgb(66, 67, 68);">
+                                                        <i class="fa fa-eye" style="width: 14px;"></i>
+                                                        <span class="ml-1">{{note.finish_time}}收到</span>
+                                                    </p>
+
+                                                    <p style="color: rgb(66, 67, 68);">
+                                                        <i class="fa fa-envelope" style="width: 14px;"></i>
+                                                        <span class="ml-1">{{note.content}}</span>
+                                                    </p>
                                                 </div>
 
 
@@ -199,7 +196,7 @@
                                         </div>
 
                                     </div>
-                                    {% endif %}
+
                                 </div>
                             </div>
                         </div>
@@ -223,10 +220,6 @@
             $(e.relatedTarget).removeClass('active');
         }
     })
-</script>
-
-<script>
-    var mail_num = Number("{{bar_display.mail_num}}");
     $('.table').bootstrapTable({
         onLoadSuccess: function () {
             $('.table tr td').each(function () {
@@ -237,12 +230,22 @@
 
         }
     })
+</script>
+
+<script>
+    var mail_num = Number("{{bar_display.mail_num}}");
+    function refresh() {
+        document.querySelector(`#undone-empty`).style.display = (document.querySelector(`#undone-list`).querySelectorAll(`:scope > :not([hidden])`).length === 0) ? `block` : `none`;
+        document.querySelector(`#done-empty`).style.display = (document.querySelector(`#done-list`).querySelectorAll(`:scope > :not([hidden])`).length === 0) ? `block` : `none`;
+    }
+    setTimeout(refresh, 0);
     async function read() {
         const success = await save_read.call(this,"read");
         if (success) {
             document.getElementById("undone="+String(this.id)).hidden = true;
             document.getElementById("done="+String(this.id)).hidden = false;
             document.getElementById("mail_num").innerHTML = String(Number(document.getElementById("mail_num").innerHTML) - 1);
+            refresh();
         }
     }
     async function unread() {
@@ -251,6 +254,7 @@
             document.getElementById("done="+String(this.id)).hidden = true;
             document.getElementById("undone="+String(this.id)).hidden = false;
             document.getElementById("mail_num").innerHTML = String(Number(document.getElementById("mail_num").innerHTML) + 1);
+            refresh();
         }
     }
     async function cancel() {

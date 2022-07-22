@@ -13,12 +13,27 @@
     <div class="alert alert-success text-center" style="position: absolute; width: 100%; z-index: 100;">{{ html_display.warn_message }}</div>
     {% endif %}
 
+    {% if inform_share %}
+    <script type="text/javascript">
+        let share_confirm = confirm("{{alert_message}}");
+        if (share_confirm) {
+            const req = new XMLHttpRequest();
+            let url = '/viewActivity/' + '{{aid}}';
+            req.open('POST', url, true);
+            req.responseType = 'blob';
+            req.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded'); //设置请求头
+            req.send("option=" + "cancelInformShare"); //输入参数 参数的值为option="share"
+        }
+    </script>
+    {% endif %}
+
+
     <!--  BEGIN UPPER SECTION  -->
     <div class="d-flex m-0 p-0 overflow-hidden">
 
         <!--  BEGIN BLURRED BG  -->
         {% if summary_photo_exists %}
-        <div class="w-100" id="bg" style="background-image: url({{ summary_photo }}); filter: blur(20px); -webkit-filter: blur(20px); background-position: center; background-repeat: no-repeat; background-size: cover;">
+        <div class="w-100" id="bg" style="background-image: url({{ firstpic }}); filter: blur(20px); -webkit-filter: blur(20px); background-position: center; background-repeat: no-repeat; background-size: cover;">
         {% else %}
         <div class="w-100" id="bg" style="background-image: url({{ firstpic }}); filter: blur(20px); -webkit-filter: blur(20px); background-position: center; background-repeat: no-repeat; background-size: cover;">
         {% endif %}
@@ -35,11 +50,29 @@
 
             <!--  BEGIN PHOTO  -->
             <div id="front-photo" style="position: absolute; width: 66%; height: 30vh; margin-left: 17%; margin-right: 17%; padding-left: 80px; padding-right: 80px;">
-                {% if summary_photo_exists %}
-                <img style="width: 100%; height: 100%; object-fit: cover;" src={{ summary_photo }}></img>
-                {% else %}
-                <img style="width: 100%; height: 100%; object-fit: cover;" src={{ firstpic }}></img>
-                {% endif %}
+                <div id="style1" class="carousel slide style-custom-1 h-100" data-ride="carousel">
+                    <div class="carousel-inner h-100">
+                        <div class="h-100 carousel-item active">
+                            <img class="d-block w-100 slide-image" style="width: 100%; height: 100%; object-fit: cover;" src={{ firstpic }}></img>
+                        </div>
+                        {% if summary_photo_exists %}
+                                {%for summary_photo in summary_photos.all %}
+                                <div class="h-100 carousel-item">
+                                    <img class="d-block w-100 slide-image" style="width: 100%; height: 100%; object-fit: cover;" src="/media/{{ summary_photo.image }}"></img>
+                                </div>
+                                
+                                {%endfor%}
+                        {% endif %}
+                    </div>
+                    <a class="carousel-control-prev" href="#style1" role="button" data-slide="prev">
+                           <span class="carousel-control-prev-icon" aria-hidden="true"></span>
+                           <span class="sr-only">Previous</span>
+                    </a>
+                   <a class="carousel-control-next" href="#style1" role="button" data-slide="next">
+                           <span class="carousel-control-next-icon" aria-hidden="true"></span>
+                           <span class="sr-only">Next</span>
+                   </a> 
+               </div>
             </div>
             <!--  END PHOTO  -->
             
@@ -78,14 +111,26 @@
                     <div class="flex d-flex justify-content-start">
                         <h2 class="flex text-dark" style="font-weight: bolder;">{{ title }}</h2>
                         <div class="flex my-auto ml-1">
-                            {% if status == "审核中" %}
-                            <span class="badge badge-pill badge-warning">审核中</span>
-                            {% elif status == "等待中" %}
-                            <span class="badge badge-pill badge-info">等待中</span>
-                            {% elif status == "已取消" or status == "已结束" %}
-                            <span class="badge badge-pill badge-danger">{{ status }}</span>
+                            {% if status == "等待中" %}
+                            <span class="badge badge-pill badge-warning">
+                                等待开始
                             {% else %}
-                            <span class="badge badge-pill badge-success">{{ status }}</span>
+                            {% if status == "审核中" %}
+                            <span class="flex badge badge-pill badge-secondary">
+                            {% elif status == "已取消" %}
+                            <span class="badge badge-pill badge-dark">
+                            {% elif status == "未过审" or status == "已撤销" or status == "已结束" %}
+                            <span class="badge badge-pill badge-danger">
+                            {% elif status == "报名中" %}
+                            <span class="badge badge-pill badge-info">
+                            {% elif status == "进行中" %}
+                            <span class="badge badge-pill badge-success">
+                            {% endif %}
+                                {{ status }}
+                            {% endif %}
+                            </span>
+                            {% if activity.inner %}
+                            <span class="badge badge-pill badge-success">内部活动</span>
                             {% endif %}
                         </div>
                     </div>
@@ -99,7 +144,7 @@
                         </div>
                         <div class="flex">
                         {% if person %}
-                        {{ pStatus }}
+                        <span class="badge badge-light">{{ pStatus }}</span>
                         {% endif %}
                         </div>
                     </div>
@@ -113,6 +158,7 @@
 
             <!-- ----------------------------- adapt width ----------------------------- -->
             <script type="text/javascript">
+                setTimeout(resizeWidth, 0);
                 window.addEventListener(`load`, resizeWidth);
                 window.addEventListener(`resize`, resizeWidth);
 
@@ -156,6 +202,7 @@
 
             <!-- -------------------------- constrain height --------------------------- -->
             <script type="text/javascript">
+                setTimeout(resizeHeight, 0);
                 window.addEventListener(`load`, resizeHeight);
                 window.addEventListener(`resize`, resizeHeight);
 
@@ -182,10 +229,26 @@
                 <div class="statbox widget box box-shadow layout-top-spacing">
 
                     <div class="widget-header">
-                        <div class="row">
-                            <div class="col-xl-12 col-md-12 col-sm-12 col-12">
-                                <h4 style="padding-left: 12px;">活动信息</h4>
-                            </div>
+                        <div class="d-flex justify-content-between">
+                            <h4 style="padding-left: 12px;">活动信息</h4>
+                            <h4 style="padding-left: 12px;">
+                                <small>
+                                <svg xmlns="http://www.w3.org/2000/svg"
+                                            width="18"
+                                            height="18"
+                                            viewBox="0 0 24 24"
+                                            fill="none"
+                                            stroke="currentColor"
+                                            stroke-width="2"
+                                            stroke-linecap="round"
+                                            stroke-linejoin="round"
+                                            >
+                                            <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
+                                            <circle cx="12" cy="12" r="3" />
+                                </svg>
+                                {{ activity.visit_times }}
+                                </small>
+                            </h4>
                         </div>
                     </div>
 
@@ -250,12 +313,14 @@
                                     </span>
                                 </p>
 
+                                {% if price %}
                                 <p>
                                     <svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round" class="css-i6dzq1"><circle cx="12" cy="12" r="10"></circle><rect x="9" y="9" width="6" height="6"></rect></svg>
                                     <span class="ml-3">
                                         {{ price }}&nbsp;元气值
                                     </span>
                                 </p>
+                                {% endif %}
 
                                 <p>
                                     <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24"
@@ -287,13 +352,12 @@
                                 </p>
                                 {% endif %}
 
-                            </div>
+                                </div>
 
                             <!--  按钮部分  -->
                             <div class="mt-4">
 
                                 {% if examine %}
-
                                     {% if status == "审核中" or not activity.valid %}
                                     <button class="btn btn-primary btn-block mb-2" data-toggle="collapse"
                                         data-target="#extend-area" onclick="location='/examineActivity/{{aid}}'">
@@ -301,7 +365,7 @@
                                     </button>
                                     {% elif activity.valid %}
                                     <button class="btn btn-primary btn-block mb-2" data-toggle="collapse"
-                                        data-target="#extend-area">
+                                        data-target="#extend-area" onclick="location='/examineActivity/{{aid}}'">
                                         审核记录
                                     </button>
                                     {% endif %}
@@ -310,16 +374,32 @@
 
                                 {% if person %}
 
-                                    {% if pStatus == "无记录" and status == "报名中" %}
+                                    {% if pStatus == "未参与" and status == "报名中" %}
+                                    {% if not not_inner %}
                                     <form method="POST">
                                         <input type="hidden" name="option" value="apply">
-                                        <button class="btn btn-primary btn-block mb-2">立即报名</button>
+                                        <button class="btn btn-primary btn-block mb-2" onclick="return confirm('确认报名？')">立即报名</button>
                                     </form>
+                                    {% else %}
+                                        <button class="btn btn-primary btn-block mb-2" disabled>立即报名
+                                        <a data-toggle="tooltip" data-placement="bottom" title="该活动是小组内部活动，只有小组内部成员可以参与。">
+                                            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="currentColor"
+                                                class="bi bi-question-circle-fill" viewBox="0 0 22 22">
+                                                <path
+                                                    d="M16 8A8 8 0 1 1 0 8a8 8 0 0 1 16 0zM5.496 6.033h.825c.138 0 .248-.113.266-.25.09-.656.54-1.134 1.342-1.134.686 0 1.314.343 1.314 1.168 0 .635-.374.927-.965 1.371-.673.489-1.206 1.06-1.168 1.987l.003.217a.25.25 0 0 0 .25.246h.811a.25.25 0 0 0 .25-.25v-.105c0-.718.273-.927 1.01-1.486.609-.463 1.244-.977 1.244-2.056 0-1.511-1.276-2.241-2.673-2.241-1.267 0-2.655.59-2.75 2.286a.237.237 0 0 0 .241.247zm2.325 6.443c.61 0 1.029-.394 1.029-.927 0-.552-.42-.94-1.029-.94-.584 0-1.009.388-1.009.94 0 .533.425.927 1.01.927z" />
+                                            </svg>
+                                            
+                                        </a>
+                                        </button>
+                                    {% endif %}
 
                                     {% elif pStatus == "申请中" or pStatus == "已报名" %}
                                     <form method="POST">
                                         <input type="hidden" name="option" value="quit">
-                                        <button class="btn btn-danger btn-block mb-2">退出活动</button>
+                                        <button class="btn btn-danger btn-block mb-2"
+                                            onclick="return confirm('确认退出活动？{% if activity.source == "学生" and activity.YQPoint > 0 %}{% if status != "报名中" %}当前状态将无法取回全部元气值！{% else %}用于报名的元气值将被退回至您的账户。{% endif %}{% endif %}')">
+                                            退出活动
+                                        </button>
                                     </form>
 
                                     {% endif %}
@@ -329,16 +409,15 @@
                                 {% if ownership %}
                                     {% if status == "进行中" or status == "报名中" or status == "等待中" or status == "已结束" %}
                                         <button class="btn btn-primary btn-block mb-2" id="export_enroll_excel" type="button">
-                                            下载报名信息
+                                            下载报名&签到信息
                                         </button>
                                     {% endif %}
                                     <!-- ---------------------------- begin summary ---------------------------- -->
                                     {% if status == "已结束" %}
-                                    <button class="btn btn-primary btn-block mb-2" data-toggle="collapse"
+                                    <!--<button class="btn btn-primary btn-block mb-2" data-toggle="collapse"
                                         data-target="#summaryphoto">
                                         上传/更新总结照片
                                     </button>
-                                    <!--  如果要上传照片，则展示下面的部分  -->
                                     <form method="POST" enctype="multipart/form-data">
                                         <div id="summaryphoto" class="collapse">
                                             <div class="form-group">
@@ -353,22 +432,26 @@
                                             <input type="hidden" name="option" value="submitphoto">
                                             <button type="submit" class="btn btn-primary btn-block mb-2">确认上传</button>
                                         </div>
-                                    </form>
-                                    <button class="btn btn-primary btn-block mb-2" id="export_sign_excel" type="button">
-                                        下载签到信息
-                                    </button>
+                                    </form>-->
                                     <form method="POST">
                                         <input type="hidden" name="option" value="payment">
                                         <button class="btn btn-primary btn-block mb-2">申请活动结项</button>
                                     </form>
                                     {% endif %}
                                     <!-- ----------------------------- end summary ----------------------------- -->
-
+                                    <!-- --------------------------begin checkinoffline------------------------- -->
+                                    {% if status == "已结束" %}
+                                    <form method="POST">
+                                        <input type="hidden" name="option" value="checkinoffline">
+                                        <button class="btn btn-primary btn-block mb-2">调整签到信息</button>>
+                                    </form>
+                                    {% endif %}
+                                   <!-- --------------------------end checkinoffline--------------------------- -->
                                     <!-- --------------------------- begin settings ---------------------------- -->
                                     {% if status == "审核中" or status == "报名中" or status == "等待中" %}
                                     <form method="POST">
                                         <input type="hidden" name="option" value="edit">
-                                        <button class="btn btn-primary btn-block mb-2">修改信息</button>
+                                        <button class="btn btn-primary btn-block mb-2">修改活动</button>
                                     </form>
                                     <form method="POST">
                                         <input type="hidden" name="option" value="cancel">
@@ -399,14 +482,16 @@
 
                     <div class="widget-content widget-content-area">
 
-                        <h5>组织者</h5>
+                        <h5>发起者</h5>
                         <div class="d-flex justify-content-start">
-                            <div style="width: max-content; border-radius: 25px; overflow: hidden;">
+                            <div style="width: max-content; border-radius: 25px; ">
+                                <a href='/orginfo/?name={{org_name}}'>
                                 <img src="{{ org_avatar_path }}" class="flex" alt="organization avatar" height="50px" width="50px">
+                                </a>
                             </div>
                             <span class="flex flex-grow-1 mx-3">
                                 <div class="d-flex justify-content-between">
-                                    <h5 class="flex" style="height: 21px;">{{ org_name }}</h5>
+                                    <a href='/orginfo/?name={{org_name}}'><u><h5 class="flex" style="height: 21px;">{{ org_name }}</h5></u></a>
                                     <p class="mb-0" style="color: gray;">{{ org_type }}</p>
                                 </div>
                                 <p class="mb-0" style="color: gray;">{{ org.introduction }}</p>
@@ -415,14 +500,48 @@
 
                         <div class="mb-4"></div>
 
-                        <h5>参与者</h5>
-                        {% if participants_ava is None %}
+                        <h5>
+                            参与者
+                            <a data-toggle="tooltip" data-placement="bottom" title="状态为已签到的人员在头像右上显示绿色徽记，未签到的人员为红色">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor"
+                                    class="bi bi-question-circle-fill" viewBox="0 0 22 22">
+                                    <path
+                                        d="M16 8A8 8 0 1 1 0 8a8 8 0 0 1 16 0zM5.496 6.033h.825c.138 0 .248-.113.266-.25.09-.656.54-1.134 1.342-1.134.686 0 1.314.343 1.314 1.168 0 .635-.374.927-.965 1.371-.673.489-1.206 1.06-1.168 1.987l.003.217a.25.25 0 0 0 .25.246h.811a.25.25 0 0 0 .25-.25v-.105c0-.718.273-.927 1.01-1.486.609-.463 1.244-.977 1.244-2.056 0-1.511-1.276-2.241-2.673-2.241-1.267 0-2.655.59-2.75 2.286a.237.237 0 0 0 .241.247zm2.325 6.443c.61 0 1.029-.394 1.029-.927 0-.552-.42-.94-1.029-.94-.584 0-1.009.388-1.009.94 0 .533.425.927 1.01.927z" />
+                                </svg>
+                            </a>
+                        </h5>
+                        {% if participants is None or participants|length == 0 %}
                         <div style="text-align: center;">还没有参与者哦～</div>
                         {% else %}
                         <div class="row" style="margin-left: -4px;">
-                            {% for ava in participants_ava %}
-                            <span class="col-0 m-1" style="border-radius: 8px; overflow: hidden;">
-                                <img src="{{ ava }}" class="flex" alt="participant's avatar" height="50px" width="50px">
+                            <style>
+                                .messages {
+                                    position: absolute;
+                                    width: 12px;
+                                    height: 12px;
+                                    left: 80%;
+                                    top: -3px;
+                                    border-radius: 12px;
+                                }
+                            </style>
+                            {% for person in participants %}
+                            <span class="col-0 m-1" style="border-radius: 8px; position: relative;">
+                                <a href="{{ person.person_id.get_absolute_url }}">
+                                    <img src="{{ person.person_id.get_user_ava }}" class="flex" alt="participant's avatar" style="border-radius: 8px; " height="50px" width="50px">
+                                    
+                                    {% if person.status == "未签到" %}
+
+                                    <div class="messages" style="background-color: rgb(255, 132, 132);">   
+                                        <a data-toggle="tooltip" data-placement="bottom" title="未签到">&nbsp;
+                                        </a>
+                                    </div>
+                                    {% elif person.status == "已参与" %}
+                                    <div class="messages" style="background-color: rgb(163, 219, 161);">
+                                        <a data-toggle="tooltip" data-placement="bottom" title="已签到">&nbsp;
+                                        </a>
+                                    </div>
+                                    {% endif %}
+                                </a>
                             </span>
                             {% endfor %}
                         </div>
@@ -435,14 +554,16 @@
 
             </div>
 
-        </div>
+            </div>
 
-        <!--  BEGIN RELAVENT INFORMATION  -->
-        <div class="col-md-3 col-sm-12 px-1">
+            {% if introduction or ownership and show_QRcode %}
+            <!--  BEGIN RELAVENT INFORMATION  -->
+            <div class="col-md-3 col-sm-12 px-1">
 
-            <!--  BEGIN INTRODUCTION  -->
-            <div class="container w-100 px-0 layout-top-spacing">
-                <div class="statbox widget box box-shadow">
+                {% if introduction %}
+                <!--  BEGIN INTRODUCTION  -->
+                <div class="container w-100 px-0 layout-top-spacing">
+                    <div class="statbox widget box box-shadow">
 
                     <div class="widget-header">
                         <div class="row">
@@ -458,35 +579,38 @@
                         </p>
                     </div>
 
+                    </div>
                 </div>
-            </div>
-            <!--  END INTRODUCTION  -->
+                <!--  END INTRODUCTION  -->
+                {% endif %}
 
-            {% if ownership and show_QRcode %}
-            <!--  BEGIN QR CODE  -->
-            <div class="container w-100 px-0 layout-top-spacing">
-                <div class="statbox widget box box-shadow">
+                {% if ownership and show_QRcode %}
+                <!--  BEGIN QR CODE  -->
+                <div class="container w-100 px-0 layout-top-spacing">
+                    <div class="statbox widget box box-shadow">
 
-                    <div class="widget-header">
-                        <div class="row">
-                            <div class="col-xl-12 col-md-12 col-sm-12 col-12">
-                                <h4>签到二维码</h4>
+                        <div class="widget-header">
+                            <div class="row">
+                                <div class="col-xl-12 col-md-12 col-sm-12 col-12">
+                                    <h4>签到二维码</h4>
+                                </div>
                             </div>
                         </div>
-                    </div>
 
-                    <div class="widget-content widget-content-area">
-                        <img class="d-block w-100" id="qrcode" src="{{ aQRcode }}" alt="check-in QR code">
-                    </div>
+                        <div class="widget-content widget-content-area">
+                            <img class="d-block w-100" id="qrcode" src="{{ aQRcode }}" alt="check-in QR code">
+                        </div>
 
+                    </div>
                 </div>
+                <!--  END QR CODE  -->
+                {% endif %}
+
             </div>
-            <!--  END QR CODE  -->
+            <!--  END RELAVENT INFORMATION  -->
             {% endif %}
 
         </div>
-        <!--  END RELAVENT INFORMATION  -->
-
     </div>
 </div>
 
@@ -507,32 +631,6 @@
 {% endblock %}
 {% block add_js_file %}
 <script>
-    $("#export_sign_excel").click(function () {
-     const req = new XMLHttpRequest();
-     var url='/viewActivity/'+"{{aid}}"
-     req.open('POST', url, true);
-     req.responseType = 'blob';
-     req.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded'); //设置请求头
-     req.send("option="+"sign"); //输入参数
-    req.onload = function() {
-       const data = req.response;
-       const a = document.createElement('a');
-       const blob = new Blob([data]);
-       const blobUrl = window.URL.createObjectURL(blob);
-       downloadsign(blobUrl) ;
-     };
-   });
-   function downloadsign(blobUrl) {
-     const a = document.createElement('a');
-     a.style.display = 'none';
-     var name="{{activity.title}}({{activity.start.month}}月{{activity.start.day}}日)签到信息统计.xls"
-     a.download = name;
-     a.href = blobUrl;
-     a.click();
-     document.body.removeChild(a);
-    }
-</script>
-<script>
     $("#export_enroll_excel").click(function () {
      const req = new XMLHttpRequest();
      var url='/viewActivity/'+"{{aid}}"
@@ -551,7 +649,7 @@
    function downloadenroll(blobUrl) {
      const a = document.createElement('a');
      a.style.display = 'none';
-     var name="{{activity.title}}({{activity.start.month}}月{{activity.start.day}}日)报名信息统计.xls"
+     var name="{{activity.title}}({{activity.start.month}}月{{activity.start.day}}日)报名&签到信息统计.xls"
      a.download = name;
      a.href = blobUrl;
      a.click();

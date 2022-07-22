@@ -1,0 +1,494 @@
+{% extends "base.html" %}
+
+{% load static %}
+
+{% block add_css_file %}
+<link href={% static "datetimepicker/css/bootstrap-datetimepicker-standalone.css" %} rel="stylesheet" type="text/css" />
+<link href={% static "datetimepicker/css/bootstrap-datetimepicker.css" %} rel="stylesheet" type="text/css" />
+<link href={% static "datetimepicker/css/bootstrap-datetimepicker.min.css" %} rel="stylesheet" type="text/css" />
+
+
+<style class="text/css">
+    h5 {
+        font-family: 'Nunito', sans-serif;
+        font-size: 1rem;
+        font-weight: bold;
+    }
+</style>
+
+{% endblock %}
+
+{% block mainpage %}
+<!--  BEGIN CONTENT AREA  -->
+<div id="content" class="main-content">
+    <div class="container">
+
+        {% if html_display.warn_code == 2 %}
+        <div class="alert alert-success  text-center" id="success_msg">{{ html_display.warn_message }}</div>
+        {% else %}
+        <div class="alert alert-success  text-center" id="success_msg" style="display: none;"></div>
+        {% endif %}
+        {% if html_display.warn_code == 1 %}
+        <div class="alert alert-warning  text-center" id="warn_message">{{ html_display.warn_message }}</div>
+        {% else %}
+        <div class="alert alert-warning  text-center" id="warn_message" style="display: none;">test</div>
+        {% endif %}
+
+
+        <div class="row layout-top-spacing">
+            {% if bar_display.help_paragraphs %}
+            {% include 'help_with_table.html' %}
+            {% endif %}
+            <div class="col-lg-12 col-sm-12 col-12 layout-spacing">
+                <div class="row">
+                    <div class="col-md-12 mb-4">
+                        <div class="statbox widget box box-shadow">
+
+                            <!--  BEGIN HEADER AREA  -->
+                            <div class="widget-header">
+                                <div class="d-flex justify-content-between">
+                                    <div>
+                                        {% if edit %}
+                                        <h4>编辑开课信息</h4>
+                                        {% else %}
+                                        <h4>设置开课信息</h4>
+                                        {% endif %}
+                                    </div>
+                                    <div>
+                                        <h4>
+                                            <img src="{{ html_display.app_avatar_path }}" width="24" height="24"
+                                                alt="avatar">
+                                            <a href='/orginfo/?name={{html_display.applicant_name}}'>
+                                                <u>{{html_display.applicant_name}}</u>
+                                            </a>
+                                        </h4>
+                                    </div>
+                                </div>
+
+                            </div>
+
+                            <!--  BEGIN CONTENT AREA  -->
+                            <div class="widget-content widget-content-area">
+
+                                <form role="form" method="POST" enctype="multipart/form-data"
+                                    onsubmit="return check_inputs()">
+
+                                    <div class="form-group">
+                                        <label>课程名称</label>
+                                        <a data-toggle="tooltip" data-placement="bottom" title="课程名默认与课程小组账号名称相同。">
+                                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16"
+                                                fill="currentColor" class="bi bi-question-circle-fill"
+                                                viewBox="0 0 22 22">
+                                                <path
+                                                    d="M16 8A8 8 0 1 1 0 8a8 8 0 0 1 16 0zM5.496 6.033h.825c.138 0 .248-.113.266-.25.09-.656.54-1.134 1.342-1.134.686 0 1.314.343 1.314 1.168 0 .635-.374.927-.965 1.371-.673.489-1.206 1.06-1.168 1.987l.003.217a.25.25 0 0 0 .25.246h.811a.25.25 0 0 0 .25-.25v-.105c0-.718.273-.927 1.01-1.486.609-.463 1.244-.977 1.244-2.056 0-1.511-1.276-2.241-2.673-2.241-1.267 0-2.655.59-2.75 2.286a.237.237 0 0 0 .241.247zm2.325 6.443c.61 0 1.029-.394 1.029-.927 0-.552-.42-.94-1.029-.94-.584 0-1.009.388-1.009.94 0 .533.425.927 1.01.927z" />
+                                            </svg>
+                                        </a>
+                                        <input type="text" id="name" name="name" class="form-control"
+                                            aria-label="Default" placeholder="取一个有趣而贴切的课程名称吧~" required="required"
+                                            maxlength=50 onclick="fill_value(this)"
+                                            value="{% if name %}{{name}}{% else %}{{html_display.applicant_name}}{% endif %}">
+                                    </div>
+
+
+                                    <div>
+                                        <label>课程类型</label>
+                                        <a data-toggle="tooltip" data-placement="bottom"
+                                            title="请在德、智、体、美、劳五个课程类型中选择一项。">
+                                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16"
+                                                fill="currentColor" class="bi bi-question-circle-fill"
+                                                viewBox="0 0 22 22">
+                                                <path
+                                                    d="M16 8A8 8 0 1 1 0 8a8 8 0 0 1 16 0zM5.496 6.033h.825c.138 0 .248-.113.266-.25.09-.656.54-1.134 1.342-1.134.686 0 1.314.343 1.314 1.168 0 .635-.374.927-.965 1.371-.673.489-1.206 1.06-1.168 1.987l.003.217a.25.25 0 0 0 .25.246h.811a.25.25 0 0 0 .25-.25v-.105c0-.718.273-.927 1.01-1.486.609-.463 1.244-.977 1.244-2.056 0-1.511-1.276-2.241-2.673-2.241-1.267 0-2.655.59-2.75 2.286a.237.237 0 0 0 .241.247zm2.325 6.443c.61 0 1.029-.394 1.029-.927 0-.552-.42-.94-1.029-.94-.584 0-1.009.388-1.009.94 0 .533.425.927 1.01.927z" />
+                                            </svg>
+                                        </a>
+                                    </div>
+                                    <div class="form-group">
+                                        <div class="input-group mb-2">
+                                            <div class="input-group-prepend">
+                                                <span class="rounded">
+                                                    <button class="btn btn-outline-primary dropdown-toggle" type="button"
+                                                        data-toggle="dropdown" aria-haspopup="true" aria-expanded="false"
+                                                        id="pricebutton1">{%if edit %}{{course.get_type_display}}类课程{% else %}选择课程类型{%endif%}
+                                                    </button>
+                                                    <div class="dropdown-menu">
+                                                        {% for course_type in course_type_all%}
+                                                        <a class="dropdown-item" onclick="get_type_value($(this).text())"
+                                                            id="type{{course_type.1}}" name="type{{course_type.1}}"
+                                                            value="{{course_type.1}}">{{course_type.0}}类课程</a>
+                                                        {% endfor %}
+                                                    </div>
+                                                </span>
+                                                
+                                                <input type="hidden" id="type" name="type" value="{%if edit %}{{type}}{% else %}{%endif%}" required="required" />
+                                            </div>
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="form-group">
+                                        <label>授课教师</label>
+                                        <input type="text" id="teacher" name="teacher" class="form-control"
+                                            aria-label="Default" placeholder="必填，请在此处填写授课教师姓名" required="required"
+                                            maxlength=50 onclick="fill_value(this)" value="{{teacher|default:''}}">
+                                    </div>
+
+                                    <div class="form-group">
+                                        <label>课程容量</label>
+                                        <input type="number" id="capacity" name="capacity" class="form-control"
+                                            aria-label="Default" placeholder="必填，请填写课程容纳的最大学生数量（1~200之间的整数）"
+                                            required="required" step="1" min="1" max="200" onclick="fill_value(this)"
+                                            value="{{capacity|default:''}}">
+                                    </div>
+
+
+                                    <div class="form-group">
+                                        <label>上课地点</label>
+                                        <input type="text" id="classroom" name="classroom" class="form-control"
+                                            aria-label="Default" placeholder="必填，如尚未确定上课地点，可填写“待定”" required="required"
+                                            maxlength=200 onclick="fill_value(this)" value="{{classroom|default:''}}">
+                                    </div>
+
+
+                                    <div class="form-group">
+                                        <label>每周上课时间（填写第一周上课时间，之后每周按相同时间段重复。不足三次，多余部分可空填。）</label>
+                                        <a data-toggle="tooltip" data-placement="bottom"
+                                            title="一周上多节课的课程，可至多填写3个上课时间段；若课程每周上课不足3次，之后日期框空着不填即可。">
+                                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16"
+                                                fill="currentColor" class="bi bi-question-circle-fill"
+                                                viewBox="0 0 22 22">
+                                                <path
+                                                    d="M16 8A8 8 0 1 1 0 8a8 8 0 0 1 16 0zM5.496 6.033h.825c.138 0 .248-.113.266-.25.09-.656.54-1.134 1.342-1.134.686 0 1.314.343 1.314 1.168 0 .635-.374.927-.965 1.371-.673.489-1.206 1.06-1.168 1.987l.003.217a.25.25 0 0 0 .25.246h.811a.25.25 0 0 0 .25-.25v-.105c0-.718.273-.927 1.01-1.486.609-.463 1.244-.977 1.244-2.056 0-1.511-1.276-2.241-2.673-2.241-1.267 0-2.655.59-2.75 2.286a.237.237 0 0 0 .241.247zm2.325 6.443c.61 0 1.029-.394 1.029-.927 0-.552-.42-.94-1.029-.94-.584 0-1.009.388-1.009.94 0 .533.425.927 1.01.927z" />
+                                            </svg>
+                                        </a>
+                                        <div class="row">
+                                            <div class="col">
+                                                <input type="text" class="form-control" id="datetimepicker1_start"
+                                                    name="start" placeholder="上课时间 No.1" required="required"
+                                                    onclick="fill_value(this)"
+                                                    value="{{course_time.0.start|default:''}}" />
+                                            </div>
+                                            <div class="col">
+                                                <input type="text" class="form-control" id="datetimepicker1_end"
+                                                    name="end" placeholder="下课时间 No.1" required="required"
+                                                    onclick="fill_value(this)"
+                                                    value="{{course_time.0.end|default:''}}" />
+                                            </div>
+                                        </div>
+                                        <div class="row">
+                                            <div class="col">
+                                                <input type="text" class="form-control" id="datetimepicker2_start"
+                                                    name="start" placeholder="上课时间 No.2" onclick="fill_value(this)"
+                                                    value="{{course_time.1.start|default:''}}" />
+                                            </div>
+                                            <div class="col">
+                                                <input type="text" class="form-control" id="datetimepicker2_end"
+                                                    name="end" placeholder="下课时间 No.2" onclick="fill_value(this)"
+                                                    value="{{course_time.1.end|default:''}}" />
+                                            </div>
+                                        </div>
+                                        <div class="row">
+                                            <div class="col">
+                                                <input type="text" class="form-control" id="datetimepicker3_start"
+                                                    name="start" placeholder="上课时间 No.3" onclick="fill_value(this)"
+                                                    value="{{course_time.2.start|default:''}}" />
+                                            </div>
+                                            <div class="col">
+                                                <input type="text" class="form-control" id="datetimepicker3_end"
+                                                    name="end" placeholder="下课时间 No.3" onclick="fill_value(this)"
+                                                    value="{{course_time.2.end|default:''}}" />
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <hr>
+                                    <p>课程宣传信息
+                                        <a data-toggle="tooltip" data-placement="bottom"
+                                            title="填写课程介绍并上传课程图片，相关信息将在课程详情页展示，请务必认真填写！">
+                                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16"
+                                                fill="currentColor" class="bi bi-question-circle-fill"
+                                                viewBox="0 0 22 22">
+                                                <path
+                                                    d="M16 8A8 8 0 1 1 0 8a8 8 0 0 1 16 0zM5.496 6.033h.825c.138 0 .248-.113.266-.25.09-.656.54-1.134 1.342-1.134.686 0 1.314.343 1.314 1.168 0 .635-.374.927-.965 1.371-.673.489-1.206 1.06-1.168 1.987l.003.217a.25.25 0 0 0 .25.246h.811a.25.25 0 0 0 .25-.25v-.105c0-.718.273-.927 1.01-1.486.609-.463 1.244-.977 1.244-2.056 0-1.511-1.276-2.241-2.673-2.241-1.267 0-2.655.59-2.75 2.286a.237.237 0 0 0 .241.247zm2.325 6.443c.61 0 1.029-.394 1.029-.927 0-.552-.42-.94-1.029-.94-.584 0-1.009.388-1.009.94 0 .533.425.927 1.01.927z" />
+                                            </svg>
+                                        </a>
+                                    </p>
+
+                                    <div class="form-group">
+                                        <label for="aintro">课程简介</label>
+                                        <textarea id="aintro" name="introduction" class="form-control" rows="3"
+                                            placeholder="必填，在这里简要介绍一下课程吧~" onclick="fill_value(this)"
+                                            required="required" maxlength=1000>{{introduction|default:''}}</textarea>
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="aintro">教学计划</label>
+                                        <textarea id="teaching_plan" name="teaching_plan" class="form-control" rows="3"
+                                            placeholder="必填，在这里介绍一下教学计划吧~" onclick="fill_value(this)"
+                                            required="required" maxlength=1000>{{teaching_plan|default:''}}</textarea>
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="aintro">学时计算方式</label>
+                                        <textarea id="record_cal_method" name="record_cal_method" class="form-control" rows="3"
+                                            placeholder="必填，在这里介绍一下学时计算方式吧~" onclick="fill_value(this)"
+                                            required="required" maxlength=1000>{{record_cal_method|default:''}}</textarea>
+                                    </div>
+                                    <div class="form-group">
+                                        <label>
+                                            课程微信群二维码 
+                                            <a data-toggle="tooltip" data-placement="bottom"
+                                                title="如有需要，请在这里上传课程微信群二维码（选填）">
+                                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16"
+                                                    fill="currentColor" class="bi bi-question-circle-fill"
+                                                    viewBox="0 0 22 22">
+                                                    <path
+                                                        d="M16 8A8 8 0 1 1 0 8a8 8 0 0 1 16 0zM5.496 6.033h.825c.138 0 .248-.113.266-.25.09-.656.54-1.134 1.342-1.134.686 0 1.314.343 1.314 1.168 0 .635-.374.927-.965 1.371-.673.489-1.206 1.06-1.168 1.987l.003.217a.25.25 0 0 0 .25.246h.811a.25.25 0 0 0 .25-.25v-.105c0-.718.273-.927 1.01-1.486.609-.463 1.244-.977 1.244-2.056 0-1.511-1.276-2.241-2.673-2.241-1.267 0-2.655.59-2.75 2.286a.237.237 0 0 0 .241.247zm2.325 6.443c.61 0 1.029-.394 1.029-.927 0-.552-.42-.94-1.029-.94-.584 0-1.009.388-1.009.94 0 .533.425.927 1.01.927z" />
+                                                </svg>
+                                            </a>
+                                        </label><br />
+                                        <div class="col-xl-8 col-lg-8 col-md-7 col-sm-12">
+                                            <input onchange="showFilenameLocal(this.files,'QRcode')" type="file"
+                                                class="custom-file-input" id="QRcode" name="QRcode" accept="image/*"
+                                                data-max-file-size="4096K">
+                                            <label id="QRcode_label" name="QRcode_label"
+                                                class="custom-file-label" for="customFile"> 上传课程微信群二维码截图 </label>
+                                        </div>
+                                        {% if QRcode %}
+                                        <div style="max-height:1000px;overflow:auto;">
+                                            <img  src="/media/{{QRcode}}" >
+                                            <!--移动端图片大小需要修正!-->
+                                         </div>
+                                         {%endif%}  
+                                    </div>
+
+                                    {%if not edit%}
+                                    <div class="form-group">
+                                        <label>
+                                            课程预告图片
+                                            <a data-toggle="tooltip" data-placement="bottom"
+                                                title="每周课程预告图片，可以自行上传本地图片或选择从以下五张图片中选择一张。如果不选择，默认为第一张图片。">
+                                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16"
+                                                    fill="currentColor" class="bi bi-question-circle-fill"
+                                                    viewBox="0 0 22 22">
+                                                    <path
+                                                        d="M16 8A8 8 0 1 1 0 8a8 8 0 0 1 16 0zM5.496 6.033h.825c.138 0 .248-.113.266-.25.09-.656.54-1.134 1.342-1.134.686 0 1.314.343 1.314 1.168 0 .635-.374.927-.965 1.371-.673.489-1.206 1.06-1.168 1.987l.003.217a.25.25 0 0 0 .25.246h.811a.25.25 0 0 0 .25-.25v-.105c0-.718.273-.927 1.01-1.486.609-.463 1.244-.977 1.244-2.056 0-1.511-1.276-2.241-2.673-2.241-1.267 0-2.655.59-2.75 2.286a.237.237 0 0 0 .241.247zm2.325 6.443c.61 0 1.029-.394 1.029-.927 0-.552-.42-.94-1.029-.94-.584 0-1.009.388-1.009.94 0 .533.425.927 1.01.927z" />
+                                                </svg>
+                                            </a>
+                                        </label><br />
+                                        <div class="col-xl-8 col-lg-8 col-md-7 col-sm-12">
+                                            <input onchange="showFilenameLocal(this.files,'photo')" type="file"
+                                                class="custom-file-input" id="photo" name="photo" accept="image/*"
+                                                data-max-file-size="4096K">
+                                            <label id="upload_annouce_photo" name="upload_annouce_photo"
+                                                class="custom-file-label" for="customFile"> 请上传本地图片（如往届开课时拍摄的照片等）
+                                            </label>
+                                        </div>
+
+                                    </div>
+                                    
+                                    <div class="form-group">
+
+                                        <div class="form-check">
+                                            <div class="row">
+
+                                                {% for pic in defaultpics %}
+                                                <div class="col-xl-4 col-lg-4 col-md-4 mb-5">
+                                                    <input class="form-check-input" type="checkbox" value={{pic.src}}
+                                                        id={{pic.id}} name={{pic.id}} {% if forloop.first %} checked {% endif %} >
+                                                    <label class="form-check-label" for="defaultCheck1">
+                                                        <img src={{pic.src}} class="img-fluid">
+                                                    </label>
+                                                </div>
+                                                {% endfor %}
+                                            </div>
+                                        </div>
+                                      
+
+                                    </div>
+
+
+                                    {%endif%}  
+
+
+                                    {% if edit and editable %}
+                                    <button type="submit" class="btn btn-primary btn-block mb-4 mr-2" value=""
+                                        onclick="return confirm('确认修改课程信息？由于需要发送通知，点击提交后请耐心等待，不要重复点击！')">
+                                        确认修改
+                                    </button>
+                                    {% elif edit %}
+                                    <button type="submit" class="btn btn-primary btn-block mb-4 mr-2" value="" disabled
+                                        onclick="return confirm('由于选课已经结束，请不要修改课程信息！')">
+                                        不能修改（选课已结束）
+                                    </button>
+                                    {% else %}
+                                    <button type="submit" class="btn btn-primary btn-block mb-4 mr-2" value=""
+                                        onclick="return confirm('确认提交开课信息？由于需要发送通知，点击提交后请耐心等待，不要重复点击！')">
+                                        发起选课
+                                    </button>
+                                    {% endif %}
+
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+
+    </div>
+</div>
+<!--  END CONTENT AREA  -->
+
+
+
+{% endblock %}
+
+{% block add_js_file %}
+<script src={% static "datetimepicker/js/bootstrap-datetimepicker.min.js" %}></script>
+
+<script>
+    {% for pic in defaultpics %}
+    $("input[name='{{pic.id}}']").on("change", function () {
+        //输出选中状态
+        if (true === $(this).prop("checked")) {
+            {% for pic in defaultpics %}
+            document.getElementById("{{pic.id}}").checked = false;
+            {% endfor %}
+            document.getElementById("{{pic.id}}").checked = true;
+        }
+    });
+    {% endfor %}
+
+    function showFilenameLocal(files,func) {
+        var text = "";
+        if (func == "photo")
+            {
+                for (i = 0; i < files.length; i++) {
+                    text += (" " + files[i].name);
+                }
+                if (text == "")
+                    text = "选择历史活动图片或海报或以下默认图片之一";
+                else {
+                    {% for pic in defaultpics %}
+                    document.getElementById("{{pic.id}}").checked = false;
+                    {% endfor %}
+                }
+                $("#upload_annouce_photo").html(text);
+            }
+            
+        else {
+                for (i = 0; i < files.length; i++) {
+                text += (" " + files[i].name);
+                
+                }
+                $("#QRcode_label").html(text);
+            }
+    }
+    function get_type_value(a) {
+        $("#pricebutton1").text(a);
+        {% for course_type in course_type_all %}
+            if (a.lastIndexOf("{{course_type.0}}") != -1) {
+                document.getElementById("type").value = "{{course_type.1}}";
+            } 
+        {% endfor %}
+    }
+</script>
+
+<!-- 选择时间 -->
+<script type="text/javascript">
+    $(function () {
+        $("#datetimepicker1_start").datetimepicker({
+            format: "YYYY-MM-DD HH:mm",
+            sideBySide: true,
+        });
+        $("#datetimepicker1_end").datetimepicker({
+            format: "YYYY-MM-DD HH:mm",
+            sideBySide: true,
+        });
+        $("#datetimepicker2_start").datetimepicker({
+            format: "YYYY-MM-DD HH:mm",
+            sideBySide: true,
+        });
+        $("#datetimepicker2_end").datetimepicker({
+            format: "YYYY-MM-DD HH:mm",
+            sideBySide: true,
+        });
+        $("#datetimepicker3_start").datetimepicker({
+            format: "YYYY-MM-DD HH:mm",
+            sideBySide: true,
+        });
+        $("#datetimepicker3_end").datetimepicker({
+            format: "YYYY-MM-DD HH:mm",
+            sideBySide: true,
+        });
+    });
+</script>
+<script type="text/javascript">
+    function fill_value(a) {
+        console.log(a.value);
+    };
+    function isVaildDate(date) {
+     return date instanceof Date && !isNaN(date.getTime());
+    }
+    function sameDay(d1, d2) {
+        if (!(isVaildDate(d1)) || !(isVaildDate(d2)))
+            return true;
+    return d1.getFullYear() === d2.getFullYear() &&
+    d1.getMonth() === d2.getMonth() &&
+    d1.getDate() === d2.getDate();
+    }
+    // 检查部分 input 参数 
+    function check_inputs() {
+        /* 三个第一周上课起止时间 */
+        var start1 = document.getElementById("datetimepicker1_start").value;
+        var end1 = document.getElementById("datetimepicker1_end").value;
+        var start2 = document.getElementById("datetimepicker2_start").value;
+        var end2 = document.getElementById("datetimepicker2_end").value;
+        var start3 = document.getElementById("datetimepicker3_start").value;
+        var end3 = document.getElementById("datetimepicker3_end").value;
+
+        start1 = new Date(start1);
+        end1 = new Date(end1);
+        start2 = new Date(start2);
+        end2 = new Date(end2);
+        start3 = new Date(start3);
+        end3 = new Date(end3);
+        
+        // 结束要比开始晚
+        if (start1 >= end1 || start2 >= end2 || start3 >= end3) {
+            document.getElementById("success_msg").style.display = "none";
+            document.getElementById("warn_message").style.display = "";
+            document.getElementById("warn_message").innerHTML = "结束时间要晚于开始时间。";
+            document.body.scrollTop = document.documentElement.scrollTop = 0;
+            return false;
+        }
+        // 开始和结束时间在同一天
+        if ( (!sameDay(start1,end1))|| !(sameDay(start2,end2)) ||!(sameDay(start3,end3))) {
+            document.getElementById("success_msg").style.display = "none";
+            document.getElementById("warn_message").style.display = "";
+            document.getElementById("warn_message").innerHTML = "开始时间和结束时间应该在同一天！";
+            document.body.scrollTop = document.documentElement.scrollTop = 0;
+            return false;
+        }
+        return true;
+    }
+        
+</script>
+{% if edit %}
+<script>
+    {% if time_limit %}
+    document.getElementById("datetimepicker1_start").readOnly=true;
+    document.getElementById("datetimepicker1_end").readOnly=true;
+    document.getElementById("datetimepicker2_start").readOnly=true;
+    document.getElementById("datetimepicker2_end").readOnly=true;
+    document.getElementById("datetimepicker3_start").readOnly=true;
+    document.getElementById("datetimepicker3_end").readOnly=true;
+    {% endif %}
+    {% if not editable %}
+    Array.prototype.slice.call(document.getElementsByTagName('input')).map(i => i.readOnly = true)
+    Array.prototype.slice.call(document.getElementsByTagName('select')).map(i => i.readOnly = true)
+    Array.prototype.slice.call(document.getElementsByTagName('textarea')).map(i => i.readOnly = true)
+    Array.prototype.slice.call(document.getElementsByTagName('button')).map(i => i.disabled = true)
+    {% endif %}
+</script>
+{% endif %}
+
+{% endblock %}

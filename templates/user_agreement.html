@@ -1,0 +1,90 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block add_css_file %}
+<link href={% static "assets/css/authentication/form-2.css" %} rel="stylesheet" type="text/css" />
+<!-- END GLOBAL MANDATORY STYLES -->
+<link rel="stylesheet" type="text/css" href={% static "assets/css/forms/theme-checkbox-radio.css" %}>
+<link rel="stylesheet" type="text/css" href={% static "assets/css/forms/switches.css" %}>
+{% endblock %}
+
+{% block mainpage %}
+<div id="content" class="main-content" >
+    <div class="form-container outer">
+
+        <center>
+        <div class="form-form">
+                    <div class="form-content">
+
+                        <form class="text-left" id="form" method="POST">
+
+                            <div class="widget-content widget-content-area">
+
+                                <div class="widget-header">
+                                    <div class="row">
+                                        <div class="col-xl-12 col-md-12 col-sm-12 col-12">
+                                            <h3 style="text-align: center; padding-top: 20px; padding-bottom: 20px;">用户须知</h3>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <!-- <div class="row"> -->
+                                <div class="col">
+                                    <p>1.  用户在使用本系统服务时，应当遵守中国有关的法律和法规、北京大学校纪校规和元培学院管理规定。不得利用本系统上传、展示或传播任何虚假的、骚扰性的、中伤他人的、辱骂性的、恐吓性的、庸俗淫秽的或其他任何非法的信息资料。</p>
+                                    <br/>
+                                    <p>2.  本系统保有删除各类不符合法律政策或不真实的信息内容而无须通知用户的权利。若用户未遵守以上规定的，本站有权上报元培学院采取暂停或关闭用户账号、终止服务、追究法律责任等措施。</p>
+                                    <br/>
+                                    <p>3.  用户在使用本系统进行账号激活并享有服务的过程中，涉及用户注册姓名、学号、年级、宿舍、联系电话、电子邮箱等隐私信息的，以及在系统中生成的用户行为数据，本系统将严格予以保密。除非获得用户授权或按照法律法规和政府部门要求，本系统不会向外界披露用户隐私信息。</p>
+                                    <br/>
+                                    <p>4.  根据国家法律法规变化及系统运行需要，本系统有权对本协议条款不时地进行修改。一旦本协议的内容发生变动，将会直接在本系统上公布修改之后的协议内容，该公布行为视为已经通知用户修改内容。</p>
+                                    <br/>
+                                    <p>5.  如果不同意对本协议相关条款所做的修改，用户有权停止使用服务。如果用户继续使用服务，则视为用户接受本协议修改内容。</p>
+                                    <br/>
+                                    <p>6.  点击"同意"按钮即视为您完全接受本隐私协议，在点击之前请您再次确认已知悉并完全理解本协议的全部内容。</p>
+                                    <br/>
+
+                                    <div class="d-flex justify-content-between">
+                                        <button type="submit" id="confirm" name="confirm" class="btn btn-lg btn-primary" value="yes"
+                                            style="display:block;margin:0 auto">同意</button>
+                                        &nbsp;
+                                        <button type="submit" class="btn btn-lg btn-mute" value=""
+                                            style="display:block;margin:0 auto">拒绝</button>
+                                    </div>
+                                </div>
+                                <!-- </div> -->
+                            </div>
+                        </form>
+
+
+                    </div>                    
+                
+            
+        </div>
+        </center>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block add_js_file %}
+    <!-- END GLOBAL MANDATORY SCRIPTS -->
+    <script src={% static "assets/js/authentication/form-2.js" %}></script>
+
+    <script>
+        var countdown = 10;
+        var btn = document.getElementById('confirm');
+        function settime() {
+            if (countdown == 0) {
+                btn.removeAttribute("disabled");
+                btn.innerHTML="同意";
+            } else {
+                btn.setAttribute("disabled", true);
+                btn.innerHTML="同意(" + countdown + ")";
+                countdown--;
+                setTimeout("settime()",1000);
+            }
+        }
+        settime()
+    </script>
+
+{% endblock %}

@@ -15,78 +15,125 @@
         <link rel="stylesheet" type="text/css" href="{% static "plugins/dropify/dropify.min.css" %}">
         <link href="{% static "assets/css/users/account-setting.css" %}" rel="stylesheet" type="text/css" />
         <!--  END CUSTOM STYLE FILE  -->
+        {% if html_display.warn_code == 1 %}
+        <div class="alert alert-warning  text-center">{{ html_display.warn_message }}</div>
+        {% elif html_display.warn_code == 2 %}
+        <div class="alert alert-success  text-center">{{ html_display.warn_message }}</div>
+        {% endif %}
+    
+        {% if upload_state == True %}
+            <div class="alert alert-success  text-center">修改小组信息成功</div>
+        {% endif %}
+        {% if expr == False %}
+            <div class="alert alert-warning  text-center">没有检测到信息更新</div>
+        {% endif %}
+        
+        <div class="w-100 overflow-hidden" style="height: 200px;">
+            <div class="w-100 overflow-hidden" style="height: 200px; filter: blur(10px); -webkit-filter: blur(10px); background-image: url({{ former_wallpaper }}); background-position: center; background-repeat: no-repeat; background-size: cover; transform: scale(1.1);"></div>
+            <h1 class="text-light" style="position: absolute; left: 8.33%; top: 65px; font-weight: bolder;">{{ useroj.oname }}</h1>
+            <h5 class="text-light" style="position: absolute; left: 8.33%; top: 115px; font-weight: normal;">小组信息设置</h5>
+        </div>
 
-        <div class="layout-px-spacing">
-
-            <div class="account-settings-container layout-top-spacing">
-                {% if upload_state == True %}
-                <div class="alert alert-success  text-center">修改组织信息成功</div>
-                {% endif %}
-                {% if expr == False %}
-                <div class="alert alert-warning  text-center">没有检测到信息更新</div>
-                {% endif %}
-                <div class="account-content">
-                    <div class="scrollspy-example" data-spy="scroll" data-target="#account-settings-scroll"
-                        data-offset="-100">
-                        <form id="general-info" class="section general-info" method="POST"
-                                    enctype="multipart/form-data">
-                        <div class="row">
-                            <div class="col-xl-12 col-lg-12 col-md-12 layout-spacing">
-
-                                    <div class="info">
-                                        <h6 class="">组织信息</h6>
-                                            <div class="row d-flex justify-content-center">
-                                                <div class="upload mr-3" style="border: none;">
-                                                    <input type="file" id="avatar" class="dropify" name="avatar"
-                                                        data-default-file="{{former_img}}" data-max-file-size="512K" />
-                                                    <p class="mt-2 text-center">
-                                                        {{useroj.oname}}
-                                                        <a data-toggle="tooltip" data-placement="bottom" title="欢迎尝试gif ･ω･)ﾉ">
-                                                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor"
-                                                                class="bi bi-question-circle-fill" viewBox="0 0 22 22">
-                                                                <path
-                                                                    d="M16 8A8 8 0 1 1 0 8a8 8 0 0 1 16 0zM5.496 6.033h.825c.138 0 .248-.113.266-.25.09-.656.54-1.134 1.342-1.134.686 0 1.314.343 1.314 1.168 0 .635-.374.927-.965 1.371-.673.489-1.206 1.06-1.168 1.987l.003.217a.25.25 0 0 0 .25.246h.811a.25.25 0 0 0 .25-.25v-.105c0-.718.273-.927 1.01-1.486.609-.463 1.244-.977 1.244-2.056 0-1.511-1.276-2.241-2.673-2.241-1.267 0-2.655.59-2.75 2.286a.237.237 0 0 0 .241.247zm2.325 6.443c.61 0 1.029-.394 1.029-.927 0-.552-.42-.94-1.029-.94-.584 0-1.009.388-1.009.94 0 .533.425.927 1.01.927z" />
-                                                            </svg>
-                                                        </a>
-                                                    </p>
-                                                </div>
-                                                <div class="upload ml-3" style="border: none;">
-                                                <input type="file" id="wallpaper" class="dropify" name="wallpaper"
-                                                    data-default-file="{{former_wallpaper}}" data-max-file-size="2048K" />
-                                                <p class="mt-2 text-center">
-                                                    背景图片
-                                                    <a data-toggle="tooltip" data-placement="bottom" title="欢迎尝试gif ･ω･)ﾉ">
-                                                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor"
-                                                            class="bi bi-question-circle-fill" viewBox="0 0 22 22">
-                                                            <path
-                                                                d="M16 8A8 8 0 1 1 0 8a8 8 0 0 1 16 0zM5.496 6.033h.825c.138 0 .248-.113.266-.25.09-.656.54-1.134 1.342-1.134.686 0 1.314.343 1.314 1.168 0 .635-.374.927-.965 1.371-.673.489-1.206 1.06-1.168 1.987l.003.217a.25.25 0 0 0 .25.246h.811a.25.25 0 0 0 .25-.25v-.105c0-.718.273-.927 1.01-1.486.609-.463 1.244-.977 1.244-2.056 0-1.511-1.276-2.241-2.673-2.241-1.267 0-2.655.59-2.75 2.286a.237.237 0 0 0 .241.247zm2.325 6.443c.61 0 1.029-.394 1.029-.927 0-.552-.42-.94-1.029-.94-.584 0-1.009.388-1.009.94 0 .533.425.927 1.01.927z" />
-                                                        </svg>
-                                                    </a>
-                                                </p>
-                                                </div>
-                                            </div>
-                                            </div>
-
-                            </div>
-                                <div class="col-xl-12 col-lg-12 col-md-8 mt-md-0 mt-4">
-                                                    <div class="form-group">
-                                                        <div class="form-check">
-                                                            <label for="aboutBio">组织介绍</label>
-                                                            <textarea class="form-control" id="introduction" name="introduction"
-                                                                placeholder="{{userinfo.introduction}}" rows="3" onclick="if(this.placeholder != ''){this.value=this.placeholder;}"></textarea>
-                                                        </div>
-                                                    </div>
-                                            </div>
-                            <div class="col-md-12 text-center mb-5" >
-                                <button id="submit" class="btn btn-primary">修改组织信息</button>
-                            </div>
+        <form id="general-info" class="section general-info" method="POST" enctype="multipart/form-data">
+            
+            <div class="row mx-0 pt-5">
+                <div class="col-1 px-0"></div>
+                <div class="col-10 col-md-2 px-0">
+                    <h2 class="text-dark pr-4">主页外观</h2>
+                </div>
+                <div class="col-1 px-0 d-md-none"></div>
+                <div class="col-1 px-0 d-md-none"></div>
+                <div class="col-10 col-md-7 px-0">
+                    <div class="row">
+                        <div class="col-6 upload" style="border: none;">
+                            <label for="avatar" style="width: max-content;">{{useroj.oname}}-头像
+                                <a data-toggle="tooltip" data-placement="bottom" title="欢迎尝试gif格式图片･ω･)ﾉ">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor"
+                                        class="bi bi-question-circle-fill" viewBox="0 0 22 22">
+                                        <path d="M16 8A8 8 0 1 1 0 8a8 8 0 0 1 16 0zM5.496 6.033h.825c.138 0 .248-.113.266-.25.09-.656.54-1.134 1.342-1.134.686 0 1.314.343 1.314 1.168 0 .635-.374.927-.965 1.371-.673.489-1.206 1.06-1.168 1.987l.003.217a.25.25 0 0 0 .25.246h.811a.25.25 0 0 0 .25-.25v-.105c0-.718.273-.927 1.01-1.486.609-.463 1.244-.977 1.244-2.056 0-1.511-1.276-2.241-2.673-2.241-1.267 0-2.655.59-2.75 2.286a.237.237 0 0 0 .241.247zm2.325 6.443c.61 0 1.029-.394 1.029-.927 0-.552-.42-.94-1.029-.94-.584 0-1.009.388-1.009.94 0 .533.425.927 1.01.927z" />
+                                    </svg>
+                                </a>
+                            </label>
+                            <input type="file" id="avatar" class="dropify" name="avatar"
+                                    data-default-file="{{former_img}}" data-max-file-size="512K" />
                         </div>
-
-                        </form>
+    
+                        <div class="col-6 upload" style="border: none;">
+                            <label for="wallpaper" style="width: max-content;">主页墙纸
+                                <a data-toggle="tooltip" data-placement="bottom" title="欢迎尝试gif格式图片･ω･)ﾉ">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor"
+                                        class="bi bi-question-circle-fill" viewBox="0 0 22 22">
+                                        <path d="M16 8A8 8 0 1 1 0 8a8 8 0 0 1 16 0zM5.496 6.033h.825c.138 0 .248-.113.266-.25.09-.656.54-1.134 1.342-1.134.686 0 1.314.343 1.314 1.168 0 .635-.374.927-.965 1.371-.673.489-1.206 1.06-1.168 1.987l.003.217a.25.25 0 0 0 .25.246h.811a.25.25 0 0 0 .25-.25v-.105c0-.718.273-.927 1.01-1.486.609-.463 1.244-.977 1.244-2.056 0-1.511-1.276-2.241-2.673-2.241-1.267 0-2.655.59-2.75 2.286a.237.237 0 0 0 .241.247zm2.325 6.443c.61 0 1.029-.394 1.029-.927 0-.552-.42-.94-1.029-.94-.584 0-1.009.388-1.009.94 0 .533.425.927 1.01.927z" />
+                                    </svg>
+                                </a>
+                            </label>
+                            <input type="file" id="wallpaper" class="dropify"
+                                name="wallpaper" data-default-file="{{ former_wallpaper }}" data-max-file-size="2048K" />
+                        </div>
                     </div>
                 </div>
             </div>
-        </div>
+
+
+            <div class="row mx-0 pt-5">
+                <div class="col-1 px-0"></div>
+                <div class="col-10 col-md-2 px-0">
+                    <h2 class="text-dark pr-4">小组介绍</h2>
+                </div>
+                <div class="col-1 px-0 d-md-none"></div>
+                <div class="col-1 px-0 d-md-none"></div>
+                <div class="col-10 col-md-7 px-0">
+                    <div class="row">
+                        <div class="col-12 col-md-6">
+                            <label for="introduction" style="width: max-content;">小组介绍</label>
+                            <div class="mb-4">
+                                <textarea class="form-control" id="introduction" name="introduction"
+                                        placeholder="{{userinfo.introduction}}" rows="6" onclick="if(this.placeholder != ''){this.value=this.placeholder;}"></textarea>
+                            </div>
+                        </div>
+                        <div class="col-12 col-md-6">
+                            <label for="tags_modify" style="width: max-content;">小组标签
+                                <a data-toggle="tooltip" data-placement="bottom" title="点击标签进行添加/删除~">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor"
+                                        class="bi bi-question-circle-fill" viewBox="0 0 22 22">
+                                        <path d="M16 8A8 8 0 1 1 0 8a8 8 0 0 1 16 0zM5.496 6.033h.825c.138 0 .248-.113.266-.25.09-.656.54-1.134 1.342-1.134.686 0 1.314.343 1.314 1.168 0 .635-.374.927-.965 1.371-.673.489-1.206 1.06-1.168 1.987l.003.217a.25.25 0 0 0 .25.246h.811a.25.25 0 0 0 .25-.25v-.105c0-.718.273-.927 1.01-1.486.609-.463 1.244-.977 1.244-2.056 0-1.511-1.276-2.241-2.673-2.241-1.267 0-2.655.59-2.75 2.286a.237.237 0 0 0 .241.247zm2.325 6.443c.61 0 1.029-.394 1.029-.927 0-.552-.42-.94-1.029-.94-.584 0-1.009.388-1.009.94 0 .533.425.927 1.01.927z" />
+                                    </svg>
+                                </a>
+                            </label>
+                            <table class="table table-bordered">
+                                <input type="hidden" value="" id="tags_modify" name="tags_modify">
+                                <tbody>
+                                    <tr>
+                                        <td>
+                                            {% spaceless %}
+                                            {% for tag in all_tags %}
+                                                <span id="org_{{tag.id}}" name="{{tag.name}}" class="badge badge-pill" style="background-color:{{tag.color}}; border-radius:4px; color:#FFFFFF; margin:2px; " onclick="del_tag.call(this)" {% if not tag in org_tags %} hidden {% endif%}><svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" fill="currentColor" class="bi bi-x-circle-fill" viewBox="0 0 16 16"><path d="M16 8A8 8 0 1 1 0 8a8 8 0 0 1 16 0zM5.354 4.646a.5.5 0 1 0-.708.708L7.293 8l-2.647 2.646a.5.5 0 0 0 .708.708L8 8.707l2.646 2.647a.5.5 0 0 0 .708-.708L8.707 8l2.647-2.646a.5.5 0 0 0-.708-.708L8 7.293 5.354 4.646z"/></svg> {{tag.name}}</span>
+                                            {% endfor %}
+                                            {% endspaceless %}
+                                            <font color="ADB0C1" {% if org_tags %} hidden {% endif %}>本小组还没有任何标签噢！</font>
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <td>
+                                            {% spaceless %}
+                                            {% for tag in all_tags %}
+                                                <span id="other_{{tag.id}}" name="{{tag.name}}" class="badge badge-pill" style="background-color:{{tag.color}}; border-radius:4px; color:#FFFFFF; margin:2px; " onclick="add_tag.call(this)" {% if tag in org_tags %} hidden {% endif %}><svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" fill="currentColor" class="bi bi-check-circle-fill" viewBox="0 0 16 16"><path d="M16 8A8 8 0 1 1 0 8a8 8 0 0 1 16 0zm-3.97-3.03a.75.75 0 0 0-1.08.022L7.477 9.417 5.384 7.323a.75.75 0 0 0-1.06 1.06L6.97 11.03a.75.75 0 0 0 1.079-.02l3.992-4.99a.75.75 0 0 0-.01-1.05z"/></svg> {{tag.name}}</span>
+                                            {% endfor %}
+                                            {% endspaceless %}
+                                            <font color="ADB0C1" {% if org_tags != all_tags %} hidden {% endif %}>本小组已经选择了全部标签！</font>
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="row mx-0 pt-5">
+                <button id="submit" class="btn btn-primary mb-5" style="margin: auto;" onclick="return confirm(`确认提交小组信息变动？`)">提交修改</button>
+            </div>
+        </form>
     </div>
 
 
@@ -118,4 +165,53 @@
     <!-- <script src="plugins/tagInput/tags-input.js"></script> -->
     <script src={% static "assets/js/users/account-settings.js" %}></script>
     <!--  END CUSTOM SCRIPTS FILE  -->
+
+    <!--  BEGIN SCRIPT FUNCTION-->
+    <script>
+        function del_tag() {
+            tags_input = this.parentNode.parentNode.parentNode.previousElementSibling;
+            tag_name = this.getAttribute("name");
+            if (tags_input.value.includes(tag_name))
+                tags_input.value = tags_input.value.replace("add " + tag_name + ";", "");
+            else
+                tags_input.value += "del " + tag_name + ";";
+            org_tags_td = this.parentNode;
+            other_tags_td = this.parentNode.parentNode.nextElementSibling.children[0];
+            const tags_num = org_tags_td.children.length - 1;
+            other_tags_td.children[tags_num].hidden = true;
+            this.hidden = true;
+            document.getElementById("other"+this.id.replace("org","")).hidden = false;
+            var hidden_tags = 0;
+            for (var i = 0; i < tags_num; i += 1) {
+                if (org_tags_td.children[i].hidden == true)
+                    hidden_tags += 1;
+            }
+            if (hidden_tags == tags_num) {
+                org_tags_td.children[tags_num].hidden = false;
+            }
+        }
+        function add_tag() {
+            tags_input = this.parentNode.parentNode.parentNode.previousElementSibling;
+            tag_name = this.getAttribute("name");
+            if (tags_input.value.includes(tag_name))
+                tags_input.value = tags_input.value.replace("del " + tag_name + ";", "");
+            else
+                tags_input.value += "add " + tag_name + ";";
+            org_tags_td = this.parentNode.parentNode.previousElementSibling.children[0];
+            other_tags_td = this.parentNode;
+            const tags_num = org_tags_td.children.length - 1;
+            org_tags_td.children[tags_num].hidden = true;
+            this.hidden = true;
+            document.getElementById("org"+this.id.replace("other","")).hidden = false;
+            var hidden_tags = 0;
+            for (var i = 0; i < tags_num; i += 1) {
+                if (other_tags_td.children[i].hidden == true)
+                    hidden_tags += 1;
+            }
+            if (hidden_tags == tags_num) {
+                other_tags_td.children[tags_num].hidden = false;
+            }
+        }
+    </script>
+    <!--  END SCRIPT FUNCTION-->
 {% endblock %}

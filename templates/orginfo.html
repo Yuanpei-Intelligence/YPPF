@@ -2,7 +2,7 @@
 
 {% block mainpage %}
 
-<div class="main-content" id="content">
+<div id="content" class="main-content pb-3" style="overflow: hidden;">
 
     <!--  BEGIN CONTENT AREA  -->
 
@@ -11,6 +11,19 @@
     {% elif html_display.warn_code == 1%}
     <div class="alert alert-warning text-center mb-0">{{html_display.warn_message}}</div>
     {% endif %}
+    {% if inform_share %}
+        <script type="text/javascript">
+            let share_confirm = confirm("{{alert_message}}");
+            if (share_confirm) {
+                const req = new XMLHttpRequest();
+                let url = '/orginfo/?name=' + "{{name}}";
+                req.open('POST', url, true);
+                req.responseType = 'blob';
+                req.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded'); //设置请求头
+                req.send("option=" + "cancelInformShare"); //输入参数 参数的值为option="share"
+            }
+        </script>
+    {% endif %}      
 
     <!--  BEGIN WALLPAPER SECTION  -->
     <div class="d-flex m-0 p-0 overflow-hidden" style="height: 35vh">
@@ -31,7 +44,7 @@
     <!--  BEGIN SWITCH TAB  -->
     <ul class="nav nav-tabs nav-tabs-solid nav-justified" role="tablist">
         <li class="nav-item">
-            <b class="nav-link active" data-toggle="tab" role="tab" href="#organization_info">团体档案</b>
+            <b class="nav-link active" data-toggle="tab" role="tab" href="#organization_info">小组档案</b>
         </li>
         <li class="nav-item">
             <b class="nav-link" data-toggle="tab" role="tab" href="#member_info">成员档案</b>
@@ -51,13 +64,13 @@
                     <div class="widget-content widget-content-area">
 
                         <div class="d-flex justify-content-between">
-                            <h3 class="">团体信息</h3>
+                            <h3 class="">小组信息</h3>
                             <br /><br />
                         </div>
 
                         <div class="text-center user-info">
                             <img src={{ org_avatar_path }} height="90px" width="90px" alt="avatar">
-                            <p class="">{{ organization_name }}</p>
+                            <p style="color: #0e1726;">{{ organization_name }}</p>
                             {% if is_person %}
                             <div class="custom-control custom-switch">
                                 {% if subscribe_flag %}
@@ -110,6 +123,39 @@
                                         </svg>
                                         {{ organization_type_name }}
                                     </li>
+
+                                    <li class="contacts-block__item">
+                                        <!-- bar-chart-2 -->
+                                        <svg viewBox="0 0 24 24" width="24" height="24" stroke="currentColor"
+                                            stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"
+                                            class="css-i6dzq1">
+                                            <line x1="18" y1="20" x2="18" y2="10"></line>
+                                            <line x1="12" y1="20" x2="12" y2="4"></line>
+                                            <line x1="6" y1="20" x2="6" y2="14"></line>
+                                        </svg>
+                                        {% with org.get_subscriber_num as subscribers %}
+                                        {{ subscribers }}人关注
+                                        {% endwith %}
+                                    </li>
+
+                                    <li class="contacts-block__item">
+                                        <!-- eye -->
+                                        <svg xmlns="http://www.w3.org/2000/svg"
+                                            width="24"
+                                            height="24"
+                                            viewBox="0 0 24 24"
+                                            fill="none"
+                                            stroke="currentColor"
+                                            stroke-width="2"
+                                            stroke-linecap="round"
+                                            stroke-linejoin="round"
+                                            >
+                                            <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
+                                            <circle cx="12" cy="12" r="3" />
+                                        </svg>
+                                        {{ org.visit_times }}次浏览
+                                    </li>
+
                                     {% if html_display.is_myself %}
                                     <li class="contacts-block__item">
                                         <!-- stop-circle -->
@@ -122,8 +168,33 @@
                                         元气值{{org.YQPoint}}
                                     </li>
                                     {% endif %}
+
+                                    {% if org_tags %}
+                                    <li class="contacts-block__item">
+                                        <!-- 下面的css语句定义一个可滚动的框，其中滚动条隐藏 -->
+                                        <style> 
+                                            .MyStyle {margin:0px; padding:0px; display:inline-block; white-space: nowrap; overflow: hidden; overflow-x: scroll; -webkit-backface-visibility: hidden; -webkit-overflow-scrolling: touch; }
+                                            .MyStyle::-webkit-scrollbar {width:0; height:0; display:none;}
+                                        </style>
+                                        <div class="MyStyle">
+                                            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none"
+                                                    stroke="currentcolor" stroke-width="1.5" stroke-linecap="round"
+                                                    stroke-linejoin="round" class="bi bi-tags-fill" viewBox="0 0 18 18">
+                                                    <path d="M2 2a1 1 0 0 1 1-1h4.586a1 1 0 0 1 .707.293l7 7a1 1 0 0 1 0 1.414l-4.586 4.586a1 1 0 0 1-1.414 0l-7-7A1 1 0 0 1 2 6.586V2zm3.5 4a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3z"/>
+                                                    <path d="M1.293 7.793A1 1 0 0 1 1 7.086V2a1 1 0 0 0-1 1v4.586a1 1 0 0 0 .293.707l7 7a1 1 0 0 0 1.414 0l.043-.043-7.457-7.457z"/>
+                                            </svg>
+                                        </div>
+                                        <div class="col-8 MyStyle">
+                                            {% spaceless %}
+                                            {% for tag in org_tags %}
+                                                <span class="badge badge-pill" style="background-color:{{tag.color}}; border-radius:4px; color:#FFFFFF; margin:2px; margin-top:0px; margin-bottom:4px;">{{tag.name}}</span>
+                                            {% endfor %}
+                                            {% endspaceless %}
+                                        </div>
+                                    </li>
+                                    {% endif %}
+
                                     {% if html_display.is_myself == False %}
-                                    {% if not is_person %}
                                     <li class="contacts-block__item">
                                         
                                         <svg width="24" height="24" viewBox="0 0 24 24" fill="none"
@@ -135,8 +206,8 @@
                                             <path d="M12 7H7.5a2.5 2.5 0 0 1 0-5C11 2 12 7 12 7z"></path>
                                             <path d="M12 7h4.5a2.5 2.5 0 0 0 0-5C13 2 12 7 12 7z"></path>
                                         </svg>
-                                        <a href="/transPage/{{ org.organization_id_id }}">向ta转账</a>
-                                        <a data-toggle="tooltip" data-placement="bottom" title="目前仅支持团体向团体转账">
+                                        <a href="/transPage/{{ org.organization_id_id }}">给ta元气值</a>
+                                        <a data-toggle="tooltip" data-placement="bottom" title="目前仅支持小组向小组转账">
                                             <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor"
                                                 class="bi bi-question-circle-fill" viewBox="0 0 22 22">
                                                 <path
@@ -144,7 +215,6 @@
                                             </svg>
                                         </a>
                                     </li>
-                                    {% endif %}
                                     {% if is_person %}
                                     <li class="contacts-block__item">
                                         <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"
@@ -157,6 +227,55 @@
                                         <a href="/modifyPosition?org_name={{org.oname}}">成员申请</a>
                                     </li>
                                     {% endif %}
+                                    <li class="contacts-block__item">
+                                        <svg
+                                            xmlns="http://www.w3.org/2000/svg"
+                                            width="24"
+                                            height="24"
+                                            viewBox="0 0 24 24"
+                                            fill="none"
+                                            stroke="currentColor"
+                                            stroke-width="2"
+                                            stroke-linecap="round"
+                                            stroke-linejoin="round"
+                                            >
+                                            <circle cx="12" cy="12" r="10" />
+                                            <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3" />
+                                            <line x1="12" y1="17" x2="12.01" y2="17" />
+                                        </svg>
+                                        <a href="#myModal" data-toggle="modal">向ta提问</a>
+                                    </li>
+                                    <!-- BEGIN MODAL-->
+                                    <div class="modal fade" id="myModal">
+                                        <div class="modal-dialog">
+                                            <div class="modal-content">
+                                                <!-- 模态框头部 -->
+                                                <div class="modal-header">
+                                                    <h4 class="modal-title">提问</h4>
+                                                    <button type="button" class="close" data-dismiss="modal">&times;</button>
+                                                </div>
+
+                                                <form method="POST">
+                                                    <!-- 模态框主体 -->
+                                                    <div class="modal-body">
+                                                        <div class="form-group">
+                                                            <textarea id="question" name="question" class="form-control" rows="4"
+                                                                placeholder="填写你想向组织提问的问题！"></textarea>
+                                                        </div>
+                                                        <div class="form-check mb-4">
+                                                            <input type="checkbox" class="form-check-input" id="show_name" name="show_name">
+                                                            <label class="form-check-label" for="show_tel">是否匿名？</label>
+                                                        </div>
+                                                    </div>
+                                                    <!-- 模态框底部 -->
+                                                    <div class="modal-footer">
+                                                        <button type="submit" class="btn btn-primary">提交</button>
+                                                    </div>
+                                                </form>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <!-- END MODAL -->
                                     {% endif %}
 
                                     
@@ -165,7 +284,7 @@
                         </div>
                         {% if not org.introduction == "" %}
                         <div class="d-flex justify-content-between">
-                            <h3 class="">团体简介</h3>
+                            <h3 class="">小组简介</h3>
                             <br /><br />
                         </div>
                         <p class="m-3">{{org.introduction}}</p>
@@ -208,7 +327,7 @@
                                                 <h5>
                                                     <img src={{ member.avatar_path }} width="24" height="24"
                                                         alt="avatar">
-                                                    <a href='/stuinfo/{{ member.person.name }}'>
+                                                    <a href='{{ member.person.get_absolute_url }}'>
                                                         <u>{{ member.person.name }}</u>
                                                     </a>
                                                 </h5>
@@ -224,19 +343,20 @@
                                                 </h5>
                                             </div>
                                         </div>
-
+                                        
+                                        {% with member.person as person %}
                                         <div class="d-flex justify-content-between">
                                             <div>
-                                                {% if member.person.stu_grade is not None and member.person.stu_grade != "" %}
-                                                <p style="color: rgb(66, 67, 68);">{{ member.person.stu_grade }}级</p>
+                                                {% if person.stu_grade is not None and person.stu_grade != "" %}
+                                                <p style="color: rgb(66, 67, 68);">{{ person.stu_grade }}级</p>
                                                 {% else %}
                                                 <p style="color: rgb(66, 67, 68);"> </p>
                                                 {% endif %}
                                             </div>
                                             <div>
-                                                {% if member.person.show_major %}
-                                                {% if member.person.stu_major is not None and member.person.stu_major != "" %}
-                                                <p style="color: rgb(66, 67, 68);">{{ member.person.stu_major }}</p>
+                                                {% if person.show_major %}
+                                                {% if person.stu_major is not None and person.stu_major != "" %}
+                                                <p style="color: rgb(66, 67, 68);">{{ person.stu_major }}</p>
                                                 {% else %}
                                                 <p style="color: rgb(66, 67, 68);"> </p>
                                                 {% endif %}
@@ -245,6 +365,17 @@
                                                 {% endif %}
                                             </div>
                                         </div>
+
+                                        {% if person.biography != "还没有填写哦～" %}
+                                        <div class="d-flex justify-content-between">
+                                            
+                                            <p style="color: rgb(66, 67, 68); word-wrap: break-word;white-space:nowrap;overflow: hidden; text-overflow: ellipsis;">
+                                                <i class="fa fa-envelope"></i>
+                                                {{ person.biography }}
+                                            </p>
+                                        </div>
+                                        {% endif %}
+                                        {% endwith %}
 
                                     </div>
                                 </div>
@@ -286,6 +417,19 @@
                                 </a> -->
                                 <b class="nav-link" data-toggle="tab" role="tab" href="#act1">已结束</b>
                             </li>
+                            
+                            <li class="nav-item">
+                                
+                                <b class="nav-link" data-toggle="tab" role="tab" href="#act2">历史活动
+                                    <a data-toggle="tooltip" data-placement="bottom" data-html="true" title="展示非本学期的过往活动">
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor"
+                                            class="bi bi-question-circle-fill" viewBox="0 0 22 22">
+                                            <path
+                                                d="M16 8A8 8 0 1 1 0 8a8 8 0 0 1 16 0zM5.496 6.033h.825c.138 0 .248-.113.266-.25.09-.656.54-1.134 1.342-1.134.686 0 1.314.343 1.314 1.168 0 .635-.374.927-.965 1.371-.673.489-1.206 1.06-1.168 1.987l.003.217a.25.25 0 0 0 .25.246h.811a.25.25 0 0 0 .25-.25v-.105c0-.718.273-.927 1.01-1.486.609-.463 1.244-.977 1.244-2.056 0-1.511-1.276-2.241-2.673-2.241-1.267 0-2.655.59-2.75 2.286a.237.237 0 0 0 .241.247zm2.325 6.443c.61 0 1.029-.394 1.029-.927 0-.552-.42-.94-1.029-.94-.584 0-1.009.388-1.009.94 0 .533.425.927 1.01.927z" />
+                                        </svg>
+                                    </a>
+                                </b>
+                            </li>
 
                         </ul>
 
@@ -308,54 +452,25 @@
                                                         <div class="d-flex justify-content-between">
                                                             <h5
                                                                 style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
-                                                                <!--一个判断：
-                                                                        进行中：
-                                                                            组织：success
-                                                                            个人：本身的状态/报名截止（primary/danger)
-                                                                        报名中：
-                                                                            组织：success
-                                                                            个人：其他状态/未报名（primary/danger/secondary）
-                                                                        等待中：
-                                                                            组织：info
-                                                                            个人：本身的状态/报名截止（primary/danger)
-                                                                        审核中：都是warning
-                                                                    -->
-
-                                                                {% if rec.act.status == "审核中" %}
-                                                                    <span class="badge badge-pill badge-warning">
-                                                                        {{ rec.act.status }}
-                                                                    </span>
+                                                                
+                                                                {% if rec.act.status == "等待中" %}
+                                                                <span class="badge badge-pill badge-warning">
+                                                                    等待开始
                                                                 {% else %}
-                                                                    {% if user_type == "Organization" %}
-                                                                        {% if rec.act.status == "等待中" %}
-                                                                            <span class="badge badge-pill badge-info">
-                                                                                等待开始
-                                                                            </span>
-                                                                        {% else %}
-                                                                            <span class="badge badge-pill badge-success">
-                                                                                {{ rec.act.status }}
-                                                                            </span>
-                                                                        {% endif %}
-                                                                    {% else %}
-
-                                                                        {% if rec.status == "无记录" %}
-                                                                            {% if rec.act.status == "报名中" %}
-                                                                                <span class="badge badge-pill badge-secondary">报名中</span>
-                                                                            {% else %}
-                                                                                <span class="badge badge-pill badge-info">报名截止</span>
-                                                                            {% endif %}
-                                                                        {% elif rec.status == "申请失败" or rec.status == "未参与" or rec.status == "放弃" %}
-                                                                            <span class="badge badge-pill badge-warning">
-                                                                                {{ rec.status }}
-                                                                            </span>
-                                                                        {% else %}
-                                                                            <span class="badge badge-pill badge-primary">
-                                                                                {{ rec.status }}
-                                                                            </span>
-                                                                        {% endif %}
-
-                                                                    {% endif %}
+                                                                {% if rec.act.status == "审核中" %}
+                                                                <span class="flex badge badge-pill badge-secondary">
+                                                                {% elif rec.act.status == "已取消" %}
+                                                                <span class="badge badge-pill badge-dark">
+                                                                {% elif rec.act.status == "未过审" or rec.act.status == "已撤销" or rec.act.status == "已结束" %}
+                                                                <span class="badge badge-pill badge-danger">
+                                                                {% elif rec.act.status == "报名中" %}
+                                                                <span class="badge badge-pill badge-info">
+                                                                {% elif rec.act.status == "进行中" %}
+                                                                <span class="badge badge-pill badge-success">
                                                                 {% endif %}
+                                                                    {{ rec.act.status }}
+                                                                {% endif %}
+                                                                </span>                                 
 
                                                                 {{rec.act.title}}
 
@@ -453,16 +568,13 @@
                                                             <h5
                                                                 style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
 
-                                                                {% if user_type == "Person" and rec.status == "已参与" %}
-                                                                <span class="badge badge-pill badge-primary">已参与</span>
-                                                                {% elif user_type == "Person" and rec.status == "未参与" %}
-                                                                <span
-                                                                    class="badge badge-pill badge-secondary">未参与</span>
+                                                                {% if rec.act.status == "已取消" %}
+                                                                <span class="badge badge-pill badge-dark">
                                                                 {% else %}
                                                                 <span class="badge badge-pill badge-danger">
+                                                                {% endif %}
                                                                     {{ rec.act.status }}
                                                                 </span>
-                                                                {% endif %}
 
                                                                 {{ rec.act.title }}
 
@@ -520,6 +632,92 @@
                                     </div>
                                 </div>
                             </div>
+                                
+                                
+                                <div id="act2" class="tab-pane fade">
+                                <div class="bio-skill-box ">
+                                    {% if history_activity_list_participantrec|length == 0 %}
+                                    <br />
+                                    <p style="text-align: center;">没有该类别的活动</p>
+                                    <br />
+                                    {% endif %}
+                                    <div class="row">
+                                        {% for rec in history_activity_list_participantrec %}
+                                        <div class="col-12 col-xl-4 col-lg-6 mb-xl-5 mb-5 ">
+                                            <a href="/viewActivity/{{rec.act.id}}">
+                                                <div class="d-flex b-skills">
+                                                    <div class="text-nowrap"
+                                                        style='overflow: hidden;text-overflow: ellipsis;'>
+                                                        <div class="d-flex justify-content-between">
+                                                            <h5
+                                                                style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+                                        
+                                                                {% if rec.act.status == "已取消" %}
+                                                                <span class="badge badge-pill badge-dark">
+                                                                {% else %}
+                                                                <span class="badge badge-pill badge-danger">
+                                                                {% endif %}
+                                                                    {{ rec.act.status }}
+                                                                </span>
+                                        
+                                                                {{ rec.act.title }}
+                                        
+                                                            </h5>
+                                                        </div>
+                                        
+                                                        <p>{{ rec.act.introduction }}</p>
+                                        
+                                                        <div class="d-flex justify-content-start">
+                                                            <p class="flex mr-3" style="width: 20px;">
+                                                                <i class="fa fa-clock"></i>
+                                                            </p>
+                                                            <p class="flex">
+                                                                {{ rec.act.start }}
+                                                            </p>
+                                                        </div>
+                                        
+                                                        <div class="d-flex justify-content-start">
+                                                            <p class="flex mr-3" style="width: 20px;">
+                                                                <i class="fa fa-users"></i>
+                                                            </p>
+                                                            <p class="flex">
+                                                                {{ rec.act.current_participants }}
+                                                                /
+                                                                {{ rec.act.capacity }}
+                                                            </p>
+                                                        </div>
+                                        
+                                                        <div class="row">
+                                                            <div class="col d-flex justify-content-start">
+                                                                <p class="flex mr-3" style="width: 20px;">
+                                                                    <i class="fa fa-money-bill"></i>
+                                                                </p>
+                                                                <p class="flex">
+                                                                    元气值{{ rec.act.YQPoint }}
+                                                                </p>
+                                                            </div>
+                                        
+                                                            <div class="col d-flex justify-content-start">
+                                                                <p class="flex mr-3" style="width: 20px;">
+                                                                    <i class="fa fa-location-arrow"></i>
+                                                                </p>
+                                                                <p class="flex">
+                                                                    {{ rec.act.location }}
+                                                                </p>
+                                                            </div>
+                                                        </div>
+                                        
+                                                    </div>
+                                                </div>
+                                            </a>
+                                        </div>
+                                        {% endfor %}
+
+                                    </div>
+                                </div>
+                            </div>
+                                
+                                
                         </div>
                     </div>
                 </div>
@@ -578,7 +776,7 @@
         }
     }
     async function save_subscribe_status(status) {
-        const { success } = await fetch(`/save_subscribe_status`, {
+        const { success } = await fetch(`/saveSubscribeStatus`, {
             headers: { "Content-Type": `text/plain` },
             method: `POST`,
             body: JSON.stringify({ id: '{{org.organization_id.username}}', status }),
@@ -588,7 +786,7 @@
         return success;
     }
     async function save_show_position_status(status) {
-        const { success } = await fetch(`/save_show_position_status`, {
+        const { success } = await fetch(`/saveShowPositionStatus`, {
             headers: { "Content-Type": `text/plain` },
             method: `POST`,
             body: JSON.stringify({ id: '{{my_position.id}}', status }),
@@ -601,7 +799,7 @@
 <script>
     $("#export_excel").click(function () {
      const req = new XMLHttpRequest();
-     var url='/orginfo/'+"{{org.oname}}"
+     var url='/orginfo/?name='+"{{org.oname}}"
      req.open('POST', url, true);
      req.responseType = 'blob';
      req.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded'); //设置请求头

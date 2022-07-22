@@ -1,455 +1,375 @@
-from threading import current_thread
-from django.db.models import F
-from django.http import JsonResponse, HttpResponse, QueryDict  # Json响应
-from django.shortcuts import render, redirect  # 网页render & redirect
-from django.urls import reverse
-from datetime import datetime, timedelta, timezone, time, date
-from django.db import transaction  # 原子化更改数据库
+'''
+scheduler_func.py
 
-from app.models import Organization, NaturalPerson, YQPointDistribute, TransferRecord, User, Activity, Participant, \
-    Notification
-from app.wechat_send import publish_notifications
-from app.forms import YQPointDistributionForm
-from boottest.hasher import MySHA256Hasher
-from app.notification_utils import bulk_notification_create
+应尽量只包含周期性定时任务
+'''
+from app.models import (
+    User,
+    NaturalPerson,
+    Organization,
+    TransferRecord,
+    Activity,
+    ActivityPhoto,
+    Participant,
+    Notification,
+    Position,
+    PageLog,
+    Course,
+    CourseTime,
+    CourseParticipant,
+    Semester,
+    Feedback,
+)
+from app.activity_utils import (
+    changeActivityStatus,
+    notifyActivity,
+)
+from app.notification_utils import (
+    bulk_notification_create,
+    notification_create,
+    notification_status_change,
+)
+from app.wechat_send import publish_notifications, WechatMessageLevel, WechatApp
+from app import log
+from app.constants import *
 from boottest import local_dict
 
-from random import sample
-from numpy.random import choice
-
-from urllib import parse, request as urllib2
 import json
+import urllib.request
+
+from datetime import datetime, timedelta
+from django.db import transaction  # 原子化更改数据库
+from django.db.models import F
+# (see: https://docs.djangoproject.com/en/dev/ref/databases/#general-notes 
+# for background)
+# from django_apscheduler.util import close_old_connections
+
+# 引入定时任务还是放上面吧
+from app.scheduler import scheduler
+
+default_weather = get_config('default_weather', default=None)
+
+__all__ = [
+    'send_to_persons',
+    'send_to_orgs',
+    'distribute_YQPoint_per_month',
+    'changeAllActivities',
+    'get_weather',
+    'update_active_score_per_day',
+    'longterm_launch_course',
+    'public_feedback_per_hour',
+]
 
 
-def distribute_YQPoint_to_users(proposer, recipients, YQPoints, trans_time):
-    '''
-        内容：
-        由proposer账户(默认为一个组织账户)，向每一个在recipients中的账户中发起数额为YQPoints的转账
-        并且自动生成默认为ACCEPTED的转账记录以便查阅
-        这里的recipients期待为一个Queryset，要么全为自然人，要么全为组织
-        proposer默认为一个组织账户
-    '''
-    try:
-        assert proposer.YQPoint >= recipients.count() * YQPoints
-    except:
-        # 说明此时proposer账户的元气值不足
-        print(f"由{proposer}向自然人{recipients[:3]}...等{recipients.count()}个用户发放元气值失败，原因可能是{proposer}的元气值剩余不足")
-    try:
-        is_nperson = isinstance(recipients[0], NaturalPerson)  # 不为自然人则为组织
-    except:
-        print("没有转账对象！")
-        return
-    # 更新元气值
-    recipients.update(YQPoint=F('YQPoint') + YQPoints)
-    proposer.YQPoint -= recipients.count() * YQPoints
-    proposer.save()
-    # 生成转账记录
-    trans_msg = f"{proposer}向您发放了{YQPoints}元气值，请查收！"
-    transfer_list = [TransferRecord(
-        proposer=proposer.organization_id,
-        recipient=(recipient.person_id if is_nperson else recipient.organization_id),
-        amount=YQPoints,
-        start_time=trans_time,
-        finish_time=trans_time,
-        message=trans_msg,
-        status=TransferRecord.TransferStatus.ACCEPTED
-    ) for recipient in recipients]
-    TransferRecord.objects.bulk_create(transfer_list)
+def send_to_persons(title, message, url='/index/'):
+    sender = User.objects.get(username='zz00000')
+    np = NaturalPerson.objects.activated().all()
+    receivers = User.objects.filter(id__in=np.values_list('person_id', flat=True))
+    print(bulk_notification_create(
+        receivers, sender,
+        Notification.Type.NEEDREAD, title, message, url,
+        publish_to_wechat=True,
+        publish_kws={'level': WechatMessageLevel.IMPORTANT, 'show_source': False},
+        ))
 
 
-def distribute_YQPoint(distributer):
-    '''
-        调用distribute_YQPoint_to_users, 给大家发放元气值
-        这个函数的内容：根据distributer，找到发放对象，调用函数完成发放，（统计时间）
-        distributer应该为一个YQPointDistribute类的实例
-    '''
-    trans_time = distributer.start_time
-
-    # 没有问题，找到要发放元气值的人和组织
-    per_to_dis = NaturalPerson.objects.activated().filter(
-        YQPoint__lte=distributer.per_max_dis_YQP)
-    org_to_dis = Organization.objects.activated().filter(
-        YQPoint__lte=distributer.org_max_dis_YQP).exclude(oname="元培学院")
-    # 由学院账号给大家发放
-    YPcollege = Organization.objects.get(oname="元培学院")
-
-    distribute_YQPoint_to_users(proposer=YPcollege, recipients=per_to_dis, YQPoints=distributer.per_YQP,
-                                trans_time=trans_time)
-    distribute_YQPoint_to_users(proposer=YPcollege, recipients=org_to_dis, YQPoints=distributer.org_YQP,
-                                trans_time=trans_time)
-    end_time = datetime.now()
-
-    debug_msg = f"已向{per_to_dis.count()}个自然人和{org_to_dis.count()}个组织转账，用时{(end_time - trans_time).seconds}s,{(end_time - trans_time).microseconds}microsecond\n"
-    print(debug_msg)
-
-
-def add_YQPoints_distribute(dtype):
-    '''
-    内容：
-        用于注册已知type=dtype的发放元气值的实例
-        每种类型（临时发放、每周发放、每两周发放）都必须只有一个正在应用的实例;
-        在注册时，如果已经有另一个正在进行的、类型相同的定时任务，会覆盖
-        暂时还没写怎么取消
-    '''
-    try:
-        distributer = YQPointDistribute.objects.get(type=dtype, status=True)
-    except Exception as e:
-        print(f"按类型{dtype}注册任务失败，原因可能是没有状态为YES或者有多个状态为YES的发放实例\n" + str(e))
-    if dtype == YQPointDistribute.DistributionType.TEMPORARY:
-        # 说明此时是临时发放
-        scheduler.add_job(distribute_YQPoint, "date", id="temporary_YQP_distribute",
-                          run_date=distributer.start_time, args=[distributer])
-    else:
-        # 说明此时是定期发放
-        scheduler.add_job(distribute_YQPoint, "interval", id=f"{dtype}weeks_interval_YQP_distribute",
-                          weeks=distributer.type, next_run_time=distributer.start_time, args=[distributer])
-
-
-def all_YQPoint_Distributions(request):
-    '''
-        一个页面，展现当前所有的YQPointDistribute类
-    '''
-    context = dict()
-    context['YQPoint_Distributions'] = YQPointDistribute.objects.all()
-    return render(request, "YQP_Distributions.html", context)
-
-
-def YQPoint_Distribution(request, dis_id):
-    '''
-        显示，也可以更改已经存在的YQPointDistribute类
-        更改后，如果应用状态status为True，会完成该任务的注册
-        如果之前有相同类型的实例存在，注册会失败！
-    '''
-    dis = YQPointDistribute.objects.get(id=dis_id)
-    dis_form = YQPointDistributionForm(instance=dis)
-    if request.method == 'POST':
-        post_dict = QueryDict(request.POST.urlencode(), mutable=True)
-        post_dict["start_time"] = post_dict["start_time"].replace("T", " ")
-        dis_form = YQPointDistributionForm(post_dict, instance=dis)
-        if dis_form.is_valid():
-            dis_form.save()
-            if dis.status == True:
-                # 在这里注册scheduler
-                try:
-                    add_YQPoints_distribute(dis.type)
-                except:
-                    print("注册定时任务失败，可能是有多个status为Yes的实例")
-    context = dict()
-    context["dis"] = dis
-    context["dis_form"] = dis_form
-    context["start_time"] = str(dis.start_time).replace(" ", "T")
-    return render(request, "YQP_Distribution.html", context)
-
-
-def new_YQP_distribute(request):
-    '''
-        创建新的发放instance，如果status为True,会尝试注册
-    '''
-    if not request.user.is_superuser:
-        message = "请先以超级账户登录后台后再操作！"
-        return render(request, "debugging.html", {"message": message})
-    dis = YQPointDistribute()
-    dis_form = YQPointDistributionForm()
-    if request.method == 'POST':
-        post_dict = QueryDict(request.POST.urlencode(), mutable=True)
-        post_dict["start_time"] = post_dict["start_time"].replace("T", " ")
-        dis_form = YQPointDistributionForm(post_dict, instance=dis)
-        print(dis_form)
-        print(dis_form.is_valid())
-        if dis_form.is_valid():
-            print("valid")
-            dis_form.save()
-            if dis.status == True:
-                # 在这里注册scheduler
-                try:
-                    add_YQPoints_distribute(dis.type)
-                except:
-                    print("注册定时任务失败，可能是有多个status为Yes的实例")
-        return redirect("YQPoint_Distributions")
-    return render(request, "new_YQP_distribution.html", {"dis_form": dis_form})
-
-
-def YQPoint_Distributions(request):
-    if not request.user.is_superuser:
-        message = "请先以超级账户登录后台后再操作！"
-        return render(request, "debugging.html", {"message": message})
-    dis_id = request.GET.get("dis_id", "")
-    if dis_id == "":
-        return all_YQPoint_Distributions(request)
-    elif dis_id == "new":
-        return new_YQP_distribute(request)
-    else:
-        dis_id = int(dis_id)
-        return YQPoint_Distribution(request, dis_id)
-
-
-"""
-使用方式：
-scheduler.add_job(changeActivityStatus, "date", 
-    id=f"activity_{aid}_{to_status}", run_date, args)
-注意：
-    1、当 cur_status 不为 None 时，检查活动是否为给定状态
-    2、一个活动每一个目标状态最多保留一个定时任务
-允许的状态变换：
-    2、报名中 -> 等待中
-    3、等待中 -> 进行中
-    4、进行中 -> 已结束
-活动变更为进行中时，更新报名成功人员状态
-"""
-
-
-def changeActivityStatus(aid, cur_status, to_status):
-    # print(f"Change Activity Job works: aid: {aid}, cur_status: {cur_status}, to_status: {to_status}\n")
-    # with open("/Users/liuzhanpeng/working/yp/YPPF/logs/error.txt", "a+") as f:
-    #     f.write(f"aid: {aid}, cur_status: {cur_status}, to_status: {to_status}\n")
-    #     f.close()
-    try:
-        with transaction.atomic():
-            activity = Activity.objects.select_for_update().get(id=aid)
-            if cur_status is not None:
-                assert cur_status == activity.status
-            if cur_status == Activity.Status.APPLYING:
-                assert to_status == Activity.Status.WAITING
-            elif cur_status == Activity.Status.WAITING:
-                assert to_status == Activity.Status.PROGRESSING
-            elif cur_status == Activity.Status.PROGRESSING:
-                assert to_status == Activity.Status.END
-            else:
-                raise ValueError
-
-            activity.status = to_status
-
-            if to_status == Activity.Status.WAITING:
-                if activity.bidding:
-                    """
-                    投点时使用
-                    if activity.source == Activity.YQPointSource.COLLEGE:
-                        draw_lots(activity)
-                    else:
-                        weighted_draw_lots(activity)
-                    """
-                    draw_lots(activity)
-
-
-            # 活动变更为进行中时，修改参与人参与状态
-            elif to_status == Activity.Status.PROGRESSING:
-                if activity.need_checkin:
-                    Participant.objects.filter(
-                        activity_id=aid,
-                        status=Participant.AttendStatus.APLLYSUCCESS
-                    ).update(status=Participant.AttendStatus.UNATTENDED)
-                else:
-                    Participant.objects.filter(
-                        activity_id=aid,
-                        status=Participant.AttendStatus.APLLYSUCCESS
-                    ).update(status=Participant.AttendStatus.ATTENDED)
-
-            # 结束，计算积分
-            else:
-                hours = (activity.end - activity.start).seconds / 3600
-                participants = Participant.objects.filter(activity_id=aid, status=Participant.AttendStatus.ATTENDED)
-                NaturalPerson.objects.filter(id__in=participants.values_list('person_id', flat=True)).update(
-                    bonusPoint=F('bonusPoint') + hours)
-
-            activity.save()
-
-
-    except Exception as e:
-        # print(e)
-
-        # TODO send message to admin to debug
-        # with open("/Users/liuzhanpeng/working/yp/YPPF/logs/error.txt", "a+") as f:
-        #     f.write(str(e) + "\n")
-        #     f.close()
-        pass
-
-
-"""
-需要在 transaction 中使用
-所有涉及到 activity 的函数，都应该先锁 activity
-"""
-
-
-def draw_lots(activity):
-    participants_applying = Participant.objects.filter(activity_id=activity.id,
-                                                       status=Participant.AttendStatus.APPLYING)
-    l = len(participants_applying)
-
-    participants_applySuccess = Participant.objects.filter(activity_id=activity.id,
-                                                           status=Participant.AttendStatus.APLLYSUCCESS)
-    engaged = len(participants_applySuccess)
-
-    leftQuota = activity.capacity - engaged
-
-    if l <= leftQuota:
-        Participant.objects.filter(
-            activity_id=activity.id,
-            status__in=[Participant.AttendStatus.APPLYING, Participant.AttendStatus.APLLYFAILED]
-        ).update(status=Participant.AttendStatus.APLLYSUCCESS)
-    else:
-        lucky_ones = sample(range(l), leftQuota)
-        for i, participant in enumerate(Participant.objects.select_for_update().filter(
-                activity_id=activity.id,
-                status__in=[Participant.AttendStatus.APPLYING, Participant.AttendStatus.APLLYFAILED]
-        )):
-            if i in lucky_ones:
-                participant.status = Participant.AttendStatus.APLLYSUCCESS
-            else:
-                participant.status = Participant.AttendStatus.APLLYFAILED
-            participant.save()
-
-
-"""
-投点情况下的抽签，暂时不用
-需要在 transaction 中使用
-def weighted_draw_lots(activity):
-    participants = Participant.objects().select_for_update().filter(activity_id=activity.id, status=Participant.AttendStatus.APPLYING)
-    l = len(participants)
-    if l <= activity.capacity:
-        for participant in participants:
-            participant.status = Participant.AttendStatus.APLLYSUCCESS
-            participant.save()
-    else:
-        weights = []
-        for participant in participants:
-            records = TransferRecord.objects(),filter(corres_act=activity, status=TransferRecord.TransferStatus.ACCEPTED, person_id=participant.proposer)
-            weight = 0
-            for record in records:
-                weight += record.amount
-            weights.append(weight)
-        total_weight = sum(weights)
-        d = [weight/total_weight for weight in weights]
-        lucky_ones = choice(l, activity.capacity, replacement=False, p=weights)
-        for i, participant in enumerate(participants):
-            if i in lucky_ones:
-                participant.status = Participant.AttendStatus.APLLYSUCCESS
-            else:
-                participant.status = Participant.AttendStatus.APLLYFAILED
-            participant.save()
-"""
-
-"""
-使用方式：
-scheduler.add_job(notifyActivityStart, "date", 
-    id=f"activity_{aid}_{start_notification}", run_date, args)
-"""
-
-
-def notifyActivity(aid: int, msg_type: str, msg=""):
-    try:
-        activity = Activity.objects.get(id=aid)
-        if msg_type == "newActivity":
-            msg = f"您关注的组织{activity.organization_id.oname}发布了新的活动：{activity.title}。\n"
-            msg += f"开始时间: {activity.start.strftime('%Y-%m-%d %H:%M')}\n"
-            msg += f"活动地点: {activity.location}\n"
-            subscribers = NaturalPerson.objects.activated().exclude(
-                id__in=activity.organization_id.unsubscribers.all()
-            )
-            receivers = [subscriber.person_id for subscriber in subscribers]
-        elif msg_type == "remind":
-            msg = f"您参与的活动 <{activity.title}> 即将开始。\n"
-            msg += f"开始时间: {activity.start.strftime('%Y-%m-%d %H:%M')}\n"
-            msg += f"活动地点: {activity.location}\n"
-            participants = Participant.objects.filter(activity_id=aid, status=Participant.AttendStatus.APLLYSUCCESS)
-            receivers = [participant.person_id.person_id for participant in participants]
-        elif msg_type == 'modification_sub':
-            subscribers = NaturalPerson.objects.activated().exclude(
-                id__in=activity.organization_id.unsubscribers.all()
-            )
-            receivers = [subscriber.person_id for subscriber in subscribers]
-        elif msg_type == 'modification_par':
-            participants = Participant.objects.filter(
-                activity_id=aid,
-                status__in=[Participant.AttendStatus.APLLYSUCCESS, Participant.AttendStatus.APPLYING]
-            )
-            receivers = [participant.person_id.person_id for participant in participants]
-        elif msg_type == "modification_sub_ex_par":
-            participants = Participant.objects.filter(
-                activity_id=aid,
-                status__in=[Participant.AttendStatus.APLLYSUCCESS, Participant.AttendStatus.APPLYING]
-            )
-            subscribers = NaturalPerson.objects.activated().exclude(
-                id__in=activity.organization_id.unsubscribers.all()
-            )
-            receivers = list(set(subscribers) - set([participant.person_id for participant in participants]))
-            receivers = [receiver.person_id for receiver in receivers]
-        # 应该用不到了，调用的时候分别发给 par 和 sub
-        # 主要发给两类用户的信息往往是不一样的
-        elif msg_type == 'modification_all':
-            participants = Participant.objects.filter(
-                activity_id=aid,
-                status__in=[Participant.AttendStatus.APLLYSUCCESS, Participant.AttendStatus.APPLYING]
-            )
-            subscribers = NaturalPerson.objects.activated().exclude(
-                id__in=activity.organization_id.unsubscribers.all()
-            )
-            receivers = set([participant.person_id for participant in participants]) | set(subscribers)
-            receivers = [receiver.person_id for receiver in receivers]
-        else:
-            raise ValueError
-        success, _ = bulk_notification_create(
-            receivers=list(receivers),
-            sender=activity.organization_id.organization_id,
-            typename=Notification.Type.NEEDREAD,
-            title=Notification.Title.ACTIVITY_INFORM,
-            content=msg,
-            URL=f"/viewActivity/{aid}",
-            relate_instance=activity,
-            publish_to_wechat=True
+def send_to_orgs(title, message, url='/index/'):
+    sender = User.objects.get(username='zz00000')
+    org = Organization.objects.activated().all().exclude(otype__otype_id=0)
+    receivers = User.objects.filter(id__in=org.values_list('organization_id', flat=True))
+    bulk_notification_create(
+        receivers, sender,
+        Notification.Type.NEEDREAD, title, message, url,
+        publish_to_wechat=True,
+        publish_kws={'level': WechatMessageLevel.IMPORTANT, 'show_source': False},
         )
-        assert success
-
-    except Exception as e:
-        # print(f"Notification {msg} failed. Exception: {e}")
-        # TODO send message to admin to debug
-        pass
 
 
-try:
-    default_weather = local_dict['default_weather']
-except:
-    default_weather = None
+# 学院每月下发元气值
+def distribute_YQPoint_per_month():
+    with transaction.atomic():
+        recipients = NaturalPerson.objects.activated().select_for_update()
+        YP = Organization.objects.get(oname=YQP_ONAME)
+        trans_time = datetime.now()
+        transfer_list = [TransferRecord(
+                proposer=YP.organization_id,
+                recipient=recipient.person_id,
+                amount=(30 + max(0, (30 - recipient.YQPoint))),
+                start_time=trans_time,
+                finish_time=trans_time,
+                message=f"元气值每月发放。",
+                status=TransferRecord.TransferStatus.ACCEPTED,
+                rtype=TransferRecord.TransferType.BONUS
+        ) for recipient in recipients]
+        notification_lists = [
+            Notification(
+                receiver=recipient.person_id,
+                sender=YP.organization_id,
+                typename=Notification.Type.NEEDREAD,
+                title=Notification.Title.YQ_DISTRIBUTION,
+                content=f"{YP}向您发放了本月元气值{30 + max(0, (30 - recipient.YQPoint))}点，请查收！",
+            ) for recipient in recipients
+        ]
+        TransferRecord.objects.bulk_create(transfer_list)
+        Notification.objects.bulk_create(notification_lists)
+        for recipient in recipients:
+            amount = 30 + max(0, (30 - recipient.YQPoint))
+            recipient.YQPoint += amount
+            recipient.YQPoint += recipient.YQPoint_Bonus
+            recipient.YQPoint_Bonus = 0
+            recipient.save()
+
+
+"""
+频繁执行，添加更新其他活动的定时任务，主要是为了异步调度
+对于被多次落下的活动，每次更新一步状态
+"""
+def changeAllActivities():
+
+    now = datetime.now()
+    execute_time = now + timedelta(seconds=20)
+    applying_activities = Activity.objects.filter(
+        status=Activity.Status.APPLYING,
+        apply_end__lte=now,
+    )
+    for activity in applying_activities:
+        scheduler.add_job(changeActivityStatus, "date", id=f"activity_{activity.id}_{Activity.Status.WAITING}",
+            run_date=execute_time, args=[activity.id, Activity.Status.APPLYING, Activity.Status.WAITING], replace_existing=True)
+        execute_time += timedelta(seconds=5)
+
+    waiting_activities = Activity.objects.filter(
+        status=Activity.Status.WAITING,
+        start__lte=now,
+    )
+    for activity in waiting_activities:
+        scheduler.add_job(changeActivityStatus, "date", id=f"activity_{activity.id}_{Activity.Status.PROGRESSING}",
+            run_date=execute_time, args=[activity.id, Activity.Status.WAITING, Activity.Status.PROGRESSING], replace_existing=True)
+        execute_time += timedelta(seconds=5)
+
+
+    progressing_activities = Activity.objects.filter(
+        status=Activity.Status.PROGRESSING,
+        end__lte=now,
+    )
+    for activity in progressing_activities:
+        scheduler.add_job(changeActivityStatus, "date", id=f"activity_{activity.id}_{Activity.Status.END}",
+            run_date=execute_time, args=[activity.id, Activity.Status.PROGRESSING, Activity.Status.END], replace_existing=True)
+        execute_time += timedelta(seconds=5)
 
 
 # @scheduler.scheduled_job('interval', id="get weather per hour", hours=1)
 def get_weather():
-    # weather = urllib2.urlopen("http://www.weather.com.cn/data/cityinfo/101010100.html").read()
+    # weather = urllib.request.urlopen("http://www.weather.com.cn/data/cityinfo/101010100.html").read()
     try:
         city = "Haidian"
         key = local_dict["weather_api_key"]
         lang = "zh_cn"
         url = f"https://api.openweathermap.org/data/2.5/weather?q={city}&appid={key}&lang={lang}"
-        load_json = json.loads(urllib2.urlopen(url, timeout=5).read())  # 这里面信息太多了，不太方便传到前端
+        load_json = json.loads(urllib.request.urlopen(url, timeout=5).read())  # 这里面信息太多了，不太方便传到前端
         weather_dict = {
-            "modify_time": datetime.now().__str__(),
+            "modify_time": datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f"),
             "description": load_json["weather"][0]["description"],
             "temp": str(round(float(load_json["main"]["temp"]) - 273.15)),
             "temp_feel": str(round(float(load_json["main"]["feels_like"]) - 273.15)),
             "icon": load_json["weather"][0]["icon"]
         }
-        with open("weather.json", "w") as weather_json:
+        with open("./weather.json", "w") as weather_json:
             json.dump(weather_dict, weather_json)
     except KeyError as e:
-        print(str(e))
-        print("在get_weather中出错，原因可能是local_dict中缺少weather_api_key")
+        log.operation_writer(SYSTEM_LOG, "天气更新异常,原因可能是local_dict中缺少weather_api_key:"+str(e), "scheduler_func[get_weather]", log.STATE_WARNING)
         return None
     except Exception as e:
-        # 相当于超时
-        # TODO: 增加天气超时的debug
-        print("任务超时")
+        log.operation_writer(SYSTEM_LOG, "天气更新异常,未知错误", "scheduler_func[get_weather]", log.STATE_WARNING)
         return default_weather
     else:
+        log.operation_writer(SYSTEM_LOG, "天气更新成功", "scheduler_func[get_weather]")
         return weather_dict
 
-print("———————————————— Scheduler:   Debug ————————————————")
-print("before loading scheduler from app.scheduler in scheduler_func.py")
-from app.scheduler import scheduler
 
-# register_job(scheduler, ...)的正确写法为scheduler.scheduled_job(...)
-# 但好像非服务器版本有问题??
+def add_week_course_activity(course_id: int, weektime_id: int, cur_week: int ,course_stage2: bool):
+    """
+    添加每周的课程活动
+    """
+    course = Course.objects.get(id=course_id)
+    examine_teacher = NaturalPerson.objects.get_teacher(
+        get_setting("course/audit_teacher"))
+    # 当前课程在学期已举办的活动
+    conducted_num = Activity.objects.activated().filter(
+        organization_id=course.organization,
+        category=Activity.ActivityCategory.COURSE).count()
+    # 发起活动，并设置报名
+    with transaction.atomic():
+        week_time = CourseTime.objects.select_for_update().get(id=weektime_id)
+        if week_time.cur_week != cur_week:
+            return False
+        start_time = week_time.start + timedelta(days=7 * cur_week)
+        end_time = week_time.end + timedelta(days=7 * cur_week)
+        activity = Activity.objects.create(
+            title=f'{course.name}-第{conducted_num+1}次课',
+            organization_id=course.organization,
+            examine_teacher=examine_teacher,
+            location=course.classroom,
+            start=start_time,
+            end=end_time,
+            category=Activity.ActivityCategory.COURSE,
+        )
+        activity.status = Activity.Status.WAITING
+        activity.need_checkin = True  # 需要签到
+        activity.recorded = True
+        activity.course_time = week_time
+        activity.introduction = f'{course.organization.oname}每周课程活动'
+        ActivityPhoto.objects.create(image=course.photo,
+                                     type=ActivityPhoto.PhotoType.ANNOUNCE,
+                                     activity=activity)
+        # 选课人员自动报名活动
+        # 选课结束以后，活动参与人员从小组成员获取
+        person_pos = list(Position.objects.activated().filter(
+                org=course.organization).values_list("person", flat=True))
+        if course_stage2:
+            # 如果处于补退选阶段，活动参与人员从课程选课情况获取
+            selected_person = list(CourseParticipant.objects.filter(
+                course=course,
+                status=CourseParticipant.Status.SUCCESS,
+            ).values_list("person", flat=True))
+            person_pos += selected_person
+            person_pos = list(set(person_pos))
+        members = NaturalPerson.objects.filter(
+            id__in=person_pos)
+        for member in members:
+            participant = Participant.objects.create(
+                activity_id=activity,
+                person_id=member,
+                status=Participant.AttendStatus.APLLYSUCCESS)
 
-scheduler.add_job(get_weather, 'interval', id="get weather per hour", hours=1, replace_existing=True)
+        participate_num = len(person_pos)
+        activity.capacity = participate_num
+        activity.current_participants = participate_num
+        week_time.cur_week += 1
+        week_time.save()
+        activity.save()
 
-print("finishing loading get_weather function")
-print("finish scheduler_func")
-print("———————————————— End     :   Debug ————————————————")
+    # 通知参与成员,创建定时任务并修改活动状态
+    notifyActivity(activity.id, "newCourseActivity")
+
+    scheduler.add_job(notifyActivity, "date", id=f"activity_{activity.id}_remind",
+                      run_date=activity.start - timedelta(minutes=15), args=[activity.id, "remind"], replace_existing=True)
+    scheduler.add_job(changeActivityStatus, "date", id=f"activity_{activity.id}_{Activity.Status.PROGRESSING}",
+                      run_date=activity.start, args=[activity.id, Activity.Status.WAITING, Activity.Status.PROGRESSING], replace_existing=True)
+    scheduler.add_job(changeActivityStatus, "date", id=f"activity_{activity.id}_{Activity.Status.END}",
+                      run_date=activity.end, args=[activity.id, Activity.Status.PROGRESSING, Activity.Status.END], replace_existing=True)
+
+    notification_create(
+        receiver=examine_teacher.person_id,
+        sender=course.organization.organization_id,
+        typename=Notification.Type.NEEDDO,
+        title=Notification.Title.VERIFY_INFORM,
+        content="新增了一个已审批的课程活动",
+        URL=f"/examineActivity/{activity.id}",
+        relate_instance=activity,
+        publish_to_wechat=True,
+        publish_kws={"app": WechatApp.AUDIT, 'level': WechatMessageLevel.INFO},
+    )
+
+
+def longterm_launch_course():
+    """
+    定时发起长期课程活动
+    提前一周发出课程，一般是在本周课程活动结束时发出
+    本函数的循环不幂等，幂等通过课程活动创建函数的幂等实现
+    """
+    courses = Course.objects.activated().filter(status__in=[Course.Status.SELECT_END,Course.Status.STAGE2])
+    for course in courses:
+        for week_time in course.time_set.all():
+            cur_week = week_time.cur_week
+            end_week = week_time.end_week
+            if cur_week < end_week:  #   end_week默认16周，允许助教修改
+                #提前6天发布
+                due_time = week_time.end + timedelta(days=7 * cur_week)
+                if due_time - timedelta(days=6) < datetime.now() < due_time:
+                    # 如果处于补退选阶段：
+                    course_stage2 = True if course.status == Course.Status.STAGE2 else False
+                    add_week_course_activity(course.id, week_time.id, cur_week, course_stage2)
+
+
+def update_active_score_per_day(days=14):
+    '''每天计算用户活跃度， 计算前days天（不含今天）内的平均活跃度'''
+    with transaction.atomic():
+        today = datetime.now().date()
+        persons = NaturalPerson.objects.activated().select_for_update()
+        persons.update(active_score=0)
+        for i in range(days):
+            date = today - timedelta(days=i+1)
+            userids = set(PageLog.objects.filter(
+                time__date=date).values_list('user', flat=True))
+            persons.filter(person_id__in=userids).update(
+                active_score=F('active_score') + 1 / days)
+
+
+def public_feedback_per_hour():
+    '''查找距离组织公开反馈24h内没被审核的反馈，将其公开'''
+    time = datetime.now() - timedelta(days=1)
+    with transaction.atomic():
+        feedbacks = Feedback.objects.filter(
+            issue_status=Feedback.IssueStatus.ISSUED,
+            public_status=Feedback.PublicStatus.PRIVATE,
+            publisher_public=True,
+            org_public=True,
+            public_time__lte=time,
+        )
+        feedbacks.select_for_update().update(
+            public_status=Feedback.PublicStatus.PUBLIC)
+        for feedback in feedbacks:
+            notification_create(
+                receiver=feedback.person.person_id,
+                sender=feedback.org.otype.incharge.person_id,
+                typename=Notification.Type.NEEDREAD,
+                title="反馈状态更新",
+                content=f"您的反馈[{feedback.title}]已被公开",
+                URL=f"/viewFeedback/{feedback.id}",
+                anonymous_flag=False,
+                publish_to_wechat=True,
+                publish_kws={'app': WechatApp.AUDIT, 'level': WechatMessageLevel.INFO},
+            )
+            notification_create(
+                receiver=feedback.org.organization_id,
+                sender=feedback.org.otype.incharge.person_id,
+                typename=Notification.Type.NEEDREAD,
+                title="反馈状态更新",
+                content=f"您处理的反馈[{feedback.title}]已被公开",
+                URL=f"/viewFeedback/{feedback.id}",
+                anonymous_flag=False,
+                publish_to_wechat=True,
+                publish_kws={'app': WechatApp.AUDIT, 'level': WechatMessageLevel.INFO},
+            )
+
+
+def cancel_related_jobs(instance, extra_ids=None):
+    '''删除关联的定时任务（可以在模型中预定义related_job_ids）'''
+    if hasattr(instance, 'related_job_ids'):
+        job_ids = instance.related_job_ids
+        if callable(job_ids):
+            job_ids = job_ids()
+        for job_id in job_ids:
+            try: scheduler.remove_job(job_id)
+            except: continue
+    if extra_ids is not None:
+        for job_id in extra_ids:
+            try: scheduler.remove_job(job_id)
+            except: continue
+
+def _cancel_jobs(sender, instance, **kwargs):
+    cancel_related_jobs(instance)
+
+def register_pre_delete():
+    '''注册删除前清除定时任务的函数'''
+    import app.models
+    from django.db import models
+    for name in app.models.__all__:
+        try:
+            model = getattr(app.models, name)
+            assert issubclass(model, models.Model)
+            assert hasattr(model, 'related_job_ids')
+        except:
+            # 不具有关联任务的模型无需设置
+            continue
+        models.signals.pre_delete.connect(_cancel_jobs, sender=model)

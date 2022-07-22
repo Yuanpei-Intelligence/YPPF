@@ -1,32 +1,36 @@
-from django.db import transaction
+from app.utils_dependency import *
 from app.models import (
     NaturalPerson,
     Organization,
     OrganizationType,
     Position,
     Notification,
-    ModifyOrganization,
     Activity,
     Help,
     Reimbursement,
     Participant,
+    ModifyRecord,
 )
-from django.contrib.auth.models import User
-from django.dispatch.dispatcher import receiver
-from django.contrib import auth
-from django.shortcuts import redirect
-from django.conf import settings
-from django.http import HttpResponse
 from boottest import local_dict
-from datetime import datetime, timedelta
-from functools import wraps
+
 import re
 import imghdr
 import string
 import random
 import xlwt
 from io import BytesIO
-def check_user_access(redirect_url="/logout/"):
+import urllib.parse
+
+from datetime import datetime, timedelta
+from functools import wraps
+from django.contrib.auth.models import User
+from django.contrib import auth
+from django.shortcuts import redirect
+from django.http import HttpResponse
+from django.db.models import F
+
+
+def check_user_access(redirect_url="/logout/", is_modpw=False):
     """
     Decorator for views that checks that the user is valid, redirecting
     to specific url if necessary. Then it checks that the user is not
@@ -41,9 +45,12 @@ def check_user_access(redirect_url="/logout/"):
                 return redirect(redirect_url)
 
             isFirst = get_person_or_org(request.user, user_type).first_time_login
-            # 如果是首次登陆，会跳转到密码修改的页面
+            # 如果是首次登陆，会跳转到用户须知的页面
             if isFirst:
-                return redirect("/modpw/")
+                if request.session.get('confirmed') != 'yes':
+                    return redirect("/agreement/")
+                if not is_modpw:
+                    return redirect('/modpw/')
 
             return view_function(request, *args, **kwargs)
 
@@ -52,17 +59,52 @@ def check_user_access(redirect_url="/logout/"):
     return actual_decorator
 
 
-def get_person_or_org(user, user_type=None):
+def get_classified_user(user: User, user_type=None, *,
+                        update=False, activate=False) -> ClassifiedUser:
+    '''
+    通过User对象获取对应的实例
+
+    check_user_type返回valid=True时，应能得到一个与user_type相符的实例
+
+    Parameters
+    ----------
+    user_type : UTYPE, optional
+        用来加速访问，不提供时按顺序尝试，非法值抛出`AssertionError`
+    update : bool, optional
+        获取用来更新的对象，需要在事务中调用，否则会报错
+    activate : bool, optional
+        只获取活跃的用户，由对应的模型管理器检查，用户不活跃可能报错
+    '''
     if user_type is None:
         if hasattr(user, "naturalperson"):
-            return user.naturalperson
+            return NaturalPerson.objects.get_by_user(user, update=update, activate=activate)
         else:
-            return user.organization
-    return (
-        NaturalPerson.objects.get(person_id=user)
-        if user_type == "Person"
-        else Organization.objects.get(organization_id=user)
-    )
+            return Organization.objects.get_by_user(user, update=update, activate=activate)
+    elif user_type == UTYPE_PER:
+        return NaturalPerson.objects.get_by_user(user, update=update, activate=activate)
+    elif user_type == UTYPE_ORG:
+        return Organization.objects.get_by_user(user, update=update, activate=activate)
+    else:
+        raise AssertionError(f"非法的用户类型：“{user_type}”")
+
+# 保持之前的函数名接口
+get_person_or_org = get_classified_user
+
+
+def get_user_by_name(name):
+    """通过 name/oname 获取 user 对象，用于导入评论者
+    Comment只接受User对象
+    Args:
+        name/oname
+    Returns:
+        user<object>: 用户对象
+        user_type: 用户类型
+    """
+    try: return NaturalPerson.objects.get(name=name).person_id, UTYPE_PER
+    except: pass
+    try: return Organization.objects.get(oname=name).organization_id, UTYPE_ORG
+    except: pass
+    print(f"{name} is neither natural person nor organization!")
 
 
 # YWolfeee, Aug 16
@@ -70,55 +112,65 @@ def get_person_or_org(user, user_type=None):
 # 同步开启一个html_display，方便拓展前端逻辑的呈现
 def check_user_type(user):
     html_display = {}
-    if user.is_superuser:
+    if user.is_superuser or user.is_staff:
+        if user.is_staff:
+            for user_type, model_name in [
+                (UTYPE_ORG, "organization"),
+                (UTYPE_PER, "naturalperson"),
+                ]:
+                if hasattr(user, model_name):
+                    html_display["user_type"] = user_type
+                    return True, user_type, html_display
         return False, "", html_display
     if user.username[:2] == "zz":
-        user_type = "Organization"
+        user_type = UTYPE_ORG
         html_display["user_type"] = user_type
     else:
-        user_type = "Person"
+        user_type = UTYPE_PER
         html_display["user_type"] = user_type
 
     return True, user_type, html_display
 
 
-def get_user_ava(obj, user_type):
+def get_user_ava(obj: ClassifiedUser, user_type):
     try:
         ava = obj.avatar
     except:
         ava = ""
     if not ava:
-        if user_type == "Person":
-            return settings.MEDIA_URL + "avatar/person_default.jpg"
+        if user_type == UTYPE_PER:
+            return NaturalPerson.get_user_ava()
         else:
-            return settings.MEDIA_URL + "avatar/org_default.png"
+            return Organization.get_user_ava()
     else:
-        return settings.MEDIA_URL + str(ava)
+        return MEDIA_URL + str(ava)
 
 
-def get_user_wallpaper(person, user_type):
-    if user_type == "Person":
-        return settings.MEDIA_URL + (str(person.wallpaper) or "wallpaper/person_wall_default.jpg")
+def get_user_wallpaper(person: ClassifiedUser, user_type):
+    if user_type == UTYPE_PER:
+        return MEDIA_URL + (str(person.wallpaper) or "wallpaper/person_wall_default.jpg")
     else:
-        return settings.MEDIA_URL + (str(person.wallpaper) or "wallpaper/org_wall_default.jpg")
+        return MEDIA_URL + (str(person.wallpaper) or "wallpaper/org_wall_default.jpg")
 
-# 获取左边栏的内容，is_myself表示是否是自己, person表示看的人
+
 def get_user_left_navbar(person, is_myself, html_display):
+    '''已废弃；获取左边栏的内容，is_myself表示是否是自己, person表示看的人'''
     # assert (
     #        "is_myself" in html_display.keys()
     # ), "Forget to tell the website whether this is the user itself!"
     raise NotImplementedError(
         "old left_navbar function has been abandoned, please use `get_sidebar_and_navbar` instead!"
     )
-    html_display["underground_url"] = local_dict["url"]["base_url"]
+    html_display["underground_url"] = UNDERGROUND_URL
 
-    my_org_id_list = Position.objects.activated().filter(person=person).filter(pos=0)
-    html_display["my_org_list"] = [w.org for w in my_org_id_list]  # 我管理的组织
+    my_org_id_list = Position.objects.activated().filter(person=person).filter(is_admin=True)
+    html_display["my_org_list"] = [w.org for w in my_org_id_list]  # 我管理的小组
     html_display["my_org_len"] = len(html_display["my_org_list"])
     return html_display
 
 
 def get_org_left_navbar(org, is_myself, html_display):
+    '''已废弃'''
     # assert (
     #        "is_myself" in html_display.keys()
     # ), "Forget to tell the website whether this is the user itself!"
@@ -126,28 +178,45 @@ def get_org_left_navbar(org, is_myself, html_display):
         "old left_navbar function has been abandoned, please use `get_sidebar_and_navbar` instead!"
     )
     html_display["switch_org_name"] = org.oname
-    html_display["underground_url"] = local_dict["url"]["base_url"]
+    html_display["underground_url"] = UNDERGROUND_URL
     html_display["org"] = org
     return html_display
 
 
-# YWolfeee Aug 16
-# 修改left siderbar的逻辑，统一所有个人和所有组织的左边栏，不随界面而改变
-# 这个函数负责统一get sidebar和navbar的内容，解决了信箱条数显示的问题
-# user对象是request.user对象直接转移
-# 内容存储在bar_display中
-# Attention: 本函数请在render前的最后时刻调用
+# 检验是否要展示如何分享信息的帮助，预期只在stuinfo, orginfo, viewActivity使用
+def get_inform_share(me: ClassifiedUser, is_myself=True):
+    alert_message = ""
+    if is_myself and me.inform_share:
+        alert_message = ("【关于分享】:如果你在使用手机浏览器，"+
+                        "可以使用浏览器自带的分享来分享你的主页或者活动主页，"+
+                        "或者可以选择将其在微信/朋友圈中打开并分享。")
+        # me.inform_share = False
+        # me.save()
+        return True, alert_message
+    return False, alert_message
 
-# added by syb, 8.23:
-# 在函数中添加了title_name和navbar_name参数，根据这两个参数添加帮助信息
-# 现在最推荐的调用方式是：在views的函数中，写
-# bar_display = utils.get_sidebar_and_navbar(user, title_name, navbar_name)
+
 def get_sidebar_and_navbar(user, navbar_name="", title_name="", bar_display=None):
+    '''
+    YWolfeee Aug 16
+    修改left siderbar的逻辑，统一所有个人和所有小组的左边栏，不随界面而改变
+    这个函数负责统一get sidebar和navbar的内容，解决了信箱条数显示的问题
+    user对象是request.user对象直接转移
+    内容存储在bar_display中
+    Attention: 本函数请在render前的最后时刻调用
+
+    added by syb, 8.23:
+    在函数中添加了title_name和navbar_name参数，根据这两个参数添加帮助信息
+    现在最推荐的调用方式是：在views的函数中，写
+    bar_display = utils.get_sidebar_and_navbar(user, title_name, navbar_name)
+    '''
     if bar_display is None:
         bar_display = {}  # 默认参数只会初始化一次，所以不应该设置为{}
     me = get_person_or_org(user)  # 获得对应的对象
     _, user_type, _ = check_user_type(user)
     bar_display["user_type"] = user_type
+    if user.is_staff:
+        bar_display["is_staff"] = True
 
     # 接下来填补各种前端呈现信息
 
@@ -159,30 +228,33 @@ def get_sidebar_and_navbar(user, navbar_name="", title_name="", bar_display=None
         receiver=user, status=Notification.Status.UNDONE
     ).count()
 
-    if user_type == "Person":
+    if user_type == UTYPE_PER:
         bar_display["profile_name"] = "个人主页"
         bar_display["profile_url"] = "/stuinfo/"
         bar_display["name"] = me.name
         bar_display["person_type"] = me.identity
 
         # 个人需要地下室跳转
-        bar_display["underground_url"] = local_dict["url"]["base_url"]
+        bar_display["underground_url"] = UNDERGROUND_URL
 
-        # 个人所管理的组织列表
-        my_org_id_list = Position.objects.activated().filter(person=me).filter(pos=0)
-        bar_display["my_org_list"] = [w.org for w in my_org_id_list]  # 我管理的组织
-        bar_display["my_org_len"] = len(bar_display["my_org_list"])
-        
+        # 个人所管理的小组列表
+        # my_org_id_list = Position.objects.activated().filter(person=me, is_admin=True).select_related("org")
+        # bar_display["my_org_list"] = [w.org for w in my_org_id_list]  # 我管理的小组
+        # bar_display["my_org_len"] = len(bar_display["my_org_list"])
+
+
+        bar_display['is_auditor'] = me.is_teacher()
 
     else:
-        bar_display["profile_name"] = "团体主页"
+        bar_display["profile_name"] = "小组主页"
         bar_display["profile_url"] = "/orginfo/"
+        bar_display["is_course"] = me.otype.otype_name == COURSE_TYPENAME
 
     bar_display["navbar_name"] = navbar_name
     # title_name默认与navbar_name相同
 
     bar_display["title_name"] = title_name if title_name else navbar_name
-    
+
     if navbar_name == "我的元气值":
         bar_display["help_message"] = local_dict["help_message"].get(
             (navbar_name + user_type.lower()),  ""
@@ -206,50 +278,139 @@ def get_sidebar_and_navbar(user, navbar_name="", title_name="", bar_display=None
     return bar_display
 
 
-
-# 检查发起活动的request的合法性
-def check_ac_request(request):
-    # oid的获取
-    context = dict()
-    context["warn_code"] = 0
-
-    try:
-        assert request.POST["edit"] == "True"
-        edit = True
-    except:
-        edit = False
-
-
 def url_check(arg_url):
-    if settings.DEBUG:  # DEBUG默认通过
+    if DEBUG:  # DEBUG默认通过
         return True
     if arg_url is None:
         return True
     if re.match("^/[^/?]*/", arg_url):  # 相对地址
         return True
     for url in local_dict["url"].values():
-        base = re.findall("^https?://[^/]*/?", url)[0]
+        base = re.findall("^https?://([^/]*)/?", url)[0]
+        base = f'^https?://{base}/?'
         # print('base:', base)
         if re.match(base, arg_url):
             return True
+    log.operation_writer(SYSTEM_LOG, f'URL检查不合格: {arg_url}', 'utils[url_check]', log.STATE_WARNING)
     return False
 
+def url2site(url):
+    return urllib.parse.urlparse(url).netloc
 
-# 允许进行 cross site 授权时，return True
-def check_cross_site(request, arg_url):
-    if arg_url is None:
-        return True
-    # 这里 base_url 最好可以改一下
-    appointment = local_dict["url"]["base_url"]
-    appointment_base = re.findall("^https?://[^/]*/", appointment)[0]
-    if re.match(appointment_base, arg_url):
-        valid, user_type, html_display = check_user_type(request.user)
-        if not valid or user_type == "Organization":
+def site_match(site, url, path_check_level=0, scheme_check=False):
+    '''检查是否是同一个域名，也可以检查路径是否相同
+    - path_check_level: 0-2, 不检查/忽视末尾斜杠/完全相同
+    - scheme_check: bool, 协议是否相同
+    '''
+    site = urllib.parse.urlparse(site)
+    url = urllib.parse.urlparse(url)
+    if site.netloc != url.netloc:
+        return False
+    if scheme_check and site.scheme != url.scheme:
+        return False
+    if path_check_level:
+        spath, upath = site.path, url.path
+        if path_check_level > 1:
+            spath, upath = spath.rstrip('/'), upath.rstrip('/')
+        if spath != upath:
             return False
     return True
 
 
+def get_std_url(arg_url: str, site_url: str, path_dir=None, match_func=None):
+    '''
+    检查是否匹配，返回(is_match, standard_url)，匹配时规范化url，否则返回原url
+
+    Args
+    ----
+    - arg_url: 需要判断的url或者None，后者返回(False, site_url)
+    - site_url: 规范的网址，其scheme, netloc和path部分被用于参考
+    - path_dir: 需要保持一致的路径部分，默认为空
+    - match_func: 检查匹配的函数，默认为site_match(site_url, arg_url)
+    '''
+    if match_func is None:
+        match_func = lambda x: site_match(site_url, x)
+
+    if arg_url is None:
+        return False, site_url
+
+    if match_func(arg_url):
+        site_parse = urllib.parse.urlparse(site_url)
+        arg_parse = urllib.parse.urlparse(arg_url)
+
+        def in_dir(path, path_dir):
+            return path.startswith(path_dir) or path == path_dir.rstrip('/')
+
+        std_path = arg_parse.path
+        if path_dir:
+            if (in_dir(site_parse.path, path_dir) and not in_dir(std_path, path_dir)):
+                std_path = path_dir.rstrip('/') + std_path
+            elif (not in_dir(site_parse.path, path_dir) and in_dir(std_path, path_dir)):
+                std_path = std_path.split(path_dir.rstrip('/'), 1)[1]
+
+        std_parse = [
+            site_parse.scheme,
+            site_parse.netloc,
+            std_path,
+            arg_parse.params,
+            arg_parse.query,
+            arg_parse.fragment,
+        ]
+        arg_url = urllib.parse.urlunparse(std_parse)
+        return True, arg_url
+    return False, arg_url
+
+
+def get_std_underground_url(underground_url):
+    '''检查是否是地下室网址，返回(is_underground, standard_url)
+    - 如果是，规范化网址，否则返回原URL
+    - 如果参数为None，返回URL为地下室网址'''
+    site_url = UNDERGROUND_URL
+    return get_std_url(underground_url, site_url)
+    if underground_url is None:
+        underground_url = site_url
+    if site_match(site_url, underground_url):
+        underground_url = urllib.parse.urlunparse(
+            urllib.parse.urlparse(site_url)[:2]
+            + urllib.parse.urlparse(underground_url)[2:])
+        return True, underground_url
+    return False, underground_url
+
+def get_std_inner_url(inner_url):
+    '''检查是否是内部网址，返回(is_inner, standard_url)
+    - 如果是，规范化网址，否则返回原URL
+    - 如果参数为None，返回URL为主页相对地址'''
+    site_url = LOGIN_URL
+    return get_std_url(
+        inner_url, '/welcome/',
+        match_func=lambda x: (site_match(site_url, x)
+                           or site_match('', x, scheme_check=True)),
+    )
+    if inner_url is None:
+        inner_url = '/welcome/'
+    if site_match(site_url, inner_url):
+        inner_url = urllib.parse.urlunparse(
+            ('', '') + urllib.parse.urlparse(inner_url)[2:])
+    url_parse = urllib.parse.urlparse(inner_url)
+    if url_parse.scheme or url_parse.netloc:
+        return False, inner_url
+    return True, inner_url
+
+
+# 允许进行 cross site 授权时，return True
+def check_cross_site(request, arg_url):
+    netloc = url2site(arg_url)
+    if netloc not in [
+        '',  # 内部相对地址
+        url2site(UNDERGROUND_URL),  # 地下室
+        url2site(LOGIN_URL),  # yppf
+    ]:
+        return False
+    return True
+
+
 def get_url_params(request, html_display):
+    raise NotImplementedError
     full_path = request.get_full_path()
     if "?" in full_path:
         params = full_path.split["?"][1]
@@ -259,120 +420,10 @@ def get_url_params(request, html_display):
             if key not in html_display.keys():  # 禁止覆盖
                 html_display[key] = value
 
-# 检查neworg request参数的合法性 ,用在modifyorganization函数中
-def check_neworg_request(request, org=None):
-    context = dict()
-    context["warn_code"] = 0
-    oname = str(request.POST["oname"])
-    if len(oname) >= 32:
-        return wrong("团体的名字不能超过32字")
-    if oname == "":
-        return wrong("团体的名字不能为空")
-    if org is not None and oname == org.oname:
-        if (
-            len(
-                ModifyOrganization.objects.exclude(
-                    status=ModifyOrganization.Status.CANCELED
-                )
-                .exclude(status=ModifyOrganization.Status.REFUSED)
-                .filter(oname=oname)
-            )
-            > 1
-            or len(Organization.objects.filter(oname=oname)) != 0
-        ):
-            context["warn_code"] = 1
-            context["warn_message"] = "团体的名字不能与正在申请的或者已存在的团体的名字重复"
-            return context
-    else:
-        if (
-            len(
-                ModifyOrganization.objects.exclude(
-                    status=ModifyOrganization.Status.CANCELED
-                )
-                .exclude(status=ModifyOrganization.Status.REFUSED)
-                .filter(oname=oname)
-            )
-            != 0
-            or len(Organization.objects.filter(oname=oname)) != 0
-        ):
-            context["warn_code"] = 1
-            context["warn_message"] = "团体的名字不能与正在申请的或者已存在的团体的名字重复"
-            return context
 
-    try:
-        otype = str(request.POST.get("otype"))
-        context["otype"] = OrganizationType.objects.get(otype_name=otype)
-    except:
-        context["warn_code"] = 1
-        # user can't see it . we use it for debugging
-        context["warn_message"] = "数据库没有小组的所在类型，请联系管理员！"
-        return context
-
-    context["avatar"] = request.FILES.get("avatar")
-    if context["avatar"] is not None:
-        if if_image(context["avatar"]) == 1:
-            context["warn_code"] = 1
-            context["warn_message"] = "团体的头像应当为图片格式！"
-            return context
-
-    context["oname"] = oname  # 组织名字
-    # 组织类型，必须有
-    context["pos"] = request.user  # 负责人，必须有滴
-    context["introduction"] = str(request.POST.get("introduction", ""))  # 组织介绍，可能为空
-
-    context["application"] = str(request.POST.get("application", ""))  # 申请理由
-
-    if context["application"] == "":
-        context["warn_code"] = 1
-        context["warn_message"] = "申请理由不能为空"
-    return context
-# 检查neworg request参数的合法性 ,用在modifyoranization函数中
-
-def check_newpos_request(request,prepos=None):
-
-    context = dict()
-    context['warn_code'] = 0
-    if prepos is None:
-        oname = str(request.POST['oname'])
-    else:
-        oname = prepos.position.org.oname
-    context['apply_pos'] = int(request.POST.get('apply_pos',10))
-    context['apply_type'] = str(request.POST.get('apply_type',"加入组织"))
-    if len(oname) >= 32:
-        context['warn_code'] = 1
-        context['warn_msg'] = "团体的名字不能超过32字节"
-        return context
-    if oname=="":
-        context['warn_code'] = 1
-        context['warn_msg'] = "团体的名字不能为空"
-        return context
-    
-    context['oname'] = oname  # 组织名字
-
-    context["application"] = str(request.POST.get("application", ""))  # 申请理由
-
-    if context["application"] == "":
-        context["warn_code"] = 1
-        context["warn_msg"] = "申请理由不能为空"
-    return context
-
-
-# 查询组织代号的最大值+1 用于modifyOrganization()函数，新建组织
-def find_max_oname():
-    organizations = Organization.objects.filter(
-        organization_id__username__startswith="zz"
-    ).order_by("-organization_id__username")
-    max_org = organizations[0]
-    max_oname = str(max_org.organization_id.username)
-    max_oname = int(max_oname[2:]) + 1
-    prefix = "zz"
-    max_oname = prefix + str(max_oname).zfill(5)
-    return max_oname
-
-
-# 判断是否为图片
 def if_image(image):
-    if image == None:
+    '''判断是否为图片'''
+    if image is None:
         return 0
     imgType_list = {"jpg", "bmp", "png", "jpeg", "rgb", "tif"}
 
@@ -381,8 +432,8 @@ def if_image(image):
     return 1  # 不是图片
 
 
-# 用于新建组织时，生成6位随机密码
 def random_code_init(seed):
+    '''用于新建小组时，生成6位随机密码'''
     b = string.digits + string.ascii_letters  # 构建密码池
     password = ""
     random.seed(seed)
@@ -394,7 +445,7 @@ def random_code_init(seed):
 def get_captcha(request, username, valid_seconds=None, more_info=False):
     '''
     noexcept
-    - username: 学号/组织号, 不一定对应request.user(此时应尚未登录)
+    - username: 学号/小组号, 不一定对应request.user(此时应尚未登录)
     - valid_seconds: float or None, None表示不设置有效期
     ->captcha: str | (captcha, expired, old) if more_info
     '''
@@ -425,6 +476,7 @@ def set_captcha_session(request, username, captcha):
     request.session["captcha_create_time"] = utcnow.strftime("%Y-%m-%d %H:%M:%S")
     request.session["captcha"] = captcha
 
+
 def clear_captcha_session(request):
     '''noexcept'''
     request.session.pop("captcha")
@@ -438,16 +490,20 @@ def set_nperson_quota_to(quota):
         给所有用户发送通知
     """
     activated_npeople = NaturalPerson.objects.activated()
+
+
     activated_npeople.update(quota=quota)
     notification_content = f"学院已经将大家的元气值配额重新设定为{quota},祝您使用愉快！"
     title = Notification.Title.VERIFY_INFORM
-    YPcollege = Organization.objects.get(oname="元培学院")
+    YPcollege = Organization.objects.get(oname=YQP_ONAME)
 
     # 函数内导入是为了防止破坏utils的最高优先级，如果以后确定不会循环引用也可提到外面
     # 目前不发送到微信哦
     from notification_utils import bulk_notification_create
+    receivers = activated_npeople.select_related('person_id')
+    receivers = [receiver.person_id for receiver in receivers]
     success, _ = bulk_notification_create(
-        activated_npeople,
+        receivers,
         YPcollege,
         Notification.Type.NEEDREAD,
         title,
@@ -455,14 +511,16 @@ def set_nperson_quota_to(quota):
     )
     return success
 
-def check_account_setting(request,user_type):
-    if user_type == 'Person':
+
+def check_account_setting(request, user_type):
+    if user_type == UTYPE_PER:
         html_display = dict()
         attr_dict = dict()
 
         html_display['warn_code'] = 0
         html_display['warn_message'] = ""
 
+        attr_dict['nickname'] = request.POST["nickname"]
         attr_dict['biography'] = request.POST["aboutBio"]
         attr_dict['telephone'] = request.POST["tel"]
         attr_dict['email'] = request.POST["email"]
@@ -473,12 +531,13 @@ def check_account_setting(request,user_type):
         attr_dict['ava'] = request.FILES.get("avatar")
         attr_dict['gender'] = request.POST['gender']
         attr_dict['birthday'] = request.POST['birthday']
+        attr_dict['accept_promote'] = request.POST['accept_promote']
+        attr_dict['wechat_receive_level'] = request.POST['wechat_receive_level']
         attr_dict['wallpaper'] = request.FILES.get("wallpaper")
 
         show_dict = dict()
 
-        # show_dict['show_nickname'] = request.POST.get(
-        #     'show_nickname') == 'on'
+        show_dict['show_nickname'] = request.POST.get('show_nickname') == 'on'
         show_dict['show_gender'] = request.POST.get('show_gender') == 'on'
         show_dict['show_birthday'] = request.POST.get('show_birthday') == 'on'
         show_dict['show_tel'] = request.POST.get('show_tel') == 'on'
@@ -495,7 +554,7 @@ def check_account_setting(request,user_type):
         if len(attr_dict['biography']) > 1024:
             html_display['warn_code'] = 1
             html_display['warn_message'] += "输入的简介过长，不能超过1024个字符哦！"
-        
+
         if len(attr_dict['stu_major']) > 25:
             html_display['warn_code'] = 1
             html_display['warn_message'] += "输入的专业过长，不能超过25个字符哦！"
@@ -510,6 +569,7 @@ def check_account_setting(request,user_type):
         html_display['warn_code'] = 0
         html_display['warn_message'] = ""
         attr_dict['introduction'] = request.POST['introduction']
+        attr_dict['tags_modify'] = request.POST['tags_modify']
     return attr_dict, show_dict, html_display
 
 #获取未报销的活动
@@ -520,214 +580,21 @@ def get_unreimb_activity(org):
     """
     reimbursed_act_ids = (
         Reimbursement.objects.all()
-            .exclude(
-            status=Reimbursement.ReimburseStatus.CANCELED  # 未取消报销的
-            # 未被拒绝的
-        )
-            .exclude(status=Reimbursement.ReimburseStatus.REFUSED)
+            .exclude(status=Reimbursement.ReimburseStatus.CANCELED)  # 未取消的
+            .exclude(status=Reimbursement.ReimburseStatus.REFUSED)   # 未被拒绝的
             .values_list("related_activity_id", flat=True)
     )
     activities = (
         Activity.objects.activated()  # 本学期的
-            .filter(organization_id=org)  # 本部门组织的
+            .filter(organization_id=org)  # 本部门小组的
             .filter(status=Activity.Status.END)  # 已结束的
             .exclude(id__in=reimbursed_act_ids))  # 还没有报销的
-    activities.len=len(activities)
+    activities.len = len(activities)
     return activities
-def accept_modifyorg_submit(application): #同意申请，假设都是合法操作
-    # 新建一系列东西
-    username = find_max_oname()
-    user = User.objects.create(username=username)
-    password=random_code_init(user.id)
-    user.set_password(password)
-    user.save()
-    org = Organization.objects.create(organization_id=user, oname=application.oname, \
-        otype=application.otype, YQPoint=0.0, introduction=application.introduction, avatar=application.avatar)
-    charger = get_person_or_org(application.pos)
-    pos = Position.objects.create(person=charger,org=org,pos=0,status=Position.Status.INSERVICE)
-    # 修改申请状态
-    ModifyOrganization.objects.filter(id=application.id).update(status=ModifyOrganization.Status.CONFIRMED)
-
-# 在错误的情况下返回的字典,message为错误信息
-def wrong(message="检测到恶意的申请操作. 如有疑惑，请联系管理员!"):
-    context = dict()
-    context["warn_code"] = 1
-    context["warn_message"] = message
-    return context
-
-
-def succeed(message="检测到恶意的申请操作. 如有疑惑，请联系管理员!"):
-    context = dict()
-    context["warn_code"] = 2
-    context["warn_message"] = message
-    return context
-
-
-# 修改成员申请状态的操作函数, application为修改的对象，可以为None
-# me为操作者
-# info为前端POST字典
-# 返回值为context, warn_code = 1表示失败, 2表示成功; 错误信息在context["warn_message"]
-# 如果成功context会返回update之后的application,
-
-def update_org_application(application, me, request):
-    # 关于这个app和我的关系已经完成检查
-    # 确定info中有post_type且不为None
-
-    # 首先上锁
-    with transaction.atomic():
-        info = request.POST
-        if application is not None:
-            application = ModifyOrganization.objects.select_for_update().get(id=application.id)
-            user_type = 'pos' if me.person_id==application.pos else 'incharge'
-        else:
-            user_type = 'pos'
-        # 首先确定申请状态
-        post_type = info.get("post_type")
-        feasible_post = ["new_submit", "modify_submit",
-                         "cancel_submit", "accept_submit", "refuse_submit"]
-        if post_type not in feasible_post:
-            return wrong("申请状态异常！")
-
-        # 接下来确定访问的老师 和 个人是否在干分内的事
-        if (user_type == "pos" and feasible_post.index(post_type) >= 3) or (
-                user_type == "incharge" and feasible_post.index(post_type) <= 2):
-            return wrong("您无权进行此操作. 如有疑惑, 请联系管理员")
-        
-        if feasible_post.index(post_type) <= 2: # 个人操作，新建、修改、删除
-            
-            # 如果是取消申请
-            if post_type == "cancel_submit":
-                if not application.is_pending():    # 如果不在pending状态, 可能是重复点击
-                    return wrong("该申请已经完成或被取消!")
-                # 接下来可以进行取消操作
-                ModifyOrganization.objects.filter(id=application.id).update(status=ModifyOrganization.Status.CANCELED)
-                context = succeed("成功取消团体" + application.oname + "的申请!")
-                context["application_id"] = application.id
-                return context
-            else:
-                # 无论是新建还是修改, 都需要检查所有参数的合法性
-                context = check_neworg_request(request, application)
-                if context['warn_code'] == 1:
-                    return context
-                
-                # 写入数据库
-                if post_type == 'new_submit':
-                    application = ModifyOrganization.objects.create(
-                        oname=info.get('oname'),
-                        otype=OrganizationType.objects.get(otype_name=info.get('otype')),
-                        pos=me.person_id,
-                        introduction=info.get('introduction'),
-                        application=info.get('application')
-                    )
-                    if context["avatar"] is not None:
-                        application.avatar = context['avatar'];
-                        application.save()
-                    context = succeed("成功地发起"+info.get("oname")+"的申请！")
-                    context['application_id'] = application.id
-                    return context
-                else: # modify_submit
-                    if not application.is_pending():
-                        return wrong("不能修改状态不为“申请中”的申请！")
-                    if application.oname == info.get("oname") and \
-                        application.otype.otype_name == info.get("otype") and \
-                            application.introduction == info.get('introduction') and \
-                                application.avatar == info.get('avatar', None) and \
-                                    application.application == info.get('application'):
-                                    return wrong("没有检测到修改！")
-                    # 至此可以发起修改
-                    ModifyOrganization.objects.filter(id=application.id).update(
-                        oname=info.get('oname'),
-                        otype=OrganizationType.objects.get(otype_name=info.get('otype')),
-                        introduction=info.get('introduction'),
-                        application=info.get('application'))
-                    if context["avatar"] is not None:
-                        application.avatar = context['avatar'];
-                        application.save()
-                    context = succeed("成功修改新建团体" + info.get('oname') + "的申请!")
-                    context["application_id"] = application.id
-                    return context
-        else: # 是老师审核的操作, 通过\拒绝
-            # 已经确定 me == application.otype.inchage 了
-            # 只需要确定状态是否匹配
-            if not application.is_pending():
-                return wrong("无法操作, 该申请已经完成或被取消!")
-            # 否则，应该直接完成状态修改
-            if post_type == "refuse_submit":
-                ModifyOrganization.objects.filter(id=application.id).update(status=ModifyOrganization.Status.REFUSED)
-                context = succeed("成功拒绝来自" + NaturalPerson.objects.get(person_id=application.pos).name + "的申请!")
-                context["application_id"] = application.id
-                return context
-            else:   # 通过申请
-                '''
-                    注意，在这个申请发起、修改的时候，都应该保证这条申请的合法地位
-                    例如不存在冲突申请、职位的申请是合理的等等
-                    否则就不应该通过这条创建
-                '''
-                try:
-                    accept_modifyorg_submit(application)
-                    context = succeed("成功通过来自" +  NaturalPerson.objects.get(person_id=application.pos).name + "的申请!")
-                    context["application_id"] = application.id
-                    return context
-                except:
-                    return wrong("出现系统意料之外的行为，请联系管理员处理!")
-
-
-import threading
-import os
-# 线程锁，用于对文件写入的排他性
-lock = threading.RLock()
-# 文件操作体系
-log_root = "logstore"
-if not os.path.exists(log_root):
-    os.mkdir(log_root)
-log_root_path = os.path.join(os.getcwd(), log_root)
-log_user = "user_detail"
-if not os.path.exists(os.path.join(log_root_path, log_user)):
-    os.mkdir(os.path.join(log_root_path, log_user))
-log_user_path = os.path.join(log_root_path, log_user)
-
-
-# 通用日志写入程序 写入时间(datetime.now()),操作主体(Sid),操作说明(Str),写入函数(Str)
-# 参数说明：第一为Sid也是文件名，第二位消息，第三位来源的函数名（类别）
-# 如果是系统相关的 请写local_dict["system_log"]
-def operation_writer(user, message, source, status_code="OK"):
-    lock.acquire()
-    try:
-        timestamp = str(datetime.now())
-        source = str(source).ljust(30)
-        status = status_code.ljust(10)
-        message = f"{timestamp} {source}{status}: {message}\n"
-
-        with open(os.path.join(log_user_path, f"{str(user)}.log"), mode="a") as journal:
-            journal.write(message)
-
-        if status_code == "Error":
-            pass
-            # TODO 发送微信消息提醒运维成员
-            '''
-            send_wechat_message(
-                stu_list=['', '', ''],
-                starttime=datetime.now(),
-                room=Room.objects.get(Rid="B107A"),
-                message_type="violated",
-                major_student="地下室系统",
-                usage="发生Error错误",
-                announcement="",
-                num=1,
-                reason=message,
-                # credit=appoint.major_student.Scredit,
-            )
-            '''
-    except Exception as e:
-        # 最好是发送邮件通知存在问题
-        # 待补充
-        print(e)
-
-    lock.release()
 
 
 # 导出Excel文件
-def export_activity(activity,inf_type):
+def export_activity(activity, inf_type):
 
     # 设置HTTPResponse的类型
     response = HttpResponse(content_type='application/vnd.ms-excel')
@@ -754,8 +621,8 @@ def export_activity(activity,inf_type):
         w.write(0, 2, u'年级/班级')
         if inf_type == "enroll":
             w.write(0, 3, u'报名状态')
-            w.write(0, 4, u'注：报名状态为“已参与”时表示报名成功并成功签到，“未参与”表示报名成功但未签到，'
-                          u'"已报名"表示报名成功，“申请失败“表示在抽签模式中落选，”申请中“则表示抽签尚未开始。')
+            w.write(0, 4, u'注：报名状态为“已参与”时表示报名成功并成功签到，“未签到”表示报名成功但未签到，'
+                          u'"已报名"表示报名成功，“活动申请失败”表示在抽签模式中落选，“申请中”则表示抽签尚未开始。')
         # 写入数据
         excel_row = 1
         for participant in participants:
@@ -763,7 +630,7 @@ def export_activity(activity,inf_type):
             Sno = participant.person_id.person_id.username
             grade = str(participant.person_id.stu_grade) + '级' + str(participant.person_id.stu_class) + '班'
             if inf_type == "enroll":
-                status=participant.status
+                status = participant.status
                 w.write(excel_row, 3, status)
             # 写入每一行对应的数据
             w.write(excel_row, 0, name)
@@ -777,14 +644,16 @@ def export_activity(activity,inf_type):
         output.seek(0)
         response.write(output.getvalue())
     return response
-# 导出组织成员信息Excel文件
+
+
+# 导出小组成员信息Excel文件
 def export_orgpos_info(org):
     # 设置HTTPResponse的类型
     response = HttpResponse(content_type='application/vnd.ms-excel')
     if org is None:
         return response
-    response['Content-Disposition'] = f'attachment;filename=团体{org.oname}成员信息.xls'
-    participants = Position.objects.filter(org=org).filter(status=Position.Status.INSERVICE)
+    response['Content-Disposition'] = f'attachment;filename=小组{org.oname}成员信息.xls'
+    participants = Position.objects.activated().filter(org=org).filter(status=Position.Status.INSERVICE)
     """导出excel表"""
     if len(participants) > 0:
         # 创建工作簿
@@ -800,7 +669,7 @@ def export_orgpos_info(org):
         for participant in participants:
             name = participant.person.name
             Sno = participant.person.person_id.username
-            pos=org.otype.job_name_list[participant.pos]
+            pos = org.otype.get_name(participant.pos)
             # 写入每一行对应的数据
             w.write(excel_row, 0, name)
             w.write(excel_row, 1, Sno)
@@ -814,4 +683,118 @@ def export_orgpos_info(org):
         response.write(output.getvalue())
     return response
 
-operation_writer(local_dict["system_log"], "系统启动", "util_底部")
+
+def escape_for_templates(text:str):
+    return text.strip().replace("\r", "").replace("\\", "\\\\").replace("\n", "\\n").replace("\"", "\\\"")
+
+
+def record_modification(user, info=""):
+    try:
+        _, usertype, _ = check_user_type(user)
+        obj = get_person_or_org(user, usertype)
+        name = obj.get_display_name()
+        firsttime = not user.modify_records.exists()
+        ModifyRecord.objects.create(user=user, usertype=usertype, name=name, info=info)
+        return firsttime
+    except:
+        return None
+
+
+def get_modify_rank(user):
+    try:
+        _, usertype, _ = check_user_type(user)
+        records = user.modify_records.all()
+        if not records:
+            return -1
+        first = records.order_by('time')[0]
+        rank = ModifyRecord.objects.filter(
+            usertype=usertype,
+            time__lte=first.time,
+            ).values('user').distinct().count()
+        return rank
+    except:
+        return -1
+
+
+def record_modify_with_session(request, info=""):
+    try:
+        _, usertype, _ = check_user_type(request.user)
+        recorded = record_modification(request.user, info)
+        if recorded == True:
+            rank = get_modify_rank(request.user)
+            is_person = usertype == UTYPE_PER
+            info_rank = local_dict.get("max_inform_rank", {}).get(usertype, -1)
+            if rank > -1 and rank <= info_rank:
+                msg = (
+                    f'您是第{rank}名修改账号信息的'+
+                    ('个人' if is_person else '小组')+
+                    '用户！保留此截图可在游园会兑换奖励！'
+                )
+                request.session['alert_message'] = msg
+    except:
+        pass
+
+
+def update_related_account_in_session(request, username, shift=False, oname=""):
+    """
+    外层保证 username 是一个自然人的 username 并且合法
+
+    登录时 shift 为 false，切换时为 True
+    切换到某个组织时 oname 不为空，否则都是空
+    """
+
+    try:
+        np = NaturalPerson.objects.activated().get(person_id__username=username)
+    except:
+        return False
+    orgs = list(Position.objects.activated().filter(
+        is_admin=True, person=np).values_list("org__oname", flat=True))
+
+    if oname:
+        if oname not in orgs:
+            return False
+        orgs.remove(oname)
+        user = Organization.objects.get(oname=oname).organization_id
+    else:
+        user = np.person_id
+
+    if shift:
+        auth.logout(request)
+        auth.login(request, user)
+
+    request.session["Incharge"] = orgs
+    request.session["NP"] = username
+
+    return True
+
+
+@log.except_captured(source='utils[user_login_org]', record_user=True)
+def user_login_org(request, org) -> MESSAGECONTEXT:
+    '''
+    令人疑惑的函数，需要整改
+    尝试从用户登录到org指定的组织，如果不满足权限，则会返回wrong
+    返回wrong或succeed
+    '''
+    user = request.user
+    valid, user_type, html_display = check_user_type(request.user)
+
+    try:
+        me = NaturalPerson.objects.activated().get(person_id=user)
+    except:  # 找不到合法的用户
+        return wrong("您没有权限访问该网址！请用对应小组账号登陆。")
+    #是小组一把手
+    try:
+        position = Position.objects.activated().filter(org=org, person=me)
+        assert len(position) == 1
+        position = position[0]
+        assert position.is_admin == True
+    except:
+        return wrong("没有登录到该小组账户的权限!")
+    # 到这里, 是本人小组并且有权限登录
+    auth.logout(request)
+    auth.login(request, org.organization_id)  # 切换到小组账号
+    update_related_account_in_session(request, user.username, oname=org.oname)
+    return succeed("成功切换到小组账号处理该事务，建议事务处理完成后退出小组账号。")
+
+
+log.operation_writer(SYSTEM_LOG, "系统启动", "util_底部")
