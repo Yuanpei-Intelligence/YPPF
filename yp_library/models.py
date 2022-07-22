@@ -50,13 +50,13 @@ class LendRecord(models.Model):
     return_time = models.DateTimeField("还书时间")
     returned = models.BooleanField("是否已还", default=False)
     
-    class AppealStatus(models.IntegerChoices):
+    class Status(models.IntegerChoices):
         NORMAL = (0, "正常")
         OVERTIME = (1, "超时扣分")
         APPEALING = (2, "申诉中")
         ACCEPTED = (3, "申诉通过")
         REJECTED = (4, "申诉失败")
     
-    appeal_status = models.SmallIntegerField(
-        "申诉状态", choices=AppealStatus.choices, default=AppealStatus.NORMAL
+    status = models.SmallIntegerField(
+        "借阅记录状态", choices=Status.choices, default=Status.NORMAL
     )
