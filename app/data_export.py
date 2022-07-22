@@ -1,13 +1,15 @@
+from typing import Callable
+from datetime import datetime
+import pandas as pd
+
+from django.db.models import Q, Sum, CharField, IntegerField, Count, Aggregate
+
 from app.models import (CourseRecord,
                         Feedback, 
                         NaturalPerson, 
                         Activity, 
                         Position)
 
-import pandas as pd
-from typing import Callable
-from datetime import datetime
-from django.db.models import Q, Sum, CharField, IntegerField, Count, Aggregate
 
 __all__ = [
     'course_data',
