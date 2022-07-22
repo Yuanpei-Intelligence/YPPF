@@ -5,7 +5,7 @@ from datetime import datetime
 from django.core.management.base import BaseCommand
 
 from boottest.hasher import MySHA256Hasher
-from data_analysis.management import dump_map
+from data_analysis.management import dump_map, dump_groups
 
 
 def valid_datetime(s: str) -> datetime:
@@ -54,7 +54,7 @@ class Command(BaseCommand):
     def add_arguments(self, parser):
         parser.add_argument('tasks', type=str, nargs='+',
                             help='Specify dumping task. Use all to execute all.',
-                            choices=['all'] + list(dump_map.keys()))
+                            choices=['ALL', 'EXCEPT'] + list(dump_map.keys()))
         parser.add_argument('-d', '--dir', type=str, help='Dumping directory.',
                             default='test_data')
         parser.add_argument('-f', '--filename', type=str, help='Dumping file name.')
@@ -75,11 +75,28 @@ class Command(BaseCommand):
         hash_func = (MySHA256Hasher(options['salt'] or str(os.urandom(8))).encode
                      if options['mask'] else None)
 
-        tasks: list = options['tasks']
+        tasks: list = []
+        except_flag = False
         # 预处理
-        if 'all' in tasks:
-            tasks.remove('all')
-            tasks = [t for t in dump_map.keys() if not t in tasks]
+        # 可优化，但数据规模导致没有意义
+        for task in options['tasks']:
+            if task == 'ALL':
+                except_flag = False
+                tasks.clear()
+                tasks.extend(dump_map.keys())
+            elif task in dump_groups.keys():
+                # 预定义的标签组
+                except_flag = False
+                task_set = set(task)
+                tasks.extend([t for t in dump_groups[task]
+                              if t not in task_set and t in dump_map.keys()])
+            elif task == 'EXCEPT':
+                except_flag = True
+            elif except_flag:
+                try: tasks.remove(task)
+                except: self.stderr.write(f'{task} 不是一个待导出的标签！')
+            elif task not in tasks:
+                tasks.append(task)
         # 文件路径
         filename = complete_filename(options['filename'])
         filepath = os.path.join(options['dir'], filename)
