@@ -51,10 +51,11 @@ class LendRecord(models.Model):
     returned = models.BooleanField("是否已还", default=False)
     
     class AppealStatus(models.IntegerChoices):
-        NORMAL = (0, "未申诉")
-        APPEALING = (1, "申诉中")
-        ACCEPTED = (2, "申诉通过")
-        REJECTED = (3, "申诉不通过")
+        NORMAL = (0, "正常")
+        OVERTIME = (1, "超时扣分")
+        APPEALING = (2, "申诉中")
+        ACCEPTED = (3, "申诉通过")
+        REJECTED = (4, "申诉失败")
     
     appeal_status = models.SmallIntegerField(
         "申诉状态", choices=AppealStatus.choices, default=AppealStatus.NORMAL
