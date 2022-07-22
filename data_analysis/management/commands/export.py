@@ -61,5 +61,5 @@ class Command(BaseCommand):
             for dump_function, default_filename, accept_params in dump_map[task]:
                 data_frame = dump_function(
                     hash_func=hash_func, **options.fromkeys(accept_params))
-                data_frame.tocsv(os.path.join(
-                    options['directory'], f'{default_filename}.csv'))
+                data_frame.to_csv(os.path.join(
+                    options['directory'], f'{default_filename}.csv'), index=False)
