@@ -13,7 +13,7 @@ __all__ = [
     'course_data',
     'feedback_data',
     'organization_data',
-    'org_position_data'
+    'org_position_data',
     ]
 
 def course_data(year: int = None,
@@ -103,7 +103,7 @@ def feedback_data(
         filter_kws.update(feedback_time__gte=start_time)
     if end_time is not None:
         filter_kws.update(feedback_time__lte=end_time)
-    feedbacks = pd.DataFrame(columns=('年级', '学号', '提交反馈数', '已解决反馈数'))
+    feedbacks = pd.DataFrame(columns=('学号', '年级', '提交反馈数', '已解决反馈数'))
     person_record = all_person.annotate(
         total_num=Count('feedback', filter=Q(**filter_kws)),
         solved_num=Count('feedback',
@@ -111,13 +111,13 @@ def feedback_data(
                              feedback__solve_status=Feedback.SolveStatus.SOLVED,
                              **filter_kws)))
     for i, person in enumerate(person_record):
-        feedbacks.loc[i]=[
-            person.stu_grade,    # 年级
+        feedbacks.loc[i] = [
             hash_func(str(person.peron_id)) if hash_func is not None \
                                             else str(person.person_id),    # 学号
+            person.stu_grade,      # 年级
             person.total_num,      # 总提交数
             person.solved_num      # 已解决提交数
-            ]
+        ]
     return feedbacks
 
 
