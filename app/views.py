@@ -19,7 +19,6 @@ from app.models import (
     YQPointDistribute,
     Reimbursement,
     Wishes,
-    QandA,
     ReimbursementPhoto,
     Course,
     CourseRecord,
@@ -48,13 +47,7 @@ from app.notification_utils import(
     notification_status_change,
     notification2Display,
 )
-from app.QA_utils import (
-    QA2Display,
-    QA_anwser,
-    QA_create,
-    QA_delete,
-    QA_ignore,
-)
+
 import json
 import random
 import requests  # 发送验证码
@@ -271,19 +264,7 @@ def stuinfo(request: HttpRequest, name=None):
         inform_share, alert_message = utils.get_inform_share(me=person, is_myself=is_myself)
 
         # 处理更改数据库中inform_share的post
-        if request.POST.get("question") is not None:
-            anonymous_flag = (request.POST.get('show_name') is not None)
-            question = request.POST.get("question")
-            if len(question) == 0:
-                wrong("请填写问题内容!", html_display)
-            else:
-                try:
-                    QA_create(sender=request.user,receiver=person.person_id,Q_text=str(question),anonymous_flag=anonymous_flag)
-                    succeed("提问发送成功!", html_display)
-                except:
-                    wrong("提问发送失败!请联系管理员!", html_display)
-            return redirect(message_url(html_display, person.get_absolute_url()))
-        elif request.method == "POST" and request.POST:
+        if request.method == "POST" and request.POST:
             option = request.POST.get("option", "")
             assert option == "cancelInformShare" and html_display["is_myself"]
             person.inform_share = False
@@ -671,24 +652,6 @@ def orginfo(request: HttpRequest, name=None):
             org.inform_share = False
             org.save()
             return redirect("/welcome/")
-        elif request.POST.get("question") is not None:
-            anonymous_flag = (request.POST.get('show_name') is not None)
-            question = request.POST.get("question")
-            if len(question) == 0:
-                html_display["warn_code"] = 1
-                html_display["warn_message"] = "请填写问题内容!"
-            elif html_display['is_myself']:
-                html_display["warn_code"] = 1
-                html_display["warn_message"] = "不能向自己提问!"
-            else:
-                try:
-                    QA_create(sender=request.user,receiver=org.organization_id,Q_text=str(question),anonymous_flag=anonymous_flag)
-                    html_display["warn_code"] = 2
-                    html_display["warn_message"] = "提问发送成功!"
-                except:
-                    html_display["warn_code"] = 1
-                    html_display["warn_message"] = "提问发送失败!请联系管理员!"
-            return redirect(message_url(html_display, f"/orginfo/?name={organization_name}"))
 
 
 
@@ -1958,62 +1921,6 @@ def notifications(request: HttpRequest):
     # 新版侧边栏, 顶栏等的呈现，采用 bar_display, 必须放在render前最后一步
     bar_display = utils.get_sidebar_and_navbar(request.user, navbar_name="通知信箱")
     return render(request, "notifications.html", locals())
-
-
-
-
-@login_required(redirect_field_name='origin')
-@utils.check_user_access(redirect_url="/logout/")
-@log.except_captured(source='views[QAcenter]', record_user=True)
-def QAcenter(request: HttpRequest):
-    """
-    Haowei:
-    QA的聚合界面
-    """
-    valid, user_type, html_display = utils.check_user_type(request.user)
-
-    me = get_person_or_org(request.user, user_type)
-
-    if request.method == "POST":
-        if request.POST.get("anwser") is not None:
-            anwser = request.POST.get("anwser")
-            if len(anwser) == 0:
-                html_display["warn_code"] = 1
-                html_display["warn_message"] = "请填写回答再提交！"
-            else:
-                QA_anwser(request.POST.get("id"), anwser)
-                html_display["warn_code"] = 2
-                html_display["warn_message"] = "成功提交该问题的回答！"
-        else:
-            post_args = json.loads(request.body.decode("utf-8"))
-            if 'cancel' in post_args['function']:
-                try:
-                    QA_delete(int(post_args['id']))
-                    html_display['warn_code'] = 2
-                    html_display['warn_message'] = "成功删除一条提问！"
-                    return JsonResponse({"success":True})
-                except:
-                    html_display["warn_code"] = 1
-                    html_display["warn_message"] = "在设置提问状态为「忽略」的过程中出现了未知错误，请联系管理员！"
-                    return JsonResponse({"success":False})
-            else:
-                try:
-                    QA_ignore(int(post_args['id']), \
-                        sender_flag=(post_args['function'] == 'sender')
-                        )
-                    html_display['warn_code'] = 2
-                    html_display['warn_message'] = "成功忽略一条提问！"
-                    return JsonResponse({"success":True})
-                except:
-                    html_display["warn_code"] = 1
-                    html_display["warn_message"] = "在设置提问状态为「忽略」的过程中出现了未知错误，请联系管理员！"
-                    return JsonResponse({"success":False})
-
-
-    all_instances = QA2Display(request.user)
-
-    bar_display = utils.get_sidebar_and_navbar(request.user, navbar_name="问答中心")
-    return render(request, "QandA_center.html", locals())
 
 
 @login_required(redirect_field_name='origin')
