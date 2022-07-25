@@ -265,19 +265,7 @@ def stuinfo(request: HttpRequest, name=None):
         inform_share, alert_message = utils.get_inform_share(me=person, is_myself=is_myself)
 
         # 处理更改数据库中inform_share的post
-        if request.POST.get("question") is not None:
-            anonymous_flag = (request.POST.get('show_name') is not None)
-            question = request.POST.get("question")
-            if len(question) == 0:
-                wrong("请填写问题内容!", html_display)
-            else:
-                try:
-                    QA_create(sender=request.user,receiver=person.person_id,Q_text=str(question),anonymous_flag=anonymous_flag)
-                    succeed("提问发送成功!", html_display)
-                except:
-                    wrong("提问发送失败!请联系管理员!", html_display)
-            return redirect(message_url(html_display, person.get_absolute_url()))
-        elif request.method == "POST" and request.POST:
+        if request.method == "POST" and request.POST:
             option = request.POST.get("option", "")
             assert option == "cancelInformShare" and html_display["is_myself"]
             person.inform_share = False
@@ -665,24 +653,6 @@ def orginfo(request: HttpRequest, name=None):
             org.inform_share = False
             org.save()
             return redirect("/welcome/")
-        elif request.POST.get("question") is not None:
-            anonymous_flag = (request.POST.get('show_name') is not None)
-            question = request.POST.get("question")
-            if len(question) == 0:
-                html_display["warn_code"] = 1
-                html_display["warn_message"] = "请填写问题内容!"
-            elif html_display['is_myself']:
-                html_display["warn_code"] = 1
-                html_display["warn_message"] = "不能向自己提问!"
-            else:
-                try:
-                    QA_create(sender=request.user,receiver=org.organization_id,Q_text=str(question),anonymous_flag=anonymous_flag)
-                    html_display["warn_code"] = 2
-                    html_display["warn_message"] = "提问发送成功!"
-                except:
-                    html_display["warn_code"] = 1
-                    html_display["warn_message"] = "提问发送失败!请联系管理员!"
-            return redirect(message_url(html_display, f"/orginfo/?name={organization_name}"))
 
 
 
