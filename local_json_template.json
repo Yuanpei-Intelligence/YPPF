@@ -6,8 +6,8 @@
     },
     "database": {
         "NAME": "$DATABASE$",
-        "USER": "root",
-        "PASSWORD": "2100017808",
+        "USER": "$USER$",
+        "PASSWORD": "$PASSWORD$",
         "HOST": "$HOST$"
     },
     "url": {
