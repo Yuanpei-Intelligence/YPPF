@@ -48,13 +48,7 @@ from app.notification_utils import(
     notification_status_change,
     notification2Display,
 )
-from app.QA_utils import (
-    QA2Display,
-    QA_anwser,
-    QA_create,
-    QA_delete,
-    QA_ignore,
-)
+
 import json
 import random
 import requests  # 发送验证码
@@ -1958,62 +1952,6 @@ def notifications(request: HttpRequest):
     # 新版侧边栏, 顶栏等的呈现，采用 bar_display, 必须放在render前最后一步
     bar_display = utils.get_sidebar_and_navbar(request.user, navbar_name="通知信箱")
     return render(request, "notifications.html", locals())
-
-
-
-
-@login_required(redirect_field_name='origin')
-@utils.check_user_access(redirect_url="/logout/")
-@log.except_captured(source='views[QAcenter]', record_user=True)
-def QAcenter(request: HttpRequest):
-    """
-    Haowei:
-    QA的聚合界面
-    """
-    valid, user_type, html_display = utils.check_user_type(request.user)
-
-    me = get_person_or_org(request.user, user_type)
-
-    if request.method == "POST":
-        if request.POST.get("anwser") is not None:
-            anwser = request.POST.get("anwser")
-            if len(anwser) == 0:
-                html_display["warn_code"] = 1
-                html_display["warn_message"] = "请填写回答再提交！"
-            else:
-                QA_anwser(request.POST.get("id"), anwser)
-                html_display["warn_code"] = 2
-                html_display["warn_message"] = "成功提交该问题的回答！"
-        else:
-            post_args = json.loads(request.body.decode("utf-8"))
-            if 'cancel' in post_args['function']:
-                try:
-                    QA_delete(int(post_args['id']))
-                    html_display['warn_code'] = 2
-                    html_display['warn_message'] = "成功删除一条提问！"
-                    return JsonResponse({"success":True})
-                except:
-                    html_display["warn_code"] = 1
-                    html_display["warn_message"] = "在设置提问状态为「忽略」的过程中出现了未知错误，请联系管理员！"
-                    return JsonResponse({"success":False})
-            else:
-                try:
-                    QA_ignore(int(post_args['id']), \
-                        sender_flag=(post_args['function'] == 'sender')
-                        )
-                    html_display['warn_code'] = 2
-                    html_display['warn_message'] = "成功忽略一条提问！"
-                    return JsonResponse({"success":True})
-                except:
-                    html_display["warn_code"] = 1
-                    html_display["warn_message"] = "在设置提问状态为「忽略」的过程中出现了未知错误，请联系管理员！"
-                    return JsonResponse({"success":False})
-
-
-    all_instances = QA2Display(request.user)
-
-    bar_display = utils.get_sidebar_and_navbar(request.user, navbar_name="问答中心")
-    return render(request, "QandA_center.html", locals())
 
 
 @login_required(redirect_field_name='origin')
