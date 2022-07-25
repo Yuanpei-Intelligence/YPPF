@@ -1,11 +1,38 @@
 {% extends "base.html" %}
 
 {% block add_css_file %}
+<style type="text/css">
+    .text-truncate-container {
+        width: 100%;
+    }
+
+    .text-truncate-container p {
+        -webkit-line-clamp: 3;
+        display: -webkit-box;
+        -webkit-box-orient: vertical;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    .text-end {
+        text-align: right !important;
+    }
+</style>
+<style>
+    select[readonly] {
+        background: #eee;
+        /*Simular campo inativo - Sugestão @GabrielRodrigues*/
+        pointer-events: none;
+        touch-action: none;
+    }
+</style>
 
 {% endblock %}
 
 
 {% block mainpage %}
+<head>
+    <link rel="stylesheet" href="https://cdn.staticfile.org/font-awesome/4.7.0/css/font-awesome.css">
 
 
 <!--  BEGIN CONTENT AREA  -->
@@ -25,7 +52,30 @@
                 <div class="col-lg-12 col-12 layout-top-spacing">
                     <div class="bio layout-spacing ">
                         <div class="widget-content widget-content-area">
+                            <div class="d-flex justify-content-between">
                             <h3>通知信箱</h3>
+
+
+                            <div class="btn-group">
+                                <div style="margin-left: 8px; ">
+                                    <a data-toggle="dropdown">
+                                        <h5><i class="fa fa-ellipsis-h"></i></h5>
+                                    </a>
+                                    <!-- <form class="form-inline "  method="GET" 
+                                 action="/notifications/" > -->
+                                    <div class="dropdown-menu" style="max-width: 200%; max-height: 300%;">
+                                        <!-- <button class="dropdown-item"  
+                                    onclick="if(confirm('你确定要将全部消息标为已读吗?'))read_all.call(this);this.blur();" id="readall"
+                                    >全部已读</button> -->
+                                        <button class="dropdown-item"
+                                         onclick="if(confirm('你确定要将全部消息标为已读吗?'))location.href = '/notifications/?read_name=readall';" >全部已读</button>
+                                        <button class="dropdown-item"
+                                         onclick="if(confirm('你确定删除所有消息吗?'))location.href = '/notifications/?read_name=deleteall';" >全部删除</button>
+                                    </div>
+                                    <!-- </form> -->
+                                    </div>
+                                </div>
+                            </div>
                             
                             <ul id="myTab" class="nav nav-tabs nav-tabs-solid nav-justified">
                                 <li class="nav-item">
