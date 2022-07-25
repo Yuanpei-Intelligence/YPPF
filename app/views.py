@@ -19,7 +19,6 @@ from app.models import (
     YQPointDistribute,
     Reimbursement,
     Wishes,
-    QandA,
     ReimbursementPhoto,
     Course,
     CourseRecord,
