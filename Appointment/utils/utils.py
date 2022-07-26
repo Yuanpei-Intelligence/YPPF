@@ -215,7 +215,7 @@ def send_wechat_message(
                         f'{start_time} {room} {message_type} ' + "出错，原因：unknown message_type", "utils.send_wechat_message",
                          "Problem")
         return
-    
+
     try:
         if is_admin:
             title = f'【管理员操作】\n{title}<title>'
@@ -224,16 +224,16 @@ def send_wechat_message(
 
         if show_time_and_place:    # 目前所有信息都显示时间地点
             appoint_info += [f'时间：{start_time}', f'地点：{room}']
-        
+
         if show_main_student:
             appoint_info += [f'发起者：{major_student}']
 
         if show_appoint_info:
             appoint_info += ['用途：' + usage, f'人数：{num}']
-        
+
         if show_announcement and announcement:
             appoint_info += ['预约通知：' + announcement]
-    
+
         message = title + '\n'.join(appoint_info + extra_info)
 
     except Exception as e:
@@ -283,7 +283,7 @@ def send_wechat_message(
         code = response['data'].get('errCode')
         has_code = code is not None
         retry_enabled = (
-                (200 <= code and code < 400 or str(code)[0] == '2') if 
+                (200 <= code and code < 400 or str(code)[0] == '2') if
                 has_code else
                 ('部分' in response['data']['errMsg'])  # 部分或全部发送失败/部分发送失败
             )
@@ -348,7 +348,7 @@ def set_appoint_reason(input_appoint: Appoint, reason: Appoint.Reason):
                 appoint.Astatus = Appoint.Status.PROCESSING # 避免重复调用本函数
             appoint.Areason = reason
             appoint.save()
-            
+
         # TODO: major_sid
         operation_writer(str(appoint.major_student.Sid_id),
                         f"预约{appoint.Aid}出现违约:{appoint.get_Areason_display()}",
@@ -424,6 +424,20 @@ log_user = "user_detail"
 if not os.path.exists(os.path.join(log_root_path, log_user)):
     os.mkdir(os.path.join(log_root_path, log_user))
 log_user_path = os.path.join(log_root_path, log_user)
+
+
+def write_before_delete(appoint_list: QuerySet[Appoint]):
+    """每周定时删除预约的程序，用于减少系统内的预约数量"""
+    date = str(datetime.now().date())
+
+    write_path = os.path.join(log_root_path, date + ".log")
+    with open(write_path, mode="a") as log:
+        period_start = (datetime.now() - timedelta(days=7)).date()
+        log.write(f"{period_start}~{date}\n")
+        for appoint in appoint_list:
+            if appoint.Astatus != Appoint.Status.CANCELED:
+                log.write(str(appoint.toJson()) + "\n")
+        log.write("end of file\n")
 
 
 def operation_writer(user: Union[str, User, Participant], message: str, source: str,

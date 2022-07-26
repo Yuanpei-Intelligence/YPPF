@@ -1,6 +1,4 @@
 # 数据库模型与操作
-import os
-import pypinyin  # 支持拼音搜索系统
 from Appointment.models import Participant, Room, Appoint, College_Announcement
 from django.db.models import Q  # modified by wxy
 from django.db import transaction  # 原子化更改数据库
@@ -31,7 +29,12 @@ from boottest.global_messages import wrong, succeed, message_url
 import boottest.global_messages as my_messages
 
 # utils对接工具
-from Appointment.utils.utils import send_wechat_message, appoint_violate, doortoroom, iptoroom, operation_writer, write_before_delete, cardcheckinfo_writer, check_temp_appoint, set_appoint_reason
+from Appointment.utils.utils import (
+    doortoroom, iptoroom,
+    send_wechat_message,
+    operation_writer, write_before_delete, cardcheckinfo_writer,
+    check_temp_appoint, set_appoint_reason, appoint_violate,
+)
 import Appointment.utils.web_func as web_func
 from Appointment.utils.identity import (
     get_name, get_avatar, get_member_ids, get_members,
@@ -39,7 +42,6 @@ from Appointment.utils.identity import (
 )
 
 # 定时任务注册
-from django_apscheduler.jobstores import DjangoJobStore, register_events, register_job
 import Appointment.utils.scheduler_func as scheduler_func
 
 '''
