@@ -31,31 +31,28 @@ def get_readers_by_user(user: User) -> QuerySet:
     return my_readers
 
 
-def search_books(query_list: list) -> QuerySet:
+def search_books(query_dict: dict) -> QuerySet:
     """
     根据给定的属性查询书
 
-    :param query_list: 包含6个字符串的数组，分别对应id/identity_code/title/author/publisher/returned,
+    :param query_dict: key为id/identity_code/title/author/publisher/returned, value为相应的query
         id和returned是精确查询，剩下四个是string按contains查询
-    :type query_list: list
+    :type query_dict: dict
     :return: 查询结果，每个记录是Book表的一行
     :rtype: QuerySet
     """
     query = Q()
-    assert len(query_list) == 6
-    for i, q in enumerate(query_list):
-        if q != "":
-            if i == 0:
-                query &= Q(id=int(q))
-            elif i == 1:
-                query &= Q(identity_code__contains=q)  # 包含即可
-            elif i == 2:
-                query &= Q(title__contains=q)  # 包含即可
-            elif i == 3:
-                query &= Q(author__contains=q)  # 包含即可
-            elif i == 4:
-                query &= Q(publisher__contains=q)  # 包含即可
-            elif i == 5:
-                query &= Q(returned=q)
+    if query_dict.get("id", "") != "":
+        query &= Q(id=int(query_dict["id"]))
+    if query_dict.get("identity_code", "") != "":
+        query &= Q(identity_code__contains=query_dict["identity_code"])
+    if query_dict.get("title", "") != "":
+        query &= Q(title__contains=query_dict["title"])
+    if query_dict.get("author", "") != "":
+        query &= Q(author__contains=query_dict["author"])
+    if query_dict.get("publisher", "") != "":
+        query &= Q(publisher__contains=query_dict["publisher"])
+    if query_dict.get("returned", "") != "":
+        query &= Q(returned=query_dict["returned"])
     search_results = Book.objects.filter(query).values()
     return search_results

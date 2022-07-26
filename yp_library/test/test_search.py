@@ -26,11 +26,22 @@ class BookSearchTestCase(TestCase):
         query6 = ['', '', '', '', '', True]
         query7 = ['', '', '数', '', '', True]
         query8 = ['', '', '', '', '', '']
-        self.assertEqual(len(search_books(query1)), 1)
-        self.assertEqual(len(search_books(query2)), 3)
-        self.assertEqual(len(search_books(query3)), 2)
-        self.assertEqual(len(search_books(query4)), 0)
-        self.assertEqual(len(search_books(query5)), 0)
-        self.assertEqual(len(search_books(query6)), 2)
-        self.assertEqual(len(search_books(query7)), 1)
-        self.assertEqual(len(search_books(query8)), 5)
+        keys = ["id", "identity_code", "title",
+                "author", "publisher", "returned"]
+        self.assertEqual(
+            len(search_books({k: v for (k, v) in zip(keys, query1)})), 1)
+        self.assertEqual(
+            len(search_books({k: v for (k, v) in zip(keys, query2)})), 3)
+        self.assertEqual(
+            len(search_books({k: v for (k, v) in zip(keys, query3)})), 2)
+        self.assertEqual(
+            len(search_books({k: v for (k, v) in zip(keys, query4)})), 0)
+        self.assertEqual(
+            len(search_books({k: v for (k, v) in zip(keys, query5)})), 0)
+        self.assertEqual(
+            len(search_books({k: v for (k, v) in zip(keys, query6)})), 2)
+        self.assertEqual(
+            len(search_books({k: v for (k, v) in zip(keys, query7)})), 1)
+        self.assertEqual(
+            len(search_books({k: v for (k, v) in zip(keys, query8)})), 5)
+        self.assertEqual(len(search_books({})), 5)

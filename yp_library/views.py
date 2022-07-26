@@ -43,14 +43,14 @@ def search(request: HttpRequest) -> HttpResponse:
         # （暂不提供通过id查询，因为id应该没有实际含义，用到的可能性不大）
         # search_books函数要求输入为六个元素的list，分别表示"id", "identity_code", "title", "author", "publisher"和"returned"的query
         # 这里没有id的query，故在首位插入空串
-        query_list = [request.POST[k]
+        query_list = [[k, request.POST[k]]
                       for k in ["identity_code", "title", "author", "publisher"]]
-        query_list.insert(0, "")
+        query_list.insert(0, ["id", ""])
         if len(request.POST.getlist("returned")) == 1:  # 如果对returned有要求
-            query_list.append(True)
+            query_list.append(["returned", True])
         else:  # 对returned没有要求
-            query_list.append("")
-        frontend_dict["search_results_list"] = search_books(query_list)
+            query_list.append(["returned", ""])
+        frontend_dict["search_results_list"] = search_books(dict(query_list))
 
     return render(request, "yp_library/search.html", frontend_dict)
 
