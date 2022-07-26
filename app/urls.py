@@ -54,7 +54,6 @@ urlpatterns = [
     path("search/", views.search, name="search"),
     path("subscribeOrganization/", views.subscribeOrganization, name="subscribeOrganization"),
     path("saveSubscribeStatus", views.saveSubscribeStatus, name="saveSubscribeStatus"),
-    path("QAcenter/", views.QAcenter, name="QAcenter"),
 ] + [
     # 元气值和后台操作
     path("myYQPoint/", YQPoint_views.myYQPoint, name="myYQPoint"),
