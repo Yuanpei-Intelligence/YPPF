@@ -175,10 +175,10 @@ def finishAppoint(Aid):  # 结束预约时的定时程序
             # appoint.save()
 
 
-def get_student_chosen_list(request, get_all=False):
+def get_student_chosen_list(request, queryset, get_all=False):
     '''用于前端显示支持拼音搜索的人员列表, 形如[{id, text, pinyin}]'''
     js_stu_list = []
-    Stu_all = Participant.objects.all()
+    Stu_all = queryset
     if not get_all:
         Stu_all = Stu_all.exclude(hidden=True)
     students = Stu_all.exclude(Sid_id=request.user.username)

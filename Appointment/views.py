@@ -2,9 +2,9 @@
 import os
 import pypinyin  # 支持拼音搜索系统
 from Appointment.models import (
-    Participant, 
-    Room, 
-    Appoint, 
+    Participant,
+    Room,
+    Appoint,
     College_Announcement,
     LongTermAppoint,
 )
@@ -38,8 +38,8 @@ import boottest.global_messages as my_messages
 
 # utils对接工具
 from Appointment.utils.utils import (
-    send_wechat_message, appoint_violate, doortoroom, iptoroom, 
-    operation_writer, write_before_delete, cardcheckinfo_writer, 
+    send_wechat_message, appoint_violate, doortoroom, iptoroom,
+    operation_writer, write_before_delete, cardcheckinfo_writer,
     check_temp_appoint, set_appoint_reason, get_conflict_appoints,
 )
 import Appointment.utils.web_func as web_func
@@ -357,9 +357,8 @@ def display_getappoint(request):    # 用于为班牌机提供展示预约的信
             status=400)
 
 
-# modified by wxy
 @identity_check(redirect_field_name='origin')
-def admin_index(request):   # 我的账户也主函数
+def admin_index(request):  # 我的账户也主函数
 
     render_context = {}
     render_context.update(
@@ -367,7 +366,8 @@ def admin_index(request):   # 我的账户也主函数
         show_admin=(request.user.is_superuser or request.user.is_staff),
     )
 
-    my_messages.transfer_message_context(request.GET, render_context,
+    my_messages.transfer_message_context(request.GET,
+                                         render_context,
                                          normalize=True)
 
     # 学生基本信息
@@ -377,14 +377,13 @@ def admin_index(request):   # 我的账户也主函数
     if participant.agree_time is not None:
         my_info['agree_time'] = str(participant.agree_time)
 
-    # is_organization = is_org(request.user)
-    is_organization = True
+    is_organization = is_org(request.user)
 
     # 头像信息
     img_path = get_avatar(request.user)
-    render_context.update(my_info=my_info, 
-                          img_path=img_path, 
-                          is_organization=is_organization)
+    render_context.update(my_info=my_info,
+                          img_path=img_path,
+                          is_org=is_organization)
 
     # 获取过去和未来的预约信息
     appoint_list_future = web_func.get_appoints(Pid, 'future').get('data')
@@ -784,7 +783,7 @@ def arrange_time(request: HttpRequest):
     """
     选择预约时间
     """
-    
+
     # 只接受GET方法，不接受POST方法
     # 之后应该使用更加清晰的报错消息，暂时只做简单处理
     if request.method == 'POST':
@@ -792,13 +791,13 @@ def arrange_time(request: HttpRequest):
 
     # 判断当前用户是否为组织。只有组织账户可以进行长期预约。
     is_organization = is_org(request.user)
-    
+
     # 获取房间编号
     Rid = request.GET.get('Rid')
     try:
-        room_object:Room = Room.objects.get(Rid=Rid)
+        room_object: Room = Room.objects.get(Rid=Rid)
     except:
-        return redirect(reverse('Appointment:index')) # 房间号不存在，这是意料之外的错误。
+        return redirect(reverse('Appointment:index'))  # 房间号不存在，这是意料之外的错误。
 
     if room_object.Rstatus == Room.Status.FORBIDDEN:
         return render(request, 'Appointment/booking.html', locals())
@@ -818,8 +817,9 @@ def arrange_time(request: HttpRequest):
     dayrange_list = web_func.get_dayrange(start_week=start_week)
 
     # 获取预约时间的最大时间块id
-    max_stamp_id = web_func.get_time_id(
-        room_object, room_object.Rfinish, mode="leftopen")
+    max_stamp_id = web_func.get_time_id(room_object,
+                                        room_object.Rfinish,
+                                        mode="leftopen")
     for day in dayrange_list:
         day['timesection'] = []
         temp_hour, temp_minute = room_object.Rstart.hour, \
@@ -830,39 +830,40 @@ def arrange_time(request: HttpRequest):
             # 获取时间的可读表达
             timesection['starttime'] = str(
                 temp_hour + (i + temp_minute) // 2).zfill(2) + ":" + str(
-                (i + temp_minute) % 2 * 30).zfill(2)
+                    (i + temp_minute) % 2 * 30).zfill(2)
             timesection['status'] = 0
             timesection['id'] = i
             day['timesection'].append(timesection)
-    
+
     # 筛选已经存在的预约
     appoints = Appoint.objects.not_canceled().filter(
         Room_id=Rid,
         Afinish__gte=datetime(year=dayrange_list[0]['year'],
-                                month=dayrange_list[0]['month'],
-                                day=dayrange_list[0]['day'],
-                                hour=0,
-                                minute=0,
-                                second=0),
+                              month=dayrange_list[0]['month'],
+                              day=dayrange_list[0]['day'],
+                              hour=0,
+                              minute=0,
+                              second=0),
         Astart__lte=datetime(year=dayrange_list[-1]['year'],
-                                month=dayrange_list[-1]['month'],
-                                day=dayrange_list[-1]['day'],
-                                hour=23,
-                                minute=59,
-                                second=59))
+                             month=dayrange_list[-1]['month'],
+                             day=dayrange_list[-1]['day'],
+                             hour=23,
+                             minute=59,
+                             second=59))
 
     # 给出已有预约的信息
     for appoint_record in appoints:
-        change_id_list = web_func.timerange2idlist(Rid, 
-                                                   appoint_record.Astart,
-                                                   appoint_record.Afinish, 
+        change_id_list = web_func.timerange2idlist(Rid, appoint_record.Astart,
+                                                   appoint_record.Afinish,
                                                    max_stamp_id)
-        appoint_usage = html.escape(appoint_record.Ausage).replace('\n', '<br/>')
+        appoint_usage = html.escape(appoint_record.Ausage).replace(
+            '\n', '<br/>')
         appointer_name = html.escape(appoint_record.major_student.name)
 
         start_day = dayrange_list[0]
-        date_id =  (appoint_record.Astart.date() - date(
-                    start_day['year'], start_day['month'], start_day['day'])).days
+        date_id = (
+            appoint_record.Astart.date() -
+            date(start_day['year'], start_day['month'], start_day['day'])).days
         day = dayrange_list[date_id]
 
         for i in change_id_list:
@@ -874,8 +875,8 @@ def arrange_time(request: HttpRequest):
 
     # 删去今天已经过去的时间
     if start_week == 0:
-        curr_stamp_id = web_func.get_time_id(
-            room_object, datetime.now().time())
+        curr_stamp_id = web_func.get_time_id(room_object,
+                                             datetime.now().time())
         for i in range(min(max_stamp_id, curr_stamp_id) + 1):
             dayrange_list[0]['timesection'][i]['status'] = 1
 
@@ -993,7 +994,7 @@ def arrange_talk_room(request):
 
 
 @identity_check(redirect_field_name='origin')
-def check_out(request: HttpRequest):  
+def check_out(request: HttpRequest):
     """
     提交预约表单
     """
@@ -1015,10 +1016,9 @@ def check_out(request: HttpRequest):
         times = request.POST.get('times', 0)
         # 间隔为1代表每周，为2代表隔周
         interval = request.POST.get('interval', 0)
-    
+
     is_longterm = True if is_longterm == 'on' else False
-    # is_organization = is_org(request.user)
-    is_organization = True
+    is_organization = is_org(request.user)
 
     try:
         start_week = int(start_week)
@@ -1061,19 +1061,20 @@ def check_out(request: HttpRequest):
             # 最小人数下限控制
             appoint_params['Rmin'] = room_object.Rmin
             if datetime.now().strftime("%a") == appoint_params['weekday']:
-                appoint_params['Rmin'] = min(
-                    GLOBAL_INFO.today_min, room_object.Rmin)
+                appoint_params['Rmin'] = min(GLOBAL_INFO.today_min,
+                                             room_object.Rmin)
             break
     appoint_params['Sid'] = request.user.username
     appoint_params['Sname'] = get_participant(appoint_params['Sid']).name
 
     # 准备上下文，此时预约的时间地点、发起人已经固定
     render_context = {}
-    render_context.update(room_object=room_object, appoint_params=appoint_params)
-    render_context.update(is_organization=is_organization)
+    render_context.update(room_object=room_object,
+                          appoint_params=appoint_params)
+    render_context.update(is_org=is_organization)
 
     # 提交预约信息
-    if request.method == 'POST':  
+    if request.method == 'POST':
         contents = dict(request.POST)
         for key in contents.keys():
             if key != "students":
@@ -1114,13 +1115,13 @@ def check_out(request: HttpRequest):
         if my_messages.get_warning(render_context)[0] is None:
             # 参数检查全部通过，下面开始创建预约
             contents['new_require'] = 0 if is_longterm else 1
-            
+
             # * 长期预约也会在此处添加一条预约信息，如果审核不通过，需要及时删除此条预约
-            response = scheduler_func.addAppoint(contents) 
+            response = scheduler_func.addAppoint(contents)
             if response.status_code == 200 and not is_longterm:
                 # 成功预约且非长期
-                return redirect(message_url(
-                                succeed(f"预约{room_object.Rtitle}成功!"),
+                return redirect(
+                    message_url(succeed(f"预约{room_object.Rtitle}成功!"),
                                 reverse("Appointment:admin_index")))
             elif response.status_code != 200:
                 add_dict = json.loads(response.content)['statusInfo']
@@ -1130,10 +1131,16 @@ def check_out(request: HttpRequest):
                 Aid = json.loads(response.content)['data']['Aid']
                 appoint = Appoint.objects.get(Aid=Aid)
                 with transaction.atomic():
-                    conflict_appoints = get_conflict_appoints(appoint, times, interval, lock=True)
+                    conflict_appoints = get_conflict_appoints(appoint,
+                                                              times,
+                                                              interval,
+                                                              bias_week=interval,
+                                                              lock=True)
                     if conflict_appoints:
                         appoint.delete()
-                        wrong(f"当前长期预约存在冲突, {conflict_appoints[0].Astart}-{conflict_appoints[0].Afinish}", render_context)
+                        wrong(
+                            f"当前长期预约存在冲突, {conflict_appoints[0].Astart}-{conflict_appoints[0].Afinish}",
+                            render_context)
                     else:
                         LongTermAppoint.objects.create(
                             appoint=appoint,
@@ -1141,23 +1148,21 @@ def check_out(request: HttpRequest):
                             times=times,
                             interval=interval,
                         )
-                        return redirect(message_url(
-                                        succeed(f"申请长期预约成功，请等待教师审核。"),
-                                        reverse("Appointment:admin_index"))) 
+                        return redirect(
+                            message_url(succeed(f"申请长期预约成功，请等待教师审核。"),
+                                        reverse("Appointment:admin_index")))
 
-    js_stu_list = web_func.get_student_chosen_list(request)
-    member_id_set = set(get_member_ids(request.user))
-    for js_stu in js_stu_list:
-        if js_stu['id'] in member_id_set:
-            js_stu['text'] += '_成员'
-    render_context.update(js_stu_list=js_stu_list)
-
-    # TODO：小组成员一键导入
+    # 提供搜索功能的数据
+    js_stu_list = web_func.get_student_chosen_list(request, Participant.objects.all())
+    js_stu_group_list = web_func.get_student_chosen_list(request, get_members(request.user))
+    render_context.update(js_stu_list=js_stu_list,
+                          js_stu_group_list=js_stu_group_list)
 
     if request.method == 'POST':
         # 预约失败。补充一些已有信息，以避免重复填写
         selected_stu_list = [
-            w for w in js_stu_list if w['id'] in contents['students']]
+            w for w in js_stu_list if w['id'] in contents['students']
+        ]
         no_clause = True
         render_context.update(selected_stu_list=selected_stu_list,
                               no_clause=no_clause)
