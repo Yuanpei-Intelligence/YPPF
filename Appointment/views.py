@@ -664,15 +664,7 @@ def index(request):  # 主页
         return f"{rem // 60}min" if hour == 0 else f"{hour}h{rem // 60}min"
 
     #--------- 1,2 地下室状态部分 ---------#
-
-    double_list = ['航模', '绘画', '书法', '活动']
-    function_room_title_query = ~Q(Rtitle__icontains="研讨")
-    function_room_title_query |= Q(Rtitle__icontains="/")
-    for room_title in double_list:
-        function_room_title_query |= Q(Rtitle__icontains=room_title)
-    function_room_list = room_list.exclude(Rid__icontains="R").filter(
-        function_room_title_query,
-        Rstatus=Room.Status.PERMITTED).order_by('Rid')
+    function_room_list = Room.objects.function_rooms()
 
     #--------- 地下室状态：left tab ---------#
     suspended_room_list = room_list.filter(
@@ -681,9 +673,7 @@ def index(request):  # 主页
                        for room in suspended_room_list]                             # 开放房间人数统计
 
     #--------- 地下室状态：right tab ---------#
-    talk_room_list = room_list.filter(                                              # 研讨室（展示临时预约）
-        Rtitle__icontains="研讨",
-        Rstatus=Room.Status.PERMITTED).order_by('Rid')
+    talk_room_list = Room.objects.talk_rooms()
     room_info = [(room, {'Room': room.Rid} in occupied_rooms, format_time(          # 研讨室占用情况
         room_appointments[room.Rid])) for room in talk_room_list]
 

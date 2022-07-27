@@ -4,6 +4,7 @@ from django.contrib.auth.models import User
 from django.db.models.signals import pre_delete
 from django.db.models import QuerySet
 from django.dispatch import receiver
+from django.db.models import Q
 
 from datetime import datetime, time
 
@@ -54,6 +55,21 @@ class RoomManager(models.Manager):
     def permitted(self):
         return self.filter(Rstatus=Room.Status.PERMITTED)
 
+    def function_rooms(self):
+        # 获取所有功能房
+        titles = ['航模', '绘画', '书法', '活动']
+        title_query = ~Q(Rtitle__icontains="研讨")
+        title_query |= Q(Rtitle__icontains="/")
+        for room_title in titles:
+            title_query |= Q(Rtitle__icontains=room_title)
+        return self.exclude(Rid__icontains="R").filter(
+            title_query, Rstatus=Room.Status.PERMITTED).order_by('Rid')
+
+    def talk_rooms(self):
+        # 获取所有研讨室
+        return self.filter(Rtitle__icontains="研讨",
+                           Rstatus=Room.Status.PERMITTED).order_by('Rid')
+
 
 class Room(models.Model):
     # 房间编号我不确定是否需要。如果地下室有门牌的话（例如B101）保留房间编号比较好
@@ -96,6 +112,12 @@ class Room(models.Model):
 class AppointManager(models.Manager):
     def not_canceled(self):
         return self.exclude(Astatus=Appoint.Status.CANCELED)
+
+    def visible(self):
+        # 只有单次预约和审核通过的长期预约是可见的
+        return self.filter(
+            Q(longtermappoint__isnull=True)
+            | Q(longtermappoint__status=LongTermAppoint.Status.APPROVED))
 
 
 class Appoint(models.Model):
