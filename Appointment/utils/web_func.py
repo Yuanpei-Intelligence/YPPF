@@ -231,7 +231,7 @@ def get_appoints(Pid, kind, major=False, to_json=True):
     present_day = datetime.now()
     seven_days_before = present_day - timedelta(7)
 
-    appoints = participant.appoint_list.all()
+    appoints = participant.appoint_list.visible()
     if major:
         appoints = appoints.filter(major_student=participant)
 
