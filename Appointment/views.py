@@ -414,6 +414,8 @@ def admin_index(request):  # 我的账户也主函数
             appoint_info['Astart'], "%Y-%m-%dT%H:%M:%S").strftime("%I:%M %p")
         appoint_info['Afinish_hour_minute'] = datetime.strptime(
             appoint_info['Afinish'], "%Y-%m-%dT%H:%M:%S").strftime("%I:%M %p")
+        appoint_info['Aweek'] = datetime.strptime(
+            appoint_info['Astart'], "%Y-%m-%dT%H:%M:%S").strftime("%A")
         data = {
             'appoint': appoint_info,
             'times': longterm_appoint.times,
@@ -1011,20 +1013,20 @@ def check_out(request: HttpRequest):
         startid = request.POST.get('startid')
         endid = request.POST.get('endid')
         start_week = request.POST.get('start_week', 0)
-        is_longterm = request.POST.get('longterm')
-        # 长期预约的次数
-        times = request.POST.get('times', 0)
-        # 间隔为1代表每周，为2代表隔周
-        interval = request.POST.get('interval', 0)
+        is_longterm = True if request.POST.get('longterm') == 'on' else False
+        if is_longterm:
+            # 长期预约的次数
+            times = request.POST.get('times', 0)
+            # 间隔为1代表每周，为2代表隔周
+            interval = request.POST.get('interval', 0)
 
-    is_longterm = True if is_longterm == 'on' else False
     is_organization = is_org(request.user)
 
     try:
         start_week = int(start_week)
         startid = int(startid)
         endid = int(endid)
-        if request.method == 'POST':
+        if is_longterm:
             times = int(times)
             interval = int(interval)
         # 参数检查
@@ -1070,8 +1072,8 @@ def check_out(request: HttpRequest):
     # 准备上下文，此时预约的时间地点、发起人已经固定
     render_context = {}
     render_context.update(room_object=room_object,
-                          appoint_params=appoint_params)
-    render_context.update(is_org=is_organization)
+                          appoint_params=appoint_params,
+                          is_org=is_organization)
 
     # 提交预约信息
     if request.method == 'POST':
@@ -1098,8 +1100,9 @@ def check_out(request: HttpRequest):
             contents['students'] = [contents['Sid']]
         else:
             contents['students'].append(contents['Sid'])
+
         # 检查预约次数
-        if times < 1 or times > 8:
+        if is_longterm and (times < 1 or times > 8):
             wrong("您填写的预约周数不符合要求", render_context)
 
         contents['Astart'] = datetime(contents['year'], contents['month'],
