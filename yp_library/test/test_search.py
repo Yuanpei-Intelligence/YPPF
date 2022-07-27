@@ -15,19 +15,25 @@ class BookSearchTestCase(TestCase):
                             title="ICS", author="Alice", publisher="ABC")
         Book.objects.create(id=5, identity_code="CS-2",
                             title="数据结构与算法（A）", author="Bob", publisher="xyz", returned=0)
+        Book.objects.create(id=6, identity_code="CS-3",
+                            title="计算概论", author="北京大学", publisher="ABC")
 
     def test_search_books(self):
-        self.assertEqual(len(Book.objects.all().values()), 5)
-        query1 = ['1', '', '', '', '', '']
-        query2 = ['', 'MATH', '数', '', '', '']
-        query3 = ['', '', '', '伍胜健', '北京大学', '']
-        query4 = ['0', '', '', '', '', '']
-        query5 = ['1', 'CS', '', '', '', '']
-        query6 = ['', '', '', '', '', True]
-        query7 = ['', '', '数', '', '', True]
-        query8 = ['', '', '', '', '', '']
+        self.assertEqual(len(Book.objects.all().values()), 6)
+        query1 = ['1', '', '', '', '', '', '']
+        query2 = ['', 'MATH', '数', '', '', '', '']
+        query3 = ['', '', '', '伍胜健', '北京大学', '', '']
+        query4 = ['0', '', '', '', '', '', '']
+        query5 = ['1', 'CS', '', '', '', '', '']
+        query6 = ['', '', '', '', '', True, '']
+        query7 = ['', '', '数', '', '', True, '']
+        query8 = ['', '', '', '', '', '', '']
+        query9 = ['', '', '', '', '', '', ['学', ["kw_title", "kw_publisher"]]]
+        query10 = ['', '', '', '', '', True, ['北京大学', ["kw_title", "kw_author", "kw_publisher"]]]
+        query11 = ['', '', '数学', '', '', True, ['北京大学', ["kw_title", "kw_author", "kw_publisher"]]]
         keys = ["id", "identity_code", "title",
-                "author", "publisher", "returned"]
+                "author", "publisher", "returned", "keywords"]
+        
         self.assertEqual(
             len(search_books({k: v for (k, v) in zip(keys, query1)})), 1)
         self.assertEqual(
@@ -39,9 +45,15 @@ class BookSearchTestCase(TestCase):
         self.assertEqual(
             len(search_books({k: v for (k, v) in zip(keys, query5)})), 0)
         self.assertEqual(
-            len(search_books({k: v for (k, v) in zip(keys, query6)})), 2)
+            len(search_books({k: v for (k, v) in zip(keys, query6)})), 3)
         self.assertEqual(
             len(search_books({k: v for (k, v) in zip(keys, query7)})), 1)
         self.assertEqual(
-            len(search_books({k: v for (k, v) in zip(keys, query8)})), 5)
-        self.assertEqual(len(search_books({})), 5)
+            len(search_books({k: v for (k, v) in zip(keys, query8)})), 6)
+        self.assertEqual(
+            len(search_books({k: v for (k, v) in zip(keys, query9)})), 3)
+        self.assertEqual(
+            len(search_books({k: v for (k, v) in zip(keys, query10)})), 2)
+        self.assertEqual(
+            len(search_books({k: v for (k, v) in zip(keys, query11)})), 1)
+        self.assertEqual(len(search_books({})), 6)
