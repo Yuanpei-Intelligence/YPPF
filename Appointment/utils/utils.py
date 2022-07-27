@@ -542,7 +542,7 @@ def get_conflict_appoints(appoint: Appoint, times: int = 1,
             Afinish__date__in=date_range,
         )
     else:
-        for week in range(0, times * interval, interval):
+        for week in range(interval, times * interval, interval):
             conditions |= Q(
                 # 开始比当前的结束时间早
                 Astart__lt=appoint.Afinish + timedelta(weeks=week + bias_week),
