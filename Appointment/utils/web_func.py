@@ -277,9 +277,21 @@ def get_hour_time(room, timeid):  # for room , consider its time id
     return opentime.strftime("%H:%M"), True
 
 
-def get_time_id(room,
-                ttime,
-                mode="rightopen"):  # for room. consider a time's timeid
+def get_time_id(room:Room,
+                ttime:datetime,
+                mode:str="rightopen") -> int:
+    """
+    返回当前时间的时间块编号，注意编号会与房间的开始预定时间相关。
+
+    :param room: 房间
+    :type room: Room
+    :param ttime: 当前时间
+    :type ttime: datetime
+    :param mode: 左开右闭或左闭右开, defaults to "rightopen"
+    :type mode: str
+    :return: 当前时间所处的时间块编号
+    :rtype: int
+    """
     if ttime < room.Rstart:  # 前置时间,返回-1必定可以
         return -1
     # 超过开始时间
@@ -298,9 +310,19 @@ def get_time_id(room,
     return hour * 2 + half
 
 
-def get_dayrange(span=7):   # 获取用户的违约预约
+def get_dayrange(span:int=7, start_week:int=0) -> list:
+    """
+    生成一个连续的时间段
+
+    :param span: 时间段跨度, defaults to 7
+    :type span: int
+    :param start_week: 开始时间与当前时间相差的周数, defaults to 0
+    :type start_week: int
+    :return: 时间段列表，每一项包含该天的具体信息
+    :rtype: list
+    """
     timerange_list = []
-    present_day = datetime.now()
+    present_day = datetime.now() + timedelta(weeks=start_week)
     for i in range(span):
         timerange = {}
         aday = present_day + timedelta(days=i)
