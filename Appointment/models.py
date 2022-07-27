@@ -190,7 +190,9 @@ class Appoint(models.Model):
 
     def cancel(self):
         self.Astatus = Appoint.Status.CANCELED
-        # self.students.clear()
+        if hasattr(self, 'longtermappoint'):
+            self.longtermappoint.status = LongTermAppoint.Status.CANCELED
+            self.longtermappoint.save()
         self.save()
 
     class Meta:
