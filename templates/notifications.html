@@ -1,31 +1,6 @@
 {% extends "base.html" %}
 
 {% block add_css_file %}
-<style type="text/css">
-    .text-truncate-container {
-        width: 100%;
-    }
-
-    .text-truncate-container p {
-        -webkit-line-clamp: 3;
-        display: -webkit-box;
-        -webkit-box-orient: vertical;
-        overflow: hidden;
-        text-overflow: ellipsis;
-    }
-
-    .text-end {
-        text-align: right !important;
-    }
-</style>
-<style>
-    select[readonly] {
-        background: #eee;
-        /*Simular campo inativo - Sugestão @GabrielRodrigues*/
-        pointer-events: none;
-        touch-action: none;
-    }
-</style>
 
 {% endblock %}
 
@@ -54,25 +29,17 @@
                         <div class="widget-content widget-content-area">
                             <div class="d-flex justify-content-between">
                             <h3>通知信箱</h3>
-
-
                             <div class="btn-group">
                                 <div style="margin-left: 8px; ">
                                     <a data-toggle="dropdown">
                                         <h5><i class="fa fa-ellipsis-h"></i></h5>
                                     </a>
-                                    <!-- <form class="form-inline "  method="GET" 
-                                 action="/notifications/" > -->
                                     <div class="dropdown-menu" style="max-width: 200%; max-height: 300%;">
-                                        <!-- <button class="dropdown-item"  
-                                    onclick="if(confirm('你确定要将全部消息标为已读吗?'))read_all.call(this);this.blur();" id="readall"
-                                    >全部已读</button> -->
+                                         <button class="dropdown-item"
+                                         onclick="if(confirm('你确定要将全部消息标为已读吗?')){read_all.call(this);this.blur();}" >全部已读</button>
                                         <button class="dropdown-item"
-                                         onclick="if(confirm('你确定要将全部消息标为已读吗?'))location.href = '/notifications/?read_name=readall';" >全部已读</button>
-                                        <button class="dropdown-item"
-                                         onclick="if(confirm('你确定删除所有消息吗?'))location.href = '/notifications/?read_name=deleteall';" >全部删除</button>
+                                         onclick="if(confirm('你确定删除所有消息吗?')){delete_all.call(this);this.blur();}" >全部删除</button>
                                     </div>
-                                    <!-- </form> -->
                                     </div>
                                 </div>
                             </div>
@@ -323,5 +290,27 @@
             .catch(() => { success: false });
         return success;
     }
+
+    async function read_all() {
+            var mail_num = Number("{{bar_display.mail_num}}");
+            if (mail_num == 0) {
+                confirm("暂时没有未读的消息呦~");
+            }
+            else {
+                location.href = '/notifications/?read_name=readall';
+            }
+        }
+        
+    
+    async function delete_all() {
+            var mail_num_done = Number("{{bar_display.mail_num_done}}");
+            if (mail_num_done == 0) {
+                confirm("暂时没有可以删除的消息呦~");
+            }
+            else {
+                location.href = '/notifications/?read_name=deleteall';
+            }
+        }
+
 </script>
 {% endblock %}
