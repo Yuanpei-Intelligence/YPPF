@@ -25,11 +25,11 @@ def get_readers_by_user(user: User) -> QuerySet:
     valid, user_type, _ = check_user_type(user)
     if user_type != "Person":  # 只允许个人账户登录
         raise AssertionError('请使用个人账户登录!')
-    my_readers = Reader.objects.filter(
+    readers = Reader.objects.filter(
         student_id=user.username).values()  # 获取与当前user的学号对应的所有readers
-    if len(my_readers) == 0:
+    if len(readers) == 0:
         raise AssertionError('您的学号没有关联任何书房账号!')
-    return my_readers
+    return readers
 
 
 def search_books(query_dict: dict) -> QuerySet:
@@ -86,19 +86,19 @@ def get_query_dict(post_dict: QueryDict) -> dict:
     # returned是精确搜索，剩下四个是包含即可（contains）
     # （暂不提供通过id查询，因为id应该没有实际含义，用到的可能性不大）
     # search_books函数要求输入为一个词典，其条目对应"id", "identity_code", "title", "author", "publisher"和"returned"的query
-    # 这里没有id的query，故在首位插入空串
+    # 这里没有id的query，故query为空串
     # 此外，还提供“全关键词检索”，具体见search_books
-    query_list = [[k, post_dict[k]]
-                  for k in ["identity_code", "title", "author", "publisher"]]
-    query_list.insert(0, ["id", ""])
+    query_dict = {k: post_dict[k]
+                  for k in ["identity_code", "title", "author", "publisher"]}
+    query_dict["id"] = ""
 
     if len(post_dict.getlist("returned")) == 1:  # 如果对returned有要求
-        query_list.append(["returned", True])
+        query_dict["returned"] = True
     else:  # 对returned没有要求
-        query_list.append(["returned", ""])
-    
+        query_dict["returned"] = ""
+
     # 全关键词检索
-    query_list.append(["keywords", [post_dict["keywords"], [
-                      "kw_title", "kw_author", "kw_publisher"]]])
-    
-    return dict(query_list)
+    query_dict["keywords"] = [post_dict["keywords"],
+                              ["kw_title", "kw_author", "kw_publisher"]]
+
+    return query_dict

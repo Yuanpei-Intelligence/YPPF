@@ -4,7 +4,8 @@ from yp_library.utils import search_books
 
 
 class BookSearchTestCase(TestCase):
-    def setUp(self):
+    @classmethod
+    def setUpTestData(cls):
         Book.objects.create(id=1, identity_code="MATH-1-1",
                             title="数学分析I", author="伍胜健", publisher="北京大学出版社", returned=0)
         Book.objects.create(id=2, identity_code="MATH-1-2",

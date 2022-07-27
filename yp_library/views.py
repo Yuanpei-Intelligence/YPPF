@@ -15,21 +15,6 @@ def welcome(request):
     frontend_dict = {
         "bar_display": bar_display,
     }
-    transfer_message_context(request.GET, frontend_dict,
-                             normalize=True)
-
-    # 检查用户身份
-    # 要求必须为个人账号且账号必须通过学号关联至少一个reader，否则抛出AssertionError
-    # 如果图书检索对账号没有要求，可以删掉这部分
-    try:
-        my_readers = get_readers_by_user(request.user)
-    except AssertionError as e:
-        return redirect(message_url(wrong(e)))
-
-    if request.method == "POST" and request.POST:  # POST表明发起检索
-        query_dict = get_query_dict(request.POST)  # 提取出检索条件
-        frontend_dict["search_results_list"] = search_books(query_dict)
-
     return render(request, "yp_library/welcome.html", frontend_dict)
 
 
@@ -55,7 +40,7 @@ def search(request: HttpRequest) -> HttpResponse:
     # 要求必须为个人账号且账号必须通过学号关联至少一个reader，否则抛出AssertionError
     # 如果图书检索对账号没有要求，可以删掉这部分
     try:
-        my_readers = get_readers_by_user(request.user)
+        readers = get_readers_by_user(request.user)
     except AssertionError as e:
         return redirect(message_url(wrong(e)))
 
