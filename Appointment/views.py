@@ -1,6 +1,4 @@
 # 数据库模型与操作
-import os
-import pypinyin  # 支持拼音搜索系统
 from Appointment.models import Participant, Room, Appoint, College_Announcement
 from django.db.models import Q  # modified by wxy
 from django.db import transaction  # 原子化更改数据库
@@ -31,7 +29,12 @@ from boottest.global_messages import wrong, succeed, message_url
 import boottest.global_messages as my_messages
 
 # utils对接工具
-from Appointment.utils.utils import send_wechat_message, appoint_violate, doortoroom, iptoroom, operation_writer, write_before_delete, cardcheckinfo_writer, check_temp_appoint, set_appoint_reason
+from Appointment.utils.utils import (
+    doortoroom, iptoroom,
+    send_wechat_message,
+    operation_writer, write_before_delete, cardcheckinfo_writer,
+    check_temp_appoint, set_appoint_reason, appoint_violate,
+)
 import Appointment.utils.web_func as web_func
 from Appointment.utils.identity import (
     get_name, get_avatar, get_member_ids, get_members,
@@ -39,7 +42,6 @@ from Appointment.utils.identity import (
 )
 
 # 定时任务注册
-from django_apscheduler.jobstores import DjangoJobStore, register_events, register_job
 import Appointment.utils.scheduler_func as scheduler_func
 
 '''
@@ -189,30 +191,30 @@ def cameracheck(request):   # 摄像头post的后端函数
                 camera_lock.acquire()
                 with transaction.atomic():
                     if now_time.minute != room_previous_check_time.minute or\
-                            content.Acheck_status == Appoint.Check_status.UNSAVED:
+                            content.Acheck_status == Appoint.CheckStatus.UNSAVED:
                         # 说明是新的一分钟或者本分钟还没有记录
                         # 如果随机成功，记录新的检查结果
                         if rand < GLOBAL_INFO.check_rate:
-                            content.Acheck_status = Appoint.Check_status.FAILED
+                            content.Acheck_status = Appoint.CheckStatus.FAILED
                             content.Acamera_check_num += 1
                             if temp_stu_num >= num_need:  # 如果本次检测合规
                                 content.Acamera_ok_num += 1
-                                content.Acheck_status = Appoint.Check_status.PASSED
+                                content.Acheck_status = Appoint.CheckStatus.PASSED
                         # 如果随机失败，锁定上一分钟的结果
                         else:
-                            if content.Acheck_status == Appoint.Check_status.FAILED:
+                            if content.Acheck_status == Appoint.CheckStatus.FAILED:
                                 # 如果本次检测合规，宽容时也算上一次通过（因为一分钟只检测两次）
                                 if temp_stu_num >= num_need:
                                     content.Acamera_ok_num += 1
                             # 本分钟暂无记录
-                            content.Acheck_status = Appoint.Check_status.UNSAVED
+                            content.Acheck_status = Appoint.CheckStatus.UNSAVED
                     else:
                         # 和上一次检测在同一分钟，此时：1.不增加检测次数 2.如果合规则增加ok次数
-                        if content.Acheck_status == Appoint.Check_status.FAILED:
+                        if content.Acheck_status == Appoint.CheckStatus.FAILED:
                             # 当前不合规；如果这次检测合规，那么认为本分钟合规
                             if temp_stu_num >= num_need:
                                 content.Acamera_ok_num += 1
-                                content.Acheck_status = Appoint.Check_status.PASSED
+                                content.Acheck_status = Appoint.CheckStatus.PASSED
                         # else:当前已经合规，不需要额外操作
                     content.save()
                 camera_lock.release()

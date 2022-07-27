@@ -2,12 +2,10 @@ from django.db import models
 from django.contrib.auth.models import User
 
 from django.db.models.signals import pre_delete
+from django.db.models import QuerySet
 from django.dispatch import receiver
 
-# mysql> create database yuanpei_underground charset=utf8mb4;
-# > python manage.py makemigrations
-# > python manage.py migrate
-# Django会给没有自增字段的表默认添加自增字段（id）
+from datetime import datetime, time
 
 class College_Announcement(models.Model):
     class Show_Status(models.IntegerChoices):
@@ -25,7 +23,7 @@ class College_Announcement(models.Model):
 
 
 class Participant(models.Model):
-    Sid = models.OneToOneField(
+    Sid: User = models.OneToOneField(
         User,
         related_name='+',
         on_delete=models.CASCADE,
@@ -64,9 +62,9 @@ class Room(models.Model):
     Rtitle = models.CharField('房间名称', max_length=32)
     Rmin = models.IntegerField('房间预约人数下限', default=0)
     Rmax = models.IntegerField('房间使用人数上限', default=20)
-    Rstart = models.TimeField('最早预约时间')
-    Rfinish = models.TimeField('最迟预约时间')
-    Rlatest_time = models.DateTimeField("摄像头心跳", auto_now_add=True)
+    Rstart: time = models.TimeField('最早预约时间')
+    Rfinish: time = models.TimeField('最迟预约时间')
+    Rlatest_time: datetime = models.DateTimeField("摄像头心跳", auto_now_add=True)
     Rpresent = models.IntegerField('目前人数', default=0)
 
     # Rstatus 标记当前房间是否允许预约，可由管理员修改
@@ -75,7 +73,7 @@ class Room(models.Model):
         UNLIMITED = 1, '无需预约'  # 允许使用
         FORBIDDEN = 2, '禁止使用'  # 禁止使用
 
-    Rstatus = models.SmallIntegerField('房间状态',
+    Rstatus: Status = models.SmallIntegerField('房间状态',
                                        choices=Status.choices,
                                        default=0)
 
@@ -103,34 +101,34 @@ class AppointManager(models.Manager):
 class Appoint(models.Model):
     Aid = models.AutoField('预约编号', primary_key=True)
     # 申请时间为插入数据库的时间
-    Atime = models.DateTimeField('申请时间', auto_now_add=True)
-    Astart = models.DateTimeField('开始时间')
-    Afinish = models.DateTimeField('结束时间')
+    Atime: datetime = models.DateTimeField('申请时间', auto_now_add=True)
+    Astart: datetime = models.DateTimeField('开始时间')
+    Afinish: datetime = models.DateTimeField('结束时间')
     Ausage = models.CharField('用途', max_length=256, null=True)
     Aannouncement = models.CharField(
         '预约通知', max_length=256, null=True, blank=True)
     Anon_yp_num = models.IntegerField("外院人数", default=0)
     Ayp_num = models.IntegerField('院内人数', default=0)
 
-    # Check_status: 分钟内检测状态
-    class Check_status(models.IntegerChoices):
+    # CheckStatus: 分钟内检测状态
+    class CheckStatus(models.IntegerChoices):
         FAILED = 0  # 预约在此分钟的检查尚未通过
         PASSED = 1  # 预约在特定分钟内的检查是通过的
         UNSAVED = 2 # 预约在此分钟内尚未记录检测状态
-    Acheck_status = models.SmallIntegerField(
-        '检测状态', choices=Check_status.choices, default=2)
+    Acheck_status: CheckStatus = models.SmallIntegerField(
+        '检测状态', choices=CheckStatus.choices, default=2)
 
     # 这里Room使用外键的话只能设置DO_NOTHING，否则删除房间就会丢失预约信息
     # 所以房间信息不能删除，只能逻辑删除
     # 调用时使用appoint_obj.Room和room_obj.appoint_list
-    Room = models.ForeignKey(Room,
-                             related_name='appoint_list',
-                             null=True,
-                             on_delete=models.SET_NULL,
-                             verbose_name='房间号')
-    students = models.ManyToManyField(
+    Room: Room = models.ForeignKey(Room,
+                                   related_name='appoint_list',
+                                   null=True,
+                                   on_delete=models.SET_NULL,
+                                   verbose_name='房间号')
+    students: QuerySet[Participant] = models.ManyToManyField(
         Participant, related_name='appoint_list', db_index=True)
-    major_student = models.ForeignKey(
+    major_student: Participant = models.ForeignKey(
         Participant, on_delete=models.CASCADE, verbose_name='Appointer', null=True)
 
     class Status(models.IntegerChoices):
@@ -142,7 +140,7 @@ class Appoint(models.Model):
         VIOLATED = 5  # 违约
         JUDGED = 6  # 违约申诉成功
 
-    Astatus = models.IntegerField('预约状态',
+    Astatus: Status = models.IntegerField('预约状态',
                                   choices=Status.choices,
                                   default=1)
 
@@ -156,9 +154,9 @@ class Appoint(models.Model):
         R_TOOLITTLE = 2  # 人数不足
         R_ELSE = 3  # 其它原因
 
-    Areason = models.IntegerField('违约原因',
-                                  choices=Reason.choices,
-                                  default=0)
+    Areason: Reason = models.IntegerField('违约原因',
+                                          choices=Reason.choices,
+                                          default=0)
 
     # end
 
@@ -255,13 +253,13 @@ class CardCheckInfo(models.Model):
     # 这里Room使用外键的话只能设置DO_NOTHING，否则删除房间就会丢失预约信息
     # 所以房间信息不能删除，只能逻辑删除
     # 调用时使用appoint_obj.Room和room_obj.appoint_list
-    Cardroom = models.ForeignKey(Room,
-                                 related_name='CardCheckInfo_list',
-                                 null=True,
-                                 blank=True,
-                                 on_delete=models.SET_NULL,
-                                 verbose_name='房间号')
-    Cardstudent = models.ForeignKey(
+    Cardroom: Room = models.ForeignKey(Room,
+                                       related_name='CardCheckInfo_list',
+                                       null=True,
+                                       blank=True,
+                                       on_delete=models.SET_NULL,
+                                       verbose_name='房间号')
+    Cardstudent: Participant = models.ForeignKey(
         Participant, on_delete=models.CASCADE, verbose_name='刷卡者',
         null=True, blank=True, db_index=True)
     Cardtime = models.DateTimeField('刷卡时间', auto_now_add=True)
