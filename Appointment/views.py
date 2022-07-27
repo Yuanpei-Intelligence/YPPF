@@ -300,7 +300,7 @@ def cancelAppoint(request):
                                f"取消了预约{appoint.Aid}",
                                "scheduler_func.cancelAppoint", "OK")
         succeed("成功取消对" + appoint_room_name + "的预约!", context)
-        print('will send cancel message')
+        # print('will send cancel message')
         scheduler_func.set_cancel_wechat(appoint)
 
     return redirect(message_url(context, reverse("Appointment:admin_index")))
@@ -1006,7 +1006,7 @@ def check_out(request: HttpRequest):
         startid = request.GET.get('startid')
         endid = request.GET.get('endid')
         start_week = request.GET.get('start_week', 0)
-        is_longterm = request.GET.get('longterm')
+        is_longterm = True if request.GET.get('longterm') == 'on' else False
     else:
         Rid = request.POST.get('Rid')
         weekday = request.POST.get('weekday')
@@ -1026,7 +1026,7 @@ def check_out(request: HttpRequest):
         start_week = int(start_week)
         startid = int(startid)
         endid = int(endid)
-        if is_longterm:
+        if is_longterm and request.method == 'POST':
             times = int(times)
             interval = int(interval)
         # 参数检查
@@ -1134,16 +1134,15 @@ def check_out(request: HttpRequest):
                 Aid = json.loads(response.content)['data']['Aid']
                 appoint = Appoint.objects.get(Aid=Aid)
                 with transaction.atomic():
-                    conflict_appoints = get_conflict_appoints(appoint,
-                                                              times,
-                                                              interval,
-                                                              bias_week=interval,
-                                                              lock=True)
+                    conflict_appoints = get_conflict_appoints(
+                        appoint,
+                        times,
+                        interval,
+                        bias_week=interval,
+                        lock=True)
                     if conflict_appoints:
                         appoint.delete()
-                        wrong(
-                            f"当前长期预约存在冲突, {conflict_appoints[0].Astart}-{conflict_appoints[0].Afinish}",
-                            render_context)
+                        wrong(f"当前长期预约存在冲突", render_context)
                     else:
                         LongTermAppoint.objects.create(
                             appoint=appoint,
@@ -1152,12 +1151,14 @@ def check_out(request: HttpRequest):
                             interval=interval,
                         )
                         return redirect(
-                            message_url(succeed(f"申请长期预约成功，请等待教师审核。"),
+                            message_url(succeed(f"申请长期预约成功，请等待审核。"),
                                         reverse("Appointment:admin_index")))
 
     # 提供搜索功能的数据
-    js_stu_list = web_func.get_student_chosen_list(request, Participant.objects.all())
-    js_stu_group_list = web_func.get_student_chosen_list(request, get_members(request.user))
+    js_stu_list = web_func.get_student_chosen_list(request,
+                                                   Participant.objects.all())
+    js_stu_group_list = web_func.get_student_chosen_list(
+        request, get_members(request.user))
     render_context.update(js_stu_list=js_stu_list,
                           js_stu_group_list=js_stu_group_list)
 
