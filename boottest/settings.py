@@ -51,6 +51,7 @@ INSTALLED_APPS = [
     "Appointment",
     'data_analysis',
     "scheduler",
+    "yp_library",
 ]
 
 MIDDLEWARE = [

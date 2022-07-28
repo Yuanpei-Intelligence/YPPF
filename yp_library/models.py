@@ -27,7 +27,7 @@ class Book(models.Model):
     title = models.CharField("书名", max_length=500, blank=True, null=True)
     author = models.CharField("作者", max_length=254, blank=True, null=True)
     publisher = models.CharField("出版商", max_length=254, blank=True, null=True)
-    returned = models.BooleanField("是否已还", default=False)
+    returned = models.BooleanField("是否已还", default=True)
     
     def __str__(self):
         return str(self.title)
@@ -47,7 +47,7 @@ class LendRecord(models.Model):
     )
     lend_time = models.DateTimeField("借出时间")
     due_time = models.DateTimeField("还书截止时间")
-    return_time = models.DateTimeField("还书时间")
+    return_time = models.DateTimeField("还书时间", blank=True, null=True)
     returned = models.BooleanField("是否已还", default=False)
     
     class Status(models.IntegerChoices):
