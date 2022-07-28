@@ -61,8 +61,6 @@ from django.db.models import Q, F, Sum
 from django.contrib.auth.password_validation import CommonPasswordValidator, NumericPasswordValidator
 from django.core.exceptions import ValidationError
 
-from boottest.global_messages import transfer_message_context
-
 
 email_url = local_dict["url"]["email_url"]
 hash_coder = MySHA256Hasher(local_dict["hash"]["base_hasher"])
@@ -1862,28 +1860,33 @@ def apply_position(request, oid=None):
 def notifications(request: HttpRequest):
     valid, user_type, html_display = utils.check_user_type(request.user)
 
-    # 接下来处理POST相关的内容
-
-    if request.method == "GET" and request.GET:  # 外部错误信息
-       
+    # 处理GET一键阅读或错误信息
+    if request.method == "GET" and request.GET:
         get_name = request.GET.get("read_name", None)
         if get_name == "readall":
-            
             notificaiton_set = Notification.objects.activated().filter(
-                typename=Notification.Type.NEEDREAD)
-            notificaiton_set.filter(status=Notification.Status.UNDONE).update(
-                status=Notification.Status.DONE, finish_time= datetime.now())
-
+                receiver=request.user,
+                typename=Notification.Type.NEEDREAD,
+                status=Notification.Status.UNDONE)
+            count = notificaiton_set.count()
+            notificaiton_set.update(
+                status=Notification.Status.DONE, finish_time=datetime.now())
+            succeed(f"成功将{count}条通知设为已读！", html_display)
         elif get_name == "deleteall":
             notificaiton_set = Notification.objects.activated().filter(
-                typename=Notification.Type.NEEDREAD)
-            notificaiton_set.filter(status=Notification.Status.DONE).update(
-                status=Notification.Status.DELETE)
-
+                receiver=request.user,
+                typename=Notification.Type.NEEDREAD,
+                status=Notification.Status.DONE)
+            count = notificaiton_set.count()
+            notificaiton_set.update(status=Notification.Status.DELETE)
+            succeed(f"您已成功删除{count}条通知！", html_display)
         else:
-            transfer_message_context(request.GET, html_display)
+            # 读取外部错误信息
+            my_messages.transfer_message_context(request.GET, html_display)
 
-    if request.method == "POST":  # 发生了通知处理的事件
+    # 接下来处理POST相关的内容
+    elif request.method == "POST":
+        # 发生了通知处理的事件
         post_args = json.loads(request.body.decode("utf-8"))
         try:
             notification_id = int(post_args['id'])
