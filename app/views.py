@@ -1887,39 +1887,22 @@ def notifications(request: HttpRequest):
     # 接下来处理POST相关的内容
     elif request.method == "POST":
         # 发生了通知处理的事件
-        post_args = json.loads(request.body.decode("utf-8"))
         try:
+            post_args = json.loads(request.body.decode("utf-8"))
             notification_id = int(post_args['id'])
-        except:
-            html_display["warn_code"] = 1  # 失败
-            html_display["warn_message"] = "请不要恶意发送post请求！"
-            return JsonResponse({"success":False})
-        try:
             Notification.objects.activated().get(id=notification_id, receiver=request.user)
         except:
-            html_display["warn_code"] = 1  # 失败
-            html_display["warn_message"] = "请不要恶意发送post请求！！"
-            return JsonResponse({"success":False})
-        if "cancel" in post_args['function']:
-            try:
-                notification_status_change(notification_id, Notification.Status.DELETE)
-                html_display["warn_code"] = 2  # success
-                html_display["warn_message"] = "您已成功删除一条通知！"
-                return JsonResponse({"success":True})
-            except:
-                html_display["warn_code"] = 1  # 失败
-                html_display["warn_message"] = "删除通知的过程出现错误！请联系管理员。"
-                return JsonResponse({"success":False})
-        else:
-            try:
+            wrong("请不要恶意发送post请求！！", html_display)
+            return JsonResponse({"success": False})
+        try:
+            if "cancel" in post_args['function']:
+                context = notification_status_change(notification_id, Notification.Status.DELETE)
+            else:
                 context = notification_status_change(notification_id)
-                html_display["warn_code"] = context["warn_code"]
-                html_display["warn_message"] = context["warn_message"]
-                return JsonResponse({"success":True})
-            except:
-                html_display["warn_code"] = 1  # 失败
-                html_display["warn_message"] = "修改通知状态的过程出现错误！请联系管理员。"
-                return JsonResponse({"success":False})
+            my_messages.transfer_message_context(context, html_display, normalize=False)
+        except:
+            wrong("删除通知的过程出现错误！请联系管理员。", html_display)
+        return JsonResponse({"success": my_messages.get_warning(html_display)[0] == SUCCEED})
 
     me = get_person_or_org(request.user, user_type)
     html_display["is_myself"] = True
