@@ -61,6 +61,8 @@ from django.db.models import Q, F, Sum
 from django.contrib.auth.password_validation import CommonPasswordValidator, NumericPasswordValidator
 from django.core.exceptions import ValidationError
 
+from boottest.global_messages import transfer_message_context
+
 
 email_url = local_dict["url"]["email_url"]
 hash_coder = MySHA256Hasher(local_dict["hash"]["base_hasher"])
@@ -1863,15 +1865,23 @@ def notifications(request: HttpRequest):
     # 接下来处理POST相关的内容
 
     if request.method == "GET" and request.GET:  # 外部错误信息
-        try:
-            warn_code = int(request.GET["warn_code"])
-            assert warn_code in [1, 2]
-            warn_message = str(request.GET.get("warn_message"))
-            html_display["warn_code"] = warn_code
-            html_display["warn_message"] = warn_message
-        except:
-            html_display["warn_code"] = 1
-            html_display["warn_message"] = "非预期的GET参数"
+       
+        get_name = request.GET.get("read_name", None)
+        if get_name == "readall":
+            
+            notificaiton_set = Notification.objects.activated().filter(
+                typename=Notification.Type.NEEDREAD)
+            notificaiton_set.filter(status=Notification.Status.UNDONE).update(
+                status=Notification.Status.DONE, finish_time= datetime.now())
+
+        elif get_name == "deleteall":
+            notificaiton_set = Notification.objects.activated().filter(
+                typename=Notification.Type.NEEDREAD)
+            notificaiton_set.filter(status=Notification.Status.DONE).update(
+                status=Notification.Status.DELETE)
+
+        else:
+            transfer_message_context(request.GET, html_display)
 
     if request.method == "POST":  # 发生了通知处理的事件
         post_args = json.loads(request.body.decode("utf-8"))
