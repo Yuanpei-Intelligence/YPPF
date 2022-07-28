@@ -46,17 +46,77 @@ MESSAGECONTEXT = TypedDict(
 )
 
 
+class MessageContext(dict):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._exit_code = []
+
+    @property
+    def code(self) -> Union[int, None]:
+        return self.get(CODE_FIELD)
+    
+    @code.setter
+    def code(self, value: int):
+        self[CODE_FIELD] = value
+
+    @property
+    def message(self) -> Union[str, None]:
+        return self.get(MSG_FIELD)
+    
+    @message.setter
+    def message(self, value: str):
+        self[MSG_FIELD] = value
+
+    def __setitem__(self, __k, __v) -> None:
+        super().__setitem__(__k, __v)
+        if __k == CODE_FIELD:
+            self._check_code()
+
+    def _check_code(self):
+        if self._exit_code:
+            assert self.code != self._exit_code[-1]
+
+    def exit_when(self, code=WRONG):
+        assert not self._exit_code, '暂不支持多层管理器'
+        self._exit_code.append(code)
+        # 进入管理器时不检查，因为此时无法阻止后续代码执行
+        return self
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_value, traceback) -> bool:
+        exit_code = self._exit_code.pop()
+        if exc_type is None:
+            return True
+        if self.code == exit_code:
+            # 可能存在嵌套结构
+            self._check_code()
+            return True
+        return False
+
+
 # 生成全局消息
+def _as_context(context: dict):
+    if context is None:
+        context = dict()
+    return context
+
+def _set_warning(context: dict, warn_code: int, warn_message: str):
+    context[MSG_FIELD], context[CODE_FIELD] = warn_message, warn_code
+    return context
+
+def _set_alert(context: dict, message: str):
+    context[ALERT_FIELD] = message
+    return context
+
+
 def wrong(message, context: dict=None) -> MESSAGECONTEXT:
     '''
     在错误的情况下返回的字典, message为错误信息
     如果提供了context，则向其中添加信息
     '''
-    if context is None:
-        context = dict()
-    context[CODE_FIELD] = WRONG
-    context[MSG_FIELD] = message
-    return context
+    return _set_warning(_as_context(context), WRONG, message)
 
 
 def succeed(message, context: dict=None) -> MESSAGECONTEXT:
@@ -64,18 +124,11 @@ def succeed(message, context: dict=None) -> MESSAGECONTEXT:
     在成功的情况下返回的字典, message为提示信息
     如果提供了context，则向其中添加信息
     '''
-    if context is None:
-        context = dict()
-    context[CODE_FIELD] = SUCCEED
-    context[MSG_FIELD] = message
-    return context
+    return _set_warning(_as_context(context), SUCCEED, message)
 
 
 def alert(message, context: dict=None) -> MESSAGECONTEXT:
-    if context is None:
-        context = dict()
-    context[ALERT_FIELD] = message
-    return context
+    return _set_alert(_as_context(context), message)
 
 
 # 读取全局消息
@@ -125,7 +178,7 @@ def get_request_message(request, with_alert=False):
 def _move(context, warn_code, warn_message, alert_message=None):
     count = 0
     if warn_code is not None:
-        context[CODE_FIELD], context[MSG_FIELD] = warn_code, warn_message
+        _set_warning(context, warn_code, warn_message)
         count += 1
     if alert_message is not None:
         context[ALERT_FIELD] = alert_message
@@ -138,8 +191,7 @@ def transfer_message_context(source: dict, context=None,
     将来源中的全局消息导出到context
     如果未提供context，则创建一个新字典
     '''
-    if context is None:
-        context = dict()
+    context = _as_context(context)
     _move(context, *get_all_message(source, with_alert, normalize))
     return context
 
