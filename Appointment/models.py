@@ -35,6 +35,7 @@ class Participant(models.Model):
     credit = models.IntegerField('信用分', default=3)
     pinyin = models.CharField('拼音', max_length=20, null=True)
     hidden = models.BooleanField('不可搜索', default=False)
+    longterm = models.BooleanField('可长期预约', default=False)
 
     # TODO: pht 2022-02-20 通过新的模型实现，允许每个房间有自己的规则
     # 用户许可的字段，需要许可的房间刷卡时检查是否通过了许可
@@ -145,6 +146,7 @@ class Appoint(models.Model):
                                   default=1)
 
     # modified by wxy
+    Aneed_num = models.IntegerField('检查人数要求')
     Acamera_check_num = models.IntegerField('检查次数', default=0)
     Acamera_ok_num = models.IntegerField('人数合格次数', default=0)
 
@@ -160,6 +162,17 @@ class Appoint(models.Model):
 
     # end
 
+    class Type(models.IntegerChoices):
+        '''预约类型'''
+        NORMAL = 0, '常规预约'
+        TODAY = 1, '当天预约'  # 保留，暂不使用
+        TEMPORARY = 2, '临时预约'
+        LONGTERM = 3, '长期预约'
+
+    Atype: Type = models.SmallIntegerField(
+        '预约类型', choices=Type.choices, default=Type.NORMAL.value)
+
+    # TODO: remove temp_flag
     # --- add by lhw --- #
     Atemp_flag = models.SmallIntegerField('临时预约标识', default=0)
     # --- end(2021.7.13) --- ##
