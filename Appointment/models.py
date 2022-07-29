@@ -192,9 +192,6 @@ class Appoint(models.Model):
 
     def cancel(self):
         self.Astatus = Appoint.Status.CANCELED
-        if hasattr(self, 'longtermappoint'):
-            self.longtermappoint.status = LongTermAppoint.Status.CANCELED
-            self.longtermappoint.save()
         self.save()
 
     class Meta:
@@ -336,6 +333,14 @@ class LongTermAppoint(models.Model):
     class Meta:
         verbose_name = '长期预约信息'
         verbose_name_plural = verbose_name
+
+    def create():
+        # TODO: 创建长期预约的全部子预约
+        raise NotImplementedError
+
+    def cancel():
+        # TODO: 取消长期预约以及它的全部子预约
+        raise NotImplementedError
 
 
 from Appointment.utils.scheduler_func import cancel_scheduler

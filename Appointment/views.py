@@ -1074,7 +1074,8 @@ def check_out(request: HttpRequest):
             appoint_params['day'] = day['day']
             # 最小人数下限控制
             appoint_params['Rmin'] = room_object.Rmin
-            if datetime.now().strftime("%a") == appoint_params['weekday']:
+            if start_week == 0 and datetime.now().strftime(
+                    "%a") == appoint_params['weekday']:
                 appoint_params['Rmin'] = min(GLOBAL_INFO.today_min,
                                              room_object.Rmin)
             break
@@ -1117,6 +1118,17 @@ def check_out(request: HttpRequest):
         if is_longterm and (times < 1 or times > 8):
             wrong("您填写的预约周数不符合要求", render_context)
 
+        # 检查长期预约次数
+        if is_longterm and LongTermAppoint.objects.filter(
+                appoint__major_student__Sid=contents['Sid'],
+                appoint__Astart__gt=web_func.str_to_time(
+                    GLOBAL_INFO.semester_start),
+                status__in=[
+                    LongTermAppoint.Status.APPROVED,
+                    LongTermAppoint.Status.REVIEWING
+                ]).count() >= 4:
+            wrong("不能发起超过4个长期预约", render_context)
+
         contents['Astart'] = datetime(contents['year'], contents['month'],
                                       contents['day'],
                                       int(contents['starttime'].split(":")[0]),
@@ -1131,7 +1143,7 @@ def check_out(request: HttpRequest):
             # 参数检查全部通过，下面开始创建预约
             contents['new_require'] = 0 if is_longterm else 1
 
-            # * 长期预约也会在此处添加一条预约信息，如果审核不通过，需要及时删除此条预约
+            # TODO: 需要对通知发送做进一步处理
             response = scheduler_func.addAppoint(contents)
             if response.status_code == 200 and not is_longterm:
                 # 成功预约且非长期
@@ -1154,7 +1166,9 @@ def check_out(request: HttpRequest):
                         lock=True)
                     if conflict_appoints:
                         appoint.delete()
-                        wrong(f"当前长期预约存在冲突", render_context)
+                        wrong(
+                            f"当前长期预约存在冲突, 与预约时间为{conflict_appoints[0].Astart}-{conflict_appoints[0].Afinish}的预约发生冲突",
+                            render_context)
                     else:
                         LongTermAppoint.objects.create(
                             appoint=appoint,
