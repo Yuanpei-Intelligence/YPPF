@@ -18,11 +18,12 @@ __all__ = [
     'CODE_FIELD', 'MSG_FIELD', 'ALERT_FIELD',
     # 类型信息支持
     'MESSAGECONTEXT',
+    'MessageContext',
     # 生成全局消息
     'wrong', 'succeed', 'alert',
     # 读取全局消息
-    'get_warning', 'get_alert', 'get_all',
-    'get_global_message',
+    'get_warning', 'get_alert', 'get_all_message',
+    'get_request_message',
     # 转移全局消息
     'transfer_message_context',
     # 生成URL
@@ -47,9 +48,11 @@ MESSAGECONTEXT = TypedDict(
 
 
 class MessageContext(dict):
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
+    def __init__(self, *args, _auto_check=True, **kwargs):
+        # dict初始化不通过setitem，此处顺序不重要
         self._exit_code = []
+        self.auto_check = _auto_check
+        super().__init__(*args, **kwargs)
 
     @property
     def code(self) -> Union[int, None]:
@@ -67,9 +70,38 @@ class MessageContext(dict):
     def message(self, value: str):
         self[MSG_FIELD] = value
 
+    def has_message(self):
+        return self.code is not None
+
+    def is_wrong(self):
+        return self.code == WRONG
+
+    def is_succeed(self):
+        return self.code == SUCCEED
+
+    def _set_warning(self, code, message):
+        self.message = message
+        self.code = code
+        self._check_code()
+
+    def wrong(self, message):
+        self._set_warning(WRONG, message)
+
+    def succeed(self, message):
+        self._set_warning(SUCCEED, message)
+
+    def update_context(self, source: dict, with_alert=False, normalize=True):
+        _move(self, *get_all_message(source, with_alert, normalize))
+        self._check_code()
+
     def __setitem__(self, __k, __v) -> None:
         super().__setitem__(__k, __v)
-        if __k == CODE_FIELD:
+        if self.auto_check and __k == CODE_FIELD:
+            self._check_code()
+
+    def update(self, *args, **kwargs) -> None:
+        super().update(*args, **kwargs)
+        if self.auto_check:
             self._check_code()
 
     def _check_code(self):
@@ -97,10 +129,16 @@ class MessageContext(dict):
 
 
 # 生成全局消息
-def _as_context(context: dict):
+def _as_dict(context: dict):
     if context is None:
-        context = dict()
+        context = MessageContext()
     return context
+
+def _as_context(context: dict):
+    return _as_dict(context)
+    if isinstance(context, MessageContext):
+        return context
+    return MessageContext(_as_dict(context))
 
 def _set_warning(context: dict, warn_code: int, warn_message: str):
     context[MSG_FIELD], context[CODE_FIELD] = warn_message, warn_code

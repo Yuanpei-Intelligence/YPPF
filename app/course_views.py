@@ -238,7 +238,7 @@ def showCourseActivity(request: HttpRequest):
         request.user, navbar_name="我的活动")
 
     if request.method == "GET":
-        html_display["warn_code"], html_display["warn_message"] = my_messages.get_request_message(request)
+        my_messages.transfer_message_context(request.GET, html_display)
 
     # 取消单次活动
     if request.method == "POST" and request.POST:
