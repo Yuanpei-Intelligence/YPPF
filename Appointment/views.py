@@ -45,7 +45,7 @@ from Appointment.utils.utils import (
 import Appointment.utils.web_func as web_func
 from Appointment.utils.identity import (
     get_name, get_avatar, get_member_ids, get_members,
-    get_participant, identity_check, is_org
+    get_participant, identity_check, is_org,
 )
 
 # 定时任务注册
@@ -358,8 +358,10 @@ def display_getappoint(request):    # 用于为班牌机提供展示预约的信
 
 
 @identity_check(redirect_field_name='origin')
-def admin_index(request):  # 我的账户也主函数
-
+def admin_index(request: HttpRequest):
+    """
+    显示用户的预约信息
+    """
     render_context = {}
     render_context.update(
         login_url=GLOBAL_INFO.login_url,
@@ -787,7 +789,6 @@ def arrange_time(request: HttpRequest):
     """
 
     # 只接受GET方法，不接受POST方法
-    # 之后应该使用更加清晰的报错消息，暂时只做简单处理
     if request.method == 'POST':
         return redirect(reverse('Appointment:index'))
 
@@ -799,7 +800,9 @@ def arrange_time(request: HttpRequest):
     try:
         room_object: Room = Room.objects.get(Rid=Rid)
     except:
-        return redirect(reverse('Appointment:index'))  # 房间号不存在，这是意料之外的错误。
+        return redirect(
+            message_url(wrong(f"房间号{Rid}不存在!"),
+                        reverse("Appointment:admin_index")))
 
     if room_object.Rstatus == Room.Status.FORBIDDEN:
         return render(request, 'Appointment/booking.html', locals())
@@ -813,10 +816,13 @@ def arrange_time(request: HttpRequest):
         is_longterm = True
     try:
         start_week = int(start_week)
+        # 参数检查
+        assert start_week == 0 or start_week == 1
+        assert is_organization or not is_longterm
     except:
         return redirect(reverse('Appointment:index'))
 
-    dayrange_list = web_func.get_dayrange(start_week=start_week)
+    dayrange_list = web_func.get_dayrange(bias_days=start_week * 7)
 
     # 获取预约时间的最大时间块id
     max_stamp_id = web_func.get_time_id(room_object,
@@ -824,20 +830,23 @@ def arrange_time(request: HttpRequest):
                                         mode="leftopen")
     for day in dayrange_list:
         day['timesection'] = []
-        temp_hour, temp_minute = room_object.Rstart.hour, \
-                                 int(room_object.Rstart.minute >= 30)
+        start_hour = room_object.Rstart.hour
+        round_up = int(room_object.Rstart.minute >= 30)
 
         for i in range(max_stamp_id + 1):
             timesection = {}
             # 获取时间的可读表达
             timesection['starttime'] = str(
-                temp_hour + (i + temp_minute) // 2).zfill(2) + ":" + str(
-                    (i + temp_minute) % 2 * 30).zfill(2)
+                start_hour + (i + round_up) // 2).zfill(2) + ":" + str(
+                    (i + round_up) % 2 * 30).zfill(2)
+            # 0: 可用 1: 已经预约 2: 已过
+            # TODO: 状态设定需要重新规划
             timesection['status'] = 0
             timesection['id'] = i
             day['timesection'].append(timesection)
 
     # 筛选已经存在的预约
+    # TODO: 之后修改
     appoints = Appoint.objects.not_canceled().filter(
         Room_id=Rid,
         Afinish__gte=datetime(year=dayrange_list[0]['year'],
@@ -854,6 +863,7 @@ def arrange_time(request: HttpRequest):
                              second=59))
 
     # 给出已有预约的信息
+    # TODO: 后续可优化
     for appoint_record in appoints:
         change_id_list = web_func.timerange2idlist(Rid, appoint_record.Astart,
                                                    appoint_record.Afinish,
@@ -1023,17 +1033,19 @@ def check_out(request: HttpRequest):
     is_organization = is_org(request.user)
 
     try:
+        # 参数类型转换与合法性检查
         start_week = int(start_week)
         startid = int(startid)
         endid = int(endid)
         if is_longterm and request.method == 'POST':
             times = int(times)
             interval = int(interval)
-        # 参数检查
+            assert interval == 1 or interval == 2
         assert weekday in wklist
         assert startid >= 0
         assert endid >= 0
         assert endid >= startid
+        assert start_week == 0 or start_week == 1
         assert is_organization or not is_longterm  # 不允许非组织账户进行长期预约
     except:
         return redirect(reverse('Appointment:index'))
@@ -1047,7 +1059,7 @@ def check_out(request: HttpRequest):
         'start_week': start_week,
     }
     room_object = Room.objects.get(Rid=Rid)
-    dayrange_list = web_func.get_dayrange(start_week=start_week)
+    dayrange_list = web_func.get_dayrange(bias_days=start_week * 7)
     for day in dayrange_list:
         if day['weekday'] == appoint_params['weekday']:
             appoint_params['date'] = day['date']
@@ -1146,7 +1158,7 @@ def check_out(request: HttpRequest):
                     else:
                         LongTermAppoint.objects.create(
                             appoint=appoint,
-                            org=get_participant(request.user),
+                            org=appoint.major_student,
                             times=times,
                             interval=interval,
                         )
