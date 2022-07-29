@@ -231,7 +231,7 @@ def get_appoints(Pid, kind, major=False, to_json=True):
     present_day = datetime.now()
     seven_days_before = present_day - timedelta(7)
 
-    appoints = participant.appoint_list.visible()
+    appoints = participant.appoint_list.displayable()
     if major:
         appoints = appoints.filter(major_student=participant)
 
@@ -277,9 +277,7 @@ def get_hour_time(room, timeid):  # for room , consider its time id
     return opentime.strftime("%H:%M"), True
 
 
-def get_time_id(room:Room,
-                ttime:datetime,
-                mode:str="rightopen") -> int:
+def get_time_id(room: Room, ttime: datetime, mode: str = "rightopen") -> int:
     """
     返回当前时间的时间块编号，注意编号会与房间的开始预定时间相关。
 
@@ -310,19 +308,19 @@ def get_time_id(room:Room,
     return hour * 2 + half
 
 
-def get_dayrange(span:int=7, start_week:int=0) -> list:
+def get_dayrange(span: int = 7, bias_days: int = 0) -> list:
     """
     生成一个连续的时间段
 
     :param span: 时间段跨度, defaults to 7
     :type span: int
-    :param start_week: 开始时间与当前时间相差的周数, defaults to 0
-    :type start_week: int
+    :param bias_days: 开始时间与当前时间相差的天数, defaults to 0
+    :type bias_days: int
     :return: 时间段列表，每一项包含该天的具体信息
     :rtype: list
     """
     timerange_list = []
-    present_day = datetime.now() + timedelta(weeks=start_week)
+    present_day = datetime.now() + timedelta(days=bias_days)
     for i in range(span):
         timerange = {}
         aday = present_day + timedelta(days=i)
