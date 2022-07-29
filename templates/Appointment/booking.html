@@ -44,13 +44,13 @@
                         <div class="col-12">
                             <div class="alert alert-info alert-dismissible fade show" role="alert">
                                 <strong>温馨提示：</strong> 点击【房间名称】可以选择【其他房间】进行预约。
-                                <button type="button" class="close" data-dismiss="alert"、>
+                                <button type="button" class="close" data-dismiss="alert">
                                     <span >&times;</span>
                                 </button>
                             </div>
                             <div class="alert alert-info alert-dismissible fade show" role="alert">
                                 <strong>温馨提示：</strong> 选择时间时，点击【开始时间块】，再直接点击【结束时间块】即可。
-                                <button type="button" class="close" data-dismiss="alert"、>
+                                <button type="button" class="close" data-dismiss="alert">
                                     <span >&times;</span>
                                 </button>
                             </div>
@@ -255,11 +255,11 @@
                                 {% for room in talk_room_list %}
                                     <li class="list-group-item">
                                         <a href="/underground/arrange_time?Rid={{ room.Rid }}{% if is_longterm %}&start_week={{ start_week }}{% endif %}">
-                                            <div class="doc-info-left" style="cursor: pointer;height:4rem;">
+                                            <div class="d-flex" style="cursor: pointer;height:4rem;">
                                                 <div class="h-100 mr-3">
                                                     <img src="{% static 'Appointment/assets/img/RoomIcon/' %}{{ room.Rid }}.png" class="img-fluid h-100" alt="Room Image">
                                                 </div>
-                                                <div class="doc-info-cont">
+                                                <div class="h-100">
                                                     <h5 class="doc-name">{{ room }}</h5>
                                                     <p class="doc-location mb-0">
                                                         <i class="far fa fa-child"></i>
