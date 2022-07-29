@@ -25,7 +25,22 @@
                 <div class="col-lg-12 col-12 layout-top-spacing">
                     <div class="bio layout-spacing ">
                         <div class="widget-content widget-content-area">
+                            <div class="d-flex justify-content-between">
                             <h3>通知信箱</h3>
+                            <div class="btn-group">
+                                <div style="margin-left: 8px; ">
+                                    <a data-toggle="dropdown">
+                                        <h5><i class="fa fa-ellipsis-h"></i></h5>
+                                    </a>
+                                    <div class="dropdown-menu" style="max-width: 200%; max-height: 300%;">
+                                         <button class="dropdown-item"
+                                         onclick="if(confirm('你确定要将全部消息标为已读吗?')){location.href = '/notifications/?read_name=readall';}" >全部已读</button>
+                                        <button class="dropdown-item"
+                                         onclick="if(confirm('你确定删除所有消息吗?')){location.href = '/notifications/?read_name=deleteall';}" >全部删除</button>
+                                    </div>
+                                    </div>
+                                </div>
+                            </div>
                             
                             <ul id="myTab" class="nav nav-tabs nav-tabs-solid nav-justified">
                                 <li class="nav-item">
@@ -273,5 +288,6 @@
             .catch(() => { success: false });
         return success;
     }
+
 </script>
 {% endblock %}

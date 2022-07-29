@@ -1860,53 +1860,49 @@ def apply_position(request, oid=None):
 def notifications(request: HttpRequest):
     valid, user_type, html_display = utils.check_user_type(request.user)
 
+    # 处理GET一键阅读或错误信息
+    if request.method == "GET" and request.GET:
+        get_name = request.GET.get("read_name", None)
+        if get_name == "readall":
+            notificaiton_set = Notification.objects.activated().filter(
+                receiver=request.user,
+                typename=Notification.Type.NEEDREAD,
+                status=Notification.Status.UNDONE)
+            count = notificaiton_set.count()
+            notificaiton_set.update(
+                status=Notification.Status.DONE, finish_time=datetime.now())
+            succeed(f"成功将{count}条通知设为已读！", html_display)
+        elif get_name == "deleteall":
+            notificaiton_set = Notification.objects.activated().filter(
+                receiver=request.user,
+                typename=Notification.Type.NEEDREAD,
+                status=Notification.Status.DONE)
+            count = notificaiton_set.count()
+            notificaiton_set.update(status=Notification.Status.DELETE)
+            succeed(f"您已成功删除{count}条通知！", html_display)
+        else:
+            # 读取外部错误信息
+            my_messages.transfer_message_context(request.GET, html_display)
+
     # 接下来处理POST相关的内容
-
-    if request.method == "GET" and request.GET:  # 外部错误信息
+    elif request.method == "POST":
+        # 发生了通知处理的事件
         try:
-            warn_code = int(request.GET["warn_code"])
-            assert warn_code in [1, 2]
-            warn_message = str(request.GET.get("warn_message"))
-            html_display["warn_code"] = warn_code
-            html_display["warn_message"] = warn_message
-        except:
-            html_display["warn_code"] = 1
-            html_display["warn_message"] = "非预期的GET参数"
-
-    if request.method == "POST":  # 发生了通知处理的事件
-        post_args = json.loads(request.body.decode("utf-8"))
-        try:
+            post_args = json.loads(request.body.decode("utf-8"))
             notification_id = int(post_args['id'])
-        except:
-            html_display["warn_code"] = 1  # 失败
-            html_display["warn_message"] = "请不要恶意发送post请求！"
-            return JsonResponse({"success":False})
-        try:
             Notification.objects.activated().get(id=notification_id, receiver=request.user)
         except:
-            html_display["warn_code"] = 1  # 失败
-            html_display["warn_message"] = "请不要恶意发送post请求！！"
-            return JsonResponse({"success":False})
-        if "cancel" in post_args['function']:
-            try:
-                notification_status_change(notification_id, Notification.Status.DELETE)
-                html_display["warn_code"] = 2  # success
-                html_display["warn_message"] = "您已成功删除一条通知！"
-                return JsonResponse({"success":True})
-            except:
-                html_display["warn_code"] = 1  # 失败
-                html_display["warn_message"] = "删除通知的过程出现错误！请联系管理员。"
-                return JsonResponse({"success":False})
-        else:
-            try:
+            wrong("请不要恶意发送post请求！！", html_display)
+            return JsonResponse({"success": False})
+        try:
+            if "cancel" in post_args['function']:
+                context = notification_status_change(notification_id, Notification.Status.DELETE)
+            else:
                 context = notification_status_change(notification_id)
-                html_display["warn_code"] = context["warn_code"]
-                html_display["warn_message"] = context["warn_message"]
-                return JsonResponse({"success":True})
-            except:
-                html_display["warn_code"] = 1  # 失败
-                html_display["warn_message"] = "修改通知状态的过程出现错误！请联系管理员。"
-                return JsonResponse({"success":False})
+            my_messages.transfer_message_context(context, html_display, normalize=False)
+        except:
+            wrong("删除通知的过程出现错误！请联系管理员。", html_display)
+        return JsonResponse({"success": my_messages.get_warning(html_display)[0] == SUCCEED})
 
     me = get_person_or_org(request.user, user_type)
     html_display["is_myself"] = True
