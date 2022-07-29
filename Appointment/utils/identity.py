@@ -143,6 +143,8 @@ def _create_account(request: HttpRequest, **values) -> Union[Participant, None]:
             )
             values.setdefault('credit', 3)
             values.setdefault('hidden', is_org(request.user))
+            values.setdefault('longterm',
+                is_org(request.user) and len(get_member_ids(request.user)) >= 10)
 
             account = Participant.objects.create(**values)
             return account

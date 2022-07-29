@@ -7,7 +7,7 @@ from django.utils.safestring import mark_safe
 from django.utils.html import format_html, format_html_join
 
 from django.db import transaction  # 原子化更改数据库
-from django.db.models import F
+from django.db.models import F, QuerySet
 
 from boottest.admin_utils import *
 from Appointment import *
@@ -38,7 +38,7 @@ class ParticipantAdmin(admin.ModelAdmin):
     actions_on_top = True
     actions_on_bottom = True
     search_fields = ('Sid__username', 'name', 'pinyin')
-    list_display = ('Sid', 'name', 'credit', 'hidden', )
+    list_display = ('Sid', 'name', 'credit', 'longterm', 'hidden')
     list_display_links = ('Sid', 'name')
     list_editable = ('credit', )
 
@@ -61,7 +61,7 @@ class ParticipantAdmin(admin.ModelAdmin):
                 return queryset.filter(agree_time__isnull=True)
             return queryset
 
-    list_filter = ('credit', 'hidden', AgreeFilter)
+    list_filter = ('credit', 'longterm', 'hidden', AgreeFilter)
     fieldsets = (['基本信息', {
         'fields': (
             'Sid',
@@ -116,6 +116,16 @@ class ParticipantAdmin(admin.ModelAdmin):
             stu.pinyin = ''.join([w[0][0] for w in pinyin_list])
             stu.save()
         return self.message_user(request, '修改学生拼音成功!')
+
+    @as_action('赋予长期预约权限', actions, update=True)
+    def add_longterm_perm(self, request, queryset: QuerySet[Participant]):
+        queryset.update(longterm=True)
+        return self.message_user(request, '操作成功!')
+
+    @as_action('收回长期预约权限', actions, update=True)
+    def remove_longterm_perm(self, request, queryset: QuerySet[Participant]):
+        queryset.update(longterm=False)
+        return self.message_user(request, '操作成功!')
 
 
 @admin.register(Room)
