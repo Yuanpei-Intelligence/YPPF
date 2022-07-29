@@ -183,10 +183,7 @@
                                                                        name="times"
                                                                        placeholder="最多不超过8周，如有需要可在到期前一键续约"
                                                                        value="{{ contents.times }}"
-                                                                       type="text"
-                                                                       min="0"
-                                                                       max="8"
-                                                                       step="1"/>
+                                                                       type="text"/>
                                                             </div>
                                                         </div>
                                                         <div class="col-md-12 col-sm-12">
@@ -356,7 +353,7 @@
                     group_filter=!group_filter
                     $('#group-filter>i').toggleClass("fa-square");
                     $('#group-filter>i').toggleClass("fa-check-square");
-                    // TODO: 筛选小组成员
+                    // 筛选小组成员
                     if(group_filter){
                         $('.search-members').empty().select2({
                             theme: "classic",
