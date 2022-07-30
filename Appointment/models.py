@@ -4,6 +4,7 @@ from django.contrib.auth.models import User
 from django.db.models.signals import pre_delete
 from django.db.models import QuerySet
 from django.dispatch import receiver
+from django.db.models import Q
 
 from datetime import datetime, time
 
@@ -54,6 +55,21 @@ class RoomManager(models.Manager):
     def permitted(self):
         return self.filter(Rstatus=Room.Status.PERMITTED)
 
+    def function_rooms(self):
+        # 获取所有功能房
+        titles = ['航模', '绘画', '书法', '活动']
+        title_query = ~Q(Rtitle__icontains="研讨")
+        title_query |= Q(Rtitle__icontains="/")
+        for room_title in titles:
+            title_query |= Q(Rtitle__icontains=room_title)
+        return self.exclude(Rid__icontains="R").filter(
+            title_query, Rstatus=Room.Status.PERMITTED)
+
+    def talk_rooms(self):
+        # 获取所有研讨室
+        return self.filter(Rtitle__icontains="研讨",
+                           Rstatus=Room.Status.PERMITTED)
+
 
 class Room(models.Model):
     # 房间编号我不确定是否需要。如果地下室有门牌的话（例如B101）保留房间编号比较好
@@ -96,6 +112,14 @@ class Room(models.Model):
 class AppointManager(models.Manager):
     def not_canceled(self):
         return self.exclude(Astatus=Appoint.Status.CANCELED)
+
+    def displayable(self):
+        """
+        在admin_index页面使用，在”普通预约“和”查看下周“中，只有非长期预约和审核通过的长期预约能够显示
+        """
+        return self.filter(
+            Q(longtermappoint__isnull=True)
+            | Q(longtermappoint__status=LongTermAppoint.Status.APPROVED))
 
 
 class Appoint(models.Model):
@@ -168,7 +192,6 @@ class Appoint(models.Model):
 
     def cancel(self):
         self.Astatus = Appoint.Status.CANCELED
-        # self.students.clear()
         self.save()
 
     class Meta:
@@ -286,30 +309,38 @@ class LongTermAppoint(models.Model):
     """
     记录长期预约所需要的全部信息
     """
-    appoint = models.OneToOneField(Appoint, 
+    appoint = models.OneToOneField(Appoint,
                                    on_delete=models.CASCADE,
                                    verbose_name='单次预约信息')
 
-    org = models.ForeignKey(Participant, 
-                            on_delete=models.CASCADE, 
-                            verbose_name='发起预约组织')                  
+    org = models.ForeignKey(Participant,
+                            on_delete=models.CASCADE,
+                            verbose_name='发起预约组织')
 
     times = models.SmallIntegerField('预约次数', default=1)
     interval = models.SmallIntegerField('间隔周数', default=1)
-    
+
     class Status(models.IntegerChoices):
         CANCELED = (0, '已取消')
         REVIEWING = (1, '审核中')
         APPROVED = (2, '已通过')
         REJECTED = (3, '未通过')
 
-    status = models.SmallIntegerField("申请状态", 
-                                      choices=Status.choices, 
+    status = models.SmallIntegerField("申请状态",
+                                      choices=Status.choices,
                                       default=Status.REVIEWING)
 
     class Meta:
         verbose_name = '长期预约信息'
         verbose_name_plural = verbose_name
+
+    def create():
+        # TODO: 创建长期预约的全部子预约
+        raise NotImplementedError
+
+    def cancel():
+        # TODO: 取消长期预约以及它的全部子预约
+        raise NotImplementedError
 
 
 from Appointment.utils.scheduler_func import cancel_scheduler
