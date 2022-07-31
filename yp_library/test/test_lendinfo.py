@@ -4,7 +4,8 @@ from yp_library.utils import get_my_records, get_lendinfo_by_readers
 
 
 class GetLendRecordTestCase(TestCase):
-    def setUp(self):
+    @classmethod
+    def setUpTestData(cls):
         Reader.objects.create(id=123456789, student_id='1900010000')
         Reader.objects.create(id=1234567, student_id='1900010000')
         Reader.objects.create(id=987654321, student_id='2000010000')

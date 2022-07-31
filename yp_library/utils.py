@@ -4,7 +4,7 @@ from yp_library.models import (
     LendRecord,
 )
 
-from typing import Union, List, Tuple
+from typing import Union, List, Tuple, Optional
 from datetime import datetime
 
 from django.contrib.auth.models import User
@@ -107,7 +107,8 @@ def get_query_dict(post_dict: QueryDict) -> dict:
     return query_dict
 
 
-def get_my_records(reader_id: str, returned: bool = None, status: Union[list, int] = None) -> List[dict]:
+def get_my_records(reader_id: str, returned: Optional[bool] = None, 
+    status: Optional[Union[list, int]] = None) -> List[dict]:
     """
     查询给定读者的借书记录
 
@@ -134,7 +135,7 @@ def get_my_records(reader_id: str, returned: bool = None, status: Union[list, in
         results = all_records_list
 
     if isinstance(status, list):
-        results = results.filter(Q(status__in=status))
+        results = results.filter(status__in=status)
     elif isinstance(status, int):
         results = results.filter(status=status)
     
