@@ -4,7 +4,7 @@ from yp_library.models import (
     LendRecord,
 )
 
-from typing import Union, List
+from typing import Union, List, Tuple
 from datetime import datetime
 
 from django.contrib.auth.models import User
@@ -161,7 +161,7 @@ def get_my_records(reader_id: str, returned: bool = None, status: Union[list, in
     return records
 
 
-def get_lendinfo_by_readers(readers: QuerySet):
+def get_lendinfo_by_readers(readers: QuerySet) -> Tuple[List[dict], List[dict]]:
     '''
     查询同一user关联的读者的借阅信息
 

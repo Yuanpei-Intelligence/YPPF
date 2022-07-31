@@ -4,7 +4,12 @@ from django.shortcuts import render, redirect
 from django.contrib.auth.decorators import login_required
 
 from boottest.global_messages import wrong, succeed, message_url, transfer_message_context
-from yp_library.utils import get_readers_by_user, search_books, get_query_dict, get_lendinfo_by_readers
+from yp_library.utils import (
+    get_readers_by_user,
+    search_books,
+    get_query_dict,
+    get_lendinfo_by_readers,
+)
 from app.utils import get_sidebar_and_navbar, check_user_access
 
 
