@@ -568,7 +568,19 @@ def load_help(filepath: str, output_func: Callable=None, html=False):
     return try_output("成功导入帮助信息！", output_func, html)
 
 
-def load_course_record(filepath: str, output_func: Callable=None, html=False):
+def load_course_record(filepath: str, output_func: Callable=None, html:bool=False) -> str:
+    """从文件中导入学时信息
+
+    :param filepath: 文件路径,放在test文件夹内
+    :type filepath: str
+    :param output_func: 输出函数, defaults to None
+    :type output_func: Callable, optional
+    :param html: 允许以HTML格式输出，否则将br标签替换为\n, defaults to False
+    :type html: bool, optional
+    :return: 返回导入结果的提示
+    :rtype: str
+    """
+
     try:
         courserecord_file = load_file(filepath)
     except:
@@ -988,9 +1000,9 @@ def load_org_view(request):
         if load_type is None:
             message = "没有传入loadtype参数:[org或otype]"
         elif load_type == "otype":
-            message = load_orgtype("orgtypeinf.csv")
+            message = load_orgtype("test_data/orgtypeinf.csv")
         elif load_type == "org":
-            message = "导入小组信息成功！" + load_org("orginf.csv")
+            message = "导入小组信息成功！" + load_org("test_data/orginf.csv")
         else:
             message = "没有得到loadtype参数:[org或otype]"
     else:

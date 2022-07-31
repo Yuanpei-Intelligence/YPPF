@@ -63,7 +63,6 @@ __all__ = [
     'TransferRecord',
     'Participant',
     'YQPointDistribute',
-    'QandA',
     'Notification',
     'Comment',
     'CommentPhoto',
@@ -1238,43 +1237,6 @@ class YQPointDistribute(models.Model):
         verbose_name = "元气值发放"
         verbose_name_plural = verbose_name
 
-
-class QandAManager(models.Manager):
-    def activated(self, sender_flag=False, receiver_flag=False):
-        if sender_flag:
-            return self.exclude(status__in=[QandA.Status.IGNORE_SENDER,QandA.Status.DELETE])
-        if receiver_flag:
-            return self.exclude(status__in=[QandA.Status.IGNORE_RECEIVER,QandA.Status.DELETE])
-        return self.exclude(status=QandA.Status.DELETE)
-
-
-class QandA(models.Model):
-    # 问答类
-    class Meta:
-        verbose_name = "问答记录"
-        verbose_name_plural = verbose_name
-    sender: User = models.ForeignKey(User, on_delete=models.SET_NULL,
-                             related_name="send_QA_set", blank=True, null=True)
-    receiver: User = models.ForeignKey(User, on_delete=models.SET_NULL,
-                             related_name="receive_QA_set", blank=True, null=True)
-    Q_time = models.DateTimeField('提问时间', auto_now_add=True)
-    A_time = models.DateTimeField('回答时间', blank=True, null=True)
-    Q_text = models.TextField('提问内容', default='', blank=True)
-    A_text = models.TextField('回答内容', default='', blank=True)
-    anonymous_flag = models.BooleanField("是否匿名", default=False)
-
-    class Status(models.IntegerChoices):
-        DONE = (0, "已回答")
-        UNDONE = (1, "待回答")
-        DELETE = (2, "已删除")
-        IGNORE_SENDER = (3, "发送者忽略")
-        IGNORE_RECEIVER = (4, "接收者忽略")
-
-    status = models.SmallIntegerField(choices=Status.choices, default=1)
-
-    objects: QandAManager = QandAManager()
-
-
 class NotificationManager(models.Manager):
     def activated(self):
         return self.exclude(status=Notification.Status.DELETE)
@@ -1843,6 +1805,9 @@ class CourseRecordManager(models.Manager):
 
 
 class CourseRecord(models.Model):
+    """
+    学时表
+    """
     class Meta:
         verbose_name = "学时表"
         verbose_name_plural = verbose_name
