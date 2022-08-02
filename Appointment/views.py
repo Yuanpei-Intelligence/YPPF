@@ -45,7 +45,7 @@ from Appointment.utils.utils import (
 import Appointment.utils.web_func as web_func
 from Appointment.utils.identity import (
     get_name, get_avatar, get_member_ids, get_members,
-    get_participant, identity_check, is_org,
+    get_participant, identity_check,
 )
 
 # 定时任务注册
@@ -379,13 +379,13 @@ def admin_index(request: HttpRequest):
     if participant.agree_time is not None:
         my_info['agree_time'] = str(participant.agree_time)
 
-    is_organization = is_org(request.user)
+    has_longterm_permission = participant.longterm
 
     # 头像信息
     img_path = get_avatar(request.user)
     render_context.update(my_info=my_info,
                           img_path=img_path,
-                          is_org=is_organization)
+                          is_org=has_longterm_permission)
 
     # 获取过去和未来的预约信息
     appoint_list_future = web_func.get_appoints(Pid, 'future').get('data')
@@ -408,7 +408,7 @@ def admin_index(request: HttpRequest):
 
     # 获取长期预约数据
     appoint_list_longterm = []
-    longterm_appoints = LongTermAppoint.objects.filter(org=participant)
+    longterm_appoints = LongTermAppoint.objects.filter(applicant=participant)
 
     for longterm_appoint in longterm_appoints:
         appoint_info = longterm_appoint.appoint.toJson()
@@ -793,7 +793,7 @@ def arrange_time(request: HttpRequest):
         return redirect(reverse('Appointment:index'))
 
     # 判断当前用户是否为组织。只有组织账户可以进行长期预约。
-    is_organization = is_org(request.user)
+    has_longterm_permission = get_participant(request.user).longterm
 
     # 获取房间编号
     Rid = request.GET.get('Rid')
@@ -818,7 +818,7 @@ def arrange_time(request: HttpRequest):
         start_week = int(start_week)
         # 参数检查
         assert start_week == 0 or start_week == 1
-        assert is_organization or not is_longterm
+        assert has_longterm_permission or not is_longterm
     except:
         return redirect(reverse('Appointment:index'))
 
@@ -1030,7 +1030,8 @@ def check_out(request: HttpRequest):
             # 间隔为1代表每周，为2代表隔周
             interval = request.POST.get('interval', 0)
 
-    is_organization = is_org(request.user)
+    applicant = get_participant(request.user)
+    has_longterm_permission = applicant.longterm
 
     try:
         # 参数类型转换与合法性检查
@@ -1046,7 +1047,7 @@ def check_out(request: HttpRequest):
         assert endid >= 0
         assert endid >= startid
         assert start_week == 0 or start_week == 1
-        assert is_organization or not is_longterm  # 不允许非组织账户进行长期预约
+        assert has_longterm_permission or not is_longterm  # 检查长期预约权限
     except:
         return redirect(reverse('Appointment:index'))
 
@@ -1086,7 +1087,7 @@ def check_out(request: HttpRequest):
     render_context = {}
     render_context.update(room_object=room_object,
                           appoint_params=appoint_params,
-                          is_org=is_organization)
+                          is_org=has_longterm_permission)
 
     # 提交预约信息
     if request.method == 'POST':
@@ -1120,7 +1121,7 @@ def check_out(request: HttpRequest):
 
         # 检查长期预约次数
         if is_longterm and LongTermAppoint.objects.filter(
-                appoint__major_student__Sid=contents['Sid'],
+                applicant=applicant,
                 appoint__Astart__gt=web_func.str_to_time(
                     GLOBAL_INFO.semester_start),
                 status__in=[
@@ -1156,7 +1157,7 @@ def check_out(request: HttpRequest):
             else:
                 # 长期预约
                 Aid = json.loads(response.content)['data']['Aid']
-                appoint = Appoint.objects.get(Aid=Aid)
+                appoint: Appoint = Appoint.objects.get(Aid=Aid)
                 with transaction.atomic():
                     conflict_appoints = get_conflict_appoints(
                         appoint,
@@ -1172,7 +1173,7 @@ def check_out(request: HttpRequest):
                     else:
                         LongTermAppoint.objects.create(
                             appoint=appoint,
-                            org=appoint.major_student,
+                            applicant=applicant,
                             times=times,
                             interval=interval,
                         )

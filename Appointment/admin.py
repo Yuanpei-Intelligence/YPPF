@@ -13,13 +13,7 @@ from boottest.admin_utils import *
 from Appointment import *
 from Appointment.utils import scheduler_func, utils
 from Appointment.utils.utils import operation_writer
-from Appointment.models import (
-    Participant,
-    Room,
-    Appoint,
-    College_Announcement,
-    CardCheckInfo,
-)
+from Appointment.models import *
 
 
 # Register your models here.
@@ -495,3 +489,9 @@ class CardCheckInfoAdmin(admin.ModelAdmin):
     @as_display('刷卡者', except_value='-')
     def student_display(self, obj):
         return obj.Cardstudent.name
+
+
+@admin.register(LongTermAppoint)
+class LongTermAppointAdmin(admin.ModelAdmin):
+    list_display = ['id', 'applicant', 'appoint', 'times', 'interval', 'status']
+    list_filter = ['status', 'times', 'interval']
