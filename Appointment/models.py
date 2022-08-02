@@ -326,9 +326,9 @@ class LongTermAppoint(models.Model):
                                    on_delete=models.CASCADE,
                                    verbose_name='单次预约信息')
 
-    org = models.ForeignKey(Participant,
-                            on_delete=models.CASCADE,
-                            verbose_name='发起预约组织')
+    applicant: Participant = models.ForeignKey(Participant,
+                                               on_delete=models.CASCADE,
+                                               verbose_name='申请者')
 
     times = models.SmallIntegerField('预约次数', default=1)
     interval = models.SmallIntegerField('间隔周数', default=1)
