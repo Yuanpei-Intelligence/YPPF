@@ -1040,7 +1040,7 @@ def check_out(request: HttpRequest):
         if is_longterm and request.method == 'POST':
             times = int(times)
             interval = int(interval)
-            assert interval == 1 or interval == 2
+            assert 1 <= interval <= GLOBAL_INFO.longterm_max_interval
         assert weekday in wklist
         assert startid >= 0
         assert endid >= 0
@@ -1115,7 +1115,7 @@ def check_out(request: HttpRequest):
             contents['students'].append(contents['Sid'])
 
         # 检查预约次数
-        if is_longterm and (times < 1 or times > 8):
+        if is_longterm and not 1 <= times <= GLOBAL_INFO.longterm_max_time:
             wrong("您填写的预约周数不符合要求", render_context)
 
         # 检查长期预约次数
@@ -1125,9 +1125,9 @@ def check_out(request: HttpRequest):
                     GLOBAL_INFO.semester_start),
                 status__in=[
                     LongTermAppoint.Status.APPROVED,
-                    LongTermAppoint.Status.REVIEWING
-                ]).count() >= 4:
-            wrong("不能发起超过4个长期预约", render_context)
+                    LongTermAppoint.Status.REVIEWING,
+                ]).count() >= GLOBAL_INFO.longterm_max_num:
+            wrong("您的长期预约总数已超过上限", render_context)
 
         contents['Astart'] = datetime(contents['year'], contents['month'],
                                       contents['day'],
