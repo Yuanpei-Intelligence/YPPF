@@ -8,6 +8,18 @@ from django.db.models import Q
 
 from datetime import datetime, time
 
+
+__all__ = [
+    'College_Announcement',
+    'User',
+    'Participant',
+    'Room',
+    'Appoint',
+    'LongTermAppoint',
+    'CardCheckInfo',
+]
+
+
 class College_Announcement(models.Model):
     class Show_Status(models.IntegerChoices):
         Yes = 1
@@ -41,6 +53,10 @@ class Participant(models.Model):
     # TODO: pht 2022-02-20 通过新的模型实现，允许每个房间有自己的规则
     # 用户许可的字段，需要许可的房间刷卡时检查是否通过了许可
     agree_time = models.DateField('上次许可时间', null=True, blank=True)
+
+    def get_id(self) -> str:
+        '''获取id(学号/组织账号)'''
+        return self.Sid_id
 
     def __str__(self):
         '''仅用于后台呈现和搜索方便，任何时候不应使用'''
@@ -90,7 +106,7 @@ class Room(models.Model):
         UNLIMITED = 1, '无需预约'  # 允许使用
         FORBIDDEN = 2, '禁止使用'  # 禁止使用
 
-    Rstatus: Status = models.SmallIntegerField('房间状态',
+    Rstatus: 'int|Status' = models.SmallIntegerField('房间状态',
                                        choices=Status.choices,
                                        default=0)
 
@@ -116,7 +132,7 @@ class AppointManager(models.Manager):
 
     def displayable(self):
         """
-        在admin_index页面使用，在”普通预约“和”查看下周“中，只有非长期预约和审核通过的长期预约能够显示
+        在admin_index页面使用，在"普通预约"和"查看下周"中，只有非长期预约和审核通过的长期预约能够显示
         """
         return self.filter(
             Q(longtermappoint__isnull=True)
@@ -140,7 +156,7 @@ class Appoint(models.Model):
         FAILED = 0  # 预约在此分钟的检查尚未通过
         PASSED = 1  # 预约在特定分钟内的检查是通过的
         UNSAVED = 2 # 预约在此分钟内尚未记录检测状态
-    Acheck_status: CheckStatus = models.SmallIntegerField(
+    Acheck_status: 'int|CheckStatus' = models.SmallIntegerField(
         '检测状态', choices=CheckStatus.choices, default=2)
 
     # 这里Room使用外键的话只能设置DO_NOTHING，否则删除房间就会丢失预约信息
@@ -165,9 +181,9 @@ class Appoint(models.Model):
         VIOLATED = 5  # 违约
         JUDGED = 6  # 违约申诉成功
 
-    Astatus: Status = models.IntegerField('预约状态',
-                                  choices=Status.choices,
-                                  default=1)
+    Astatus: 'int|Status' = models.IntegerField('预约状态',
+                                                choices=Status.choices,
+                                                default=1)
 
     # modified by wxy
     Aneed_num = models.IntegerField('检查人数要求')
@@ -193,8 +209,8 @@ class Appoint(models.Model):
         TEMPORARY = 2, '临时预约'
         LONGTERM = 3, '长期预约'
 
-    Atype: Type = models.SmallIntegerField(
-        '预约类型', choices=Type.choices, default=Type.NORMAL.value)
+    Atype: 'int|Type' = models.SmallIntegerField(
+        '预约类型', choices=Type.choices, default=0)
 
     # TODO: remove temp_flag
     # --- add by lhw --- #
@@ -211,6 +227,10 @@ class Appoint(models.Model):
         verbose_name = '预约信息'
         verbose_name_plural = verbose_name
         ordering = ['Aid']
+
+    def get_major_id(self) -> str:
+        '''获取预约发起者id'''
+        return self.major_student.Sid_id
 
     def get_status(self):
         status = ""
@@ -322,9 +342,9 @@ class LongTermAppoint(models.Model):
     """
     记录长期预约所需要的全部信息
     """
-    appoint = models.OneToOneField(Appoint,
-                                   on_delete=models.CASCADE,
-                                   verbose_name='单次预约信息')
+    appoint: Appoint = models.OneToOneField(Appoint,
+                                            on_delete=models.CASCADE,
+                                            verbose_name='单次预约信息')
 
     applicant: Participant = models.ForeignKey(Participant,
                                                on_delete=models.CASCADE,
@@ -339,9 +359,9 @@ class LongTermAppoint(models.Model):
         APPROVED = (2, '已通过')
         REJECTED = (3, '未通过')
 
-    status = models.SmallIntegerField("申请状态",
-                                      choices=Status.choices,
-                                      default=Status.REVIEWING)
+    status: 'int|Status' = models.SmallIntegerField("申请状态",
+                                                    choices=Status.choices,
+                                                    default=Status.REVIEWING)
 
     class Meta:
         verbose_name = '长期预约信息'

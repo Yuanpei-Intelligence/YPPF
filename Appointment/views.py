@@ -696,7 +696,7 @@ def index(request):  # 主页
         return f"{rem // 60}min" if hour == 0 else f"{hour}h{rem // 60}min"
 
     #--------- 1,2 地下室状态部分 ---------#
-    function_room_list = Room.objects.function_rooms()
+    function_room_list = Room.objects.function_rooms().order_by('Rid')
 
     #--------- 地下室状态：left tab ---------#
     suspended_room_list = room_list.filter(
@@ -705,7 +705,7 @@ def index(request):  # 主页
                        for room in suspended_room_list]                             # 开放房间人数统计
 
     #--------- 地下室状态：right tab ---------#
-    talk_room_list = Room.objects.talk_rooms()
+    talk_room_list = Room.objects.talk_rooms().order_by('Rid')
     room_info = [(room, {'Room': room.Rid} in occupied_rooms, format_time(          # 研讨室占用情况
         room_appointments[room.Rid])) for room in talk_room_list]
 
@@ -896,8 +896,8 @@ def arrange_time(request: HttpRequest):
     js_dayrange_list = json.dumps(dayrange_list)
 
     # 获取房间信息，以支持房间切换的功能
-    function_room_list = Room.objects.function_rooms()
-    talk_room_list = Room.objects.talk_rooms()
+    function_room_list = Room.objects.function_rooms().order_by('Rid')
+    talk_room_list = Room.objects.talk_rooms().order_by('Rid')
 
     return render(request, 'Appointment/booking.html', locals())
 
@@ -1080,8 +1080,8 @@ def check_out(request: HttpRequest):
                 appoint_params['Rmin'] = min(GLOBAL_INFO.today_min,
                                              room_object.Rmin)
             break
-    appoint_params['Sid'] = request.user.username
-    appoint_params['Sname'] = get_participant(appoint_params['Sid']).name
+    appoint_params['Sid'] = applicant.get_id()
+    appoint_params['Sname'] = applicant.name
 
     # 准备上下文，此时预约的时间地点、发起人已经固定
     render_context = {}
