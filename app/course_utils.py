@@ -48,7 +48,7 @@ from collections import Counter
 from datetime import datetime, timedelta
 from typing import Tuple, List
 
-from django.http import HttpResponse
+from django.http import HttpRequest, HttpResponse
 from django.contrib.auth.models import User
 from django.db import transaction
 from django.db.models import F, Q, Sum, Prefetch
@@ -75,15 +75,32 @@ __all__ = [
 ]
 
 
-# 时间合法性的检查：开始早于结束，开始晚于当前时间
-def check_ac_time_course(start_time, end_time):
+def check_ac_time_course(start_time: datetime, end_time: datetime) -> bool:
+    """
+    时间合法性的检查：开始早于结束
+
+    :param start_time: 活动开始时间
+    :type start_time: datetime
+    :param end_time: 活动结束时间
+    :type end_time: datetime
+    :return: 是否合法
+    :rtype: bool
+    """
     if not start_time < end_time:
         return False
     return True
 
 
-def course_activity_base_check(request):
-    '''检查课程活动，是activity_base_check的简化版，失败时抛出AssertionError'''
+def course_activity_base_check(request: HttpRequest) -> dict:
+    """
+    检查课程活动，是activity_base_check的简化版，失败时抛出AssertionError
+
+    :param request: 修改/发起单次课程活动的请求
+    :type request: HttpRequest
+    :raises AssertionError: 活动时间非法
+    :return: context
+    :rtype: dict
+    """
     context = dict()
 
     # 读取活动名称和地点，检查合法性
@@ -112,11 +129,16 @@ def course_activity_base_check(request):
     return context
 
 
-def create_single_course_activity(request):
-    '''
+def create_single_course_activity(request: HttpRequest) -> Tuple[int, bool]:
+    """
     创建单次课程活动，是create_activity的简化版
     错误提示通过AssertionError抛出
-    '''
+
+    :param request: 发起单次课程活动的请求
+    :type request: HttpRequest
+    :return: 课程活动id，True(成功创建)/False(相似活动已存在)
+    :rtype: Tuple[int, bool]
+    """
     context = course_activity_base_check(request)
 
     # 获取组织和课程
@@ -218,11 +240,16 @@ def create_single_course_activity(request):
     return activity.id, True
 
 
-def modify_course_activity(request, activity):
-    '''
+def modify_course_activity(request: HttpRequest, activity: Activity):
+    """
     修改单次课程活动信息，是modify_activity的简化版
     错误提示通过AssertionError抛出
-    '''
+
+    :param request: 修改单次课程活动的请求
+    :type request: HttpRequest
+    :param activity: 待修改的活动
+    :type activity: Activity
+    """
     # 课程活动无需报名，在开始前都是等待中的状态
     assert activity.status == Activity.Status.WAITING, \
             "课程活动只有在等待状态才能修改。"
@@ -293,8 +320,8 @@ def modify_course_activity(request, activity):
     notifyActivity(activity.id, "modification_par", "\n".join(to_participants))
 
 
-def cancel_course_activity(request, activity, cancel_all=False):
-    '''
+def cancel_course_activity(request: HttpRequest, activity: Activity, cancel_all: bool = False):
+    """
     取消课程活动，是cancel_activity的简化版，在聚合页面被调用
 
     在聚合页面中，应确保activity是课程活动，并且应检查activity.status，
@@ -302,7 +329,16 @@ def cancel_course_activity(request, activity, cancel_all=False):
 
     成功无返回值，失败返回错误消息
     （或者也可以在聚合页面判断出来能不能取消）
-    '''
+
+    :param request: 取消单次课程活动的请求
+    :type request: HttpRequest
+    :param activity: 待取消的活动
+    :type activity: Activity
+    :param cancel_all: 取消该时段所有活动, defaults to False
+    :type cancel_all: bool, optional
+    :return: 取消失败的话返回错误信息
+    :rtype: string
+    """
     # 只有WAITING和PROGRESSING有可能修改
     if activity.status not in [
         Activity.Status.WAITING,
@@ -1101,11 +1137,15 @@ def create_course(request, course_id=None):
     return context
 
 
-def cal_participate_num(course: Course) -> Counter:
+def cal_participate_num(course: Course) -> dict:
     """
     计算该课程对应组织所有成员的参与次数
     return {Naturalperson.id:参与次数}
     前端使用的时候直接读取字典的值就好了
+    :param course: 选择要计算的课程
+    :type course: Course
+    :return: 返回统计数据
+    :rtype: dict
     """
     org = course.organization
     activities = Activity.objects.activated().filter(
@@ -1129,13 +1169,19 @@ def cal_participate_num(course: Course) -> Counter:
     return participate_num
 
 
-def check_post_and_modify(records, post_data):
+def check_post_and_modify(records: list, post_data: dict) -> MESSAGECONTEXT:
     """
     records和post_data分别为原先和更新后的list
     检查post表单是否可以为这个course对应的内容，
     如果可以，修改学时
     - 返回wrong|succeed
     - 不抛出异常
+    :param records: 原本的学时数据
+    :type records: list
+    :param post_data: 由前端上传上来的修改结果
+    :type post_data: dict
+    :return: 检查结果
+    :rtype: MESSAGECONTEXT
     """
     try:
         # 对每一条记录而言
@@ -1230,13 +1276,20 @@ def finish_course(course):
     return succeed("结束课程成功！")
 
 
-def download_course_record(course=None, year=None, semester=None):
-    '''
-    返回需要导出的学时信息文件
+def download_course_record(course: Course=None, year: int=None, semester: Semester=None) -> HttpResponse:
+    """返回需要导出的学时信息文件
     course:
         提供course时为单个课程服务，只导出该课程的相关人员的学时信息
         不提供时下载所有学时信息，注意，只有相关负责老师可以访问！
-    '''
+    :param course: 所选择的课程, defaults to None
+    :type course: Course, optional
+    :param year: 所选择的学年, defaults to None
+    :type year: int, optional
+    :param semester: 所选择的学期, defaults to None
+    :type semester: Semester, optional
+    :return: 返回下载的文件数据
+    :rtype: HttpResponse
+    """
     wb = openpyxl.Workbook()  # 生成一个工作簿（即一个Excel文件）
     wb.encoding = 'utf-8'
     # 获取第一个工作表（detail_sheet）

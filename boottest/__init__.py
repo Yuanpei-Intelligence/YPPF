@@ -20,7 +20,7 @@ from django.conf import settings
 
 # 寻找本地设置
 def base_get_setting(path: str='', trans_func=None, default=None,
-                fuzzy_lookup=False, raise_exception=True):
+                     fuzzy_lookup=False, raise_exception=True):
     '''
     提供/或\\分割的setting路径，尝试寻找对应路径的设置，失败时返回default
     - 如果某级目录未找到且设置了fuzzy_lookup，会依次尝试其小写、大写版本，并忽略空目录
@@ -30,27 +30,27 @@ def base_get_setting(path: str='', trans_func=None, default=None,
     '''
     try:
         paths = path.replace('\\', '/').strip('/').split('/')
-        current_dir = local_dict
+        current_dir: dict = local_dict
         if len(paths) and paths[0] == '':
             paths = paths[1:]
         for query in paths:
             if fuzzy_lookup and not query:
                 continue
-            if current_dir.get(query, OSError) != OSError:
+            if query in current_dir.keys():
                 current_dir = current_dir[query]
-            elif fuzzy_lookup and current_dir.get(query.lower(), OSError) != OSError:
+            elif fuzzy_lookup and query.lower() in current_dir.keys():
                 current_dir = current_dir[query.lower()]
-            elif fuzzy_lookup and current_dir.get(query.upper(), OSError) != OSError:
+            elif fuzzy_lookup and query.upper() in current_dir.keys():
                 current_dir = current_dir[query.upper()]
             else:
-                raise OSError(f'setting not found: {query} in {path}')
+                raise ValueError(f'setting not found: {query} in {path}')
         return current_dir if trans_func is None else trans_func(current_dir)
     except Exception as e:
         if raise_exception:
             raise
         try:
-            assert DEBUG is not None, '正在settings中加载设置'
-            debug = DEBUG
+            # settings正在加载时，DEBUG全局变量未定义，需要使用settings.DEBUG
+            debug = settings.DEBUG
         except:
             debug = True
         if debug:
@@ -62,6 +62,7 @@ def base_get_setting(path: str='', trans_func=None, default=None,
 
 
 # 全局设置
+# 加载settings.xxx时会加载文件
 DEBUG: bool = settings.DEBUG
 MEDIA_URL: str = settings.MEDIA_URL
 LOGIN_URL: str = settings.LOGIN_URL

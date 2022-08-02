@@ -342,7 +342,6 @@ def addAppoint(contents):  # 添加预约, main function
                     status=400)
 
             # 等待确认的和结束的肯定是当下时刻已经弄完的，所以不用管
-            print("得到搜索列表")
             appoints = room.appoint_list.select_for_update().exclude(
                 Astatus=Appoint.Status.CANCELED).filter(
                     Room_id=contents['Rid'])
