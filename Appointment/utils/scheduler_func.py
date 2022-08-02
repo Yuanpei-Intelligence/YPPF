@@ -392,6 +392,8 @@ def addAppoint(contents):  # 添加预约, main function
                               major_student=major_student,
                               Anon_yp_num=contents['non_yp_num'],
                               Ayp_num=len(students),
+                              # TODO: appoint type
+                              Aneed_num=real_min,
                               Atemp_flag=contents['Atemp_flag'])
             appoint.save()
             # appoint.students.set(students)
