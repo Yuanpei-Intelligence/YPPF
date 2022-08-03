@@ -300,19 +300,19 @@ def get_time_id(room: Room, ttime: datetime, mode: str = "rightopen") -> int:
     return hour * 2 + half
 
 
-def get_dayrange(span: int = 7, bias_days: int = 0) -> list:
+def get_dayrange(span: int = 7, day_offset: int = 0) -> list:
     """
     生成一个连续的时间段
 
     :param span: 时间段跨度, defaults to 7
     :type span: int
-    :param bias_days: 开始时间与当前时间相差的天数, defaults to 0
-    :type bias_days: int
+    :param day_offset: 开始时间与当前时间相差的天数, defaults to 0
+    :type day_offset: int
     :return: 时间段列表，每一项包含该天的具体信息
     :rtype: list
     """
     timerange_list = []
-    present_day = datetime.now() + timedelta(days=bias_days)
+    present_day = datetime.now() + timedelta(days=day_offset)
     for i in range(span):
         timerange = {}
         aday = present_day + timedelta(days=i)

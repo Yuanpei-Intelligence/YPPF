@@ -792,7 +792,7 @@ def arrange_time(request: HttpRequest):
     if request.method == 'POST':
         return redirect(reverse('Appointment:index'))
 
-    # 判断当前用户是否为组织。只有组织账户可以进行长期预约。
+    # 判断当前用户是否可以进行长期预约
     has_longterm_permission = get_participant(request.user).longterm
 
     # 获取房间编号
@@ -822,7 +822,7 @@ def arrange_time(request: HttpRequest):
     except:
         return redirect(reverse('Appointment:index'))
 
-    dayrange_list = web_func.get_dayrange(bias_days=start_week * 7)
+    dayrange_list = web_func.get_dayrange(day_offset=start_week * 7)
 
     # 获取预约时间的最大时间块id
     max_stamp_id = web_func.get_time_id(room_object,
@@ -1060,7 +1060,7 @@ def check_out(request: HttpRequest):
         'start_week': start_week,
     }
     room_object = Room.objects.get(Rid=Rid)
-    dayrange_list = web_func.get_dayrange(bias_days=start_week * 7)
+    dayrange_list = web_func.get_dayrange(day_offset=start_week * 7)
     for day in dayrange_list:
         if day['weekday'] == appoint_params['weekday']:
             appoint_params['date'] = day['date']
@@ -1163,7 +1163,7 @@ def check_out(request: HttpRequest):
                         appoint,
                         times,
                         interval,
-                        bias_week=interval,
+                        week_offset=interval,
                         lock=True)
                     if conflict_appoints:
                         appoint.delete()

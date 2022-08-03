@@ -425,7 +425,21 @@ def addAppoint(contents):  # 添加预约, main function
     return JsonResponse({'data': appoint.toJson()}, status=200)
 
 
-def add_longterm_appoint(appoint, times, interval_week=1, admin=False):
+def get_longterm_display(times: int, interval_week: int):
+    if interval_week == 1:
+        longterm_info = f'{times}周的'
+    elif interval_week == 2:
+        longterm_info = f'{times}次单/双周的'
+    else:
+        longterm_info = f'{times}次间隔{interval_week}周的'
+    return longterm_info
+
+
+def add_longterm_appoint(appoint: Appoint,
+                         times: int,
+                         interval: int = 1,
+                         week_offset: int = 0,
+                         admin: bool = False):
     '''
     自动开启事务以检查预约是否冲突，以原预约为模板直接生成新预约
         暂不检查预约时间是否合法
@@ -437,23 +451,26 @@ def add_longterm_appoint(appoint, times, interval_week=1, admin=False):
     '''
     with transaction.atomic():
         conflict_appoints = utils.get_conflict_appoints(
-            appoint, times, interval_week, lock=True)
+            appoint, times, interval, week_offset, lock=True)
         if conflict_appoints:
             first_conflict = conflict_appoints[0]
             first_time = (
                 (first_conflict.Afinish - appoint.Astart)
-                // timedelta(days=7 * interval_week) + 1)
+                // timedelta(weeks=interval) + 1)
             return first_time, conflict_appoints
 
         # 没有冲突，开始创建长线预约
         students = appoint.students.all()
         new_appoints = []
-        new_appoint = Appoint.objects.get(pk=appoint.pk)
+        new_appoint: Appoint = Appoint.objects.get(pk=appoint.pk)
+        new_appoint.Astart += timedelta(weeks=week_offset)
+        new_appoint.Afinish += timedelta(weeks=week_offset)
         for time in range(times):
             # 先获取复制对象的副本
-            new_appoint.Astart += timedelta(days=7 * interval_week)
-            new_appoint.Afinish += timedelta(days=7 * interval_week)
+            new_appoint.Astart += timedelta(weeks=interval)
+            new_appoint.Afinish += timedelta(weeks=interval)
             new_appoint.Astatus = Appoint.Status.APPOINTED
+            new_appoint.Atype = Appoint.Type.LONGTERM
             # 删除主键会被视为新对象，save时向数据库添加对象并更新主键
             new_appoint.pk = None
             new_appoint.save()
@@ -465,19 +482,14 @@ def add_longterm_appoint(appoint, times, interval_week=1, admin=False):
         # 至此，预约都已成功创建，可以放心设置定时任务了，但设置定时任务出错也需要回滚
         for new_appoint in new_appoints:
             set_scheduler(new_appoint)
+            set_start_wechat(new_appoint, notify_create=False)
 
     # 长线化预约发起成功，准备消息提示即可
-    if interval_week == 1:
-        longterm_info = f'{times}周的'
-    elif interval_week == 2:
-        longterm_info = f'{times}次单/双周的'
-    else:
-        longterm_info = f'{times}次间隔{interval_week}周的'
     set_longterm_wechat(
         appoint, infos=f'新增了{longterm_info}同时段预约', admin=admin)
-    # TODO: major_sid
+    longterm_info = get_longterm_display(times, interval)
     utils.operation_writer(
-        appoint.major_student.Sid_id,
+        appoint.get_major_id(),
         f"发起{longterm_info}长线化预约, 原预约号为{appoint.Aid}",
         "scheduler_func.add_longterm_appoint", "OK")
     return None, new_appoints
