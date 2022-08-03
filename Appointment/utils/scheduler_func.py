@@ -160,7 +160,7 @@ def set_cancel_wechat(appoint: Appoint, students_id=None):
 
 
 # added by pht: 8.31
-def set_start_wechat(appoint, students_id=None, notify_new=True):
+def set_start_wechat(appoint, students_id=None, notify_create=True):
     '''将预约成功和开始前的提醒定时发送给微信'''
     if students_id is None:
         students_id = list(appoint.students.values_list('Sid', flat=True))
@@ -179,8 +179,7 @@ def set_start_wechat(appoint, students_id=None, notify_new=True):
             return False
     elif datetime.now() <= appoint.Astart - timedelta(minutes=15):
         # 距离预约开始还有15分钟以上，提醒有新预约&定时任务
-        # print('距离预约开始还有15分钟以上，提醒有新预约&定时任务', notify_new)
-        if notify_new:  # 只有在非长线预约中才添加这个job
+        if notify_create:  # 只有在非长线预约中才添加这个job
             set_appoint_wechat(
                 appoint, 'new',
                 students_id=students_id, id=f'{appoint.Aid}_new_wechat')
@@ -197,7 +196,7 @@ def set_start_wechat(appoint, students_id=None, notify_new=True):
 
 
 def set_longterm_wechat(appoint: Appoint, students_id=None, infos='', admin=False):
-    '''取消预约的微信提醒，默认发给所有参与者'''
+    '''长期预约的微信提醒，默认发给所有参与者'''
     set_appoint_wechat(
         appoint, 'longterm_admin' if admin else 'longterm', infos,
         students_id=students_id, id=f'{appoint.Aid}_longterm_wechat')
@@ -404,11 +403,7 @@ def addAppoint(contents):  # 添加预约, main function
 
             # modify by pht: 整合定时任务为函数
             set_scheduler(appoint)
-            set_start_wechat(
-                        appoint,
-                        students_id=students_id,
-                        notify_new=bool(contents.get('new_require', True))
-                        )
+            set_start_wechat(appoint, students_id, notify_create=contents.get('new_require', True))
 
             # TODO: major_sid
             utils.operation_writer(major_student.Sid_id, "发起预约，预约号" +
@@ -485,8 +480,6 @@ def add_longterm_appoint(appoint: Appoint,
             set_start_wechat(new_appoint, notify_create=False)
 
     # 长线化预约发起成功，准备消息提示即可
-    set_longterm_wechat(
-        appoint, infos=f'新增了{longterm_info}同时段预约', admin=admin)
     longterm_info = get_longterm_display(times, interval)
     utils.operation_writer(
         appoint.get_major_id(),
