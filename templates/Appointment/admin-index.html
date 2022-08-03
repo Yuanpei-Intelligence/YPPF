@@ -326,19 +326,19 @@
                                                                     {{ appoint.Rtitle }}&nbsp;&nbsp;&nbsp;&nbsp;
                                                                     <!--本来想直接通过模版引用变量上色的，但一直写不对，就暂且用分支语句吧-->
                                                                     <!--modified by wxy-->
-                                                                    {% if appoint.Astatus == 'Canceled' %}
+                                                                    {% if appoint.Astatus == '已取消' %}
                                                                         <span style="color:#79380e">已取消</span>
-                                                                    {% elif appoint.Astatus == 'Appointed' %}
+                                                                    {% elif appoint.Astatus == '已预约' %}
                                                                         <span style="color:#08daff">已预约</span>
-                                                                    {% elif appoint.Astatus == 'Processing' %}
+                                                                    {% elif appoint.Astatus == '进行中' %}
                                                                         <span style="color:#1e90ff">正在进行</span>
-                                                                    {% elif appoint.Astatus == 'Waiting' %}
+                                                                    {% elif appoint.Astatus == '等待确认' %}
                                                                         <span style="color:#e97313">等待确认</span>
-                                                                    {% elif appoint.Astatus == 'Confirmed' %}
+                                                                    {% elif appoint.Astatus == '已确认' %}
                                                                         <span style="color:#32ac0d">已确认</span>
-                                                                    {% elif appoint.Astatus == 'Violated' %}
+                                                                    {% elif appoint.Astatus == '违约' %}
                                                                         <span style="color:#ff2d2d">违规（可申诉）</span>
-                                                                    {% elif appoint.Astatus == 'Judged' %}
+                                                                    {% elif appoint.Astatus == '申诉成功' %}
                                                                         <span style="color:#32ac0d">违规申诉成功</span>
                                                                     {% endif %}
                                                                 </h3>
@@ -369,7 +369,7 @@
                                                                             </h5>
                                                                         {% endif %}
                                                                     {% endif %}
-                                                                    {% if appoint.Astatus == 'Violated' %}
+                                                                    {% if appoint.Astatus == '违约' %}
                                                                         <h5 style="white-space: normal;color:#ff2d2d">
                                                                             <i class="far fa fa-envelope"></i>
                                                                             违约原因：
@@ -388,7 +388,7 @@
                                                             </div>
                                                         </div>
                                                         <div>
-                                                            {% if appoint.Astatus == 'Violated' %}
+                                                            {% if appoint.Astatus == '违约' %}
                                                                 <!--<div>-->
                                                                 <div class="appointment-action">
                                                                     <a href="https://shimo.im/forms/pcptwdvCPPXqTRTd/fill">
