@@ -9,17 +9,49 @@ from yp_library.utils import (
     search_books,
     get_query_dict,
     get_lendinfo_by_readers,
+    get_library_activity, 
+    get_recommended_or_newest_books, 
+    get_opening_time
 )
 from app.utils import get_sidebar_and_navbar, check_user_access
 
 
 @login_required(redirect_field_name="origin")
 @check_user_access(redirect_url="/logout/")
-def welcome(request):
+def welcome(request: HttpRequest) -> HttpResponse:
+    """
+    书房首页，提供近期活动、随机推荐、开馆时间；
+    首页的查询功能应该可以通过前端转到search页面，这里未做处理
+
+    :param request: 进入书房首页的请求
+    :type request: HttpRequest
+    :return: 书房首页
+    :rtype: HttpResponse
+    """
     bar_display = get_sidebar_and_navbar(request.user, "元培书房")
     frontend_dict = {
         "bar_display": bar_display,
     }
+    transfer_message_context(request.GET, frontend_dict,
+                             normalize=True)
+    
+    # 检查用户身份
+    # 要求必须为个人账号且账号必须通过学号关联至少一个reader，否则抛出AssertionError
+    # 如果首页对账号没有要求，可以删掉这部分
+    try:
+        readers = get_readers_by_user(request.user)
+    except AssertionError as e:
+        return redirect(message_url(wrong(e)))
+    
+    # 获取首页展示的近期活动
+    frontend_dict["activities"] = get_library_activity(num=3)
+    # 获取开馆时间
+    frontend_dict["opening_time_start"], frontend_dict["opening_time_end"] = get_opening_time()
+    # 获取随机推荐书目
+    frontend_dict["recommendation"] = get_recommended_or_newest_books(num=5, newest=False)
+    # 获取最新到馆书目（按id从大到小），暂不启用
+    # frontend_dict["newest_books"] = get_recommended_or_newest_books(num=5, newest=True)
+
     return render(request, "yp_library/welcome.html", frontend_dict)
 
 

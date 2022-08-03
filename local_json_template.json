@@ -111,5 +111,10 @@
     "test_info": {
         "stu_name": "YPadmin"
     },
-    "YQPoint_source_oname": "元培元气值中心"
+    "YQPoint_source_oname": "元培元气值中心",
+    "library": {
+        "organization_name": "何善衡图书室",
+        "open_time_start": "07:00",
+        "open_time_end": "23:00"
+    }
 }
