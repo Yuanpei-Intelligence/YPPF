@@ -1,0 +1,261 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="zh-CN">
+    <head>
+        <meta charset="UTF-8">
+        <meta http-equiv="X-UA-Compatible" content="IE=edge">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>长期预约审核</title>
+        <!-- Favicons -->
+        <link type="image/x-icon" href="{% static '/assets/img/yp_favicon.png' %}" rel="icon">
+        <!-- <link href="fonts.googleapis.com/css?family=Nunito:400,600,700" rel="stylesheet"> -->
+        <link href={% static "outer/fonts.googleapis.com/source1.css" %} rel="stylesheet">
+        <link href={% static "bootstrap/css/bootstrap.min.css" %} rel="stylesheet" type="text/css" />
+        <link href={% static "assets/css/plugins.css" %} rel="stylesheet" type="text/css" />
+        <!-- END GLOBAL MANDATORY STYLES -->
+        <!--  BEGIN CUSTOM STYLE FILE  -->
+        <link href={% static "assets/css/users/user-profile.css" %} rel="stylesheet" type="text/css" />
+        <!--  END CUSTOM STYLE FILE  -->
+        <link href={% static "Font-Awesome/css/all.min.css" %} rel="stylesheet" type="text/css" />
+        {% comment %} <link href={% static "Appointment/assets/css/style.css" %} rel="stylesheet"> {% endcomment %}
+    </head>
+    <body class="p-4" style="height:100vh;box-sizing:border-box;">
+        <div class="card p-3" style="min-height:95vh;">
+            <h4 class="mb-3 px-3 ">长期预约审核</h4>
+            <ul id="myTab" class="nav nav-tabs nav-tabs-solid nav-justified mx-3 mb-3">
+                <li class="nav-item">
+                    <a class="nav-link active" href="#reviewing" data-toggle="tab">
+                        <span>
+                            <i class="fa fa-envelope-o"></i> 待审核
+                        </span>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="#reviewed" data-toggle="tab">
+                        <span>
+                            <i class="fa fa-envelope-o"></i> 已处理
+                        </span>
+                    </a>
+                </li>
+            </ul>
+            <div id="review-items" class="tab-content">
+                {% for key, shown_instances in all_instances.items %}
+                    <div class="tab-pane fade {% if key == "reviewing" %}in show active{% endif %}" id="{{ key }}">
+                        <br />
+                        {% if not shown_instances %}
+                            <br />
+                            <p></p>
+                            <p style="text-align: center;">暂无预约</p>
+                            <br />
+                        {% else %}
+                            <div class="row w-100 m-0">
+                                {% for instance in shown_instances %}
+                                    <div class="col-12 col-xl-6 col-lg-12 mb-xl-4 mb-4">
+                                        <div class="card p-3">
+                                            <div class="row">
+                                                <div class="col-sm-12 col-md-3 col-lg-4 p-2">
+                                                    <img src="{% static 'Appointment/assets/img/RoomIcon/' %}{{ instance.appoint.Room.Rid }}.png"
+                                                         class="img-fluid w-100"
+                                                         alt="Room Image">
+                                                </div>
+                                                <div class="col-sm-12 col-md-9 col-lg-8 p-2">
+                                                    <p class="d-flex justify-content-between font-weight-bold">
+                                                        <span class="card-title">{{ instance.appoint.Room }}{{instance.status}}</span>
+                                                        {% if instance.status == 1 %}
+                                                            <span class="text-primary">待审核</span>
+                                                        {% elif instance.status == 2 %}
+                                                            <span class="text-success">已通过</span>
+                                                        {% elif instance.status == 3 %}
+                                                            <span class="text-warning">未通过</span>
+                                                        {% endif %}
+                                                    </p>
+                                                    <p class="d-flex justify-content-between">
+                                                        <span>
+                                                            <i class="fa fa fa-user-friends"></i>
+                                                            发起人：{{ instance.org.name }}
+                                                        </span>
+                                                        <span>
+                                                            <i class="fa fa-fw fa-address-book"></i>
+                                                            审核: X老师
+                                                        </span>
+                                                    </p>
+                                                    <p class="d-flex justify-content-between">
+                                                        <span class="text-nowrap" style="text-overflow:ellipsis ;overflow: hidden;max-width:10rem">
+                                                            <i class="fa fa-fw fa-calendar-minus"></i>
+                                                            用途：{{ instance.appoint.Ausage }}
+                                                        </span>
+                                                        <a class="btn btn-primary py-0" href="/underground/review?Lid={{ instance.id }}" >详情</a>
+                                                    </p>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                {% endfor %}
+                            </div>
+                        {% endif %}
+                    </div>
+                {% endfor %}
+            </div>
+        </div>
+        <!-- Modal -->
+        {% if longterm_appoint %}
+            <div class="modal fade w-100 h-100 p-0" id="appoint-info" tabindex="-1" role="dialog">
+                <div class="modal-dialog modal-dialog-scrollable modal-lg m-0 h-100" role="document" style="max-width: 100%;max-height: 100%;">
+                    <div class="modal-content w-100 h-100" style="max-width: 100%;max-height: 100%;">
+                        <div class="modal-header align-items-center">
+                            <h5 class="modal-title mx-3" id="appoint-info-title">长期预约详情</h5>
+                            {% if longterm_appoint.status == "审核中" %}
+                                    <span class="badge badge-primary">待审核</span>
+                                {% elif longterm_appoint.status == "已通过" %}
+                                    <span class="badge badge-success">已通过</span>
+                                {% elif longterm_appoint.status == "未通过" %}
+                                    <span class="badge badge-warning">未通过</span>
+                                {% endif %}
+                            <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                                <span aria-hidden="true">&times;</span>
+                            </button>
+                        </div>
+                        <div class="modal-body">
+                            <div class="col-md-12 col-sm-12">
+                                <div class="form-group card-label">
+                                    <label>预约房间</label>
+                                    <input readonly class="form-control" name="room" type="text" value="{{ longterm_appoint.room }}">
+                                </div>
+                            </div>
+                            <div class="col-md-12 col-sm-12">
+                                <div class="form-group card-label">
+                                    <label>预约组织</label>
+                                    <input disabled class="form-control" name="org" type="text" value={{ longterm_appoint.organization }}>
+                                </div>
+                            </div>
+                            <div class="col-md-12 col-sm-12">
+                                <div class="form-group card-label">
+                                    <label>预约时间</label>
+                                    <input disabled
+                                           class="form-control"
+                                           name="datetime"
+                                           type="text"
+                                           value="{{ longterm_appoint.date }} {{ longterm_appoint.week }} 起 {{ longterm_appoint.start }} - {{ longterm_appoint.finish }}">
+                                </div>
+                            </div>
+                            <div class="col-md-12 col-sm-12">
+                                <div class="form-group card-label">
+                                    <label class="mb-2">时间间隔</label>
+                                    <div class="text-secondary "
+                                         style="cursor:not-allowed;
+                                                background-color:#f1f2f3;
+                                                border: 1px solid #dbdbdb;
+                                                border-radius: 4px;
+                                                box-shadow: 0 1px 3px 0 rgb(0 0 0 / 5%);
+                                                height: 50px;
+                                                padding: 15px 15px 0;
+                                                transition: border-color .3s;">
+                                        <input class="align-middle" name="interval" type="radio" value="1" disabled {% if longterm_appoint.interval == 1 %}checked{% endif %} />
+                                        <label for="weekly" class="my-0 align-middle" style="font-size:12px;width:4rem;">每周一次</label>
+                                        <input class="align-middle ml-1 " name="interval" type="radio" value="2" disabled  {% if longterm_appoint.interval == 1 %}checked{% endif %} />
+                                        <label for="fortnightly" class="my-0 align-middle" style="font-size:12px;width:4rem;">隔周一次</label>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-12 col-sm-12">
+                                <div class="form-group card-label">
+                                    <label>预约周数</label>
+                                    <input disabled class="form-control" name="times" type="text" value="共 {{ longterm_appoint.times }} 周">
+                                </div>
+                            </div>
+                            <div class="col-md-12 col-sm-12">
+                                <div class="form-group card-label">
+                                    <label>预约用途</label>
+                                    <input disabled class="form-control" name="" type="text" value={{ longterm_appoint.usage }}>
+                                </div>
+                            </div>
+                            {% if longterm_appoint.status == "审核中" %}
+                                <div class="col-md-12 col-sm-12 d-flex" id="action-btn">
+                                    <button class="btn btn-primary flex-fill mr-2" id="approve">通过</button>
+                                    <button class="btn btn-warning flex-fill" id="reject">拒绝</button>
+                                </div>
+                            {% elif longterm_appoint.status == "未通过" %}
+                            <div class="col-md-12 col-sm-12">
+                                <div class="form-group card-label">
+                                    <label>未通过原因</label>
+                                    <input class="form-control" name="reason" type="text" disabled value={{ longterm_appoint.reason }}>
+                                </div>
+                            </div>
+                            {% endif %}
+                            <br>
+                            <form action="" method="POST" id="reason-form" class="d-none">
+                                <div class="col-md-12 col-sm-12">
+                                    <div class="alert alert-primary" role="alert">请填写未通过原因</div>
+                                </div>
+                                <div class="col-md-12 col-sm-12">
+                                    <div class="form-group card-label">
+                                        <label>未通过原因</label>
+                                        <input id="reason" class="form-control" name="reason" type="text" required value="">
+                                    </div>
+                                </div>
+                                <div class="col-md-12 col-sm-12 d-flex">
+                                    <button class="btn btn-primary flex-fill mr-2" type="button" id="confirm">完成</button>
+                                    <button class="btn btn-warning flex-fill" type="button" id="cancel">取消</button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        {% endif %}
+        <script src="{% static 'Appointment/assets/js/jquery.min.js' %} "></script>
+        <script src="{% static 'Appointment/assets/js/popper.min.js' %} "></script>
+        <script src="{% static 'Appointment/assets/js/bootstrap.min.js' %}"></script>
+        <script>
+            const Lid="{{Lid}}"
+            // 访问查看特定预约时直接展示预约详情
+            {% if longterm_appoint %}$('#appoint-info').modal("show"){% endif %}
+
+            $("#reject").on("click",function(){
+                $("#action-btn").toggleClass("d-flex")
+                $("#action-btn").toggleClass("d-none")
+                $("#reason-form").toggleClass("d-none")
+                $("input[name='reason']").focus()
+            })
+            $("#cancel").on("click",function(){
+                $("#action-btn").toggleClass("d-flex")
+                $("#action-btn").toggleClass("d-none")
+                $("#reason-form").toggleClass("d-none")
+            })
+            $("#approve").on("click",async function(){
+                console.log(Lid)
+
+                const { status } = await fetch("/underground/review", {
+                    method: "POST",
+                    body: JSON.stringify({ Lid: Lid, operation:"approve"}),
+                })
+                    .then((res) => res.json())
+                    .catch(() =>( { "status":"error" }));
+                console.log(status)
+                
+                if (status!=="ok"){
+                    alert("审核操作失败，请重试。")
+                } 
+                window.location="/underground/review?Lid="+Lid
+            })
+
+            $("#confirm").on("click",async function(e){
+                const reason=$("input[name='reason']").val()
+                if(reason===""){
+                    $("#reason").focus()
+                    return
+                }
+                const { status } = await fetch("/underground/review", {
+                    method: "POST",
+                    body: JSON.stringify({ Lid:Lid, operation:"reject",reason:$("#reason").val()}),
+                })
+                    .then((res) => res.json())
+                    .catch(() => ({ "status":"error" }));
+                if (status!=="ok"){
+                    alert("审核操作失败，请重试。")
+                } 
+                window.location="/underground/review?Lid="+Lid
+            })
+        </script>
+    </body>
+</html>

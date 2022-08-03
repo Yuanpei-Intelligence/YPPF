@@ -1,5 +1,9 @@
 # 数据库模型与操作
-from Appointment.models import Participant, Room, Appoint, College_Announcement
+from email.mime import application
+from pickle import NONE
+
+from requests import post
+from Appointment.models import LongTermAppoint, Participant, Room, Appoint, College_Announcement
 from django.db.models import Q  # modified by wxy
 from django.db import transaction  # 原子化更改数据库
 
@@ -24,6 +28,7 @@ import threading
 # 全局参数读取
 from Appointment import *
 
+
 # 消息读取
 from boottest.global_messages import wrong, succeed, message_url
 import boottest.global_messages as my_messages
@@ -45,6 +50,7 @@ from Appointment.utils.identity import (
 import Appointment.utils.scheduler_func as scheduler_func
 
 '''
+
 
 Views.py 使用说明
     尽可能把所有工具类的函数放到utils文件夹对应的py下，保持views.py中基本上是直接会被web调用的函数(见urls.py)
@@ -1184,3 +1190,76 @@ def summary(request):  # 主页
 
     # page 14 新功能预告
     return render(request, 'Appointment/summary.html', locals())
+
+
+def review(request):
+    """
+    活动信息的聚合界面
+    只有老师和小组才能看到，老师看到检查者是自己的，小组看到发起方是自己的
+    """
+
+    if request.method=="GET" and request.GET:
+        try:
+            Lid=request.GET.get("Lid")
+            if Lid:
+                target_appoint=LongTermAppoint.objects.get(pk=Lid)
+        except:
+            return redirect(reverse("Appointment:review"))
+
+        all_instances={
+            "reviewing":LongTermAppoint.objects.filter(status=LongTermAppoint.Status.REVIEWING),
+            "reviewed":LongTermAppoint.objects.filter(Q(status=LongTermAppoint.Status.APPROVED)|Q(status=LongTermAppoint.Status.REJECTED))
+        }
+
+        all_instances = {key:value for key,value in all_instances.items()} 
+
+        if Lid and target_appoint:
+            longterm_appoint={
+                "Lid":Lid,
+                "room":f"{target_appoint.appoint.Room.Rid} {target_appoint.appoint.Room.Rtitle}",
+                "organization":target_appoint.org.name,
+                "week":target_appoint.appoint.Astart.strftime("%A"),
+                "date":target_appoint.appoint.Astart.strftime("%m月%d日"),
+                "start": target_appoint.appoint.Astart.strftime("%I:%M %p"),
+                "finish": target_appoint.appoint.Afinish.strftime("%I:%M %p"),
+                "times":target_appoint.times,
+                "interval":target_appoint.interval,
+                "usage":target_appoint.appoint.Ausage,
+                "status":target_appoint.get_status_display(),
+                # "reason":target_appoint.reason
+            }
+        return render(request, 'Appointment/review.html', locals())
+        # position_id = request.GET.get("position_id", None)
+        # if  position_id is not NONE:
+        #     application = LongTermAppoint.objects.get(id = position_id)
+        #     is_new_review = False
+        #     apply_org = application.org
+    
+
+
+    elif request.method=="POST" and request.POST:
+        post_data = json.loads(request.body.decode("utf-8"))
+        Lid=post_data["Lid"]
+        operation=post_data["operation"]
+        # 处理预约状态
+        if operation == "approve":
+            try:
+                target_appoint=LongTermAppoint.objects.get(pk=Lid)
+                target_appoint.status=LongTermAppoint.Status.APPROVED
+                scheduler_func.add_longterm_appoint(target_appoint,target_appoint.times)
+                target_appoint.save()
+                return JsonResponse({"status":"ok"})
+            except:
+                return JsonResponse({"status":"error"})
+
+        elif operation == "refect":
+            try:
+                reason = post_data["reason"]
+                target_appoint=LongTermAppoint.objects.get(pk=Lid)
+                target_appoint.status=LongTermAppoint.Status.REJECTED
+                # target_appoint
+                return JsonResponse({"status":"ok"})
+            except:
+                return JsonResponse({"status":"error"})
+
+    return render(request,"Appointment/review.html",locals())
