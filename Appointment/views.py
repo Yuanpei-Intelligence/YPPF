@@ -602,7 +602,7 @@ def door_check(request):  # 先以Sid Rid作为参数，看之后怎么改
                     'announcement': "",
                     'Atemp_flag': True
                 }
-                response = scheduler_func.addAppoint(contents)
+                response = scheduler_func.addAppoint(contents, Atype=Appoint.Type.TEMPORARY)
 
                 if response.status_code == 200:  # 临时预约成功
                     cardcheckinfo_writer(
@@ -790,7 +790,7 @@ def arrange_time(request: HttpRequest):
     if request.method == 'POST':
         return redirect(reverse('Appointment:index'))
 
-    # 判断当前用户是否为组织。只有组织账户可以进行长期预约。
+    # 判断当前用户是否可以进行长期预约
     has_longterm_permission = get_participant(request.user).longterm
 
     # 获取房间编号
@@ -820,7 +820,7 @@ def arrange_time(request: HttpRequest):
     except:
         return redirect(reverse('Appointment:index'))
 
-    dayrange_list = web_func.get_dayrange(bias_days=start_week * 7)
+    dayrange_list = web_func.get_dayrange(day_offset=start_week * 7)
 
     # 获取预约时间的最大时间块id
     max_stamp_id = web_func.get_time_id(room_object,
@@ -1058,7 +1058,7 @@ def check_out(request: HttpRequest):
         'start_week': start_week,
     }
     room_object = Room.objects.get(Rid=Rid)
-    dayrange_list = web_func.get_dayrange(bias_days=start_week * 7)
+    dayrange_list = web_func.get_dayrange(day_offset=start_week * 7)
     for day in dayrange_list:
         if day['weekday'] == appoint_params['weekday']:
             appoint_params['date'] = day['date']
@@ -1140,10 +1140,11 @@ def check_out(request: HttpRequest):
                                        0)
         if my_messages.get_warning(render_context)[0] is None:
             # 参数检查全部通过，下面开始创建预约
-            contents['new_require'] = 0 if is_longterm else 1
-
-            # TODO: 需要对通知发送做进一步处理
-            response = scheduler_func.addAppoint(contents)
+            if is_longterm:
+                response = scheduler_func.addAppoint(contents,
+                    type=Appoint.Type.LONGTERM, notify_create=False)
+            else:
+                response = scheduler_func.addAppoint(contents)
             if response.status_code == 200 and not is_longterm:
                 # 成功预约且非长期
                 return redirect(
@@ -1161,7 +1162,7 @@ def check_out(request: HttpRequest):
                         appoint,
                         times,
                         interval,
-                        bias_week=interval,
+                        week_offset=interval,
                         lock=True)
                     if conflict_appoints:
                         appoint.delete()
