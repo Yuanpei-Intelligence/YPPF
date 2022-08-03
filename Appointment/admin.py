@@ -365,7 +365,7 @@ class AppointAdmin(admin.ModelAdmin):
                 scheduler_func.cancel_scheduler(aid)    # 注销原有定时任务 无异常
                 scheduler_func.set_scheduler(appoint)   # 开始时进入进行中 结束后判定
                 if datetime.now() < start:              # 如果未开始，修改开始提醒
-                    scheduler_func.set_start_wechat(appoint, notify_new=False)
+                    scheduler_func.set_start_wechat(appoint, notify_create=False)
             except Exception as e:
                 operation_writer(SYSTEM_LOG,
                                  "出现更新定时任务失败的问题: " + str(e),
@@ -436,6 +436,9 @@ class AppointAdmin(admin.ModelAdmin):
                         request,
                         f'第{conflict_week}周存在冲突的预约: {appoints[0].Aid}!',
                         level=messages.WARNING)
+                longterm_info = scheduler_func.get_longterm_display(times, interval_week)
+                scheduler_func.set_longterm_wechat(
+                    appoint, infos=f'新增了{longterm_info}同时段预约', admin=True)
                 new_appoints[appoint.pk] = list(appoints.values_list('pk', flat=True))
             except Exception as e:
                 return self.message_user(request, f'长线化失败!', messages.WARNING)
