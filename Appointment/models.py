@@ -131,12 +131,8 @@ class AppointManager(models.Manager):
         return self.exclude(Astatus=Appoint.Status.CANCELED)
 
     def displayable(self):
-        """
-        在admin_index页面使用，在"普通预约"和"查看下周"中，只有非长期预约和审核通过的长期预约能够显示
-        """
-        return self.filter(
-            Q(longtermappoint__isnull=True)
-            | Q(longtermappoint__status=LongTermAppoint.Status.APPROVED))
+        '''个人主页页面，在"普通预约"和"查看下周"中会显示的预约'''
+        return self.exclude(Atype=Appoint.Type.LONGTERM, Astatus=Appoint.Status.CANCELED)
 
 
 class Appoint(models.Model):
@@ -181,11 +177,14 @@ class Appoint(models.Model):
         VIOLATED = 5  # 违约
         JUDGED = 6  # 违约申诉成功
 
+        @classmethod
+        def Terminals(cls) -> 'list[Appoint.Status]':
+            return [cls.CANCELED, cls.CONFIRMED, cls.VIOLATED, cls.JUDGED]
+
     Astatus: 'int|Status' = models.IntegerField('预约状态',
                                                 choices=Status.choices,
                                                 default=1)
 
-    # modified by wxy
     Aneed_num = models.IntegerField('检查人数要求')
     Acamera_check_num = models.IntegerField('检查次数', default=0)
     Acamera_ok_num = models.IntegerField('人数合格次数', default=0)
@@ -200,8 +199,6 @@ class Appoint(models.Model):
                                           choices=Reason.choices,
                                           default=0)
 
-    # end
-
     class Type(models.IntegerChoices):
         '''预约类型'''
         NORMAL = 0, '常规预约'
@@ -210,7 +207,7 @@ class Appoint(models.Model):
         LONGTERM = 3, '长期预约'
 
     Atype: 'int|Type' = models.SmallIntegerField(
-        '预约类型', choices=Type.choices, default=0)
+        '预约类型', choices=Type.choices, default=Type.NORMAL)
 
     # TODO: remove temp_flag
     # --- add by lhw --- #
@@ -286,12 +283,12 @@ class Appoint(models.Model):
             'major_student':
             {
                 "Sname": self.major_student.name,  # 发起预约人
-                "Sid": self.major_student.Sid_id,
+                "Sid": self.get_major_id(),
             },
             'students': [  # 参与人
                 {
                     'Sname': student.name,  # 参与人姓名
-                    'Sid': student.Sid_id,
+                    'Sid': student.get_id(),
                 } for student in self.students.all()
                 # if student.Sid != self.major_student.Sid
             ]

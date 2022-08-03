@@ -90,7 +90,7 @@ def finishAppoint(Aid):  # 结束预约时的定时程序
     要注意的是，由于定时任务可能执行多次，第二次的时候可能已经终止
     '''
     try:
-        appoint = Appoint.objects.get(Aid=Aid)
+        appoint: Appoint = Appoint.objects.get(Aid=Aid)
     except:
         utils.operation_writer(
             SYSTEM_LOG, f"预约{str(Aid)}意外消失", "web_func.finishAppoint", "Error")
@@ -100,16 +100,8 @@ def finishAppoint(Aid):  # 结束预约时的定时程序
     # 避免直接使用全局变量! by pht
     adjusted_camera_qualified_check_rate = GLOBAL_INFO.camera_qualified_check_rate
 
-    # --- add by pht: 终止状态 --- #
-    TERMINATE_STATUSES = [
-        Appoint.Status.CONFIRMED,
-        Appoint.Status.VIOLATED,
-        Appoint.Status.CANCELED,
-        ]
-    # --- add by pht(2021.9.4) --- #
-
     # 如果处于非终止状态，只需检查人数判断是否合格
-    if appoint.Astatus not in TERMINATE_STATUSES:
+    if appoint.Astatus not in Appoint.Status.Terminals():
         # 希望接受的非终止状态只有进行中，但其他状态也同样判定是否合格
         if appoint.Astatus != Appoint.Status.PROCESSING:
             utils.operation_writer(
