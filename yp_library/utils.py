@@ -4,6 +4,9 @@ from yp_library.models import (
     LendRecord,
 )
 
+from typing import Union, List, Tuple, Optional
+from datetime import datetime
+
 from django.contrib.auth.models import User
 from django.db.models import Q, QuerySet
 from django.http import QueryDict
@@ -102,3 +105,78 @@ def get_query_dict(post_dict: QueryDict) -> dict:
                               ["kw_title", "kw_author", "kw_publisher"]]
 
     return query_dict
+
+
+def get_my_records(reader_id: str, returned: Optional[bool] = None, 
+    status: Optional[Union[list, int]] = None) -> List[dict]:
+    """
+    查询给定读者的借书记录
+
+    :param reader_id: reader的id
+    :type reader_id: str
+    :param returned: 如非空，则限定是否已归还, defaults to None
+    :type returned: bool, optional
+    :param status: 如非空，则限定当前状态, defaults to None
+    :type status: Union[list, int], optional
+    :return: 查询结果，每个记录包括val_list中的属性以及记录类型(key为'type': 
+        对于已归还记录，False表示逾期记录，True表示正常记录；对于未归还记录，
+        'normal'表示一般记录，'overtime'表示逾期记录，'approaching'表示接近
+        期限记录即距离应归还时期<=1天)
+    :rtype: List[dict]
+    """
+    all_records_list = LendRecord.objects.filter(reader_id=reader_id)
+    val_list = ['book_id__title', 'lend_time', 'due_time', 'return_time']
+
+    if returned is not None:
+        results = all_records_list.filter(returned=returned)
+        if returned:
+            val_list.append('status')   # 已归还记录，增加申诉状态呈现
+    else:
+        results = all_records_list
+
+    if isinstance(status, list):
+        results = results.filter(status__in=status)
+    elif isinstance(status, int):
+        results = results.filter(status=status)
+    
+    records = list(results.values(*val_list))
+    # 标记记录类型
+    if returned:
+        for record in records:
+            if  record['return_time'] > record['due_time']:
+                record['type'] = False          # 逾期记录
+            else:
+                record['type'] = True           # 正常记录
+    else:
+        now_time = datetime.now()
+        for record in records:
+            # 计算距离应归还时间的天数
+            delta_days = (record['due_time'] - now_time).total_seconds() / float(60 * 60 * 24)
+            if delta_days > 1:
+                record['type'] = 'normal'       # 一般记录
+            elif delta_days < 0:
+                record['type'] = 'overtime'     # 逾期记录
+            else:
+                record['type'] = 'approaching'  # 接近期限记录
+
+    return records
+
+
+def get_lendinfo_by_readers(readers: QuerySet) -> Tuple[List[dict], List[dict]]:
+    '''
+    查询同一user关联的读者的借阅信息
+
+    :param readers: 与user关联的所有读者
+    :type readers: QuerySet
+    :return: 两个list，分别表示未归还记录和已归还记录
+    :rtype: List[dict], List[dict]
+    '''
+    unreturned_records_list = []
+    returned_records_list = []
+
+    reader_ids = list(readers.values('id'))
+    for reader_id in reader_ids:
+        unreturned_records_list.extend(get_my_records(reader_id['id'], returned=False))
+        returned_records_list.extend(get_my_records(reader_id['id'], returned=True))
+    
+    return unreturned_records_list, returned_records_list
