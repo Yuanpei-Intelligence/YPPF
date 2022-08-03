@@ -365,7 +365,7 @@ class AppointAdmin(admin.ModelAdmin):
                 scheduler_func.cancel_scheduler(aid)    # 注销原有定时任务 无异常
                 scheduler_func.set_scheduler(appoint)   # 开始时进入进行中 结束后判定
                 if datetime.now() < start:              # 如果未开始，修改开始提醒
-                    scheduler_func.set_start_wechat(appoint, notify_new=False)
+                    scheduler_func.set_start_wechat(appoint, notify_create=False)
             except Exception as e:
                 operation_writer(SYSTEM_LOG,
                                  "出现更新定时任务失败的问题: " + str(e),
@@ -377,32 +377,22 @@ class AppointAdmin(admin.ModelAdmin):
 
     def longterm_wk(self, request, queryset, times, interval_week=1):
         for appoint in queryset:
+            appoint: Appoint
             try:
                 with transaction.atomic():
-                    stuid_list = [stu.Sid_id for stu in appoint.students.all()]
+                    stuid_list = [stu.get_id() for stu in appoint.students.all()]
                     for i in range(1, times + 1):
                         # 调用函数完成预约
                         feedback = scheduler_func.addAppoint({
-                            'Rid':
-                            appoint.Room.Rid,
-                            'students':
-                            stuid_list,
-                            'non_yp_num':
-                            appoint.Anon_yp_num,
-                            'Astart':
-                            appoint.Astart + i * timedelta(days=7 * interval_week),
-                            'Afinish':
-                            appoint.Afinish + i * timedelta(days=7 * interval_week),
-                            'Sid':
-                            # TODO: major_sid
-                            appoint.major_student.Sid_id,
-                            'Ausage':
-                            appoint.Ausage,
-                            'announcement':
-                            appoint.Aannouncement,
-                            'new_require':  # 长线预约,不需要每一个都添加信息, 直接统一添加
-                            0
-                        })
+                            'Rid': appoint.Room.Rid,
+                            'students': stuid_list,
+                            'non_yp_num': appoint.Anon_yp_num,
+                            'Astart': appoint.Astart + i * timedelta(weeks=interval_week),
+                            'Afinish': appoint.Afinish + i * timedelta(weeks=interval_week),
+                            'Sid': appoint.get_major_id(),
+                            'Ausage': appoint.Ausage,
+                            'announcement': appoint.Aannouncement,
+                        }, type=Appoint.Type.LONGTERM, notify_create=False)
                         if feedback.status_code != 200:  # 成功预约
                             import json
                             warning = json.loads(feedback.content)['statusInfo']['message']
@@ -418,8 +408,7 @@ class AppointAdmin(admin.ModelAdmin):
             # 到这里, 长线化预约发起成功
             scheduler_func.set_longterm_wechat(
                 appoint, infos=f'新增了{times}周同时段预约', admin=True)
-            # TODO: major_sid
-            operation_writer(appoint.major_student.Sid_id, "发起"+str(times) +
+            operation_writer(appoint.get_major_id(), "发起"+str(times) +
                              "周的长线化预约, 原始预约号"+str(appoint.Aid), "admin.longterm", "OK")
         return self.message_user(request, '长线化成功!')
 
@@ -436,6 +425,9 @@ class AppointAdmin(admin.ModelAdmin):
                         request,
                         f'第{conflict_week}周存在冲突的预约: {appoints[0].Aid}!',
                         level=messages.WARNING)
+                longterm_info = scheduler_func.get_longterm_display(times, interval_week)
+                scheduler_func.set_longterm_wechat(
+                    appoint, infos=f'新增了{longterm_info}同时段预约', admin=True)
                 new_appoints[appoint.pk] = list(appoints.values_list('pk', flat=True))
             except Exception as e:
                 return self.message_user(request, f'长线化失败!', messages.WARNING)
