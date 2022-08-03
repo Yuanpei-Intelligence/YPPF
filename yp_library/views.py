@@ -11,7 +11,7 @@ from yp_library.utils import (
     get_lendinfo_by_readers,
     get_library_activity, 
     get_recommended_or_newest_books, 
-    get_opening_time
+    get_opening_time,
 )
 from app.utils import get_sidebar_and_navbar, check_user_access
 

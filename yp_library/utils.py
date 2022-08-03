@@ -193,7 +193,7 @@ def get_library_activity(num: int) -> QuerySet:
     :param num: 最多展示多少活动
     :type num: int
     :return: 展示的活动
-    :rtype: list
+    :rtype: QuerySet
     """
     all_valid_library_activities = Activity.objects.activated().filter(
         organization_id__oname=get_setting("library/organization_name"),
@@ -228,7 +228,7 @@ def get_recommended_or_newest_books(num: int, newest: bool = False) -> Union[Que
         return all_books_sorted[:select_num].values()
     else: # 随机推荐
         selected_ids = random.sample(range(0, book_counts), select_num)
-        recommended_books = [all_books[id] for id in selected_ids]
+        recommended_books = [all_books[id].__dict__ for id in selected_ids]
         return recommended_books
 
 
