@@ -18,5 +18,5 @@ class BookAdmin(admin.ModelAdmin):
     
 @admin.register(LendRecord)
 class LendRecordAdmin(admin.ModelAdmin):
-    list_display = ["reader_id", "book_id", "lend_time", "due_time", "return_time", "returned",]
-    search_fields =  ("reader_id__student_id", "book_id",)
+    list_display = ["reader_stu_id", "book_name", "lend_time", "due_time", "return_time", "returned",]
+    search_fields =  ("reader_stu_id", "book_name",)
