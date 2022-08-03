@@ -16,6 +16,9 @@ class Reader(models.Model):
     id = models.AutoField("编号", primary_key=True)
     student_id = models.CharField("学号", max_length=30, blank=True, null=True)
 
+    def __str__(self):
+        return self.student_id
+
 
 class Book(models.Model):
     class Meta:
