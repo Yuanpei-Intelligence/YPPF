@@ -604,7 +604,7 @@ def door_check(request):  # 先以Sid Rid作为参数，看之后怎么改
                     'announcement': "",
                     'Atemp_flag': True
                 }
-                response = scheduler_func.addAppoint(contents)
+                response = scheduler_func.addAppoint(contents, Atype=Appoint.Type.TEMPORARY)
 
                 if response.status_code == 200:  # 临时预约成功
                     cardcheckinfo_writer(
@@ -1142,10 +1142,11 @@ def check_out(request: HttpRequest):
                                        0)
         if my_messages.get_warning(render_context)[0] is None:
             # 参数检查全部通过，下面开始创建预约
-            contents['new_require'] = 0 if is_longterm else 1
-
-            # TODO: 需要对通知发送做进一步处理
-            response = scheduler_func.addAppoint(contents)
+            if is_longterm:
+                response = scheduler_func.addAppoint(contents,
+                    type=Appoint.Type.LONGTERM, notify_create=False)
+            else:
+                response = scheduler_func.addAppoint(contents)
             if response.status_code == 200 and not is_longterm:
                 # 成功预约且非长期
                 return redirect(

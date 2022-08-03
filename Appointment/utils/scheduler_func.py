@@ -202,8 +202,24 @@ def set_longterm_wechat(appoint: Appoint, students_id=None, infos='', admin=Fals
         students_id=students_id, id=f'{appoint.Aid}_longterm_wechat')
 
 
-def addAppoint(contents):  # 添加预约, main function
-    '''Sid: arg for `get_participant`'''
+def addAppoint(contents: dict,
+               type: Appoint.Type = Appoint.Type.NORMAL,
+               check_contents: bool = True,
+               notify_create: bool = True) -> JsonResponse:
+    '''
+    创建一个预约，检查各种条件，屎山函数
+
+    :param contents: 屎山，只知道Sid: arg for `get_participant`
+    :type contents: dict
+    :param type: 预约类型, defaults to Appoint.Type.NORMAL
+    :type type: Appoint.Type, optional
+    :param check_contents: 是否检查参数，暂未启用, defaults to True
+    :type check_contents: bool, optional
+    :param notify_create: 是否通知参与者创建了新预约, defaults to True
+    :type notify_create: bool, optional
+    :return: 屎山
+    :rtype: JsonResponse
+    '''
 
     # 检查是否为临时预约 add by lhw (2021.7.13)
     if 'Atemp_flag' not in contents.keys():
@@ -391,8 +407,8 @@ def addAppoint(contents):  # 添加预约, main function
                               major_student=major_student,
                               Anon_yp_num=contents['non_yp_num'],
                               Ayp_num=len(students),
-                              # TODO: appoint type
                               Aneed_num=real_min,
+                              Atype=type,
                               Atemp_flag=contents['Atemp_flag'])
             appoint.save()
             # appoint.students.set(students)
@@ -403,7 +419,7 @@ def addAppoint(contents):  # 添加预约, main function
 
             # modify by pht: 整合定时任务为函数
             set_scheduler(appoint)
-            set_start_wechat(appoint, students_id, notify_create=contents.get('new_require', True))
+            set_start_wechat(appoint, students_id, notify_create=notify_create)
 
             # TODO: major_sid
             utils.operation_writer(major_student.Sid_id, "发起预约，预约号" +
