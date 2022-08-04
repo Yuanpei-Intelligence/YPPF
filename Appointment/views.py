@@ -492,6 +492,7 @@ def admin_index(request: HttpRequest):
             'interval': longterm_appoint.interval,
             'status': longterm_appoint.get_status_display(),
             'renewable':renewable,
+            'review_comment':longterm_appoint.review_comment,
         }
         appoint_list_longterm.append(data)
 

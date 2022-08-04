@@ -213,40 +213,45 @@
                                                                         <i class="fas fa-hourglass-half"></i> 审核中
                                                                     </button>
                                                                 {% elif  appoint_longterm.status == "未通过" %}
-                                                                    <button type="button" class="btn btn-sm bg-warning-light" style="width: 6rem;" value="{{  appoint_longterm.appoint.Aid }}">
-                                                                        <i class="fas fa-ban"></i> 未通过
-                                                                    </button>
-                                                                {% elif  appoint_longterm.status == "已通过" and not appoint_longterm.renewable %}
-                                                                    <button type="button" class="btn btn-sm bg-success-light" style="width: 6rem;" value="{{  appoint_longterm.appoint.Aid }}">
-                                                                        <i class="fas fa-check"></i> 已通过
-                                                                    </button>
-                                                                {% elif  appoint_longterm.status == "已通过" and  appoint_longterm.renewable %}
-                                                                    <form action="renewLongtermAppoint" method="POST" style="position: relative;">
-                                                                        <div id="renew_times" class="card d-none px-2 py-3 flex-row mt-1 ml-3" 
-                                                                            style="position:absolute;top:105%;width:16rem;height:4rem;">
-                                                                            <div class="arrow border-top border-left bg-white" 
-                                                                                style="position:absolute;top:0;left:1rem;width:1rem;height:1rem;
-                                                                                transform:translateY(-53%) rotate(45deg);border-color:#f0f0f0 !important;">
-                                                                            </div>
-                                                                            <input class="form-control form-control-sm flex-fill h-100 p-1" 
-                                                                                style="min-height:0;max-width:11rem;" 
-                                                                                type="text" name="times" value="" 
-                                                                                placeholder="续约周数：最多可续约8周"/>
-                                                                            <button class="btn btn-sm btn-primary d-inline  h-100 ml-2" 
-                                                                                    type="submit" 
-                                                                                    onclick="$('#renew_times').toggleClass('d-none')"
-                                                                                    value="{{ appoint_longterm.appoint.Aid }}"
-                                                                                    name="renew_btn"
-                                                                                    >确认</button>
-                                                                        </div>
                                                                         <button type="button"
                                                                                 class="btn btn-sm bg-danger-light ml-3"
                                                                                 style="width: 6rem;"
-                                                                                onclick="$('#renew_times').toggleClass('d-none')"
+                                                                                data-container="body" 
+                                                                                data-toggle="popover" 
+                                                                                data-placement="bottom" 
+                                                                                data-content="审核意见：{{ appoint_longterm.review_comment }}"
                                                                                 >
-                                                                            <i class="fas fa-sync"></i> 续约
+                                                                                <i class="fas fa-ban"></i> 未通过
                                                                         </button>
-                                                                    </form>
+                                                                        <button type="button"
+                                                                                class="btn btn-sm bg-danger-light ml-3"
+                                                                                style="width: 6rem;visibility:hidden">
+                                                                        </button>
+                                                                {% elif  appoint_longterm.status == "已通过" and not appoint_longterm.renewable %}
+                                                                    <button type="button" class="btn btn-sm bg-success-light" style="width: 6rem;">
+                                                                        <i class="fas fa-check"></i> 已通过
+                                                                    </button>
+                                                                {% elif  appoint_longterm.status == "已通过" and  appoint_longterm.renewable %}
+                                                                    <button type="button"
+                                                                        class="btn btn-sm bg-warning-light ml-3"
+                                                                        style="width: 6rem;"
+                                                                        data-container="body" 
+                                                                        data-toggle="popover" 
+                                                                        data-placement="bottom"
+                                                                        data-content="<form action='renewLongtermAppoint' method='POST' class='d-flex'>
+                                                                                        <input class='form-control form-control-sm flex-fill h-100 p-1' 
+                                                                                               style='min-height:0;max-width:11rem;' 
+                                                                                               type='text' name='times' value='' 
+                                                                                               placeholder='续约周数：最多可续约8周'/>
+                                                                                        <button class='btn btn-sm btn-primary d-inline  h-100 ml-2' 
+                                                                                                type='submit' 
+                                                                                                value='{{ appoint_longterm.appoint.Aid }}'
+                                                                                                name='renew_btn'
+                                                                                                >确认</button>
+                                                                                      </form>"
+                                                                        >
+                                                                        <i class="fas fa-sync"></i> 续约
+                                                                    </button>
                                                                 {% elif  appoint_longterm.status == "已取消" %}
                                                                     <a class="btn btn-sm bg-danger-light" style="width: 6rem;" >
                                                                         <i class="fas fa-times"></i> 已取消
@@ -482,5 +487,13 @@
         <script src="{% static 'Appointment/assets/plugins/fancybox/jquery.fancybox.min.js' %}"></script>
         <!-- Custom JS -->
         <script src="{% static 'Appointment/assets/js/script.js' %}"></script>
+        <script>
+            $(function () {
+                $('[data-toggle="popover"]').popover({
+                    html: true,
+                    sanitize: false
+                })
+            })
+        </script>
     </body>
 </html>
