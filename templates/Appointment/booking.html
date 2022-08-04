@@ -82,7 +82,7 @@
                                                     <a class="btn apt-btn" onclick="submitfunc()">下一步</a>
                                                 </div>
                                             </form>
-                                            {% if is_organization %}
+                                            {% if has_longterm_permission %}
                                                 <div id="to-normal-btns" class="mt-3 {{ is_longterm|yesno:'d-flex,d-none,d-none' }}">
                                                     <button id="to-normal" class="btn btn-sm btn-primary flex-fill mr-1">切换为普通预约</button>
                                                     {% if start_week == 0 or start_week == None %}

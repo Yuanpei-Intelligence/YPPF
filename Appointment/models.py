@@ -8,6 +8,18 @@ from django.db.models import Q
 
 from datetime import datetime, time
 
+
+__all__ = [
+    'College_Announcement',
+    'User',
+    'Participant',
+    'Room',
+    'Appoint',
+    'LongTermAppoint',
+    'CardCheckInfo',
+]
+
+
 class College_Announcement(models.Model):
     class Show_Status(models.IntegerChoices):
         Yes = 1
@@ -36,10 +48,15 @@ class Participant(models.Model):
     credit = models.IntegerField('信用分', default=3)
     pinyin = models.CharField('拼音', max_length=20, null=True)
     hidden = models.BooleanField('不可搜索', default=False)
+    longterm = models.BooleanField('可长期预约', default=False)
 
     # TODO: pht 2022-02-20 通过新的模型实现，允许每个房间有自己的规则
     # 用户许可的字段，需要许可的房间刷卡时检查是否通过了许可
     agree_time = models.DateField('上次许可时间', null=True, blank=True)
+
+    def get_id(self) -> str:
+        '''获取id(学号/组织账号)'''
+        return self.Sid_id
 
     def __str__(self):
         '''仅用于后台呈现和搜索方便，任何时候不应使用'''
@@ -89,7 +106,7 @@ class Room(models.Model):
         UNLIMITED = 1, '无需预约'  # 允许使用
         FORBIDDEN = 2, '禁止使用'  # 禁止使用
 
-    Rstatus: Status = models.SmallIntegerField('房间状态',
+    Rstatus: 'int|Status' = models.SmallIntegerField('房间状态',
                                        choices=Status.choices,
                                        default=0)
 
@@ -114,12 +131,8 @@ class AppointManager(models.Manager):
         return self.exclude(Astatus=Appoint.Status.CANCELED)
 
     def displayable(self):
-        """
-        在admin_index页面使用，在”普通预约“和”查看下周“中，只有非长期预约和审核通过的长期预约能够显示
-        """
-        return self.filter(
-            Q(longtermappoint__isnull=True)
-            | Q(longtermappoint__status=LongTermAppoint.Status.APPROVED))
+        '''个人主页页面，在"普通预约"和"查看下周"中会显示的预约'''
+        return self.exclude(Atype=Appoint.Type.LONGTERM, Astatus=Appoint.Status.CANCELED)
 
 
 class Appoint(models.Model):
@@ -139,7 +152,7 @@ class Appoint(models.Model):
         FAILED = 0  # 预约在此分钟的检查尚未通过
         PASSED = 1  # 预约在特定分钟内的检查是通过的
         UNSAVED = 2 # 预约在此分钟内尚未记录检测状态
-    Acheck_status: CheckStatus = models.SmallIntegerField(
+    Acheck_status: 'int|CheckStatus' = models.SmallIntegerField(
         '检测状态', choices=CheckStatus.choices, default=2)
 
     # 这里Room使用外键的话只能设置DO_NOTHING，否则删除房间就会丢失预约信息
@@ -156,19 +169,23 @@ class Appoint(models.Model):
         Participant, on_delete=models.CASCADE, verbose_name='Appointer', null=True)
 
     class Status(models.IntegerChoices):
-        CANCELED = 0  # 已取消
-        APPOINTED = 1  # 预约中
-        PROCESSING = 2  # 进行中
-        WAITING = 3  # 等待确认
-        CONFIRMED = 4  # 已确认
-        VIOLATED = 5  # 违约
-        JUDGED = 6  # 违约申诉成功
+        CANCELED = 0, '已取消'
+        APPOINTED = 1, '已预约'
+        PROCESSING = 2, '进行中'
+        WAITING = 3, '等待确认'
+        CONFIRMED = 4, '已确认'
+        VIOLATED = 5, '违约'
+        JUDGED = 6, '申诉成功'
 
-    Astatus: Status = models.IntegerField('预约状态',
-                                  choices=Status.choices,
-                                  default=1)
+        @classmethod
+        def Terminals(cls) -> 'list[Appoint.Status]':
+            return [cls.CANCELED, cls.CONFIRMED, cls.VIOLATED, cls.JUDGED]
 
-    # modified by wxy
+    Astatus: 'int|Status' = models.IntegerField('预约状态',
+                                                choices=Status.choices,
+                                                default=1)
+
+    Aneed_num = models.IntegerField('检查人数要求')
     Acamera_check_num = models.IntegerField('检查次数', default=0)
     Acamera_ok_num = models.IntegerField('人数合格次数', default=0)
 
@@ -182,8 +199,17 @@ class Appoint(models.Model):
                                           choices=Reason.choices,
                                           default=0)
 
-    # end
+    class Type(models.IntegerChoices):
+        '''预约类型'''
+        NORMAL = 0, '常规预约'
+        TODAY = 1, '当天预约'  # 保留，暂不使用
+        TEMPORARY = 2, '临时预约'
+        LONGTERM = 3, '长期预约'
 
+    Atype: 'int|Type' = models.SmallIntegerField(
+        '预约类型', choices=Type.choices, default=Type.NORMAL)
+
+    # TODO: remove temp_flag
     # --- add by lhw --- #
     Atemp_flag = models.SmallIntegerField('临时预约标识', default=0)
     # --- end(2021.7.13) --- ##
@@ -199,76 +225,47 @@ class Appoint(models.Model):
         verbose_name_plural = verbose_name
         ordering = ['Aid']
 
+    def get_major_id(self) -> str:
+        '''获取预约发起者id'''
+        return self.major_student.Sid_id
+
     def get_status(self):
-        status = ""
-        if self.Astatus == Appoint.Status.APPOINTED:
-            status = "已预约"
-        elif self.Astatus == Appoint.Status.CANCELED:
-            status = "已取消"
-        elif self.Astatus == Appoint.Status.PROCESSING:
-            status = "进行中"
-        elif self.Astatus == Appoint.Status.WAITING:
-            status = "等待确认"
-        elif self.Astatus == Appoint.Status.CONFIRMED:
-            status = "已确认"
-        elif self.Astatus == Appoint.Status.VIOLATED:
+        if self.Astatus == Appoint.Status.VIOLATED:
             if self.Areason == Appoint.Reason.R_NOVIOLATED:
-                status = "未知错误,请联系管理员 "
+                status = "未知错误，请联系管理员"
             elif self.Areason == Appoint.Reason.R_LATE:
                 status = "使用迟到"
             elif self.Areason == Appoint.Reason.R_TOOLITTLE:
                 status = "人数不足"
             elif self.Areason == Appoint.Reason.R_ELSE:
                 status = "管理员操作"
-        elif self.Astatus == Appoint.Status.JUDGED:
-            status = "申诉成功"
+        else:
+            status = self.get_Astatus_display()
         return status
 
     def toJson(self):
         data = {
-            'Aid':
-            self.Aid,  # 预约编号
-            'Atime':
-            self.Atime.strftime("%Y-%m-%dT%H:%M:%S"),  # 申请提交时间
-            'Astart':
-            self.Astart.strftime("%Y-%m-%dT%H:%M:%S"),  # 开始使用时间
-            'Afinish':
-            self.Afinish.strftime("%Y-%m-%dT%H:%M:%S"),  # 结束使用时间
-            'Ausage':
-            self.Ausage,  # 房间用途
-            'Aannouncement':
-            self.Aannouncement,  # 预约通知
-            'Astatus':
-            self.get_Astatus_display(),  # 预约状态
-            'Areason':
-            self.Areason,
-            'Rid':
-            self.Room.Rid,  # 房间编号
-            'Rtitle':
-            self.Room.Rtitle,  # 房间名称
-            'yp_num':
-            self.Ayp_num,  # 院内人数
-            'non_yp_num':
-            self.Anon_yp_num,  # 外院人数
-            'major_student':
-            {
+            'Aid': self.Aid,  # 预约编号
+            'Atime': self.Atime.strftime("%Y-%m-%dT%H:%M:%S"),      # 申请提交时间
+            'Astart': self.Astart.strftime("%Y-%m-%dT%H:%M:%S"),    # 开始使用时间
+            'Afinish': self.Afinish.strftime("%Y-%m-%dT%H:%M:%S"),  # 结束使用时间
+            'Ausage': self.Ausage,  # 房间用途
+            'Aannouncement': self.Aannouncement,  # 预约通知
+            'Astatus': self.get_Astatus_display(),  # 预约状态
+            'Areason': self.Areason,
+            'Rid': self.Room.Rid,  # 房间编号
+            'Rtitle': self.Room.Rtitle,  # 房间名称
+            'yp_num': self.Ayp_num,  # 院内人数
+            'non_yp_num': self.Anon_yp_num,  # 外院人数
+            'major_student': {
                 "Sname": self.major_student.name,  # 发起预约人
-                "Sid": self.major_student.Sid_id,
+                "Sid": self.get_major_id(),
             },
-            'students': [  # 参与人
-                {
+            'students': [{
                     'Sname': student.name,  # 参与人姓名
-                    'Sid': student.Sid_id,
-                } for student in self.students.all()
-                # if student.Sid != self.major_student.Sid
-            ]
+                    'Sid': student.get_id(),
+            } for student in self.students.all()],
         }
-        try:
-            data['Rid'] = self.Room.Rid  # 房间编号
-            data['Rtitle'] = self.Room.Rtitle  # 房间名称
-        except Exception:
-            data['Rid'] = 'deleted'  # 房间编号
-            data['Rtitle'] = '房间已删除'  # 房间名称
         return data
 
 
@@ -309,26 +306,27 @@ class LongTermAppoint(models.Model):
     """
     记录长期预约所需要的全部信息
     """
-    appoint = models.OneToOneField(Appoint,
-                                   on_delete=models.CASCADE,
-                                   verbose_name='单次预约信息')
+    appoint: Appoint = models.OneToOneField(Appoint,
+                                            on_delete=models.CASCADE,
+                                            verbose_name='单次预约信息')
 
-    org = models.ForeignKey(Participant,
-                            on_delete=models.CASCADE,
-                            verbose_name='发起预约组织')
+    applicant: Participant = models.ForeignKey(Participant,
+                                               on_delete=models.CASCADE,
+                                               verbose_name='申请者')
 
     times = models.SmallIntegerField('预约次数', default=1)
     interval = models.SmallIntegerField('间隔周数', default=1)
+    review_comment = models.TextField('评论意见', default='', blank=True)
 
     class Status(models.IntegerChoices):
-        CANCELED = (0, '已取消')
-        REVIEWING = (1, '审核中')
+        REVIEWING = (0, '审核中')
+        CANCELED = (1, '已取消')
         APPROVED = (2, '已通过')
         REJECTED = (3, '未通过')
 
-    status = models.SmallIntegerField("申请状态",
-                                      choices=Status.choices,
-                                      default=Status.REVIEWING)
+    status: 'int|Status' = models.SmallIntegerField("申请状态",
+                                                    choices=Status.choices,
+                                                    default=Status.REVIEWING)
 
     class Meta:
         verbose_name = '长期预约信息'
