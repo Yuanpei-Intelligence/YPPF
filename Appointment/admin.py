@@ -419,7 +419,7 @@ class AppointAdmin(admin.ModelAdmin):
             try:
                 conflict_week, appoints = (
                     scheduler_func.add_longterm_appoint(
-                        appoint, times, interval_week, admin=True))
+                        appoint.pk, times, interval_week, admin=True))
                 if conflict_week is not None:
                     return self.message_user(
                         request,

@@ -2,15 +2,14 @@
 # 本py文件保留所有需要与scheduler交互的函数。
 from Appointment import *
 
-from Appointment.models import Participant, Room, Appoint, College_Announcement
-from django.http import JsonResponse, HttpResponse  # Json响应
-from django.shortcuts import render, redirect  # 网页render & redirect
-from django.urls import reverse
-from datetime import datetime, timedelta, timezone, time, date
-from django.db import transaction  # 原子化更改数据库
+from Appointment.models import Participant, Room, Appoint
 import Appointment.utils.utils as utils
 import Appointment.utils.web_func as web_func
 from Appointment.utils.identity import get_participant
+
+from datetime import datetime, timedelta
+from django.http import JsonResponse
+from django.db import transaction
 
 '''
 YWolfeee:
@@ -381,40 +380,55 @@ def get_longterm_display(times: int, interval_week: int):
     return longterm_info
 
 
-def add_longterm_appoint(appoint: Appoint,
+def add_longterm_appoint(appoint: 'Appoint | int',
                          times: int,
                          interval: int = 1,
-                         week_offset: int = 0,
+                         week_offset: int = None,
                          admin: bool = False):
     '''
-    自动开启事务以检查预约是否冲突，以原预约为模板直接生成新预约
-        暂不检查预约时间是否合法
-        **本函数中time的语义均为次数，不是时间
-    
-    返回值
-        error_time: 发生错误的预约次数，成功为None，错误可能源于冲突或者
-        appoints: 失败时返回冲突的预约，成功时返回生成的预约，开始时间顺序排列
+    自动开启事务以检查预约是否冲突，以原预约为模板直接生成新预约，不检查预约时间是否合法
+
+    :param appoint: 预约的模板，Appoint类型视为可修改，不应再使用，否则作为主键
+    :type appoint: Appoint | int
+    :param times: 长期预约次数
+    :type times: int
+    :param interval: 每次预约间的间隔周数, defaults to 1
+    :type interval: int, optional
+    :param week_offset: 首个预约距模板的周数，默认从模板后一次预约开始, defaults to None
+    :type week_offset: int, optional
+    :param admin: 以管理员权限创建，本参数暂被忽视, defaults to False
+    :type admin: bool, optional
+    :return: 首个冲突预约所在次数、以开始时间升序排列的冲突或生成的预约集合
+    :rtype: (int, QuerySet[Appoint])  | (None, QuerySet[Appoint])
     '''
     with transaction.atomic():
+        # 默认不包含传入预约当周
+        if week_offset is None:
+            week_offset = interval
+        # 获取模板
+        if not isinstance(appoint, Appoint):
+            origin_pk = appoint
+            appoint: Appoint = Appoint.objects.get(pk=origin_pk)
+        else:
+            origin_pk = appoint.pk
+
+        # 检查冲突
         conflict_appoints = utils.get_conflict_appoints(
             appoint, times, interval, week_offset, lock=True)
         if conflict_appoints:
             first_conflict = conflict_appoints[0]
-            first_time = (
-                (first_conflict.Afinish - appoint.Astart)
-                // timedelta(weeks=interval) + 1)
+            first_time = ((first_conflict.Afinish - appoint.Astart
+                            - timedelta(weeks=week_offset)
+                           ) // timedelta(weeks=interval) + 1)
             return first_time, conflict_appoints
 
         # 没有冲突，开始创建长线预约
         students = appoint.students.all()
         new_appoints = []
-        new_appoint: Appoint = Appoint.objects.get(pk=appoint.pk)
-        new_appoint.Astart += timedelta(weeks=week_offset)
-        new_appoint.Afinish += timedelta(weeks=week_offset)
+        new_appoint = appoint
+        new_appoint.add_time(timedelta(weeks=week_offset))
         for time in range(times):
             # 先获取复制对象的副本
-            new_appoint.Astart += timedelta(weeks=interval)
-            new_appoint.Afinish += timedelta(weeks=interval)
             new_appoint.Astatus = Appoint.Status.APPOINTED
             new_appoint.Atype = Appoint.Type.LONGTERM
             # 删除主键会被视为新对象，save时向数据库添加对象并更新主键
@@ -422,6 +436,7 @@ def add_longterm_appoint(appoint: Appoint,
             new_appoint.save()
             new_appoint.students.set(students)
             new_appoints.append(new_appoint.pk)
+            new_appoint.add_time(timedelta(weeks=interval))
 
         # 获取长线预约集合，由于生成是按顺序的，默认排序也是按主键递增，无需重排
         new_appoints = Appoint.objects.filter(pk__in=new_appoints)
@@ -432,8 +447,7 @@ def add_longterm_appoint(appoint: Appoint,
 
     # 长线化预约发起成功，准备消息提示即可
     longterm_info = get_longterm_display(times, interval)
-    utils.operation_writer(
-        appoint.get_major_id(),
-        f"发起{longterm_info}长线化预约, 原预约号为{appoint.Aid}",
+    utils.operation_writer(appoint.get_major_id(),
+        f"发起{longterm_info}长线化预约, 原预约号为{origin_pk}",
         "scheduler_func.add_longterm_appoint", "OK")
     return None, new_appoints

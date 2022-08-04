@@ -6,7 +6,7 @@ from django.db.models import QuerySet
 from django.dispatch import receiver
 from django.db.models import Q
 
-from datetime import datetime, time
+from datetime import datetime, time, timedelta
 
 
 __all__ = [
@@ -215,6 +215,12 @@ class Appoint(models.Model):
     # --- end(2021.7.13) --- ##
 
     objects: AppointManager = AppointManager()
+
+    def add_time(self, delta: timedelta):
+        '''方便同时调整预约时间的函数，修改自身，不调用save保存'''
+        self.Astart += delta
+        self.Afinish += delta
+        return self
 
     def cancel(self):
         self.Astatus = Appoint.Status.CANCELED
