@@ -297,8 +297,8 @@ def cancelAppoint(request):
 
         # TODO: major_sid
         operation_writer(appoint.major_student.Sid_id,
-                               f"取消了预约{appoint.Aid}",
-                               "scheduler_func.cancelAppoint", "OK")
+                         f"取消了预约{appoint.Aid}",
+                         "scheduler_func.cancelAppoint", "OK")
         succeed("成功取消对" + appoint_room_name + "的预约!", context)
         # print('will send cancel message')
         scheduler_func.set_cancel_wechat(appoint)
@@ -532,7 +532,7 @@ def door_check(request):  # 先以Sid Rid作为参数，看之后怎么改
             # 考虑到次晨的情况，判断一天内的时段
             now = timedelta(hours=now_time.hour, minutes=now_time.minute)
             start = timedelta(hours=room.Rstart.hour, minutes=room.Rstart.minute)
-            finish = timedelta(hours=room.Rfinish.hour,
+            finish = timedelta(hours=room.Rfinish.hour, 
                                minutes=room.Rfinish.minute)
 
             if (now >= min(start, finish) and now <= max(start, finish)) ^ (start > finish):   # 在开放时间内
@@ -828,6 +828,14 @@ def arrange_time(request: HttpRequest):
     max_stamp_id = web_func.get_time_id(room_object,
                                         room_object.Rfinish,
                                         mode="leftopen")
+
+    # 定义时间块状态，与预约状态并不完全一致，时间块状态暂定为以下值，可能需要重新规划
+    class TimeStatus:
+        AVAILABLE = 0  # 可预约
+        PASSED = 1,  # 已过期
+        NORMAL = 2,  # 已被普通预约
+        LONGTERM = 3,  # 已被长期预约
+
     for day in dayrange_list:
         day['timesection'] = []
         start_hour = room_object.Rstart.hour
@@ -839,9 +847,7 @@ def arrange_time(request: HttpRequest):
             timesection['starttime'] = str(
                 start_hour + (i + round_up) // 2).zfill(2) + ":" + str(
                     (i + round_up) % 2 * 30).zfill(2)
-            # 0: 可用 1: 已经预约 2: 已过
-            # TODO: 状态设定需要重新规划
-            timesection['status'] = 0
+            timesection['status'] = TimeStatus.AVAILABLE
             timesection['id'] = i
             day['timesection'].append(timesection)
 
@@ -878,19 +884,71 @@ def arrange_time(request: HttpRequest):
             date(start_day['year'], start_day['month'], start_day['day'])).days
         day = dayrange_list[date_id]
 
-        for i in change_id_list:
-            day['timesection'][i]['status'] = 1
-            day['timesection'][i]['display_info'] = '<br/>'.join([
-                f'{appoint_usage}',
+        # 根据预约类型标记该时间块的状态和信息
+        if(appoint_record.Atype == Appoint.Type.LONGTERM):
+            time_status = TimeStatus.LONGTERM
+            # 查找对应的长期预约 
+            # FIXME: 由于现有模型不存在长期预约和普通预约的对应关系，以下查找并不能安全地获得对应的长期预约
+            condition = Q(status=LongTermAppoint.Status.APPROVED)
+            condition |= Q(status=LongTermAppoint.Status.REVIEWING)
+            condition &= Q(appoint__Room__Rid=Rid, 
+                           appoint__major_student=appoint_record.major_student, 
+                           appoint__Ausage=appoint_record.Ausage, 
+                           # isoweekday Mon:1 -> Sun:7
+                           # week_day Sun:1 -> Sat:7
+                           appoint__Astart__week_day=appoint_record.Astart.isoweekday() % 7 + 1,
+                           appoint__Astart__hour=appoint_record.Astart.hour,
+                           appoint__Astart__minute=appoint_record.Astart.minute,
+                           appoint__Afinish__week_day=appoint_record.Afinish.isoweekday() % 7 + 1,
+                           appoint__Afinish__hour=appoint_record.Afinish.hour,
+                           appoint__Afinish__minute=appoint_record.Afinish.minute,
+                         )
+            potential_longterm_appoints = LongTermAppoint.objects.filter(condition)
+            related_longterm_appoint = None
+            if len(potential_longterm_appoints) == 1:
+                related_longterm_appoint = potential_longterm_appoints.first()
+            else: 
+                # 处理同一组织同时存在同房间同用途同时段，但分别为单双周的预约的极端情形    
+                for longterm_appoint in potential_longterm_appoints:
+                    # 若当前预约为首个预约
+                    if appoint_record == longterm_appoint.appoint:
+                        related_longterm_appoint = longterm_appoint
+                    else:
+                        # 若当前预约为后续预约
+                        conflicts = get_conflict_appoints(appoint=longterm_appoint.appoint, 
+                                                        times=longterm_appoint.times, 
+                                                        interval=longterm_appoint.interval)
+                        if appoint_record in conflicts:
+                            related_longterm_appoint = longterm_appoint
+            if related_longterm_appoint:
+                display_info = '<br/>'.join([
+                    f'预约者：{appointer_name}',
+                    f'{appoint_usage}',
+                    f'{"每周一次" if related_longterm_appoint.interval == 1 else "隔周一次"}',
+                    f'共 {related_longterm_appoint.times} 周',
+                ])
+            else:
+                display_info = '<br/>'.join([
+                    f'预约者：{appointer_name}',
+                    f'{appoint_usage}',
+                ])
+        else:
+            time_status = TimeStatus.NORMAL
+            display_info = '<br/>'.join([
                 f'预约者：{appointer_name}',
+                f'{appoint_usage}',
             ])
+
+        for i in change_id_list:
+            day['timesection'][i]['status'] = time_status
+            day['timesection'][i]['display_info'] = display_info
 
     # 删去今天已经过去的时间
     if start_week == 0:
         curr_stamp_id = web_func.get_time_id(room_object,
                                              datetime.now().time())
         for i in range(min(max_stamp_id, curr_stamp_id) + 1):
-            dayrange_list[0]['timesection'][i]['status'] = 1
+            dayrange_list[0]['timesection'][i]['status'] = TimeStatus.PASSED
 
     # 转换成方便前端使用的形式
     js_dayrange_list = json.dumps(dayrange_list)
