@@ -10,13 +10,15 @@ from django.http import QueryDict
 from app.utils import check_user_type
 from datetime import datetime, timedelta
 from app.notification_utils import notification_create, bulk_notification_create
-from app.models import Notification
+from app.models import Notification, Organization, NaturalPerson
 from app.wechat_send import publish_notifications, WechatMessageLevel, WechatApp
 
-__all__ = ['bookreturn_notifcation',
-           'get_readers_by_user',
-           'seach_books',
-           'get_query_dict']
+from Appointment.models import Participant
+
+__all__ = [
+    'bookreturn_notifcation', 'get_readers_by_user', 'seach_books',
+    'get_query_dict'
+]
 
 
 def bookreturn_notification():
@@ -27,15 +29,94 @@ def bookreturn_notification():
     """
     cr_time = datetime.now
     one_day_before = LendRecord.objects.filter(returned=False,
-                                               due_time=cr_time - timedelta(days=1))
+                                               due_time=cr_time -
+                                               timedelta(days=1))
     now_return = LendRecord.objects.filter(returned=False, due_time=cr_time)
     five_days_after = LendRecord.objects.filter(returned=False,
-                                                due_time=cr_time + timedelta(days=5))
+                                                due_time=cr_time +
+                                                timedelta(days=5))
     one_week_after = LendRecord.objects.filter(returned=False,
-                                               due_time=cr_time + timedelta(weeks=1))
+                                               due_time=cr_time +
+                                               timedelta(weeks=1))
+    sender = Organization.filter(oname="元培书房")
+    URL = f"/lendinfo/"
+    typename = Notification.Type.NEEDREAD
     
-
-
+    receivers = []
+    for record in one_day_before:
+        receivers.append(record.reader_id.student_id)
+    content = "您好！您现有未归还的图书，将于一天内借阅到期，请按时归还至元培书房！"
+    bulk_notification_create(
+        receivers=receivers,
+        sender=sender,
+        typename=typename,
+        title=Notification.Title.YPLIB_INFORM,
+        content=content,
+        URL=URL,
+        publish_to_wechat=True,
+        publish_kws={
+            'app': WechatApp._MESSAGE,
+            'level': WechatMessageLevel.IMPORTANT,
+        },
+    )
+    
+    receivers = []
+    for record in now_return:
+        receivers.append(record.reader_id.student_id)
+    content = "您好！您现有未归还的图书，已经借阅到期，请及时归还至元培书房！"
+    bulk_notification_create(
+        receivers=receivers,
+        sender=sender,
+        typename=typename,
+        title=Notification.Title.YPLIB_INFORM,
+        content=content,
+        URL=URL,
+        publish_to_wechat=True,
+        publish_kws={
+            'app': WechatApp._MESSAGE,
+            'level': WechatMessageLevel.IMPORTANT,
+        },
+    )
+    
+    receivers = []
+    for record in five_days_after:
+        receivers.append(record.reader_id.student_id)
+    content = "您好！您现有未归还的图书，已经借阅到期五天，请尽快归还至元培书房！到期一周未归还将扣除您的信用分1分！"
+    bulk_notification_create(
+        receivers=receivers,
+        sender=sender,
+        typename=typename,
+        title=Notification.Title.YPLIB_INFORM,
+        content=content,
+        URL=URL,
+        publish_to_wechat=True,
+        publish_kws={
+            'app': WechatApp._MESSAGE,
+            'level': WechatMessageLevel.IMPORTANT,
+        },
+    )
+    
+    receivers = []
+    for record in one_week_after:
+        receiver = record.reader_id.student_id
+        receivers.append(receiver)
+        violate_stu = Participant.objects.get(Sid=receiver)
+        if violate_stu.credit > 0:
+            violate_stu.credit -= 1
+    content = "您好！您现有未归还的图书，已经借阅到期一周，请尽快归还至元培书房！由于借阅超时一周，您已被扣除信用分1分！"
+    bulk_notification_create(
+        receivers=receivers,
+        sender=sender,
+        typename=typename,
+        title=Notification.Title.YPLIB_INFORM,
+        content=content,
+        URL=URL,
+        publish_to_wechat=True,
+        publish_kws={
+            'app': WechatApp._MESSAGE,
+            'level': WechatMessageLevel.IMPORTANT,
+        },
+    )
 
 
 def get_readers_by_user(user: User) -> QuerySet:
@@ -115,8 +196,10 @@ def get_query_dict(post_dict: QueryDict) -> dict:
     # search_books函数要求输入为一个词典，其条目对应"id", "identity_code", "title", "author", "publisher"和"returned"的query
     # 这里没有id的query，故query为空串
     # 此外，还提供“全关键词检索”，具体见search_books
-    query_dict = {k: post_dict[k]
-                  for k in ["identity_code", "title", "author", "publisher"]}
+    query_dict = {
+        k: post_dict[k]
+        for k in ["identity_code", "title", "author", "publisher"]
+    }
     query_dict["id"] = ""
 
     if len(post_dict.getlist("returned")) == 1:  # 如果对returned有要求
@@ -125,7 +208,8 @@ def get_query_dict(post_dict: QueryDict) -> dict:
         query_dict["returned"] = ""
 
     # 全关键词检索
-    query_dict["keywords"] = [post_dict["keywords"],
-                              ["kw_title", "kw_author", "kw_publisher"]]
+    query_dict["keywords"] = [
+        post_dict["keywords"], ["kw_title", "kw_author", "kw_publisher"]
+    ]
 
     return query_dict
