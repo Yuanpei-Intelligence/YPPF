@@ -2,7 +2,7 @@
 # 本py文件保留所有需要与scheduler交互的函数。
 from Appointment import *
 
-from Appointment.models import Participant, Room, Appoint, College_Announcement
+from Appointment.models import Participant, Room, Appoint,LongTermAppoint, College_Announcement
 from django.http import JsonResponse, HttpResponse  # Json响应
 from django.shortcuts import render, redirect  # 网页render & redirect
 from django.urls import reverse
@@ -198,9 +198,40 @@ def set_start_wechat(appoint, students_id=None, notify_create=True):
 def set_longterm_wechat(appoint: Appoint, students_id=None, infos='', admin=False):
     '''长期预约的微信提醒，默认发给所有参与者'''
     set_appoint_wechat(
-        appoint, 'longterm_admin' if admin else 'longterm', infos,
-        students_id=students_id, id=f'{appoint.Aid}_longterm_wechat')
+        appoint, 'longterm_created_admin' if admin else 'longterm_created', infos,
+        students_id=students_id, id=f'{appoint.Aid}_longterm_created_wechat')
 
+
+def set_longterm_reviewing_wechat(longterm_appoint:LongTermAppoint):
+    '''长期预约的审核老师通知提醒，发送给对应的审核老师'''
+    # TODO: 待优化
+    review_url = GLOBAL_INFO.this_url.rstrip("/") + "/review?Lid=" + longterm_appoint.id
+    
+    def get_audit_teachers(applicant:Participant) -> list [str]:
+        raise NotImplementedError()
+
+    teachers_id = get_audit_teachers(longterm_appoint.applicant)
+    utils.send_wechat_message(
+        message_type="longterm_reviewing",
+        stuid_list=teachers_id,
+        url=review_url,
+        start_time=longterm_appoint.appoint.Astart,
+        room=longterm_appoint.appoint.Room,
+        usage=longterm_appoint.appoint.Ausage,
+        major_student=longterm_appoint.applicant,
+    )
+
+def set_longterm_reviewed_wechat(longterm_appoint:LongTermAppoint, action:str="" ):
+    '''长期预约的审核状态变更通知提醒，发送给发起预约的组织和负责人'''
+    # TODO: 待优化
+    if action in  ["approved","rejected"]:
+        utils.send_wechat_message(
+            message_type="longterm_" + action,
+            stuid_list=[longterm_appoint.applicant.get_id()],
+            room=longterm_appoint.appoint.Room,
+            usage=longterm_appoint.appoint.Ausage,
+            major_student=longterm_appoint.applicant,
+        )
 
 # 过渡，待废弃
 def _success(data):
@@ -409,7 +440,7 @@ def add_longterm_appoint(appoint: Appoint,
         students = appoint.students.all()
         new_appoints = []
         new_appoint: Appoint = Appoint.objects.get(pk=appoint.pk)
-        # 针对续约操作调整偏移
+        # 调整偏移
         new_appoint.Astart += timedelta(weeks=week_offset-interval)
         new_appoint.Afinish += timedelta(weeks=week_offset-interval)
         for time in range(times):
