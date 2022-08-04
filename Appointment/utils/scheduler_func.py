@@ -409,8 +409,9 @@ def add_longterm_appoint(appoint: Appoint,
         students = appoint.students.all()
         new_appoints = []
         new_appoint: Appoint = Appoint.objects.get(pk=appoint.pk)
-        new_appoint.Astart += timedelta(weeks=week_offset)
-        new_appoint.Afinish += timedelta(weeks=week_offset)
+        # 针对续约操作调整偏移
+        new_appoint.Astart += timedelta(weeks=week_offset-interval)
+        new_appoint.Afinish += timedelta(weeks=week_offset-interval)
         for time in range(times):
             # 先获取复制对象的副本
             new_appoint.Astart += timedelta(weeks=interval)

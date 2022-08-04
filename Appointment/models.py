@@ -332,14 +332,53 @@ class LongTermAppoint(models.Model):
         verbose_name = '长期预约信息'
         verbose_name_plural = verbose_name
 
-    def create():
-        # TODO: 创建长期预约的全部子预约
-        raise NotImplementedError
+    def create(self):
+        """创建长期预约的全部后续子预约"""
+        from Appointment.utils.scheduler_func import add_longterm_appoint
+        new_appointments = add_longterm_appoint(
+            appoint=self.appoint,
+            times=self.times - 1,
+            interval=self.interval,
+            week_offset=1
+        )
+        return new_appointments
 
-    def cancel():
-        # TODO: 取消长期预约以及它的全部子预约
-        raise NotImplementedError
+    def cancel(self):
+        """取消长期预约以及它的全部子预约"""
+        from django.db import transaction  
+        from Appointment.utils.utils import get_conflict_appoints
+        from Appointment.utils.scheduler_func import cancel_scheduler
+        with transaction.atomic():
+            # 取消首个预约
+            if self.appoint.Astatus == Appoint.Status.APPOINTED:
+                self.appoint.cancel()
+                cancel_scheduler(self.appoint.Aid, "Problem")
+            # 取消后续预约
+            appoints = get_conflict_appoints(
+                appoint=self.appoint,
+                times=self.times,
+                interval=self.interval,
+            )
+            for appoint in appoints.filter(Astatus=Appoint.Status.APPOINTED):
+                appoint.cancel()
+                cancel_scheduler(appoint.Aid, "Problem")
+            self.status = self.Status.CANCELED
+            self.save()
 
+    def renew(self,times):
+        """添加新的后续子预约"""
+        from django.db import transaction  
+        from Appointment.utils.scheduler_func import add_longterm_appoint
+        with transaction.atomic():
+            new_appointments = add_longterm_appoint(
+                appoint=self.appoint,
+                times=times,
+                interval=self.interval,
+                week_offset=self.times * self.interval
+            )
+            self.times += times
+            self.save()
+            return new_appointments
 
 from Appointment.utils.scheduler_func import cancel_scheduler
 

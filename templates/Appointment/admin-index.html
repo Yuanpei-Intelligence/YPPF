@@ -141,13 +141,13 @@
                                 <div class="card-body">
                                     {% comment %} tab buttons {% endcomment %}
                                     <ul class="nav nav-tabs nav-tabs-solid nav-justified">
-                                        {% if is_org %}
+                                        {% if has_longterm_permission %}
                                             <li class="nav-item">
                                                 <a class="nav-link active" href="#appoint-longterm" data-toggle="tab">长期预约</a>
                                             </li>
                                         {% endif %}
                                         <li class="nav-item">
-                                            <a class="nav-link {{ is_org | yesno:',active' }}" href="#appoint-future" data-toggle="tab">{{ is_org | yesno:'普通预约,未开始的预约' }}</a>
+                                            <a class="nav-link {{ has_longterm_permission | yesno:',active' }}" href="#appoint-future" data-toggle="tab">{{ has_longterm_permission | yesno:'普通预约,未开始的预约' }}</a>
                                         </li>
                                         <li class="nav-item">
                                             <a class="nav-link" href="#appoint-past" data-toggle="tab">过去一周</a>
@@ -155,7 +155,7 @@
                                     </ul>
                                     {% comment %} tab content {% endcomment %}
                                     <div class="tab-content">
-                                        {% if is_org %}
+                                        {% if has_longterm_permission %}
                                             <div class="tab-pane show active" id="appoint-longterm">
                                                 <div class="alert alert-primary alert-dismissible fade show" role="alert">
                                                     你有
@@ -221,9 +221,32 @@
                                                                         <i class="fas fa-check"></i> 已通过
                                                                     </button>
                                                                 {% elif  appoint_longterm.status == "已通过" and  appoint_longterm.renewable %}
-                                                                    <a class="btn btn-sm bg-warning-light" style="width: 6rem;" href="#" onclick="alert('续约功能正在完善中')">
-                                                                        <i class="fas fa-sync"></i> 续约
-                                                                    </a>
+                                                                    <form action="renewLongtermAppoint" method="POST" style="position: relative;">
+                                                                        <div id="renew_times" class="card d-none px-2 py-3 flex-row mt-1 ml-3" 
+                                                                            style="position:absolute;top:105%;width:16rem;height:4rem;">
+                                                                            <div class="arrow border-top border-left bg-white" 
+                                                                                style="position:absolute;top:0;left:1rem;width:1rem;height:1rem;
+                                                                                transform:translateY(-53%) rotate(45deg);border-color:#f0f0f0 !important;">
+                                                                            </div>
+                                                                            <input class="form-control form-control-sm flex-fill h-100 p-1" 
+                                                                                style="min-height:0;max-width:11rem;" 
+                                                                                type="text" name="times" value="" 
+                                                                                placeholder="续约周数：最多可续约8周"/>
+                                                                            <button class="btn btn-sm btn-primary d-inline  h-100 ml-2" 
+                                                                                    type="submit" 
+                                                                                    onclick="$('#renew_times').toggleClass('d-none')"
+                                                                                    value="{{ appoint_longterm.appoint.Aid }}"
+                                                                                    name="renew_btn"
+                                                                                    >确认</button>
+                                                                        </div>
+                                                                        <button type="button"
+                                                                                class="btn btn-sm bg-danger-light ml-3"
+                                                                                style="width: 6rem;"
+                                                                                onclick="$('#renew_times').toggleClass('d-none')"
+                                                                                >
+                                                                            <i class="fas fa-sync"></i> 续约
+                                                                        </button>
+                                                                    </form>
                                                                 {% elif  appoint_longterm.status == "已取消" %}
                                                                     <a class="btn btn-sm bg-danger-light" style="width: 6rem;" >
                                                                         <i class="fas fa-times"></i> 已取消
@@ -248,7 +271,7 @@
                                                 </div>
                                             </div>
                                         {% endif %}
-                                        <div class="tab-pane {{ is_org | yesno:',show active' }}" id="appoint-future">
+                                        <div class="tab-pane {{ has_longterm_permission | yesno:',show active' }}" id="appoint-future">
                                             <div class="alert alert-primary alert-dismissible fade show" role="alert">
                                                 你最近有
                                                 <strong>{{ appoint_list_future|length }}</strong>
@@ -302,12 +325,6 @@
                                                                     </input>
                                                                 </div>
                                                             </form>
-                                                        {% else %}
-                                                            <div class="appointment-action">
-                                                                <a href="javascript:void(0);" class="btn btn-sm bg-danger-light disabled">
-                                                                    <i class="fas fa-times"></i> 非发起人，不可取消
-                                                                </a>
-                                                            </div>
                                                         {% endif %}
                                                     </div>
                                                     <!-- /Appointment List -->

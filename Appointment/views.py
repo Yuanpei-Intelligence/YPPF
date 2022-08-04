@@ -266,6 +266,20 @@ def cameracheck(request):   # 摄像头post的后端函数
 @identity_check(redirect_field_name='origin')
 def cancelAppoint(request):
     context = {}
+    type = request.POST.get("type")
+    if type == "longterm":
+        Aid = request.POST.get('cancel_btn')
+        appoint=Appoint.objects.get(Aid=Aid)
+        longterm_appoint=LongTermAppoint.objects.get(appoint=appoint)
+        longterm_appoint.cancel()
+        operation_writer(longterm_appoint.applicant.get_id(),
+                        f"取消长期预约{longterm_appoint.id}",
+                        "scheduler_func.cancelAppoint", "OK")
+        succeed(f"成功取消了{ longterm_appoint.appoint.Room.Rid } { longterm_appoint.appoint.Room.Rtitle}的长期预约!", context)
+        # TODO: 微信发送通知
+        # scheduler_func.set_cancel_wechat(appoint)
+        return redirect(message_url(context, reverse("Appointment:admin_index")))
+
     try:
         Aid = request.POST.get('cancel_btn')
         appoints = Appoint.objects.filter(Astatus=Appoint.Status.APPOINTED)
@@ -303,6 +317,45 @@ def cancelAppoint(request):
         # print('will send cancel message')
         scheduler_func.set_cancel_wechat(appoint)
 
+    return redirect(message_url(context, reverse("Appointment:admin_index")))
+
+@require_POST
+@identity_check(redirect_field_name='origin')
+def renewLongtermAppoint(request):
+    context = {}
+    try:
+        Aid = request.POST.get('renew_btn')
+        appoint = Appoint.objects.get(Aid=Aid)
+        longterm_appoint:LongTermAppoint = LongTermAppoint.objects.get(appoint=appoint)
+    except:
+        return redirect(message_url(
+            wrong("该预约不存在!"),
+            reverse("Appointment:admin_index")))
+    try:
+        times = int(request.POST.get('times'))
+        assert 1 <= times <= GLOBAL_INFO.longterm_max_time
+    except:
+        return redirect(message_url(
+            wrong("您选择的续约周数不符合要求!"),
+            reverse("Appointment:admin_index")))
+
+    try:
+        # TODO: major_sid
+        Pid = request.user.username
+        assert longterm_appoint.applicant.get_id() == Pid
+    except:
+        return redirect(message_url(
+            wrong("您不是该预约的发起人，不可以进行续约!"),
+            reverse("Appointment:admin_index")))
+
+    longterm_appoint.renew(times)
+    # TODO: major_sid
+    operation_writer(longterm_appoint.applicant.get_id(),
+                        f"对长期预约{longterm_appoint.id}发起{times}周续约",
+                        "scheduler_func.renewLongtermAppoint", "OK")
+    succeed(f"成功对{ longterm_appoint.appoint.Room.Rid } { longterm_appoint.appoint.Room.Rtitle}的长期预约进行了{times}周的续约!", context)
+    # TODO: 微信发送通知
+    # scheduler_func.set_cancel_wechat(appoint)
     return redirect(message_url(context, reverse("Appointment:admin_index")))
 
 
@@ -385,7 +438,7 @@ def admin_index(request: HttpRequest):
     img_path = get_avatar(request.user)
     render_context.update(my_info=my_info,
                           img_path=img_path,
-                          is_org=has_longterm_permission)
+                          has_longterm_permission=has_longterm_permission)
 
     # 获取过去和未来的预约信息
     appoint_list_future = web_func.get_appoints(Pid, 'future').get('data')
@@ -409,7 +462,11 @@ def admin_index(request: HttpRequest):
     # 获取长期预约数据
     appoint_list_longterm = []
     longterm_appoints = LongTermAppoint.objects.filter(applicant=participant)
-
+    # 判断是否达到上限
+    is_full = len(longterm_appoints.filter(
+                    Q(status=LongTermAppoint.Status.APPROVED) | 
+                    Q(status=LongTermAppoint.Status.REVIEWING)
+                )) >= GLOBAL_INFO.longterm_max_num
     for longterm_appoint in longterm_appoints:
         appoint_info = longterm_appoint.appoint.toJson()
         appoint_info['Astart_hour_minute'] = datetime.strptime(
@@ -418,11 +475,23 @@ def admin_index(request: HttpRequest):
             appoint_info['Afinish'], "%Y-%m-%dT%H:%M:%S").strftime("%I:%M %p")
         appoint_info['Aweek'] = datetime.strptime(
             appoint_info['Astart'], "%Y-%m-%dT%H:%M:%S").strftime("%A")
+        
+        # 判断是否可以续约
+        last_appoint_start = datetime.strptime(appoint_info['Astart'], "%Y-%m-%dT%H:%M:%S") \
+                           + timedelta(weeks=longterm_appoint.times*longterm_appoint.interval)
+
+        if longterm_appoint.status == LongTermAppoint.Status.APPROVED \
+                and datetime.now() > last_appoint_start - timedelta(weeks=2)\
+                and datetime.now() < last_appoint_start:
+            renewable = True
+        else:
+            renewable = False
         data = {
             'appoint': appoint_info,
             'times': longterm_appoint.times,
             'interval': longterm_appoint.interval,
             'status': longterm_appoint.get_status_display(),
+            'renewable':renewable,
         }
         appoint_list_longterm.append(data)
 
@@ -431,8 +500,8 @@ def admin_index(request: HttpRequest):
     appoint_list_past.reverse()
     render_context.update(appoint_list_future=appoint_list_future,
                           appoint_list_past=appoint_list_past,
-                          appoint_list_longterm=appoint_list_longterm)
-
+                          appoint_list_longterm=appoint_list_longterm,
+                          is_full=is_full)
     return render(request, 'Appointment/admin-index.html', render_context)
 
 
@@ -1145,7 +1214,7 @@ def check_out(request: HttpRequest):
     render_context = {}
     render_context.update(room_object=room_object,
                           appoint_params=appoint_params,
-                          is_org=has_longterm_permission)
+                          has_longterm_permission=has_longterm_permission)
 
     # 提交预约信息
     if request.method == 'POST':
@@ -1230,12 +1299,14 @@ def check_out(request: HttpRequest):
                             f"当前长期预约存在冲突, 与预约时间为{conflict_appoints[0].Astart}-{conflict_appoints[0].Afinish}的预约发生冲突",
                             render_context)
                     else:
-                        LongTermAppoint.objects.create(
+                        new_longterm = LongTermAppoint.objects.create(
                             appoint=appoint,
                             applicant=applicant,
                             times=times,
                             interval=interval,
                         )
+                        # 生成后续预约
+                        new_longterm.create()
                         return redirect(
                             message_url(succeed(f"申请长期预约成功，请等待审核。"),
                                         reverse("Appointment:admin_index")))

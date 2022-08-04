@@ -43,6 +43,7 @@ urlpatterns = [
     path('admin-index.html', views.admin_index, name='admin_index'), #added by wxy
     path('admin-credit.html',views.admin_credit, name='admin_credit'),#added by wxy
     path('cancelAppoint',views.cancelAppoint,name="cancelAppoint"),
+    path('renewLongtermAppoint',views.renewLongtermAppoint, name="renewLongtermAppoint"),
     path('logout',views.logout,name="logout"),
     path('arrange_talk',views.arrange_talk_room,name='arrange_talk'),
     # added by wxy

@@ -122,7 +122,7 @@
                                         <div class="info-widget">
                                             <h4 class="card-title">信息填写</h4>
                                             <div class="row">
-                                                <div class="col-md-12 {{ is_org|yesno:'col-lg-6,col-lg-12' }}">
+                                                <div class="col-md-12 {{ has_longterm_permission|yesno:'col-lg-6,col-lg-12' }}">
                                                     <div class="form-group card-label">
                                                         <select class="search-members" name="students" value="" id="multiselect" multiple="multiple" style="width: 100%; z-index: 200;">
                                                             {% if warn_code %}
@@ -135,7 +135,7 @@
                                                         </select>
                                                     </div>
                                                 </div>
-                                                {% if is_org %}
+                                                {% if has_longterm_permission %}
                                                     <div class="col-md-12 col-lg-6">
                                                         <div class="form-group card-label d-flex" style="height:34px">
                                                             <button class="btn btn-sm btn-primary flex-fill" type="button" id="group-filter">
@@ -164,7 +164,7 @@
                                                         <textarea rows="5" class="form-control" name="announcement" placeholder="参与成员可见">{{contents.announcement}}</textarea>
                                                     </div>
                                                 </div>
-                                                {% if is_org %}
+                                                {% if has_longterm_permission %}
                                                     <div class="col-md-12 col-sm-12 ">
                                                         <div class="form-group d-flex align-items-center">
                                                             <input type="checkbox" name="longterm" id="longterm" />
@@ -173,7 +173,7 @@
                                                     </div>
                                                 {% endif %}
                                             </div>
-                                            {% if is_org %}
+                                            {% if has_longterm_permission %}
                                                 <div class="tab-content pt-0">
                                                     <div class="row tab-pane" id="longterm-fields" role="tabpanel">
                                                         <div class="col-md-12 col-sm-12">
