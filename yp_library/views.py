@@ -15,6 +15,10 @@ from yp_library.utils import (
 )
 from app.utils import get_sidebar_and_navbar, check_user_access
 
+DISPLAY_ACTIVITY_NUM = 3 # 首页展示的书房活动数量
+DISPLAY_RECOMMENDATION_NUM = 5 # 首页展示的推荐书目数量
+# DISPLAY_NEW_BOOK_NUM = 5 # 首页展示的新入馆书目数量
+
 
 @login_required(redirect_field_name="origin")
 @check_user_access(redirect_url="/logout/")
@@ -41,16 +45,18 @@ def welcome(request: HttpRequest) -> HttpResponse:
     try:
         readers = get_readers_by_user(request.user)
     except AssertionError as e:
-        return redirect(message_url(wrong(e)))
-    
+        frontend_dict["warn_message"] = "提示：馆藏查询、查看借阅记录等功能需要开通书房账号!"
+        
     # 获取首页展示的近期活动
-    frontend_dict["activities"] = get_library_activity(num=3)
+    frontend_dict["activities"] = get_library_activity(num=DISPLAY_ACTIVITY_NUM)
     # 获取开馆时间
     frontend_dict["opening_time_start"], frontend_dict["opening_time_end"] = get_opening_time()
     # 获取随机推荐书目
-    frontend_dict["recommendation"] = get_recommended_or_newest_books(num=5, newest=False)
+    frontend_dict["recommendation"] = get_recommended_or_newest_books(
+        num=DISPLAY_RECOMMENDATION_NUM, newest=False)
     # 获取最新到馆书目（按id从大到小），暂不启用
-    # frontend_dict["newest_books"] = get_recommended_or_newest_books(num=5, newest=True)
+    # frontend_dict["newest_books"] = get_recommended_or_newest_books(
+    #     num=DISPLAY_NEW_BOOK_NUM, newest=True)
 
     return render(request, "yp_library/welcome.html", frontend_dict)
 
