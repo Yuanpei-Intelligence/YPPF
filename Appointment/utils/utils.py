@@ -178,7 +178,7 @@ def send_wechat_message(
     elif message_type == 'cancel':
         title = '您有一条预约被取消'
     elif message_type.startswith('longterm'):    # 发起一条长线预约
-        title = f'您有一条预约被长线化'
+        title = f'您有一条新的长期预约'
         show_announcement = True
         extra_info = ['详情：' + reason]
     elif message_type == 'confirm_admin_w2c':    # WAITING to CONFIRMED
@@ -499,7 +499,8 @@ def check_temp_appoint(room: Room) -> bool:
 
 
 def get_conflict_appoints(appoint: Appoint, times: int = 1,
-                          interval: int = 1, bias_week: int = 0,
+                          interval: int = 1, week_offset: int = 0,
+                          exclude_this: bool = False,
                           no_cross_day=False, lock=False) -> QuerySet[Appoint]:
     '''
     
@@ -511,8 +512,10 @@ def get_conflict_appoints(appoint: Appoint, times: int = 1,
     :type times: int, optional
     :param interval: 每次间隔的周数, defaults to 1
     :type interval: int, optional
-    :param bias_week: 第一次检测时间距离提供预约的周数, defaults to 0
-    :type bias_week: int, optional
+    :param week_offset: 第一次检测时间距离提供预约的周数, defaults to 0
+    :type week_offset: int, optional
+    :param exclude_this: 排除检测的预约, defaults to False
+    :type exclude_this: bool, optional
     :param no_cross_day: 是否假设预约都不跨天，可以简化查询, defaults to False
     :type no_cross_day: bool, optional
     :param lock: 查询时上锁, defaults to False
@@ -534,7 +537,7 @@ def get_conflict_appoints(appoint: Appoint, times: int = 1,
             Afinish__time__gt=appoint.Astart.time(),
         )
         date_range = [
-            appoint.Astart.date() + timedelta(weeks=week + bias_week)
+            appoint.Astart.date() + timedelta(weeks=week + week_offset)
             for week in range(0, times * interval, interval)
             ]
         conditions &= Q(
@@ -545,9 +548,12 @@ def get_conflict_appoints(appoint: Appoint, times: int = 1,
         for week in range(0, times * interval, interval):
             conditions |= Q(
                 # 开始比当前的结束时间早
-                Astart__lt=appoint.Afinish + timedelta(weeks=week + bias_week),
+                Astart__lt=appoint.Afinish + timedelta(weeks=week + week_offset),
                 # 结束比当前的开始时间晚
-                Afinish__gt=appoint.Astart + timedelta(weeks=week + bias_week),
+                Afinish__gt=appoint.Astart + timedelta(weeks=week + week_offset),
             )
+    # 检查时预约还不应创建，冲突预约可以包含自身
     conflict_appoints = activate_appoints.filter(conditions)
+    if exclude_this:
+        conflict_appoints = conflict_appoints.exclude(pk=appoint.pk)
     return conflict_appoints.order_by('Astart', 'Afinish')

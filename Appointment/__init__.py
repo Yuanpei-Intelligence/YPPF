@@ -86,6 +86,12 @@ class LocalSetting():
         self.today_min = 2
         # 表示临时预约放宽的人数下限
         self.temporary_min = 1
+        # 长期预约总数上限
+        self.longterm_max_num = 4
+        # 单个长期预约总次数上限
+        self.longterm_max_time = 8
+        # 单个长期预约总次数上限
+        self.longterm_max_interval = 2
         # 是否允许不存在学生自动注册
         self.allow_newstu_appoint = True
         # 是否限制开始前的预约取消时间
