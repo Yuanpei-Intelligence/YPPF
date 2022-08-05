@@ -1247,34 +1247,35 @@ def check_out(request: HttpRequest):
                 wrong(add_dict['message'], render_context)
             else:
                 # 长期预约
-                Aid = json.loads(response.content)['data']['Aid']
-                appoint: Appoint = Appoint.objects.get(Aid=Aid)
-                with transaction.atomic():
-                    conflict_appoints = get_conflict_appoints(
-                        appoint,
-                        times,
-                        interval,
-                        week_offset=interval,
-                        lock=True)
-                    if conflict_appoints:
-                        appoint.delete()
-                        wrong(
-                            f"当前长期预约存在冲突, 与预约时间为{conflict_appoints[0].Astart}-{conflict_appoints[0].Afinish}的预约发生冲突",
-                            render_context)
-                    else:
-                        new_longterm = LongTermAppoint.objects.create(
+                try:
+                    conflict_appoints = []
+                    with transaction.atomic():
+                        Aid = json.loads(response.content)['data']['Aid']
+                        appoint: Appoint = Appoint.objects.get(Aid=Aid)
+                        conflict_appoints = get_conflict_appoints(
+                            appoint, times, interval,
+                            week_offset=interval, lock=True)
+                        assert not conflict_appoints
+                        longterm: LongTermAppoint = LongTermAppoint.objects.create(
                             appoint=appoint,
                             applicant=applicant,
                             times=times,
                             interval=interval,
                         )
                         # 生成后续预约
-                        new_longterm.create()
+                        conflict, conflict_appoints = longterm.create()
+                        assert conflict is None, f"创建长期预约意外失败"
                         # 向审核老师发送微信通知
-                        scheduler_func.set_longterm_reviewing_wechat(new_longterm)
+                        scheduler_func.set_longterm_reviewing_wechat(longterm)
                         return redirect(
                             message_url(succeed(f"申请长期预约成功，请等待审核。"),
                                         reverse("Appointment:admin_index")))
+                except:
+                    appoint.delete()
+                    if conflict_appoints:
+                        wrong(f"与预约时间为{conflict_appoints[0].Astart}"
+                            + f"-{conflict_appoints[0].Afinish}的预约发生冲突",
+                            render_context)
 
     # 提供搜索功能的数据
     js_stu_list = web_func.get_student_chosen_list(request,
