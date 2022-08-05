@@ -158,8 +158,8 @@
                                         {% if has_longterm_permission %}
                                             <div class="tab-pane show active" id="appoint-longterm">
                                                 <div class="alert alert-primary alert-dismissible fade show" role="alert">
-                                                    你有
-                                                    <strong>{{ appoint_list_longterm | length }}</strong>
+                                                    本学期你已发起
+                                                    <strong>{{ longterm_count }}</strong>
                                                     条长期预约
                                                 </div>
                                                 <div class="w-100 d-flex">
@@ -245,8 +245,8 @@
                                                                                                placeholder='续约周数：最多可续约8周'/>
                                                                                         <button class='btn btn-sm btn-primary d-inline  h-100 ml-2' 
                                                                                                 type='submit' 
-                                                                                                value='{{ appoint_longterm.appoint.Aid }}'
-                                                                                                name='renew_btn'
+                                                                                                value='{{ appoint_longterm.longterm_id }}'
+                                                                                                name='longterm_id'
                                                                                                 >确认</button>
                                                                                       </form>"
                                                                         >

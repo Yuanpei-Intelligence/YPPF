@@ -322,36 +322,31 @@ def cancelAppoint(request):
 def renewLongtermAppoint(request):
     context = {}
     try:
-        Aid = request.POST.get('renew_btn')
-        appoint = Appoint.objects.get(Aid=Aid)
-        longterm_appoint:LongTermAppoint = LongTermAppoint.objects.get(appoint=appoint)
+        pk = int(request.POST.get('longterm_id'))
+        longterm_appoint: LongTermAppoint = LongTermAppoint.objects.get(pk=pk)
+        assert longterm_appoint.applicant.get_id() == request.user.username
+        assert longterm_appoint.status == LongTermAppoint.Status.APPROVED
     except:
         return redirect(message_url(
-            wrong("该预约不存在!"),
+            wrong("长期预约不存在或不符合续约要求!"),
             reverse("Appointment:admin_index")))
+
     try:
         times = int(request.POST.get('times'))
-        assert 1 <= times <= GLOBAL_INFO.longterm_max_time
+        assert 1 <= times <= GLOBAL_INFO.longterm_max_time_once
+        assert longterm_appoint.times + times <= GLOBAL_INFO.longterm_max_time
+        assert (longterm_appoint.times + times) * longterm_appoint.interval <= GLOBAL_INFO.longterm_max_week
     except:
         return redirect(message_url(
             wrong("您选择的续约周数不符合要求!"),
             reverse("Appointment:admin_index")))
 
-    try:
-        # TODO: major_sid
-        Pid = request.user.username
-        assert longterm_appoint.applicant.get_id() == Pid
-    except:
-        return redirect(message_url(
-            wrong("您不是该预约的发起人，不可以进行续约!"),
-            reverse("Appointment:admin_index")))
-
+    # TODO: 检查返回值
     longterm_appoint.renew(times)
-    # TODO: major_sid
     operation_writer(longterm_appoint.applicant.get_id(),
                         f"对长期预约{longterm_appoint.id}发起{times}周续约",
                         "scheduler_func.renewLongtermAppoint", "OK")
-    succeed(f"成功对{ longterm_appoint.appoint.Room.Rid } { longterm_appoint.appoint.Room.Rtitle}的长期预约进行了{times}周的续约!", context)
+    succeed(f"成功对{longterm_appoint.appoint.Room}的长期预约进行了{times}周的续约!", context)
     return redirect(message_url(context, reverse("Appointment:admin_index")))
 
 
@@ -455,50 +450,51 @@ def admin_index(request: HttpRequest):
         appoint_info['Afinish_hour_minute'] = datetime.strptime(
             appoint_info['Afinish'], "%Y-%m-%dT%H:%M:%S").strftime("%I:%M %p")
 
-    # 获取长期预约数据
-    appoint_list_longterm = []
-    longterm_appoints = LongTermAppoint.objects.filter(applicant=participant)
-    # 判断是否达到上限
-    is_full = len(longterm_appoints.filter(
-                    Q(status=LongTermAppoint.Status.APPROVED) | 
-                    Q(status=LongTermAppoint.Status.REVIEWING)
-                )) >= GLOBAL_INFO.longterm_max_num
-    for longterm_appoint in longterm_appoints:
-        appoint_info = longterm_appoint.appoint.toJson()
-        appoint_info['Astart_hour_minute'] = datetime.strptime(
-            appoint_info['Astart'], "%Y-%m-%dT%H:%M:%S").strftime("%I:%M %p")
-        appoint_info['Afinish_hour_minute'] = datetime.strptime(
-            appoint_info['Afinish'], "%Y-%m-%dT%H:%M:%S").strftime("%I:%M %p")
-        appoint_info['Aweek'] = datetime.strptime(
-            appoint_info['Astart'], "%Y-%m-%dT%H:%M:%S").strftime("%A")
-        
-        # 判断是否可以续约
-        last_appoint_start = datetime.strptime(appoint_info['Astart'], "%Y-%m-%dT%H:%M:%S") \
-                           + timedelta(weeks=longterm_appoint.times*longterm_appoint.interval)
-
-        if longterm_appoint.status == LongTermAppoint.Status.APPROVED \
-                and datetime.now() > last_appoint_start - timedelta(weeks=2)\
-                and datetime.now() < last_appoint_start:
-            renewable = True
-        else:
-            renewable = False
-        data = {
-            'appoint': appoint_info,
-            'times': longterm_appoint.times,
-            'interval': longterm_appoint.interval,
-            'status': longterm_appoint.get_status_display(),
-            'renewable':renewable,
-            'review_comment':longterm_appoint.review_comment,
-        }
-        appoint_list_longterm.append(data)
-
     appoint_list_future.sort(key=lambda k: k['Astart'])
     appoint_list_past.sort(key=lambda k: k['Astart'])
     appoint_list_past.reverse()
     render_context.update(appoint_list_future=appoint_list_future,
-                          appoint_list_past=appoint_list_past,
-                          appoint_list_longterm=appoint_list_longterm,
-                          is_full=is_full)
+                          appoint_list_past=appoint_list_past)
+
+    if has_longterm_permission:
+        # 获取长期预约数据
+        appoint_list_longterm = []
+        longterm_appoints = LongTermAppoint.objects.filter(applicant=participant)
+        # 判断是否达到上限
+        count = longterm_appoints.filter(
+            appoint__Astart__gt=GLOBAL_INFO.semester_start,
+            status__in=[
+                LongTermAppoint.Status.APPROVED,
+                LongTermAppoint.Status.REVIEWING,
+        ]).count()
+        is_full = count >= GLOBAL_INFO.longterm_max_num
+        for longterm_appoint in longterm_appoints:
+            longterm_appoint: LongTermAppoint
+            appoint_info = longterm_appoint.appoint.toJson()
+            appoint_info['Astart_hour_minute'] = longterm_appoint.appoint.Astart.strftime("%I:%M %p")
+            appoint_info['Afinish_hour_minute'] = longterm_appoint.appoint.Afinish.strftime("%I:%M %p")
+            appoint_info['Aweek'] = longterm_appoint.appoint.Astart.strftime("%A")
+            
+            # 判断是否可以续约
+            last_start = longterm_appoint.appoint.Astart + timedelta(
+                weeks=(longterm_appoint.times - 1) * longterm_appoint.interval)
+
+            renewable = (longterm_appoint.status == LongTermAppoint.Status.APPROVED
+                            and datetime.now() > last_start - timedelta(weeks=2)
+                            and datetime.now() < last_start)
+            data = {
+                'longterm_id': longterm_appoint.pk,
+                'appoint': appoint_info,
+                'times': longterm_appoint.times,
+                'interval': longterm_appoint.interval,
+                'status': longterm_appoint.get_status_display(),
+                'renewable': renewable,
+                'review_comment': longterm_appoint.review_comment,
+            }
+            appoint_list_longterm.append(data)
+
+        render_context.update(appoint_list_longterm=appoint_list_longterm,
+                              longterm_count=count, is_full=is_full)
     return render(request, 'Appointment/admin-index.html', render_context)
 
 
@@ -897,10 +893,10 @@ def arrange_time(request: HttpRequest):
 
     # 定义时间块状态，与预约状态并不完全一致，时间块状态暂定为以下值，可能需要重新规划
     class TimeStatus:
-        AVAILABLE = 0  # 可预约
-        PASSED = 1,  # 已过期
-        NORMAL = 2,  # 已被普通预约
-        LONGTERM = 3,  # 已被长期预约
+        AVAILABLE = 0   # 可预约
+        PASSED = 1      # 已过期
+        NORMAL = 2      # 已被普通预约
+        LONGTERM = 3    # 已被长期预约
 
     for day in dayrange_list:
         day['timesection'] = []
@@ -934,56 +930,49 @@ def arrange_time(request: HttpRequest):
                              minute=59,
                              second=59))
 
+    start_day = dayrange_list[0]
+    start_day = date(start_day['year'], start_day['month'], start_day['day'])
     # 给出已有预约的信息
     # TODO: 后续可优化
-    for appoint_record in appoints:
-        change_id_list = web_func.timerange2idlist(Rid, appoint_record.Astart,
-                                                   appoint_record.Afinish,
+    for appoint in appoints:
+        change_id_list = web_func.timerange2idlist(Rid, appoint.Astart,
+                                                   appoint.Afinish,
                                                    max_stamp_id)
-        appoint_usage = html.escape(appoint_record.Ausage).replace(
-            '\n', '<br/>')
-        appointer_name = html.escape(appoint_record.major_student.name)
+        appoint_usage = html.escape(appoint.Ausage).replace('\n', '<br/>')
+        appointer_name = html.escape(appoint.major_student.name)
 
-        start_day = dayrange_list[0]
-        date_id = (
-            appoint_record.Astart.date() -
-            date(start_day['year'], start_day['month'], start_day['day'])).days
+        date_id = (appoint.Astart.date() - start_day).days
         day = dayrange_list[date_id]
 
+        display_info = [
+            f'{appoint_usage}',
+            f'预约者：{appointer_name}',
+        ]
         # 根据预约类型标记该时间块的状态和信息
-        if(appoint_record.Atype == Appoint.Type.LONGTERM):
-            time_status = TimeStatus.LONGTERM
-            # 查找对应的长期预约 
-            potential_longterm_appoints = LongTermAppoint.objects.filter(
-                appoint__Room__Rid=Rid,
-                appoint__major_student=appoint_record.major_student
-            )
+        if appoint.Atype == Appoint.Type.LONGTERM:
+            # 查找对应的长期预约
+            max_week = GLOBAL_INFO.longterm_max_week
+            potential_appoints = get_conflict_appoints(
+                appoint, times=max_week, week_offset=1 - max_week,
+            ).filter(major_student=appoint.major_student)
+            potential_longterms = LongTermAppoint.objects.filter(
+                appoint__in=potential_appoints)
             related_longterm_appoint = None
-            for longterm_appoint in potential_longterm_appoints:
-                if longterm_appoint.sub_appoints().get(appoint=appoint_record):
+            for longterm_appoint in potential_longterms:
+                if appoint in longterm_appoint.sub_appoints():
                     related_longterm_appoint = longterm_appoint
+                    break
 
-            if related_longterm_appoint:
-                display_info = '<br/>'.join([
-                    f'预约者：{appointer_name}',
-                    f'{appoint_usage}',
-                    f'{"每周一次" if related_longterm_appoint.interval == 1 else "隔周一次"}',
+            if related_longterm_appoint is not None:
+                display_info = display_info.extend([
+                    f"每周一次" if related_longterm_appoint.interval == 1 else "隔周一次",
                     f'共 {related_longterm_appoint.times} 周',
                 ])
-            else:
-                display_info = '<br/>'.join([
-                    f'预约者：{appointer_name}',
-                    f'{appoint_usage}',
-                ])
-        else:
-            time_status = TimeStatus.NORMAL
-            display_info = '<br/>'.join([
-                f'预约者：{appointer_name}',
-                f'{appoint_usage}',
-            ])
+        display_info = '<br/>'.join(display_info)
 
         for i in change_id_list:
-            day['timesection'][i]['status'] = time_status
+            day['timesection'][i]['status'] = (TimeStatus.LONGTERM
+                if appoint.Atype == Appoint.Type.LONGTERM else TimeStatus.NORMAL)
             day['timesection'][i]['display_info'] = display_info
 
     # 删去今天已经过去的时间
@@ -1217,7 +1206,7 @@ def check_out(request: HttpRequest):
             contents['students'].append(contents['Sid'])
 
         # 检查预约次数
-        if is_longterm and not 1 <= times <= GLOBAL_INFO.longterm_max_time:
+        if is_longterm and not 1 <= times <= GLOBAL_INFO.longterm_max_time_once:
             wrong("您填写的预约周数不符合要求", render_context)
 
         # 检查长期预约次数
