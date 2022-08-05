@@ -1,11 +1,9 @@
-import requests as requests
 from Appointment import *
-from Appointment.models import Participant, Room, Appoint, College_Announcement
+from Appointment.models import Participant, Room, Appoint
 from Appointment.utils.identity import get_participant
-from django.db.models import Q  # modified by wxy
-from datetime import datetime, timedelta, timezone, time, date
+from django.db.models import Q, QuerySet
+from datetime import datetime, timedelta, time
 import Appointment.utils.utils as utils
-from django.http import JsonResponse, HttpResponse  # Json响应
 
 
 '''
@@ -14,19 +12,6 @@ web_func.py中保留所有在views.py中使用到了和web发生交互但不直�
 这些函数是views.py得以正常运行的工具函数。
 函数比较乱，建议实现新函数时先在这里面找找有没有能用的。
 '''
-
-
-def str_to_time(str_time: str):
-    """字符串转换成时间"""
-    try: return datetime.strptime(str_time,'%Y-%m-%d %H:%M:%S')
-    except: pass
-    try: return datetime.strptime(str_time,'%Y-%m-%d %H:%M')
-    except: pass
-    try: return datetime.strptime(str_time,'%Y-%m-%d %H')
-    except: pass
-    try: return datetime.strptime(str_time,'%Y-%m-%d')
-    except: pass
-    raise ValueError(str_time)
 
 
 
@@ -201,29 +186,29 @@ def time2datetime(year, month, day, t):
     return datetime(year, month, day, t.hour, t.minute, t.second)
 
 
-def appoints2json(appoints):
+def appoints2json(appoints: 'QuerySet[Appoint] | Appoint'):
     if isinstance(appoints, Appoint):
         return appoints.toJson()
     return [appoint.toJson() for appoint in appoints]
 
 
-def get_appoints(Pid, kind, major=False, to_json=True):
+def get_appoints(Pid, kind: str, major=False):
     '''
     - Pid: Participant, User or str
     - kind: `'future'`, `'past'` or `'violate'`
-    - returns: {data: objs.toJson() form} or {statusInfo: infos}
+    - returns: objs.toJson() form or None if failed
     '''
     try:
         participant = Pid
-        if not isinstance(Pid, Participant):
+        if not isinstance(participant, Participant):
             participant = get_participant(participant, raise_except=True)
     except Exception as e:
-        return {'statusInfo': {'message': '学号不存在', 'detail': str(e)}}
+        return None
 
     present_day = datetime.now()
     seven_days_before = present_day - timedelta(7)
 
-    appoints = participant.appoint_list.displayable()
+    appoints: QuerySet[Appoint] = participant.appoint_list.displayable()
     if major:
         appoints = appoints.filter(major_student=participant)
 
@@ -240,12 +225,12 @@ def get_appoints(Pid, kind, major=False, to_json=True):
                                    Astart__lte=present_day + timedelta(1))
     elif kind == 'violate':
         # 只考虑本学期的内容，因此用GLOBAL_INFO过滤掉以前的预约
-        start_time = str_to_time(GLOBAL_INFO.semester_start)
-        appoints = appoints.filter(Astatus=Appoint.Status.VIOLATED, Astart__gte = start_time)
+        appoints = appoints.filter(Astatus=Appoint.Status.VIOLATED,
+                                   Astart__gte=GLOBAL_INFO.semester_start)
     else:
-        return {'statusInfo': {'message': '参数错误', 'detail': f'kind非法: {kind}'}}
+        return None
 
-    return {'data': appoints2json(appoints) if to_json else appoints}
+    return appoints
 
 
 # 对一个从Astart到Afinish的预约,考虑date这一天,返回被占用的时段
@@ -269,14 +254,14 @@ def get_hour_time(room, timeid):  # for room , consider its time id
     return opentime.strftime("%H:%M"), True
 
 
-def get_time_id(room: Room, ttime: datetime, mode: str = "rightopen") -> int:
+def get_time_id(room: Room, ttime: time, mode: str = "rightopen") -> int:
     """
     返回当前时间的时间块编号，注意编号会与房间的开始预定时间相关。
 
     :param room: 房间
     :type room: Room
     :param ttime: 当前时间
-    :type ttime: datetime
+    :type ttime: time
     :param mode: 左开右闭或左闭右开, defaults to "rightopen"
     :type mode: str
     :return: 当前时间所处的时间块编号
@@ -290,7 +275,6 @@ def get_time_id(room: Room, ttime: datetime, mode: str = "rightopen") -> int:
     second = int(delta.total_seconds())
     minute, second = divmod(second, 60)
     hour, minute = divmod(minute, 60)
-    #print("time_span:", hour, ":", minute,":",second)
     if mode == "rightopen":  # 左闭右开, 注意时间段[6:00,6:30) 是第一段
         half = 0 if minute < 30 else 1
     else:  # 左开右闭,(23:30,24:00]是最后一段
@@ -300,7 +284,7 @@ def get_time_id(room: Room, ttime: datetime, mode: str = "rightopen") -> int:
     return hour * 2 + half
 
 
-def get_dayrange(span: int = 7, day_offset: int = 0) -> list:
+def get_dayrange(span: int = 7, day_offset: int = 0):
     """
     生成一个连续的时间段
 
@@ -308,11 +292,11 @@ def get_dayrange(span: int = 7, day_offset: int = 0) -> list:
     :type span: int
     :param day_offset: 开始时间与当前时间相差的天数, defaults to 0
     :type day_offset: int
-    :return: 时间段列表，每一项包含该天的具体信息
-    :rtype: list
+    :return: 时间段列表，每一项包含该天的具体信息、起始日期、结束后下一天
+    :rtype: list[dict], date, date
     """
     timerange_list = []
-    present_day = datetime.now() + timedelta(days=day_offset)
+    present_day = datetime.now().date() + timedelta(days=day_offset)
     for i in range(span):
         timerange = {}
         aday = present_day + timedelta(days=i)
@@ -322,7 +306,7 @@ def get_dayrange(span: int = 7, day_offset: int = 0) -> list:
         timerange['month'] = aday.month
         timerange['day'] = aday.day
         timerange_list.append(timerange)
-    return timerange_list
+    return timerange_list, present_day, present_day + timedelta(days=span)
 
 
 # added by wxy

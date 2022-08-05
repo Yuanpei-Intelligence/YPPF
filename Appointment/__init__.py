@@ -1,3 +1,4 @@
+from datetime import datetime
 from boottest import base_get_setting
 from boottest import DEBUG, LOGIN_URL, UNDERGROUND_URL, WECHAT_URL
 from boottest.hasher import MyMD5PasswordHasher, MySHA256Hasher
@@ -48,6 +49,19 @@ def get_config(path: str='', trans_func=None, default=None,
         PREFIX + path, default, trans_func, fuzzy_lookup, raise_exception)
 
 
+def str_to_time(str_time: str):
+    """字符串转换成时间"""
+    try: return datetime.strptime(str_time,'%Y-%m-%d %H:%M:%S')
+    except: pass
+    try: return datetime.strptime(str_time,'%Y-%m-%d %H:%M')
+    except: pass
+    try: return datetime.strptime(str_time,'%Y-%m-%d %H')
+    except: pass
+    try: return datetime.strptime(str_time,'%Y-%m-%d')
+    except: pass
+    raise ValueError(str_time)
+
+
 class LocalSetting():
     def __init__(self):
         # 读取json文件, 包括url地址、输入输出位置等
@@ -70,7 +84,7 @@ class LocalSetting():
         self.display_token = get_setting('token/display')
 
         # 读取学期开始，用于过滤既往预约
-        self.semester_start = base_get_setting("semester_data/semester_start")
+        self.semester_start = base_get_setting("semester_data/semester_start", str_to_time)
 
         # 设置全局参数
         # added by wxy 人数检查
