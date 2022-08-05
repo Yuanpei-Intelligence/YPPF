@@ -2,16 +2,10 @@
 # 本py文件保留所有需要与scheduler交互的函数。
 from Appointment import *
 
-from Appointment.models import Participant, Room, Appoint,LongTermAppoint
-from django.http import JsonResponse, HttpResponse  # Json响应
-from django.shortcuts import render, redirect  # 网页render & redirect
-from django.urls import reverse
-from datetime import datetime, timedelta, timezone, time, date
-from django.db import transaction  # 原子化更改数据库
-
+from Appointment.models import Participant, Room, Appoint, LongTermAppoint
 import Appointment.utils.utils as utils
 import Appointment.utils.web_func as web_func
-from Appointment.utils.identity import get_participant
+from Appointment.utils.identity import get_participant, get_auditor_ids
 
 from datetime import datetime, timedelta
 from django.http import JsonResponse
@@ -127,19 +121,23 @@ def cancel_scheduler(appoint_or_aid, status_code=None):  # models.py中使用
 
 
 def set_appoint_wechat(appoint: Appoint, message_type: str, *extra_infos,
-                       students_id=None, admin=None,
+                       students_id=None, url=None, admin=None,
                        id=None, job_time=None):
     '''设置预约的微信提醒，默认发给所有参与者'''
     if students_id is None:
         # 先准备发送人
         students_id = list(appoint.students.values_list('Sid', flat=True))
 
-    # 默认立刻发送
-    if job_time is None:
-        job_time = datetime.now() + timedelta(seconds=5)
+    # 发送微信的参数
+    wechat_kws = {}
+    if url is not None: wechat_kws.update(url=url)
+    if admin is not None: wechat_kws.update(is_admin=admin)
 
     # 添加定时任务的关键字参数
     add_job_kws = dict(replace_existing=True, next_run_time=job_time)
+    # 默认立刻发送
+    if job_time is None:
+        job_time = datetime.now() + timedelta(seconds=5)
     if id is not None:
         add_job_kws.update(id=id)
     scheduler.add_job(utils.send_wechat_message,
@@ -154,6 +152,7 @@ def set_appoint_wechat(appoint: Appoint, message_type: str, *extra_infos,
                           appoint.Anon_yp_num + appoint.Ayp_num,
                           *extra_infos[:1],
                       ],
+                      kwargs=wechat_kws,
                       **add_job_kws)
 
 
@@ -202,39 +201,25 @@ def set_start_wechat(appoint, students_id=None, notify_create=True):
 
 def set_longterm_wechat(appoint: Appoint, students_id=None, infos='', admin=False):
     '''长期预约的微信提醒，默认发给所有参与者'''
-    set_appoint_wechat(
-        appoint, 'longterm_created_admin' if admin else 'longterm_created', infos,
-        students_id=students_id, id=f'{appoint.Aid}_longterm_created_wechat')
+    set_appoint_wechat(appoint, 'longterm_created', infos,
+                       students_id=students_id, admin=admin,
+                       id=f'{appoint.Aid}_longterm_created_wechat')
 
 
-def set_longterm_reviewing_wechat(longterm_appoint:LongTermAppoint):
+def set_longterm_reviewing_wechat(longterm_appoint: LongTermAppoint, auditor_ids=None):
     '''长期预约的审核老师通知提醒，发送给对应的审核老师'''
-    # TODO: 待优化
-    review_url = GLOBAL_INFO.this_url.rstrip("/") + "/review?Lid=" + longterm_appoint.id
-    
-    from app.API import get_auditors
+    if auditor_ids is None:
+        auditor_ids = get_auditor_ids(longterm_appoint.applicant.Sid)
+    if not auditor_ids:
+        return
+    infos = []
+    if longterm_appoint.applicant != longterm_appoint.appoint.major_student:
+        infos.append(f'申请者：{longterm_appoint.applicant.name}')
+    set_appoint_wechat(longterm_appoint.appoint, 'longterm_reviewing', *infos,
+                       students_id=auditor_ids,
+                       url=f'/review?Lid={longterm_appoint.pk}',
+                       id=f'{longterm_appoint.pk}_longterm_review_wechat')
 
-    utils.send_wechat_message(
-        message_type="longterm_reviewing",
-        stuid_list=get_auditors(longterm_appoint.applicant.Sid),
-        url=review_url,
-        start_time=longterm_appoint.appoint.Astart,
-        room=longterm_appoint.appoint.Room,
-        usage=longterm_appoint.appoint.Ausage,
-        major_student=longterm_appoint.applicant,
-    )
-
-def set_longterm_reviewed_wechat(longterm_appoint:LongTermAppoint, action:str="" ):
-    '''长期预约的审核状态变更通知提醒，发送给发起预约的组织和负责人'''
-    # TODO: 待优化
-    if action in  ["approved","rejected"]:
-        utils.send_wechat_message(
-            message_type="longterm_" + action,
-            stuid_list=[longterm_appoint.applicant.get_id()],
-            room=longterm_appoint.appoint.Room,
-            usage=longterm_appoint.appoint.Ausage,
-            major_student=longterm_appoint.applicant,
-        )
 
 # 过渡，待废弃
 def _success(data):

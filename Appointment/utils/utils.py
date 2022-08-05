@@ -177,17 +177,18 @@ def send_wechat_message(
         extra_info = ['原因：' + reason]  # '当前信用分：'+str(credit)
     elif message_type == 'cancel':
         title = '您有一条预约被取消'
-    elif message_type.startswith('longterm_created'):    # 发起一条长线预约
+    elif message_type == 'longterm_created':    # 发起一条长线预约
         title = f'您有一条新的长期预约'
         show_announcement = True
-        extra_info = ['详情：' + reason]
-    elif message_type == "longterm_reviewing":# 发送给审核老师
-        title = f'您有一条待处理的组织长期预约'
+        if reason:
+            extra_info = ['详情：' + reason]
+    elif message_type == "longterm_reviewing":  # 发送给审核老师
+        title = f'您有一条待处理的长期预约'
         extra_info = ['去审核']
-    elif message_type == "longterm_approved":# 长期预约审核通过提示
-        title = f'您有一条长期预约已通过审核'
-    elif message_type == "longterm_rejected":# 长期预约审核未通过提示
-        title = f'您有一条长期预约未通过审核'
+    elif message_type == "longterm_approved":   # 长期预约审核通过提示
+        title = f'您的长期预约已通过审核'
+    elif message_type == "longterm_rejected":   # 长期预约审核未通过提示
+        title = f'您的长期预约未通过审核'
     elif message_type == 'confirm_admin_w2c':    # WAITING to CONFIRMED
         title = '您有一条预约已确认完成'
         show_main_student = False

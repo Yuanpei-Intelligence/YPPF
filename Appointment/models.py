@@ -5,6 +5,7 @@ from django.db.models.signals import pre_delete
 from django.db.models import QuerySet
 from django.dispatch import receiver
 from django.db.models import Q
+from django.db import transaction
 
 from datetime import datetime, time, timedelta
 
@@ -346,38 +347,35 @@ class LongTermAppoint(models.Model):
             appoint=self.appoint,
             times=self.times - 1,
             interval=self.interval,
-            week_offset=1
         )
         return new_appointments
 
     def cancel(self):
         """取消长期预约以及它的全部子预约"""
-        from django.db import transaction  
-        from Appointment.utils.utils import get_conflict_appoints
         from Appointment.utils.scheduler_func import cancel_scheduler
         with transaction.atomic():
             # 取消子预约
             appoints = self.sub_appoints()
             for appoint in appoints.filter(Astatus=Appoint.Status.APPOINTED):
                 appoint.cancel()
-                cancel_scheduler(appoint.Aid, "Problem")
-            self.status = self.Status.CANCELED
+                cancel_scheduler(appoint)
+            self.status = LongTermAppoint.Status.CANCELED
             self.save()
 
-    def renew(self,times):
+    def renew(self, times: int):
         """添加新的后续子预约"""
-        from django.db import transaction  
         from Appointment.utils.scheduler_func import add_longterm_appoint
         with transaction.atomic():
-            new_appointments = add_longterm_appoint(
+            conflict_week, appoints = add_longterm_appoint(
                 appoint=self.appoint,
                 times=times,
                 interval=self.interval,
-                week_offset=self.times * self.interval
+                week_offset=self.times * self.interval,
             )
-            self.times += times
-            self.save()
-            return new_appointments
+            if conflict_week is not None:
+                self.times += times
+                self.save()
+            return conflict_week, appoints
 
     def sub_appoints(self, lock=False) -> QuerySet[Appoint]:
         '''

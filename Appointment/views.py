@@ -1302,6 +1302,7 @@ def check_out(request: HttpRequest):
         ]
         no_clause = True
         render_context.update(selected_stu_list=selected_stu_list,
+                              contents=contents,
                               no_clause=no_clause)
     return render(request, 'Appointment/checkout.html', render_context)
 
