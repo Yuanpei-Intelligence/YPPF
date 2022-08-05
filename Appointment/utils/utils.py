@@ -507,6 +507,7 @@ def check_temp_appoint(room: Room) -> bool:
 
 def get_conflict_appoints(appoint: Appoint, times: int = 1,
                           interval: int = 1, week_offset: int = 0,
+                          exclude_this: bool = False,
                           no_cross_day=False, lock=False) -> QuerySet[Appoint]:
     '''
     
@@ -520,6 +521,8 @@ def get_conflict_appoints(appoint: Appoint, times: int = 1,
     :type interval: int, optional
     :param week_offset: 第一次检测时间距离提供预约的周数, defaults to 0
     :type week_offset: int, optional
+    :param exclude_this: 排除检测的预约, defaults to False
+    :type exclude_this: bool, optional
     :param no_cross_day: 是否假设预约都不跨天，可以简化查询, defaults to False
     :type no_cross_day: bool, optional
     :param lock: 查询时上锁, defaults to False
@@ -556,5 +559,8 @@ def get_conflict_appoints(appoint: Appoint, times: int = 1,
                 # 结束比当前的开始时间晚
                 Afinish__gt=appoint.Astart + timedelta(weeks=week + week_offset),
             )
-    conflict_appoints = activate_appoints.filter(conditions).exclude(pk=appoint.pk)
+    # 检查时预约还不应创建，冲突预约可以包含自身
+    conflict_appoints = activate_appoints.filter(conditions)
+    if exclude_this:
+        conflict_appoints = conflict_appoints.exclude(pk=appoint.pk)
     return conflict_appoints.order_by('Astart', 'Afinish')
