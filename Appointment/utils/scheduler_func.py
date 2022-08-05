@@ -212,13 +212,11 @@ def set_longterm_reviewing_wechat(longterm_appoint:LongTermAppoint):
     # TODO: 待优化
     review_url = GLOBAL_INFO.this_url.rstrip("/") + "/review?Lid=" + longterm_appoint.id
     
-    def get_audit_teachers(applicant:Participant) -> list [str]:
-        raise NotImplementedError()
+    from app.API import get_auditors
 
-    teachers_id = get_audit_teachers(longterm_appoint.applicant)
     utils.send_wechat_message(
         message_type="longterm_reviewing",
-        stuid_list=teachers_id,
+        stuid_list=get_auditors(longterm_appoint.applicant.Sid),
         url=review_url,
         start_time=longterm_appoint.appoint.Astart,
         room=longterm_appoint.appoint.Room,

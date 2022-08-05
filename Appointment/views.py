@@ -276,8 +276,6 @@ def cancelAppoint(request):
                         f"取消长期预约{longterm_appoint.id}",
                         "scheduler_func.cancelAppoint", "OK")
         succeed(f"成功取消了{ longterm_appoint.appoint.Room.Rid } { longterm_appoint.appoint.Room.Rtitle}的长期预约!", context)
-        # TODO: 微信发送通知
-        # scheduler_func.set_cancel_wechat(appoint)
         return redirect(message_url(context, reverse("Appointment:admin_index")))
 
     try:
@@ -354,8 +352,6 @@ def renewLongtermAppoint(request):
                         f"对长期预约{longterm_appoint.id}发起{times}周续约",
                         "scheduler_func.renewLongtermAppoint", "OK")
     succeed(f"成功对{ longterm_appoint.appoint.Room.Rid } { longterm_appoint.appoint.Room.Rtitle}的长期预约进行了{times}周的续约!", context)
-    # TODO: 微信发送通知
-    # scheduler_func.set_cancel_wechat(appoint)
     return redirect(message_url(context, reverse("Appointment:admin_index")))
 
 
@@ -958,38 +954,15 @@ def arrange_time(request: HttpRequest):
         if(appoint_record.Atype == Appoint.Type.LONGTERM):
             time_status = TimeStatus.LONGTERM
             # 查找对应的长期预约 
-            # FIXME: 由于现有模型不存在长期预约和普通预约的对应关系，以下查找并不能安全地获得对应的长期预约
-            condition = Q(status=LongTermAppoint.Status.APPROVED)
-            condition |= Q(status=LongTermAppoint.Status.REVIEWING)
-            condition &= Q(appoint__Room__Rid=Rid, 
-                           appoint__major_student=appoint_record.major_student, 
-                           appoint__Ausage=appoint_record.Ausage, 
-                           # isoweekday Mon:1 -> Sun:7
-                           # week_day Sun:1 -> Sat:7
-                           appoint__Astart__week_day=appoint_record.Astart.isoweekday() % 7 + 1,
-                           appoint__Astart__hour=appoint_record.Astart.hour,
-                           appoint__Astart__minute=appoint_record.Astart.minute,
-                           appoint__Afinish__week_day=appoint_record.Afinish.isoweekday() % 7 + 1,
-                           appoint__Afinish__hour=appoint_record.Afinish.hour,
-                           appoint__Afinish__minute=appoint_record.Afinish.minute,
-                         )
-            potential_longterm_appoints = LongTermAppoint.objects.filter(condition)
+            potential_longterm_appoints = LongTermAppoint.objects.filter(
+                appoint__Room__Rid=Rid,
+                appoint__major_student=appoint_record.major_student
+            )
             related_longterm_appoint = None
-            if len(potential_longterm_appoints) == 1:
-                related_longterm_appoint = potential_longterm_appoints.first()
-            else: 
-                # 处理同一组织同时存在同房间同用途同时段，但分别为单双周的预约的极端情形    
-                for longterm_appoint in potential_longterm_appoints:
-                    # 若当前预约为首个预约
-                    if appoint_record == longterm_appoint.appoint:
-                        related_longterm_appoint = longterm_appoint
-                    else:
-                        # 若当前预约为后续预约
-                        conflicts = get_conflict_appoints(appoint=longterm_appoint.appoint, 
-                                                        times=longterm_appoint.times, 
-                                                        interval=longterm_appoint.interval)
-                        if appoint_record in conflicts:
-                            related_longterm_appoint = longterm_appoint
+            for longterm_appoint in potential_longterm_appoints:
+                if longterm_appoint.sub_appoints().get(appoint=appoint_record):
+                    related_longterm_appoint = longterm_appoint
+
             if related_longterm_appoint:
                 display_info = '<br/>'.join([
                     f'预约者：{appointer_name}',
@@ -1308,6 +1281,8 @@ def check_out(request: HttpRequest):
                         )
                         # 生成后续预约
                         new_longterm.create()
+                        # 向审核老师发送微信通知
+                        scheduler_func.set_longterm_reviewing_wechat(new_longterm)
                         return redirect(
                             message_url(succeed(f"申请长期预约成功，请等待审核。"),
                                         reverse("Appointment:admin_index")))

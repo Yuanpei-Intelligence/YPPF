@@ -356,16 +356,8 @@ class LongTermAppoint(models.Model):
         from Appointment.utils.utils import get_conflict_appoints
         from Appointment.utils.scheduler_func import cancel_scheduler
         with transaction.atomic():
-            # 取消首个预约
-            if self.appoint.Astatus == Appoint.Status.APPOINTED:
-                self.appoint.cancel()
-                cancel_scheduler(self.appoint.Aid, "Problem")
-            # 取消后续预约
-            appoints = get_conflict_appoints(
-                appoint=self.appoint,
-                times=self.times,
-                interval=self.interval,
-            )
+            # 取消子预约
+            appoints = self.sub_appoints()
             for appoint in appoints.filter(Astatus=Appoint.Status.APPOINTED):
                 appoint.cancel()
                 cancel_scheduler(appoint.Aid, "Problem")
