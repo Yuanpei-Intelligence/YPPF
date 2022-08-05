@@ -404,7 +404,6 @@ def add_longterm_appoint(appoint: Appoint,
                 (first_conflict.Afinish - appoint.Astart)
                 // timedelta(weeks=interval) + 1)
             return first_time, conflict_appoints
-
         # 没有冲突，开始创建长线预约
         students = appoint.students.all()
         new_appoints = []
@@ -422,7 +421,6 @@ def add_longterm_appoint(appoint: Appoint,
             new_appoint.save()
             new_appoint.students.set(students)
             new_appoints.append(new_appoint.pk)
-
         # 获取长线预约集合，由于生成是按顺序的，默认排序也是按主键递增，无需重排
         new_appoints = Appoint.objects.filter(pk__in=new_appoints)
         # 至此，预约都已成功创建，可以放心设置定时任务了，但设置定时任务出错也需要回滚
