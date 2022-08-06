@@ -668,25 +668,31 @@ def modifyFeedback(request: HttpRequest):
             org_list[feedback.org.oname]['selected'] = True
         else:
             org_list['']['selected'] = True
-    else: # feedback_type 默认选中第一个反馈类型，默认选中项将在前端实时更新。
-        feedback_type = list(feedback_type_list.keys())[0]
-        if FeedbackType.objects.get(name=feedback_type).org_type is not None:
-            org_type_list[
-                FeedbackType.objects.get(name=feedback_type).org_type.otype_name
-            ]['selected'] = True
+    else: # feedback_type默认选中的反馈类型通过url获取，如未获取到则默认选中第一项。
+        if request.GET.get('type') is not None:
+            feedback_type = request.GET.get('type')
+            try:
+                FeedbackType.objects.get(name=feedback_type)
+            except:  # 有可能出现需要的反馈类型数据库不存在的情况，此时默认选中第一项
+                feedback_type = list(feedback_type_list.keys())[0]
+        else:
+            feedback_type = list(feedback_type_list.keys())[0]
+        feedback_type_list[feedback_type]['selected'] = True
+        selected_feedback = FeedbackType.objects.get(name=feedback_type)
+
+        if selected_feedback.org_type is not None:
+            org_type_list[selected_feedback.org_type.otype_name]['selected'] = True
             for org in Organization.objects.exclude(
                     otype=OrganizationType.objects.get(
-                        otype_name=FeedbackType.objects.get(name=feedback_type).org_type.otype_name)
+                        otype_name=selected_feedback.org_type.otype_name)
                     ):
                 org_list[org.oname]['disabled'] = True
         else:
             org_type_list['']['selected'] = True
             for org in org_list.keys():
                 org_list[org]['disabled'] = True
-        if FeedbackType.objects.get(name=feedback_type).org is not None:
-            org_list[
-                FeedbackType.objects.get(name=feedback_type).org.oname
-            ]['selected'] = True
+        if selected_feedback.org is not None:
+            org_list[selected_feedback.org.oname]['selected'] = True
         else:
             org_list['']['selected'] = True
     bar_display = utils.get_sidebar_and_navbar(
