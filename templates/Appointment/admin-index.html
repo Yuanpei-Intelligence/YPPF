@@ -182,7 +182,7 @@
                                                                     <div class="patient-details">
                                                                         <h5 style="white-space: normal;">
                                                                             <i class="far fa-clock" style="word-break:break-all"></i>
-                                                                            预约时间：{{appoint_longterm.appoint.Astart|slice:":10"}} 起 {{ appoint_longterm.appoint.Aweek|slice:":3" }}
+                                                                            预约时间：{{appoint_longterm.appoint.Astart|slice:"5:7"}}月{{appoint_longterm.appoint.Astart|slice:"8:10"}}日 起 {{ appoint_longterm.appoint.Aweek|slice:":3" }}
                                                                             <!--modified by wxy-->
                                                                             {{ appoint_longterm.appoint.Astart_hour_minute }}-{{ appoint_longterm.appoint.Afinish_hour_minute }}
                                                                         </h5>

@@ -1138,9 +1138,10 @@ def check_out(request: HttpRequest):
         weekday = request.POST.get('weekday')
         startid = request.POST.get('startid')
         endid = request.POST.get('endid')
-        start_week = request.POST.get('start_week', 0)
         is_longterm = True if request.POST.get('longterm') == 'on' else False
+        start_week = 0
         if is_longterm:
+            start_week = request.POST.get('start_week', 0)
             # 长期预约的次数
             times = request.POST.get('times', 0)
             # 间隔为1代表每周，为2代表隔周
@@ -1165,7 +1166,7 @@ def check_out(request: HttpRequest):
         assert start_week == 0 or start_week == 1
         assert has_longterm_permission or not is_longterm  # 检查长期预约权限
     except:
-        return redirect(reverse('Appointment:index'))
+        return redirect(wrong('参数不合法'), reverse('Appointment:index'))
 
     appoint_params = {
         'Rid': Rid,
@@ -1232,7 +1233,8 @@ def check_out(request: HttpRequest):
             contents['students'].append(contents['Sid'])
 
         # 检查预约次数
-        if is_longterm and not 1 <= times <= GLOBAL_INFO.longterm_max_time_once:
+        if is_longterm and not (1 <= times <= GLOBAL_INFO.longterm_max_time_once
+                and 1 <= interval * times <= GLOBAL_INFO.longterm_max_week):
             wrong("您填写的预约周数不符合要求", render_context)
 
         # 检查长期预约次数
@@ -1256,6 +1258,9 @@ def check_out(request: HttpRequest):
                                        int(contents['endtime'].split(":")[0]),
                                        int(contents['endtime'].split(":")[1]),
                                        0)
+        # TODO: 隔周预约的处理可优化
+        contents['Astart'] += timedelta(weeks=start_week)
+        contents['Afinish'] += timedelta(weeks=start_week)
         if my_messages.get_warning(render_context)[0] is None:
             # 参数检查全部通过，下面开始创建预约
             if is_longterm:
