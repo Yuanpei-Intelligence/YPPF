@@ -182,9 +182,17 @@
                                                                     <div class="patient-details">
                                                                         <h5 style="white-space: normal;">
                                                                             <i class="far fa-clock" style="word-break:break-all"></i>
-                                                                            预约时间：{{ appoint_longterm.appoint.Aweek|slice:":3" }}
+                                                                            预约时间：{{appoint_longterm.appoint.Astart|slice:"10"}} 起 {{ appoint_longterm.appoint.Aweek|slice:":3" }}
                                                                             <!--modified by wxy-->
                                                                             {{ appoint_longterm.appoint.Astart_hour_minute }}-{{ appoint_longterm.appoint.Afinish_hour_minute }}
+                                                                        </h5>
+                                                                        <h5 style="white-space: normal;">
+                                                                            <i class="far fa fa-calendar"></i>
+                                                                            预约周数：
+                                                                            {% if appoint_longterm.interval == 1 %}每周一次
+                                                                            {% elif appoint_longterm.interval == 1 %}隔周一次
+                                                                            {% endif %}
+                                                                            ，共 {{  appoint_longterm.times }} 周
                                                                         </h5>
                                                                         <h5 style="white-space: normal;">
                                                                             <i class="fas fa fa-comments"></i>
@@ -256,6 +264,10 @@
                                                                     <a class="btn btn-sm bg-danger-light" style="width: 6rem;" >
                                                                         <i class="fas fa-times"></i> 已取消
                                                                     </a>
+                                                                    <button type="button"
+                                                                            class="btn btn-sm bg-danger-light ml-3"
+                                                                            style="width: 6rem;visibility:hidden">
+                                                                    </button>
                                                                 {% endif %}
                                                                 {% if appoint_longterm.status != "已取消" and appoint_longterm.status != "未通过" %}
                                                                     <form action="cancelAppoint" method="POST" onsubmit="return confirm('确定取消对{{  appoint_longterm.appoint.Rtitle }}的预约?')">

@@ -154,7 +154,7 @@
                                                                     </a>
                                                                 {% elif not has_longterm_permission %}
                                                                     <a class="timing timing-appointed"
-                                                                       style="background:orange"
+                                                                       style="background:lightcoral"
                                                                         {% if timesec.display_info %} data-toggle="tooltip" data-html="true" data-title="{{ timesec.display_info }}"{% endif %}>
                                                                         <span>{{ timesec.starttime }}</span>
                                                                     </a>
@@ -435,10 +435,12 @@
 						urls = urls + "&weekday=" + weekday;
 						urls = urls + "&startid=" + startid;
 						urls = urls + "&endid=" + endid;
-						if(is_longterm){
-							urls = urls + "&longterm=on";
-							urls = urls + "&start_week="+start_week;
-						}
+                        {% if has_longterm_permission %}
+                        if(is_longterm){
+                            urls = urls + "&longterm=on";
+                            urls = urls + "&start_week=" + start_week;
+                        }
+                        {% endif %}
 						window.location = urls;
 					}
 				}

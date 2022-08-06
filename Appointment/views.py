@@ -949,7 +949,7 @@ def arrange_time(request: HttpRequest):
             f'预约者：{appointer_name}',
         ]
         # 根据预约类型标记该时间块的状态和信息
-        if appoint.Atype == Appoint.Type.LONGTERM:
+        if has_longterm_permission and appoint.Atype == Appoint.Type.LONGTERM:
             # 查找对应的长期预约
             max_week = GLOBAL_INFO.longterm_max_week
             potential_appoints = get_conflict_appoints(
@@ -964,7 +964,7 @@ def arrange_time(request: HttpRequest):
                     break
 
             if related_longterm_appoint is not None:
-                display_info = display_info.extend([
+                display_info.extend([
                     f"每周一次" if related_longterm_appoint.interval == 1 else "隔周一次",
                     f'共 {related_longterm_appoint.times} 周',
                 ])
@@ -972,7 +972,7 @@ def arrange_time(request: HttpRequest):
 
         for i in change_id_list:
             day['timesection'][i]['status'] = (TimeStatus.LONGTERM
-                if appoint.Atype == Appoint.Type.LONGTERM else TimeStatus.NORMAL)
+                if has_longterm_permission and appoint.Atype == Appoint.Type.LONGTERM else TimeStatus.NORMAL)
             day['timesection'][i]['display_info'] = display_info
 
     # 删去今天已经过去的时间
