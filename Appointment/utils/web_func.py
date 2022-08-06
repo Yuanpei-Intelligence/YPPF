@@ -84,10 +84,11 @@ def finishAppoint(Aid):  # 结束预约时的定时程序
     要注意的是，由于定时任务可能执行多次，第二次的时候可能已经终止
     '''
     try:
+        Aid = int(Aid)
         appoint: Appoint = Appoint.objects.get(Aid=Aid)
     except:
         utils.operation_writer(
-            SYSTEM_LOG, f"预约{str(Aid)}意外消失", "web_func.finishAppoint", "Error")
+            SYSTEM_LOG, f"预约{Aid}意外消失", "web_func.finishAppoint", "Error")
         return
 
 
@@ -95,20 +96,16 @@ def finishAppoint(Aid):  # 结束预约时的定时程序
     if appoint.Astatus not in Appoint.Status.Terminals():
         # 希望接受的非终止状态只有进行中，但其他状态也同样判定是否合格
         if appoint.Astatus != Appoint.Status.PROCESSING:
-            utils.operation_writer(
-                # TODO: major_sid
-                appoint.major_student.Sid_id,
-                f"预约{str(Aid)}结束时状态为{appoint.get_status()}：照常检查是否合格",
+            utils.operation_writer(appoint.get_major_id(),
+                f"预约{Aid}结束时状态为{appoint.get_status()}：照常检查是否合格",
                 "web_func.finishAppoint", "Error")
 
         # 摄像头出现超时问题，直接通过
         if datetime.now() - appoint.Room.Rlatest_time > timedelta(minutes=15):
             appoint.Astatus = Appoint.Status.CONFIRMED  # waiting
             appoint.save()
-            utils.operation_writer(
-                # TODO: major_sid
-                appoint.major_student.Sid_id,
-                f"预约{str(Aid)}的状态变为{Appoint.Status.CONFIRMED}: 顺利完成",
+            utils.operation_writer(appoint.get_major_id(),
+                f"预约{Aid}的状态变为{Appoint.Status.CONFIRMED}: 顺利完成",
                 "web_func.finishAppoint", "OK")
         else:
             # 检查人数是否足够
@@ -125,14 +122,16 @@ def finishAppoint(Aid):  # 结束预约时的定时程序
                     status, tempmessage = utils.appoint_violate(
                         appoint, Appoint.Reason.R_LATE)
                     if not status:
-                        utils.operation_writer(
-                            SYSTEM_LOG, f"预约{str(Aid)}因迟到而违约时出现异常: {tempmessage}", "web_func.finishAppoint", "Error")
+                        utils.operation_writer(SYSTEM_LOG, 
+                            f"预约{str(Aid)}因迟到而违约时出现异常: {tempmessage}",
+                            "web_func.finishAppoint", "Error")
                 else:
                     status, tempmessage = utils.appoint_violate(
                         appoint, Appoint.Reason.R_TOOLITTLE)
                     if not status:
-                        utils.operation_writer(
-                            SYSTEM_LOG, f"预约{str(Aid)}因人数不够而违约时出现异常: {tempmessage}", "web_func.finishAppoint", "Error")
+                        utils.operation_writer(SYSTEM_LOG, 
+                            f"预约{str(Aid)}因人数不够而违约时出现异常: {tempmessage}",
+                            "web_func.finishAppoint", "Error")
 
             else:   # 通过
                 appoint.Astatus = Appoint.Status.CONFIRMED
