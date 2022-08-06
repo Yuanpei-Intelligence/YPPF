@@ -341,12 +341,14 @@ def renewLongtermAppoint(request):
             wrong("您选择的续约周数不符合要求!"),
             reverse("Appointment:admin_index")))
 
-    # TODO: 检查返回值
-    longterm_appoint.renew(times)
-    operation_writer(longterm_appoint.applicant.get_id(),
-                        f"对长期预约{longterm_appoint.id}发起{times}周续约",
-                        "scheduler_func.renewLongtermAppoint", "OK")
-    succeed(f"成功对{longterm_appoint.appoint.Room}的长期预约进行了{times}周的续约!", context)
+    conflict, conflict_appoints = longterm_appoint.renew(times)
+    if conflict == None: 
+        operation_writer(longterm_appoint.applicant.get_id(),
+                            f"对长期预约{longterm_appoint.id}发起{times}周续约",
+                            "scheduler_func.renewLongtermAppoint", "OK")
+        succeed(f"成功对{longterm_appoint.appoint.Room}的长期预约进行了{times}周的续约!", context)
+    else:
+        wrong(f"续约{conflict}失败，后续时间段存在预约冲突!", context),
     return redirect(message_url(context, reverse("Appointment:admin_index")))
 
 
@@ -949,8 +951,10 @@ def arrange_time(request: HttpRequest):
             f'预约者：{appointer_name}',
         ]
         # 根据预约类型标记该时间块的状态和信息
+        time_status = TimeStatus.NORMAL
         if has_longterm_permission and appoint.Atype == Appoint.Type.LONGTERM:
             # 查找对应的长期预约
+            time_status = TimeStatus.LONGTERM
             max_week = GLOBAL_INFO.longterm_max_week
             potential_appoints = get_conflict_appoints(
                 appoint, times=max_week, week_offset=1 - max_week,
@@ -963,16 +967,18 @@ def arrange_time(request: HttpRequest):
                     related_longterm_appoint = longterm_appoint
                     break
 
-            if related_longterm_appoint is not None:
-                display_info.extend([
-                    f"每周一次" if related_longterm_appoint.interval == 1 else "隔周一次",
-                    f'共 {related_longterm_appoint.times} 周',
-                ])
+            if related_longterm_appoint is not None: 
+                display_info.append(
+                    scheduler_func.get_longterm_display(
+                        times=related_longterm_appoint.times,
+                        interval_week=related_longterm_appoint.interval,
+                        type="inline",
+                    )
+                )
         display_info = '<br/>'.join(display_info)
 
         for i in change_id_list:
-            day['timesection'][i]['status'] = (TimeStatus.LONGTERM
-                if has_longterm_permission and appoint.Atype == Appoint.Type.LONGTERM else TimeStatus.NORMAL)
+            day['timesection'][i]['status'] = time_status
             day['timesection'][i]['display_info'] = display_info
 
     # 删去今天已经过去的时间

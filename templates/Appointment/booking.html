@@ -152,19 +152,13 @@
                                                                         {% if timesec.display_info %} data-toggle="tooltip" data-html="true" data-title="{{ timesec.display_info }}"{% endif %}>
                                                                         <span>{{ timesec.starttime }}</span>
                                                                     </a>
-                                                                {% elif not has_longterm_permission %}
-                                                                    <a class="timing timing-appointed"
-                                                                       style="background:lightcoral"
-                                                                        {% if timesec.display_info %} data-toggle="tooltip" data-html="true" data-title="{{ timesec.display_info }}"{% endif %}>
-                                                                        <span>{{ timesec.starttime }}</span>
-                                                                    </a>
                                                                 {% elif has_longterm_permission and timesec.status == TimeStatus.LONGTERM %}
                                                                     <a class="timing timing-appointed longterm"
-                                                                       style="background:orange"
+                                                                       style="background:{{ is_longterm|yesno:'orange,lightcoral'}}"
                                                                         {% if timesec.display_info %} data-toggle="tooltip" data-html="true" data-title="{{ timesec.display_info }}"{% endif %}>
                                                                         <span>{{ timesec.starttime }}</span>
                                                                     </a>
-                                                                {% elif has_longterm_permission and timesec.status == TimeStatus.NORMAL %}
+                                                                {% else %}
                                                                     <a class="timing timing-appointed"
                                                                        style="background:lightcoral"
                                                                         {% if timesec.display_info %} data-toggle="tooltip" data-html="true" data-title="{{ timesec.display_info }}"{% endif %}>

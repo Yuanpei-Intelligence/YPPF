@@ -343,12 +343,12 @@ class LongTermAppoint(models.Model):
     def create(self):
         """创建长期预约的全部后续子预约"""
         from Appointment.utils.scheduler_func import add_longterm_appoint
-        new_appointments = add_longterm_appoint(
+        conflict_week, appoints = add_longterm_appoint(
             appoint=self.appoint,
             times=self.times - 1,
             interval=self.interval,
         )
-        return new_appointments
+        return conflict_week, appoints
 
     def cancel(self):
         """取消长期预约以及它的全部子预约"""

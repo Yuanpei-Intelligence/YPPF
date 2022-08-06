@@ -390,13 +390,22 @@ def addAppoint(contents: dict,
     return _success(appoint.toJson())
 
 
-def get_longterm_display(times: int, interval_week: int):
-    if interval_week == 1:
-        longterm_info = f'{times}周的'
-    elif interval_week == 2:
-        longterm_info = f'{times}次单/双周的'
+def get_longterm_display(times: int, interval_week: int, type: str = 'adj'):
+    if type == 'adj':
+        if interval_week == 1:
+            longterm_info = f'{times}周的'
+        elif interval_week == 2:
+            longterm_info = f'{times}次单/双周的'
+        else:
+            longterm_info = f'{times}次间隔{interval_week}周的'
     else:
-        longterm_info = f'{times}次间隔{interval_week}周的'
+        if interval_week == 1:
+            longterm_info = '每周一次'
+        elif interval_week == 2:
+            longterm_info = '隔周一次'
+        else:
+            longterm_info = f'每{interval_week}周一次'
+        longterm_info += f' 共{times}次'
     return longterm_info
 
 

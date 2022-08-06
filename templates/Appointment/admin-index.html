@@ -182,29 +182,22 @@
                                                                     <div class="patient-details">
                                                                         <h5 style="white-space: normal;">
                                                                             <i class="far fa-clock" style="word-break:break-all"></i>
-                                                                            预约时间：{{appoint_longterm.appoint.Astart|slice:"10"}} 起 {{ appoint_longterm.appoint.Aweek|slice:":3" }}
+                                                                            预约时间：{{appoint_longterm.appoint.Astart|slice:":10"}} 起 {{ appoint_longterm.appoint.Aweek|slice:":3" }}
                                                                             <!--modified by wxy-->
                                                                             {{ appoint_longterm.appoint.Astart_hour_minute }}-{{ appoint_longterm.appoint.Afinish_hour_minute }}
                                                                         </h5>
                                                                         <h5 style="white-space: normal;">
                                                                             <i class="far fa fa-calendar"></i>
                                                                             预约周数：
-                                                                            {% if appoint_longterm.interval == 1 %}每周一次
-                                                                            {% elif appoint_longterm.interval == 1 %}隔周一次
-                                                                            {% endif %}
-                                                                            ，共 {{  appoint_longterm.times }} 周
+                                                                            {% if appoint_longterm.interval == 1 %} 每周一次，
+                                                                            {% elif appoint_longterm.interval == 2 %} 隔周一次，
+                                                                            {% else %} 每 {{ appoint_longterm.interval }} 周一次，
+                                                                            {% endif %} 
+                                                                            共 {{  appoint_longterm.times }} 次
                                                                         </h5>
                                                                         <h5 style="white-space: normal;">
                                                                             <i class="fas fa fa-comments"></i>
                                                                             用途：{{  appoint_longterm.appoint.Ausage }}
-                                                                        </h5>
-                                                                        <h5 style="white-space: normal;">
-                                                                            <i class="fas fa fa-street-view"></i>
-                                                                            发起者：{{  appoint_longterm.appoint.major_student.Sname }}
-                                                                        </h5>
-                                                                        <h5 style="white-space: normal;">
-                                                                            <i class="far fa fa-child"></i>
-                                                                            人数：本院 {{  appoint_longterm.appoint.yp_num }} 人，非本院 {{  appoint_longterm.appoint.non_yp_num }} 人
                                                                         </h5>
                                                                         {% if  appoint_longterm.appoint.Aannouncement %}
                                                                             <h5 style="white-space: normal;">
@@ -222,7 +215,7 @@
                                                                     </button>
                                                                 {% elif  appoint_longterm.status == "未通过" %}
                                                                         <button type="button"
-                                                                                class="btn btn-sm bg-danger-light ml-3"
+                                                                                class="btn btn-sm bg-danger-light"
                                                                                 style="width: 6rem;"
                                                                                 data-container="body" 
                                                                                 data-toggle="popover" 
