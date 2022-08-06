@@ -26,6 +26,7 @@ __all__ = [
     'get_name',
     'get_avatar',
     'get_member_ids', 'get_members',
+    'get_auditor_ids',
     'identity_check',
 ]
 
@@ -108,6 +109,12 @@ def get_members(participant: Union[Participant, User],
     '''返回participant的成员集合，Participant的QuerySet'''
     member_ids = get_member_ids(participant, noncurrent=noncurrent)
     return Participant.objects.filter(Sid__in=member_ids)
+
+
+def get_auditor_ids(participant: Union[Participant, User]):
+    '''返回participant的审核者id列表'''
+    user = _arg2user(participant)
+    return API.get_auditors(user)
 
 
 # 用户验证、创建和更新
