@@ -330,48 +330,40 @@ def addAppoint(contents: dict,
                 return _error('发起人信息不存在！')
 
             # 等待确认的和结束的肯定是当下时刻已经弄完的，所以不用管
-            appoints = room.appoint_list.select_for_update().exclude(
-                Astatus=Appoint.Status.CANCELED).filter(
-                    Room_id=contents['Rid'])
-            for appoint in appoints:
-                start = appoint.Astart
-                finish = appoint.Afinish
-
-                # 第一种可能，开始在开始之前，只要结束的比开始晚就不行
-                # 第二种可能，开始在开始之后，只要在结束之前就都不行
-                if (start <= Astart < finish) or (Astart <= start < Afinish):
-                    # 有预约冲突的嫌疑，但要检查一下是不是重复预约了
-                    if (start == Astart and finish == Afinish
-                            and appoint.Ausage == contents['Ausage']
-                            and appoint.Aannouncement == contents['announcement']
-                            and appoint.Ayp_num == len(students)
-                            and appoint.Anon_yp_num == contents['non_yp_num']
-                            and major_student == appoint.major_student):
-                        # Room不用检查，肯定是同一个房间
-                        # TODO: major_sid
-                        utils.operation_writer(
-                            major_student.Sid_id, "重复发起同时段预约，预约号"+str(appoint.Aid), "scheduler_func.addAppoint", "OK")
-                        return _success(appoint.toJson())
-                    else:
-                        # 预约冲突
-                        return _error('预约时间与已有预约冲突,请重选时间段!', appoint.toJson())
+            # conflict_appoints = Appoint.objects.not_canceled().\
+            #                     select_for_update().filter(Room=room)
+            appoint: Appoint = Appoint(
+                Room=room,
+                Astart=Astart,
+                Afinish=Afinish,
+                Ausage=contents['Ausage'],
+                Aannouncement=contents['announcement'],
+                major_student=major_student,
+                Anon_yp_num=contents['non_yp_num'],
+                Ayp_num=len(students),
+                Aneed_num=real_min,
+                Atype=type,
+                Atemp_flag=contents['Atemp_flag'],
+            )
+            conflict_appoints = utils.get_conflict_appoints(appoint, lock=True)
+            # TODO: remove dup check
+            for duplicate_appoint in conflict_appoints.filter(
+                **{f: getattr(appoint, f) for f in [
+                        'Astart', 'Afinish', 'Ausage', 'Aannouncement',
+                        'Ayp_num', 'Anon_yp_num', 'major_student'
+                ]}):
+                utils.operation_writer(
+                    major_student.get_id(), f'重复发起同时段预约，预约号{duplicate_appoint.Aid}',
+                    "scheduler_func.addAppoint", "OK")
+                return _success(duplicate_appoint.toJson())
+            for conflict_appoint in conflict_appoints:
+                return _error('预约时间与已有预约冲突，请重选时间段！', conflict_appoint.toJson())
 
             # 确认信用分符合要求
             if major_student.credit <= 0:
                 return _error('信用分不足，本月无法发起预约！')
 
             # 合法，可以返回了
-            appoint = Appoint(Room=room,
-                              Astart=Astart,
-                              Afinish=Afinish,
-                              Ausage=contents['Ausage'],
-                              Aannouncement=contents['announcement'],
-                              major_student=major_student,
-                              Anon_yp_num=contents['non_yp_num'],
-                              Ayp_num=len(students),
-                              Aneed_num=real_min,
-                              Atype=type,
-                              Atemp_flag=contents['Atemp_flag'])
             appoint.save()
             appoint.students.set(students)
 

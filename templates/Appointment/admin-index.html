@@ -327,7 +327,7 @@
                                                                 </div>
                                                             </div>
                                                         </div>
-                                                        {% if appoint.check_major %}
+                                                        {% if appoint.can_cancel %}
                                                             <form action="cancelAppoint" method="POST" onsubmit="return confirm('确定取消对{{ appoint.Rtitle }}的预约?')">
                                                                 <div class="appointment-action">
                                                                     <input type="hidden" name="type" value="appoint"/>

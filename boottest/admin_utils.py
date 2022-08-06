@@ -13,7 +13,7 @@ __all__ = [
 ]
 
 
-def _as_perms(permissions):
+def _as_perms(permissions: 'str | list[str]'):
     if isinstance(permissions, str):
         return [permissions]
     return permissions
@@ -46,8 +46,10 @@ def as_display(description=None, /, register_to=None, *,
     return actual_decorator
 
 
-def as_action(description=None, /, register_to=None, permissions=None, *,
-              superuser=None, single=False, atomic=False, update=False):
+def as_action(description: str = None, /,
+              register_to: list = None, permissions: 'str | list[str]' = None, *,
+              superuser: bool = None, single: bool = False,
+              atomic: bool = False, update: bool = False):
     '''
     将函数转化为操作的形式，并试图注册
     检查用户是否有权限执行操作，有权限时捕获错误

@@ -1,6 +1,4 @@
 # 数据库模型与操作
-import os
-import pypinyin  # 支持拼音搜索系统
 from Appointment.models import (
     Participant,
     Room,
@@ -8,7 +6,7 @@ from Appointment.models import (
     College_Announcement,
     LongTermAppoint,
 )
-from django.db.models import Q  # modified by wxy
+from django.db.models import Q, QuerySet
 from django.db import transaction  # 原子化更改数据库
 
 # Http操作相关
@@ -454,23 +452,21 @@ def admin_index(request: HttpRequest):
                           has_longterm_permission=has_longterm_permission)
 
     # 获取过去和未来的预约信息
-    appoint_list_future = web_func.get_appoints(Pid, 'future').get('data')
-    appoint_list_past = web_func.get_appoints(Pid, 'past').get('data')
+    appoint_list_future = []
+    appoint_list_past = []
 
-    for appoint_info in appoint_list_future:
-        appoint_info['Astart_hour_minute'] = datetime.strptime(
-            appoint_info['Astart'], "%Y-%m-%dT%H:%M:%S").strftime("%I:%M %p")
-        appoint_info['Afinish_hour_minute'] = datetime.strptime(
-            appoint_info['Afinish'], "%Y-%m-%dT%H:%M:%S").strftime("%I:%M %p")
-        appoint = Appoint.objects.get(Aid=appoint_info['Aid'])
-        major_id = str(appoint.major_student.Sid_id)
-        appoint_info['check_major'] = (Pid == major_id)
+    for appoint in web_func.get_appoints(Pid, 'future'):
+        appoint_info = appoint.toJson()
+        appoint_info['Astart_hour_minute'] = appoint.Astart.strftime("%I:%M %p")
+        appoint_info['Afinish_hour_minute'] = appoint.Afinish.strftime("%I:%M %p")
+        appoint_info['can_cancel'] = (Pid == appoint.get_major_id())
+        appoint_list_future.append(appoint_info)
 
-    for appoint_info in appoint_list_past:
-        appoint_info['Astart_hour_minute'] = datetime.strptime(
-            appoint_info['Astart'], "%Y-%m-%dT%H:%M:%S").strftime("%I:%M %p")
-        appoint_info['Afinish_hour_minute'] = datetime.strptime(
-            appoint_info['Afinish'], "%Y-%m-%dT%H:%M:%S").strftime("%I:%M %p")
+    for appoint_info in web_func.get_appoints(Pid, 'past'):
+        appoint_info = appoint.toJson()
+        appoint_info['Astart_hour_minute'] = appoint.Astart.strftime("%I:%M %p")
+        appoint_info['Afinish_hour_minute'] = appoint.Afinish.strftime("%I:%M %p")
+        appoint_list_past.append(appoint_info)
 
     appoint_list_future.sort(key=lambda k: k['Astart'])
     appoint_list_past.sort(key=lambda k: k['Astart'])
@@ -483,12 +479,7 @@ def admin_index(request: HttpRequest):
         appoint_list_longterm = []
         longterm_appoints = LongTermAppoint.objects.filter(applicant=participant)
         # 判断是否达到上限
-        count = longterm_appoints.filter(
-            appoint__Astart__gt=GLOBAL_INFO.semester_start,
-            status__in=[
-                LongTermAppoint.Status.APPROVED,
-                LongTermAppoint.Status.REVIEWING,
-        ]).count()
+        count = LongTermAppoint.objects.activated().filter(applicant=participant).count()
         is_full = count >= GLOBAL_INFO.longterm_max_num
         for longterm_appoint in longterm_appoints:
             longterm_appoint: LongTermAppoint
@@ -543,8 +534,7 @@ def admin_credit(request):
     img_path = get_avatar(request.user)
     render_context.update(my_info=my_info, img_path=img_path)
 
-    vio_list = web_func.get_appoints(
-        Pid, 'violate', major=True, to_json=False).get('data')
+    vio_list = web_func.get_appoints(Pid, 'violate', major=True)
 
     if request.method == 'POST' and request.POST:
         if request.POST.get('feedback') is not None:
@@ -882,13 +872,14 @@ def arrange_time(request: HttpRequest):
     # 获取房间编号
     Rid = request.GET.get('Rid')
     try:
-        room_object: Room = Room.objects.get(Rid=Rid)
+        room: Room = Room.objects.get(Rid=Rid)
+        room_object = room  # 用于前端使用
     except:
         return redirect(
             message_url(wrong(f"房间号{Rid}不存在!"),
                         reverse("Appointment:admin_index")))
 
-    if room_object.Rstatus == Room.Status.FORBIDDEN:
+    if room.Rstatus == Room.Status.FORBIDDEN:
         return render(request, 'Appointment/booking.html', locals())
 
     # start_week=0代表查看本周，start_week=1代表查看下周
@@ -906,12 +897,11 @@ def arrange_time(request: HttpRequest):
     except:
         return redirect(reverse('Appointment:index'))
 
-    dayrange_list = web_func.get_dayrange(day_offset=start_week * 7)
+    dayrange_list, start_day, end_next_day = web_func.get_dayrange(day_offset=start_week * 7)
 
     # 获取预约时间的最大时间块id
-    max_stamp_id = web_func.get_time_id(room_object,
-                                        room_object.Rfinish,
-                                        mode="leftopen")
+    max_stamp_id = web_func.get_time_id(room, room.Rfinish, mode="leftopen")
+
 
     # 定义时间块状态，与预约状态并不完全一致，时间块状态暂定为以下值，可能需要重新规划
     class TimeStatus:
@@ -921,9 +911,9 @@ def arrange_time(request: HttpRequest):
         LONGTERM = 3    # 已被长期预约
 
     for day in dayrange_list:
-        day['timesection'] = []
-        start_hour = room_object.Rstart.hour
-        round_up = int(room_object.Rstart.minute >= 30)
+        timesections = []
+        start_hour = room.Rstart.hour
+        round_up = int(room.Rstart.minute >= 30)
 
         for i in range(max_stamp_id + 1):
             timesection = {}
@@ -933,24 +923,12 @@ def arrange_time(request: HttpRequest):
                     (i + round_up) % 2 * 30).zfill(2)
             timesection['status'] = TimeStatus.AVAILABLE
             timesection['id'] = i
-            day['timesection'].append(timesection)
+            timesections.append(timesection)
+        day['timesection'] = timesections
 
     # 筛选已经存在的预约
-    # TODO: 之后修改
-    appoints = Appoint.objects.not_canceled().filter(
-        Room_id=Rid,
-        Afinish__gte=datetime(year=dayrange_list[0]['year'],
-                              month=dayrange_list[0]['month'],
-                              day=dayrange_list[0]['day'],
-                              hour=0,
-                              minute=0,
-                              second=0),
-        Astart__lte=datetime(year=dayrange_list[-1]['year'],
-                             month=dayrange_list[-1]['month'],
-                             day=dayrange_list[-1]['day'],
-                             hour=23,
-                             minute=59,
-                             second=59))
+    appoints: QuerySet[Appoint] = Appoint.objects.not_canceled().filter(
+        Room_id=Rid, Afinish__gte=start_day, Astart__date__lt=end_next_day)
 
     start_day = dayrange_list[0]
     start_day = date(start_day['year'], start_day['month'], start_day['day'])
@@ -1003,8 +981,7 @@ def arrange_time(request: HttpRequest):
 
     # 删去今天已经过去的时间
     if start_week == 0:
-        curr_stamp_id = web_func.get_time_id(room_object,
-                                             datetime.now().time())
+        curr_stamp_id = web_func.get_time_id(room, datetime.now().time())
         for i in range(min(max_stamp_id, curr_stamp_id) + 1):
             dayrange_list[0]['timesection'][i]['status'] = TimeStatus.PASSED
 
@@ -1176,33 +1153,33 @@ def check_out(request: HttpRequest):
         'longterm': is_longterm,
         'start_week': start_week,
     }
-    room_object = Room.objects.get(Rid=Rid)
-    dayrange_list = web_func.get_dayrange(day_offset=start_week * 7)
+    room = Room.objects.get(Rid=Rid)
+    dayrange_list = web_func.get_dayrange(day_offset=start_week * 7)[0]
     for day in dayrange_list:
         if day['weekday'] == appoint_params['weekday']:
             appoint_params['date'] = day['date']
             appoint_params['starttime'], valid = web_func.get_hour_time(
-                room_object, appoint_params['startid'])
+                room, appoint_params['startid'])
             assert valid is True
             appoint_params['endtime'], valid = web_func.get_hour_time(
-                room_object, appoint_params['endid'] + 1)
+                room, appoint_params['endid'] + 1)
             assert valid is True
             appoint_params['year'] = day['year']
             appoint_params['month'] = day['month']
             appoint_params['day'] = day['day']
             # 最小人数下限控制
-            appoint_params['Rmin'] = room_object.Rmin
+            appoint_params['Rmin'] = room.Rmin
             if start_week == 0 and datetime.now().strftime(
                     "%a") == appoint_params['weekday']:
                 appoint_params['Rmin'] = min(GLOBAL_INFO.today_min,
-                                             room_object.Rmin)
+                                             room.Rmin)
             break
     appoint_params['Sid'] = applicant.get_id()
     appoint_params['Sname'] = applicant.name
 
     # 准备上下文，此时预约的时间地点、发起人已经固定
     render_context = {}
-    render_context.update(room_object=room_object,
+    render_context.update(room_object=room,
                           appoint_params=appoint_params,
                           has_longterm_permission=has_longterm_permission)
 
@@ -1238,26 +1215,16 @@ def check_out(request: HttpRequest):
             wrong("您填写的预约周数不符合要求", render_context)
 
         # 检查长期预约次数
-        if is_longterm and LongTermAppoint.objects.filter(
-                applicant=applicant,
-                appoint__Astart__gt=web_func.str_to_time(
-                    GLOBAL_INFO.semester_start),
-                status__in=[
-                    LongTermAppoint.Status.APPROVED,
-                    LongTermAppoint.Status.REVIEWING,
-                ]).count() >= GLOBAL_INFO.longterm_max_num:
+        if is_longterm and LongTermAppoint.objects.activated().filter(
+                applicant=applicant).count() >= GLOBAL_INFO.longterm_max_num:
             wrong("您的长期预约总数已超过上限", render_context)
 
         contents['Astart'] = datetime(contents['year'], contents['month'],
                                       contents['day'],
-                                      int(contents['starttime'].split(":")[0]),
-                                      int(contents['starttime'].split(":")[1]),
-                                      0)
+                                      *map(int, contents['starttime'].split(":")))
         contents['Afinish'] = datetime(contents['year'], contents['month'],
                                        contents['day'],
-                                       int(contents['endtime'].split(":")[0]),
-                                       int(contents['endtime'].split(":")[1]),
-                                       0)
+                                      *map(int, contents['endtime'].split(":")))
         # TODO: 隔周预约的处理可优化
         contents['Astart'] += timedelta(weeks=start_week)
         contents['Afinish'] += timedelta(weeks=start_week)
@@ -1271,7 +1238,7 @@ def check_out(request: HttpRequest):
             if response.status_code == 200 and not is_longterm:
                 # 成功预约且非长期
                 return redirect(
-                    message_url(succeed(f"预约{room_object.Rtitle}成功!"),
+                    message_url(succeed(f"预约{room.Rtitle}成功!"),
                                 reverse("Appointment:admin_index")))
             elif response.status_code != 200:
                 add_dict = json.loads(response.content)['statusInfo']

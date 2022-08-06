@@ -357,8 +357,7 @@ def set_appoint_reason(input_appoint: Appoint, reason: Appoint.Reason):
             appoint.Areason = reason
             appoint.save()
 
-        # TODO: major_sid
-        operation_writer(str(appoint.major_student.Sid_id),
+        operation_writer(appoint.get_major_id(),
                         f"预约{appoint.Aid}出现违约:{appoint.get_Areason_display()}",
                         f"utils.set_appoint_reason{os.getpid()}", "OK")
         return True, ""
@@ -389,8 +388,7 @@ def appoint_violate(input_appoint: Appoint, reason: Appoint.Reason):
                 appoint.save()
                 operation_succeed = True
 
-                # TODO: major_sid
-                major_sid = str(major_student.Sid_id)
+                major_sid = major_student.get_id()
                 astart = appoint.Astart
                 aroom = str(appoint.Room)
                 major_name = str(major_student.name)
@@ -412,8 +410,7 @@ def appoint_violate(input_appoint: Appoint, reason: Appoint.Reason):
                                 announce,
                                 number,
                                 status,
-                                #appoint.major_student.credit,
-                                )  # totest: only main_student
+                                )
             operation_writer(major_sid, f"预约{aid}出现违约:{areason}" +
                              f";扣除信用分:{really_deduct}" +
                              f";剩余信用分:{credit}",
