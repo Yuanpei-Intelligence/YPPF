@@ -1,4 +1,5 @@
 from django.db import models
+from django.contrib import admin
 from django.contrib.auth.models import User
 
 __all__ = [
@@ -15,6 +16,9 @@ class Reader(models.Model):
     
     id = models.AutoField("编号", primary_key=True)
     student_id = models.CharField("学号", max_length=30, blank=True, null=True)
+    
+    def __str__(self):
+        return self.student_id
 
 
 class Book(models.Model):
@@ -60,3 +64,11 @@ class LendRecord(models.Model):
     status = models.SmallIntegerField(
         "借阅记录状态", choices=Status.choices, default=Status.NORMAL
     )
+    
+    @admin.display(description="读者学号")
+    def reader_stu_id(self):
+        return self.reader_id.student_id
+
+    @admin.display(description="书籍名称")
+    def book_name(self):
+        return self.book_id.title

@@ -256,9 +256,9 @@ def get_my_records(reader_id: str, returned: Optional[bool] = None,
     if returned:
         for record in records:
             if  record['return_time'] > record['due_time']:
-                record['type'] = False          # 逾期记录
+                record['type'] = 'overtime'          # 逾期记录
             else:
-                record['type'] = True           # 正常记录
+                record['type'] = 'normal'           # 正常记录
     else:
         now_time = datetime.now()
         for record in records:
@@ -290,5 +290,8 @@ def get_lendinfo_by_readers(readers: QuerySet) -> Tuple[List[dict], List[dict]]:
     for reader_id in reader_ids:
         unreturned_records_list.extend(get_my_records(reader_id['id'], returned=False))
         returned_records_list.extend(get_my_records(reader_id['id'], returned=True))
+        
+    unreturned_records_list.sort(key=lambda r: r['due_time'])                 # 进行中记录按照应归还时间排序
+    returned_records_list.sort(key=lambda r: r['return_time'], reverse=True)  # 已完成记录按照归还时间逆序排列
     
     return unreturned_records_list, returned_records_list
