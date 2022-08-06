@@ -1332,7 +1332,7 @@ def review(request):
     """
     if request.method=="GET":
         user_name = str(request.user)
-        #TODO 这里要判断是否是审核老师 
+        #TODO 这里要判断是否是审核老师，这个审核老师是Longterm字段里自带的吗？ 
         reviewr_list = ["zz00010"]
         if  user_name in reviewr_list:
             all_instances={
@@ -1370,7 +1370,13 @@ def review(request):
                 target_appoint=LongTermAppoint.objects.get(pk=Lid)
                 target_appoint.status=LongTermAppoint.Status.APPROVED
                 target_appoint.save()
-                #  TODO 这里准备一下信息的内容就行
+                send_wechat_message(
+                stuid_list=[target_appoint.applicant.Sid],
+                start_time=datetime.now(),
+                room=target_appoint.appoint.Room.Rid,
+                message_type="review_approve",
+                major_student=target_appoint.applicant,
+            )
                 return JsonResponse({"status":"ok"})
             except:
                 return JsonResponse({"status":"error"})
@@ -1381,7 +1387,17 @@ def review(request):
                 target_appoint=LongTermAppoint.objects.get(pk=Lid)
                 target_appoint.status=LongTermAppoint.Status.REJECTED
                 target_appoint.review_comment = reason
+                # 这里的cancel需要取消长期预约本身吗？那还需要修改相应的字段吗？
+                target_appoint.cancel()
                 target_appoint.save()
+                send_wechat_message(
+                stuid_list=[target_appoint.applicant.Sid],
+                start_time=datetime.now(),
+                room=target_appoint.appoint.Room.Rid,
+                message_type="review_reject",
+                major_student=target_appoint.applicant,
+                reason=str(reason),
+            )
                 return JsonResponse({"status":"ok"})
             except:
                 return JsonResponse({"status":"error"})

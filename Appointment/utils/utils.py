@@ -209,6 +209,10 @@ def send_wechat_message(
         show_main_student = False
         show_appoint_info = False
         extra_info = ['原因：' + reason]
+    elif message_type == 'review_approve':
+        title = '您的长期预约通过审核'
+    elif message_type == 'review_reject':
+        title = '您的长期预约未通过审核'
     else:
         # todo: 记得测试一下!为什么之前出问题的log就找不到呢TAT
         operation_writer(SYSTEM_LOG,
