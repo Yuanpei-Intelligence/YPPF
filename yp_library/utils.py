@@ -6,7 +6,6 @@ from yp_library.models import (
 
 from typing import Union, List, Tuple, Optional
 from datetime import datetime
-import random
 
 from django.contrib.auth.models import User
 from django.db.models import Q, QuerySet
@@ -207,7 +206,7 @@ def get_library_activity(num: int) -> QuerySet:
     return display_activities
 
 
-def get_recommended_or_newest_books(num: int, newest: bool = False) -> Union[QuerySet, list]:
+def get_recommended_or_newest_books(num: int, newest: bool = False) -> QuerySet:
     """
     获取推荐/新入馆书目（以id为入馆顺序）
 
@@ -215,20 +214,19 @@ def get_recommended_or_newest_books(num: int, newest: bool = False) -> Union[Que
     :type num: int
     :param newest: 是否获取新入馆书目, defaults to False
     :type newest: bool, optional
-    :return: 包含推荐书目的list/新入馆书目的QuerySet
-    :rtype: Union[QuerySet, list]
+    :return: 包含推荐书目/新入馆书目的QuerySet
+    :rtype: QuerySet
     """
-    # 获取随机记录的方法参考了
-    # https://stackoverflow.com/questions/1731346/how-to-get-two-random-records-with-django/6405601#6405601
     book_counts = Book.objects.count()
     select_num = min(num, book_counts)
-    all_books = Book.objects.all()
     if newest: # 最新到馆
         all_books_sorted = Book.objects.all().order_by('-id')
         return all_books_sorted[:select_num].values()
     else: # 随机推荐
-        selected_ids = random.sample(range(0, book_counts), select_num)
-        recommended_books = [all_books[id].__dict__ for id in selected_ids]
+        recommended_books = Book.objects.order_by('?')[:num].values()
+        # 这种获取随机记录的方法不适合于数据量极大的情况，见
+        # https://stackoverflow.com/a/6405601
+        # https://blog.csdn.net/CuGBabyBeaR/article/details/17141103
         return recommended_books
 
 

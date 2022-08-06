@@ -46,6 +46,7 @@ def welcome(request: HttpRequest) -> HttpResponse:
         readers = get_readers_by_user(request.user)
     except AssertionError as e:
         frontend_dict["warn_message"] = "提示：馆藏查询、查看借阅记录等功能需要开通书房账号!"
+        frontend_dict["warn_code"] = 1
         
     # 获取首页展示的近期活动
     frontend_dict["activities"] = get_library_activity(num=DISPLAY_ACTIVITY_NUM)
