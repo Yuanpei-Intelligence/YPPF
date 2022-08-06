@@ -6,7 +6,7 @@ from django.db.models import QuerySet
 from django.dispatch import receiver
 from django.db.models import Q
 
-from datetime import datetime, time
+from datetime import datetime, time, timedelta
 
 
 __all__ = [
@@ -21,6 +21,10 @@ __all__ = [
 
 
 class College_Announcement(models.Model):
+    class Meta:
+        verbose_name = "全院公告"
+        verbose_name_plural = verbose_name
+
     class Show_Status(models.IntegerChoices):
         Yes = 1
         No = 0
@@ -30,12 +34,13 @@ class College_Announcement(models.Model):
                                     default=0)
     announcement = models.CharField('通知内容', max_length=256, blank=True)
 
-    class Meta:
-        verbose_name = "全院公告"
-        verbose_name_plural = verbose_name
-
 
 class Participant(models.Model):
+    class Meta:
+        verbose_name = '学生'
+        verbose_name_plural = verbose_name
+        ordering = ['Sid']
+
     Sid: User = models.OneToOneField(
         User,
         related_name='+',
@@ -62,11 +67,6 @@ class Participant(models.Model):
         '''仅用于后台呈现和搜索方便，任何时候不应使用'''
         return self.name + ('' if self.pinyin is None else '_' + self.pinyin)
 
-    class Meta:
-        verbose_name = '学生'
-        verbose_name_plural = verbose_name
-        ordering = ['Sid']
-
 
 class RoomManager(models.Manager):
     def permitted(self):
@@ -89,6 +89,11 @@ class RoomManager(models.Manager):
 
 
 class Room(models.Model):
+    class Meta:
+        verbose_name = '房间'
+        verbose_name_plural = verbose_name
+        ordering = ['Rid']
+
     # 房间编号我不确定是否需要。如果地下室有门牌的话（例如B101）保留房间编号比较好
     # 如果删除Rid记得把Rtitle设置成主键
     Rid = models.CharField('房间编号', max_length=8, primary_key=True)
@@ -117,11 +122,6 @@ class Room(models.Model):
 
     objects: RoomManager = RoomManager()
 
-    class Meta:
-        verbose_name = '房间'
-        verbose_name_plural = verbose_name
-        ordering = ['Rid']
-
     def __str__(self):
         return self.Rid + ' ' + self.Rtitle
 
@@ -136,6 +136,11 @@ class AppointManager(models.Manager):
 
 
 class Appoint(models.Model):
+    class Meta:
+        verbose_name = '预约信息'
+        verbose_name_plural = verbose_name
+        ordering = ['Aid']
+
     Aid = models.AutoField('预约编号', primary_key=True)
     # 申请时间为插入数据库的时间
     Atime: datetime = models.DateTimeField('申请时间', auto_now_add=True)
@@ -216,14 +221,15 @@ class Appoint(models.Model):
 
     objects: AppointManager = AppointManager()
 
+    def add_time(self, delta: timedelta):
+        '''方便同时调整预约时间的函数，修改自身，不调用save保存'''
+        self.Astart += delta
+        self.Afinish += delta
+        return self
+
     def cancel(self):
         self.Astatus = Appoint.Status.CANCELED
         self.save()
-
-    class Meta:
-        verbose_name = '预约信息'
-        verbose_name_plural = verbose_name
-        ordering = ['Aid']
 
     def get_major_id(self) -> str:
         '''获取预约发起者id'''
@@ -251,6 +257,7 @@ class Appoint(models.Model):
             'Afinish': self.Afinish.strftime("%Y-%m-%dT%H:%M:%S"),  # 结束使用时间
             'Ausage': self.Ausage,  # 房间用途
             'Aannouncement': self.Aannouncement,  # 预约通知
+            'Atype': self.get_Atype_display(),      # 预约类型
             'Astatus': self.get_Astatus_display(),  # 预约状态
             'Areason': self.Areason,
             'Rid': self.Room.Rid,  # 房间编号
@@ -339,6 +346,22 @@ class LongTermAppoint(models.Model):
     def cancel():
         # TODO: 取消长期预约以及它的全部子预约
         raise NotImplementedError
+
+    def sub_appoints(self, lock=False) -> QuerySet[Appoint]:
+        '''
+        获取时间升序的子预约，只有类型为长期预约的被视为子预约
+
+        :param lock: 上锁，调用者需要自行开启事务, defaults to False
+        :type lock: bool, optional
+        :return: 时间升序的子预约
+        :rtype: QuerySet[Appoint]
+        '''
+        from Appointment.utils.utils import get_conflict_appoints
+        conflict_appoints = get_conflict_appoints(
+            self.appoint, times=self.times, interval=self.interval, lock=lock)
+        sub_appoints = conflict_appoints.filter(
+            major_student=self.appoint.major_student, Atype=Appoint.Type.LONGTERM)
+        return sub_appoints.order_by('Astart', 'Afinish')
 
 
 from Appointment.utils.scheduler_func import cancel_scheduler
