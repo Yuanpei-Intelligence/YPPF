@@ -67,12 +67,12 @@
                                                                 {% if record.type == "normal" %} 
                                                                     <span class="badge badge-pill" style="border-radius:4px; 
                                                                         background-color:#00C957; color:#FFFFFF; margin:2px;
-                                                                        margin-top:0px; margin-bottom:4px;">一般记录
+                                                                        margin-top:0px; margin-bottom:4px;">借阅中
                                                                     </span>
                                                                 {% elif record.type == "approaching" %}
                                                                     <span class="badge badge-pill" style="border-radius:4px; 
                                                                         background-color:#FFD700; color:#FFFFFF; margin:2px;
-                                                                        margin-top:0px; margin-bottom:4px;">接近期限
+                                                                        margin-top:0px; margin-bottom:4px;">待归还
                                                                     </span>
                                                                 {% else %}
                                                                     <span class="badge badge-pill" style="border-radius:4px; 
@@ -122,14 +122,27 @@
                                                             <td {% if record.type != "normal" %} style="color:#E3170D" {% endif %}>
                                                                 {{record.return_time}}
                                                             </td>
-                                                            <td {% if record.type == "normal" %} style="font-weight:bold" {% endif %}>
-                                                                {% if record.type == "normal" %} 
-                                                                    无需申诉。
-                                                                {% else %}
+                                                            <td>
+                                                                {% if record.type != "normal" %}
                                                                     <!-- 逾期记录还需分情况 -->
                                                                     {% if record.status == 0 or record.status == 1 %}
                                                                         <!-- 未申诉的逾期记录 -->
-                                                                        <button type="button" class="btn btn-primary" style="width:70px; height:40px; font-size:14px; font-weight:bold;">申诉</button>
+                                                                        <span class="badge badge-pill" style="border-radius:4px; 
+                                                                            background-color:#2759DA; color:#FFFFFF; margin:2px;
+                                                                            margin-top:0px; margin-bottom:4px;">未申诉
+                                                                        </span>
+                                                                        <div class="btn-group" style="display:inline-block;">
+                                                                            <div>
+                                                                                <a data-toggle="dropdown">
+                                                                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-three-dots" viewBox="0 0 16 16">
+                                                                                        <path d="M3 9.5a1.5 1.5 0 1 1 0-3 1.5 1.5 0 0 1 0 3zm5 0a1.5 1.5 0 1 1 0-3 1.5 1.5 0 0 1 0 3zm5 0a1.5 1.5 0 1 1 0-3 1.5 1.5 0 0 1 0 3z"/>
+                                                                                    </svg>
+                                                                                </a>
+                                                                                <div class="dropdown-menu" style="max-width:200%; max-height:300%;">
+                                                                                    <button class="dropdown-item">申诉</button>
+                                                                                </div>
+                                                                            </div>
+                                                                        </div>
                                                                     {% elif record.status == 2 %}
                                                                         <!-- 申诉中 -->
                                                                         <span class="badge badge-pill" style="border-radius:4px; 
