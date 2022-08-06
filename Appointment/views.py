@@ -479,12 +479,7 @@ def admin_index(request: HttpRequest):
         appoint_list_longterm = []
         longterm_appoints = LongTermAppoint.objects.filter(applicant=participant)
         # 判断是否达到上限
-        count = longterm_appoints.filter(
-            appoint__Astart__gt=GLOBAL_INFO.semester_start,
-            status__in=[
-                LongTermAppoint.Status.APPROVED,
-                LongTermAppoint.Status.REVIEWING,
-        ]).count()
+        count = LongTermAppoint.objects.activated().filter(applicant=participant).count()
         is_full = count >= GLOBAL_INFO.longterm_max_num
         for longterm_appoint in longterm_appoints:
             longterm_appoint: LongTermAppoint
@@ -1220,25 +1215,16 @@ def check_out(request: HttpRequest):
             wrong("您填写的预约周数不符合要求", render_context)
 
         # 检查长期预约次数
-        if is_longterm and LongTermAppoint.objects.filter(
-                applicant=applicant,
-                appoint__Astart__gt=GLOBAL_INFO.semester_start,
-                status__in=[
-                    LongTermAppoint.Status.APPROVED,
-                    LongTermAppoint.Status.REVIEWING,
-                ]).count() >= GLOBAL_INFO.longterm_max_num:
+        if is_longterm and LongTermAppoint.objects.activated().filter(
+                applicant=applicant).count() >= GLOBAL_INFO.longterm_max_num:
             wrong("您的长期预约总数已超过上限", render_context)
 
         contents['Astart'] = datetime(contents['year'], contents['month'],
                                       contents['day'],
-                                      int(contents['starttime'].split(":")[0]),
-                                      int(contents['starttime'].split(":")[1]),
-                                      0)
+                                      *map(int, contents['starttime'].split(":")))
         contents['Afinish'] = datetime(contents['year'], contents['month'],
                                        contents['day'],
-                                       int(contents['endtime'].split(":")[0]),
-                                       int(contents['endtime'].split(":")[1]),
-                                       0)
+                                      *map(int, contents['endtime'].split(":")))
         # TODO: 隔周预约的处理可优化
         contents['Astart'] += timedelta(weeks=start_week)
         contents['Afinish'] += timedelta(weeks=start_week)

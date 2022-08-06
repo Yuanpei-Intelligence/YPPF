@@ -15,33 +15,40 @@ web_func.py中保留所有在views.py中使用到了和web发生交互但不直�
 
 
 
-# added by pht
-# 用于调整不同情况下判定标准的不同
-def get_adjusted_qualified_rate(original_qualified_rate, appoint) -> float:
+def adjust_qualifiy_rate(original_rate: float, appoint: Appoint) -> float:
     '''
-    get_adjusted_qualified_rate(original_qualified_rate : float, appoint) -> float:
-        return an adjusted qualified rate according to appoint state
+    获取用于调整不同情况下的合格率要求
+
+    :param original_rate: 原始合格率要求
+    :type original_rate: float
+    :param appoint: 判定的预约
+    :type appoint: Appoint
+    :return: 调整后判定通过的合格率
+    :rtype: float
     '''
-    min31 = timedelta(minutes=31)
-    if appoint.Room.Rid == 'B214':                  # 暂时因无法识别躺姿导致的合格率下降
-        original_qualified_rate -= 0.15             # 建议在0.1-0.2之间 前者最严 后者最宽松
-    if appoint.Room.Rid == 'B107B':                 # 107B无法监控摄像头下方的问题
-        original_qualified_rate -= 0.05             # 建议在0-0.1之间 因为主要是识别出的人数问题
-    if appoint.Room.Rid == 'B217' and appoint.Astart.hour >= 20 :   # 电影关灯导致识别不准确
-        original_qualified_rate -= 0.05             # 建议在0-0.1之间 因为主要是识别出的人数问题
-    if appoint.Afinish - appoint.Astart < min31:    # 减少时间过短时前后未准时到的影响
-        original_qualified_rate -= 0.01             # 建议在0-0.1之间 基本取消了
+    rate = original_rate
+    if appoint.Room.Rid in {'B109A', 'B207'}:   # 公共区域
+        return 0
+    elif appoint.Room.Rid.startswith('R'):      # 俄文楼
+        rate = 0
+    elif appoint.Room.Rid == 'B214':            # 暂时无法识别躺姿
+        rate -= 0.15                # 建议在0.1-0.2之间 前者最严 后者最宽松
+    elif appoint.Room.Rid == 'B107B':           # 无法监控摄像头正下方
+        rate -= 0.05                # 建议在0-0.1之间 因为主要是识别出的人数问题
+    elif appoint.Room.Rid == 'B217':
+        if appoint.Astart.hour >= 20 :          # 电影关灯导致识别不准确
+            rate -= 0.05            # 建议在0-0.1之间 因为主要是识别出的人数问题
+
+    MIN31 = timedelta(minutes=31)
+    if appoint.Atemp_flag:                      # 临时预约不检查摄像头
+        return 0
+    if appoint.Atype == Appoint.Type.LONGTERM:  # 长期预约不检查摄像头
+        return 0
+    if appoint.Afinish - appoint.Astart < MIN31:    # 短预约早退晚到影响更大
+        rate -= 0.01             # 建议在0-0.1之间 基本取消了
     if appoint.Areason == Appoint.Reason.R_LATE:    # 迟到需要额外保证使用率
-        original_qualified_rate += 0.05             # 建议在0.2-0.4之间 极端可考虑0.5 目前仅测试
-    if appoint.Atemp_flag:                     # 对于临时预约，不检查摄像头 by lhw（2021.7.13）
-        original_qualified_rate = 0
-    if appoint.Atype == Appoint.Type.LONGTERM:      # 长期预约不检查摄像头
-        original_qualified_rate = 0
-    if appoint.Room.Rid in {'B109A', 'B207'}:       # 公共区域
-        original_qualified_rate = 0
-    if appoint.Room.Rid[:1] == 'R':                 # 俄文楼
-        original_qualified_rate = 0
-    return original_qualified_rate
+        rate += 0.05             # 建议在0.2-0.4之间 极端可考虑0.5 目前仅测试
+    return rate
 
 
 def startAppoint(Aid):  # 开始预约时的定时程序
@@ -84,9 +91,6 @@ def finishAppoint(Aid):  # 结束预约时的定时程序
         return
 
 
-    # 避免直接使用全局变量! by pht
-    adjusted_camera_qualified_check_rate = GLOBAL_INFO.camera_qualified_check_rate
-
     # 如果处于非终止状态，只需检查人数判断是否合格
     if appoint.Astatus not in Appoint.Status.Terminals():
         # 希望接受的非终止状态只有进行中，但其他状态也同样判定是否合格
@@ -107,19 +111,15 @@ def finishAppoint(Aid):  # 结束预约时的定时程序
                 f"预约{str(Aid)}的状态变为{Appoint.Status.CONFIRMED}: 顺利完成",
                 "web_func.finishAppoint", "OK")
         else:
-            #if appoint.Acamera_check_num == 0:
-            #    utils.operation_writer(
-            #        SYSTEM_LOG, f"预约{str(Aid)}的摄像头检测次数为零", "web_func.finishAppoint", "Error")
             # 检查人数是否足够
-
-            # added by pht: 需要根据状态调整 出于复用性和简洁性考虑在本函数前添加函数
-            # added by pht: 同时出于安全考虑 在本函数中重定义了本地rate 稍有修改 避免出错
-            adjusted_camera_qualified_check_rate = get_adjusted_qualified_rate(
-                original_qualified_rate=adjusted_camera_qualified_check_rate,
+            adjusted_rate = adjust_qualifiy_rate(
+                original_rate=GLOBAL_INFO.camera_qualify_rate,
                 appoint=appoint
             )
+            need_num = appoint.Acamera_check_num * adjusted_rate - 0.01
+            check_failed = appoint.Acamera_ok_num < need_num
 
-            if appoint.Acamera_ok_num < appoint.Acamera_check_num * adjusted_camera_qualified_check_rate - 0.01:  # 人数不足
+            if check_failed:  # 人数不足
                 # add by lhw ： 迟到的预约通知在这里处理。如果迟到不扣分，删掉这个if的内容即可，让下面那个camera check的if判断是否违规。
                 if appoint.Areason == Appoint.Reason.R_LATE:
                     status, tempmessage = utils.appoint_violate(

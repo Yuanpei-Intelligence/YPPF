@@ -90,7 +90,7 @@ class LocalSetting():
         # added by wxy 人数检查
         # 修改这两个变量以决定检查的宽严
         self.check_rate = 0.6  # 摄像头发来的每个数据，都有check_rate的几率当成采样点
-        self.camera_qualified_check_rate = 0.4  # 人数够的次数达到(总采样次数*rate)即可。
+        self.camera_qualify_rate = 0.4  # 人数够的次数达到(总采样次数*rate)即可。
         # 由于最短预约时间为30分钟，允许晚到15分钟，所以达标线设在50%以下比较合适(?)
         
         # 是否清除一周前的预约

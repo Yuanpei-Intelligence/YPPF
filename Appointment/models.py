@@ -9,6 +9,8 @@ from django.db import transaction
 
 from datetime import datetime, time, timedelta
 
+from Appointment import *
+
 
 __all__ = [
     'College_Announcement',
@@ -310,10 +312,28 @@ class CardCheckInfo(models.Model):
         verbose_name_plural = verbose_name
 
 
+class LongTermAppointManager(models.Manager):
+    def activated(self, this_semester=True) -> 'QuerySet[LongTermAppoint]':
+        result = self.filter(
+            status__in=[
+                LongTermAppoint.Status.APPROVED,
+                LongTermAppoint.Status.REVIEWING,
+        ])
+        if this_semester:
+            result = result.filter(
+                appoint__Astart__gt=GLOBAL_INFO.semester_start,
+            )
+        return result
+
+
 class LongTermAppoint(models.Model):
     """
     记录长期预约所需要的全部信息
     """
+    class Meta:
+        verbose_name = '长期预约信息'
+        verbose_name_plural = verbose_name
+
     appoint: Appoint = models.OneToOneField(Appoint,
                                             on_delete=models.CASCADE,
                                             verbose_name='单次预约信息')
@@ -336,9 +356,7 @@ class LongTermAppoint(models.Model):
                                                     choices=Status.choices,
                                                     default=Status.REVIEWING)
 
-    class Meta:
-        verbose_name = '长期预约信息'
-        verbose_name_plural = verbose_name
+    objects: LongTermAppointManager = LongTermAppointManager()
 
     def create(self):
         '''原子化创建长期预约的全部后续子预约'''
