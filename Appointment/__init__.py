@@ -103,9 +103,11 @@ class LocalSetting():
         # 长期预约总数上限
         self.longterm_max_num = 4
         # 单个长期预约总次数上限
-        self.longterm_max_time = 8
-        # 单个长期预约总次数上限
+        self.longterm_max_time_once = 8
+        self.longterm_max_time = 16
+        # 单个长期预约总周数上限
         self.longterm_max_interval = 2
+        self.longterm_max_week = 16
         # 是否允许不存在学生自动注册
         self.allow_newstu_appoint = True
         # 是否限制开始前的预约取消时间

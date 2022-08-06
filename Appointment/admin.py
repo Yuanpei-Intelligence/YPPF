@@ -56,19 +56,6 @@ class ParticipantAdmin(admin.ModelAdmin):
             return queryset
 
     list_filter = ('credit', 'longterm', 'hidden', AgreeFilter)
-    fieldsets = (['基本信息', {
-        'fields': (
-            'Sid',
-            'name',
-            'hidden',
-        ),
-    }], [
-        '显示全部', {
-            'classes': ('collapse', ),
-            'description': '默认信息，不建议修改！',
-            'fields': ('credit', 'pinyin', 'agree_time'),
-        }
-    ])
 
     @readonly_inline
     class AppointInline(admin.TabularInline):
@@ -167,6 +154,7 @@ class AppointAdmin(admin.ModelAdmin):
         'usage_display',
         'check_display',
         'Astatus_display',
+        'Atype',
     )
     list_display_links = ('Aid', 'Room')
     list_per_page = 25
@@ -198,7 +186,7 @@ class AppointAdmin(admin.ModelAdmin):
                 return queryset.filter(Astatus=Appoint.Status.CANCELED)
             return queryset
 
-    list_filter = ('Astart', 'Atime', 'Astatus', ActivateFilter, 'Atemp_flag')
+    list_filter = ('Astart', 'Atime', 'Astatus', ActivateFilter, 'Atype')
 
     @as_display('参与人')
     def Participants(self, obj):

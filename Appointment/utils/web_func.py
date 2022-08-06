@@ -35,6 +35,8 @@ def get_adjusted_qualified_rate(original_qualified_rate, appoint) -> float:
         original_qualified_rate += 0.05             # 建议在0.2-0.4之间 极端可考虑0.5 目前仅测试
     if appoint.Atemp_flag:                     # 对于临时预约，不检查摄像头 by lhw（2021.7.13）
         original_qualified_rate = 0
+    if appoint.Atype == Appoint.Type.LONGTERM:      # 长期预约不检查摄像头
+        original_qualified_rate = 0
     if appoint.Room.Rid in {'B109A', 'B207'}:       # 公共区域
         original_qualified_rate = 0
     if appoint.Room.Rid[:1] == 'R':                 # 俄文楼
