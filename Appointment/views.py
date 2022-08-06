@@ -264,36 +264,57 @@ def cameracheck(request):   # 摄像头post的后端函数
 @require_POST
 @csrf_exempt
 @identity_check(redirect_field_name='origin')
-def cancelAppoint(request):
+def cancelAppoint(request: HttpRequest):
     context = {}
-    type = request.POST.get("type")
-    if type == "longterm":
-        Aid = request.POST.get('cancel_btn')
-        appoint=Appoint.objects.get(Aid=Aid)
-        longterm_appoint=LongTermAppoint.objects.get(appoint=appoint)
-        longterm_appoint.cancel()
-        operation_writer(longterm_appoint.applicant.get_id(),
-                        f"取消长期预约{longterm_appoint.id}",
-                        "scheduler_func.cancelAppoint", "OK")
-        succeed(f"成功取消了{ longterm_appoint.appoint.Room.Rid } { longterm_appoint.appoint.Room.Rtitle}的长期预约!", context)
+    cancel_type = request.POST.get("type")
+    if cancel_type == "longterm":
+        try:
+            pk = int(request.POST.get('cancel_id'))
+            longterm_appoint = LongTermAppoint.objects.get(pk=pk)
+            assert longterm_appoint.status in [
+                LongTermAppoint.Status.REVIEWING,
+                LongTermAppoint.Status.APPROVED,
+                ]
+            assert longterm_appoint.get_applicant_id() == request.user.username
+            assert longterm_appoint.sub_appoints().filter(
+                Astatus=Appoint.Status.APPOINTED).exists()
+        except:
+            wrong(f"长期预约不存在或没有权限取消!", context)
+            return redirect(message_url(context, reverse("Appointment:admin_index")))
+        # 可以取消
+        try:
+            with transaction.atomic():
+                longterm_appoint: LongTermAppoint = (
+                    LongTermAppoint.objects.select_for_update().get(pk=pk))
+                count = longterm_appoint.cancel()
+        except:
+            operation_writer(SYSTEM_LOG, f"取消长期预约{pk}意外失败",
+                            "scheduler_func.cancelAppoint", "Error")
+            wrong(f"未能取消长期预约!", context)
+            return redirect(message_url(context, reverse("Appointment:admin_index")))
+
+        operation_writer(longterm_appoint.get_applicant_id(),
+                        f"成功取消长期预约{pk}及{count}条未开始的预约",
+                        "scheduler_func.cancelAppoint")
+        appoint_room_name = str(longterm_appoint.appoint.Room)
+        succeed(f"成功取消对{appoint_room_name}的长期预约!", context)
         return redirect(message_url(context, reverse("Appointment:admin_index")))
 
     try:
-        Aid = request.POST.get('cancel_btn')
+        assert cancel_type == 'appoint'
+        pk = int(request.POST.get('cancel_id'))
         appoints = Appoint.objects.filter(Astatus=Appoint.Status.APPOINTED)
-        appoint = appoints.get(Aid=Aid)
+        appoint: Appoint = appoints.get(pk=pk)
     except:
         return redirect(message_url(
             wrong("预约不存在、已经开始或者已取消!"),
             reverse("Appointment:admin_index")))
 
     try:
-        # TODO: major_sid
-        Pid = request.user.username
-        assert appoint.major_student.Sid_id == Pid
+        assert appoint.get_major_id() == request.user.username
     except:
         return redirect(message_url(
-            wrong("请不要恶意尝试取消不是自己发起的预约!"),
+            wrong("请不要尝试取消不是自己发起的预约!"),
             reverse("Appointment:admin_index")))
 
     if (GLOBAL_INFO.restrict_cancel_time
@@ -307,15 +328,13 @@ def cancelAppoint(request):
         appoint.cancel()
         scheduler_func.cancel_scheduler(appoint.Aid, "Problem")
 
-        # TODO: major_sid
-        operation_writer(appoint.major_student.Sid_id,
-                         f"取消了预约{appoint.Aid}",
+        operation_writer(appoint.get_major_id(), f"取消了预约{pk}",
                          "scheduler_func.cancelAppoint", "OK")
         succeed("成功取消对" + appoint_room_name + "的预约!", context)
-        # print('will send cancel message')
         scheduler_func.set_cancel_wechat(appoint)
 
     return redirect(message_url(context, reverse("Appointment:admin_index")))
+
 
 @require_POST
 @identity_check(redirect_field_name='origin')
@@ -324,7 +343,7 @@ def renewLongtermAppoint(request):
     try:
         pk = int(request.POST.get('longterm_id'))
         longterm_appoint: LongTermAppoint = LongTermAppoint.objects.get(pk=pk)
-        assert longterm_appoint.applicant.get_id() == request.user.username
+        assert longterm_appoint.get_applicant_id() == request.user.username
         assert longterm_appoint.status == LongTermAppoint.Status.APPROVED
     except:
         return redirect(message_url(
@@ -333,22 +352,23 @@ def renewLongtermAppoint(request):
 
     try:
         times = int(request.POST.get('times'))
+        total_times = longterm_appoint.times + times
         assert 1 <= times <= GLOBAL_INFO.longterm_max_time_once
-        assert longterm_appoint.times + times <= GLOBAL_INFO.longterm_max_time
-        assert (longterm_appoint.times + times) * longterm_appoint.interval <= GLOBAL_INFO.longterm_max_week
+        assert total_times <= GLOBAL_INFO.longterm_max_time
+        assert total_times * longterm_appoint.interval <= GLOBAL_INFO.longterm_max_week
     except:
         return redirect(message_url(
             wrong("您选择的续约周数不符合要求!"),
             reverse("Appointment:admin_index")))
 
     conflict, conflict_appoints = longterm_appoint.renew(times)
-    if conflict == None: 
-        operation_writer(longterm_appoint.applicant.get_id(),
-                            f"对长期预约{longterm_appoint.id}发起{times}周续约",
+    if conflict is None: 
+        operation_writer(longterm_appoint.get_applicant_id(),
+                            f"对长期预约{pk}发起{times}周续约",
                             "scheduler_func.renewLongtermAppoint", "OK")
         succeed(f"成功对{longterm_appoint.appoint.Room}的长期预约进行了{times}周的续约!", context)
     else:
-        wrong(f"续约{conflict}失败，后续时间段存在预约冲突!", context),
+        wrong(f"续约第{conflict}次失败，后续时间段存在预约冲突!", context)
     return redirect(message_url(context, reverse("Appointment:admin_index")))
 
 

@@ -255,7 +255,7 @@
                                                                     </button>
                                                                 {% elif  appoint_longterm.status == "已取消" %}
                                                                     <a class="btn btn-sm bg-danger-light" style="width: 6rem;" >
-                                                                        <i class="fas fa-times"></i> 已取消
+                                                                        <i class="fas fa-undo-alt"></i> 已取消
                                                                     </a>
                                                                     <button type="button"
                                                                             class="btn btn-sm bg-danger-light ml-3"
@@ -263,13 +263,13 @@
                                                                     </button>
                                                                 {% endif %}
                                                                 {% if appoint_longterm.status != "已取消" and appoint_longterm.status != "未通过" %}
-                                                                    <form action="cancelAppoint" method="POST" onsubmit="return confirm('确定取消对{{  appoint_longterm.appoint.Rtitle }}的预约?')">
+                                                                    <form action="cancelAppoint" method="POST" onsubmit="return confirm('确定取消对{{ appoint_longterm.appoint.Rtitle }}的长期预约?所有未开始的预约都将失效!')">
                                                                         <input type="hidden" name="type" value="longterm"/>
                                                                         <button type="submit"
                                                                                 class="btn btn-sm bg-danger-light ml-3"
                                                                                 style="width: 6rem;"
-                                                                                name="cancel_btn"
-                                                                                value="{{  appoint_longterm.appoint.Aid }}">
+                                                                                name="cancel_id"
+                                                                                value="{{  appoint_longterm.longterm_id }}">
                                                                             <i class="fas fa-times"></i> 取消预约
                                                                         </button>
                                                                     </form>
@@ -330,7 +330,8 @@
                                                         {% if appoint.check_major %}
                                                             <form action="cancelAppoint" method="POST" onsubmit="return confirm('确定取消对{{ appoint.Rtitle }}的预约?')">
                                                                 <div class="appointment-action">
-                                                                    <button type="submit" class="btn btn-sm bg-danger-light" name="cancel_btn" value="{{ appoint.Aid }}">
+                                                                    <input type="hidden" name="type" value="appoint"/>
+                                                                    <button type="submit" class="btn btn-sm bg-danger-light" name="cancel_id" value="{{ appoint.Aid }}">
                                                                         <i class="fas fa-times"></i> 取消预约
                                                                     </input>
                                                                 </div>

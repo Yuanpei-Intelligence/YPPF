@@ -332,7 +332,7 @@ class LongTermAppoint(models.Model):
         APPROVED = (2, '已通过')
         REJECTED = (3, '未通过')
 
-    status: 'int|Status' = models.SmallIntegerField("申请状态",
+    status: 'int|Status' = models.SmallIntegerField('申请状态',
                                                     choices=Status.choices,
                                                     default=Status.REVIEWING)
 
@@ -341,33 +341,49 @@ class LongTermAppoint(models.Model):
         verbose_name_plural = verbose_name
 
     def create(self):
-        """创建长期预约的全部后续子预约"""
+        '''原子化创建长期预约的全部后续子预约'''
         from Appointment.utils.scheduler_func import add_longterm_appoint
         conflict_week, appoints = add_longterm_appoint(
-            appoint=self.appoint,
+            appoint=self.appoint.pk,
             times=self.times - 1,
             interval=self.interval,
         )
         return conflict_week, appoints
 
-    def cancel(self):
-        """取消长期预约以及它的全部子预约"""
+    def cancel(self, all=False, delete=False):
+        '''
+        原子化取消长期预约以及它的子预约，不应出错
+
+        :param all: 取消全部，否则只取消未开始的预约, defaults to False
+        :type all: bool, optional
+        :param delete: 以数据库删除代替取消，长期预约也会级联删除, defaults to False
+        :type delete: bool, optional
+        :return: 取消的子预约数量
+        :rtype: int
+        '''
         from Appointment.utils.scheduler_func import cancel_scheduler
         with transaction.atomic():
             # 取消子预约
-            appoints = self.sub_appoints()
-            for appoint in appoints.filter(Astatus=Appoint.Status.APPOINTED):
+            appoints = self.sub_appoints(lock=True)
+            if not all:
+                appoints = appoints.filter(Astatus=Appoint.Status.APPOINTED)
+            if delete:
+                return appoints.delete()[0]
+            count = len(appoints)
+            for appoint in appoints:
                 appoint.cancel()
-                cancel_scheduler(appoint)
+                cancel_scheduler(appoint, 'Problem')
             self.status = LongTermAppoint.Status.CANCELED
             self.save()
+            return count
 
     def renew(self, times: int):
-        """添加新的后续子预约"""
+        '''原子化添加新的后续子预约，不应出错'''
         from Appointment.utils.scheduler_func import add_longterm_appoint
+        times = max(0, times)
         with transaction.atomic():
             conflict_week, appoints = add_longterm_appoint(
-                appoint=self.appoint,
+                appoint=self.appoint.pk,
                 times=times,
                 interval=self.interval,
                 week_offset=self.times * self.interval,
@@ -379,7 +395,7 @@ class LongTermAppoint(models.Model):
 
     def sub_appoints(self, lock=False) -> QuerySet[Appoint]:
         '''
-        获取时间升序的子预约，只有类型为长期预约的被视为子预约
+        获取时间升序的子预约，只有类型为长期预约的被视为子预约，不应出错
 
         :param lock: 上锁，调用者需要自行开启事务, defaults to False
         :type lock: bool, optional
@@ -392,6 +408,10 @@ class LongTermAppoint(models.Model):
         sub_appoints = conflict_appoints.filter(
             major_student=self.appoint.major_student, Atype=Appoint.Type.LONGTERM)
         return sub_appoints.order_by('Astart', 'Afinish')
+
+    def get_applicant_id(self) -> str:
+        '''获取申请者id'''
+        return self.applicant.get_id()
 
 
 from Appointment.utils.scheduler_func import cancel_scheduler

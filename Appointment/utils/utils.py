@@ -512,7 +512,7 @@ def get_conflict_appoints(appoint: Appoint, times: int = 1,
                           no_cross_day=False, lock=False) -> QuerySet[Appoint]:
     '''
     
-    获取以时间排序的冲突预约，可以加锁，但不负责开启事务
+    获取以时间排序的冲突预约，可以加锁，但不负责开启事务，不应抛出异常
 
     :param appoint: 需要检测的第一个预约
     :type appoint: Appoint

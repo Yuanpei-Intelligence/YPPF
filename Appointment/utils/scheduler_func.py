@@ -416,6 +416,7 @@ def add_longterm_appoint(appoint: 'Appoint | int',
                          admin: bool = False):
     '''
     自动开启事务以检查预约是否冲突，以原预约为模板直接生成新预约，不检查预约时间是否合法
+    appoint无效时可能出错，否则不出错
 
     :param appoint: 预约的模板，Appoint类型视为可修改，不应再使用，否则作为主键
     :type appoint: Appoint | int
