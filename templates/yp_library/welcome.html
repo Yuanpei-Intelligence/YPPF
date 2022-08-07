@@ -112,35 +112,37 @@
                   我的借阅 ......
                 </p>
               </div>
-              <div class="col-12 collapse mb-4 pt-2 collapsed form-group" id="collapseExample">
-                <div class="row">
-                  <div class="col-12 input-group pt-4 pb-3">
-                    <input type="text" class="form-control" id="searchBook" 
-                      placeholder="搜索书名/作者/ISBN/出版社">
-                    <div class="input-group-append">
-                      <button type="button" class="btn btn-outline-info">搜索</button>
+              <form action="/search/" method="get" role="search">
+                <div class="col-12 collapse mb-4 pt-2 collapsed form-group" id="collapseExample">
+                  <div class="row">
+                    <div class="col-12 input-group pt-4 pb-3">
+                      <input type="text" class="form-control" id="searchBook" 
+                        placeholder="搜索书名/作者/ISBN/出版社" name="Query">
+                      <div class="input-group-append">
+                        <button type="button" class="btn btn-outline-info">搜索</button>
+                      </div>
                     </div>
-                  </div>
-                  <div class="col-12 d-flex justify-content-between">
-                    <p class="pl-2 pr-2" style="font-size: 0.9rem;">
-                      <i class="fa fa-bookmark"></i>
-                      历史搜索
-                    </p>
-                    <ul class="nav flex-grow-1 history-search" style="font-size: 0.9rem;">
-                      {% for  %}
-                      <li class="nav-item pt-0 pb-0 pr-2"><a class="nav-link-active" href=""> 小径分岔的花园 </a></li>
-                      <li class="nav-item pt-0 pb-0 pr-2"><a class="nav-link-active" href=""> 阿莱夫 </a></li>
-                      <li class="nav-item pt-0 pb-0 pr-2"><a class="nav-link-active" href=""> ... </a></li>
-                    </ul>
-                    <div class="form-check mb-2 mr-sm-2">
-                      <input class="form-check-input" type="checkbox" id="canBorrow">
-                      <label class="form-check-label" for="canBorrow" style="font-size: 0.9rem;">
-                        可借阅
-                      </label>
+                    <div class="col-12 d-flex justify-content-between">
+                      <p class="pl-2 pr-2" style="font-size: 0.9rem;">
+                        <i class="fa fa-bookmark"></i>
+                        历史搜索
+                      </p>
+                      <ul class="nav flex-grow-1 history-search" style="font-size: 0.9rem;">
+                        {% for  %}
+                        <li class="nav-item pt-0 pb-0 pr-2"><a class="nav-link-active" href=""> 小径分岔的花园 </a></li>
+                        <li class="nav-item pt-0 pb-0 pr-2"><a class="nav-link-active" href=""> 阿莱夫 </a></li>
+                        <li class="nav-item pt-0 pb-0 pr-2"><a class="nav-link-active" href=""> ... </a></li>
+                      </ul>
+                      <div class="form-check mb-2 mr-sm-2">
+                        <input class="form-check-input" type="checkbox" id="canBorrow" name="canBorrow">
+                        <label class="form-check-label" for="canBorrow" style="font-size: 0.9rem;">
+                          可借阅
+                        </label>
+                      </div>
                     </div>
                   </div>
                 </div>
-              </div>
+              </form>
             </div>
           </div>
         </div>
