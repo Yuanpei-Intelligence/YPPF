@@ -1,10 +1,12 @@
 # 数据库模型与操作
-from email.mime import application
-from pickle import NONE
-
-from requests import post
-from Appointment.models import LongTermAppoint, Participant, Room, Appoint, College_Announcement
-from django.db.models import Q  # modified by wxy
+from Appointment.models import (
+    Participant,
+    Room,
+    Appoint,
+    College_Announcement,
+    LongTermAppoint,
+)
+from django.db.models import Q, QuerySet
 from django.db import transaction  # 原子化更改数据库
 
 # Http操作相关
@@ -27,9 +29,6 @@ import threading
 
 # 全局参数读取
 from Appointment import *
-from YPPF.Appointment.utils.identity import get_auditor_ids
-from YPPF.app.API import get_auditors
-
 
 # 消息读取
 from boottest.global_messages import wrong, succeed, message_url
@@ -49,10 +48,8 @@ from Appointment.utils.identity import (
 
 # 定时任务注册
 import Appointment.utils.scheduler_func as scheduler_func
-from global_messages import WRONG
 
 '''
-
 
 Views.py 使用说明
     尽可能把所有工具类的函数放到utils文件夹对应的py下，保持views.py中基本上是直接会被web调用的函数(见urls.py)
