@@ -71,8 +71,7 @@
                     <input disabled class="form-control" name="" type="text" value={{ longterm_appoint.appoint.Ausage }}>
                 </div>
                 {% if longterm_appoint.get_status_display == "审核中" %}
-                    <form action="" method="POST" class="w-100 d-flex">
-                        <input type="hidden" name="Lid" value={{ longterm_appoint.pk }}>
+                    <form method="POST" class="w-100 d-flex">
                         <input type="hidden" name="operation" value="approve">
                         <input type="hidden" name="reason" value="">
                         <button type="submit" class="btn btn-primary flex-fill mr-2" id="approve">通过</button>
@@ -91,7 +90,7 @@
             <div class="modal-dialog modal-dialog-centered" role="document">
                 <div class="modal-content" >
                     <div class="modal-body" >
-                        <form action="" method="POST">
+                        <form method="POST">
                             <div class="form-group card-label">
                                 <label>请填写未通过原因</label>
                                 <textarea class="form-control" name="reason" type="text" required value="" style="height:10rem;resize:none"></textarea>
