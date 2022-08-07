@@ -1425,12 +1425,12 @@ def review(request: HttpRequest):
     长期预约的审核页面，当前暂不考虑聚合页面
     """
     render_context = {}
-    # Lid = request.GET.get("Lid")
-    # if Lid is None:
-    #     return redirect(message_url(
-    #         wrong("当前没有需要审核的长期预约!"),
-    #         reverse("Appointment:admin_index")))
-    Lid = 7
+    Lid = request.GET.get("Lid")
+    if Lid is None:
+        return redirect(message_url(
+            wrong("当前没有需要审核的长期预约!"),
+            reverse("Appointment:admin_index")))
+
     # 权限检查
     longterm_appoint = LongTermAppoint.objects.get(pk=Lid)
     participant_id = longterm_appoint.get_applicant_id()
