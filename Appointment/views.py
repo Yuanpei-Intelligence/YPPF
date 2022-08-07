@@ -29,6 +29,7 @@ import threading
 
 # 全局参数读取
 from Appointment import *
+from Appointment.utils.identity import get_auditor_ids
 
 # 消息读取
 from boottest.global_messages import wrong, succeed, message_url
@@ -1445,24 +1446,25 @@ def review(request: HttpRequest):
     长期预约的审核页面，当前暂不考虑聚合页面
     """
     render_context = {}
-    if Lid := request.GET.get('Lid') is None:
+    Lid = request.GET.get("Lid")
+    if Lid is None:
         return redirect(message_url(
             wrong("当前没有需要审核的长期预约!"),
             reverse("Appointment:admin_index")))
-
     # 权限检查
-    longterm_appoint = LongTermAppoint.objects.select_for_update().get(pk=Lid)
-    if request.user.username not in get_auditor_ids(longterm_appoint.get_applicant_id()):
+    longterm_appoint = LongTermAppoint.objects.get(pk=Lid)
+    participant_id = longterm_appoint.get_applicant_id()
+    participant = Participant.objects.get(Sid=participant_id)
+    if request.user.username not in get_auditor_ids(participant):
         return redirect(message_url(
             wrong("抱歉，您没有权限审核当前的长期预约!"),
             reverse("Appointment:admin_index")))
 
     if request.method == "POST":
         try:
-            # TODO 这里传参数的方式之后会改变
-            post_data = json.loads(request.body.decode("utf-8"))
-            Lid = post_data["Lid"]
-            operation = str(post_data["operation"])
+            Lid = request.POST.get("Lid")
+            longterm_appoint = LongTermAppoint.objects.get(pk=Lid)
+            operation = request.POST.get("operation")
         except:
             return redirect(message_url(
                 wrong("操作过程中出现错误，请联系管理员!"),
@@ -1471,7 +1473,6 @@ def review(request: HttpRequest):
         if operation == "approve":
             try:
                 with transaction.atomic():
-                    longterm_appoint = LongTermAppoint.objects.select_for_update().get(pk=Lid)
                     longterm_appoint.status = LongTermAppoint.Status.APPROVED
                     longterm_appoint.save()
                     scheduler_func.set_appoint_wechat(longterm_appoint.appoint, 'longterm_approved', students_id=[
@@ -1479,44 +1480,28 @@ def review(request: HttpRequest):
                 succeed(
                     f"已通过对{longterm_appoint.appoint.Room}的长期预约!", render_context)
             except:
-                operation_writer(SYSTEM_LOG, f"通过长期预约{Lid}意外失败",
-                             "scheduler_func.cancelAppoint", "Error")
                 wrong(f"对于该条长期预约的通过操作失败！", render_context)
 
-        elif operation == "refect":
+        elif operation == "reject":
             try:
                 with transaction.atomic():
-                    reason = post_data["reason"]
-                    longterm_appoint = LongTermAppoint.objects.select_for_update().get(pk=Lid)
+                    reason = request.POST.get("reason")
                     longterm_appoint.cancel()
                     longterm_appoint.status = LongTermAppoint.Status.REJECTED
                     longterm_appoint.review_comment = reason
                     longterm_appoint.save()
                     scheduler_func.set_appoint_wechat(longterm_appoint.appoint, 'longterm_rejected', reason, students_id=[
                         longterm_appoint.get_applicant_id()])
-                    succeed(
-                        f"成功取消对{longterm_appoint.appoint.Room}的长期预约!", render_context)
             except:
                 wrong(f"对于该条长期预约的拒绝操作失败!", render_context)
+
         else:
             return redirect(message_url(
                 wrong("操作过程中出现错误，请联系管理员!"),
                 reverse("Appointment:admin_index")))
     # display的部分
-    week_list = ["星期一", "星期二", "星期三", "星期四", "星期五", "星期六", "星期日"]
-    longterm_appoint_info = {
-        "Lid": Lid,
-        "room": f"{longterm_appoint.appoint.Room}",
-        "organization": longterm_appoint.applicant,
-        "week": week_list[longterm_appoint.appoint.Astart.weekday()],
-        "date": longterm_appoint.appoint.Astart.strftime("%m月%d日"),
-        "start": longterm_appoint.appoint.Astart.strftime("%I:%M %p"),
-        "finish": longterm_appoint.appoint.Afinish.strftime("%I:%M %p"),
-        "times": longterm_appoint.times,
-        "interval": longterm_appoint.interval,
-        "usage": longterm_appoint.appoint.Ausage,
-        "status": longterm_appoint.get_status_display(),
-    }
-    render_context.update(info=longterm_appoint_info, week_list=week_list)
+    longterm_appoint = LongTermAppoint.objects.get(pk=Lid)
+    last_appoint = longterm_appoint.sub_appoints().last()
+    render_context.update(longterm_appoint=longterm_appoint, last_appoint=last_appoint)
 
-    return render(request, "Appointment/review.html", render_context)
+    return render(request, "Appointment/review-single.html", render_context)

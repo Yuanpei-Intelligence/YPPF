@@ -1,0 +1,116 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="zh-CN">
+    <head>
+        <meta charset="UTF-8">
+        <meta http-equiv="X-UA-Compatible" content="IE=edge">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>长期预约审核</title>
+        <!-- Favicons -->
+        <link type="image/x-icon" href="{% static '/assets/img/yp_favicon.png' %}" rel="icon">
+        <link href={% static "outer/fonts.googleapis.com/source1.css" %} rel="stylesheet">
+        <link href={% static "bootstrap/css/bootstrap.min.css" %} rel="stylesheet" type="text/css" />
+        <link href={% static "assets/css/plugins.css" %} rel="stylesheet" type="text/css" />
+        <!-- END GLOBAL MANDATORY STYLES -->
+    </head>
+    <body class="container d-flex justify-content-center align-items-center p-4">
+        <div class="card col-sm-12 col-md-8" style="min-height:calc(100vh - 3rem)">
+            <div class="card-body">
+                <div class="d-flex">
+                    <h5 class="card-title mr-3">长期预约详情</h5>
+                    {% if longterm_appoint.get_status_display == "审核中" %}
+                        <span class="badge badge-primary h-100">待审核</span>
+                    {% elif longterm_appoint.get_status_display == "已通过" %}
+                        <span class="badge badge-success h-100">已通过</span>
+                    {% elif longterm_appoint.get_status_display == "未通过" %}
+                        <span class="badge badge-warning h-100">未通过</span>
+                    {% endif %}
+                </div>
+                {% if warn_code == 1 %}
+                        <div class="alert alert-warning  text-center">{{ warn_message }}</div>
+                    {% elif warn_code == 2 %}
+                        <div class="alert alert-success  text-center">{{ warn_message }}</div>
+                    {% endif %}
+                <div class="form-group card-label">
+                    <label>预约组织</label>
+                    <input readonly class="form-control" name="room" type="text" value="{{ longterm_appoint.applicant.name }}">
+                </div>
+                <div class="form-group card-label">
+                    <label>预约房间</label>
+                    <input readonly class="form-control" name="room" type="text" value="{{ longterm_appoint.appoint.Room }}">
+                </div>
+                <div class="form-group card-label">
+                    <label>预约时段</label>
+                    <input disabled
+                           class="form-control"
+                           name="datetime"
+                           type="text"
+                           value="{{ longterm_appoint.appoint.Astart|date:'D H:i A' }} - {{ longterm_appoint.appoint.Afinish|date:'H:i A' }}">
+                </div>
+                <div class="form-group card-label">
+                    <label>起始日期</label>
+                    <input disabled
+                           class="form-control"
+                           name="datetime"
+                           type="text"
+                           value="{{ longterm_appoint.appoint.Astart|date:'n月j日' }} - {{ last_appoint.Astart|date:'n月j日' }}">
+                </div>
+                <div class="form-group card-label">
+                    <label>预约次数</label>
+                    <input disabled
+                           class="form-control"
+                           name="times"
+                           type="text"
+                           value="{% if longterm_appoint.interval == 1 %}每周一次，共{{ longterm_appoint.times }}次 
+                                  {% elif longterm_appoint.interval == 2 %}隔周一次，共{{ longterm_appoint.times }}次 
+                                  {% else %}每{{ longterm_appoint.interval }}周一次，共{{ longterm_appoint.times }}次 
+                                  {% endif %}">
+                </div>
+                <div class="form-group card-label">
+                    <label>预约用途</label>
+                    <input disabled class="form-control" name="" type="text" value={{ longterm_appoint.appoint.Ausage }}>
+                </div>
+                {% if longterm_appoint.get_status_display == "审核中" %}
+                    <form action="" method="POST" class="w-100 d-flex">
+                        <input type="hidden" name="Lid" value={{ longterm_appoint.pk }}>
+                        <input type="hidden" name="operation" value="approve">
+                        <input type="hidden" name="reason" value="">
+                        <button type="submit" class="btn btn-primary flex-fill mr-2" id="approve">通过</button>
+                        <button type="button" class="btn btn-warning flex-fill" data-toggle="modal" data-target="#commentFormModal">拒绝</button>
+                    </form>
+                {% elif longterm_appoint.get_status_display == "未通过" %}
+                    <div class="form-group card-label">
+                        <label>未通过原因</label>
+                        <input class="form-control" name="reason" type="text" disabled value={{ longterm_appoint.review_comment }}>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+        <!-- Modal -->
+        <div class="modal fade" id="commentFormModal" tabindex="-1" role="dialog">
+            <div class="modal-dialog modal-dialog-centered" role="document">
+                <div class="modal-content" >
+                    <div class="modal-body" >
+                        <form action="" method="POST">
+                            <div class="form-group card-label">
+                                <label>请填写未通过原因</label>
+                                <textarea class="form-control" name="reason" type="text" required value="" style="height:10rem;resize:none"></textarea>
+                            </div>
+                            <input type="hidden" name="Lid" value={{ longterm_appoint.pk }}>
+                            <input type="hidden" name="operation" value="reject">
+                            <div class="d-flex">
+                                <button type="submit" class="btn btn-primary flex-fill mr-2" id="reject">
+                                    完成
+                                </button>
+                                <button type="button" class="btn btn-warning flex-fill" data-dismiss="modal">取消</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <script src="{% static 'Appointment/assets/js/jquery.min.js' %} "></script>
+        <script src="{% static 'Appointment/assets/js/popper.min.js' %} "></script>
+        <script src="{% static 'Appointment/assets/js/bootstrap.min.js' %}"></script>
+    </body>
+</html>
