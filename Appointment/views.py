@@ -42,7 +42,7 @@ from Appointment.utils.utils import (
 )
 import Appointment.utils.web_func as web_func
 from Appointment.utils.identity import (
-    get_auditor_ids, get_name, get_avatar, get_member_ids, get_members,
+    get_name, get_avatar, get_member_ids, get_members, get_auditor_ids,
     get_participant, identity_check,
 )
 
@@ -1295,11 +1295,6 @@ def check_out(request: HttpRequest):
     return render(request, 'Appointment/checkout.html', render_context)
 
 
-def logout(request):    # 登出系统
-    auth.logout(request)
-    return redirect(reverse('Appointment:index'))
-
-
 def review(request: HttpRequest):
     """
     长期预约的审核页面，当前暂不考虑聚合页面
@@ -1313,7 +1308,7 @@ def review(request: HttpRequest):
 
     # 权限检查
     try:
-        longterm_appoint = LongTermAppoint.objects.get(pk=Lid)
+        longterm_appoint: LongTermAppoint = LongTermAppoint.objects.get(pk=Lid)
         reviewer_list = get_auditor_ids(longterm_appoint.applicant)
         assert request.user.username in reviewer_list
     except:  
@@ -1323,7 +1318,6 @@ def review(request: HttpRequest):
 
     if request.method == "POST":
         try:
-            longterm_appoint = LongTermAppoint.objects.get(pk=Lid)
             operation =request.POST["operation"]
             assert operation in ["approve", "reject"]
         except:
@@ -1336,7 +1330,8 @@ def review(request: HttpRequest):
                 with transaction.atomic():
                     longterm_appoint.status = LongTermAppoint.Status.APPROVED
                     longterm_appoint.save()
-                    scheduler_func.set_appoint_wechat(longterm_appoint.appoint, 'longterm_approved', 
+                    scheduler_func.set_appoint_wechat(
+                        longterm_appoint.appoint, 'longterm_approved', 
                         students_id=[longterm_appoint.get_applicant_id()])
                 succeed(
                     f"已通过对{longterm_appoint.appoint.Room}的长期预约!", render_context)
@@ -1351,18 +1346,25 @@ def review(request: HttpRequest):
                     longterm_appoint.status = LongTermAppoint.Status.REJECTED
                     longterm_appoint.review_comment = reason
                     longterm_appoint.save()
-                    scheduler_func.set_appoint_wechat(longterm_appoint.appoint, 'longterm_rejected', reason, 
+                    scheduler_func.set_appoint_wechat(
+                        longterm_appoint.appoint, 'longterm_rejected', reason, 
                         students_id=[longterm_appoint.get_applicant_id()])
             except:
                 wrong(f"对于该条长期预约的拒绝操作失败!", render_context)
 
-
     # display的部分
     longterm_appoint: LongTermAppoint = LongTermAppoint.objects.get(pk=Lid)
-    last_date = longterm_appoint.appoint.Astart + timedelta(weeks=longterm_appoint.interval*(longterm_appoint.times-1))
+    last_date = longterm_appoint.appoint.Astart + timedelta(
+        weeks=longterm_appoint.interval*(longterm_appoint.times - 1))
     render_context.update(longterm_appoint=longterm_appoint, last_date=last_date)
 
     return render(request, "Appointment/review-single.html", render_context)
+
+
+def logout(request):    # 登出系统
+    auth.logout(request)
+    return redirect(reverse('Appointment:index'))
+
 
 ########################################
 # for 年度总结
