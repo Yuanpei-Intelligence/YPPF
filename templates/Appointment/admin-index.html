@@ -182,12 +182,16 @@
                                                                     <div class="patient-details">
                                                                         <h5 style="white-space: normal;">
                                                                             <i class="far fa-clock" style="word-break:break-all"></i>
-                                                                            预约时间：{{appoint_longterm.appoint.Astart|slice:"5:7"}}月{{appoint_longterm.appoint.Astart|slice:"8:10"}}日 起 {{ appoint_longterm.appoint.Aweek|slice:":3" }}
+                                                                            预约时间：{{ appoint_longterm.appoint.Aweek|slice:":3" }}
                                                                             <!--modified by wxy-->
                                                                             {{ appoint_longterm.appoint.Astart_hour_minute }}-{{ appoint_longterm.appoint.Afinish_hour_minute }}
                                                                         </h5>
                                                                         <h5 style="white-space: normal;">
-                                                                            <i class="far fa fa-calendar"></i>
+                                                                            <i class="far fa-calendar" style="word-break:break-all"></i>
+                                                                            开始日期：{{appoint_longterm.appoint.Astart|slice:":10"}} 起 
+                                                                        </h5>
+                                                                        <h5 style="white-space: normal;">
+                                                                            <i class="far fa fa-bell"></i>
                                                                             预约周数：
                                                                             {% if appoint_longterm.interval == 1 %} 每周一次，
                                                                             {% elif appoint_longterm.interval == 2 %} 隔周一次，
@@ -208,7 +212,7 @@
                                                                     </div>
                                                                 </div>
                                                             </div>
-                                                            <div class="appointment-action align-items-start">
+                                                            <div class="appointment-action flex-column align-items-start">
                                                                 {% if  appoint_longterm.status == "审核中" %}
                                                                     <button type="button" class="btn btn-sm bg-primary-light" style="width: 6rem;" value="{{  appoint_longterm.appoint.Aid }}">
                                                                         <i class="fas fa-hourglass-half"></i> 审核中
@@ -225,7 +229,7 @@
                                                                                 <i class="fas fa-ban"></i> 未通过
                                                                         </button>
                                                                         <button type="button"
-                                                                                class="btn btn-sm bg-danger-light ml-3"
+                                                                                class="btn btn-sm bg-danger-light mt-3"
                                                                                 style="width: 6rem;visibility:hidden">
                                                                         </button>
                                                                 {% elif  appoint_longterm.status == "已通过" and not appoint_longterm.renewable %}
@@ -234,7 +238,7 @@
                                                                     </button>
                                                                 {% elif  appoint_longterm.status == "已通过" and  appoint_longterm.renewable %}
                                                                     <button type="button"
-                                                                        class="btn btn-sm bg-warning-light ml-3"
+                                                                        class="btn btn-sm bg-warning-light mt-3"
                                                                         style="width: 6rem;"
                                                                         data-container="body" 
                                                                         data-toggle="popover" 
@@ -258,7 +262,7 @@
                                                                         <i class="fas fa-undo-alt"></i> 已取消
                                                                     </a>
                                                                     <button type="button"
-                                                                            class="btn btn-sm bg-danger-light ml-3"
+                                                                            class="btn btn-sm bg-danger-light mt-3"
                                                                             style="width: 6rem;visibility:hidden">
                                                                     </button>
                                                                 {% endif %}
@@ -266,7 +270,7 @@
                                                                     <form action="cancelAppoint" method="POST" onsubmit="return confirm('确定取消对{{ appoint_longterm.appoint.Rtitle }}的长期预约?所有未开始的预约都将失效!')">
                                                                         <input type="hidden" name="type" value="longterm"/>
                                                                         <button type="submit"
-                                                                                class="btn btn-sm bg-danger-light ml-3"
+                                                                                class="btn btn-sm bg-danger-light mt-3"
                                                                                 style="width: 6rem;"
                                                                                 name="cancel_id"
                                                                                 value="{{  appoint_longterm.longterm_id }}">
