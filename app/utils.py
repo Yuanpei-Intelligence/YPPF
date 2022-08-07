@@ -249,6 +249,8 @@ def get_sidebar_and_navbar(user, navbar_name="", title_name="", bar_display=None
         bar_display["profile_name"] = "小组主页"
         bar_display["profile_url"] = "/orginfo/"
         bar_display["is_course"] = me.otype.otype_name == COURSE_TYPENAME
+        # 组织也可以预约
+        bar_display["underground_url"] = UNDERGROUND_URL
 
     bar_display["navbar_name"] = navbar_name
     # title_name默认与navbar_name相同

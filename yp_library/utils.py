@@ -12,6 +12,8 @@ from django.db.models import Q, QuerySet
 from django.http import QueryDict
 
 from app.utils import check_user_type
+from app.models import Activity
+from app.constants import get_setting
 
 
 def get_readers_by_user(user: User) -> QuerySet:
@@ -91,7 +93,7 @@ def get_query_dict(post_dict: QueryDict) -> dict:
     # search_books函数要求输入为一个词典，其条目对应"id", "identity_code", "title", "author", "publisher"和"returned"的query
     # 这里没有id的query，故query为空串
     # 此外，还提供“全关键词检索”，具体见search_books
-    query_dict = {k: post_dict[k]
+    query_dict = {k: post_dict.get(k, "") # 这四个可有可无而keywords和returned必须有，这样可以兼容welcome页面的搜索
                   for k in ["identity_code", "title", "author", "publisher"]}
     query_dict["id"] = ""
 
@@ -144,9 +146,9 @@ def get_my_records(reader_id: str, returned: Optional[bool] = None,
     if returned:
         for record in records:
             if  record['return_time'] > record['due_time']:
-                record['type'] = False          # 逾期记录
+                record['type'] = 'overtime'     # 逾期记录
             else:
-                record['type'] = True           # 正常记录
+                record['type'] = 'normal'       # 正常记录
     else:
         now_time = datetime.now()
         for record in records:
@@ -179,4 +181,65 @@ def get_lendinfo_by_readers(readers: QuerySet) -> Tuple[List[dict], List[dict]]:
         unreturned_records_list.extend(get_my_records(reader_id['id'], returned=False))
         returned_records_list.extend(get_my_records(reader_id['id'], returned=True))
     
+    unreturned_records_list.sort(key=lambda r: r['due_time'])                 # 进行中记录按照应归还时间排序
+    returned_records_list.sort(key=lambda r: r['return_time'], reverse=True)  # 已完成记录按照归还时间逆序排列
+    
     return unreturned_records_list, returned_records_list
+
+
+def get_library_activity(num: int) -> QuerySet:
+    """
+    获取书房欢迎页面展示的活动列表
+    目前筛选活动的逻辑是：书房组织的、状态为报名中/等待中/进行中、活动开始时间越晚越优先
+
+    :param num: 最多展示多少活动
+    :type num: int
+    :return: 展示的活动
+    :rtype: QuerySet
+    """
+    all_valid_library_activities = Activity.objects.activated().filter(
+        organization_id__oname=get_setting("library/organization_name"),
+        status__in=[
+            Activity.Status.APPLYING,
+            Activity.Status.WAITING,
+            Activity.Status.PROGRESSING
+        ]
+    ).order_by('-start')
+    display_activities = all_valid_library_activities[:num].values()
+    return display_activities
+
+
+def get_recommended_or_newest_books(num: int, newest: bool = False) -> QuerySet:
+    """
+    获取推荐/新入馆书目（以id为入馆顺序）
+
+    :param num: 最多展示多少本书
+    :type num: int
+    :param newest: 是否获取新入馆书目, defaults to False
+    :type newest: bool, optional
+    :return: 包含推荐书目/新入馆书目的QuerySet
+    :rtype: QuerySet
+    """
+    book_counts = Book.objects.count()
+    select_num = min(num, book_counts)
+    if newest: # 最新到馆
+        all_books_sorted = Book.objects.all().order_by('-id')
+        return all_books_sorted[:select_num].values()
+    else: # 随机推荐
+        recommended_books = Book.objects.order_by('?')[:num].values()
+        # 这种获取随机记录的方法不适合于数据量极大的情况，见
+        # https://stackoverflow.com/a/6405601
+        # https://blog.csdn.net/CuGBabyBeaR/article/details/17141103
+        return recommended_books
+
+
+def get_opening_time() -> Tuple[str, str]:
+    """
+    从setting读取开馆、闭馆时间（直接用字符串格式）
+
+    :return: 开馆、闭馆时间
+    :rtype: Tuple[str, str]
+    """
+    start_time = get_setting("library/open_time_start")
+    end_time = get_setting("library/open_time_end")
+    return start_time, end_time

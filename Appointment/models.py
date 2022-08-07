@@ -5,10 +5,29 @@ from django.db.models.signals import pre_delete
 from django.db.models import QuerySet
 from django.dispatch import receiver
 from django.db.models import Q
+from django.db import transaction
 
-from datetime import datetime, time
+from datetime import datetime, time, timedelta
+
+from Appointment import *
+
+
+__all__ = [
+    'College_Announcement',
+    'User',
+    'Participant',
+    'Room',
+    'Appoint',
+    'LongTermAppoint',
+    'CardCheckInfo',
+]
+
 
 class College_Announcement(models.Model):
+    class Meta:
+        verbose_name = "全院公告"
+        verbose_name_plural = verbose_name
+
     class Show_Status(models.IntegerChoices):
         Yes = 1
         No = 0
@@ -18,12 +37,13 @@ class College_Announcement(models.Model):
                                     default=0)
     announcement = models.CharField('通知内容', max_length=256, blank=True)
 
-    class Meta:
-        verbose_name = "全院公告"
-        verbose_name_plural = verbose_name
-
 
 class Participant(models.Model):
+    class Meta:
+        verbose_name = '学生'
+        verbose_name_plural = verbose_name
+        ordering = ['Sid']
+
     Sid: User = models.OneToOneField(
         User,
         related_name='+',
@@ -42,14 +62,13 @@ class Participant(models.Model):
     # 用户许可的字段，需要许可的房间刷卡时检查是否通过了许可
     agree_time = models.DateField('上次许可时间', null=True, blank=True)
 
+    def get_id(self) -> str:
+        '''获取id(学号/组织账号)'''
+        return self.Sid_id
+
     def __str__(self):
         '''仅用于后台呈现和搜索方便，任何时候不应使用'''
         return self.name + ('' if self.pinyin is None else '_' + self.pinyin)
-
-    class Meta:
-        verbose_name = '学生'
-        verbose_name_plural = verbose_name
-        ordering = ['Sid']
 
 
 class RoomManager(models.Manager):
@@ -73,6 +92,11 @@ class RoomManager(models.Manager):
 
 
 class Room(models.Model):
+    class Meta:
+        verbose_name = '房间'
+        verbose_name_plural = verbose_name
+        ordering = ['Rid']
+
     # 房间编号我不确定是否需要。如果地下室有门牌的话（例如B101）保留房间编号比较好
     # 如果删除Rid记得把Rtitle设置成主键
     Rid = models.CharField('房间编号', max_length=8, primary_key=True)
@@ -90,7 +114,7 @@ class Room(models.Model):
         UNLIMITED = 1, '无需预约'  # 允许使用
         FORBIDDEN = 2, '禁止使用'  # 禁止使用
 
-    Rstatus: Status = models.SmallIntegerField('房间状态',
+    Rstatus: 'int|Status' = models.SmallIntegerField('房间状态',
                                        choices=Status.choices,
                                        default=0)
 
@@ -101,11 +125,6 @@ class Room(models.Model):
 
     objects: RoomManager = RoomManager()
 
-    class Meta:
-        verbose_name = '房间'
-        verbose_name_plural = verbose_name
-        ordering = ['Rid']
-
     def __str__(self):
         return self.Rid + ' ' + self.Rtitle
 
@@ -115,15 +134,16 @@ class AppointManager(models.Manager):
         return self.exclude(Astatus=Appoint.Status.CANCELED)
 
     def displayable(self):
-        """
-        在admin_index页面使用，在”普通预约“和”查看下周“中，只有非长期预约和审核通过的长期预约能够显示
-        """
-        return self.filter(
-            Q(longtermappoint__isnull=True)
-            | Q(longtermappoint__status=LongTermAppoint.Status.APPROVED))
+        '''个人主页页面，在"普通预约"和"查看下周"中会显示的预约'''
+        return self.exclude(Atype=Appoint.Type.LONGTERM, Astatus=Appoint.Status.CANCELED)
 
 
 class Appoint(models.Model):
+    class Meta:
+        verbose_name = '预约信息'
+        verbose_name_plural = verbose_name
+        ordering = ['Aid']
+
     Aid = models.AutoField('预约编号', primary_key=True)
     # 申请时间为插入数据库的时间
     Atime: datetime = models.DateTimeField('申请时间', auto_now_add=True)
@@ -140,7 +160,7 @@ class Appoint(models.Model):
         FAILED = 0  # 预约在此分钟的检查尚未通过
         PASSED = 1  # 预约在特定分钟内的检查是通过的
         UNSAVED = 2 # 预约在此分钟内尚未记录检测状态
-    Acheck_status: CheckStatus = models.SmallIntegerField(
+    Acheck_status: 'int|CheckStatus' = models.SmallIntegerField(
         '检测状态', choices=CheckStatus.choices, default=2)
 
     # 这里Room使用外键的话只能设置DO_NOTHING，否则删除房间就会丢失预约信息
@@ -157,19 +177,22 @@ class Appoint(models.Model):
         Participant, on_delete=models.CASCADE, verbose_name='Appointer', null=True)
 
     class Status(models.IntegerChoices):
-        CANCELED = 0  # 已取消
-        APPOINTED = 1  # 预约中
-        PROCESSING = 2  # 进行中
-        WAITING = 3  # 等待确认
-        CONFIRMED = 4  # 已确认
-        VIOLATED = 5  # 违约
-        JUDGED = 6  # 违约申诉成功
+        CANCELED = 0, '已取消'
+        APPOINTED = 1, '已预约'
+        PROCESSING = 2, '进行中'
+        WAITING = 3, '等待确认'
+        CONFIRMED = 4, '已确认'
+        VIOLATED = 5, '违约'
+        JUDGED = 6, '申诉成功'
 
-    Astatus: Status = models.IntegerField('预约状态',
-                                  choices=Status.choices,
-                                  default=1)
+        @classmethod
+        def Terminals(cls) -> 'list[Appoint.Status]':
+            return [cls.CANCELED, cls.CONFIRMED, cls.VIOLATED, cls.JUDGED]
 
-    # modified by wxy
+    Astatus: 'int|Status' = models.IntegerField('预约状态',
+                                                choices=Status.choices,
+                                                default=1)
+
     Aneed_num = models.IntegerField('检查人数要求')
     Acamera_check_num = models.IntegerField('检查次数', default=0)
     Acamera_ok_num = models.IntegerField('人数合格次数', default=0)
@@ -184,8 +207,6 @@ class Appoint(models.Model):
                                           choices=Reason.choices,
                                           default=0)
 
-    # end
-
     class Type(models.IntegerChoices):
         '''预约类型'''
         NORMAL = 0, '常规预约'
@@ -193,8 +214,8 @@ class Appoint(models.Model):
         TEMPORARY = 2, '临时预约'
         LONGTERM = 3, '长期预约'
 
-    Atype: Type = models.SmallIntegerField(
-        '预约类型', choices=Type.choices, default=Type.NORMAL.value)
+    Atype: 'int|Type' = models.SmallIntegerField(
+        '预约类型', choices=Type.choices, default=Type.NORMAL)
 
     # TODO: remove temp_flag
     # --- add by lhw --- #
@@ -203,85 +224,58 @@ class Appoint(models.Model):
 
     objects: AppointManager = AppointManager()
 
+    def add_time(self, delta: timedelta):
+        '''方便同时调整预约时间的函数，修改自身，不调用save保存'''
+        self.Astart += delta
+        self.Afinish += delta
+        return self
+
     def cancel(self):
         self.Astatus = Appoint.Status.CANCELED
         self.save()
 
-    class Meta:
-        verbose_name = '预约信息'
-        verbose_name_plural = verbose_name
-        ordering = ['Aid']
+    def get_major_id(self) -> str:
+        '''获取预约发起者id'''
+        return self.major_student.Sid_id
 
     def get_status(self):
-        status = ""
-        if self.Astatus == Appoint.Status.APPOINTED:
-            status = "已预约"
-        elif self.Astatus == Appoint.Status.CANCELED:
-            status = "已取消"
-        elif self.Astatus == Appoint.Status.PROCESSING:
-            status = "进行中"
-        elif self.Astatus == Appoint.Status.WAITING:
-            status = "等待确认"
-        elif self.Astatus == Appoint.Status.CONFIRMED:
-            status = "已确认"
-        elif self.Astatus == Appoint.Status.VIOLATED:
+        if self.Astatus == Appoint.Status.VIOLATED:
             if self.Areason == Appoint.Reason.R_NOVIOLATED:
-                status = "未知错误,请联系管理员 "
+                status = "未知错误，请联系管理员"
             elif self.Areason == Appoint.Reason.R_LATE:
                 status = "使用迟到"
             elif self.Areason == Appoint.Reason.R_TOOLITTLE:
                 status = "人数不足"
             elif self.Areason == Appoint.Reason.R_ELSE:
                 status = "管理员操作"
-        elif self.Astatus == Appoint.Status.JUDGED:
-            status = "申诉成功"
+        else:
+            status = self.get_Astatus_display()
         return status
 
     def toJson(self):
         data = {
-            'Aid':
-            self.Aid,  # 预约编号
-            'Atime':
-            self.Atime.strftime("%Y-%m-%dT%H:%M:%S"),  # 申请提交时间
-            'Astart':
-            self.Astart.strftime("%Y-%m-%dT%H:%M:%S"),  # 开始使用时间
-            'Afinish':
-            self.Afinish.strftime("%Y-%m-%dT%H:%M:%S"),  # 结束使用时间
-            'Ausage':
-            self.Ausage,  # 房间用途
-            'Aannouncement':
-            self.Aannouncement,  # 预约通知
-            'Astatus':
-            self.get_Astatus_display(),  # 预约状态
-            'Areason':
-            self.Areason,
-            'Rid':
-            self.Room.Rid,  # 房间编号
-            'Rtitle':
-            self.Room.Rtitle,  # 房间名称
-            'yp_num':
-            self.Ayp_num,  # 院内人数
-            'non_yp_num':
-            self.Anon_yp_num,  # 外院人数
-            'major_student':
-            {
+            'Aid': self.Aid,  # 预约编号
+            'Atime': self.Atime.strftime("%Y-%m-%dT%H:%M:%S"),      # 申请提交时间
+            'Astart': self.Astart.strftime("%Y-%m-%dT%H:%M:%S"),    # 开始使用时间
+            'Afinish': self.Afinish.strftime("%Y-%m-%dT%H:%M:%S"),  # 结束使用时间
+            'Ausage': self.Ausage,  # 房间用途
+            'Aannouncement': self.Aannouncement,  # 预约通知
+            'Atype': self.get_Atype_display(),      # 预约类型
+            'Astatus': self.get_Astatus_display(),  # 预约状态
+            'Areason': self.Areason,
+            'Rid': self.Room.Rid,  # 房间编号
+            'Rtitle': self.Room.Rtitle,  # 房间名称
+            'yp_num': self.Ayp_num,  # 院内人数
+            'non_yp_num': self.Anon_yp_num,  # 外院人数
+            'major_student': {
                 "Sname": self.major_student.name,  # 发起预约人
-                "Sid": self.major_student.Sid_id,
+                "Sid": self.get_major_id(),
             },
-            'students': [  # 参与人
-                {
+            'students': [{
                     'Sname': student.name,  # 参与人姓名
-                    'Sid': student.Sid_id,
-                } for student in self.students.all()
-                # if student.Sid != self.major_student.Sid
-            ]
+                    'Sid': student.get_id(),
+            } for student in self.students.all()],
         }
-        try:
-            data['Rid'] = self.Room.Rid  # 房间编号
-            data['Rtitle'] = self.Room.Rtitle  # 房间名称
-        except Exception:
-            data['Rid'] = 'deleted'  # 房间编号
-            data['Rtitle'] = '房间已删除'  # 房间名称
         return data
 
 
@@ -318,42 +312,124 @@ class CardCheckInfo(models.Model):
         verbose_name_plural = verbose_name
 
 
+class LongTermAppointManager(models.Manager):
+    def activated(self, this_semester=True) -> 'QuerySet[LongTermAppoint]':
+        result = self.filter(
+            status__in=[
+                LongTermAppoint.Status.APPROVED,
+                LongTermAppoint.Status.REVIEWING,
+        ])
+        if this_semester:
+            result = result.filter(
+                appoint__Astart__gt=GLOBAL_INFO.semester_start,
+            )
+        return result
+
+
 class LongTermAppoint(models.Model):
     """
     记录长期预约所需要的全部信息
     """
-    appoint = models.OneToOneField(Appoint,
-                                   on_delete=models.CASCADE,
-                                   verbose_name='单次预约信息')
-
-    org = models.ForeignKey(Participant,
-                            on_delete=models.CASCADE,
-                            verbose_name='发起预约组织')
-
-    times = models.SmallIntegerField('预约次数', default=1)
-    interval = models.SmallIntegerField('间隔周数', default=1)
-
-    class Status(models.IntegerChoices):
-        CANCELED = (0, '已取消')
-        REVIEWING = (1, '审核中')
-        APPROVED = (2, '已通过')
-        REJECTED = (3, '未通过')
-
-    status = models.SmallIntegerField("申请状态",
-                                      choices=Status.choices,
-                                      default=Status.REVIEWING)
-
     class Meta:
         verbose_name = '长期预约信息'
         verbose_name_plural = verbose_name
 
-    def create():
-        # TODO: 创建长期预约的全部子预约
-        raise NotImplementedError
+    appoint: Appoint = models.OneToOneField(Appoint,
+                                            on_delete=models.CASCADE,
+                                            verbose_name='单次预约信息')
 
-    def cancel():
-        # TODO: 取消长期预约以及它的全部子预约
-        raise NotImplementedError
+    applicant: Participant = models.ForeignKey(Participant,
+                                               on_delete=models.CASCADE,
+                                               verbose_name='申请者')
+
+    times = models.SmallIntegerField('预约次数', default=1)
+    interval = models.SmallIntegerField('间隔周数', default=1)
+    review_comment = models.TextField('评论意见', default='', blank=True)
+
+    class Status(models.IntegerChoices):
+        REVIEWING = (0, '审核中')
+        CANCELED = (1, '已取消')
+        APPROVED = (2, '已通过')
+        REJECTED = (3, '未通过')
+
+    status: 'int|Status' = models.SmallIntegerField('申请状态',
+                                                    choices=Status.choices,
+                                                    default=Status.REVIEWING)
+
+    objects: LongTermAppointManager = LongTermAppointManager()
+
+    def create(self):
+        '''原子化创建长期预约的全部后续子预约'''
+        from Appointment.utils.scheduler_func import add_longterm_appoint
+        conflict_week, appoints = add_longterm_appoint(
+            appoint=self.appoint.pk,
+            times=self.times - 1,
+            interval=self.interval,
+        )
+        return conflict_week, appoints
+
+    def cancel(self, all=False, delete=False):
+        '''
+        原子化取消长期预约以及它的子预约，不应出错
+
+        :param all: 取消全部，否则只取消未开始的预约, defaults to False
+        :type all: bool, optional
+        :param delete: 以数据库删除代替取消，长期预约也会级联删除, defaults to False
+        :type delete: bool, optional
+        :return: 取消的子预约数量
+        :rtype: int
+        '''
+        from Appointment.utils.scheduler_func import cancel_scheduler
+        with transaction.atomic():
+            # 取消子预约
+            appoints = self.sub_appoints(lock=True)
+            if not all:
+                appoints = appoints.filter(Astatus=Appoint.Status.APPOINTED)
+            if delete:
+                return appoints.delete()[0]
+            count = len(appoints)
+            for appoint in appoints:
+                appoint.cancel()
+                cancel_scheduler(appoint, 'Problem')
+            self.status = LongTermAppoint.Status.CANCELED
+            self.save()
+            return count
+
+    def renew(self, times: int):
+        '''原子化添加新的后续子预约，不应出错'''
+        from Appointment.utils.scheduler_func import add_longterm_appoint
+        times = max(0, times)
+        with transaction.atomic():
+            conflict_week, appoints = add_longterm_appoint(
+                appoint=self.appoint.pk,
+                times=times,
+                interval=self.interval,
+                week_offset=self.times * self.interval,
+            )
+            if conflict_week is not None:
+                self.times += times
+                self.save()
+            return conflict_week, appoints
+
+    def sub_appoints(self, lock=False) -> QuerySet[Appoint]:
+        '''
+        获取时间升序的子预约，只有类型为长期预约的被视为子预约，不应出错
+
+        :param lock: 上锁，调用者需要自行开启事务, defaults to False
+        :type lock: bool, optional
+        :return: 时间升序的子预约
+        :rtype: QuerySet[Appoint]
+        '''
+        from Appointment.utils.utils import get_conflict_appoints
+        conflict_appoints = get_conflict_appoints(
+            self.appoint, times=self.times, interval=self.interval, lock=lock)
+        sub_appoints = conflict_appoints.filter(
+            major_student=self.appoint.major_student, Atype=Appoint.Type.LONGTERM)
+        return sub_appoints.order_by('Astart', 'Afinish')
+
+    def get_applicant_id(self) -> str:
+        '''获取申请者id'''
+        return self.applicant.get_id()
 
 
 from Appointment.utils.scheduler_func import cancel_scheduler
