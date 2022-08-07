@@ -1318,7 +1318,7 @@ def review(request: HttpRequest):
 
     if request.method == "POST":
         try:
-            operation =request.POST["operation"]
+            operation = request.POST["operation"]
             assert operation in ["approve", "reject"]
         except:
             return redirect(message_url(
@@ -1341,7 +1341,7 @@ def review(request: HttpRequest):
         elif operation == "reject":
             try:
                 with transaction.atomic():
-                    reason = request.POST.get("reason","")
+                    reason = request.POST.get("reason", "")
                     longterm_appoint.cancel()
                     longterm_appoint.status = LongTermAppoint.Status.REJECTED
                     longterm_appoint.review_comment = reason
@@ -1353,7 +1353,6 @@ def review(request: HttpRequest):
                 wrong(f"对于该条长期预约的拒绝操作失败!", render_context)
 
     # display的部分
-    longterm_appoint: LongTermAppoint = LongTermAppoint.objects.get(pk=Lid)
     last_date = longterm_appoint.appoint.Astart + timedelta(
         weeks=longterm_appoint.interval*(longterm_appoint.times - 1))
     render_context.update(longterm_appoint=longterm_appoint, last_date=last_date)
