@@ -9,10 +9,8 @@
 - 仅供后台访问的页面，URL可以适当简化
 - 同一类页面风格相同
 """
-from django.urls import path, re_path
+from django.urls import path
 from django.conf.urls.static import static
-from app.data_import import as_load_view as load_view
-from app import data_import
 from app import (
     views,
     org_views,
@@ -103,21 +101,6 @@ urlpatterns = [
     path("feedback/", feedback_views.feedbackWelcome, name="feadbackWelcome"),
     path("modifyFeedback/", feedback_views.modifyFeedback, name="modifyFeedback"),
     path("viewFeedback/<str:fid>", feedback_views.viewFeedback, name="viewFeedback"),
-] + [
-    # 数据导入
-    # 导入视图不需要名称
-    path("load/stu/", load_view(data_import.load_stu, 'stuinf.csv')),
-    path("load/freshman/", load_view(data_import.load_freshman, 'freshman.csv')),
-    path("load/org/", data_import.load_org_view),
-    path("load/orgtag/", load_view(data_import.load_org_tag, 'orgtag.csv')),
-    path("load/oldorgtags/", load_view(data_import.load_old_org_tags, 'oldorgtags.csv')),
-    path("load/feedback/", data_import.load_feedback_view),
-    # 服务器弃用
-    # path("load/transfer/", load_view(data_import.load_transfer, 'transferinfo.csv')),
-    # path("load/activity/", load_view(data_import.load_activity, 'activityinfo.csv'),
-    # path("load/notification/", load_view(data_import.load_notification, 'notificationinfo.csv')),
-    path("load/help/", load_view(data_import.load_help, 'help.csv')),
-    path("load/courserecord/", load_view(data_import.load_course_record, 'courtime.xlsx')),
 ] + [
     # 埋点
     path('eventTrackingFunc/', views.eventTrackingFunc, name='eventTracking'),

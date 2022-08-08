@@ -6,7 +6,6 @@ import pandas as pd
 from tqdm import tqdm
 
 from django.contrib.auth.models import User
-from django.shortcuts import render
 from django.db import transaction
 
 from boottest import local_dict
@@ -43,9 +42,6 @@ __all__ = [
     'load_freshman', 'load_help', 'load_course_record', 
     'load_org_tag', 'load_old_org_tags', 'load_feedback_type', 
     'load_feedback', 'load_feedback_comments',
-    # views
-    'as_load_view',
-    'load_org_view', 'load_feedback_view',
 ]
 
 
@@ -140,26 +136,6 @@ def try_output(msg: str, output_func: Callable=None, html=True):
         return None
     else:
         return msg        # output_func为None，返回msg的内容
-
-
-def as_load_view(load_func: Callable, filepath: str, base_dir='test_data/'):
-    '''
-    将导入函数作为视图，检查权限
-
-    :param load_func: 导入函数，遵循统一接口
-    :type load_func: Callable[Tuple[str, Callable, bool], Optional[str]]
-    :param filepath: 加载的文件路径
-    :type filepath: str
-    :param base_dir: 测试目录, defaults to 'test_data/'
-    :type base_dir: str, optional
-    '''
-    def _load_view(request):
-        if request.user.is_superuser:
-            message = load_func(base_dir + filepath, html=True)
-        else:
-            message = "请先以超级账户登录后台后再操作！"
-        return render(request, "debugging.html", dict(message=message))
-    return _load_view
 
 
 def load_file(filepath: str) -> 'pd.DataFrame':
@@ -990,40 +966,3 @@ def load_feedback_comments(filepath: str, output_func: Callable=None, html=False
                 ) + tuple(f'{fb}：{err}' for fb, err in error_dict.items()
                 ))
     return try_output(msg, output_func, html)
-
-
-# views
-def load_org_view(request):
-    if request.user.is_superuser:
-        load_type = request.GET.get("loadtype", None)
-        message = "加载失败！"
-        if load_type is None:
-            message = "没有传入loadtype参数:[org或otype]"
-        elif load_type == "otype":
-            message = load_orgtype("test_data/orgtypeinf.csv")
-        elif load_type == "org":
-            message = "导入小组信息成功！" + load_org("test_data/orginf.csv")
-        else:
-            message = "没有得到loadtype参数:[org或otype]"
-    else:
-        message = "请先以超级账户登录后台后再操作！"
-    return render(request, "debugging.html", locals())
-
-
-def load_feedback_view(request):
-    if request.user.is_superuser:
-        load_type = request.GET.get("loadtype", None)
-        message = "加载失败！"
-        if load_type is None:
-            message = "没有传入loadtype参数:[detail,type或comment]"
-        elif load_type == "type":
-            message = load_feedback_type("feedbacktype.csv")
-        elif load_type == "detail":
-            message = load_feedback("feedbackinf.csv")
-        elif load_type == "comment":
-            message = load_feedback_comments("feedbackcomments.csv")
-        else:
-            message = "没有得到loadtype参数:[detail,type或comment]"
-    else:
-        message = "请先以超级账户登录后台后再操作！"
-    return render(request, "debugging.html", locals())
