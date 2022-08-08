@@ -5,7 +5,6 @@ from pandas import DataFrame
 
 from data_analysis.load_funcs import *
 from data_analysis.dump_funcs import *
-from app.data_import import *
 
 load_map = {}
 dump_map = {}
