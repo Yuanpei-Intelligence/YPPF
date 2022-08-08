@@ -29,11 +29,11 @@ def get_readers_by_user(user: User) -> QuerySet:
     """
     valid, user_type, _ = check_user_type(user)
     if user_type != "Person":  # 只允许个人账户登录
-        raise AssertionError('请使用个人账户登录!')
+        raise AssertionError('您目前使用非个人账号登录，如要查询借阅记录，请使用个人账号。')
     readers = Reader.objects.filter(
         student_id=user.username).values()  # 获取与当前user的学号对应的所有readers
     if len(readers) == 0:
-        raise AssertionError('您的学号没有关联任何书房账号!')
+        raise AssertionError('您的学号没有关联任何书房账号，如有借书需要，请前往书房开通账号。')
     return readers
 
 
@@ -72,6 +72,8 @@ def search_books(query_dict: dict) -> QuerySet:
                 kw_query |= Q(author__contains=query_dict["keywords"][0])
             elif kw_type == "kw_publisher":
                 kw_query |= Q(publisher__contains=query_dict["keywords"][0])
+            elif kw_type == "kw_identity_code":
+                kw_query |= Q(identity_code__contains=query_dict["keywords"][0])
         query &= kw_query
 
     search_results = Book.objects.filter(query).values()
@@ -104,7 +106,7 @@ def get_query_dict(post_dict: QueryDict) -> dict:
 
     # 全关键词检索
     query_dict["keywords"] = [post_dict["keywords"],
-                              ["kw_title", "kw_author", "kw_publisher"]]
+                              ["kw_title", "kw_author", "kw_publisher", "kw_identity_code"]]
 
     return query_dict
 
