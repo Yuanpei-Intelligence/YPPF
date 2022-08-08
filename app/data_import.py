@@ -284,7 +284,7 @@ def load_org(filepath: str, output_func: Callable=None, html=False):
                     position.is_admin = org.otype.default_is_admin(pos)
                     if created:
                         # 书院课程以学期为单位更新
-                        position.in_semester = org.otype.default_semester()
+                        position.semester = org.otype.default_semester()
                     position.save()
                     msg += f'<br/>&emsp;&emsp;成功增加{pos_display}：{person}'
         except Exception as e:

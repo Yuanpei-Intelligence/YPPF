@@ -3,9 +3,8 @@ from typing import Callable, Optional, List
 from datetime import datetime
 from pandas import DataFrame
 
-__all__ = [
-    'register_load', 'register_dump', 'register_dump_groups',
-]
+from data_analysis.load_funcs import *
+from data_analysis.dump_funcs import *
 
 load_map = {}
 dump_map = {}
@@ -45,5 +44,16 @@ def register_dump_groups(group: str, *tasks: str):
     """
     dump_groups.extend(tasks)
 
-from data_analysis import load_funcs
-from data_analysis import dump_funcs
+
+register_dump('page', page_data)
+register_dump('module', module_data)
+register_dump('appointment', appointment_data)
+register_dump('org_activity', org_activity_data)
+register_dump('org_position', org_position_data)
+register_dump('participants', participants_data)
+register_dump('feedback', feedback_data)
+
+register_dump_groups('tracking', ['page', 'module'])
+register_dump_groups('activity', ['org_activity', 'participants'])
+register_dump_groups('underground', ['appointment'])
+register_dump_groups('org', ['org_activity', 'org_position', 'participants', 'feedback'])
