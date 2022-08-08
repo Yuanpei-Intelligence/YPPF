@@ -2,7 +2,172 @@
 
 {% load static %}
 
+{% block add_css_file %}
+<style type="text/css">
+.text-end {
+  text-align: right !important;
+}
+
+#search-tab :hover {
+  cursor: pointer;
+}
+.bg {
+  width: 100%;
+  height: 100%;
+  position: relative;
+  /* z-index: -2; */
+}
+.bg::after {
+  content: "";
+  width: 100%;
+  height: 100%;
+  position: absolute;
+  left: 0;
+  top: 0;
+  background: inherit;
+  background-image: url(../../static/assets/img/librarypics/background2.jpg);
+  /* filter: blur(2px); */
+  opacity: 0.7;
+  /* z-index: -1; */
+  pointer-events: none;
+}
+.bg *{
+  z-index: 2;
+  pointer-events: auto;
+  opacity: 1;
+}
+.history-search {
+  list-style: none!important;
+}
+</style>
+<style>
+  select[readonly] {
+    background: #eee;
+    /*Simular campo inativo - Sugestão @GabrielRodrigues*/
+    pointer-events: none;
+    touch-action: none;
+  }
+</style>
+<style class="text/css">
+  /* TODO Add animation */
+  [data-toggle="collapse"] .fa.fa-solid:before {
+    font-family: 'Font Awesome 5 Free';
+    content: "\f107";
+    float: right;
+    font-size: 1.2rem;
+  }
+
+  [data-toggle="collapse"].collapsed .fa.fa-solid:before {
+    content: "\f106";
+  }
+</style>
+
+{% endblock %}
 
 {% block mainpage %}
+<!--  BEGIN CONTENT AREA  -->
+<div id="content" class="main-content">
+  <div class="container">
+    {% if html_display.warn_code == 1 %}
+    <div class="alert alert-warning  text-center">{{ html_display.warn_message }}</div>
+    {% elif html_display.warn_code == 2 %}
+    <div class="alert alert-success  text-center">{{ html_display.warn_message }}</div>
+    {% endif %}
+    <div class="row layout-top-spacing">
+      {% if bar_display.help_paragraphs %}
+      {% include 'help.html' %}
+      {% endif %}
+      <div class="col-12 layout-top-spacing">
+        <div class="bio layout-spacing" >
+          <div class="widget-content widget-content-area bg" style="
+                    background-size: 100%;
+                    height: calc(100vw * 0.4);
+                    min-height: 420px;
+                    ">
+            <div class="d-flex justify-content-end">
+              <!-- <img src="../../static/assets/img/librarypics/logo1.png" alt="" 
+                style="width: 5%;">    -->
+              <h5 style="font-size: 16px; text-align: right; z-index: inherit;">
+                <i class="fa fa-solid fa-play"></i>
+                今日开馆: {{ opening_time_start }} - 
+                  {{ opening_time_end }}
+              </h5>
+            </div>
+            <div class="row ml-0 mr-0" style="background-color: aliceblue;
+              opacity: 0.9; position: relative; top: 15%; left: 10%; width: 80%;">
+              <div class="col-lg-4 col-md-5 col-sm-12 order-2 order-md-1 pt-1 pb-1" data-toggle="collapse" href="#collapseExample" role="button"
+                aria-expanded="false" aria-controls="collapseExample" id="search-tab">
+                <div class="d-flex justify-content-between">
+                  <p style="font-size: 1rem;" class="mb-1 mt-1">
+                    <i class="fa fa-search"></i>
+                    馆藏查询
+                  </p>
+                  <p style="margin-top: 5px;" class="mb-1">
+                    <i class="fa fa-solid"></i>
+                  </p>
+                </div>
+              </div>
+              <div class="col-lg-8 col-md-7 col-sm-12 order-sm-1 order-md-2 pt-1 pb-1" style="background-color:lightpink;">
+                <p style="font-size: 1rem;" class="mb-1 mt-1">
+                  <i class="fa fa-clock"></i>
+                  我的借阅 ......
+                </p>
+              </div>
+              <div class="col-12 collapse mb-4 pt-2 order-last collapsed form-group collapse show" id="collapseExample">
+              <form action="/search/" method="get" role="search" id="SearchBookForm">
+                  <div class="row">
+                    <div class="col-12 input-group pt-4 pb-3">
+                      <input type="text" class="form-control" id="BookName" 
+                        placeholder="搜索书名/作者/索书号/出版社" name="BookName">
+                      <div class="input-group-append">
+                        <button type="button" class="btn btn-outline-info" id="searchButton">
+                          搜索
+                        </button>
+                      </div>
+                    </div>
+                    <div class="col-12 d-flex justify-content-end">
+                      <!-- <p class="pl-2 pr-2" style="font-size: 0.9rem;">
+                        <i class="fa fa-bookmark"></i>
+                        历史搜索
+                      </p>
+                      <ul class="nav flex-grow-1 history-search" style="font-size: 0.9rem;">
+                        <li class="nav-item pt-0 pb-0 pr-2"><a class="nav-link-active" href=""> 小径分岔的花园 </a></li>
+                        <li class="nav-item pt-0 pb-0 pr-2"><a class="nav-link-active" href=""> 阿莱夫 </a></li>
+                        <li class="nav-item pt-0 pb-0 pr-2"><a class="nav-link-active" href=""> ... </a></li>
+                      </ul> -->
+                      <div class="form-check mb-2 mr-sm-2">
+                        <input class="form-check-input" type="checkbox" id="CanBorrow" name="CanBorrow">
+                        <label class="form-check-label" for="canBorrow" style="font-size: 0.9rem;">
+                          可借阅
+                        </label>
+                      </div>
+                    </div>
+                  </div>
+              </form>
+            </div>
 
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+<!--  END CONTENT AREA  -->
+{% endblock %}
+
+{% block add_js_file %}
+<script src={% static "plugins/dropify/dropify.min.js" %}></script>
+<script src={% static "assets/js/users/account-settings.js" %}></script>
+<script type="text/javascript">
+  const submit = function() {
+    const checkbox = document.getElementById("CanBorrow");
+    const input = document.getElementById("BookName"); 
+    if (checkbox.checked || input.value){
+      document.getElementById("SearchBookForm").submit();
+    }
+  }
+  document.getElementById("searchButton").onclick = submit;
+</script>
 {% endblock %}
