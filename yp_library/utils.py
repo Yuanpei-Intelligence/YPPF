@@ -33,18 +33,18 @@ def bookreturn_notification():
     在应还书时间逾期7天，将借阅信息改为“超时扣分”，扣除1信用分并发送提醒
     """
     cr_time = datetime.now
-    one_day_before = LendRecord.objects.filter(returned=False,
-                                               due_time=cr_time -
-                                               timedelta(days=1))
+    one_day_before = LendRecord.objects.filter(
+        returned=False, due_time=cr_time - timedelta(days=1)
+        )
     now_return = LendRecord.objects.filter(returned=False, due_time=cr_time)
-    five_days_after = LendRecord.objects.filter(returned=False,
-                                                due_time=cr_time +
-                                                timedelta(days=5))
-    one_week_after = LendRecord.objects.filter(returned=False,
-                                               due_time=cr_time +
-                                               timedelta(weeks=1))
+    five_days_after = LendRecord.objects.filter(
+        returned=False, due_time=cr_time + timedelta(days=5)
+        )
+    one_week_after = LendRecord.objects.filter(
+        returned=False, due_time=cr_time + timedelta(weeks=1)
+        )
     sender = Organization.filter(oname="元培书房")
-    URL = f"/lendinfo/"
+    URL = "/lendinfo/"
     typename = Notification.Type.NEEDREAD
     
     receivers = []
@@ -291,9 +291,6 @@ def get_lendinfo_by_readers(readers: QuerySet) -> Tuple[List[dict], List[dict]]:
     for reader_id in reader_ids:
         unreturned_records_list.extend(get_my_records(reader_id['id'], returned=False))
         returned_records_list.extend(get_my_records(reader_id['id'], returned=True))
-        
-    unreturned_records_list.sort(key=lambda r: r['due_time'])                 # 进行中记录按照应归还时间排序
-    returned_records_list.sort(key=lambda r: r['return_time'], reverse=True)  # 已完成记录按照归还时间逆序排列
     
     unreturned_records_list.sort(key=lambda r: r['due_time'])                 # 进行中记录按照应归还时间排序
     returned_records_list.sort(key=lambda r: r['return_time'], reverse=True)  # 已完成记录按照归还时间逆序排列
