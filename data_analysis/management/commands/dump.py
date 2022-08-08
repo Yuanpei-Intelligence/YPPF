@@ -99,10 +99,11 @@ class Command(BaseCommand):
         hash_func = (MySHA256Hasher(options['salt'] or str(os.urandom(8))).encode
                      if options['mask'] else None)
         tasks = list(dump_map.keys()) if 'all' in options['tasks'] else extend_group_label(
-            options['tasks'])
-        for label in extend_group_label(options['exclude']):
-            if label in tasks:
-                tasks.remove(label)
+            options['tasks'], dump_groups)
+        if options['exclude'] is not None:
+            for label in extend_group_label(options['exclude'], dump_groups):
+                if label in tasks:
+                    tasks.remove(label)
         filename = complete_filename(options['filename'])
         filepath = os.path.join(options['dir'], filename)
         with pd.ExcelWriter(filepath) as writer:

@@ -79,7 +79,7 @@ def appointment_data(start_time: datetime = None,
 
 
 """ 小组数据 """
-def organization_data(start_time: datetime = None,
+def org_activity_data(start_time: datetime = None,
                       end_time: datetime = None,
                       hash_func: Callable = None) -> pd.DataFrame:
     """ 导出：小组数量，每个小组办的活动的数量及参与人数。

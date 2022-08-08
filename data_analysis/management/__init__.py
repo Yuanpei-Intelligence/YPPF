@@ -5,6 +5,7 @@ from pandas import DataFrame
 
 from data_analysis.load_funcs import *
 from data_analysis.dump_funcs import *
+from app.data_import import *
 
 load_map = {}
 dump_map = {}
@@ -42,7 +43,7 @@ def register_dump(task: str, dump_func: DumpFunc,
 def register_dump_groups(group: str, *tasks: str):
     """将任务加入组中
     """
-    dump_groups.extend(tasks)
+    dump_groups[group].extend(tasks)
 
 
 register_dump('page', page_data)
@@ -52,8 +53,25 @@ register_dump('org_activity', org_activity_data)
 register_dump('org_position', org_position_data)
 register_dump('participants', participants_data)
 register_dump('feedback', feedback_data)
+register_dump('course', course_data)
 
 register_dump_groups('tracking', ['page', 'module'])
 register_dump_groups('activity', ['org_activity', 'participants'])
 register_dump_groups('underground', ['appointment'])
-register_dump_groups('org', ['org_activity', 'org_position', 'participants', 'feedback'])
+register_dump_groups('org', ['org_activity', 'participants'])
+register_dump_groups('person', ['participants', 'feedback', 'org_position', 'course'])
+
+register_load('stu', load_stu, 'stuinf.csv')
+register_load('freshman', load_freshman, 'freshman.csv')
+register_load('orgtype', load_orgtype, 'orgtypeinf.csv')
+register_load('org', load_org, 'orginf.csv')
+register_load('orgtag', load_org_tag, 'orgtag.csv')
+register_load('oldorgtags', load_old_org_tags, 'oldorgtags.csv')
+register_load('activity', load_activity, 'activityinfo.csv')
+register_load('transfer', load_transfer, 'transferinfo.csv')
+register_load('notification', load_notification, 'notificationinfo.csv')
+register_load('help', load_help, 'help.csv')
+register_load('courserecord', load_course_record, 'coursetime.xlsx')
+register_load('feedbackType', load_feedback_type, 'feedbacktype.csv')
+register_load('feedback', load_feedback, 'feedbackinf.csv')
+register_load('feedbackComments', load_feedback_comments, 'feedbackcomments.csv')
