@@ -1,31 +1,10 @@
 from datetime import datetime
-from typing import Any, Callable, List, Union
+from typing import Any, List, Union
 
 from django.db import models
 from django.db.models import QuerySet
 
 from app.models import Semester
-
-ValueList = List[List[Any]]
-
-
-def desensitize(data: ValueList, hash_func: Callable,
-                idx_list: List[int] = [0]) -> ValueList:
-    """Desensitize data with hash.
-
-    :param data: data to be desensitized
-    :type data: ValueList
-    :param hash_func: hash function
-    :type hash_func: Callable
-    :param idx_list: columns to be desensitized, defaults to [0]
-    :type idx_list: List[int], optional
-    :return: _description_
-    :rtype: ValueList
-    """
-    for line in data:
-        for idx in idx_list:
-            line[idx] = hash_func(line[idx])
-    return data
 
 
 def time_filter(

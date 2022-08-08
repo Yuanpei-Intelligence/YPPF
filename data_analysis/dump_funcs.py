@@ -3,44 +3,40 @@ from datetime import datetime
 import pandas as pd
 
 from django.db.models import (
-    Q, Sum, CharField, IntegerField, Count, Aggregate
+    Q, Sum, CharField, Count, Aggregate
 )
 
 from app.models import *
 from Appointment.models import Appoint
-from data_analysis.utils import desensitize, time_filter
+from data_analysis.utils import time_filter
 
 
-""" 埋点数据 """
-def page_data(
-        start_time: datetime = None,
-        end_time: datetime = None,
-        hash_func: Callable = None):
-    page_data = time_filter(PageLog, start_time, end_time).values_list(
-        'user__username', 'type', 'url', 'time', 'platform',
-    )
+def page_data(start_time: datetime = None,
+              end_time: datetime = None,
+              hash_func: Callable = None) -> pd.DataFrame:
+    user_page_data = pd.DataFrame(
+        time_filter(PageLog, start_time, end_time)
+            .values_list('user__username', 'type', 
+                         'url', 'time', 'platform'),
+        columns=('用户', '类型', '页面', '时间', '平台'))
     if hash_func is not None:
-        page_data = desensitize(page_data, hash_func)
-    return pd.DataFrame(page_data, columns=(
-        '用户', '类型', '页面', '时间', '平台'
-    ))
+        user_page_data['用户'].map(hash_func)
+    return user_page_data
 
 
-def module_data(
-        start_time: datetime = None,
-        end_time: datetime = None,
-        hash_func: Callable = None):
-    module_data = time_filter(ModuleLog, start_time, end_time).values_list(
-        'user__username', 'type', 'module_name', 'url', 'time', 'platform',
-    )
+def module_data(start_time: datetime = None,
+                end_time: datetime = None,
+                hash_func: Callable = None) -> pd.DataFrame:
+    user_module_data = pd.DataFrame(
+        time_filter(ModuleLog, start_time, end_time)
+            .values_list('user__username', 'type', 'module_name',
+                         'url', 'time', 'platform'),
+        columns=('用户', '类型', '模块', '页面', '时间', '平台'))
     if hash_func is not None:
-        module_data = desensitize(module_data, hash_func)
-    return pd.DataFrame(module_data, columns=(
-        '用户', '类型', '模块', '页面', '时间', '平台'
-    ))
+        user_module_data['用户'].map(hash_func)
+    return user_module_data
 
 
-""" 地下室数据 """
 def appointment_data(start_time: datetime = None,
                      end_time: datetime = None,
                      hash_func: Callable = None) -> pd.DataFrame:
@@ -78,7 +74,6 @@ def appointment_data(start_time: datetime = None,
     return appointments
 
 
-""" 小组数据 """
 def org_activity_data(start_time: datetime = None,
                       end_time: datetime = None,
                       hash_func: Callable = None) -> pd.DataFrame:
@@ -93,23 +88,21 @@ def org_activity_data(start_time: datetime = None,
     :return: 返回数据
     :rtype: pd.DataFrame
     """
-    activity_queryset = time_filter(
-        Activity, start_time,
-        end_time, start_time_field='start',
-        end_time_field='start')
     org_name_field = 'organization_id__oname'
     return pd.DataFrame(
-        activity_queryset.values_list(
-            org_name_field, 'title',
-            'current_participants', 'start', 'end'
-        ).order_by(org_name_field),
-        columns=('组织', '活动', '参与人数', '开始时间', '结束时间')
-    )
+        time_filter(Activity, start_time,
+                    end_time, start_time_field='start',
+                    end_time_field='start')
+            .values_list(
+                org_name_field, 'title',
+                'current_participants', 'start', 'end')
+            .order_by(org_name_field),
+        columns=('组织', '活动', '参与人数', '开始时间', '结束时间'))
 
 
-def org_position_data(year: int = None,
-                      semester: str = None,
-                      hash_func: Callable = None) -> pd.DataFrame:
+def person_position_data(year: int = None,
+                         semester: str = None,
+                         hash_func: Callable = None) -> pd.DataFrame:
     """导出：每个人参与了什么书院组织
 
     :param start_time: 筛选的起始学年, defaults to None
@@ -136,38 +129,39 @@ def org_position_data(year: int = None,
             )
 
     sid_field = 'person__person_id__username'  # 学号
-    position_data = (
-        time_filter(Position, year=year, semester=semester).values(sid_field)
-        .annotate(
-            count=Count('org'),
-            orgalist=GroupConcat('org__oname', separator=',')
-        )).values_list()
+    position_data = pd.DataFrame(
+        time_filter(Position, year=year, semester=semester)
+            .values(sid_field)
+            .annotate(
+                count=Count('org'),
+                org_list=GroupConcat('org__oname', separator=','))
+            .values_list(),
+        columns=('用户', '参与组织个数', '参与组织'))
     if hash_func is not None:
-        position_data = desensitize(position_data)
-    return pd.DataFrame(position_data, columns=(
-        '学号', '参与组织个数', '参与组织'
-    ))
+        position_data['用户'].map(hash_func)
+    return position_data
 
 
-def participants_data(year: int = None,
-                      semester: str = None,
-                      hash_func: Callable = None) -> pd.DataFrame:
+def person_activity_data(year: int = None,
+                         semester: str = None,
+                         hash_func: Callable = None) -> pd.DataFrame:
     activity_queryset = time_filter(Activity, year=year, semester=semester)
-    return pd.DataFrame(
-        Participant.objects.filter(activity_id__in=activity_queryset).values_list(
-                'activity_id__title',
+    participants_data = pd.DataFrame(
+        Participant.objects.filter(activity_id__in=activity_queryset)
+            .values_list(
+                'person_id__person_id',
                 'activity_id__organization_id__oname',
-                'person_id__person_id'
-            ).order_by(
-                'activity_id__organization_id__oname',
-                'activity_id__title'),
-        columns=('活动', '组织', '参与人'))
+                'activity_id__title')
+            .order_by('person_id__person_id'),
+        columns=('用户', '组织', '活动'))
+    if hash_func is not None:
+        participants_data['用户'].map(hash_func)
+    return participants_data
 
 
-""" 课程数据 """
-def course_data(year: int = None,
-                semester: str = None,
-                hash_func: Callable = None) -> pd.DataFrame:
+def person_course_data(year: int = None,
+                       semester: str = None,
+                       hash_func: Callable = None) -> pd.DataFrame:
     """
     获取书院课程的所有数据，返回一个指定学期与年份的DataFrame。
     预约信息包含：姓名、 门数、 次数、 学时。
@@ -183,28 +177,26 @@ def course_data(year: int = None,
     :return: 记录书院课程数据的DataFrame
     :rtype: pd.DataFrame
     """
-    course_records = time_filter(CourseRecord, year=year, semester=semester)
-    person_course_data = course_records.values_list('person').annotate(
-        course_num=Count('id'),
-        record_times=Sum('attend_times', filter=Q(invalid=False)),
-        invalid_times=Sum('attend_times', filter=Q(invalid=True)),
-        record_hours=Sum('total_hours', filter=Q(invalid=False)),
-        invalid_hours=Sum('total_hours', filter=Q(invalid=True))
-    ).values_list('person__person_id__username', 'course_num',
-                  'record_times', 'invalid_times', 'record_hours', 'invalid_hours')
+    course_data = pd.DataFrame(
+        time_filter(CourseRecord, year=year, semester=semester)
+            .values_list('person')
+            .annotate(
+                course_num=Count('id'),
+                record_times=Sum('attend_times', filter=Q(invalid=False)),
+                invalid_times=Sum('attend_times', filter=Q(invalid=True)),
+                record_hours=Sum('total_hours', filter=Q(invalid=False)),
+                invalid_hours=Sum('total_hours', filter=Q(invalid=True)))
+            .values_list('person__person_id__username', 'course_num',
+                  'record_times', 'invalid_times', 'record_hours', 'invalid_hours'),
+        columns=('用户', '课程数量', '有效次数', '无效次数', '有效时长', '无效时长'))
     if hash_func is not None:
-        desensitize(person_course_data, hash_func)
-
-    return pd.DataFrame(person_course_data, columns=(
-        '用户', '课程数量', '有效次数', '无效次数', '有效时长', '无效时长'))
+        course_data['用户'].map(hash_func)
+    return course_data
 
 
-""" 反馈数据 """
-def feedback_data(
-    start_time: datetime = None,
-    end_time: datetime = None,
-    hash_func: Callable = None,
-) -> pd.DataFrame:
+def person_feedback_data(start_time: datetime = None,
+                         end_time: datetime = None,
+                         hash_func: Callable = None) -> pd.DataFrame:
     """
     获取反馈的所有数据，返回一个时间从start_time到end_time的DataFrame。
     反馈信息包含：提交反馈数、解决反馈数。
@@ -218,11 +210,15 @@ def feedback_data(
     :return: 记录反馈数据的DataFrame
     :rtype: pd.DataFrame
     """
-    person_feedback_data = time_filter(Feedback, start_time=start_time, end_time=end_time,
-                            start_time_field='feedback_time', end_time_field='feedback_time').values_list('person').annotate(
-                                total_num=Count('id'),
-                                solved_num=Count('id', filter=Q(solve_status=Feedback.SolveStatus.SOLVED))
-                            ).values_list('person__person_id__username', 'total_num', 'solved_num')
+    feedback_data = pd.DataFrame(
+        time_filter(Feedback, start_time=start_time, end_time=end_time,
+                    start_time_field='feedback_time', end_time_field='feedback_time')
+            .values_list('person')
+            .annotate(
+                total_num=Count('id'),
+                solved_num=Count('id', filter=Q(solve_status=Feedback.SolveStatus.SOLVED)))
+            .values_list('person__person_id__username', 'total_num', 'solved_num'),
+        columns=('用户', '提交反馈数', '已解决反馈数'))
     if hash_func is not None:
-        desensitize(person_feedback_data, hash_func)
-    return pd.DataFrame(person_feedback_data, columns=('用户', '提交反馈数', '已解决反馈数'))
+        feedback_data['用户'].map(hash_func)
+    return feedback_data

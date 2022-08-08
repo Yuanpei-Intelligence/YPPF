@@ -40,7 +40,7 @@ def register_dump(task: str, dump_func: DumpFunc,
     dump_map[task] = dump_func, accept_params
 
 
-def register_dump_groups(group: str, *tasks: str):
+def register_dump_groups(group: str, tasks: List[str]):
     """将任务加入组中
     """
     dump_groups[group].extend(tasks)
@@ -50,16 +50,16 @@ register_dump('page', page_data)
 register_dump('module', module_data)
 register_dump('appointment', appointment_data)
 register_dump('org_activity', org_activity_data)
-register_dump('org_position', org_position_data)
-register_dump('participants', participants_data)
-register_dump('feedback', feedback_data)
-register_dump('course', course_data)
+register_dump('person_position', person_position_data, accept_params=['year', 'semester'])
+register_dump('person_activity', person_activity_data, accept_params=['year', 'semester'])
+register_dump('person_feedback', person_feedback_data)
+register_dump('person_course', person_course_data, accept_params=['year', 'semester'])
 
 register_dump_groups('tracking', ['page', 'module'])
-register_dump_groups('activity', ['org_activity', 'participants'])
+register_dump_groups('activity', ['org_activity', 'person_activity'])
 register_dump_groups('underground', ['appointment'])
-register_dump_groups('org', ['org_activity', 'participants'])
-register_dump_groups('person', ['participants', 'feedback', 'org_position', 'course'])
+register_dump_groups('org', ['org_activity'])
+register_dump_groups('person', ['person_position', 'person_activity', 'person_feedback', 'person_course'])
 
 register_load('stu', load_stu, 'stuinf.csv')
 register_load('freshman', load_freshman, 'freshman.csv')
