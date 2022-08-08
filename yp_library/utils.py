@@ -72,6 +72,8 @@ def search_books(query_dict: dict) -> QuerySet:
                 kw_query |= Q(author__contains=query_dict["keywords"][0])
             elif kw_type == "kw_publisher":
                 kw_query |= Q(publisher__contains=query_dict["keywords"][0])
+            elif kw_type == "kw_identity_code":
+                kw_query |= Q(identity_code__contains=query_dict["keywords"][0])
         query &= kw_query
 
     search_results = Book.objects.filter(query).values()
@@ -104,7 +106,7 @@ def get_query_dict(post_dict: QueryDict) -> dict:
 
     # 全关键词检索
     query_dict["keywords"] = [post_dict["keywords"],
-                              ["kw_title", "kw_author", "kw_publisher"]]
+                              ["kw_title", "kw_author", "kw_publisher", "kw_identity_code"]]
 
     return query_dict
 

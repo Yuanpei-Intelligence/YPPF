@@ -32,6 +32,8 @@ class BookSearchTestCase(TestCase):
         query9 = ['', '', '', '', '', '', ['学', ["kw_title", "kw_publisher"]]]
         query10 = ['', '', '', '', '', True, ['北京大学', ["kw_title", "kw_author", "kw_publisher"]]]
         query11 = ['', '', '数学', '', '', True, ['北京大学', ["kw_title", "kw_author", "kw_publisher"]]]
+        query12 = ['', '', '', '', '', True, ['A', ["kw_title", "kw_author", "kw_publisher", "kw_identity_code"]]]
+        query13 = ['', '', '', '', '', '', ['CS', ["kw_title", "kw_author", "kw_publisher", "kw_identity_code"]]]
         keys = ["id", "identity_code", "title",
                 "author", "publisher", "returned", "keywords"]
         
@@ -57,4 +59,8 @@ class BookSearchTestCase(TestCase):
             len(search_books({k: v for (k, v) in zip(keys, query10)})), 2)
         self.assertEqual(
             len(search_books({k: v for (k, v) in zip(keys, query11)})), 1)
+        self.assertEqual(
+            len(search_books({k: v for (k, v) in zip(keys, query12)})), 3)
+        self.assertEqual(
+            len(search_books({k: v for (k, v) in zip(keys, query13)})), 3)
         self.assertEqual(len(search_books({})), 6)
