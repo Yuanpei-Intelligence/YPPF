@@ -25,7 +25,7 @@ def course_data(year: int = None,
     """
     获取书院课程的所有数据，返回一个指定学期与年份的DataFrame。
     预约信息包含：姓名、 门数、 次数、 学时。
-    
+
     :param year: 记录的年份, defaults to None（对年份无限制）
     :type year: IntergerField, optional
     :param semester: 记录的学期, defaults to None（对学期无限制）
@@ -87,7 +87,7 @@ def feedback_data(
     """
     获取反馈的所有数据，返回一个时间从start_time到end_time的DataFrame。
     反馈信息包含：提交反馈数、解决反馈数。
-    
+
     :param start_time: 记录的起始时间, defaults to None（对起始时间无限制）
     :type start_time: datetime, optional
     :param end_time: 记录的终止时间, defaults to None（对终止时间无限制）
@@ -127,7 +127,7 @@ def organization_data(start_time: datetime = None,
                       end_time: datetime = None,
                       hash_func: Callable = None) -> pd.DataFrame:
     """ 导出：组织数量，每个组织办的活动的数量及参与人数。
-    
+
     :param start_time: 筛选的起始时间, defaults to None
     :type start_time: datetime, optional
     :param end_time: 筛选的终止时间, defaults to None
@@ -164,7 +164,7 @@ def org_position_data(start_time: int = None,
                        end_time: int = None,
                        hash_func: Callable = None) -> pd.DataFrame:
     """导出：每个人参与了什么书院组织
-    
+
     :param start_time: 筛选的起始学年, defaults to None
     :type start_time: int, optional
     :param end_time: 筛选的终止学年, defaults to None
