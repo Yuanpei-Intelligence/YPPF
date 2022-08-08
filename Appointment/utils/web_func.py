@@ -1,11 +1,9 @@
-import requests as requests
 from Appointment import *
-from Appointment.models import Participant, Room, Appoint, College_Announcement
+from Appointment.models import Participant, Room, Appoint
 from Appointment.utils.identity import get_participant
-from django.db.models import Q  # modified by wxy
-from datetime import datetime, timedelta, timezone, time, date
+from django.db.models import Q, QuerySet
+from datetime import datetime, timedelta, time
 import Appointment.utils.utils as utils
-from django.http import JsonResponse, HttpResponse  # Json响应
 
 
 '''
@@ -16,45 +14,41 @@ web_func.py中保留所有在views.py中使用到了和web发生交互但不直�
 '''
 
 
-def str_to_time(str_time: str):
-    """字符串转换成时间"""
-    try: return datetime.strptime(str_time,'%Y-%m-%d %H:%M:%S')
-    except: pass
-    try: return datetime.strptime(str_time,'%Y-%m-%d %H:%M')
-    except: pass
-    try: return datetime.strptime(str_time,'%Y-%m-%d %H')
-    except: pass
-    try: return datetime.strptime(str_time,'%Y-%m-%d')
-    except: pass
-    raise ValueError(str_time)
 
-
-
-# added by pht
-# 用于调整不同情况下判定标准的不同
-def get_adjusted_qualified_rate(original_qualified_rate, appoint) -> float:
+def adjust_qualifiy_rate(original_rate: float, appoint: Appoint) -> float:
     '''
-    get_adjusted_qualified_rate(original_qualified_rate : float, appoint) -> float:
-        return an adjusted qualified rate according to appoint state
+    获取用于调整不同情况下的合格率要求
+
+    :param original_rate: 原始合格率要求
+    :type original_rate: float
+    :param appoint: 判定的预约
+    :type appoint: Appoint
+    :return: 调整后判定通过的合格率
+    :rtype: float
     '''
-    min31 = timedelta(minutes=31)
-    if appoint.Room.Rid == 'B214':                  # 暂时因无法识别躺姿导致的合格率下降
-        original_qualified_rate -= 0.15             # 建议在0.1-0.2之间 前者最严 后者最宽松
-    if appoint.Room.Rid == 'B107B':                 # 107B无法监控摄像头下方的问题
-        original_qualified_rate -= 0.05             # 建议在0-0.1之间 因为主要是识别出的人数问题
-    if appoint.Room.Rid == 'B217' and appoint.Astart.hour >= 20 :   # 电影关灯导致识别不准确
-        original_qualified_rate -= 0.05             # 建议在0-0.1之间 因为主要是识别出的人数问题
-    if appoint.Afinish - appoint.Astart < min31:    # 减少时间过短时前后未准时到的影响
-        original_qualified_rate -= 0.01             # 建议在0-0.1之间 基本取消了
+    rate = original_rate
+    if appoint.Room.Rid in {'B109A', 'B207'}:   # 公共区域
+        return 0
+    elif appoint.Room.Rid.startswith('R'):      # 俄文楼
+        rate = 0
+    elif appoint.Room.Rid == 'B214':            # 暂时无法识别躺姿
+        rate -= 0.15                # 建议在0.1-0.2之间 前者最严 后者最宽松
+    elif appoint.Room.Rid == 'B107B':           # 无法监控摄像头正下方
+        rate -= 0.05                # 建议在0-0.1之间 因为主要是识别出的人数问题
+    elif appoint.Room.Rid == 'B217':
+        if appoint.Astart.hour >= 20 :          # 电影关灯导致识别不准确
+            rate -= 0.05            # 建议在0-0.1之间 因为主要是识别出的人数问题
+
+    MIN31 = timedelta(minutes=31)
+    if appoint.Atemp_flag:                      # 临时预约不检查摄像头
+        return 0
+    if appoint.Atype == Appoint.Type.LONGTERM:  # 长期预约不检查摄像头
+        return 0
+    if appoint.Afinish - appoint.Astart < MIN31:    # 短预约早退晚到影响更大
+        rate -= 0.01             # 建议在0-0.1之间 基本取消了
     if appoint.Areason == Appoint.Reason.R_LATE:    # 迟到需要额外保证使用率
-        original_qualified_rate += 0.05             # 建议在0.2-0.4之间 极端可考虑0.5 目前仅测试
-    if appoint.Atemp_flag:                     # 对于临时预约，不检查摄像头 by lhw（2021.7.13）
-        original_qualified_rate = 0
-    if appoint.Room.Rid in {'B109A', 'B207'}:       # 公共区域
-        original_qualified_rate = 0
-    if appoint.Room.Rid[:1] == 'R':                 # 俄文楼
-        original_qualified_rate = 0
-    return original_qualified_rate
+        rate += 0.05             # 建议在0.2-0.4之间 极端可考虑0.5 目前仅测试
+    return rate
 
 
 def startAppoint(Aid):  # 开始预约时的定时程序
@@ -90,62 +84,54 @@ def finishAppoint(Aid):  # 结束预约时的定时程序
     要注意的是，由于定时任务可能执行多次，第二次的时候可能已经终止
     '''
     try:
+        Aid = int(Aid)
         appoint: Appoint = Appoint.objects.get(Aid=Aid)
     except:
         utils.operation_writer(
-            SYSTEM_LOG, f"预约{str(Aid)}意外消失", "web_func.finishAppoint", "Error")
+            SYSTEM_LOG, f"预约{Aid}意外消失", "web_func.finishAppoint", "Error")
         return
 
-
-    # 避免直接使用全局变量! by pht
-    adjusted_camera_qualified_check_rate = GLOBAL_INFO.camera_qualified_check_rate
 
     # 如果处于非终止状态，只需检查人数判断是否合格
     if appoint.Astatus not in Appoint.Status.Terminals():
         # 希望接受的非终止状态只有进行中，但其他状态也同样判定是否合格
         if appoint.Astatus != Appoint.Status.PROCESSING:
-            utils.operation_writer(
-                # TODO: major_sid
-                appoint.major_student.Sid_id,
-                f"预约{str(Aid)}结束时状态为{appoint.get_status()}：照常检查是否合格",
+            utils.operation_writer(appoint.get_major_id(),
+                f"预约{Aid}结束时状态为{appoint.get_status()}：照常检查是否合格",
                 "web_func.finishAppoint", "Error")
 
         # 摄像头出现超时问题，直接通过
         if datetime.now() - appoint.Room.Rlatest_time > timedelta(minutes=15):
             appoint.Astatus = Appoint.Status.CONFIRMED  # waiting
             appoint.save()
-            utils.operation_writer(
-                # TODO: major_sid
-                appoint.major_student.Sid_id,
-                f"预约{str(Aid)}的状态变为{Appoint.Status.CONFIRMED}: 顺利完成",
+            utils.operation_writer(appoint.get_major_id(),
+                f"预约{Aid}的状态变为{Appoint.Status.CONFIRMED}: 顺利完成",
                 "web_func.finishAppoint", "OK")
         else:
-            #if appoint.Acamera_check_num == 0:
-            #    utils.operation_writer(
-            #        SYSTEM_LOG, f"预约{str(Aid)}的摄像头检测次数为零", "web_func.finishAppoint", "Error")
             # 检查人数是否足够
-
-            # added by pht: 需要根据状态调整 出于复用性和简洁性考虑在本函数前添加函数
-            # added by pht: 同时出于安全考虑 在本函数中重定义了本地rate 稍有修改 避免出错
-            adjusted_camera_qualified_check_rate = get_adjusted_qualified_rate(
-                original_qualified_rate=adjusted_camera_qualified_check_rate,
+            adjusted_rate = adjust_qualifiy_rate(
+                original_rate=GLOBAL_INFO.camera_qualify_rate,
                 appoint=appoint
             )
+            need_num = appoint.Acamera_check_num * adjusted_rate - 0.01
+            check_failed = appoint.Acamera_ok_num < need_num
 
-            if appoint.Acamera_ok_num < appoint.Acamera_check_num * adjusted_camera_qualified_check_rate - 0.01:  # 人数不足
+            if check_failed:  # 人数不足
                 # add by lhw ： 迟到的预约通知在这里处理。如果迟到不扣分，删掉这个if的内容即可，让下面那个camera check的if判断是否违规。
                 if appoint.Areason == Appoint.Reason.R_LATE:
                     status, tempmessage = utils.appoint_violate(
                         appoint, Appoint.Reason.R_LATE)
                     if not status:
-                        utils.operation_writer(
-                            SYSTEM_LOG, f"预约{str(Aid)}因迟到而违约时出现异常: {tempmessage}", "web_func.finishAppoint", "Error")
+                        utils.operation_writer(SYSTEM_LOG, 
+                            f"预约{str(Aid)}因迟到而违约时出现异常: {tempmessage}",
+                            "web_func.finishAppoint", "Error")
                 else:
                     status, tempmessage = utils.appoint_violate(
                         appoint, Appoint.Reason.R_TOOLITTLE)
                     if not status:
-                        utils.operation_writer(
-                            SYSTEM_LOG, f"预约{str(Aid)}因人数不够而违约时出现异常: {tempmessage}", "web_func.finishAppoint", "Error")
+                        utils.operation_writer(SYSTEM_LOG, 
+                            f"预约{str(Aid)}因人数不够而违约时出现异常: {tempmessage}",
+                            "web_func.finishAppoint", "Error")
 
             else:   # 通过
                 appoint.Astatus = Appoint.Status.CONFIRMED
@@ -201,29 +187,29 @@ def time2datetime(year, month, day, t):
     return datetime(year, month, day, t.hour, t.minute, t.second)
 
 
-def appoints2json(appoints):
+def appoints2json(appoints: 'QuerySet[Appoint] | Appoint'):
     if isinstance(appoints, Appoint):
         return appoints.toJson()
     return [appoint.toJson() for appoint in appoints]
 
 
-def get_appoints(Pid, kind, major=False, to_json=True):
+def get_appoints(Pid, kind: str, major=False):
     '''
     - Pid: Participant, User or str
     - kind: `'future'`, `'past'` or `'violate'`
-    - returns: {data: objs.toJson() form} or {statusInfo: infos}
+    - returns: objs.toJson() form or None if failed
     '''
     try:
         participant = Pid
-        if not isinstance(Pid, Participant):
+        if not isinstance(participant, Participant):
             participant = get_participant(participant, raise_except=True)
     except Exception as e:
-        return {'statusInfo': {'message': '学号不存在', 'detail': str(e)}}
+        return None
 
     present_day = datetime.now()
     seven_days_before = present_day - timedelta(7)
 
-    appoints = participant.appoint_list.displayable()
+    appoints: QuerySet[Appoint] = participant.appoint_list.displayable()
     if major:
         appoints = appoints.filter(major_student=participant)
 
@@ -240,12 +226,12 @@ def get_appoints(Pid, kind, major=False, to_json=True):
                                    Astart__lte=present_day + timedelta(1))
     elif kind == 'violate':
         # 只考虑本学期的内容，因此用GLOBAL_INFO过滤掉以前的预约
-        start_time = str_to_time(GLOBAL_INFO.semester_start)
-        appoints = appoints.filter(Astatus=Appoint.Status.VIOLATED, Astart__gte = start_time)
+        appoints = appoints.filter(Astatus=Appoint.Status.VIOLATED,
+                                   Astart__gte=GLOBAL_INFO.semester_start)
     else:
-        return {'statusInfo': {'message': '参数错误', 'detail': f'kind非法: {kind}'}}
+        return None
 
-    return {'data': appoints2json(appoints) if to_json else appoints}
+    return appoints
 
 
 # 对一个从Astart到Afinish的预约,考虑date这一天,返回被占用的时段
@@ -269,14 +255,14 @@ def get_hour_time(room, timeid):  # for room , consider its time id
     return opentime.strftime("%H:%M"), True
 
 
-def get_time_id(room: Room, ttime: datetime, mode: str = "rightopen") -> int:
+def get_time_id(room: Room, ttime: time, mode: str = "rightopen") -> int:
     """
     返回当前时间的时间块编号，注意编号会与房间的开始预定时间相关。
 
     :param room: 房间
     :type room: Room
     :param ttime: 当前时间
-    :type ttime: datetime
+    :type ttime: time
     :param mode: 左开右闭或左闭右开, defaults to "rightopen"
     :type mode: str
     :return: 当前时间所处的时间块编号
@@ -290,7 +276,6 @@ def get_time_id(room: Room, ttime: datetime, mode: str = "rightopen") -> int:
     second = int(delta.total_seconds())
     minute, second = divmod(second, 60)
     hour, minute = divmod(minute, 60)
-    #print("time_span:", hour, ":", minute,":",second)
     if mode == "rightopen":  # 左闭右开, 注意时间段[6:00,6:30) 是第一段
         half = 0 if minute < 30 else 1
     else:  # 左开右闭,(23:30,24:00]是最后一段
@@ -300,7 +285,7 @@ def get_time_id(room: Room, ttime: datetime, mode: str = "rightopen") -> int:
     return hour * 2 + half
 
 
-def get_dayrange(span: int = 7, day_offset: int = 0) -> list:
+def get_dayrange(span: int = 7, day_offset: int = 0):
     """
     生成一个连续的时间段
 
@@ -308,11 +293,11 @@ def get_dayrange(span: int = 7, day_offset: int = 0) -> list:
     :type span: int
     :param day_offset: 开始时间与当前时间相差的天数, defaults to 0
     :type day_offset: int
-    :return: 时间段列表，每一项包含该天的具体信息
-    :rtype: list
+    :return: 时间段列表，每一项包含该天的具体信息、起始日期、结束后下一天
+    :rtype: list[dict], date, date
     """
     timerange_list = []
-    present_day = datetime.now() + timedelta(days=day_offset)
+    present_day = datetime.now().date() + timedelta(days=day_offset)
     for i in range(span):
         timerange = {}
         aday = present_day + timedelta(days=i)
@@ -322,7 +307,7 @@ def get_dayrange(span: int = 7, day_offset: int = 0) -> list:
         timerange['month'] = aday.month
         timerange['day'] = aday.day
         timerange_list.append(timerange)
-    return timerange_list
+    return timerange_list, present_day, present_day + timedelta(days=span)
 
 
 # added by wxy

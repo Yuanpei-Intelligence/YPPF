@@ -5,8 +5,11 @@ from django.db.models.signals import pre_delete
 from django.db.models import QuerySet
 from django.dispatch import receiver
 from django.db.models import Q
+from django.db import transaction
 
 from datetime import datetime, time, timedelta
+
+from Appointment import *
 
 
 __all__ = [
@@ -309,10 +312,28 @@ class CardCheckInfo(models.Model):
         verbose_name_plural = verbose_name
 
 
+class LongTermAppointManager(models.Manager):
+    def activated(self, this_semester=True) -> 'QuerySet[LongTermAppoint]':
+        result = self.filter(
+            status__in=[
+                LongTermAppoint.Status.APPROVED,
+                LongTermAppoint.Status.REVIEWING,
+        ])
+        if this_semester:
+            result = result.filter(
+                appoint__Astart__gt=GLOBAL_INFO.semester_start,
+            )
+        return result
+
+
 class LongTermAppoint(models.Model):
     """
     记录长期预约所需要的全部信息
     """
+    class Meta:
+        verbose_name = '长期预约信息'
+        verbose_name_plural = verbose_name
+
     appoint: Appoint = models.OneToOneField(Appoint,
                                             on_delete=models.CASCADE,
                                             verbose_name='单次预约信息')
@@ -331,25 +352,68 @@ class LongTermAppoint(models.Model):
         APPROVED = (2, '已通过')
         REJECTED = (3, '未通过')
 
-    status: 'int|Status' = models.SmallIntegerField("申请状态",
+    status: 'int|Status' = models.SmallIntegerField('申请状态',
                                                     choices=Status.choices,
                                                     default=Status.REVIEWING)
 
-    class Meta:
-        verbose_name = '长期预约信息'
-        verbose_name_plural = verbose_name
+    objects: LongTermAppointManager = LongTermAppointManager()
 
-    def create():
-        # TODO: 创建长期预约的全部子预约
-        raise NotImplementedError
+    def create(self):
+        '''原子化创建长期预约的全部后续子预约'''
+        from Appointment.utils.scheduler_func import add_longterm_appoint
+        conflict_week, appoints = add_longterm_appoint(
+            appoint=self.appoint.pk,
+            times=self.times - 1,
+            interval=self.interval,
+        )
+        return conflict_week, appoints
 
-    def cancel():
-        # TODO: 取消长期预约以及它的全部子预约
-        raise NotImplementedError
+    def cancel(self, all=False, delete=False):
+        '''
+        原子化取消长期预约以及它的子预约，不应出错
+
+        :param all: 取消全部，否则只取消未开始的预约, defaults to False
+        :type all: bool, optional
+        :param delete: 以数据库删除代替取消，长期预约也会级联删除, defaults to False
+        :type delete: bool, optional
+        :return: 取消的子预约数量
+        :rtype: int
+        '''
+        from Appointment.utils.scheduler_func import cancel_scheduler
+        with transaction.atomic():
+            # 取消子预约
+            appoints = self.sub_appoints(lock=True)
+            if not all:
+                appoints = appoints.filter(Astatus=Appoint.Status.APPOINTED)
+            if delete:
+                return appoints.delete()[0]
+            count = len(appoints)
+            for appoint in appoints:
+                appoint.cancel()
+                cancel_scheduler(appoint, 'Problem')
+            self.status = LongTermAppoint.Status.CANCELED
+            self.save()
+            return count
+
+    def renew(self, times: int):
+        '''原子化添加新的后续子预约，不应出错'''
+        from Appointment.utils.scheduler_func import add_longterm_appoint
+        times = max(0, times)
+        with transaction.atomic():
+            conflict_week, appoints = add_longterm_appoint(
+                appoint=self.appoint.pk,
+                times=times,
+                interval=self.interval,
+                week_offset=self.times * self.interval,
+            )
+            if conflict_week is not None:
+                self.times += times
+                self.save()
+            return conflict_week, appoints
 
     def sub_appoints(self, lock=False) -> QuerySet[Appoint]:
         '''
-        获取时间升序的子预约，只有类型为长期预约的被视为子预约
+        获取时间升序的子预约，只有类型为长期预约的被视为子预约，不应出错
 
         :param lock: 上锁，调用者需要自行开启事务, defaults to False
         :type lock: bool, optional
@@ -362,6 +426,10 @@ class LongTermAppoint(models.Model):
         sub_appoints = conflict_appoints.filter(
             major_student=self.appoint.major_student, Atype=Appoint.Type.LONGTERM)
         return sub_appoints.order_by('Astart', 'Afinish')
+
+    def get_applicant_id(self) -> str:
+        '''获取申请者id'''
+        return self.applicant.get_id()
 
 
 from Appointment.utils.scheduler_func import cancel_scheduler

@@ -2,10 +2,10 @@
 # 本py文件保留所有需要与scheduler交互的函数。
 from Appointment import *
 
-from Appointment.models import Participant, Room, Appoint
+from Appointment.models import Participant, Room, Appoint, LongTermAppoint
 import Appointment.utils.utils as utils
 import Appointment.utils.web_func as web_func
-from Appointment.utils.identity import get_participant
+from Appointment.utils.identity import get_participant, get_auditor_ids
 
 from datetime import datetime, timedelta
 from django.http import JsonResponse
@@ -121,19 +121,23 @@ def cancel_scheduler(appoint_or_aid, status_code=None):  # models.py中使用
 
 
 def set_appoint_wechat(appoint: Appoint, message_type: str, *extra_infos,
-                       students_id=None, admin=None,
+                       students_id=None, url=None, admin=None,
                        id=None, job_time=None):
     '''设置预约的微信提醒，默认发给所有参与者'''
     if students_id is None:
         # 先准备发送人
         students_id = list(appoint.students.values_list('Sid', flat=True))
 
-    # 默认立刻发送
-    if job_time is None:
-        job_time = datetime.now() + timedelta(seconds=5)
+    # 发送微信的参数
+    wechat_kws = {}
+    if url is not None: wechat_kws.update(url=url)
+    if admin is not None: wechat_kws.update(is_admin=admin)
 
     # 添加定时任务的关键字参数
     add_job_kws = dict(replace_existing=True, next_run_time=job_time)
+    # 默认立刻发送
+    if job_time is None:
+        job_time = datetime.now() + timedelta(seconds=5)
     if id is not None:
         add_job_kws.update(id=id)
     scheduler.add_job(utils.send_wechat_message,
@@ -148,6 +152,7 @@ def set_appoint_wechat(appoint: Appoint, message_type: str, *extra_infos,
                           appoint.Anon_yp_num + appoint.Ayp_num,
                           *extra_infos[:1],
                       ],
+                      kwargs=wechat_kws,
                       **add_job_kws)
 
 
@@ -196,9 +201,24 @@ def set_start_wechat(appoint, students_id=None, notify_create=True):
 
 def set_longterm_wechat(appoint: Appoint, students_id=None, infos='', admin=False):
     '''长期预约的微信提醒，默认发给所有参与者'''
-    set_appoint_wechat(
-        appoint, 'longterm_admin' if admin else 'longterm', infos,
-        students_id=students_id, id=f'{appoint.Aid}_longterm_wechat')
+    set_appoint_wechat(appoint, 'longterm_created', infos,
+                       students_id=students_id, admin=admin,
+                       id=f'{appoint.Aid}_longterm_created_wechat')
+
+
+def set_longterm_reviewing_wechat(longterm_appoint: LongTermAppoint, auditor_ids=None):
+    '''长期预约的审核老师通知提醒，发送给对应的审核老师'''
+    if auditor_ids is None:
+        auditor_ids = get_auditor_ids(longterm_appoint.applicant.Sid)
+    if not auditor_ids:
+        return
+    infos = []
+    if longterm_appoint.applicant != longterm_appoint.appoint.major_student:
+        infos.append(f'申请者：{longterm_appoint.applicant.name}')
+    set_appoint_wechat(longterm_appoint.appoint, 'longterm_reviewing', *infos,
+                       students_id=auditor_ids,
+                       url=f'/review?Lid={longterm_appoint.pk}',
+                       id=f'{longterm_appoint.pk}_longterm_review_wechat')
 
 
 # 过渡，待废弃
@@ -310,48 +330,40 @@ def addAppoint(contents: dict,
                 return _error('发起人信息不存在！')
 
             # 等待确认的和结束的肯定是当下时刻已经弄完的，所以不用管
-            appoints = room.appoint_list.select_for_update().exclude(
-                Astatus=Appoint.Status.CANCELED).filter(
-                    Room_id=contents['Rid'])
-            for appoint in appoints:
-                start = appoint.Astart
-                finish = appoint.Afinish
-
-                # 第一种可能，开始在开始之前，只要结束的比开始晚就不行
-                # 第二种可能，开始在开始之后，只要在结束之前就都不行
-                if (start <= Astart < finish) or (Astart <= start < Afinish):
-                    # 有预约冲突的嫌疑，但要检查一下是不是重复预约了
-                    if (start == Astart and finish == Afinish
-                            and appoint.Ausage == contents['Ausage']
-                            and appoint.Aannouncement == contents['announcement']
-                            and appoint.Ayp_num == len(students)
-                            and appoint.Anon_yp_num == contents['non_yp_num']
-                            and major_student == appoint.major_student):
-                        # Room不用检查，肯定是同一个房间
-                        # TODO: major_sid
-                        utils.operation_writer(
-                            major_student.Sid_id, "重复发起同时段预约，预约号"+str(appoint.Aid), "scheduler_func.addAppoint", "OK")
-                        return _success(appoint.toJson())
-                    else:
-                        # 预约冲突
-                        return _error('预约时间与已有预约冲突,请重选时间段!', appoint.toJson())
+            # conflict_appoints = Appoint.objects.not_canceled().\
+            #                     select_for_update().filter(Room=room)
+            appoint: Appoint = Appoint(
+                Room=room,
+                Astart=Astart,
+                Afinish=Afinish,
+                Ausage=contents['Ausage'],
+                Aannouncement=contents['announcement'],
+                major_student=major_student,
+                Anon_yp_num=contents['non_yp_num'],
+                Ayp_num=len(students),
+                Aneed_num=real_min,
+                Atype=type,
+                Atemp_flag=contents['Atemp_flag'],
+            )
+            conflict_appoints = utils.get_conflict_appoints(appoint, lock=True)
+            # TODO: remove dup check
+            for duplicate_appoint in conflict_appoints.filter(
+                **{f: getattr(appoint, f) for f in [
+                        'Astart', 'Afinish', 'Ausage', 'Aannouncement',
+                        'Ayp_num', 'Anon_yp_num', 'major_student'
+                ]}):
+                utils.operation_writer(
+                    major_student.get_id(), f'重复发起同时段预约，预约号{duplicate_appoint.Aid}',
+                    "scheduler_func.addAppoint", "OK")
+                return _success(duplicate_appoint.toJson())
+            for conflict_appoint in conflict_appoints:
+                return _error('预约时间与已有预约冲突，请重选时间段！', conflict_appoint.toJson())
 
             # 确认信用分符合要求
             if major_student.credit <= 0:
                 return _error('信用分不足，本月无法发起预约！')
 
             # 合法，可以返回了
-            appoint = Appoint(Room=room,
-                              Astart=Astart,
-                              Afinish=Afinish,
-                              Ausage=contents['Ausage'],
-                              Aannouncement=contents['announcement'],
-                              major_student=major_student,
-                              Anon_yp_num=contents['non_yp_num'],
-                              Ayp_num=len(students),
-                              Aneed_num=real_min,
-                              Atype=type,
-                              Atemp_flag=contents['Atemp_flag'])
             appoint.save()
             appoint.students.set(students)
 
@@ -370,13 +382,22 @@ def addAppoint(contents: dict,
     return _success(appoint.toJson())
 
 
-def get_longterm_display(times: int, interval_week: int):
-    if interval_week == 1:
-        longterm_info = f'{times}周的'
-    elif interval_week == 2:
-        longterm_info = f'{times}次单/双周的'
+def get_longterm_display(times: int, interval_week: int, type: str = 'adj'):
+    if type == 'adj':
+        if interval_week == 1:
+            longterm_info = f'{times}周的'
+        elif interval_week == 2:
+            longterm_info = f'{times}次单/双周的'
+        else:
+            longterm_info = f'{times}次间隔{interval_week}周的'
     else:
-        longterm_info = f'{times}次间隔{interval_week}周的'
+        if interval_week == 1:
+            longterm_info = '每周一次'
+        elif interval_week == 2:
+            longterm_info = '隔周一次'
+        else:
+            longterm_info = f'每{interval_week}周一次'
+        longterm_info += f' 共{times}次'
     return longterm_info
 
 
@@ -387,6 +408,7 @@ def add_longterm_appoint(appoint: 'Appoint | int',
                          admin: bool = False):
     '''
     自动开启事务以检查预约是否冲突，以原预约为模板直接生成新预约，不检查预约时间是否合法
+    appoint无效时可能出错，否则不出错
 
     :param appoint: 预约的模板，Appoint类型视为可修改，不应再使用，否则作为主键
     :type appoint: Appoint | int

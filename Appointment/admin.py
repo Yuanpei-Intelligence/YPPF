@@ -56,19 +56,6 @@ class ParticipantAdmin(admin.ModelAdmin):
             return queryset
 
     list_filter = ('credit', 'longterm', 'hidden', AgreeFilter)
-    fieldsets = (['基本信息', {
-        'fields': (
-            'Sid',
-            'name',
-            'hidden',
-        ),
-    }], [
-        '显示全部', {
-            'classes': ('collapse', ),
-            'description': '默认信息，不建议修改！',
-            'fields': ('credit', 'pinyin', 'agree_time'),
-        }
-    ])
 
     @readonly_inline
     class AppointInline(admin.TabularInline):
@@ -167,6 +154,7 @@ class AppointAdmin(admin.ModelAdmin):
         'usage_display',
         'check_display',
         'Astatus_display',
+        'Atype',
     )
     list_display_links = ('Aid', 'Room')
     list_per_page = 25
@@ -198,7 +186,7 @@ class AppointAdmin(admin.ModelAdmin):
                 return queryset.filter(Astatus=Appoint.Status.CANCELED)
             return queryset
 
-    list_filter = ('Astart', 'Atime', 'Astatus', ActivateFilter, 'Atemp_flag')
+    list_filter = ('Astart', 'Atime', 'Astatus', ActivateFilter, 'Atype')
 
     @as_display('参与人')
     def Participants(self, obj):
@@ -258,7 +246,7 @@ class AppointAdmin(admin.ModelAdmin):
     actions = []
 
     @as_action('所选条目 通过', actions, 'change')
-    def confirm(self, request, queryset):  # 确认通过
+    def confirm(self, request, queryset: QuerySet[Appoint]):  # 确认通过
         some_invalid = 0
         have_success = 0
         try:
@@ -269,10 +257,9 @@ class AppointAdmin(admin.ModelAdmin):
                         appoint.save()
                         have_success = 1
                         # send wechat message
-                        # TODO: major_sid
                         scheduler_func.set_appoint_wechat(
                             appoint, 'confirm_admin_w2c', appoint.get_status(),
-                            students_id=[appoint.major_student.Sid_id], admin=True,
+                            students_id=[appoint.get_major_id()], admin=True,
                             id=f'{appoint.Aid}_confirm_admin_wechat')
                         operation_writer(SYSTEM_LOG, str(appoint.Aid)+"号预约被管理员从WAITING改为CONFIRMED" +
                                  "发起人："+str(appoint.major_student), "admin.confirm", "OK")
@@ -285,10 +272,9 @@ class AppointAdmin(admin.ModelAdmin):
                         appoint.save()
                         have_success = 1
                         # send wechat message
-                        # TODO: major_sid
                         scheduler_func.set_appoint_wechat(
                             appoint, 'confirm_admin_v2j', appoint.get_status(),
-                            students_id=[appoint.major_student.Sid_id], admin=True,
+                            students_id=[appoint.get_major_id()], admin=True,
                             id=f'{appoint.Aid}_confirm_admin_wechat')
                         operation_writer(SYSTEM_LOG, str(appoint.Aid)+"号预约被管理员从VIOLATED改为JUDGED" +
                                  "发起人："+str(appoint.major_student), "admin.confirm", "OK")
@@ -297,24 +283,20 @@ class AppointAdmin(admin.ModelAdmin):
                         some_invalid = 1
 
         except:
-            return self.message_user(request=request,
-                                     message='操作失败!请与开发者联系!',
-                                     level=messages.WARNING)
+            return self.message_user(request, '操作失败!请与开发者联系!', messages.WARNING)
         if not some_invalid:
             return self.message_user(request, "更改状态成功!")
         else:
             if have_success:
-                return self.message_user(request=request,
-                                         message='部分修改成功!但遭遇状态不为等待、违约的预约，这部分预约不允许更改!',
-                                         level=messages.WARNING)
+                return self.message_user(request, 
+                    '部分修改成功!但遭遇状态不为等待、违约的预约，这部分预约不允许更改!', messages.WARNING)
             else:
-                return self.message_user(request=request,
-                                         message='修改失败!不允许修改状态不为等待、违约的预约!',
-                                         level=messages.WARNING)
+                return self.message_user(request,
+                '修改失败!不允许修改状态不为等待、违约的预约!', messages.WARNING)
 
 
     @as_action('所选条目 违约', actions, 'change')
-    def violate(self, request, queryset):  # 确认违约
+    def violate(self, request, queryset: QuerySet[Appoint]):  # 确认违约
         try:
             for appoint in queryset:
                 assert not (
@@ -332,17 +314,14 @@ class AppointAdmin(admin.ModelAdmin):
                 appoint.save()
 
                 # send wechat message
-                # TODO: major_sid
                 scheduler_func.set_appoint_wechat(
                     appoint, 'violate_admin', f'原状态：{ori_status}',
-                    students_id=[appoint.major_student.Sid_id], admin=True,
+                    students_id=[appoint.get_major_id()], admin=True,
                     id=f'{appoint.Aid}_violate_admin_wechat')
-                operation_writer(SYSTEM_LOG, str(
-                    appoint.Aid)+"号预约被管理员设为违约"+"发起人："+str(appoint.major_student), "admin.violate", "OK")
+                operation_writer(SYSTEM_LOG, f"{appoint.Aid}号预约被管理员设为违约"
+                    + f"发起人：{appoint.major_student}", "admin.violate")
         except:
-            return self.message_user(request=request,
-                                     message='操作失败!只允许对未审核的条目操作!',
-                                     level=messages.WARNING)
+            return self.message_user(request, '操作失败!只允许对未审核的条目操作!', messages.WARNING)
 
         return self.message_user(request, "设为违约成功!")
 
@@ -359,9 +338,8 @@ class AppointAdmin(admin.ModelAdmin):
                 start = appoint.Astart
                 finish = appoint.Afinish
                 if start > finish:
-                    return self.message_user(request=request,
-                                            message=f'操作失败,预约{aid}开始和结束时间冲突!请勿篡改数据!',
-                                            level=messages.WARNING)
+                    return self.message_user(request, 
+                        f'操作失败,预约{aid}开始和结束时间冲突!请勿篡改数据!', messages.WARNING)
                 scheduler_func.cancel_scheduler(aid)    # 注销原有定时任务 无异常
                 scheduler_func.set_scheduler(appoint)   # 开始时进入进行中 结束后判定
                 if datetime.now() < start:              # 如果未开始，修改开始提醒
@@ -369,8 +347,7 @@ class AppointAdmin(admin.ModelAdmin):
             except Exception as e:
                 operation_writer(SYSTEM_LOG,
                                  "出现更新定时任务失败的问题: " + str(e),
-                                 "admin.longterm",
-                                 "Error")
+                                 "admin.longterm", "Error")
                 return self.message_user(request, str(e), messages.WARNING)
         return self.message_user(request, '定时任务更新成功!')
     
@@ -401,15 +378,13 @@ class AppointAdmin(admin.ModelAdmin):
             except Exception as e:
                 operation_writer(SYSTEM_LOG, "学生" + str(appoint.major_student) +
                                  "出现添加长线化预约失败的问题:"+str(e), "admin.longterm", "Problem")
-                return self.message_user(request=request,
-                                         message=str(e),
-                                         level=messages.WARNING)
+                return self.message_user(request, str(e), messages.WARNING)
 
             # 到这里, 长线化预约发起成功
             scheduler_func.set_longterm_wechat(
                 appoint, infos=f'新增了{times}周同时段预约', admin=True)
-            operation_writer(appoint.get_major_id(), "发起"+str(times) +
-                             "周的长线化预约, 原始预约号"+str(appoint.Aid), "admin.longterm", "OK")
+            operation_writer(appoint.get_major_id(),
+                f"后台发起{times}周的长线化预约, 原始预约号{appoint.Aid}", "admin.longterm")
         return self.message_user(request, '长线化成功!')
 
 
