@@ -49,7 +49,7 @@
   }
 </style>
 <style class="text/css">
-  /* TODO Add animation, 这个还没完全调好 */
+  /* TODO Add animation */
   [data-toggle="collapse"] .fa.fa-solid:before {
     font-family: 'Font Awesome 5 Free';
     content: "\f107";
@@ -113,7 +113,7 @@
                   我的借阅 ......
                 </p>
               </div>
-              <div class="col-12 collapse mb-4 pt-2 order-last collapsed form-group" id="collapseExample">
+              <div class="col-12 collapse mb-4 pt-2 order-last collapsed form-group collapse show" id="collapseExample">
               <form action="/search/" method="get" role="search" id="SearchBookForm">
                   <div class="row">
                     <div class="col-12 input-group pt-4 pb-3">
@@ -125,8 +125,8 @@
                         </button>
                       </div>
                     </div>
-                    <div class="col-12 d-flex justify-content-between">
-                      <p class="pl-2 pr-2" style="font-size: 0.9rem;">
+                    <div class="col-12 d-flex justify-content-end">
+                      <!-- <p class="pl-2 pr-2" style="font-size: 0.9rem;">
                         <i class="fa fa-bookmark"></i>
                         历史搜索
                       </p>
@@ -134,7 +134,7 @@
                         <li class="nav-item pt-0 pb-0 pr-2"><a class="nav-link-active" href=""> 小径分岔的花园 </a></li>
                         <li class="nav-item pt-0 pb-0 pr-2"><a class="nav-link-active" href=""> 阿莱夫 </a></li>
                         <li class="nav-item pt-0 pb-0 pr-2"><a class="nav-link-active" href=""> ... </a></li>
-                      </ul>
+                      </ul> -->
                       <div class="form-check mb-2 mr-sm-2">
                         <input class="form-check-input" type="checkbox" id="CanBorrow" name="CanBorrow">
                         <label class="form-check-label" for="canBorrow" style="font-size: 0.9rem;">
