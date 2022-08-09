@@ -12,7 +12,7 @@ from app.models import *
 from Appointment.models import Appoint
 
 
-class DumpBase():
+class BaseDump():
 
     @staticmethod
     def time_filter(data_model: Union[Type[models.Model], QuerySet],
@@ -47,7 +47,7 @@ class DumpBase():
         raise NotImplementedError
 
 
-class PageTrackingDump(DumpBase):
+class PageTrackingDump(BaseDump):
 
     @classmethod
     def dump(cls, hash_func: Callable = None, **options) -> pd.DataFrame:
@@ -62,7 +62,7 @@ class PageTrackingDump(DumpBase):
         return user_page_data
 
 
-class ModuleTrackingDump(DumpBase):
+class ModuleTrackingDump(BaseDump):
 
     @classmethod
     def dump(cls, hash_func: Callable = None, **options) -> pd.DataFrame:
@@ -77,7 +77,7 @@ class ModuleTrackingDump(DumpBase):
         return user_module_data
 
 
-class AppointmentDump(DumpBase):
+class AppointmentDump(BaseDump):
 
     @classmethod
     def dump(cls, hash_func: Callable = None, **options) -> pd.DataFrame:
@@ -102,7 +102,7 @@ class AppointmentDump(DumpBase):
         return appointments
 
 
-class OrgActivityDump(DumpBase):
+class OrgActivityDump(BaseDump):
     """小组活动参与度
     """
 
@@ -119,7 +119,7 @@ class OrgActivityDump(DumpBase):
             columns=('组织', '活动', '参与人数', '开始时间', '结束时间'))
 
 
-class PersonPosDump(DumpBase):
+class PersonPosDump(BaseDump):
     """个人小组参与情况
     """
 
@@ -154,7 +154,7 @@ class PersonPosDump(DumpBase):
         return position_data
 
 
-class PersonActivityDump(DumpBase):
+class PersonActivityDump(BaseDump):
     """个人活动参与记录，无聚合
     """
 
@@ -174,7 +174,7 @@ class PersonActivityDump(DumpBase):
         return participants_data
 
 
-class PersonCourseDump(DumpBase):
+class PersonCourseDump(BaseDump):
     """个人书院课程参与记录
     包含：课程数量，有效次数，无效次数，有效时长，无效时长
     """
@@ -199,7 +199,7 @@ class PersonCourseDump(DumpBase):
         return course_data
 
 
-class PersonFeedbackDump(DumpBase):
+class PersonFeedbackDump(BaseDump):
     """个人反馈数据记录
     包含：提交反馈数、解决反馈数。
     """
