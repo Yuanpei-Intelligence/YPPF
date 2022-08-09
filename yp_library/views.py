@@ -12,7 +12,7 @@ from yp_library.utils import (
     get_library_activity, 
     get_recommended_or_newest_books, 
     get_opening_time,
-    get_feedback_url,
+    to_feedback_url,
 )
 from app.utils import get_sidebar_and_navbar, check_user_access
 
@@ -120,9 +120,9 @@ def lendInfo(request: HttpRequest) -> HttpResponse:
     if request.method == 'POST' and request.POST:
         if request.POST.get('feedback') is not None:
             try:
-                url = get_feedback_url(request)
+                url = to_feedback_url(request)
                 return redirect(url)
             except AssertionError as e:
-                wrong(e.args[0], frontend_dict) 
+                wrong(str(e), frontend_dict) 
 
     return render(request, "yp_library/lendinfo.html", frontend_dict)

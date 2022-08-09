@@ -386,8 +386,10 @@ def feedbackWelcome(request: HttpRequest):
                 request.session.pop('feedback_type')
                 request.session.pop('feedback_url')
                 request.session.pop('feedback_content', '')
-                return redirect(succeed('检测到您填写的申诉内容，已自动跳转'),
-                                feedback.get_absolute_url())
+                return redirect(message_url(
+                    succeed('检测到您填写的申诉内容，已自动跳转'),
+                    feedback.get_absolute_url()
+                ))
             except:
                 pass
         return redirect(f'/modifyFeedback/?type={feedback_type}')
@@ -688,7 +690,7 @@ def modifyFeedback(request: HttpRequest):
     else:
         # feedback_type默认选中的反馈类型通过GET获取，如未获取到则默认选中第一项。
         try:
-            feedback_type = request.GET['feedback_type']
+            feedback_type = request.GET['type']
             FeedbackType.objects.get(name=feedback_type)
         except:  # 有可能出现需要的反馈类型数据库不存在的情况，此时默认选中第一项
             feedback_type = list(feedback_type_list.keys())[0]

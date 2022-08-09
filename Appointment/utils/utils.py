@@ -13,6 +13,7 @@ import requests
 from typing import List, Tuple, Union, Any
 from datetime import datetime, timedelta
 
+from django.http import HttpRequest
 from django.contrib.auth.models import User
 from django.db import transaction  # 原子化更改数据库
 from django.db.models import Q, QuerySet
@@ -566,12 +567,17 @@ def get_conflict_appoints(appoint: Appoint, times: int = 1,
     return conflict_appoints.order_by('Astart', 'Afinish')
 
 
-def to_feedback_url(request) -> str:
-    '''
+def to_feedback_url(request: HttpRequest) -> str:
+    """
     检查预约记录是否可以申诉。
     如果可以，向session添加传递到反馈填写界面的信息。
     最终函数返回跳转到的url。
-    '''
+    
+    :param request: http请求
+    :type request: HttpRequest
+    :return: 即将跳转到的url
+    :rtype: str
+    """
     # 首先检查预约记录是否存在
     try:
         Aid = request.POST['feedback']

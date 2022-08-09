@@ -247,10 +247,10 @@ def get_opening_time() -> Tuple[str, str]:
     return start_time, end_time
 
 
-def get_feedback_url(request: HttpRequest) -> str:
+def to_feedback_url(request: HttpRequest) -> str:
     """
-    检查预约记录是否可以申诉。如果可以，查找数据库中有没有该预约记录对应的feedback。
-    如果没有对应feedback，向session添加传递到反馈填写界面的信息。如果有则不进行填写。
+    检查预约记录是否可以申诉。
+    如果可以，向session添加传递到反馈填写界面的信息。
     最终函数返回跳转到的url。
 
     :param request: http请求
@@ -262,26 +262,21 @@ def get_feedback_url(request: HttpRequest) -> str:
     
     # 首先检查预约记录是否存在
     try:
-        record = LendRecord.objects.get(id=id)
+        id = request.POST['feedback']
+        record: LendRecord = LendRecord.objects.get(id=id)
     except:
         raise AssertionError("借阅记录不存在！")
     
     # 然后检查借阅记录是否可申诉
     assert record.due_time < record.return_time, "该借阅记录不可申诉！"
     
-    # 下面检查借阅记录是否存在对应的feedback
-    try:
-        feedback = Feedback.objects.get(url=f'/admin/yp_library/lendrecord/?q={id}')
-        # 有对应的feedback，返回修改草稿feedback或查看已提交feedback的url
-        if feedback.issue_status == Feedback.IssueStatus.DRAFTED:
-            return f'/modifyFeedback/?feedback_id={feedback.id}'
-        else:
-            return f'/viewFeedback/{feedback.id}'
+    # 将record的状态改为“申诉中”
+    record.status = LendRecord.Status.APPEALING
+    record.save()
     
-    except:
-        # 没有对应feedback，向session添加信息
-        request.session['feedback_type'] = '书房借阅申诉'
-        request.session['feedback_url'] = f'/admin/yp_library/lendrecord/?q={id}'
-        
-        # 最终返回填写feedback的url
-        return '/modifyFeedback/'
+    # 向session添加信息
+    request.session['feedback_type'] = '书房借阅申诉'
+    request.session['feedback_url'] = record.get_admin_url()
+    
+    # 最终返回填写feedback的url
+    return '/feedback/'

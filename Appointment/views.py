@@ -555,7 +555,7 @@ def admin_credit(request):
                 url = to_feedback_url(request)
                 return redirect(url)
             except AssertionError as e:
-                wrong(e.args[0], render_context) 
+                wrong(str(e), render_context) 
 
     vio_list_display = web_func.appoints2json(vio_list)
     for x, appoint in zip(vio_list_display, vio_list):

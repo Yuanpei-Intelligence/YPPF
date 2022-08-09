@@ -140,8 +140,8 @@
                                                                                 </a>
                                                                                 <div class="dropdown-menu" style="max-width:200%; max-height:300%;">
                                                                                     <form method="POST">
-                                                                                        <button type="submit" class="dropdown-item" 
-                                                                                            name="feedback" value="{{record.id}}">申诉
+                                                                                        <button type="submit" class="dropdown-item" name="feedback" value="{{record.id}}"
+                                                                                            onclick="confirm('点击后无论是否提交申诉，申诉状态均将变更为“申诉中”。是否继续？');">申诉
                                                                                         </button>
                                                                                     </form>
                                                                                 </div>
@@ -163,7 +163,7 @@
                                                                                 <div class="dropdown-menu" style="max-width:200%; max-height:300%;">
                                                                                     <form method="POST">
                                                                                         <button type="submit" class="dropdown-item" 
-                                                                                            name="feedback" value="{{record.id}}">查看申诉
+                                                                                            name="feedback" value="{{record.id}}">申诉详情
                                                                                         </button>
                                                                                     </form>
                                                                                 </div>

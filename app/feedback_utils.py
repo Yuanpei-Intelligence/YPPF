@@ -152,16 +152,6 @@ def update_feedback(feedback, me, request: HttpRequest):
                 **content,
                 issue_status=Feedback.IssueStatus.ISSUED,
             )
-            '''
-            if feedback.url:
-                # 如果是书房借阅申诉，需要将借阅记录的状态改为“申诉中”
-                if fb_type == '书房借阅申诉':
-                    record_id = int(fb_url.split("?q=")[1])
-                    LendRecord.objects.filter(id=record_id).update(
-                        status=LendRecord.Status.APPEALING
-                    )
-            '''
-            
             context = succeed(
                 "成功提交反馈“" + str(info.get('title')) + "”！" +
                 "请耐心等待" + str(info.get('org')) + "处理！"
@@ -189,14 +179,6 @@ def update_feedback(feedback, me, request: HttpRequest):
                 **content,
                 issue_status=Feedback.IssueStatus.ISSUED,
             )
-            '''
-            # 如果是书房借阅申诉，需要将借阅记录的状态改为“申诉中”
-            if feedback.type.name == '书房借阅申诉' and feedback.url:
-                record_id = int(feedback.url.split("?q=")[1])
-                LendRecord.objects.filter(id=record_id).update(
-                    status=LendRecord.Status.APPEALING
-                )
-            '''
             context = succeed(
                 "成功提交反馈“" + str(info.get('title')) + "”！" +
                 "请耐心等待" + str(info.get('org')) + "处理！"
