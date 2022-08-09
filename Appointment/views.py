@@ -459,13 +459,15 @@ def admin_index(request: HttpRequest):
         appoint_info = appoint.toJson()
         appoint_info['Astart_hour_minute'] = appoint.Astart.strftime("%I:%M %p")
         appoint_info['Afinish_hour_minute'] = appoint.Afinish.strftime("%I:%M %p")
+        appoint_info['is_appointer'] = (Pid == appoint.get_major_id())
         appoint_info['can_cancel'] = (Pid == appoint.get_major_id())
         appoint_list_future.append(appoint_info)
 
-    for appoint_info in web_func.get_appoints(Pid, 'past'):
+    for appoint in web_func.get_appoints(Pid, 'past'):
         appoint_info = appoint.toJson()
         appoint_info['Astart_hour_minute'] = appoint.Astart.strftime("%I:%M %p")
         appoint_info['Afinish_hour_minute'] = appoint.Afinish.strftime("%I:%M %p")
+        appoint_info['is_appointer'] = (Pid == appoint.get_major_id())
         appoint_list_past.append(appoint_info)
 
     appoint_list_future.sort(key=lambda k: k['Astart'])
