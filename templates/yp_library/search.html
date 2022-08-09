@@ -1,8 +1,106 @@
 {% extends "base.html" %}
 
-{% load static %}
+{% block add_css_file %}
+<style class="text/css">
+    [data-toggle="collapse"] .fa:before {
+        font-family: 'Font Awesome 5 Free';
+        content: "\f068";
+        float: right;
+    }
 
+    [data-toggle="collapse"].collapsed .fa:before {
+        content: "\f067";
+    }
+</style>
+{% endblock %}
 
 {% block mainpage %}
+
+<!--  BEGIN CONTENT AREA  -->
+<div id="content" class="main-content">
+ 
+        <div class="container">
+            <div id="navSection" data-spy="affix" class="nav sidenav"></div>
+
+            <div class="row layout-top-spacing">
+                <div class="col-12 collapse mb-4 pt-2 order-first collapsed form-group collapse show" id="collapseExample">
+                    <form action="/search/" method="get" role="search" id="SearchBookForm">
+                        <div class="row">
+                          <div class="col-12 input-group pt-4 pb-3">
+                            <input type="text" class="form-control" id="BookName" 
+                              placeholder="搜索书名/作者/索书号/出版社" name="BookName">
+                            <div class="input-group-append">
+                              <button type="button" class="btn btn-outline-info" id="searchButton">
+                                搜索
+                              </button>
+                            </div>
+                          </div>
+                          <div class="col-12 d-flex justify-content-end">
+                          </div>
+                        </div>
+                    </form>
+                </div>
+                <div id="tableDropdown" class="col-lg-12 col-12 layout-spacing" style="text-align:center">
+                    <div class="statbox widget box box-shadow">
+                        <div class="collapse show" id="personsearch">
+                            <div class="widget-content widget-content-area">
+                                <div class="table-responsive">
+                                    <table class="table table-bordered mb-4">
+                                        {% if frontend_dict.search_results_list.length != 0 %}
+                                        <thead>
+                                            <tr>
+                                                <th class="text-center">书名</th>
+                                                <th class="text-center">作者</th>
+                                                <th class="text-center">出版社</th>
+                                                <th class="text-center">索书号</th>
+                                                <th class="text-center">可借阅</th>
+                                            </tr>
+                                        </thead> 
+                                        <tbody>
+                                            {% for book in frontend_dict.search_results_list %}
+                                            
+                                            <tr>
+                                            
+                                                <td style="min-width: 80px;"> {{book.title}} </td>
+                                                <td style="min-width: 80px;"> {{book.author}} </td>
+                                                <td style="min-width: 80px;"> {{book.publisher}} </td>
+                                                <td style="min-width: 80px;"> {{book.identity_code}} </td>
+                                                <td style="min-width: 80px;"> 
+                                                    {% if book.returned %}
+                                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-check" viewBox="0 0 16 16">
+                                                        <path d="M10.97 4.97a.75.75 0 0 1 1.07 1.05l-3.99 4.99a.75.75 0 0 1-1.08.02L4.324 8.384a.75.75 0 1 1 1.06-1.06l2.094 2.093 3.473-4.425a.267.267 0 0 1 .02-.022z"/>
+                                                      </svg>
+                                                    {% else %}     
+                                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-x" viewBox="0 0 16 16">
+                                                        <path d="M4.646 4.646a.5.5 0 0 1 .708 0L8 7.293l2.646-2.647a.5.5 0 0 1 .708.708L8.707 8l2.647 2.646a.5.5 0 0 1-.708.708L8 8.707l-2.646 2.647a.5.5 0 0 1-.708-.708L7.293 8 4.646 5.354a.5.5 0 0 1 0-.708z"/>
+                                                      </svg>
+                                                    {% endif %} 
+                                                </td>
+                                            </tr>
+                                            {%endfor%}
+                                        </tbody>
+                                        {% else %}
+                                        <!-- 如果列表为空 -->
+                                        <thead></thead>
+                                        <tbody>
+                                            <tr>
+                                                <td> {{not_found_message}}</td>
+                                            </tr>
+                                        </tbody>
+                                        {% endif %}
+                                    </table>
+                                </div>
+                            </div>
+                        </div> 
+                    </div>
+                </div>
+            </div>          
+
+            
+            
+        </div>
+    
+</div>
+<!--  END CONTENT AREA  -->
 
 {% endblock %}
