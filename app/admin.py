@@ -22,7 +22,7 @@ class PositionInline(admin.TabularInline):
     ordering = ['-id']
     fields = [
         'person', 'org',
-        'in_year', 'in_semester',
+        'year', 'semester',
         'is_admin', 'pos', 'status',
     ]
     show_change_link = True

@@ -3,9 +3,8 @@ from typing import Callable, Optional, List
 from datetime import datetime
 from pandas import DataFrame
 
-__all__ = [
-    'register_load', 'register_dump', 'register_dump_groups',
-]
+from data_analysis.load_funcs import *
+from data_analysis.dump_funcs import *
 
 load_map = {}
 dump_map = {}
@@ -40,10 +39,38 @@ def register_dump(task: str, dump_func: DumpFunc,
     dump_map[task] = dump_func, accept_params
 
 
-def register_dump_groups(group: str, *tasks: str):
+def register_dump_groups(group: str, tasks: List[str]):
     """将任务加入组中
     """
-    dump_groups.extend(tasks)
+    dump_groups[group].extend(tasks)
 
-from data_analysis import load_funcs
-from data_analysis import dump_funcs
+
+register_dump('page', PageTrackingDump)
+register_dump('module', ModuleTrackingDump)
+register_dump('appointment', AppointmentDump)
+register_dump('org_activity', OrgActivityDump)
+register_dump('person_position', PersonPosDump, accept_params=['year', 'semester'])
+register_dump('person_activity', PersonActivityDump, accept_params=['year', 'semester'])
+register_dump('person_feedback', PersonFeedbackDump)
+register_dump('person_course', PersonCourseDump, accept_params=['year', 'semester'])
+
+register_dump_groups('tracking', ['page', 'module'])
+register_dump_groups('activity', ['org_activity', 'person_activity'])
+register_dump_groups('underground', ['appointment'])
+register_dump_groups('org', ['org_activity'])
+register_dump_groups('person', ['person_position', 'person_activity', 'person_feedback', 'person_course'])
+
+register_load('stu', load_stu, 'stuinf.csv')
+register_load('freshman', load_freshman, 'freshman.csv')
+register_load('orgtype', load_orgtype, 'orgtypeinf.csv')
+register_load('org', load_org, 'orginf.csv')
+register_load('orgtag', load_org_tag, 'orgtag.csv')
+register_load('oldorgtags', load_old_org_tags, 'oldorgtags.csv')
+register_load('activity', load_activity, 'activityinfo.csv')
+register_load('transfer', load_transfer, 'transferinfo.csv')
+register_load('notification', load_notification, 'notificationinfo.csv')
+register_load('help', load_help, 'help.csv')
+register_load('courserecord', load_course_record, 'coursetime.xlsx')
+register_load('feedbackType', load_feedback_type, 'feedbacktype.csv')
+register_load('feedback', load_feedback, 'feedbackinf.csv')
+register_load('feedbackComments', load_feedback_comments, 'feedbackcomments.csv')

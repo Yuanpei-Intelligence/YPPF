@@ -363,9 +363,9 @@ def stuinfo(request: HttpRequest, name=None):
 
         person_history_orgs_pos = [
             org.otype.get_name(pos) + ' ' +
-            str(person_history_poss.get(org=org).in_year)[2:] + "-" +
-            str(person_history_poss.get(org=org).in_year + 1)[2:] +
-            sems[person_history_poss.get(org=org).in_semester]
+            str(person_history_poss.get(org=org).year)[2:] + "-" +
+            str(person_history_poss.get(org=org).year + 1)[2:] +
+            sems[person_history_poss.get(org=org).semester]
             for pos, org in zip(person_history_orgs_pos, person_history_orgs)
         ]  # ta在小组中的职位
         html_display["history_orgs_info"] = (
