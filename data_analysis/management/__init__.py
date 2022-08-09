@@ -45,14 +45,14 @@ def register_dump_groups(group: str, tasks: List[str]):
     dump_groups[group].extend(tasks)
 
 
-register_dump('page', page_data)
-register_dump('module', module_data)
-register_dump('appointment', appointment_data)
-register_dump('org_activity', org_activity_data)
-register_dump('person_position', person_position_data, accept_params=['year', 'semester'])
-register_dump('person_activity', person_activity_data, accept_params=['year', 'semester'])
-register_dump('person_feedback', person_feedback_data)
-register_dump('person_course', person_course_data, accept_params=['year', 'semester'])
+register_dump('page', PageTrackingDump)
+register_dump('module', ModuleTrackingDump)
+register_dump('appointment', AppointmentDump)
+register_dump('org_activity', OrgActivityDump)
+register_dump('person_position', PersonPosDump, accept_params=['year', 'semester'])
+register_dump('person_activity', PersonActivityDump, accept_params=['year', 'semester'])
+register_dump('person_feedback', PersonFeedbackDump)
+register_dump('person_course', PersonCourseDump, accept_params=['year', 'semester'])
 
 register_dump_groups('tracking', ['page', 'module'])
 register_dump_groups('activity', ['org_activity', 'person_activity'])

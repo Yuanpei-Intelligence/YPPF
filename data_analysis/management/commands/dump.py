@@ -108,9 +108,9 @@ class Command(BaseCommand):
         filepath = os.path.join(options['dir'], filename)
         with pd.ExcelWriter(filepath) as writer:
             for task in tasks:
-                dump_function, accept_params = dump_map[task]
+                dump_cls, accept_params = dump_map[task]
                 self.stdout.write(f'正在导出 {task} 到 {filepath}')
-                df: pd.DataFrame = dump_function(
+                df: pd.DataFrame = dump_cls.dump(
                     hash_func=hash_func,
                     **{k: options[k] for k in set(accept_params).intersection(options.keys())}
                 )
