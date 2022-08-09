@@ -1921,6 +1921,7 @@ class Feedback(CommentBase):
         OrganizationType, on_delete=models.CASCADE, null=True, blank=True)
     org: Organization = models.ForeignKey(
         Organization, on_delete=models.CASCADE, null=True, blank=True)
+    url = models.CharField("相关链接", max_length=100, null=True, blank=True)
 
     class IssueStatus(models.IntegerChoices):
         DRAFTED = (0, "草稿")

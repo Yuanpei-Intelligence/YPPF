@@ -9,10 +9,10 @@ from datetime import datetime
 
 from django.contrib.auth.models import User
 from django.db.models import Q, QuerySet
-from django.http import QueryDict
+from django.http import QueryDict, HttpRequest
 
 from app.utils import check_user_type
-from app.models import Activity
+from app.models import Activity, Feedback
 from app.constants import get_setting
 
 
@@ -129,7 +129,7 @@ def get_my_records(reader_id: str, returned: Optional[bool] = None,
     :rtype: List[dict]
     """
     all_records_list = LendRecord.objects.filter(reader_id=reader_id)
-    val_list = ['book_id__title', 'lend_time', 'due_time', 'return_time']
+    val_list = ['id', 'book_id__title', 'lend_time', 'due_time', 'return_time']
 
     if returned is not None:
         results = all_records_list.filter(returned=returned)
@@ -245,3 +245,43 @@ def get_opening_time() -> Tuple[str, str]:
     start_time = get_setting("library/open_time_start")
     end_time = get_setting("library/open_time_end")
     return start_time, end_time
+
+
+def get_feedback_url(request: HttpRequest) -> str:
+    """
+    检查预约记录是否可以申诉。如果可以，查找数据库中有没有该预约记录对应的feedback。
+    如果没有对应feedback，向session添加传递到反馈填写界面的信息。如果有则不进行填写。
+    最终函数返回跳转到的url。
+
+    :param request: http请求
+    :type request: HttpRequest
+    :return: 即将跳转到的url
+    :rtype: str
+    """
+    id = request.POST.get('feedback')
+    
+    # 首先检查预约记录是否存在
+    try:
+        record = LendRecord.objects.get(id=id)
+    except:
+        raise AssertionError("借阅记录不存在！")
+    
+    # 然后检查借阅记录是否可申诉
+    assert record.due_time < record.return_time, "该借阅记录不可申诉！"
+    
+    # 下面检查借阅记录是否存在对应的feedback
+    try:
+        feedback = Feedback.objects.get(url=f'/admin/yp_library/lendrecord/?q={id}')
+        # 有对应的feedback，返回修改草稿feedback或查看已提交feedback的url
+        if feedback.issue_status == Feedback.IssueStatus.DRAFTED:
+            return f'/modifyFeedback/?feedback_id={feedback.id}'
+        else:
+            return f'/viewFeedback/{feedback.id}'
+    
+    except:
+        # 没有对应feedback，向session添加信息
+        request.session['feedback_type'] = '书房借阅申诉'
+        request.session['feedback_url'] = f'/admin/yp_library/lendrecord/?q={id}'
+        
+        # 最终返回填写feedback的url
+        return '/modifyFeedback/'

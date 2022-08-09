@@ -1,3 +1,4 @@
+import re
 from app.views_dependency import *
 from app.models import (
     Organization,
@@ -668,9 +669,9 @@ def modifyFeedback(request: HttpRequest):
             org_list[feedback.org.oname]['selected'] = True
         else:
             org_list['']['selected'] = True
-    else: # feedback_type默认选中的反馈类型通过url获取，如未获取到则默认选中第一项。
-        if request.GET.get('type') is not None:
-            feedback_type = request.GET.get('type')
+    else: # feedback_type默认选中的反馈类型通过session获取，如未获取到则默认选中第一项。
+        if request.session.get('feedback_type', None) is not None:
+            feedback_type = request.session['feedback_type']
             try:
                 FeedbackType.objects.get(name=feedback_type)
             except:  # 有可能出现需要的反馈类型数据库不存在的情况，此时默认选中第一项
@@ -695,6 +696,10 @@ def modifyFeedback(request: HttpRequest):
             org_list[selected_feedback.org.oname]['selected'] = True
         else:
             org_list['']['selected'] = True
+    # 从session获取默认反馈内容，然后弹出
+    default_content = request.session.get('feedback_content', '')
+    if default_content != '':
+        request.session.pop('feedback_content')
     bar_display = utils.get_sidebar_and_navbar(
         request.user, navbar_name="填写反馈" if is_new_feedback else "反馈详情"
     )

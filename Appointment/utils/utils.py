@@ -3,6 +3,8 @@
 from Appointment import *
 from Appointment.models import Participant, Room, Appoint, CardCheckInfo  # 数据库模型
 
+from app.models import Feedback
+
 import os
 import time
 import json
@@ -562,3 +564,52 @@ def get_conflict_appoints(appoint: Appoint, times: int = 1,
     if exclude_this:
         conflict_appoints = conflict_appoints.exclude(pk=appoint.pk)
     return conflict_appoints.order_by('Astart', 'Afinish')
+
+
+def get_feedback_url(request):
+    '''
+    检查预约记录是否可以申诉。如果可以，查找数据库中有没有该预约记录对应的feedback。
+    如果没有对应feedback，向session添加传递到反馈填写界面的信息。如果有则不进行填写。
+    最终函数返回跳转到的url。
+    '''
+    Aid = request.POST.get('feedback')
+
+    # 首先检查预约记录是否存在
+    try:
+        appoint = Appoint.objects.get(Aid=Aid)
+    except:
+        raise AssertionError("预约记录不存在！")
+    
+    # 然后检查预约记录是否可申诉
+    assert appoint.Astatus in (
+        Appoint.Status.VIOLATED, Appoint.Status.JUDGED,
+    ), "该预约记录不可申诉！"
+    
+    # 下面检查预约记录是否存在对应的feedback
+    try:
+        feedback = Feedback.objects.get(url=f'/admin/Appointment/appoint/?q={Aid}')
+        # 有对应的feedback，返回修改草稿feedback或查看已提交feedback的url
+        if feedback.issue_status == Feedback.IssueStatus.DRAFTED:
+            return GLOBAL_INFO.login_url.rstrip('/') + f'/modifyFeedback/?feedback_id={feedback.id}'
+        else:
+            return GLOBAL_INFO.login_url.rstrip('/') + f'/viewFeedback/{feedback.id}'
+    
+    except:
+        # 没有对应feedback，向session添加信息
+        request.session['feedback_type'] = '地下室预约反馈'
+        request.session['feedback_url'] = f'/admin/Appointment/appoint/?q={Aid}'
+        
+        appoint_student = appoint.major_student.name
+        appoint_room = str(appoint.Room)
+        appoint_start = appoint.Astart.strftime('%Y年%m月%d日 %H:%M')
+        appoint_finish = appoint.Afinish.strftime('%H:%M')
+        appoint_reason = appoint.get_status()
+        request.session['feedback_content'] = '\n'.join((
+            f'申请人：{appoint_student}',
+            f'房间：{appoint_room}',
+            f'预约时间：{appoint_start} - {appoint_finish}',
+            f'违规原因：{appoint_reason}',
+        ))
+        
+        # 最终返回填写feedback的url
+        return GLOBAL_INFO.login_url.rstrip('/') + '/modifyFeedback/'

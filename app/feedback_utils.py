@@ -15,6 +15,8 @@ from app.wechat_send import (
     WechatMessageLevel,
 )
 
+from yp_library.models import LendRecord
+
 
 __all__ = [
     'check_feedback',
@@ -132,6 +134,15 @@ def update_feedback(feedback, me, request):
                 **content,
                 issue_status=Feedback.IssueStatus.DRAFTED,
             )
+            # 如果session中存在feedback_type与feedback_url，将feedback添加上对应url
+            fb_type = request.session.get('feedback_type', None)
+            fb_url = request.session.get('feedback_url', None)
+            if fb_type is not None and fb_url is not None:
+                feedback.url = fb_url
+                feedback.save()
+                request.session.pop('feedback_type')
+                request.session.pop('feedback_url')
+            
             context = succeed("成功将反馈保存成草稿！")
             context['feedback_id'] = feedback.id
             return context
@@ -140,6 +151,21 @@ def update_feedback(feedback, me, request):
                 **content,
                 issue_status=Feedback.IssueStatus.ISSUED,
             )
+            # 如果session中存在feedback_type与feedback_url，将feedback添加上对应url
+            fb_type = request.session.get('feedback_type', None)
+            fb_url = request.session.get('feedback_url', None)
+            if fb_type is not None and fb_url is not None:
+                feedback.url = fb_url
+                feedback.save()
+                # 如果是书房借阅申诉，需要将借阅记录的状态改为“申诉中”
+                if fb_type == '书房借阅申诉':
+                    record_id = int(fb_url.split("?q=")[1])
+                    LendRecord.objects.filter(id=record_id).update(
+                        status=LendRecord.Status.APPEALING
+                    )
+                request.session.pop('feedback_type')
+                request.session.pop('feedback_url')
+            
             context = succeed(
                 "成功提交反馈“" + str(info.get('title')) + "”！" +
                 "请耐心等待" + str(info.get('org')) + "处理！"
@@ -167,6 +193,14 @@ def update_feedback(feedback, me, request):
                 **content,
                 issue_status=Feedback.IssueStatus.ISSUED,
             )
+            # 如果是书房借阅申诉，需要将借阅记录的状态改为“申诉中”
+            if feedback.type == FeedbackType.objects.get(
+                name='书房借阅申诉'
+            ) and feedback.url is not None:
+                record_id = int(feedback.url.split("?q=")[1])
+                LendRecord.objects.filter(id=record_id).update(
+                    status=LendRecord.Status.APPEALING
+                )
             context = succeed(
                 "成功提交反馈“" + str(info.get('title')) + "”！" +
                 "请耐心等待" + str(info.get('org')) + "处理！"
