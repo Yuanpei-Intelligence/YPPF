@@ -34,7 +34,7 @@ class GetLendRecordTestCase(TestCase):
         self.assertEqual(len(Book.objects.all().values()), 3)
         self.assertEqual(len(Reader.objects.all().values()), 3)
         self.assertEqual(len(LendRecord.objects.all().values()), 6)
-    
+
     def test_records_num(self):
         self.assertEqual(len(get_my_records(123456789, returned=0)), 0)
         self.assertEqual(len(get_my_records(123456789, returned=1)), 3)

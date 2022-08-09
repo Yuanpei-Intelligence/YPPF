@@ -18,7 +18,7 @@ class BookSearchTestCase(TestCase):
                             title="数据结构与算法（A）", author="Bob", publisher="xyz", returned=0)
         Book.objects.create(id=6, identity_code="CS-3",
                             title="计算概论", author="北京大学", publisher="ABC")
-    
+
     def test_books_count(self):
         self.assertEqual(len(Book.objects.all().values()), 6)
 
@@ -31,23 +31,15 @@ class BookSearchTestCase(TestCase):
         query6 = {"returned": True}
         query7 = {"title": "数", "returned": True}
         query8 = {}
-        
-        self.assertEqual(
-            len(search_books(**query1)), 1)
-        self.assertEqual(
-            len(search_books(**query2)), 3)
-        self.assertEqual(
-            len(search_books(**query3)), 2)
-        self.assertEqual(
-            len(search_books(**query4)), 0)
-        self.assertEqual(
-            len(search_books(**query5)), 0)
-        self.assertEqual(
-            len(search_books(**query6)), 3)
-        self.assertEqual(
-            len(search_books(**query7)), 1)
-        self.assertEqual(
-            len(search_books(**query8)), 6)
+
+        self.assertEqual(len(search_books(**query1)), 1)
+        self.assertEqual(len(search_books(**query2)), 3)
+        self.assertEqual(len(search_books(**query3)), 2)
+        self.assertEqual(len(search_books(**query4)), 0)
+        self.assertEqual(len(search_books(**query5)), 0)
+        self.assertEqual(len(search_books(**query6)), 3)
+        self.assertEqual(len(search_books(**query7)), 1)
+        self.assertEqual(len(search_books(**query8)), 6)
 
     def test_keywords_query(self):
         query9 = {"keywords": "学"}
@@ -56,13 +48,8 @@ class BookSearchTestCase(TestCase):
         query12 = {"returned": True, "keywords": "A"}
         query13 = {"keywords": "CS"}
         
-        self.assertEqual(
-            len(search_books(**query9)), 4)
-        self.assertEqual(
-            len(search_books(**query10)), 2)
-        self.assertEqual(
-            len(search_books(**query11)), 1)
-        self.assertEqual(
-            len(search_books(**query12)), 3)
-        self.assertEqual(
-            len(search_books(**query13)), 3)
+        self.assertEqual(len(search_books(**query9)), 4)
+        self.assertEqual(len(search_books(**query10)), 2)
+        self.assertEqual(len(search_books(**query11)), 1)
+        self.assertEqual(len(search_books(**query12)), 3)
+        self.assertEqual(len(search_books(**query13)), 3)

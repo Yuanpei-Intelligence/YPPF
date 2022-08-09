@@ -105,7 +105,7 @@ def get_query_dict(post_dict: QueryDict) -> dict:
 
 
 def get_my_records(reader_id: str, returned: Optional[bool] = None, 
-    status: Optional[Union[list, int]] = None) -> List[dict]:
+                   status: 'list | int | LendRecord.Status' = None) -> List[dict]:
     """
     查询给定读者的借书记录
 
@@ -114,7 +114,7 @@ def get_my_records(reader_id: str, returned: Optional[bool] = None,
     :param returned: 如非空，则限定是否已归还, defaults to None
     :type returned: bool, optional
     :param status: 如非空，则限定当前状态, defaults to None
-    :type status: Union[list, int], optional
+    :type status: Union[list, tuple, int, LendRecord.Status], optional
     :return: 查询结果，每个记录包括val_list中的属性以及记录类型(key为'type': 
         对于已归还记录，False表示逾期记录，True表示正常记录；对于未归还记录，
         'normal'表示一般记录，'overtime'表示逾期记录，'approaching'表示接近
@@ -131,10 +131,11 @@ def get_my_records(reader_id: str, returned: Optional[bool] = None,
     else:
         results = all_records_list
 
-    if isinstance(status, list):
-        results = results.filter(status__in=status)
-    elif isinstance(status, int):
-        results = results.filter(status=status)
+    if status is not None:
+        if isinstance(status, (int, LendRecord.Status)):
+            results = results.filter(status=status)
+        else:
+            results = results.filter(status__in=status)
     
     records = list(results.values(*val_list))
     # 标记记录类型
