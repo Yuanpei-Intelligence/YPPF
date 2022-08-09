@@ -49,7 +49,7 @@
                                 </button>
                             </div>
                             <div class="alert alert-info alert-dismissible fade show" role="alert">
-                                <strong>温馨提示：</strong> 选择时间时，点击【开始时间块】，再直接点击【结束时间块】即可。
+                                <strong>温馨提示：</strong> 每个【时间块】表示自显示时刻起的 30 分钟使用时间，长于 30 分钟的预约只需点击【起始时间块】和【结束时间块】即可。
                                 <button type="button" class="close" data-dismiss="alert">
                                     <span >&times;</span>
                                 </button>
@@ -422,21 +422,22 @@
 						});
 					*/
 					if(endid - startid > 5){
-						alert("常规预约时间不能超过3小时!");
+                        return alert("常规预约时间不能超过3小时!");
 					}
-					else{
-						let urls = "check_out?Rid=" + "{{room_object.Rid}}";
-						urls = urls + "&weekday=" + weekday;
-						urls = urls + "&startid=" + startid;
-						urls = urls + "&endid=" + endid;
-                        {% if has_longterm_permission %}
-                        if(is_longterm){
-                            urls = urls + "&longterm=on";
-                            urls = urls + "&start_week=" + start_week;
-                        }
-                        {% endif %}
-						window.location = urls;
-					}
+                    if(endid - startid === 1){
+                        if(!confirm("时长30分钟的预约只需点击开始时间块即可。您确定要发起时长1小时的预约吗?")) return;
+                    }
+                    let urls = "check_out?Rid=" + "{{room_object.Rid}}";
+                    urls = urls + "&weekday=" + weekday;
+                    urls = urls + "&startid=" + startid;
+                    urls = urls + "&endid=" + endid;
+                    {% if has_longterm_permission %}
+                    if(is_longterm){
+                        urls = urls + "&longterm=on";
+                        urls = urls + "&start_week=" + start_week;
+                    }
+                    {% endif %}
+                    window.location = urls;
 				}
 			}
         </script>
