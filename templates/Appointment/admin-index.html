@@ -153,6 +153,21 @@
                                             <a class="nav-link" href="#appoint-past" data-toggle="tab">过去一周</a>
                                         </li>
                                     </ul>
+                                    {% if not has_longterm_permission %}
+                                        <div class="d-flex px-3 align-items-center mt-3" style="height:1rem">
+                                            <div class="flex-fill">
+                                                <label for="only-major" style="font-size:13px;">
+                                                    <input type="checkbox" id="only-major" style="vertical-align: text-bottom;">
+                                                    仅显示自己发起的预约
+                                                </label>
+                                            </div>
+                                            <div class="flex-fill">
+                                                <label for="no-longterm" style="font-size:13px;">
+                                                    <input type="checkbox" id="no-longterm" style="vertical-align: text-bottom;">      
+                                                    不显示长期预约</label>
+                                            </div>
+                                        </div>
+                                    {% endif %}
                                     {% comment %} tab content {% endcomment %}
                                     <div class="tab-content">
                                         {% if has_longterm_permission %}
@@ -294,7 +309,7 @@
                                             <div class="appointments">
                                                 {% for appoint in appoint_list_future %}
                                                     <!-- Appointment List -->
-                                                    <div class="appointment-list">
+                                                    <div class="appointment-list {{ appoint.is_appointer|yesno:'my-appoint,'}} {% if appoint.Atype == '长期预约' %}longterm{% endif %}">
                                                         <div class="profile-info-widget">
                                                             <div class="profile-det-info">
                                                                 <h3 style="white-space: normal;">
@@ -350,7 +365,7 @@
                                             <div class="appointments">
                                                 {% for appoint in appoint_list_past %}
                                                     <!-- Appointment List -->
-                                                    <div class="appointment-list">
+                                                    <div class="appointment-list {{ appoint.is_appointer|yesno:'my-appoint,'}} {% if appoint.Atype == '长期预约' %}longterm{% endif %}">
                                                         <div class="profile-info-widget">
                                                             <div class="profile-det-info">
                                                                 <h3 style="white-space: normal;">
@@ -499,10 +514,26 @@
         <script src="{% static 'Appointment/assets/js/script.js' %}"></script>
         <script>
             $(function () {
+                // 未通过和续约的按钮弹出框初始化
                 $('[data-toggle="popover"]').popover({
                     html: true,
                     sanitize: false
                 })
+                
+                {% if not has_longterm_permission %}
+                // 个人用户页面根据条件过滤预约条目
+                function filter(hideLongterm, hideOther){
+                    $(".appointment-list").removeClass("d-none")
+                    if(hideLongterm){
+                        $(".appointment-list.longterm").addClass("d-none")
+                    }
+                    if(hideOther){
+                        $(".appointment-list:not(.my-appoint)").addClass("d-none")
+                    }
+                }
+                $('#no-longterm').on("change",() => filter($('#no-longterm').is(':checked'), $('#only-major').is(':checked')))
+                $('#only-major').on("change", () => filter($('#no-longterm').is(':checked'), $('#only-major').is(':checked')))
+                {% endif %}
             })
         </script>
     </body>

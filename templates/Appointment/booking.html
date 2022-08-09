@@ -422,24 +422,22 @@
 						});
 					*/
 					if(endid - startid > 5){
-						alert("常规预约时间不能超过3小时!");
+                        return alert("常规预约时间不能超过3小时!");
 					}
                     if(endid - startid === 1){
-                        confirm("时长30分钟的预约只需点击开始时间块即可。您确定要发起时长1小时的预约吗?")
+                        if(!confirm("时长30分钟的预约只需点击开始时间块即可。您确定要发起时长1小时的预约吗?")) return;
                     }
-					else{
-						let urls = "check_out?Rid=" + "{{room_object.Rid}}";
-						urls = urls + "&weekday=" + weekday;
-						urls = urls + "&startid=" + startid;
-						urls = urls + "&endid=" + endid;
-                        {% if has_longterm_permission %}
-                        if(is_longterm){
-                            urls = urls + "&longterm=on";
-                            urls = urls + "&start_week=" + start_week;
-                        }
-                        {% endif %}
-						window.location = urls;
-					}
+                    let urls = "check_out?Rid=" + "{{room_object.Rid}}";
+                    urls = urls + "&weekday=" + weekday;
+                    urls = urls + "&startid=" + startid;
+                    urls = urls + "&endid=" + endid;
+                    {% if has_longterm_permission %}
+                    if(is_longterm){
+                        urls = urls + "&longterm=on";
+                        urls = urls + "&start_week=" + start_week;
+                    }
+                    {% endif %}
+                    window.location = urls;
 				}
 			}
         </script>
