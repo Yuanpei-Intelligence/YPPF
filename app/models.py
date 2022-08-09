@@ -1921,7 +1921,7 @@ class Feedback(CommentBase):
         OrganizationType, on_delete=models.CASCADE, null=True, blank=True)
     org: Organization = models.ForeignKey(
         Organization, on_delete=models.CASCADE, null=True, blank=True)
-    url = models.CharField("相关链接", max_length=100, null=True, blank=True)
+    url = models.URLField("相关链接", max_length=256, default="", blank=True)
 
     class IssueStatus(models.IntegerChoices):
         DRAFTED = (0, "草稿")
@@ -1970,3 +1970,20 @@ class Feedback(CommentBase):
     def save(self, *args, **kwargs):
         self.typename = "feedback"
         super().save(*args, **kwargs)
+
+    def get_absolute_url(self, absolute=False) -> str:
+        '''
+        获取显示页面网址
+
+        :param absolute: 是否返回绝对地址, defaults to False
+        :type absolute: bool, optional
+        :return: 显示页面的网址
+        :rtype: str
+        '''
+        if self.issue_status == Feedback.IssueStatus.DRAFTED:
+            url = f'/modifyFeedback/?feedback_id={self.id}'
+        else:
+            url = f'/viewFeedback/{self.id}'
+        if absolute:
+            url = LOGIN_URL.rstrip('/') + url
+        return url

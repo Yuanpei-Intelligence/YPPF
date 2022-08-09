@@ -39,7 +39,7 @@ from Appointment.utils.utils import (
     send_wechat_message, appoint_violate, doortoroom, iptoroom,
     operation_writer, write_before_delete, cardcheckinfo_writer,
     check_temp_appoint, set_appoint_reason, get_conflict_appoints,
-    get_feedback_url,
+    to_feedback_url,
 )
 import Appointment.utils.web_func as web_func
 from Appointment.utils.identity import (
@@ -516,10 +516,10 @@ def admin_index(request: HttpRequest):
     if request.method == 'POST' and request.POST:
         if request.POST.get('feedback') is not None:
             try:
-                url = get_feedback_url(request)
+                url = to_feedback_url(request)
                 return redirect(url)
             except AssertionError as e:
-                wrong(e.args[0], render_context) 
+                wrong(str(e), render_context) 
     
     return render(request, 'Appointment/admin-index.html', render_context)
 
@@ -552,7 +552,7 @@ def admin_credit(request):
     if request.method == 'POST' and request.POST:
         if request.POST.get('feedback') is not None:
             try:
-                url = get_feedback_url(request)
+                url = to_feedback_url(request)
                 return redirect(url)
             except AssertionError as e:
                 wrong(e.args[0], render_context) 
