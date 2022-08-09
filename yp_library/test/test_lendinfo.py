@@ -30,11 +30,12 @@ class GetLendRecordTestCase(TestCase):
         LendRecord.objects.create(reader_id_id=987654321, book_id_id=3, lend_time='2022-07-01',
                                   due_time='2022-07-07', return_time='2022-07-20', returned=0, status=4)
 
-    def test_get_my_records(self):
+    def test_models(self):
         self.assertEqual(len(Book.objects.all().values()), 3)
         self.assertEqual(len(Reader.objects.all().values()), 3)
         self.assertEqual(len(LendRecord.objects.all().values()), 6)
-
+    
+    def test_records_num(self):
         self.assertEqual(len(get_my_records(123456789, returned=0)), 0)
         self.assertEqual(len(get_my_records(123456789, returned=1)), 3)
         self.assertEqual(len(get_my_records(123456789, status=[0, 1])), 2)
@@ -49,7 +50,8 @@ class GetLendRecordTestCase(TestCase):
         self.assertEqual(
             len(get_my_records(1234567, returned=0, status=[3, 1, 2])), 1)
         self.assertEqual(len(get_my_records(987654321, status=[4, ])), 1)
-
+    
+    def test_records_type(self):
         records = get_my_records(123456789, returned=1, status=0)
         self.assertEqual(len(records), 1)
         self.assertEqual(records[0]['type'], 'normal')
