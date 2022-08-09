@@ -43,8 +43,7 @@ def search_books(**query_dict) -> QuerySet[Book]:
 
     :param query_dict: key为id/identity_code/title/author/publisher/returned, value为相应的query
         id和returned是精确查询，剩下四个是string按contains查询
-        特别地，还支持全关键词查询：键keywords的值为一个列表[word, [field1, field2, ...]]，表示在给定的（多个）field中检索word（即“或”的关系）
-        field可以是title/author/publisher
+        特别地，还支持全关键词查询：同时在identity_code/title/author/publisher中检索word
     :type query_dict: dict
     :return: 查询结果，每个记录是Book表的一行
     :rtype: QuerySet[Book]
@@ -80,7 +79,7 @@ def get_query_dict(post_dict: QueryDict) -> dict:
 
     :param post_dict: request.POST
     :type post_dict: QueryDict
-    :return: 一个词典，key为id/identity_code/title/author/publisher/returned, value为相应的query
+    :return: 一个词典，key为id/identity_code/title/author/publisher/returned/keywords, value为相应的query
     :rtype: dict
     """
     # 采用五种查询条件，即"identity_code", "title", "author", "publisher"和"returned"，可视情况修改
