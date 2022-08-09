@@ -77,7 +77,7 @@ def search(request: HttpRequest) -> HttpResponse:
 
     if request.method == "POST" and request.POST:  # POST表明发起检索
         query_dict = get_query_dict(request.POST)  # 提取出检索条件
-        frontend_dict["search_results_list"] = search_books(query_dict)
+        frontend_dict["search_results_list"] = search_books(**query_dict)
 
     return render(request, "yp_library/search.html", frontend_dict)
 
