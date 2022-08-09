@@ -3,8 +3,6 @@
 from Appointment import *
 from Appointment.models import Participant, Room, Appoint, CardCheckInfo  # 数据库模型
 
-from app.models import Feedback
-
 import os
 import time
 import json

@@ -12,8 +12,8 @@ from django.db.models import Q, QuerySet
 from django.http import QueryDict, HttpRequest
 
 from app.utils import check_user_type
-from app.models import Activity, Feedback
-from app.constants import get_setting
+from app.models import Activity
+from app.constants import get_setting, UTYPE_PER
 
 
 def get_readers_by_user(user: User) -> QuerySet[Reader]:
@@ -252,7 +252,6 @@ def to_feedback_url(request: HttpRequest) -> str:
     :return: 即将跳转到的url
     :rtype: str
     """
-    id = request.POST.get('feedback')
     
     # 首先检查预约记录是否存在
     try:
@@ -268,9 +267,21 @@ def to_feedback_url(request: HttpRequest) -> str:
     record.status = LendRecord.Status.APPEALING
     record.save()
     
+    book_name = record.book_id.title
+    lend_time = record.lend_time.strftime('%Y-%m-%d %H:%M')
+    due_time = record.due_time.strftime('%Y-%m-%d %H:%M')
+    return_time = record.return_time.strftime('%Y-%m-%d %H:%M')
+    
     # 向session添加信息
     request.session['feedback_type'] = '书房借阅申诉'
     request.session['feedback_url'] = record.get_admin_url()
+    request.session['feedback_content'] = '\n'.join((
+        f'借阅书籍：{book_name}',
+        f'借阅时间：{lend_time}',
+        f'应归还时间：{due_time}',
+        f'实际归还时间：{return_time}',
+        '姓名：', '申诉理由：'
+    ))
     
     # 最终返回填写feedback的url
     return '/feedback/'

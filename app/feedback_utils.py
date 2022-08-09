@@ -15,7 +15,6 @@ from app.wechat_send import (
     WechatMessageLevel,
 )
 from django.http import HttpRequest
-# from yp_library.models import LendRecord
 
 
 __all__ = [
@@ -143,7 +142,6 @@ def update_feedback(feedback, me, request: HttpRequest):
                 **content,
                 issue_status=Feedback.IssueStatus.DRAFTED,
             )
-            
             context = succeed("成功将反馈保存成草稿！")
             context['feedback_id'] = feedback.id
             return context
