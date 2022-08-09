@@ -889,7 +889,7 @@ def change_course_status(cur_status: Course.Status, to_status: Course.Status) ->
                         status=Position.Status.DEPART,
                     ).update(pos=10,
                              is_admin=False,
-                             in_semester=Semester.now(),
+                             semester=Semester.now(),
                              status=Position.Status.INSERVICE)
                     # 检查是否已经加入小组
                     if not Position.objects.activated().filter(
@@ -897,7 +897,7 @@ def change_course_status(cur_status: Course.Status, to_status: Course.Status) ->
                             org=organization).exists():
                         position = Position(person=participant.person,
                                             org=organization,
-                                            in_semester=Semester.now())
+                                            semester=Semester.now())
 
                         positions.append(position)
                 if positions:

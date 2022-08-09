@@ -177,10 +177,18 @@ def send_wechat_message(
         extra_info = ['原因：' + reason]  # '当前信用分：'+str(credit)
     elif message_type == 'cancel':
         title = '您有一条预约被取消'
-    elif message_type.startswith('longterm'):    # 发起一条长线预约
-        title = f'您有一条预约被长线化'
+    elif message_type == 'longterm_created':    # 发起一条长线预约
+        title = f'您有一条新的长期预约'
         show_announcement = True
-        extra_info = ['详情：' + reason]
+        if reason:
+            extra_info = ['详情：' + reason]
+    elif message_type == "longterm_reviewing":  # 发送给审核老师
+        title = f'您有一条待处理的长期预约'
+        extra_info = ['去审核']
+    elif message_type == "longterm_approved":   # 长期预约审核通过提示
+        title = f'您的长期预约已通过审核'
+    elif message_type == "longterm_rejected":   # 长期预约审核未通过提示
+        title = f'您的长期预约未通过审核'
     elif message_type == 'confirm_admin_w2c':    # WAITING to CONFIRMED
         title = '您有一条预约已确认完成'
         show_main_student = False
@@ -349,8 +357,7 @@ def set_appoint_reason(input_appoint: Appoint, reason: Appoint.Reason):
             appoint.Areason = reason
             appoint.save()
 
-        # TODO: major_sid
-        operation_writer(str(appoint.major_student.Sid_id),
+        operation_writer(appoint.get_major_id(),
                         f"预约{appoint.Aid}出现违约:{appoint.get_Areason_display()}",
                         f"utils.set_appoint_reason{os.getpid()}", "OK")
         return True, ""
@@ -381,8 +388,7 @@ def appoint_violate(input_appoint: Appoint, reason: Appoint.Reason):
                 appoint.save()
                 operation_succeed = True
 
-                # TODO: major_sid
-                major_sid = str(major_student.Sid_id)
+                major_sid = major_student.get_id()
                 astart = appoint.Astart
                 aroom = str(appoint.Room)
                 major_name = str(major_student.name)
@@ -404,8 +410,7 @@ def appoint_violate(input_appoint: Appoint, reason: Appoint.Reason):
                                 announce,
                                 number,
                                 status,
-                                #appoint.major_student.credit,
-                                )  # totest: only main_student
+                                )
             operation_writer(major_sid, f"预约{aid}出现违约:{areason}" +
                              f";扣除信用分:{really_deduct}" +
                              f";剩余信用分:{credit}",
@@ -499,11 +504,12 @@ def check_temp_appoint(room: Room) -> bool:
 
 
 def get_conflict_appoints(appoint: Appoint, times: int = 1,
-                          interval: int = 1, bias_week: int = 0,
+                          interval: int = 1, week_offset: int = 0,
+                          exclude_this: bool = False,
                           no_cross_day=False, lock=False) -> QuerySet[Appoint]:
     '''
     
-    获取以时间排序的冲突预约，可以加锁，但不负责开启事务
+    获取以时间排序的冲突预约，可以加锁，但不负责开启事务，不应抛出异常
 
     :param appoint: 需要检测的第一个预约
     :type appoint: Appoint
@@ -511,8 +517,10 @@ def get_conflict_appoints(appoint: Appoint, times: int = 1,
     :type times: int, optional
     :param interval: 每次间隔的周数, defaults to 1
     :type interval: int, optional
-    :param bias_week: 第一次检测时间距离提供预约的周数, defaults to 0
-    :type bias_week: int, optional
+    :param week_offset: 第一次检测时间距离提供预约的周数, defaults to 0
+    :type week_offset: int, optional
+    :param exclude_this: 排除检测的预约, defaults to False
+    :type exclude_this: bool, optional
     :param no_cross_day: 是否假设预约都不跨天，可以简化查询, defaults to False
     :type no_cross_day: bool, optional
     :param lock: 查询时上锁, defaults to False
@@ -534,7 +542,7 @@ def get_conflict_appoints(appoint: Appoint, times: int = 1,
             Afinish__time__gt=appoint.Astart.time(),
         )
         date_range = [
-            appoint.Astart.date() + timedelta(weeks=week + bias_week)
+            appoint.Astart.date() + timedelta(weeks=week + week_offset)
             for week in range(0, times * interval, interval)
             ]
         conditions &= Q(
@@ -545,9 +553,12 @@ def get_conflict_appoints(appoint: Appoint, times: int = 1,
         for week in range(0, times * interval, interval):
             conditions |= Q(
                 # 开始比当前的结束时间早
-                Astart__lt=appoint.Afinish + timedelta(weeks=week + bias_week),
+                Astart__lt=appoint.Afinish + timedelta(weeks=week + week_offset),
                 # 结束比当前的开始时间晚
-                Afinish__gt=appoint.Astart + timedelta(weeks=week + bias_week),
+                Afinish__gt=appoint.Astart + timedelta(weeks=week + week_offset),
             )
+    # 检查时预约还不应创建，冲突预约可以包含自身
     conflict_appoints = activate_appoints.filter(conditions)
+    if exclude_this:
+        conflict_appoints = conflict_appoints.exclude(pk=appoint.pk)
     return conflict_appoints.order_by('Astart', 'Afinish')

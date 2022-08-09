@@ -180,7 +180,7 @@
 												<!--modified by wxy-->
 												{{appoint.Astart_hour_minute}}-{{appoint.Afinish_hour_minute}}
 											</h5>
-											{% if appoint.Astatus == 'Violated' %}
+											{% if appoint.Astatus == '违约' %}
 											<h5 style="white-space: normal;color:#ff2d2d"><i
 													class="far fa fa-envelope"></i>
 												违约原因：
@@ -204,14 +204,14 @@
 									</div>
 								</div>
 
-								<form method="POST">
-									<div class="appointment-action">
-										<button type="submit" class="btn btn-sm bg-warning-light"
-											name="feedback" value="{{appoint.Aid}}">
-											<i class="fa fa-question"></i> 违规申诉
-											</input>
-									</div>
-								</form>
+								<div class="appointment-action">
+									<button type="submit" class="btn btn-sm bg-warning-light"
+										name="feedback" value="{{appoint.Aid}}"
+										onclick="window.location.href='/modifyFeedback/?type=地下室预约反馈';">
+										<i class="fa fa-question"></i> 违规申诉
+									</button>
+								</div>
+
 							</div>
 							<!-- /Appointment List -->
 							{% endfor %}
