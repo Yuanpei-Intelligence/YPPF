@@ -82,7 +82,7 @@ def accept_modifyorg_submit(application): #同意申请，假设都是合法操�
     pos = Position.objects.create(person=charger,
                                   org=org,
                                   pos=0,
-                                  in_semester=application.otype.default_semester(),
+                                  semester=application.otype.default_semester(),
                                   status=Position.Status.INSERVICE,
                                   is_admin=True)
     # 修改申请状态

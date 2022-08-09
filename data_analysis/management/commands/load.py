@@ -1,6 +1,5 @@
 from django.core.management.base import BaseCommand, CommandParser, CommandError
 from data_analysis.management import load_map
-from app.data_import import *
 
 class Command(BaseCommand):
     help = '导入测试数据'
