@@ -456,18 +456,13 @@ def admin_index(request: HttpRequest):
     appoint_list_past = []
 
     for appoint in web_func.get_appoints(Pid, 'future'):
-        appoint_info = appoint.toJson()
-        appoint_info['Astart_hour_minute'] = appoint.Astart.strftime("%I:%M %p")
-        appoint_info['Afinish_hour_minute'] = appoint.Afinish.strftime("%I:%M %p")
-        appoint_info['is_appointer'] = (Pid == appoint.get_major_id())
-        appoint_info['can_cancel'] = (Pid == appoint.get_major_id())
+        appoint_info = web_func.appointment2Display(
+            appoint, future=False, longterm=False, Pid=Pid)
         appoint_list_future.append(appoint_info)
 
     for appoint in web_func.get_appoints(Pid, 'past'):
-        appoint_info = appoint.toJson()
-        appoint_info['Astart_hour_minute'] = appoint.Astart.strftime("%I:%M %p")
-        appoint_info['Afinish_hour_minute'] = appoint.Afinish.strftime("%I:%M %p")
-        appoint_info['is_appointer'] = (Pid == appoint.get_major_id())
+        appoint_info = web_func.appointment2Display(
+            appoint, future=True, longterm=False, Pid=Pid)
         appoint_list_past.append(appoint_info)
 
     appoint_list_future.sort(key=lambda k: k['Astart'])
@@ -485,10 +480,8 @@ def admin_index(request: HttpRequest):
         is_full = count >= GLOBAL_INFO.longterm_max_num
         for longterm_appoint in longterm_appoints:
             longterm_appoint: LongTermAppoint
-            appoint_info = longterm_appoint.appoint.toJson()
-            appoint_info['Astart_hour_minute'] = longterm_appoint.appoint.Astart.strftime("%I:%M %p")
-            appoint_info['Afinish_hour_minute'] = longterm_appoint.appoint.Afinish.strftime("%I:%M %p")
-            appoint_info['Aweek'] = longterm_appoint.appoint.Astart.strftime("%A")
+            appoint_info = web_func.appointment2Display(
+                longterm_appoint.appoint, future=False, longterm=True)
             
             # 判断是否可以续约
             last_start = longterm_appoint.appoint.Astart + timedelta(
