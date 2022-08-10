@@ -139,7 +139,11 @@
                                                                                     </svg>
                                                                                 </a>
                                                                                 <div class="dropdown-menu" style="max-width:200%; max-height:300%;">
-                                                                                    <button class="dropdown-item" onclick="window.location.href='/modifyFeedback/?type=书房借阅申诉';">申诉</button>
+                                                                                    <form method="POST">
+                                                                                        <button type="submit" class="dropdown-item" name="feedback" value="{{record.id}}"
+                                                                                            onclick="confirm('点击后无论是否提交申诉，申诉状态均将变更为“申诉中”。是否继续？');">申诉
+                                                                                        </button>
+                                                                                    </form>
                                                                                 </div>
                                                                             </div>
                                                                         </div>
@@ -149,6 +153,22 @@
                                                                             background-color:#6E757C; color:#FFFFFF; margin:2px;
                                                                             margin-top:0px; margin-bottom:4px;">申诉中
                                                                         </span>
+                                                                        <div class="btn-group" style="display:inline-block;">
+                                                                            <div>
+                                                                                <a data-toggle="dropdown">
+                                                                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-three-dots" viewBox="0 0 16 16">
+                                                                                        <path d="M3 9.5a1.5 1.5 0 1 1 0-3 1.5 1.5 0 0 1 0 3zm5 0a1.5 1.5 0 1 1 0-3 1.5 1.5 0 0 1 0 3zm5 0a1.5 1.5 0 1 1 0-3 1.5 1.5 0 0 1 0 3z"/>
+                                                                                    </svg>
+                                                                                </a>
+                                                                                <div class="dropdown-menu" style="max-width:200%; max-height:300%;">
+                                                                                    <form method="POST">
+                                                                                        <button type="submit" class="dropdown-item" 
+                                                                                            name="feedback" value="{{record.id}}">申诉详情
+                                                                                        </button>
+                                                                                    </form>
+                                                                                </div>
+                                                                            </div>
+                                                                        </div>
                                                                     {% elif record.status == 3 %}
                                                                         <!-- 申诉通过 -->
                                                                         <span class="badge badge-pill" style="border-radius:4px; 

@@ -436,15 +436,14 @@
                                                         </div>
                                                         <div>
                                                             {% if appoint.Astatus == '违约' %}
-                                                                <!--<div>-->
-                                                                <div class="appointment-action">
-                                                                    <a href="/modifyFeedback/?type=地下室预约反馈">
-                                                                        <button class="btn btn-sm bg-danger-light" name="argue_btn">
-                                                                            <i class="fas fa-times"></i> 我要申诉
+                                                                <form method="POST">
+                                                                    <div class="appointment-action">
+                                                                        <button type="submit" class="btn btn-sm bg-danger-light"
+                                                                            name="feedback" value="{{appoint.Aid}}">
+                                                                            <i class="fa fa-times"></i> 我要申诉
                                                                         </button>
-                                                                    </a>
-                                                                </div>
-                                                                <!--</div>-->
+                                                                    </div>
+                                                                <form>
                                                             {% endif %}
                                                         </div>
                                                     </div>

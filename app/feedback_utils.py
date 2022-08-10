@@ -14,6 +14,7 @@ from app.wechat_send import (
     WechatApp,
     WechatMessageLevel,
 )
+from django.http import HttpRequest
 
 
 __all__ = [
@@ -95,7 +96,7 @@ def check_feedback(request, post_type, me):
     return context
 
 
-def update_feedback(feedback, me, request):
+def update_feedback(feedback, me, request: HttpRequest):
     '''
     修改反馈详情的操作函数, feedback为修改的对象，可以为None
     me为操作者
@@ -127,6 +128,15 @@ def update_feedback(feedback, me, request):
             ) if info.get('org') else None,
             publisher_public=(str(info.get('publisher_public')) == '公开'),
         )
+
+        # 如果session中存在feedback_url，保存类型匹配时添加url并弹出
+        if request.session.has_key('feedback_url') and post_type in ['save', 'directly_submit']:
+            feedback_type = request.session.get('feedback_type')
+            if content['type'].name == feedback_type:
+                feedback_url = request.session.pop('feedback_url')
+                request.session.pop('feedback_type', None)
+                content.update(url=feedback_url)
+
         if post_type == 'save':
             feedback = Feedback.objects.create(
                 **content,

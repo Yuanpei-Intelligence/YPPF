@@ -9,7 +9,7 @@ from datetime import datetime
 
 from django.contrib.auth.models import User
 from django.db.models import Q, QuerySet
-from django.http import QueryDict
+from django.http import QueryDict, HttpRequest
 
 from app.utils import check_user_type
 from app.models import Activity
@@ -122,7 +122,7 @@ def get_my_records(reader_id: str, returned: Optional[bool] = None,
     :rtype: List[dict]
     """
     all_records_list = LendRecord.objects.filter(reader_id=reader_id)
-    val_list = ['book_id__title', 'lend_time', 'due_time', 'return_time']
+    val_list = ['id', 'book_id__title', 'lend_time', 'due_time', 'return_time']
 
     if returned is not None:
         results = all_records_list.filter(returned=returned)
@@ -239,3 +239,49 @@ def get_opening_time() -> Tuple[str, str]:
     start_time = get_setting("library/open_time_start")
     end_time = get_setting("library/open_time_end")
     return start_time, end_time
+
+
+def to_feedback_url(request: HttpRequest) -> str:
+    """
+    检查预约记录是否可以申诉。
+    如果可以，向session添加传递到反馈填写界面的信息。
+    最终函数返回跳转到的url。
+
+    :param request: http请求
+    :type request: HttpRequest
+    :return: 即将跳转到的url
+    :rtype: str
+    """
+    
+    # 首先检查预约记录是否存在
+    try:
+        id = request.POST['feedback']
+        record: LendRecord = LendRecord.objects.get(id=id)
+    except:
+        raise AssertionError("借阅记录不存在！")
+    
+    # 然后检查借阅记录是否可申诉
+    assert record.due_time < record.return_time, "该借阅记录不可申诉！"
+    
+    # 将record的状态改为“申诉中”
+    record.status = LendRecord.Status.APPEALING
+    record.save()
+    
+    book_name = record.book_id.title
+    lend_time = record.lend_time.strftime('%Y-%m-%d %H:%M')
+    due_time = record.due_time.strftime('%Y-%m-%d %H:%M')
+    return_time = record.return_time.strftime('%Y-%m-%d %H:%M')
+    
+    # 向session添加信息
+    request.session['feedback_type'] = '书房借阅申诉'
+    request.session['feedback_url'] = record.get_admin_url()
+    request.session['feedback_content'] = '\n'.join((
+        f'借阅书籍：{book_name}',
+        f'借阅时间：{lend_time}',
+        f'应归还时间：{due_time}',
+        f'实际归还时间：{return_time}',
+        '姓名：', '申诉理由：'
+    ))
+    
+    # 最终返回填写feedback的url
+    return '/feedback/'
