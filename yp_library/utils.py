@@ -26,37 +26,39 @@ __all__ = [
 ]
 
 
-def bookreturn_notification():
+def days_reminder(days: int, cont: str):
+    """根据逾期时间时间向对应用户发送通知，若逾期一周另扣信用分一分
+
+    :param days: _逾期时间
+    :type days: int
+    :param cont: 通知内容
+    :type cont: str
     """
-    该函数每小时在外部被调用，对每一条未归还的借阅记录进行检查
-    在应还书时间前1天、应还书时间、应还书时间逾期5天发送还书提醒，提醒链接到“我的借阅”界面
-    在应还书时间逾期7天，将借阅信息改为“超时扣分”，扣除1信用分并发送提醒
-    """
+    # 获取发送通知所需参数，包括发送者、接收者，URL，类名，通知内容
     cr_time = datetime.now
-    one_day_before = LendRecord.objects.filter(
-        returned=False, due_time=cr_time - timedelta(days=1)
-        )
-    now_return = LendRecord.objects.filter(returned=False, due_time=cr_time)
-    five_days_after = LendRecord.objects.filter(
-        returned=False, due_time=cr_time + timedelta(days=5)
-        )
-    one_week_after = LendRecord.objects.filter(
-        returned=False, due_time=cr_time + timedelta(weeks=1)
+    lendlist = LendRecord.objects.filter(
+        returned=False, due_time=cr_time - timedelta(days=days)
         )
     sender = Organization.filter(oname="元培书房")
     URL = "/lendinfo/"
     typename = Notification.Type.NEEDREAD
     
     receivers = []
-    for record in one_day_before:
+    for record in lendlist:
         receivers.append(record.reader_id.student_id)
-    content = "您好！您现有未归还的图书，将于一天内借阅到期，请按时归还至元培书房！"
+    # 逾期一周扣除信用分
+    if days == 7:
+        for receiver in receivers:
+            violate_stu = Participant.objects.get(Sid=receiver)
+            if violate_stu.credit > 0:
+                violate_stu.credit -= 1
+    # 发送通知，使用群发
     bulk_notification_create(
         receivers=receivers,
         sender=sender,
         typename=typename,
         title=Notification.Title.YPLIB_INFORM,
-        content=content,
+        content=cont,
         URL=URL,
         publish_to_wechat=True,
         publish_kws={
@@ -65,63 +67,22 @@ def bookreturn_notification():
         },
     )
     
-    receivers = []
-    for record in now_return:
-        receivers.append(record.reader_id.student_id)
-    content = "您好！您现有未归还的图书，已经借阅到期，请及时归还至元培书房！"
-    bulk_notification_create(
-        receivers=receivers,
-        sender=sender,
-        typename=typename,
-        title=Notification.Title.YPLIB_INFORM,
-        content=content,
-        URL=URL,
-        publish_to_wechat=True,
-        publish_kws={
-            'app': WechatApp._MESSAGE,
-            'level': WechatMessageLevel.IMPORTANT,
-        },
-    )
-    
-    receivers = []
-    for record in five_days_after:
-        receivers.append(record.reader_id.student_id)
-    content = "您好！您现有未归还的图书，已经借阅到期五天，请尽快归还至元培书房！到期一周未归还将扣除您的信用分1分！"
-    bulk_notification_create(
-        receivers=receivers,
-        sender=sender,
-        typename=typename,
-        title=Notification.Title.YPLIB_INFORM,
-        content=content,
-        URL=URL,
-        publish_to_wechat=True,
-        publish_kws={
-            'app': WechatApp._MESSAGE,
-            'level': WechatMessageLevel.IMPORTANT,
-        },
-    )
-    
-    receivers = []
-    for record in one_week_after:
-        receiver = record.reader_id.student_id
-        receivers.append(receiver)
-        violate_stu = Participant.objects.get(Sid=receiver)
-        if violate_stu.credit > 0:
-            violate_stu.credit -= 1
-    content = "您好！您现有未归还的图书，已经借阅到期一周，请尽快归还至元培书房！由于借阅超时一周，您已被扣除信用分1分！"
-    bulk_notification_create(
-        receivers=receivers,
-        sender=sender,
-        typename=typename,
-        title=Notification.Title.YPLIB_INFORM,
-        content=content,
-        URL=URL,
-        publish_to_wechat=True,
-        publish_kws={
-            'app': WechatApp._MESSAGE,
-            'level': WechatMessageLevel.IMPORTANT,
-        },
-    )
+def bookreturn_notification():
+    """
+    该函数每小时在外部被调用，对每一条未归还的借阅记录进行检查
+    在应还书时间前1天、应还书时间、应还书时间逾期5天发送还书提醒，提醒链接到“我的借阅”界面
+    在应还书时间逾期7天，将借阅信息改为“超时扣分”，扣除1信用分并发送提醒
+    """
+    # 发送任务列表
+    send_dict = {
+        -1:"您好！您现有未归还的图书，将于一天内借阅到期，请按时归还至元培书房！",
+        0:"您好！您现有未归还的图书，已经借阅到期，请及时归还至元培书房！",
+        5:"您好！您现有未归还的图书，已经借阅到期五天，请尽快归还至元培书房！到期一周未归还将扣除您的信用分1分！",
+        7:"您好！您现有未归还的图书，已经借阅到期一周，请尽快归还至元培书房！由于借阅超时一周，您已被扣除信用分1分！"
+    }
+    # 调用days_reminder()发送
+    for send_mission in send_dict:
+        days_reminder(days=send_mission[0], cont=send_mission[1])
 
 
 def get_readers_by_user(user: User) -> QuerySet[Reader]:
