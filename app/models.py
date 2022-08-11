@@ -660,15 +660,15 @@ class Organization(models.Model):
 
 class PositionManager(models.Manager):
     def current(self):
-        return select_current(self, 'in_year', 'in_semester')
+        return select_current(self, 'year', 'semester')
 
     def noncurrent(self):
-        return select_current(self, 'in_year', 'in_semester', noncurrent=True)
+        return select_current(self, 'year', 'semester', noncurrent=True)
 
     def activated(self, noncurrent=False):
         return select_current(
             self.filter(status=Position.Status.INSERVICE),
-            'in_year', 'in_semester',
+            'year', 'semester',
             noncurrent=noncurrent)
 
     def create_application(self, person, org, apply_type, apply_pos):
@@ -723,8 +723,8 @@ class Position(models.Model):
         - pos: 职务等级
         - status: 职务状态
         - show_post: 是否公开职务
-        - in_year: 学年
-        - in_semester: 学期
+        - year: 学年
+        - semester: 学期
     成员变动申请相关：
         - apply_type: 申请类型
         - apply_status: 申请状态
@@ -753,8 +753,8 @@ class Position(models.Model):
     show_post = models.BooleanField(default=True)
 
     # 表示是这个小组哪一年、哪个学期的成员
-    in_year = models.IntegerField("当前学年", default=current_year)
-    in_semester = models.CharField(
+    year = models.IntegerField("当前学年", default=current_year)
+    semester = models.CharField(
         "当前学期", choices=Semester.choices, default=Semester.ANNUAL, max_length=15
     )
 
@@ -1480,7 +1480,7 @@ class ModifyPosition(CommentBase):
                 current_positions.update(
                     pos=self.pos,
                     is_admin=self.org.otype.default_is_admin(self.pos),
-                    in_semester=self.org.otype.default_semester(),
+                    semester=self.org.otype.default_semester(),
                     status=Position.Status.INSERVICE,
                 )
             else: # 不存在 直接新建
@@ -1489,7 +1489,7 @@ class ModifyPosition(CommentBase):
                     person=self.person,
                     org=self.org,
                     is_admin=self.org.otype.default_is_admin(self.pos),
-                    in_semester=self.org.otype.default_semester(),
+                    semester=self.org.otype.default_semester(),
                 )
         else:   # 修改 则必定存在这个量
             Position.objects.activated().filter(
@@ -1922,6 +1922,7 @@ class Feedback(CommentBase):
         OrganizationType, on_delete=models.CASCADE, null=True, blank=True)
     org: Organization = models.ForeignKey(
         Organization, on_delete=models.CASCADE, null=True, blank=True)
+    url = models.URLField("相关链接", max_length=256, default="", blank=True)
 
     class IssueStatus(models.IntegerChoices):
         DRAFTED = (0, "草稿")
@@ -1970,3 +1971,20 @@ class Feedback(CommentBase):
     def save(self, *args, **kwargs):
         self.typename = "feedback"
         super().save(*args, **kwargs)
+
+    def get_absolute_url(self, absolute=False) -> str:
+        '''
+        获取显示页面网址
+
+        :param absolute: 是否返回绝对地址, defaults to False
+        :type absolute: bool, optional
+        :return: 显示页面的网址
+        :rtype: str
+        '''
+        if self.issue_status == Feedback.IssueStatus.DRAFTED:
+            url = f'/modifyFeedback/?feedback_id={self.id}'
+        else:
+            url = f'/viewFeedback/{self.id}'
+        if absolute:
+            url = LOGIN_URL.rstrip('/') + url
+        return url

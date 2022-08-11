@@ -238,6 +238,10 @@ class Appoint(models.Model):
         '''获取预约发起者id'''
         return self.major_student.Sid_id
 
+    def get_admin_url(self) -> str:
+        '''获取后台搜索的url'''
+        return f'/admin/Appointment/appoint/?q={self.pk}'
+
     def get_status(self):
         if self.Astatus == Appoint.Status.VIOLATED:
             if self.Areason == Appoint.Reason.R_NOVIOLATED:
