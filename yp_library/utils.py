@@ -37,7 +37,9 @@ def days_reminder(days: int, cont: str):
     # 获取发送通知所需参数，包括发送者、接收者，URL，类名，通知内容
     cr_time = datetime.now
     lendlist = LendRecord.objects.filter(
-        returned=False, due_time=cr_time - timedelta(days=days)
+        returned=False,
+        due_time__gt=cr_time - timedelta(days=days),
+        due_time__lte=cr_time - timedelta(days=days) - timedelta(hours=1)
         )
     sender = Organization.filter(oname="元培书房")
     URL = "/lendinfo/"
@@ -81,8 +83,8 @@ def bookreturn_notification():
         7:"您好！您现有未归还的图书，已经借阅到期一周，请尽快归还至元培书房！由于借阅超时一周，您已被扣除信用分1分！"
     }
     # 调用days_reminder()发送
-    for send_mission in send_dict:
-        days_reminder(days=send_mission[0], cont=send_mission[1])
+    for k, v in send_dict.items():
+        days_reminder(days=k, cont=v)
 
 
 def get_readers_by_user(user: User) -> QuerySet[Reader]:
@@ -157,7 +159,6 @@ def get_query_dict(post_dict: QueryDict) -> dict:
     # search_books函数要求输入为一个词典，其条目对应"id", "identity_code", "title", "author", "publisher"和"returned"的query
     # 这里没有id的query，故query为空串
     # 此外，还提供“全关键词检索”，具体见search_books
-
     query_dict = {}
     for query_type in ["identity_code", "title", "author", "publisher"]:
         if query_type in post_dict.keys():
