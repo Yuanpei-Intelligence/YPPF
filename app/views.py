@@ -848,51 +848,31 @@ def homepage(request: HttpRequest):
                 np.save()
                 html_display['first_signin'] = True # 前端显示
 
-    # 开始时间在前后一周内，除了取消和审核中的非书院课活动。按时间逆序排序
-    recentactivity_normal_list = list(Activity.objects.get_recent_normal_activity().select_related('organization_id'))
-    # 开始时间在前后一周内，除了取消和审核中的书院课活动。按时间逆序排序
-    recentactivity_course_list = list(Activity.objects.get_recent_course_activity().select_related('organization_id'))
-    recentactivity_list = recentactivity_normal_list + recentactivity_course_list
+    # 开始时间在前后一周内，除了取消和审核中的活动。按时间逆序排序
+    recentactivity_list = Activity.objects.get_recent_activity().select_related('organization_id')
 
     # 开始时间在今天的活动,且不展示结束的活动。按开始时间由近到远排序
     activities = Activity.objects.get_today_activity().select_related('organization_id')
     activities_start = [
-        activity.start.strftime("%H:%M") for activity in activities
     ]
     html_display['today_activities'] = list(zip(activities, activities_start)) or None
 
-    # 最新一周内发布的非书院课活动，按发布的时间逆序
-    newlyreleased_normal_list = list(Activity.objects.get_newlyreleased_normal_activity().select_related('organization_id'))
-    # 最新一周内发布的书院课活动，按发布的时间逆序
-    newlyreleased_course_list = list(Activity.objects.get_newlyreleased_course_activity().select_related('organization_id'))
-    newlyreleased_list = newlyreleased_normal_list + newlyreleased_course_list
+    # 最新一周内发布的活动，按发布的时间逆序
+    newlyreleased_list = Activity.objects.get_newlyreleased_activity().select_related('organization_id')
     
-    # 即将截止的非书院课活动，按截止时间正序
+    # 即将截止的活动，按截止时间正序
     prepare_times = Activity.EndBeforeHours.prepare_times
-    signup_normal_rec = Activity.objects.activated().select_related(
-        'organization_id').filter(status = Activity.Status.APPLYING, category__in = [Activity.ActivityCategory.NORMAL, Activity.ActivityCategory.ELECTION])
-    signup_normal_list = []
-    for act in signup_normal_rec:
+
+    signup_list = []
+    signup_rec = Activity.objects.activated().select_related(
+        'organization_id').filter(status = Activity.Status.APPLYING).order_by("category", "apply_end")
+    for act in signup_rec:
         deadline = act.apply_end
         dictmp = {}
         dictmp["deadline"] = deadline
         dictmp["act"] = act
         dictmp["tobestart"] = (deadline - nowtime).total_seconds()//360/10
-        signup_normal_list.append(dictmp)
-    signup_normal_list.sort(key=lambda x:x["deadline"])
-     # 即将截止的书院课活动，按截止时间正序
-    signup_course_rec = Activity.objects.activated().select_related(
-        'organization_id').filter(status = Activity.Status.APPLYING, category__in = [Activity.ActivityCategory.COURSE])
-    signup_course_list = []
-    for act in signup_course_rec:
-        deadline = act.apply_end
-        dictmp = {}
-        dictmp["deadline"] = deadline
-        dictmp["act"] = act
-        dictmp["tobestart"] = (deadline - nowtime).total_seconds()//360/10
-        signup_course_list.append(dictmp)
-    signup_course_list.sort(key=lambda x:x["deadline"])
-    signup_list = signup_normal_list + signup_course_list
+        signup_list.append(dictmp)
     signup_list = signup_list[:10]
     
     # 如果提交了心愿，发生如下的操作

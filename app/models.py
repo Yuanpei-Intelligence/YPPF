@@ -820,8 +820,8 @@ class ActivityManager(models.Manager):
         return select_current(
             self.filter(end__gt=mintime, status=Activity.Status.END))
 
-    def get_recent_normal_activity(self):
-        # 开始时间在前后一周内，除了取消和审核中的非书院课活动。按时间逆序排序
+    def get_recent_activity(self):
+        # 开始时间在前后一周内，除了取消和审核中的活动。按时间逆序排序
         nowtime = datetime.now()
         mintime = nowtime - timedelta(days=7)
         maxtime = nowtime + timedelta(days=7)
@@ -834,49 +834,9 @@ class ActivityManager(models.Manager):
                 Activity.Status.PROGRESSING,
                 Activity.Status.END
             ],
-            category__in=[
-                Activity.ActivityCategory.NORMAL,
-                Activity.ActivityCategory.ELECTION
-            ]
-        )).order_by("-start")
-        
-    def get_recent_course_activity(self):
-            # 开始时间在前后一周内，除了取消和审核中的书院课活动。按时间逆序排序
-        nowtime = datetime.now()
-        mintime = nowtime - timedelta(days=7)
-        maxtime = nowtime + timedelta(days=7)
-        return select_current(self.filter(
-            start__gt=mintime,
-            start__lt=maxtime,
-            status__in=[
-                Activity.Status.APPLYING,
-                Activity.Status.WAITING,
-                Activity.Status.PROGRESSING,
-                Activity.Status.END
-            ],
-            category__in=[
-                Activity.ActivityCategory.COURSE
-            ]
-        )).order_by("-start")
-
-    def get_newlyreleased_normal_activity(self):
-        # 最新一周内发布的非书院课活动，按发布的时间逆序
-        nowtime = datetime.now()
-        return select_current(self.filter(
-            publish_time__gt=nowtime - timedelta(days=7),
-            status__in=[
-                Activity.Status.APPLYING,
-                Activity.Status.WAITING,
-                Activity.Status.PROGRESSING
-            ],
-            category__in=[
-                Activity.ActivityCategory.NORMAL,
-                Activity.ActivityCategory.ELECTION
-            ]
-        )).order_by("-publish_time")
+        )).order_by("category", "-start")
     
-    def get_newlyreleased_course_activity(self):
-        # 最新一周内发布的书院课活动，按发布的时间逆序
+    def get_newlyreleased_activity(self):
         nowtime = datetime.now()
         return select_current(self.filter(
             publish_time__gt=nowtime - timedelta(days=7),
@@ -885,10 +845,7 @@ class ActivityManager(models.Manager):
                 Activity.Status.WAITING,
                 Activity.Status.PROGRESSING
             ],
-            category__in=[
-                Activity.ActivityCategory.COURSE
-            ]
-        )).order_by("-publish_time")
+        )).order_by("category", "-publish_time")
 
     def get_today_activity(self):
         # 开始时间在今天的活动,且不展示结束的活动。按开始时间由近到远排序
@@ -1086,7 +1043,6 @@ class Activity(CommentBase):
     class ActivityCategory(models.IntegerChoices):
         NORMAL = (0, "普通活动")
         COURSE = (1, "课程活动")
-        ELECTION = (2, "选课活动") # 不一定会使用到
 
     category = models.SmallIntegerField(
         "活动类别", choices=ActivityCategory.choices, default=0
