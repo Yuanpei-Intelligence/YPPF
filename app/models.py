@@ -2029,4 +2029,4 @@ class AcademicTextEntry(AcademicEntry):
         ...
 
     atype = models.SmallIntegerField(choices=AcademicTextType)
-    content = models.CharField(max_length=65535)
+    content = models.CharField(max_length=4095)
