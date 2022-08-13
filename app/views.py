@@ -853,6 +853,7 @@ def homepage(request: HttpRequest):
     # 开始时间在今天的活动,且不展示结束的活动。按开始时间由近到远排序
     activities = Activity.objects.get_today_activity().select_related('organization_id')
     activities_start = [
+        activity.start.strftime("%H:%M") for activity in activities
     ]
     html_display['today_activities'] = list(zip(activities, activities_start)) or None
 
