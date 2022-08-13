@@ -2016,7 +2016,7 @@ class AcademicEntry(models.Model):
 
 
 class AcademicTagEntry(AcademicEntry):
-    tag = models.ForeignKey(AcademicTag)
+    tag = models.ForeignKey(AcademicTag, on_delete=models.CASCADE)
 
     @property
     def content(self) -> str:
