@@ -1987,3 +1987,46 @@ class Feedback(CommentBase):
         if absolute:
             url = LOGIN_URL.rstrip('/') + url
         return url
+
+
+####  学术地图相关模型
+class AcademicTag(models.Model):
+
+    class AcademicTagType(models.IntegerChoices):
+        # MAJOR = (0, '专业')
+        ...
+
+    atype = models.SmallIntegerField(choices=AcademicTagType)
+    tag_content = models.CharField(max_length=63)
+
+
+class AcademicEntry(models.Model):
+
+    class Meta:
+        abstract = True
+
+    class EntryStatus(models.IntegerChoices):
+        PRIVATE = (0, '不公开')
+        WAIT_AUDIT = (1, '待审核')
+        PUBLIC = (2, '已公开')
+        OUTDATE = (3, '已弃用')
+
+    person = models.ForeignKey(NaturalPerson, on_delete=models.CASCADE)
+    status = models.SmallIntegerField(EntryStatus)
+
+
+class AcademicTagEntry(AcademicEntry):
+    tag = models.ForeignKey(AcademicTag, on_delete=models.CASCADE)
+
+    @property
+    def content(self) -> str:
+        return self.tag.tag_content
+
+class AcademicTextEntry(AcademicEntry):
+
+    class AcademicTextType(models.IntegerChoices):
+        # INTERNSHIP = (0, '实习经历')
+        ...
+
+    atype = models.SmallIntegerField(choices=AcademicTextType)
+    content = models.CharField(max_length=4095)
