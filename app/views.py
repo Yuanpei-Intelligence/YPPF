@@ -865,7 +865,7 @@ def homepage(request: HttpRequest):
 
     signup_list = []
     signup_rec = Activity.objects.activated().select_related(
-        'organization_id').filter(status = Activity.Status.APPLYING).order_by("category", "apply_end")
+        'organization_id').filter(status = Activity.Status.APPLYING).order_by("category", "apply_end")[:10]
     for act in signup_rec:
         deadline = act.apply_end
         dictmp = {}
@@ -873,7 +873,6 @@ def homepage(request: HttpRequest):
         dictmp["act"] = act
         dictmp["tobestart"] = (deadline - nowtime).total_seconds()//360/10
         signup_list.append(dictmp)
-    signup_list = signup_list[:10]
     
     # 如果提交了心愿，发生如下的操作
     if request.method == "POST" and request.POST:
