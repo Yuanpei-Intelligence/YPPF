@@ -1,4 +1,3 @@
-from unicodedata import category
 from app.views_dependency import *
 from app.models import (
     Feedback,
@@ -859,7 +858,7 @@ def homepage(request: HttpRequest):
 
     # 最新一周内发布的活动，按发布的时间逆序
     newlyreleased_list = Activity.objects.get_newlyreleased_activity().select_related('organization_id')
-    
+
     # 即将截止的活动，按截止时间正序
     prepare_times = Activity.EndBeforeHours.prepare_times
 
