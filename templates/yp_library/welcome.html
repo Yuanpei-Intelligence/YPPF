@@ -39,6 +39,19 @@
 .history-search {
   list-style: none!important;
 }
+.book-img {
+  aspect-ratio: 19 / 29;
+}
+.book-card-body {
+  height: 140px;
+}
+.book-card-body p {
+  -webkit-line-clamp: 3;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
 </style>
 <style>
   select[readonly] {
@@ -83,6 +96,7 @@
                     background-size: 100%;
                     height: calc(100vw * 0.4);
                     min-height: 420px;
+                    max-height: 600px;
                     ">
             <div class="d-flex justify-content-end">
               <!-- <img src="../../static/assets/img/librarypics/logo1.png" alt="" 
@@ -150,7 +164,100 @@
           </div>
         </div>
       </div>
+      <div class="col-12 layout-top-spacing">
+        <div class="bio layout-spacing">
+          <div class="widget-content widget-content-area">
+            <div class="row">
+              <div class="w-100" style="height: 500px;">
+                <div class="pr-4" style="filter: blur(2px); height: 500px;
+                        -webkit-filter: blur(2px); 
+                        background-image: url(../../static/assets/img/librarypics/background1.jpg); 
+                        background-position: top 10% right 10%; 
+                        background-repeat: no-repeat; 
+                        background-size: 200px 300px;
+                        transform: scale(1.1);"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="col-12 layout-top-spacing">
+        <div class="bio layout-spacing">
+          <div class="widget-content widget-content-area">
+            <div class="row">
+              <div class="container-fluid">
+                <h3>随机推荐</h3>
+                <div class="row flex-row flex-nowrap pb-4" style="overflow: auto;">
 
+                    <div class="col-8 col-lg-3 col-md-4 col-sm-6" >
+                      <div class="card">
+                        <img class="card-img-top book-img" src="../../static/assets/img/librarypics/testimg.jpg" 
+                          alt="Card image cap" intrinsicsize="1x9">
+                        
+                        <div class="card-body book-card-body">
+                          <h5 class="card-title">Love in the time of cholera</h5>
+                          <p class="card-text">This is a short description.</p>
+                        </div>
+                        <div class="card-footer">
+                          <small class="text-muted">Last updated 3 mins ago</small>
+                        </div>
+                      </div>
+                    </div>
+                    <div class="col-8 col-lg-3 col-md-4 col-sm-6">
+                      <div class="card">
+                        <img class="card-img-top book-img" src="../../static/assets/img/librarypics/Aleph.jpg" alt="Card image cap">
+                        <div class="card-body book-card-body">
+                          <h5 class="card-title">El Aleph</h5>
+                          <p class="card-text">This is a short description.</p>
+                        </div>
+                        <div class="card-footer">
+                          <small class="text-muted">Last updated 3 mins ago</small>
+                        </div>
+                      </div>
+                    </div>
+                    <div class="col-8 col-lg-3 col-md-4 col-sm-6">
+                      <div class="card">
+                        <img class="card-img-top" src="../../static/assets/img/librarypics/testimg.jpg" alt="Card image cap">
+                        <div class="card-body book-card-body">
+                          <h5 class="card-title">Love in the time of cholera</h5>
+                          <p class="card-text">这是一个超级长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长的描述</p>
+                        </div>
+                        <div class="card-footer">
+                          <small class="text-muted">Last updated 3 mins ago</small>
+                        </div>
+                      </div>
+                    </div>
+                    <div class="col-8 col-lg-3 col-md-4 col-sm-6">
+                      <div class="card">
+                        <img class="card-img-top" src="../../static/assets/img/librarypics/testimg.jpg" alt="Card image cap">
+                        <div class="card-body book-card-body">
+                          <h5 class="card-title">Love in the time of cholera</h5>
+                          <p class="card-text">This is a short description.</p>
+                        </div>
+                        <div class="card-footer">
+                          <small class="text-muted">Last updated 3 mins ago</small>
+                        </div>
+                      </div>
+                    </div>
+                    <div class="col-8 col-lg-3 col-md-4 col-sm-6">
+                      <div class="card">
+                        <img class="card-img-top" src="../../static/assets/img/librarypics/testimg.jpg" alt="Card image cap">
+                        <div class="card-body book-card-body">
+                          <h5 class="card-title">Love in the time of cholera</h5>
+                          <p class="card-text">This is a short description.</p>
+                        </div>
+                        <div class="card-footer">
+                          <small class="text-muted">Last updated 3 mins ago</small>
+                        </div>
+                      </div>
+                    </div>
+                    
+                </div>
+            </div>   
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
   </div>
 </div>
