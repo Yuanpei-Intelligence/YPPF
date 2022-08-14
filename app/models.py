@@ -835,11 +835,10 @@ class ActivityManager(models.Manager):
                 Activity.Status.WAITING,
                 Activity.Status.PROGRESSING,
                 Activity.Status.END
-            ]
-        )).order_by("-start")
-
+            ],
+        )).order_by("category", "-start")
+    
     def get_newlyreleased_activity(self):
-        # 最新一周内发布的活动，按发布的时间逆序
         nowtime = datetime.now()
         return select_current(self.filter(
             publish_time__gt=nowtime - timedelta(days=7),
@@ -847,8 +846,8 @@ class ActivityManager(models.Manager):
                 Activity.Status.APPLYING,
                 Activity.Status.WAITING,
                 Activity.Status.PROGRESSING
-            ]
-        )).order_by("-publish_time")
+            ],
+        )).order_by("category", "-publish_time")
 
     def get_today_activity(self):
         # 开始时间在今天的活动,且不展示结束的活动。按开始时间由近到远排序
@@ -1046,7 +1045,6 @@ class Activity(CommentBase):
     class ActivityCategory(models.IntegerChoices):
         NORMAL = (0, "普通活动")
         COURSE = (1, "课程活动")
-        ELECTION = (2, "选课活动") # 不一定会使用到
 
     category = models.SmallIntegerField(
         "活动类别", choices=ActivityCategory.choices, default=0
