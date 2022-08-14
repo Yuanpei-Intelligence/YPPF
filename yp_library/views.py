@@ -12,6 +12,7 @@ from yp_library.utils import (
     get_library_activity, 
     get_recommended_or_newest_books, 
     get_opening_time,
+    to_feedback_url,
 )
 from app.utils import get_sidebar_and_navbar, check_user_access
 
@@ -39,14 +40,7 @@ def welcome(request: HttpRequest) -> HttpResponse:
     transfer_message_context(request.GET, frontend_dict,
                              normalize=True)
     
-    # 检查用户身份
-    # 要求必须为个人账号且账号必须通过学号关联至少一个reader，否则抛出AssertionError
-    # 如果首页对账号没有要求，可以删掉这部分
-    try:
-        readers = get_readers_by_user(request.user)
-    except AssertionError as e:
-        frontend_dict["warn_message"] = "提示：馆藏查询、查看借阅记录等功能需要开通书房账号!"
-        frontend_dict["warn_code"] = 1
+    # 书房首页不再额外检查是否个人账号、是否关联reader
         
     # 获取首页展示的近期活动
     frontend_dict["activities"] = get_library_activity(num=DISPLAY_ACTIVITY_NUM)
@@ -80,17 +74,11 @@ def search(request: HttpRequest) -> HttpResponse:
     transfer_message_context(request.GET, frontend_dict,
                              normalize=True)
 
-    # 检查用户身份
-    # 要求必须为个人账号且账号必须通过学号关联至少一个reader，否则抛出AssertionError
-    # 如果图书检索对账号没有要求，可以删掉这部分
-    try:
-        readers = get_readers_by_user(request.user)
-    except AssertionError as e:
-        return redirect(message_url(wrong(e)))
+    # 检索页面不再额外检查是否个人账号、是否关联reader
 
     if request.method == "POST" and request.POST:  # POST表明发起检索
         query_dict = get_query_dict(request.POST)  # 提取出检索条件
-        frontend_dict["search_results_list"] = search_books(query_dict)
+        frontend_dict["search_results_list"] = search_books(**query_dict)
 
     return render(request, "yp_library/search.html", frontend_dict)
 
@@ -114,14 +102,27 @@ def lendInfo(request: HttpRequest) -> HttpResponse:
                              normalize=True)
 
     # 检查用户身份
-    # 要求必须为个人账号且账号必须通过学号关联至少一个reader，否则抛出AssertionError
+    # 要求用户为个人账号且账号必须通过学号关联至少一个reader，否则给出提示语
     try:
         readers = get_readers_by_user(request.user)
     except AssertionError as e:
-        return redirect(message_url(wrong(e)))
+        frontend_dict["warn_message"] = e
+        frontend_dict["warn_code"] = 1
+        frontend_dict['unreturned_records_list'] = []
+        frontend_dict['returned_records_list'] = []
+        return render(request, "yp_library/lendinfo.html", frontend_dict)
 
     unreturned_records_list, returned_records_list = get_lendinfo_by_readers(readers)
     frontend_dict['unreturned_records_list'] = unreturned_records_list
     frontend_dict['returned_records_list'] = returned_records_list
+    
+    # 用户发起申诉
+    if request.method == 'POST' and request.POST:
+        if request.POST.get('feedback') is not None:
+            try:
+                url = to_feedback_url(request)
+                return redirect(url)
+            except AssertionError as e:
+                wrong(str(e), frontend_dict) 
 
     return render(request, "yp_library/lendinfo.html", frontend_dict)

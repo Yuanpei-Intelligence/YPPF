@@ -11,6 +11,7 @@ import requests
 from typing import List, Tuple, Union, Any
 from datetime import datetime, timedelta
 
+from django.http import HttpRequest
 from django.contrib.auth.models import User
 from django.db import transaction  # 原子化更改数据库
 from django.db.models import Q, QuerySet
@@ -562,3 +563,47 @@ def get_conflict_appoints(appoint: Appoint, times: int = 1,
     if exclude_this:
         conflict_appoints = conflict_appoints.exclude(pk=appoint.pk)
     return conflict_appoints.order_by('Astart', 'Afinish')
+
+
+def to_feedback_url(request: HttpRequest) -> str:
+    """
+    检查预约记录是否可以申诉。
+    如果可以，向session添加传递到反馈填写界面的信息。
+    最终函数返回跳转到的url。
+    
+    :param request: http请求
+    :type request: HttpRequest
+    :return: 即将跳转到的url
+    :rtype: str
+    """
+    # 首先检查预约记录是否存在
+    try:
+        Aid = request.POST['feedback']
+        appoint: Appoint = Appoint.objects.get(Aid=Aid)
+    except:
+        raise AssertionError("预约记录不存在！")
+    
+    # 然后检查预约记录是否可申诉
+    assert appoint.Astatus in (
+        Appoint.Status.VIOLATED,
+        Appoint.Status.JUDGED,
+    ), "该预约记录不可申诉！"
+    
+    appoint_student = appoint.major_student.name
+    appoint_room = str(appoint.Room)
+    appoint_start = appoint.Astart.strftime('%Y年%m月%d日 %H:%M')
+    appoint_finish = appoint.Afinish.strftime('%H:%M')
+    appoint_reason = appoint.get_status()
+    
+    # 向session添加信息
+    request.session['feedback_type'] = '地下室预约反馈'
+    request.session['feedback_url'] = appoint.get_admin_url()
+    request.session['feedback_content'] = '\n'.join((
+        f'申请人：{appoint_student}',
+        f'房间：{appoint_room}',
+        f'预约时间：{appoint_start} - {appoint_finish}',
+        f'违规原因：{appoint_reason}',
+    ))
+    
+    # 最终返回填写feedback的url
+    return GLOBAL_INFO.login_url.rstrip('/') + '/feedback/'

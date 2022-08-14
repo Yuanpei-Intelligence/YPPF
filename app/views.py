@@ -363,9 +363,9 @@ def stuinfo(request: HttpRequest, name=None):
 
         person_history_orgs_pos = [
             org.otype.get_name(pos) + ' ' +
-            str(person_history_poss.get(org=org).in_year)[2:] + "-" +
-            str(person_history_poss.get(org=org).in_year + 1)[2:] +
-            sems[person_history_poss.get(org=org).in_semester]
+            str(person_history_poss.get(org=org).year)[2:] + "-" +
+            str(person_history_poss.get(org=org).year + 1)[2:] +
+            sems[person_history_poss.get(org=org).semester]
             for pos, org in zip(person_history_orgs_pos, person_history_orgs)
         ]  # ta在小组中的职位
         html_display["history_orgs_info"] = (
@@ -862,9 +862,10 @@ def homepage(request: HttpRequest):
 
     # 即将截止的活动，按截止时间正序
     prepare_times = Activity.EndBeforeHours.prepare_times
-    signup_rec = Activity.objects.activated().select_related(
-        'organization_id').filter(status = Activity.Status.APPLYING)
+
     signup_list = []
+    signup_rec = Activity.objects.activated().select_related(
+        'organization_id').filter(status = Activity.Status.APPLYING).order_by("category", "apply_end")[:10]
     for act in signup_rec:
         deadline = act.apply_end
         dictmp = {}
@@ -872,8 +873,7 @@ def homepage(request: HttpRequest):
         dictmp["act"] = act
         dictmp["tobestart"] = (deadline - nowtime).total_seconds()//360/10
         signup_list.append(dictmp)
-    signup_list.sort(key=lambda x:x["deadline"])
-    signup_list = signup_list[:10]
+    
     # 如果提交了心愿，发生如下的操作
     if request.method == "POST" and request.POST:
         wishtext = request.POST.get("wish")
