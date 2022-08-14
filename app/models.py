@@ -81,6 +81,8 @@ __all__ = [
     'ModuleLog',
     'FeedbackType',
     'Feedback',
+    'QandA',
+    'QandAItem',
 ]
 
 # 兼容Django3.0及以下版本
@@ -2030,3 +2032,65 @@ class AcademicTextEntry(AcademicEntry):
 
     atype = models.SmallIntegerField(choices=AcademicTextType)
     content = models.CharField(max_length=4095)
+
+
+class QandAManager(models.Manager):
+    def activated(self, sender_flag=False, receiver_flag=False):
+        if sender_flag:
+            return self.exclude(status__in=[QandA.Status.IGNORE_SENDER,QandA.Status.DELETE])
+        if receiver_flag:
+            return self.exclude(status__in=[QandA.Status.IGNORE_RECEIVER,QandA.Status.DELETE])
+        return self.exclude(status=QandA.Status.DELETE)
+
+
+class QandA(models.Model):
+    class Meta:
+        verbose_name = "问答"
+        verbose_name_plural = verbose_name
+    
+    questioner: User = models.ForeignKey(User, on_delete=models.SET_NULL,
+                             related_name="send_QA_set", blank=True, null=True)
+    respondent: User = models.ForeignKey(User, on_delete=models.SET_NULL,
+                             related_name="receive_QA_set", blank=True, null=True)
+    anonymous_flag = models.BooleanField("是否匿名", default=False)
+
+    class Status(models.IntegerChoices):
+        DONE = (0, "进行中")
+        UNDONE = (1, "待回答")
+        DELETE = (2, "已删除")
+        IGNORE_SENDER = (3, "发送者忽略")
+        IGNORE_RECEIVER = (4, "接收者忽略")
+    status = models.SmallIntegerField(choices=Status.choices, default=1)
+
+    objects: QandAManager = QandAManager()   
+
+
+class QandAItem(CommentBase):
+    class Meta:
+        verbose_name = "单条问答记录"
+        verbose_name_plural = verbose_name
+
+    content = models.TextField("内容", blank=False)
+
+    class QAType(models.IntegerChoices):
+        Question = (0, "提问")
+        Answer = (1, "回答")
+    type = models.SmallIntegerField(choices=QAType.choices)
+
+    class PublicStatus(models.IntegerChoices):
+        PUBLIC = (0, '公开')
+        PRIVATE = (1, '不公开')
+    public_status = models.SmallIntegerField(
+        '公开状态', choices=PublicStatus.choices, default=PublicStatus.PRIVATE
+    )
+    
+    commentbase: CommentBase = models.ForeignKey(
+        CommentBase, related_name="QandAItem", on_delete=models.CASCADE
+    )
+    relate_QA: QandA = models.ForeignKey(
+        QandA, related_name="relate_QandA", on_delete=models.CASCADE,
+    )
+
+    def save(self, *args, **kwargs):
+        self.typename = "QandAItem"
+        super().save(*args, **kwargs)
