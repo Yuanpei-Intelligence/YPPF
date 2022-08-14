@@ -2070,7 +2070,7 @@ class QandAItem(CommentBase):
         verbose_name = "单条问答记录"
         verbose_name_plural = verbose_name
 
-    content = models.TextField("内容", blank=False)
+    content = models.TextField("内容", default='', blank=True)
 
     class QAType(models.IntegerChoices):
         Question = (0, "提问")
