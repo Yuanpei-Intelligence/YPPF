@@ -29,7 +29,8 @@ def searchAcademic(request: HttpRequest) -> HttpResponse:
     
     # POST表明搜索框发起检索
     if request.method == "POST" and request.POST:  
-        query = request.POST["query"]  # 获取用户输入的关键词
+        query = request.POST["query"]   # 获取用户输入的关键词
+        frontend_dict["query"] = query  # 前端可借此将字体设置为高亮
         frontend_dict["academic_map_list"] = get_search_results(query)
         
     frontend_dict["bar_display"] = get_sidebar_and_navbar(request.user, "学术地图搜索结果")
