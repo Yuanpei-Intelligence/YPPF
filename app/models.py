@@ -81,7 +81,7 @@ __all__ = [
     'ModuleLog',
     'FeedbackType',
     'Feedback',
-    'QandA',
+    'AcademicQA',
 ]
 
 # 兼容Django3.0及以下版本
@@ -2031,18 +2031,18 @@ class AcademicTextEntry(AcademicEntry):
     content = models.CharField(max_length=4095)
 
 
-class QandAManager(models.Manager):
+class AcademicQAManager(models.Manager):
     def activated(self, sender_flag=False, receiver_flag=False):
         if sender_flag:
-            return self.exclude(status__in=[QandA.Status.IGNORE_SENDER,QandA.Status.DELETE])
+            return self.exclude(status__in=[AcademicQA.Status.IGNORE_SENDER,AcademicQA.Status.DELETE])
         if receiver_flag:
-            return self.exclude(status__in=[QandA.Status.IGNORE_RECEIVER,QandA.Status.DELETE])
-        return self.exclude(status=QandA.Status.DELETE)
+            return self.exclude(status__in=[AcademicQA.Status.IGNORE_RECEIVER,AcademicQA.Status.DELETE])
+        return self.exclude(status=AcademicQA.Status.DELETE)
 
 
-class QandA(CommentBase):
+class AcademicQA(CommentBase):
     class Meta:
-        verbose_name = "问答"
+        verbose_name = "学术地图问答"
         verbose_name_plural = verbose_name
     
     questioner: User = models.ForeignKey(User, on_delete=models.SET_NULL,
@@ -2059,8 +2059,8 @@ class QandA(CommentBase):
         IGNORE_RECEIVER = (4, "接收者忽略")
     status = models.SmallIntegerField(choices=Status.choices, default=1)
 
-    objects: QandAManager = QandAManager()
+    objects: AcademicQAManager = AcademicQAManager()
     
     def save(self, *args, **kwargs):
-        self.typename = "QandA"
+        self.typename = "AcademicQA"
         super().save(*args, **kwargs)   
