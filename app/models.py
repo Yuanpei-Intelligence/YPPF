@@ -2052,8 +2052,8 @@ class AcademicQA(CommentBase):
     anonymous_flag = models.BooleanField("是否匿名", default=False)
 
     class Status(models.IntegerChoices):
-        DONE = (0, "进行中")
-        UNDONE = (1, "待回答")
+        DONE = (0, "已回答") # 最后一条comment是respondent发送的
+        UNDONE = (1, "待回答") # 最后一条comment是questioner发送的
         DELETE = (2, "已删除")
         IGNORE_SENDER = (3, "发送者忽略")
         IGNORE_RECEIVER = (4, "接收者忽略")
