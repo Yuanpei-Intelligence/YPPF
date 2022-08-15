@@ -81,6 +81,7 @@ __all__ = [
     'ModuleLog',
     'FeedbackType',
     'Feedback',
+    'Chat',
 ]
 
 # 兼容Django3.0及以下版本
@@ -2028,3 +2029,40 @@ class AcademicTextEntry(AcademicEntry):
 
     atype = models.SmallIntegerField(choices=AcademicTextType)
     content = models.CharField(max_length=4095)
+
+
+class ChatManager(models.Manager):
+    def activated(self):
+        # 筛选进行中的对话
+        return self.filter(status=Chat.Status.PROGRESSING)
+
+
+class Chat(CommentBase):
+    """
+    每个Chat支持一对用户间的多次通信，每一条信息是一个Comment记录
+    一对用户间可以开启多个Chat，进行不同主题的讨论
+
+    应用于学术地图的QA功能
+    """
+    class Meta:
+        verbose_name = "对话"
+        verbose_name_plural = verbose_name
+    
+    questioner: User = models.ForeignKey(User, on_delete=models.SET_NULL,
+                             related_name="send_chat_set", blank=True, null=True)
+    respondent: User = models.ForeignKey(User, on_delete=models.SET_NULL,
+                             related_name="receive_chat_set", blank=True, null=True)
+    title = models.CharField("主题", blank=True, null=True, max_length=50)
+    anonymous_flag = models.BooleanField("是否匿名", default=False) # 指发送方
+
+    class Status(models.IntegerChoices):
+        PROGRESSING = (0, "进行中")
+        CLOSED = (1, "已关闭") # 发送方或接收方选择关闭时转入该状态，此后双方不能再向该Chat发消息
+        FORBIDDEN = (2, "禁用") # 接收方处于不允许匿名提问状态时，所有发送方匿名的、进行中的Chat转入该状态，此后双方不能再向该Chat发消息
+    status = models.SmallIntegerField(choices=Status.choices, default=0)
+
+    objects: ChatManager = ChatManager()
+    
+    def save(self, *args, **kwargs):
+        self.typename = "Chat"
+        super().save(*args, **kwargs)   
