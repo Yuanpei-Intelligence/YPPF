@@ -114,11 +114,11 @@
                 </p>
               </div>
               <div class="col-12 collapse mb-4 pt-2 order-last collapsed form-group collapse show" id="collapseExample">
-              <form action="/yplibrary/search/" method="get" role="search" id="SearchBookForm">
+              <form action="/yplibrary/search/" method="POST" role="search" id="SearchBookForm">
                   <div class="row">
                     <div class="col-12 input-group pt-4 pb-3">
-                      <input type="text" class="form-control" id="BookName" 
-                        placeholder="搜索书名/作者/索书号/出版社" name="BookName">
+                      <input type="text" class="form-control" id="keywords" 
+                        placeholder="搜索书名/作者/索书号/出版社" name="keywords">
                       <div class="input-group-append">
                         <button type="button" class="btn btn-outline-info" id="searchButton">
                           搜索
@@ -136,7 +136,7 @@
                         <li class="nav-item pt-0 pb-0 pr-2"><a class="nav-link-active" href=""> ... </a></li>
                       </ul> -->
                       <div class="form-check mb-2 mr-sm-2">
-                        <input class="form-check-input" type="checkbox" id="CanBorrow" name="CanBorrow">
+                        <input class="form-check-input" type="checkbox" id="returned" name="returned">
                         <label class="form-check-label" for="canBorrow" style="font-size: 0.9rem;">
                           可借阅
                         </label>
@@ -162,8 +162,8 @@
 <script src={% static "assets/js/users/account-settings.js" %}></script>
 <script type="text/javascript">
   const submit = function() {
-    const checkbox = document.getElementById("CanBorrow");
-    const input = document.getElementById("BookName"); 
+    const checkbox = document.getElementById("returned");
+    const input = document.getElementById("keywords"); 
     if (checkbox.checked || input.value){
       document.getElementById("SearchBookForm").submit();
     }
