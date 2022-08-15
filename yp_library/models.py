@@ -65,6 +65,10 @@ class LendRecord(models.Model):
         "借阅记录状态", choices=Status.choices, default=Status.NORMAL
     )
     
+    def get_admin_url(self) -> str:
+        '''获取后台搜索的url'''
+        return f'/admin/yp_library/lendrecord/?q={self.id}'
+    
     @admin.display(description="读者学号")
     def reader_stu_id(self):
         return self.reader_id.student_id

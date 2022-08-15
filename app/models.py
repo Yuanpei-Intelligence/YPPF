@@ -833,11 +833,10 @@ class ActivityManager(models.Manager):
                 Activity.Status.WAITING,
                 Activity.Status.PROGRESSING,
                 Activity.Status.END
-            ]
-        )).order_by("-start")
-
+            ],
+        )).order_by("category", "-start")
+    
     def get_newlyreleased_activity(self):
-        # 最新一周内发布的活动，按发布的时间逆序
         nowtime = datetime.now()
         return select_current(self.filter(
             publish_time__gt=nowtime - timedelta(days=7),
@@ -845,8 +844,8 @@ class ActivityManager(models.Manager):
                 Activity.Status.APPLYING,
                 Activity.Status.WAITING,
                 Activity.Status.PROGRESSING
-            ]
-        )).order_by("-publish_time")
+            ],
+        )).order_by("category", "-publish_time")
 
     def get_today_activity(self):
         # 开始时间在今天的活动,且不展示结束的活动。按开始时间由近到远排序
@@ -1044,7 +1043,6 @@ class Activity(CommentBase):
     class ActivityCategory(models.IntegerChoices):
         NORMAL = (0, "普通活动")
         COURSE = (1, "课程活动")
-        ELECTION = (2, "选课活动") # 不一定会使用到
 
     category = models.SmallIntegerField(
         "活动类别", choices=ActivityCategory.choices, default=0
@@ -1921,6 +1919,7 @@ class Feedback(CommentBase):
         OrganizationType, on_delete=models.CASCADE, null=True, blank=True)
     org: Organization = models.ForeignKey(
         Organization, on_delete=models.CASCADE, null=True, blank=True)
+    url = models.URLField("相关链接", max_length=256, default="", blank=True)
 
     class IssueStatus(models.IntegerChoices):
         DRAFTED = (0, "草稿")
@@ -1969,3 +1968,63 @@ class Feedback(CommentBase):
     def save(self, *args, **kwargs):
         self.typename = "feedback"
         super().save(*args, **kwargs)
+
+    def get_absolute_url(self, absolute=False) -> str:
+        '''
+        获取显示页面网址
+
+        :param absolute: 是否返回绝对地址, defaults to False
+        :type absolute: bool, optional
+        :return: 显示页面的网址
+        :rtype: str
+        '''
+        if self.issue_status == Feedback.IssueStatus.DRAFTED:
+            url = f'/modifyFeedback/?feedback_id={self.id}'
+        else:
+            url = f'/viewFeedback/{self.id}'
+        if absolute:
+            url = LOGIN_URL.rstrip('/') + url
+        return url
+
+
+####  学术地图相关模型
+class AcademicTag(models.Model):
+
+    class AcademicTagType(models.IntegerChoices):
+        # MAJOR = (0, '专业')
+        ...
+
+    atype = models.SmallIntegerField(choices=AcademicTagType)
+    tag_content = models.CharField(max_length=63)
+
+
+class AcademicEntry(models.Model):
+
+    class Meta:
+        abstract = True
+
+    class EntryStatus(models.IntegerChoices):
+        PRIVATE = (0, '不公开')
+        WAIT_AUDIT = (1, '待审核')
+        PUBLIC = (2, '已公开')
+        OUTDATE = (3, '已弃用')
+
+    person = models.ForeignKey(NaturalPerson, on_delete=models.CASCADE)
+    status = models.SmallIntegerField(EntryStatus)
+
+
+class AcademicTagEntry(AcademicEntry):
+    tag = models.ForeignKey(AcademicTag, on_delete=models.CASCADE)
+
+    @property
+    def content(self) -> str:
+        return self.tag.tag_content
+
+class AcademicTextEntry(AcademicEntry):
+
+    class AcademicTextType(models.IntegerChoices):
+        # INTERNSHIP = (0, '实习经历')
+        ...
+
+    atype = models.SmallIntegerField(choices=AcademicTextType)
+    content = models.CharField(max_length=4095)
