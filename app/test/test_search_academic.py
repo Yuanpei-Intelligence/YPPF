@@ -13,9 +13,9 @@ from app.academic_utils import get_search_results
 class GetSearchAcademicTestCase(TestCase):
     @classmethod
     def setUpTestData(cls):
-        u1 = User.objects.create(username="11", password="111")
-        u2 = User.objects.create(username="22", password="222")
-        u3 = User.objects.create(username="33", password="333")
+        u1 = User.objects.create(id="1", username="11", password="111")
+        u2 = User.objects.create(id="2", username="22", password="222")
+        u3 = User.objects.create(id="3", username="33", password="333")
         
         NaturalPerson.objects.create(person_id=u1, name="1", stu_grade="2018")
         NaturalPerson.objects.create(person_id=u2, name="2", stu_grade="2018")
@@ -153,8 +153,8 @@ class GetSearchAcademicTestCase(TestCase):
         for result in results_de:
             if result["姓名"] == "2":
                 self.assertEqual(result["年级"], "2018")
-                self.assertEqual(type(result["科研经历"]), tuple)
+                self.assertEqual(type(result["科研经历"]), list)
                 self.assertEqual(result["科研经历"][0], "物理物理物理物理物理11111111的")
             else:
                 self.assertEqual(result["年级"], "2019")
-                self.assertEqual(result["挑战杯经历"], ("离散数学的原理是非常美妙的",))        
+                self.assertEqual(result["挑战杯经历"], ["离散数学的原理是非常美妙的",])        
