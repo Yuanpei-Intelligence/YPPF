@@ -2048,9 +2048,9 @@ class Chat(CommentBase):
         verbose_name = "对话"
         verbose_name_plural = verbose_name
     
-    questioner: User = models.ForeignKey(User, on_delete=models.SET_NULL,
+    questioner: User = models.ForeignKey(User, on_delete=models.CASCADE,
                              related_name="send_chat_set")
-    respondent: User = models.ForeignKey(User, on_delete=models.SET_NULL,
+    respondent: User = models.ForeignKey(User, on_delete=models.CASCADE,
                              related_name="receive_chat_set")
     title = models.CharField("主题", default="", max_length=50)
     anonymous_flag = models.BooleanField("是否匿名", default=False) # 指发送方
