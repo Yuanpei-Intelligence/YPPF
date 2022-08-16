@@ -136,14 +136,14 @@ class GetSearchAcademicTestCase(TestCase):
     
     def test_results_type(self):
         result_chinese = get_search_results("中文")
-        self.assertEqual(result_chinese[0].__contains__("辅修专业"), True)
+        self.assertEqual("辅修专业" in result_chinese[0], True)
         results_physics = get_search_results("物理")
         for result in results_physics:
             if result["姓名"] == "1":
-                self.assertEqual(result.__contains__("实习经历"), True)
+                self.assertEqual("实习经历" in result, True)
             else:
-                self.assertEqual(result.__contains__("主修专业"), True)
-                self.assertEqual(result.__contains__("科研经历"), True)
+                self.assertEqual("主修专业" in result, True)
+                self.assertEqual("科研经历" in result, True)
     
     def test_results_entry(self):
         result_1 = get_search_results("1")

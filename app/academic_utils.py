@@ -7,6 +7,7 @@ from app.models import (
 )
 
 from typing import List
+from collections import defaultdict
 
 __all__ = [
     'get_search_results',
@@ -50,28 +51,22 @@ def get_search_results(query: str) -> List[dict]:
     for tag in academic_tags:
         person_id = tag["person__person_id_id"]
         tag_type = tag["tag__atype"]
-        if not academic_map_dict.__contains__(person_id):
-            academic_map_dict[person_id] = {
-                "姓名": tag["person__name"],
-                "年级": tag["person__stu_grade"],
-            }
-        if academic_map_dict[person_id].__contains__(tag_type):
-            academic_map_dict[person_id][tag_type].append(tag["tag__tag_content"])
-        else:
-            academic_map_dict[person_id][tag_type] = [tag["tag__tag_content"],]
+        tag_content = tag["tag__tag_content"]
+        if not person_id in academic_map_dict:
+            academic_map_dict[person_id] = defaultdict(list)
+            academic_map_dict[person_id]["姓名"] = tag["person__name"]
+            academic_map_dict[person_id]["年级"] = tag["person__stu_grade"]
+        academic_map_dict[person_id][tag_type].append(tag_content)
     
     for text in academic_texts:
         person_id = text["person__person_id_id"]
         text_type = text["atype"]
-        if not academic_map_dict.__contains__(person_id):
-            academic_map_dict[person_id] = {
-                "姓名": text["person__name"],
-                "年级": text["person__stu_grade"],
-            }
-        if academic_map_dict[person_id].__contains__(text_type):
-            academic_map_dict[person_id][text_type].append(text["content"])
-        else:
-            academic_map_dict[person_id][text_type] = [text["content"],]
+        text_content = text["content"]
+        if not person_id in academic_map_dict:
+            academic_map_dict[person_id] = defaultdict(list)
+            academic_map_dict[person_id]["姓名"] = text["person__name"]
+            academic_map_dict[person_id]["年级"] = text["person__stu_grade"]
+        academic_map_dict[person_id][text_type].append(text_content)
     
     # 最后将整理好的dict转换成前端利用的list
     academic_map_list = [value for value in academic_map_dict.values()]
