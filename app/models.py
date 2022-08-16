@@ -81,6 +81,10 @@ __all__ = [
     'ModuleLog',
     'FeedbackType',
     'Feedback',
+    'AcademicTag',
+    'AcademicEntry',
+    'AcademicTagEntry',
+    'AcademicTextEntry',
 ]
 
 # 兼容Django3.0及以下版本
@@ -1991,10 +1995,12 @@ class Feedback(CommentBase):
 class AcademicTag(models.Model):
 
     class AcademicTagType(models.IntegerChoices):
-        # MAJOR = (0, '专业')
-        ...
+        MAJOR = (0, '主修专业')
+        MINOR = (1, '辅修专业')
+        DOUBLE_DEGREE = (2, '双学位专业')
+        # Uncompleted ...
 
-    atype = models.SmallIntegerField(choices=AcademicTagType)
+    atype = models.SmallIntegerField(choices=AcademicTagType.choices)
     tag_content = models.CharField(max_length=63)
 
 
@@ -2020,11 +2026,14 @@ class AcademicTagEntry(AcademicEntry):
     def content(self) -> str:
         return self.tag.tag_content
 
+
 class AcademicTextEntry(AcademicEntry):
 
     class AcademicTextType(models.IntegerChoices):
-        # INTERNSHIP = (0, '实习经历')
-        ...
+        INTERNSHIP = (0, '实习经历')
+        SCIENTIFIC_RESEARCH = (1, '科研经历')
+        CHALLENGE_CUP = (2, '挑战杯经历')
+        # Uncompleted ...
 
-    atype = models.SmallIntegerField(choices=AcademicTextType)
+    atype = models.SmallIntegerField(choices=AcademicTextType.choices)
     content = models.CharField(max_length=4095)
