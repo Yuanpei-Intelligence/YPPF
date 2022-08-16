@@ -143,6 +143,8 @@
                     height: calc(100vw * 0.4);
                     min-height: 420px;
                     max-height: 600px;
+                    border-bottom-left-radius: 0;
+                    border-bottom-right-radius: 0;
                     ">
             <div class="d-flex justify-content-end">
               <!-- <img src="../../static/assets/img/librarypics/logo1.png" alt="" 
@@ -153,10 +155,10 @@
                   {{ opening_time_end }}
               </h5>
             </div>
-            <div class="row ml-0 mr-0" style="background-color: aliceblue;
-              opacity: 0.9; position: relative; top: 15%; left: 10%; width: 80%;">
+            <div class="row ml-0 mr-0" style="opacity: 0.9; position: relative; top: 15%; left: 10%; width: 80%;">
               <div class="col-lg-4 col-md-5 col-sm-12 order-2 order-md-1 pt-1 pb-1" data-toggle="collapse" href="#collapseExample" role="button"
-                aria-expanded="false" aria-controls="collapseExample" id="search-tab">
+                aria-expanded="false" aria-controls="collapseExample" id="search-tab"
+                style="background-color: aliceblue;">
                 <div class="d-flex justify-content-between">
                   <p style="font-size: 1rem;" class="mb-1 mt-1">
                     <i class="fa fa-search"></i>
@@ -167,13 +169,15 @@
                   </p>
                 </div>
               </div>
-              <div class="col-lg-8 col-md-7 col-sm-12 order-sm-1 order-md-2 pt-1 pb-1" style="background-color:lightpink;">
+              <div class="col-lg-8 col-md-7 col-sm-12 order-sm-1 order-md-2 pt-1 pb-1" style="background-color:lightpink;"
+                onclick="window.location='/yplibrary/lendinfo/'"">
                 <p style="font-size: 1rem;" class="mb-1 mt-1">
                   <i class="fa fa-clock"></i>
                   我的借阅 ......
                 </p>
               </div>
-              <div class="col-12 collapse mb-4 pt-2 order-last collapsed form-group collapse show" id="collapseExample">
+              <div class="col-12 collapse mb-4 pt-2 order-last collapsed form-group collapse show" id="collapseExample"
+                style="background-color: aliceblue;">
               <form action="/yplibrary/search/" method="POST" role="search" id="SearchBookForm">
                   <div class="row">
                     <div class="col-12 input-group pt-4 pb-3">
@@ -208,12 +212,7 @@
 
             </div>
           </div>
-        </div>
-      </div>
-
-      <div class="col-12 layout-top-spacing">
-        <div class="bio layout-spacing">
-          <div class="widget-content widget-content-area">
+          <div class="widget-content widget-content-area" style="border-top-left-radius: 0; border-top-right-radius: 0;">
             <div class="row">
               <div class="container-fluid">
                 <h3>随机推荐</h3>
@@ -233,7 +232,6 @@
                       </div>
                     </div> -->
                     {% for book in recommendation %}
-                    {% if forloop.counter0|divisibleby:"3" %}
                     <div class="mb-4 col-8 col-sm-6 col-md-4 col-lg-4 col-xl-3 mb-4">
                       <div class="card h-100">
                         <div class="card-body">
@@ -288,8 +286,7 @@
                           </div>
                         </div>
                       </div>
-                    </div> -->
-                    {% elif forloop.counter|divisibleby:"3"%}
+                    </div>
                     <div class="mb-4 col-8 col-sm-6 col-md-4 col-lg-4 col-xl-3 mb-4">
                       <div class="card h-100">
                         <div class="card-body">
@@ -318,7 +315,6 @@
                         </div>
                       </div>
                     </div>
-                    {% else %}
                     <div class="mb-4 col-8 col-sm-6 col-md-4 col-lg-4 col-xl-3 mb-4">
                       <div class="card h-100">
                         <div class="card-body">
@@ -345,14 +341,94 @@
                           </div>
                         </div>
                       </div>
-                    </div>
-                    {% endif %}
+                    </div> -->
+                    {% empty %}
+                    <p style="text-align: center; width:100%;">
+                      没有找到要推荐的书籍~
+                    </p>
+                    
                     {% endfor %}
                 </div>
             </div>   
             </div>
           </div>
         </div>
+        <div class="bio layout-spacing">
+          
+        </div>
+      </div>
+      <!-- <div class="col-12 layout-top-spacing">
+        <div class="bio layout-spacing">
+          <div class="widget-content widget-content-area">
+            <div class="row">
+              <div class="w-100" style="height: 500px;">
+                <div class="pr-4" style=" height: 500px;
+                        background-image: url(../../static/assets/img/librarypics/background1.jpg); 
+                        background-position: top 10% right 10%; 
+                        background-repeat: no-repeat; 
+                        background-size: 200px 300px;
+                        transform: scale(1.1);">
+                  <div class="d-flex justify-content-end pt-4">
+                    <h5 style="font-size: 16px; text-align: right; z-index: inherit;">
+                      <i class="fa fa-solid fa-play"></i>
+                      今日开馆: {{ opening_time_start }} - 
+                        {{ opening_time_end }}
+                    </h5>
+                  </div>
+                  <div class="row ml-0 mr-0" style="background-color: aliceblue;
+                    opacity: 0.9; position: relative; top: 15%; left: 10%; width: 80%;">
+                    <div class="col-lg-4 col-md-5 col-sm-12 order-2 order-md-1 pt-1 pb-1" data-toggle="collapse" href="#collapseExample" role="button"
+                      aria-expanded="false" aria-controls="collapseExample" id="search-tab">
+                      <div class="d-flex justify-content-between">
+                        <p style="font-size: 1rem;" class="mb-1 mt-1">
+                          <i class="fa fa-search"></i>
+                          馆藏查询
+                        </p>
+                        <p style="margin-top: 5px;" class="mb-1">
+                          <i class="fa fa-solid"></i>
+                        </p>
+                      </div>
+                    </div>
+                    <div class="col-lg-8 col-md-7 col-sm-12 order-sm-1 order-md-2 pt-1 pb-1" style="background-color:lightpink;">
+                      <p style="font-size: 1rem;" class="mb-1 mt-1">
+                        <i class="fa fa-clock"></i>
+                        我的借阅 ......
+                      </p>
+                    </div>
+                    <div class="col-12 collapse mb-4 pt-2 order-last collapsed form-group collapse show" id="collapseExample">
+                    <form action="/yplibrary/search/" method="POST" role="search" id="SearchBookForm">
+                        <div class="row">
+                          <div class="col-12 input-group pt-4 pb-3">
+                            <input type="text" class="form-control" id="keywords" 
+                              placeholder="搜索书名/作者/索书号/出版社" name="keywords">
+                            <div class="input-group-append">
+                              <button type="button" class="btn btn-outline-info" id="searchButton">
+                                搜索
+                              </button>
+                            </div>
+                          </div>
+                          <div class="col-12 d-flex justify-content-end">
+                            <div class="form-check mb-2 mr-sm-2">
+                              <input class="form-check-input" type="checkbox" id="returned" name="returned">
+                              <label class="form-check-label" for="canBorrow" style="font-size: 0.9rem;">
+                                可借阅
+                              </label>
+                            </div>
+                          </div>
+                        </div>
+                    </form>
+                  </div>
+      
+                  </div>  
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div> -->
+
+      <div class="col-12 layout-top-spacing">
+        
       </div>
     </div>
   </div>
