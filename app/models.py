@@ -2049,10 +2049,10 @@ class Chat(CommentBase):
         verbose_name_plural = verbose_name
     
     questioner: User = models.ForeignKey(User, on_delete=models.SET_NULL,
-                             related_name="send_chat_set", blank=True, null=True)
+                             related_name="send_chat_set")
     respondent: User = models.ForeignKey(User, on_delete=models.SET_NULL,
-                             related_name="receive_chat_set", blank=True, null=True)
-    title = models.CharField("主题", blank=True, null=True, max_length=50)
+                             related_name="receive_chat_set")
+    title = models.CharField("主题", default="", max_length=50)
     anonymous_flag = models.BooleanField("是否匿名", default=False) # 指发送方
 
     class Status(models.IntegerChoices):
