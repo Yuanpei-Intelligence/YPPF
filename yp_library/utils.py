@@ -9,7 +9,8 @@ from datetime import datetime
 
 from django.contrib.auth.models import User
 from django.db.models import Q, QuerySet
-from django.http import QueryDict, HttpRequest
+from django.http import QueryDict, HttpRequest, HttpResponse
+from django.shortcuts import render
 
 from app.utils import check_user_type
 from datetime import datetime, timedelta
@@ -35,39 +36,43 @@ def days_reminder(days: int, cont: str):
     :type cont: str
     """
     # 获取发送通知所需参数，包括发送者、接收者，URL，类名，通知内容
-    cr_time = datetime.now
+    cr_time = datetime.now()
     lendlist = LendRecord.objects.filter(
         returned=False,
-        due_time__gt=cr_time - timedelta(days=days),
-        due_time__lte=cr_time - timedelta(days=days) - timedelta(hours=1)
+        due_time__gt=cr_time + timedelta(days=days),
+        due_time__lte=cr_time + timedelta(days=days) + timedelta(hours=1)
         )
-    sender = Organization.filter(oname="元培书房")
+    senders = list(Organization.objects.filter(oname="何善衡图书室"))
+    sender = senders[0].organization_id
     URL = "/lendinfo/"
     typename = Notification.Type.NEEDREAD
     
     receivers = []
     for record in lendlist:
         receivers.append(record.reader_id.student_id)
+    receivers = User.objects.filter(username__in=receivers)
     # 逾期一周扣除信用分
     if days == 7:
         for receiver in receivers:
             violate_stu = Participant.objects.get(Sid=receiver)
             if violate_stu.credit > 0:
                 violate_stu.credit -= 1
+                violate_stu.save()
     # 发送通知，使用群发
-    bulk_notification_create(
-        receivers=receivers,
-        sender=sender,
-        typename=typename,
-        title=Notification.Title.YPLIB_INFORM,
-        content=cont,
-        URL=URL,
-        publish_to_wechat=True,
-        publish_kws={
-            'app': WechatApp._MESSAGE,
-            'level': WechatMessageLevel.IMPORTANT,
-        },
-    )
+    if len(receivers) > 0:
+        bulk_notification_create(
+            receivers=receivers,
+            sender=sender,
+            typename=typename,
+            title=Notification.Title.YPLIB_INFORM,
+            content=cont,
+            URL=URL,
+            publish_to_wechat=True,
+            publish_kws={
+                'app': WechatApp._MESSAGE,
+                'level': WechatMessageLevel.IMPORTANT,
+            },
+        )
     
 def bookreturn_notification():
     """
