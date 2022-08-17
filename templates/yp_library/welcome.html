@@ -39,6 +39,65 @@
 .history-search {
   list-style: none!important;
 }
+.book-img {
+  aspect-ratio: 19 / 29;
+}
+.book-card-body {
+  height: 140px;
+}
+.book-card-body p {
+  -webkit-line-clamp: 3;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.text-blue {
+  color: #0d6efd !important;
+}
+.svg-icon {
+  width: 32px;
+  height: 32px;
+  vertical-align: text-bottom;
+  stroke: 3;
+}
+.bg-blue-light {
+  background-color: #cfe2ff;
+}
+.text-red {
+  color: #dc3545 !important;
+}
+.text-primary {
+  color: #4650dd !important;
+}
+.text-green {
+  color: #35b653 !important;
+}
+.bg-green-light {
+  background-color: #d7f0dd;
+}
+.bg-red-light {
+  background-color: #f8d7da;
+}
+.bg-primary-light {
+  background-color: #dadcf8;
+}
+.fw-normal {
+  font-size: 1.2rem;
+  -webkit-line-clamp: 1;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.subtitle {
+  text-align: end;
+  -webkit-line-clamp: 1;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
 </style>
 <style>
   select[readonly] {
@@ -49,17 +108,19 @@
   }
 </style>
 <style class="text/css">
-  /* TODO Add animation */
-  [data-toggle="collapse"] .fa.fa-solid:before {
-    font-family: 'Font Awesome 5 Free';
-    content: "\f107";
-    float: right;
-    font-size: 1.2rem;
-  }
+[data-toggle="collapse"] .fa.fa-solid:before {
+  font-family: 'Font Awesome 5 Free';
+  content: "\f107";
+  float: right;
+  font-size: 1.2rem;
+  transform: rotate(0deg);
+  transition: transform 0.4s linear;
+}
 
-  [data-toggle="collapse"].collapsed .fa.fa-solid:before {
-    content: "\f106";
-  }
+[data-toggle="collapse"].collapsed .fa.fa-solid:before {
+  transform: rotate(180deg);
+  transition: transform 0.4s linear;
+}
 </style>
 
 {% endblock %}
@@ -83,6 +144,9 @@
                     background-size: 100%;
                     height: calc(100vw * 0.4);
                     min-height: 420px;
+                    max-height: 600px;
+                    border-bottom-left-radius: 0;
+                    border-bottom-right-radius: 0;
                     ">
             <div class="d-flex justify-content-end">
               <!-- <img src="../../static/assets/img/librarypics/logo1.png" alt="" 
@@ -93,10 +157,10 @@
                   {{ opening_time_end }}
               </h5>
             </div>
-            <div class="row ml-0 mr-0" style="background-color: aliceblue;
-              opacity: 0.9; position: relative; top: 15%; left: 10%; width: 80%;">
+            <div class="row ml-0 mr-0" style="opacity: 0.9; position: relative; top: 15%; left: 10%; width: 80%;">
               <div class="col-lg-4 col-md-5 col-sm-12 order-2 order-md-1 pt-1 pb-1" data-toggle="collapse" href="#collapseExample" role="button"
-                aria-expanded="false" aria-controls="collapseExample" id="search-tab">
+                aria-expanded="false" aria-controls="collapseExample" id="search-tab"
+                style="background-color: aliceblue;">
                 <div class="d-flex justify-content-between">
                   <p style="font-size: 1rem;" class="mb-1 mt-1">
                     <i class="fa fa-search"></i>
@@ -107,18 +171,20 @@
                   </p>
                 </div>
               </div>
-              <div class="col-lg-8 col-md-7 col-sm-12 order-sm-1 order-md-2 pt-1 pb-1" style="background-color:lightpink;">
+              <div class="col-lg-8 col-md-7 col-sm-12 order-sm-1 order-md-2 pt-1 pb-1" style="background-color:lightpink;"
+                onclick="window.location='/yplibrary/lendinfo/'"">
                 <p style="font-size: 1rem;" class="mb-1 mt-1">
                   <i class="fa fa-clock"></i>
                   我的借阅 ......
                 </p>
               </div>
-              <div class="col-12 collapse mb-4 pt-2 order-last collapsed form-group collapse show" id="collapseExample">
-              <form action="/yplibrary/search/" method="get" role="search" id="SearchBookForm">
+              <div class="col-12 collapse mb-4 pt-2 order-last collapsed form-group collapse show" id="collapseExample"
+                style="background-color: aliceblue;">
+              <form action="/yplibrary/search/" method="POST" role="search" id="SearchBookForm">
                   <div class="row">
                     <div class="col-12 input-group pt-4 pb-3">
-                      <input type="text" class="form-control" id="BookName" 
-                        placeholder="搜索书名/作者/索书号/出版社" name="BookName">
+                      <input type="text" class="form-control" id="keywords" 
+                        placeholder="搜索书名/作者/索书号/出版社" name="keywords">
                       <div class="input-group-append">
                         <button type="button" class="btn btn-outline-info" id="searchButton">
                           搜索
@@ -136,7 +202,7 @@
                         <li class="nav-item pt-0 pb-0 pr-2"><a class="nav-link-active" href=""> ... </a></li>
                       </ul> -->
                       <div class="form-check mb-2 mr-sm-2">
-                        <input class="form-check-input" type="checkbox" id="CanBorrow" name="CanBorrow">
+                        <input class="form-check-input" type="checkbox" id="returned" name="returned">
                         <label class="form-check-label" for="canBorrow" style="font-size: 0.9rem;">
                           可借阅
                         </label>
@@ -148,9 +214,148 @@
 
             </div>
           </div>
+          <div class="widget-content widget-content-area" style="border-top-left-radius: 0; border-top-right-radius: 0;">
+            <div class="row">
+              <div class="container-fluid">
+                <h3>随机推荐</h3>
+                <div class="row flex-row flex-nowrap pb-4" style="overflow: auto;">
+                    <!-- <div class="col-8 col-lg-3 col-md-4 col-sm-6" >
+                      <div class="card">
+                        <img class="card-img-top book-img" src="../../static/assets/img/librarypics/testimg.jpg" 
+                          alt="Card image cap" intrinsicsize="1x9">
+                        
+                        <div class="card-body book-card-body">
+                          <h5 class="card-title">Love in the time of cholera</h5>
+                          <p class="card-text">This is a short description.</p>
+                        </div>
+                        <div class="card-footer">
+                          <small class="text-muted">Last updated 3 mins ago</small>
+                        </div>
+                      </div>
+                    </div> -->
+                    {% for book in recommendation %}
+                    <div class="mb-4 col-8 col-sm-6 col-md-4 col-lg-4 col-xl-3 mb-4">
+                      <div class="card h-100">
+                        <div class="card-body">
+                          <div class="d-flex align-items-center justify-content-between">
+                            <div class="flex-shrink-0 ms-3 mr-3">
+                              <svg class="svg-icon text-blue" xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 16 16">
+                                <path fill-rule="evenodd" d="M6 8V1h1v6.117L8.743 6.07a.5.5 0 0 1 .514 0L11 7.117V1h1v7a.5.5 0 0 1-.757.429L9 7.083 6.757 8.43A.5.5 0 0 1 6 8z"/>
+                                <path d="M3 0h10a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2v-1h1v1a1 1 0 0 0 1 1h10a1 1 0 0 0 1-1V2a1 1 0 0 0-1-1H3a1 1 0 0 0-1 1v1H1V2a2 2 0 0 1 2-2z"/>
+                                <path d="M1 5v-.5a.5.5 0 0 1 1 0V5h.5a.5.5 0 0 1 0 1h-2a.5.5 0 0 1 0-1H1zm0 3v-.5a.5.5 0 0 1 1 0V8h.5a.5.5 0 0 1 0 1h-2a.5.5 0 0 1 0-1H1zm0 3v-.5a.5.5 0 0 1 1 0v.5h.5a.5.5 0 0 1 0 1h-2a.5.5 0 0 1 0-1H1z"/>
+                              </svg>
+                            </div>
+                            <div>
+                              <h4 class="fw-normal text-blue">{{book.title}}</h4>
+                              <p class="subtitle text-sm text-muted text-end mb-0">{{book.author}}</p>
+                            </div>
+                          </div>
+                        </div>
+                        <div class="card-footer py-3 bg-blue-light">
+                          <div class="d-flex justify-content-between text-blue %}">
+                            <div >
+                              <p class="mb-0">索书号</p>
+                            </div>
+                            <div> 
+                              {{book.identity_code}}
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                    <!-- <div class="mb-4 col-8 col-sm-6 col-md-4 col-lg-4 col-xl-3 mb-4">
+                      <div class="card h-100">
+                        <div class="card-body">
+                          <div class="d-flex align-items-center justify-content-between">
+                            <div class="flex-shrink-0 ms-3 mr-3">
+                              <svg class="svg-icon text-red" xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 16 16">
+                                <path d="M8.5 2.687c.654-.689 1.782-.886 3.112-.752 1.234.124 2.503.523 3.388.893v9.923c-.918-.35-2.107-.692-3.287-.81-1.094-.111-2.278-.039-3.213.492V2.687zM8 1.783C7.015.936 5.587.81 4.287.94c-1.514.153-3.042.672-3.994 1.105A.5.5 0 0 0 0 2.5v11a.5.5 0 0 0 .707.455c.882-.4 2.303-.881 3.68-1.02 1.409-.142 2.59.087 3.223.877a.5.5 0 0 0 .78 0c.633-.79 1.814-1.019 3.222-.877 1.378.139 2.8.62 3.681 1.02A.5.5 0 0 0 16 13.5v-11a.5.5 0 0 0-.293-.455c-.952-.433-2.48-.952-3.994-1.105C10.413.809 8.985.936 8 1.783z"/>
+                              </svg>
+                            </div>
+                            <div>
+                              <h4 class="fw-normal text-red">{{book.title}}</h4>
+                              <p class="subtitle text-sm text-muted mb-0">{{book.author}}</p>
+                            </div>
+                          </div>
+                        </div>
+                        <div class="card-footer py-3 bg-red-light">
+                          <div class="d-flex justify-content-between text-red">
+                            <div >
+                              <p class="mb-0">索书号</p>
+                            </div>
+                            <div> {{book.identity_code}}
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                    <div class="mb-4 col-8 col-sm-6 col-md-4 col-lg-4 col-xl-3 mb-4">
+                      <div class="card h-100">
+                        <div class="card-body">
+                          <div class="d-flex align-items-center justify-content-between">
+                            <div class="flex-shrink-0 ms-3 mr-3">
+                              <svg class="svg-icon text-primary" xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 16 16">
+                                <path d="M5 10.5a.5.5 0 0 1 .5-.5h2a.5.5 0 0 1 0 1h-2a.5.5 0 0 1-.5-.5zm0-2a.5.5 0 0 1 .5-.5h5a.5.5 0 0 1 0 1h-5a.5.5 0 0 1-.5-.5zm0-2a.5.5 0 0 1 .5-.5h5a.5.5 0 0 1 0 1h-5a.5.5 0 0 1-.5-.5zm0-2a.5.5 0 0 1 .5-.5h5a.5.5 0 0 1 0 1h-5a.5.5 0 0 1-.5-.5z"/>
+                                <path d="M3 0h10a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2v-1h1v1a1 1 0 0 0 1 1h10a1 1 0 0 0 1-1V2a1 1 0 0 0-1-1H3a1 1 0 0 0-1 1v1H1V2a2 2 0 0 1 2-2z"/>
+                                <path d="M1 5v-.5a.5.5 0 0 1 1 0V5h.5a.5.5 0 0 1 0 1h-2a.5.5 0 0 1 0-1H1zm0 3v-.5a.5.5 0 0 1 1 0V8h.5a.5.5 0 0 1 0 1h-2a.5.5 0 0 1 0-1H1zm0 3v-.5a.5.5 0 0 1 1 0v.5h.5a.5.5 0 0 1 0 1h-2a.5.5 0 0 1 0-1H1z"/>
+                              </svg>
+                            </div>
+                            <div>
+                              <h4 class="fw-normal text-primary">{{book.title}}</h4>
+                              <p class="subtitle text-sm text-muted mb-0">{{book.author}}</p>
+                            </div>
+                          </div>
+                        </div>
+                        <div class="card-footer py-3 bg-primary-light">
+                          <div class="d-flex justify-content-between text-primary">
+                            <div >
+                              <p class="mb-0">索书号</p>
+                            </div>
+                            <div> {{book.identity_code}}
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                    <div class="mb-4 col-8 col-sm-6 col-md-4 col-lg-4 col-xl-3 mb-4">
+                      <div class="card h-100">
+                        <div class="card-body">
+                          <div class="d-flex align-items-center justify-content-between">
+                            <div class="flex-shrink-0 ms-3 mr-3">
+                              <svg xmlns="http://www.w3.org/2000/svg" fill="currentColor" class="svg-icon text-green" viewBox="0 0 16 16">
+                                <path d="M12.5 3a.5.5 0 0 1 0 1h-5a.5.5 0 0 1 0-1h5zm0 3a.5.5 0 0 1 0 1h-5a.5.5 0 0 1 0-1h5zm.5 3.5a.5.5 0 0 0-.5-.5h-5a.5.5 0 0 0 0 1h5a.5.5 0 0 0 .5-.5zm-.5 2.5a.5.5 0 0 1 0 1h-5a.5.5 0 0 1 0-1h5z"/>
+                                <path d="M16 2a2 2 0 0 0-2-2H2a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V2zM4 1v14H2a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1h2zm1 0h9a1 1 0 0 1 1 1v12a1 1 0 0 1-1 1H5V1z"/>
+                              </svg>
+                            </div>
+                            <div>
+                              <h4 class="fw-normal text-green">{{book.title}}</h4>
+                              <p class="subtitle text-sm text-muted mb-0">{{book.author}}</p>
+                            </div>
+                          </div>
+                        </div>
+                        <div class="card-footer py-3 bg-green-light">
+                          <div class="d-flex justify-content-between text-green">
+                            <div >
+                              <p class="mb-0">索书号</p>
+                            </div>
+                            <div> {{book.identity_code}}
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div> -->
+                    {% empty %}
+                    <p style="text-align: center; width:100%;">
+                      没有找到要推荐的书籍~
+                    </p>
+                    
+                    {% endfor %}
+                </div>
+            </div>   
+            </div>
+          </div>
         </div>
       </div>
-
     </div>
   </div>
 </div>
@@ -162,8 +367,8 @@
 <script src={% static "assets/js/users/account-settings.js" %}></script>
 <script type="text/javascript">
   const submit = function() {
-    const checkbox = document.getElementById("CanBorrow");
-    const input = document.getElementById("BookName"); 
+    const checkbox = document.getElementById("returned");
+    const input = document.getElementById("keywords"); 
     if (checkbox.checked || input.value){
       document.getElementById("SearchBookForm").submit();
     }

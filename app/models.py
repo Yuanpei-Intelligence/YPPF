@@ -81,6 +81,11 @@ __all__ = [
     'ModuleLog',
     'FeedbackType',
     'Feedback',
+    'AcademicTag',
+    'AcademicEntry',
+    'AcademicTagEntry',
+    'AcademicTextEntry',
+    'Chat',
 ]
 
 # 兼容Django3.0及以下版本
@@ -833,11 +838,10 @@ class ActivityManager(models.Manager):
                 Activity.Status.WAITING,
                 Activity.Status.PROGRESSING,
                 Activity.Status.END
-            ]
-        )).order_by("-start")
-
+            ],
+        )).order_by("category", "-start")
+    
     def get_newlyreleased_activity(self):
-        # 最新一周内发布的活动，按发布的时间逆序
         nowtime = datetime.now()
         return select_current(self.filter(
             publish_time__gt=nowtime - timedelta(days=7),
@@ -845,8 +849,8 @@ class ActivityManager(models.Manager):
                 Activity.Status.APPLYING,
                 Activity.Status.WAITING,
                 Activity.Status.PROGRESSING
-            ]
-        )).order_by("-publish_time")
+            ],
+        )).order_by("category", "-publish_time")
 
     def get_today_activity(self):
         # 开始时间在今天的活动,且不展示结束的活动。按开始时间由近到远排序
@@ -1044,7 +1048,6 @@ class Activity(CommentBase):
     class ActivityCategory(models.IntegerChoices):
         NORMAL = (0, "普通活动")
         COURSE = (1, "课程活动")
-        ELECTION = (2, "选课活动") # 不一定会使用到
 
     category = models.SmallIntegerField(
         "活动类别", choices=ActivityCategory.choices, default=0
@@ -1994,10 +1997,12 @@ class Feedback(CommentBase):
 class AcademicTag(models.Model):
 
     class AcademicTagType(models.IntegerChoices):
-        # MAJOR = (0, '专业')
-        ...
+        MAJOR = (0, '主修专业')
+        MINOR = (1, '辅修专业')
+        DOUBLE_DEGREE = (2, '双学位专业')
+        # Uncompleted ...
 
-    atype = models.SmallIntegerField(choices=AcademicTagType)
+    atype = models.SmallIntegerField(choices=AcademicTagType.choices)
     tag_content = models.CharField(max_length=63)
 
 
@@ -2023,11 +2028,51 @@ class AcademicTagEntry(AcademicEntry):
     def content(self) -> str:
         return self.tag.tag_content
 
+
 class AcademicTextEntry(AcademicEntry):
 
     class AcademicTextType(models.IntegerChoices):
-        # INTERNSHIP = (0, '实习经历')
-        ...
+        INTERNSHIP = (0, '实习经历')
+        SCIENTIFIC_RESEARCH = (1, '科研经历')
+        CHALLENGE_CUP = (2, '挑战杯经历')
+        # Uncompleted ...
 
-    atype = models.SmallIntegerField(choices=AcademicTextType)
+    atype = models.SmallIntegerField(choices=AcademicTextType.choices)
     content = models.CharField(max_length=4095)
+
+
+class ChatManager(models.Manager):
+    def activated(self):
+        # 筛选进行中的对话
+        return self.filter(status=Chat.Status.PROGRESSING)
+
+
+class Chat(CommentBase):
+    """
+    每个Chat支持一对用户间的多次通信，每一条信息是一个Comment记录
+    一对用户间可以开启多个Chat，进行不同主题的讨论
+
+    应用于学术地图的QA功能
+    """
+    class Meta:
+        verbose_name = "对话"
+        verbose_name_plural = verbose_name
+    
+    questioner: User = models.ForeignKey(User, on_delete=models.CASCADE,
+                             related_name="send_chat_set")
+    respondent: User = models.ForeignKey(User, on_delete=models.CASCADE,
+                             related_name="receive_chat_set")
+    title = models.CharField("主题", default="", max_length=50)
+    anonymous_flag = models.BooleanField("是否匿名", default=False) # 指发送方
+
+    class Status(models.IntegerChoices):
+        PROGRESSING = (0, "进行中")
+        CLOSED = (1, "已关闭") # 发送方或接收方选择关闭时转入该状态，此后双方不能再向该Chat发消息
+        FORBIDDEN = (2, "禁用") # 接收方处于不允许匿名提问状态时，所有发送方匿名的、进行中的Chat转入该状态，此后双方不能再向该Chat发消息
+    status = models.SmallIntegerField(choices=Status.choices, default=0)
+
+    objects: ChatManager = ChatManager()
+    
+    def save(self, *args, **kwargs):
+        self.typename = "Chat"
+        super().save(*args, **kwargs)   
