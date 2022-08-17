@@ -1,0 +1,198 @@
+{% extends "base.html" %}
+
+{% load static %}
+
+
+{% block mainpage %}
+<style>
+    select[readonly] {
+  background: #eee; /*Simular campo inativo - Sugestão @GabrielRodrigues*/
+  pointer-events: none;
+  touch-action: none;
+}
+</style>
+    <!--  BEGIN CONTENT AREA  -->
+    <div id="content" class="main-content">
+        <div class="container">
+            <!--  BEGIN WARN MESSAGES  -->
+            {% if warn_code == 2 %}
+            <div class="alert alert-success  text-center">{{warn_message}}</div>
+            {% elif warn_code == 1%}
+            <div class="alert alert-warning  text-center">{{warn_message}}</div>
+            {% endif %}
+            <!--  END WARN MESSAGES  -->
+            
+            <div class="row layout-top-spacing">
+
+                {% if bar_display.help_paragraphs %}
+                    {% include 'help.html' %}
+                {% endif %}
+
+                <div class="col-lg-12 col-sm-12 col-12 layout-spacing">
+                    <div class="bio layout-spacing ">
+                        <div class="widget-content widget-content-area">
+                            <!--  BEGIN CHAT TITLE  -->
+                            <div class="d-flex justify-content-between">
+                                <h3>
+                                    {% if my_name == questioner_name %}
+                                        {% if my_name == "匿名用户" %}
+                                        [匿名]
+                                        {% endif %}
+
+                                        {% if academic_url != "" and questioner_name != "匿名用户" %}
+                                        发给<a href='{{academic_url}}'><u>{{respondent_name}}</u></a>的问答：{{title}}&emsp;
+                                        {% else %}
+                                        发给{{respondent_name}}的问答：{{title}}&emsp;
+                                        {% endif %}
+                                    {% else %}
+                                        {% if academic_url != "" and questioner_name != "匿名用户" %}
+                                        来自<a href='{{academic_url}}'><u>{{questioner_name}}</u></a>的问答：{{title}}&emsp;
+                                        {% else %}
+                                        来自{{questioner_name}}的问答：{{title}}&emsp;
+                                        {% endif %}
+                                    {% endif %}
+                                    
+                                    {% if status == "进行中" %}
+                                    <span class="badge badge-primary">{{status}}</span><br />
+                                    {% elif status == "已关闭" %}
+                                    <span class="badge badge-success">{{status}}</span><br />
+                                    {% else %}
+                                    <span class="badge badge-danger">{{status}}</span><br />
+                                    {% endif %}
+                                </h3>
+                            </div>
+                            <!--  END CHAT TITLE  -->
+
+                            <!--  BEGIN CHAT CONTENT  -->
+                            <div class="row">
+                                <div class="col-md-12 mb-4">
+                                    <div class="statbox widget box box-shadow">
+                                        <div class="widget-content widget-content-area">
+                                            <table class="table table-bordered mb-4">
+                                            {% if messages|length != 0 %}
+                                                {% for comment in messages %}
+                                                <div class="form-group">
+                                                    <div class="d-flex justify-content-between">
+                                                        <!--  BEGIN MY MESSAGE HEAD -->
+                                                        {% if my_name == comment.commentator.name %}
+                                                        <div>
+                                                            <p style="color: rgb(66, 67, 68);">
+                                                                <i class="fa fa-calendar-o"></i>{{ comment.time }}</p>
+                                                        </div>
+                                                        <div align="right">
+                                                            <img src={{ comment.commentator.avatar }} width="24" height="24" alt="avatar">
+                                                                {% if comment.commentator.URL %}
+                                                                <a href='{{ comment.commentator.URL }}'>
+                                                                    <u>{{ comment.commentator.name }}</u>
+                                                                </a>
+                                                                {% else %}
+                                                                {{ comment.commentator.name }}
+                                                                {% endif %}
+                                                        </div>
+                                                        <!--  END MY MESSAGE HEAD -->
+                                                        
+                                                        <!--  BEGIN OTHERS MESSAGE HEAD -->
+                                                        {% else %}
+                                                        <div>
+                                                            <img src={{ comment.commentator.avatar }} width="24" height="24" alt="avatar">
+                                                                {% if comment.commentator.URL %}
+                                                                <a href='{{ comment.commentator.URL }}'>
+                                                                    <u>{{ comment.commentator.name }}</u>
+                                                                </a>
+                                                                {% else %}
+                                                                {{ comment.commentator.name }}
+                                                                {% endif %}
+                                                        </div>
+                                                        <div align="right">
+                                                            <p style="color: rgb(66, 67, 68);">
+                                                                <i class="fa fa-calendar-o"></i>{{ comment.time }}</p>
+                                                        </div>
+                                                        <!--  END OTHERS MESSAGE HEAD -->
+                                                        {% endif %}
+                                                    </div>
+                                                    <!--  BEGIN MESSAGE CONTENT -->
+                                                    {% if comment.text %}
+                                                        {% if comment.commentator.name == my_name %}
+                                                        <textarea name="comment" class="form-control no-gray" 
+                                                                disabled="disabled" rows="3" style="background-color:rgb(139, 206, 139) !important;color: black;">{{ comment.text }}</textarea>
+                                                        {% else %}
+                                                        <textarea name="comment" class="form-control no-gray"
+                                                                disabled="disabled" rows="3">{{ comment.text }}</textarea>
+                                                        {% endif %}
+                                                    {% endif %}
+                                                    {% if comment.photos %}
+                                                        {% if comment.text %}<br>{% endif %}
+                                                        <div style="max-height:1000px;overflow:auto;">
+                                                        {% for image in comment.photos %}
+                                                        <img src={{ image.get_image_path }} >
+                                                        {% endfor %}
+                                                        </div>
+                                                    {% endif %}
+                                                    <hr>
+                                                </div>
+                                                {% endfor %}
+                                                
+                                            {% else %}
+                                                <thead></thead>
+                                                <tbody>
+                                                    <tr>
+                                                        <td>{{ not_found_message }}</td>
+                                                    </tr>
+                                                </tbody>
+                                            {% endif %}
+                                            </table>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <!--  END CHAT CONTENT  -->
+
+                            <!--  BEGIN REPLY AREA  -->
+                            {% if commentable %}
+                            <div class="row">
+                                <div class="col-md-12 mb-4">
+                                    <div class="statbox widget box box-shadow">
+                                        <div class="widget-content widget-content-area">
+                                            <table class="table table-bordered mb-4">
+                                                <form role="form" method="POST" enctype="multipart/form-data"
+                                                    onsubmit="return check_comment_inputs()">
+                                                    <div>
+                                                        <div class="form-group">
+                                                            <textarea type="text" id="comment" name="comment"
+                                                                    class="form-control"
+                                                                    aria-label="Default" rows="3"
+                                                                    placeholder="添加回复或追问追答"></textarea>
+                                                            
+                                                        </div>
+                                                        <div class="d-flex justify-content-between">
+                                                            <div>
+                                                            </div>
+                                                            <div class="" style="text-align: right;">
+                                                                    <button type="submit"
+                                                                            class="btn btn-primary"
+                                                                            name="comment_submit" value="1">
+                                                                        回复
+                                                                    </button>
+                                                                    <button type="submit"
+                                                                            class="btn btn-danger"
+                                                                            name="close" value="1" onclick="return confirm('确认关闭该问答？关闭后，问答双方无法再通过此问答发送消息.')">
+                                                                        关闭当前问答
+                                                                    </button>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                </form>
+                                            </table>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            {% endif %}
+                            <!--  END REPLY AREA  -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+{% endblock %}

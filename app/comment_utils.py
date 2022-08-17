@@ -32,6 +32,7 @@ def addComment(request, comment_base, receiver=None, *,
     - comment_base<Commentbase object>: 以 Commentbase 为基类的对象。
         - 目前的 Commentbase 对象只有五种：
             modifyposition，neworganization，reimbursement，activity，feedback。
+            - 2022.8.17加入Chat，用于学术地图问答
         - 添加 Commentbase 类型需要在 `content` 和 `URL` 中添加键值对。
         - 注意：该对象会被调用**`save`保存**
     - receiver<User object/iterable>:
@@ -53,6 +54,7 @@ def addComment(request, comment_base, receiver=None, *,
         'reimbursement': f'{sender_name}在经费申请中留有新的评论',
         'activity': f"{sender_name}在活动申请中留有新的评论",
         'feedback': f"{sender_name}在反馈中心留有新的评论",
+        'Chat': f"{sender_name}给您发来了新问答",
     }
     URL = {
         'modifyposition': f'/modifyPosition/?pos_id={comment_base.id}',
@@ -63,6 +65,18 @@ def addComment(request, comment_base, receiver=None, *,
                     if user_type == UTYPE_ORG else
                     f"/editActivity/{comment_base.id}",
         'feedback': f"/viewFeedback/{comment_base.id}",
+        'Chat': f"/viewQA/{comment_base.id}"
+    }
+    # 原来提示语中都用“评论”指代comment，如“评论内容均为空，无法评论”“评论成功”等
+    # 对于学术地图问答，用“问答”似乎更合理，故引入下面的映射
+    # added by xpr 2022.8.17
+    comment_name = {
+        'modifyposition': '评论',
+        'neworganization': '评论',
+        'reimbursement': '评论',
+        'activity': '评论',
+        'feedback': '评论',
+        'Chat': '问答',
     }
 
     # 新建评论信息，并保存
@@ -71,10 +85,10 @@ def addComment(request, comment_base, receiver=None, *,
         # 检查图片合法性
         comment_images = request.FILES.getlist('comment_images')
         if not text and not comment_images:
-            return wrong("评论内容均为空，无法评论！")
+            return wrong(f"{comment_name[typename]}内容均为空，无法评论！")
         for comment_image in comment_images:
             if if_image(comment_image) != 2:
-                return wrong("评论中上传的附件只支持图片格式。")
+                return wrong(f"{comment_name[typename]}中上传的附件只支持图片格式。")
         try:
             with transaction.atomic():
                 new_comment = Comment.objects.create(
@@ -86,7 +100,7 @@ def addComment(request, comment_base, receiver=None, *,
                     )
                 comment_base.save()  # 每次save都会更新修改时间
         except:
-            return wrong("评论失败，请联系管理员。")
+            return wrong(f"{comment_name[typename]}失败，请联系管理员。")
 
         if len(text) >= 32:
             text = text[:31] + "……"
@@ -115,11 +129,11 @@ def addComment(request, comment_base, receiver=None, *,
                     publish_kws={'app': WechatApp.AUDIT, 'level': WechatMessageLevel.INFO},
                     anonymous_flag=anonymous,
                 )
-        context = succeed("评论成功。")
+        context = succeed(f"{comment_name[typename]}成功。")
         context["new_comment"] = new_comment
         return context
     else:
-        return wrong("找不到评论信息, 请重试!")
+        return wrong(f"找不到{comment_name[typename]}信息, 请重试!")
 
 
 @log.except_captured(source='comment_utils[showComment]')

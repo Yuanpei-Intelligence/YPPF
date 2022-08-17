@@ -47,6 +47,9 @@ from app.notification_utils import(
     notification_status_change,
     notification2Display,
 )
+from app.academic_utils import(
+    create_chat,
+)
 
 import json
 import random
@@ -265,11 +268,14 @@ def stuinfo(request: HttpRequest, name=None):
 
         # 处理更改数据库中inform_share的post
         if request.method == "POST" and request.POST:
-            option = request.POST.get("option", "")
-            assert option == "cancelInformShare" and html_display["is_myself"]
-            person.inform_share = False
-            person.save()
-            return redirect("/welcome/")
+            if request.POST.get("comment_submit", "") == "": 
+                # 原来该页面的POST请求只可能是修改inform_share，引入学术地图后，还有可能是发起提问
+                # modified by xpr 2022.8.17
+                option = request.POST.get("option", "")
+                assert option == "cancelInformShare" and html_display["is_myself"]
+                person.inform_share = False
+                person.save()
+                return redirect("/welcome/")
 
 
 
@@ -514,6 +520,23 @@ def stuinfo(request: HttpRequest, name=None):
         if modpw_status is not None and modpw_status == "success":
             html_display["warn_code"] = 2
             html_display["warn_message"] = "修改个人信息成功!"
+        
+
+        # ----------------------------------- 学术地图 ----------------------------------- #
+
+        # ------------------ 提问区 ------------------ #
+        if request.method == "POST" and request.POST:
+            if request.POST.get('comment_submit', '') == '1': # 提问
+                new_chat_id, create_chat_context = create_chat(
+                    request, 
+                    person.get_user(), 
+                    request.POST['comment_title'],
+                    anonymous=(len(request.POST.getlist("comment_anonymous")) == 1),  # 如果对returned有要求
+                )
+                if new_chat_id == -1:
+                    my_messages.transfer_message_context(create_chat_context, html_display, normalize=False)
+                else:
+                    return redirect(f"/viewQA/{new_chat_id}")
 
         # 存储被查询人的信息
         context = dict()

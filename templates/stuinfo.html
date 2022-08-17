@@ -45,6 +45,9 @@
             <b class="nav-link active" data-toggle="tab" role="tab" href="#information">个人信息</b>
         </li>
         <li class="nav-item">
+            <b class="nav-link" data-toggle="tab" role="tab" href="#academic_map">学术地图</b>
+        </li>
+        <li class="nav-item">
             <b class="nav-link" data-toggle="tab" role="tab" href="#organization">{{ context.title }}的小组</b>
         </li>
         <li class="nav-item">
@@ -296,6 +299,75 @@
 
         </div>
         <!--  END INFORMATION TAB  -->
+
+        <!--  BEGIN ACADEMICMAP TAB  -->
+        <div class="tab-pane fade" id="academic_map" role="tabpanel">
+
+            <div class="layout-px-spacing layout-top-spacing">
+                <div class="bio layout-spacing">
+                    <!--  BEGIN QUSETION AREA  -->
+                    {% if html_display.is_myself != True %}
+                    <div class="widget-content widget-content-area my-3">
+
+                        <div class="row">
+                            <h3 class="col mb-0">我要提问</h3>
+                        </div>
+
+                        <div class="bio-skill-box">
+                            <div class="row">
+                                <div class="col-md-12 mb-4">
+                                    <div class="statbox widget box box-shadow">
+                                        <div class="widget-content widget-content-area">
+                                            <table class="table table-bordered mb-4">
+                                                <form role="form" method="POST" enctype="multipart/form-data"
+                                                    onsubmit="return check_comment_inputs()">
+                                                    <div>
+                                                        <div class="form-group">
+                                                            <textarea type="text" id="comment_title" name="comment_title"
+                                                                    class="form-control"
+                                                                    aria-label="Default" rows="1"
+                                                                    placeholder="主题（50字以内，可以为空）"></textarea>
+                                                            <br \>
+                                                            <textarea type="text" id="comment" name="comment" 
+                                                                    class="form-control"
+                                                                    aria-label="Default" rows="5"
+                                                                    placeholder="具体内容（不能为空）"></textarea> <!-- 因为创建问答要复用comment_utils.py，这里必须叫“comment”  -->
+                                                            
+                                                        </div>
+                                                        <div class="d-flex justify-content-between">
+                                                            <div>
+                                                                
+                                                            </div>
+                                                            <div class="" style="text-align: right;">
+                                                                <input class="form-check-input" type="checkbox" id="comment_anonymous" name="comment_anonymous">
+                                                                <label class="form-check-label" for="comment_anonymous" style="font-size: 0.9rem;">
+                                                                    匿名提问&emsp;
+                                                                </label>
+                                                                <button type="submit"
+                                                                        class="btn btn-primary"
+                                                                        name="comment_submit" value="1"> <!-- 因为创建问答要复用comment_utils.py，这里必须叫“comment_submit”  -->
+                                                                    提问
+                                                                </button>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                </form>
+                                            </table>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                    </div>
+                    {% endif %}
+                    <!--  END QUESTION AREA  -->
+
+                </div>
+            </div>
+
+        </div>
+        <!--  END ACADEMICMAP TAB  -->
 
         <!--  BEGIN ORGANIZATION TAB  -->
         <div class="tab-pane fade" id="organization" role="tabpanel">
