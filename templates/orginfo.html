@@ -61,12 +61,19 @@
             <div class="col layout-top-spacing">
 
                 <div class="user-profile layout-spacing">
-                    <div class="widget-content widget-content-area">
+                <div class="bio layout-spacing">
+                    <div class="widget-content widget-content-area my-3"> 
 
-                        <div class="d-flex justify-content-between">
-                            <h3 class="">小组信息</h3>
-                            <br /><br />
+                        <div class="d-flex justify-content-between" style="margin-bottom: -40px;">
+                            <h3 class="flex">小组信息</h3> 
+                            {% if html_display.is_myself is False and html_display.select_ing is False %}
+                            <button class="flex btn btn-success btn-primary mb-4 mr-2" id="select_course" 
+                                onclick="location.href='/selectCourse/'" type="button">
+                                跳转至选课界面
+                            </button>
+                            {%endif%}
                         </div>
+                        <hr>
 
                         <div class="text-center user-info">
                             <img src={{ org_avatar_path }} height="90px" width="90px" alt="avatar">
@@ -227,55 +234,6 @@
                                         <a href="/modifyPosition?org_name={{org.oname}}">成员申请</a>
                                     </li>
                                     {% endif %}
-                                    <li class="contacts-block__item">
-                                        <svg
-                                            xmlns="http://www.w3.org/2000/svg"
-                                            width="24"
-                                            height="24"
-                                            viewBox="0 0 24 24"
-                                            fill="none"
-                                            stroke="currentColor"
-                                            stroke-width="2"
-                                            stroke-linecap="round"
-                                            stroke-linejoin="round"
-                                            >
-                                            <circle cx="12" cy="12" r="10" />
-                                            <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3" />
-                                            <line x1="12" y1="17" x2="12.01" y2="17" />
-                                        </svg>
-                                        <a href="#myModal" data-toggle="modal">向ta提问</a>
-                                    </li>
-                                    <!-- BEGIN MODAL-->
-                                    <div class="modal fade" id="myModal">
-                                        <div class="modal-dialog">
-                                            <div class="modal-content">
-                                                <!-- 模态框头部 -->
-                                                <div class="modal-header">
-                                                    <h4 class="modal-title">提问</h4>
-                                                    <button type="button" class="close" data-dismiss="modal">&times;</button>
-                                                </div>
-
-                                                <form method="POST">
-                                                    <!-- 模态框主体 -->
-                                                    <div class="modal-body">
-                                                        <div class="form-group">
-                                                            <textarea id="question" name="question" class="form-control" rows="4"
-                                                                placeholder="填写你想向组织提问的问题！"></textarea>
-                                                        </div>
-                                                        <div class="form-check mb-4">
-                                                            <input type="checkbox" class="form-check-input" id="show_name" name="show_name">
-                                                            <label class="form-check-label" for="show_tel">是否匿名？</label>
-                                                        </div>
-                                                    </div>
-                                                    <!-- 模态框底部 -->
-                                                    <div class="modal-footer">
-                                                        <button type="submit" class="btn btn-primary">提交</button>
-                                                    </div>
-                                                </form>
-                                            </div>
-                                        </div>
-                                    </div>
-                                    <!-- END MODAL -->
                                     {% endif %}
 
                                     
@@ -285,12 +243,13 @@
                         {% if not org.introduction == "" %}
                         <div class="d-flex justify-content-between">
                             <h3 class="">小组简介</h3>
-                            <br /><br />
                         </div>
                         <p class="m-3">{{org.introduction}}</p>
-                        {% endif %}
+                        <br /><br />
+                       {% endif %}
                     </div>
                 </div>
+              </div>>
             </div>
 
         </div>
