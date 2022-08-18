@@ -1,3 +1,4 @@
+from app.course_utils import str_to_time
 from app.views_dependency import *
 from app.models import (
     Feedback,
@@ -620,6 +621,14 @@ def orginfo(request: HttpRequest, name=None):
     """
     user = request.user
     valid, user_type, html_display = utils.check_user_type(request.user)
+     # 给前端传递选课的参数
+    html_display["yx_election_start"] = get_setting("course/yx_election_start")
+    html_display["yx_election_end"] = get_setting("course/yx_election_end")
+    if (str_to_time(html_display["yx_election_start"])) <= datetime.now() < (
+            str_to_time(html_display["yx_election_end"])):
+        html_display["select_ing"] = True
+    else:
+        html_display["select_ing"] = False
 
     if not valid:
         return redirect("/logout/")
