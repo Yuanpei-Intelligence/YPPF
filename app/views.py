@@ -652,6 +652,7 @@ def orginfo(request: HttpRequest, name=None):
         html_display["select_ing"] = True
     else:
         html_display["select_ing"] = False
+        
     if request.method == "POST" :
         if request.POST.get("export_excel") is not None and html_display["is_myself"]:
             html_display["warn_code"] = 2

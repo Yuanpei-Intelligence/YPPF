@@ -61,17 +61,18 @@
             <div class="col layout-top-spacing">
 
                 <div class="user-profile layout-spacing">
+                    <div class="bio layout-spacing">
                     <div class="widget-content widget-content-area">
 
                         <div class="d-flex justify-content-between">
                             <h3 class="">小组信息</h3>
                             <br /><br />
-                            <!-- {% if html_display.is_myself is False and html_display.select_ing is True %}
+                            {% if html_display.is_myself is False and html_display.select_ing is True %}
                             <button class="flex btn btn-success btn-primary mb-4 mr-2" id="select_course" 
                                 onclick="location.href='/selectCourse/'" type="button">
                                 跳转至选课界面
                             </button>
-                            {%endif%} -->
+                            {%endif%}
                         </div>
 
                         <div class="text-center user-info">
@@ -242,10 +243,11 @@
                         {% if not org.introduction == "" %}
                         <div class="d-flex justify-content-between">
                             <h3 class="">小组简介</h3>
-                            <br /><br />
                         </div>
                         <p class="m-3">{{org.introduction}}</p>
+                        <br /><br />
                         {% endif %}
+                    </div>
                     </div>
                 </div>
             </div>
