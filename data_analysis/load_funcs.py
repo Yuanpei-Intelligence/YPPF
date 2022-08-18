@@ -2,6 +2,7 @@ from datetime import datetime
 from typing import Callable
 import math
 import numpy
+import os
 import pandas as pd
 from tqdm import tqdm
 
@@ -154,6 +155,27 @@ def load_file(filepath: str) -> 'pd.DataFrame':
         return pd.read_csv(f'{full_path}', dtype=object, encoding='utf-8')
     return pd.read_table(f'{full_path}', dtype=object, encoding='utf-8')
 
+
+def load_dir(dirpath: str) -> dict:
+    """加载文件夹下的所有表格
+
+    :param dirpath:  测试目录下的相对路径，通常为文件夹名称
+    :type dirpath: str
+    :return: 字典键值对为 (文件名)str: pd.DataFrame
+    :rtype: dict
+    """
+    base_path = dirpath
+    file_dict = {}
+    files = os.listdir(base_path)
+    for filepath in files:
+        if filepath.endswith('xlsx') or filepath.endswith('xls'):
+            file_dict[filepath] = pd.read_excel(
+                f'{os.path.join(base_path,filepath)}', sheet_name=None)
+        if filepath.endswith('csv'):
+            file_dict[filepath] = pd.read_csv(
+                f'{os.path.join(base_path,filepath)}', dtype=object, encoding='utf-8')
+
+    return file_dict
 
 def load_orgtype(filepath: str, output_func: Callable=None, html=False, debug=True):
     if debug:
@@ -544,225 +566,96 @@ def load_help(filepath: str, output_func: Callable=None, html=False):
     return try_output("成功导入帮助信息！", output_func, html)
 
 
+@transaction.atomic
 def load_course_record(filepath: str, output_func: Callable=None, html:bool=False) -> str:
-    """从文件中导入学时信息
+    """从文件夹中导入学时信息
 
-    :param filepath: 文件路径,放在test文件夹内
+    :param filepath: 文件夹路径,放在test文件夹内
     :type filepath: str
     :param output_func: 输出函数, defaults to None
     :type output_func: Callable, optional
-    :param html: 允许以HTML格式输出，否则将br标签替换为\n, defaults to False
+    :param html: 允许以HTML格式输出，否则将br标签替换为, defaults to False
     :type html: bool, optional
     :return: 返回导入结果的提示
     :rtype: str
     """
 
     try:
-        courserecord_file = load_file(filepath)
+        courserecord_file:dict = load_dir(filepath)
     except:
-        return try_output(f"没有找到{filepath},请确认该文件已经在test_data中。", output_func, html)
+        return try_output(f"加载{filepath}时出错,请确认该文件夹已经在test_data中。", output_func, html)
 
-    # 学年，学期和课程的德智体美劳信息都是在文件的info这个sheet中读取的
-    year = courserecord_file['info'].iloc[1,1]
-    semester = courserecord_file['info'].iloc[2,1]
-    semester = Semester.get(semester)
+    display_message = ""
 
-    course_type_all = {
-       "德" : Course.CourseType.MORAL ,
-       "智" : Course.CourseType.INTELLECTUAL ,
-       "体" : Course.CourseType.PHYSICAL ,
-       "美" : Course.CourseType.AESTHETICS,
-       "劳" : Course.CourseType.LABOUR,
-    }
-    course_info = courserecord_file['info'] #info这个sheet
-    info_height, info_width = course_info.shape
-    # ---- 以下为读取info里面的课程信息并自动注册course ------
-    for i in range(4, info_height):
-        course_name = course_info.iloc[i,0]
-        course_type = course_info.iloc[i,1] #德智体美劳
-        #备注：由于一些课程名称所包含的符号不能被包含在excel文件的sheet的命名中（会报错），
-        #所以考虑到这种情况，使用模糊查询的方式，sheet的命名只写一部分就可以了
-        orga_found = Organization.objects.filter(oname=course_name)
-        if not orga_found.exists(): #若查询不到，使用模糊查询
-            orga_found = Organization.objects.filter(oname__contains=course_name)
+    # 学年，学期从local_json.json中读取
+    year = local_dict["course_record_loadinfo"]["year"]
+    semester = Semester.get(local_dict["course_record_loadinfo"]["semester"])
 
-        if orga_found.exists():
-            course_found = Course.objects.filter(
-                name = orga_found[0].oname,
-                type__in = Course.CourseType,
-                year = year,
-                semester = semester,
-            )
-            if not course_found.exists():  #新建课程
-                Course.objects.create(
-                    name = orga_found[0].oname,
-                    organization = orga_found[0],
-                    type = course_type_all[course_type],
-                    status = Course.Status.END,
-                    year = year,
-                    semester = semester,
-                    photo = (
-                        '/static/assets/img/announcepics/'
-                        f'{course_type_all[course_type].value+1}.JPG'
-                    ),
-                )
+    display_message += "coursetime/ 一共有{}个文件".format(len(courserecord_file))
+    for cname, course_info in courserecord_file.items():
+        cname = cname.split('.')[0]
+        display_message += "开始读取{} ...<br/>".format(cname)
+        course_info:pd.DataFrame = list(course_info.values())[0]
+        columns = course_info.columns.values.tolist()
+        # 检查列名称是否正确
+        if columns != ['序号', '学号', '姓名', '参与次数', '学时']:
+            raise Exception("{}: error, columns in '{}' is <br/>{}, in fact it shoud be <br/>['序号', '学号', '姓名', '参与次数', '学时']"
+                .format(cname, cname, columns))
+        
+        info_height, _ = course_info.shape
+        # 检查此课程是否存在
+        course_found = Course.objects.filter(
+            name = cname,
+            year = year,
+            semester = semester,
+        )
+        if not course_found.exists():  
+            raise Exception("{}: course '{}' ({},{}) not found".format(cname, cname, year, semester))
 
-    # ---- 以下为读取其他sheet并导入学时记录   -------
-    info_show = {  #储存异常信息
-        'type error': [],
-        'stuID miss' :[],
-        'person not found' : [],
-        'course not found' : [],
-        'data miss':[],
-    }
+        # 检查是否有重复姓名或者学号
+        if course_info.duplicated('姓名').any() or course_info.duplicated('学号').any():
+            raise Exception("{}: data duplication found".format(cname))
 
-    for course in courserecord_file.keys():  #遍历各个sheet
-        if course in ['汇总','info']: continue
-
-        course_df = courserecord_file[course] #文件里的一个sheet
-        height, width = course_df.shape
-        course_found = False   #是否查询到sheet名称所对应的course
-
-        course_get = Course.objects.filter(
-            name=course,
-            year=year,
+        #删去旧学时    
+        old_crecord = CourseRecord.objects.filter(  
+            course = course_found[0],
+            year=int(year),
             semester=semester,
         )
-        if not course_get.exists():
-            course_get = Course.objects.filter(
-                name__contains=course,
-                year=year,
-                semester=semester,
+        display_message += "{}: 删去旧学时数据{}条<br/>".format(cname,len(old_crecord))
+        old_crecord.delete()
+
+        # 新建学时
+        for index,data in course_info.iterrows():
+            [_, sid, sname, times, hours] = data
+            # 检查是否有单元格为空
+            for i in data:
+                if str(i) == "nan": raise Exception("{}: empty cell found in line {}".
+                    format(cname, index+1))
+            
+            person = NaturalPerson.objects.filter(
+                name=sname,
+                person_id__username=str(sid)
             )
-
-        if course_get.exists():  #查找到了相应course
-            course_found = True
-        else:
-            info_show["course not found"].append(course)
-
-        for i in range(4,height):
-            #每个sheet开头有几行不是学时信息，所以跳过
-            sid: str = course_df.iloc[i, 1]  #学号
-            name: str = course_df.iloc[i, 2]
-            times: int = course_df.iloc[i, 3]
-            hours: float = course_df.iloc[i, 4]
-            record_view = f'{course} {sid} {name} {times} {hours}'
-            if not isinstance(name, str) and sid is numpy.nan: #允许中间有空行
-                continue
-            if times is numpy.nan or hours is numpy.nan:  #次数和学时缺少
-                info_show["data miss"].append(record_view)
-                continue
-            try:
-                sid = '' if sid is numpy.nan else str(int(float(sid)))
-                times, hours = int(times), float(hours)
-                name = str(name)
-            except:
-                info_show["type error"].append(record_view)
-                continue
-
-            person = NaturalPerson.objects.filter(name=name)
-            if not sid:  #没有学号
-                info_show["stuID miss"].append(record_view)
-            else:  #若有学号，则根据学号继续查找（排除重名）
-                person = person.filter(person_id__username=sid)
-
+            # 检查是否存在此学生
             if not person.exists():
-                error_info = [record_view]
-                #若同时按照学号和姓名查找不到的话，则只用姓名或者只用学号查找可能的人员
-                person_guess_byname = NaturalPerson.objects.filter(name=name)
-                if sid:  #若填了学号的话，则试着查找
-                    person_guess_byId = NaturalPerson.objects.filter(
-                        person_id__username=sid)
-                else:
-                    person_guess_byId = None
-                error_info += [person_guess_byname, person_guess_byId]
-                info_show["person not found"].append(error_info)
-                continue
+                raise Exception("{}: person (name={},id={}) not found".format(cname, sname,sid))
 
-            record = CourseRecord.objects.filter(  #查询是否已经有记录
-                person=person[0],
-                year=year,
-                semester=semester,
-            )
-            record_search_course = record.filter(course__name=course)
-            record_search_extra = record.filter(extra_name=course)
-            # 需要时临时修改即可
             invalid = float(hours) < LEAST_RECORD_HOURS
 
-            if record_search_course.exists():
-                record_search_course.update(
-                    invalid = invalid,
-                    attend_times = times,
-                    total_hours = hours
-                )
-            elif record_search_extra.exists():
-                record_search_extra.update(
-                    invalid = invalid,
-                    attend_times = times,
-                    total_hours = hours
-                )
-            else:
-                newrecord = CourseRecord.objects.create(
-                    person = person[0],
-                    extra_name = course,
-                    attend_times = times,
-                    total_hours = hours,
-                    year = year,
-                    semester = semester,
-                    invalid = invalid,
-                )
-                if course_found:
-                    newrecord.course = course_get[0]
-                    newrecord.save()
-
-    # ----- 以下为前端展示导入的结果 ------
-    display_message = '导入完成\n'
-    print_show = [
-        '<br><div style="color:blue;">未查询到该人员：</div>',
-        '<div style="color:blue;">是不是想导入以下学生？：</div>',
-        '<div style="color:blue;">未查询到以下课程，已通过额外字段定义课程名称</div>',
-        '<div style="color:blue;">表格内容错误</div>',
-        '<div style="color:blue;">数据缺失</div>',
-        '<div style="color:blue;">未填写学号，已导入但请注意排除学生同名的可能</div>',
-        '<div style="color:blue;">新建的学时数据统计：</div>',
-        '<div style="color:blue;">更新的学时数据统计：</div>'
-    ]
-
-
-    if info_show['person not found']:
-        display_message += print_show[0]
-        for person in info_show['person not found']:
-            display_message += '未查询到 ' + person[0] + '<br>' + print_show[1]
-            if person[1].exists():
-                for message in person[1]:
-                    display_message += '<div style="color:cadetblue;">' + message.name + ' ' + message.person_id.username + '</div>'
-            if person[2] != None and person[2].exists():
-                for message in person[2]:
-                    display_message += '<div style="color:cadetblue;">' + message.name + ' ' + message.person_id.username + '</div>'
-            elif not person[1].exists():
-                display_message += '<div style="color:cadetblue;">未查询到类似数据</div>'
-            display_message += '<br>'
-
-    if info_show['course not found']:
-        display_message += print_show[2]
-        for course in info_show['course not found']:
-            display_message += '<div style="color:rgb(86, 170, 142);">' + course + '</div>'
-
-    if info_show['type error']:
-        display_message += print_show[3]
-        for error in info_show['type error']:
-            display_message += '<div style="color:rgb(86, 170, 142);">' + '表格内容: ' + error + '</div>'
-
-    if info_show['data miss']:
-        display_message += print_show[4]
-        for error in info_show['data miss']:
-            display_message += '<div style="color:rgb(86, 170, 142);">' + '表格内容: ' + error + '</div>'
-
-    if info_show['stuID miss']:
-        display_message += print_show[5]
-        for stu in info_show['stuID miss']:
-            display_message += '<div style="color:rgb(86, 170, 142);">' + '表格内容: ' + stu + '</div>'
-
+            CourseRecord.objects.create(
+                person = person[0],
+                course = course_found[0],
+                attend_times = int(times),
+                total_hours = float(hours),
+                year = int(year),
+                semester = semester,
+                invalid = invalid,
+            )  
+            
+        display_message += "{}: 建立新学时{}条<br/>".format(cname, info_height)
+        display_message += "{}: 读取成功<br/><br/>".format(cname)
+        
     return try_output(display_message, output_func, html)
 
 
@@ -966,3 +859,6 @@ def load_feedback_comments(filepath: str, output_func: Callable=None, html=False
                 ) + tuple(f'{fb}：{err}' for fb, err in error_dict.items()
                 ))
     return try_output(msg, output_func, html)
+
+
+
