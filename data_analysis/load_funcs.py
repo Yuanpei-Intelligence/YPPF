@@ -574,7 +574,7 @@ def load_course_record(filepath: str, output_func: Callable=None, html:bool=Fals
     :type filepath: str
     :param output_func: 输出函数, defaults to None
     :type output_func: Callable, optional
-    :param html: 允许以HTML格式输出，否则将br标签替换为, defaults to False
+    :param html: 允许以HTML格式输出，否则将br标签替换为\n, defaults to False
     :type html: bool, optional
     :return: 返回导入结果的提示
     :rtype: str
@@ -591,10 +591,10 @@ def load_course_record(filepath: str, output_func: Callable=None, html:bool=Fals
     year = local_dict["course_record_loadinfo"]["year"]
     semester = Semester.get(local_dict["course_record_loadinfo"]["semester"])
 
-    display_message += "coursetime/ 一共有{}个文件".format(len(courserecord_file))
+    display_message += "coursetime/ 一共有{}个文件<br/>".format(len(courserecord_file))
     for cname, course_info in courserecord_file.items():
         cname = cname.split('.')[0]
-        display_message += "开始读取{} ...<br/>".format(cname)
+        display_message += "{}: 开始读取 ...<br/>".format(cname)
         course_info:pd.DataFrame = list(course_info.values())[0]
         columns = course_info.columns.values.tolist()
         # 检查列名称是否正确
