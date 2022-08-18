@@ -1,3 +1,4 @@
+from app.course_utils import str_to_time
 from app.views_dependency import *
 from app.models import (
     Feedback,
@@ -643,6 +644,14 @@ def orginfo(request: HttpRequest, name=None):
     wallpaper_path = utils.get_user_wallpaper(org, "Organization")
     # org的属性 YQPoint 和 information 不在此赘述，直接在前端调用
 
+    # 给前端传递选课的参数
+    html_display["yx_election_start"] = get_setting("course/yx_election_start")
+    html_display["yx_election_end"] = get_setting("course/yx_election_end")
+    if (str_to_time(html_display["yx_election_start"])) <= datetime.now() < (
+            str_to_time(html_display["yx_election_end"])):
+        html_display["select_ing"] = True
+    else:
+        html_display["select_ing"] = False
     if request.method == "POST" :
         if request.POST.get("export_excel") is not None and html_display["is_myself"]:
             html_display["warn_code"] = 2
