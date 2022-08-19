@@ -38,7 +38,7 @@ models.py
 '''
 from django.db import models, transaction
 from django_mysql.models import ListCharField
-from django.contrib.auth.models import User
+from generic.models import User
 from django.db.models import Q, QuerySet
 from django.db.models.signals import post_save
 from datetime import datetime, timedelta
