@@ -1,8 +1,9 @@
 from django.db import models
 from django.contrib import admin
-from django.contrib.auth.models import User
+from generic.models import User
 
 __all__ = [
+    "User",
     "Reader",
     "Book",
     "LendRecord",

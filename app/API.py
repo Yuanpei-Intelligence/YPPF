@@ -2,12 +2,12 @@
 - 身份验证
 - 获取用户信息
 
-只依赖constants, models, utils等基础文件
+只依赖generic应用, constants, models, utils等基础文件
 
 @Author pht
-@Date 2022-02-17
+@Date 2022-08-17
 '''
-from django.contrib.auth.models import User
+from generic.models import User
 from app.models import Position, NaturalPerson
 from app.utils import (
     check_user_type as __check_type,

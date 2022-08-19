@@ -1,4 +1,5 @@
 from yp_library.models import (
+    User,
     Reader,
     Book,
     LendRecord,
@@ -7,7 +8,6 @@ from yp_library.models import (
 from typing import Union, List, Tuple, Optional
 from datetime import datetime
 
-from django.contrib.auth.models import User
 from django.db.models import Q, QuerySet
 from django.http import QueryDict, HttpRequest, HttpResponse
 from django.shortcuts import render

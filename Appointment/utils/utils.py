@@ -1,7 +1,13 @@
 # store some funcitons
 
 from Appointment import *
-from Appointment.models import Participant, Room, Appoint, CardCheckInfo  # 数据库模型
+from Appointment.models import (
+    User,
+    Participant,
+    Room,
+    Appoint,
+    CardCheckInfo,
+)
 
 import os
 import time
@@ -12,7 +18,6 @@ from typing import List, Tuple, Union, Any
 from datetime import datetime, timedelta
 
 from django.http import HttpRequest
-from django.contrib.auth.models import User
 from django.db import transaction  # 原子化更改数据库
 from django.db.models import Q, QuerySet
 
