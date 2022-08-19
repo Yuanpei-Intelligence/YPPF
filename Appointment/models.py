@@ -1,5 +1,5 @@
 from django.db import models
-from django.contrib.auth.models import User
+from generic.models import User
 
 from django.db.models.signals import pre_delete
 from django.db.models import QuerySet
@@ -13,8 +13,8 @@ from Appointment import *
 
 
 __all__ = [
-    'College_Announcement',
     'User',
+    'College_Announcement',
     'Participant',
     'Room',
     'Appoint',
