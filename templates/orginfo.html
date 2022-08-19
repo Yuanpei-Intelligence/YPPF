@@ -67,7 +67,7 @@
                         <div class="d-flex justify-content-between">
                             <h3 class="">小组信息</h3>
                             <br /><br />
-                            {% if html_display.is_myself is False and html_display.select_ing is True %}
+                            {% if html_display.is_person is True and html_display.select_ing is True %}
                             <button class="flex btn btn-success btn-primary mb-4 mr-2" id="select_course" 
                                 onclick="location.href='/selectCourse/'" type="button">
                                 跳转至选课界面
