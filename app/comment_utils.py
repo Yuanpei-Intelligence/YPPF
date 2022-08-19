@@ -54,7 +54,9 @@ def addComment(request, comment_base, receiver=None, *,
         'reimbursement': f'{sender_name}在经费申请中留有新的评论',
         'activity': f"{sender_name}在活动申请中留有新的评论",
         'feedback': f"{sender_name}在反馈中心留有新的评论",
-        'Chat': f"{sender_name}给您发来了新问答",
+        'Chat': f"{sender_name}给您发来了新提问" 
+                    if request.user == comment_base.questioner 
+                    else f"{sender_name}给您发来了新回答",
     }
     URL = {
         'modifyposition': f'/modifyPosition/?pos_id={comment_base.id}',
@@ -85,7 +87,7 @@ def addComment(request, comment_base, receiver=None, *,
         # 检查图片合法性
         comment_images = request.FILES.getlist('comment_images')
         if not text and not comment_images:
-            return wrong(f"{comment_name[typename]}内容均为空，无法评论！")
+            return wrong(f"{comment_name[typename]}内容均为空，无法发送{comment_name[typename]}！")
         for comment_image in comment_images:
             if if_image(comment_image) != 2:
                 return wrong(f"{comment_name[typename]}中上传的附件只支持图片格式。")
@@ -100,7 +102,7 @@ def addComment(request, comment_base, receiver=None, *,
                     )
                 comment_base.save()  # 每次save都会更新修改时间
         except:
-            return wrong(f"{comment_name[typename]}失败，请联系管理员。")
+            return wrong(f"发送{comment_name[typename]}失败，请联系管理员。")
 
         if len(text) >= 32:
             text = text[:31] + "……"
@@ -129,7 +131,7 @@ def addComment(request, comment_base, receiver=None, *,
                     publish_kws={'app': WechatApp.AUDIT, 'level': WechatMessageLevel.INFO},
                     anonymous_flag=anonymous,
                 )
-        context = succeed(f"{comment_name[typename]}成功。")
+        context = succeed(f"发送{comment_name[typename]}成功。")
         context["new_comment"] = new_comment
         return context
     else:

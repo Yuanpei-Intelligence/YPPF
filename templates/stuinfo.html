@@ -339,13 +339,14 @@
                                                                 
                                                             </div>
                                                             <div class="" style="text-align: right;">
-                                                                <input class="form-check-input" type="checkbox" id="comment_anonymous" name="comment_anonymous">
-                                                                <label class="form-check-label" for="comment_anonymous" style="font-size: 0.9rem;">
-                                                                    匿名提问&emsp;
+                                                                <label>
+                                                                    <input type="checkbox" id="comment_anonymous" name="comment_anonymous" style="vertical-align:middle;" />
+                                                                    <span style="vertical-align:middle;" >匿名提问&emsp;</span>
                                                                 </label>
                                                                 <button type="submit"
                                                                         class="btn btn-primary"
-                                                                        name="comment_submit" value="1"> <!-- 因为创建问答要复用comment_utils.py，这里必须叫“comment_submit”  -->
+                                                                        name="comment_submit" value="1"
+                                                                        onclick="return confirm('是否确认提问?')"> <!-- 因为创建问答要复用comment_utils.py，这里必须叫“comment_submit”  -->
                                                                     提问
                                                                 </button>
                                                             </div>

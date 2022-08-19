@@ -114,10 +114,12 @@
                                                     {% if comment.text %}
                                                         {% if comment.commentator.name == my_name %}
                                                         <textarea name="comment" class="form-control no-gray" 
-                                                                disabled="disabled" rows="3" style="background-color:rgb(139, 206, 139) !important;color: black;">{{ comment.text }}</textarea>
+                                                                disabled="disabled" rows="3" style="background-color:rgb(255, 255, 255) !important;color: black;">{{ comment.text }}</textarea>
+                                                                <!-- 颜色待调整 -->
                                                         {% else %}
                                                         <textarea name="comment" class="form-control no-gray"
-                                                                disabled="disabled" rows="3">{{ comment.text }}</textarea>
+                                                                disabled="disabled" rows="3" style="background-color:rgb(255, 255, 255) !important;color: black;">{{ comment.text }}</textarea>
+                                                                <!-- 颜色待调整 -->
                                                         {% endif %}
                                                     {% endif %}
                                                     {% if comment.photos %}
