@@ -9,7 +9,7 @@ from typing import Union, List, Tuple, Optional
 from datetime import datetime
 
 from django.db.models import Q, QuerySet, F
-from django.http import QueryDict, HttpRequest, HttpResponse
+from django.http import QueryDict, HttpRequest
 from django.shortcuts import render
 
 from app.utils import check_user_type
