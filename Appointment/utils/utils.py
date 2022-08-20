@@ -385,7 +385,7 @@ def appoint_violate(input_appoint: Appoint, reason: Appoint.Reason):
 
             if real_credit_point and appoint.Astatus != Appoint.Status.VIOLATED:
                 # 不出现负分；如果已经是violated了就不重复扣分了
-                if User.objects.deduct_credit(major_student.Sid, 1, '地下室：违规') > 0:
+                if User.objects.modify_credit(major_student.Sid, -1, '地下室：违规') < 0:
                     # 成功扣分
                     really_deduct = True
                 appoint.Astatus = Appoint.Status.VIOLATED

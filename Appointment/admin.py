@@ -269,8 +269,7 @@ class AppointAdmin(admin.ModelAdmin):
                         appoint.Astatus = Appoint.Status.JUDGED
                         # for stu in appoint.students.all():
                         if appoint.major_student.credit < 3:
-                            # TODO: 添加恢复信用分的方法
-                            User.objects.deduct_credit(appoint.get_major_id(), -1, '地下室：申诉')
+                            User.objects.modify_credit(appoint.get_major_id(), 1, '地下室：申诉')
                         appoint.save()
                         have_success = 1
                         # send wechat message
@@ -310,7 +309,7 @@ class AppointAdmin(admin.ModelAdmin):
                 # 已违规时不扣除信用分，仅提示用户
                 if appoint.Astatus != Appoint.Status.VIOLATED:
                     appoint.Astatus = Appoint.Status.VIOLATED
-                    User.objects.deduct_credit(appoint.get_major_id(), 1, '地下室：后台')
+                    User.objects.modify_credit(appoint.get_major_id(), -1, '地下室：后台')
                 appoint.Areason = Appoint.Reason.R_ELSE
                 appoint.save()
 

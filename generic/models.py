@@ -20,6 +20,7 @@ from django.db import transaction
 
 __all__ = [
     'User',
+    'CreditRecord',
 ]
 
 
@@ -39,35 +40,51 @@ class UserManager(_UserManager):
 
 
     @transaction.atomic
-    def deduct_credit(self, user: 'User|int|str', value: int, source: str,
-                      **options) -> int:
+    def modify_credit(self, user: 'User|int|str', delta: int, source: str) -> int:
         '''
-        扣除信用分并记录，至多扣到0分，原子化操作
+        修改信用分并记录，至多扣到0分，原子化操作
 
-        :param user: 扣除的用户，可以是对象、主键或用户名
+        :param user: 修改的用户，可以是对象、主键或用户名
         :type user: User|int|str
-        :param value: 希望扣除的分值
-        :type value: int
-        :param source: 扣分来源，可以是“地下室”等应用名，尽量简单
+        :param delta: 希望的变化量，最终修改结果在MIN_CREDIT到MAX_CREDIT之间
+        :type delta: int
+        :param source: 修改来源，可以是“地下室”等应用名，尽量简单
         :type source: str
-        :return: 实际扣除的信用分
+        :return: 实际信用分修改量
         :rtype: int
         '''
         update_user = self.get_user(user, update=True)
-        deduct_value = min(value, update_user.credit)
+        old_credit = update_user.credit
+        new_credit = old_credit + delta
+        new_credit = max(new_credit, User.MIN_CREDIT)
+        new_credit = min(new_credit, User.MAX_CREDIT)
         self._record_credit_modify(
-            update_user, -value, source=source,
-            true_value=-deduct_value,
-            **options,
+            update_user, delta, source,
+            old_value=old_credit, new_value=new_credit,
         )
-        update_user.credit -= deduct_value
+        # 写完记录后修改
+        update_user.credit = new_credit
         update_user.save(update_fields=['credit'])
         if isinstance(user, User):
             user.credit = update_user.credit
-        return deduct_value
+        return new_credit - old_credit
 
-    def _record_credit_modify(self, user: 'User', value: int, source: str, **options):
-        pass
+
+    def _record_credit_modify(self, user: 'User', delta: int, source: str,
+                              old_value: int = None, new_value: int = None):
+        if old_value is None:
+            old_value = user.credit
+        if new_value is None:
+            new_value = old_value + delta
+        overflow = (new_value != old_value + delta)
+        CreditRecord.objects.create(
+            user=user,
+            old_credit=old_value,
+            new_credit=new_value,
+            delta=delta,
+            overflow=overflow,
+            source=source,
+        )
 
 
 class PointMixin(models.Model):
@@ -95,7 +112,9 @@ class User(AbstractUser, PointMixin):
         verbose_name_plural = verbose_name
         # db_table = 'auth_user'
 
-    credit = models.IntegerField('信用分', default=3)
+    MIN_CREDIT = 0
+    MAX_CREDIT = 3
+    credit = models.IntegerField('信用分', default=MAX_CREDIT)
 
     class Type(models.TextChoices):
         PERSON = 'Person', '自然人'
@@ -109,3 +128,25 @@ class User(AbstractUser, PointMixin):
     )
 
     objects: UserManager = UserManager()
+
+
+class CreditRecord(models.Model):
+    '''
+    信用分更改记录
+
+    只起记录作用，应通过User管理器方法自动创建
+    '''
+    class Meta:
+        verbose_name = '信用分记录'
+        verbose_name_plural = verbose_name
+
+    user = models.ForeignKey(
+        User, verbose_name='用户', on_delete=models.CASCADE,
+        to_field='username',
+    )
+    old_credit = models.IntegerField('原信用分')
+    new_credit = models.IntegerField('现信用分')
+    delta = models.IntegerField('变化量')
+    overflow = models.BooleanField('溢出', default=False)
+    source = models.CharField('来源', max_length=50, default='', blank=True)
+    time = models.DateTimeField("时间", auto_now_add=True)
