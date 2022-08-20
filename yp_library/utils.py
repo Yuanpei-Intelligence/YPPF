@@ -8,7 +8,7 @@ from yp_library.models import (
 from typing import Union, List, Tuple, Optional
 from datetime import datetime
 
-from django.db.models import Q, QuerySet
+from django.db.models import Q, QuerySet, F
 from django.http import QueryDict, HttpRequest, HttpResponse
 from django.shortcuts import render
 
@@ -42,22 +42,20 @@ def days_reminder(days: int, cont: str):
         due_time__gt=cr_time + timedelta(days=days),
         due_time__lte=cr_time + timedelta(days=days) + timedelta(hours=1)
         )
-    senders = list(Organization.objects.filter(oname="何善衡图书室"))
-    sender = senders[0].organization_id
+    sender = Organization.objects.get(oname="何善衡图书室").organization_id
     URL = "/lendinfo/"
     typename = Notification.Type.NEEDREAD
     
-    receivers = []
-    for record in lendlist:
-        receivers.append(record.reader_id.student_id)
+    receivers = [record.reader_id.student_id for record in lendlist]
     receivers = User.objects.filter(username__in=receivers)
     # 逾期一周扣除信用分
     if days == 7:
-        for receiver in receivers:
-            violate_stu = Participant.objects.get(Sid=receiver)
-            if violate_stu.credit > 0:
-                violate_stu.credit -= 1
-                violate_stu.save()
+        # for receiver in receivers:
+            # violate_stu = Participant.objects.get(Sid=receiver)
+            # if violate_stu.credit > 0:
+            #     violate_stu.credit -= 1
+            #     violate_stu.save()
+        Participant.objects.filter(Sid__in=receivers).update(credit=F('credit')-1)
     # 发送通知，使用群发
     if len(receivers) > 0:
         bulk_notification_create(
