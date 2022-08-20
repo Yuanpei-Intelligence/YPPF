@@ -1279,6 +1279,7 @@ class Notification(models.Model):
         YQ_DISTRIBUTION = "元气值发放通知"
         PENDING_INFORM = "事务开始通知"
         FEEDBACK_INFORM = "反馈通知"
+        YPLIB_INFORM = "元培书房通知"
 
 
     status = models.SmallIntegerField(choices=Status.choices, default=1)
