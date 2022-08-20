@@ -17,8 +17,6 @@ from app.constants import get_setting, UTYPE_PER
 from app.models import Notification, Organization, Activity
 from app.wechat_send import WechatMessageLevel, WechatApp
 
-from Appointment.models import Participant
-
 __all__ = [
     'bookreturn_notifcation', 'get_readers_by_user', 'seach_books',
     'get_query_dict', 'get_my_records', 'get_lendinfo_by_readers'
@@ -48,12 +46,8 @@ def days_reminder(days: int, alert_msg: str):
     receivers = User.objects.filter(username__in=receivers)
     # 逾期一周扣除信用分
     if days == 7:
-        # for receiver in receivers:
-            # violate_stu = Participant.objects.get(Sid=receiver)
-            # if violate_stu.credit > 0:
-            #     violate_stu.credit -= 1
-            #     violate_stu.save()
-        Participant.objects.filter(Sid__in=receivers, credit__gt=0).update(credit=F('credit')-1)
+        for receiver in receivers:
+            User.objects.modify_credit(receiver, -1, '书房：归还逾期')
     # 发送通知，使用群发
     if len(receivers) > 0:
         bulk_notification_create(
