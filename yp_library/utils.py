@@ -36,8 +36,7 @@ def days_reminder(days: int, cont: str):
     :type cont: str
     """
     # 获取发送通知所需参数，包括发送者、接收者，URL，类名，通知内容
-    cr_time = datetime.now().strftime("%Y-%m-%d %H")
-    cr_time = datetime.strptime(cr_time, "%Y-%m-%d %H")
+    cr_time = datetime.now().replace(minute=0, second=0, microsecond=0)
     lendlist = LendRecord.objects.filter(
         returned=False,
         due_time__gt=cr_time + timedelta(days=days),
