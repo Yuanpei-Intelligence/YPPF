@@ -6,18 +6,16 @@ from yp_library.models import (
 )
 
 from typing import Union, List, Tuple, Optional
-from datetime import datetime
+from datetime import datetime, timedelta
 
 from django.db.models import Q, QuerySet, F
 from django.http import QueryDict, HttpRequest
-from django.shortcuts import render
 
 from app.utils import check_user_type
-from datetime import datetime, timedelta
-from app.notification_utils import notification_create, bulk_notification_create
-from app.constants import get_setting
-from app.models import Notification, Organization, NaturalPerson, Activity
-from app.wechat_send import publish_notifications, WechatMessageLevel, WechatApp
+from app.notification_utils import bulk_notification_create
+from app.constants import get_setting, UTYPE_PER
+from app.models import Notification, Organization, Activity
+from app.wechat_send import WechatMessageLevel, WechatApp
 
 from Appointment.models import Participant
 
@@ -27,26 +25,26 @@ __all__ = [
 ]
 
 
-def days_reminder(days: int, cont: str):
+def days_reminder(days: int, alert_msg: str):
     """根据逾期时间时间向对应用户发送通知，若逾期一周另扣信用分一分
 
-    :param days: _逾期时间
+    :param days: 逾期时间
     :type days: int
-    :param cont: 通知内容
-    :type cont: str
+    :param alert_msg: 通知内容
+    :type alert_msg: str
     """
     # 获取发送通知所需参数，包括发送者、接收者，URL，类名，通知内容
     cr_time = datetime.now().replace(minute=0, second=0, microsecond=0)
     lendlist = LendRecord.objects.filter(
         returned=False,
-        due_time__gt=cr_time + timedelta(days=days),
-        due_time__lte=cr_time + timedelta(days=days) + timedelta(hours=1)
+        due_time__gt=cr_time + timedelta(days=days) - timedelta(hours=1),
+        due_time__lte=cr_time + timedelta(days=days)
         )
     sender = Organization.objects.get(oname="何善衡图书室").organization_id
     URL = "/lendinfo/"
     typename = Notification.Type.NEEDREAD
     
-    receivers = [record.reader_id.student_id for record in lendlist]
+    receivers = lendlist.values_list('record__reader_id__student_id')
     receivers = User.objects.filter(username__in=receivers)
     # 逾期一周扣除信用分
     if days == 7:
@@ -55,7 +53,7 @@ def days_reminder(days: int, cont: str):
             # if violate_stu.credit > 0:
             #     violate_stu.credit -= 1
             #     violate_stu.save()
-        Participant.objects.filter(Sid__in=receivers).update(credit=F('credit')-1)
+        Participant.objects.filter(Sid__in=receivers, credit__gt=0).update(credit=F('credit')-1)
     # 发送通知，使用群发
     if len(receivers) > 0:
         bulk_notification_create(
@@ -63,31 +61,26 @@ def days_reminder(days: int, cont: str):
             sender=sender,
             typename=typename,
             title=Notification.Title.YPLIB_INFORM,
-            content=cont,
+            content=alert_msg,
             URL=URL,
             publish_to_wechat=True,
             publish_kws={
-                'app': WechatApp._MESSAGE,
                 'level': WechatMessageLevel.IMPORTANT,
             },
         )
-    
+
+
 def bookreturn_notification():
     """
     该函数每小时在外部被调用，对每一条未归还的借阅记录进行检查
     在应还书时间前1天、应还书时间、应还书时间逾期5天发送还书提醒，提醒链接到“我的借阅”界面
     在应还书时间逾期7天，将借阅信息改为“超时扣分”，扣除1信用分并发送提醒
     """
-    # 发送任务列表
-    send_dict = {
-        -1:"您好！您现有未归还的图书，将于一天内借阅到期，请按时归还至元培书房！",
-        0:"您好！您现有未归还的图书，已经借阅到期，请及时归还至元培书房！",
-        5:"您好！您现有未归还的图书，已经借阅到期五天，请尽快归还至元培书房！到期一周未归还将扣除您的信用分1分！",
-        7:"您好！您现有未归还的图书，已经借阅到期一周，请尽快归还至元培书房！由于借阅超时一周，您已被扣除信用分1分！"
-    }
     # 调用days_reminder()发送
-    for k, v in send_dict.items():
-        days_reminder(days=k, cont=v)
+    days_reminder(-1, "您好！您现有未归还的图书，将于一天内借阅到期，请按时归还至元培书房！")
+    days_reminder(0, "您好！您现有未归还的图书，已经借阅到期，请及时归还至元培书房！")
+    days_reminder(5, "您好！您现有未归还的图书，已经借阅到期五天，请尽快归还至元培书房！到期一周未归还将扣除您的信用分1分！")
+    days_reminder(7, "您好！您现有未归还的图书，已经借阅到期一周，请尽快归还至元培书房！由于借阅超时一周，您已被扣除信用分1分！")
 
 
 def get_readers_by_user(user: User) -> QuerySet[Reader]:
