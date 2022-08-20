@@ -1,11 +1,11 @@
 from app.utils_dependency import *
 from app.models import (
+    User,
     NaturalPerson,
     Notification,
     Comment,
     CommentPhoto,
 )
-from django.contrib.auth.models import User
 from app.utils import (
     get_person_or_org,
     check_user_type,

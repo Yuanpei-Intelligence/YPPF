@@ -5,12 +5,12 @@ import numpy
 import pandas as pd
 from tqdm import tqdm
 
-from django.contrib.auth.models import User
 from django.db import transaction
 
 from boottest import local_dict
 from app.constants import *
 from app.models import (
+    User,
     NaturalPerson,
     Freshman,
     Position,

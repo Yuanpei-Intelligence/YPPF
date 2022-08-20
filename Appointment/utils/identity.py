@@ -7,12 +7,11 @@
 依赖于app.API
 '''
 from Appointment import *
-from Appointment.models import Participant
+from Appointment.models import User, Participant
 from app import API
 from typing import Union, Callable
 from django.http import HttpRequest
 from django.db.models import QuerySet
-from django.contrib.auth.models import User
 
 from functools import wraps
 from django.shortcuts import redirect

@@ -19,6 +19,7 @@ from app import (
     YQPoint_views,
     course_views,
     feedback_views,
+    academic_views,
 )
 from django.conf import settings
 
@@ -101,6 +102,9 @@ urlpatterns = [
     path("feedback/", feedback_views.feedbackWelcome, name="feadbackWelcome"),
     path("modifyFeedback/", feedback_views.modifyFeedback, name="modifyFeedback"),
     path("viewFeedback/<str:fid>", feedback_views.viewFeedback, name="viewFeedback"),
+] + [
+    # 学术地图
+    path("searchAcademic/", academic_views.searchAcademic, name="searchAcademic"),
 ] + [
     # 埋点
     path('eventTrackingFunc/', views.eventTrackingFunc, name='eventTracking'),

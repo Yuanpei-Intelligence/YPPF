@@ -1,5 +1,6 @@
 from app.utils_dependency import *
 from app.models import (
+    User,
     Activity,
     NaturalPerson,
     Position,
@@ -31,7 +32,6 @@ from app.utils import (
 from datetime import datetime, timedelta
 
 from django.db.models import Q
-from django.contrib.auth.models import User
 import random
 
 __all__ = [

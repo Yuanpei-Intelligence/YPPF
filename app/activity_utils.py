@@ -11,6 +11,7 @@ scheduler_func 依赖于 wechat_send 依赖于 utils
 """
 from app.utils_dependency import *
 from app.models import (
+    User,
     NaturalPerson,
     Position,
     Organization,
@@ -21,7 +22,6 @@ from app.models import (
     Notification,
     ActivityPhoto,
 )
-from django.contrib.auth.models import User
 from app.utils import get_person_or_org, if_image
 from app.notification_utils import(
     notification_create,

@@ -47,12 +47,15 @@ INSTALLED_APPS = [
     "django.contrib.messages",
     "django.contrib.staticfiles",
     "django_apscheduler",
+    "generic",
     "app",
     "Appointment",
     'data_analysis',
     "scheduler",
     "yp_library",
 ]
+
+AUTH_USER_MODEL = 'generic.User'
 
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
@@ -112,6 +115,10 @@ DATABASES = {
         'OPTIONS': {
             'charset': 'utf8mb4',
         #     "init_command": "SET sql_mode='STRICT_TRANS_TABLES'",
+        },
+        'TEST': {
+            'CHARSET': 'utf8',
+            'COLLATION': 'utf8_general_ci',
         },
     },
 }
