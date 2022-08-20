@@ -79,14 +79,26 @@
                                                             <span class="badge badge-primary">{{chat.status}}</span><br />
                                                         </h5>
                                                     </div>
-                                                    <div>
-                                                        <h5>
-                                                            <form role="form" method="POST" enctype="multipart/form-data">
-                                                                <button class="btn btn-danger" type="submit"
-                                                                    name='close_chat' value="{{chat.id}}"
-                                                                    onclick="return confirm('确认关闭该问答？关闭后，问答双方无法再通过此问答发送消息.')">关闭</button>
-                                                            </form>
-                                                        </h5>
+
+                                                    <div class="btn-group">
+                                                        <div style="margin-left: 8px; ">
+                                                            <div class="btn-group">
+                                                                <button type="button"
+                                                                    class="btn btn-primary dropdown-toggle dropdown-toggle-split"
+                                                                    data-toggle="dropdown" style="display:block;white-space:nowrap;overflow:hidden; ">
+                                                                    操作
+                                                                </button>
+                                                                <div class="dropdown-menu">
+                                                                    <a href='{{chat.chat_url}}'><button class="dropdown-item">查看详情</button></a>
+                                                                    
+                                                                    <form role="form" method="POST" enctype="multipart/form-data">
+                                                                        <button class="dropdown-item" type="submit" 
+                                                                            name='close_chat' value="{{chat.id}}" 
+                                                                            onclick="return confirm('确认关闭该问答？关闭后，问答双方无法再通过此问答发送消息.')">关闭问答</button>
+                                                                    </form>
+                                                                </div>
+                                                            </div>
+                                                        </div>
                                                     </div>
                                                 </div>
                                                 
@@ -96,7 +108,7 @@
                                                         {% if chat.anonymously_sent %}
                                                         <b>[匿名]</b>
                                                         {% endif %}
-                                                        发给&nbsp;<b><a href='{{chat.academic_url}}'><u>{{chat.receiver_name}}</u></a></b>
+                                                        发给&nbsp;<b><a href='{{chat.academic_url}}#tab=academic_map'><u>{{chat.receiver_name}}</u></a></b>
                                                     </span>
                                                 </p>
 
@@ -142,7 +154,7 @@
                                                         {% if chat.anonymously_sent %}
                                                         <b>[匿名]</b>
                                                         {% endif %}
-                                                        发给&nbsp;<b><a href='{{chat.academic_url}}'><u>{{chat.receiver_name}}</u></a></b>
+                                                        发给&nbsp;<b><a href='{{chat.academic_url}}#tab=academic_map'><u>{{chat.receiver_name}}</u></a></b>
                                                     </span>
                                                 </p>
 
@@ -187,14 +199,26 @@
                                                             <span class="badge badge-primary">{{chat.status}}</span><br />
                                                         </h5>
                                                     </div>
-                                                    <div>
-                                                        <h5>
-                                                            <form role="form" method="POST" enctype="multipart/form-data">
-                                                                <button class="btn btn-danger" type="submit"
-                                                                    name='close_chat' value="{{chat.id}}"
-                                                                    onclick="return confirm('确认关闭该问答？关闭后，问答双方无法再通过此问答发送消息.')">关闭</button>
-                                                            </form>
-                                                        </h5>
+                                                    
+                                                    <div class="btn-group">
+                                                        <div style="margin-left: 8px; ">
+                                                            <div class="btn-group">
+                                                                <button type="button"
+                                                                    class="btn btn-primary dropdown-toggle dropdown-toggle-split"
+                                                                    data-toggle="dropdown" style="display:block;white-space:nowrap;overflow:hidden; ">
+                                                                    操作
+                                                                </button>
+                                                                <div class="dropdown-menu">
+                                                                    <a href='{{chat.chat_url}}'><button class="dropdown-item">查看详情</button></a>
+                                                                    
+                                                                    <form role="form" method="POST" enctype="multipart/form-data">
+                                                                        <button class="dropdown-item" type="submit" 
+                                                                            name='close_chat' value="{{chat.id}}" 
+                                                                            onclick="return confirm('确认关闭该问答？关闭后，问答双方无法再通过此问答发送消息.')">关闭问答</button>
+                                                                    </form>
+                                                                </div>
+                                                            </div>
+                                                        </div>
                                                     </div>
                                                 </div>
                                                 
@@ -203,7 +227,7 @@
                                                     <span class="ml-1">
                                                         来自&nbsp;
                                                         {% if chat.academic_url != "" %}
-                                                        <b><a href='{{chat.academic_url}}'><u>{{chat.sender_name}}</u></a></b>
+                                                        <b><a href='{{chat.academic_url}}#tab=academic_map'><u>{{chat.sender_name}}</u></a></b>
                                                         {% else %}
                                                         <b>{{chat.sender_name}}</b>
                                                         {% endif %}
@@ -251,7 +275,7 @@
                                                     <span class="ml-1">
                                                         来自&nbsp;
                                                         {% if chat.academic_url != "" %}
-                                                        <b><a href='{{chat.academic_url}}'><u>{{chat.sender_name}}</u></a></b>
+                                                        <b><a href='{{chat.academic_url}}#tab=academic_map'><u>{{chat.sender_name}}</u></a></b>
                                                         {% else %}
                                                         <b>{{chat.sender_name}}</b>
                                                         {% endif %}

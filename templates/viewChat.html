@@ -40,13 +40,13 @@
                                         {% endif %}
 
                                         {% if academic_url != "" and respondent_name != "匿名用户" %}
-                                        发给<a href='{{academic_url}}'><u>{{respondent_name}}</u></a>的问答：{{title}}&emsp;
+                                        发给<a href='{{academic_url}}#tab=academic_map'><u>{{respondent_name}}</u></a>的问答：{{title}}&emsp;
                                         {% else %}
                                         发给{{respondent_name}}的问答：{{title}}&emsp;
                                         {% endif %}
                                     {% else %}
                                         {% if academic_url != "" and questioner_name != "匿名用户" %}
-                                        来自<a href='{{academic_url}}'><u>{{questioner_name}}</u></a>的问答：{{title}}&emsp;
+                                        来自<a href='{{academic_url}}#tab=academica_map'><u>{{questioner_name}}</u></a>的问答：{{title}}&emsp;
                                         {% else %}
                                         来自{{questioner_name}}的问答：{{title}}&emsp;
                                         {% endif %}
@@ -82,7 +82,7 @@
                                                         <div align="right">
                                                             <img src={{ comment.commentator.avatar }} width="24" height="24" alt="avatar">
                                                                 {% if comment.commentator.URL %}
-                                                                <a href='{{ comment.commentator.URL }}'>
+                                                                <a href='{{ comment.commentator.URL }}#tab=academic_map'>
                                                                     <u>{{ comment.commentator.name }}</u>
                                                                 </a>
                                                                 {% else %}
@@ -96,7 +96,7 @@
                                                         <div>
                                                             <img src={{ comment.commentator.avatar }} width="24" height="24" alt="avatar">
                                                                 {% if comment.commentator.URL %}
-                                                                <a href='{{ comment.commentator.URL }}'>
+                                                                <a href='{{ comment.commentator.URL }}#tab=academic_map'>
                                                                     <u>{{ comment.commentator.name }}</u>
                                                                 </a>
                                                                 {% else %}

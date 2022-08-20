@@ -887,4 +887,20 @@
         }
     }
 </script>
+<script>
+    //从学术地图问答中心、问答详情等页面跳转过来时，url末尾为#tab=academic_map，通过下面的函数直接打开学术地图tab
+    //如果修改了tab的顺序，需要相应地修改此函数
+    $(function(){
+        var type = window.location.href.split("tab=")[1];
+        if(type == "academic_map"){
+            $(".nav-tabs .nav-item .nav-link").eq(1).click();
+        }
+        else if(type == "organization"){
+            $(".nav-tabs .nav-item .nav-link").eq(2).click();
+        }
+        else if(type == "activity"){
+            $(".nav-tabs .nav-item .nav-link").eq(3).click();
+        }
+    })
+</script>
 {% endblock %}
