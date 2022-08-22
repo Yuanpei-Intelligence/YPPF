@@ -15,6 +15,8 @@
     <div id="content" class="main-content">
         <div class="container">
             <!--  BEGIN WARN MESSAGES  -->
+            <div id="warn_msg" name="warn_msg" hidden></div>
+
             {% if warn_code == 2 %}
             <div class="alert alert-success  text-center">{{warn_message}}</div>
             {% elif warn_code == 1%}
@@ -156,34 +158,36 @@
                                     <div class="statbox widget box box-shadow">
                                         <div class="widget-content widget-content-area">
                                             <table class="table table-bordered mb-4">
-                                                <form role="form" method="POST" enctype="multipart/form-data"
-                                                    onsubmit="return check_comment_inputs()">
-                                                    <div>
-                                                        <div class="form-group">
-                                                            <textarea type="text" id="comment" name="comment"
-                                                                    class="form-control"
-                                                                    aria-label="Default" rows="3"
-                                                                    placeholder="添加回复或追问追答"></textarea>
-                                                            
+                                                <div>
+                                                    <div class="form-group">
+                                                        <textarea type="text" id="comment" name="comment"
+                                                                class="form-control"
+                                                                aria-label="Default" rows="3"
+                                                                placeholder="添加回复或追问追答"></textarea>
+                                                        
+                                                    </div>
+                                                    <div class="d-flex justify-content-between">
+                                                        <div>
                                                         </div>
-                                                        <div class="d-flex justify-content-between">
-                                                            <div>
-                                                            </div>
-                                                            <div class="" style="text-align: right;">
-                                                                    <button type="submit"
-                                                                            class="btn btn-primary"
-                                                                            name="comment_submit" value="1">
-                                                                        回复
-                                                                    </button>
-                                                                    <button type="submit"
-                                                                            class="btn btn-danger"
-                                                                            name="close" value="1" onclick="return confirm('确认关闭该问答？关闭后，问答双方无法再通过此问答发送消息.')">
-                                                                        关闭当前问答
-                                                                    </button>
-                                                            </div>
+                                                        <div class="" style="text-align: right;">
+                                                                <button type="submit"
+                                                                        class="btn btn-primary"
+                                                                        name="comment_submit" 
+                                                                        id="comment_submit"
+                                                                        value="{{chat_id}}"
+                                                                        onclick="add_chat_comment(this);">
+                                                                    回复
+                                                                </button>
+                                                                <button type="submit"
+                                                                        class="btn btn-danger"
+                                                                        name="close" id="close"
+                                                                        value="{{chat_id}}"
+                                                                        onclick="close_chat(this);">
+                                                                    关闭当前问答
+                                                                </button>
                                                         </div>
                                                     </div>
-                                                </form>
+                                                </div>
                                             </table>
                                         </div>
                                     </div>
@@ -197,4 +201,102 @@
             </div>
         </div>
     </div>
+
+<script  type="text/javascript">
+    // post请求后会reload，reload之后需要在顶部显示warn_message，
+    // 而通常情况下history.scrollRestoration="auto"会导致reload后页面滚动到刷新前浏览的位置，有可能看不见顶部的warn_message
+    // 需要用下面这两个函数手工处理一下
+    // 关于如何在刷新页面后执行某些操作，参考了https://stackoverflow.com/a/41905026
+    // 关于scrollRestoration，参考了https://stackoverflow.com/a/33004917 。
+    //      不修改scrollRestoration，直接window.scrollTo(0, 0)似乎是不行的：
+    //          如果写在window.onbeforeunload里，刷新后会停在刚好看不到warn_message的位置(可能是因为warn_msg的div在刷新前的页面是hidden的)；
+    //          如果写在window.onload里，则不起作用，刷新后还是停在刷新前浏览的位置
+    window.onbeforeunload = function () { 
+        // 这个函数发生在每次reload之前，准确地说是unload之前
+        if ('scrollRestoration' in history)  // 如果有刷新后自动滚动的功能
+        {
+            if (sessionStorage.getItem("reloading") == "chatRelatedReloading"){ // 刷新是js提交导致的
+                history.scrollRestoration = 'manual'; // 禁用自动滚动，reload后回顶部
+            }
+            else { // 其他原因导致的刷新
+                history.scrollRestoration = 'auto'; // 启用自动滚动
+            }
+        }
+    }
+
+    window.onload = function() { 
+        // 这个函数发生在每次reload之后，准确地说是load之后
+        // 如果history.scrollRestoration = "auto"，则这个函数执行完后会自动scroll到刷新前浏览的位置；如果history.scrollRestoration = "manual"，则不会
+        var reloading = sessionStorage.getItem("reloading");
+        var warn_code = sessionStorage.getItem("warn_code");
+        var warn_msg_content = sessionStorage.getItem("warn_message"); // js发送成功后会在sessionStorage设置warn_code、warn_message、reloading
+        
+        if (reloading == "chatRelatedReloading") { // 刷新是js提交导致的
+            sessionStorage.removeItem("reloading"); // 清除掉，这样以后普通的页面刷新不会进这个if
+            // 显示warn_message
+            if (warn_code == 1){
+                warn_msg = document.getElementById("warn_msg");
+                warn_msg.className = "alert alert-warning  text-center";
+                warn_msg.innerHTML = warn_msg_content
+                warn_msg.hidden = false;
+            }
+            else if (warn_code == 2){
+                warn_msg = document.getElementById("warn_msg");
+                warn_msg.className = "alert alert-success  text-center";
+                warn_msg.innerHTML = warn_msg_content;
+                warn_msg.hidden = false;
+            }
+        }
+    }
+
+    function add_chat_comment(a) { // 回复问答
+        if (document.getElementById("comment").value == ""){
+            return;
+        }
+        $.ajax({
+            url: "/addChatComment/",
+            type: "post",
+            data:{
+                comment: document.getElementById("comment").value,
+                chat_id: Number(a.value),
+                comment_submit: 1,
+            },
+            success: function(context){
+                // console.log(context)
+                if (context.warn_code){
+                    if (context.warn_message != "发送成功。") { // 发送信息成功效果比较明显，没必要专门给出warn_message了
+                        sessionStorage.setItem("reloading", "chatRelatedReloading");
+                        sessionStorage.setItem("warn_code", context.warn_code);
+                        sessionStorage.setItem("warn_message", context.warn_message);
+                    }
+                }
+                document.location.reload(); // 刷新页面
+            }
+        })
+    }
+
+    function close_chat(a) { // 关闭问答
+        confirm_res = confirm('确认关闭该问答？关闭后，问答双方无法再通过此问答发送消息.');
+        if (confirm_res == 0){
+            return;
+        }
+        $.ajax({
+            url: "/closeChat/",
+            type: "post",
+            data:{
+                chat_id: Number(a.value),
+            },
+            success: function(context){
+                // console.log(context)
+                if (context.warn_code){
+                    sessionStorage.setItem("reloading", "chatRelatedReloading");
+                    sessionStorage.setItem("warn_code", context.warn_code);
+                    sessionStorage.setItem("warn_message", context.warn_message);
+                }
+                document.location.reload(); // 刷新页面
+            }
+        })
+    }
+</script>
+
 {% endblock %}

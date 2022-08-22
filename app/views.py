@@ -25,6 +25,7 @@ from app.models import (
     Semester,
     PageLog,
     ModuleLog,
+    Chat,
 )
 from app.utils import (
     url_check,
@@ -48,7 +49,7 @@ from app.notification_utils import(
     notification2Display,
 )
 from app.academic_utils import(
-    create_chat,
+    comments2Display,
 )
 
 import json
@@ -268,14 +269,11 @@ def stuinfo(request: HttpRequest, name=None):
 
         # 处理更改数据库中inform_share的post
         if request.method == "POST" and request.POST:
-            if request.POST.get("comment_submit", "") == "": 
-                # 原来该页面的POST请求只可能是修改inform_share，引入学术地图后，还有可能是发起提问
-                # modified by xpr 2022.8.17
-                option = request.POST.get("option", "")
-                assert option == "cancelInformShare" and html_display["is_myself"]
-                person.inform_share = False
-                person.save()
-                return redirect("/welcome/")
+            option = request.POST.get("option", "")
+            assert option == "cancelInformShare" and html_display["is_myself"]
+            person.inform_share = False
+            person.save()
+            return redirect("/welcome/")
 
 
 
@@ -523,21 +521,17 @@ def stuinfo(request: HttpRequest, name=None):
         
 
         # ----------------------------------- 学术地图 ----------------------------------- #
-
-        # ------------------ 提问区 ------------------ #
-        if request.method == "POST" and request.POST:
-            if request.POST.get('comment_submit', '') == '1': # 提问
-                new_chat_id, create_chat_context = create_chat(
-                    request, 
-                    person.get_user(), 
-                    request.POST['comment_title'],
-                    anonymous=(len(request.POST.getlist("comment_anonymous")) == 1),  # 如果对returned有要求
-                )
-                if new_chat_id == -1:
-                    my_messages.transfer_message_context(create_chat_context, html_display, normalize=False)
-                else:
-                    return redirect(f"/viewQA/{new_chat_id}")
-
+        # ------------------ 提问区 or 进行中的问答------------------ #
+        progressing_chat = Chat.objects.activated().filter(
+            questioner=request.user,
+            respondent=person.get_user())
+        if len(progressing_chat): # 有进行中的问答
+            comments2Display(progressing_chat[0], html_display, request.user)
+            html_display["have_progressing_chat"] = True
+        else: # 没有进行中的问答，显示提问区
+            html_display["have_progressing_chat"] = False
+        
+        
         # 存储被查询人的信息
         context = dict()
 

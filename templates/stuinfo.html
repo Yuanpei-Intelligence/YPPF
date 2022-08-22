@@ -5,7 +5,10 @@
 <div id="content" class="main-content pb-3" style="overflow: hidden;">
 
     <!--  BEGIN CONTENT AREA  -->
-
+    <!-- js发送成功后展示的提示信息 -->
+    <div id="warn_msg" name="warn_msg" hidden></div> 
+    
+    <!-- 直接进入该页面时后端给出的提示信息 -->
     {% if html_display.warn_code == 2 %}
     <div class="alert alert-success text-center mb-0">{{html_display.warn_message}}</div>
     {% elif html_display.warn_code == 1 %}
@@ -305,24 +308,180 @@
 
             <div class="layout-px-spacing layout-top-spacing">
                 <div class="bio layout-spacing">
-                    <!--  BEGIN QUSETION AREA  -->
+                    
                     {% if html_display.is_myself != True %}
-                    <div class="widget-content widget-content-area my-3">
-
-                        <div class="row">
-                            <h3 class="col mb-0">我要提问</h3>
-                        </div>
-
-                        <div class="bio-skill-box">
-                            <div class="row">
-                                <div class="col-md-12 mb-4">
-                                    <div class="statbox widget box box-shadow">
-                                        <div class="widget-content widget-content-area">
-                                            <table class="table table-bordered mb-4">
-                                                <form role="form" method="POST" enctype="multipart/form-data"
-                                                    onsubmit="return check_comment_inputs()">
-                                                    <div>
+                    
+                        {% if html_display.have_progressing_chat %}
+                        <!--  BEGIN PROGRESSING CHAT  -->
+                        <div class="col-lg-12 col-sm-12 col-12 layout-spacing">
+                            <div class="bio layout-spacing ">
+                                <div class="widget-content widget-content-area">
+                                    <!--  BEGIN CHAT TITLE  -->
+                                    <div class="d-flex justify-content-between">
+                                        <h3>
+                                            {% if html_display.my_name == "匿名用户" %}
+                                            我[匿名]发给{{html_display.respondent_name}}的问答：{{html_display.title}}&emsp;
+                                            {% else %}
+                                            我发给{{html_display.respondent_name}}的问答：{{html_display.title}}&emsp;
+                                            {% endif %}
+                                            
+                                            <span class="badge badge-primary">进行中</span><br />
+                                        </h3>
+                                    </div>
+                                    <!--  END CHAT TITLE  -->
+        
+                                    <!--  BEGIN CHAT CONTENT  -->
+                                    <div class="row">
+                                        <div class="col-md-12 mb-4">
+                                            <div class="statbox widget box box-shadow">
+                                                <div class="widget-content widget-content-area">
+                                                    <table class="table table-bordered mb-4">
+                                                    {% if html_display.messages|length != 0 %}
+                                                        {% for comment in html_display.messages %}
                                                         <div class="form-group">
+                                                            <div class="d-flex justify-content-between">
+                                                                <!--  BEGIN MY MESSAGE HEAD -->
+                                                                {% if html_display.my_name == comment.commentator.name %}
+                                                                <div>
+                                                                    <p style="color: rgb(66, 67, 68);">
+                                                                        <i class="fa fa-calendar-o"></i>{{ comment.time }}</p>
+                                                                </div>
+                                                                <div align="right">
+                                                                    <img src={{ comment.commentator.avatar }} width="24" height="24" alt="avatar">
+                                                                        {% if comment.commentator.URL %}
+                                                                        <a href='{{ comment.commentator.URL }}#tab=academic_map'>
+                                                                            <u>{{ comment.commentator.name }}</u>
+                                                                        </a>
+                                                                        {% else %}
+                                                                        {{ comment.commentator.name }}
+                                                                        {% endif %}
+                                                                </div>
+                                                                <!--  END MY MESSAGE HEAD -->
+                                                                
+                                                                <!--  BEGIN OTHERS MESSAGE HEAD -->
+                                                                {% else %}
+                                                                <div>
+                                                                    <img src={{ comment.commentator.avatar }} width="24" height="24" alt="avatar">
+                                                                        {% if comment.commentator.URL %}
+                                                                        <a href='{{ comment.commentator.URL }}#tab=academic_map'>
+                                                                            <u>{{ comment.commentator.name }}</u>
+                                                                        </a>
+                                                                        {% else %}
+                                                                        {{ comment.commentator.name }}
+                                                                        {% endif %}
+                                                                </div>
+                                                                <div align="right">
+                                                                    <p style="color: rgb(66, 67, 68);">
+                                                                        <i class="fa fa-calendar-o"></i>{{ comment.time }}</p>
+                                                                </div>
+                                                                <!--  END OTHERS MESSAGE HEAD -->
+                                                                {% endif %}
+                                                            </div>
+                                                            <!--  BEGIN MESSAGE CONTENT -->
+                                                            {% if comment.text %}
+                                                                {% if comment.commentator.name == html_display.my_name %}
+                                                                <textarea name="comment" class="form-control no-gray" 
+                                                                        disabled="disabled" rows="3" style="background-color:rgb(255, 255, 255) !important;color: black;">{{ comment.text }}</textarea>
+                                                                        <!-- 颜色待调整 -->
+                                                                {% else %}
+                                                                <textarea name="comment" class="form-control no-gray"
+                                                                        disabled="disabled" rows="3" style="background-color:rgb(255, 255, 255) !important;color: black;">{{ comment.text }}</textarea>
+                                                                        <!-- 颜色待调整 -->
+                                                                {% endif %}
+                                                            {% endif %}
+                                                            {% if comment.photos %}
+                                                                {% if comment.text %}<br>{% endif %}
+                                                                <div style="max-height:1000px;overflow:auto;">
+                                                                {% for image in comment.photos %}
+                                                                <img src={{ html_display.image.get_image_path }} >
+                                                                {% endfor %}
+                                                                </div>
+                                                            {% endif %}
+                                                            <!--  END MESSAGE CONTENT -->
+                                                            <hr>
+                                                        </div>
+                                                        {% endfor %}
+                                                        
+                                                    {% else %}
+                                                        <thead></thead>
+                                                        <tbody>
+                                                            <tr>
+                                                                <td>{{ html_display.not_found_message }}</td>
+                                                            </tr>
+                                                        </tbody>
+                                                    {% endif %}
+                                                    </table>
+                                                    
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <!--  END CHAT CONTENT  -->
+        
+                                    <!--  BEGIN REPLY AREA  -->
+                                    {% if html_display.commentable %}
+                                    <div class="row">
+                                        <div class="col-md-12 mb-4">
+                                            <div class="statbox widget box box-shadow">
+                                                <div class="widget-content widget-content-area">
+                                                    <table class="table table-bordered mb-4">
+                                                        <div>
+                                                            <div class="form-group">
+                                                                <textarea type="text" id="comment" name="comment"
+                                                                        class="form-control"
+                                                                        aria-label="Default" rows="3"
+                                                                        placeholder="添加回复或追问追答"></textarea>
+                                                                
+                                                            </div>
+                                                            <div class="d-flex justify-content-between">
+                                                                <div>
+                                                                </div>
+                                                                <div class="" style="text-align: right;">
+                                                                        <button type="submit"
+                                                                                class="btn btn-primary"
+                                                                                name="comment_submit" 
+                                                                                id="comment_submit"
+                                                                                value="{{html_display.chat_id}}"
+                                                                                onclick="add_chat_comment(this);">
+                                                                            回复
+                                                                        </button>
+                                                                        <button type="submit"
+                                                                                class="btn btn-danger"
+                                                                                name="close" id="close"
+                                                                                value="{{html_display.chat_id}}"
+                                                                                onclick="close_chat(this);">
+                                                                            关闭当前问答
+                                                                        </button>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    </table>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    {% endif %}
+                                    <!--  END REPLY AREA  -->
+                                </div>
+                            </div>
+                        </div>
+                        <!--  END PROGRESSING CHAT  -->
+                        {% else %}
+                        <!--  BEGIN QUSETION AREA  -->
+                        <div class="widget-content widget-content-area my-3">
+
+                            <div class="row">
+                                <h3 class="col mb-0">我要提问</h3>
+                            </div>
+
+                            <div class="bio-skill-box">
+                                <div class="row">
+                                    <div class="col-md-12 mb-4">
+                                        <div class="statbox widget box box-shadow">
+                                            <div class="widget-content widget-content-area">
+                                                <table class="table table-bordered mb-4">  
+                                                    <div>
+                                                        <div>
                                                             <textarea type="text" id="comment_title" name="comment_title"
                                                                     class="form-control"
                                                                     aria-label="Default" rows="1"
@@ -334,6 +493,7 @@
                                                                     placeholder="具体内容（不能为空）"></textarea> <!-- 因为创建问答要复用comment_utils.py，这里必须叫“comment”  -->
                                                             
                                                         </div>
+                                                        <br />
                                                         <div class="d-flex justify-content-between">
                                                             <div>
                                                                 
@@ -345,24 +505,25 @@
                                                                 </label>
                                                                 <button type="submit"
                                                                         class="btn btn-primary"
-                                                                        name="comment_submit" value="1"
-                                                                        onclick="return confirm('是否确认提问?')"> <!-- 因为创建问答要复用comment_utils.py，这里必须叫“comment_submit”  -->
+                                                                        name="comment_submit" value="{{person.id}}"
+                                                                        onclick="start_chat(this)"> <!-- 因为创建问答要复用comment_utils.py，这里必须叫“comment_submit”  -->
                                                                     提问
                                                                 </button>
                                                             </div>
                                                         </div>
                                                     </div>
-                                                </form>
-                                            </table>
+                                                </table>
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
                             </div>
-                        </div>
 
-                    </div>
+                        </div>
+                        <!--  END QUESTION AREA  -->
+                        {% endif %}
                     {% endif %}
-                    <!--  END QUESTION AREA  -->
+                    
 
                 </div>
             </div>
@@ -903,4 +1064,154 @@
         }
     })
 </script>
+
+<script  type="text/javascript">
+    // post请求后会reload，reload之后需要在顶部显示warn_message，
+    // 而通常情况下history.scrollRestoration="auto"会导致reload后页面滚动到刷新前浏览的位置，有可能看不见顶部的warn_message
+    // 需要用下面这两个函数手工处理一下
+
+    // 关于如何在刷新页面后执行某些操作，参考了https://stackoverflow.com/a/41905026
+    // 关于scrollRestoration，参考了https://stackoverflow.com/a/33004917 。
+    //      不修改scrollRestoration，直接window.scrollTo(0, 0)似乎是不行的：
+    //          如果写在window.onbeforeunload里，刷新后会停在刚好看不到warn_message的位置(可能是因为warn_msg的div在刷新前的页面是hidden的)；
+    //          如果写在window.onload里，则不起作用，刷新后还是停在刷新前浏览的位置
+
+    // 此外，下面这两个函数还顺便实现了刷新页面后进入刷新前的tab
+    //      如果没有这个功能的话，假设用户在"学术地图"tab中滑动到底部并点击刷新（例如ta正在等对方的回复），会进入到默认打开的"个人信息"tab的底部，不太合理。
+    window.onbeforeunload = function () { 
+        // 这个函数发生在每次reload之前，准确地说是unload之前
+        if ('scrollRestoration' in history)  // 如果有刷新后自动滚动的功能
+        {
+            if (sessionStorage.getItem("reloading") == "chatRelatedReloading"){ // 刷新是js提交导致的
+                history.scrollRestoration = 'manual'; // 禁用自动滚动，reload后回顶部
+            }
+            else { // 其他原因导致的刷新
+                history.scrollRestoration = 'auto'; // 启用自动滚动
+            }
+        }
+        // 记录当前打开的tab
+        if ($(".nav-tabs .nav-item .nav-link").eq(0).hasClass("active")){
+            sessionStorage.setItem("openTab", 0);
+            sessionStorage.setItem("openTabName", "information");
+        }
+        else if ($(".nav-tabs .nav-item .nav-link").eq(1).hasClass("active")){
+            sessionStorage.setItem("openTab", 1);
+            sessionStorage.setItem("openTabName", "academic_map");
+        }
+        else if ($(".nav-tabs .nav-item .nav-link").eq(2).hasClass("active")){
+            sessionStorage.setItem("openTab", 2);
+            sessionStorage.setItem("openTabName", "organization");
+        }
+        else {
+            sessionStorage.setItem("openTab", 3);
+            sessionStorage.setItem("openTabName", "activity");
+        }
+    }
+
+    window.onload = function() { 
+        // 这个函数发生在每次reload之后，准确地说是load之后
+        // 如果history.scrollRestoration = "auto"，则这个函数执行完后会自动scroll到刷新前浏览的位置；如果history.scrollRestoration = "manual"，则不会
+        var reloading = sessionStorage.getItem("reloading");
+        var warn_code = sessionStorage.getItem("warn_code");
+        var warn_msg_content = sessionStorage.getItem("warn_message"); // js发送成功后会在sessionStorage设置warn_code、warn_message、reloading
+        
+        // 恢复刷新前的tab
+        $(".nav-tabs .nav-item .nav-link").eq(
+            sessionStorage.getItem("openTab")).addClass("active").parent().siblings().children().removeClass("active");
+        $("#"+sessionStorage.getItem("openTabName")).addClass("show active").siblings().removeClass("show active");
+
+        if (reloading == "chatRelatedReloading") { // 表明是发送comment/关闭chat/新建chat等js返回后调用的reload
+            sessionStorage.removeItem("reloading"); // 清除掉，这样以后普通的页面刷新不会进这个if
+            // 显示warn_message
+            if (warn_code == 1){
+                warn_msg = document.getElementById("warn_msg");
+                warn_msg.className = "alert alert-warning  text-center";
+                warn_msg.innerHTML = warn_msg_content
+                warn_msg.hidden = false;
+            }
+            else if (warn_code == 2){
+                warn_msg = document.getElementById("warn_msg");
+                warn_msg.className = "alert alert-success  text-center";
+                warn_msg.innerHTML = warn_msg_content;
+                warn_msg.hidden = false;
+            }
+        }
+    }
+
+    function add_chat_comment(a) { // 回复问答
+        $.ajax({
+            url: "/addChatComment/",
+            type: "post",
+            data:{
+                comment: document.getElementById("comment").value,
+                chat_id: Number(a.value),
+                comment_submit: 1,
+            },
+            success: function(context){
+                // console.log(context)
+                if (context.warn_code){
+                    if (context.warn_message != "发送成功。") { // 发送信息成功效果比较明显，没必要专门给出warn_message了
+                        sessionStorage.setItem("reloading", "chatRelatedReloading");
+                        sessionStorage.setItem("warn_code", context.warn_code);
+                        sessionStorage.setItem("warn_message", context.warn_message);
+                    }
+                }
+                document.location.reload(); // 刷新页面
+            }
+        })
+    }
+
+    function close_chat(a) { // 关闭问答
+        confirm_res = confirm('确认关闭该问答？关闭后，问答双方无法再通过此问答发送消息.');
+        if (confirm_res == 0){
+            return;
+        }
+        $.ajax({
+            url: "/closeChat/",
+            type: "post",
+            data:{
+                chat_id: Number(a.value),
+            },
+            success: function(context){
+                // console.log(context)
+                if (context.warn_code){
+                    sessionStorage.setItem("reloading", "chatRelatedReloading");
+                    sessionStorage.setItem("warn_code", context.warn_code);
+                    sessionStorage.setItem("warn_message", context.warn_message);
+                }
+                document.location.reload(); // 刷新页面
+            }
+        })
+    }
+
+    function start_chat(a) { // 创建新问答
+        confirm_res = confirm('是否确认提问?');
+        if (confirm_res == 0){
+            return;
+        }
+        $.ajax({
+            url: "/startChat/",
+            type: "post",
+            data:{
+                comment: document.getElementById("comment").value,
+                comment_submit: 1,
+                receiver_id: Number(a.value),
+                comment_title: document.getElementById("comment_title").value,
+                comment_anonymous: document.getElementById("comment_anonymous").checked, // 这里转换为Boolean的话是false/true，而后端需要False/True，所以在后端转为bool()
+            },
+            success: function(context){
+                // console.log(context)
+                if (context.warn_code){
+                    if (context.warn_message != "发送成功。") { // 发送信息成功效果比较明显，没必要专门给出warn_message了
+                        sessionStorage.setItem("reloading", "chatRelatedReloading");
+                        sessionStorage.setItem("warn_code", context.warn_code);
+                        sessionStorage.setItem("warn_message", context.warn_message);
+                    }
+                }
+                document.location.reload(true); // 刷新页面
+            }
+        })
+    }
+</script>
+
 {% endblock %}

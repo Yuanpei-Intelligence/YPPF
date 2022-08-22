@@ -54,9 +54,7 @@ def addComment(request, comment_base, receiver=None, *,
         'reimbursement': f'{sender_name}在经费申请中留有新的评论',
         'activity': f"{sender_name}在活动申请中留有新的评论",
         'feedback': f"{sender_name}在反馈中心留有新的评论",
-        'Chat': f"{sender_name}给您发来了新提问" 
-                    if request.user == comment_base.questioner 
-                    else f"{sender_name}给您发来了新回答",
+        'Chat': "问答中有新的消息",
     }
     URL = {
         'modifyposition': f'/modifyPosition/?pos_id={comment_base.id}',
@@ -69,17 +67,6 @@ def addComment(request, comment_base, receiver=None, *,
         'feedback': f"/viewFeedback/{comment_base.id}",
         'Chat': f"/viewQA/{comment_base.id}"
     }
-    # 原来提示语中都用“评论”指代comment，如“评论内容均为空，无法评论”“评论成功”等
-    # 对于学术地图问答，用“问答”似乎更合理，故引入下面的映射
-    # added by xpr 2022.8.17
-    comment_name = {
-        'modifyposition': '评论',
-        'neworganization': '评论',
-        'reimbursement': '评论',
-        'activity': '评论',
-        'feedback': '评论',
-        'Chat': '问答',
-    }
 
     # 新建评论信息，并保存
     if request.POST.get("comment_submit") is not None:
@@ -87,10 +74,10 @@ def addComment(request, comment_base, receiver=None, *,
         # 检查图片合法性
         comment_images = request.FILES.getlist('comment_images')
         if not text and not comment_images:
-            return wrong(f"{comment_name[typename]}内容均为空，无法发送{comment_name[typename]}！")
+            return wrong("内容为空，无法发送！")
         for comment_image in comment_images:
             if if_image(comment_image) != 2:
-                return wrong(f"{comment_name[typename]}中上传的附件只支持图片格式。")
+                return wrong("附件只支持图片格式。")
         try:
             with transaction.atomic():
                 new_comment = Comment.objects.create(
@@ -102,7 +89,7 @@ def addComment(request, comment_base, receiver=None, *,
                     )
                 comment_base.save()  # 每次save都会更新修改时间
         except:
-            return wrong(f"发送{comment_name[typename]}失败，请联系管理员。")
+            return wrong("发送失败，请联系管理员。")
 
         if len(text) >= 32:
             text = text[:31] + "……"
@@ -131,11 +118,11 @@ def addComment(request, comment_base, receiver=None, *,
                     publish_kws={'app': WechatApp.AUDIT, 'level': WechatMessageLevel.INFO},
                     anonymous_flag=anonymous,
                 )
-        context = succeed(f"发送{comment_name[typename]}成功。")
+        context = succeed("发送成功。")
         context["new_comment"] = new_comment
         return context
     else:
-        return wrong(f"找不到{comment_name[typename]}信息, 请重试!")
+        return wrong(f"找不到信息, 请重试!")
 
 
 @log.except_captured(source='comment_utils[showComment]')
