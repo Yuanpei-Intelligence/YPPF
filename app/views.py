@@ -525,7 +525,7 @@ def stuinfo(request: HttpRequest, name=None):
         progressing_chat = Chat.objects.activated().filter(
             questioner=request.user,
             respondent=person.get_user())
-        if len(progressing_chat): # 有进行中的问答
+        if progressing_chat.exists(): # 有进行中的问答
             comments2Display(progressing_chat[0], html_display, request.user)
             html_display["have_progressing_chat"] = True
         else: # 没有进行中的问答，显示提问区
