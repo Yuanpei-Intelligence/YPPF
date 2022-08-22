@@ -1,6 +1,21 @@
 {% extends "base.html" %}
 
 {% block mainpage %}
+<style type="text/css">
+    h3.noafter:after{
+        /* 去掉widget-content-area中h3下方的蓝色线 */
+        content: none !important;
+    }
+    h3.noafter {
+        /* 减少一些h3.noafter下方的空白 */
+        margin: 6px 0px 20px !important;
+    }
+    .badge.followh3noafter {
+        /* 和h3.noafter对齐 */
+        vertical-align: middle !important;
+        margin: 2px 0px 6px !important;
+    }
+</style>
 
 <div id="content" class="main-content pb-3" style="overflow: hidden;">
 
@@ -318,14 +333,14 @@
                                 <div class="widget-content widget-content-area">
                                     <!--  BEGIN CHAT TITLE  -->
                                     <div class="d-flex justify-content-between">
-                                        <h3>
+                                        <h3 class="noafter">
                                             {% if html_display.my_name == "匿名用户" %}
                                             我[匿名]发给{{html_display.respondent_name}}的问答：{{html_display.title}}&emsp;
                                             {% else %}
                                             我发给{{html_display.respondent_name}}的问答：{{html_display.title}}&emsp;
                                             {% endif %}
                                             
-                                            <span class="badge badge-primary">进行中</span><br />
+                                            <span class="badge badge-primary followh3noafter">进行中</span><br />
                                         </h3>
                                     </div>
                                     <!--  END CHAT TITLE  -->

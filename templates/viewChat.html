@@ -11,6 +11,21 @@
   touch-action: none;
 }
 </style>
+<style type="text/css">
+    h3.noafter:after{
+        /* 去掉widget-content-area中h3下方的蓝色线 */
+        content: none !important;
+    }
+    h3.noafter {
+        /* 减少一些h3.noafter下方的空白 */
+        margin: 6px 0px 20px !important;
+    }
+    .badge.followh3noafter {
+        /* 和h3.noafter对齐 */
+        vertical-align: middle !important;
+        margin: 2px 0px 6px !important;
+    }
+</style>
     <!--  BEGIN CONTENT AREA  -->
     <div id="content" class="main-content">
         <div class="container">
@@ -35,7 +50,7 @@
                         <div class="widget-content widget-content-area">
                             <!--  BEGIN CHAT TITLE  -->
                             <div class="d-flex justify-content-between">
-                                <h3>
+                                <h3 class="noafter">
                                     {% if my_name == questioner_name %}
                                         {% if my_name == "匿名用户" %}
                                         [匿名]
@@ -55,11 +70,11 @@
                                     {% endif %}
                                     
                                     {% if status == "进行中" %}
-                                    <span class="badge badge-primary">{{status}}</span><br />
+                                    <span class="badge badge-primary followh3noafter">{{status}}</span><br />
                                     {% elif status == "已关闭" %}
-                                    <span class="badge badge-success">{{status}}</span><br />
+                                    <span class="badge badge-success followh3noafter">{{status}}</span><br />
                                     {% else %}
-                                    <span class="badge badge-danger">{{status}}</span><br />
+                                    <span class="badge badge-danger followh3noafter">{{status}}</span><br />
                                     {% endif %}
                                 </h3>
                             </div>
