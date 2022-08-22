@@ -13,7 +13,7 @@ __all__ = [
 ]
 
 
-def change_chat_status(chat_id: int, to_status: Chat.Status, allow_modify_forbidden: bool=False) -> MESSAGECONTEXT:
+def change_chat_status(chat_id: int, to_status: Chat.Status) -> MESSAGECONTEXT:
     """
     修改chat的状态
 
@@ -21,8 +21,6 @@ def change_chat_status(chat_id: int, to_status: Chat.Status, allow_modify_forbid
     :type chat_id: int
     :param to_status: 目标状态
     :type to_status: Chat.Status
-    :param allow_modify_forbidden: 若为True，则允许修改原始状态为FORBIDDEN的chat，一般情况下都不允许，但在用户改变“是否允许匿名提问”时应该要允许, defaults to False
-    :type allow_modify_forbidden: bool, optional
     :return: 表明成功与否的MESSAGECONTEXT
     :rtype: MESSAGECONTEXT
     """
@@ -36,8 +34,6 @@ def change_chat_status(chat_id: int, to_status: Chat.Status, allow_modify_forbid
         
         if chat.status == to_status:
             return succeed("问答状态无需改变！", context)
-        if chat.status == Chat.Status.FORBIDDEN and allow_modify_forbidden == False:
-            return wrong("当前问答禁用中！接收方不允许匿名提问!", context)
         
         if to_status == Chat.Status.CLOSED:
             chat.status = Chat.Status.CLOSED
@@ -48,8 +44,6 @@ def change_chat_status(chat_id: int, to_status: Chat.Status, allow_modify_forbid
             chat.status = Chat.Status.PROGRESSING
             chat.save()
             succeed("您已成功开放一个问答！", context)
-        else: # 改为FORBIDDEN还没实现
-            raise NotImplementedError
         return context
 
 
@@ -67,8 +61,8 @@ def add_chat_message(request: HttpRequest, chat: Chat) -> MESSAGECONTEXT:
     # 只能发给PROGRESSING的chat
     if chat.status == Chat.Status.CLOSED:
         return wrong("当前问答已关闭，无法发送新信息!")
-    if chat.status == Chat.Status.FORBIDDEN:
-        return wrong("目前不接收匿名用户提问!")
+    # if (not chat.respondent.accept_anonymous_chat) and chat.anonymous_flag: # TODO
+    #     return wrong("目前不接收匿名用户提问!")
     
     if request.user == chat.questioner:
         receiver = chat.respondent # 我是这个chat的提问方，则我发送新comment时chat的接收方会收到通知
@@ -104,7 +98,7 @@ def create_chat(request: HttpRequest, respondent: User, title: str, anonymous: b
         respondent=respondent,
         status=Chat.Status.PROGRESSING,
     )
-    if len(cur_chat):
+    if cur_chat.exists():
         return -1, wrong("您已经像该用户发起过进行中的问答，请先关闭之前的问答再创建新提问!")
 
     if len(title) > 50: # Chat.title的max_length为50

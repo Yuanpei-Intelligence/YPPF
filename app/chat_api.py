@@ -25,11 +25,15 @@ def startChat(request: HttpRequest) -> JsonResponse:
     :rtype: JsonResponse
     """
     receiver = User.objects.get(id=request.POST['receiver_id'])
+    anonymous_flag = (request.POST["comment_anonymous"]=="true")
+    # if (not receiver.accept_anonymous_chat) and anonymous_flag: # TODO
+    #     return JsonResponse(wrong("对方不允许匿名提问!"))
+    
     new_chat_id, create_chat_context = create_chat(
         request, 
         receiver, 
         request.POST['comment_title'],
-        anonymous=(request.POST["comment_anonymous"]=="true"),
+        anonymous=anonymous_flag,
     )
     result_context = { 
         # 只保留warn_code和warn_message，用于前端展示；

@@ -153,7 +153,7 @@ def comments2Display(chat: Chat, frontend_dict: dict, user: User):
     frontend_dict["messages"] = showComment(
         chat, anonymous_users=[chat.questioner] if chat.anonymous_flag else None)
     if len(frontend_dict["messages"]) == 0:
-        # 基本不可能出现，除非提问者匿名向不允许匿名提问的人发起了chat
+        # Chat一定有Comment，正常情况下不会到这里
         frontend_dict["not_found_messages"] = "当前问答没有信息." 
     
     frontend_dict['status'] = chat.get_status_display()

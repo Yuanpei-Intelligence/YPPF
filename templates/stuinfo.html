@@ -1048,22 +1048,6 @@
         }
     }
 </script>
-<script>
-    //从学术地图问答中心、问答详情等页面跳转过来时，url末尾为#tab=academic_map，通过下面的函数直接打开学术地图tab
-    //如果修改了tab的顺序，需要相应地修改此函数
-    $(function(){
-        var type = window.location.href.split("tab=")[1];
-        if(type == "academic_map"){
-            $(".nav-tabs .nav-item .nav-link").eq(1).click();
-        }
-        else if(type == "organization"){
-            $(".nav-tabs .nav-item .nav-link").eq(2).click();
-        }
-        else if(type == "activity"){
-            $(".nav-tabs .nav-item .nav-link").eq(3).click();
-        }
-    })
-</script>
 
 <script  type="text/javascript">
     // post请求后会reload，reload之后需要在顶部显示warn_message，
@@ -1078,6 +1062,8 @@
 
     // 此外，下面这两个函数还顺便实现了刷新页面后进入刷新前的tab
     //      如果没有这个功能的话，假设用户在"学术地图"tab中滑动到底部并点击刷新（例如ta正在等对方的回复），会进入到默认打开的"个人信息"tab的底部，不太合理。
+
+    // 同时，window.onload还实现了以末尾为#tab=xxx的url进入此页面时，打开相应的tab
     window.onbeforeunload = function () { 
         // 这个函数发生在每次reload之前，准确地说是unload之前
         if ('scrollRestoration' in history)  // 如果有刷新后自动滚动的功能
@@ -1116,9 +1102,31 @@
         var warn_msg_content = sessionStorage.getItem("warn_message"); // js发送成功后会在sessionStorage设置warn_code、warn_message、reloading
         
         // 恢复刷新前的tab
-        $(".nav-tabs .nav-item .nav-link").eq(
-            sessionStorage.getItem("openTab")).addClass("active").parent().siblings().children().removeClass("active");
-        $("#"+sessionStorage.getItem("openTabName")).addClass("show active").siblings().removeClass("show active");
+        if (window.location.href.indexOf("#tab=") == -1){
+            $(".nav-tabs .nav-item .nav-link").eq(
+                sessionStorage.getItem("openTab")).addClass("active").parent().siblings().children().removeClass("active");
+            $("#"+sessionStorage.getItem("openTabName")).addClass("show active").siblings().removeClass("show active");
+        }
+        else { // 从学术地图问答中心、问答详情等页面跳转过来时，url末尾为#tab=xxx，通过下面的函数直接打开相应的tab并去掉#tab=xxx，这样之后点到别的tab的时候可以正常刷新
+            var type = window.location.href.split("#tab=")[1];
+            if(type == "academic_map"){
+                $(".nav-tabs .nav-item .nav-link").eq(1).addClass("active").parent().siblings().children().removeClass("active");
+                $("#academic_map").addClass("show active").siblings().removeClass("show active");
+            }
+            else if(type == "organization"){
+                $(".nav-tabs .nav-item .nav-link").eq(2).addClass("active").parent().siblings().children().removeClass("active");
+                $("#organization").addClass("show active").siblings().removeClass("show active");
+            }
+            else if(type == "activity"){
+                $(".nav-tabs .nav-item .nav-link").eq(3).addClass("active").parent().siblings().children().removeClass("active");
+                $("#activity").addClass("show active").siblings().removeClass("show active");
+            }
+            else {
+                $(".nav-tabs .nav-item .nav-link").eq(0).addClass("active").parent().siblings().children().removeClass("active");
+                $("#information").addClass("show active").siblings().removeClass("show active");
+            }
+            window.location.href = window.location.href.split("#tab=")[0];
+        }
 
         if (reloading == "chatRelatedReloading") { // 表明是发送comment/关闭chat/新建chat等js返回后调用的reload
             sessionStorage.removeItem("reloading"); // 清除掉，这样以后普通的页面刷新不会进这个if
