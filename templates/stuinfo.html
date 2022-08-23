@@ -1,6 +1,21 @@
 {% extends "base.html" %}
 
 {% block mainpage %}
+<style type="text/css">
+    h3.noafter:after{
+        /* 去掉widget-content-area中h3下方的蓝色线 */
+        content: none !important;
+    }
+    h3.noafter {
+        /* 减少一些h3.noafter下方的空白 */
+        margin: 6px 0px 20px !important;
+    }
+    .badge.followh3noafter {
+        /* 和h3.noafter对齐 */
+        vertical-align: middle !important;
+        margin: 2px 0px 6px !important;
+    }
+</style>
 
 <div id="content" class="main-content pb-3" style="overflow: hidden;">
 
@@ -308,9 +323,9 @@
                     <div class="widget-content widget-content-area">
 
                         <div class="row">
-                            <h3 class="col mb-0">{{ author_name }}的学术地图</h3>
+                            <h3 class="noafter col mb-0">{{ author_name }}的学术地图</h3>
                             {% if user_type == "author" and map_content|length != 0 %}
-                            <button class="flex btn btn-success btn-primary mb-4 mr-2" id="modify_academic" 
+                            <button class="flex btn btn-primary mb-4 mr-2" id="modify_academic" 
                                 onclick="location.href='/modifyAcademic/'">
                                 修改
                             </button>
