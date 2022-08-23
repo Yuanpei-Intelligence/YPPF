@@ -2081,7 +2081,6 @@ class Chat(CommentBase):
     class Status(models.IntegerChoices):
         PROGRESSING = (0, "进行中")
         CLOSED = (1, "已关闭") # 发送方或接收方选择关闭时转入该状态，此后双方不能再向该Chat发消息
-        FORBIDDEN = (2, "禁用") # 接收方处于不允许匿名提问状态时，所有发送方匿名的、进行中的Chat转入该状态，此后双方不能再向该Chat发消息
     status = models.SmallIntegerField(choices=Status.choices, default=0)
 
     objects: ChatManager = ChatManager()
