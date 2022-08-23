@@ -62,7 +62,7 @@ def add_chat_message(request: HttpRequest, chat: Chat) -> MESSAGECONTEXT:
     # 只能发给PROGRESSING的chat
     if chat.status == Chat.Status.CLOSED:
         return wrong("当前问答已关闭，无法发送新信息!")
-    if (not chat.respondent.accept_anonymous_chat) and chat.anonymous_flag:
+    if (not chat.respondent.accept_anonymous_chat) and chat.anonymous:
         if request.user == chat.respondent:
             return wrong("您目前处于禁用匿名提问状态!")
         else:
@@ -70,7 +70,7 @@ def add_chat_message(request: HttpRequest, chat: Chat) -> MESSAGECONTEXT:
     
     if request.user == chat.questioner:
         receiver = chat.respondent # 我是这个chat的提问方，则我发送新comment时chat的接收方会收到通知
-        anonymous = chat.anonymous_flag # 如果chat是匿名提问的，则我作为提问方发送新comment时需要匿名
+        anonymous = chat.anonymous # 如果chat是匿名提问的，则我作为提问方发送新comment时需要匿名
     else:
         receiver = chat.questioner # 我是这个chat的接收方，则我发送新comment时chat的提问方会收到通知
         anonymous = False # 接收方发送的comment一定是实名的
@@ -123,7 +123,7 @@ def create_chat(request: HttpRequest, respondent: User, title: str, anonymous: b
             questioner=request.user,
             respondent=respondent,
             title=title,
-            anonymous_flag=anonymous
+            anonymous=anonymous
         )
         # 创建chat后没有发送通知，随后创建chat的第一条comment时会发送通知
         comment_context = add_chat_message(request, chat)

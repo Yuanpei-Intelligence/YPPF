@@ -16,14 +16,8 @@
         margin: 2px 0px 6px !important;
     }
 
-    label.check-anonymous span.anonymous-warning {
-        /* 禁用匿名提问时checkbox旁的提示语 */
-        display: none;
-    }
-    label.check-anonymous:hover span.anonymous-warning{
-        /* 禁用匿名提问时checkbox旁的提示语 */
-        display: block;
-        color: red;
+    .tooltip-inner {
+        max-width: 500px;
     }
 </style>
 
@@ -535,8 +529,9 @@
                                                                     {% if html_display.accept_anonymous %}
                                                                     <input type="checkbox" id="comment_anonymous" name="comment_anonymous" style="vertical-align:middle;" />
                                                                     {% else %}
-                                                                    <span class="anonymous-warning" style="vertical-align:middle;" >对方目前不允许匿名提问</span>
-                                                                    <input type="checkbox" disabled style="vertical-align:middle;" />
+                                                                    <a data-toggle="tooltip" data-placement="bottom" title="对方目前不允许匿名提问">
+                                                                        <input type="checkbox" id="comment_anonymous" name="comment_anonymous" disabled style="vertical-align:middle;" />
+                                                                    </a>
                                                                     {% endif %}
                                                                     <span style="vertical-align:middle;" >匿名提问&emsp;</span>
                                                                 </label>

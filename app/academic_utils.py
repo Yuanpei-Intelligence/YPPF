@@ -96,14 +96,14 @@ def chats2Display(chats: QuerySet[Chat], sent: bool) -> Dict[str, List[dict]]:
         chat_dict['id'] = chat.id
 
         if sent:
-            chat_dict['anonymously_sent'] = chat.anonymous_flag # 我以匿名方式发给别人，“问答中心”页面的卡片上会显示[匿名]
+            chat_dict['anonymously_sent'] = chat.anonymous # 我以匿名方式发给别人，“问答中心”页面的卡片上会显示[匿名]
             valid, receiver_type, _ = check_user_type(chat.respondent) # 学术地图应该只能是个人，不过以后或许可能复用Chat模型？
             chat_dict['receiver_type'] = receiver_type
             receiver = get_person_or_org(chat.respondent, receiver_type)
             chat_dict['receiver_name'] = receiver.get_display_name()
             chat_dict['academic_url'] = receiver.get_absolute_url() # 为了在“问答中心”页面的卡片上加入学术地图的url，超链接放在receiver_name上
         else:
-            if chat.anonymous_flag: # 他人匿名发给我
+            if chat.anonymous: # 他人匿名发给我
                 chat_dict['sender_type'] = 'anonymous'
                 chat_dict['sender_name'] = '匿名用户'
                 chat_dict['academic_url'] = ''
@@ -125,7 +125,7 @@ def chats2Display(chats: QuerySet[Chat], sent: bool) -> Dict[str, List[dict]]:
         chat_dict['chat_url'] = f"/viewQA/{chat.id}" # 问答详情的url，超链接放在title上
         chat_dict['message_count'] = chat.comments.count()
         # chat_dict["messages"] = showComment(
-        #     chat, anonymous_users=[chat.questioner] if chat.anonymous_flag else None) # "问答中心"页面不再显示每个chat的comment
+        #     chat, anonymous_users=[chat.questioner] if chat.anonymous else None) # "问答中心"页面不再显示每个chat的comment
         
         if chat.status == Chat.Status.PROGRESSING:
             progressing_chats.append(chat_dict)
@@ -151,14 +151,14 @@ def comments2Display(chat: Chat, frontend_dict: dict, user: User):
 
     # 获取当前chat的所有comment
     frontend_dict["messages"] = showComment(
-        chat, anonymous_users=[chat.questioner] if chat.anonymous_flag else None)
+        chat, anonymous_users=[chat.questioner] if chat.anonymous else None)
     if len(frontend_dict["messages"]) == 0:
         # Chat一定有Comment，正常情况下不会到这里
         frontend_dict["not_found_messages"] = "当前问答没有信息." 
     
     frontend_dict['status'] = chat.get_status_display()
     frontend_dict["commentable"] = (chat.status == Chat.Status.PROGRESSING) # 若为True，则前端会给出评论区和“关闭当前问答”的按钮
-    frontend_dict["anonymous_chat"] = chat.anonymous_flag
+    frontend_dict["anonymous_chat"] = chat.anonymous
     frontend_dict["accept_anonymous"] = chat.respondent.accept_anonymous_chat
 
     # 问答详情页面需要展示“发给xxx的问答”或“来自xxx的问答”，且xxx附有指向学术地图页面的超链接
@@ -166,7 +166,7 @@ def comments2Display(chat: Chat, frontend_dict: dict, user: User):
     # 问答详情页面对于我的信息和对方的信息以不同的格式显示
     # 因而还需要记录我的名字，通过和frontend_dict["messages"]中每条记录的commentator.name对比来判断是不是我发的
     # 事实上这些操作如果放到showComment里能减少一些get_display_name、get_person_or_org、get_absolute_url的调用，但需要对showComment做较大修改，就暂时没有整合进去
-    if chat.anonymous_flag == False:
+    if chat.anonymous == False:
         frontend_dict['my_name'] = get_person_or_org(user).get_display_name()
         if user == chat.questioner:
             frontend_dict["questioner_name"] = frontend_dict['my_name']
