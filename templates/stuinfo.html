@@ -45,6 +45,9 @@
             <b class="nav-link active" data-toggle="tab" role="tab" href="#information">个人信息</b>
         </li>
         <li class="nav-item">
+            <b class="nav-link" data-toggle="tab" role="tab" href="#academic_map">学术地图</b>
+        </li>
+        <li class="nav-item">
             <b class="nav-link" data-toggle="tab" role="tab" href="#organization">{{ context.title }}的小组</b>
         </li>
         <li class="nav-item">
@@ -296,6 +299,100 @@
 
         </div>
         <!--  END INFORMATION TAB  -->
+
+        <!--  BEGIN ACADEMIC_MAP TAB  -->
+        <div class="tab-pane fade" id="academic_map" role="tabpanel">
+            <div class="layout-px-spacing layout-top-spacing">
+
+                <div class="bio layout-spacing">
+                    <div class="widget-content widget-content-area">
+
+                        <div class="row">
+                            <h3 class="col mb-0">{{ author_name }}的学术地图</h3>
+                            {% if user_type == "author" and map_content|length != 0 %}
+                            <button class="flex btn btn-success btn-primary mb-4 mr-2" id="modify_academic" 
+                                onclick="location.href='/modifyAcademic/'">
+                                修改
+                            </button>
+                            {% endif %}
+                        </div>
+
+                        <div class="bio-skill-box">
+
+                            {% if user_type == "author" %}
+                                {% if map_content|length == 0 %}
+                                <p style="text-align: center;">你还没有可以公开展示的信息~</p>
+                                <p style="text-align: center;">
+                                    去<a href="/modifyAcademic/"><u>填写或修改公开权限</u></a>吧~
+                                </p>
+                                {% else %}
+                                <table class="table">
+                                    <tr>
+                                        <th width="10%" style="min-width: 60px;color: #1b55e2;">年级</th>
+                                        <th width="85%" style="min-width: 160px;">{{ author_grade }}级</th>
+                                        <th width="5%" style="min-width: 50px;color: #1b55e2;">是否公开</th>
+                                    </tr>
+                                    {% for info in map_content %}
+                                    <tr>
+                                        <th width="10%" style="min-width: 60px;color: #1b55e2;">{{ info.atype }}</th>
+                                        <td width="85%" style="min-width: 160px;">{{ info.content }}</td>
+                                        {% if info.status == 2 %}
+                                        <td>
+                                            <div class="custom-control custom-switch">
+                                                <input type="checkbox" class="custom-control-input"
+                                                    onclick="return false;" checked="checked">
+                                                <label class="custom-control-label"></label>
+                                            </div>
+                                        </td>
+                                        {% else %}
+                                        <td>
+                                            <div class="custom-control custom-switch">
+                                                <input type="checkbox" class="custom-control-input"
+                                                    onclick="return false;">
+                                                <label class="custom-control-label"></label>
+                                            </div>
+                                        </td>
+                                        {% endif %}
+                                    </tr>
+                                    {% endfor %}
+                                </table>
+                                {% endif %}
+                            {% else %}
+                                {% if map_content|length == 0 %}
+                                <p style="text-align: center;">用户的学术地图未公开或无内容</p>
+                                {% else %}
+                                <table class="table">
+                                    <tr>
+                                        <th width="10%" style="min-width: 90px;color: #1b55e2;">年级</th>
+                                        <th width="85%" style="min-width: 160px;">{{ author_grade }}级</th>
+                                    </tr>
+                                    {% for info in map_content %}
+                                    <tr>
+                                        <th width="10%" style="min-width: 90px;color: #1b55e2;">{{ info.atype }}</th>
+                                        <td width="85%" style="min-width: 160px;">{{ info.content }}</td>
+                                    </tr>
+                                    {% endfor %}
+                                </table>
+                                {% endif %}
+                            {% endif %}
+
+                        </div>
+
+                        {% if user_type == "inspector" and have_unaudit %}
+                        <div class="row mx-0">
+                            <button class="btn btn-primary mb-5" id="post_academic" 
+                                style="margin: auto;" onclick="return confirm(`确认允许发布？`)">
+                                允许发布
+                            </button>
+                        </div>
+                        {% endif %}
+
+                    </div>
+                </div>
+
+            </div>
+        </div>
+        <!--  END ACADEMIC_MAP TAB  -->
 
         <!--  BEGIN ORGANIZATION TAB  -->
         <div class="tab-pane fade" id="organization" role="tabpanel">
