@@ -116,6 +116,7 @@ class User(AbstractUser, PointMixin):
     MAX_CREDIT = 3
     credit = models.IntegerField('信用分', default=MAX_CREDIT)
     
+    accept_chat = models.BooleanField('允许提问', default=True)
     accept_anonymous_chat = models.BooleanField('允许匿名提问', default=True)
 
     class Type(models.TextChoices):

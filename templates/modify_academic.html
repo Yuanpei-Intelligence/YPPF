@@ -65,7 +65,7 @@ select[readonly] {
                                     <form role="form" method="POST" enctype="multipart/form-data">
                                         
                                         <div class="form-group card-label">
-                                            <div style="display:flex; justify-content: space-between;">
+                                            <div style="display:flex; justify-content:space-between;">
                                                 <label for="aintro">主修专业</label>
                                                 <div align="right" class="custom-control custom-switch" style="display:inline-block;">
                                                     <input type="checkbox" class="custom-control-input"
@@ -89,7 +89,7 @@ select[readonly] {
                                         </div>
 
                                         <div class="form-group card-label">
-                                            <div style="display:flex; justify-content: space-between;">
+                                            <div style="display:flex; justify-content:space-between;">
                                                 <label for="aintro">辅修专业</label>
                                                 <div align="right" class="custom-control custom-switch" style="display:inline-block;">
                                                     <input type="checkbox" class="custom-control-input"
@@ -113,7 +113,7 @@ select[readonly] {
                                         </div>
 
                                         <div class="form-group card-label">
-                                            <div style="display:flex; justify-content: space-between;">
+                                            <div style="display:flex; justify-content:space-between;">
                                                 <label for="aintro">双学位专业</label>
                                                 <div align="right" class="custom-control custom-switch" style="display:inline-block;">
                                                     <input type="checkbox" class="custom-control-input"
@@ -137,7 +137,7 @@ select[readonly] {
                                         </div>
 
                                         <div class="form-group card-label">
-                                            <div style="display:flex; justify-content: space-between;">
+                                            <div style="display:flex; justify-content:space-between;">
                                                 <label for="aintro">参与项目</label>
                                                 <div align="right" class="custom-control custom-switch" style="display:inline-block;">
                                                     <input type="checkbox" class="custom-control-input"
@@ -161,7 +161,7 @@ select[readonly] {
                                         </div>
 
                                         <div class="form-group card-label">
-                                            <div style="display:flex; justify-content: space-between;">
+                                            <div style="display:flex; justify-content:space-between;">
                                                 <label for="aintro">本科生科研</label>
                                                 <div align="right" class="custom-control custom-switch" style="display:inline-block;">
                                                     <input type="checkbox" class="custom-control-input"
@@ -196,7 +196,7 @@ select[readonly] {
                                         </div>
 
                                         <div class="form-group card-label">
-                                            <div style="display:flex; justify-content: space-between;">
+                                            <div style="display:flex; justify-content:space-between;">
                                                 <label for="aintro">挑战杯</label>
                                                 <div align="right" class="custom-control custom-switch" style="display:inline-block;">
                                                     <input type="checkbox" class="custom-control-input"
@@ -231,7 +231,7 @@ select[readonly] {
                                         </div>
 
                                         <div class="form-group card-label">
-                                            <div style="display:flex; justify-content: space-between;">
+                                            <div style="display:flex; justify-content:space-between;">
                                                 <label for="aintro">实习经历</label>
                                                 <div align="right" class="custom-control custom-switch" style="display:inline-block;">
                                                     <input type="checkbox" class="custom-control-input"
@@ -266,7 +266,7 @@ select[readonly] {
                                         </div>
 
                                         <div class="form-group card-label">
-                                            <div style="display:flex; justify-content: space-between;">
+                                            <div style="display:flex; justify-content:space-between;">
                                                 <label for="aintro">科研方向</label>
                                                 <div align="right" class="custom-control custom-switch" style="display:inline-block;">
                                                     <input type="checkbox" class="custom-control-input"
@@ -301,7 +301,7 @@ select[readonly] {
                                         </div>
 
                                         <div class="form-group card-label">
-                                            <div style="display:flex; justify-content: space-between;">
+                                            <div style="display:flex; justify-content:space-between;">
                                                 <label for="aintro">毕业去向</label>
                                                 <div align="right" class="custom-control custom-switch" style="display:inline-block;">
                                                     <input type="checkbox" class="custom-control-input"
@@ -332,6 +332,25 @@ select[readonly] {
                                                     {% endfor %}
                                                     {% endspaceless %}
                                                 </div>
+                                            </div>
+                                        </div>
+
+                                        <div class="form-group card-label">
+                                            <label for="aintro">是否允许他人提问
+                                                <a data-toggle="tooltip" data-placement="bottom" title="他人将以实名或匿名的方式向你发起提问。">
+                                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor"
+                                                        class="bi bi-question-circle-fill" viewBox="0 0 22 22">
+                                                        <path d="M16 8A8 8 0 1 1 0 8a8 8 0 0 1 16 0zM5.496 6.033h.825c.138 0 .248-.113.266-.25.09-.656.54-1.134 1.342-1.134.686 0 1.314.343 1.314 1.168 0 .635-.374.927-.965 1.371-.673.489-1.206 1.06-1.168 1.987l.003.217a.25.25 0 0 0 .25.246h.811a.25.25 0 0 0 .25-.25v-.105c0-.718.273-.927 1.01-1.486.609-.463 1.244-.977 1.244-2.056 0-1.511-1.276-2.241-2.673-2.241-1.267 0-2.655.59-2.75 2.286a.237.237 0 0 0 .241.247zm2.325 6.443c.61 0 1.029-.394 1.029-.927 0-.552-.42-.94-1.029-.94-.584 0-1.009.388-1.009.94 0 .533.425.927 1.01.927z" />
+                                                    </svg>
+                                                </a>
+                                            </label>
+                                            <div class="custom-control custom-switch" style="display:inline-block; margin-left:20px;">
+                                                <input type="checkbox" class="custom-control-input"
+                                                    id="accept_chat_input" name="accept_chat_input"
+                                                    onclick="change_accept_chat.call(this);this.blur();">
+                                                <input type="hidden" value="{{accept_chat}}" id="accept_chat" name="accept_chat" class="form-control">
+                                                <label class="custom-control-label" for="accept_chat_input" id="checkbox2_accept_chat">
+                                                </label>
                                             </div>
                                         </div>
 
@@ -438,6 +457,7 @@ select[readonly] {
                 "checked", "{{scientific_direction_status}}" == "公开"
             );
             $('#graduation_status_input').prop("checked", "{{graduation_status}}" == "公开");
+            $('#accept_chat_input').prop("checked", "{{accept_chat}}" == "True");
         });
 
         function del_scientific_research() {
@@ -630,7 +650,7 @@ select[readonly] {
             const all_status_hidden = checkboxes[0].nextElementSibling;
             if (!checkboxes[0].checked) {
                 all_status_hidden.value = "0";
-                for (var i = 1; i < checkboxes.length; i += 1) {
+                for (var i = 1; i <= {{total_num}}; i += 1) {
                     const checkbox = checkboxes[i];
                     if (checkbox.checked) {
                         checkbox.checked = false;
@@ -643,7 +663,7 @@ select[readonly] {
                 }
             } else {
                 all_status_hidden.value = "{{total_num}}";
-                for (var i = 1; i < checkboxes.length; i += 1) {
+                for (var i = 1; i <= {{total_num}}; i += 1) {
                     const checkbox = checkboxes[i];
                     if (!checkbox.checked) {
                         checkbox.checked = true;
@@ -677,6 +697,12 @@ select[readonly] {
                 if (all_status_hidden.value == "{{total_num}}")
                     all_status_input.checked = true;
             }
+        }
+
+        function change_accept_chat () {
+            const accept_hidden = this.nextElementSibling;
+            if (!this.checked) accept_hidden.value = "False";
+            else accept_hidden.value = "True";
         }
 
     </script>

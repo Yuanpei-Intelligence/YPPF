@@ -24,7 +24,10 @@ from app.utils import (
 from app.constants import UTYPE_PER
 
 __all__ = [
-    'searchAcademic', 'showChats', 'viewChat'
+    'searchAcademic', 
+    'showChats', 
+    'viewChat',
+    'modifyAcademic',
 ]
 
 
@@ -52,6 +55,8 @@ def searchAcademic(request: HttpRequest) -> HttpResponse:
     return render(request, "search_academic.html", frontend_dict)
 
 
+@login_required(redirect_field_name="origin")
+@utils.check_user_access(redirect_url="/logout/")
 @log.except_captured(EXCEPT_REDIRECT, source='academic_views[showChats]', record_user=True)
 def showChats(request: HttpRequest) -> HttpResponse:
     """
@@ -132,10 +137,10 @@ def modifyAcademic(request: HttpRequest) -> HttpResponse:
     if request.method == "POST" and request.POST: 
         try:
             context = update_academic_map(request)
-            if context["warn_code"] == 1:  # 填写的TextEntry太长导致填写失败
+            if context["warn_code"] == 1:    # 填写的TextEntry太长导致填写失败
                 return redirect(message_url(context, "/modifyAcademic/"))
-            else:                          # warn_code == 2，表明填写成功
-                return redirect(message_url(context, "/stuinfo/"))
+            else:                            # warn_code == 2，表明填写成功
+                return redirect(message_url(context, "/stuinfo/#tab=academic_map"))
         except:
             return redirect(message_url(wrong("修改过程中出现意料之外的错误，请联系工作人员处理！")))
     
@@ -228,6 +233,9 @@ def modifyAcademic(request: HttpRequest) -> HttpResponse:
     frontend_dict["all_status"] = "私密" if "私密" in status_dict.values() else "公开"
     frontend_dict["public_num"] = list(status_dict.values()).count("公开")
     frontend_dict["total_num"] = len(status_dict)
+    
+    # 获取用户是否允许他人提问
+    frontend_dict["accept_chat"] = request.user.accept_chat
     
     # 最后获取侧边栏信息
     frontend_dict["bar_display"] = get_sidebar_and_navbar(request.user, "修改学术地图")

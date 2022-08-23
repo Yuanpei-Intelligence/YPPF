@@ -481,7 +481,7 @@
                             </div>
                         </div>
                         <!--  END PROGRESSING CHAT  -->
-                        {% else %}
+                        {% elif html_display.accept_chat %}
                         <!--  BEGIN QUSETION AREA  -->
                         <div class="widget-content widget-content-area my-3">
 
@@ -1123,24 +1123,37 @@
             $("#"+sessionStorage.getItem("openTabName")).addClass("show active").siblings().removeClass("show active");
         }
         else { // 从学术地图问答中心、问答详情等页面跳转过来时，url末尾为#tab=xxx，通过下面的函数直接打开相应的tab并去掉#tab=xxx，这样之后点到别的tab的时候可以正常刷新
+            var updated_href = window.location.href;
             var type = window.location.href.split("#tab=")[1];
-            if(type == "academic_map"){
+            if(type.indexOf("academic_map") == 0){
                 $(".nav-tabs .nav-item .nav-link").eq(1).addClass("active").parent().siblings().children().removeClass("active");
                 $("#academic_map").addClass("show active").siblings().removeClass("show active");
+                if (updated_href.indexOf("#tab=academic_map?") > -1)  //url中存在GET方法传来的参数
+                    updated_href = updated_href.replace("#tab=academic_map?", "");
+                else updated_href = updated_href.replace("#tab=academic_map", "");
             }
-            else if(type == "organization"){
+            else if(type.indexOf("organization") == 0){
                 $(".nav-tabs .nav-item .nav-link").eq(2).addClass("active").parent().siblings().children().removeClass("active");
                 $("#organization").addClass("show active").siblings().removeClass("show active");
+                if (updated_href.indexOf("#tab=organization?") > -1)  //url中存在GET方法传来的参数
+                    updated_href = updated_href.replace("#tab=organization?", "");
+                else updated_href = updated_href.replace("#tab=organization", "");
             }
-            else if(type == "activity"){
+            else if(type.indexOf("activity") == 0){
                 $(".nav-tabs .nav-item .nav-link").eq(3).addClass("active").parent().siblings().children().removeClass("active");
                 $("#activity").addClass("show active").siblings().removeClass("show active");
+                if (updated_href.indexOf("#tab=activity?") > -1)  //url中存在GET方法传来的参数
+                    updated_href = updated_href.replace("#tab=activity?", "");
+                else updated_href = updated_href.replace("#tab=activity", "");
             }
             else {
                 $(".nav-tabs .nav-item .nav-link").eq(0).addClass("active").parent().siblings().children().removeClass("active");
                 $("#information").addClass("show active").siblings().removeClass("show active");
+                if (updated_href.indexOf("#tab=information?") > -1)  //url中存在GET方法传来的参数
+                    updated_href = updated_href.replace("#tab=information?", "");
+                else updated_href = updated_href.replace("#tab=information", "");
             }
-            window.location.href = window.location.href.split("#tab=")[0];
+            window.location.href = updated_href;
         }
 
         if (reloading == "chatRelatedReloading") { // 表明是发送comment/关闭chat/新建chat等js返回后调用的reload

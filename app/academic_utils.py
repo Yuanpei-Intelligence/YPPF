@@ -472,5 +472,10 @@ def update_academic_map(request: HttpRequest) -> dict:
             me, graduation, graduation_status, 
             AcademicTextEntry.AcademicTextType.GRADUATION
         )
+        
+        # 最后更新是否允许他人提问
+        accept_chat = request.POST["accept_chat"]
+        request.user.accept_chat = True if accept_chat == "True" else False
+        request.user.save()
     
     return succeed("学术地图修改成功！")
