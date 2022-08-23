@@ -14,6 +14,7 @@ check_course_time_conflict: 检查当前选择的课是否与已选的课上课�
 """
 from app.utils_dependency import *
 from app.models import (
+    User,
     NaturalPerson,
     Activity,
     Notification,
@@ -49,7 +50,6 @@ from datetime import datetime, timedelta
 from typing import Tuple, List
 
 from django.http import HttpRequest, HttpResponse
-from django.contrib.auth.models import User
 from django.db import transaction
 from django.db.models import F, Q, Sum, Prefetch
 
