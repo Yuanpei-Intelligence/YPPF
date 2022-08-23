@@ -1,5 +1,5 @@
 from django.db import models
-from django.contrib.auth.models import User
+from generic.models import User
 
 from django.db.models.signals import pre_delete
 from django.db.models import QuerySet
@@ -13,8 +13,8 @@ from Appointment import *
 
 
 __all__ = [
-    'College_Announcement',
     'User',
+    'College_Announcement',
     'Participant',
     'Room',
     'Appoint',
@@ -53,7 +53,10 @@ class Participant(models.Model):
         primary_key=True,
     )
     name = models.CharField('姓名', max_length=64)
-    credit = models.IntegerField('信用分', default=3)
+    @property
+    def credit(self) -> int:
+        '''通过此方法访问的信用分是只读的，修改应使用User.objects方法'''
+        return self.Sid.credit
     pinyin = models.CharField('拼音', max_length=20, null=True)
     hidden = models.BooleanField('不可搜索', default=False)
     longterm = models.BooleanField('可长期预约', default=False)

@@ -7,12 +7,11 @@
 依赖于app.API
 '''
 from Appointment import *
-from Appointment.models import Participant
+from Appointment.models import User, Participant
 from app import API
 from typing import Union, Callable
 from django.http import HttpRequest
 from django.db.models import QuerySet
-from django.contrib.auth.models import User
 
 from functools import wraps
 from django.shortcuts import redirect
@@ -148,7 +147,7 @@ def _create_account(request: HttpRequest, **values) -> Union[Participant, None]:
                 name=given_name,
                 pinyin=pinyin_init,
             )
-            values.setdefault('credit', 3)
+            # values.setdefault('credit', 3)
             values.setdefault('hidden', is_org(request.user))
             values.setdefault('longterm',
                 is_org(request.user) and len(get_member_ids(request.user)) >= 10)
