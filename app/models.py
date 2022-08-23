@@ -38,7 +38,7 @@ models.py
 '''
 from django.db import models, transaction
 from django_mysql.models import ListCharField
-from django.contrib.auth.models import User
+from generic.models import User
 from django.db.models import Q, QuerySet
 from django.db.models.signals import post_save
 from datetime import datetime, timedelta
@@ -1279,6 +1279,7 @@ class Notification(models.Model):
         YQ_DISTRIBUTION = "元气值发放通知"
         PENDING_INFORM = "事务开始通知"
         FEEDBACK_INFORM = "反馈通知"
+        YPLIB_INFORM = "元培书房通知"
 
 
     status = models.SmallIntegerField(choices=Status.choices, default=1)
@@ -1994,19 +1995,21 @@ class Feedback(CommentBase):
 
 ####  学术地图相关模型
 class AcademicTag(models.Model):
+    class Meta:
+        verbose_name = "学术地图标签"
+        verbose_name_plural = verbose_name
 
     class AcademicTagType(models.IntegerChoices):
         MAJOR = (0, '主修专业')
         MINOR = (1, '辅修专业')
         DOUBLE_DEGREE = (2, '双学位专业')
-        # Uncompleted ...
+        PROJECT = (3, '参与项目')
 
-    atype = models.SmallIntegerField(choices=AcademicTagType.choices)
-    tag_content = models.CharField(max_length=63)
+    atype = models.SmallIntegerField('标签类型', choices=AcademicTagType.choices)
+    tag_content = models.CharField('标签内容', max_length=63)
 
 
 class AcademicEntry(models.Model):
-
     class Meta:
         abstract = True
 
@@ -2017,10 +2020,14 @@ class AcademicEntry(models.Model):
         OUTDATE = (3, '已弃用')
 
     person = models.ForeignKey(NaturalPerson, on_delete=models.CASCADE)
-    status = models.SmallIntegerField(EntryStatus)
+    status = models.SmallIntegerField('记录状态', choices=EntryStatus.choices)
 
 
 class AcademicTagEntry(AcademicEntry):
+    class Meta:
+        verbose_name = "学术地图标签项目"
+        verbose_name_plural = verbose_name
+    
     tag = models.ForeignKey(AcademicTag, on_delete=models.CASCADE)
 
     @property
@@ -2029,15 +2036,19 @@ class AcademicTagEntry(AcademicEntry):
 
 
 class AcademicTextEntry(AcademicEntry):
+    class Meta:
+        verbose_name = "学术地图文本项目"
+        verbose_name_plural = verbose_name
 
     class AcademicTextType(models.IntegerChoices):
-        INTERNSHIP = (0, '实习经历')
-        SCIENTIFIC_RESEARCH = (1, '科研经历')
-        CHALLENGE_CUP = (2, '挑战杯经历')
-        # Uncompleted ...
+        SCIENTIFIC_RESEARCH = (0, '本科生科研')
+        CHALLENGE_CUP = (1, '挑战杯')
+        INTERNSHIP = (2, '实习经历')
+        SCIENTIFIC_DIRECTION = (3, '科研方向')
+        GRADUATION = (4, '毕业去向')
 
-    atype = models.SmallIntegerField(choices=AcademicTextType.choices)
-    content = models.CharField(max_length=4095)
+    atype = models.SmallIntegerField('类型', choices=AcademicTextType.choices)
+    content = models.CharField('内容', max_length=4095)
 
 
 class ChatManager(models.Manager):

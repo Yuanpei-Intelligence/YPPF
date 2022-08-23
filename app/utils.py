@@ -1,5 +1,6 @@
 from app.utils_dependency import *
 from app.models import (
+    User,
     NaturalPerson,
     Organization,
     OrganizationType,
@@ -23,7 +24,6 @@ import urllib.parse
 
 from datetime import datetime, timedelta
 from functools import wraps
-from django.contrib.auth.models import User
 from django.contrib import auth
 from django.shortcuts import redirect
 from django.http import HttpResponse

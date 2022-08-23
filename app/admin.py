@@ -764,6 +764,7 @@ class FeedbackAdmin(admin.ModelAdmin):
     list_display = ["type", "title", "person", "org", "feedback_time",]
     search_fields = ("person__name", "org__oname",)
 
+
 @admin.register(FeedbackType)
 class FeedbackTypeAdmin(admin.ModelAdmin):
     list_display = ["name","org_type","org",]
@@ -777,12 +778,31 @@ class PageLogAdmin(admin.ModelAdmin):
     search_fields =  ["user__username", "page"]
     date_hierarchy = "time"
 
+
 @admin.register(ModuleLog)
 class ModuleLogAdmin(admin.ModelAdmin):
     list_display = ["user", "type", "page", "module_name", "time"]
     list_filter = ["type", "module_name", "time", "platform", "page"]
     search_fields = ["user__username", "page", "module_name"]
     date_hierarchy = "time"
+
+
+@admin.register(AcademicTag)
+class AcademicTagAdmin(admin.ModelAdmin):
+    list_display = ["atype", "tag_content",]
+    search_fields =  ("atype", "tag_content",)
+
+
+@admin.register(AcademicTagEntry)
+class AcademicTagEntryAdmin(admin.ModelAdmin):
+    list_display = ["person", "status", "tag",]
+    search_fields =  ("person", "status", "tag",)
+
+
+@admin.register(AcademicTextEntry)
+class AcademicTextEntryAdmin(admin.ModelAdmin):
+    list_display = ["person", "status", "atype", "content",]
+    search_fields =  ("person", "status", "atype", "content",)
 
 
 admin.site.register(YQPointDistribute)
