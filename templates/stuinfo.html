@@ -324,7 +324,7 @@
             <div class="layout-px-spacing layout-top-spacing">
                 <div class="bio layout-spacing">
                     
-                    {% if html_display.is_myself != True %}
+                    {% if html_display.is_myself != True and user_type == "Person"%}
                     
                         {% if html_display.have_progressing_chat %}
                         <!--  BEGIN PROGRESSING CHAT  -->

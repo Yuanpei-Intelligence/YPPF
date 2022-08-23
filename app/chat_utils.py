@@ -119,7 +119,6 @@ def create_chat(request: HttpRequest, respondent: User, title: str, anonymous: b
         return -1, wrong("提问内容不能为空!")
     
     with transaction.atomic():
-        # 本函数暂未考虑receiver不允许匿名提问的情况，chat的初始status均为PROGRESSING
         chat = Chat.objects.create(
             questioner=request.user,
             respondent=respondent,

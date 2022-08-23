@@ -9,7 +9,7 @@ from app.academic_utils import (
     chats2Display,
     comments2Display,
 )
-from app.utils import get_sidebar_and_navbar
+from app.utils import get_sidebar_and_navbar, check_user_type
 
 __all__ = [
     'searchAcademic', 'showChats', 'viewChat'
@@ -53,6 +53,10 @@ def showChats(request: HttpRequest) -> HttpResponse:
     :return: 问答中心页面
     :rtype: HttpResponse
     """
+    valid, user_type, _ = check_user_type(request.user)
+    if user_type != UTYPE_PER:
+        return redirect(message_url(wrong('请使用个人账号访问问答中心页面!')))
+    
     frontend_dict = {}
     frontend_dict["bar_display"] = get_sidebar_and_navbar(request.user, "学术地图问答")
 
