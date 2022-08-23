@@ -4,6 +4,7 @@ from app.models import (
     Chat,
 )
 from app.comment_utils import addComment
+from app.utils import check_user_type
 
 from django.http import HttpRequest
 from typing import Tuple
@@ -61,8 +62,11 @@ def add_chat_message(request: HttpRequest, chat: Chat) -> MESSAGECONTEXT:
     # 只能发给PROGRESSING的chat
     if chat.status == Chat.Status.CLOSED:
         return wrong("当前问答已关闭，无法发送新信息!")
-    # if (not chat.respondent.accept_anonymous_chat) and chat.anonymous_flag: # TODO
-    #     return wrong("目前不接收匿名用户提问!")
+    if (not chat.respondent.accept_anonymous_chat) and chat.anonymous_flag:
+        if request.user == chat.respondent:
+            return wrong("您目前处于禁用匿名提问状态!")
+        else:
+            return wrong("对方目前不允许匿名提问!")
     
     if request.user == chat.questioner:
         receiver = chat.respondent # 我是这个chat的提问方，则我发送新comment时chat的接收方会收到通知
@@ -79,7 +83,6 @@ def add_chat_message(request: HttpRequest, chat: Chat) -> MESSAGECONTEXT:
 def create_chat(request: HttpRequest, respondent: User, title: str, anonymous: bool=False) -> Tuple[int, MESSAGECONTEXT]:
     """
     创建新chat并调用add_chat_message发送首条提问
-    将在views.py中被用到，因为发起问答的端口在个人主页-学术地图
 
     :param request: add_chat_message会用到
     :type request: HttpRequest
@@ -92,6 +95,15 @@ def create_chat(request: HttpRequest, respondent: User, title: str, anonymous: b
     :return: 新chat的id（创建失败为-1）和表明创建chat/发送提问结果的MESSAGECONTEXT
     :rtype: Tuple[int, MESSAGECONTEXT]
     """
+    if (not respondent.accept_anonymous_chat) and anonymous:
+        return -1, wrong("对方目前不允许匿名提问!")
+    
+    # 目前提问方回答方都需要是自然人
+    valid, questioner_type, _ = check_user_type(request.user)
+    valid, respondent_type, _ = check_user_type(respondent)
+    if questioner_type != UTYPE_PER or respondent_type != UTYPE_PER:
+        return -1, wrong("目前只允许个人用户之间发起问答!")
+    
     # 目前不允许一个用户向另一个用户发起超过一个“进行中”的问答
     cur_chat = Chat.objects.filter(
         questioner=request.user,

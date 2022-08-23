@@ -26,8 +26,6 @@ def startChat(request: HttpRequest) -> JsonResponse:
     """
     receiver = User.objects.get(id=request.POST['receiver_id'])
     anonymous_flag = (request.POST["comment_anonymous"]=="true")
-    # if (not receiver.accept_anonymous_chat) and anonymous_flag: # TODO
-    #     return JsonResponse(wrong("对方不允许匿名提问!"))
     
     new_chat_id, create_chat_context = create_chat(
         request, 
@@ -83,12 +81,7 @@ def closeChat(request: HttpRequest) -> JsonResponse:
     :return: warn_code和warn_message
     :rtype: JsonResponse
     """
-    try:
-        chat = Chat.objects.get(id=request.POST.get("chat_id"))
-    except:
-        return JsonResponse(wrong("问答不存在!"))
-    
-    status_change_context = change_chat_status(chat.id, Chat.Status.CLOSED)
+    status_change_context = change_chat_status(request.POST.get("chat_id"), Chat.Status.CLOSED)
     result_context = {
         # 只保留warn_code和warn_message，用于前端展示；
         # 除了这两个以外应该也不会有别的了
