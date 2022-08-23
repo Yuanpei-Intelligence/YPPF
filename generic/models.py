@@ -58,6 +58,30 @@ class UserManager(_UserManager):
             return users.get(username=user)
         return users.get(pk=user)
 
+    def create_user(self, username: str, name: str,
+                    usertype: 'User.Type' = None, *,
+                    password: str = None,
+                    **extra_fields) -> 'User':
+        '''创建用户，根据名称自动设置名称缩写'''
+        if usertype is not None:
+            extra_fields['utype'] = usertype
+        extra_fields['name'] = name
+        extra_fields.setdefault('acronym', to_acronym(name))
+        return super().create_user(username=username, password=password, **extra_fields)
+
+    def create(self, **fields):
+        '''User.objects.create已废弃'''
+        raise NotImplementedError
+
+    def get(self, *args, **kwargs) -> 'User':
+        return super().get(*args, **kwargs)
+
+    def all(self) -> 'QuerySet[User]':
+        return super().all()
+
+    def filter(self, *args, **kwargs) -> 'QuerySet[User]':
+        return super().filter(*args, **kwargs)
+
 
     @transaction.atomic
     def modify_credit(self, user: 'User|int|str', delta: int, source: str) -> int:
