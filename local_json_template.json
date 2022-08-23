@@ -116,9 +116,5 @@
         "organization_name": "何善衡图书室",
         "open_time_start": "07:00",
         "open_time_end": "23:00"
-    },
-    "course_record_loadinfo": {
-        "year": 2022,
-        "semester": "Spring"
     }
 }

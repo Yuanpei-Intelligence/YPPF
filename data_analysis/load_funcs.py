@@ -812,8 +812,8 @@ def load_course_records(filepath: str, output_func: Callable=None, html:bool=Fal
     display_message = ""
 
     # 学年，学期从local_json.json中读取
-    year = local_dict["course_record_loadinfo"]["year"]
-    semester = Semester.get(local_dict["course_record_loadinfo"]["semester"])
+    year = CURRENT_ACADEMIC_YEAR
+    semester = get_setting('semester_data/semester', Semester.get)
 
     display_message += "coursetime/ 一共有{}个文件<br/>".format(len(courserecord_file))
     for cname, course_info in courserecord_file.items():
