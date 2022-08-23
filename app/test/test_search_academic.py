@@ -1,6 +1,6 @@
 from django.test import TestCase
-from django.contrib.auth.models import User
 from app.models import (
+    User,
     NaturalPerson,
     AcademicTag,
     AcademicEntry,
@@ -143,18 +143,18 @@ class GetSearchAcademicTestCase(TestCase):
                 self.assertEqual("实习经历" in result, True)
             else:
                 self.assertEqual("主修专业" in result, True)
-                self.assertEqual("科研经历" in result, True)
+                self.assertEqual("本科生科研" in result, True)
     
     def test_results_entry(self):
         result_1 = get_search_results("1")
         self.assertEqual(len(result_1[0].keys()), 3)
-        self.assertEqual(len(result_1[0]["科研经历"]), 2)
+        self.assertEqual(len(result_1[0]["本科生科研"]), 2)
         results_de = get_search_results("的")
         for result in results_de:
             if result["姓名"] == "2":
                 self.assertEqual(result["年级"], "2018")
-                self.assertEqual(type(result["科研经历"]), list)
-                self.assertEqual(result["科研经历"][0], "物理物理物理物理物理11111111的")
+                self.assertEqual(type(result["本科生科研"]), list)
+                self.assertEqual(result["本科生科研"][0], "物理物理物理物理物理11111111的")
             else:
                 self.assertEqual(result["年级"], "2019")
-                self.assertEqual(result["挑战杯经历"], ["离散数学的原理是非常美妙的",])        
+                self.assertEqual(result["挑战杯"], ["离散数学的原理是非常美妙的",])        
