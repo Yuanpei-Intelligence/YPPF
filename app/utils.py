@@ -76,11 +76,8 @@ def get_classified_user(user: User, user_type=None, *,
         只获取活跃的用户，由对应的模型管理器检查，用户不活跃可能报错
     '''
     if user_type is None:
-        if hasattr(user, "naturalperson"):
-            return NaturalPerson.objects.get_by_user(user, update=update, activate=activate)
-        else:
-            return Organization.objects.get_by_user(user, update=update, activate=activate)
-    elif user_type == UTYPE_PER:
+        user_type = user.utype
+    if user_type == UTYPE_PER:
         return NaturalPerson.objects.get_by_user(user, update=update, activate=activate)
     elif user_type == UTYPE_ORG:
         return Organization.objects.get_by_user(user, update=update, activate=activate)
@@ -110,26 +107,14 @@ def get_user_by_name(name):
 # YWolfeee, Aug 16
 # check_user_type只是获得user的类型，其他用于呈现html_display的内容全部转移到get_siderbar_and_navbar中
 # 同步开启一个html_display，方便拓展前端逻辑的呈现
-def check_user_type(user):
+def check_user_type(user: User):
+    '''待废弃'''
     html_display = {}
-    if user.is_superuser or user.is_staff:
-        if user.is_staff:
-            for user_type, model_name in [
-                (UTYPE_ORG, "organization"),
-                (UTYPE_PER, "naturalperson"),
-                ]:
-                if hasattr(user, model_name):
-                    html_display["user_type"] = user_type
-                    return True, user_type, html_display
-        return False, "", html_display
-    if user.username[:2] == "zz":
-        user_type = UTYPE_ORG
+    user_type = user.utype
+    valid = user.is_valid()
+    if valid:
         html_display["user_type"] = user_type
-    else:
-        user_type = UTYPE_PER
-        html_display["user_type"] = user_type
-
-    return True, user_type, html_display
+    return valid, user_type, html_display
 
 
 def get_user_ava(obj: ClassifiedUser, user_type):
