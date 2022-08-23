@@ -105,6 +105,7 @@ urlpatterns = [
 ] + [
     # 学术地图
     path("searchAcademic/", academic_views.searchAcademic, name="searchAcademic"),
+    path("modifyAcademic/", academic_views.modifyAcademic, name="modifyAcademic"),
 ] + [
     # 埋点
     path('eventTrackingFunc/', views.eventTrackingFunc, name='eventTracking'),

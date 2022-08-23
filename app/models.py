@@ -2007,6 +2007,9 @@ class AcademicTag(models.Model):
 
     atype = models.SmallIntegerField('标签类型', choices=AcademicTagType.choices)
     tag_content = models.CharField('标签内容', max_length=63)
+    
+    def __str__(self):
+        return AcademicTag.AcademicTagType(self.atype).label + ' - ' + self.tag_content
 
 
 class AcademicEntry(models.Model):
