@@ -13,9 +13,9 @@ from app.academic_utils import get_search_results
 class GetSearchAcademicTestCase(TestCase):
     @classmethod
     def setUpTestData(cls):
-        u1 = User.objects.create(id="1", username="11", password="111")
-        u2 = User.objects.create(id="2", username="22", password="222")
-        u3 = User.objects.create(id="3", username="33", password="333")
+        u1 = User.objects.create_user("11", "1", password="111")
+        u2 = User.objects.create_user("22", "2", password="222")
+        u3 = User.objects.create_user("33", "1", password="333")
         
         NaturalPerson.objects.create(person_id=u1, name="1", stu_grade="2018")
         NaturalPerson.objects.create(person_id=u2, name="2", stu_grade="2018")

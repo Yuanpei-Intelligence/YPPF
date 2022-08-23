@@ -1205,7 +1205,11 @@ def freshman(request: HttpRequest):
             with transaction.atomic():
                 password = hash_coder.encode(sname + str(random.random()))
                 current = "创建用户"
-                user = User.objects.create_user(username=sid, password=password)
+                user = User.objects.create_user(
+                    username=sid, name=sname,
+                    usertype=UTYPE_PER,
+                    password=password
+                )
                 current = "创建个人账号"
                 NaturalPerson.objects.create(
                     person_id=user,
@@ -1279,7 +1283,11 @@ def authRegister(request: HttpRequest):
 
                 # OK!
                 try:
-                    user = User.objects.create_user(username=sno, password=password)
+                    user = User.objects.create_user(
+                        username=sno, name=name,
+                        usertype=UTYPE_PER,
+                        password=password
+                    )
                 except:
                     # 存在用户
                     return HttpResponseRedirect("/admin/")

@@ -62,10 +62,11 @@ def find_max_oname():
 def accept_modifyorg_submit(application): #同意申请，假设都是合法操作
     # 新建一系列东西
     username = find_max_oname()
-    user = User.objects.create(username=username)
-    password = random_code_init(user.id)
-    user.set_password(password)
-    user.save()
+    user = User.objects.create_user(
+        username=username, name=application.oname,
+        usertype=UTYPE_ORG,
+        password=random_code_init(user.id),
+    )
     org = Organization.objects.create(organization_id=user,
                                       oname=application.oname,
                                       otype=application.otype,
