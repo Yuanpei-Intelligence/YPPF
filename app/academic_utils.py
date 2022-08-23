@@ -158,7 +158,9 @@ def comments2Display(chat: Chat, frontend_dict: dict, user: User):
     
     frontend_dict['status'] = chat.get_status_display()
     frontend_dict["commentable"] = (chat.status == Chat.Status.PROGRESSING) # 若为True，则前端会给出评论区和“关闭当前问答”的按钮
-    
+    frontend_dict["anonymous_chat"] = chat.anonymous_flag
+    frontend_dict["accept_anonymous"] = chat.respondent.accept_anonymous_chat
+
     # 问答详情页面需要展示“发给xxx的问答”或“来自xxx的问答”，且xxx附有指向学术地图页面的超链接
     # 因而需要判断我是提问者还是回答者，并记录对方的名字
     # 问答详情页面对于我的信息和对方的信息以不同的格式显示
