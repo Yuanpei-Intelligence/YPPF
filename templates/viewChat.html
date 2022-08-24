@@ -175,10 +175,17 @@
                                             <table class="table table-bordered mb-4">
                                                 <div>
                                                     <div class="form-group">
+                                                        {% if anonymous_chat and not accept_anonymous %}
+                                                        <textarea type="text" id="comment" name="comment"
+                                                                class="form-control"
+                                                                aria-label="Default" rows="3"
+                                                                placeholder="回答者目前不接收匿名提问哦" disabled></textarea>
+                                                        {% else %}
                                                         <textarea type="text" id="comment" name="comment"
                                                                 class="form-control"
                                                                 aria-label="Default" rows="3"
                                                                 placeholder="添加回复或追问追答"></textarea>
+                                                        {% endif %}
                                                         
                                                     </div>
                                                     <div class="d-flex justify-content-between">

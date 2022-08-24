@@ -15,6 +15,10 @@
         vertical-align: middle !important;
         margin: 2px 0px 6px !important;
     }
+
+    .tooltip-inner {
+        max-width: 500px;
+    }
 </style>
 
 <div id="content" class="main-content pb-3" style="overflow: hidden;">
@@ -442,10 +446,17 @@
                                                     <table class="table table-bordered mb-4">
                                                         <div>
                                                             <div class="form-group">
+                                                                {% if html_display.anonymous_chat and not html_display.accept_anonymous %}
+                                                                <textarea type="text" id="comment" name="comment"
+                                                                        class="form-control"
+                                                                        aria-label="Default" rows="3"
+                                                                        placeholder="回答者目前不接收匿名提问哦" disabled></textarea>
+                                                                {% else %}
                                                                 <textarea type="text" id="comment" name="comment"
                                                                         class="form-control"
                                                                         aria-label="Default" rows="3"
                                                                         placeholder="添加回复或追问追答"></textarea>
+                                                                {% endif %}
                                                                 
                                                             </div>
                                                             <div class="d-flex justify-content-between">
@@ -514,8 +525,14 @@
                                                                 
                                                             </div>
                                                             <div class="" style="text-align: right;">
-                                                                <label>
+                                                                <label {% if not html_display.accept_anonymous %} class="check-anonymous" {% endif %}>  
+                                                                    {% if html_display.accept_anonymous %}
                                                                     <input type="checkbox" id="comment_anonymous" name="comment_anonymous" style="vertical-align:middle;" />
+                                                                    {% else %}
+                                                                    <a data-toggle="tooltip" data-placement="bottom" title="对方目前不允许匿名提问">
+                                                                        <input type="checkbox" id="comment_anonymous" name="comment_anonymous" disabled style="vertical-align:middle;" />
+                                                                    </a>
+                                                                    {% endif %}
                                                                     <span style="vertical-align:middle;" >匿名提问&emsp;</span>
                                                                 </label>
                                                                 <button type="submit"
@@ -1092,20 +1109,20 @@
         }
         // 记录当前打开的tab
         if ($(".nav-tabs .nav-item .nav-link").eq(0).hasClass("active")){
-            sessionStorage.setItem("openTab", 0);
-            sessionStorage.setItem("openTabName", "information");
+            sessionStorage.setItem("stuinfoOpenTab", 0);
+            sessionStorage.setItem("stuinfoOpenTabName", "information");
         }
         else if ($(".nav-tabs .nav-item .nav-link").eq(1).hasClass("active")){
-            sessionStorage.setItem("openTab", 1);
-            sessionStorage.setItem("openTabName", "academic_map");
+            sessionStorage.setItem("stuinfoOpenTab", 1);
+            sessionStorage.setItem("stuinfoOpenTabName", "academic_map");
         }
         else if ($(".nav-tabs .nav-item .nav-link").eq(2).hasClass("active")){
-            sessionStorage.setItem("openTab", 2);
-            sessionStorage.setItem("openTabName", "organization");
+            sessionStorage.setItem("stuinfoOpenTab", 2);
+            sessionStorage.setItem("stuinfoOpenTabName", "organization");
         }
         else {
-            sessionStorage.setItem("openTab", 3);
-            sessionStorage.setItem("openTabName", "activity");
+            sessionStorage.setItem("stuinfoOpenTab", 3);
+            sessionStorage.setItem("stuinfoOpenTabName", "activity");
         }
     }
 
@@ -1119,8 +1136,8 @@
         // 恢复刷新前的tab
         if (window.location.href.indexOf("#tab=") == -1){
             $(".nav-tabs .nav-item .nav-link").eq(
-                sessionStorage.getItem("openTab")).addClass("active").parent().siblings().children().removeClass("active");
-            $("#"+sessionStorage.getItem("openTabName")).addClass("show active").siblings().removeClass("show active");
+                sessionStorage.getItem("stuinfoOpenTab")).addClass("active").parent().siblings().children().removeClass("active");
+            $("#"+sessionStorage.getItem("stuinfoOpenTabName")).addClass("show active").siblings().removeClass("show active");
         }
         else { // 从学术地图问答中心、问答详情等页面跳转过来时，url末尾为#tab=xxx，通过下面的函数直接打开相应的tab并去掉#tab=xxx，这样之后点到别的tab的时候可以正常刷新
             var type = window.location.href.split("#tab=")[1];
