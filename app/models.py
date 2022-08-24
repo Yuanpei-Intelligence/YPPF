@@ -2084,7 +2084,7 @@ class Chat(CommentBase):
     respondent: User = models.ForeignKey(User, on_delete=models.CASCADE,
                              related_name="receive_chat_set")
     title = models.CharField("主题", default="", max_length=50)
-    anonymous_flag = models.BooleanField("是否匿名", default=False) # 指发送方
+    anonymous = models.BooleanField("是否匿名", default=False) # 指发送方
 
     class Status(models.IntegerChoices):
         PROGRESSING = (0, "进行中")

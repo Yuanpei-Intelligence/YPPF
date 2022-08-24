@@ -390,12 +390,12 @@
         }
         // 记录当前打开的tab
         if ($(".nav-tabs .nav-item .nav-link").eq(0).hasClass("active")){
-            sessionStorage.setItem("openTab", 0);
-            sessionStorage.setItem("openTabName", "sent");
+            sessionStorage.setItem("showChatsOpenTab", 0);
+            sessionStorage.setItem("showChatsOpenTabName", "sent");
         }
         else {
-            sessionStorage.setItem("openTab", 1);
-            sessionStorage.setItem("openTabName", "received");
+            sessionStorage.setItem("showChatsOpenTab", 1);
+            sessionStorage.setItem("showChatsOpenTabName", "received");
         }
     }
 
@@ -408,8 +408,8 @@
         
         // 恢复刷新前的tab
         $(".nav-tabs .nav-item .nav-link").eq(
-            sessionStorage.getItem("openTab")).addClass("active").parent().siblings().children().removeClass("active");
-        $("#"+sessionStorage.getItem("openTabName")).addClass("show active").siblings().removeClass("show active");
+            sessionStorage.getItem("showChatsOpenTab")).addClass("active").parent().siblings().children().removeClass("active");
+        $("#"+sessionStorage.getItem("showChatsOpenTabName")).addClass("show active").siblings().removeClass("show active");
 
         if (reloading == "chatRelatedReloading") { // 刷新是js提交导致的
             sessionStorage.removeItem("reloading"); // 清除掉，这样以后普通的页面刷新不会进这个if
