@@ -2007,6 +2007,15 @@ class AcademicTag(models.Model):
 
     atype = models.SmallIntegerField('标签类型', choices=AcademicTagType.choices)
     tag_content = models.CharField('标签内容', max_length=63)
+    
+    def __str__(self):
+        return AcademicTag.AcademicTagType(self.atype).label + ' - ' + self.tag_content
+
+
+class AcademicEntryManager(models.Manager):
+    def activated(self):
+        # 筛选未被删除的entry
+        return self.exclude(status=AcademicEntry.EntryStatus.OUTDATE)
 
 
 class AcademicEntry(models.Model):
@@ -2021,6 +2030,8 @@ class AcademicEntry(models.Model):
 
     person = models.ForeignKey(NaturalPerson, on_delete=models.CASCADE)
     status = models.SmallIntegerField('记录状态', choices=EntryStatus.choices)
+    
+    objects: AcademicEntryManager = AcademicEntryManager()
 
 
 class AcademicTagEntry(AcademicEntry):
