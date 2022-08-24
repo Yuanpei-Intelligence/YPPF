@@ -254,18 +254,17 @@ def create_single_course_activity(request: HttpRequest) -> Tuple[int, bool]:
         image=image, type=ActivityPhoto.PhotoType.ANNOUNCE, activity=activity)
 
     # 通知审核老师
-    # FIXME: 本地测试暂时取消微信通知
-    # notification_create(
-    #     receiver=examine_teacher.person_id,
-    #     sender=request.user,
-    #     typename=Notification.Type.NEEDDO,
-    #     title=Notification.Title.VERIFY_INFORM,
-    #     content="您有一个单次课程活动待审批",
-    #     URL=f"/examineActivity/{activity.id}",
-    #     relate_instance=activity,
-    #     publish_to_wechat=True,
-    #     publish_kws={"app": WechatApp.AUDIT},
-    # )
+    notification_create(
+        receiver=examine_teacher.person_id,
+        sender=request.user,
+        typename=Notification.Type.NEEDDO,
+        title=Notification.Title.VERIFY_INFORM,
+        content="您有一个单次课程活动待审批",
+        URL=f"/examineActivity/{activity.id}",
+        relate_instance=activity,
+        publish_to_wechat=True,
+        publish_kws={"app": WechatApp.AUDIT},
+    )
 
     return activity.id, True
 
@@ -1176,8 +1175,6 @@ def create_course(request, course_id=None):
                     record_cal_method=context["record_cal_method"],
                     type=context['type'],
                     capacity=context["capacity"],
-                    #FIXME: 本地测试绕过选课阶段
-                    status=Course.Status.SELECT_END,
                     need_apply=context["need_apply"],
                     publish_day=context["publish_day"]
                 )

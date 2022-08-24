@@ -585,10 +585,6 @@ def addCourse(request: HttpRequest, cid=None):
     3. GET 请求创建课程的界面，placeholder 为 prompt
     4. GET 请求编辑课程的界面，表单的 placeholder 会被修改为课程的旧值。
     """
-    # FIXME: 本地测试手动触发课程活动生成
-    from app.scheduler_func import longterm_launch_course
-    longterm_launch_course()
-    return HttpResponse("1")
 
     # 检查：不是超级用户，必须是小组，修改是必须是自己
     valid, user_type, html_display = utils.check_user_type(request.user)
@@ -632,11 +628,8 @@ def addCourse(request: HttpRequest, cid=None):
     if request.method == "POST" and request.POST:
         if not edit:
             # 发起选课
-            # course_DDL = str_to_time(get_setting("course/btx_election_end"))
+            course_DDL = str_to_time(get_setting("course/btx_election_end"))
 
-            # FIXME: 本地测试绕过选课截止日期
-            from datetime import timedelta
-            course_DDL = datetime.now()+timedelta(hours=1)
 
             if datetime.now() > course_DDL:
                 return redirect(message_url(succeed("已超过选课时间节点，无法发起课程！"),

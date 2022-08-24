@@ -229,29 +229,31 @@ def add_week_course_activity(course_id: int, weektime_id: int, cur_week: int ,co
         ActivityPhoto.objects.create(image=course.photo,
                                      type=ActivityPhoto.PhotoType.ANNOUNCE,
                                      activity=activity)
-        # 选课人员自动报名活动
-        # 选课结束以后，活动参与人员从小组成员获取
-        person_pos = list(Position.objects.activated().filter(
-                org=course.organization).values_list("person", flat=True))
-        if course_stage2:
-            # 如果处于补退选阶段，活动参与人员从课程选课情况获取
-            selected_person = list(CourseParticipant.objects.filter(
-                course=course,
-                status=CourseParticipant.Status.SUCCESS,
-            ).values_list("person", flat=True))
-            person_pos += selected_person
-            person_pos = list(set(person_pos))
-        members = NaturalPerson.objects.filter(
-            id__in=person_pos)
-        for member in members:
-            participant = Participant.objects.create(
-                activity_id=activity,
-                person_id=member,
-                status=Participant.AttendStatus.APLLYSUCCESS)
+        if not activity.need_apply:
+            # 选课人员自动报名活动
+            # 选课结束以后，活动参与人员从小组成员获取
+            person_pos = list(Position.objects.activated().filter(
+                    org=course.organization).values_list("person", flat=True))
+            if course_stage2:
+                # 如果处于补退选阶段，活动参与人员从课程选课情况获取
+                selected_person = list(CourseParticipant.objects.filter(
+                    course=course,
+                    status=CourseParticipant.Status.SUCCESS,
+                ).values_list("person", flat=True))
+                person_pos += selected_person
+                person_pos = list(set(person_pos))
+            members = NaturalPerson.objects.filter(
+                id__in=person_pos)
+            for member in members:
+                participant = Participant.objects.create(
+                    activity_id=activity,
+                    person_id=member,
+                    status=Participant.AttendStatus.APLLYSUCCESS)
 
-        participate_num = len(person_pos)
-        activity.capacity = participate_num
-        activity.current_participants = participate_num
+            participate_num = len(person_pos)
+            activity.capacity = participate_num
+            activity.current_participants = participate_num
+
         week_time.cur_week += 1
         week_time.save()
         activity.save()
@@ -274,17 +276,17 @@ def add_week_course_activity(course_id: int, weektime_id: int, cur_week: int ,co
     scheduler.add_job(changeActivityStatus, "date", id=f"activity_{activity.id}_{Activity.Status.END}",
                       run_date=activity.end, args=[activity.id, Activity.Status.PROGRESSING, Activity.Status.END], replace_existing=True)
 
-    # notification_create(
-    #     receiver=examine_teacher.person_id,
-    #     sender=course.organization.organization_id,
-    #     typename=Notification.Type.NEEDDO,
-    #     title=Notification.Title.VERIFY_INFORM,
-    #     content="新增了一个已审批的课程活动",
-    #     URL=f"/examineActivity/{activity.id}",
-    #     relate_instance=activity,
-    #     publish_to_wechat=True,
-    #     publish_kws={"app": WechatApp.AUDIT, 'level': WechatMessageLevel.INFO},
-    # )
+    notification_create(
+        receiver=examine_teacher.person_id,
+        sender=course.organization.organization_id,
+        typename=Notification.Type.NEEDDO,
+        title=Notification.Title.VERIFY_INFORM,
+        content="新增了一个已审批的课程活动",
+        URL=f"/examineActivity/{activity.id}",
+        relate_instance=activity,
+        publish_to_wechat=True,
+        publish_kws={"app": WechatApp.AUDIT, 'level': WechatMessageLevel.INFO},
+    )
 
 
 def longterm_launch_course():
