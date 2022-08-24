@@ -2012,6 +2012,12 @@ class AcademicTag(models.Model):
         return AcademicTag.AcademicTagType(self.atype).label + ' - ' + self.tag_content
 
 
+class AcademicEntryManager(models.Manager):
+    def activated(self):
+        # 筛选未被删除的entry
+        return self.exclude(status=AcademicEntry.EntryStatus.OUTDATE)
+
+
 class AcademicEntry(models.Model):
     class Meta:
         abstract = True
@@ -2024,6 +2030,8 @@ class AcademicEntry(models.Model):
 
     person = models.ForeignKey(NaturalPerson, on_delete=models.CASCADE)
     status = models.SmallIntegerField('记录状态', choices=EntryStatus.choices)
+    
+    objects: AcademicEntryManager = AcademicEntryManager()
 
 
 class AcademicTagEntry(AcademicEntry):

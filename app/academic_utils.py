@@ -24,7 +24,6 @@ __all__ = [
     'comments2Display',
     'get_js_tag_list',
     'get_text_list',
-    'get_hidden_text_input',
     'get_tag_status',
     'get_text_status',
     'update_tag_entry',
@@ -221,7 +220,7 @@ def get_js_tag_list(request: HttpRequest, type: AcademicTag.AcademicTagType, sel
     """
     if selected:
         me = get_person_or_org(request.user, UTYPE_PER)
-        all_my_tags = AcademicTagEntry.objects.filter(person=me)
+        all_my_tags = AcademicTagEntry.objects.activated().filter(person=me)
         tags = all_my_tags.filter(tag__atype=type).values('tag__id', 'tag__tag_content')
         js_list = [{"id": tag['tag__id'], "text": tag['tag__tag_content']} for tag in tags]
     else:
@@ -243,25 +242,9 @@ def get_text_list(request: HttpRequest, type: AcademicTextEntry.AcademicTextType
     :rtype: List[str]
     """
     me = get_person_or_org(request.user, UTYPE_PER)
-    all_my_text = AcademicTextEntry.objects.filter(person=me, atype=type)
+    all_my_text = AcademicTextEntry.objects.activated().filter(person=me, atype=type)
     text_list = [text.content for text in all_my_text]
     return text_list
-
-
-def get_hidden_text_input(contents: List[str]) -> str:
-    """
-    根据TextEntry的内容列表，生成前端hidden input的默认填写内容。
-
-    :param contents: TextEntry的content组成的list
-    :type contents: List[str]
-    :return: 前端hidden input的默认填写内容
-    :rtype: str
-    """
-    input_string = ""
-    SEP_STR = "(END OF AN ENTRY)"
-    for content in contents:
-        input_string += content + SEP_STR
-    return input_string
 
 
 def get_tag_status(person: NaturalPerson, type: AcademicTag.AcademicTagType) -> str:
@@ -277,7 +260,7 @@ def get_tag_status(person: NaturalPerson, type: AcademicTag.AcademicTagType) -> 
     :rtype: str
     """
     # 首先获取person所有的TagEntry
-    all_tag_entries = AcademicTagEntry.objects.filter(person=person, tag__atype=type)
+    all_tag_entries = AcademicTagEntry.objects.activated().filter(person=person, tag__atype=type)
     
     if all_tag_entries.exists():
         # 因为所有类型为type的TagEntry的公开状态都一样，所以直接返回第一个entry的公开状态
@@ -300,7 +283,7 @@ def get_text_status(person: NaturalPerson, type: AcademicTextEntry.AcademicTextT
     :rtype: str
     """
     # 首先获取person所有的类型为type的TextEntry
-    all_text_entries = AcademicTextEntry.objects.filter(person=person, atype=type)
+    all_text_entries = AcademicTextEntry.objects.activated().filter(person=person, atype=type)
     
     if all_text_entries.exists():
         # 因为所有类型为type的TextEntry的公开状态都一样，所以直接返回第一个entry的公开状态
@@ -327,28 +310,27 @@ def update_tag_entry(person: NaturalPerson,
     :type type: AcademicTag.AcademicTagType
     """
     # 首先获取person所有的TagEntry
-    all_tag_entries = AcademicTagEntry.objects.filter(person=person, tag__atype=type)
+    all_tag_entries = AcademicTagEntry.objects.activated().filter(person=person, tag__atype=type)
     
-    # 如果用户原有的TagEntry的id在tag_ids中未出现，则将其删除
     for entry in all_tag_entries:
         if not str(entry.tag.id) in tag_ids:
-            entry.delete()
-    
-    for tag_id in tag_ids:
-        tag_entry = all_tag_entries.filter(tag=AcademicTag.objects.get(id=int(tag_id)))
-        if tag_entry.exists():
-            # 用户已经有对应的entry，则更新entry的状态
-            tag_entry = tag_entry[0]
-            tag_entry.status = AcademicEntry.EntryStatus.PUBLIC if status == "公开" \
-                           else AcademicEntry.EntryStatus.PRIVATE
-            tag_entry.save()
+            # 如果用户原有的TagEntry的id在tag_ids中未出现，则将其状态设置为“已弃用”
+            entry.status = AcademicEntry.EntryStatus.OUTDATE
+            entry.save()
         else:
-            # 用户没有对应的entry，则根据用户填写的内容创建entry
-            AcademicTagEntry.objects.create(
-                person=person, tag=AcademicTag.objects.get(id=int(tag_id)),
-                status=AcademicEntry.EntryStatus.PUBLIC if status == "公开" \
-                    else AcademicEntry.EntryStatus.PRIVATE
-            )
+            # 如果出现，直接更新其状态，并将这个id从tag_ids移除
+            entry.status = AcademicEntry.EntryStatus.WAIT_AUDIT if status == "公开" \
+                           else AcademicEntry.EntryStatus.PRIVATE
+            entry.save()
+            tag_ids.remove(str(entry.tag.id))
+    
+    # 接下来遍历的tag_id都是要新建的tag
+    for tag_id in tag_ids:
+        AcademicTagEntry.objects.create(
+            person=person, tag=AcademicTag.objects.get(id=int(tag_id)),
+            status=AcademicEntry.EntryStatus.WAIT_AUDIT if status == "公开" \
+                else AcademicEntry.EntryStatus.PRIVATE
+        )
 
 
 def update_text_entry(person: NaturalPerson, 
@@ -368,26 +350,28 @@ def update_text_entry(person: NaturalPerson,
     :type type: AcademicTextEntry.AcademicTextType
     """
     # 首先获取person所有的类型为type的TextEntry
-    all_text_entries = AcademicTextEntry.objects.filter(person=person, atype=type)
+    all_text_entries = AcademicTextEntry.objects.activated().filter(person=person, atype=type)
+    previous_num = len(all_text_entries)
     
-    # 如果用户原有的TextEntry的内容在contents中没有出现，则将其删除
-    for entry in all_text_entries:
-        if not entry.content in contents:
-            entry.delete()
+    # 即将修改/创建的entry总数一定不小于原有的，因此先遍历原有的entry，判断是否更改/删除
+    for i, entry in enumerate(all_text_entries):
+        if (entry.content != contents[i]):  # 只有content与原有的不同才更改
+            # 无论如何，先将原有的content设置为“已弃用”
+            entry.status = AcademicEntry.EntryStatus.OUTDATE
+            entry.save()
+            if contents[i] != "":  # 只有新的entry的内容不为空才创建
+                AcademicTextEntry.objects.create(
+                    person=person, atype=type, content=contents[i],
+                    status=AcademicEntry.EntryStatus.WAIT_AUDIT if status == "公开" \
+                        else AcademicEntry.EntryStatus.PRIVATE
+                )
     
-    for content in contents:
-        text_entry = all_text_entries.filter(content=content)
-        if text_entry.exists():
-            # 用户已经有对应的entry，则更新entry的状态
-            text_entry = text_entry[0]
-            text_entry.status = AcademicEntry.EntryStatus.PUBLIC if status == "公开" \
-                           else AcademicEntry.EntryStatus.PRIVATE
-            text_entry.save()
-        else:
-            # 用户没有对应的entry，则根据用户填写的内容创建entry
+    # 接下来遍历的entry均为需要新建的
+    for content in contents[previous_num:]:
+        if content != "":
             AcademicTextEntry.objects.create(
                 person=person, atype=type, content=content,
-                status=AcademicEntry.EntryStatus.PUBLIC if status == "公开" \
+                status=AcademicEntry.EntryStatus.WAIT_AUDIT if status == "公开" \
                     else AcademicEntry.EntryStatus.PRIVATE
             )
 
@@ -408,12 +392,19 @@ def update_academic_map(request: HttpRequest) -> dict:
     projects = request.POST.getlist('projects')
     
     # 然后从其余栏目获取即将更新的TextEntry
-    SEP_STR = "(END OF AN ENTRY)"
-    scientific_research = request.POST['scientific_research'].split(SEP_STR)[:-1]
-    challenge_cup = request.POST['challenge_cup'].split(SEP_STR)[:-1]
-    internship = request.POST['internship'].split(SEP_STR)[:-1]
-    scientific_direction = request.POST['scientific_direction'].split(SEP_STR)[:-1]
-    graduation = request.POST['graduation'].split(SEP_STR)[:-1]
+    scientific_research_num = int(request.POST['scientific_research_num'])
+    challenge_cup_num = int(request.POST['challenge_cup_num'])
+    internship_num = int(request.POST['internship_num'])
+    scientific_direction_num = int(request.POST['scientific_direction_num'])
+    graduation_num = int(request.POST['graduation_num'])
+    scientific_research = [request.POST[f'scientific_research_{i}'] \
+                            for i in range(scientific_research_num+1)]
+    challenge_cup = [request.POST[f'challenge_cup_{i}'] \
+                        for i in range(challenge_cup_num+1)]
+    internship = [request.POST[f'internship_{i}'] for i in range(internship_num+1)]
+    scientific_direction = [request.POST[f'scientific_direction_{i}'] \
+                            for i in range(scientific_direction_num+1)]
+    graduation = [request.POST[f'graduation_{i}'] for i in range(graduation_num+1)]
     
     # 对上述五个列表中的所有填写项目，检查是否超过数据库要求的字数上限
     max_length_of = lambda items: max([len(item) for item in items]) if len(items) > 0 else 0

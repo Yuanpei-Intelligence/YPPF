@@ -21,10 +21,10 @@ select[readonly] {
     <!--  END CUSTOM STYLE FILE  -->
     
         <div class="container">
-            {% if html_display.warn_code == 2 %}
-            <div class="alert alert-success text-center">{{html_display.warn_message}}</div>
-            {% elif html_display.warn_code == 1 %}
-            <div class="alert alert-warning text-center">{{html_display.warn_message}}</div>
+            {% if warn_code == "2" %}
+            <div class="alert alert-success text-center mb-0">{{warn_message}}</div>
+            {% elif warn_code == "1" %}
+            <div class="alert alert-warning text-center mb-0">{{warn_message}}</div>
             {% endif %}
             <div class="row layout-top-spacing">
 
@@ -162,7 +162,12 @@ select[readonly] {
 
                                         <div class="form-group card-label">
                                             <div style="display:flex; justify-content:space-between;">
-                                                <label for="aintro">本科生科研</label>
+                                                <label for="aintro">本科生科研<a data-toggle="tooltip" data-placement="bottom" title="如果想删除现有的内容，直接将其清空即可；注意修改现有内容后，该项将自动变为最新的项">
+                                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor"
+                                                        class="bi bi-question-circle-fill" viewBox="0 0 22 22">
+                                                        <path d="M16 8A8 8 0 1 1 0 8a8 8 0 0 1 16 0zM5.496 6.033h.825c.138 0 .248-.113.266-.25.09-.656.54-1.134 1.342-1.134.686 0 1.314.343 1.314 1.168 0 .635-.374.927-.965 1.371-.673.489-1.206 1.06-1.168 1.987l.003.217a.25.25 0 0 0 .25.246h.811a.25.25 0 0 0 .25-.25v-.105c0-.718.273-.927 1.01-1.486.609-.463 1.244-.977 1.244-2.056 0-1.511-1.276-2.241-2.673-2.241-1.267 0-2.655.59-2.75 2.286a.237.237 0 0 0 .241.247zm2.325 6.443c.61 0 1.029-.394 1.029-.927 0-.552-.42-.94-1.029-.94-.584 0-1.009.388-1.009.94 0 .533.425.927 1.01.927z" />
+                                                    </svg>
+                                                </a></label>
                                                 <div align="right" class="custom-control custom-switch" style="display:inline-block;">
                                                     <input type="checkbox" class="custom-control-input"
                                                         id="scientific_research_status_input" name="scientific_research_status_input"
@@ -174,30 +179,34 @@ select[readonly] {
                                                     </label>
                                                 </div>
                                             </div>
-                                            <input type="hidden" id="scientific_research" name="scientific_research" class="form-control" 
-                                                value="{{scientific_research_input}}">
-                                            <div class="input-group mb-3 justify-content-between">
-                                                <button type="button" class="input-group-text col-3 col-md-1" id="add_button" 
-                                                    style="display:block; font-size:2px; text-align:center;"
-                                                    onclick="add_scientific_research.call(this)">添加项目</button>
-                                                <div class="col-9 col-md-11" style="display:inline-block; border: 1px solid #C1C9D3; border-radius:4px; width:80%;">
-                                                    {% spaceless %}
-                                                    {% for scientific_research in scientific_research_list %}
-                                                        <span class="badge badge-pill" style="overflow:hidden; text-overflow:ellipsis; 
-                                                            white-space:normal; word-break:break-all; text-align:left; background-color:#eee; 
-                                                            border-radius:4px; color:#666; margin:2px; margin-top:3px;" id="{{scientific_research}}__scientific_research">
-                                                            <a href="javascript:;"><svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" fill="currentColor" class="bi bi-x-circle-fill" viewBox="0 0 16 16" onclick="del_scientific_research.call(this)">
-                                                                <path d="M16 8A8 8 0 1 1 0 8a8 8 0 0 1 16 0zM5.354 4.646a.5.5 0 1 0-.708.708L7.293 8l-2.647 2.646a.5.5 0 0 0 .708.708L8 8.707l2.646 2.647a.5.5 0 0 0 .708-.708L8.707 8l2.647-2.646a.5.5 0 0 0-.708-.708L8 7.293 5.354 4.646z"/>
-                                                            </svg></a>   {{scientific_research}}</span>
-                                                    {% endfor %}
-                                                    {% endspaceless %}
-                                                </div>
+                                            <div>
+                                                {% for scientific_research in scientific_research_list %}
+                                                    <textarea type="text" id="scientific_research_{{forloop.counter0}}" name="scientific_research_{{forloop.counter0}}" 
+                                                        class="form-control" aria-label="Default" placeholder="在此处填写你的本科生科研经历~" rows="3" style="margin-bottom:5px;">{{scientific_research}}</textarea>
+                                                {% endfor %}
+                                                <textarea type="text" id="scientific_research_{{scientific_research_num}}" name="scientific_research_{{scientific_research_num}}" 
+                                                    class="form-control" aria-label="Default" placeholder="在此处填写你的本科生科研经历~" rows="3" style="margin-bottom:5px;"></textarea>
                                             </div>
+                                            <div align="center" style="margin-top:5px;">
+                                                <a href="javascript:;" onclick="add_textarea.call(this, 'scientific_research', '本科生科研经历')">
+                                                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor" 
+                                                        class="bi bi-plus-circle-fill" viewBox="0 0 16 16" style="color:#8E959C;">
+                                                        <path d="M16 8A8 8 0 1 1 0 8a8 8 0 0 1 16 0zM8.5 4.5a.5.5 0 0 0-1 0v3h-3a.5.5 0 0 0 0 1h3v3a.5.5 0 0 0 1 0v-3h3a.5.5 0 0 0 0-1h-3v-3z"/>
+                                                    </svg>
+                                                </a>
+                                            </div>
+                                            <input type="hidden" id="scientific_research_num" name="scientific_research_num" class="form-control"
+                                                value="{{scientific_research_num}}">
                                         </div>
 
                                         <div class="form-group card-label">
                                             <div style="display:flex; justify-content:space-between;">
-                                                <label for="aintro">挑战杯</label>
+                                                <label for="aintro">挑战杯<a data-toggle="tooltip" data-placement="bottom" title="如果想删除现有的内容，直接将其清空即可；注意修改现有内容后，该项将自动变为最新的项">
+                                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor"
+                                                        class="bi bi-question-circle-fill" viewBox="0 0 22 22">
+                                                        <path d="M16 8A8 8 0 1 1 0 8a8 8 0 0 1 16 0zM5.496 6.033h.825c.138 0 .248-.113.266-.25.09-.656.54-1.134 1.342-1.134.686 0 1.314.343 1.314 1.168 0 .635-.374.927-.965 1.371-.673.489-1.206 1.06-1.168 1.987l.003.217a.25.25 0 0 0 .25.246h.811a.25.25 0 0 0 .25-.25v-.105c0-.718.273-.927 1.01-1.486.609-.463 1.244-.977 1.244-2.056 0-1.511-1.276-2.241-2.673-2.241-1.267 0-2.655.59-2.75 2.286a.237.237 0 0 0 .241.247zm2.325 6.443c.61 0 1.029-.394 1.029-.927 0-.552-.42-.94-1.029-.94-.584 0-1.009.388-1.009.94 0 .533.425.927 1.01.927z" />
+                                                    </svg>
+                                                </a></label>
                                                 <div align="right" class="custom-control custom-switch" style="display:inline-block;">
                                                     <input type="checkbox" class="custom-control-input"
                                                         id="challenge_cup_status_input" name="challenge_cup_status_input"
@@ -209,30 +218,34 @@ select[readonly] {
                                                     </label>
                                                 </div>
                                             </div>
-                                            <input type="hidden" id="challenge_cup" name="challenge_cup" class="form-control" 
-                                                value="{{challenge_cup_input}}">
-                                            <div class="input-group mb-3 justify-content-between">
-                                                <button type="button" class="input-group-text col-3 col-md-1" id="add_button" 
-                                                    style="display:block; font-size:2px; text-align:center;"
-                                                    onclick="add_challenge_cup.call(this)">添加项目</button>
-                                                <div class="col-9 col-md-11" style="display:inline-block; border: 1px solid #C1C9D3; border-radius:4px; width:80%;">
-                                                    {% spaceless %}
-                                                    {% for challenge_cup in challenge_cup_list %}
-                                                        <span class="badge badge-pill" style="overflow:hidden; text-overflow:ellipsis; 
-                                                            white-space:normal; word-break:break-all; text-align:left; background-color:#eee; 
-                                                            border-radius:4px; color:#666; margin:2px; margin-top:3px;" id="{{challenge_cup}}__challenge_cup">
-                                                            <a href="javascript:;"><svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" fill="currentColor" class="bi bi-x-circle-fill" viewBox="0 0 16 16" onclick="del_challenge_cup.call(this)">
-                                                                <path d="M16 8A8 8 0 1 1 0 8a8 8 0 0 1 16 0zM5.354 4.646a.5.5 0 1 0-.708.708L7.293 8l-2.647 2.646a.5.5 0 0 0 .708.708L8 8.707l2.646 2.647a.5.5 0 0 0 .708-.708L8.707 8l2.647-2.646a.5.5 0 0 0-.708-.708L8 7.293 5.354 4.646z"/>
-                                                            </svg></a>   {{challenge_cup}}</span>
-                                                    {% endfor %}
-                                                    {% endspaceless %}
-                                                </div>
+                                            <div>
+                                                {% for challenge_cup in challenge_cup_list %}
+                                                    <textarea type="text" id="challenge_cup_{{forloop.counter0}}" name="challenge_cup_{{forloop.counter0}}" 
+                                                        class="form-control" aria-label="Default" placeholder="在此处填写你的挑战杯经历~" rows="3" style="margin-bottom:5px;">{{challenge_cup}}</textarea>
+                                                {% endfor %}
+                                                <textarea type="text" id="challenge_cup_{{challenge_cup_num}}" name="challenge_cup_{{challenge_cup_num}}" 
+                                                    class="form-control" aria-label="Default" placeholder="在此处填写你的挑战杯经历~" rows="3" style="margin-bottom:5px;"></textarea>
                                             </div>
+                                            <div align="center" style="margin-top:5px;">
+                                                <a href="javascript:;" onclick="add_textarea.call(this, 'challenge_cup', '挑战杯经历')">
+                                                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor" 
+                                                        class="bi bi-plus-circle-fill" viewBox="0 0 16 16" style="color:#8E959C;">
+                                                        <path d="M16 8A8 8 0 1 1 0 8a8 8 0 0 1 16 0zM8.5 4.5a.5.5 0 0 0-1 0v3h-3a.5.5 0 0 0 0 1h3v3a.5.5 0 0 0 1 0v-3h3a.5.5 0 0 0 0-1h-3v-3z"/>
+                                                    </svg>
+                                                </a>
+                                            </div>
+                                            <input type="hidden" id="challenge_cup_num" name="challenge_cup_num" class="form-control"
+                                                value="{{challenge_cup_num}}">
                                         </div>
 
                                         <div class="form-group card-label">
                                             <div style="display:flex; justify-content:space-between;">
-                                                <label for="aintro">实习经历</label>
+                                                <label for="aintro">实习经历<a data-toggle="tooltip" data-placement="bottom" title="如果想删除现有的内容，直接将其清空即可；注意修改现有内容后，该项将自动变为最新的项">
+                                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor"
+                                                        class="bi bi-question-circle-fill" viewBox="0 0 22 22">
+                                                        <path d="M16 8A8 8 0 1 1 0 8a8 8 0 0 1 16 0zM5.496 6.033h.825c.138 0 .248-.113.266-.25.09-.656.54-1.134 1.342-1.134.686 0 1.314.343 1.314 1.168 0 .635-.374.927-.965 1.371-.673.489-1.206 1.06-1.168 1.987l.003.217a.25.25 0 0 0 .25.246h.811a.25.25 0 0 0 .25-.25v-.105c0-.718.273-.927 1.01-1.486.609-.463 1.244-.977 1.244-2.056 0-1.511-1.276-2.241-2.673-2.241-1.267 0-2.655.59-2.75 2.286a.237.237 0 0 0 .241.247zm2.325 6.443c.61 0 1.029-.394 1.029-.927 0-.552-.42-.94-1.029-.94-.584 0-1.009.388-1.009.94 0 .533.425.927 1.01.927z" />
+                                                    </svg>
+                                                </a></label>
                                                 <div align="right" class="custom-control custom-switch" style="display:inline-block;">
                                                     <input type="checkbox" class="custom-control-input"
                                                         id="internship_status_input" name="internship_status_input"
@@ -244,30 +257,34 @@ select[readonly] {
                                                     </label>
                                                 </div>
                                             </div>
-                                            <input type="hidden" id="internship" name="internship" class="form-control" 
-                                                value="{{internship_input}}">
-                                            <div class="input-group mb-3 justify-content-between">
-                                                <button type="button" class="input-group-text col-3 col-md-1" id="add_button" 
-                                                    style="display:block; font-size:2px; text-align:center;"
-                                                    onclick="add_internship.call(this)">添加项目</button>
-                                                <div class="col-9 col-md-11" style="display:inline-block; border: 1px solid #C1C9D3; border-radius:4px; width:80%;">
-                                                    {% spaceless %}
-                                                    {% for internship in internship_list %}
-                                                        <span class="badge badge-pill" style="overflow:hidden; text-overflow:ellipsis; 
-                                                            white-space:normal; word-break:break-all; text-align:left; background-color:#eee; 
-                                                            border-radius:4px; color:#666; margin:2px; margin-top:3px;" id="{{internship}}__internship">
-                                                            <a href="javascript:;"><svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" fill="currentColor" class="bi bi-x-circle-fill" viewBox="0 0 16 16" onclick="del_internship.call(this)">
-                                                                <path d="M16 8A8 8 0 1 1 0 8a8 8 0 0 1 16 0zM5.354 4.646a.5.5 0 1 0-.708.708L7.293 8l-2.647 2.646a.5.5 0 0 0 .708.708L8 8.707l2.646 2.647a.5.5 0 0 0 .708-.708L8.707 8l2.647-2.646a.5.5 0 0 0-.708-.708L8 7.293 5.354 4.646z"/>
-                                                            </svg></a>   {{internship}}</span>
-                                                    {% endfor %}
-                                                    {% endspaceless %}
-                                                </div>
+                                            <div>
+                                                {% for internship in internship_list %}
+                                                    <textarea type="text" id="internship_{{forloop.counter0}}" name="internship_{{forloop.counter0}}" 
+                                                        class="form-control" aria-label="Default" placeholder="在此处填写你的实习经历~" rows="3" style="margin-bottom:5px;">{{internship}}</textarea>
+                                                {% endfor %}
+                                                <textarea type="text" id="internship_{{internship_num}}" name="internship_{{internship_num}}" class="form-control" 
+                                                    aria-label="Default" placeholder="在此处填写你的实习经历~" rows="3" style="margin-bottom:5px;"></textarea>
                                             </div>
+                                            <div align="center" style="margin-top:5px;">
+                                                <a href="javascript:;" onclick="add_textarea.call(this, 'internship', '实习经历')">
+                                                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor" 
+                                                        class="bi bi-plus-circle-fill" viewBox="0 0 16 16" style="color:#8E959C;">
+                                                        <path d="M16 8A8 8 0 1 1 0 8a8 8 0 0 1 16 0zM8.5 4.5a.5.5 0 0 0-1 0v3h-3a.5.5 0 0 0 0 1h3v3a.5.5 0 0 0 1 0v-3h3a.5.5 0 0 0 0-1h-3v-3z"/>
+                                                    </svg>
+                                                </a>
+                                            </div>
+                                            <input type="hidden" id="internship_num" name="internship_num" class="form-control"
+                                                value="{{internship_num}}">
                                         </div>
 
                                         <div class="form-group card-label">
                                             <div style="display:flex; justify-content:space-between;">
-                                                <label for="aintro">科研方向</label>
+                                                <label for="aintro">科研方向<a data-toggle="tooltip" data-placement="bottom" title="如果想删除现有的内容，直接将其清空即可；注意修改现有内容后，该项将自动变为最新的项">
+                                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor"
+                                                        class="bi bi-question-circle-fill" viewBox="0 0 22 22">
+                                                        <path d="M16 8A8 8 0 1 1 0 8a8 8 0 0 1 16 0zM5.496 6.033h.825c.138 0 .248-.113.266-.25.09-.656.54-1.134 1.342-1.134.686 0 1.314.343 1.314 1.168 0 .635-.374.927-.965 1.371-.673.489-1.206 1.06-1.168 1.987l.003.217a.25.25 0 0 0 .25.246h.811a.25.25 0 0 0 .25-.25v-.105c0-.718.273-.927 1.01-1.486.609-.463 1.244-.977 1.244-2.056 0-1.511-1.276-2.241-2.673-2.241-1.267 0-2.655.59-2.75 2.286a.237.237 0 0 0 .241.247zm2.325 6.443c.61 0 1.029-.394 1.029-.927 0-.552-.42-.94-1.029-.94-.584 0-1.009.388-1.009.94 0 .533.425.927 1.01.927z" />
+                                                    </svg>
+                                                </a></label>
                                                 <div align="right" class="custom-control custom-switch" style="display:inline-block;">
                                                     <input type="checkbox" class="custom-control-input"
                                                         id="scientific_direction_status_input" name="scientific_direction_status_input"
@@ -279,30 +296,34 @@ select[readonly] {
                                                     </label>
                                                 </div>
                                             </div>
-                                            <input type="hidden" id="scientific_direction" name="scientific_direction" class="form-control" 
-                                                value="{{scientific_direction_input}}">
-                                            <div class="input-group mb-3 justify-content-between">
-                                                <button type="button" class="input-group-text col-3 col-md-1" id="add_button" 
-                                                    style="display:block; font-size:2px; text-align:center;"
-                                                    onclick="add_scientific_direction.call(this)">添加项目</button>
-                                                <div class="col-9 col-md-11" style="display:inline-block; border: 1px solid #C1C9D3; border-radius:4px; width:80%;">
-                                                    {% spaceless %}
-                                                    {% for scientific_direction in scientific_direction_list %}
-                                                        <span class="badge badge-pill" style="overflow:hidden; text-overflow:ellipsis; 
-                                                            white-space:normal; word-break:break-all; text-align:left; background-color:#eee; 
-                                                            border-radius:4px; color:#666; margin:2px; margin-top:3px;" id="{{scientific_direction}}__scientific_direction">
-                                                            <a href="javascript:;"><svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" fill="currentColor" class="bi bi-x-circle-fill" viewBox="0 0 16 16" onclick="del_scientific_direction.call(this)">
-                                                                <path d="M16 8A8 8 0 1 1 0 8a8 8 0 0 1 16 0zM5.354 4.646a.5.5 0 1 0-.708.708L7.293 8l-2.647 2.646a.5.5 0 0 0 .708.708L8 8.707l2.646 2.647a.5.5 0 0 0 .708-.708L8.707 8l2.647-2.646a.5.5 0 0 0-.708-.708L8 7.293 5.354 4.646z"/>
-                                                            </svg></a>   {{scientific_direction}}</span>
-                                                    {% endfor %}
-                                                    {% endspaceless %}
-                                                </div>
+                                            <div>
+                                                {% for scientific_direction in scientific_direction_list %}
+                                                    <textarea type="text" id="scientific_direction_{{forloop.counter0}}" name="scientific_direction_{{forloop.counter0}}" 
+                                                        class="form-control" aria-label="Default" placeholder="在此处填写你的科研方向~" rows="3" style="margin-bottom:5px;">{{scientific_direction}}</textarea>
+                                                {% endfor %}
+                                                <textarea type="text" id="scientific_direction_{{scientific_direction_num}}" name="scientific_direction_{{scientific_direction_num}}" 
+                                                    class="form-control" aria-label="Default" placeholder="在此处填写你的科研方向~" rows="3" style="margin-bottom:5px;"></textarea>
                                             </div>
+                                            <div align="center" style="margin-top:5px;">
+                                                <a href="javascript:;" onclick="add_textarea.call(this, 'scientific_direction', '科研方向')">
+                                                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor" 
+                                                        class="bi bi-plus-circle-fill" viewBox="0 0 16 16" style="color:#8E959C;">
+                                                        <path d="M16 8A8 8 0 1 1 0 8a8 8 0 0 1 16 0zM8.5 4.5a.5.5 0 0 0-1 0v3h-3a.5.5 0 0 0 0 1h3v3a.5.5 0 0 0 1 0v-3h3a.5.5 0 0 0 0-1h-3v-3z"/>
+                                                    </svg>
+                                                </a>
+                                            </div>
+                                            <input type="hidden" id="scientific_direction_num" name="scientific_direction_num" class="form-control"
+                                                value="{{scientific_direction_num}}">
                                         </div>
 
                                         <div class="form-group card-label">
                                             <div style="display:flex; justify-content:space-between;">
-                                                <label for="aintro">毕业去向</label>
+                                                <label for="aintro">毕业去向<a data-toggle="tooltip" data-placement="bottom" title="如果想删除现有的内容，直接将其清空即可；注意修改现有内容后，该项将自动变为最新的项">
+                                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor"
+                                                        class="bi bi-question-circle-fill" viewBox="0 0 22 22">
+                                                        <path d="M16 8A8 8 0 1 1 0 8a8 8 0 0 1 16 0zM5.496 6.033h.825c.138 0 .248-.113.266-.25.09-.656.54-1.134 1.342-1.134.686 0 1.314.343 1.314 1.168 0 .635-.374.927-.965 1.371-.673.489-1.206 1.06-1.168 1.987l.003.217a.25.25 0 0 0 .25.246h.811a.25.25 0 0 0 .25-.25v-.105c0-.718.273-.927 1.01-1.486.609-.463 1.244-.977 1.244-2.056 0-1.511-1.276-2.241-2.673-2.241-1.267 0-2.655.59-2.75 2.286a.237.237 0 0 0 .241.247zm2.325 6.443c.61 0 1.029-.394 1.029-.927 0-.552-.42-.94-1.029-.94-.584 0-1.009.388-1.009.94 0 .533.425.927 1.01.927z" />
+                                                    </svg>
+                                                </a></label>
                                                 <div align="right" class="custom-control custom-switch" style="display:inline-block;">
                                                     <input type="checkbox" class="custom-control-input"
                                                         id="graduation_status_input" name="graduation_status_input"
@@ -314,25 +335,24 @@ select[readonly] {
                                                     </label>
                                                 </div>
                                             </div>
-                                            <input type="hidden" id="graduation" name="graduation" class="form-control" 
-                                                value="{{graduation_input}}">
-                                            <div class="input-group mb-3 justify-content-between">
-                                                <button type="button" class="input-group-text col-3 col-md-1" id="add_button" 
-                                                    style="display:block; font-size:2px; text-align:center;"
-                                                    onclick="add_graduation.call(this)">添加项目</button>
-                                                <div class="col-9 col-md-11" style="display:inline-block; border: 1px solid #C1C9D3; border-radius:4px; width:80%;">
-                                                    {% spaceless %}
-                                                    {% for graduation in graduation_list %}
-                                                        <span class="badge badge-pill" style="overflow:hidden; text-overflow:ellipsis; 
-                                                            white-space:normal; word-break:break-all; text-align:left; background-color:#eee; 
-                                                            border-radius:4px; color:#666; margin:2px; margin-top:3px;" id="{{graduation}}__graduation">
-                                                            <a href="javascript:;"><svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" fill="currentColor" class="bi bi-x-circle-fill" viewBox="0 0 16 16" onclick="del_graduation.call(this)">
-                                                                <path d="M16 8A8 8 0 1 1 0 8a8 8 0 0 1 16 0zM5.354 4.646a.5.5 0 1 0-.708.708L7.293 8l-2.647 2.646a.5.5 0 0 0 .708.708L8 8.707l2.646 2.647a.5.5 0 0 0 .708-.708L8.707 8l2.647-2.646a.5.5 0 0 0-.708-.708L8 7.293 5.354 4.646z"/>
-                                                            </svg></a>   {{graduation}}</span>
-                                                    {% endfor %}
-                                                    {% endspaceless %}
-                                                </div>
+                                            <div>
+                                                {% for graduation in graduation_list %}
+                                                    <textarea type="text" id="graduation_{{forloop.counter0}}" name="graduation_{{forloop.counter0}}" 
+                                                        class="form-control" aria-label="Default" placeholder="在此处填写你的毕业去向~" rows="3" style="margin-bottom:5px;">{{graduation}}</textarea>
+                                                {% endfor %}
+                                                <textarea type="text" id="graduation_{{graduation_num}}" name="graduation_{{graduation_num}}" 
+                                                    class="form-control" aria-label="Default" placeholder="在此处填写你的毕业去向~" rows="3" style="margin-bottom:5px;"></textarea>
                                             </div>
+                                            <div align="center" style="margin-top:5px;">
+                                                <a href="javascript:;" onclick="add_textarea.call(this, 'graduation', '毕业去向')">
+                                                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor" 
+                                                        class="bi bi-plus-circle-fill" viewBox="0 0 16 16" style="color:#8E959C;">
+                                                        <path d="M16 8A8 8 0 1 1 0 8a8 8 0 0 1 16 0zM8.5 4.5a.5.5 0 0 0-1 0v3h-3a.5.5 0 0 0 0 1h3v3a.5.5 0 0 0 1 0v-3h3a.5.5 0 0 0 0-1h-3v-3z"/>
+                                                    </svg>
+                                                </a>
+                                            </div>
+                                            <input type="hidden" id="graduation_num" name="graduation_num" class="form-control"
+                                                value="{{graduation_num}}">
                                         </div>
 
                                         <div class="form-group card-label">
@@ -460,189 +480,18 @@ select[readonly] {
             $('#accept_chat_input').prop("checked", "{{accept_chat}}" == "True");
         });
 
-        function del_scientific_research() {
-            deleting_span = this.parentNode.parentNode;
-            remove_content = deleting_span.textContent.slice(3) + "(END OF AN ENTRY)";
-            display_div = deleting_span.parentNode;
-            hidden_input = display_div.parentNode.previousElementSibling;
-            hidden_input.value = hidden_input.value.replace(remove_content, "");
-            display_div.removeChild(deleting_span);
-        }
-        
-        function add_scientific_research() {
-            var item = prompt("在下面填写科研经历：");
-            if (item.length > MAX_LENGTH) 
-                return alert("您填写的科研经历太长了！请填写一条更简短的科研经历或者分条编辑~");
-            if (item) {
-                const hidden_input = this.parentNode.previousElementSibling;
-                const sep_str = "(END OF AN ENTRY)";
-                //先判断有没有重复填写
-                if (hidden_input.value.indexOf(sep_str + item + sep_str) > -1) {
-                    return alert("填写内容不能和已有的科研经历相同！");
-                } else if (hidden_input.value.indexOf(item + sep_str) == 0) {
-                    return alert("填写内容不能和已有的科研经历相同！");
-                }
-                //没有重复填写，向hidden_input写内容
-                hidden_input.value += item + sep_str;
-                display_div = this.nextElementSibling;
-    
-                display_div.innerHTML += '<span class="badge badge-pill" ' 
-                    + 'style="overflow:hidden; text-overflow:ellipsis; white-space:normal; word-break:break-all; ' 
-                    + 'text-align:left; background-color:#eee; border-radius:4px; color:#666; margin:2px; margin-top:3px;" ' 
-                    + 'id="' + item + '__scientific_research"><a href="javascript:;"><svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" fill="currentColor" '
-                    + 'class="bi bi-x-circle-fill" viewBox="0 0 16 16" onclick="del_scientific_research.call(this)">' 
-                    + '<path d="M16 8A8 8 0 1 1 0 8a8 8 0 0 1 16 0zM5.354 4.646a.5.5 0 1 0-.708.708L7.293 8l-2.647 2.646a.5.5 0 0 0 .708.708L8 8.707l2.646 2.647a.5.5 0 0 0 .708-.708L8.707 8l2.647-2.646a.5.5 0 0 0-.708-.708L8 7.293 5.354 4.646z"/></svg></a>   ' 
-                    + item + '</span>';
-            
-            } else alert("填写内容不能为空！");
-        }
-
-        function del_challenge_cup() {
-            deleting_span = this.parentNode.parentNode;
-            remove_content = deleting_span.textContent.slice(3) + "(END OF AN ENTRY)";
-            display_div = deleting_span.parentNode;
-            hidden_input = display_div.parentNode.previousElementSibling;
-            hidden_input.value = hidden_input.value.replace(remove_content, "");
-            display_div.removeChild(deleting_span);
-        }
-        
-        function add_challenge_cup() {
-            var item = prompt("在下面填写挑战杯经历：");
-            if (item.length > MAX_LENGTH) 
-                return alert("您填写的挑战杯经历太长了！请填写一条更简短的挑战杯经历或者分条编辑~");
-            if (item) {
-                const hidden_input = this.parentNode.previousElementSibling;
-                const sep_str = "(END OF AN ENTRY)";
-                //先判断有没有重复填写
-                if (hidden_input.value.indexOf(sep_str + item + sep_str) > -1) {
-                    return alert("填写内容不能和已有的挑战杯经历相同！");
-                } else if (hidden_input.value.indexOf(item + sep_str) == 0) {
-                    return alert("填写内容不能和已有的挑战杯经历相同！");
-                }
-                //没有重复填写，向hidden_input写内容
-                hidden_input.value += item + sep_str;
-                display_div = this.nextElementSibling;
-    
-                display_div.innerHTML += '<span class="badge badge-pill" ' 
-                    + 'style="overflow:hidden; text-overflow:ellipsis; white-space:normal; word-break:break-all; ' 
-                    + 'text-align:left; background-color:#eee; border-radius:4px; color:#666; margin:2px; margin-top:3px;" ' 
-                    + 'id="' + item + '__challenge_cup"><a href="javascript:;"><svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" fill="currentColor" '
-                    + 'class="bi bi-x-circle-fill" viewBox="0 0 16 16" onclick="del_challenge_cup.call(this)">' 
-                    + '<path d="M16 8A8 8 0 1 1 0 8a8 8 0 0 1 16 0zM5.354 4.646a.5.5 0 1 0-.708.708L7.293 8l-2.647 2.646a.5.5 0 0 0 .708.708L8 8.707l2.646 2.647a.5.5 0 0 0 .708-.708L8.707 8l2.647-2.646a.5.5 0 0 0-.708-.708L8 7.293 5.354 4.646z"/></svg></a>   ' 
-                    + item + '</span>';
-            
-            } else alert("填写内容不能为空！");
-        }
-
-        function del_internship() {
-            deleting_span = this.parentNode.parentNode;
-            remove_content = deleting_span.textContent.slice(3) + "(END OF AN ENTRY)";
-            display_div = deleting_span.parentNode;
-            hidden_input = display_div.parentNode.previousElementSibling;
-            hidden_input.value = hidden_input.value.replace(remove_content, "");
-            display_div.removeChild(deleting_span);
-        }
-        
-        function add_internship() {
-            var item = prompt("在下面填写实习经历：");
-            if (item.length > MAX_LENGTH) 
-                return alert("您填写的实习经历太长了！请填写一条更简短的实习经历或者分条编辑~");
-            if (item) {
-                const hidden_input = this.parentNode.previousElementSibling;
-                const sep_str = "(END OF AN ENTRY)";
-                //先判断有没有重复填写
-                if (hidden_input.value.indexOf(sep_str + item + sep_str) > -1) {
-                    return alert("填写内容不能和已有的实习经历相同！");
-                } else if (hidden_input.value.indexOf(item + sep_str) == 0) {
-                    return alert("填写内容不能和已有的实习经历相同！");
-                }
-                //没有重复填写，向hidden_input写内容
-                hidden_input.value += item + sep_str;
-                display_div = this.nextElementSibling;
-    
-                display_div.innerHTML += '<span class="badge badge-pill" ' 
-                    + 'style="overflow:hidden; text-overflow:ellipsis; white-space:normal; word-break:break-all; ' 
-                    + 'text-align:left; background-color:#eee; border-radius:4px; color:#666; margin:2px; margin-top:3px;" ' 
-                    + 'id="' + item + '__internship"><a href="javascript:;"><svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" fill="currentColor" '
-                    + 'class="bi bi-x-circle-fill" viewBox="0 0 16 16" onclick="del_internship.call(this)">' 
-                    + '<path d="M16 8A8 8 0 1 1 0 8a8 8 0 0 1 16 0zM5.354 4.646a.5.5 0 1 0-.708.708L7.293 8l-2.647 2.646a.5.5 0 0 0 .708.708L8 8.707l2.646 2.647a.5.5 0 0 0 .708-.708L8.707 8l2.647-2.646a.5.5 0 0 0-.708-.708L8 7.293 5.354 4.646z"/></svg></a>   ' 
-                    + item + '</span>';
-            
-            } else alert("填写内容不能为空！");
-        }
-
-        function del_scientific_direction() {
-            deleting_span = this.parentNode.parentNode;
-            remove_content = deleting_span.textContent.slice(3) + "(END OF AN ENTRY)";
-            display_div = deleting_span.parentNode;
-            hidden_input = display_div.parentNode.previousElementSibling;
-            hidden_input.value = hidden_input.value.replace(remove_content, "");
-            display_div.removeChild(deleting_span);
-        }
-        
-        function add_scientific_direction() {
-            var item = prompt("在下面填写科研方向：");
-            if (item.length > MAX_LENGTH) 
-                return alert("您填写的科研方向太长了！请填写一条更简短的科研方向或者分条编辑~");
-            if (item) {
-                const hidden_input = this.parentNode.previousElementSibling;
-                const sep_str = "(END OF AN ENTRY)";
-                //先判断有没有重复填写
-                if (hidden_input.value.indexOf(sep_str + item + sep_str) > -1) {
-                    return alert("填写内容不能和已有的科研方向相同！");
-                } else if (hidden_input.value.indexOf(item + sep_str) == 0) {
-                    return alert("填写内容不能和已有的科研方向相同！");
-                }
-                //没有重复填写，向hidden_input写内容
-                hidden_input.value += item + sep_str;
-                display_div = this.nextElementSibling;
-    
-                display_div.innerHTML += '<span class="badge badge-pill" ' 
-                    + 'style="overflow:hidden; text-overflow:ellipsis; white-space:normal; word-break:break-all; ' 
-                    + 'text-align:left; background-color:#eee; border-radius:4px; color:#666; margin:2px; margin-top:3px;" ' 
-                    + 'id="' + item + '__scientific_direction"><a href="javascript:;"><svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" fill="currentColor" '
-                    + 'class="bi bi-x-circle-fill" viewBox="0 0 16 16" onclick="del_scientific_direction.call(this)">' 
-                    + '<path d="M16 8A8 8 0 1 1 0 8a8 8 0 0 1 16 0zM5.354 4.646a.5.5 0 1 0-.708.708L7.293 8l-2.647 2.646a.5.5 0 0 0 .708.708L8 8.707l2.646 2.647a.5.5 0 0 0 .708-.708L8.707 8l2.647-2.646a.5.5 0 0 0-.708-.708L8 7.293 5.354 4.646z"/></svg></a>   ' 
-                    + item + '</span>';
-            
-            } else alert("填写内容不能为空！");
-        }
-
-        function del_graduation() {
-            deleting_span = this.parentNode.parentNode;
-            remove_content = deleting_span.textContent.slice(3) + "(END OF AN ENTRY)";
-            display_div = deleting_span.parentNode;
-            hidden_input = display_div.parentNode.previousElementSibling;
-            hidden_input.value = hidden_input.value.replace(remove_content, "");
-            display_div.removeChild(deleting_span);
-        }
-        
-        function add_graduation() {
-            var item = prompt("在下面填写毕业去向：");
-            if (item.length > MAX_LENGTH) 
-                return alert("您填写的毕业去向太长了！请填写一条更简短的毕业去向或者分条编辑~");
-            if (item) {
-                const hidden_input = this.parentNode.previousElementSibling;
-                const sep_str = "(END OF AN ENTRY)";
-                //先判断有没有重复填写
-                if (hidden_input.value.indexOf(sep_str + item + sep_str) > -1) {
-                    return alert("填写内容不能和已有的毕业去向相同！");
-                } else if (hidden_input.value.indexOf(item + sep_str) == 0) {
-                    return alert("填写内容不能和已有的毕业去向相同！");
-                }
-                //没有重复填写，向hidden_input写内容
-                hidden_input.value += item + sep_str;
-                display_div = this.nextElementSibling;
-    
-                display_div.innerHTML += '<span class="badge badge-pill" ' 
-                    + 'style="overflow:hidden; text-overflow:ellipsis; white-space:normal; word-break:break-all; ' 
-                    + 'text-align:left; background-color:#eee; border-radius:4px; color:#666; margin:2px; margin-top:3px;" ' 
-                    + 'id="' + item + '__graduation"><a href="javascript:;"><svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" fill="currentColor" '
-                    + 'class="bi bi-x-circle-fill" viewBox="0 0 16 16" onclick="del_graduation.call(this)">' 
-                    + '<path d="M16 8A8 8 0 1 1 0 8a8 8 0 0 1 16 0zM5.354 4.646a.5.5 0 1 0-.708.708L7.293 8l-2.647 2.646a.5.5 0 0 0 .708.708L8 8.707l2.646 2.647a.5.5 0 0 0 .708-.708L8.707 8l2.647-2.646a.5.5 0 0 0-.708-.708L8 7.293 5.354 4.646z"/></svg></a>   ' 
-                    + item + '</span>';
-            
-            } else alert("填写内容不能为空！");
+        function add_textarea(type, type_zh) {
+            const num_input = this.parentNode.nextElementSibling;
+            const textarea_div = this.parentNode.previousElementSibling;
+            const textareas = textarea_div.children;
+            for (var i = 0; i < textareas.length; i += 1) {
+                const textarea_value = $('#' + type + '_' + String(i)).val();
+                textareas[i].innerHTML = textarea_value;
+            }
+            num_input.value = String(Number(num_input.value) + 1);
+            textarea_div.innerHTML += '<textarea type="text" id="' + type + "_" + num_input.value 
+                + '" name="' + type + "_" + num_input.value + '" class="form-control" aria-label="Default" ' 
+                + 'placeholder="在此处填写你的' + type_zh + '~" rows="3" style="margin-bottom:5px;"></textarea>';
         }
 
         function change_all_status(){

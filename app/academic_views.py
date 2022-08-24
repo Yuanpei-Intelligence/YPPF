@@ -11,7 +11,6 @@ from app.academic_utils import (
     comments2Display,
     get_js_tag_list,
     get_text_list,
-    get_hidden_text_input,
     get_tag_status,
     get_text_status,
     update_academic_map,
@@ -183,15 +182,11 @@ def modifyAcademic(request: HttpRequest) -> HttpResponse:
         internship_list=internship_list,
         scientific_direction_list=scientific_direction_list,
         graduation_list=graduation_list,
-    )
-    
-    # 根据上面获取到的content_list，生成前端hidden_input中默认填写的内容
-    frontend_dict.update(
-        scientific_research_input=get_hidden_text_input(scientific_research_list),
-        challenge_cup_input=get_hidden_text_input(challenge_cup_list),
-        internship_input=get_hidden_text_input(internship_list),
-        scientific_direction_input=get_hidden_text_input(scientific_direction_list),
-        graduation_input=get_hidden_text_input(graduation_list),
+        scientific_research_num=len(scientific_research_list),
+        challenge_cup_num=len(challenge_cup_list),
+        internship_num=len(internship_list),
+        scientific_direction_num=len(scientific_direction_list),
+        graduation_num=len(graduation_list),
     )
     
     # 最后获取每一种atype对应的entry的公开状态，如果没有则默认为公开
@@ -239,4 +234,6 @@ def modifyAcademic(request: HttpRequest) -> HttpResponse:
     
     # 最后获取侧边栏信息
     frontend_dict["bar_display"] = get_sidebar_and_navbar(request.user, "修改学术地图")
+    frontend_dict["warn_code"] = request.GET.get('warn_code', 0)
+    frontend_dict["warn_message"] = request.GET.get('warn_message', "")
     return render(request, "modify_academic.html", frontend_dict)
