@@ -965,7 +965,15 @@ class Activity(CommentBase):
         default=Semester.now,
     )
 
-    publish_time = models.DateTimeField("信息发布时间", auto_now_add=True)  # 可以为空
+    class PublishDay(models.IntegerChoices):
+        instant = (0, "立即发布")
+        oneday = (1, "提前一天")
+        twoday = (2, "提前两天")
+        threeday = (3, "提前三天")
+
+    publish_day = models.SmallIntegerField("信息发布提前时间", default=PublishDay.threeday)  # 默认为提前三天时间
+    publish_time = models.DateTimeField("信息发布时间", default=datetime.now)  # 默认为当前时间，可以被覆盖
+    need_apply = models.BooleanField("是否需要报名", default=False) 
 
     # 删除显示报名时间, 保留一个字段表示报名截止于活动开始前多久：1h / 1d / 3d / 7d
     class EndBefore(models.IntegerChoices):
@@ -977,6 +985,7 @@ class Activity(CommentBase):
     class EndBeforeHours:
         prepare_times = [1, 24, 72, 168]
 
+    # TODO: 修改默认报名截止时间为活动开始前（5分钟）
     endbefore = models.SmallIntegerField(
         "报名截止于", choices=EndBefore.choices, default=EndBefore.oneday
     )
@@ -1034,6 +1043,7 @@ class Activity(CommentBase):
         REJECT = "未过审"
         CANCELED = "已取消"
         APPLYING = "报名中"
+        UNPUBLISHED = "待发布"
         WAITING = "等待中"
         PROGRESSING = "进行中"
         END = "已结束"
@@ -1065,6 +1075,7 @@ class Activity(CommentBase):
         jobids = []
         try:
             jobids.append(f'activity_{self.id}_remind')
+            jobids.append(f'activity_{self.id}_{Activity.Status.APPLYING}')
             jobids.append(f'activity_{self.id}_{Activity.Status.WAITING}')
             jobids.append(f'activity_{self.id}_{Activity.Status.PROGRESSING}')
             jobids.append(f'activity_{self.id}_{Activity.Status.END}')
@@ -1714,7 +1725,14 @@ class Course(models.Model):
 
     capacity = models.IntegerField("课程容量", default=100)
     current_participants = models.IntegerField("当前选课人数", default=0)
+    class PublishDay(models.IntegerChoices):
+        instant = (0, "立即发布")
+        oneday = (1, "提前一天")
+        twoday = (2, "提前两天")
+        threeday = (3, "提前三天")
 
+    publish_day = models.SmallIntegerField("信息发布时间", default=PublishDay.threeday)  # 默认为提前三天时间
+    need_apply = models.BooleanField("是否需要报名", default=False)  
     # 暂时只允许上传一张图片
     photo = models.ImageField(verbose_name="宣传图片",
                               upload_to=f"course/photo/%Y/",

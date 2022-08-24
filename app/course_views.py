@@ -86,8 +86,8 @@ def editCourseActivity(request: HttpRequest, aid: int):
     if activity.category != Activity.ActivityCategory.COURSE:
         return redirect(message_url(wrong('当前活动不是书院课程活动!'),
                                     f'/viewActivity/{activity.id}'))
-    # 课程活动无需报名，在开始前都是等待中的状态
-    if activity.status != Activity.Status.WAITING:
+    # 课程活动只能在发布前进行修改
+    if activity.status != Activity.Status.UNPUBLISHED:
         return redirect(message_url(wrong('当前活动状态不允许修改!'),
                                     f'/viewActivity/{activity.id}'))
 
@@ -106,6 +106,7 @@ def editCourseActivity(request: HttpRequest, aid: int):
             return redirect(message_url(wrong(str(err_info)),
                                         request.get_full_path()))
         except Exception as e:
+            print(e)
             return redirect(message_url(wrong("修改课程活动失败!"),
                                         request.get_full_path()))
 
@@ -121,7 +122,8 @@ def editCourseActivity(request: HttpRequest, aid: int):
     end = activity.end.strftime("%Y-%m-%d %H:%M")
     # introduction = escape_for_templates(activity.introduction) # 暂定不需要简介
     edit = True  # 前端据此区分是编辑还是创建
-
+    publish_day = activity.publish_day
+    need_apply = activity.need_apply
     # 判断本活动是否为长期定时活动
     course_time_tag = (activity.course_time is not None)
 
@@ -215,6 +217,7 @@ def showCourseActivity(request: HttpRequest):
     future_activity_list = (
         all_activity_list.filter(
             status__in=[
+                Activity.Status.UNPUBLISHED,
                 Activity.Status.REVIEWING,
                 Activity.Status.APPLYING,
                 Activity.Status.WAITING,
@@ -266,8 +269,8 @@ def showCourseActivity(request: HttpRequest):
 
         assert activity.status not in [
             Activity.Status.REVIEWING,
-            Activity.Status.APPLYING,
-        ], "课程活动状态非法"  # 课程活动不应出现这两个状态
+            # Activity.Status.APPLYING,
+        ], "课程活动状态非法"  # 课程活动不应出现审核状态
 
         # 取消活动
         with transaction.atomic():
@@ -533,7 +536,6 @@ def selectCourse(request: HttpRequest):
     selected_display = course_to_display(selected_courses, me)
 
     bar_display = utils.get_sidebar_and_navbar(request.user, "书院课程")
-
     return render(request, "select_course.html", locals())
 
 
@@ -583,6 +585,10 @@ def addCourse(request: HttpRequest, cid=None):
     3. GET 请求创建课程的界面，placeholder 为 prompt
     4. GET 请求编辑课程的界面，表单的 placeholder 会被修改为课程的旧值。
     """
+    # FIXME: 本地测试手动触发课程活动生成
+    from app.scheduler_func import longterm_launch_course
+    longterm_launch_course()
+    return HttpResponse("1")
 
     # 检查：不是超级用户，必须是小组，修改是必须是自己
     valid, user_type, html_display = utils.check_user_type(request.user)
@@ -626,7 +632,12 @@ def addCourse(request: HttpRequest, cid=None):
     if request.method == "POST" and request.POST:
         if not edit:
             # 发起选课
-            course_DDL = str_to_time(get_setting("course/btx_election_end"))
+            # course_DDL = str_to_time(get_setting("course/btx_election_end"))
+
+            # FIXME: 本地测试绕过选课截止日期
+            from datetime import timedelta
+            course_DDL = datetime.now()+timedelta(hours=1)
+
             if datetime.now() > course_DDL:
                 return redirect(message_url(succeed("已超过选课时间节点，无法发起课程！"),
                                             f'/showCourseActivity/'))
@@ -671,6 +682,8 @@ def addCourse(request: HttpRequest, cid=None):
         teaching_plan=utils.escape_for_templates(course.teaching_plan)
         record_cal_method=utils.escape_for_templates(course.record_cal_method)
         status = course.status
+        need_apply = course.need_apply
+        publish_day = course.publish_day
         capacity = course.capacity
         type = course.type
         current_participants = course.current_participants

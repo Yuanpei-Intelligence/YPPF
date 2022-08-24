@@ -213,7 +213,15 @@ def add_week_course_activity(course_id: int, weektime_id: int, cur_week: int ,co
             end=end_time,
             category=Activity.ActivityCategory.COURSE,
         )
-        activity.status = Activity.Status.WAITING
+        activity.status = Activity.Status.UNPUBLISHED
+        activity.publish_day = course.publish_day
+        if course.publish_day == Course.PublishDay.instant:
+            # 指定为立即发布的活动在上一周结束后一天发布
+            activity.publish_time = week_time.end + timedelta(days=7 *  cur_week - 6)
+        else:
+            activity.publish_time = week_time.start + timedelta(days=7 * cur_week - course.publish_day)
+
+        activity.need_apply = course.need_apply  # 是否需要报名
         activity.need_checkin = True  # 需要签到
         activity.recorded = True
         activity.course_time = week_time
@@ -247,10 +255,18 @@ def add_week_course_activity(course_id: int, weektime_id: int, cur_week: int ,co
         week_time.cur_week += 1
         week_time.save()
         activity.save()
-
-    # 通知参与成员,创建定时任务并修改活动状态
-    notifyActivity(activity.id, "newCourseActivity")
-
+    # 在活动发布时通知参与成员,创建定时任务并修改活动状态
+    if activity.need_apply:
+        scheduler.add_job(changeActivityStatus, "date", id=f"activity_{activity.id}_{Activity.Status.APPLYING}",
+                          run_date=activity.publish_time, args=[activity.id, Activity.Status.UNPUBLISHED, Activity.Status.APPLYING], replace_existing=True)
+        scheduler.add_job(changeActivityStatus, "date", id=f"activity_{activity.id}_{Activity.Status.WAITING}",
+                          run_date=activity.start - timedelta(minutes=5), args=[activity.id, Activity.Status.APPLYING, Activity.Status.WAITING], replace_existing=True)
+    else:
+        scheduler.add_job(changeActivityStatus, "date", id=f"activity_{activity.id}_{Activity.Status.WAITING}",
+                          run_date=activity.publish_time, args=[activity.id, Activity.Status.UNPUBLISHED, Activity.Status.WAITING], replace_existing=True)
+    
+    scheduler.add_job(notifyActivity, "date", id=f"activity_{activity.id}_newCourseActivity",
+                      run_date=activity.publish_time, args=[activity.id,"newCourseActivity"], replace_existing=True)
     scheduler.add_job(notifyActivity, "date", id=f"activity_{activity.id}_remind",
                       run_date=activity.start - timedelta(minutes=15), args=[activity.id, "remind"], replace_existing=True)
     scheduler.add_job(changeActivityStatus, "date", id=f"activity_{activity.id}_{Activity.Status.PROGRESSING}",
@@ -258,17 +274,17 @@ def add_week_course_activity(course_id: int, weektime_id: int, cur_week: int ,co
     scheduler.add_job(changeActivityStatus, "date", id=f"activity_{activity.id}_{Activity.Status.END}",
                       run_date=activity.end, args=[activity.id, Activity.Status.PROGRESSING, Activity.Status.END], replace_existing=True)
 
-    notification_create(
-        receiver=examine_teacher.person_id,
-        sender=course.organization.organization_id,
-        typename=Notification.Type.NEEDDO,
-        title=Notification.Title.VERIFY_INFORM,
-        content="新增了一个已审批的课程活动",
-        URL=f"/examineActivity/{activity.id}",
-        relate_instance=activity,
-        publish_to_wechat=True,
-        publish_kws={"app": WechatApp.AUDIT, 'level': WechatMessageLevel.INFO},
-    )
+    # notification_create(
+    #     receiver=examine_teacher.person_id,
+    #     sender=course.organization.organization_id,
+    #     typename=Notification.Type.NEEDDO,
+    #     title=Notification.Title.VERIFY_INFORM,
+    #     content="新增了一个已审批的课程活动",
+    #     URL=f"/examineActivity/{activity.id}",
+    #     relate_instance=activity,
+    #     publish_to_wechat=True,
+    #     publish_kws={"app": WechatApp.AUDIT, 'level': WechatMessageLevel.INFO},
+    # )
 
 
 def longterm_launch_course():
@@ -283,9 +299,9 @@ def longterm_launch_course():
             cur_week = week_time.cur_week
             end_week = week_time.end_week
             if cur_week < end_week:  #   end_week默认16周，允许助教修改
-                #提前6天发布
+                # 在本周课程结束后生成下一周课程活动
                 due_time = week_time.end + timedelta(days=7 * cur_week)
-                if due_time - timedelta(days=6) < datetime.now() < due_time:
+                if due_time - timedelta(days=7) < datetime.now() < due_time:
                     # 如果处于补退选阶段：
                     course_stage2 = True if course.status == Course.Status.STAGE2 else False
                     add_week_course_activity(course.id, week_time.id, cur_week, course_stage2)
