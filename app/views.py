@@ -532,6 +532,7 @@ def stuinfo(request: HttpRequest, name=None):
         else: # 没有进行中的问答，显示提问区
             html_display["have_progressing_chat"] = False
             html_display["accept_chat"] = person.get_user().accept_chat
+            html_display["accept_anonymous"] = person.get_user().accept_anonymous_chat
         
         
         # 存储被查询人的信息

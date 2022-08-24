@@ -19,7 +19,7 @@ select[readonly] {
     <link href="{% static "assets/css/users/account-setting.css" %}" rel="stylesheet" type="text/css" />
     <link href="{% static "assets/css/select2/select2.min.css" %}" rel="stylesheet" />
     <!--  END CUSTOM STYLE FILE  -->
-    
+
         <div class="container">
             {% if warn_code == "2" %}
             <div class="alert alert-success text-center mb-0">{{warn_message}}</div>
@@ -183,11 +183,17 @@ select[readonly] {
                                                 {% for scientific_research in scientific_research_list %}
                                                     <textarea type="text" id="scientific_research_{{forloop.counter0}}" name="scientific_research_{{forloop.counter0}}" 
                                                         class="form-control" aria-label="Default" placeholder="在此处填写你的本科生科研经历~" rows="3" style="margin-bottom:5px;">{{scientific_research}}</textarea>
+                                                    <div align="right"><button type="button" class="btn btn-danger btn-md mb-4 mr-2" align="right"
+                                                        value="delete" name="delete_btn" onclick="del_entry.call(this)">删除</button></div>
                                                 {% endfor %}
                                                 <textarea type="text" id="scientific_research_{{scientific_research_num}}" name="scientific_research_{{scientific_research_num}}" 
-                                                    class="form-control" aria-label="Default" placeholder="在此处填写你的本科生科研经历~" rows="3" style="margin-bottom:5px;"></textarea>
+                                                    class="form-control" aria-label="Default" placeholder="在此处填写你的本科生科研经历~" rows="3" style="margin-bottom:5px;"
+                                                    {% if scientific_research_list %} hidden {% endif %}></textarea>
+                                                <div align="right" {% if scientific_research_list %} hidden {% endif %}>
+                                                    <button type="button" class="btn btn-danger btn-md mb-4 mr-2" align="right"
+                                                    value="delete" name="delete_btn" onclick="del_entry.call(this)">删除</button></div>
                                             </div>
-                                            <div align="center" style="margin-top:5px;">
+                                            <div align="center">
                                                 <a href="javascript:;" onclick="add_textarea.call(this, 'scientific_research', '本科生科研经历')">
                                                     <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor" 
                                                         class="bi bi-plus-circle-fill" viewBox="0 0 16 16" style="color:#8E959C;">
@@ -197,6 +203,9 @@ select[readonly] {
                                             </div>
                                             <input type="hidden" id="scientific_research_num" name="scientific_research_num" class="form-control"
                                                 value="{{scientific_research_num}}">
+                                            <input type="hidden" id="scientific_research_show_num" name="scientific_research_show_num" class="form-control"
+                                                value={% if scientific_research_list %} "{{scientific_research_num|add:-1}}" 
+                                                    {% else %} "{{scientific_research_num}}" {% endif %}>
                                         </div>
 
                                         <div class="form-group card-label">
@@ -222,11 +231,17 @@ select[readonly] {
                                                 {% for challenge_cup in challenge_cup_list %}
                                                     <textarea type="text" id="challenge_cup_{{forloop.counter0}}" name="challenge_cup_{{forloop.counter0}}" 
                                                         class="form-control" aria-label="Default" placeholder="在此处填写你的挑战杯经历~" rows="3" style="margin-bottom:5px;">{{challenge_cup}}</textarea>
+                                                    <div align="right"><button type="button" class="btn btn-danger btn-md mb-4 mr-2" align="right"
+                                                        value="delete" name="delete_btn" onclick="del_entry.call(this)">删除</button></div>
                                                 {% endfor %}
                                                 <textarea type="text" id="challenge_cup_{{challenge_cup_num}}" name="challenge_cup_{{challenge_cup_num}}" 
-                                                    class="form-control" aria-label="Default" placeholder="在此处填写你的挑战杯经历~" rows="3" style="margin-bottom:5px;"></textarea>
+                                                    class="form-control" aria-label="Default" placeholder="在此处填写你的挑战杯经历~" rows="3" style="margin-bottom:5px;"
+                                                    {% if challenge_cup_list %} hidden {% endif %}></textarea>
+                                                <div align="right" {% if challenge_cup_list %} hidden {% endif %}>
+                                                    <button type="button" class="btn btn-danger btn-md mb-4 mr-2" align="right"
+                                                    value="delete" name="delete_btn" onclick="del_entry.call(this)">删除</button></div>
                                             </div>
-                                            <div align="center" style="margin-top:5px;">
+                                            <div align="center">
                                                 <a href="javascript:;" onclick="add_textarea.call(this, 'challenge_cup', '挑战杯经历')">
                                                     <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor" 
                                                         class="bi bi-plus-circle-fill" viewBox="0 0 16 16" style="color:#8E959C;">
@@ -236,6 +251,9 @@ select[readonly] {
                                             </div>
                                             <input type="hidden" id="challenge_cup_num" name="challenge_cup_num" class="form-control"
                                                 value="{{challenge_cup_num}}">
+                                            <input type="hidden" id="challenge_cup_show_num" name="challenge_cup_show_num" class="form-control"
+                                                value={% if challenge_cup_list %} "{{challenge_cup_num|add:-1}}"
+                                                    {% else %} "{{challenge_cup_num}}" {% endif %}>
                                         </div>
 
                                         <div class="form-group card-label">
@@ -261,11 +279,17 @@ select[readonly] {
                                                 {% for internship in internship_list %}
                                                     <textarea type="text" id="internship_{{forloop.counter0}}" name="internship_{{forloop.counter0}}" 
                                                         class="form-control" aria-label="Default" placeholder="在此处填写你的实习经历~" rows="3" style="margin-bottom:5px;">{{internship}}</textarea>
+                                                    <div align="right"><button type="button" class="btn btn-danger btn-md mb-4 mr-2" align="right"
+                                                        value="delete" name="delete_btn" onclick="del_entry.call(this)">删除</button></div>
                                                 {% endfor %}
                                                 <textarea type="text" id="internship_{{internship_num}}" name="internship_{{internship_num}}" class="form-control" 
-                                                    aria-label="Default" placeholder="在此处填写你的实习经历~" rows="3" style="margin-bottom:5px;"></textarea>
+                                                    aria-label="Default" placeholder="在此处填写你的实习经历~" rows="3" style="margin-bottom:5px;"
+                                                    {% if internship_list %} hidden {% endif %}></textarea>
+                                                <div align="right" {% if internship_list %} hidden {% endif %}>
+                                                    <button type="button" class="btn btn-danger btn-md mb-4 mr-2" align="right"
+                                                    value="delete" name="delete_btn" onclick="del_entry.call(this)">删除</button></div>
                                             </div>
-                                            <div align="center" style="margin-top:5px;">
+                                            <div align="center">
                                                 <a href="javascript:;" onclick="add_textarea.call(this, 'internship', '实习经历')">
                                                     <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor" 
                                                         class="bi bi-plus-circle-fill" viewBox="0 0 16 16" style="color:#8E959C;">
@@ -275,6 +299,9 @@ select[readonly] {
                                             </div>
                                             <input type="hidden" id="internship_num" name="internship_num" class="form-control"
                                                 value="{{internship_num}}">
+                                            <input type="hidden" id="internship_show_num" name="internship_show_num" class="form-control"
+                                                value={% if internship_list %} "{{internship_num|add:-1}}"
+                                                    {% else %} "{{internship_num}}" {% endif %}>
                                         </div>
 
                                         <div class="form-group card-label">
@@ -300,11 +327,17 @@ select[readonly] {
                                                 {% for scientific_direction in scientific_direction_list %}
                                                     <textarea type="text" id="scientific_direction_{{forloop.counter0}}" name="scientific_direction_{{forloop.counter0}}" 
                                                         class="form-control" aria-label="Default" placeholder="在此处填写你的科研方向~" rows="3" style="margin-bottom:5px;">{{scientific_direction}}</textarea>
+                                                    <div align="right"><button type="button" class="btn btn-danger btn-md mb-4 mr-2" align="right"
+                                                        value="delete" name="delete_btn" onclick="del_entry.call(this)">删除</button></div>
                                                 {% endfor %}
                                                 <textarea type="text" id="scientific_direction_{{scientific_direction_num}}" name="scientific_direction_{{scientific_direction_num}}" 
-                                                    class="form-control" aria-label="Default" placeholder="在此处填写你的科研方向~" rows="3" style="margin-bottom:5px;"></textarea>
+                                                    class="form-control" aria-label="Default" placeholder="在此处填写你的科研方向~" rows="3" style="margin-bottom:5px;"
+                                                    {% if scientific_direction_list %} hidden {% endif %}></textarea>
+                                                <div align="right" {% if scientific_direction_list %} hidden {% endif %}>
+                                                    <button type="button" class="btn btn-danger btn-md mb-4 mr-2" align="right"
+                                                    value="delete" name="delete_btn" onclick="del_entry.call(this)">删除</button></div>
                                             </div>
-                                            <div align="center" style="margin-top:5px;">
+                                            <div align="center">
                                                 <a href="javascript:;" onclick="add_textarea.call(this, 'scientific_direction', '科研方向')">
                                                     <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor" 
                                                         class="bi bi-plus-circle-fill" viewBox="0 0 16 16" style="color:#8E959C;">
@@ -314,6 +347,9 @@ select[readonly] {
                                             </div>
                                             <input type="hidden" id="scientific_direction_num" name="scientific_direction_num" class="form-control"
                                                 value="{{scientific_direction_num}}">
+                                            <input type="hidden" id="scientific_direction_show_num" name="scientific_direction_show_num" class="form-control"
+                                                value={% if scientific_direction_list %} "{{scientific_direction_num|add:-1}}"
+                                                    {% else %} "{{scientific_direction_num}}" {% endif %}>
                                         </div>
 
                                         <div class="form-group card-label">
@@ -339,11 +375,17 @@ select[readonly] {
                                                 {% for graduation in graduation_list %}
                                                     <textarea type="text" id="graduation_{{forloop.counter0}}" name="graduation_{{forloop.counter0}}" 
                                                         class="form-control" aria-label="Default" placeholder="在此处填写你的毕业去向~" rows="3" style="margin-bottom:5px;">{{graduation}}</textarea>
+                                                    <div align="right"><button type="button" class="btn btn-danger btn-md mb-4 mr-2" align="right"
+                                                        value="delete" name="delete_btn" onclick="del_entry.call(this)">删除</button></div>
                                                 {% endfor %}
                                                 <textarea type="text" id="graduation_{{graduation_num}}" name="graduation_{{graduation_num}}" 
-                                                    class="form-control" aria-label="Default" placeholder="在此处填写你的毕业去向~" rows="3" style="margin-bottom:5px;"></textarea>
+                                                    class="form-control" aria-label="Default" placeholder="在此处填写你的毕业去向~" rows="3" style="margin-bottom:5px;"
+                                                    {% if graduation_list %} hidden {% endif %}></textarea>
+                                                <div align="right" {% if graduation_list %} hidden {% endif %}>
+                                                    <button type="button" class="btn btn-danger btn-md mb-4 mr-2" align="right"
+                                                    value="delete" name="delete_btn" onclick="del_entry.call(this)">删除</button></div>
                                             </div>
-                                            <div align="center" style="margin-top:5px;">
+                                            <div align="center">
                                                 <a href="javascript:;" onclick="add_textarea.call(this, 'graduation', '毕业去向')">
                                                     <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor" 
                                                         class="bi bi-plus-circle-fill" viewBox="0 0 16 16" style="color:#8E959C;">
@@ -353,6 +395,9 @@ select[readonly] {
                                             </div>
                                             <input type="hidden" id="graduation_num" name="graduation_num" class="form-control"
                                                 value="{{graduation_num}}">
+                                            <input type="hidden" id="graduation_show_num" name="graduation_show_num" class="form-control"
+                                                value={% if graduation_list %} "{{graduation_num|add:-1}}"
+                                                    {% else %} "{{graduation_num}}" {% endif %}>
                                         </div>
 
                                         <div class="form-group card-label">
@@ -482,16 +527,35 @@ select[readonly] {
 
         function add_textarea(type, type_zh) {
             const num_input = this.parentNode.nextElementSibling;
+            const show_num_input = num_input.nextElementSibling;
             const textarea_div = this.parentNode.previousElementSibling;
             const textareas = textarea_div.children;
-            for (var i = 0; i < textareas.length; i += 1) {
-                const textarea_value = $('#' + type + '_' + String(i)).val();
+            for (var i = 0; i < textareas.length; i += 2) {
+                const textarea_value = $('#' + type + '_' + String(i/2)).val();
                 textareas[i].innerHTML = textarea_value;
             }
             num_input.value = String(Number(num_input.value) + 1);
+            show_num_input.value = String(Number(show_num_input.value) + 1);
             textarea_div.innerHTML += '<textarea type="text" id="' + type + "_" + num_input.value 
                 + '" name="' + type + "_" + num_input.value + '" class="form-control" aria-label="Default" ' 
                 + 'placeholder="在此处填写你的' + type_zh + '~" rows="3" style="margin-bottom:5px;"></textarea>';
+            textarea_div.innerHTML += '<div align="right"><button type="button" class="btn btn-danger btn-md mb-4 mr-2" ' 
+                + 'align="right" value="delete" name="delete_btn" onclick="del_entry.call(this)">删除</button></div>';
+        }
+
+        function del_entry () {
+            if (confirm("是否确认删除？")) {
+                const on_delete_textarea = this.parentNode.previousElementSibling;
+                const show_num_input = this.parentNode.parentNode.nextElementSibling.nextElementSibling.nextElementSibling;
+                if (show_num_input.value == "0") 
+                    return alert("不能将输入框全部删除哦！如果不想保留该项目，直接不填写输入框即可~");
+                else {
+                    show_num_input.value = String(Number(show_num_input.value) - 1);
+                    $('#' + on_delete_textarea.id).val("");
+                    on_delete_textarea.hidden = true;
+                    this.hidden = true;
+                }
+            }
         }
 
         function change_all_status(){
