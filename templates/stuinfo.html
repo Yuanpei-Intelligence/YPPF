@@ -356,9 +356,9 @@
                                         <th width="10%" style="min-width: 50px;color: #1b55e2;">是否公开</th>
                                     </tr>
 
+                                    {% if selected_major_list|length != 0 %}
                                     <tr>
                                         <th width="15%" style="min-width: 60px;color: #1b55e2;">主修专业</th>
-                                        {% if selected_major_list|length != 0 %}
                                         <td>
                                             {% for selected_major in selected_major_list %}
                                             <span class="badge badge-info">
@@ -366,9 +366,6 @@
                                             </span>
                                             {% endfor %}
                                         </td>
-                                        {% else %}
-                                        <td width="75%" style="min-width: 160px;">（未填写）</td>
-                                        {% endif %}
 
                                         {% if major_status == "公开" %}
                                         <td>
@@ -388,10 +385,11 @@
                                         </td>
                                         {% endif %}
                                     </tr>
+                                    {% endif %}
 
+                                    {% if selected_minor_list|length != 0 %}
                                     <tr>
                                         <th width="15%" style="min-width: 60px;color: #1b55e2;">辅修专业</th>
-                                        {% if selected_minor_list|length != 0 %}
                                         <td>
                                             {% for selected_minor in selected_minor_list %}
                                             <span class="badge badge-info">
@@ -399,9 +397,6 @@
                                             </span>
                                             {% endfor %}
                                         </td>
-                                        {% else %}
-                                        <td width="75%" style="min-width: 160px;">（未填写）</td>
-                                        {% endif %}
 
                                         {% if minor_status == "公开" %}
                                         <td>
@@ -421,10 +416,11 @@
                                         </td>
                                         {% endif %}
                                     </tr>
+                                    {% endif %}
 
+                                    {% if selected_double_degree_list|length != 0 %}
                                     <tr>
                                         <th width="15%" style="min-width: 60px;color: #1b55e2;">双学位专业</th>
-                                        {% if selected_double_degree_list|length != 0 %}
                                         <td>
                                             {% for selected_double_degree in selected_double_degree_list %}
                                             <span class="badge badge-info">
@@ -432,9 +428,6 @@
                                             </span>
                                             {% endfor %}
                                         </td>
-                                        {% else %}
-                                        <td width="75%" style="min-width: 160px;">（未填写）</td>
-                                        {% endif %}
 
                                         {% if double_degree_status == "公开" %}
                                         <td>
@@ -454,10 +447,11 @@
                                         </td>
                                         {% endif %}
                                     </tr>
+                                    {% endif %}
 
+                                    {% if selected_project_list|length != 0 %}
                                     <tr>
                                         <th width="15%" style="min-width: 60px;color: #1b55e2;">参与项目</th>
-                                        {% if selected_project_list|length != 0 %}
                                         <td>
                                             {% for selected_project in selected_project_list %}
                                             <span class="badge badge-info">
@@ -465,9 +459,6 @@
                                             </span>
                                             {% endfor %}
                                         </td>
-                                        {% else %}
-                                        <td width="75%" style="min-width: 160px;">（未填写）</td>
-                                        {% endif %}
 
                                         {% if project_status == "公开" %}
                                         <td>
@@ -487,10 +478,11 @@
                                         </td>
                                         {% endif %}
                                     </tr>
+                                    {% endif %}
 
+                                    {% if scientific_research_list|length != 0 %}
                                     <tr>
                                         <th width="15%" style="min-width: 60px;color: #1b55e2;">本科生科研</th>
-                                        {% if scientific_research_list|length != 0 %}
                                         <td>
                                             {% spaceless %}
                                             {% for scientific_research in scientific_research_list %}
@@ -501,9 +493,6 @@
                                             {% endfor %}
                                             {% endspaceless %}
                                         </td>
-                                        {% else %}
-                                        <td width="75%" style="min-width: 160px;">（未填写）</td>
-                                        {% endif %}
 
                                         {% if scientific_research_status == "公开" %}
                                         <td>
@@ -523,10 +512,11 @@
                                         </td>
                                         {% endif %}
                                     </tr>
+                                    {% endif %}
 
+                                    {% if challenge_cup_list|length != 0 %}
                                     <tr>
                                         <th width="15%" style="min-width: 60px;color: #1b55e2;">挑战杯</th>
-                                        {% if challenge_cup_list|length != 0 %}
                                         <td>
                                             {% spaceless %}
                                             {% for challenge_cup in challenge_cup_list %}
@@ -537,9 +527,6 @@
                                             {% endfor %}
                                             {% endspaceless %}
                                         </td>
-                                        {% else %}
-                                        <td width="75%" style="min-width: 160px;">（未填写）</td> -->
-                                        {% endif %}
 
                                         {% if challenge_cup_status == "公开" %}
                                         <td>
@@ -559,10 +546,11 @@
                                         </td>
                                         {% endif %}
                                     </tr>
+                                    {% endif %}
 
+                                    {% if internship_list|length != 0 %}
                                     <tr>
                                         <th width="15%" style="min-width: 60px;color: #1b55e2;">实习经历</th>
-                                        {% if internship_list|length != 0 %}
                                         <td>
                                             {% spaceless %}
                                             {% for internship in internship_list %}
@@ -573,9 +561,6 @@
                                             {% endfor %}
                                             {% endspaceless %}
                                         </td>
-                                        {% else %}
-                                        <td width="75%" style="min-width: 160px;">（未填写）</td>
-                                        {% endif %}
 
                                         {% if internship_status == "公开" %}
                                         <td>
@@ -595,10 +580,11 @@
                                         </td>
                                         {% endif %}
                                     </tr>
+                                    {% endif %}
 
+                                    {% if scientific_direction_list|length != 0 %}
                                     <tr>
                                         <th width="15%" style="min-width: 60px;color: #1b55e2;">科研方向</th>
-                                        {% if scientific_direction_list|length != 0 %}
                                         <td>
                                             {% spaceless %}
                                             {% for scientific_direction in scientific_direction_list %}
@@ -609,9 +595,6 @@
                                             {% endfor %}
                                             {% endspaceless %}
                                         </td>
-                                        {% else %}
-                                        <td width="75%" style="min-width: 160px;">（未填写）</td>
-                                        {% endif %}
 
                                         {% if scientific_direction_status == "公开" %}
                                         <td>
@@ -631,10 +614,11 @@
                                         </td>
                                         {% endif %}
                                     </tr>
+                                    {% endif %}
 
+                                    {% if graduation_list|length != 0 %}
                                     <tr>
                                         <th width="15%" style="min-width: 60px;color: #1b55e2;">毕业去向</th>
-                                        {% if graduation_list|length != 0 %}
                                         <td>
                                             {% spaceless %}
                                             {% for graduation in graduation_list %}
@@ -645,9 +629,6 @@
                                             {% endfor %}
                                             {% endspaceless %}
                                         </td>
-                                        {% else %}
-                                        <td width="75%" style="min-width: 160px;">（未填写）</td>
-                                        {% endif %}
 
                                         {% if graduation_status == "公开" %}
                                         <td>
@@ -667,6 +648,7 @@
                                         </td>
                                         {% endif %}
                                     </tr>
+                                    {% endif %}
                                 </table>
                                 {% endif %}
                             {% else %}
