@@ -464,22 +464,12 @@ def activity_base_check(request, edit=False):
     if context["url"] != "":
         assert context["url"].startswith("http://") or context["url"].startswith("https://")
 
-    # 预算，元气值支付模式，是否直接向学院索要元气值
     # 在审核通过后，这些不可修改
-    context["budget"] = float(request.POST["budget"])
     signscheme = int(request.POST["signscheme"])
     if signscheme:
         context["bidding"] = True
     else:
         context["bidding"] = False
-
-    # 向学院申请元气值
-    from_college = request.POST["from_college"]
-    if from_college == "1":
-        context["from_college"] = True
-    elif from_college == "0":
-        context["from_college"] = False
-
 
     # examine_teacher 需要特殊检查
     context["examine_teacher"] = request.POST.get("examine_teacher")

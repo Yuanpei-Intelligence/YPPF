@@ -199,7 +199,7 @@ def create_single_course_activity(request: HttpRequest) -> Tuple[int, bool]:
         publish_time=context["publish_time"],  # 发布时间
         need_apply=context["need_apply"]  # 是否需要报名
 
-        # capacity, URL, budget, bidding,
+        # capacity, URL, bidding,
         # apply_reason, inner, source, end_before均为default
     )
     if not activity.need_apply:

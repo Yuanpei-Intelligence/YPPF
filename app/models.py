@@ -992,7 +992,6 @@ class Activity(CommentBase):
     # url,活动二维码
 
     bidding = models.BooleanField("是否投点竞价", default=False)
-    budget = models.FloatField("预算", default=0.0)
 
     need_checkin = models.BooleanField("是否需要签到", default=False)
 
