@@ -60,16 +60,12 @@ __all__ = [
     'CommentBase',
     'Activity',
     'ActivityPhoto',
-    'TransferRecord',
     'Participant',
-    'YQPointDistribute',
     'Notification',
     'Comment',
     'CommentPhoto',
     'ModifyOrganization',
     'ModifyPosition',
-    'Reimbursement',
-    'ReimbursementPhoto',
     'Help',
     'Wishes',
     'ModifyRecord',
@@ -321,8 +317,6 @@ class NaturalPerson(models.Model):
     QRcode = models.ImageField(upload_to=f"QRcode/", blank=True)
     visit_times = models.IntegerField("浏览次数",default=0) # 浏览主页的次数
 
-    YQPoint_Bonus = models.FloatField("待发放元气值", default=0)
-    YQPoint = models.FloatField("元气值余额", default=0)
     bonusPoint = models.FloatField("积分", default=0)
 
     class Identity(models.IntegerChoices):
@@ -449,8 +443,6 @@ class NaturalPerson(models.Model):
             self.stu_id_dbonly = self.person_id.username
         else:
             assert self.stu_id_dbonly == self.person_id.username, "学号不匹配！"
-        self.YQPoint = round(self.YQPoint, 1)
-        self.bonusPoint = round(self.bonusPoint, 1)
         super().save(*args, **kwargs)
 
 
@@ -609,7 +601,6 @@ class Organization(models.Model):
 
     objects: OrganizationManager = OrganizationManager()
 
-    YQPoint = models.FloatField("元气值", default=0.0)
     introduction = models.TextField("介绍", null=True, blank=True, default="这里暂时没有介绍哦~")
     avatar = models.ImageField(upload_to=f"avatar/", blank=True)
     QRcode = models.ImageField(upload_to=f"QRcode/", blank=True)  # 二维码字段
@@ -650,10 +641,6 @@ class Organization(models.Model):
         if not avatar:
             avatar = "avatar/org_default.png"
         return image_url(avatar)
-
-    def save(self, *args, **kwargs):
-        self.YQPoint = round(self.YQPoint, 1)
-        super().save(*args, **kwargs)
 
     def get_subscriber_num(self, activated=True):
         '''仅供前端使用'''
@@ -1005,7 +992,6 @@ class Activity(CommentBase):
     # url,活动二维码
 
     bidding = models.BooleanField("是否投点竞价", default=False)
-    YQPoint = models.FloatField("元气值定价/投点基础价格", default=0.0)
     budget = models.FloatField("预算", default=0.0)
 
     need_checkin = models.BooleanField("是否需要签到", default=False)
@@ -1019,14 +1005,6 @@ class Activity(CommentBase):
     valid = models.BooleanField("是否已审核", default=False)
 
     inner = models.BooleanField("内部活动", default=False)
-
-    class YQPointSource(models.IntegerChoices):
-        COLLEGE = (0, "学院")
-        STUDENT = (1, "学生")
-
-    source = models.SmallIntegerField(
-        "元气值来源", choices=YQPointSource.choices, default=1
-    )
 
     # 允许是正无穷, 可以考虑用INTINF
     capacity = models.IntegerField("活动最大参与人数", default=100)
@@ -1067,7 +1045,6 @@ class Activity(CommentBase):
                                     verbose_name="课程每周活动时间")
 
     def save(self, *args, **kwargs):
-        self.YQPoint = round(self.YQPoint, 1)
         self.typename = "activity"
         super().save(*args, **kwargs)
 
@@ -1127,67 +1104,6 @@ class ActivityPhoto(models.Model):
         return image_url(self.image, enable_abs=True)
 
 
-class TransferRecord(models.Model):
-    class Meta:
-        verbose_name = "转账信息"
-        verbose_name_plural = verbose_name
-        ordering = ["-finish_time", "-start_time"]
-
-    proposer: User = models.ForeignKey(
-        User, related_name="send_trans", on_delete=models.CASCADE
-    )
-    recipient: User = models.ForeignKey(
-        User, related_name="recv_trans", on_delete=models.CASCADE
-    )
-    amount = models.FloatField("转账元气值数量", default=0)
-    start_time = models.DateTimeField("发起时间", auto_now_add=True)
-    finish_time = models.DateTimeField("处理时间", blank=True, null=True)
-    message = models.CharField("备注信息", max_length=255, default="")
-
-    corres_act: Activity = models.ForeignKey(
-        Activity, on_delete=models.SET_NULL, null=True, blank=True
-    )
-
-    class TransferStatus(models.IntegerChoices):
-        """
-        对于活动来说：
-        REFUND 由 ACCEPTED 而来
-        SUSPENDED 由 PENDING 而来
-        """
-        ACCEPTED = (0, "已接收")
-        WAITING = (1, "待确认")
-        REFUSED = (2, "已拒绝")
-        SUSPENDED = (3, "已终止")
-        REFUND = (4, "已退回")
-        PENDING = (5, "待审核")
-
-    class TransferType(models.IntegerChoices):
-        ACTIVITY = (0, "小组活动入账") # 包括像学院申请元气值的部分
-        REIMBURSEMENT = (1, "报销兑换") # 元气值湮灭
-        BONUS = (2, "学院发放") # 学院发放的奖励
-        TRANSACTION = (3, "小组间转账")
-        SERVICE_COFFEE = (4, "咖啡服务")
-        SERVICE_PRINT = (5, "打印服务")
-
-        @classmethod
-        def is_service(cls, type: int) -> bool:
-            return type in {
-                TransferRecord.TransferType.SERVICE_COFFEE,
-                TransferRecord.TransferType.SERVICE_PRINT,
-            }
-
-        @classmethod
-        def is_valid_service(cls, type: int) -> bool:
-            return type == -1 or cls.is_service(type)
-
-    status = models.SmallIntegerField(choices=TransferStatus.choices, default=1)
-    rtype = models.SmallIntegerField(choices=TransferType.choices, default=0)
-
-    def save(self, *args, **kwargs):
-        self.amount = round(self.amount, 1)
-        super(TransferRecord, self).save(*args, **kwargs)
-
-
 class ParticipantManager(models.Manager):
     def activated(self, no_unattend=False):
         '''返回成功报名的参与信息'''
@@ -1224,32 +1140,6 @@ class Participant(models.Model):
     )
     objects: ParticipantManager = ParticipantManager()
 
-
-class YQPointDistribute(models.Model):
-    class DistributionType(models.IntegerChoices):
-        # 定期发放的类型
-        # 每类型各最多有一个status为Yes的实例
-        TEMPORARY = (0, "临时发放")
-        WEEK = (1, "每周发放一次")
-        TWO_WEEK = (2, "每两周发放一次")
-        SEMESTER = (26, "每学期发放一次")  # 一年有52周
-
-    # 发放元气值的上限，多于此值则不发放
-    per_max_dis_YQP = models.FloatField("自然人发放元气值上限")
-    org_max_dis_YQP = models.FloatField("小组发放元气值上限")
-    # 个人和小组所能平分的元气值比例
-    # 发放时，从学院剩余元气值中，抽取向自然人分发的数量，平分给元气值低于上限的自然人；小组同理
-    per_YQP = models.FloatField("自然人获得的元气值", default=0)
-    org_YQP = models.FloatField("小组获得的元气值", default=0)
-
-    start_time = models.DateTimeField("开始时间")
-
-    status = models.BooleanField("是否应用", default=False)
-    type = models.IntegerField("发放类型", choices=DistributionType.choices)
-
-    class Meta:
-        verbose_name = "元气值发放"
-        verbose_name_plural = verbose_name
 
 class NotificationManager(models.Manager):
     def activated(self):
@@ -1303,13 +1193,6 @@ class Notification(models.Model):
     bulk_identifier = models.CharField("批量信息标识", max_length=64, default="",
                                         db_index=True)
     anonymous_flag = models.BooleanField("是否匿名", default=False)
-    relate_TransferRecord: TransferRecord = models.ForeignKey(
-        TransferRecord,
-        related_name="transfer_notification",
-        on_delete=models.CASCADE,
-        blank=True,
-        null=True,
-    )
     relate_instance: CommentBase = models.ForeignKey(
         CommentBase,
         related_name="relate_notifications",
@@ -1516,78 +1399,6 @@ class ModifyPosition(CommentBase):
     def save(self, *args, **kwargs):
         self.typename = "modifyposition"
         super().save(*args, **kwargs)
-
-
-class Reimbursement(CommentBase):
-    class Meta:
-        verbose_name = "新建报销"
-        verbose_name_plural = verbose_name
-        ordering = ["-modify_time", "-time"]
-
-    class ReimburseStatus(models.IntegerChoices):
-        WAITING = (0, "待审核")
-
-        CONFIRM1 = (1, "主管老师已确认")
-        CONFIRM2 = (2, "财务老师已确认")
-
-        CONFIRMED = (3, "已通过")
-        # 如果需要更多审核，每个审核的确认状态应该是2的幂
-        # 根据最新要求，最终不以线上为准，不再设置转账状态
-        CANCELED = (4, "已取消")
-        REFUSED = (5, "已拒绝")
-
-    related_activity: Activity = models.ForeignKey(
-        Activity, on_delete=models.CASCADE
-    )
-    amount = models.FloatField("报销金额", default=0)
-    message = models.TextField("备注信息", default="", blank=True)
-    # 报销的小组
-    pos: User = models.ForeignKey(User, on_delete=models.CASCADE)
-    status = models.SmallIntegerField(choices=ReimburseStatus.choices, default=0)
-    # 转账信息的记录
-    record: TransferRecord = models.ForeignKey(
-        TransferRecord, on_delete=models.CASCADE)
-    examine_teacher: NaturalPerson = models.ForeignKey(
-        NaturalPerson, on_delete=models.CASCADE, verbose_name="审核老师")
-
-    def __str__(self):
-        return f'{self.related_activity.title}活动报销'
-
-    def save(self, *args, **kwargs):
-        self.typename = "reimbursement"
-        super().save(*args, **kwargs)
-
-    def get_poster_name(self):
-        try:
-            org = Organization.objects.get(organization_id=self.pos)
-            return org
-        except:
-            return '未知'
-
-    def extra_display(self):
-        display = []
-        display.append(('报销金额', str(self.amount) + '元', 'money'))
-        if self.message:
-            display.append(('备注', self.message))
-        return display
-
-    def is_pending(self):   #表示是不是pending状态
-        return self.status == Reimbursement.ReimburseStatus.WAITING
-
-
-class ReimbursementPhoto(models.Model):
-    class Meta:
-        verbose_name = "报销相关图片"
-        verbose_name_plural = verbose_name
-        ordering = ["-time"]
-    class PhotoType(models.IntegerChoices):
-        MATERIAL = (0, "报销材料")  #如账单信息等
-        SUMMARY = (1, "总结图片")   #待审核的活动总结图片
-    type = models.SmallIntegerField(choices=PhotoType.choices)
-    image = models.ImageField(upload_to=f"reimbursement/photo/%Y/%m/", verbose_name=u'报销相关图片', null=True, blank=True)
-    related_reimb: Reimbursement = models.ForeignKey(
-        Reimbursement, related_name="reimbphotos", on_delete=models.CASCADE)
-    time = models.DateTimeField("上传时间", auto_now_add=True)
 
 
 class Help(models.Model):

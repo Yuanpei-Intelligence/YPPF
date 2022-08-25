@@ -17,7 +17,6 @@ from app.models import (
     Organization,
     Position,
     Activity,
-    TransferRecord,
     Participant,
     Notification,
     ActivityPhoto,
@@ -86,13 +85,6 @@ def changeActivityStatus(aid, cur_status, to_status):
 
         if to_status == Activity.Status.WAITING:
             if activity.bidding:
-                """
-                投点时使用
-                if activity.source == Activity.YQPointSource.COLLEGE:
-                    draw_lots(activity)
-                else:
-                    weighted_draw_lots(activity)
-                """
                 draw_lots(activity)
 
 
@@ -112,26 +104,6 @@ def changeActivityStatus(aid, cur_status, to_status):
             # if not activity.valid:
             #     # 活动开始后，未审核自动通过
             #     activity.valid = True
-            #     records = TransferRecord.objects.filter(
-            #         status=TransferRecord.TransferStatus.PENDING,
-            #         corres_act=activity,
-            #     )
-            #     total_amount = records.aggregate(nums=Sum('amount'))["nums"]
-            #     if total_amount is None:
-            #         total_amount = 0.0
-            #     if total_amount > 0:
-            #         organization_id = activity.organization_id_id
-            #         organization = Organization.objects.select_for_update().get(id=organization_id)
-            #         organization.YQPoint += total_amount
-            #         organization.save()
-            #         YP = Organization.objects.select_for_update().get(oname=YQP_ONAME)
-            #         YP.YQPoint -= total_amount
-            #         YP.save()
-            #     records.update(
-            #         status=TransferRecord.TransferStatus.ACCEPTED,
-            #         finish_time=datetime.now()
-            #     )
-
             #     notification = Notification.objects.get(
             #         relate_instance=activity,
             #         status=Notification.Status.UNDONE,
@@ -238,35 +210,6 @@ def draw_lots(activity):
         )
 
 
-
-"""
-投点情况下的抽签，暂时不用
-需要在 transaction 中使用
-def weighted_draw_lots(activity):
-    participants = Participant.objects().select_for_update().filter(activity_id=activity.id, status=Participant.AttendStatus.APPLYING)
-    l = len(participants)
-    if l <= activity.capacity:
-        for participant in participants:
-            participant.status = Participant.AttendStatus.APLLYSUCCESS
-            participant.save()
-    else:
-        weights = []
-        for participant in participants:
-            records = TransferRecord.objects(),filter(corres_act=activity, status=TransferRecord.TransferStatus.ACCEPTED, person_id=participant.proposer)
-            weight = 0
-            for record in records:
-                weight += record.amount
-            weights.append(weight)
-        total_weight = sum(weights)
-        d = [weight/total_weight for weight in weights]
-        lucky_ones = choice(l, activity.capacity, replacement=False, p=weights)
-        for i, participant in enumerate(participants):
-            if i in lucky_ones:
-                participant.status = Participant.AttendStatus.APLLYSUCCESS
-            else:
-                participant.status = Participant.AttendStatus.APLLYFAILED
-            participant.save()
-"""
 
 """
 使用方式：
@@ -676,14 +619,11 @@ def create_activity(request):
                     budget=context["budget"],
                     start=context["start"],
                     end=context["end"],
-                    YQPoint=context["aprice"],
                     bidding=context["bidding"],
                     apply_end=context["signup_end"],
                     apply_reason=context["apply_reason"],
                     inner=context["inner"],
                 )
-    if context["from_college"]:
-        activity.source = Activity.YQPointSource.COLLEGE
     activity.endbefore = context["endbefore"]
     if context.get("need_checkin"):
         activity.need_checkin = True
@@ -767,13 +707,8 @@ def modify_reviewing_activity(request, activity):
     activity.budget = context["budget"]
     activity.start = context["start"]
     activity.end = context["end"]
-    activity.YQPoint = context["aprice"]
     activity.bidding = context["bidding"]
     activity.apply_reason = context["apply_reason"]
-    if context["from_college"]:
-        activity.source = Activity.YQPointSource.COLLEGE
-    else:
-        activity.source = Activity.YQPointSource.STUDENT
     if context.get("need_checkin"):
         activity.need_checkin = True
     else:
@@ -809,16 +744,6 @@ def modify_accepted_activity(request, activity):
     if activity.location != request.POST["location"]:
         to_participants.append("活动地点修改为" + request.POST["location"])
         activity.location = request.POST["location"]
-
-    # 不是学院来源时，价格可能会变
-    if activity.source != Activity.YQPointSource.COLLEGE:
-        aprice = float(request.POST["aprice"])
-        assert int(aprice * 10) / 10 == aprice
-        assert aprice >= 0
-        if activity.YQPoint != aprice:
-            # to_subscribers.append("活动价格调整为" + str(aprice))
-            to_participants.append("活动价格调整为" + str(aprice))
-            activity.YQPoint = aprice
 
     # 时间改变
     act_start = datetime.strptime(request.POST["actstart"], "%Y-%m-%d %H:%M")
@@ -948,51 +873,6 @@ def accept_activity(request, activity):
             scheduler.add_job(notifyActivity, "date", id=f"activity_{activity.id}_remind",
                 run_date=activity.start - timedelta(minutes=15), args=[activity.id, "remind"], replace_existing=True)
 
-    # 向学院申请元气值时，审批通过后转账
-    if activity.source == Activity.YQPointSource.COLLEGE and activity.YQPoint > 0:
-        organization_id = activity.organization_id_id
-        organization = Organization.objects.select_for_update().get(id=organization_id)
-        organization.YQPoint += activity.YQPoint
-        organization.save()
-        YQP_center = Organization.objects.select_for_update().get(oname=YQP_ONAME)
-        YQP_center.YQPoint -= activity.YQPoint
-        YQP_center.save()
-        amount = activity.YQPoint
-        record = TransferRecord.objects.create(
-            proposer=YQP_center.organization_id,
-            recipient=organization.organization_id,
-            rtype=TransferRecord.TransferType.ACTIVITY
-        )
-        record.amount = amount
-        record.message = f"From College."
-        record.status = TransferRecord.TransferStatus.ACCEPTED
-        record.finish_time = datetime.now()
-        record.corres_act = activity
-        record.save()
-
-    elif activity.recorded:
-        # 预报备活动，修改转账记录为 accepted
-        # 锁了 activity，不会有幻读
-        records = TransferRecord.objects.filter(
-            status=TransferRecord.TransferStatus.PENDING,
-            corres_act=activity,
-        )
-        total_amount = records.aggregate(nums=Sum('amount'))["nums"]
-        if total_amount is None:
-            total_amount = 0.0
-        if total_amount > 0:
-            organization_id = activity.organization_id_id
-            organization = Organization.objects.select_for_update().get(id=organization_id)
-            organization.YQPoint += total_amount
-            organization.save()
-            YQP_center = Organization.objects.select_for_update().get(oname=YQP_ONAME)
-            YQP_center.YQPoint -= total_amount
-            YQP_center.save()
-            records.update(
-                status=TransferRecord.TransferStatus.ACCEPTED,
-                finish_time=datetime.now()
-            )
-
     if activity.status == Activity.Status.END:
         point = calcu_activity_bonus(activity)
         participants = Participant.objects.filter(
@@ -1033,22 +913,6 @@ def reject_activity(request, activity):
         scheduler.remove_job(f"activity_{activity.id}_{Activity.Status.PROGRESSING}")
         scheduler.remove_job(f"activity_{activity.id}_{Activity.Status.END}")
 
-        # 加退款逻辑 ( 只需要考虑学生 )
-        records = TransferRecord.objects.filter(
-            status=TransferRecord.TransferStatus.PENDING,
-            corres_act=activity,
-        )
-        person_list = User.objects.filter(id__in=records.values_list("proposer_id", flat=True))
-        # person_list = [record.proposer.id for record in records]
-        payers = NaturalPerson.objects.select_for_update().filter(person_id__in=person_list)
-        for record in records:
-            NaturalPerson.objects.filter(person_id=record.proposer).update(YQPoint=F("YQPoint") + record.amount)
-        records.update(
-            status=TransferRecord.TransferStatus.SUSPENDED,
-            finish_time=datetime.now()
-        )
-
-
     notification = notification_create(
         receiver=activity.organization_id.organization_id,
         sender=request.user,
@@ -1072,7 +936,7 @@ def applyActivity(request, activity):
     context = dict()
     context["success"] = False
 
-    payer = NaturalPerson.objects.select_for_update().get(
+    payer = NaturalPerson.objects..get(
         person_id=request.user
     )
 
@@ -1099,71 +963,13 @@ def applyActivity(request, activity):
             raise ActivityException(f"您的报名状态异常，当前状态为：{participant.status}")
 
 
-
-    if activity.source == Activity.YQPointSource.COLLEGE:
-        if not activity.bidding:
-            if activity.current_participants < activity.capacity:
-                activity.current_participants += 1
-            else:
-                raise ActivityException("活动已报满，请稍后再试。")
-        else:
+    if not activity.bidding:
+        if activity.current_participants < activity.capacity:
             activity.current_participants += 1
+        else:
+            raise ActivityException("活动已报满，请稍后再试。")
     else:
-        """
-        存在投点的逻辑，暂时不用
-        if not activity.bidding:
-            amount = float(activity.YQPoint)
-            if activity.current_participants < activity.capacity:
-                activity.current_participants += 1
-            else:
-                raise ActivityException("活动已报满，请稍后再试。")
-        else:
-            amount = float(request.POST["willingness"])
-            if not activity.YQPoint <= amount <= activity.YQPoint * 3:
-                raise ActivityException("投点范围为基础值的 1-3 倍")
-            # 依然增加，此时current_participants统计的是报名的人数，是可以比总人数多的
-            activity.current_participants += 1
-            assert amount == int(amount * 10) / 10
-        """
-        amount = float(activity.YQPoint)
-
-        if amount > 0:
-            if not payer.YQPoint >= amount:
-                raise ActivityException(f"没有足够的元气值。您当前的元气值数量为 {payer.YQPoint}")
-
-        if activity.bidding:
-            activity.current_participants += 1
-        else:
-            if activity.current_participants < activity.capacity:
-                activity.current_participants += 1
-            else:
-                raise ActivityException("活动已报满，请稍后再试。")
-
-        if amount > 0:
-            payer.YQPoint -= amount
-            record = TransferRecord.objects.create(
-                proposer=request.user,
-                recipient=activity.organization_id.organization_id,
-                rtype=TransferRecord.TransferType.ACTIVITY
-            )
-            record.amount = amount
-            record.message = f"报名参与活动{activity.title}。"
-
-            if activity.valid:
-                organization_id = activity.organization_id_id
-                organization = Organization.objects.select_for_update().get(id=organization_id)
-                organization.YQPoint += amount
-                organization.save()
-                YQP_center = Organization.objects.select_for_update().get(oname=YQP_ONAME)
-                YQP_center.YQPoint -= amount
-                YQP_center.save()
-                record.status = TransferRecord.TransferStatus.ACCEPTED
-            else:
-                record.status = TransferRecord.TransferStatus.PENDING
-            record.finish_time = datetime.now()
-            record.corres_act = activity
-            record.save()
-
+        activity.current_participants += 1
 
     if not participated:
         participant = Participant.objects.create(
@@ -1175,7 +981,6 @@ def applyActivity(request, activity):
         participant.status = Participant.AttendStatus.APPLYING
 
     participant.save()
-    payer.save()
     activity.save()
 
 
@@ -1205,66 +1010,6 @@ def cancel_activity(request, activity):
                 organization_id=request.user
             )
 
-    if activity.source == Activity.YQPointSource.COLLEGE and activity.YQPoint > 0:
-        # 向学院申请，不允许预报备，不允许修改元气值数量
-        if org.YQPoint < activity.YQPoint:
-            raise ActivityException("没有足够的元气值退还给学院，不能取消。")
-        org.YQPoint -= activity.YQPoint
-        org.save()
-        # 这里加个悲观锁能提高性能吗 ？
-        YQP_center = Organization.objects.select_for_update().get(oname=YQP_ONAME)
-        YQP_center.YQPoint += activity.YQPoint
-        YQP_center.save()
-        # activity 上了悲观锁，这里不用锁
-        record = TransferRecord.objects.get(
-            proposer=YQP_center,
-            status=TransferRecord.TransferStatus.ACCEPTED,
-            corres_act=activity
-        )
-        record.status = TransferRecord.TransferStatus.REFUND
-        record.save()
-    else:
-        # 考虑两种情况，活动 valid，所有 record 都是 accepted
-        if activity.valid:
-            records = TransferRecord.objects.filter(
-                status=TransferRecord.TransferStatus.ACCEPTED,
-                corres_act=activity).prefetch_related("proposer")
-            total_amount = records.aggregate(nums=Sum('amount'))["nums"]
-            if total_amount is None:
-                total_amount = 0.0
-            if total_amount > org.YQPoint:
-                raise ActivityException("没有足够的元气值退还给同学，不能取消。")
-            if total_amount > 0:
-                org.YQPoint -= total_amount
-                org.save()
-                YQP_center = Organization.objects.select_for_update().get(oname=YQP_ONAME)
-                YQP_center.YQPoint += total_amount
-                YQP_center.save()
-                person_list = User.objects.filter(id__in=records.values_list("proposer_id", flat=True))
-                # person_list = [record.proposer.id for record in records]
-                payers = NaturalPerson.objects.select_for_update().filter(person_id__in=person_list)
-                for record in records:
-                    NaturalPerson.objects.filter(person_id=record.proposer).update(YQPoint=F("YQPoint") + record.amount)
-                records.update(
-                    status=TransferRecord.TransferStatus.REFUND,
-                    finish_time=datetime.now()
-                )
-        else:
-            # 都是 pending
-            records = TransferRecord.objects.filter(
-                status=TransferRecord.TransferStatus.PENDING,
-                corres_act=activity).prefetch_related("proposer")
-            # person_list = [record.proposer.id for record in records]
-            person_list = User.objects.filter(id__in=records.values_list("proposer_id", flat=True))
-            payers = NaturalPerson.objects.select_for_update().filter(person_id__in=person_list)
-            for record in records:
-                NaturalPerson.objects.filter(person_id=record.proposer).update(YQPoint=F("YQPoint") + record.amount)
-            records.update(
-                status=TransferRecord.TransferStatus.SUSPENDED,
-                finish_time=datetime.now()
-            )
-
-
 
     activity.status = Activity.Status.CANCELED
     notifyActivity(activity.id, "modification_par", f"您报名的活动{activity.title}已取消。")
@@ -1293,11 +1038,12 @@ def cancel_activity(request, activity):
 
 def withdraw_activity(request, activity):
 
-    np = NaturalPerson.objects.select_for_update().get(person_id=request.user)
+    np = NaturalPerson.objects.get(person_id=request.user)
     participant = Participant.objects.select_for_update().get(
         activity_id=activity,
         person_id=np,
         status__in=[
+            Activity.Status.WAITING,
             Participant.AttendStatus.APPLYING,
             Participant.AttendStatus.APLLYSUCCESS,
             Participant.AttendStatus.CANCELED,
@@ -1308,61 +1054,7 @@ def withdraw_activity(request, activity):
     participant.status = Participant.AttendStatus.CANCELED
     activity.current_participants -= 1
 
-    # 去掉了两个 check。一个是报名状态是申请中，一个是活动收取的元气值大于 0
-    # 因为比较宽松的修改限制，上面两条不合适
-    if activity.source == Activity.YQPointSource.STUDENT:
-        half_refund = 1
-        if activity.status == Activity.Status.WAITING:
-            if not datetime.now() < activity.start - timedelta(hours=1):
-                raise ActivityException("活动即将开始，不能取消。")
-            half_refund = 0.5
-
-        # 非预报备的记录 ( 一个活动只可能有两种之一 )
-        try:
-            record = TransferRecord.objects.select_for_update().get(
-                corres_act=activity,
-                proposer=request.user,
-                # 活动未过审产生的 Pending 记录不需要考虑
-                status=TransferRecord.TransferStatus.ACCEPTED,
-                rtype=TransferRecord.TransferType.ACTIVITY
-            )
-            amount = record.amount * half_refund
-            org = Organization.objects.select_for_update().get(
-                organization_id=activity.organization_id.organization_id
-            )
-            if org.YQPoint < amount:
-                raise ActivityException("小组账户元气值不足，请与小组负责人联系。")
-            org.YQPoint -= amount
-            org.save()
-            record.status = TransferRecord.TransferStatus.REFUND
-            record.save()
-            np.YQPoint += amount
-            YQP_center = Organization.objects.select_for_update().get(oname=YQP_ONAME)
-            YQP_center.YQPoint += amount
-            YQP_center.save()
-        except:
-            pass
-
-        # 预报备记录，状态为 Penging
-        try:
-            record = TransferRecord.objects.select_for_update().get(
-                corres_act=activity,
-                proposer=request.user,
-                # 活动未过审产生的 Pending 记录不需要考虑
-                status=TransferRecord.TransferStatus.PENDING,
-                rtype=TransferRecord.TransferType.ACTIVITY
-            )
-            # 这里如果再退一半有没有问题？
-            # 没啥问题，只是少了配额，不管小组和学院就好了，其实就是小组拿不到赔偿
-            amount = record.amount * half_refund
-            np.YQPoint += amount
-            record.status = TransferRecord.TransferStatus.SUSPENDED
-            record.save()
-        except:
-            pass
-
     participant.save()
-    np.save()
     activity.save()
 
 

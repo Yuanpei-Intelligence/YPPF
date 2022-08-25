@@ -7,7 +7,6 @@ from app.models import (
     Activity,
     ActivityPhoto,
     Participant,
-    Reimbursement,
 )
 from app.activity_utils import (
     ActivityException,
@@ -185,17 +184,6 @@ def viewActivity(request: HttpRequest, aid=None):
                 log.record_traceback(request, e)
                 return EXCEPT_REDIRECT
 
-        elif option == "payment":
-            if activity.status != Activity.Status.END:
-                return redirect(message_url(wrong('活动尚未结束!'), request.path))
-            if not ownership:
-                return redirect(message_url(wrong('您没有申请活动结项的权限!'), request.path))
-            try:
-                re = Reimbursement.objects.get(related_activity=activity)
-                return redirect(f"/modifyEndActivity/?reimb_id={re.id}")
-            except:
-                return redirect(f"/modifyEndActivity/")
-
         elif option == "checkinoffline":
             # 进入调整签到界面
             if activity.status != Activity.Status.END:
@@ -236,15 +224,11 @@ def viewActivity(request: HttpRequest, aid=None):
     if (aURL is None) or (aURL == ""):
         show_url = False
     bidding = activity.bidding
-    price = activity.YQPoint
-    from_student = activity.source == Activity.YQPointSource.STUDENT
     current_participants = activity.current_participants
     status = activity.status
     capacity = activity.capacity
     if capacity == -1 or capacity == 10000:
         capacity = "INF"
-    if activity.source == Activity.YQPointSource.COLLEGE:
-        price = 0
     if activity.bidding:
         apply_manner = "抽签模式"
     else:
@@ -729,14 +713,10 @@ def addActivity(request: HttpRequest, aid=None):
 
         endbefore = activity.endbefore
         bidding = activity.bidding
-        amount = activity.YQPoint
         signscheme = "先到先得"
         if bidding:
             signscheme = "抽签模式"
         capacity = activity.capacity
-        yq_source = "向学生收取"
-        if activity.source == Activity.YQPointSource.COLLEGE:
-            yq_source = "向学院申请"
         no_limit = False
         if capacity == 10000:
             no_limit = True
@@ -899,14 +879,10 @@ def examineActivity(request: HttpRequest, aid):
     url = utils.escape_for_templates(activity.URL)
     endbefore = activity.endbefore
     bidding = activity.bidding
-    amount = activity.YQPoint
     signscheme = "先到先得"
     if bidding:
         signscheme = "投点参与"
     capacity = activity.capacity
-    yq_source = "向学生收取"
-    if activity.source == Activity.YQPointSource.COLLEGE:
-        yq_source = "向学院申请"
     no_limit = False
     if capacity == 10000:
         no_limit = True

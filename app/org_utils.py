@@ -70,7 +70,6 @@ def accept_modifyorg_submit(application): #同意申请，假设都是合法操�
     org = Organization.objects.create(organization_id=user,
                                       oname=application.oname,
                                       otype=application.otype,
-                                      YQPoint=0.0,
                                       introduction=application.introduction,
                                       avatar=application.avatar)
 
