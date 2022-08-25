@@ -38,7 +38,7 @@ __all__ = [
     'create_person_account', 'create_org_account',
     # load functions
     'load_stu', 'load_orgtype', 'load_org',
-    'load_activity', 'load_transfer', 'load_notification',
+    'load_activity', 'load_notification',
     'load_freshman', 'load_help', 'load_course_record', 
     'load_org_tag', 'load_old_org_tags', 'load_feedback_type', 
     'load_feedback', 'load_feedback_comments', 'load_major',
