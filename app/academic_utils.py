@@ -29,6 +29,9 @@ __all__ = [
     'update_tag_entry',
     'update_text_entry',
     'update_academic_map',
+    'audit_academic_map',
+    'get_js_public_tags',
+    'get_public_texts'
 ]
 
 
@@ -472,3 +475,54 @@ def update_academic_map(request: HttpRequest) -> dict:
         request.user.save()
     
     return succeed("学术地图修改成功！")
+
+
+def audit_academic_map(author: NaturalPerson) -> None:
+    """
+    审核通过某用户的记录。
+    :param author: 被审核用户
+    :type author: NaturalPerson
+    """
+    # 筛选所有待审核的记录
+    entries = AcademicTagEntry.objects.activated().get(
+        person=author, status=AcademicEntry.EntryStatus.WAIT_AUDIT)
+    entries.extend(AcademicTextEntry.objects.activated().get(
+        person=author, status=AcademicEntry.EntryStatus.WAIT_AUDIT))
+
+    for item in entries:
+        item.status = AcademicEntry.EntryStatus.PUBLIC
+
+
+def get_js_public_tags(author: NaturalPerson, type=AcademicTag.AcademicTagType) -> list[dict]:
+    """
+    用于前端展示页面的专业/项目列表，返回形如[{id, content}]的列表。
+
+    :param author: 被查看用户
+    :type author: NaturalPerson
+    :param type: 标记所需的tag类型
+    :type type: AcademicTag.AcademicTagType
+    :return: 所有专业/项目组成的List[dict]，key值如上所述
+    :rtype: List[dict]
+    """
+    all_tags = AcademicTagEntry.objects.activated().filter(
+        person=author, status=AcademicEntry.EntryStatus.PUBLIC)
+    tags = all_tags.filter(tag__atype=type).values('tag__id', 'tag__tag_content')
+    js_list = [{"id": tag['tag__id'], "text": tag['tag__tag_content']} for tag in tags]
+    return js_list
+
+
+def get_public_texts(author: NaturalPerson, type: AcademicTextEntry.AcademicTextType):
+    """
+     获取自己的所有类型为type的TextEntry的内容列表。
+     
+    :param author: 被查看用户
+    :type author: NaturalPerson
+    :param type: TextEntry的类型
+    :type type: AcademicTextEntry.AcademicTextType
+    :return: 含有所有类型为type的TextEntry的content的list
+    :rtype: List[str]
+    """
+    all_my_text = AcademicTextEntry.objects.activated().filter(
+        person=author, atype=type, status=AcademicEntry.EntryStatus.PUBLIC)
+    text_list = [text.content for text in all_my_text]
+    return text_list
