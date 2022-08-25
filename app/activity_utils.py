@@ -936,7 +936,7 @@ def applyActivity(request, activity):
     context = dict()
     context["success"] = False
 
-    payer = NaturalPerson.objects..get(
+    payer = NaturalPerson.objects.get(
         person_id=request.user
     )
 

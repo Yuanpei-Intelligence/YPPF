@@ -332,7 +332,7 @@ class ActivityAdmin(admin.ModelAdmin):
         "status",
         'year', 'semester', 'category',
         "organization_id__otype",
-        "inner", "need_checkin", "valid", "source",
+        "inner", "need_checkin", "valid",
         ErrorFilter,
         'endbefore',
         "publish_time", 'start', 'end',
