@@ -517,6 +517,8 @@ def sendMessage(request: HttpRequest):
     }
 
     # 设置默认量
+    if request.GET.get('receiver_type', None) is not None:
+        receiver_type_list[request.GET.get('receiver_type')]['selected'] = True
     if request.POST.get('receiver_type', None) is not None:
         receiver_type_list[request.POST.get('receiver_type')]['selected'] = True
     if request.POST.get('url', None) is not None:

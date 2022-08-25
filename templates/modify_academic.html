@@ -1,0 +1,622 @@
+{% extends "base.html" %}
+
+{% load static %}
+
+
+{% block mainpage %}
+<style>
+select[readonly] {
+    background: #eee; /*Simular campo inativo - Sugestão @GabrielRodrigues*/
+    pointer-events: none;
+    touch-action: none;
+}
+</style>
+<!--  BEGIN CONTENT AREA  -->
+<div id="content" class="main-content">
+
+    <!--  BEGIN CUSTOM STYLE FILE  -->
+    <link rel="stylesheet" type="text/css" href="{% static "plugins/dropify/dropify.min.css" %}">
+    <link href="{% static "assets/css/users/account-setting.css" %}" rel="stylesheet" type="text/css" />
+    <link href="{% static "assets/css/select2/select2.min.css" %}" rel="stylesheet" />
+    <!--  END CUSTOM STYLE FILE  -->
+
+        <div class="container">
+            {% if warn_code == "2" %}
+            <div class="alert alert-success text-center mb-0">{{warn_message}}</div>
+            {% elif warn_code == "1" %}
+            <div class="alert alert-warning text-center mb-0">{{warn_message}}</div>
+            {% endif %}
+            <div class="row layout-top-spacing">
+
+                <div class="col-lg-12 col-sm-12 col-12 layout-spacing">
+                    <div class="row">
+                        <div class="col-md-12 mb-4">
+                            <div class="statbox widget box box-shadow">
+
+                                <!--  BEGIN HEADER AREA  -->
+                                <div class="widget-header">
+                                    <div class="row">
+                                        <div class="col-xl-12 col-md-12 col-sm-12 col-12">
+                                                <br/><br/>
+                                                <div align="center">
+                                                    <h3>编辑我的学术地图</h3>
+                                                </div>
+                                                <br/>
+                                                <div align="right">
+                                                    <div class="custom-control custom-switch" style="margin-right:10px;">
+                                                        <input type="checkbox" class="custom-control-input"
+                                                            id="all_status_input" name="all_status_input"
+                                                            onclick="change_all_status.call(this); this.blur();">
+                                                        <input type="hidden" value="{{public_num}}">
+                                                        <label class="custom-control-label" for="all_status_input"
+                                                            id="checkbox2_all_status">
+                                                            <font color="#5F747B" id="font_all_status">全部公开</font>
+                                                        </label>
+                                                    </div>
+                                                </div>
+                                                <br/>
+                                        </div>
+                                    </div>
+                                </div>
+                                <!--  END HEADER AREA  -->
+
+                                <!--  BEGIN FORM AREA  -->
+                                <div class="widget-content widget-content-area">
+                                    <form role="form" method="POST" enctype="multipart/form-data">
+                                        
+                                        <div class="form-group card-label">
+                                            <div style="display:flex; justify-content:space-between;">
+                                                <label for="aintro">主修专业</label>
+                                                <div align="right" class="custom-control custom-switch" style="display:inline-block;">
+                                                    <input type="checkbox" class="custom-control-input"
+                                                        id="major_status_input" name="major_status_input"
+                                                        onclick="change_status.call(this);this.blur();">
+                                                    <input type="hidden" value="{{major_status}}" id="major_status" name="major_status" class="form-control">
+                                                    <label class="custom-control-label" for="major_status_input" id="checkbox2_major_status">
+                                                        <font color={% if major_status == "公开" %} "#5F747B" {% else %} "#E1E1E1" {% endif %} 
+                                                            id="font_major_status">{{major_status}}</font>
+                                                    </label>
+                                                </div>
+                                            </div>
+                                            <select class="majors" name="majors" value="" id="majors" multiple="multiple" 
+                                                style="border-color:#C1C9D3; border-radius:4px; width:100%; height:45px;">
+                                                {% for selected_major in selected_major_list %}
+                                                    <option id="{{selected_major.id}}" value="{{selected_major.id}}" selected="selected">
+                                                        {{selected_major.text}}
+                                                    </option>
+                                                {% endfor %}
+                                            </select>
+                                        </div>
+
+                                        <div class="form-group card-label">
+                                            <div style="display:flex; justify-content:space-between;">
+                                                <label for="aintro">辅修专业</label>
+                                                <div align="right" class="custom-control custom-switch" style="display:inline-block;">
+                                                    <input type="checkbox" class="custom-control-input"
+                                                        id="minor_status_input" name="minor_status_input"
+                                                        onclick="change_status.call(this);this.blur();">
+                                                    <input type="hidden" value="{{minor_status}}" id="minor_status" name="minor_status" class="form-control">
+                                                    <label class="custom-control-label" for="minor_status_input" id="checkbox2_minor_status">
+                                                        <font color={% if minor_status == "公开" %} "#5F747B" {% else %} "#E1E1E1" {% endif %} 
+                                                            id="font_minor_status">{{minor_status}}</font>
+                                                    </label>
+                                                </div>
+                                            </div>
+                                            <select class="minors" name="minors" value="" id="minors" multiple="multiple" 
+                                                style="border-color:#C1C9D3; border-radius:4px; width:100%; height:45px;">
+                                                {% for selected_minor in selected_minor_list %}
+                                                    <option id="{{selected_minor.id}}" value="{{selected_minor.id}}" selected="selected">
+                                                        {{selected_minor.text}}
+                                                    </option>
+                                                {% endfor %}
+                                            </select>
+                                        </div>
+
+                                        <div class="form-group card-label">
+                                            <div style="display:flex; justify-content:space-between;">
+                                                <label for="aintro">双学位专业</label>
+                                                <div align="right" class="custom-control custom-switch" style="display:inline-block;">
+                                                    <input type="checkbox" class="custom-control-input"
+                                                        id="double_degree_status_input" name="double_degree_status_input"
+                                                        onclick="change_status.call(this);this.blur();">
+                                                    <input type="hidden" value="{{double_degree_status}}" id="double_degree_status" name="double_degree_status" class="form-control">
+                                                    <label class="custom-control-label" for="double_degree_status_input" id="checkbox2_double_degree_status">
+                                                        <font color={% if double_degree_status == "公开" %} "#5F747B" {% else %} "#E1E1E1" {% endif %} 
+                                                            id="font_double_degree_status">{{double_degree_status}}</font>
+                                                    </label>
+                                                </div>
+                                            </div>
+                                            <select class="double_degrees" name="double_degrees" value="" id="double_degrees" multiple="multiple" 
+                                                style="border-color:#C1C9D3; border-radius:4px; width:100%; height:45px;">
+                                                {% for selected_double_degree in selected_double_degree_list %}
+                                                    <option id="{{selected_double_degree.id}}" value="{{selected_double_degree.id}}" selected="selected">
+                                                        {{selected_double_degree.text}}
+                                                    </option>
+                                                {% endfor %}
+                                            </select>
+                                        </div>
+
+                                        <div class="form-group card-label">
+                                            <div style="display:flex; justify-content:space-between;">
+                                                <label for="aintro">参与项目</label>
+                                                <div align="right" class="custom-control custom-switch" style="display:inline-block;">
+                                                    <input type="checkbox" class="custom-control-input"
+                                                        id="project_status_input" name="project_status_input"
+                                                        onclick="change_status.call(this);this.blur();">
+                                                    <input type="hidden" value="{{project_status}}" id="project_status" name="project_status" class="form-control">
+                                                    <label class="custom-control-label" for="project_status_input" id="checkbox2_project_status">
+                                                        <font color={% if project_status == "公开" %} "#5F747B" {% else %} "#E1E1E1" {% endif %} 
+                                                            id="font_project_status">{{project_status}}</font>
+                                                    </label>
+                                                </div>
+                                            </div>
+                                            <select class="projects" name="projects" value="" id="projects" multiple="multiple" 
+                                                style="border-color:#C1C9D3; border-radius:4px; width:100%; height:45px;">
+                                                {% for selected_project in selected_project_list %}
+                                                    <option id="{{selected_project.id}}" value="{{selected_project.id}}" selected="selected">
+                                                        {{selected_project.text}}
+                                                    </option>
+                                                {% endfor %}
+                                            </select>
+                                        </div>
+
+                                        <div class="form-group card-label">
+                                            <div style="display:flex; justify-content:space-between;">
+                                                <label for="aintro">本科生科研<a data-toggle="tooltip" data-placement="bottom" title="如果想删除现有的内容，直接将其清空即可；注意修改现有内容后，该项将自动变为最新的项">
+                                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor"
+                                                        class="bi bi-question-circle-fill" viewBox="0 0 22 22">
+                                                        <path d="M16 8A8 8 0 1 1 0 8a8 8 0 0 1 16 0zM5.496 6.033h.825c.138 0 .248-.113.266-.25.09-.656.54-1.134 1.342-1.134.686 0 1.314.343 1.314 1.168 0 .635-.374.927-.965 1.371-.673.489-1.206 1.06-1.168 1.987l.003.217a.25.25 0 0 0 .25.246h.811a.25.25 0 0 0 .25-.25v-.105c0-.718.273-.927 1.01-1.486.609-.463 1.244-.977 1.244-2.056 0-1.511-1.276-2.241-2.673-2.241-1.267 0-2.655.59-2.75 2.286a.237.237 0 0 0 .241.247zm2.325 6.443c.61 0 1.029-.394 1.029-.927 0-.552-.42-.94-1.029-.94-.584 0-1.009.388-1.009.94 0 .533.425.927 1.01.927z" />
+                                                    </svg>
+                                                </a></label>
+                                                <div align="right" class="custom-control custom-switch" style="display:inline-block;">
+                                                    <input type="checkbox" class="custom-control-input"
+                                                        id="scientific_research_status_input" name="scientific_research_status_input"
+                                                        onclick="change_status.call(this);this.blur();">
+                                                    <input type="hidden" value="{{scientific_research_status}}" id="scientific_research_status" name="scientific_research_status" class="form-control">
+                                                    <label class="custom-control-label" for="scientific_research_status_input" id="checkbox2_scientific_research_status">
+                                                        <font color={% if scientific_research_status == "公开" %} "#5F747B" {% else %} "#E1E1E1" {% endif %}
+                                                            id="font_scientific_research_status">{{scientific_research_status}}</font>
+                                                    </label>
+                                                </div>
+                                            </div>
+                                            <div>
+                                                {% for scientific_research in scientific_research_list %}
+                                                    <textarea type="text" id="scientific_research_{{forloop.counter0}}" name="scientific_research_{{forloop.counter0}}" 
+                                                        class="form-control" aria-label="Default" placeholder="在此处填写你的本科生科研经历~" rows="3" style="margin-bottom:5px;">{{scientific_research}}</textarea>
+                                                    <div align="right"><button type="button" class="btn btn-danger btn-md mb-4 mr-2" align="right"
+                                                        value="delete" name="delete_btn" onclick="del_entry.call(this)">删除</button></div>
+                                                {% endfor %}
+                                                <textarea type="text" id="scientific_research_{{scientific_research_num}}" name="scientific_research_{{scientific_research_num}}" 
+                                                    class="form-control" aria-label="Default" placeholder="在此处填写你的本科生科研经历~" rows="3" style="margin-bottom:5px;"
+                                                    {% if scientific_research_list %} hidden {% endif %}></textarea>
+                                                <div align="right" {% if scientific_research_list %} hidden {% endif %}>
+                                                    <button type="button" class="btn btn-danger btn-md mb-4 mr-2" align="right"
+                                                    value="delete" name="delete_btn" onclick="del_entry.call(this)">删除</button></div>
+                                            </div>
+                                            <div align="center">
+                                                <a href="javascript:;" onclick="add_textarea.call(this, 'scientific_research', '本科生科研经历')">
+                                                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor" 
+                                                        class="bi bi-plus-circle-fill" viewBox="0 0 16 16" style="color:#8E959C;">
+                                                        <path d="M16 8A8 8 0 1 1 0 8a8 8 0 0 1 16 0zM8.5 4.5a.5.5 0 0 0-1 0v3h-3a.5.5 0 0 0 0 1h3v3a.5.5 0 0 0 1 0v-3h3a.5.5 0 0 0 0-1h-3v-3z"/>
+                                                    </svg>
+                                                </a>
+                                            </div>
+                                            <input type="hidden" id="scientific_research_num" name="scientific_research_num" class="form-control"
+                                                value="{{scientific_research_num}}">
+                                            <input type="hidden" id="scientific_research_show_num" name="scientific_research_show_num" class="form-control"
+                                                value={% if scientific_research_list %} "{{scientific_research_num|add:-1}}" 
+                                                    {% else %} "{{scientific_research_num}}" {% endif %}>
+                                        </div>
+
+                                        <div class="form-group card-label">
+                                            <div style="display:flex; justify-content:space-between;">
+                                                <label for="aintro">挑战杯<a data-toggle="tooltip" data-placement="bottom" title="如果想删除现有的内容，直接将其清空即可；注意修改现有内容后，该项将自动变为最新的项">
+                                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor"
+                                                        class="bi bi-question-circle-fill" viewBox="0 0 22 22">
+                                                        <path d="M16 8A8 8 0 1 1 0 8a8 8 0 0 1 16 0zM5.496 6.033h.825c.138 0 .248-.113.266-.25.09-.656.54-1.134 1.342-1.134.686 0 1.314.343 1.314 1.168 0 .635-.374.927-.965 1.371-.673.489-1.206 1.06-1.168 1.987l.003.217a.25.25 0 0 0 .25.246h.811a.25.25 0 0 0 .25-.25v-.105c0-.718.273-.927 1.01-1.486.609-.463 1.244-.977 1.244-2.056 0-1.511-1.276-2.241-2.673-2.241-1.267 0-2.655.59-2.75 2.286a.237.237 0 0 0 .241.247zm2.325 6.443c.61 0 1.029-.394 1.029-.927 0-.552-.42-.94-1.029-.94-.584 0-1.009.388-1.009.94 0 .533.425.927 1.01.927z" />
+                                                    </svg>
+                                                </a></label>
+                                                <div align="right" class="custom-control custom-switch" style="display:inline-block;">
+                                                    <input type="checkbox" class="custom-control-input"
+                                                        id="challenge_cup_status_input" name="challenge_cup_status_input"
+                                                        onclick="change_status.call(this);this.blur();">
+                                                    <input type="hidden" value="{{challenge_cup_status}}" id="challenge_cup_status" name="challenge_cup_status" class="form-control">
+                                                    <label class="custom-control-label" for="challenge_cup_status_input" id="checkbox2_challenge_cup_status">
+                                                        <font color={% if challenge_cup_status == "公开" %} "#5F747B" {% else %} "#E1E1E1" {% endif %} 
+                                                            id="font_challenge_cup_status">{{challenge_cup_status}}</font>
+                                                    </label>
+                                                </div>
+                                            </div>
+                                            <div>
+                                                {% for challenge_cup in challenge_cup_list %}
+                                                    <textarea type="text" id="challenge_cup_{{forloop.counter0}}" name="challenge_cup_{{forloop.counter0}}" 
+                                                        class="form-control" aria-label="Default" placeholder="在此处填写你的挑战杯经历~" rows="3" style="margin-bottom:5px;">{{challenge_cup}}</textarea>
+                                                    <div align="right"><button type="button" class="btn btn-danger btn-md mb-4 mr-2" align="right"
+                                                        value="delete" name="delete_btn" onclick="del_entry.call(this)">删除</button></div>
+                                                {% endfor %}
+                                                <textarea type="text" id="challenge_cup_{{challenge_cup_num}}" name="challenge_cup_{{challenge_cup_num}}" 
+                                                    class="form-control" aria-label="Default" placeholder="在此处填写你的挑战杯经历~" rows="3" style="margin-bottom:5px;"
+                                                    {% if challenge_cup_list %} hidden {% endif %}></textarea>
+                                                <div align="right" {% if challenge_cup_list %} hidden {% endif %}>
+                                                    <button type="button" class="btn btn-danger btn-md mb-4 mr-2" align="right"
+                                                    value="delete" name="delete_btn" onclick="del_entry.call(this)">删除</button></div>
+                                            </div>
+                                            <div align="center">
+                                                <a href="javascript:;" onclick="add_textarea.call(this, 'challenge_cup', '挑战杯经历')">
+                                                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor" 
+                                                        class="bi bi-plus-circle-fill" viewBox="0 0 16 16" style="color:#8E959C;">
+                                                        <path d="M16 8A8 8 0 1 1 0 8a8 8 0 0 1 16 0zM8.5 4.5a.5.5 0 0 0-1 0v3h-3a.5.5 0 0 0 0 1h3v3a.5.5 0 0 0 1 0v-3h3a.5.5 0 0 0 0-1h-3v-3z"/>
+                                                    </svg>
+                                                </a>
+                                            </div>
+                                            <input type="hidden" id="challenge_cup_num" name="challenge_cup_num" class="form-control"
+                                                value="{{challenge_cup_num}}">
+                                            <input type="hidden" id="challenge_cup_show_num" name="challenge_cup_show_num" class="form-control"
+                                                value={% if challenge_cup_list %} "{{challenge_cup_num|add:-1}}"
+                                                    {% else %} "{{challenge_cup_num}}" {% endif %}>
+                                        </div>
+
+                                        <div class="form-group card-label">
+                                            <div style="display:flex; justify-content:space-between;">
+                                                <label for="aintro">实习经历<a data-toggle="tooltip" data-placement="bottom" title="如果想删除现有的内容，直接将其清空即可；注意修改现有内容后，该项将自动变为最新的项">
+                                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor"
+                                                        class="bi bi-question-circle-fill" viewBox="0 0 22 22">
+                                                        <path d="M16 8A8 8 0 1 1 0 8a8 8 0 0 1 16 0zM5.496 6.033h.825c.138 0 .248-.113.266-.25.09-.656.54-1.134 1.342-1.134.686 0 1.314.343 1.314 1.168 0 .635-.374.927-.965 1.371-.673.489-1.206 1.06-1.168 1.987l.003.217a.25.25 0 0 0 .25.246h.811a.25.25 0 0 0 .25-.25v-.105c0-.718.273-.927 1.01-1.486.609-.463 1.244-.977 1.244-2.056 0-1.511-1.276-2.241-2.673-2.241-1.267 0-2.655.59-2.75 2.286a.237.237 0 0 0 .241.247zm2.325 6.443c.61 0 1.029-.394 1.029-.927 0-.552-.42-.94-1.029-.94-.584 0-1.009.388-1.009.94 0 .533.425.927 1.01.927z" />
+                                                    </svg>
+                                                </a></label>
+                                                <div align="right" class="custom-control custom-switch" style="display:inline-block;">
+                                                    <input type="checkbox" class="custom-control-input"
+                                                        id="internship_status_input" name="internship_status_input"
+                                                        onclick="change_status.call(this);this.blur();">
+                                                    <input type="hidden" value="{{internship_status}}" id="internship_status" name="internship_status" class="form-control">
+                                                    <label class="custom-control-label" for="internship_status_input" id="checkbox2_internship_status">
+                                                        <font color={% if internship_status == "公开" %} "#5F747B" {% else %} "#E1E1E1" {% endif %}
+                                                            id="font_internship_status">{{internship_status}}</font>
+                                                    </label>
+                                                </div>
+                                            </div>
+                                            <div>
+                                                {% for internship in internship_list %}
+                                                    <textarea type="text" id="internship_{{forloop.counter0}}" name="internship_{{forloop.counter0}}" 
+                                                        class="form-control" aria-label="Default" placeholder="在此处填写你的实习经历~" rows="3" style="margin-bottom:5px;">{{internship}}</textarea>
+                                                    <div align="right"><button type="button" class="btn btn-danger btn-md mb-4 mr-2" align="right"
+                                                        value="delete" name="delete_btn" onclick="del_entry.call(this)">删除</button></div>
+                                                {% endfor %}
+                                                <textarea type="text" id="internship_{{internship_num}}" name="internship_{{internship_num}}" class="form-control" 
+                                                    aria-label="Default" placeholder="在此处填写你的实习经历~" rows="3" style="margin-bottom:5px;"
+                                                    {% if internship_list %} hidden {% endif %}></textarea>
+                                                <div align="right" {% if internship_list %} hidden {% endif %}>
+                                                    <button type="button" class="btn btn-danger btn-md mb-4 mr-2" align="right"
+                                                    value="delete" name="delete_btn" onclick="del_entry.call(this)">删除</button></div>
+                                            </div>
+                                            <div align="center">
+                                                <a href="javascript:;" onclick="add_textarea.call(this, 'internship', '实习经历')">
+                                                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor" 
+                                                        class="bi bi-plus-circle-fill" viewBox="0 0 16 16" style="color:#8E959C;">
+                                                        <path d="M16 8A8 8 0 1 1 0 8a8 8 0 0 1 16 0zM8.5 4.5a.5.5 0 0 0-1 0v3h-3a.5.5 0 0 0 0 1h3v3a.5.5 0 0 0 1 0v-3h3a.5.5 0 0 0 0-1h-3v-3z"/>
+                                                    </svg>
+                                                </a>
+                                            </div>
+                                            <input type="hidden" id="internship_num" name="internship_num" class="form-control"
+                                                value="{{internship_num}}">
+                                            <input type="hidden" id="internship_show_num" name="internship_show_num" class="form-control"
+                                                value={% if internship_list %} "{{internship_num|add:-1}}"
+                                                    {% else %} "{{internship_num}}" {% endif %}>
+                                        </div>
+
+                                        <div class="form-group card-label">
+                                            <div style="display:flex; justify-content:space-between;">
+                                                <label for="aintro">科研方向<a data-toggle="tooltip" data-placement="bottom" title="如果想删除现有的内容，直接将其清空即可；注意修改现有内容后，该项将自动变为最新的项">
+                                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor"
+                                                        class="bi bi-question-circle-fill" viewBox="0 0 22 22">
+                                                        <path d="M16 8A8 8 0 1 1 0 8a8 8 0 0 1 16 0zM5.496 6.033h.825c.138 0 .248-.113.266-.25.09-.656.54-1.134 1.342-1.134.686 0 1.314.343 1.314 1.168 0 .635-.374.927-.965 1.371-.673.489-1.206 1.06-1.168 1.987l.003.217a.25.25 0 0 0 .25.246h.811a.25.25 0 0 0 .25-.25v-.105c0-.718.273-.927 1.01-1.486.609-.463 1.244-.977 1.244-2.056 0-1.511-1.276-2.241-2.673-2.241-1.267 0-2.655.59-2.75 2.286a.237.237 0 0 0 .241.247zm2.325 6.443c.61 0 1.029-.394 1.029-.927 0-.552-.42-.94-1.029-.94-.584 0-1.009.388-1.009.94 0 .533.425.927 1.01.927z" />
+                                                    </svg>
+                                                </a></label>
+                                                <div align="right" class="custom-control custom-switch" style="display:inline-block;">
+                                                    <input type="checkbox" class="custom-control-input"
+                                                        id="scientific_direction_status_input" name="scientific_direction_status_input"
+                                                        onclick="change_status.call(this);this.blur();">
+                                                    <input type="hidden" value="{{scientific_direction_status}}" id="scientific_direction_status" name="scientific_direction_status" class="form-control">
+                                                    <label class="custom-control-label" for="scientific_direction_status_input" id="checkbox2_scientific_direction_status">
+                                                        <font color={% if scientific_direction_status == "公开" %} "#5F747B" {% else %} "#E1E1E1" {% endif %} 
+                                                            id="font_scientific_direction_status">{{scientific_direction_status}}</font>
+                                                    </label>
+                                                </div>
+                                            </div>
+                                            <div>
+                                                {% for scientific_direction in scientific_direction_list %}
+                                                    <textarea type="text" id="scientific_direction_{{forloop.counter0}}" name="scientific_direction_{{forloop.counter0}}" 
+                                                        class="form-control" aria-label="Default" placeholder="在此处填写你的科研方向~" rows="3" style="margin-bottom:5px;">{{scientific_direction}}</textarea>
+                                                    <div align="right"><button type="button" class="btn btn-danger btn-md mb-4 mr-2" align="right"
+                                                        value="delete" name="delete_btn" onclick="del_entry.call(this)">删除</button></div>
+                                                {% endfor %}
+                                                <textarea type="text" id="scientific_direction_{{scientific_direction_num}}" name="scientific_direction_{{scientific_direction_num}}" 
+                                                    class="form-control" aria-label="Default" placeholder="在此处填写你的科研方向~" rows="3" style="margin-bottom:5px;"
+                                                    {% if scientific_direction_list %} hidden {% endif %}></textarea>
+                                                <div align="right" {% if scientific_direction_list %} hidden {% endif %}>
+                                                    <button type="button" class="btn btn-danger btn-md mb-4 mr-2" align="right"
+                                                    value="delete" name="delete_btn" onclick="del_entry.call(this)">删除</button></div>
+                                            </div>
+                                            <div align="center">
+                                                <a href="javascript:;" onclick="add_textarea.call(this, 'scientific_direction', '科研方向')">
+                                                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor" 
+                                                        class="bi bi-plus-circle-fill" viewBox="0 0 16 16" style="color:#8E959C;">
+                                                        <path d="M16 8A8 8 0 1 1 0 8a8 8 0 0 1 16 0zM8.5 4.5a.5.5 0 0 0-1 0v3h-3a.5.5 0 0 0 0 1h3v3a.5.5 0 0 0 1 0v-3h3a.5.5 0 0 0 0-1h-3v-3z"/>
+                                                    </svg>
+                                                </a>
+                                            </div>
+                                            <input type="hidden" id="scientific_direction_num" name="scientific_direction_num" class="form-control"
+                                                value="{{scientific_direction_num}}">
+                                            <input type="hidden" id="scientific_direction_show_num" name="scientific_direction_show_num" class="form-control"
+                                                value={% if scientific_direction_list %} "{{scientific_direction_num|add:-1}}"
+                                                    {% else %} "{{scientific_direction_num}}" {% endif %}>
+                                        </div>
+
+                                        <div class="form-group card-label">
+                                            <div style="display:flex; justify-content:space-between;">
+                                                <label for="aintro">毕业去向<a data-toggle="tooltip" data-placement="bottom" title="如果想删除现有的内容，直接将其清空即可；注意修改现有内容后，该项将自动变为最新的项">
+                                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor"
+                                                        class="bi bi-question-circle-fill" viewBox="0 0 22 22">
+                                                        <path d="M16 8A8 8 0 1 1 0 8a8 8 0 0 1 16 0zM5.496 6.033h.825c.138 0 .248-.113.266-.25.09-.656.54-1.134 1.342-1.134.686 0 1.314.343 1.314 1.168 0 .635-.374.927-.965 1.371-.673.489-1.206 1.06-1.168 1.987l.003.217a.25.25 0 0 0 .25.246h.811a.25.25 0 0 0 .25-.25v-.105c0-.718.273-.927 1.01-1.486.609-.463 1.244-.977 1.244-2.056 0-1.511-1.276-2.241-2.673-2.241-1.267 0-2.655.59-2.75 2.286a.237.237 0 0 0 .241.247zm2.325 6.443c.61 0 1.029-.394 1.029-.927 0-.552-.42-.94-1.029-.94-.584 0-1.009.388-1.009.94 0 .533.425.927 1.01.927z" />
+                                                    </svg>
+                                                </a></label>
+                                                <div align="right" class="custom-control custom-switch" style="display:inline-block;">
+                                                    <input type="checkbox" class="custom-control-input"
+                                                        id="graduation_status_input" name="graduation_status_input"
+                                                        onclick="change_status.call(this);this.blur();">
+                                                    <input type="hidden" value="{{graduation_status}}" id="graduation_status" name="graduation_status" class="form-control">
+                                                    <label class="custom-control-label" for="graduation_status_input" id="checkbox2_graduation_status">
+                                                        <font color={% if graduation_status == "公开" %} "#5F747B" {% else %} "#E1E1E1" {% endif %} 
+                                                            id="font_graduation_status">{{graduation_status}}</font>
+                                                    </label>
+                                                </div>
+                                            </div>
+                                            <div>
+                                                {% for graduation in graduation_list %}
+                                                    <textarea type="text" id="graduation_{{forloop.counter0}}" name="graduation_{{forloop.counter0}}" 
+                                                        class="form-control" aria-label="Default" placeholder="在此处填写你的毕业去向~" rows="3" style="margin-bottom:5px;">{{graduation}}</textarea>
+                                                    <div align="right"><button type="button" class="btn btn-danger btn-md mb-4 mr-2" align="right"
+                                                        value="delete" name="delete_btn" onclick="del_entry.call(this)">删除</button></div>
+                                                {% endfor %}
+                                                <textarea type="text" id="graduation_{{graduation_num}}" name="graduation_{{graduation_num}}" 
+                                                    class="form-control" aria-label="Default" placeholder="在此处填写你的毕业去向~" rows="3" style="margin-bottom:5px;"
+                                                    {% if graduation_list %} hidden {% endif %}></textarea>
+                                                <div align="right" {% if graduation_list %} hidden {% endif %}>
+                                                    <button type="button" class="btn btn-danger btn-md mb-4 mr-2" align="right"
+                                                    value="delete" name="delete_btn" onclick="del_entry.call(this)">删除</button></div>
+                                            </div>
+                                            <div align="center">
+                                                <a href="javascript:;" onclick="add_textarea.call(this, 'graduation', '毕业去向')">
+                                                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor" 
+                                                        class="bi bi-plus-circle-fill" viewBox="0 0 16 16" style="color:#8E959C;">
+                                                        <path d="M16 8A8 8 0 1 1 0 8a8 8 0 0 1 16 0zM8.5 4.5a.5.5 0 0 0-1 0v3h-3a.5.5 0 0 0 0 1h3v3a.5.5 0 0 0 1 0v-3h3a.5.5 0 0 0 0-1h-3v-3z"/>
+                                                    </svg>
+                                                </a>
+                                            </div>
+                                            <input type="hidden" id="graduation_num" name="graduation_num" class="form-control"
+                                                value="{{graduation_num}}">
+                                            <input type="hidden" id="graduation_show_num" name="graduation_show_num" class="form-control"
+                                                value={% if graduation_list %} "{{graduation_num|add:-1}}"
+                                                    {% else %} "{{graduation_num}}" {% endif %}>
+                                        </div>
+
+                                        <div class="form-group card-label">
+                                            <label for="aintro">是否允许他人提问
+                                                <a data-toggle="tooltip" data-placement="bottom" title="他人将以实名或匿名的方式向你发起提问。">
+                                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor"
+                                                        class="bi bi-question-circle-fill" viewBox="0 0 22 22">
+                                                        <path d="M16 8A8 8 0 1 1 0 8a8 8 0 0 1 16 0zM5.496 6.033h.825c.138 0 .248-.113.266-.25.09-.656.54-1.134 1.342-1.134.686 0 1.314.343 1.314 1.168 0 .635-.374.927-.965 1.371-.673.489-1.206 1.06-1.168 1.987l.003.217a.25.25 0 0 0 .25.246h.811a.25.25 0 0 0 .25-.25v-.105c0-.718.273-.927 1.01-1.486.609-.463 1.244-.977 1.244-2.056 0-1.511-1.276-2.241-2.673-2.241-1.267 0-2.655.59-2.75 2.286a.237.237 0 0 0 .241.247zm2.325 6.443c.61 0 1.029-.394 1.029-.927 0-.552-.42-.94-1.029-.94-.584 0-1.009.388-1.009.94 0 .533.425.927 1.01.927z" />
+                                                    </svg>
+                                                </a>
+                                            </label>
+                                            <div class="custom-control custom-switch" style="display:inline-block; margin-left:20px;">
+                                                <input type="checkbox" class="custom-control-input"
+                                                    id="accept_chat_input" name="accept_chat_input"
+                                                    onclick="change_accept_chat.call(this);this.blur();">
+                                                <input type="hidden" value="{{accept_chat}}" id="accept_chat" name="accept_chat" class="form-control">
+                                                <label class="custom-control-label" for="accept_chat_input" id="checkbox2_accept_chat">
+                                                </label>
+                                            </div>
+                                        </div>
+
+                                        <br/>
+                                        <div align="center">
+                                            <button type="submit" class="btn btn-primary btn-lg mb-4 mr-2"
+                                                value="modify" name="post_type" onclick="return confirm('确认修改学术地图？')">修改</button>
+                                        </div>
+
+                                    </form>
+                                </div>
+                                <!--  END FORM AREA  -->
+
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    
+</div>
+<!--  END CONTENT AREA  -->
+{% endblock %}
+
+
+{% block add_js_file %}
+    <script src={% static "plugins/dropify/dropify.min.js" %}></script>
+    <script src={% static "assets/js/users/account-settings.js" %}></script>
+    <script src={% static "assets/js/select2/select2.min.js" %}></script>
+    <script>
+        function matchCustom(params, data) {
+            // If there are no search terms, return all of the data
+            if ($.trim(params.term) === '') {
+                return data;
+            }
+            // Do not display the item if there is no 'text' property
+            if (typeof data.text === 'undefined') {
+                return null;
+            }
+            // `params.term` should be the term that is used for searching
+            // `data.text` is the text that is displayed for the data object
+            if (data.text.indexOf(params.term) > -1) {
+                return data;
+                // You can return modified objects from here
+                // This includes matching the `children` how you want in nested data sets
+                // var modifiedData = $.extend({}, data, true);
+                // modifiedData.text += ' (matched)';
+                //return modifiedData;
+            }
+            // Return `null` if the term should not be displayed
+            return null;
+        }
+
+        let major_data = {{major_list|safe}};
+        let minor_data = {{minor_list|safe}};
+        let double_degree_data = {{double_degree_list|safe}};
+        let project_data = {{project_list|safe}};
+        const MAX_LENGTH = 4000;
+
+        $(document).ready( function () {
+            $('.majors').select2({
+                theme: "classic",
+                placeholder: "根据专业名称搜索",
+                allowClear: true,
+                data: major_data,
+                matcher: matchCustom,
+            });
+            $('.minors').select2({
+                theme: "classic",
+                placeholder: "根据专业名称搜索",
+                allowClear: true,
+                data: minor_data,
+                matcher: matchCustom,
+            });
+            $('.double_degrees').select2({
+                theme: "classic",
+                placeholder: "根据专业名称搜索",
+                allowClear: true,
+                data: double_degree_data,
+                matcher: matchCustom,
+            });
+            $('.projects').select2({
+                theme: "classic",
+                placeholder: "根据项目名称搜索",
+                allowClear: true,
+                data: project_data,
+                matcher: matchCustom,
+            }); 
+        });
+
+        //设置所有checkbox的初始状态
+        $(document).ready( function () {
+            $('#all_status_input').prop("checked", "{{all_status}}" == "公开");
+            $('#major_status_input').prop("checked", "{{major_status}}" == "公开");
+            $('#minor_status_input').prop("checked", "{{minor_status}}" == "公开");
+            $('#double_degree_status_input').prop("checked", "{{double_degree_status}}" == "公开");
+            $('#project_status_input').prop("checked", "{{project_status}}" == "公开");
+            $('#scientific_research_status_input').prop(
+                "checked", "{{scientific_research_status}}" == "公开"
+            );
+            $('#challenge_cup_status_input').prop("checked", "{{challenge_cup_status}}" == "公开");
+            $('#internship_status_input').prop("checked", "{{internship_status}}" == "公开");
+            $('#scientific_direction_status_input').prop(
+                "checked", "{{scientific_direction_status}}" == "公开"
+            );
+            $('#graduation_status_input').prop("checked", "{{graduation_status}}" == "公开");
+            $('#accept_chat_input').prop("checked", "{{accept_chat}}" == "True");
+        });
+
+        function add_textarea(type, type_zh) {
+            const num_input = this.parentNode.nextElementSibling;
+            const show_num_input = num_input.nextElementSibling;
+            const textarea_div = this.parentNode.previousElementSibling;
+            const textareas = textarea_div.children;
+            for (var i = 0; i < textareas.length; i += 2) {
+                const textarea_value = $('#' + type + '_' + String(i/2)).val();
+                textareas[i].innerHTML = textarea_value;
+            }
+            num_input.value = String(Number(num_input.value) + 1);
+            show_num_input.value = String(Number(show_num_input.value) + 1);
+            textarea_div.innerHTML += '<textarea type="text" id="' + type + "_" + num_input.value 
+                + '" name="' + type + "_" + num_input.value + '" class="form-control" aria-label="Default" ' 
+                + 'placeholder="在此处填写你的' + type_zh + '~" rows="3" style="margin-bottom:5px;"></textarea>';
+            textarea_div.innerHTML += '<div align="right"><button type="button" class="btn btn-danger btn-md mb-4 mr-2" ' 
+                + 'align="right" value="delete" name="delete_btn" onclick="del_entry.call(this)">删除</button></div>';
+        }
+
+        function del_entry () {
+            if (confirm("是否确认删除？")) {
+                const on_delete_textarea = this.parentNode.previousElementSibling;
+                const show_num_input = this.parentNode.parentNode.nextElementSibling.nextElementSibling.nextElementSibling;
+                if (show_num_input.value == "0") 
+                    return alert("不能将输入框全部删除哦！如果不想保留该项目，直接不填写输入框即可~");
+                else {
+                    show_num_input.value = String(Number(show_num_input.value) - 1);
+                    $('#' + on_delete_textarea.id).val("");
+                    on_delete_textarea.hidden = true;
+                    this.hidden = true;
+                }
+            }
+        }
+
+        function change_all_status(){
+            const checkboxes = document.getElementsByClassName('custom-control-input');
+            const all_status_hidden = checkboxes[0].nextElementSibling;
+            if (!checkboxes[0].checked) {
+                all_status_hidden.value = "0";
+                for (var i = 1; i <= {{total_num}}; i += 1) {
+                    const checkbox = checkboxes[i];
+                    if (checkbox.checked) {
+                        checkbox.checked = false;
+                        const status_font = checkbox.nextElementSibling.nextElementSibling.childNodes[1]; 
+                        const status_hidden = checkbox.nextElementSibling;
+                        status_font.color = "#E1E1E1";      
+                        status_font.innerHTML = "私密";   
+                        status_hidden.value = "私密";
+                    }
+                }
+            } else {
+                all_status_hidden.value = "{{total_num}}";
+                for (var i = 1; i <= {{total_num}}; i += 1) {
+                    const checkbox = checkboxes[i];
+                    if (!checkbox.checked) {
+                        checkbox.checked = true;
+                        const status_font = checkbox.nextElementSibling.nextElementSibling.childNodes[1]; 
+                        const status_hidden = checkbox.nextElementSibling;
+                        status_font.color = "#5F747B";      
+                        status_font.innerHTML = "公开";   
+                        status_hidden.value = "公开";
+                    }
+                }
+            }
+        }
+
+        function change_status() {
+            const status_font = this.nextElementSibling.nextElementSibling.childNodes[1]; 
+            const status_hidden = this.nextElementSibling;
+            const all_status_input = document.getElementById("all_status_input");
+            const all_status_hidden = all_status_input.nextElementSibling;
+            if (!this.checked) {
+                status_font.color = "#E1E1E1";      
+                status_font.innerHTML = "私密";   
+                status_hidden.value = "私密";
+                all_status_hidden.value = String(Number(all_status_hidden.value) - 1);
+                if (all_status_input.checked)
+                    all_status_input.checked = false;
+            } else {
+                status_font.color = "#5F747B";      
+                status_font.innerHTML = "公开";   
+                status_hidden.value = "公开";
+                all_status_hidden.value = String(Number(all_status_hidden.value) + 1);
+                if (all_status_hidden.value == "{{total_num}}")
+                    all_status_input.checked = true;
+            }
+        }
+
+        function change_accept_chat () {
+            const accept_hidden = this.nextElementSibling;
+            if (!this.checked) accept_hidden.value = "False";
+            else accept_hidden.value = "True";
+        }
+
+    </script>
+{% endblock %}

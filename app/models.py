@@ -965,7 +965,15 @@ class Activity(CommentBase):
         default=Semester.now,
     )
 
-    publish_time = models.DateTimeField("信息发布时间", auto_now_add=True)  # 可以为空
+    class PublishDay(models.IntegerChoices):
+        instant = (0, "立即发布")
+        oneday = (1, "提前一天")
+        twoday = (2, "提前两天")
+        threeday = (3, "提前三天")
+
+    publish_day = models.SmallIntegerField("信息发布提前时间", default=PublishDay.threeday)  # 默认为提前三天时间
+    publish_time = models.DateTimeField("信息发布时间", default=datetime.now)  # 默认为当前时间，可以被覆盖
+    need_apply = models.BooleanField("是否需要报名", default=False) 
 
     # 删除显示报名时间, 保留一个字段表示报名截止于活动开始前多久：1h / 1d / 3d / 7d
     class EndBefore(models.IntegerChoices):
@@ -977,6 +985,7 @@ class Activity(CommentBase):
     class EndBeforeHours:
         prepare_times = [1, 24, 72, 168]
 
+    # TODO: 修改默认报名截止时间为活动开始前（5分钟）
     endbefore = models.SmallIntegerField(
         "报名截止于", choices=EndBefore.choices, default=EndBefore.oneday
     )
@@ -1034,6 +1043,7 @@ class Activity(CommentBase):
         REJECT = "未过审"
         CANCELED = "已取消"
         APPLYING = "报名中"
+        UNPUBLISHED = "待发布"
         WAITING = "等待中"
         PROGRESSING = "进行中"
         END = "已结束"
@@ -1065,6 +1075,7 @@ class Activity(CommentBase):
         jobids = []
         try:
             jobids.append(f'activity_{self.id}_remind')
+            jobids.append(f'activity_{self.id}_{Activity.Status.APPLYING}')
             jobids.append(f'activity_{self.id}_{Activity.Status.WAITING}')
             jobids.append(f'activity_{self.id}_{Activity.Status.PROGRESSING}')
             jobids.append(f'activity_{self.id}_{Activity.Status.END}')
@@ -1715,7 +1726,14 @@ class Course(models.Model):
 
     capacity = models.IntegerField("课程容量", default=100)
     current_participants = models.IntegerField("当前选课人数", default=0)
+    class PublishDay(models.IntegerChoices):
+        instant = (0, "立即发布")
+        oneday = (1, "提前一天")
+        twoday = (2, "提前两天")
+        threeday = (3, "提前三天")
 
+    publish_day = models.SmallIntegerField("信息发布时间", default=PublishDay.threeday)  # 默认为提前三天时间
+    need_apply = models.BooleanField("是否需要报名", default=False)  
     # 暂时只允许上传一张图片
     photo = models.ImageField(verbose_name="宣传图片",
                               upload_to=f"course/photo/%Y/",
@@ -2007,6 +2025,15 @@ class AcademicTag(models.Model):
 
     atype = models.SmallIntegerField('标签类型', choices=AcademicTagType.choices)
     tag_content = models.CharField('标签内容', max_length=63)
+    
+    def __str__(self):
+        return AcademicTag.AcademicTagType(self.atype).label + ' - ' + self.tag_content
+
+
+class AcademicEntryManager(models.Manager):
+    def activated(self):
+        # 筛选未被删除的entry
+        return self.exclude(status=AcademicEntry.EntryStatus.OUTDATE)
 
 
 class AcademicEntry(models.Model):
@@ -2021,6 +2048,8 @@ class AcademicEntry(models.Model):
 
     person = models.ForeignKey(NaturalPerson, on_delete=models.CASCADE)
     status = models.SmallIntegerField('记录状态', choices=EntryStatus.choices)
+    
+    objects: AcademicEntryManager = AcademicEntryManager()
 
 
 class AcademicTagEntry(AcademicEntry):
@@ -2073,12 +2102,11 @@ class Chat(CommentBase):
     respondent: User = models.ForeignKey(User, on_delete=models.CASCADE,
                              related_name="receive_chat_set")
     title = models.CharField("主题", default="", max_length=50)
-    anonymous_flag = models.BooleanField("是否匿名", default=False) # 指发送方
+    anonymous = models.BooleanField("是否匿名", default=False) # 指发送方
 
     class Status(models.IntegerChoices):
         PROGRESSING = (0, "进行中")
         CLOSED = (1, "已关闭") # 发送方或接收方选择关闭时转入该状态，此后双方不能再向该Chat发消息
-        FORBIDDEN = (2, "禁用") # 接收方处于不允许匿名提问状态时，所有发送方匿名的、进行中的Chat转入该状态，此后双方不能再向该Chat发消息
     status = models.SmallIntegerField(choices=Status.choices, default=0)
 
     objects: ChatManager = ChatManager()

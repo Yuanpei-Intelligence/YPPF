@@ -20,6 +20,7 @@ from app import (
     course_views,
     feedback_views,
     academic_views,
+    chat_api,
 )
 from django.conf import settings
 
@@ -105,6 +106,14 @@ urlpatterns = [
 ] + [
     # 学术地图
     path("searchAcademic/", academic_views.searchAcademic, name="searchAcademic"),
+    path("modifyAcademic/", academic_views.modifyAcademic, name="modifyAcademic"),
+    path("AcademicQA/", academic_views.showChats, name="showChats"),
+    path("viewQA/<str:chat_id>", academic_views.viewChat, name="viewChat"),
+] + [
+    # 问答相关
+    path("addChatComment/", chat_api.addChatComment, name="addChatComment"),
+    path("closeChat/", chat_api.closeChat, name="closeChat"),
+    path("startChat/", chat_api.startChat, name="startChat"),
 ] + [
     # 埋点
     path('eventTrackingFunc/', views.eventTrackingFunc, name='eventTracking'),

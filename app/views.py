@@ -26,6 +26,7 @@ from app.models import (
     Semester,
     PageLog,
     ModuleLog,
+    Chat,
 )
 from app.utils import (
     url_check,
@@ -47,6 +48,9 @@ from app.notification_utils import(
     bulk_notification_create,
     notification_status_change,
     notification2Display,
+)
+from app.academic_utils import(
+    comments2Display,
 )
 
 import json
@@ -515,7 +519,22 @@ def stuinfo(request: HttpRequest, name=None):
         if modpw_status is not None and modpw_status == "success":
             html_display["warn_code"] = 2
             html_display["warn_message"] = "修改个人信息成功!"
+        
 
+        # ----------------------------------- 学术地图 ----------------------------------- #
+        # ------------------ 提问区 or 进行中的问答------------------ #
+        progressing_chat = Chat.objects.activated().filter(
+            questioner=request.user,
+            respondent=person.get_user())
+        if progressing_chat.exists(): # 有进行中的问答
+            comments2Display(progressing_chat[0], html_display, request.user)
+            html_display["have_progressing_chat"] = True
+        else: # 没有进行中的问答，显示提问区
+            html_display["have_progressing_chat"] = False
+            html_display["accept_chat"] = person.get_user().accept_chat
+            html_display["accept_anonymous"] = person.get_user().accept_anonymous_chat
+        
+        
         # 存储被查询人的信息
         context = dict()
 
