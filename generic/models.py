@@ -13,10 +13,12 @@ models.py
 @Author pht
 @Date 2022-08-19
 '''
+import pypinyin
 from django.db import models
 from django.contrib.auth.models import AbstractUser
 from django.contrib.auth.models import UserManager as _UserManager
 from django.db import transaction
+from django.db.models import QuerySet
 
 __all__ = [
     'User',
@@ -24,11 +26,29 @@ __all__ = [
 ]
 
 
+def necessary_for_frontend(method, *fields):
+    '''前端必须使用此方法代替直接访问相关属性，如限制choice的属性，可以在参数中标记相关字段'''
+    if isinstance(method, (str, models.Field)):
+        return necessary_for_frontend
+    return method
+
+def invalid_for_frontend(method):
+    '''前端不能使用这个方法'''
+    return method
+
+
+def to_acronym(name: str) -> str:
+    '''生成缩写'''
+    pinyin_list = pypinyin.pinyin(name, style=pypinyin.NORMAL)
+    return ''.join([w[0][0] for w in pinyin_list])
+
+
 class UserManager(_UserManager):
     '''
     用户管理器，提供对信用分等通用
     '''
     def get_user(self, user: 'User|int|str', update=False) -> 'User':
+        '''根据主键或用户名(学号)等唯一字段查询对应的用户'''
         users = self.all()
         if update:
             users = users.select_for_update()
@@ -37,6 +57,30 @@ class UserManager(_UserManager):
         if isinstance(user, str):
             return users.get(username=user)
         return users.get(pk=user)
+
+    def create_user(self, username: str, name: str,
+                    usertype: 'User.Type' = None, *,
+                    password: str = None,
+                    **extra_fields) -> 'User':
+        '''创建用户，根据名称自动设置名称缩写'''
+        if usertype is not None:
+            extra_fields['utype'] = usertype
+        extra_fields['name'] = name
+        extra_fields.setdefault('acronym', to_acronym(name))
+        return super().create_user(username=username, password=password, **extra_fields)
+
+    def create(self, **fields):
+        '''User.objects.create已废弃'''
+        raise NotImplementedError
+
+    def get(self, *args, **kwargs) -> 'User':
+        return super().get(*args, **kwargs)
+
+    def all(self) -> 'QuerySet[User]':
+        return super().all()
+
+    def filter(self, *args, **kwargs) -> 'QuerySet[User]':
+        return super().filter(*args, **kwargs)
 
 
     @transaction.atomic
@@ -124,13 +168,38 @@ class User(AbstractUser, PointMixin):
         ORG = 'Organization', '组织'
         SPECIAL = '', '特殊用户'
 
+    name = models.CharField('名称', max_length=32)
+    acronym = models.CharField('缩写', max_length=32, default='', blank=True)
     utype: 'str|Type' = models.CharField(
         '用户类型', max_length=20,
         choices=Type.choices,
         default='', blank=True,
     )
 
+    REQUIRED_FIELDS = ['name']
     objects: UserManager = UserManager()
+
+    @necessary_for_frontend(name)
+    def get_full_name(self) -> str:
+        '''User的通用方法，展示用户的名称'''
+        return self.name
+
+    @necessary_for_frontend(acronym)
+    def get_short_name(self) -> str:
+        '''User的通用方法，展示用户的简写'''
+        return self.acronym
+
+    @invalid_for_frontend
+    def is_valid(self) -> bool:
+        return self.utype != self.Type.SPECIAL
+
+    @necessary_for_frontend(utype)
+    def is_person(self) -> bool:
+        return self.utype == self.Type.PERSON
+
+    @necessary_for_frontend(utype)
+    def is_org(self) -> bool:
+        return self.utype == self.Type.ORG
 
 
 class CreditRecord(models.Model):
