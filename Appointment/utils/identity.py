@@ -147,7 +147,7 @@ def _create_account(request: HttpRequest, **values) -> Union[Participant, None]:
                 name=given_name,
                 pinyin=pinyin_init,
             )
-            values.setdefault('credit', 3)
+            # values.setdefault('credit', 3)
             values.setdefault('hidden', is_org(request.user))
             values.setdefault('longterm',
                 is_org(request.user) and len(get_member_ids(request.user)) >= 10)
