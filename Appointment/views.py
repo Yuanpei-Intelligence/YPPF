@@ -116,148 +116,92 @@ def getAppoint(request):    # 班牌机对接程序
             }, status=200)
 
 
-camera_lock = threading.RLock()
+def _update_check_state(appoint: Appoint, current_num, refresh=False):
+    if appoint.Acheck_status == Appoint.CheckStatus.UNSAVED or refresh:
+        # 说明是新的一分钟或者本分钟还没有记录
+        # 如果随机成功，记录新的检查结果
+        if random.uniform(0, 1) < GLOBAL_INFO.check_rate:
+            appoint.Acheck_status = Appoint.CheckStatus.FAILED
+            appoint.Acamera_check_num += 1
+            if current_num >= appoint.Aneed_num:  # 如果本次检测合规
+                appoint.Acamera_ok_num += 1
+                appoint.Acheck_status = Appoint.CheckStatus.PASSED
+        # 如果随机失败，锁定上一分钟的结果
+        else:
+            if appoint.Acheck_status == Appoint.CheckStatus.FAILED:
+                # 如果本次检测合规，宽容时也算上一次通过（因为一分钟只检测两次）
+                if current_num >= appoint.Aneed_num:
+                    appoint.Acamera_ok_num += 1
+            # 本分钟暂无记录
+            appoint.Acheck_status = Appoint.CheckStatus.UNSAVED
+    else:
+        # 和上一次检测在同一分钟，此时：1.不增加检测次数 2.如果合规则增加ok次数
+        if appoint.Acheck_status == Appoint.CheckStatus.FAILED:
+            # 当前不合规；如果这次检测合规，那么认为本分钟合规
+            if current_num >= appoint.Aneed_num:
+                appoint.Acamera_ok_num += 1
+                appoint.Acheck_status = Appoint.CheckStatus.PASSED
+        # else:当前已经合规，不需要额外操作
 
 
 @csrf_exempt
-def cameracheck(request):   # 摄像头post的后端函数
-
+def cameracheck(request):
+    '''摄像头post对接的后端函数'''
     # 获取摄像头信号，得到rid,最小人数
     try:
         ip = request.META.get("REMOTE_ADDR")
-        temp_stu_num = int(
-            # eval(request.body.decode('unicode-escape'))['body']['people_num'])
-            json.loads(request.body)['body']['people_num'])
+        current_num = int(json.loads(request.body)['body']['people_num'])
         rid = iptoroom(ip.split(".")[3])  # !!!!!
-        # rid = 'B221'  # just for debug
-        room = Room.objects.get(Rid=rid)  # 获取摄像头信号
-        num_need = room.Rmin  # 最小房间人数
+        room: Room = Room.objects.get(Rid=rid)
     except:
-        return JsonResponse({'statusInfo': {
-            'message': '缺少摄像头信息!',
-        }},
-            status=400)
-    now_time = datetime.now()
+        return JsonResponse({'statusInfo': {'message': '缺少摄像头信息!'}}, status=400)
 
     # 存储上一次的检测时间
-    room_previous_check_time = room.Rlatest_time
+    now_time = datetime.now()
+    previous_check_time = room.Rlatest_time
 
     # 更新现在的人数、最近更新时间
     try:
         with transaction.atomic():
-            room.Rpresent = temp_stu_num
+            room.Rpresent = current_num
             room.Rlatest_time = now_time
             room.save()
-
     except Exception as e:
-        operation_writer(SYSTEM_LOG, "房间"+str(rid) +
-                         "更新摄像头人数失败1: "+str(e), "views.cameracheck", "Error")
-
-        return JsonResponse({'statusInfo': {
-            'message': '更新摄像头人数失败!',
-        }},
-            status=400)
+        operation_writer(SYSTEM_LOG, 
+            f"更新房间{rid}人数失败: {e}", "views.cameracheck", "Error")
+        return JsonResponse({'statusInfo': {'message': '更新摄像头人数失败!'}}, status=400)
 
     # 检查时间问题，可能修改预约状态；
-    appointments = Appoint.objects.not_canceled().filter(
-        Q(Astart__lte=now_time) & Q(Afinish__gte=now_time)
-        & Q(Room_id=rid))  # 只选取状态在1，2之间的预约
+    appointments: QuerySet[Appoint] = Appoint.objects.not_canceled().filter(
+        Astart__lte=now_time,
+        Afinish__gte=now_time,
+        Room=room,
+    )
 
-    if len(appointments):  # 如果有，只能有一个预约
-        content = appointments[0]
-        if room.Rid == "B107B":
-            # 107b的监控不太靠谱，正下方看不到
-            num_need = min(max(GLOBAL_INFO.today_min, num_need - 2), num_need)
-        elif room.Rid == "B217":
-            # 地下室关灯导致判定不清晰，晚上更严重
-            if content.Astart.hour >= 20:
-                num_need = min(max(GLOBAL_INFO.today_min, num_need - 2), num_need)
-            else:
-                num_need = min(max(GLOBAL_INFO.today_min, num_need - 1), num_need)
-        if content.Atime.date() == content.Astart.date():
-            # 如果预约时间在使用时间的24h之内 则人数下限为2
-            num_need = min(GLOBAL_INFO.today_min, num_need)
-        if content.Atype == Appoint.Type.TEMPORARY:
-            # 如果为临时预约 则人数下限为1 不作为合格标准 只是记录
-            num_need = min(GLOBAL_INFO.temporary_min, num_need)
-        try:
-            if room.Rid in {"B109A", "B207"}:  # 康德报告厅&小舞台 不考虑违约
-                content.Astatus = Appoint.Status.CONFIRMED
-                content.save()
-            else:  # 其他房间
-
-                # added by wxy
-                # 检查人数：采样、判断、更新
-                # 人数在finishappoint中检查
-                # modified by pht - 2021/8/15
-                # 增加UNSAVED状态
-                # 逻辑是尽量宽容，因为一分钟只记录两次，两次随机大概率只有一次成功
-                # 所以没必要必须随机成功才能修改错误结果
-                rand = random.uniform(0, 1)
-                camera_lock.acquire()
-                with transaction.atomic():
-                    if now_time.minute != room_previous_check_time.minute or\
-                            content.Acheck_status == Appoint.CheckStatus.UNSAVED:
-                        # 说明是新的一分钟或者本分钟还没有记录
-                        # 如果随机成功，记录新的检查结果
-                        if rand < GLOBAL_INFO.check_rate:
-                            content.Acheck_status = Appoint.CheckStatus.FAILED
-                            content.Acamera_check_num += 1
-                            if temp_stu_num >= num_need:  # 如果本次检测合规
-                                content.Acamera_ok_num += 1
-                                content.Acheck_status = Appoint.CheckStatus.PASSED
-                        # 如果随机失败，锁定上一分钟的结果
-                        else:
-                            if content.Acheck_status == Appoint.CheckStatus.FAILED:
-                                # 如果本次检测合规，宽容时也算上一次通过（因为一分钟只检测两次）
-                                if temp_stu_num >= num_need:
-                                    content.Acamera_ok_num += 1
-                            # 本分钟暂无记录
-                            content.Acheck_status = Appoint.CheckStatus.UNSAVED
-                    else:
-                        # 和上一次检测在同一分钟，此时：1.不增加检测次数 2.如果合规则增加ok次数
-                        if content.Acheck_status == Appoint.CheckStatus.FAILED:
-                            # 当前不合规；如果这次检测合规，那么认为本分钟合规
-                            if temp_stu_num >= num_need:
-                                content.Acamera_ok_num += 1
-                                content.Acheck_status = Appoint.CheckStatus.PASSED
-                        # else:当前已经合规，不需要额外操作
-                    content.save()
-                camera_lock.release()
-                # add end
-        except Exception as e:
-            operation_writer(SYSTEM_LOG, "预约"+str(content.Aid) +
-                             "更新摄像头人数失败2: "+str(e), "views.cameracheck", "Error")
-
-            return JsonResponse({'statusInfo': {
-                'message': '更新预约状态失败!',
-            }},
-                status=400)
-        try:
-            if now_time > content.Astart + timedelta(
-                    minutes=15) and content.Astatus == Appoint.Status.APPOINTED:
-                status, tempmessage = set_appoint_reason(
-                    content, Appoint.Reason.R_LATE)
-                # 该函数只是把appoint标记为迟到(填写reason)并修改状态为进行中，不发送微信提醒
-                if not status:
-                    operation_writer(SYSTEM_LOG, "预约"+str(content.Aid) +
-                                     "设置为迟到时的返回值异常 "+tempmessage, "views.cameracheck", "Error")
-        except Exception as e:
-            operation_writer(SYSTEM_LOG, "预约"+str(content.Aid) +
-                             "在迟到状态设置过程中: "+tempmessage, "views.cameracheck", "Error")
-            # added by wxy: 违约原因:迟到
-            # status, tempmessage = appoint_violate(
-            #     content, Appoint.Reason.R_LATE)
-            # if not status:
-            #     operation_writer(SYSTEM_LOG, "预约"+str(content.Aid) +
-            #                      "因迟到而违约,返回值出现异常: "+tempmessage, "views.cameracheck", "Error")
-        # except Exception as e:
-        #     operation_writer(SYSTEM_LOG, "预约"+str(content.Aid) +
-        #                      "在迟到违约过程中: "+tempmessage, "views.cameracheck", "Error")
-
-        return JsonResponse({}, status=200)  # 返回空就好
-    else:  # 否则的话 相当于没有预约 正常返回
-        return JsonResponse({}, status=200)  # 返回空就好
+    try:
+        # 逻辑是尽量宽容，因为一分钟只记录两次，两次随机大概率只有一次成功
+        # 所以没必要必须随机成功才能修改错误结果
+        refresh = now_time.minute != previous_check_time.minute
+        with transaction.atomic():
+            for appoint in appointments.select_for_update():
+                _update_check_state(appoint, current_num, refresh)
+                appoint.save()
+                if (now_time > appoint.Astart + timedelta(minutes=15)
+                        and appoint.Astatus == Appoint.Status.APPOINTED):
+                    # 该函数只是把appoint标记为迟到并修改状态为进行中，不发送微信提醒
+                    status, message = set_appoint_reason(
+                        appoint, Appoint.Reason.R_LATE)
+                    # status, message = appoint_violate(
+                    #     appoint, Appoint.Reason.R_LATE)
+                    if not status:
+                        operation_writer(SYSTEM_LOG,
+                            f"预约{appoint.Aid}设置迟到失败: {message}",
+                            "views.cameracheck", "Error")
+    except Exception as e:
+        operation_writer(SYSTEM_LOG,
+            f"更新预约检查人数失败: {e}", "views.cameracheck", "Error")
+        return JsonResponse({'statusInfo': {'message': '更新预约状态失败!'}}, status=400)
+    return JsonResponse({}, status=200)
 
 
 @require_POST
