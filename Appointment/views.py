@@ -1182,3 +1182,7 @@ def summary(request):  # 主页
 
     # page 14 新功能预告
     return render(request, 'Appointment/summary.html', locals())
+
+def summary2(request):  # 主页
+    
+    return render(request, 'Appointment/summary2.html', locals())
