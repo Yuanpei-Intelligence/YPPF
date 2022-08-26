@@ -264,7 +264,7 @@
         let start1 = new Date($("#datetimepicker1").val());
         let end1 = new Date($("#datetimepicker2").val());
         let publishDay = $("input[name='publish_day']:checked").val()
-        
+
         if(["1","2","3"].includes(publishDay)){
             let publishTime = moment(start1).subtract(parseInt(publishDay),"days")
             console.log(publishTime)
@@ -295,6 +295,7 @@
             document.body.scrollTop = document.documentElement.scrollTop = 0;
             return false;
         }   
+
         // 禁止修改课程开始时间到距离现在60分钟以内，额外1分钟用于后端处理
         const safeTime = moment().add(61,"minutes");
         if (start1 < safeTime) {
@@ -305,6 +306,7 @@
             else{
                 showMessage(warnId, "开始时间至少为1小时以后！");
             }
+
             document.body.scrollTop = document.documentElement.scrollTop = 0;
             return false;
         }
@@ -344,11 +346,13 @@ $(function () {
         format: "YYYY-MM-DD HH:mm",
         sideBySide: true,
         minDate: new Date(Date.now()+60*60*1000),
+
     });
     $("#datetimepicker2").datetimepicker({
         format: "YYYY-MM-DD HH:mm",
         sideBySide: true,
         minDate: new Date(Date.now()+60*60*1000),
+
     });
 });
 </script>

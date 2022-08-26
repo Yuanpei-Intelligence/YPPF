@@ -1,7 +1,13 @@
 # store some funcitons
 
 from Appointment import *
-from Appointment.models import Participant, Room, Appoint, CardCheckInfo  # 数据库模型
+from Appointment.models import (
+    User,
+    Participant,
+    Room,
+    Appoint,
+    CardCheckInfo,
+)
 
 import os
 import time
@@ -12,7 +18,6 @@ from typing import List, Tuple, Union, Any
 from datetime import datetime, timedelta
 
 from django.http import HttpRequest
-from django.contrib.auth.models import User
 from django.db import transaction  # 原子化更改数据库
 from django.db.models import Q, QuerySet
 
@@ -380,9 +385,8 @@ def appoint_violate(input_appoint: Appoint, reason: Appoint.Reason):
 
             if real_credit_point and appoint.Astatus != Appoint.Status.VIOLATED:
                 # 不出现负分；如果已经是violated了就不重复扣分了
-                if major_student.credit > 0:  # 这个时候需要扣分
-                    major_student.credit -= 1
-                    major_student.save()
+                if User.objects.modify_credit(major_student.Sid, -1, '地下室：违规') < 0:
+                    # 成功扣分
                     really_deduct = True
                 appoint.Astatus = Appoint.Status.VIOLATED
                 appoint.Areason = reason

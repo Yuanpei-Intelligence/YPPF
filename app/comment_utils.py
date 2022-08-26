@@ -1,11 +1,11 @@
 from app.utils_dependency import *
 from app.models import (
+    User,
     NaturalPerson,
     Notification,
     Comment,
     CommentPhoto,
 )
-from django.contrib.auth.models import User
 from app.utils import (
     get_person_or_org,
     check_user_type,
@@ -30,8 +30,9 @@ def addComment(request, comment_base, receiver=None, *,
         - comment_submit
         - comment
     - comment_base<Commentbase object>: 以 Commentbase 为基类的对象。
-        - 目前的 Commentbase 对象只有五种：
-            modifyposition，neworganization，reimbursement，activity，feedback。
+        - 目前的 Commentbase 对象只有四种：
+            modifyposition，neworganization，activity，feedback。
+            - 2022.8.17加入Chat，用于学术地图问答
         - 添加 Commentbase 类型需要在 `content` 和 `URL` 中添加键值对。
         - 注意：该对象会被调用**`save`保存**
     - receiver<User object/iterable>:
@@ -50,19 +51,19 @@ def addComment(request, comment_base, receiver=None, *,
     content = {
         'modifyposition': f'{sender_name}在成员变动申请留有新的评论',
         'neworganization': f'{sender_name}在新建小组中留有新的评论',
-        'reimbursement': f'{sender_name}在经费申请中留有新的评论',
         'activity': f"{sender_name}在活动申请中留有新的评论",
         'feedback': f"{sender_name}在反馈中心留有新的评论",
+        'Chat': "问答中有新的消息",
     }
     URL = {
         'modifyposition': f'/modifyPosition/?pos_id={comment_base.id}',
         'neworganization': f'/modifyOrganization/?org_id={comment_base.id}',
-        'reimbursement': f'/modifyEndActivity/?reimb_id={comment_base.id}',
         'activity': f"/examineActivity/{comment_base.id}"
                     # 发送者如果是组织，接收者就是老师
                     if user_type == UTYPE_ORG else
                     f"/editActivity/{comment_base.id}",
         'feedback': f"/viewFeedback/{comment_base.id}",
+        'Chat': f"/viewQA/{comment_base.id}"
     }
 
     # 新建评论信息，并保存
@@ -71,10 +72,10 @@ def addComment(request, comment_base, receiver=None, *,
         # 检查图片合法性
         comment_images = request.FILES.getlist('comment_images')
         if not text and not comment_images:
-            return wrong("评论内容均为空，无法评论！")
+            return wrong("内容为空，无法发送！")
         for comment_image in comment_images:
             if if_image(comment_image) != 2:
-                return wrong("评论中上传的附件只支持图片格式。")
+                return wrong("附件只支持图片格式。")
         try:
             with transaction.atomic():
                 new_comment = Comment.objects.create(
@@ -86,7 +87,7 @@ def addComment(request, comment_base, receiver=None, *,
                     )
                 comment_base.save()  # 每次save都会更新修改时间
         except:
-            return wrong("评论失败，请联系管理员。")
+            return wrong("发送失败，请联系管理员。")
 
         if len(text) >= 32:
             text = text[:31] + "……"
@@ -115,11 +116,11 @@ def addComment(request, comment_base, receiver=None, *,
                     publish_kws={'app': WechatApp.AUDIT, 'level': WechatMessageLevel.INFO},
                     anonymous_flag=anonymous,
                 )
-        context = succeed("评论成功。")
+        context = succeed("发送成功。")
         context["new_comment"] = new_comment
         return context
     else:
-        return wrong("找不到评论信息, 请重试!")
+        return wrong(f"找不到信息, 请重试!")
 
 
 @log.except_captured(source='comment_utils[showComment]')

@@ -418,6 +418,9 @@ def showCourseRecord(request: HttpRequest) -> HttpResponse:
                     "hours": record.total_hours
                 })
             CourseRecord.objects.bulk_update(record_search, ["attend_times"])
+            # 如果点击提交学时按钮，修改数据库之后，跳转至已结束的活动界面
+            if request.method == "POST":
+                return(redirect("/showCourseActivity"))
 
     # 前端呈现信息，用于展示
     course_info = {
