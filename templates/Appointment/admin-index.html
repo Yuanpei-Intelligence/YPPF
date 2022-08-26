@@ -67,7 +67,7 @@
                             </li>
                             {% if show_admin %}
                                 <li>
-                                    <a href="admin">管理后台</a>
+                                    <a href="/admin">管理后台</a>
                                 </li>
                             {% endif %}
                             <li class="login-link">
@@ -335,13 +335,11 @@
                                                                         <i class="far fa fa-child"></i>
                                                                         人数：本院 {{ appoint.yp_num }} 人，非本院 {{ appoint.non_yp_num }} 人
                                                                     </h5>
-                                                                    {% if appoint.Aannouncement != "" %}
-                                                                        {% if appoint.Aannouncement != null %}
-                                                                            <h5 style="white-space: normal;">
-                                                                                <i class="fas fa fa-envelope"></i>
-                                                                                预约通知：{{ appoint.Aannouncement }}
-                                                                            </h5>
-                                                                        {% endif %}
+                                                                    {% if appoint.Aannouncement %}
+                                                                        <h5 style="white-space: normal;">
+                                                                            <i class="fas fa fa-envelope"></i>
+                                                                            预约通知：{{ appoint.Aannouncement }}
+                                                                        </h5>
                                                                     {% endif %}
                                                                 </div>
                                                             </div>
