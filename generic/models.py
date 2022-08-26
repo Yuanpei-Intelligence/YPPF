@@ -264,7 +264,7 @@ class YQPointRecord(models.Model):
         User, verbose_name='用户', on_delete=models.CASCADE,
         to_field='username',
     )
-    source_type = models.SmallIntegerField(choices=PointMixin.SourceType)
+    source_type = models.SmallIntegerField(choices=PointMixin.SourceType.choices)
     delta = models.IntegerField('变化量')
     time = models.DateTimeField("时间", auto_now_add=True)
     related_url = models.URLField(max_length=255, default='')
