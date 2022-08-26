@@ -1967,5 +1967,5 @@ class YQPointPrizeExchangeRecord(models.Model):
 
     user = models.ForeignKey(User, on_delete=models.CASCADE)
     prize_period = models.ForeignKey(YQPointPrizeExchangePeriod, on_delete=models.CASCADE)
-    status = models.SmallIntegerField('状态', choices=Status)
+    status = models.SmallIntegerField('状态', choices=Status.choices)
     time = models.DateTimeField(auto_now_add=True)
