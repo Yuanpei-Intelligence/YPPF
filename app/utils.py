@@ -419,12 +419,10 @@ def if_image(image):
 
 
 def random_code_init(seed):
-    '''用于新建小组时，生成6位随机密码'''
+    '''用于新建小组时，根据种子生成6位伪随机密码（如果种子可知则密码可知）'''
     b = string.digits + string.ascii_letters  # 构建密码池
-    password = ""
     random.seed(seed)
-    for i in range(0, 6):
-        password = password + random.choice(b)
+    password = ''.join(random.choices(b, k=6))
     return password
 
 
@@ -465,9 +463,9 @@ def set_captcha_session(request, username, captcha):
 
 def clear_captcha_session(request):
     '''noexcept'''
-    request.session.pop("captcha")
-    request.session.pop("captcha_create_time")  # 验证码只能登录一次
-    request.session.pop("received_user")        # 成功登录后不再保留
+    request.session.pop("captcha", None)
+    request.session.pop("captcha_create_time", None)  # 验证码只能登录一次
+    request.session.pop("received_user", None)        # 成功登录后不再保留
 
 
 def set_nperson_quota_to(quota):
