@@ -1944,7 +1944,7 @@ class YQPointPrizeExchangePeriod(models.Model):
         verbose_name = '元气值奖品兑换/抽奖周期'
         verbose_name_plural = verbose_name
 
-    prize = models.ForeignKey(YQPointPrize)
+    prize = models.ForeignKey(YQPointPrize, on_delete=models.CASCADE)
     price = models.ImageField('需要元气值')
     quota = models.IntegerField('当期可兑换量')
     lottery = models.BooleanField('抽奖', default=False)
@@ -1965,7 +1965,7 @@ class YQPointPrizeExchangeRecord(models.Model):
         EXCHANGED = (3, '已兑换')
         OVERDUE = (4, '已失效')
 
-    user = models.ForeignKey(User)
-    prize_period = models.ForeignKey(YQPointPrizeExchangePeriod)
+    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    prize_period = models.ForeignKey(YQPointPrizeExchangePeriod, on_delete=models.CASCADE)
     status = models.SmallIntegerField('状态', choices=Status)
     time = models.DateTimeField(auto_now_add=True)
