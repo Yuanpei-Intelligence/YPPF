@@ -400,19 +400,14 @@ def admin_index(request: HttpRequest):
     appoint_list_future = []
     appoint_list_past = []
 
-    for appoint in web_func.get_appoints(Pid, 'future'):
-        appoint_info = web_func.appointment2Display(
-            appoint, future=False, longterm=False, Pid=Pid)
+    for appoint in web_func.get_appoints(Pid, 'future').order_by('Astart'):
+        appoint_info = web_func.appointment2Display(appoint, 'future', Pid)
         appoint_list_future.append(appoint_info)
 
-    for appoint in web_func.get_appoints(Pid, 'past'):
-        appoint_info = web_func.appointment2Display(
-            appoint, future=True, longterm=False, Pid=Pid)
+    for appoint in web_func.get_appoints(Pid, 'past').order_by('-Astart'):
+        appoint_info = web_func.appointment2Display(appoint, 'past', Pid)
         appoint_list_past.append(appoint_info)
 
-    appoint_list_future.sort(key=lambda k: k['Astart'])
-    appoint_list_past.sort(key=lambda k: k['Astart'])
-    appoint_list_past.reverse()
     render_context.update(appoint_list_future=appoint_list_future,
                           appoint_list_past=appoint_list_past)
 
@@ -426,7 +421,7 @@ def admin_index(request: HttpRequest):
         for longterm_appoint in longterm_appoints:
             longterm_appoint: LongTermAppoint
             appoint_info = web_func.appointment2Display(
-                longterm_appoint.appoint, future=False, longterm=True)
+                longterm_appoint.appoint, 'longterm')
             
             # 判断是否可以续约
             last_start = longterm_appoint.appoint.Astart + timedelta(

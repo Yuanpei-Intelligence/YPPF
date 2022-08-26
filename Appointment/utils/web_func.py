@@ -327,28 +327,25 @@ def get_user_info(Pid):
     }
 
 
-def appointment2Display(appoint: Appoint, future: bool, longterm: bool, Pid: Optional[int] = None) -> Dict[str, Any]:
+def appointment2Display(appoint: Appoint, type: str, userid: str = None) -> Dict[str, Any]:
     """
     获取单次预约的信息，填入供前端展示的词典
 
     :param appoint: 单次预约
     :type appoint: Appoint
-    :param future: 是否是未来的预约（需要展示能否取消）
-    :type future: bool
-    :param longterm: 是否是长期预约（需要展示星期）
-    :type longterm: bool
-    :param Pid: 预约人id，当longterm=True时不需要
-    :type Pid: Optional[int]
+    :param type: 展示类型
+    :type type: str
+    :param userid: 预约人id，长期预约不需要
+    :type userid: str
     :return: 供前端展示的词典
     :rtype: dict[str, Any]
     """
     appoint_info = appoint.toJson()
     appoint_info['Astart_hour_minute'] = appoint.Astart.strftime("%I:%M %p")
     appoint_info['Afinish_hour_minute'] = appoint.Afinish.strftime("%I:%M %p")
-    if longterm:
+    if type == 'longterm':
         appoint_info['Aweek'] = appoint.Astart.strftime("%A")
     else:
-        appoint_info['is_appointer'] = (Pid == appoint.get_major_id())
-        if future:
-            appoint_info['can_cancel'] = (Pid == appoint.get_major_id())
+        appoint_info['is_appointer'] = (userid == appoint.get_major_id())
+        appoint_info['can_cancel'] = (type == 'future' and userid == appoint.get_major_id())
     return appoint_info

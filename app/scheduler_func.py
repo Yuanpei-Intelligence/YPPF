@@ -51,7 +51,6 @@ default_weather = get_config('default_weather', default=None)
 __all__ = [
     'send_to_persons',
     'send_to_orgs',
-    'distribute_YQPoint_per_month',
     'changeAllActivities',
     'get_weather',
     'update_active_score_per_day',
