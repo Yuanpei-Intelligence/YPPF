@@ -202,6 +202,11 @@ def create_single_course_activity(request: HttpRequest) -> Tuple[int, bool]:
         # capacity, URL, budget, YQPoint, bidding,
         # apply_reason, inner, source, end_before均为default
     )
+
+    if context["need_apply"]:
+        activity.endbefore = Activity.EndBefore.onehour
+        activity.apply_end = activity.start - timedelta(hours=1)
+
     if not activity.need_apply:
         # 选课人员自动报名活动
         # 选课结束以后，活动参与人员从小组成员获取
@@ -232,7 +237,7 @@ def create_single_course_activity(request: HttpRequest) -> Tuple[int, bool]:
         scheduler.add_job(changeActivityStatus, "date", id=f"activity_{activity.id}_{Activity.Status.APPLYING}",
                           run_date=activity.publish_time, args=[activity.id, Activity.Status.UNPUBLISHED, Activity.Status.APPLYING], replace_existing=True)
         scheduler.add_job(changeActivityStatus, "date", id=f"activity_{activity.id}_{Activity.Status.WAITING}",
-                          run_date=activity.start - timedelta(minutes=5), args=[activity.id, Activity.Status.APPLYING, Activity.Status.WAITING], replace_existing=True)
+                          run_date=activity.start - timedelta(hours=1), args=[activity.id, Activity.Status.APPLYING, Activity.Status.WAITING], replace_existing=True)
     else:
         scheduler.add_job(changeActivityStatus, "date", id=f"activity_{activity.id}_{Activity.Status.WAITING}",
                           run_date=activity.publish_time, args=[activity.id, Activity.Status.UNPUBLISHED, Activity.Status.WAITING], replace_existing=True)
@@ -301,6 +306,11 @@ def modify_course_activity(request: HttpRequest, activity: Activity):
     activity.publish_time = context["publish_time"]
     old_need_apply = activity.need_apply
     activity.need_apply = context["need_apply"]
+
+    if context["need_apply"]:
+        activity.endbefore = Activity.EndBefore.onehour
+        activity.apply_end = activity.start - timedelta(hours=1)
+
     activity.save()
 
     #修改所有该时段的时间、地点
@@ -356,7 +366,7 @@ def modify_course_activity(request: HttpRequest, activity: Activity):
         scheduler.add_job(changeActivityStatus, "date", id=f"activity_{activity.id}_{Activity.Status.APPLYING}",
                           run_date=activity.publish_time, args=[activity.id, Activity.Status.UNPUBLISHED, Activity.Status.APPLYING], replace_existing=True)
         scheduler.add_job(changeActivityStatus, "date", id=f"activity_{activity.id}_{Activity.Status.WAITING}",
-                          run_date=activity.start - timedelta(minutes=5), args=[activity.id, Activity.Status.APPLYING, Activity.Status.WAITING], replace_existing=True)
+                          run_date=activity.start - timedelta(hours=1), args=[activity.id, Activity.Status.APPLYING, Activity.Status.WAITING], replace_existing=True)
     else:
         scheduler.add_job(changeActivityStatus, "date", id=f"activity_{activity.id}_{Activity.Status.WAITING}",
                           run_date=activity.publish_time, args=[activity.id, Activity.Status.UNPUBLISHED, Activity.Status.WAITING], replace_existing=True)
@@ -1104,7 +1114,12 @@ def course_base_check(request,if_new=None):
         return wrong(str(e))
     context['course_starts'] = course_starts
     context['course_ends'] = course_ends
-
+    context['publish_day'] = {
+            "instant": Course.PublishDay.instant,
+            "3": Course.PublishDay.threeday,
+            "2": Course.PublishDay.twoday,
+            "1": Course.PublishDay.oneday,
+    }[context['publish_day']]
     org = get_person_or_org(request.user, "Organization")
     context['organization'] = org
 
