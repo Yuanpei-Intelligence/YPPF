@@ -18,7 +18,7 @@ class MyUserAdmin(UserAdmin):
     list_filter = ['utype', 'is_superuser', 'is_staff', 'groups', 'is_active']
     fieldsets = [
         (None, {'fields': ('username', 'name', 'acronym', 'password')}),
-        ('自定义信息', {'fields': ['credit', 'YQpoint', 'utype']}),
+        ('自定义信息', {'fields': ['credit', 'utype']}),
         # 内置部分
         ('权限', {
             'fields': ('is_active', 'is_staff', 'is_superuser', 'groups', 'user_permissions'),

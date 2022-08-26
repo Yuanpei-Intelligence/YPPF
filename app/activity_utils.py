@@ -473,16 +473,11 @@ def activity_base_check(request, edit=False):
 
     # examine_teacher 需要特殊检查
     context["examine_teacher"] = request.POST.get("examine_teacher")
-    # 申请理由
-    context["apply_reason"] = request.POST.get("apply_reason", "")
-    if context["from_college"]:
-        assert len(context["apply_reason"]) > 0
 
     # 预报备
     context["recorded"] = False
     if request.POST.get("recorded"):
         context["recorded"] = True
-        assert not context["from_college"]
 
     # 时间
     act_start = datetime.strptime(request.POST["actstart"], "%Y-%m-%d %H:%M")  # 活动报名时间
@@ -524,13 +519,6 @@ def activity_base_check(request, edit=False):
         context["inner"] = True
     else:
         context["inner"] = False
-
-    # 价格
-    aprice = float(request.POST["aprice"])
-    assert int(aprice * 10) / 10 == aprice
-    assert aprice >= 0
-    context["aprice"] = aprice
-
 
     # 图片 优先使用上传的图片
     announcephoto = request.FILES.getlist("images")
@@ -606,12 +594,10 @@ def create_activity(request):
                     location=context["location"],
                     capacity=context["capacity"],
                     URL=context["url"],
-                    budget=context["budget"],
                     start=context["start"],
                     end=context["end"],
                     bidding=context["bidding"],
                     apply_end=context["signup_end"],
-                    apply_reason=context["apply_reason"],
                     inner=context["inner"],
                 )
     activity.endbefore = context["endbefore"]
@@ -694,11 +680,9 @@ def modify_reviewing_activity(request, activity):
     activity.location = context["location"]
     activity.capacity = context["capacity"]
     activity.URL = context["url"]
-    activity.budget = context["budget"]
     activity.start = context["start"]
     activity.end = context["end"]
     activity.bidding = context["bidding"]
-    activity.apply_reason = context["apply_reason"]
     if context.get("need_checkin"):
         activity.need_checkin = True
     else:

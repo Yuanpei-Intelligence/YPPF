@@ -200,7 +200,7 @@ def create_single_course_activity(request: HttpRequest) -> Tuple[int, bool]:
         need_apply=context["need_apply"]  # 是否需要报名
 
         # capacity, URL, bidding,
-        # apply_reason, inner, source, end_before均为default
+        # inner, end_before均为default
     )
     if not activity.need_apply:
         # 选课人员自动报名活动

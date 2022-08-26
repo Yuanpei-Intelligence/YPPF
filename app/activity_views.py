@@ -71,7 +71,6 @@ def viewActivity(request: HttpRequest, aid=None):
     content = str(request.POST["content"])
     URL = str(request.POST["URL"])  # 活动推送链接
     QRcode = request.POST["QRcode"]  # 收取元气值的二维码
-    aprice = request.POST["aprice"]  # 活动价格
     capacity = request.POST["capacity"]  # 活动举办的容量
     """
 
@@ -702,7 +701,6 @@ def addActivity(request: HttpRequest, aid=None):
         # 下面是前端展示的变量
 
         title = utils.escape_for_templates(activity.title)
-        budget = activity.budget
         location = utils.escape_for_templates(activity.location)
         apply_end = activity.apply_end.strftime("%Y-%m-%d %H:%M")
         # apply_end_for_js = activity.apply_end.strftime("%Y-%m-%d %H:%M")
@@ -725,7 +723,6 @@ def addActivity(request: HttpRequest, aid=None):
         available_teachers = NaturalPerson.objects.teachers()
         need_checkin = activity.need_checkin
         inner = activity.inner
-        apply_reason = utils.escape_for_templates(activity.apply_reason)
         if not use_template:
             comments = showComment(activity)
         photo = str(activity.photos.get(type=ActivityPhoto.PhotoType.ANNOUNCE).image)
@@ -869,7 +866,6 @@ def examineActivity(request: HttpRequest, aid):
 
     # 展示变量
     title = utils.escape_for_templates(activity.title)
-    budget = activity.budget
     location = utils.escape_for_templates(activity.location)
     apply_end = activity.apply_end.strftime("%Y-%m-%d %H:%M")
     start = activity.start.strftime("%Y-%m-%d %H:%M")
@@ -901,7 +897,6 @@ def examineActivity(request: HttpRequest, aid):
     intro_pic = examine_pic.image
 
     need_checkin = activity.need_checkin
-    apply_reason = utils.escape_for_templates(activity.apply_reason)
 
     bar_display = utils.get_sidebar_and_navbar(request.user, "活动审核")
     # bar_display["title_name"] = "审查活动"
