@@ -636,6 +636,7 @@ def orginfo(request: HttpRequest, name=None):
 
     # 判断是否为小组账户本身在登录
     html_display["is_myself"] = me == org
+    html_display["select_course"] = (Course.objects.activated().filter(organization=me) != None)
     html_display["is_person"] = user_type == "Person"
     inform_share, alert_message = utils.get_inform_share(me=me, is_myself=html_display["is_myself"])
 
