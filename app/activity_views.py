@@ -95,6 +95,7 @@ def viewActivity(request: HttpRequest, aid=None):
                 Activity.Status.REJECT,
             ]:
             return redirect(message_url(wrong('该活动暂不可见!')))
+
     except Exception as e:
         log.record_traceback(request, e)
         return EXCEPT_REDIRECT
@@ -202,7 +203,7 @@ def viewActivity(request: HttpRequest, aid=None):
                 return redirect(message_url(wrong('活动尚未结束!'), request.path))
             if not ownership:
                 return redirect(message_url(wrong('您没有调整签到信息的权限!'), request.path))
-            return redirect(f"/offlineCheckinActivity/{aid}")
+            return redirect(f"/offlineCheckinActivity/?id={aid}&src=1")
 
         elif option == "sign" or option == "enroll": #下载活动签到信息或者报名信息
             if not ownership:
@@ -936,7 +937,7 @@ def examineActivity(request: HttpRequest, aid):
 @login_required(redirect_field_name="origin")
 @utils.check_user_access(redirect_url="/logout/")
 @log.except_captured(source='activity_views[offlineCheckinActivity]', record_user=True)
-def offlineCheckinActivity(request: HttpRequest, aid):
+def offlineCheckinActivity(request: HttpRequest):
     '''
     修改签到记录，只有举办活动的组织账号可查看和修改
     
@@ -950,7 +951,8 @@ def offlineCheckinActivity(request: HttpRequest, aid):
     _, user_type, _ = utils.check_user_type(request.user)
     me = get_person_or_org(request.user, user_type)
     try:
-        aid = int(aid)
+        aid = request.GET.get('id')
+        src = request.GET.get('scr')
         activity = Activity.objects.get(id=aid)
         assert me == activity.organization_id and user_type == "Organization"
     except:
@@ -986,11 +988,18 @@ def offlineCheckinActivity(request: HttpRequest, aid):
                             status = Participant.AttendStatus.UNATTENDED)
             except:
                 return redirect(message_url(wrong("修改失败。"), request.path))
-            return redirect(message_url(
+            # 修改成功之后根据src的不同返回不同的界面，1代表聚合页面，2代表活动主页
+            if src == 1:
+                return redirect(message_url(
                 succeed("修改签到信息成功。"), f"/viewActivity/{aid}"))
+            else:
+                return redirect(message_url(
+                succeed("修改签到信息成功。"), f"/showCourseActivity/"))
 
     bar_display = utils.get_sidebar_and_navbar(request.user,
                                                navbar_name="调整签到信息")
     member_list = member_list.select_related('person_id')
     render_context = dict(bar_display=bar_display, member_list=member_list)
     return render(request, "activity_checkinoffline.html", render_context)
+    
+

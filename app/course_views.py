@@ -226,10 +226,10 @@ def showCourseActivity(request: HttpRequest):
     finished_activity_list = (
         all_activity_list
         .filter(
-            status__in=[
-                Activity.Status.END,
-                Activity.Status.CANCELED,
-            ]
+            # status__in=[
+            #     Activity.Status.END,
+            #     Activity.Status.CANCELED,
+            # ]
         )
         .order_by("-end")
     )  # 本学期的已结束活动（包括已取消的）
@@ -415,9 +415,6 @@ def showCourseRecord(request: HttpRequest) -> HttpResponse:
                     "hours": record.total_hours
                 })
             CourseRecord.objects.bulk_update(record_search, ["attend_times"])
-            # 如果点击提交学时按钮，修改数据库之后，跳转至已结束的活动界面
-            if request.method == "POST":
-                return(redirect("/showCourseActivity"))
 
     # 前端呈现信息，用于展示
     course_info = {
