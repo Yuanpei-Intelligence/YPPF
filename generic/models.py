@@ -13,6 +13,7 @@ models.py
 @Author pht
 @Date 2022-08-19
 '''
+from typing import Optional
 import pypinyin
 from django.db import models
 from django.contrib.auth.models import AbstractUser
@@ -140,13 +141,38 @@ class PointMixin(models.Model):
     class Meta:
         abstract = True
 
+    class SourceType(models.Choices):
+        CHECK_IN = (0, '每日签到')
+        ACTIVITY = (1, '参与活动')
+        FEEDBACK = (2, '填写反馈')
+        # 如完成个人信息填写，学术地图填写
+        ACHIEVE = (3, '达成成就')
+        QUESTIONNAIRE = (4, '填写文件')
+        CONSUMPTION = (5, '兑换奖品')
+
     YQpoint = models.IntegerField('元气值', default=0)
 
     def _normalize_YQpoint(self):
         pass
 
-    def changeYQpoint(self, value):
+    def changeYQpoint(self, value: int,
+                      source_type: SourceType,
+                      url: Optional[str] = ''):
+        """修改元气值并记录，保证元气值 >= 0
+
+        :param value: 元气值增量，可以为负
+        :type value: int
+        :param source_type: 元气值改变缘由
+        :type source_type: SourceType
+        :param url: 相关链接, defaults to ''
+        :type url: Optional[str], optional
+        """
         self.YQpoint += value
+        assert self.YQpoint >= 0, '元气值不足'
+        YQPointRecord.objects.create(user=self,
+                                     source_type=source_type,
+                                     delta=value,
+                                     related_url=url)
         self._normalize_YQpoint()
 
 
@@ -222,3 +248,23 @@ class CreditRecord(models.Model):
     overflow = models.BooleanField('溢出', default=False)
     source = models.CharField('来源', max_length=50, default='', blank=True)
     time = models.DateTimeField("时间", auto_now_add=True)
+
+
+class YQPointRecord(models.Model):
+    '''
+    元气值更改记录
+
+    只起记录作用，应通过User管理器方法自动创建
+    '''
+    class Meta:
+        verbose_name = '信用分记录'
+        verbose_name_plural = verbose_name
+    
+    user = models.ForeignKey(
+        User, verbose_name='用户', on_delete=models.CASCADE,
+        to_field='username',
+    )
+    source_type = models.SmallIntegerField(choices=PointMixin.SourceType)
+    delta = models.IntegerField('变化量')
+    time = models.DateTimeField("时间", auto_now_add=True)
+    related_url = models.URLField(max_length=255, default='')

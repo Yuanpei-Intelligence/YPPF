@@ -1923,3 +1923,49 @@ class Chat(CommentBase):
     def save(self, *args, **kwargs):
         self.typename = "Chat"
         super().save(*args, **kwargs)   
+
+
+class YQPointPrize(models.Model):
+
+    class Meta:
+        verbose_name = '元气值奖品'
+        verbose_name_plural = verbose_name
+
+    name = models.CharField('名称', unique=True, max_length=63)
+    more_info = models.CharField('详情', max_length=255)
+    stock = models.IntegerField('参考库存')
+    reference_price = models.IntegerField('参考价格')
+    img = models.ImageField('图片')
+
+
+class YQPointPrizeExchangePeriod(models.Model):
+
+    class Meta:
+        verbose_name = '元气值奖品兑换/抽奖周期'
+        verbose_name_plural = verbose_name
+
+    prize = models.ForeignKey(YQPointPrize)
+    price = models.ImageField('需要元气值')
+    quota = models.IntegerField('当期可兑换量')
+    lottery = models.BooleanField('抽奖', default=False)
+    time = models.DateTimeField('开始时间')
+    end_time = models.DateTimeField('结束时间')
+
+
+class YQPointPrizeExchangeRecord(models.Model):
+
+    class Meta:
+        verbose_name = '元气值奖品兑换/抽奖记录'
+        verbose_name_plural = verbose_name
+
+    class Status(models.Choices):
+        LOTTERING = (0, '抽奖中')
+        NOT_LUCKY = (1, '未中奖')
+        UN_EXCHANGE = (2, '未兑换')
+        EXCHANGED = (3, '已兑换')
+        OVERDUE = (4, '已失效')
+
+    user = models.ForeignKey(User)
+    prize_period = models.ForeignKey(YQPointPrizeExchangePeriod)
+    status = models.SmallIntegerField('状态', choices=Status)
+    time = models.DateTimeField(auto_now_add=True)
