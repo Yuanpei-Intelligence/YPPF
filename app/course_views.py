@@ -226,10 +226,10 @@ def showCourseActivity(request: HttpRequest):
     finished_activity_list = (
         all_activity_list
         .filter(
-            # status__in=[
-            #     Activity.Status.END,
-            #     Activity.Status.CANCELED,
-            # ]
+            status__in=[
+                Activity.Status.END,
+                Activity.Status.CANCELED,
+            ]
         )
         .order_by("-end")
     )  # 本学期的已结束活动（包括已取消的）
