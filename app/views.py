@@ -11,16 +11,12 @@ from app.models import (
     ModifyPosition,
     Activity,
     ActivityPhoto,
-    TransferRecord,
     Participant,
     Notification,
     ModifyOrganization,
     Comment,
     CommentPhoto,
-    YQPointDistribute,
-    Reimbursement,
     Wishes,
-    ReimbursementPhoto,
     Course,
     CourseRecord,
     Semester,
@@ -662,7 +658,7 @@ def orginfo(request: HttpRequest, name=None):
     organization_type_name = org.otype.otype_name
     org_avatar_path = org.get_user_ava()
     wallpaper_path = utils.get_user_wallpaper(org, "Organization")
-    # org的属性 YQPoint 和 information 不在此赘述，直接在前端调用
+    # org的属性 information 不在此赘述，直接在前端调用
 
     # 给前端传递选课的参数
     yx_election_start = get_setting("course/yx_election_start")

@@ -8,7 +8,6 @@ from app.models import (
     Notification,
     Activity,
     Help,
-    Reimbursement,
     Participant,
     ModifyRecord,
 )
@@ -556,27 +555,6 @@ def check_account_setting(request, user_type):
         attr_dict['introduction'] = request.POST['introduction']
         attr_dict['tags_modify'] = request.POST['tags_modify']
     return attr_dict, show_dict, html_display
-
-#获取未报销的活动
-def get_unreimb_activity(org):
-    """
-    用于views.py&reimbursement_utils.py
-    注意：默认传入参数org类型为Organization
-    """
-    reimbursed_act_ids = (
-        Reimbursement.objects.all()
-            .exclude(status=Reimbursement.ReimburseStatus.CANCELED)  # 未取消的
-            .exclude(status=Reimbursement.ReimburseStatus.REFUSED)   # 未被拒绝的
-            .values_list("related_activity_id", flat=True)
-    )
-    activities = (
-        Activity.objects.activated()  # 本学期的
-            .filter(organization_id=org)  # 本部门小组的
-            .filter(status=Activity.Status.END)  # 已结束的
-            .exclude(id__in=reimbursed_act_ids))  # 还没有报销的
-    activities.len = len(activities)
-    return activities
-
 
 # 导出Excel文件
 def export_activity(activity, inf_type):

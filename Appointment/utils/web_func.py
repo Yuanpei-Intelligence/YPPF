@@ -327,7 +327,7 @@ def get_user_info(Pid):
     }
 
 
-def appointment2Display(appoint: Appoint, future: bool, longterm: bool, Pid: Optional[int]) -> Dict[str, Any]:
+def appointment2Display(appoint: Appoint, future: bool, longterm: bool, Pid: Optional[int] = None) -> Dict[str, Any]:
     """
     获取单次预约的信息，填入供前端展示的词典
 
