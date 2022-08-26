@@ -141,7 +141,7 @@ class PointMixin(models.Model):
     class Meta:
         abstract = True
 
-    class SourceType(models.Choices):
+    class SourceType(models.IntegerChoices):
         CHECK_IN = (0, '每日签到')
         ACTIVITY = (1, '参与活动')
         FEEDBACK = (2, '填写反馈')

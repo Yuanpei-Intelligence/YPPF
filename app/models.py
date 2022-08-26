@@ -1958,7 +1958,7 @@ class YQPointPrizeExchangeRecord(models.Model):
         verbose_name = '元气值奖品兑换/抽奖记录'
         verbose_name_plural = verbose_name
 
-    class Status(models.Choices):
+    class Status(models.IntegerChoices):
         LOTTERING = (0, '抽奖中')
         NOT_LUCKY = (1, '未中奖')
         UN_EXCHANGE = (2, '未兑换')
