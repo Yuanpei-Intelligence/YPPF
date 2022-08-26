@@ -177,7 +177,7 @@ def cameracheck(request):   # 摄像头post的后端函数
         if content.Atime.date() == content.Astart.date():
             # 如果预约时间在使用时间的24h之内 则人数下限为2
             num_need = min(GLOBAL_INFO.today_min, num_need)
-        if content.Atemp_flag:
+        if content.Atype == Appoint.Type.TEMPORARY:
             # 如果为临时预约 则人数下限为1 不作为合格标准 只是记录
             num_need = min(GLOBAL_INFO.temporary_min, num_need)
         try:
@@ -684,9 +684,8 @@ def door_check(request):  # 先以Sid Rid作为参数，看之后怎么改
                     'non_yp_num': 0,
                     'Ausage': "临时预约",
                     'announcement': "",
-                    'Atemp_flag': True
                 }
-                response = scheduler_func.addAppoint(contents, Atype=Appoint.Type.TEMPORARY)
+                response = scheduler_func.addAppoint(contents, type=Appoint.Type.TEMPORARY)
 
                 if response.status_code == 200:  # 临时预约成功
                     cardcheckinfo_writer(

@@ -237,8 +237,6 @@ class AppointAdmin(admin.ModelAdmin):
         }
         color_code = status2color[obj.Astatus]
         status = obj.get_status()
-        # if obj.Atemp_flag == Appoint.Bool_flag.Yes:
-        #     status = '临时:' + status
         return format_html(
             '<span style="color: {};">{}</span>',
             color_code,
