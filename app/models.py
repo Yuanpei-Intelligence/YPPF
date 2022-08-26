@@ -985,7 +985,6 @@ class Activity(CommentBase):
 
     location = models.CharField("活动地点", blank=True, max_length=200)
     introduction = models.TextField("活动简介", max_length=225, blank=True)
-    apply_reason = models.TextField("申请理由", max_length=225, blank=True)
 
     QRcode = models.ImageField(upload_to=f"QRcode/", blank=True)  # 二维码字段
 

@@ -530,8 +530,6 @@
         } else {
             document.getElementById("college").style.display = "none";
             document.getElementById("reason_block").style.display = "none";
-            document.getElementById("apply_reason").required = "";
-            document.getElementById("aprice").placeholder = "参与活动元气值价格";
         }
     });
     {% for pic in defaultpics %}
@@ -608,7 +606,6 @@
     document.getElementById("recorded").checked = true;
     document.getElementById("college").style.display = "none";
     document.getElementById("reason_block").style.display = "none";
-    document.getElementById("apply_reason").required = "";
     {% endif %}
     document.getElementById("pricebutton").innerHTML = "&nbsp;&nbsp;{{signscheme}}&nbsp;&nbsp;";
     if ("{{signscheme}}" == "先到先得") {
@@ -695,7 +692,6 @@
         all_inputs[i].required="";
     }
     document.getElementById("aintro").required = "";
-    document.getElementById("apply_reason").required = "";
 
     /* 填充旧图片 */
     {% if full_editable %}
@@ -723,7 +719,6 @@
             {% endif %}
         {% else %}
             document.getElementById("title").disabled = true;
-            document.getElementById("apply_reason").disabled = true;
         {% endif %}
 
     {% else %}
@@ -736,7 +731,6 @@
             all_inputs[i].disabled = true;
         }
         document.getElementById("aintro").disabled = true;
-        document.getElementById("apply_reason").disabled = true;
         function fill_value(a) {
             console.log(a.value);
         }
@@ -876,20 +870,6 @@
             document.body.scrollTop = document.documentElement.scrollTop = 0;
             return false;
         }
-        /* 检查选择了元气值来源 */
-        var from_college = document.getElementById("from_college").value;
-        if (from_college == "") {
-            {% if html_display.warn_code == 2 %}
-            document.getElementById("success_msg").style.display = "none";
-            {% endif %}
-            document.getElementById("warn_msg").style.display = "";
-            document.getElementById("warn_msg").innerHTML = "尚未选择元气值来源。";
-            document.body.scrollTop = document.documentElement.scrollTop = 0;
-            return false;
-        }
-        {% endif %}
-
-
 
         /* 检查人数限制 */
         // 如果编辑状态都可以不选
@@ -990,8 +970,6 @@
         }
         if (document.getElementById("aintro").value == "")
             document.getElementById("aintro").value = document.getElementById("aintro").placeholder;
-        if (document.getElementById("apply_reason").value == "")
-            document.getElementById("apply_reason").value = document.getElementById("apply_reason").placeholder;
         {% endif %}
 
         return true;
