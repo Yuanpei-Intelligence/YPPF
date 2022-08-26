@@ -1,0 +1,6 @@
+# If new package is introduced, list them in this file. Like
+# - django
+
+# 连接sql server
+# pyodbc>=3.0
+# mssql-django

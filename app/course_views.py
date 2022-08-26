@@ -48,9 +48,16 @@ __all__ = [
 @login_required(redirect_field_name="origin")
 @utils.check_user_access(redirect_url="/logout/")
 @log.except_captured(EXCEPT_REDIRECT, source='course_views[editCourseActivity]', record_user=True)
-def editCourseActivity(request: HttpRequest, aid):
+def editCourseActivity(request: HttpRequest, aid: int):
     """
     编辑单次书院课程活动，addActivity的简化版
+
+    :param request: 修改单次课程活动的请求
+    :type request: HttpRequest
+    :param aid: 待修改的课程活动id
+    :type aid: int
+    :return: 返回"修改课程活动"页面
+    :rtype: HttpResponse
     """
     # 检查用户身份
     valid, user_type, html_display = utils.check_user_type(request.user)
@@ -79,8 +86,8 @@ def editCourseActivity(request: HttpRequest, aid):
     if activity.category != Activity.ActivityCategory.COURSE:
         return redirect(message_url(wrong('当前活动不是书院课程活动!'),
                                     f'/viewActivity/{activity.id}'))
-    # 课程活动无需报名，在开始前都是等待中的状态
-    if activity.status != Activity.Status.WAITING:
+    # 课程活动只能在发布前进行修改
+    if activity.status != Activity.Status.UNPUBLISHED:
         return redirect(message_url(wrong('当前活动状态不允许修改!'),
                                     f'/viewActivity/{activity.id}'))
 
@@ -99,6 +106,7 @@ def editCourseActivity(request: HttpRequest, aid):
             return redirect(message_url(wrong(str(err_info)),
                                         request.get_full_path()))
         except Exception as e:
+            print(e)
             return redirect(message_url(wrong("修改课程活动失败!"),
                                         request.get_full_path()))
 
@@ -114,7 +122,8 @@ def editCourseActivity(request: HttpRequest, aid):
     end = activity.end.strftime("%Y-%m-%d %H:%M")
     # introduction = escape_for_templates(activity.introduction) # 暂定不需要简介
     edit = True  # 前端据此区分是编辑还是创建
-
+    publish_day = activity.publish_day
+    need_apply = activity.need_apply
     # 判断本活动是否为长期定时活动
     course_time_tag = (activity.course_time is not None)
 
@@ -127,6 +136,11 @@ def editCourseActivity(request: HttpRequest, aid):
 def addSingleCourseActivity(request: HttpRequest):
     """
     创建单次书院课程活动，addActivity的简化版
+
+    :param request: 创建单次课程活动的请求
+    :type request: HttpRequest
+    :return: 返回"发起单次课程活动"页面
+    :rtype: HttpResponse
     """
     # 检查用户身份
     valid, user_type, html_display = utils.check_user_type(request.user)
@@ -203,6 +217,7 @@ def showCourseActivity(request: HttpRequest):
     future_activity_list = (
         all_activity_list.filter(
             status__in=[
+                Activity.Status.UNPUBLISHED,
                 Activity.Status.REVIEWING,
                 Activity.Status.APPLYING,
                 Activity.Status.WAITING,
@@ -254,8 +269,8 @@ def showCourseActivity(request: HttpRequest):
 
         assert activity.status not in [
             Activity.Status.REVIEWING,
-            Activity.Status.APPLYING,
-        ], "课程活动状态非法"  # 课程活动不应出现这两个状态
+            # Activity.Status.APPLYING,
+        ], "课程活动状态非法"  # 课程活动不应出现审核状态
 
         # 取消活动
         with transaction.atomic():
@@ -275,12 +290,16 @@ def showCourseActivity(request: HttpRequest):
 @login_required(redirect_field_name="origin")
 @utils.check_user_access(redirect_url="/logout/")
 @log.except_captured(EXCEPT_REDIRECT, source='course_views[showCourseRecord]', record_user=True)
-def showCourseRecord(request: HttpRequest):
-    '''
+def showCourseRecord(request: HttpRequest) -> HttpResponse:
+    """    
     展示及修改学时数据
     在开启修改功能前，显示本学期已完成的所有课程活动的学生的参与次数
     开启修改功能后，自动创建学时表，并且允许修改学时
-    '''
+    :param request: 请求
+    :type request: HttpRequest
+    :return: 下载导出的学时文件或者返回前端展示的数据
+    :rtype: HttpResponse
+    """
     # ----身份检查----
     _, user_type, _ = utils.check_user_type(request.user)
     me = utils.get_person_or_org(request.user)  # 获取自身
@@ -399,6 +418,9 @@ def showCourseRecord(request: HttpRequest):
                     "hours": record.total_hours
                 })
             CourseRecord.objects.bulk_update(record_search, ["attend_times"])
+            # 如果点击提交学时按钮，修改数据库之后，跳转至已结束的活动界面
+            if request.method == "POST":
+                return(redirect("/showCourseActivity"))
 
     # 前端呈现信息，用于展示
     course_info = {
@@ -428,9 +450,13 @@ def selectCourse(request: HttpRequest):
     2. 在预选和补退选阶段，学生可以通过点击课程对应的按钮实现选课或者退选，
     且点击后页面显示发生相应的变化
     3. 显示选课结果
+
+    用户权限：学生和老师可以进入，组织不能进入；只有学生可以进行选课
     
-    用户权限: 学生和老师可以进入，组织不能进入；只有学生可以进行选课
+    :param request: POST courseid=<int> & action= "select" or "cancel"
+    :type request: HttpRequest
     """
+
     valid, user_type, html_display = utils.check_user_type(request.user)
     me = get_person_or_org(request.user, user_type)
 
@@ -513,7 +539,6 @@ def selectCourse(request: HttpRequest):
     selected_display = course_to_display(selected_courses, me)
 
     bar_display = utils.get_sidebar_and_navbar(request.user, "书院课程")
-
     return render(request, "select_course.html", locals())
 
 
@@ -524,11 +549,10 @@ def selectCourse(request: HttpRequest):
                      source='course_views[viewCourse]')
 def viewCourse(request: HttpRequest):
     """
-    展示一门课程的详细信息
-    
-    GET参数: ?courseid=<int>
+    展示一门课程的详细信息，所有用户类型均可访问
 
-    用户权限: 不对用户类型作出限制，均正常显示内容  
+    :param request: GET courseid=<int>
+    :type request: HttpRequest
     """
     valid, user_type, html_display = utils.check_user_type(request.user)
 
@@ -608,6 +632,8 @@ def addCourse(request: HttpRequest, cid=None):
         if not edit:
             # 发起选课
             course_DDL = str_to_time(get_setting("course/btx_election_end"))
+
+
             if datetime.now() > course_DDL:
                 return redirect(message_url(succeed("已超过选课时间节点，无法发起课程！"),
                                             f'/showCourseActivity/'))
@@ -652,6 +678,8 @@ def addCourse(request: HttpRequest, cid=None):
         teaching_plan=utils.escape_for_templates(course.teaching_plan)
         record_cal_method=utils.escape_for_templates(course.record_cal_method)
         status = course.status
+        need_apply = course.need_apply
+        publish_day = course.publish_day
         capacity = course.capacity
         type = course.type
         current_participants = course.current_participants

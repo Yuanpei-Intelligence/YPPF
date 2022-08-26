@@ -4,7 +4,7 @@
 
 <!-- TODO: Link to related pages -->
 
-{% with title='我的课程' link1='/addSingleCourseActivity' btn_name1='增加课时' link2='/addCourse' btn_name2='发起选课' link3='/showCourseRecord' btn_name3='课程结项' link4='/outputSelectInfo' btn_name4='导出名单' %}
+{% with title='我的课程' link1='/addSingleCourseActivity' btn_name1='增加课时' link2='/addCourse' btn_name2='发起选课' link3='/showCourseRecord' btn_name3='课程结项' link4='/outputSelectInfo' btn_name4='导出名单'  link5='/sendMessage/?receiver_type=小组成员' btn_name5='发送通知'%}
 
 <!--  BEGIN CONTENT AREA  -->
 <div id="content" class="main-content">
@@ -40,7 +40,10 @@
                                         onclick="location.href = '{{link3}}';">{{btn_name3}}
                                     </button>
                                     <button class="dropdown-item" 
-                                    onclick="location.href = '{{link4}}';">{{btn_name4}}
+                                        onclick="location.href = '{{link4}}';">{{btn_name4}}
+                                    </button>
+                                    <button class="dropdown-item"
+                                        onclick="location.href = '{{link5}}';">{{btn_name5}}
                                     </button>
                                 </div>
                             </div>
@@ -108,6 +111,8 @@
                                                                         <span class="badge badge-pill badge-info">
                                                                         {% elif act.status == "进行中" %}
                                                                         <span class="badge badge-pill badge-success">
+                                                                        {% elif act.status == "待发布" %}
+                                                                        <span class="badge badge-pill badge-secondary">
                                                                         {% endif %}
                                                                     {{ act.status }}
                                                                     {% endif %}
@@ -181,6 +186,11 @@
                                                             <span class="ml-1">开始时间：{{ act.start }}&nbsp;</span>
                                                         </p>
 
+                                                        <p style="text-align: left; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+                                                            <i class="fa fa-calendar" style="width: 20px;"></i>
+                                                            <span class="ml-1">发布时间：{{ act.publish_time }}&nbsp;</span>
+                                                        </p>
+                                                        
                                                         <p style="text-align: left; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
                                                             <i class="fa fa-location-arrow" style="width: 20px;"></i>
                                                             <span class="ml-1">{{ act.location }}&nbsp;</span>

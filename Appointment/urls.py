@@ -43,8 +43,10 @@ urlpatterns = [
     path('admin-index.html', views.admin_index, name='admin_index'), #added by wxy
     path('admin-credit.html',views.admin_credit, name='admin_credit'),#added by wxy
     path('cancelAppoint',views.cancelAppoint,name="cancelAppoint"),
+    path('renewLongtermAppoint',views.renewLongtermAppoint, name="renewLongtermAppoint"),
     path('logout',views.logout,name="logout"),
     path('arrange_talk',views.arrange_talk_room,name='arrange_talk'),
+    path('review', views.review, name='review'),
     # added by wxy
     # 硬件对接部分的网页
     path('door_check', views.door_check, name='door_check'),
@@ -52,4 +54,5 @@ urlpatterns = [
     path('display_getappoint',views.display_getappoint,name='display_getappoint'),
     #path('img_get_func',views.img_get_func,name='img_get_func'),    # 获取头像位置的函数
     path('summary', views.summary, name='summary'),
+    path('summary2', views.summary2, name='summary2'),
 ]

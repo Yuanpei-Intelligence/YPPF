@@ -7,7 +7,6 @@ from app.models import (
     Activity,
     ActivityPhoto,
     Participant,
-    Reimbursement,
 )
 from app.activity_utils import (
     ActivityException,
@@ -72,7 +71,6 @@ def viewActivity(request: HttpRequest, aid=None):
     content = str(request.POST["content"])
     URL = str(request.POST["URL"])  # 活动推送链接
     QRcode = request.POST["QRcode"]  # 收取元气值的二维码
-    aprice = request.POST["aprice"]  # 活动价格
     capacity = request.POST["capacity"]  # 活动举办的容量
     """
 
@@ -185,17 +183,6 @@ def viewActivity(request: HttpRequest, aid=None):
                 log.record_traceback(request, e)
                 return EXCEPT_REDIRECT
 
-        elif option == "payment":
-            if activity.status != Activity.Status.END:
-                return redirect(message_url(wrong('活动尚未结束!'), request.path))
-            if not ownership:
-                return redirect(message_url(wrong('您没有申请活动结项的权限!'), request.path))
-            try:
-                re = Reimbursement.objects.get(related_activity=activity)
-                return redirect(f"/modifyEndActivity/?reimb_id={re.id}")
-            except:
-                return redirect(f"/modifyEndActivity/")
-
         elif option == "checkinoffline":
             # 进入调整签到界面
             if activity.status != Activity.Status.END:
@@ -236,15 +223,11 @@ def viewActivity(request: HttpRequest, aid=None):
     if (aURL is None) or (aURL == ""):
         show_url = False
     bidding = activity.bidding
-    price = activity.YQPoint
-    from_student = activity.source == Activity.YQPointSource.STUDENT
     current_participants = activity.current_participants
     status = activity.status
     capacity = activity.capacity
     if capacity == -1 or capacity == 10000:
         capacity = "INF"
-    if activity.source == Activity.YQPointSource.COLLEGE:
-        price = 0
     if activity.bidding:
         apply_manner = "抽签模式"
     else:
@@ -718,7 +701,6 @@ def addActivity(request: HttpRequest, aid=None):
         # 下面是前端展示的变量
 
         title = utils.escape_for_templates(activity.title)
-        budget = activity.budget
         location = utils.escape_for_templates(activity.location)
         apply_end = activity.apply_end.strftime("%Y-%m-%d %H:%M")
         # apply_end_for_js = activity.apply_end.strftime("%Y-%m-%d %H:%M")
@@ -729,14 +711,10 @@ def addActivity(request: HttpRequest, aid=None):
 
         endbefore = activity.endbefore
         bidding = activity.bidding
-        amount = activity.YQPoint
         signscheme = "先到先得"
         if bidding:
             signscheme = "抽签模式"
         capacity = activity.capacity
-        yq_source = "向学生收取"
-        if activity.source == Activity.YQPointSource.COLLEGE:
-            yq_source = "向学院申请"
         no_limit = False
         if capacity == 10000:
             no_limit = True
@@ -745,7 +723,6 @@ def addActivity(request: HttpRequest, aid=None):
         available_teachers = NaturalPerson.objects.teachers()
         need_checkin = activity.need_checkin
         inner = activity.inner
-        apply_reason = utils.escape_for_templates(activity.apply_reason)
         if not use_template:
             comments = showComment(activity)
         photo = str(activity.photos.get(type=ActivityPhoto.PhotoType.ANNOUNCE).image)
@@ -889,7 +866,6 @@ def examineActivity(request: HttpRequest, aid):
 
     # 展示变量
     title = utils.escape_for_templates(activity.title)
-    budget = activity.budget
     location = utils.escape_for_templates(activity.location)
     apply_end = activity.apply_end.strftime("%Y-%m-%d %H:%M")
     start = activity.start.strftime("%Y-%m-%d %H:%M")
@@ -899,14 +875,10 @@ def examineActivity(request: HttpRequest, aid):
     url = utils.escape_for_templates(activity.URL)
     endbefore = activity.endbefore
     bidding = activity.bidding
-    amount = activity.YQPoint
     signscheme = "先到先得"
     if bidding:
         signscheme = "投点参与"
     capacity = activity.capacity
-    yq_source = "向学生收取"
-    if activity.source == Activity.YQPointSource.COLLEGE:
-        yq_source = "向学院申请"
     no_limit = False
     if capacity == 10000:
         no_limit = True
@@ -925,7 +897,6 @@ def examineActivity(request: HttpRequest, aid):
     intro_pic = examine_pic.image
 
     need_checkin = activity.need_checkin
-    apply_reason = utils.escape_for_templates(activity.apply_reason)
 
     bar_display = utils.get_sidebar_and_navbar(request.user, "活动审核")
     # bar_display["title_name"] = "审查活动"
@@ -938,10 +909,14 @@ def examineActivity(request: HttpRequest, aid):
 @log.except_captured(source='activity_views[offlineCheckinActivity]', record_user=True)
 def offlineCheckinActivity(request: HttpRequest, aid):
     '''
-    修改签到功能
-    只有举办活动的组织账号可查看和修改
-    注：
-        该函数实现的重要前提是活动已经设置所有组织成员签到初始状态为未签到
+    修改签到记录，只有举办活动的组织账号可查看和修改
+    
+    :param request: 修改请求
+    :type request: HttpRequest
+    :param aid: 活动id
+    :type aid: int
+    :return: 修改签到页面
+    :rtype: HttpResponse
     '''
     _, user_type, _ = utils.check_user_type(request.user)
     me = get_person_or_org(request.user, user_type)

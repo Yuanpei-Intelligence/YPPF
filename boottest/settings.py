@@ -47,10 +47,15 @@ INSTALLED_APPS = [
     "django.contrib.messages",
     "django.contrib.staticfiles",
     "django_apscheduler",
+    "generic",
     "app",
     "Appointment",
+    'data_analysis',
     "scheduler",
+    "yp_library",
 ]
+
+AUTH_USER_MODEL = 'generic.User'
 
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
@@ -103,7 +108,7 @@ DATABASES = {
     "default": {
         "ENGINE": "django.db.backends.mysql",
         "NAME": base_get_setting('database/NAME'), # local_dict["database"]["NAME"],
-        "HOST": "127.0.0.1",
+        "HOST": base_get_setting('database/HOST', default='127.0.0.1', raise_exception=False),
         "PORT": 3306,
         "USER": base_get_setting('database/USER'), # local_dict["database"]["USER"],
         "PASSWORD": base_get_setting('database/PASSWORD'), # local_dict["database"]["PASSWORD"],
@@ -111,9 +116,12 @@ DATABASES = {
             'charset': 'utf8mb4',
         #     "init_command": "SET sql_mode='STRICT_TRANS_TABLES'",
         },
-    }
+        'TEST': {
+            'CHARSET': 'utf8',
+            'COLLATION': 'utf8_general_ci',
+        },
+    },
 }
-
 
 # Password validation
 # https://docs.djangoproject.com/en/2.1/ref/settings/#auth-password-validators
@@ -190,6 +198,19 @@ if MY_ENV == "SCHEDULER":
 if MY_ENV == "INNER":
     pass
 
+if MY_ENV == "LIB":
+    DATABASES["yp_lib"] =  {
+        "ENGINE": "mssql",
+        "NAME": os.environ["LIB_DB"],
+        "HOST": os.environ["LIB_DB_HOST"],
+        "PORT": os.environ["LIB_DB_PORT"],
+        "USER": os.environ["LIB_DB_USER"],
+        "PASSWORD": os.environ["LIB_DB_PASSWORD"],
+        'OPTIONS': {
+            'driver': 'ODBC Driver 18 for SQL Server',   
+            'extra_params': 'TrustServerCertificate=yes',
+        },
+    }
 
 # STATIC_ROOT = os.path.join(BASE_DIR, "static")
 STATIC_URL = "/static/"

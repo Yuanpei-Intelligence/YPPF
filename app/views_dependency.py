@@ -48,7 +48,7 @@ from django.contrib.auth.decorators import login_required
 from django.http import HttpRequest, HttpResponse, HttpResponseRedirect, JsonResponse
 from django.shortcuts import render, redirect
 from django.urls import reverse
-from django.contrib.auth.models import User
+from generic.models import User
 from django.views.decorators.http import require_POST, require_GET
 
 # 用于重定向的视图专用常量

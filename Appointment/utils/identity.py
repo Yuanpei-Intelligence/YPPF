@@ -7,12 +7,11 @@
 依赖于app.API
 '''
 from Appointment import *
-from Appointment.models import Participant
+from Appointment.models import User, Participant
 from app import API
 from typing import Union, Callable
 from django.http import HttpRequest
 from django.db.models import QuerySet
-from django.contrib.auth.models import User
 
 from functools import wraps
 from django.shortcuts import redirect
@@ -26,6 +25,7 @@ __all__ = [
     'get_name',
     'get_avatar',
     'get_member_ids', 'get_members',
+    'get_auditor_ids',
     'identity_check',
 ]
 
@@ -110,6 +110,12 @@ def get_members(participant: Union[Participant, User],
     return Participant.objects.filter(Sid__in=member_ids)
 
 
+def get_auditor_ids(participant: Union[Participant, User]):
+    '''返回participant的审核者id列表'''
+    user = _arg2user(participant)
+    return API.get_auditors(user)
+
+
 # 用户验证、创建和更新
 def _create_account(request: HttpRequest, **values) -> Union[Participant, None]:
     '''
@@ -141,8 +147,10 @@ def _create_account(request: HttpRequest, **values) -> Union[Participant, None]:
                 name=given_name,
                 pinyin=pinyin_init,
             )
-            values.setdefault('credit', 3)
+            # values.setdefault('credit', 3)
             values.setdefault('hidden', is_org(request.user))
+            values.setdefault('longterm',
+                is_org(request.user) and len(get_member_ids(request.user)) >= 10)
 
             account = Participant.objects.create(**values)
             return account

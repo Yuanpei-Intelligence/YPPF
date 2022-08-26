@@ -1,17 +1,25 @@
 # store some funcitons
 
-import requests as requests
-import json
 from Appointment import *
-import threading
-from Appointment.models import Participant, Room, Appoint, CardCheckInfo  # 数据库模型
-from django.contrib.auth.models import User
-from django.db import transaction  # 原子化更改数据库
-from django.db.models import Q
-from datetime import datetime, timedelta
-from django.http import JsonResponse
+from Appointment.models import (
+    User,
+    Participant,
+    Room,
+    Appoint,
+    CardCheckInfo,
+)
+
 import os
 import time
+import json
+import threading
+import requests
+from typing import List, Tuple, Union, Any
+from datetime import datetime, timedelta
+
+from django.http import HttpRequest
+from django.db import transaction  # 原子化更改数据库
+from django.db.models import Q, QuerySet
 
 '''
 YWolfeee:
@@ -119,17 +127,17 @@ send_message = requests.session()
 
 
 def send_wechat_message(
-    stuid_list,
-    start_time,
-    room,
-    message_type,
-    major_student,
-    usage,
-    announcement,
-    num,
-    reason='',
-    url=None,
-    is_admin=None,
+    stuid_list: Union[List[str], Tuple[str]],
+    start_time: Union[datetime, Any],
+    room: Union[Room, str],
+    message_type: str,
+    major_student: Union[Participant, str],
+    usage: str,
+    announcement: str,
+    num: int,
+    reason: str = '',
+    url: str = None,
+    is_admin: bool = None,
 ):
     '''
     stuid_list: Iter[sid] 学号列表，不是学生!
@@ -175,10 +183,18 @@ def send_wechat_message(
         extra_info = ['原因：' + reason]  # '当前信用分：'+str(credit)
     elif message_type == 'cancel':
         title = '您有一条预约被取消'
-    elif message_type.startswith('longterm'):    # 发起一条长线预约
-        title = f'您有一条预约被长线化'
+    elif message_type == 'longterm_created':    # 发起一条长线预约
+        title = f'您有一条新的长期预约'
         show_announcement = True
-        extra_info = ['详情：' + reason]
+        if reason:
+            extra_info = ['详情：' + reason]
+    elif message_type == "longterm_reviewing":  # 发送给审核老师
+        title = f'您有一条待处理的长期预约'
+        extra_info = ['去审核']
+    elif message_type == "longterm_approved":   # 长期预约审核通过提示
+        title = f'您的长期预约已通过审核'
+    elif message_type == "longterm_rejected":   # 长期预约审核未通过提示
+        title = f'您的长期预约未通过审核'
     elif message_type == 'confirm_admin_w2c':    # WAITING to CONFIRMED
         title = '您有一条预约已确认完成'
         show_main_student = False
@@ -213,7 +229,7 @@ def send_wechat_message(
                         f'{start_time} {room} {message_type} ' + "出错，原因：unknown message_type", "utils.send_wechat_message",
                          "Problem")
         return
-    
+
     try:
         if is_admin:
             title = f'【管理员操作】\n{title}<title>'
@@ -222,16 +238,16 @@ def send_wechat_message(
 
         if show_time_and_place:    # 目前所有信息都显示时间地点
             appoint_info += [f'时间：{start_time}', f'地点：{room}']
-        
+
         if show_main_student:
             appoint_info += [f'发起者：{major_student}']
 
         if show_appoint_info:
             appoint_info += ['用途：' + usage, f'人数：{num}']
-        
+
         if show_announcement and announcement:
             appoint_info += ['预约通知：' + announcement]
-    
+
         message = title + '\n'.join(appoint_info + extra_info)
 
     except Exception as e:
@@ -281,7 +297,7 @@ def send_wechat_message(
         code = response['data'].get('errCode')
         has_code = code is not None
         retry_enabled = (
-                (200 <= code and code < 400 or str(code)[0] == '2') if 
+                (200 <= code and code < 400 or str(code)[0] == '2') if
                 has_code else
                 ('部分' in response['data']['errMsg'])  # 部分或全部发送失败/部分发送失败
             )
@@ -336,67 +352,58 @@ lock = threading.RLock()
 real_credit_point = True  # 如果为false 那么不把扣除信用分纳入范畴
 
 
-def set_appoint_reason(input_appoint, reason):
+def set_appoint_reason(input_appoint: Appoint, reason: Appoint.Reason):
     '''预约的过程中检查迟到，先记录原因，并且进入到进行中状态，不一定扣分'''
     try:
-        operation_succeed = False
         with transaction.atomic():
-            appoints = Appoint.objects.select_for_update().filter(Aid=input_appoint.Aid)
-            if len(appoints) != 1:
-                raise AssertionError
-            for appoint in appoints:
-                if appoint.Astatus == Appoint.Status.APPOINTED:
-                    appoint.Astatus = Appoint.Status.PROCESSING # 避免重复调用本函数
-                appoint.Areason = reason
-                appoint.save()
-                operation_succeed = True
-                
-                # TODO: major_sid
-                major_sid = str(appoint.major_student.Sid_id)
-                aid = str(appoint.Aid)
-                areason = str(appoint.get_Areason_display())
-        if operation_succeed:
-            operation_writer(major_sid, f"预约{aid}出现违约:{areason}",
-                            f"utils.set_appoint_reason{os.getpid()}", "OK")
+            appoint: Appoint = Appoint.objects.select_for_update().get(
+                Aid=input_appoint.Aid)
+            if appoint.Astatus == Appoint.Status.APPOINTED:
+                appoint.Astatus = Appoint.Status.PROCESSING # 避免重复调用本函数
+            appoint.Areason = reason
+            appoint.save()
+
+        operation_writer(appoint.get_major_id(),
+                        f"预约{appoint.Aid}出现违约:{appoint.get_Areason_display()}",
+                        f"utils.set_appoint_reason{os.getpid()}", "OK")
         return True, ""
     except Exception as e:
         return False, "in utils.set_appoint_reason: " + str(e)
 
 
-def appoint_violate(input_appoint, reason):  # 将一个aid设为违约 并根据real_credit_point设置
+def appoint_violate(input_appoint: Appoint, reason: Appoint.Reason):
+    '''将一个预约设为违约'''
     try:
-        #lock.acquire()
         operation_succeed = False
         with transaction.atomic():
-            appoints = Appoint.objects.select_related(
-                'major_student').select_for_update().filter(Aid=input_appoint.Aid)
-            if len(appoints) != 1:
-                raise AssertionError
-            for appoint in appoints:  # 按照假设，这里的访问应该是原子的，所以第二个程序到这里会卡主
-                really_deduct = False
+            appoint: Appoint = Appoint.objects.select_related(
+                'major_student').select_for_update().get(Aid=input_appoint.Aid)
+            major_student: Participant = Participant.objects.select_for_update().get(
+                pk=appoint.major_student.pk)
+            # 按照假设，这里的访问应该是原子的，所以第二个程序到这里会卡住
+            really_deduct = False
 
-                if real_credit_point and appoint.Astatus != Appoint.Status.VIOLATED:  # 不出现负分；如果已经是violated了就不重复扣分了
-                    if appoint.major_student.credit > 0:  # 这个时候需要扣分
-                        appoint.major_student.credit -= 1
-                        really_deduct = True
-                    appoint.Astatus = Appoint.Status.VIOLATED
-                    appoint.Areason = reason
-                    appoint.save()
-                    appoint.major_student.save()
-                    operation_succeed = True
+            if real_credit_point and appoint.Astatus != Appoint.Status.VIOLATED:
+                # 不出现负分；如果已经是violated了就不重复扣分了
+                if User.objects.modify_credit(major_student.Sid, -1, '地下室：违规') < 0:
+                    # 成功扣分
+                    really_deduct = True
+                appoint.Astatus = Appoint.Status.VIOLATED
+                appoint.Areason = reason
+                appoint.save()
+                operation_succeed = True
 
-                    # TODO: major_sid
-                    major_sid = str(appoint.major_student.Sid_id)
-                    astart = appoint.Astart
-                    aroom = str(appoint.Room)
-                    major_name = str(appoint.major_student.name)
-                    usage = str(appoint.Ausage)
-                    announce = str(appoint.Aannouncement)
-                    number = str(appoint.Ayp_num+appoint.Anon_yp_num)
-                    status = str(appoint.get_status())
-                    aid = str(appoint.Aid)
-                    areason = str(appoint.get_Areason_display())
-                    credit = str(appoint.major_student.credit)
+                major_sid = major_student.get_id()
+                astart = appoint.Astart
+                aroom = str(appoint.Room)
+                major_name = str(major_student.name)
+                usage = str(appoint.Ausage)
+                announce = str(appoint.Aannouncement)
+                number = str(appoint.Ayp_num + appoint.Anon_yp_num)
+                status = str(appoint.get_status())
+                aid = str(appoint.Aid)
+                areason = str(appoint.get_Areason_display())
+                credit = str(major_student.credit)
 
         if operation_succeed:  # 本任务执行成功
             send_wechat_message([major_sid],
@@ -408,13 +415,11 @@ def appoint_violate(input_appoint, reason):  # 将一个aid设为违约 并根�
                                 announce,
                                 number,
                                 status,
-                                #appoint.major_student.credit,
-                                )  # totest: only main_student
+                                )
             operation_writer(major_sid, f"预约{aid}出现违约:{areason}" +
                              f";扣除信用分:{really_deduct}" +
                              f";剩余信用分:{credit}",
-                             f"utils.appoint_violate{os.getpid()}", "OK")  # str(os.getpid()),str(threading.current_thread().name()))
-            #lock.release()
+                             f"utils.appoint_violate{os.getpid()}", "OK")
         return True, ""
     except Exception as e:
         return False, "in utils.appoint_violate: " + str(e)
@@ -430,32 +435,39 @@ if not os.path.exists(os.path.join(log_root_path, log_user)):
     os.mkdir(os.path.join(log_root_path, log_user))
 log_user_path = os.path.join(log_root_path, log_user)
 
-# 每周定时删除预约的程序，用于减少系统内的预约数量
 
-
-def write_before_delete(appoint_list):
+def write_before_delete(appoint_list: QuerySet[Appoint]):
+    """每周定时删除预约的程序，用于减少系统内的预约数量"""
     date = str(datetime.now().date())
 
-    write_path = os.path.join(log_root_path, date+".log")
-    log = open(write_path, mode="a")  # open file
-
-    period_start = (datetime.now()-timedelta(days=7)).date()
-    log.write(str(period_start) + "~" + str(date) + "\n")
-    for appoint in appoint_list:
-        if appoint.Astatus != Appoint.Status.CANCELED:  # not delete
-            log.write(str(appoint.toJson()).encode(
-                "gbk", 'ignore').decode("gbk", "ignore"))
-            log.write("\n")
-
-    log.write("end of file\n")
-    log.close()
+    write_path = os.path.join(log_root_path, date + ".log")
+    with open(write_path, mode="a") as log:
+        period_start = (datetime.now() - timedelta(days=7)).date()
+        log.write(f"{period_start}~{date}\n")
+        for appoint in appoint_list:
+            if appoint.Astatus != Appoint.Status.CANCELED:
+                log.write(str(appoint.toJson()) + "\n")
+        log.write("end of file\n")
 
 
-# 通用日志写入程序 写入时间(datetime.now()),操作主体(Sid),操作说明(Str),写入函数(Str)
-# 参数说明：第一为Sid也是文件名，第二位消息，第三位来源的函数名（类别）
-def operation_writer(user, message, source, status_code="OK")-> None:
+def operation_writer(user: Union[str, User, Participant], message: str, source: str,
+                     status_code="OK") -> None:
+    """
+    通用日志写入程序 写入时间(datetime.now()),操作主体(Sid),操作说明(Str),写入函数(Str)
+
+    :param user: Sid，决定文件名
+    :type user: Union[str, User, Participant]
+    :param message: 消息
+    :type message: str
+    :param source: 来源的函数名，格式通常为 文件名.函数名
+    :type source: str
+    :param status_code: 状态, defaults to "OK"
+    :type status_code: str, optional
+    """
     lock.acquire()
     try:
+        if isinstance(user, Participant):
+            user = user.Sid_id
         if isinstance(user, User):
             user = user.username
         timestamp = str(datetime.now())
@@ -487,17 +499,40 @@ def operation_writer(user, message, source, status_code="OK")-> None:
     lock.release()
 
 
-def cardcheckinfo_writer(Participant, Room, real_status, should_status, message=None):
-    CardCheckInfo.objects.create(Cardroom=Room, Cardstudent=Participant,
+def cardcheckinfo_writer(user: Participant, room: Room, real_status, should_status, message=None):
+    CardCheckInfo.objects.create(Cardroom=room, Cardstudent=user,
                                  CardStatus=real_status, ShouldOpenStatus=should_status, Message=message)
 
 
-def check_temp_appoint(room):
+def check_temp_appoint(room: Room) -> bool:
     return '研讨' in room.Rtitle
 
 
-def get_conflict_appoints(appoint, times=1, interval=1, no_cross_day=False, lock=False):
-    '''获取以时间排序的冲突预约，可以加锁，但不负责开启事务'''
+def get_conflict_appoints(appoint: Appoint, times: int = 1,
+                          interval: int = 1, week_offset: int = 0,
+                          exclude_this: bool = False,
+                          no_cross_day=False, lock=False) -> QuerySet[Appoint]:
+    '''
+    
+    获取以时间排序的冲突预约，可以加锁，但不负责开启事务，不应抛出异常
+
+    :param appoint: 需要检测的第一个预约
+    :type appoint: Appoint
+    :param times: 检测次数, defaults to 1
+    :type times: int, optional
+    :param interval: 每次间隔的周数, defaults to 1
+    :type interval: int, optional
+    :param week_offset: 第一次检测时间距离提供预约的周数, defaults to 0
+    :type week_offset: int, optional
+    :param exclude_this: 排除检测的预约, defaults to False
+    :type exclude_this: bool, optional
+    :param no_cross_day: 是否假设预约都不跨天，可以简化查询, defaults to False
+    :type no_cross_day: bool, optional
+    :param lock: 查询时上锁, defaults to False
+    :type lock: bool, optional
+    :return: 时间升序排序的冲突预约集
+    :rtype: QuerySet[Appoint]
+    '''
     # 获取该房间的所有有效预约
     activate_appoints = Appoint.objects.not_canceled().filter(Room=appoint.Room)
     if lock:
@@ -512,7 +547,7 @@ def get_conflict_appoints(appoint, times=1, interval=1, no_cross_day=False, lock
             Afinish__time__gt=appoint.Astart.time(),
         )
         date_range = [
-            appoint.Astart.date() + timedelta(days=7 * week)
+            appoint.Astart.date() + timedelta(weeks=week + week_offset)
             for week in range(0, times * interval, interval)
             ]
         conditions &= Q(
@@ -523,9 +558,56 @@ def get_conflict_appoints(appoint, times=1, interval=1, no_cross_day=False, lock
         for week in range(0, times * interval, interval):
             conditions |= Q(
                 # 开始比当前的结束时间早
-                Astart__lt=appoint.Afinish + timedelta(days=7 * week),
+                Astart__lt=appoint.Afinish + timedelta(weeks=week + week_offset),
                 # 结束比当前的开始时间晚
-                Afinish__gt=appoint.Astart + timedelta(days=7 * week),
+                Afinish__gt=appoint.Astart + timedelta(weeks=week + week_offset),
             )
+    # 检查时预约还不应创建，冲突预约可以包含自身
     conflict_appoints = activate_appoints.filter(conditions)
+    if exclude_this:
+        conflict_appoints = conflict_appoints.exclude(pk=appoint.pk)
     return conflict_appoints.order_by('Astart', 'Afinish')
+
+
+def to_feedback_url(request: HttpRequest) -> str:
+    """
+    检查预约记录是否可以申诉。
+    如果可以，向session添加传递到反馈填写界面的信息。
+    最终函数返回跳转到的url。
+    
+    :param request: http请求
+    :type request: HttpRequest
+    :return: 即将跳转到的url
+    :rtype: str
+    """
+    # 首先检查预约记录是否存在
+    try:
+        Aid = request.POST['feedback']
+        appoint: Appoint = Appoint.objects.get(Aid=Aid)
+    except:
+        raise AssertionError("预约记录不存在！")
+    
+    # 然后检查预约记录是否可申诉
+    assert appoint.Astatus in (
+        Appoint.Status.VIOLATED,
+        Appoint.Status.JUDGED,
+    ), "该预约记录不可申诉！"
+    
+    appoint_student = appoint.major_student.name
+    appoint_room = str(appoint.Room)
+    appoint_start = appoint.Astart.strftime('%Y年%m月%d日 %H:%M')
+    appoint_finish = appoint.Afinish.strftime('%H:%M')
+    appoint_reason = appoint.get_status()
+    
+    # 向session添加信息
+    request.session['feedback_type'] = '地下室预约反馈'
+    request.session['feedback_url'] = appoint.get_admin_url()
+    request.session['feedback_content'] = '\n'.join((
+        f'申请人：{appoint_student}',
+        f'房间：{appoint_room}',
+        f'预约时间：{appoint_start} - {appoint_finish}',
+        f'违规原因：{appoint_reason}',
+    ))
+    
+    # 最终返回填写feedback的url
+    return GLOBAL_INFO.login_url.rstrip('/') + '/feedback/'

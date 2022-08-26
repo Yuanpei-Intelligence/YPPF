@@ -14,6 +14,7 @@ check_course_time_conflict: 检查当前选择的课是否与已选的课上课�
 """
 from app.utils_dependency import *
 from app.models import (
+    User,
     NaturalPerson,
     Activity,
     Notification,
@@ -48,8 +49,7 @@ from collections import Counter
 from datetime import datetime, timedelta
 from typing import Tuple, List
 
-from django.http import HttpResponse
-from django.contrib.auth.models import User
+from django.http import HttpRequest, HttpResponse
 from django.db import transaction
 from django.db.models import F, Q, Sum, Prefetch
 
@@ -75,15 +75,32 @@ __all__ = [
 ]
 
 
-# 时间合法性的检查：开始早于结束，开始晚于当前时间
-def check_ac_time_course(start_time, end_time):
+def check_ac_time_course(start_time: datetime, end_time: datetime) -> bool:
+    """
+    时间合法性的检查：开始早于结束
+
+    :param start_time: 活动开始时间
+    :type start_time: datetime
+    :param end_time: 活动结束时间
+    :type end_time: datetime
+    :return: 是否合法
+    :rtype: bool
+    """
     if not start_time < end_time:
         return False
     return True
 
 
-def course_activity_base_check(request):
-    '''检查课程活动，是activity_base_check的简化版，失败时抛出AssertionError'''
+def course_activity_base_check(request: HttpRequest) -> dict:
+    """
+    检查课程活动，是activity_base_check的简化版，失败时抛出AssertionError
+
+    :param request: 修改/发起单次课程活动的请求
+    :type request: HttpRequest
+    :raises AssertionError: 活动时间非法
+    :return: context
+    :rtype: dict
+    """
     context = dict()
 
     # 读取活动名称和地点，检查合法性
@@ -100,23 +117,44 @@ def course_activity_base_check(request):
             request.POST["lesson_start"], "%Y-%m-%d %H:%M")  # 活动开始时间
         act_end = datetime.strptime(
             request.POST["lesson_end"], "%Y-%m-%d %H:%M")  # 活动结束时间
+        act_publish_day ={
+            "instant": Course.PublishDay.instant,
+            "3": Course.PublishDay.threeday,
+            "2": Course.PublishDay.twoday,
+            "1": Course.PublishDay.oneday,
+        }[request.POST.get("publish_day")]  # 活动发布提前日期
+
+        if act_publish_day == Course.PublishDay.instant:
+            act_publish_time = datetime.now() + timedelta(seconds=10)   # 活动发布时间，默认为立即发布
+        else:
+            act_publish_time = datetime.strptime(
+                request.POST["publish_time"], "%Y-%m-%d %H:%M")  # 活动发布时间
     except:
         raise AssertionError("活动时间非法")
     context["start"] = act_start
     context["end"] = act_end
+    context["publish_day"] = act_publish_day
+    context["publish_time"] = act_publish_time
     assert check_ac_time_course(act_start, act_end), "活动时间非法"
 
     # 默认需要签到
     context["need_checkin"] = True
+    # 默认不需要报名
+    context["need_apply"] = request.POST["need_apply"] == "True" 
     context["post_type"] = str(request.POST.get("post_type", ""))
     return context
 
 
-def create_single_course_activity(request):
-    '''
+def create_single_course_activity(request: HttpRequest) -> Tuple[int, bool]:
+    """
     创建单次课程活动，是create_activity的简化版
     错误提示通过AssertionError抛出
-    '''
+
+    :param request: 发起单次课程活动的请求
+    :type request: HttpRequest
+    :return: 课程活动id，True(成功创建)/False(相似活动已存在)
+    :rtype: Tuple[int, bool]
+    """
     context = course_activity_base_check(request)
 
     # 获取组织和课程
@@ -155,39 +193,52 @@ def create_single_course_activity(request):
         category=Activity.ActivityCategory.COURSE,
         need_checkin=True,  # 默认需要签到
 
-        # 因为目前没有报名环节，活动状态在活动开始前默认都是WAITING，按预审核活动的逻辑
         recorded=True,
-        status=Activity.Status.WAITING,
+        status=Activity.Status.UNPUBLISHED,
+        publish_day=context["publish_day"],  # 发布提前天数
+        publish_time=context["publish_time"],  # 发布时间
+        need_apply=context["need_apply"]  # 是否需要报名
 
-        # capacity, URL, budget, YQPoint, bidding,
-        # apply_reason, inner, source, end_before均为default
+        # capacity, URL, bidding,
+        # inner, end_before均为default
     )
-    # 选课人员自动报名活动
-    # 选课结束以后，活动参与人员从小组成员获取
-    person_pos = list(Position.objects.activated().filter(
-            org=course.organization).values_list("person", flat=True))
-    if course.status == Course.Status.STAGE2:
-        # 如果处于补退选阶段，活动参与人员从课程选课情况获取
-        selected_person = list(CourseParticipant.objects.filter(
-            course=course,
-            status=CourseParticipant.Status.SUCCESS,
-        ).values_list("person", flat=True))
-        person_pos += selected_person
-        person_pos = list(set(person_pos))
-    members = NaturalPerson.objects.filter(
-        id__in=person_pos)
-    for member in members:
-        participant = Participant.objects.create(
-            activity_id=activity,
-            person_id=member,
-            status=Participant.AttendStatus.APLLYSUCCESS)
+    if not activity.need_apply:
+        # 选课人员自动报名活动
+        # 选课结束以后，活动参与人员从小组成员获取
+        person_pos = list(Position.objects.activated().filter(
+                org=course.organization).values_list("person", flat=True))
+        if course.status == Course.Status.STAGE2:
+            # 如果处于补退选阶段，活动参与人员从课程选课情况获取
+            selected_person = list(CourseParticipant.objects.filter(
+                course=course,
+                status=CourseParticipant.Status.SUCCESS,
+            ).values_list("person", flat=True))
+            person_pos += selected_person
+            person_pos = list(set(person_pos))
+        members = NaturalPerson.objects.filter(
+            id__in=person_pos)
+        for member in members:
+            participant = Participant.objects.create(
+                activity_id=activity,
+                person_id=member,
+                status=Participant.AttendStatus.APLLYSUCCESS)
 
-    activity.current_participants = len(person_pos)
-    activity.capacity = len(person_pos)
-    activity.save()
+        activity.current_participants = len(person_pos)
+        activity.capacity = len(person_pos)
+        activity.save()
 
-    # 通知课程小组成员
-    notifyActivity(activity.id, "newActivity")
+    # 在活动发布时通知参与成员,创建定时任务并修改活动状态
+    if activity.need_apply:
+        scheduler.add_job(changeActivityStatus, "date", id=f"activity_{activity.id}_{Activity.Status.APPLYING}",
+                          run_date=activity.publish_time, args=[activity.id, Activity.Status.UNPUBLISHED, Activity.Status.APPLYING], replace_existing=True)
+        scheduler.add_job(changeActivityStatus, "date", id=f"activity_{activity.id}_{Activity.Status.WAITING}",
+                          run_date=activity.start - timedelta(minutes=5), args=[activity.id, Activity.Status.APPLYING, Activity.Status.WAITING], replace_existing=True)
+    else:
+        scheduler.add_job(changeActivityStatus, "date", id=f"activity_{activity.id}_{Activity.Status.WAITING}",
+                          run_date=activity.publish_time, args=[activity.id, Activity.Status.UNPUBLISHED, Activity.Status.WAITING], replace_existing=True)
+    
+    scheduler.add_job(notifyActivity, "date", id=f"activity_{activity.id}_newCourseActivity",
+                      run_date=activity.publish_time, args=[activity.id,"newCourseActivity"], replace_existing=True)
 
     # 引入定时任务：提前15min提醒、活动状态由WAITING变PROGRESSING再变END
     scheduler.add_job(notifyActivity, "date", id=f"activity_{activity.id}_remind",
@@ -218,14 +269,19 @@ def create_single_course_activity(request):
     return activity.id, True
 
 
-def modify_course_activity(request, activity):
-    '''
+def modify_course_activity(request: HttpRequest, activity: Activity):
+    """
     修改单次课程活动信息，是modify_activity的简化版
     错误提示通过AssertionError抛出
-    '''
-    # 课程活动无需报名，在开始前都是等待中的状态
-    assert activity.status == Activity.Status.WAITING, \
-            "课程活动只有在等待状态才能修改。"
+
+    :param request: 修改单次课程活动的请求
+    :type request: HttpRequest
+    :param activity: 待修改的活动
+    :type activity: Activity
+    """
+    # 课程活动仅在待发布状态下可以修改
+    assert activity.status == Activity.Status.UNPUBLISHED, \
+            "课程活动只有在待发布状态才能修改。"
 
     context = course_activity_base_check(request)
 
@@ -239,6 +295,12 @@ def modify_course_activity(request, activity):
     activity.start = context["start"]
     old_end = activity.end
     activity.end = context["end"]
+    old_publish_day = activity.publish_day 
+    activity.publish_day = context["publish_day"]
+    old_publish_time = activity.publish_time
+    activity.publish_time = context["publish_time"]
+    old_need_apply = activity.need_apply
+    activity.need_apply = context["need_apply"]
     activity.save()
 
     #修改所有该时段的时间、地点
@@ -265,23 +327,42 @@ def modify_course_activity(request, activity):
         course_time.end = schedule_end
         #设置地点
         course.classroom = context["location"]
+        course.need_apply = context["need_apply"]
+        course.publish_day = context["publish_day"]
         course.save()
         course_time.save()
     # 目前只要编辑了活动信息，无论活动处于什么状态，都通知全体选课同学
     # if activity.status != Activity.Status.APPLYING and activity.status != Activity.Status.WAITING:
     #     return
 
-    # 写通知
-    to_participants = [f"您参与的书院课程活动{old_title}发生变化"]
-    if old_title != activity.title:
-        to_participants.append(f"活动更名为{activity.title}")
-    if old_location != activity.location:
-        to_participants.append(f"活动地点修改为{activity.location}")
-    if old_start != activity.start:
-        to_participants.append(
-            f"活动开始时间调整为{activity.start.strftime('%Y-%m-%d %H:%M')}")
+    # 发布前参与同学无法获取课程信息，因此不需要发送通知
+    # to_participants = [f"您参与的书院课程活动{old_title}发生变化"]
+    # if old_title != activity.title:
+    #     to_participants.append(f"活动更名为{activity.title}")
+    # if old_location != activity.location:
+    #     to_participants.append(f"活动地点修改为{activity.location}")
+    # if old_start != activity.start:
+    #     to_participants.append(
+    #         f"活动开始时间调整为{activity.start.strftime('%Y-%m-%d %H:%M')}")
 
     # 更新定时任务
+    if old_need_apply:
+        scheduler.remove_job(job_id=f"activity_{activity.id}_{Activity.Status.APPLYING}")
+        scheduler.remove_job(job_id=f"activity_{activity.id}_{Activity.Status.WAITING}")
+    if not old_need_apply:
+        scheduler.remove_job(job_id=f"activity_{activity.id}_{Activity.Status.WAITING}")
+    
+    if activity.need_apply:
+        scheduler.add_job(changeActivityStatus, "date", id=f"activity_{activity.id}_{Activity.Status.APPLYING}",
+                          run_date=activity.publish_time, args=[activity.id, Activity.Status.UNPUBLISHED, Activity.Status.APPLYING], replace_existing=True)
+        scheduler.add_job(changeActivityStatus, "date", id=f"activity_{activity.id}_{Activity.Status.WAITING}",
+                          run_date=activity.start - timedelta(minutes=5), args=[activity.id, Activity.Status.APPLYING, Activity.Status.WAITING], replace_existing=True)
+    else:
+        scheduler.add_job(changeActivityStatus, "date", id=f"activity_{activity.id}_{Activity.Status.WAITING}",
+                          run_date=activity.publish_time, args=[activity.id, Activity.Status.UNPUBLISHED, Activity.Status.WAITING], replace_existing=True)
+    
+    scheduler.add_job(notifyActivity, "date", id=f"activity_{activity.id}_newCourseActivity",
+                      run_date=activity.publish_time, args=[activity.id,"newCourseActivity"], replace_existing=True)
     scheduler.add_job(notifyActivity, "date", id=f"activity_{activity.id}_remind",
                       run_date=activity.start - timedelta(minutes=15), args=[activity.id, "remind"], replace_existing=True)
     scheduler.add_job(changeActivityStatus, "date", id=f"activity_{activity.id}_{Activity.Status.PROGRESSING}",
@@ -290,11 +371,11 @@ def modify_course_activity(request, activity):
                       run_date=activity.end, args=[activity.id, Activity.Status.PROGRESSING, Activity.Status.END], replace_existing=True)
 
     # 发通知
-    notifyActivity(activity.id, "modification_par", "\n".join(to_participants))
+    # notifyActivity(activity.id, "modification_par", "\n".join(to_participants))
 
 
-def cancel_course_activity(request, activity, cancel_all=False):
-    '''
+def cancel_course_activity(request: HttpRequest, activity: Activity, cancel_all: bool = False):
+    """
     取消课程活动，是cancel_activity的简化版，在聚合页面被调用
 
     在聚合页面中，应确保activity是课程活动，并且应检查activity.status，
@@ -302,9 +383,19 @@ def cancel_course_activity(request, activity, cancel_all=False):
 
     成功无返回值，失败返回错误消息
     （或者也可以在聚合页面判断出来能不能取消）
-    '''
-    # 只有WAITING和PROGRESSING有可能修改
+
+    :param request: 取消单次课程活动的请求
+    :type request: HttpRequest
+    :param activity: 待取消的活动
+    :type activity: Activity
+    :param cancel_all: 取消该时段所有活动, defaults to False
+    :type cancel_all: bool, optional
+    :return: 取消失败的话返回错误信息
+    :rtype: string
+    """
+    # 只有UNPUBLISHED,WAITING和PROGRESSING允许取消
     if activity.status not in [
+        Activity.Status.UNPUBLISHED,
         Activity.Status.WAITING,
         Activity.Status.PROGRESSING,
     ]:
@@ -346,39 +437,52 @@ def cancel_course_activity(request, activity, cancel_all=False):
         activity.course_time.save()
 
 
-def remaining_willingness_point(user: NaturalPerson):
+def remaining_willingness_point(user: NaturalPerson) -> int:
     """
-    计算剩余的意愿点
+    计算用户剩余的意愿点
+
+    :param user: 当前用户
+    :type user: NaturalPerson
+    :raises NotImplementedError: 暂不启用
+    :return: 剩余的意愿点值
+    :rtype: int
     """
     raise NotImplementedError("暂时不使用意愿点")
-    # # 当前用户已经预选的课
-    # # 由于participant可能为空，重新启用的时候注意修改代码
-    # courses = Course.objects.filter(
-    #     participant_set__person=user,
-    #     participant_set__status=CourseParticipant.Status.SELECT)
+    # 当前用户已经预选的课
+    # 由于participant可能为空，重新启用的时候注意修改代码
+    courses = Course.objects.filter(
+        participant_set__person=user,
+        participant_set__status=CourseParticipant.Status.SELECT)
 
-    # initial_point = 99  # 初始意愿点
-    # cost_point = courses.aggregate(Sum('bidding'))  # 已经使用的意愿点
+    initial_point = 99  # 初始意愿点
+    cost_point = courses.aggregate(Sum('bidding'))  # 已经使用的意愿点
 
-    # if cost_point:
-    #     # cost_point可能为None
-    #     return initial_point - cost_point['bidding__sum']
-    # else:
-    #     return initial_point
+    if cost_point:
+        # cost_point可能为None
+        return initial_point - cost_point['bidding__sum']
+    else:
+        return initial_point
 
 
-def registration_status_check(course_status: CourseParticipant.Status,
+def registration_status_check(course_status: Course.Status,
                               cur_status: CourseParticipant.Status,
-                              to_status: CourseParticipant.Status):
+                              to_status: CourseParticipant.Status) -> None:
     """
-    判断选课状态的变化是否合法
+    检查选课状态的变化是否合法
+    
+    1. 预选阶段允许的状态变化: SELECT <-> UNSELECT
+    2. 补退选阶段允许的状态变化: SUCCESS -> UNSELECT; FAILED -> SUCCESS; UNSELECT -> SUCCESS  
+    
+    异常: 抛出AssertionError，在调用处解决
 
-    说明:
-        预选阶段可能的状态变化: SELECT <-> UNSELECT
-        补退选阶段可能的状态变化: SUCCESS -> UNSELECT; FAILED -> SUCCESS; UNSELECT -> SUCCESS
-    注意:
-        抛出AssertionError，在调用处解决。
+    :param course_status: 课程所处的选课阶段
+    :type course_status: Course.Status
+    :param cur_status: 当前选课状态
+    :type cur_status: CourseParticipant.Status
+    :param to_status: 希望转变为的选课状态
+    :type to_status: CourseParticipant.Status
     """
+
     if course_status == Course.Status.STAGE1:
         assert ((cur_status == CourseParticipant.Status.SELECT
                  and to_status == CourseParticipant.Status.UNSELECT)
@@ -397,6 +501,13 @@ def check_course_time_conflict(current_course: Course,
                                user: NaturalPerson) -> Tuple[bool, str]:
     """
     检查当前选择课程的时间和已选课程是否冲突
+
+    :param current_course: 用户当前想选的课程
+    :type current_course: Course
+    :param user: 当前用户
+    :type user: NaturalPerson
+    :return: 是否冲突、发生冲突的具体原因
+    :rtype: Tuple[bool, str]
     """
     selected_courses = Course.objects.activated().filter(
         participant_set__person=user,
@@ -468,14 +579,16 @@ def check_course_time_conflict(current_course: Course,
 def registration_status_change(course_id: int, user: NaturalPerson,
                                action: str) -> MESSAGECONTEXT:
     """
-    学生点击选课或者取消选课后，用该函数更改学生的选课状态
+    学生点击选课或者取消选课后，更改学生的选课状态
 
-    参数:
-        course_id: Course的主键，
-        action: 是希望对课程进行的操作，可能为"select"或"cancel"
-
-    注意: 
-        非选课阶段，不应该进入这个函数！
+    :param course_id: 当前课程的编号
+    :type course_id: int
+    :param user: 当前用户
+    :type user: NaturalPerson
+    :param action: 希望进行的操作，可能为"select"或"cancel"
+    :type action: str
+    :return: 操作是否成功执行
+    :rtype: MESSAGECONTEXT
     """
     context = wrong("在修改选课状态的过程中发生错误，请联系管理员！")
 
@@ -579,7 +692,14 @@ def registration_status_change(course_id: int, user: NaturalPerson,
 
 def process_time(start: datetime, end: datetime) -> str:
     """
-    把datetime对象转换成人类可读的时间表示
+    把datetime对象转换成可读的时间表示
+
+    :param start: 课程的开始时间
+    :type start: datetime
+    :param end: 课程的结束时间
+    :type end: datetime
+    :return: 可读的时间表示
+    :rtype: str
     """
     chinese_display = ["一", "二", "三", "四", "五", "六", "日"]
     start_time = start.strftime("%H:%M")
@@ -589,16 +709,18 @@ def process_time(start: datetime, end: datetime) -> str:
 
 def course_to_display(courses: QuerySet[Course],
                       user: NaturalPerson,
-                      detail=False) -> List[dict]:
+                      detail: bool = False) -> List[dict]:
     """
-    方便前端呈现课程信息
+    将课程信息转换为列表，方便前端呈现
 
-    参数:
-        courses: 一个Course对象QuerySet
-        user: 当前用户对应的NaturalPerson对象
-        detail: 是否显示课程的详细信息，默认为False
-    返回值:
-        返回一个列表，列表中的每个元素是一个课程信息的字典
+    :param courses: 课程集合
+    :type courses: QuerySet[Course]
+    :param user: 当前用户
+    :type user: NaturalPerson
+    :param detail: 是否显示课程的详细信息, defaults to False
+    :type detail: bool
+    :return: 课程信息列表，用一个字典来传递课程的全部信息
+    :rtype: List[dict]
     """
     display = []
 
@@ -675,9 +797,6 @@ def course_to_display(courses: QuerySet[Course],
 def draw_lots():
     """
     等额抽签选出成功选课的学生，并修改学生的选课状态
-
-    参数:
-        course: 待抽签的课程
     """
     courses = Course.objects.activated().filter(status=Course.Status.DRAWING)
     for course in courses:
@@ -771,16 +890,20 @@ def draw_lots():
                      record_args=True,
                      status_code=log.STATE_WARNING,
                      source='course_utils[change_course_status]')
-def change_course_status(cur_status: Course.Status, to_status: Course.Status):
+def change_course_status(cur_status: Course.Status, to_status: Course.Status) -> None:
     """
     作为定时任务，在课程设定的时间改变课程的选课阶段
-
-    使用方法:
-        scheduler.add_job(change_course_status, "date", 
-        id=f"course_{course_id}_{to_status}, run_date, args)
-
-    参数:
-        to_status: 希望course变为的选课状态
+    
+    example: 
+    scheduler.add_job(change_course_status, "date", 
+                      id=f"course_{course_id}_{to_status}, run_date, args)
+    
+    :param cur_status: 课程的当前选课阶段
+    :type cur_status: Course.Status
+    :param to_status: 希望课程转变到的选课阶段
+    :type to_status: Course.Status
+    :raises AssertionError: 选课已经结束 / 两个状态间不匹配
+    :raises AssertionError: 未提供当前阶段的信息
     """
     # 以下进行状态的合法性检查
     if cur_status is not None:
@@ -821,7 +944,7 @@ def change_course_status(cur_status: Course.Status, to_status: Course.Status):
                         status=Position.Status.DEPART,
                     ).update(pos=10,
                              is_admin=False,
-                             in_semester=Semester.now(),
+                             semester=Semester.now(),
                              status=Position.Status.INSERVICE)
                     # 检查是否已经加入小组
                     if not Position.objects.activated().filter(
@@ -829,7 +952,7 @@ def change_course_status(cur_status: Course.Status, to_status: Course.Status):
                             org=organization).exists():
                         position = Position(person=participant.person,
                                             org=organization,
-                                            in_semester=Semester.now())
+                                            semester=Semester.now())
 
                         positions.append(position)
                 if positions:
@@ -906,6 +1029,8 @@ def course_base_check(request,if_new=None):
             "classroom",
             "teaching_plan",
             "record_cal_method",
+            "need_apply",
+            "publish_day",
             _trans_func=str,
             _default="",
         )
@@ -914,9 +1039,10 @@ def course_base_check(request,if_new=None):
         assert len(context["teaching_plan"]) > 0, "教学计划不能为空！"
         assert len(context["record_cal_method"]) > 0, "学时计算方法不能为空！"
         assert len(context["classroom"]) > 0, "上课地点不能为空！"
+        assert context["need_apply"] in ["True", "False"], "是否需要报名必须为给定值！"
+        assert context["publish_day"] in ["instant","1","2","3"], "信息发布时间必须为给定值！"
     except Exception as e:
         return wrong(str(e))
-
     # int类型合法性检查
 
     type_num = request.POST.get("type", "")  # 课程类型
@@ -1016,6 +1142,8 @@ def create_course(request, course_id=None):
                 course.record_cal_method = context["record_cal_method"]
                 course.type = context['type']
                 course.capacity = context["capacity"]
+                course.need_apply=context["need_apply"]
+                course.publish_day=context["publish_day"]
                 course.photo = context['photo'] if context['photo'] is not None else course.photo
                 if context['QRcode']:
                     course.QRcode = context["QRcode"]
@@ -1047,6 +1175,8 @@ def create_course(request, course_id=None):
                     record_cal_method=context["record_cal_method"],
                     type=context['type'],
                     capacity=context["capacity"],
+                    need_apply=context["need_apply"],
+                    publish_day=context["publish_day"]
                 )
                 course.photo = context['photo']
                 if context['QRcode']:
@@ -1069,11 +1199,15 @@ def create_course(request, course_id=None):
     return context
 
 
-def cal_participate_num(course: Course) -> Counter:
+def cal_participate_num(course: Course) -> dict:
     """
     计算该课程对应组织所有成员的参与次数
     return {Naturalperson.id:参与次数}
     前端使用的时候直接读取字典的值就好了
+    :param course: 选择要计算的课程
+    :type course: Course
+    :return: 返回统计数据
+    :rtype: dict
     """
     org = course.organization
     activities = Activity.objects.activated().filter(
@@ -1097,13 +1231,19 @@ def cal_participate_num(course: Course) -> Counter:
     return participate_num
 
 
-def check_post_and_modify(records, post_data):
+def check_post_and_modify(records: list, post_data: dict) -> MESSAGECONTEXT:
     """
     records和post_data分别为原先和更新后的list
     检查post表单是否可以为这个course对应的内容，
     如果可以，修改学时
     - 返回wrong|succeed
     - 不抛出异常
+    :param records: 原本的学时数据
+    :type records: list
+    :param post_data: 由前端上传上来的修改结果
+    :type post_data: dict
+    :return: 检查结果
+    :rtype: MESSAGECONTEXT
     """
     try:
         # 对每一条记录而言
@@ -1198,13 +1338,20 @@ def finish_course(course):
     return succeed("结束课程成功！")
 
 
-def download_course_record(course=None, year=None, semester=None):
-    '''
-    返回需要导出的学时信息文件
+def download_course_record(course: Course=None, year: int=None, semester: Semester=None) -> HttpResponse:
+    """返回需要导出的学时信息文件
     course:
         提供course时为单个课程服务，只导出该课程的相关人员的学时信息
         不提供时下载所有学时信息，注意，只有相关负责老师可以访问！
-    '''
+    :param course: 所选择的课程, defaults to None
+    :type course: Course, optional
+    :param year: 所选择的学年, defaults to None
+    :type year: int, optional
+    :param semester: 所选择的学期, defaults to None
+    :type semester: Semester, optional
+    :return: 返回下载的文件数据
+    :rtype: HttpResponse
+    """
     wb = openpyxl.Workbook()  # 生成一个工作簿（即一个Excel文件）
     wb.encoding = 'utf-8'
     # 获取第一个工作表（detail_sheet）

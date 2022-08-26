@@ -1,3 +1,4 @@
+from app.course_utils import str_to_time
 from app.views_dependency import *
 from app.models import (
     Feedback,
@@ -10,22 +11,18 @@ from app.models import (
     ModifyPosition,
     Activity,
     ActivityPhoto,
-    TransferRecord,
     Participant,
     Notification,
     ModifyOrganization,
     Comment,
     CommentPhoto,
-    YQPointDistribute,
-    Reimbursement,
     Wishes,
-    QandA,
-    ReimbursementPhoto,
     Course,
     CourseRecord,
     Semester,
     PageLog,
     ModuleLog,
+    Chat,
 )
 from app.utils import (
     url_check,
@@ -48,13 +45,10 @@ from app.notification_utils import(
     notification_status_change,
     notification2Display,
 )
-from app.QA_utils import (
-    QA2Display,
-    QA_anwser,
-    QA_create,
-    QA_delete,
-    QA_ignore,
+from app.academic_utils import(
+    comments2Display,
 )
+
 import json
 import random
 import requests  # 发送验证码
@@ -271,19 +265,7 @@ def stuinfo(request: HttpRequest, name=None):
         inform_share, alert_message = utils.get_inform_share(me=person, is_myself=is_myself)
 
         # 处理更改数据库中inform_share的post
-        if request.POST.get("question") is not None:
-            anonymous_flag = (request.POST.get('show_name') is not None)
-            question = request.POST.get("question")
-            if len(question) == 0:
-                wrong("请填写问题内容!", html_display)
-            else:
-                try:
-                    QA_create(sender=request.user,receiver=person.person_id,Q_text=str(question),anonymous_flag=anonymous_flag)
-                    succeed("提问发送成功!", html_display)
-                except:
-                    wrong("提问发送失败!请联系管理员!", html_display)
-            return redirect(message_url(html_display, person.get_absolute_url()))
-        elif request.method == "POST" and request.POST:
+        if request.method == "POST" and request.POST:
             option = request.POST.get("option", "")
             assert option == "cancelInformShare" and html_display["is_myself"]
             person.inform_share = False
@@ -382,9 +364,9 @@ def stuinfo(request: HttpRequest, name=None):
 
         person_history_orgs_pos = [
             org.otype.get_name(pos) + ' ' +
-            str(person_history_poss.get(org=org).in_year)[2:] + "-" +
-            str(person_history_poss.get(org=org).in_year + 1)[2:] +
-            sems[person_history_poss.get(org=org).in_semester]
+            str(person_history_poss.get(org=org).year)[2:] + "-" +
+            str(person_history_poss.get(org=org).year + 1)[2:] +
+            sems[person_history_poss.get(org=org).semester]
             for pos, org in zip(person_history_orgs_pos, person_history_orgs)
         ]  # ta在小组中的职位
         html_display["history_orgs_info"] = (
@@ -533,7 +515,22 @@ def stuinfo(request: HttpRequest, name=None):
         if modpw_status is not None and modpw_status == "success":
             html_display["warn_code"] = 2
             html_display["warn_message"] = "修改个人信息成功!"
+        
 
+        # ----------------------------------- 学术地图 ----------------------------------- #
+        # ------------------ 提问区 or 进行中的问答------------------ #
+        progressing_chat = Chat.objects.activated().filter(
+            questioner=request.user,
+            respondent=person.get_user())
+        if progressing_chat.exists(): # 有进行中的问答
+            comments2Display(progressing_chat[0], html_display, request.user)
+            html_display["have_progressing_chat"] = True
+        else: # 没有进行中的问答，显示提问区
+            html_display["have_progressing_chat"] = False
+            html_display["accept_chat"] = person.get_user().accept_chat
+            html_display["accept_anonymous"] = person.get_user().accept_anonymous_chat
+        
+        
         # 存储被查询人的信息
         context = dict()
 
@@ -654,14 +651,24 @@ def orginfo(request: HttpRequest, name=None):
 
     # 判断是否为小组账户本身在登录
     html_display["is_myself"] = me == org
+    html_display["is_person"] = user_type == "Person"
     inform_share, alert_message = utils.get_inform_share(me=me, is_myself=html_display["is_myself"])
 
     organization_name = name
     organization_type_name = org.otype.otype_name
     org_avatar_path = org.get_user_ava()
     wallpaper_path = utils.get_user_wallpaper(org, "Organization")
-    # org的属性 YQPoint 和 information 不在此赘述，直接在前端调用
+    # org的属性 information 不在此赘述，直接在前端调用
 
+    # 给前端传递选课的参数
+    yx_election_start = get_setting("course/yx_election_start")
+    yx_election_end = get_setting("course/yx_election_end")
+    if (str_to_time(yx_election_start) <= datetime.now() < (
+            str_to_time(yx_election_end))):
+        html_display["select_ing"] = True
+    else:
+        html_display["select_ing"] = False
+        
     if request.method == "POST" :
         if request.POST.get("export_excel") is not None and html_display["is_myself"]:
             html_display["warn_code"] = 2
@@ -671,24 +678,6 @@ def orginfo(request: HttpRequest, name=None):
             org.inform_share = False
             org.save()
             return redirect("/welcome/")
-        elif request.POST.get("question") is not None:
-            anonymous_flag = (request.POST.get('show_name') is not None)
-            question = request.POST.get("question")
-            if len(question) == 0:
-                html_display["warn_code"] = 1
-                html_display["warn_message"] = "请填写问题内容!"
-            elif html_display['is_myself']:
-                html_display["warn_code"] = 1
-                html_display["warn_message"] = "不能向自己提问!"
-            else:
-                try:
-                    QA_create(sender=request.user,receiver=org.organization_id,Q_text=str(question),anonymous_flag=anonymous_flag)
-                    html_display["warn_code"] = 2
-                    html_display["warn_message"] = "提问发送成功!"
-                except:
-                    html_display["warn_code"] = 1
-                    html_display["warn_message"] = "提问发送失败!请联系管理员!"
-            return redirect(message_url(html_display, f"/orginfo/?name={organization_name}"))
 
 
 
@@ -899,9 +888,10 @@ def homepage(request: HttpRequest):
 
     # 即将截止的活动，按截止时间正序
     prepare_times = Activity.EndBeforeHours.prepare_times
-    signup_rec = Activity.objects.activated().select_related(
-        'organization_id').filter(status = Activity.Status.APPLYING)
+
     signup_list = []
+    signup_rec = Activity.objects.activated().select_related(
+        'organization_id').filter(status = Activity.Status.APPLYING).order_by("category", "apply_end")[:10]
     for act in signup_rec:
         deadline = act.apply_end
         dictmp = {}
@@ -909,8 +899,7 @@ def homepage(request: HttpRequest):
         dictmp["act"] = act
         dictmp["tobestart"] = (deadline - nowtime).total_seconds()//360/10
         signup_list.append(dictmp)
-    signup_list.sort(key=lambda x:x["deadline"])
-    signup_list = signup_list[:10]
+    
     # 如果提交了心愿，发生如下的操作
     if request.method == "POST" and request.POST:
         wishtext = request.POST.get("wish")
@@ -1231,7 +1220,11 @@ def freshman(request: HttpRequest):
             with transaction.atomic():
                 password = hash_coder.encode(sname + str(random.random()))
                 current = "创建用户"
-                user = User.objects.create_user(username=sid, password=password)
+                user = User.objects.create_user(
+                    username=sid, name=sname,
+                    usertype=UTYPE_PER,
+                    password=password
+                )
                 current = "创建个人账号"
                 NaturalPerson.objects.create(
                     person_id=user,
@@ -1305,7 +1298,11 @@ def authRegister(request: HttpRequest):
 
                 # OK!
                 try:
-                    user = User.objects.create_user(username=sno, password=password)
+                    user = User.objects.create_user(
+                        username=sno, name=name,
+                        usertype=UTYPE_PER,
+                        password=password
+                    )
                 except:
                     # 存在用户
                     return HttpResponseRedirect("/admin/")
@@ -1897,53 +1894,49 @@ def apply_position(request, oid=None):
 def notifications(request: HttpRequest):
     valid, user_type, html_display = utils.check_user_type(request.user)
 
+    # 处理GET一键阅读或错误信息
+    if request.method == "GET" and request.GET:
+        get_name = request.GET.get("read_name", None)
+        if get_name == "readall":
+            notificaiton_set = Notification.objects.activated().filter(
+                receiver=request.user,
+                typename=Notification.Type.NEEDREAD,
+                status=Notification.Status.UNDONE)
+            count = notificaiton_set.count()
+            notificaiton_set.update(
+                status=Notification.Status.DONE, finish_time=datetime.now())
+            succeed(f"成功将{count}条通知设为已读！", html_display)
+        elif get_name == "deleteall":
+            notificaiton_set = Notification.objects.activated().filter(
+                receiver=request.user,
+                typename=Notification.Type.NEEDREAD,
+                status=Notification.Status.DONE)
+            count = notificaiton_set.count()
+            notificaiton_set.update(status=Notification.Status.DELETE)
+            succeed(f"您已成功删除{count}条通知！", html_display)
+        else:
+            # 读取外部错误信息
+            my_messages.transfer_message_context(request.GET, html_display)
+
     # 接下来处理POST相关的内容
-
-    if request.method == "GET" and request.GET:  # 外部错误信息
+    elif request.method == "POST":
+        # 发生了通知处理的事件
         try:
-            warn_code = int(request.GET["warn_code"])
-            assert warn_code in [1, 2]
-            warn_message = str(request.GET.get("warn_message"))
-            html_display["warn_code"] = warn_code
-            html_display["warn_message"] = warn_message
-        except:
-            html_display["warn_code"] = 1
-            html_display["warn_message"] = "非预期的GET参数"
-
-    if request.method == "POST":  # 发生了通知处理的事件
-        post_args = json.loads(request.body.decode("utf-8"))
-        try:
+            post_args = json.loads(request.body.decode("utf-8"))
             notification_id = int(post_args['id'])
-        except:
-            html_display["warn_code"] = 1  # 失败
-            html_display["warn_message"] = "请不要恶意发送post请求！"
-            return JsonResponse({"success":False})
-        try:
             Notification.objects.activated().get(id=notification_id, receiver=request.user)
         except:
-            html_display["warn_code"] = 1  # 失败
-            html_display["warn_message"] = "请不要恶意发送post请求！！"
-            return JsonResponse({"success":False})
-        if "cancel" in post_args['function']:
-            try:
-                notification_status_change(notification_id, Notification.Status.DELETE)
-                html_display["warn_code"] = 2  # success
-                html_display["warn_message"] = "您已成功删除一条通知！"
-                return JsonResponse({"success":True})
-            except:
-                html_display["warn_code"] = 1  # 失败
-                html_display["warn_message"] = "删除通知的过程出现错误！请联系管理员。"
-                return JsonResponse({"success":False})
-        else:
-            try:
+            wrong("请不要恶意发送post请求！！", html_display)
+            return JsonResponse({"success": False})
+        try:
+            if "cancel" in post_args['function']:
+                context = notification_status_change(notification_id, Notification.Status.DELETE)
+            else:
                 context = notification_status_change(notification_id)
-                html_display["warn_code"] = context["warn_code"]
-                html_display["warn_message"] = context["warn_message"]
-                return JsonResponse({"success":True})
-            except:
-                html_display["warn_code"] = 1  # 失败
-                html_display["warn_message"] = "修改通知状态的过程出现错误！请联系管理员。"
-                return JsonResponse({"success":False})
+            my_messages.transfer_message_context(context, html_display, normalize=False)
+        except:
+            wrong("删除通知的过程出现错误！请联系管理员。", html_display)
+        return JsonResponse({"success": my_messages.get_warning(html_display)[0] == SUCCEED})
 
     me = get_person_or_org(request.user, user_type)
     html_display["is_myself"] = True
@@ -1958,62 +1951,6 @@ def notifications(request: HttpRequest):
     # 新版侧边栏, 顶栏等的呈现，采用 bar_display, 必须放在render前最后一步
     bar_display = utils.get_sidebar_and_navbar(request.user, navbar_name="通知信箱")
     return render(request, "notifications.html", locals())
-
-
-
-
-@login_required(redirect_field_name='origin')
-@utils.check_user_access(redirect_url="/logout/")
-@log.except_captured(source='views[QAcenter]', record_user=True)
-def QAcenter(request: HttpRequest):
-    """
-    Haowei:
-    QA的聚合界面
-    """
-    valid, user_type, html_display = utils.check_user_type(request.user)
-
-    me = get_person_or_org(request.user, user_type)
-
-    if request.method == "POST":
-        if request.POST.get("anwser") is not None:
-            anwser = request.POST.get("anwser")
-            if len(anwser) == 0:
-                html_display["warn_code"] = 1
-                html_display["warn_message"] = "请填写回答再提交！"
-            else:
-                QA_anwser(request.POST.get("id"), anwser)
-                html_display["warn_code"] = 2
-                html_display["warn_message"] = "成功提交该问题的回答！"
-        else:
-            post_args = json.loads(request.body.decode("utf-8"))
-            if 'cancel' in post_args['function']:
-                try:
-                    QA_delete(int(post_args['id']))
-                    html_display['warn_code'] = 2
-                    html_display['warn_message'] = "成功删除一条提问！"
-                    return JsonResponse({"success":True})
-                except:
-                    html_display["warn_code"] = 1
-                    html_display["warn_message"] = "在设置提问状态为「忽略」的过程中出现了未知错误，请联系管理员！"
-                    return JsonResponse({"success":False})
-            else:
-                try:
-                    QA_ignore(int(post_args['id']), \
-                        sender_flag=(post_args['function'] == 'sender')
-                        )
-                    html_display['warn_code'] = 2
-                    html_display['warn_message'] = "成功忽略一条提问！"
-                    return JsonResponse({"success":True})
-                except:
-                    html_display["warn_code"] = 1
-                    html_display["warn_message"] = "在设置提问状态为「忽略」的过程中出现了未知错误，请联系管理员！"
-                    return JsonResponse({"success":False})
-
-
-    all_instances = QA2Display(request.user)
-
-    bar_display = utils.get_sidebar_and_navbar(request.user, navbar_name="问答中心")
-    return render(request, "QandA_center.html", locals())
 
 
 @login_required(redirect_field_name='origin')

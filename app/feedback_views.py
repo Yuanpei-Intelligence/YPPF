@@ -373,6 +373,27 @@ def feedbackWelcome(request: HttpRequest):
     is_person = user_type == UTYPE_PER
     me = get_person_or_org(request.user, user_type)
 
+    if request.session.has_key('feedback_type'):
+        if not request.session.has_key('feedback_url'):
+            # 弹出
+            feedback_type = request.session.pop('feedback_type')
+        else:
+            feedback_type = request.session['feedback_type']
+            feedback_url = request.session['feedback_url']
+            try:
+                feedback: Feedback = Feedback.objects.filter(url=feedback_url)[0]
+                # 弹出
+                request.session.pop('feedback_type')
+                request.session.pop('feedback_url')
+                request.session.pop('feedback_content', '')
+                return redirect(message_url(
+                    succeed('检测到您填写的申诉内容，已自动跳转'),
+                    feedback.get_absolute_url()
+                ))
+            except:
+                pass
+        return redirect(f'/modifyFeedback/?type={feedback_type}')
+
     # 准备用户提示量
     my_messages.transfer_message_context(request.GET, html_display)
 
@@ -552,7 +573,7 @@ def modifyFeedback(request: HttpRequest):
         context = update_feedback(feedback, me, request)
 
         if context["warn_code"] == 2:   # 成功修改
-            feedback = Feedback.objects.get(id=context["feedback_id"])
+            feedback: Feedback = Feedback.objects.get(id=context["feedback_id"])
             is_new_application = False  # 状态变更
             # 处理通知相关的操作
             try:
@@ -578,10 +599,8 @@ def modifyFeedback(request: HttpRequest):
         # 为了保证稳定性，完成POST操作后同意全体回调函数，进入GET状态
         if feedback is None:
             return redirect(message_url(context, '/modifyFeedback/'))
-        elif feedback.issue_status == Feedback.IssueStatus.DRAFTED:
-            return redirect(message_url(context, f'/modifyFeedback/?feedback_id={feedback.id}'))
-        else: # 发布，feedback.issue_status == Feedback.IssueStatus.ISSUED
-            return redirect(message_url(context, f'/viewFeedback/{feedback.id}'))
+        else:
+            return redirect(message_url(context, feedback.get_absolute_url()))
 
     # ———————— 完成Post操作, 接下来开始准备前端呈现 ————————
 
@@ -668,27 +687,33 @@ def modifyFeedback(request: HttpRequest):
             org_list[feedback.org.oname]['selected'] = True
         else:
             org_list['']['selected'] = True
-    else: # feedback_type 默认选中第一个反馈类型，默认选中项将在前端实时更新。
-        feedback_type = list(feedback_type_list.keys())[0]
-        if FeedbackType.objects.get(name=feedback_type).org_type is not None:
-            org_type_list[
-                FeedbackType.objects.get(name=feedback_type).org_type.otype_name
-            ]['selected'] = True
+    else:
+        # feedback_type默认选中的反馈类型通过GET获取，如未获取到则默认选中第一项。
+        try:
+            feedback_type = request.GET['type']
+            FeedbackType.objects.get(name=feedback_type)
+        except:  # 有可能出现需要的反馈类型数据库不存在的情况，此时默认选中第一项
+            feedback_type = list(feedback_type_list.keys())[0]
+        feedback_type_list[feedback_type]['selected'] = True
+        selected_feedback = FeedbackType.objects.get(name=feedback_type)
+
+        if selected_feedback.org_type is not None:
+            org_type_list[selected_feedback.org_type.otype_name]['selected'] = True
             for org in Organization.objects.exclude(
                     otype=OrganizationType.objects.get(
-                        otype_name=FeedbackType.objects.get(name=feedback_type).org_type.otype_name)
+                        otype_name=selected_feedback.org_type.otype_name)
                     ):
                 org_list[org.oname]['disabled'] = True
         else:
             org_type_list['']['selected'] = True
             for org in org_list.keys():
                 org_list[org]['disabled'] = True
-        if FeedbackType.objects.get(name=feedback_type).org is not None:
-            org_list[
-                FeedbackType.objects.get(name=feedback_type).org.oname
-            ]['selected'] = True
+        if selected_feedback.org is not None:
+            org_list[selected_feedback.org.oname]['selected'] = True
         else:
             org_list['']['selected'] = True
+    # 从session弹出默认反馈内容
+    default_content = request.session.pop('feedback_content', '')
     bar_display = utils.get_sidebar_and_navbar(
         request.user, navbar_name="填写反馈" if is_new_feedback else "反馈详情"
     )

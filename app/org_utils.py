@@ -1,5 +1,6 @@
 from app.utils_dependency import *
 from app.models import (
+    User,
     Activity,
     NaturalPerson,
     Position,
@@ -31,7 +32,6 @@ from app.utils import (
 from datetime import datetime, timedelta
 
 from django.db.models import Q
-from django.contrib.auth.models import User
 import random
 
 __all__ = [
@@ -62,14 +62,15 @@ def find_max_oname():
 def accept_modifyorg_submit(application): #同意申请，假设都是合法操作
     # 新建一系列东西
     username = find_max_oname()
-    user = User.objects.create(username=username)
-    password = random_code_init(user.id)
-    user.set_password(password)
-    user.save()
+    user = User.objects.create_user(
+        username=username, name=application.oname,
+        usertype=UTYPE_ORG,
+        # 组织首次登录必须通过切换账户
+        # password=random_code_init(username + application.oname)
+    )
     org = Organization.objects.create(organization_id=user,
                                       oname=application.oname,
                                       otype=application.otype,
-                                      YQPoint=0.0,
                                       introduction=application.introduction,
                                       avatar=application.avatar)
 
@@ -82,7 +83,7 @@ def accept_modifyorg_submit(application): #同意申请，假设都是合法操�
     pos = Position.objects.create(person=charger,
                                   org=org,
                                   pos=0,
-                                  in_semester=application.otype.default_semester(),
+                                  semester=application.otype.default_semester(),
                                   status=Position.Status.INSERVICE,
                                   is_admin=True)
     # 修改申请状态
@@ -510,10 +511,9 @@ def make_relevant_notification(application, info):
             content = (
                 f'恭喜，您申请的小组：{application.oname}，审核已通过！'
                 f'小组编号为{new_org.organization_id.username}，'
-                f'初始密码为{random_code_init(new_org.organization_id.id)}，'
-                '请尽快登录修改密码。登录方式：(1)在负责人账户点击左侧「切换账号」；'
-                '(2)从登录页面用小组编号或小组名称以及密码登录。'
-                '你可以把小组的主页转发到微信群或朋友圈，邀请更多朋友订阅关注。'
+                '请尽快登录设置密码。登录方式：在负责人账户侧边栏点击左侧「切换账号」；'
+                '设置密码后即可用小组编号或名称登录。'
+                '小tip: 你可以把小组的主页转发到微信群或朋友圈，邀请更多朋友订阅关注。'
                 '这样大家就能及时收到活动消息啦！使用愉快～'
             )
         elif post_type == 'refuse_submit':

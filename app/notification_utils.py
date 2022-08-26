@@ -6,9 +6,9 @@ from app.wechat_send import (
     WechatApp,
     WechatMessageLevel,
 )
-from boottest import local_dict
 
 from random import random
+from typing import Union
 from datetime import datetime, timedelta
 
 hasher = MySHA256Hasher("")
@@ -20,20 +20,23 @@ __all__ = [
     'notification2Display',
 ]
 
-def notification_status_change(notification_or_id, to_status=None):
+def notification_status_change(
+    notification_or_id: Union[Notification, int],
+    to_status: Notification.Status = None,
+    ) -> MESSAGECONTEXT:
     """
     调用该函数以完成一项通知。对于知晓类通知，在接收到用户点击按钮后的post表单，该函数会被调用。
     对于需要完成的待处理通知，需要在对应的事务结束判断处，调用该函数。
-    notification_id是notification的主键: id
-    to_status是希望这条notification转变为的状态，包括
-        DONE = (0, "已处理")
-        UNDONE = (1, "待处理")
-        DELETE = (2, "已删除")
-    若不给to_status传参，默认为状态翻转：已处理<->未处理
+    若不给to_status传参，默认为状态翻转：已处理<->未处理，已删除保持不变
+
+    :param notification_or_id: 通知或其主键
+    :type notification_or_id: Union[Notification, int]
+    :param to_status: 希望这条notification转变为的状态，不填为翻转, defaults to None
+    :type to_status: Notification.Status, optional
+    :return: 执行情况的信息
+    :rtype: MESSAGECONTEXT
     """
-    context = dict()
-    context["warn_code"] = 1
-    context["warn_message"] = "在修改通知状态的过程中发生错误，请联系管理员！"
+    context = wrong("在修改通知状态的过程中发生错误，请联系管理员！")
 
     if isinstance(notification_or_id, Notification):
         notification_id = notification_or_id.id
@@ -48,8 +51,7 @@ def notification_status_change(notification_or_id, to_status=None):
                 notification = Notification.objects.get(id=notification_id)
                 now_status = notification.status
             except:
-                context["warn_message"] = "该通知不存在！"
-                return context
+                return wrong("该通知不存在！", context)
         if now_status == Notification.Status.DONE:
             to_status = Notification.Status.UNDONE
         elif now_status == Notification.Status.UNDONE:
@@ -61,39 +63,30 @@ def notification_status_change(notification_or_id, to_status=None):
 
     with transaction.atomic():
         try:
-            notification = Notification.objects.select_for_update().get(
-                id=notification_id
-            )
+            notification: Notification = \
+                Notification.objects.select_for_update().get(id=notification_id)
         except:
-            context["warn_message"] = "该通知不存在！"
-            return context
+            return wrong("该通知不存在！", context)
         if notification.status == to_status:
-            context["warn_code"] = 2
-            context["warn_message"] = "通知状态无需改变！"
-            return context
+            return succeed("通知状态无需改变！", context)
         if (
-                notification.status == Notification.Status.DELETE
-                and notification.status != to_status
+            notification.status == Notification.Status.DELETE
+            and notification.status != to_status
         ):
-            context["warn_code"] = 2
-            context["warn_message"] = "不能修改已删除的通知！"
-            return context
+            return wrong("不能修改已删除的通知！", context)
         if to_status == Notification.Status.DONE:
             notification.status = Notification.Status.DONE
             notification.finish_time = datetime.now()  # 通知完成时间
             notification.save()
-            context["warn_code"] = 2
-            context["warn_message"] = "您已成功阅读一条通知！"
+            succeed("您已成功阅读一条通知！", context)
         elif to_status == Notification.Status.UNDONE:
             notification.status = Notification.Status.UNDONE
             notification.save()
-            context["warn_code"] = 2
-            context["warn_message"] = "成功设置一条通知为未读！"
+            succeed("成功设置一条通知为未读！", context)
         elif to_status == Notification.Status.DELETE:
             notification.status = Notification.Status.DELETE
             notification.save()
-            context["warn_code"] = 2
-            context["warn_message"] = "成功删除一条通知！"
+            succeed("您已成功删除一条通知！", context)
         return context
 
 
@@ -104,7 +97,6 @@ def notification_create(
         title,
         content,
         URL=None,
-        relate_TransferRecord=None,
         relate_instance=None,
         anonymous_flag=False,
         *,
@@ -137,7 +129,6 @@ def notification_create(
         title=title,
         content=content,
         URL=URL,
-        relate_TransferRecord=relate_TransferRecord,
         relate_instance=relate_instance,
         anonymous_flag=anonymous_flag,
     )
@@ -182,7 +173,6 @@ def bulk_notification_create(
         title,
         content,
         URL=None,
-        relate_TransferRecord=None,
         relate_instance=None,
         *,
         duplicate_behavior='ok',
@@ -271,7 +261,6 @@ def bulk_notification_create(
                 content=content,
                 URL=URL,
                 bulk_identifier=bulk_identifier,
-                relate_TransferRecord=relate_TransferRecord,
                 relate_instance=relate_instance,
                 # start_time=start_time, # 该参数无效，bulk_create会分批生成并覆盖auto_now的字段
             ) for receiver in receivers
@@ -336,7 +325,6 @@ def make_notification(application, request, content, receiver):
     URL = {
         'modifyposition': f'/modifyPosition/?pos_id={application.id}',
         'neworganization': f'/modifyOrganization/?org_id={application.id}',
-        'reimbursement': f'/modifyEndActivity/?reimb_id={application.id}',
     }
     sender = request.user
     typename = Notification.Type.NEEDDO if post_type == 'new_submit' else Notification.Type.NEEDREAD

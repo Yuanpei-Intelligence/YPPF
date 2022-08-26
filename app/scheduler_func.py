@@ -7,7 +7,6 @@ from app.models import (
     User,
     NaturalPerson,
     Organization,
-    TransferRecord,
     Activity,
     ActivityPhoto,
     Participant,
@@ -84,40 +83,6 @@ def send_to_orgs(title, message, url='/index/'):
         publish_kws={'level': WechatMessageLevel.IMPORTANT, 'show_source': False},
         )
 
-
-# 学院每月下发元气值
-def distribute_YQPoint_per_month():
-    with transaction.atomic():
-        recipients = NaturalPerson.objects.activated().select_for_update()
-        YP = Organization.objects.get(oname=YQP_ONAME)
-        trans_time = datetime.now()
-        transfer_list = [TransferRecord(
-                proposer=YP.organization_id,
-                recipient=recipient.person_id,
-                amount=(30 + max(0, (30 - recipient.YQPoint))),
-                start_time=trans_time,
-                finish_time=trans_time,
-                message=f"元气值每月发放。",
-                status=TransferRecord.TransferStatus.ACCEPTED,
-                rtype=TransferRecord.TransferType.BONUS
-        ) for recipient in recipients]
-        notification_lists = [
-            Notification(
-                receiver=recipient.person_id,
-                sender=YP.organization_id,
-                typename=Notification.Type.NEEDREAD,
-                title=Notification.Title.YQ_DISTRIBUTION,
-                content=f"{YP}向您发放了本月元气值{30 + max(0, (30 - recipient.YQPoint))}点，请查收！",
-            ) for recipient in recipients
-        ]
-        TransferRecord.objects.bulk_create(transfer_list)
-        Notification.objects.bulk_create(notification_lists)
-        for recipient in recipients:
-            amount = 30 + max(0, (30 - recipient.YQPoint))
-            recipient.YQPoint += amount
-            recipient.YQPoint += recipient.YQPoint_Bonus
-            recipient.YQPoint_Bonus = 0
-            recipient.save()
 
 
 """
@@ -213,7 +178,15 @@ def add_week_course_activity(course_id: int, weektime_id: int, cur_week: int ,co
             end=end_time,
             category=Activity.ActivityCategory.COURSE,
         )
-        activity.status = Activity.Status.WAITING
+        activity.status = Activity.Status.UNPUBLISHED
+        activity.publish_day = course.publish_day
+        if course.publish_day == Course.PublishDay.instant:
+            # 指定为立即发布的活动在上一周结束后一天发布
+            activity.publish_time = week_time.end + timedelta(days=7 *  cur_week - 6)
+        else:
+            activity.publish_time = week_time.start + timedelta(days=7 * cur_week - course.publish_day)
+
+        activity.need_apply = course.need_apply  # 是否需要报名
         activity.need_checkin = True  # 需要签到
         activity.recorded = True
         activity.course_time = week_time
@@ -221,36 +194,46 @@ def add_week_course_activity(course_id: int, weektime_id: int, cur_week: int ,co
         ActivityPhoto.objects.create(image=course.photo,
                                      type=ActivityPhoto.PhotoType.ANNOUNCE,
                                      activity=activity)
-        # 选课人员自动报名活动
-        # 选课结束以后，活动参与人员从小组成员获取
-        person_pos = list(Position.objects.activated().filter(
-                org=course.organization).values_list("person", flat=True))
-        if course_stage2:
-            # 如果处于补退选阶段，活动参与人员从课程选课情况获取
-            selected_person = list(CourseParticipant.objects.filter(
-                course=course,
-                status=CourseParticipant.Status.SUCCESS,
-            ).values_list("person", flat=True))
-            person_pos += selected_person
-            person_pos = list(set(person_pos))
-        members = NaturalPerson.objects.filter(
-            id__in=person_pos)
-        for member in members:
-            participant = Participant.objects.create(
-                activity_id=activity,
-                person_id=member,
-                status=Participant.AttendStatus.APLLYSUCCESS)
+        if not activity.need_apply:
+            # 选课人员自动报名活动
+            # 选课结束以后，活动参与人员从小组成员获取
+            person_pos = list(Position.objects.activated().filter(
+                    org=course.organization).values_list("person", flat=True))
+            if course_stage2:
+                # 如果处于补退选阶段，活动参与人员从课程选课情况获取
+                selected_person = list(CourseParticipant.objects.filter(
+                    course=course,
+                    status=CourseParticipant.Status.SUCCESS,
+                ).values_list("person", flat=True))
+                person_pos += selected_person
+                person_pos = list(set(person_pos))
+            members = NaturalPerson.objects.filter(
+                id__in=person_pos)
+            for member in members:
+                participant = Participant.objects.create(
+                    activity_id=activity,
+                    person_id=member,
+                    status=Participant.AttendStatus.APLLYSUCCESS)
 
-        participate_num = len(person_pos)
-        activity.capacity = participate_num
-        activity.current_participants = participate_num
+            participate_num = len(person_pos)
+            activity.capacity = participate_num
+            activity.current_participants = participate_num
+
         week_time.cur_week += 1
         week_time.save()
         activity.save()
-
-    # 通知参与成员,创建定时任务并修改活动状态
-    notifyActivity(activity.id, "newCourseActivity")
-
+    # 在活动发布时通知参与成员,创建定时任务并修改活动状态
+    if activity.need_apply:
+        scheduler.add_job(changeActivityStatus, "date", id=f"activity_{activity.id}_{Activity.Status.APPLYING}",
+                          run_date=activity.publish_time, args=[activity.id, Activity.Status.UNPUBLISHED, Activity.Status.APPLYING], replace_existing=True)
+        scheduler.add_job(changeActivityStatus, "date", id=f"activity_{activity.id}_{Activity.Status.WAITING}",
+                          run_date=activity.start - timedelta(minutes=5), args=[activity.id, Activity.Status.APPLYING, Activity.Status.WAITING], replace_existing=True)
+    else:
+        scheduler.add_job(changeActivityStatus, "date", id=f"activity_{activity.id}_{Activity.Status.WAITING}",
+                          run_date=activity.publish_time, args=[activity.id, Activity.Status.UNPUBLISHED, Activity.Status.WAITING], replace_existing=True)
+    
+    scheduler.add_job(notifyActivity, "date", id=f"activity_{activity.id}_newCourseActivity",
+                      run_date=activity.publish_time, args=[activity.id,"newCourseActivity"], replace_existing=True)
     scheduler.add_job(notifyActivity, "date", id=f"activity_{activity.id}_remind",
                       run_date=activity.start - timedelta(minutes=15), args=[activity.id, "remind"], replace_existing=True)
     scheduler.add_job(changeActivityStatus, "date", id=f"activity_{activity.id}_{Activity.Status.PROGRESSING}",
@@ -283,9 +266,9 @@ def longterm_launch_course():
             cur_week = week_time.cur_week
             end_week = week_time.end_week
             if cur_week < end_week:  #   end_week默认16周，允许助教修改
-                #提前6天发布
+                # 在本周课程结束后生成下一周课程活动
                 due_time = week_time.end + timedelta(days=7 * cur_week)
-                if due_time - timedelta(days=6) < datetime.now() < due_time:
+                if due_time - timedelta(days=7) < datetime.now() < due_time:
                     # 如果处于补退选阶段：
                     course_stage2 = True if course.status == Course.Status.STAGE2 else False
                     add_week_course_activity(course.id, week_time.id, cur_week, course_stage2)
