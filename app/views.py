@@ -58,7 +58,7 @@ from boottest import local_dict
 from django.contrib import auth, messages
 from django.contrib.auth.hashers import make_password, check_password
 from django.db import transaction
-from django.db.models import Q, F, Sum
+from django.db.models import Q, F, Sum, QuerySet
 from django.contrib.auth.password_validation import CommonPasswordValidator, NumericPasswordValidator
 from django.core.exceptions import ValidationError
 
@@ -276,8 +276,13 @@ def stuinfo(request: HttpRequest, name=None):
 
         # ----------------------------------- 小组卡片 ----------------------------------- #
 
+        def _get_org_latest_pos(positions: QuerySet[Position], org):
+            '''同一组织可能关联多个职位导致的bug，暂用于修复'''
+            # TODO: 重写职位呈现逻辑，减少数据库访问
+            return positions.filter(org=org).order_by('year', 'semester').last()
+
         person_poss = Position.objects.activated().filter(Q(person=person))
-        person_orgs = Organization.objects.filter(
+        person_orgs: QuerySet[Organization] = Organization.objects.filter(
             id__in=person_poss.values("org")
         )  # ta属于的小组
         oneself_orgs = (
@@ -289,7 +294,7 @@ def stuinfo(request: HttpRequest, name=None):
         )
         oneself_orgs_id = [oneself.id] if user_type == "Organization" else oneself_orgs.values("org") # 自己的小组
 
-        # 管理的小组
+        # 当前管理的小组
         person_owned_poss = person_poss.filter(is_admin=True, status=Position.Status.INSERVICE)
         person_owned_orgs = person_orgs.filter(
             id__in=person_owned_poss.values("org")
@@ -310,7 +315,7 @@ def stuinfo(request: HttpRequest, name=None):
                 or None
         )
 
-        # 属于的小组
+        # 当前属于的小组
         person_joined_poss = person_poss.filter(~Q(is_admin=True) & Q(show_post=True))
         person_joined_orgs = person_orgs.filter(
             id__in=person_joined_poss.values("org")
@@ -345,16 +350,16 @@ def stuinfo(request: HttpRequest, name=None):
             person=person,
             show_post=True
             )
-        person_history_orgs = Organization.objects.filter(
+        person_history_orgs: QuerySet[Organization] = Organization.objects.filter(
             id__in=person_history_poss.values("org")
         )  # ta属于的小组
         person_history_orgs_ava = [
             # utils.get_user_ava(org, "organization") for org in person_owned_orgs
             org.get_user_ava() for org in person_history_orgs
         ]
-        person_history_orgs_pos = [
-            person_history_poss.get(org=org).pos for org in person_history_orgs
-        ]  # ta在小组中的职位
+        person_history_orgs_poss = [
+            _get_org_latest_pos(person_history_poss, org) for org in person_history_orgs
+        ]  # ta在小组中的职位对象
 
         sems = {
             Semester.FALL: "秋",
@@ -363,11 +368,11 @@ def stuinfo(request: HttpRequest, name=None):
         }
 
         person_history_orgs_pos = [
-            org.otype.get_name(pos) + ' ' +
-            str(person_history_poss.get(org=org).year)[2:] + "-" +
-            str(person_history_poss.get(org=org).year + 1)[2:] +
-            sems[person_history_poss.get(org=org).semester]
-            for pos, org in zip(person_history_orgs_pos, person_history_orgs)
+            org.otype.get_name(pos.pos) + ' ' +
+            str(pos.year)[2:] + "-" +
+            str(pos.year + 1)[2:] +
+            sems[pos.semester]
+            for pos, org in zip(person_history_orgs_poss, person_history_orgs)
         ]  # ta在小组中的职位
         html_display["history_orgs_info"] = (
                 list(zip(person_history_orgs, person_history_orgs_ava, person_history_orgs_pos))
@@ -376,22 +381,18 @@ def stuinfo(request: HttpRequest, name=None):
 
         # 隐藏的小组(所有学期都会呈现，不用activated)
         person_hidden_poss = Position.objects.filter(person=person, show_post = False)
-        person_hidden_orgs = Organization.objects.filter(
+        person_hidden_orgs: QuerySet[Organization] = Organization.objects.filter(
             id__in=person_hidden_poss.values("org")
         )  # ta属于的小组
         person_hidden_orgs_ava = [
-            # utils.get_user_ava(org, "organization") for org in person_hidden_orgs
             org.get_user_ava() for org in person_hidden_orgs
-        ]
-        person_hidden_orgs_pos = [
-            person_hidden_poss.get(org=org).pos for org in person_hidden_orgs
         ]  # ta在小组中的职位
         person_hidden_orgs_pos = [
-            org.otype.get_name(pos)
-            for pos, org in zip(person_hidden_orgs_pos,person_hidden_orgs)
+            org.otype.get_name(_get_org_latest_pos(person_hidden_poss, org).pos)
+            for org in person_hidden_orgs
         ]  # ta在小组中的职位
         person_hidden_orgs_status = [
-            person_hidden_poss.get(org=org).status for org in person_hidden_orgs
+            _get_org_latest_pos(person_hidden_poss, org).status for org in person_hidden_orgs
         ]  # ta职位的状态
         html_display["hidden_orgs_info"] = (
                 list(
