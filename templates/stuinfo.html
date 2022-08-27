@@ -1652,7 +1652,17 @@
                     updated_href = updated_href.replace("#tab=information?", "");
                 else updated_href = updated_href.replace("#tab=information", "");
             }
-            window.location.href = updated_href;
+            // 接下来需要把url改为updated_href，即去掉#tab=xxx的部分
+            // 相较于直接window.location.href = updated_href，下面的写法更好一些，
+            //      因为修改href会导致页面自动刷新，也即再调用一次window.onload这个函数，从而可能会看到页面在“个人信息”tab和目标tab之间来回跳转两次
+            //      而改history的这种方法不会导致页面再次刷新
+            // 参考https://stackoverflow.com/a/3503206
+            if (window.history.replaceState){
+                window.history.replaceState(null, '', updated_href);
+            }
+            else {
+                window.location.href = updated_href;
+            }
         }
 
         if (reloading == "chatRelatedReloading") { // 表明是发送comment/关闭chat/新建chat等js返回后调用的reload
