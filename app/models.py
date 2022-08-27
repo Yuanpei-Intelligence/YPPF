@@ -1925,47 +1925,71 @@ class Chat(CommentBase):
         super().save(*args, **kwargs)   
 
 
-class YQPointPrize(models.Model):
+class Prize(models.Model):
 
     class Meta:
-        verbose_name = '元气值奖品'
+        verbose_name = '奖品'
         verbose_name_plural = verbose_name
 
-    name = models.CharField('名称', unique=True, max_length=63)
+    name = models.CharField('名称', max_length=63)
     more_info = models.CharField('详情', max_length=255)
-    stock = models.IntegerField('参考库存')
+    stock = models.IntegerField('参考库存', default=0)
     reference_price = models.IntegerField('参考价格')
     img = models.ImageField('图片')
 
 
-class YQPointPrizeExchangePeriod(models.Model):
+class Pool(models.Model):
 
     class Meta:
-        verbose_name = '元气值奖品兑换/抽奖周期'
+        verbose_name = '奖池'
         verbose_name_plural = verbose_name
 
-    prize = models.ForeignKey(YQPointPrize, on_delete=models.CASCADE)
-    price = models.ImageField('需要元气值')
-    quota = models.IntegerField('当期可兑换量')
-    lottery = models.BooleanField('抽奖', default=False)
-    time = models.DateTimeField('开始时间')
-    end_time = models.DateTimeField('结束时间')
+    class Type(models.TextChoices):
+        STANDARD = '兑换奖池'
+        # 等结束抽签
+        LOTTERY = '抽奖奖池'
+        # 类似盲盒，每次抽可以获得一件物品，但不一定是大奖
+        RANDOM = '盲盒奖池'
+
+    title = models.CharField('奖池名称', max_length=63)
+    pool_type = models.CharField('奖池类型', choices=Type.choices)
+    re_entry_time = models.IntegerField('进入次数', default=1)
+    # 类型为兑换池时无效
+    ticket_price = models.IntegerField('抽奖费', default=0)
+    start_time = models.DateTimeField('开始时间')
+    end_time = models.DateTimeField('结束时间', null=True)
+    exchange_start_time = models.DateTimeField('兑奖开始时间', null=True)
+    exchange_end_time = models.DateTimeField('兑奖结束时间', null=True)
 
 
-class YQPointPrizeExchangeRecord(models.Model):
+class PoolItem(models.Model):
 
     class Meta:
-        verbose_name = '元气值奖品兑换/抽奖记录'
+        verbose_name = '奖池内奖品'
         verbose_name_plural = verbose_name
 
-    class Status(models.IntegerChoices):
-        LOTTERING = (0, '抽奖中')
-        NOT_LUCKY = (1, '未中奖')
-        UN_EXCHANGE = (2, '未兑换')
-        EXCHANGED = (3, '已兑换')
-        OVERDUE = (4, '已失效')
+    pool = models.ForeignKey(Pool, verbose_name='奖池', on_delete=models.CASCADE)
+    prize = models.ForeignKey(Prize, verbose_name='奖品', on_delete=models.CASCADE)
+    remain = models.IntegerField('剩余数量')
+    # pool 类型为兑换奖池时有效
+    price = models.IntegerField('价格')
+
+
+class PoolRecord(models.Model):
+
+    class Meta:
+        verbose_name = '奖池记录'
+        verbose_name_plural = verbose_name
+
+    class Status(models.TextChoices):
+        # 抽奖奖池时有效
+        LOTTERING = '抽奖中'
+        NOT_LUCKY = '未中奖'
+        UN_EXCHANGE = '未兑换'
+        EXCHANGED = '已兑换'
+        OVERDUE = '已失效'
 
     user = models.ForeignKey(User, on_delete=models.CASCADE)
-    prize_period = models.ForeignKey(YQPointPrizeExchangePeriod, on_delete=models.CASCADE)
-    status = models.SmallIntegerField('状态', choices=Status.choices)
-    time = models.DateTimeField(auto_now_add=True)
+    pool = models.ForeignKey(Pool, on_delete=models.CASCADE)
+    status = models.CharField('状态', choices=Status.choices)
+    create_time = models.DateTimeField('创建时间', auto_now_add=True)
