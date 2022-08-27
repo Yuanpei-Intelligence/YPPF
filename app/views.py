@@ -1249,7 +1249,7 @@ def freshman(request: HttpRequest):
         if check_more:
             need_create = True
         elif send_to == "wechat":
-            from wechat_send import send_wechat
+            from app.wechat_send import send_wechat
             auth = hash_coder.encode(sid + "_freshman_register")
             send_wechat(
                 [sid], "新生注册邀请\n点击按钮即可注册账号",
