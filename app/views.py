@@ -1141,6 +1141,47 @@ def accountSetting(request: HttpRequest):
         return render(request, "org_account_setting.html", locals())
 
 
+def _create_freshman_account(sid: str, email: str = None):
+    """创建用户和自然人，检查并修改新生创建状态，原子化操作"""
+    try:
+        with transaction.atomic():
+            current = "获取新生信息"
+            freshman: Freshman = Freshman.objects.select_for_update().get(sid=sid)
+            name = freshman.name
+            np_gender = (NaturalPerson.Gender.MALE
+                         if freshman.gender == "男" else
+                         NaturalPerson.Gender.FEMALE)
+            current = "确认注册状态"
+            assert freshman.status != Freshman.Status.REGISTERED
+            if email is None:
+                domain = "stu.pku.edu.cn" if freshman.grade.startswith("1") else "pku.edu.cn"
+                email = f"{sid}@{domain}"
+            current = "随机生成密码"
+            password = hash_coder.encode(name + str(random.random()))
+            current = "创建用户"
+            user = User.objects.create_user(
+                username=sid, name=name,
+                usertype=UTYPE_PER,
+                password=password
+            )
+            current = "创建个人账号"
+            NaturalPerson.objects.create(
+                person_id=user,
+                stu_id_dbonly=sid,
+                name=name,
+                gender=np_gender,
+                stu_major="元培计划（待定）",
+                stu_grade=freshman.grade,
+                email=email,
+            )
+            current = "更新注册状态"
+            freshman.status = Freshman.Status.REGISTERED
+            freshman.save()
+        return
+    except:
+        return current
+
+
 @log.except_captured(source='views[freshman]', record_user=True,
                      record_request_args=True, show_traceback=True)
 def freshman(request: HttpRequest):
@@ -1158,23 +1199,82 @@ def freshman(request: HttpRequest):
     address_list = sorted(address_set)
     address_list.append("其它")
     html_path = "freshman-top.html"
+    # 准备创建用的变量
+    need_create = False
     if request.method == "POST":
         # 这些也是失败时的前端使用量
         try:
             sid = request.POST["sid"]
             sname = request.POST["sname"]
             gender = request.POST["gender"]
-            birthday = request.POST["birthday"] # 前端使用
-            birthplace = request.POST["birthplace"]
-            email = request.POST["email"]
+            send_to = request.POST.get("type", "")
+            check_more = not send_to
+            if check_more:
+                birthday = request.POST["birthday"] # 前端使用
+                birthplace = request.POST["birthplace"]
+                email = request.POST["email"]
         except:
             err_msg = "提交信息不足"
             return render(request, html_path, locals())
         try:
             sid = str(sid)
-            freshman = Freshman.objects.get(sid=sid)
+            sname = str(sname)
+            gender = str(gender)
+            if check_more:
+                birthday_date = datetime.strptime(birthday, "%Y-%m-%d").date()
+                birthplace = str(birthplace)
+                email = str(email)
         except:
-            err_msg = "不存在该学号信息，你真的是新生吗？"
+            err_msg = "错误的个人信息格式"
+            return render(request, html_path, locals())
+        try:
+            freshman: Freshman = Freshman.objects.get(sid=sid)
+        except:
+            err_msg = "暂不存在该学号的新生信息"
+            return render(request, html_path, locals())
+        try:
+            assert freshman.name == sname, "姓名不匹配"
+            assert freshman.gender == gender, "个人信息错误"
+            if check_more:
+                assert freshman.birthday == birthday_date, "个人信息错误"
+                if freshman.place != "":
+                    assert freshman.place == birthplace, "生源地错误"
+                else:
+                    assert "其它" == birthplace, "生源地错误"
+                assert "@" in email, "请使用合法的邮件地址"
+            assert gender in ["男", "女"], "性别数据异常，请联系管理员"
+        except Exception as e:
+            err_msg = str(e)
+            return render(request, html_path, locals())
+        if check_more:
+            need_create = True
+        elif send_to == "wechat":
+            from wechat_send import send_wechat
+            auth = hash_coder.encode(sid + "_freshman_register")
+            send_wechat(
+                [sid], "新生注册邀请\n点击按钮即可注册账号",
+                url=f"/freshman/?sid={sid}&auth={auth}"
+            )
+            err_msg = "已向企业微信发送注册邀请，点击邀请信息即可注册！"
+            return render(request, html_path, locals())
+    
+    if request.GET.get("sid") is not None and request.GET.get("auth") is not None:
+        sid = request.GET["sid"]
+        auth = request.GET["auth"]
+        if auth != hash_coder.encode(sid + "_freshman_register"):
+            err_msg = "密钥错误，验证失败"
+            return render(request, html_path, locals())
+        need_create = True
+
+    if need_create:
+        try:
+            email = email
+        except:
+            email = None
+        try:
+            freshman: Freshman = Freshman.objects.get(sid=sid)
+        except:
+            err_msg = "暂不存在该学号的新生信息"
             return render(request, html_path, locals())
         try:
             exist = freshman.exists()
@@ -1188,57 +1288,9 @@ def freshman(request: HttpRequest):
         except Exception as e:
             err_msg = str(e)
             return render(request, html_path, locals())
-        try:
-            sname = str(sname)
-            gender = str(gender)
-            birthday_date = datetime.strptime(birthday, "%Y-%m-%d").date()
-            birthplace = str(birthplace)
-            email = str(email)
-        except:
-            err_msg = "错误的个人信息格式"
-            return render(request, html_path, locals())
-        try:
-            assert freshman.name == sname, "姓名不匹配"
-            assert freshman.gender == gender, "个人信息错误"
-            assert freshman.birthday == birthday_date, "个人信息错误"
-            if freshman.place != "":
-                assert freshman.place == birthplace, "生源地错误"
-            else:
-                assert "其它" == birthplace, "生源地错误"
-            assert "@" in email, "请使用合法的邮件地址"
-            assert gender in ["男", "女"], "性别数据异常，请联系管理员"
-        except Exception as e:
-            err_msg = str(e)
-            return render(request, html_path, locals())
 
-        np_gender = NaturalPerson.Gender.MALE if gender == "男" else\
-                    NaturalPerson.Gender.FEMALE
-
-        # 检查通过，这里假设user创建成功后自然人也能创建成功
-        current = "随机生成密码"
-        try:
-            with transaction.atomic():
-                password = hash_coder.encode(sname + str(random.random()))
-                current = "创建用户"
-                user = User.objects.create_user(
-                    username=sid, name=sname,
-                    usertype=UTYPE_PER,
-                    password=password
-                )
-                current = "创建个人账号"
-                NaturalPerson.objects.create(
-                    person_id=user,
-                    stu_id_dbonly=sid,
-                    name=sname,
-                    gender=np_gender,
-                    stu_major="元培计划（待定）",
-                    stu_grade=freshman.grade,
-                    email=email,
-                    )
-                current = "更新注册状态"
-                Freshman.objects.filter(sid=sid).select_for_update().update(
-                    status = Freshman.Status.REGISTERED)
-        except:
+        current = _create_freshman_account(sid, email=email)
+        if current is not None:
             err_msg = f"在{current}时意外发生了错误，请联系管理员"
             return render(request, html_path, locals())
 
