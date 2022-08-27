@@ -97,7 +97,7 @@ def course_activity_base_check(request: HttpRequest) -> dict:
 
     :param request: 修改/发起单次课程活动的请求
     :type request: HttpRequest
-    :raises AssertionError: 活动时间非法
+    :raises AssertionError: 活动时间非法/需要报名的活动必须提前至少一小时发起
     :return: context
     :rtype: dict
     """
@@ -125,16 +125,20 @@ def course_activity_base_check(request: HttpRequest) -> dict:
         }[request.POST.get("publish_day")]  # 活动发布提前日期
 
         if act_publish_day == Course.PublishDay.instant:
-            act_publish_time = datetime.now() + timedelta(seconds=10)   # 活动发布时间，默认为立即发布
+            act_publish_time = datetime.now() + timedelta(seconds=10)   # 活动发布时间，立即发布
         else:
             act_publish_time = datetime.strptime(
-                request.POST["publish_time"], "%Y-%m-%d %H:%M")  # 活动发布时间
+                request.POST["publish_time"], "%Y-%m-%d %H:%M")  # 活动发布时间，指定的发布时间
     except:
         raise AssertionError("活动时间非法")
     context["start"] = act_start
     context["end"] = act_end
     context["publish_day"] = act_publish_day
     context["publish_time"] = act_publish_time
+
+    if request.POST["need_apply"] == "True":
+        assert datetime.now() < context["start"] - timedelta(hours=1), "需要报名的活动必须提前至少一小时发起"
+       
     assert check_ac_time_course(act_start, act_end), "活动时间非法"
 
     # 默认需要签到
