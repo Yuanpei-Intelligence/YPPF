@@ -14,6 +14,7 @@ logger = logging.getLogger(__name__)
 
 from app.scheduler_func import *
 from Appointment.utils.scheduler_func import clear_appointments
+from scheduler.rpc import rpyc_lib
 
 class SchedulerService(rpyc.Service):
 
@@ -67,6 +68,8 @@ class Command(BaseCommand):
                           id='feedback_public_updater',
                           minute=5,
                           replace_existing=True)
+        scheduler.add_job(rpyc_lib, 'cron', id='rpyc_updater',
+                          minute=5, replace_existing=True)
 
         protocol_config = {
             'allow_all_attrs': True,
