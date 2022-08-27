@@ -1952,7 +1952,7 @@ class Pool(models.Model):
         RANDOM = '盲盒奖池'
 
     title = models.CharField('奖池名称', max_length=63)
-    pool_type = models.CharField('奖池类型', choices=Type.choices)
+    pool_type = models.CharField('奖池类型', choices=Type.choices, max_length=15)
     re_entry_time = models.IntegerField('进入次数', default=1)
     # 类型为兑换池时无效
     ticket_price = models.IntegerField('抽奖费', default=0)
@@ -1991,5 +1991,5 @@ class PoolRecord(models.Model):
 
     user = models.ForeignKey(User, on_delete=models.CASCADE)
     pool = models.ForeignKey(Pool, on_delete=models.CASCADE)
-    status = models.CharField('状态', choices=Status.choices)
+    status = models.CharField('状态', choices=Status.choices, max_length=15)
     create_time = models.DateTimeField('创建时间', auto_now_add=True)
