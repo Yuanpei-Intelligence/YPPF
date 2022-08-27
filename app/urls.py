@@ -15,11 +15,10 @@ from app import (
     views,
     org_views,
     activity_views,
-    reimbursement_views,
-    YQPoint_views,
     course_views,
     feedback_views,
     academic_views,
+    chat_api,
 )
 from django.conf import settings
 
@@ -54,14 +53,7 @@ urlpatterns = [
     path("subscribeOrganization/", views.subscribeOrganization, name="subscribeOrganization"),
     path("saveSubscribeStatus", views.saveSubscribeStatus, name="saveSubscribeStatus"),
 ] + [
-    # 元气值和后台操作
-    path("myYQPoint/", YQPoint_views.myYQPoint, name="myYQPoint"),
-    path("YQP_distributions/", YQPoint_views.YQPoint_distributions, name="YQP_distributions"),
-    # path("YQP_distribution/<int:dis_id>", YQPoint_views.YQPoint_distribution, name="YQP_distribution"),
-    # path("new_YQP_distribution", YQPoint_views.new_YQPoint_distribute, name="new_YQP_distribution"),
-    path("transPage/<str:rid>", YQPoint_views.transaction_page, name="transPage"),
-] + [
-    # 活动与报销
+    # 活动
     path("applyActivity/<str:aid>", activity_views.applyActivity, name="applyActivity"),
     path("viewActivity/<str:aid>", activity_views.viewActivity, name="viewActivity"),
     path("getActivityInfo/", activity_views.getActivityInfo, name="getActivityInfo"),
@@ -70,8 +62,6 @@ urlpatterns = [
     path("showActivity/", activity_views.showActivity, name="showActivity"),
     path("editActivity/<str:aid>", activity_views.addActivity, name="editActivity"),
     path("examineActivity/<str:aid>", activity_views.examineActivity, name="examineActivity"),
-    path("endActivity/", reimbursement_views.endActivity, name="endActivity"),
-    path("modifyEndActivity/", reimbursement_views.modifyEndActivity, name="modifyEndActivity"),
     path("offlineCheckinActivity/", activity_views.offlineCheckinActivity, name="offlineCheckinActivity"),
 ] + [
     # 组织相关操作
@@ -105,6 +95,15 @@ urlpatterns = [
 ] + [
     # 学术地图
     path("searchAcademic/", academic_views.searchAcademic, name="searchAcademic"),
+    path("modifyAcademic/", academic_views.modifyAcademic, name="modifyAcademic"),
+    path("AcademicQA/", academic_views.showChats, name="showChats"),
+    path("viewQA/<str:chat_id>", academic_views.viewChat, name="viewChat"),
+    path("auditAcademic/", academic_views.auditAcademic, name="auditAcademic"),
+] + [
+    # 问答相关
+    path("addChatComment/", chat_api.addChatComment, name="addChatComment"),
+    path("closeChat/", chat_api.closeChat, name="closeChat"),
+    path("startChat/", chat_api.startChat, name="startChat"),
 ] + [
     # 埋点
     path('eventTrackingFunc/', views.eventTrackingFunc, name='eventTracking'),

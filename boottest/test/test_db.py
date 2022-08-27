@@ -1,5 +1,5 @@
 from django.test import TestCase
-from django.contrib.auth.models import User
+from generic.models import User
 from django.contrib.auth import authenticate
 
 class DBTest(TestCase):
@@ -10,9 +10,9 @@ class DBTest(TestCase):
         '''set up db with user'''
         cls.users = {}
         cls.users['john'] = User.objects.create_user(
-            'john', 'lennon@thebeatles.com', 'johnpassword')
+            'john', 'john', password='johnpassword')
         cls.users['bob'] = User.objects.create_user(
-            'bob', 'bob@thebeatles.com', 'bobpassword')
+            'bob', 'bob', password='bobpassword')
 
     def setUp(self) -> None:
         pass

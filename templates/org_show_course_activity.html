@@ -111,6 +111,8 @@
                                                                         <span class="badge badge-pill badge-info">
                                                                         {% elif act.status == "进行中" %}
                                                                         <span class="badge badge-pill badge-success">
+                                                                        {% elif act.status == "待发布" %}
+                                                                        <span class="badge badge-pill badge-secondary">
                                                                         {% endif %}
                                                                     {{ act.status }}
                                                                     {% endif %}
@@ -184,6 +186,11 @@
                                                             <span class="ml-1">开始时间：{{ act.start }}&nbsp;</span>
                                                         </p>
 
+                                                        <p style="text-align: left; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+                                                            <i class="fa fa-calendar" style="width: 20px;"></i>
+                                                            <span class="ml-1">发布时间：{{ act.publish_time }}&nbsp;</span>
+                                                        </p>
+                                                        
                                                         <p style="text-align: left; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
                                                             <i class="fa fa-location-arrow" style="width: 20px;"></i>
                                                             <span class="ml-1">{{ act.location }}&nbsp;</span>

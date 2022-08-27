@@ -136,9 +136,62 @@
                                                 </div>
                                             </div>
                                         </div>
-                                        
                                     </div>
-                                </div>                                
+                                </div> 
+                                <div class="form-group " >
+                                    <label>本次课程活动是否需要报名</label>
+                                    <div class="form-control" >
+                                        <div class="row">
+                                            <label for="need_apply" class="col-6">
+                                                需要报名
+                                            <input type="radio" id="need_apply" value="True" name="need_apply" class="align-middle" style="height:1em"
+                                            required="required"
+                                            {% if need_apply %}checked{% endif %}>
+                                        </label>
+                                        <label for="not_need_apply" class="col-6">全员参与
+                                            <input type="radio" id="not_need_apply" value="False" name="need_apply" class="align-middle" style="height:1em"
+                                            required="required"
+                                            {% if not need_apply %}checked{% endif %}>
+                                        </label>
+                                        </div>
+                                    </div>
+                                </div>   
+                                <div class="form-group" >
+                                    <label>本次课程活动信息发布时间</label>
+                                    <div class="form-control h-100" >
+                                        <div class="row">
+                                            <label for="3days" class="form-check-label col-sm-12 col-md-6 col-lg-3">
+                                                提前三天
+                                                <input type="radio" id="3days" value="3" name="publish_day" class="align-middle" style="height:1em"
+                                                required="required"
+                                                {% if not edit %}checked{% endif %}
+                                                {% if edit and publish_day == 3 %}checked{% endif %} >
+                                            </label>
+                                            <label for="2days" class="form-check-label col-sm-12 col-md-6 col-lg-3">
+                                                提前两天
+                                                <input type="radio" id="2days" value="2" name="publish_day" class="align-middle" style="height:1em"
+                                                required="required"
+                                                {% if edit and publish_day == 2 %}checked{% endif %} 
+                                               >
+                                            </label>
+                                            <label for="1day" class="form-check-label col-sm-12 col-md-6 col-lg-3">
+                                                提前一天
+                                                <input type="radio" id="1day" value="1" name="publish_day" class="align-middle" style="height:1em"
+                                                required="required"
+                                                {% if edit and publish_day == 1 %}checked{% endif %} 
+                                                >
+                                            </label>
+                                            <label for="instant" class="form-check-label col-sm-12 col-md-6 col-lg-3">
+                                                立即发布 
+                                                <input type="radio" id="instant" value="instant" name="publish_day" class="align-middle" style="height:1em"
+                                                required="required"
+                                                {% if edit and publish_day == 0 %}checked{% endif %} 
+                                                >
+                                            </label>
+                                            <input type="hidden" name="publish_time" id="publish_time">
+                                        </div>
+                                    </div>
+                                </div>                            
                             </div>
                             {% if edit %}
                                 {%if activity.course_time%}
@@ -207,9 +260,34 @@
             }
         {% endif %}
         
-        // 检查单次课程课程开始时间、结束时间
-        let start1 = $("#datetimepicker1").val(), end1 = $("#datetimepicker2").val();
-        start1 = new Date(start1), end1 = new Date(end1);
+        // 检查单次课程课程发布时间、开始时间、结束时间
+        let start1 = new Date($("#datetimepicker1").val());
+        let end1 = new Date($("#datetimepicker2").val());
+        let publishDay = $("input[name='publish_day']:checked").val()
+
+        if(["1","2","3"].includes(publishDay)){
+            let publishTime = moment(start1).subtract(parseInt(publishDay),"days")
+            console.log(publishTime)
+            if( Date.now() > publishTime){
+                hideMessage(succId);
+                showMessage(warnId, "发布时间不能早于当前时间！");
+                document.body.scrollTop = document.documentElement.scrollTop = 0;
+                return false;
+            }
+            $("#publish_time").val(publishTime.format("YYYY-MM-DD HH:mm"))
+            console.log($("#publish_time").val())
+        }
+        else if(publishDay === "instant"){
+            $("#publish_time").val("instant")
+            console.log($("#publish_time").val())
+        }
+        else{
+            hideMessage(succId);
+            showMessage(warnId, "请选择正确的发布时间！");
+            document.body.scrollTop = document.documentElement.scrollTop = 0;
+            return false;
+        }
+
         if (start1 >= end1) {
             // document.getElementById("success_msg").display = true;
             hideMessage(succId);
@@ -217,12 +295,18 @@
             document.body.scrollTop = document.documentElement.scrollTop = 0;
             return false;
         }   
-        // 禁止修改课程开始时间到距离现在5分钟以内
-        const now = new Date();
-        const safeTime = new Date(start1);
-        if (now > safeTime) {
+
+        // 禁止修改课程开始时间到距离现在60分钟以内，额外1分钟用于后端处理
+        const safeTime = moment().add(61,"minutes");
+        if (start1 < safeTime) {
             hideMessage(succId);
-            showMessage(warnId, "开始时间要晚于当前时间！");
+            if ($("input[name='need_apply']:checked").val() === "True"){
+                showMessage(warnId, "报名截止时间已过（活动开始前1小时）！");
+            }
+            else{
+                showMessage(warnId, "开始时间至少为1小时以后！");
+            }
+
             document.body.scrollTop = document.documentElement.scrollTop = 0;
             return false;
         }
@@ -261,12 +345,14 @@ $(function () {
     $("#datetimepicker1").datetimepicker({
         format: "YYYY-MM-DD HH:mm",
         sideBySide: true,
-        minDate: new Date(),
+        minDate: new Date(Date.now()+60*60*1000),
+
     });
     $("#datetimepicker2").datetimepicker({
         format: "YYYY-MM-DD HH:mm",
         sideBySide: true,
-        minDate: new Date(),
+        minDate: new Date(Date.now()+60*60*1000),
+
     });
 });
 </script>

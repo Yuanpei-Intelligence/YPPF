@@ -7,7 +7,7 @@ class MigrateTest(TestCase):
     @classmethod
     def setUpTestData(cls):
         cls.john = User.objects.create_user(
-            'john', 'lennon@thebeatles.com', 'johnpassword')
+            'john', 'john', password='johnpassword')
 
     def test_migrate(self):
         NaturalPerson.objects.create(person_id=self.john, name='john')

@@ -5,12 +5,12 @@ import numpy
 import pandas as pd
 from tqdm import tqdm
 
-from django.contrib.auth.models import User
 from django.db import transaction
 
 from boottest import local_dict
 from app.constants import *
 from app.models import (
+    User,
     NaturalPerson,
     Freshman,
     Position,
@@ -18,7 +18,6 @@ from app.models import (
     OrganizationTag,
     OrganizationType,
     Activity,
-    TransferRecord,
     Notification,
     Help,
     Course,
@@ -27,6 +26,7 @@ from app.models import (
     FeedbackType,
     Feedback,
     Comment,
+    AcademicTag,
 )
 from app.utils import random_code_init, get_user_by_name
 
@@ -38,10 +38,11 @@ __all__ = [
     'create_person_account', 'create_org_account',
     # load functions
     'load_stu', 'load_orgtype', 'load_org',
-    'load_activity', 'load_transfer', 'load_notification',
+    'load_activity', 'load_notification',
     'load_freshman', 'load_help', 'load_course_record', 
     'load_org_tag', 'load_old_org_tags', 'load_feedback_type', 
-    'load_feedback', 'load_feedback_comments',
+    'load_feedback', 'load_feedback_comments', 'load_major',
+    'load_minor', 'load_double_degree', 'load_project',
 ]
 
 
@@ -305,7 +306,6 @@ def load_activity(filepath: str, output_func: Callable=None, html=False):
         end = datetime.strptime(end, "%m/%d/%Y %H:%M %p")
         location = act_dict["location"]
         introduction = act_dict["introduction"]
-        YQPoint = float(act_dict["YQPoint"])
         capacity = int(act_dict["capacity"])
         URL = act_dict["URL"]
 
@@ -317,7 +317,6 @@ def load_activity(filepath: str, output_func: Callable=None, html=False):
                 end=end,
                 location=location,
                 introduction=introduction,
-                YQPoint=YQPoint,
                 capacity=capacity,
                 URL=URL,
                 examine_teacher = NaturalPerson.objects.get(name="YPadmin")
@@ -328,51 +327,6 @@ def load_activity(filepath: str, output_func: Callable=None, html=False):
         act.save()
     return try_output("导入活动信息成功！", output_func, html)
 
-
-def load_transfer(filepath: str, output_func: Callable=None, html=False):
-    act_df = load_file(filepath)
-    act_list = []
-    for _, act_dict in act_df.iterrows():
-        id = act_dict["id"]
-        status = act_dict["status"]
-        start_time = str(act_dict["start_time"])
-        finish_time = str(act_dict["finish_time"])
-        start_time = datetime.strptime(start_time, "%d/%m/%Y %H:%M:%S.%f")
-        try:
-            finish_time = datetime.strptime(finish_time, "%d/%m/%Y %H:%M:%S.%f")
-        except:
-            finish_time = None
-        message = act_dict["message"]
-        amount = float(act_dict["amount"])
-        if str(act_dict["proposer_id"]) == str(1266):
-            act_dict["proposer_id"] = NaturalPerson.objects.get(
-                name=local_dict["test_info"]["stu_name"]
-            ).person_id.id
-        if str(act_dict["recipient_id"]) == str(1266):
-            act_dict["recipient_id"] = NaturalPerson.objects.get(
-                name=local_dict["test_info"]["stu_name"]
-            ).person_id.id
-        proposer = User.objects.get(id=act_dict["proposer_id"])
-        recipient = User.objects.get(id=act_dict["recipient_id"])
-        try:
-            corres_act = Activity.objects.get(id=act_dict["corres_act_id"])
-        except:
-            corres_act = None
-        act_list.append(
-            TransferRecord(
-                id=id,
-                status=status,
-                start_time=start_time,
-                finish_time=finish_time,
-                message=message,
-                amount=amount,
-                proposer=proposer,
-                recipient=recipient,
-                corres_act=corres_act,
-            )
-        )
-    TransferRecord.objects.bulk_create(act_list)
-    return try_output("导入转账信息成功！", output_func, html)
 
 
 def load_notification(filepath: str, output_func: Callable=None, html=False):
@@ -405,12 +359,6 @@ def load_notification(filepath: str, output_func: Callable=None, html=False):
         content = not_dict["content"]
         typename = not_dict["typename"]
         URL = not_dict["URL"]
-        try:
-            relate_TransferRecord = TransferRecord.objects.get(
-                id=not_dict["relate_TransferRecord_id"]
-            )
-        except:
-            relate_TransferRecord = None
         not_list.append(
             Notification(
                 id=id,
@@ -423,7 +371,6 @@ def load_notification(filepath: str, output_func: Callable=None, html=False):
                 content=content,
                 URL=URL,
                 typename=typename,
-                relate_TransferRecord=relate_TransferRecord,
             )
         )
     Notification.objects.bulk_create(not_list)
@@ -966,3 +913,87 @@ def load_feedback_comments(filepath: str, output_func: Callable=None, html=False
                 ) + tuple(f'{fb}：{err}' for fb, err in error_dict.items()
                 ))
     return try_output(msg, output_func, html)
+
+
+def load_major(filepath: str, output_func: Callable=None, html=False):
+    '''该函数用于导入学术地图中的主修专业标签(文件须为txt格式)'''
+    if not filepath.endswith('txt'):
+        return try_output("请确保数据文件为txt格式！", output_func, html)
+    
+    try:
+        file = open(filepath, 'r')
+    except:
+        return try_output(f"没有找到{filepath},请确认该文件已经在test_data中。", output_func, html)
+    
+    lines = [line.strip() for line in file.readlines()]
+    majors = [line for i, line in enumerate(lines) if (line != '') and (i > 0 and lines[i-1] != '')]
+    for major in majors:
+        AcademicTag.objects.get_or_create(
+            atype=AcademicTag.AcademicTagType.MAJOR,
+            tag_content=major,
+        )
+    file.close()
+    return try_output("导入主修专业信息成功！", output_func, html)
+
+
+def load_minor(filepath: str, output_func: Callable=None, html=False):
+    '''该函数用于导入学术地图中的辅修专业标签(文件须为txt格式)'''
+    if not filepath.endswith('txt'):
+        return try_output("请确保数据文件为txt格式！", output_func, html)
+    
+    try:
+        file = open(filepath, 'r')
+    except:
+        return try_output(f"没有找到{filepath},请确认该文件已经在test_data中。", output_func, html)
+    
+    lines = [line.strip() for line in file.readlines()]
+    minors = [line for i, line in enumerate(lines) if (line != '') and (i > 0 and lines[i-1] != '')]
+    for minor in minors:
+        AcademicTag.objects.get_or_create(
+            atype=AcademicTag.AcademicTagType.MINOR,
+            tag_content=minor,
+        )
+    file.close()
+    return try_output("导入辅修专业信息成功！", output_func, html)
+
+
+def load_double_degree(filepath: str, output_func: Callable=None, html=False):
+    '''该函数用于导入学术地图中的双学位专业标签(文件须为txt格式)'''
+    if not filepath.endswith('txt'):
+        return try_output("请确保数据文件为txt格式！", output_func, html)
+    
+    try:
+        file = open(filepath, 'r')
+    except:
+        return try_output(f"没有找到{filepath},请确认该文件已经在test_data中。", output_func, html)
+    
+    lines = [line.strip() for line in file.readlines()]
+    majors = [line for i, line in enumerate(lines) if (line != '') and (i > 0 and lines[i-1] != '')]
+    for major in majors:
+        AcademicTag.objects.get_or_create(
+            atype=AcademicTag.AcademicTagType.DOUBLE_DEGREE,
+            tag_content=major,
+        )
+    file.close()
+    return try_output("导入双学位专业信息成功！", output_func, html)
+
+
+def load_project(filepath: str, output_func: Callable=None, html=False):
+    '''该函数用于导入学术地图中的项目标签(文件须为txt格式)'''
+    if not filepath.endswith('txt'):
+        return try_output("请确保数据文件为txt格式！", output_func, html)
+    
+    try:
+        file = open(filepath, 'r')
+    except:
+        return try_output(f"没有找到{filepath},请确认该文件已经在test_data中。", output_func, html)
+    
+    lines = [line.strip() for line in file.readlines()]
+    projects = [line for line in lines if line != '']
+    for project in projects:
+        AcademicTag.objects.get_or_create(
+            atype=AcademicTag.AcademicTagType.PROJECT,
+            tag_content=project,
+        )
+    file.close()
+    return try_output("导入项目信息成功！", output_func, html)

@@ -34,7 +34,7 @@ class ParticipantAdmin(admin.ModelAdmin):
     search_fields = ('Sid__username', 'name', 'pinyin')
     list_display = ('Sid', 'name', 'credit', 'longterm', 'hidden')
     list_display_links = ('Sid', 'name')
-    list_editable = ('credit', )
+    # list_editable = ('credit', )
 
     class AgreeFilter(admin.SimpleListFilter):
         title = '签署状态'
@@ -55,7 +55,7 @@ class ParticipantAdmin(admin.ModelAdmin):
                 return queryset.filter(agree_time__isnull=True)
             return queryset
 
-    list_filter = ('credit', 'longterm', 'hidden', AgreeFilter)
+    list_filter = ('Sid__credit', 'longterm', 'hidden', AgreeFilter)
 
     @readonly_inline
     class AppointInline(admin.TabularInline):
@@ -85,6 +85,8 @@ class ParticipantAdmin(admin.ModelAdmin):
     def recover(self, request, queryset):
         stu_all = Participant.objects.all()
         stu_all = stu_all.filter(hidden=False)
+        # TODO: 恢复信用分调整至通用模型后台
+        stu_all = User.objects.filter(id__in=stu_all.values_list('Sid__id'))
         stu_all.filter(credit__lt=3).select_for_update().update(
             credit=F('credit') + 1
         )
@@ -98,12 +100,12 @@ class ParticipantAdmin(admin.ModelAdmin):
             stu.save()
         return self.message_user(request, '修改学生拼音成功!')
 
-    @as_action('赋予长期预约权限', actions, update=True)
+    @as_action('赋予长期预约权限', actions, 'change', update=True)
     def add_longterm_perm(self, request, queryset: QuerySet[Participant]):
         queryset.update(longterm=True)
         return self.message_user(request, '操作成功!')
 
-    @as_action('收回长期预约权限', actions, update=True)
+    @as_action('收回长期预约权限', actions, 'change', update=True)
     def remove_longterm_perm(self, request, queryset: QuerySet[Participant]):
         queryset.update(longterm=False)
         return self.message_user(request, '操作成功!')
@@ -235,8 +237,6 @@ class AppointAdmin(admin.ModelAdmin):
         }
         color_code = status2color[obj.Astatus]
         status = obj.get_status()
-        # if obj.Atemp_flag == Appoint.Bool_flag.Yes:
-        #     status = '临时:' + status
         return format_html(
             '<span style="color: {};">{}</span>',
             color_code,
@@ -267,8 +267,7 @@ class AppointAdmin(admin.ModelAdmin):
                         appoint.Astatus = Appoint.Status.JUDGED
                         # for stu in appoint.students.all():
                         if appoint.major_student.credit < 3:
-                            appoint.major_student.credit += 1
-                            appoint.major_student.save()
+                            User.objects.modify_credit(appoint.get_major_id(), 1, '地下室：申诉')
                         appoint.save()
                         have_success = 1
                         # send wechat message
@@ -308,8 +307,7 @@ class AppointAdmin(admin.ModelAdmin):
                 # 已违规时不扣除信用分，仅提示用户
                 if appoint.Astatus != Appoint.Status.VIOLATED:
                     appoint.Astatus = Appoint.Status.VIOLATED
-                    appoint.major_student.credit -= 1  # 只扣除发起人
-                    appoint.major_student.save()
+                    User.objects.modify_credit(appoint.get_major_id(), -1, '地下室：后台')
                 appoint.Areason = Appoint.Reason.R_ELSE
                 appoint.save()
 
