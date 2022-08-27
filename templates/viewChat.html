@@ -1,0 +1,324 @@
+{% extends "base.html" %}
+
+{% load static %}
+
+
+{% block mainpage %}
+<style>
+    select[readonly] {
+  background: #eee; /*Simular campo inativo - Sugestão @GabrielRodrigues*/
+  pointer-events: none;
+  touch-action: none;
+}
+</style>
+<style type="text/css">
+    h3.noafter:after{
+        /* 去掉widget-content-area中h3下方的蓝色线 */
+        content: none !important;
+    }
+    h3.noafter {
+        /* 减少一些h3.noafter下方的空白 */
+        margin: 6px 0px 20px !important;
+    }
+    .badge.followh3noafter {
+        /* 和h3.noafter对齐 */
+        vertical-align: middle !important;
+        margin: 2px 0px 6px !important;
+    }
+</style>
+    <!--  BEGIN CONTENT AREA  -->
+    <div id="content" class="main-content">
+        <div class="container">
+            <!--  BEGIN WARN MESSAGES  -->
+            <div id="warn_msg" name="warn_msg" hidden></div>
+
+            {% if warn_code == 2 %}
+            <div class="alert alert-success  text-center">{{warn_message}}</div>
+            {% elif warn_code == 1%}
+            <div class="alert alert-warning  text-center">{{warn_message}}</div>
+            {% endif %}
+            <!--  END WARN MESSAGES  -->
+            
+            <div class="row layout-top-spacing">
+
+                {% if bar_display.help_paragraphs %}
+                    {% include 'help.html' %}
+                {% endif %}
+
+                <div class="col-lg-12 col-sm-12 col-12 layout-spacing">
+                    <div class="bio layout-spacing ">
+                        <div class="widget-content widget-content-area">
+                            <!--  BEGIN CHAT TITLE  -->
+                            <div class="d-flex justify-content-between">
+                                <h3 class="noafter">
+                                    {% if my_name == questioner_name %}
+                                        {% if my_name == "匿名用户" %}
+                                        [匿名]
+                                        {% endif %}
+
+                                        {% if academic_url != "" and respondent_name != "匿名用户" %}
+                                        发给<a href='{{academic_url}}#tab=academic_map'><u>{{respondent_name}}</u></a>的问答：{{title}}&emsp;
+                                        {% else %}
+                                        发给{{respondent_name}}的问答：{{title}}&emsp;
+                                        {% endif %}
+                                    {% else %}
+                                        {% if academic_url != "" and questioner_name != "匿名用户" %}
+                                        来自<a href='{{academic_url}}#tab=academica_map'><u>{{questioner_name}}</u></a>的问答：{{title}}&emsp;
+                                        {% else %}
+                                        来自{{questioner_name}}的问答：{{title}}&emsp;
+                                        {% endif %}
+                                    {% endif %}
+                                    
+                                    {% if status == "进行中" %}
+                                    <span class="badge badge-primary followh3noafter">{{status}}</span><br />
+                                    {% elif status == "已关闭" %}
+                                    <span class="badge badge-success followh3noafter">{{status}}</span><br />
+                                    {% else %}
+                                    <span class="badge badge-danger followh3noafter">{{status}}</span><br />
+                                    {% endif %}
+                                </h3>
+                            </div>
+                            <!--  END CHAT TITLE  -->
+
+                            <!--  BEGIN CHAT CONTENT  -->
+                            <div class="row">
+                                <div class="col-md-12 mb-4">
+                                    <div class="statbox widget box box-shadow">
+                                        <div class="widget-content widget-content-area">
+                                            <table class="table table-bordered mb-4">
+                                            {% if messages|length != 0 %}
+                                                {% for comment in messages %}
+                                                <div class="form-group">
+                                                    <div class="d-flex justify-content-between">
+                                                        <!--  BEGIN MY MESSAGE HEAD -->
+                                                        {% if my_name == comment.commentator.name %}
+                                                        <div>
+                                                            <p style="color: rgb(66, 67, 68);">
+                                                                <i class="fa fa-calendar-o"></i>{{ comment.time }}</p>
+                                                        </div>
+                                                        <div align="right">
+                                                            <img src={{ comment.commentator.avatar }} width="24" height="24" alt="avatar">
+                                                                {% if comment.commentator.URL %}
+                                                                <a href='{{ comment.commentator.URL }}#tab=academic_map'>
+                                                                    <u>{{ comment.commentator.name }}</u>
+                                                                </a>
+                                                                {% else %}
+                                                                {{ comment.commentator.name }}
+                                                                {% endif %}
+                                                        </div>
+                                                        <!--  END MY MESSAGE HEAD -->
+                                                        
+                                                        <!--  BEGIN OTHERS MESSAGE HEAD -->
+                                                        {% else %}
+                                                        <div>
+                                                            <img src={{ comment.commentator.avatar }} width="24" height="24" alt="avatar">
+                                                                {% if comment.commentator.URL %}
+                                                                <a href='{{ comment.commentator.URL }}#tab=academic_map'>
+                                                                    <u>{{ comment.commentator.name }}</u>
+                                                                </a>
+                                                                {% else %}
+                                                                {{ comment.commentator.name }}
+                                                                {% endif %}
+                                                        </div>
+                                                        <div align="right">
+                                                            <p style="color: rgb(66, 67, 68);">
+                                                                <i class="fa fa-calendar-o"></i>{{ comment.time }}</p>
+                                                        </div>
+                                                        <!--  END OTHERS MESSAGE HEAD -->
+                                                        {% endif %}
+                                                    </div>
+                                                    <!--  BEGIN MESSAGE CONTENT -->
+                                                    {% if comment.text %}
+                                                        {% if comment.commentator.name == my_name %}
+                                                        <textarea name="comment" class="form-control no-gray" 
+                                                                disabled="disabled" rows="3" style="background-color:rgb(255, 255, 255) !important;color: black;">{{ comment.text }}</textarea>
+                                                                <!-- 颜色待调整 -->
+                                                        {% else %}
+                                                        <textarea name="comment" class="form-control no-gray"
+                                                                disabled="disabled" rows="3" style="background-color:rgb(255, 255, 255) !important;color: black;">{{ comment.text }}</textarea>
+                                                                <!-- 颜色待调整 -->
+                                                        {% endif %}
+                                                    {% endif %}
+                                                    {% if comment.photos %}
+                                                        {% if comment.text %}<br>{% endif %}
+                                                        <div style="max-height:1000px;overflow:auto;">
+                                                        {% for image in comment.photos %}
+                                                        <img src={{ image.get_image_path }} >
+                                                        {% endfor %}
+                                                        </div>
+                                                    {% endif %}
+                                                    <hr>
+                                                </div>
+                                                {% endfor %}
+                                                
+                                            {% else %}
+                                                <thead></thead>
+                                                <tbody>
+                                                    <tr>
+                                                        <td>{{ not_found_message }}</td>
+                                                    </tr>
+                                                </tbody>
+                                            {% endif %}
+                                            </table>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <!--  END CHAT CONTENT  -->
+
+                            <!--  BEGIN REPLY AREA  -->
+                            {% if commentable %}
+                            <div class="row">
+                                <div class="col-md-12 mb-4">
+                                    <div class="statbox widget box box-shadow">
+                                        <div class="widget-content widget-content-area">
+                                            <table class="table table-bordered mb-4">
+                                                <div>
+                                                    <div class="form-group">
+                                                        {% if anonymous_chat and not accept_anonymous %}
+                                                        <textarea type="text" id="comment" name="comment"
+                                                                class="form-control"
+                                                                aria-label="Default" rows="3"
+                                                                placeholder="回答者目前不接收匿名提问哦" disabled></textarea>
+                                                        {% else %}
+                                                        <textarea type="text" id="comment" name="comment"
+                                                                class="form-control"
+                                                                aria-label="Default" rows="3"
+                                                                placeholder="添加回复或追问追答"></textarea>
+                                                        {% endif %}
+                                                        
+                                                    </div>
+                                                    <div class="d-flex justify-content-between">
+                                                        <div>
+                                                        </div>
+                                                        <div class="" style="text-align: right;">
+                                                                <button type="submit"
+                                                                        class="btn btn-primary"
+                                                                        name="comment_submit" 
+                                                                        id="comment_submit"
+                                                                        value="{{chat_id}}"
+                                                                        onclick="add_chat_comment(this);">
+                                                                    回复
+                                                                </button>
+                                                                <button type="submit"
+                                                                        class="btn btn-danger"
+                                                                        name="close" id="close"
+                                                                        value="{{chat_id}}"
+                                                                        onclick="close_chat(this);">
+                                                                    关闭当前问答
+                                                                </button>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </table>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            {% endif %}
+                            <!--  END REPLY AREA  -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+<script  type="text/javascript">
+    // post请求后会reload，reload之后需要在顶部显示warn_message，
+    // 而通常情况下history.scrollRestoration="auto"会导致reload后页面滚动到刷新前浏览的位置，有可能看不见顶部的warn_message
+    // 需要用下面这两个函数手工处理一下
+    // 关于如何在刷新页面后执行某些操作，参考了https://stackoverflow.com/a/41905026
+    // 关于scrollRestoration，参考了https://stackoverflow.com/a/33004917 。
+    //      不修改scrollRestoration，直接window.scrollTo(0, 0)似乎是不行的：
+    //          如果写在window.onbeforeunload里，刷新后会停在刚好看不到warn_message的位置(可能是因为warn_msg的div在刷新前的页面是hidden的)；
+    //          如果写在window.onload里，则不起作用，刷新后还是停在刷新前浏览的位置
+    window.onbeforeunload = function () { 
+        // 这个函数发生在每次reload之前，准确地说是unload之前
+        if ('scrollRestoration' in history)  // 如果有刷新后自动滚动的功能
+        {
+            if (sessionStorage.getItem("reloading") == "chatRelatedReloading"){ // 刷新是js提交导致的
+                history.scrollRestoration = 'manual'; // 禁用自动滚动，reload后回顶部
+            }
+            else { // 其他原因导致的刷新
+                history.scrollRestoration = 'auto'; // 启用自动滚动
+            }
+        }
+    }
+
+    window.onload = function() { 
+        // 这个函数发生在每次reload之后，准确地说是load之后
+        // 如果history.scrollRestoration = "auto"，则这个函数执行完后会自动scroll到刷新前浏览的位置；如果history.scrollRestoration = "manual"，则不会
+        var reloading = sessionStorage.getItem("reloading");
+        var warn_code = sessionStorage.getItem("warn_code");
+        var warn_msg_content = sessionStorage.getItem("warn_message"); // js发送成功后会在sessionStorage设置warn_code、warn_message、reloading
+        
+        if (reloading == "chatRelatedReloading") { // 刷新是js提交导致的
+            sessionStorage.removeItem("reloading"); // 清除掉，这样以后普通的页面刷新不会进这个if
+            // 显示warn_message
+            if (warn_code == 1){
+                warn_msg = document.getElementById("warn_msg");
+                warn_msg.className = "alert alert-warning  text-center";
+                warn_msg.innerHTML = warn_msg_content
+                warn_msg.hidden = false;
+            }
+            else if (warn_code == 2){
+                warn_msg = document.getElementById("warn_msg");
+                warn_msg.className = "alert alert-success  text-center";
+                warn_msg.innerHTML = warn_msg_content;
+                warn_msg.hidden = false;
+            }
+        }
+    }
+
+    function add_chat_comment(a) { // 回复问答
+        if (document.getElementById("comment").value == ""){
+            return;
+        }
+        $.ajax({
+            url: "/addChatComment/",
+            type: "post",
+            data:{
+                comment: document.getElementById("comment").value,
+                chat_id: Number(a.value),
+                comment_submit: 1,
+            },
+            success: function(context){
+                // console.log(context)
+                if (context.warn_code){
+                    if (context.warn_message != "发送成功。") { // 发送信息成功效果比较明显，没必要专门给出warn_message了
+                        sessionStorage.setItem("reloading", "chatRelatedReloading");
+                        sessionStorage.setItem("warn_code", context.warn_code);
+                        sessionStorage.setItem("warn_message", context.warn_message);
+                    }
+                }
+                document.location.reload(); // 刷新页面
+            }
+        })
+    }
+
+    function close_chat(a) { // 关闭问答
+        confirm_res = confirm('确认关闭该问答？关闭后，问答双方无法再通过此问答发送消息.');
+        if (confirm_res == 0){
+            return;
+        }
+        $.ajax({
+            url: "/closeChat/",
+            type: "post",
+            data:{
+                chat_id: Number(a.value),
+            },
+            success: function(context){
+                // console.log(context)
+                if (context.warn_code){
+                    sessionStorage.setItem("reloading", "chatRelatedReloading");
+                    sessionStorage.setItem("warn_code", context.warn_code);
+                    sessionStorage.setItem("warn_message", context.warn_message);
+                }
+                document.location.reload(); // 刷新页面
+            }
+        })
+    }
+</script>
+
+{% endblock %}

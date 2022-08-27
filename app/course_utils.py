@@ -14,6 +14,7 @@ check_course_time_conflict: 检查当前选择的课是否与已选的课上课�
 """
 from app.utils_dependency import *
 from app.models import (
+    User,
     NaturalPerson,
     Activity,
     Notification,
@@ -49,7 +50,6 @@ from datetime import datetime, timedelta
 from typing import Tuple, List
 
 from django.http import HttpRequest, HttpResponse
-from django.contrib.auth.models import User
 from django.db import transaction
 from django.db.models import F, Q, Sum, Prefetch
 
@@ -203,8 +203,8 @@ def create_single_course_activity(request: HttpRequest) -> Tuple[int, bool]:
         publish_time=context["publish_time"],  # 发布时间
         need_apply=context["need_apply"]  # 是否需要报名
 
-        # capacity, URL, budget, YQPoint, bidding,
-        # apply_reason, inner, source, end_before均为default
+        # capacity, URL, bidding,
+        # inner, end_before均为default
     )
 
     if context["need_apply"]:

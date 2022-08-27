@@ -1,3 +1,4 @@
+from app.course_utils import str_to_time
 from app.views_dependency import *
 from app.models import (
     Feedback,
@@ -10,21 +11,18 @@ from app.models import (
     ModifyPosition,
     Activity,
     ActivityPhoto,
-    TransferRecord,
     Participant,
     Notification,
     ModifyOrganization,
     Comment,
     CommentPhoto,
-    YQPointDistribute,
-    Reimbursement,
     Wishes,
-    ReimbursementPhoto,
     Course,
     CourseRecord,
     Semester,
     PageLog,
     ModuleLog,
+    Chat,
 )
 from app.utils import (
     url_check,
@@ -46,6 +44,9 @@ from app.notification_utils import(
     bulk_notification_create,
     notification_status_change,
     notification2Display,
+)
+from app.academic_utils import(
+    comments2Display,
 )
 
 import json
@@ -514,7 +515,22 @@ def stuinfo(request: HttpRequest, name=None):
         if modpw_status is not None and modpw_status == "success":
             html_display["warn_code"] = 2
             html_display["warn_message"] = "修改个人信息成功!"
+        
 
+        # ----------------------------------- 学术地图 ----------------------------------- #
+        # ------------------ 提问区 or 进行中的问答------------------ #
+        progressing_chat = Chat.objects.activated().filter(
+            questioner=request.user,
+            respondent=person.get_user())
+        if progressing_chat.exists(): # 有进行中的问答
+            comments2Display(progressing_chat[0], html_display, request.user)
+            html_display["have_progressing_chat"] = True
+        else: # 没有进行中的问答，显示提问区
+            html_display["have_progressing_chat"] = False
+            html_display["accept_chat"] = person.get_user().accept_chat
+            html_display["accept_anonymous"] = person.get_user().accept_anonymous_chat
+        
+        
         # 存储被查询人的信息
         context = dict()
 
@@ -635,14 +651,24 @@ def orginfo(request: HttpRequest, name=None):
 
     # 判断是否为小组账户本身在登录
     html_display["is_myself"] = me == org
+    html_display["is_person"] = user_type == "Person"
     inform_share, alert_message = utils.get_inform_share(me=me, is_myself=html_display["is_myself"])
 
     organization_name = name
     organization_type_name = org.otype.otype_name
     org_avatar_path = org.get_user_ava()
     wallpaper_path = utils.get_user_wallpaper(org, "Organization")
-    # org的属性 YQPoint 和 information 不在此赘述，直接在前端调用
+    # org的属性 information 不在此赘述，直接在前端调用
 
+    # 给前端传递选课的参数
+    yx_election_start = get_setting("course/yx_election_start")
+    yx_election_end = get_setting("course/yx_election_end")
+    if (str_to_time(yx_election_start) <= datetime.now() < (
+            str_to_time(yx_election_end))):
+        html_display["select_ing"] = True
+    else:
+        html_display["select_ing"] = False
+        
     if request.method == "POST" :
         if request.POST.get("export_excel") is not None and html_display["is_myself"]:
             html_display["warn_code"] = 2
@@ -1194,7 +1220,11 @@ def freshman(request: HttpRequest):
             with transaction.atomic():
                 password = hash_coder.encode(sname + str(random.random()))
                 current = "创建用户"
-                user = User.objects.create_user(username=sid, password=password)
+                user = User.objects.create_user(
+                    username=sid, name=sname,
+                    usertype=UTYPE_PER,
+                    password=password
+                )
                 current = "创建个人账号"
                 NaturalPerson.objects.create(
                     person_id=user,
@@ -1268,7 +1298,11 @@ def authRegister(request: HttpRequest):
 
                 # OK!
                 try:
-                    user = User.objects.create_user(username=sno, password=password)
+                    user = User.objects.create_user(
+                        username=sno, name=name,
+                        usertype=UTYPE_PER,
+                        password=password
+                    )
                 except:
                     # 存在用户
                     return HttpResponseRedirect("/admin/")

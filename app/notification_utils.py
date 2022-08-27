@@ -97,7 +97,6 @@ def notification_create(
         title,
         content,
         URL=None,
-        relate_TransferRecord=None,
         relate_instance=None,
         anonymous_flag=False,
         *,
@@ -130,7 +129,6 @@ def notification_create(
         title=title,
         content=content,
         URL=URL,
-        relate_TransferRecord=relate_TransferRecord,
         relate_instance=relate_instance,
         anonymous_flag=anonymous_flag,
     )
@@ -175,7 +173,6 @@ def bulk_notification_create(
         title,
         content,
         URL=None,
-        relate_TransferRecord=None,
         relate_instance=None,
         *,
         duplicate_behavior='ok',
@@ -264,7 +261,6 @@ def bulk_notification_create(
                 content=content,
                 URL=URL,
                 bulk_identifier=bulk_identifier,
-                relate_TransferRecord=relate_TransferRecord,
                 relate_instance=relate_instance,
                 # start_time=start_time, # 该参数无效，bulk_create会分批生成并覆盖auto_now的字段
             ) for receiver in receivers
@@ -329,7 +325,6 @@ def make_notification(application, request, content, receiver):
     URL = {
         'modifyposition': f'/modifyPosition/?pos_id={application.id}',
         'neworganization': f'/modifyOrganization/?org_id={application.id}',
-        'reimbursement': f'/modifyEndActivity/?reimb_id={application.id}',
     }
     sender = request.user
     typename = Notification.Type.NEEDDO if post_type == 'new_submit' else Notification.Type.NEEDREAD

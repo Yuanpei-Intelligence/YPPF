@@ -24,6 +24,7 @@ from boottest import (
 from boottest.global_messages import (
     WRONG, SUCCEED,
 )
+from generic.models import User
 from django.conf import settings
 
 __all__ = [
@@ -76,8 +77,8 @@ def get_config(path: str='', trans_func=None, default=None,
 SYSTEM_LOG: str = get_setting('system_log')
 
 # 本应用的常量
-UTYPE_PER = 'Person'
-UTYPE_ORG = 'Organization'
+UTYPE_PER = User.Type.PERSON.value
+UTYPE_ORG = User.Type.ORG.value
 
 # 本应用的必要设置
 CURRENT_ACADEMIC_YEAR: int = get_setting('semester_data/year', int)

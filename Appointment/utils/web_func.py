@@ -31,7 +31,7 @@ def adjust_qualifiy_rate(original_rate: float, appoint: Appoint) -> float:
     if appoint.Room.Rid in {'B109A', 'B207'}:   # 公共区域
         return 0
     elif appoint.Room.Rid.startswith('R'):      # 俄文楼
-        rate = 0
+        return 0
     elif appoint.Room.Rid == 'B214':            # 暂时无法识别躺姿
         rate -= 0.15                # 建议在0.1-0.2之间 前者最严 后者最宽松
     elif appoint.Room.Rid == 'B107B':           # 无法监控摄像头正下方
@@ -41,7 +41,7 @@ def adjust_qualifiy_rate(original_rate: float, appoint: Appoint) -> float:
             rate -= 0.05            # 建议在0-0.1之间 因为主要是识别出的人数问题
 
     MIN31 = timedelta(minutes=31)
-    if appoint.Atemp_flag:                      # 临时预约不检查摄像头
+    if appoint.Atype == Appoint.Type.TEMPORARY: # 临时预约不检查摄像头
         return 0
     if appoint.Atype == Appoint.Type.LONGTERM:  # 长期预约不检查摄像头
         return 0
@@ -327,7 +327,7 @@ def get_user_info(Pid):
     }
 
 
-def appointment2Display(appoint: Appoint, future: bool, longterm: bool, Pid: Optional[int]) -> Dict[str, Any]:
+def appointment2Display(appoint: Appoint, future: bool, longterm: bool, Pid: Optional[int] = None) -> Dict[str, Any]:
     """
     获取单次预约的信息，填入供前端展示的词典
 
