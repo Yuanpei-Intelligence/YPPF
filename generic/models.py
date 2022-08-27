@@ -132,6 +132,20 @@ class UserManager(_UserManager):
         )
 
 
+    @transaction.atomic
+    def modify_YQPoint(self, user: 'User|int|str', delta: int,
+                       source: str, source_type: 'PointMixin.SourceType'):
+        update_user = self.get_user(user, update=True)
+        update_user.YQpoint += delta
+        assert update_user.YQpoint >= 0, '元气值不足'
+        self._record_yqpoint_change(update_user, delta, source, source_type)
+
+    def _record_yqpoint_change(self, user: 'User', delta: int,
+                               source: str, source_type: 'PointMixin.SourceType'):
+        YQPointRecord.objects.create(user=user, source=source, delta=delta,
+                                     source_type=source_type)
+
+
 class PointMixin(models.Model):
     '''
     支持元气值和积分等系统，添加相关字段和操作
@@ -144,36 +158,13 @@ class PointMixin(models.Model):
     class SourceType(models.IntegerChoices):
         CHECK_IN = (0, '每日签到')
         ACTIVITY = (1, '参与活动')
-        FEEDBACK = (2, '填写反馈')
+        FEEDBACK = (2, '问题反馈')
         # 如完成个人信息填写，学术地图填写
         ACHIEVE = (3, '达成成就')
-        QUESTIONNAIRE = (4, '填写文件')
-        CONSUMPTION = (5, '兑换奖品')
+        QUESTIONNAIRE = (4, '填写文卷')
+        CONSUMPTION = (5, '奖池花费')
 
     YQpoint = models.IntegerField('元气值', default=0)
-
-    def _normalize_YQpoint(self):
-        pass
-
-    def changeYQpoint(self, value: int,
-                      source_type: SourceType,
-                      url: Optional[str] = ''):
-        """修改元气值并记录，保证元气值 >= 0
-
-        :param value: 元气值增量，可以为负
-        :type value: int
-        :param source_type: 元气值改变缘由
-        :type source_type: SourceType
-        :param url: 相关链接, defaults to ''
-        :type url: Optional[str], optional
-        """
-        self.YQpoint += value
-        assert self.YQpoint >= 0, '元气值不足'
-        YQPointRecord.objects.create(user=self,
-                                     source_type=source_type,
-                                     delta=value,
-                                     related_url=url)
-        self._normalize_YQpoint()
 
 
 class User(AbstractUser, PointMixin):
@@ -264,7 +255,7 @@ class YQPointRecord(models.Model):
         User, verbose_name='用户', on_delete=models.CASCADE,
         to_field='username',
     )
-    source_type = models.SmallIntegerField(choices=PointMixin.SourceType.choices)
+    source = models.CharField('来源', max_length=63)
+    source_type = models.SmallIntegerField('来源类型', choices=PointMixin.SourceType.choices)
     delta = models.IntegerField('变化量')
     time = models.DateTimeField("时间", auto_now_add=True)
-    related_url = models.URLField(max_length=255, default='')
