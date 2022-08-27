@@ -1,0 +1,78 @@
+{% extends "base.html" %}
+
+
+{% block mainpage %}
+
+
+<!--  BEGIN CONTENT AREA  -->
+<div id="content" class="main-content">
+    <!--  BEGIN WARN_MESSAGE  -->
+    {% if warn_code == 1 %}
+    <div class="alert alert-warning  text-center">{{ warn_message }}</div>
+    {% elif warn_code == 2 %}
+    <div class="alert alert-success  text-center">{{ warn_message }}</div>
+    {% endif %}
+    <!--  END WARN_MESSAGE  -->
+        
+    <div class="container">
+        <div class="row layout-top-spacing">
+
+            {% if bar_display.help_paragraphs %}
+                {% include 'help.html' %}
+            {% endif %}
+
+            <div class="col-lg-12 col-12 layout-top-spacing"  style="text-align:center">
+                <div class="bio layout-spacing ">
+                    <div class="widget-content widget-content-area">
+                        <div class="d-flex justify-content-between">
+                            <h3>待审核的学术地图</h3>
+                        </div>
+
+                        <div class="widget-content widget-content-area">
+                            <div class="table-responsive">
+                                <table class="table table-bordered mb-4">
+                                    {% if student_list|length != 0 %}
+                                    <thead></thead>
+                                    <tbody>
+                                        {% for person in student_list %}
+                                        <tr class="w-100">
+                                            <td style="min-width: 100px;">
+                                                <u>
+                                                    <a href="{{ person.get_absolute_url }}#tab=academic_map">
+                                                        <img src="{{ person.get_user_ava }}" alt="大头照" style="width: 20px; height: 20px;">{{ person.name }}
+                                                    </a>
+                                                </u>
+                                            </td>
+                                            <td style="min-width: 100px;">
+                                                <u>
+                                                    <a href="{{ person.get_absolute_url }}#tab=academic_map">
+                                                        <button type="button" class="btn btn-primary" >
+                                                            点击查看
+                                                        </button>
+                                                    </a>
+                                                </u>
+                                            </td>
+                                        </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                    {% else %}
+                                    <thead></thead>
+                                    <tbody>
+                                        <tr>
+                                            <td>没有待审核的学术地图~</td>
+                                        </tr>
+                                    </tbody>
+                                    {% endif %}
+                                </table>
+                            </div>
+                        </div>    
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+<!--  END CONTENT AREA  -->
+
+
+{% endblock %}
