@@ -186,6 +186,11 @@ def add_week_course_activity(course_id: int, weektime_id: int, cur_week: int ,co
             activity.publish_time = week_time.start + timedelta(days=7 * cur_week - course.publish_day)
 
         activity.need_apply = course.need_apply  # 是否需要报名
+        
+        if course.need_apply:
+            activity.endbefore = Activity.EndBefore.onehour
+            activity.apply_end = activity.start - timedelta(hours=1)
+
         activity.need_checkin = True  # 需要签到
         activity.recorded = True
         activity.course_time = week_time
@@ -226,7 +231,7 @@ def add_week_course_activity(course_id: int, weektime_id: int, cur_week: int ,co
         scheduler.add_job(changeActivityStatus, "date", id=f"activity_{activity.id}_{Activity.Status.APPLYING}",
                           run_date=activity.publish_time, args=[activity.id, Activity.Status.UNPUBLISHED, Activity.Status.APPLYING], replace_existing=True)
         scheduler.add_job(changeActivityStatus, "date", id=f"activity_{activity.id}_{Activity.Status.WAITING}",
-                          run_date=activity.start - timedelta(minutes=5), args=[activity.id, Activity.Status.APPLYING, Activity.Status.WAITING], replace_existing=True)
+                          run_date=activity.start - timedelta(hours=1), args=[activity.id, Activity.Status.APPLYING, Activity.Status.WAITING], replace_existing=True)
     else:
         scheduler.add_job(changeActivityStatus, "date", id=f"activity_{activity.id}_{Activity.Status.WAITING}",
                           run_date=activity.publish_time, args=[activity.id, Activity.Status.UNPUBLISHED, Activity.Status.WAITING], replace_existing=True)
