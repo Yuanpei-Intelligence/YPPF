@@ -922,7 +922,7 @@ def offlineCheckinActivity(request: HttpRequest, aid):
     _, user_type, _ = utils.check_user_type(request.user)
     me = get_person_or_org(request.user, user_type)
     try:
-        aid = request.GET.get('id')
+        aid = int(aid)
         src = request.GET.get('scr')
         activity = Activity.objects.get(id=aid)
         assert me == activity.organization_id and user_type == "Organization"
