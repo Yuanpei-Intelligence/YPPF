@@ -908,7 +908,7 @@ def examineActivity(request: HttpRequest, aid):
 @login_required(redirect_field_name="origin")
 @utils.check_user_access(redirect_url="/logout/")
 @log.except_captured(source='activity_views[offlineCheckinActivity]', record_user=True)
-def offlineCheckinActivity(request: HttpRequest,aid):
+def offlineCheckinActivity(request: HttpRequest, aid):
     '''
     修改签到记录，只有举办活动的组织账号可查看和修改
     
