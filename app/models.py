@@ -1970,6 +1970,7 @@ class PoolItem(models.Model):
 
     pool = models.ForeignKey(Pool, verbose_name='奖池', on_delete=models.CASCADE)
     prize = models.ForeignKey(Prize, verbose_name='奖品', on_delete=models.CASCADE)
+    origin_num = models.IntegerField('初始数量')
     remain = models.IntegerField('剩余数量')
     # pool 类型为兑换奖池时有效
     price = models.IntegerField('价格')
@@ -1991,5 +1992,6 @@ class PoolRecord(models.Model):
 
     user = models.ForeignKey(User, on_delete=models.CASCADE)
     pool = models.ForeignKey(Pool, on_delete=models.CASCADE)
+    prize = models.ForeignKey(Prize, on_delete=models.CASCADE)
     status = models.CharField('状态', choices=Status.choices, max_length=15)
     create_time = models.DateTimeField('创建时间', auto_now_add=True)
