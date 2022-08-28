@@ -190,7 +190,7 @@ def viewActivity(request: HttpRequest, aid=None):
                 return redirect(message_url(wrong('活动尚未结束!'), request.path))
             if not ownership:
                 return redirect(message_url(wrong('您没有调整签到信息的权限!'), request.path))
-            return redirect(f"/offlineCheckinActivity/?id={aid}&src=1")
+            return redirect(f"/offlineCheckinActivity/{aid}?src=1")
 
         elif option == "sign" or option == "enroll": #下载活动签到信息或者报名信息
             if not ownership:
@@ -908,7 +908,7 @@ def examineActivity(request: HttpRequest, aid):
 @login_required(redirect_field_name="origin")
 @utils.check_user_access(redirect_url="/logout/")
 @log.except_captured(source='activity_views[offlineCheckinActivity]', record_user=True)
-def offlineCheckinActivity(request: HttpRequest):
+def offlineCheckinActivity(request: HttpRequest,aid):
     '''
     修改签到记录，只有举办活动的组织账号可查看和修改
     

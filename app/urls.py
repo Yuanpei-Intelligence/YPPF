@@ -62,7 +62,7 @@ urlpatterns = [
     path("showActivity/", activity_views.showActivity, name="showActivity"),
     path("editActivity/<str:aid>", activity_views.addActivity, name="editActivity"),
     path("examineActivity/<str:aid>", activity_views.examineActivity, name="examineActivity"),
-    path("offlineCheckinActivity/", activity_views.offlineCheckinActivity, name="offlineCheckinActivity"),
+    path("offlineCheckinActivity/<str:aid>", activity_views.offlineCheckinActivity, name="offlineCheckinActivity"),
 ] + [
     # 组织相关操作
     path("saveShowPositionStatus", org_views.saveShowPositionStatus, name="saveShowPositionStatus"),
