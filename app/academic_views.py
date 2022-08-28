@@ -5,7 +5,7 @@ from app.models import (
     AcademicTagEntry,
     AcademicTextEntry,
     Chat,
-    NaturalPerson
+    NaturalPerson,
 )
 from app.academic_utils import (
     get_search_results,
@@ -18,8 +18,6 @@ from app.academic_utils import (
     update_academic_map,
     get_wait_audit_student,
     audit_academic_map,
-    get_js_public_tags,
-    get_public_texts
 )
 from app.utils import (
     check_user_type, 
@@ -34,7 +32,7 @@ __all__ = [
     'viewChat',
     'modifyAcademic',
     'auditAcademic',
-    'viewAcademic'
+    'viewAcademic',
 ]
 
 
@@ -153,36 +151,37 @@ def modifyAcademic(request: HttpRequest) -> HttpResponse:
     
     # 不是POST，说明用户希望编辑学术地图，下面准备前端展示量
     # 获取所有专业/项目的列表，左右前端select框的下拉选项
+    me = get_person_or_org(request.user, UTYPE_PER)
     frontend_dict.update(
-        major_list=get_js_tag_list(request, AcademicTag.AcademicTagType.MAJOR, selected=False),
-        minor_list=get_js_tag_list(request, AcademicTag.AcademicTagType.MINOR, selected=False),
-        double_degree_list=get_js_tag_list(request, AcademicTag.AcademicTagType.DOUBLE_DEGREE, selected=False),
-        project_list=get_js_tag_list(request, AcademicTag.AcademicTagType.PROJECT, selected=False),
+        major_list=get_js_tag_list(me, AcademicTag.AcademicTagType.MAJOR, selected=False),
+        minor_list=get_js_tag_list(me, AcademicTag.AcademicTagType.MINOR, selected=False),
+        double_degree_list=get_js_tag_list(me, AcademicTag.AcademicTagType.DOUBLE_DEGREE, selected=False),
+        project_list=get_js_tag_list(me, AcademicTag.AcademicTagType.PROJECT, selected=False),
     )
     
     # 获取用户已有的专业/项目的列表，用于select的默认选中项
     frontend_dict.update(
-        selected_major_list=get_js_tag_list(request, AcademicTag.AcademicTagType.MAJOR, selected=True),
-        selected_minor_list=get_js_tag_list(request, AcademicTag.AcademicTagType.MINOR, selected=True),
-        selected_double_degree_list=get_js_tag_list(request, AcademicTag.AcademicTagType.DOUBLE_DEGREE, selected=True),
-        selected_project_list=get_js_tag_list(request, AcademicTag.AcademicTagType.PROJECT, selected=True),
+        selected_major_list=get_js_tag_list(me, AcademicTag.AcademicTagType.MAJOR, selected=True),
+        selected_minor_list=get_js_tag_list(me, AcademicTag.AcademicTagType.MINOR, selected=True),
+        selected_double_degree_list=get_js_tag_list(me, AcademicTag.AcademicTagType.DOUBLE_DEGREE, selected=True),
+        selected_project_list=get_js_tag_list(me, AcademicTag.AcademicTagType.PROJECT, selected=True),
     )
     
     # 获取用户已有的TextEntry的contents，用于TextEntry填写栏的前端预填写
     scientific_research_list = get_text_list(
-        request, AcademicTextEntry.AcademicTextType.SCIENTIFIC_RESEARCH
+        me, AcademicTextEntry.AcademicTextType.SCIENTIFIC_RESEARCH
     )
     challenge_cup_list = get_text_list(
-        request, AcademicTextEntry.AcademicTextType.CHALLENGE_CUP
+        me, AcademicTextEntry.AcademicTextType.CHALLENGE_CUP
     )
     internship_list = get_text_list(
-        request, AcademicTextEntry.AcademicTextType.INTERNSHIP
+        me, AcademicTextEntry.AcademicTextType.INTERNSHIP
     )
     scientific_direction_list = get_text_list(
-        request, AcademicTextEntry.AcademicTextType.SCIENTIFIC_DIRECTION
+        me, AcademicTextEntry.AcademicTextType.SCIENTIFIC_DIRECTION
     )
     graduation_list = get_text_list(
-        request, AcademicTextEntry.AcademicTextType.GRADUATION
+        me, AcademicTextEntry.AcademicTextType.GRADUATION
     )
     frontend_dict.update(
         scientific_research_list=scientific_research_list,
@@ -198,7 +197,6 @@ def modifyAcademic(request: HttpRequest) -> HttpResponse:
     )
     
     # 最后获取每一种atype对应的entry的公开状态，如果没有则默认为公开
-    me = get_person_or_org(request.user, UTYPE_PER)
     major_status = get_tag_status(me, AcademicTag.AcademicTagType.MAJOR)
     minor_status = get_tag_status(me, AcademicTag.AcademicTagType.MINOR)
     double_degree_status = get_tag_status(me, AcademicTag.AcademicTagType.DOUBLE_DEGREE)
@@ -293,7 +291,7 @@ def viewAcademic(request: HttpRequest) -> HttpResponse:
         try:
             # 需要回传作者的person_id.id
             audit_academic_map(request.POST.get("author_id"))
-            return redirect(message_url(succeed("审核完成！")))
+            return redirect(message_url(succeed("审核成功！"), "/auditAcademic/"))
         except:
             return redirect(message_url(wrong("审核过程中出现意料之外的错误，请联系工作人员处理！")))
 
@@ -308,26 +306,26 @@ def viewAcademic(request: HttpRequest) -> HttpResponse:
 
     # 获取用户已有的专业/项目的列表，用于select的默认选中项
     frontend_dict.update(
-        selected_major_list=get_js_public_tags(author, AcademicTag.AcademicTagType.MAJOR, selected=True),
-        selected_minor_list=get_js_public_tags(author, AcademicTag.AcademicTagType.MINOR, selected=True),
-        selected_double_degree_list=get_js_public_tags(author, AcademicTag.AcademicTagType.DOUBLE_DEGREE, selected=True),
-        selected_project_list=get_js_public_tags(author, AcademicTag.AcademicTagType.PROJECT, selected=True),
+        selected_major_list=get_js_tag_list(author, AcademicTag.AcademicTagType.MAJOR, selected=True),
+        selected_minor_list=get_js_tag_list(author, AcademicTag.AcademicTagType.MINOR, selected=True),
+        selected_double_degree_list=get_js_tag_list(author, AcademicTag.AcademicTagType.DOUBLE_DEGREE, selected=True),
+        selected_project_list=get_js_tag_list(author, AcademicTag.AcademicTagType.PROJECT, selected=True),
     )
 
     # 获取用户已有的TextEntry的contents，用于TextEntry填写栏的前端预填写
-    scientific_research_list = get_public_texts(
+    scientific_research_list = get_text_list(
         author, AcademicTextEntry.AcademicTextType.SCIENTIFIC_RESEARCH
     )
-    challenge_cup_list = get_public_texts(
+    challenge_cup_list = get_text_list(
         author, AcademicTextEntry.AcademicTextType.CHALLENGE_CUP
     )
-    internship_list = get_public_texts(
+    internship_list = get_text_list(
         author, AcademicTextEntry.AcademicTextType.INTERNSHIP
     )
-    scientific_direction_list = get_public_texts(
+    scientific_direction_list = get_text_list(
         author, AcademicTextEntry.AcademicTextType.SCIENTIFIC_DIRECTION
     )
-    graduation_list = get_public_texts(
+    graduation_list = get_text_list(
         author, AcademicTextEntry.AcademicTextType.GRADUATION
     )
     frontend_dict.update(

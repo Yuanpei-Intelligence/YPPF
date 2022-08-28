@@ -31,8 +31,6 @@ __all__ = [
     'update_academic_map',
     'get_wait_audit_student',
     'audit_academic_map',
-    'get_js_public_tags',
-    'get_public_texts'
 ]
 
 
@@ -211,12 +209,12 @@ def comments2Display(chat: Chat, frontend_dict: dict, user: User):
             frontend_dict["academic_url"] = ""
 
 
-def get_js_tag_list(request: HttpRequest, type: AcademicTag.AcademicTagType, selected: bool) -> List[dict]:
+def get_js_tag_list(author: NaturalPerson, type: AcademicTag.AcademicTagType, selected: bool) -> List[dict]:
     """
     用于前端显示支持搜索的专业/项目列表，返回形如[{id, content}]的列表。
 
-    :param tags: http请求，用于读取学号
-    :type tags: HttpRequest
+    :param author: 作者自然人信息
+    :type tags: NaturalPerson
     :param type: 标记所需的tag类型
     :type type: AcademicTag.AcademicTagType
     :param selected: 用于标记是否获取本人已有的专业项目，selected代表获取前端默认选中的项目
@@ -225,8 +223,8 @@ def get_js_tag_list(request: HttpRequest, type: AcademicTag.AcademicTagType, sel
     :rtype: List[dict]
     """
     if selected:
-        me = get_person_or_org(request.user, UTYPE_PER)
-        all_my_tags = AcademicTagEntry.objects.activated().filter(person=me)
+        # me = get_person_or_org(request.user, UTYPE_PER)
+        all_my_tags = AcademicTagEntry.objects.activated().filter(person=author)
         tags = all_my_tags.filter(tag__atype=type).values('tag__id', 'tag__tag_content')
         js_list = [{"id": tag['tag__id'], "text": tag['tag__tag_content']} for tag in tags]
     else:
@@ -236,19 +234,19 @@ def get_js_tag_list(request: HttpRequest, type: AcademicTag.AcademicTagType, sel
     return js_list
 
 
-def get_text_list(request: HttpRequest, type: AcademicTextEntry.AcademicTextType) -> List[str]:
+def get_text_list(author: NaturalPerson, type: AcademicTextEntry.AcademicTextType) -> List[str]:
     """
     获取自己的所有类型为type的TextEntry的内容列表。
 
-    :param request: http请求
-    :type request: HttpRequest
+    :param author: 作者自然人信息
+    :type author: NaturalPerson
     :param type: TextEntry的类型
     :type type: AcademicTextEntry.AcademicTextType
     :return: 含有所有类型为type的TextEntry的content的list
     :rtype: List[str]
     """
-    me = get_person_or_org(request.user, UTYPE_PER)
-    all_my_text = AcademicTextEntry.objects.activated().filter(person=me, atype=type)
+    # me = get_person_or_org(request.user, UTYPE_PER)
+    all_my_text = AcademicTextEntry.objects.activated().filter(person=author, atype=type)
     text_list = [text.content for text in all_my_text]
     return text_list
 
@@ -513,38 +511,3 @@ def audit_academic_map(author: NaturalPerson) -> None:
 
     for item in entries:
         item.status = AcademicEntry.EntryStatus.PUBLIC
-
-
-def get_js_public_tags(author: NaturalPerson, type=AcademicTag.AcademicTagType) -> list[dict]:
-    """
-    用于前端展示页面的专业/项目列表，返回形如[{id, content}]的列表。
-
-    :param author: 被查看用户
-    :type author: NaturalPerson
-    :param type: 标记所需的tag类型
-    :type type: AcademicTag.AcademicTagType
-    :return: 所有专业/项目组成的List[dict]，key值如上所述
-    :rtype: List[dict]
-    """
-    all_tags = AcademicTagEntry.objects.activated().filter(
-        person=author, status=AcademicEntry.EntryStatus.PUBLIC)
-    tags = all_tags.filter(tag__atype=type).values('tag__id', 'tag__tag_content')
-    js_list = [{"id": tag['tag__id'], "text": tag['tag__tag_content']} for tag in tags]
-    return js_list
-
-
-def get_public_texts(author: NaturalPerson, type: AcademicTextEntry.AcademicTextType):
-    """
-     获取自己的所有类型为type的TextEntry的内容列表。
-     
-    :param author: 被查看用户
-    :type author: NaturalPerson
-    :param type: TextEntry的类型
-    :type type: AcademicTextEntry.AcademicTextType
-    :return: 含有所有类型为type的TextEntry的content的list
-    :rtype: List[str]
-    """
-    all_my_text = AcademicTextEntry.objects.activated().filter(
-        person=author, atype=type, status=AcademicEntry.EntryStatus.PUBLIC)
-    text_list = [text.content for text in all_my_text]
-    return text_list
