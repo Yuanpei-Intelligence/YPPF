@@ -134,35 +134,37 @@ class UserManager(_UserManager):
 
     @transaction.atomic
     def modify_YQPoint(self, user: 'User|int|str', delta: int,
-                       source: str, source_type: 'PointMixin.SourceType'):
+                       source: str, source_type: 'YQPointRecord.SourceType'):
+        '''
+        修改元气值并记录，不足时抛出AssertionError，原子化操作
+        '''
         update_user = self.get_user(user, update=True)
         update_user.YQpoint += delta
         assert update_user.YQpoint >= 0, '元气值不足'
         self._record_yqpoint_change(update_user, delta, source, source_type)
+        update_user.save(update_fields=['credit'])
+        if isinstance(user, User):
+            user.credit = update_user.credit
+
 
     def _record_yqpoint_change(self, user: 'User', delta: int,
-                               source: str, source_type: 'PointMixin.SourceType'):
-        YQPointRecord.objects.create(user=user, source=source, delta=delta,
-                                     source_type=source_type)
+                               source: str, source_type: 'YQPointRecord.SourceType'):
+        YQPointRecord.objects.create(
+            user=user,
+            delta=delta,
+            source=source,
+            source_type=source_type,
+        )
 
 
 class PointMixin(models.Model):
     '''
     支持元气值和积分等系统，添加相关字段和操作
 
-    元气值暂由修改者负责添加记录
+    元气值修改由管理器负责并添加记录
     '''
     class Meta:
         abstract = True
-
-    class SourceType(models.IntegerChoices):
-        CHECK_IN = (0, '每日签到')
-        ACTIVITY = (1, '参与活动')
-        FEEDBACK = (2, '问题反馈')
-        # 如完成个人信息填写，学术地图填写
-        ACHIEVE = (3, '达成成就')
-        QUESTIONNAIRE = (4, '填写文卷')
-        CONSUMPTION = (5, '奖池花费')
 
     YQpoint = models.IntegerField('元气值', default=0)
 
@@ -248,14 +250,26 @@ class YQPointRecord(models.Model):
     只起记录作用，应通过User管理器方法自动创建
     '''
     class Meta:
-        verbose_name = '信用分记录'
+        verbose_name = '元气值记录'
         verbose_name_plural = verbose_name
     
     user = models.ForeignKey(
         User, verbose_name='用户', on_delete=models.CASCADE,
         to_field='username',
     )
-    source = models.CharField('来源', max_length=63)
-    source_type = models.SmallIntegerField('来源类型', choices=PointMixin.SourceType.choices)
     delta = models.IntegerField('变化量')
+    source = models.CharField('来源', max_length=50, blank=True)
+
+    class SourceType(models.IntegerChoices):
+        SYSTEM = (0, '系统操作')
+        CHECK_IN = (1, '每日签到')
+        ACTIVITY = (2, '参与活动')
+        FEEDBACK = (3, '问题反馈')
+        # 如完成个人信息填写，学术地图填写
+        ACHIEVE = (4, '达成成就')
+        QUESTIONNAIRE = (5, '填写问卷')
+        CONSUMPTION = (6, '奖池花费')
+
+    source_type: 'SourceType|int' = models.SmallIntegerField(
+        '来源类型', choices=SourceType.choices, default=SourceType.SYSTEM)
     time = models.DateTimeField("时间", auto_now_add=True)
