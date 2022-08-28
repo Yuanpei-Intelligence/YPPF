@@ -93,6 +93,7 @@ def viewActivity(request: HttpRequest, aid=None):
                 Activity.Status.REJECT,
             ]:
             return redirect(message_url(wrong('该活动暂不可见!')))
+
     except Exception as e:
         log.record_traceback(request, e)
         return EXCEPT_REDIRECT
@@ -189,7 +190,7 @@ def viewActivity(request: HttpRequest, aid=None):
                 return redirect(message_url(wrong('活动尚未结束!'), request.path))
             if not ownership:
                 return redirect(message_url(wrong('您没有调整签到信息的权限!'), request.path))
-            return redirect(f"/offlineCheckinActivity/{aid}")
+            return redirect(f"/offlineCheckinActivity/{aid}?src=2")
 
         elif option == "sign" or option == "enroll": #下载活动签到信息或者报名信息
             if not ownership:
@@ -922,6 +923,7 @@ def offlineCheckinActivity(request: HttpRequest, aid):
     me = get_person_or_org(request.user, user_type)
     try:
         aid = int(aid)
+        src = request.GET.get('src')
         activity = Activity.objects.get(id=aid)
         assert me == activity.organization_id and user_type == "Organization"
     except:
@@ -957,7 +959,12 @@ def offlineCheckinActivity(request: HttpRequest, aid):
                             status = Participant.AttendStatus.UNATTENDED)
             except:
                 return redirect(message_url(wrong("修改失败。"), request.path))
-            return redirect(message_url(
+            # 修改成功之后根据src的不同返回不同的界面，1代表聚合页面，2代表活动主页
+            if src == 1:
+                return redirect(message_url(
+                succeed("修改签到信息成功。"), f"/showCourseActivity/"))
+            else:
+                return redirect(message_url(
                 succeed("修改签到信息成功。"), f"/viewActivity/{aid}"))
 
     bar_display = utils.get_sidebar_and_navbar(request.user,
@@ -965,3 +972,5 @@ def offlineCheckinActivity(request: HttpRequest, aid):
     member_list = member_list.select_related('person_id')
     render_context = dict(bar_display=bar_display, member_list=member_list)
     return render(request, "activity_checkinoffline.html", render_context)
+    
+
