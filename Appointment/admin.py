@@ -100,12 +100,12 @@ class ParticipantAdmin(admin.ModelAdmin):
             stu.save()
         return self.message_user(request, '修改学生拼音成功!')
 
-    @as_action('赋予长期预约权限', actions, update=True)
+    @as_action('赋予长期预约权限', actions, 'change', update=True)
     def add_longterm_perm(self, request, queryset: QuerySet[Participant]):
         queryset.update(longterm=True)
         return self.message_user(request, '操作成功!')
 
-    @as_action('收回长期预约权限', actions, update=True)
+    @as_action('收回长期预约权限', actions, 'change', update=True)
     def remove_longterm_perm(self, request, queryset: QuerySet[Participant]):
         queryset.update(longterm=False)
         return self.message_user(request, '操作成功!')
@@ -237,8 +237,6 @@ class AppointAdmin(admin.ModelAdmin):
         }
         color_code = status2color[obj.Astatus]
         status = obj.get_status()
-        # if obj.Atemp_flag == Appoint.Bool_flag.Yes:
-        #     status = '临时:' + status
         return format_html(
             '<span style="color: {};">{}</span>',
             color_code,

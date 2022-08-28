@@ -31,7 +31,7 @@ def adjust_qualifiy_rate(original_rate: float, appoint: Appoint) -> float:
     if appoint.Room.Rid in {'B109A', 'B207'}:   # 公共区域
         return 0
     elif appoint.Room.Rid.startswith('R'):      # 俄文楼
-        rate = 0
+        return 0
     elif appoint.Room.Rid == 'B214':            # 暂时无法识别躺姿
         rate -= 0.15                # 建议在0.1-0.2之间 前者最严 后者最宽松
     elif appoint.Room.Rid == 'B107B':           # 无法监控摄像头正下方
@@ -41,7 +41,7 @@ def adjust_qualifiy_rate(original_rate: float, appoint: Appoint) -> float:
             rate -= 0.05            # 建议在0-0.1之间 因为主要是识别出的人数问题
 
     MIN31 = timedelta(minutes=31)
-    if appoint.Atemp_flag:                      # 临时预约不检查摄像头
+    if appoint.Atype == Appoint.Type.TEMPORARY: # 临时预约不检查摄像头
         return 0
     if appoint.Atype == Appoint.Type.LONGTERM:  # 长期预约不检查摄像头
         return 0
@@ -327,28 +327,25 @@ def get_user_info(Pid):
     }
 
 
-def appointment2Display(appoint: Appoint, future: bool, longterm: bool, Pid: Optional[int] = None) -> Dict[str, Any]:
+def appointment2Display(appoint: Appoint, type: str, userid: str = None) -> Dict[str, Any]:
     """
     获取单次预约的信息，填入供前端展示的词典
 
     :param appoint: 单次预约
     :type appoint: Appoint
-    :param future: 是否是未来的预约（需要展示能否取消）
-    :type future: bool
-    :param longterm: 是否是长期预约（需要展示星期）
-    :type longterm: bool
-    :param Pid: 预约人id，当longterm=True时不需要
-    :type Pid: Optional[int]
+    :param type: 展示类型
+    :type type: str
+    :param userid: 预约人id，长期预约不需要
+    :type userid: str
     :return: 供前端展示的词典
     :rtype: dict[str, Any]
     """
     appoint_info = appoint.toJson()
     appoint_info['Astart_hour_minute'] = appoint.Astart.strftime("%I:%M %p")
     appoint_info['Afinish_hour_minute'] = appoint.Afinish.strftime("%I:%M %p")
-    if longterm:
+    if type == 'longterm':
         appoint_info['Aweek'] = appoint.Astart.strftime("%A")
     else:
-        appoint_info['is_appointer'] = (Pid == appoint.get_major_id())
-        if future:
-            appoint_info['can_cancel'] = (Pid == appoint.get_major_id())
+        appoint_info['is_appointer'] = (userid == appoint.get_major_id())
+        appoint_info['can_cancel'] = (type == 'future' and userid == appoint.get_major_id())
     return appoint_info

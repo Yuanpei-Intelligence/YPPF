@@ -14,6 +14,7 @@ from app.academic_utils import (
     get_tag_status,
     get_text_status,
     update_academic_map,
+    get_wait_audit_student,
 )
 from app.utils import (
     check_user_type, 
@@ -27,6 +28,7 @@ __all__ = [
     'showChats', 
     'viewChat',
     'modifyAcademic',
+    'auditAcademic',
 ]
 
 
@@ -237,3 +239,27 @@ def modifyAcademic(request: HttpRequest) -> HttpResponse:
     frontend_dict["warn_code"] = request.GET.get('warn_code', 0)
     frontend_dict["warn_message"] = request.GET.get('warn_message', "")
     return render(request, "modify_academic.html", frontend_dict)
+
+
+@login_required(redirect_field_name="origin")
+@utils.check_user_access(redirect_url="/logout/")
+@log.except_captured(EXCEPT_REDIRECT, source='academic_views[auditAcademic]', record_user=True)
+def auditAcademic(request: HttpRequest) -> HttpResponse:
+    """
+    供教师使用的页面，展示所有待审核的学术地图
+
+    :param request
+    :type request: HttpRequest
+    :return
+    :rtype: HttpResponse
+    """
+    # 身份检查
+    person = get_person_or_org(request.user)
+    if not person.is_teacher():
+        return redirect(message_url(wrong('只有教师账号可进入学术地图审核页面!')))
+
+    frontend_dict = {}
+    frontend_dict["bar_display"] = get_sidebar_and_navbar(request.user, "审核学术地图")
+    frontend_dict["student_list"] = get_wait_audit_student()
+    
+    return render(request, "audit_academic.html", frontend_dict)
