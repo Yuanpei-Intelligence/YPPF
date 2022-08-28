@@ -5,6 +5,10 @@ from app.models import (
     NaturalPerson,
     Freshman,
     Position,
+    AcademicEntry,
+    AcademicTag,
+    AcademicTextEntry,
+    AcademicTagEntry,
     Organization,
     OrganizationTag,
     OrganizationType,
@@ -45,8 +49,14 @@ from app.notification_utils import(
     notification_status_change,
     notification2Display,
 )
-from app.academic_utils import(
+from app.academic_utils import (
     comments2Display,
+    get_js_tag_list,
+    get_text_list,
+    audit_academic_map,
+    have_entries_of_type,
+    get_tag_status,
+    get_text_status,
 )
 
 import json
@@ -227,6 +237,7 @@ def stuinfo(request: HttpRequest, name=None):
     valid, user_type, html_display = utils.check_user_type(request.user)
 
     oneself = get_person_or_org(user, user_type)
+    print(request.POST)
 
     if name is None:
         name = request.GET.get('name', None)
@@ -264,6 +275,15 @@ def stuinfo(request: HttpRequest, name=None):
         html_display["is_myself"] = is_myself  # 存入显示
         inform_share, alert_message = utils.get_inform_share(me=person, is_myself=is_myself)
 
+        print(request.POST)
+        if request.POST.get("post_academic"):
+            print("Yyyyyyyyyyyyyyyyyyyyyyyyyy")
+            try:
+                # 需要回传作者的person_id.id
+                audit_academic_map(person)
+                return redirect(message_url(succeed("审核成功！"), "/auditAcademic/"))
+            except:
+                return redirect(message_url(wrong("审核过程中出现意料之外的错误，请联系工作人员处理！")))
         # 处理更改数据库中inform_share的post
         if request.method == "POST" and request.POST:
             option = request.POST.get("option", "")
@@ -557,6 +577,102 @@ def stuinfo(request: HttpRequest, name=None):
         NaturalPerson.objects.filter(id=person.id).update(visit_times=F('visit_times')+1)
         # person.visit_times += 1
         # person.save()
+
+        # ------------------ 查看学术地图 ------------------ #
+        academic_params = {"author_id": person.person_id_id}
+        # 下面准备前端展示量
+        status_in = None
+        if is_myself:
+            academic_params["user_type"] = "author"
+        elif oneself.is_teacher():
+            academic_params["user_type"] = "inspector"
+            status_in = ['public', 'wait_audit']
+        else:
+            academic_params["user_type"] = "viewer"
+            status_in = ['public']
+
+        # 判断用户是否有可以展示的内容
+        if academic_params["user_type"] == "viewer":
+            academic_params["have_content"] = have_entries_of_type(person, ["public"])
+        else:
+            academic_params["have_content"] = have_entries_of_type(person, ["public", "wait_audit"])
+        academic_params["have_unaudit"] = have_entries_of_type(person, ["wait_audit"])
+
+        # 获取用户已有的专业/项目的列表，用于select的默认选中项
+        academic_params.update(
+            selected_major_list=get_js_tag_list(person, AcademicTag.AcademicTagType.MAJOR,
+                                                selected=True, status_in=status_in),
+            selected_minor_list=get_js_tag_list(person, AcademicTag.AcademicTagType.MINOR,
+                                                selected=True, status_in=status_in),
+            selected_double_degree_list=get_js_tag_list(person, AcademicTag.AcademicTagType.DOUBLE_DEGREE,
+                                                        selected=True, status_in=status_in),
+            selected_project_list=get_js_tag_list(person, AcademicTag.AcademicTagType.PROJECT,
+                                                  selected=True, status_in=status_in),
+        )
+
+        # 获取用户已有的TextEntry的contents，用于TextEntry填写栏的前端预填写
+        scientific_research_list = get_text_list(
+            person, AcademicTextEntry.AcademicTextType.SCIENTIFIC_RESEARCH, status_in
+        )
+        challenge_cup_list = get_text_list(
+            person, AcademicTextEntry.AcademicTextType.CHALLENGE_CUP, status_in
+        )
+        internship_list = get_text_list(
+            person, AcademicTextEntry.AcademicTextType.INTERNSHIP, status_in
+        )
+        scientific_direction_list = get_text_list(
+            person, AcademicTextEntry.AcademicTextType.SCIENTIFIC_DIRECTION, status_in
+        )
+        graduation_list = get_text_list(
+            person, AcademicTextEntry.AcademicTextType.GRADUATION, status_in
+        )
+        academic_params.update(
+            scientific_research_list=scientific_research_list,
+            challenge_cup_list=challenge_cup_list,
+            internship_list=internship_list,
+            scientific_direction_list=scientific_direction_list,
+            graduation_list=graduation_list,
+            scientific_research_num=len(scientific_research_list),
+            challenge_cup_num=len(challenge_cup_list),
+            internship_num=len(internship_list),
+            scientific_direction_num=len(scientific_direction_list),
+            graduation_num=len(graduation_list),
+        )
+
+        # 最后获取每一种atype对应的entry的公开状态，如果没有则默认为公开
+        major_status = get_tag_status(person, AcademicTag.AcademicTagType.MAJOR)
+        minor_status = get_tag_status(person, AcademicTag.AcademicTagType.MINOR)
+        double_degree_status = get_tag_status(person, AcademicTag.AcademicTagType.DOUBLE_DEGREE)
+        project_status = get_tag_status(person, AcademicTag.AcademicTagType.PROJECT)
+        scientific_research_status = get_text_status(
+            person, AcademicTextEntry.AcademicTextType.SCIENTIFIC_RESEARCH
+        )
+        challenge_cup_status = get_text_status(
+            person, AcademicTextEntry.AcademicTextType.CHALLENGE_CUP
+        )
+        internship_status = get_text_status(
+            person, AcademicTextEntry.AcademicTextType.INTERNSHIP
+        )
+        scientific_direction_status = get_text_status(
+            person, AcademicTextEntry.AcademicTextType.SCIENTIFIC_DIRECTION
+        )
+        graduation_status = get_text_status(
+            person, AcademicTextEntry.AcademicTextType.GRADUATION
+        )
+
+        status_dict = dict(
+            major_status=major_status,
+            minor_status=minor_status,
+            double_degree_status=double_degree_status,
+            project_status=project_status,
+            scientific_research_status=scientific_research_status,
+            challenge_cup_status=challenge_cup_status,
+            internship_status=internship_status,
+            scientific_direction_status=scientific_direction_status,
+            graduation_status=graduation_status,
+        )
+        academic_params.update(status_dict)
+
         return render(request, "stuinfo.html", locals())
 
 

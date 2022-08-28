@@ -32,7 +32,7 @@ __all__ = [
     'viewChat',
     'modifyAcademic',
     'auditAcademic',
-    'viewAcademic',
+    'applyAuditAcademic',
 ]
 
 
@@ -139,7 +139,7 @@ def modifyAcademic(request: HttpRequest) -> HttpResponse:
         return redirect(message_url(wrong("只有个人才可以修改自己的学术地图！")))
 
     # POST表明编辑界面发起修改
-    if request.method == "POST" and request.POST: 
+    if request.method == "POST" and request.POST:
         try:
             context = update_academic_map(request)
             if context["warn_code"] == 1:    # 填写的TextEntry太长导致填写失败
@@ -269,83 +269,11 @@ def auditAcademic(request: HttpRequest) -> HttpResponse:
     return render(request, "audit_academic.html", frontend_dict)
 
 
-@login_required(redirect_field_name="origin")
-@utils.check_user_access(redirect_url="/logout/")
-@log.except_captured(EXCEPT_REDIRECT, source='academic_views[viewAcademic]', record_user=True)
-def viewAcademic(request: HttpRequest) -> HttpResponse:
-    """
-    学术地图查看界面
-
-    :param request: http请求
-    :type request: HttpRequest
-    :return: http响应
-    :rtype: HttpResponse
-    """
-    frontend_dict = {}
-
-    # POST表明查看界面发起审核
-    if request.method == "POST" and request.POST:
-        author = NaturalPerson.objects.get(person_id_id=request.POST.get("author_id"))
-        if not (request.user.is_staff or request.user.is_superuser):
-            return redirect(message_url(wrong("你没有审核学术地图的权限！")))
-        try:
-            # 需要回传作者的person_id.id
-            audit_academic_map(request.POST.get("author_id"))
-            return redirect(message_url(succeed("审核成功！"), "/auditAcademic/"))
-        except:
-            return redirect(message_url(wrong("审核过程中出现意料之外的错误，请联系工作人员处理！")))
-
-    # 不是POST，说明用户希望查看学术地图，下面准备前端展示量
-    author = NaturalPerson.objects.get(person_id_id=request.GET.get("person_id"))
-    # 判断用户是否有可以展示的内容
-    entries = AcademicTagEntry.objects.activated().get(
-        person=author, status=AcademicEntry.EntryStatus.PUBLIC)
-    entries.extend(AcademicTextEntry.objects.activated().get(
-        person=author, status=AcademicEntry.EntryStatus.PUBLIC))
-    frontend_dict["have_content"] = bool(entries)
-
-    # 获取用户已有的专业/项目的列表，用于select的默认选中项
-    frontend_dict.update(
-        selected_major_list=get_js_tag_list(author, AcademicTag.AcademicTagType.MAJOR, selected=True),
-        selected_minor_list=get_js_tag_list(author, AcademicTag.AcademicTagType.MINOR, selected=True),
-        selected_double_degree_list=get_js_tag_list(author, AcademicTag.AcademicTagType.DOUBLE_DEGREE, selected=True),
-        selected_project_list=get_js_tag_list(author, AcademicTag.AcademicTagType.PROJECT, selected=True),
-    )
-
-    # 获取用户已有的TextEntry的contents，用于TextEntry填写栏的前端预填写
-    scientific_research_list = get_text_list(
-        author, AcademicTextEntry.AcademicTextType.SCIENTIFIC_RESEARCH
-    )
-    challenge_cup_list = get_text_list(
-        author, AcademicTextEntry.AcademicTextType.CHALLENGE_CUP
-    )
-    internship_list = get_text_list(
-        author, AcademicTextEntry.AcademicTextType.INTERNSHIP
-    )
-    scientific_direction_list = get_text_list(
-        author, AcademicTextEntry.AcademicTextType.SCIENTIFIC_DIRECTION
-    )
-    graduation_list = get_text_list(
-        author, AcademicTextEntry.AcademicTextType.GRADUATION
-    )
-    frontend_dict.update(
-        scientific_research_list=scientific_research_list,
-        challenge_cup_list=challenge_cup_list,
-        internship_list=internship_list,
-        scientific_direction_list=scientific_direction_list,
-        graduation_list=graduation_list,
-        scientific_research_num=len(scientific_research_list),
-        challenge_cup_num=len(challenge_cup_list),
-        internship_num=len(internship_list),
-        scientific_direction_num=len(scientific_direction_list),
-        graduation_num=len(graduation_list),
-    )
-
-    # 获取用户是否允许他人提问
-    frontend_dict["accept_chat"] = author.accept_chat
-
-    # 最后获取侧边栏信息
-    frontend_dict["bar_display"] = get_sidebar_and_navbar(request.user, "查看学术地图")
-    frontend_dict["warn_code"] = request.GET.get('warn_code', 0)
-    frontend_dict["warn_message"] = request.GET.get('warn_message', "")
-    return render(request, "view_academic.html", frontend_dict)
+def applyAuditAcademic(request: HttpRequest):
+    author = NaturalPerson.objects.get(person_id_id=request.POST.get("author_id"))
+    try:
+        # 需要回传作者的person_id.id
+        audit_academic_map(author)
+        return redirect(message_url(succeed("审核成功！"), "/auditAcademic/"))
+    except:
+        return redirect(message_url(wrong("审核过程中出现意料之外的错误，请联系工作人员处理！")))

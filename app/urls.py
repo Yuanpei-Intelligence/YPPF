@@ -96,7 +96,6 @@ urlpatterns = [
     # 学术地图
     path("searchAcademic/", academic_views.searchAcademic, name="searchAcademic"),
     path("modifyAcademic/", academic_views.modifyAcademic, name="modifyAcademic"),
-    path("viewAcademic/", academic_views.viewAcademic, name="viewAcademic"),
     path("AcademicQA/", academic_views.showChats, name="showChats"),
     path("viewQA/<str:chat_id>", academic_views.viewChat, name="viewChat"),
     path("auditAcademic/", academic_views.auditAcademic, name="auditAcademic"),
