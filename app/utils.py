@@ -468,34 +468,6 @@ def clear_captcha_session(request):
     request.session.pop("received_user", None)        # 成功登录后不再保留
 
 
-def set_nperson_quota_to(quota):
-    """
-        后台设定所有自然人的元气值为一特定值，这个值就是每月的限额
-        给所有用户发送通知
-    """
-    activated_npeople = NaturalPerson.objects.activated()
-
-
-    activated_npeople.update(quota=quota)
-    notification_content = f"学院已经将大家的元气值配额重新设定为{quota},祝您使用愉快！"
-    title = Notification.Title.VERIFY_INFORM
-    YPcollege = Organization.objects.get(oname=YQP_ONAME)
-
-    # 函数内导入是为了防止破坏utils的最高优先级，如果以后确定不会循环引用也可提到外面
-    # 目前不发送到微信哦
-    from notification_utils import bulk_notification_create
-    receivers = activated_npeople.select_related('person_id')
-    receivers = [receiver.person_id for receiver in receivers]
-    success, _ = bulk_notification_create(
-        receivers,
-        YPcollege,
-        Notification.Type.NEEDREAD,
-        title,
-        notification_content,
-    )
-    return success
-
-
 def check_account_setting(request, user_type):
     if user_type == UTYPE_PER:
         html_display = dict()
