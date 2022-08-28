@@ -102,7 +102,7 @@ class Room(models.Model):
 
     # 房间编号我不确定是否需要。如果地下室有门牌的话（例如B101）保留房间编号比较好
     # 如果删除Rid记得把Rtitle设置成主键
-    Rid = models.CharField('房间编号', max_length=8, primary_key=True)
+    Rid: str = models.CharField('房间编号', max_length=8, primary_key=True)
     Rtitle = models.CharField('房间名称', max_length=32)
     Rmin = models.IntegerField('房间预约人数下限', default=0)
     Rmax = models.IntegerField('房间使用人数上限', default=20)
@@ -219,11 +219,6 @@ class Appoint(models.Model):
 
     Atype: 'int|Type' = models.SmallIntegerField(
         '预约类型', choices=Type.choices, default=Type.NORMAL)
-
-    # TODO: remove temp_flag
-    # --- add by lhw --- #
-    Atemp_flag = models.SmallIntegerField('临时预约标识', default=0)
-    # --- end(2021.7.13) --- ##
 
     objects: AppointManager = AppointManager()
 

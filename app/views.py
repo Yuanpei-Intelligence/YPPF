@@ -11,16 +11,12 @@ from app.models import (
     ModifyPosition,
     Activity,
     ActivityPhoto,
-    TransferRecord,
     Participant,
     Notification,
     ModifyOrganization,
     Comment,
     CommentPhoto,
-    YQPointDistribute,
-    Reimbursement,
     Wishes,
-    ReimbursementPhoto,
     Course,
     CourseRecord,
     Semester,
@@ -62,7 +58,7 @@ from boottest import local_dict
 from django.contrib import auth, messages
 from django.contrib.auth.hashers import make_password, check_password
 from django.db import transaction
-from django.db.models import Q, F, Sum
+from django.db.models import Q, F, Sum, QuerySet
 from django.contrib.auth.password_validation import CommonPasswordValidator, NumericPasswordValidator
 from django.core.exceptions import ValidationError
 
@@ -280,8 +276,13 @@ def stuinfo(request: HttpRequest, name=None):
 
         # ----------------------------------- 小组卡片 ----------------------------------- #
 
+        def _get_org_latest_pos(positions: QuerySet[Position], org):
+            '''同一组织可能关联多个职位导致的bug，暂用于修复'''
+            # TODO: 重写职位呈现逻辑，减少数据库访问
+            return positions.filter(org=org).order_by('year', 'semester').last()
+
         person_poss = Position.objects.activated().filter(Q(person=person))
-        person_orgs = Organization.objects.filter(
+        person_orgs: QuerySet[Organization] = Organization.objects.filter(
             id__in=person_poss.values("org")
         )  # ta属于的小组
         oneself_orgs = (
@@ -293,7 +294,7 @@ def stuinfo(request: HttpRequest, name=None):
         )
         oneself_orgs_id = [oneself.id] if user_type == "Organization" else oneself_orgs.values("org") # 自己的小组
 
-        # 管理的小组
+        # 当前管理的小组
         person_owned_poss = person_poss.filter(is_admin=True, status=Position.Status.INSERVICE)
         person_owned_orgs = person_orgs.filter(
             id__in=person_owned_poss.values("org")
@@ -314,7 +315,7 @@ def stuinfo(request: HttpRequest, name=None):
                 or None
         )
 
-        # 属于的小组
+        # 当前属于的小组
         person_joined_poss = person_poss.filter(~Q(is_admin=True) & Q(show_post=True))
         person_joined_orgs = person_orgs.filter(
             id__in=person_joined_poss.values("org")
@@ -349,16 +350,16 @@ def stuinfo(request: HttpRequest, name=None):
             person=person,
             show_post=True
             )
-        person_history_orgs = Organization.objects.filter(
+        person_history_orgs: QuerySet[Organization] = Organization.objects.filter(
             id__in=person_history_poss.values("org")
         )  # ta属于的小组
         person_history_orgs_ava = [
             # utils.get_user_ava(org, "organization") for org in person_owned_orgs
             org.get_user_ava() for org in person_history_orgs
         ]
-        person_history_orgs_pos = [
-            person_history_poss.get(org=org).pos for org in person_history_orgs
-        ]  # ta在小组中的职位
+        person_history_orgs_poss = [
+            _get_org_latest_pos(person_history_poss, org) for org in person_history_orgs
+        ]  # ta在小组中的职位对象
 
         sems = {
             Semester.FALL: "秋",
@@ -367,11 +368,11 @@ def stuinfo(request: HttpRequest, name=None):
         }
 
         person_history_orgs_pos = [
-            org.otype.get_name(pos) + ' ' +
-            str(person_history_poss.get(org=org).year)[2:] + "-" +
-            str(person_history_poss.get(org=org).year + 1)[2:] +
-            sems[person_history_poss.get(org=org).semester]
-            for pos, org in zip(person_history_orgs_pos, person_history_orgs)
+            org.otype.get_name(pos.pos) + ' ' +
+            str(pos.year)[2:] + "-" +
+            str(pos.year + 1)[2:] +
+            sems[pos.semester]
+            for pos, org in zip(person_history_orgs_poss, person_history_orgs)
         ]  # ta在小组中的职位
         html_display["history_orgs_info"] = (
                 list(zip(person_history_orgs, person_history_orgs_ava, person_history_orgs_pos))
@@ -380,22 +381,18 @@ def stuinfo(request: HttpRequest, name=None):
 
         # 隐藏的小组(所有学期都会呈现，不用activated)
         person_hidden_poss = Position.objects.filter(person=person, show_post = False)
-        person_hidden_orgs = Organization.objects.filter(
+        person_hidden_orgs: QuerySet[Organization] = Organization.objects.filter(
             id__in=person_hidden_poss.values("org")
         )  # ta属于的小组
         person_hidden_orgs_ava = [
-            # utils.get_user_ava(org, "organization") for org in person_hidden_orgs
             org.get_user_ava() for org in person_hidden_orgs
-        ]
-        person_hidden_orgs_pos = [
-            person_hidden_poss.get(org=org).pos for org in person_hidden_orgs
         ]  # ta在小组中的职位
         person_hidden_orgs_pos = [
-            org.otype.get_name(pos)
-            for pos, org in zip(person_hidden_orgs_pos,person_hidden_orgs)
+            org.otype.get_name(_get_org_latest_pos(person_hidden_poss, org).pos)
+            for org in person_hidden_orgs
         ]  # ta在小组中的职位
         person_hidden_orgs_status = [
-            person_hidden_poss.get(org=org).status for org in person_hidden_orgs
+            _get_org_latest_pos(person_hidden_poss, org).status for org in person_hidden_orgs
         ]  # ta职位的状态
         html_display["hidden_orgs_info"] = (
                 list(
@@ -655,6 +652,7 @@ def orginfo(request: HttpRequest, name=None):
 
     # 判断是否为小组账户本身在登录
     html_display["is_myself"] = me == org
+    html_display["is_course_org"] = Course.objects.activated().filter(organization=me).exists()
     html_display["is_person"] = user_type == "Person"
     inform_share, alert_message = utils.get_inform_share(me=me, is_myself=html_display["is_myself"])
 
@@ -662,7 +660,7 @@ def orginfo(request: HttpRequest, name=None):
     organization_type_name = org.otype.otype_name
     org_avatar_path = org.get_user_ava()
     wallpaper_path = utils.get_user_wallpaper(org, "Organization")
-    # org的属性 YQPoint 和 information 不在此赘述，直接在前端调用
+    # org的属性 information 不在此赘述，直接在前端调用
 
     # 给前端传递选课的参数
     yx_election_start = get_setting("course/yx_election_start")
@@ -1145,6 +1143,47 @@ def accountSetting(request: HttpRequest):
         return render(request, "org_account_setting.html", locals())
 
 
+def _create_freshman_account(sid: str, email: str = None):
+    """创建用户和自然人，检查并修改新生创建状态，原子化操作"""
+    try:
+        with transaction.atomic():
+            current = "获取新生信息"
+            freshman: Freshman = Freshman.objects.select_for_update().get(sid=sid)
+            name = freshman.name
+            np_gender = (NaturalPerson.Gender.MALE
+                         if freshman.gender == "男" else
+                         NaturalPerson.Gender.FEMALE)
+            current = "确认注册状态"
+            assert freshman.status != Freshman.Status.REGISTERED
+            if email is None:
+                domain = "stu.pku.edu.cn" if freshman.grade.startswith("1") else "pku.edu.cn"
+                email = f"{sid}@{domain}"
+            current = "随机生成密码"
+            password = hash_coder.encode(name + str(random.random()))
+            current = "创建用户"
+            user = User.objects.create_user(
+                username=sid, name=name,
+                usertype=UTYPE_PER,
+                password=password
+            )
+            current = "创建个人账号"
+            NaturalPerson.objects.create(
+                person_id=user,
+                stu_id_dbonly=sid,
+                name=name,
+                gender=np_gender,
+                stu_major="元培计划（待定）",
+                stu_grade=freshman.grade,
+                email=email,
+            )
+            current = "更新注册状态"
+            freshman.status = Freshman.Status.REGISTERED
+            freshman.save()
+        return
+    except:
+        return current
+
+
 @log.except_captured(source='views[freshman]', record_user=True,
                      record_request_args=True, show_traceback=True)
 def freshman(request: HttpRequest):
@@ -1162,23 +1201,82 @@ def freshman(request: HttpRequest):
     address_list = sorted(address_set)
     address_list.append("其它")
     html_path = "freshman-top.html"
+    # 准备创建用的变量
+    need_create = False
     if request.method == "POST":
         # 这些也是失败时的前端使用量
         try:
             sid = request.POST["sid"]
             sname = request.POST["sname"]
             gender = request.POST["gender"]
-            birthday = request.POST["birthday"] # 前端使用
-            birthplace = request.POST["birthplace"]
-            email = request.POST["email"]
+            send_to = request.POST.get("type", "")
+            check_more = not send_to
+            if check_more:
+                birthday = request.POST["birthday"] # 前端使用
+                birthplace = request.POST["birthplace"]
+                email = request.POST["email"]
         except:
             err_msg = "提交信息不足"
             return render(request, html_path, locals())
         try:
             sid = str(sid)
-            freshman = Freshman.objects.get(sid=sid)
+            sname = str(sname)
+            gender = str(gender)
+            if check_more:
+                birthday_date = datetime.strptime(birthday, "%Y-%m-%d").date()
+                birthplace = str(birthplace)
+                email = str(email)
         except:
-            err_msg = "不存在该学号信息，你真的是新生吗？"
+            err_msg = "错误的个人信息格式"
+            return render(request, html_path, locals())
+        try:
+            freshman: Freshman = Freshman.objects.get(sid=sid)
+        except:
+            err_msg = "暂不存在该学号的新生信息"
+            return render(request, html_path, locals())
+        try:
+            assert freshman.name == sname, "姓名不匹配"
+            assert freshman.gender == gender, "个人信息错误"
+            if check_more:
+                assert freshman.birthday == birthday_date, "个人信息错误"
+                if freshman.place != "":
+                    assert freshman.place == birthplace, "生源地错误"
+                else:
+                    assert "其它" == birthplace, "生源地错误"
+                assert "@" in email, "请使用合法的邮件地址"
+            assert gender in ["男", "女"], "性别数据异常，请联系管理员"
+        except Exception as e:
+            err_msg = str(e)
+            return render(request, html_path, locals())
+        if check_more:
+            need_create = True
+        elif send_to == "wechat":
+            from app.wechat_send import send_wechat
+            auth = hash_coder.encode(sid + "_freshman_register")
+            send_wechat(
+                [sid], "新生注册邀请\n点击按钮即可注册账号",
+                url=f"/freshman/?sid={sid}&auth={auth}"
+            )
+            err_msg = "已向企业微信发送注册邀请，点击邀请信息即可注册！"
+            return render(request, html_path, locals())
+    
+    if request.GET.get("sid") is not None and request.GET.get("auth") is not None:
+        sid = request.GET["sid"]
+        auth = request.GET["auth"]
+        if auth != hash_coder.encode(sid + "_freshman_register"):
+            err_msg = "密钥错误，验证失败"
+            return render(request, html_path, locals())
+        need_create = True
+
+    if need_create:
+        try:
+            email = email
+        except:
+            email = None
+        try:
+            freshman: Freshman = Freshman.objects.get(sid=sid)
+        except:
+            err_msg = "暂不存在该学号的新生信息"
             return render(request, html_path, locals())
         try:
             exist = freshman.exists()
@@ -1192,53 +1290,9 @@ def freshman(request: HttpRequest):
         except Exception as e:
             err_msg = str(e)
             return render(request, html_path, locals())
-        try:
-            sname = str(sname)
-            gender = str(gender)
-            birthday_date = datetime.strptime(birthday, "%Y-%m-%d").date()
-            birthplace = str(birthplace)
-            email = str(email)
-        except:
-            err_msg = "错误的个人信息格式"
-            return render(request, html_path, locals())
-        try:
-            assert freshman.name == sname, "姓名不匹配"
-            assert freshman.gender == gender, "个人信息错误"
-            assert freshman.birthday == birthday_date, "个人信息错误"
-            if freshman.place != "":
-                assert freshman.place == birthplace, "生源地错误"
-            else:
-                assert "其它" == birthplace, "生源地错误"
-            assert "@" in email, "请使用合法的邮件地址"
-            assert gender in ["男", "女"], "性别数据异常，请联系管理员"
-        except Exception as e:
-            err_msg = str(e)
-            return render(request, html_path, locals())
 
-        np_gender = NaturalPerson.Gender.MALE if gender == "男" else\
-                    NaturalPerson.Gender.FEMALE
-
-        # 检查通过，这里假设user创建成功后自然人也能创建成功
-        current = "随机生成密码"
-        try:
-            with transaction.atomic():
-                password = hash_coder.encode(sname + str(random.random()))
-                current = "创建用户"
-                user = User.objects.create_user(username=sid, password=password)
-                current = "创建个人账号"
-                NaturalPerson.objects.create(
-                    person_id=user,
-                    stu_id_dbonly=sid,
-                    name=sname,
-                    gender=np_gender,
-                    stu_major="元培计划（待定）",
-                    stu_grade=freshman.grade,
-                    email=email,
-                    )
-                current = "更新注册状态"
-                Freshman.objects.filter(sid=sid).select_for_update().update(
-                    status = Freshman.Status.REGISTERED)
-        except:
+        current = _create_freshman_account(sid, email=email)
+        if current is not None:
             err_msg = f"在{current}时意外发生了错误，请联系管理员"
             return render(request, html_path, locals())
 
@@ -1298,7 +1352,11 @@ def authRegister(request: HttpRequest):
 
                 # OK!
                 try:
-                    user = User.objects.create_user(username=sno, password=password)
+                    user = User.objects.create_user(
+                        username=sno, name=name,
+                        usertype=UTYPE_PER,
+                        password=password
+                    )
                 except:
                     # 存在用户
                     return HttpResponseRedirect("/admin/")

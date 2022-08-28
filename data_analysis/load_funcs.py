@@ -18,7 +18,6 @@ from app.models import (
     OrganizationTag,
     OrganizationType,
     Activity,
-    TransferRecord,
     Notification,
     Help,
     Course,
@@ -39,7 +38,7 @@ __all__ = [
     'create_person_account', 'create_org_account',
     # load functions
     'load_stu', 'load_orgtype', 'load_org',
-    'load_activity', 'load_transfer', 'load_notification',
+    'load_activity', 'load_notification',
     'load_freshman', 'load_help', 'load_course_record', 
     'load_org_tag', 'load_old_org_tags', 'load_feedback_type', 
     'load_feedback', 'load_feedback_comments', 'load_major',
@@ -307,7 +306,6 @@ def load_activity(filepath: str, output_func: Callable=None, html=False):
         end = datetime.strptime(end, "%m/%d/%Y %H:%M %p")
         location = act_dict["location"]
         introduction = act_dict["introduction"]
-        YQPoint = float(act_dict["YQPoint"])
         capacity = int(act_dict["capacity"])
         URL = act_dict["URL"]
 
@@ -319,7 +317,6 @@ def load_activity(filepath: str, output_func: Callable=None, html=False):
                 end=end,
                 location=location,
                 introduction=introduction,
-                YQPoint=YQPoint,
                 capacity=capacity,
                 URL=URL,
                 examine_teacher = NaturalPerson.objects.get(name="YPadmin")
@@ -330,51 +327,6 @@ def load_activity(filepath: str, output_func: Callable=None, html=False):
         act.save()
     return try_output("导入活动信息成功！", output_func, html)
 
-
-def load_transfer(filepath: str, output_func: Callable=None, html=False):
-    act_df = load_file(filepath)
-    act_list = []
-    for _, act_dict in act_df.iterrows():
-        id = act_dict["id"]
-        status = act_dict["status"]
-        start_time = str(act_dict["start_time"])
-        finish_time = str(act_dict["finish_time"])
-        start_time = datetime.strptime(start_time, "%d/%m/%Y %H:%M:%S.%f")
-        try:
-            finish_time = datetime.strptime(finish_time, "%d/%m/%Y %H:%M:%S.%f")
-        except:
-            finish_time = None
-        message = act_dict["message"]
-        amount = float(act_dict["amount"])
-        if str(act_dict["proposer_id"]) == str(1266):
-            act_dict["proposer_id"] = NaturalPerson.objects.get(
-                name=local_dict["test_info"]["stu_name"]
-            ).person_id.id
-        if str(act_dict["recipient_id"]) == str(1266):
-            act_dict["recipient_id"] = NaturalPerson.objects.get(
-                name=local_dict["test_info"]["stu_name"]
-            ).person_id.id
-        proposer = User.objects.get(id=act_dict["proposer_id"])
-        recipient = User.objects.get(id=act_dict["recipient_id"])
-        try:
-            corres_act = Activity.objects.get(id=act_dict["corres_act_id"])
-        except:
-            corres_act = None
-        act_list.append(
-            TransferRecord(
-                id=id,
-                status=status,
-                start_time=start_time,
-                finish_time=finish_time,
-                message=message,
-                amount=amount,
-                proposer=proposer,
-                recipient=recipient,
-                corres_act=corres_act,
-            )
-        )
-    TransferRecord.objects.bulk_create(act_list)
-    return try_output("导入转账信息成功！", output_func, html)
 
 
 def load_notification(filepath: str, output_func: Callable=None, html=False):
@@ -407,12 +359,6 @@ def load_notification(filepath: str, output_func: Callable=None, html=False):
         content = not_dict["content"]
         typename = not_dict["typename"]
         URL = not_dict["URL"]
-        try:
-            relate_TransferRecord = TransferRecord.objects.get(
-                id=not_dict["relate_TransferRecord_id"]
-            )
-        except:
-            relate_TransferRecord = None
         not_list.append(
             Notification(
                 id=id,
@@ -425,7 +371,6 @@ def load_notification(filepath: str, output_func: Callable=None, html=False):
                 content=content,
                 URL=URL,
                 typename=typename,
-                relate_TransferRecord=relate_TransferRecord,
             )
         )
     Notification.objects.bulk_create(not_list)

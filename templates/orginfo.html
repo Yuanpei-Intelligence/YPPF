@@ -67,7 +67,7 @@
                         <div class="d-flex justify-content-between">
                             <h3 class="">小组信息</h3>
                             <br /><br />
-                            {% if html_display.is_person is True and html_display.select_ing is True %}
+                            {% if html_display.is_person is True and html_display.is_course_org is True and html_display.select_ing is True  %}
                             <button class="flex btn btn-success btn-primary mb-4 mr-2" id="select_course" 
                                 onclick="location.href='/selectCourse/'" type="button">
                                 跳转至选课界面
@@ -163,18 +163,6 @@
                                         {{ org.visit_times }}次浏览
                                     </li>
 
-                                    {% if html_display.is_myself %}
-                                    <li class="contacts-block__item">
-                                        <!-- stop-circle -->
-                                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none"
-                                            stroke="currentcolor" stroke-width="2" stroke-linecap="round"
-                                            stroke-linejoin="round" class="feather feather-stop-circle">
-                                            <circle cx="12" cy="12" r="10"></circle>
-                                            <rect x="9" y="9" width="6" height="6"></rect>
-                                        </svg>
-                                        元气值{{org.YQPoint}}
-                                    </li>
-                                    {% endif %}
 
                                     {% if org_tags %}
                                     <li class="contacts-block__item">
@@ -461,15 +449,6 @@
                                                         <div class="row">
                                                             <div class="col d-flex justify-content-start">
                                                                 <p class="flex mr-3" style="width: 20px;">
-                                                                    <i class="fa fa-money-bill"></i>
-                                                                </p>
-                                                                <p class="flex">
-                                                                    元气值{{ rec.act.YQPoint }}
-                                                                </p>
-                                                            </div>
-
-                                                            <div class="col d-flex justify-content-start">
-                                                                <p class="flex mr-3" style="width: 20px;">
                                                                     <i class="fa fa-location-arrow"></i>
                                                                 </p>
                                                                 <p class="flex">
@@ -565,15 +544,6 @@
                                                         <div class="row">
                                                             <div class="col d-flex justify-content-start">
                                                                 <p class="flex mr-3" style="width: 20px;">
-                                                                    <i class="fa fa-money-bill"></i>
-                                                                </p>
-                                                                <p class="flex">
-                                                                    元气值{{ rec.act.YQPoint }}
-                                                                </p>
-                                                            </div>
-
-                                                            <div class="col d-flex justify-content-start">
-                                                                <p class="flex mr-3" style="width: 20px;">
                                                                     <i class="fa fa-location-arrow"></i>
                                                                 </p>
                                                                 <p class="flex">
@@ -647,15 +617,6 @@
                                                         </div>
                                         
                                                         <div class="row">
-                                                            <div class="col d-flex justify-content-start">
-                                                                <p class="flex mr-3" style="width: 20px;">
-                                                                    <i class="fa fa-money-bill"></i>
-                                                                </p>
-                                                                <p class="flex">
-                                                                    元气值{{ rec.act.YQPoint }}
-                                                                </p>
-                                                            </div>
-                                        
                                                             <div class="col d-flex justify-content-start">
                                                                 <p class="flex mr-3" style="width: 20px;">
                                                                     <i class="fa fa-location-arrow"></i>

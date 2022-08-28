@@ -15,7 +15,7 @@ from app.comment_utils import showComment
 from django.http import HttpRequest
 from django.db.models import QuerySet
 
-from typing import List, Dict
+from typing import List, Dict, Set
 from collections import defaultdict
 
 __all__ = [
@@ -29,6 +29,7 @@ __all__ = [
     'update_tag_entry',
     'update_text_entry',
     'update_academic_map',
+    'get_wait_audit_student',
     'audit_academic_map',
     'get_js_public_tags',
     'get_public_texts'
@@ -475,6 +476,27 @@ def update_academic_map(request: HttpRequest) -> dict:
         request.user.save()
     
     return succeed("学术地图修改成功！")
+
+
+def get_wait_audit_student() -> Set[NaturalPerson]:
+    """
+    获取当前审核中的AcademicEntry对应的学生，因为要去重，所以返回一个集合
+
+    :return: 当前审核中的AcademicEntry对应的NaturalPerson组成的集合
+    :rtype: Set[NaturalPerson]
+    """
+    wait_audit_tag_entries = AcademicTagEntry.objects.filter(
+        status=AcademicEntry.EntryStatus.WAIT_AUDIT)
+    wait_audit_text_entries = AcademicTextEntry.objects.filter(
+        status=AcademicEntry.EntryStatus.WAIT_AUDIT)
+    
+    wait_audit_students = set()
+    for entry in wait_audit_tag_entries:
+        wait_audit_students.add(entry.person)
+    for entry in wait_audit_text_entries:
+        wait_audit_students.add(entry.person)
+    
+    return wait_audit_students
 
 
 def audit_academic_map(author: NaturalPerson) -> None:

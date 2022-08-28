@@ -327,7 +327,489 @@
 
             <div class="layout-px-spacing layout-top-spacing">
                 <div class="bio layout-spacing">
-                    
+
+                    <div class="widget-content widget-content-area">
+
+                        <div class="row">
+                            <h3 class="noafter col mb-0">{{ author_name }}的学术地图</h3>
+                            {% if user_type == "author" and have_content == True %}
+                            <button class="flex btn btn-primary mb-4 mr-2" id="modify_academic" 
+                                onclick="location.href='/modifyAcademic/'">
+                                修改
+                            </button>
+                            {% endif %}
+                        </div>
+
+                        <div class="bio-skill-box">
+
+                            {% if user_type == "author" %}
+                                {% if have_content == False %}
+                                <p style="text-align: center;">你还没有可以公开展示的信息~</p>
+                                <p style="text-align: center;">
+                                    去<a href="/modifyAcademic/"><u>填写或修改公开权限</u></a>吧~
+                                </p>
+                                {% else %}
+                                <table class="table">
+                                    <tr>
+                                        <th width="15%" style="min-width: 60px;color: #1b55e2;">年级</th>
+                                        <th width="75%" style="min-width: 160px;">{{ author_grade }}级</th>
+                                        <th width="10%" style="min-width: 50px;color: #1b55e2;">是否公开</th>
+                                    </tr>
+
+                                    {% if selected_major_list|length != 0 %}
+                                    <tr>
+                                        <th width="15%" style="min-width: 60px;color: #1b55e2;">主修专业</th>
+                                        <td>
+                                            {% for selected_major in selected_major_list %}
+                                            <span class="badge badge-info">
+                                                {{selected_major.text}}
+                                            </span>
+                                            {% endfor %}
+                                        </td>
+
+                                        {% if major_status == "公开" %}
+                                        <td>
+                                            <div class="custom-control custom-switch">
+                                                <input type="checkbox" class="custom-control-input"
+                                                    onclick="return false;" checked="checked">
+                                                <label class="custom-control-label"></label>
+                                            </div>
+                                        </td>
+                                        {% else %}
+                                        <td>
+                                            <div class="custom-control custom-switch">
+                                                <input type="checkbox" class="custom-control-input"
+                                                    onclick="return false;">
+                                                <label class="custom-control-label"></label>
+                                            </div>
+                                        </td>
+                                        {% endif %}
+                                    </tr>
+                                    {% endif %}
+
+                                    {% if selected_minor_list|length != 0 %}
+                                    <tr>
+                                        <th width="15%" style="min-width: 60px;color: #1b55e2;">辅修专业</th>
+                                        <td>
+                                            {% for selected_minor in selected_minor_list %}
+                                            <span class="badge badge-info">
+                                                {{selected_minor.text}}
+                                            </span>
+                                            {% endfor %}
+                                        </td>
+
+                                        {% if minor_status == "公开" %}
+                                        <td>
+                                            <div class="custom-control custom-switch">
+                                                <input type="checkbox" class="custom-control-input"
+                                                    onclick="return false;" checked="checked">
+                                                <label class="custom-control-label"></label>
+                                            </div>
+                                        </td>
+                                        {% else %}
+                                        <td>
+                                            <div class="custom-control custom-switch">
+                                                <input type="checkbox" class="custom-control-input"
+                                                    onclick="return false;">
+                                                <label class="custom-control-label"></label>
+                                            </div>
+                                        </td>
+                                        {% endif %}
+                                    </tr>
+                                    {% endif %}
+
+                                    {% if selected_double_degree_list|length != 0 %}
+                                    <tr>
+                                        <th width="15%" style="min-width: 60px;color: #1b55e2;">双学位专业</th>
+                                        <td>
+                                            {% for selected_double_degree in selected_double_degree_list %}
+                                            <span class="badge badge-info">
+                                                {{selected_double_degree.text}}
+                                            </span>
+                                            {% endfor %}
+                                        </td>
+
+                                        {% if double_degree_status == "公开" %}
+                                        <td>
+                                            <div class="custom-control custom-switch">
+                                                <input type="checkbox" class="custom-control-input"
+                                                    onclick="return false;" checked="checked">
+                                                <label class="custom-control-label"></label>
+                                            </div>
+                                        </td>
+                                        {% else %}
+                                        <td>
+                                            <div class="custom-control custom-switch">
+                                                <input type="checkbox" class="custom-control-input"
+                                                    onclick="return false;">
+                                                <label class="custom-control-label"></label>
+                                            </div>
+                                        </td>
+                                        {% endif %}
+                                    </tr>
+                                    {% endif %}
+
+                                    {% if selected_project_list|length != 0 %}
+                                    <tr>
+                                        <th width="15%" style="min-width: 60px;color: #1b55e2;">参与项目</th>
+                                        <td>
+                                            {% for selected_project in selected_project_list %}
+                                            <span class="badge badge-info">
+                                                {{selected_project.text}}
+                                            </span>
+                                            {% endfor %}
+                                        </td>
+
+                                        {% if project_status == "公开" %}
+                                        <td>
+                                            <div class="custom-control custom-switch">
+                                                <input type="checkbox" class="custom-control-input"
+                                                    onclick="return false;" checked="checked">
+                                                <label class="custom-control-label"></label>
+                                            </div>
+                                        </td>
+                                        {% else %}
+                                        <td>
+                                            <div class="custom-control custom-switch">
+                                                <input type="checkbox" class="custom-control-input"
+                                                    onclick="return false;">
+                                                <label class="custom-control-label"></label>
+                                            </div>
+                                        </td>
+                                        {% endif %}
+                                    </tr>
+                                    {% endif %}
+
+                                    {% if scientific_research_list|length != 0 %}
+                                    <tr>
+                                        <th width="15%" style="min-width: 60px;color: #1b55e2;">本科生科研</th>
+                                        <td>
+                                            {% spaceless %}
+                                            {% for scientific_research in scientific_research_list %}
+                                                <span class="badge badge-pill" style="overflow:hidden; text-overflow:ellipsis; 
+                                                    white-space:normal; word-break:break-all; text-align:left; background-color:#eee; 
+                                                    border-radius:4px; color:#666; margin:2px; margin-top:3px;" id="{{scientific_research}}__scientific_research">
+                                                    {{scientific_research}}</span>
+                                            {% endfor %}
+                                            {% endspaceless %}
+                                        </td>
+
+                                        {% if scientific_research_status == "公开" %}
+                                        <td>
+                                            <div class="custom-control custom-switch">
+                                                <input type="checkbox" class="custom-control-input"
+                                                    onclick="return false;" checked="checked">
+                                                <label class="custom-control-label"></label>
+                                            </div>
+                                        </td>
+                                        {% else %}
+                                        <td>
+                                            <div class="custom-control custom-switch">
+                                                <input type="checkbox" class="custom-control-input"
+                                                    onclick="return false;">
+                                                <label class="custom-control-label"></label>
+                                            </div>
+                                        </td>
+                                        {% endif %}
+                                    </tr>
+                                    {% endif %}
+
+                                    {% if challenge_cup_list|length != 0 %}
+                                    <tr>
+                                        <th width="15%" style="min-width: 60px;color: #1b55e2;">挑战杯</th>
+                                        <td>
+                                            {% spaceless %}
+                                            {% for challenge_cup in challenge_cup_list %}
+                                                <span class="badge badge-pill" style="overflow:hidden; text-overflow:ellipsis; 
+                                                    white-space:normal; word-break:break-all; text-align:left; background-color:#eee; 
+                                                    border-radius:4px; color:#666; margin:2px; margin-top:3px;" id="{{challenge_cup}}__challenge_cup">
+                                                    {{challenge_cup}}</span>
+                                            {% endfor %}
+                                            {% endspaceless %}
+                                        </td>
+
+                                        {% if challenge_cup_status == "公开" %}
+                                        <td>
+                                            <div class="custom-control custom-switch">
+                                                <input type="checkbox" class="custom-control-input"
+                                                    onclick="return false;" checked="checked">
+                                                <label class="custom-control-label"></label>
+                                            </div>
+                                        </td>
+                                        {% else %}
+                                        <td>
+                                            <div class="custom-control custom-switch">
+                                                <input type="checkbox" class="custom-control-input"
+                                                    onclick="return false;">
+                                                <label class="custom-control-label"></label>
+                                            </div>
+                                        </td>
+                                        {% endif %}
+                                    </tr>
+                                    {% endif %}
+
+                                    {% if internship_list|length != 0 %}
+                                    <tr>
+                                        <th width="15%" style="min-width: 60px;color: #1b55e2;">实习经历</th>
+                                        <td>
+                                            {% spaceless %}
+                                            {% for internship in internship_list %}
+                                                <span class="badge badge-pill" style="overflow:hidden; text-overflow:ellipsis; 
+                                                    white-space:normal; word-break:break-all; text-align:left; background-color:#eee; 
+                                                    border-radius:4px; color:#666; margin:2px; margin-top:3px;" id="{{internship}}__internship">
+                                                    {{internship}}</span>
+                                            {% endfor %}
+                                            {% endspaceless %}
+                                        </td>
+
+                                        {% if internship_status == "公开" %}
+                                        <td>
+                                            <div class="custom-control custom-switch">
+                                                <input type="checkbox" class="custom-control-input"
+                                                    onclick="return false;" checked="checked">
+                                                <label class="custom-control-label"></label>
+                                            </div>
+                                        </td>
+                                        {% else %}
+                                        <td>
+                                            <div class="custom-control custom-switch">
+                                                <input type="checkbox" class="custom-control-input"
+                                                    onclick="return false;">
+                                                <label class="custom-control-label"></label>
+                                            </div>
+                                        </td>
+                                        {% endif %}
+                                    </tr>
+                                    {% endif %}
+
+                                    {% if scientific_direction_list|length != 0 %}
+                                    <tr>
+                                        <th width="15%" style="min-width: 60px;color: #1b55e2;">科研方向</th>
+                                        <td>
+                                            {% spaceless %}
+                                            {% for scientific_direction in scientific_direction_list %}
+                                                <span class="badge badge-pill" style="overflow:hidden; text-overflow:ellipsis; 
+                                                    white-space:normal; word-break:break-all; text-align:left; background-color:#eee; 
+                                                    border-radius:4px; color:#666; margin:2px; margin-top:3px;" id="{{scientific_direction}}__scientific_direction">
+                                                    {{scientific_direction}}</span>
+                                            {% endfor %}
+                                            {% endspaceless %}
+                                        </td>
+
+                                        {% if scientific_direction_status == "公开" %}
+                                        <td>
+                                            <div class="custom-control custom-switch">
+                                                <input type="checkbox" class="custom-control-input"
+                                                    onclick="return false;" checked="checked">
+                                                <label class="custom-control-label"></label>
+                                            </div>
+                                        </td>
+                                        {% else %}
+                                        <td>
+                                            <div class="custom-control custom-switch">
+                                                <input type="checkbox" class="custom-control-input"
+                                                    onclick="return false;">
+                                                <label class="custom-control-label"></label>
+                                            </div>
+                                        </td>
+                                        {% endif %}
+                                    </tr>
+                                    {% endif %}
+
+                                    {% if graduation_list|length != 0 %}
+                                    <tr>
+                                        <th width="15%" style="min-width: 60px;color: #1b55e2;">毕业去向</th>
+                                        <td>
+                                            {% spaceless %}
+                                            {% for graduation in graduation_list %}
+                                                <span class="badge badge-pill" style="overflow:hidden; text-overflow:ellipsis; 
+                                                    white-space:normal; word-break:break-all; text-align:left; background-color:#eee; 
+                                                    border-radius:4px; color:#666; margin:2px; margin-top:3px;" id="{{graduation}}__graduation">
+                                                    {{graduation}}</span>
+                                            {% endfor %}
+                                            {% endspaceless %}
+                                        </td>
+
+                                        {% if graduation_status == "公开" %}
+                                        <td>
+                                            <div class="custom-control custom-switch">
+                                                <input type="checkbox" class="custom-control-input"
+                                                    onclick="return false;" checked="checked">
+                                                <label class="custom-control-label"></label>
+                                            </div>
+                                        </td>
+                                        {% else %}
+                                        <td>
+                                            <div class="custom-control custom-switch">
+                                                <input type="checkbox" class="custom-control-input"
+                                                    onclick="return false;">
+                                                <label class="custom-control-label"></label>
+                                            </div>
+                                        </td>
+                                        {% endif %}
+                                    </tr>
+                                    {% endif %}
+                                </table>
+                                {% endif %}
+                            {% else %}
+                                {% if have_content == False %}
+                                <p style="text-align: center;">用户的学术地图未公开或无内容</p>
+                                {% else %}
+                                <table class="table">
+                                    <tr>
+                                        <th width="10%" style="min-width: 100px;color: #1b55e2;">年级</th>
+                                        <th width="85%" style="min-width: 160px;">{{ author_grade }}级</th>
+                                    </tr>
+
+                                    {% if selected_major_list|length != 0 %}
+                                    <tr>
+                                        <th width="10%" style="min-width: 100px;color: #1b55e2;">主修专业</th>
+                                        <td>
+                                            {% for selected_major in selected_major_list %}
+                                            <span class="badge badge-info">
+                                                {{selected_major.text}}
+                                            </span>
+                                            {% endfor %}
+                                        </td>
+                                    </tr>
+                                    {% endif %}
+
+                                    {% if selected_minor_list|length != 0 %}
+                                    <tr>
+                                        <th width="10%" style="min-width: 100px;color: #1b55e2;">辅修专业</th>
+                                        <td>
+                                            {% for selected_minor in selected_minor_list %}
+                                            <span class="badge badge-info">
+                                                {{selected_minor.text}}
+                                            </span>
+                                            {% endfor %}
+                                        </td>
+                                    </tr>
+                                    {% endif %}
+
+                                    {% if selected_double_degree_list|length != 0 %}
+                                    <tr>
+                                        <th width="10%" style="min-width: 100px;color: #1b55e2;">双学位专业</th>
+                                        <td>
+                                            {% for selected_double_degree in selected_double_degree_list %}
+                                            <span class="badge badge-info">
+                                                {{selected_double_degree.text}}
+                                            </span>
+                                            {% endfor %}
+                                        </td>
+                                    </tr>
+                                    {% endif %}
+
+                                    {% if selected_project_list|length != 0 %}
+                                    <tr>
+                                        <th width="10%" style="min-width: 100px;color: #1b55e2;">参与项目</th>
+                                        <td>
+                                            {% for selected_project in selected_project_list %}
+                                            <span class="badge badge-info">
+                                                {{selected_project.text}}
+                                            </span>
+                                            {% endfor %}
+                                        </td>
+                                    </tr>
+                                    {% endif %}
+
+                                    {% if scientific_research_list|length != 0 %}
+                                    <tr>
+                                        <th width="10%" style="min-width: 100px;color: #1b55e2;">本科生科研</th>
+                                        <td>
+                                            {% spaceless %}
+                                            {% for scientific_research in scientific_research_list %}
+                                                <span class="badge badge-pill" style="overflow:hidden; text-overflow:ellipsis; 
+                                                    white-space:normal; word-break:break-all; text-align:left; background-color:#eee; 
+                                                    border-radius:4px; color:#666; margin:2px; margin-top:3px;" id="{{scientific_research}}__scientific_research">
+                                                    {{scientific_research}}</span>
+                                            {% endfor %}
+                                            {% endspaceless %}
+                                        </td>
+                                    </tr>
+                                    {% endif %}
+
+                                    {% if challenge_cup_list|length != 0 %}
+                                    <tr>
+                                        <th width="10%" style="min-width: 100px;color: #1b55e2;">挑战杯</th>
+                                        <td>
+                                            {% spaceless %}
+                                            {% for challenge_cup in challenge_cup_list %}
+                                                <span class="badge badge-pill" style="overflow:hidden; text-overflow:ellipsis; 
+                                                    white-space:normal; word-break:break-all; text-align:left; background-color:#eee; 
+                                                    border-radius:4px; color:#666; margin:2px; margin-top:3px;" id="{{challenge_cup}}__challenge_cup">
+                                                    {{challenge_cup}}</span>
+                                            {% endfor %}
+                                            {% endspaceless %}
+                                        </td>
+                                    </tr>
+                                    {% endif %}
+
+                                    {% if internship_list|length != 0 %}
+                                    <tr>
+                                        <th width="10%" style="min-width: 100px;color: #1b55e2;">实习经历</th>
+                                        <td>
+                                            {% spaceless %}
+                                            {% for internship in internship_list %}
+                                                <span class="badge badge-pill" style="overflow:hidden; text-overflow:ellipsis; 
+                                                    white-space:normal; word-break:break-all; text-align:left; background-color:#eee; 
+                                                    border-radius:4px; color:#666; margin:2px; margin-top:3px;" id="{{internship}}__internship">
+                                                    {{internship}}</span>
+                                            {% endfor %}
+                                            {% endspaceless %}
+                                        </td>
+                                    </tr>
+                                    {% endif %}
+
+                                    {% if scientific_direction_list|length != 0 %}
+                                    <tr>
+                                        <th width="10%" style="min-width: 100px;color: #1b55e2;">科研方向</th>
+                                        <td>
+                                            {% spaceless %}
+                                            {% for scientific_direction in scientific_direction_list %}
+                                                <span class="badge badge-pill" style="overflow:hidden; text-overflow:ellipsis; 
+                                                    white-space:normal; word-break:break-all; text-align:left; background-color:#eee; 
+                                                    border-radius:4px; color:#666; margin:2px; margin-top:3px;" id="{{scientific_direction}}__scientific_direction">
+                                                    {{scientific_direction}}</span>
+                                            {% endfor %}
+                                            {% endspaceless %}
+                                        </td>
+                                    </tr>
+                                    {% endif %}
+
+                                    {% if graduation_list|length != 0 %}
+                                    <tr>
+                                        <th width="10%" style="min-width: 100px;color: #1b55e2;">毕业去向</th>
+                                        <td>
+                                            {% spaceless %}
+                                            {% for graduation in graduation_list %}
+                                                <span class="badge badge-pill" style="overflow:hidden; text-overflow:ellipsis; 
+                                                    white-space:normal; word-break:break-all; text-align:left; background-color:#eee; 
+                                                    border-radius:4px; color:#666; margin:2px; margin-top:3px;" id="{{graduation}}__graduation">
+                                                    {{graduation}}</span>
+                                            {% endfor %}
+                                            {% endspaceless %}
+                                        </td>
+                                    </tr>
+                                    {% endif %}
+                                </table>
+                                {% endif %}
+                            {% endif %}
+
+                        </div>
+
+                        {% if user_type == "inspector" and have_unaudit == True %}
+                        <div class="row mx-0">
+                            <button class="btn btn-primary mb-5" id="post_academic" 
+                                style="margin: auto;" onclick="return confirm(`确认允许发布？`)">
+                                允许发布
+                            </button>
+                        </div>
+                        {% endif %}
+
+                    </div>
+
+
                     {% if html_display.is_myself != True and user_type == "Person"%}
                     
                         {% if html_display.have_progressing_chat %}
@@ -1170,7 +1652,17 @@
                     updated_href = updated_href.replace("#tab=information?", "");
                 else updated_href = updated_href.replace("#tab=information", "");
             }
-            window.location.href = updated_href;
+            // 接下来需要把url改为updated_href，即去掉#tab=xxx的部分
+            // 相较于直接window.location.href = updated_href，下面的写法更好一些，
+            //      因为修改href会导致页面自动刷新，也即再调用一次window.onload这个函数，从而可能会看到页面在“个人信息”tab和目标tab之间来回跳转两次
+            //      而改history的这种方法不会导致页面再次刷新
+            // 参考https://stackoverflow.com/a/3503206
+            if (window.history.replaceState){
+                window.history.replaceState(null, '', updated_href);
+            }
+            else {
+                window.location.href = updated_href;
+            }
         }
 
         if (reloading == "chatRelatedReloading") { // 表明是发送comment/关闭chat/新建chat等js返回后调用的reload
