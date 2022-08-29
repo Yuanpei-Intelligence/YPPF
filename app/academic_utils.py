@@ -532,18 +532,19 @@ def audit_academic_map(author: NaturalPerson) -> None:
     :param author: 被审核用户
     :type author: NaturalPerson
     """
+    # TODO: 处理竞争
     # 筛选所有待审核的记录
     entries = AcademicTagEntry.objects.activated().filter(
         person=author, status=AcademicEntry.EntryStatus.WAIT_AUDIT)
     for item in entries:
         item.status = AcademicEntry.EntryStatus.PUBLIC
-        item.save()
+        item.update()
 
     entries = AcademicTextEntry.objects.activated().filter(
         person=author, status=AcademicEntry.EntryStatus.WAIT_AUDIT)
     for item in entries:
         item.status = AcademicEntry.EntryStatus.PUBLIC
-        item.save()
+        item.update()
 
 
 def have_entries_of_type(author: NaturalPerson, status_in: list) -> bool:
@@ -563,8 +564,8 @@ def have_entries_of_type(author: NaturalPerson, status_in: list) -> bool:
         "outdate": AcademicEntry.EntryStatus.OUTDATE
     }
     stats = [type_map[s] for s in status_in]
-    all_tag_entries = AcademicTagEntry.objects.activated().filter(
-        person=author, status__in=stats)
-    all_text_entries = (AcademicTextEntry.objects.activated().filter(
-        person=author, status__in=stats))
-    return bool(all_tag_entries) or bool(all_text_entries)
+    have_tag_entries = AcademicTagEntry.objects.activated().filter(
+        person=author, status__in=stats).exists()
+    have_text_entries = (AcademicTextEntry.objects.activated().filter(
+        person=author, status__in=stats)).exists()
+    return have_tag_entries or have_text_entries
