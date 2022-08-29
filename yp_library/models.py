@@ -44,6 +44,7 @@ class LendRecord(models.Model):
         verbose_name_plural = verbose_name
         ordering = ["-lend_time"]
     
+    id = models.IntegerField("条目编号", primary_key=True)
     reader_id = models.ForeignKey(
         Reader, on_delete=models.CASCADE, verbose_name="读者编号"
     )

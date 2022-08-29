@@ -17,17 +17,17 @@ class GetLendRecordTestCase(TestCase):
         Book.objects.create(id=3, identity_code="MATH-2",
                             title="高等代数", author="丘维声", publisher="清华大学出版社", returned=0)
 
-        LendRecord.objects.create(reader_id_id=123456789, book_id_id=1, lend_time='2022-07-22',
+        LendRecord.objects.create(id=1, reader_id_id=123456789, book_id_id=1, lend_time='2022-07-22',
                                   due_time='2022-07-30', return_time='2022-07-23', returned=1, status=0)
-        LendRecord.objects.create(reader_id_id=123456789, book_id_id=2, lend_time='2022-07-22',
+        LendRecord.objects.create(id=2, reader_id_id=123456789, book_id_id=2, lend_time='2022-07-22',
                                   due_time='2022-07-30', return_time='2022-07-31', returned=1, status=1)
-        LendRecord.objects.create(reader_id_id=123456789, book_id_id=3, lend_time='2022-07-22',
+        LendRecord.objects.create(id=3, reader_id_id=123456789, book_id_id=3, lend_time='2022-07-22',
                                   due_time='2022-07-30', return_time='2022-07-31', returned=1, status=2)
-        LendRecord.objects.create(reader_id_id=1234567, book_id_id=1, lend_time='2022-07-25',
+        LendRecord.objects.create(id=4, reader_id_id=1234567, book_id_id=1, lend_time='2022-07-25',
                                   due_time='2022-08-01', returned=0, status=1)
-        LendRecord.objects.create(reader_id_id=1234567, book_id_id=2, lend_time='2022-08-01',
+        LendRecord.objects.create(id=5, reader_id_id=1234567, book_id_id=2, lend_time='2022-08-01',
                                   due_time='2022-08-07', returned=0, status=0)
-        LendRecord.objects.create(reader_id_id=987654321, book_id_id=3, lend_time='2022-07-01',
+        LendRecord.objects.create(id=6, reader_id_id=987654321, book_id_id=3, lend_time='2022-07-01',
                                   due_time='2022-07-07', return_time='2022-07-20', returned=0, status=4)
 
     def test_models(self):
