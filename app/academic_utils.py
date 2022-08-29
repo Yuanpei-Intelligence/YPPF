@@ -533,13 +533,13 @@ def audit_academic_map(author: NaturalPerson) -> None:
     :type author: NaturalPerson
     """
     # 筛选所有待审核的记录
-    entries = AcademicTagEntry.objects.activated().get(
+    entries = AcademicTagEntry.objects.activated().filter(
         person=author, status=AcademicEntry.EntryStatus.WAIT_AUDIT)
     for item in entries:
         item.status = AcademicEntry.EntryStatus.PUBLIC
         item.save()
 
-    entries = AcademicTextEntry.objects.activated().get(
+    entries = AcademicTextEntry.objects.activated().filter(
         person=author, status=AcademicEntry.EntryStatus.WAIT_AUDIT)
     for item in entries:
         item.status = AcademicEntry.EntryStatus.PUBLIC

@@ -269,11 +269,12 @@ def auditAcademic(request: HttpRequest) -> HttpResponse:
     return render(request, "audit_academic.html", frontend_dict)
 
 
+@login_required(redirect_field_name="origin")
+@utils.check_user_access(redirect_url="/logout/")
+@log.except_captured(EXCEPT_REDIRECT, source='academic_views[applyAuditAcademic]', record_user=True)
 def applyAuditAcademic(request: HttpRequest):
     author = NaturalPerson.objects.get(person_id_id=request.POST.get("author_id"))
-    try:
-        # 需要回传作者的person_id.id
-        audit_academic_map(author)
-        return redirect(message_url(succeed("审核成功！"), "/auditAcademic/"))
-    except:
-        return redirect(message_url(wrong("审核过程中出现意料之外的错误，请联系工作人员处理！")))
+    # 需要回传作者的person_id.id
+    audit_academic_map(author)
+    return JsonResponse({})
+

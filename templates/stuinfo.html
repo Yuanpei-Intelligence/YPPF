@@ -799,14 +799,12 @@
                         </div>
 
                         {% if academic_params.user_type == "inspector" and academic_params.have_unaudit == True %}
-                        <form>
-                            <div class="row mx-0">
-                                <button type="submit" class="btn btn-primary mb-5" value="audit" name="post_academic"
-                                    style="margin: auto;" onclick="return confirm('确认允许发布？')">
-                                    允许发布
-                                </button>
-                            </div>
-                        </form>
+                        <div class="row mx-0">
+                            <button class="btn btn-primary mb-5" value="audit" name="post_academic"
+                                style="margin: auto;" onclick="confirmAuditAcademic(this);">
+                                允许发布
+                            </button>
+                        </div>
                         {% endif %}
 
                     </div>
@@ -1760,17 +1758,20 @@
         })
     }
 
-    function confirmAuditAcademic() { //审核该页面的学术地图
+    function confirmAuditAcademic(a) { //审核该页面的学术地图
         confirm_res = confirm(`确认允许发布？`);
         if (confirm_res == 0){
             return;
         }
         $.ajax({
-            url: "/stuinfo/",
+            url: "/applyAuditAcademic/",
             type: "post",
-            data:{
+            data: {
                 action: "auditMap",
                 author_id: {{ academic_params.author_id }},
+            },
+            success: function () {
+                $(window).attr("location","/auditAcademic/");
             }
         })
     }

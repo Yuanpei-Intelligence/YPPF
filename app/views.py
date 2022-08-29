@@ -237,7 +237,7 @@ def stuinfo(request: HttpRequest, name=None):
     valid, user_type, html_display = utils.check_user_type(request.user)
 
     oneself = get_person_or_org(user, user_type)
-    print(request.POST)
+
 
     if name is None:
         name = request.GET.get('name', None)
@@ -275,15 +275,6 @@ def stuinfo(request: HttpRequest, name=None):
         html_display["is_myself"] = is_myself  # 存入显示
         inform_share, alert_message = utils.get_inform_share(me=person, is_myself=is_myself)
 
-        print(request.POST)
-        if request.POST.get("post_academic"):
-            print("Yyyyyyyyyyyyyyyyyyyyyyyyyy")
-            try:
-                # 需要回传作者的person_id.id
-                audit_academic_map(person)
-                return redirect(message_url(succeed("审核成功！"), "/auditAcademic/"))
-            except:
-                return redirect(message_url(wrong("审核过程中出现意料之外的错误，请联系工作人员处理！")))
         # 处理更改数据库中inform_share的post
         if request.method == "POST" and request.POST:
             option = request.POST.get("option", "")
