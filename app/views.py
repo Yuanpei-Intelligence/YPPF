@@ -575,7 +575,7 @@ def stuinfo(request: HttpRequest, name=None):
         status_in = None
         if is_myself:
             academic_params["user_type"] = "author"
-        elif oneself.is_teacher():
+        elif user_type == UTYPE_PER and oneself.is_teacher():
             academic_params["user_type"] = "inspector"
             status_in = ['public', 'wait_audit']
         else:

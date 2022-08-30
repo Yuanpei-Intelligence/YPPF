@@ -814,164 +814,160 @@
                     
                         {% if html_display.have_progressing_chat %}
                         <!--  BEGIN PROGRESSING CHAT  -->
-                        <div class="col-lg-12 col-sm-12 col-12 layout-spacing">
-                            <div class="bio layout-spacing ">
-                                <div class="widget-content widget-content-area">
-                                    <!--  BEGIN CHAT TITLE  -->
-                                    <div class="d-flex justify-content-between">
-                                        <h3 class="noafter">
-                                            {% if html_display.my_name == "匿名用户" %}
-                                            我[匿名]发给{{html_display.respondent_name}}的问答：{{html_display.title}}&emsp;
-                                            {% else %}
-                                            我发给{{html_display.respondent_name}}的问答：{{html_display.title}}&emsp;
-                                            {% endif %}
-                                            
-                                            <span class="badge badge-primary followh3noafter">进行中</span><br />
-                                        </h3>
-                                    </div>
-                                    <!--  END CHAT TITLE  -->
-        
-                                    <!--  BEGIN CHAT CONTENT  -->
-                                    <div class="row">
-                                        <div class="col-md-12 mb-4">
-                                            <div class="statbox widget box box-shadow">
-                                                <div class="widget-content widget-content-area">
-                                                    <table class="table table-bordered mb-4">
-                                                    {% if html_display.messages|length != 0 %}
-                                                        {% for comment in html_display.messages %}
-                                                        <div class="form-group">
-                                                            <div class="d-flex justify-content-between">
-                                                                <!--  BEGIN MY MESSAGE HEAD -->
-                                                                {% if html_display.my_name == comment.commentator.name %}
-                                                                <div>
-                                                                    <p style="color: rgb(66, 67, 68);">
-                                                                        <i class="fa fa-calendar-o"></i>{{ comment.time }}</p>
-                                                                </div>
-                                                                <div align="right">
-                                                                    <img src={{ comment.commentator.avatar }} width="24" height="24" alt="avatar">
-                                                                        {% if comment.commentator.URL %}
-                                                                        <a href='{{ comment.commentator.URL }}#tab=academic_map'>
-                                                                            <u>{{ comment.commentator.name }}</u>
-                                                                        </a>
-                                                                        {% else %}
-                                                                        {{ comment.commentator.name }}
-                                                                        {% endif %}
-                                                                </div>
-                                                                <!--  END MY MESSAGE HEAD -->
-                                                                
-                                                                <!--  BEGIN OTHERS MESSAGE HEAD -->
-                                                                {% else %}
-                                                                <div>
-                                                                    <img src={{ comment.commentator.avatar }} width="24" height="24" alt="avatar">
-                                                                        {% if comment.commentator.URL %}
-                                                                        <a href='{{ comment.commentator.URL }}#tab=academic_map'>
-                                                                            <u>{{ comment.commentator.name }}</u>
-                                                                        </a>
-                                                                        {% else %}
-                                                                        {{ comment.commentator.name }}
-                                                                        {% endif %}
-                                                                </div>
-                                                                <div align="right">
-                                                                    <p style="color: rgb(66, 67, 68);">
-                                                                        <i class="fa fa-calendar-o"></i>{{ comment.time }}</p>
-                                                                </div>
-                                                                <!--  END OTHERS MESSAGE HEAD -->
-                                                                {% endif %}
-                                                            </div>
-                                                            <!--  BEGIN MESSAGE CONTENT -->
-                                                            {% if comment.text %}
-                                                                {% if comment.commentator.name == html_display.my_name %}
-                                                                <textarea name="comment" class="form-control no-gray" 
-                                                                        disabled="disabled" rows="3" style="background-color:rgb(255, 255, 255) !important;color: black;">{{ comment.text }}</textarea>
-                                                                        <!-- 颜色待调整 -->
-                                                                {% else %}
-                                                                <textarea name="comment" class="form-control no-gray"
-                                                                        disabled="disabled" rows="3" style="background-color:rgb(255, 255, 255) !important;color: black;">{{ comment.text }}</textarea>
-                                                                        <!-- 颜色待调整 -->
-                                                                {% endif %}
-                                                            {% endif %}
-                                                            {% if comment.photos %}
-                                                                {% if comment.text %}<br>{% endif %}
-                                                                <div style="max-height:1000px;overflow:auto;">
-                                                                {% for image in comment.photos %}
-                                                                <img src={{ html_display.image.get_image_path }} >
-                                                                {% endfor %}
-                                                                </div>
-                                                            {% endif %}
-                                                            <!--  END MESSAGE CONTENT -->
-                                                            <hr>
-                                                        </div>
-                                                        {% endfor %}
-                                                        
-                                                    {% else %}
-                                                        <thead></thead>
-                                                        <tbody>
-                                                            <tr>
-                                                                <td>{{ html_display.not_found_message }}</td>
-                                                            </tr>
-                                                        </tbody>
-                                                    {% endif %}
-                                                    </table>
-                                                    
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                    <!--  END CHAT CONTENT  -->
-        
-                                    <!--  BEGIN REPLY AREA  -->
-                                    {% if html_display.commentable %}
-                                    <div class="row">
-                                        <div class="col-md-12 mb-4">
-                                            <div class="statbox widget box box-shadow">
-                                                <div class="widget-content widget-content-area">
-                                                    <table class="table table-bordered mb-4">
-                                                        <div>
-                                                            <div class="form-group">
-                                                                {% if html_display.anonymous_chat and not html_display.accept_anonymous %}
-                                                                <textarea type="text" id="comment" name="comment"
-                                                                        class="form-control"
-                                                                        aria-label="Default" rows="3"
-                                                                        placeholder="回答者目前不接收匿名提问哦" disabled></textarea>
-                                                                {% else %}
-                                                                <textarea type="text" id="comment" name="comment"
-                                                                        class="form-control"
-                                                                        aria-label="Default" rows="3"
-                                                                        placeholder="添加回复或追问追答"></textarea>
-                                                                {% endif %}
-                                                                
-                                                            </div>
-                                                            <div class="d-flex justify-content-between">
-                                                                <div>
-                                                                </div>
-                                                                <div class="" style="text-align: right;">
-                                                                        <button type="submit"
-                                                                                class="btn btn-primary"
-                                                                                name="comment_submit" 
-                                                                                id="comment_submit"
-                                                                                value="{{html_display.chat_id}}"
-                                                                                onclick="add_chat_comment(this);">
-                                                                            回复
-                                                                        </button>
-                                                                        <button type="submit"
-                                                                                class="btn btn-danger"
-                                                                                name="close" id="close"
-                                                                                value="{{html_display.chat_id}}"
-                                                                                onclick="close_chat(this);">
-                                                                            关闭当前问答
-                                                                        </button>
-                                                                </div>
-                                                            </div>
-                                                        </div>
-                                                    </table>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
+                        <div class="widget-content widget-content-area my-3">
+                            <!--  BEGIN CHAT TITLE  -->
+                            <div class="d-flex justify-content-between">
+                                <h3 class="noafter">
+                                    {% if html_display.my_name == "匿名用户" %}
+                                    我[匿名]发给{{html_display.respondent_name}}的问答：{{html_display.title}}&emsp;
+                                    {% else %}
+                                    我发给{{html_display.respondent_name}}的问答：{{html_display.title}}&emsp;
                                     {% endif %}
-                                    <!--  END REPLY AREA  -->
+                                    
+                                    <span class="badge badge-primary followh3noafter">进行中</span><br />
+                                </h3>
+                            </div>
+                            <!--  END CHAT TITLE  -->
+
+                            <!--  BEGIN CHAT CONTENT  -->
+                            <div class="row">
+                                <div class="col-md-12 mb-4">
+                                    <div class="statbox widget box box-shadow">
+                                        <div class="widget-content widget-content-area">
+                                            <table class="table table-bordered mb-4">
+                                            {% if html_display.messages|length != 0 %}
+                                                {% for comment in html_display.messages %}
+                                                <div class="form-group">
+                                                    <div class="d-flex justify-content-between">
+                                                        <!--  BEGIN MY MESSAGE HEAD -->
+                                                        {% if html_display.my_name == comment.commentator.name %}
+                                                        <div>
+                                                            <p style="color: rgb(66, 67, 68);">
+                                                                <i class="fa fa-calendar-o"></i>{{ comment.time }}</p>
+                                                        </div>
+                                                        <div align="right">
+                                                            <img src={{ comment.commentator.avatar }} width="24" height="24" alt="avatar">
+                                                                {% if comment.commentator.URL %}
+                                                                <a href='{{ comment.commentator.URL }}#tab=academic_map'>
+                                                                    <u>{{ comment.commentator.name }}</u>
+                                                                </a>
+                                                                {% else %}
+                                                                {{ comment.commentator.name }}
+                                                                {% endif %}
+                                                        </div>
+                                                        <!--  END MY MESSAGE HEAD -->
+                                                        
+                                                        <!--  BEGIN OTHERS MESSAGE HEAD -->
+                                                        {% else %}
+                                                        <div>
+                                                            <img src={{ comment.commentator.avatar }} width="24" height="24" alt="avatar">
+                                                                {% if comment.commentator.URL %}
+                                                                <a href='{{ comment.commentator.URL }}#tab=academic_map'>
+                                                                    <u>{{ comment.commentator.name }}</u>
+                                                                </a>
+                                                                {% else %}
+                                                                {{ comment.commentator.name }}
+                                                                {% endif %}
+                                                        </div>
+                                                        <div align="right">
+                                                            <p style="color: rgb(66, 67, 68);">
+                                                                <i class="fa fa-calendar-o"></i>{{ comment.time }}</p>
+                                                        </div>
+                                                        <!--  END OTHERS MESSAGE HEAD -->
+                                                        {% endif %}
+                                                    </div>
+                                                    <!--  BEGIN MESSAGE CONTENT -->
+                                                    {% if comment.text %}
+                                                        {% if comment.commentator.name == html_display.my_name %}
+                                                        <textarea name="comment" class="form-control no-gray" 
+                                                                disabled="disabled" rows="3" style="background-color:rgb(255, 255, 255) !important;color: black;">{{ comment.text }}</textarea>
+                                                                <!-- 颜色待调整 -->
+                                                        {% else %}
+                                                        <textarea name="comment" class="form-control no-gray"
+                                                                disabled="disabled" rows="3" style="background-color:rgb(255, 255, 255) !important;color: black;">{{ comment.text }}</textarea>
+                                                                <!-- 颜色待调整 -->
+                                                        {% endif %}
+                                                    {% endif %}
+                                                    {% if comment.photos %}
+                                                        {% if comment.text %}<br>{% endif %}
+                                                        <div style="max-height:1000px;overflow:auto;">
+                                                        {% for image in comment.photos %}
+                                                        <img src={{ html_display.image.get_image_path }} >
+                                                        {% endfor %}
+                                                        </div>
+                                                    {% endif %}
+                                                    <!--  END MESSAGE CONTENT -->
+                                                    <hr>
+                                                </div>
+                                                {% endfor %}
+                                                
+                                            {% else %}
+                                                <thead></thead>
+                                                <tbody>
+                                                    <tr>
+                                                        <td>{{ html_display.not_found_message }}</td>
+                                                    </tr>
+                                                </tbody>
+                                            {% endif %}
+                                            </table>
+                                            
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
+                            <!--  END CHAT CONTENT  -->
+
+                            <!--  BEGIN REPLY AREA  -->
+                            {% if html_display.commentable %}
+                            <div class="row">
+                                <div class="col-md-12 mb-4">
+                                    <div class="statbox widget box box-shadow">
+                                        <div class="widget-content widget-content-area">
+                                            <table class="table table-bordered mb-4">
+                                                <div>
+                                                    <div class="form-group">
+                                                        {% if html_display.anonymous_chat and not html_display.accept_anonymous %}
+                                                        <textarea type="text" id="comment" name="comment"
+                                                                class="form-control"
+                                                                aria-label="Default" rows="3"
+                                                                placeholder="回答者目前不接收匿名提问哦" disabled></textarea>
+                                                        {% else %}
+                                                        <textarea type="text" id="comment" name="comment"
+                                                                class="form-control"
+                                                                aria-label="Default" rows="3"
+                                                                placeholder="添加回复或追问追答"></textarea>
+                                                        {% endif %}
+                                                        
+                                                    </div>
+                                                    <div class="d-flex justify-content-between">
+                                                        <div>
+                                                        </div>
+                                                        <div class="" style="text-align: right;">
+                                                                <button type="submit"
+                                                                        class="btn btn-primary"
+                                                                        name="comment_submit" 
+                                                                        id="comment_submit"
+                                                                        value="{{html_display.chat_id}}"
+                                                                        onclick="add_chat_comment(this);">
+                                                                    回复
+                                                                </button>
+                                                                <button type="submit"
+                                                                        class="btn btn-danger"
+                                                                        name="close" id="close"
+                                                                        value="{{html_display.chat_id}}"
+                                                                        onclick="close_chat(this);">
+                                                                    关闭当前问答
+                                                                </button>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </table>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            {% endif %}
+                            <!--  END REPLY AREA  -->
                         </div>
                         <!--  END PROGRESSING CHAT  -->
                         {% elif html_display.accept_chat %}
@@ -1019,7 +1015,7 @@
                                                                 </label>
                                                                 <button type="submit"
                                                                         class="btn btn-primary"
-                                                                        name="comment_submit" value="{{person.id}}"
+                                                                        name="comment_submit" value="{{person.person_id.id}}"
                                                                         onclick="start_chat(this)"> <!-- 因为创建问答要复用comment_utils.py，这里必须叫“comment_submit”  -->
                                                                     提问
                                                                 </button>
