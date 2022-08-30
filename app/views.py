@@ -242,10 +242,10 @@ def stuinfo(request: HttpRequest, name=None):
     if name is None:
         name = request.GET.get('name', None)
     if name is None:
-        if user_type == "Organization":
+        if user_type == UTYPE_ORG:
             return redirect("/orginfo/")  # 小组只能指定学生姓名访问
         else:  # 跳轉到自己的頁面
-            assert user_type == "Person"
+            assert user_type == UTYPE_PER
             return redirect(append_query(oneself.get_absolute_url(), **request.GET.dict()))
     else:
         # 先对可能的加号做处理
@@ -258,7 +258,7 @@ def stuinfo(request: HttpRequest, name=None):
             person = person[0]
         else:  # 有很多人，这时候假设加号后面的是user的id
             if len(name_list) == 1:  # 没有任何后缀信息，那么如果是自己则跳转主页，否则跳转搜索
-                if user_type == "Person" and oneself.name == name:
+                if user_type == UTYPE_PER and oneself.name == name:
                     person = oneself
                 else:  # 不是自己，信息不全跳转搜索
                     return redirect("/search?Query=" + name)
@@ -271,7 +271,7 @@ def stuinfo(request: HttpRequest, name=None):
                 assert potential_person in person
                 person = potential_person
 
-        is_myself = user_type == "Person" and person.person_id == user  # 用一个字段储存是否是自己
+        is_myself = user_type == UTYPE_PER and person.person_id == user  # 用一个字段储存是否是自己
         html_display["is_myself"] = is_myself  # 存入显示
         inform_share, alert_message = utils.get_inform_share(me=person, is_myself=is_myself)
 
@@ -298,12 +298,12 @@ def stuinfo(request: HttpRequest, name=None):
         )  # ta属于的小组
         oneself_orgs = (
             [oneself]
-            if user_type == "Organization"
+            if user_type == UTYPE_ORG
             else Position.objects.activated().filter(
                 Q(person=oneself) & Q(show_post=True)
             )
         )
-        oneself_orgs_id = [oneself.id] if user_type == "Organization" else oneself_orgs.values("org") # 自己的小组
+        oneself_orgs_id = [oneself.id] if user_type == UTYPE_ORG else oneself_orgs.values("org") # 自己的小组
 
         # 当前管理的小组
         person_owned_poss = person_poss.filter(is_admin=True, status=Position.Status.INSERVICE)
@@ -488,7 +488,7 @@ def stuinfo(request: HttpRequest, name=None):
             Q(id__in=participants.values("activity_id")),
             # ~Q(status=Activity.Status.CANCELED), # 暂时可以呈现已取消的活动
         )
-        if user_type == "Person":
+        if user_type == UTYPE_PER:
             # 因为上面筛选过活动，这里就不用筛选了
             # 之前那个写法是O(nm)的
             activities_me = Participant.objects.activated().filter(person_id=oneself)
@@ -552,7 +552,7 @@ def stuinfo(request: HttpRequest, name=None):
             {0: "他", 1: "她"}.get(person.gender, 'Ta') if person.show_gender else "Ta")
 
         context["avatar_path"] = person.get_user_ava()
-        context["wallpaper_path"] = utils.get_user_wallpaper(person, "Person")
+        context["wallpaper_path"] = utils.get_user_wallpaper(person, UTYPE_PER)
 
         # 新版侧边栏, 顶栏等的呈现，采用 bar_display
         bar_display = utils.get_sidebar_and_navbar(
@@ -679,7 +679,7 @@ def requestLoginOrg(request: HttpRequest, name=None):  # 特指个人希望通�
     user = request.user
     valid, user_type, html_display = utils.check_user_type(request.user)
 
-    if user_type == "Organization":
+    if user_type == UTYPE_ORG:
         return redirect("/orginfo/")
     try:
         me = NaturalPerson.objects.activated().get(person_id=user)
@@ -735,7 +735,7 @@ def orginfo(request: HttpRequest, name=None):
         name = request.GET.get('name', None)
 
     if name is None:  # 此时登陆的必需是法人账号，如果是自然人，则跳转welcome
-        if user_type == "Person":
+        if user_type == UTYPE_PER:
             return redirect(message_url(wrong('个人账号不能登陆小组主页!')))
         try:
             org = Organization.objects.activated().get(organization_id=user)
@@ -769,7 +769,7 @@ def orginfo(request: HttpRequest, name=None):
     organization_name = name
     organization_type_name = org.otype.otype_name
     org_avatar_path = org.get_user_ava()
-    wallpaper_path = utils.get_user_wallpaper(org, "Organization")
+    wallpaper_path = utils.get_user_wallpaper(org, UTYPE_ORG)
     # org的属性 information 不在此赘述，直接在前端调用
 
     # 给前端传递选课的参数
@@ -832,7 +832,7 @@ def orginfo(request: HttpRequest, name=None):
         dictmp = {}
         dictmp["act"] = act
         dictmp["endbefore"] = act.start - timedelta(hours=prepare_times[act.endbefore])
-        if user_type == "Person":
+        if user_type == UTYPE_PER:
 
             existlist = Participant.objects.filter(activity_id_id=act.id).filter(
                 person_id_id=me.id
@@ -849,7 +849,7 @@ def orginfo(request: HttpRequest, name=None):
         dictmp = {}
         dictmp["act"] = act
         dictmp["endbefore"] = act.start - timedelta(hours=prepare_times[act.endbefore])
-        if user_type == "Person":
+        if user_type == UTYPE_PER:
             existlist = Participant.objects.filter(activity_id_id=act.id).filter(
                 person_id_id=me.id
             )
@@ -865,7 +865,7 @@ def orginfo(request: HttpRequest, name=None):
         dictmp = {}
         dictmp["act"] = act
         dictmp["endbefore"] = act.start - timedelta(hours=prepare_times[act.endbefore])
-        if user_type == "Person":
+        if user_type == UTYPE_PER:
             existlist = Participant.objects.filter(activity_id_id=act.id).filter(
                 person_id_id=me.id
             )
@@ -894,7 +894,7 @@ def orginfo(request: HttpRequest, name=None):
             member["highest"] = True if p.pos == 0 else False
 
             member["avatar_path"] = utils.get_user_ava(
-                member["person"], "Person")
+                member["person"], UTYPE_PER)
 
             member_list.append(member)
 
@@ -930,7 +930,7 @@ def orginfo(request: HttpRequest, name=None):
 
     # 补充订阅该小组的按钮
     allow_unsubscribe = org.otype.allow_unsubscribe # 是否允许取关
-    is_person = True if user_type == "Person" else False
+    is_person = user_type == UTYPE_PER
     if is_person:
         subscribe_flag = True if (
             organization_name not in me.unsubscribe_list.values_list("oname", flat=True)) \
@@ -938,7 +938,7 @@ def orginfo(request: HttpRequest, name=None):
 
     # 补充作为小组成员，选择是否展示的按钮
     show_post_change_button = False     # 前端展示“是否不展示我自己”的按钮，若为True则渲染这个按钮
-    if user_type == 'Person':
+    if user_type == UTYPE_PER:
         my_position = Position.objects.activated().filter(org=org, person=me).exclude(is_admin=True)
         if len(my_position):
             show_post_change_button = True
@@ -961,7 +961,7 @@ def orginfo(request: HttpRequest, name=None):
 @log.except_captured(source='views[homepage]', record_user=True)
 def homepage(request: HttpRequest):
     valid, user_type, html_display = utils.check_user_type(request.user)
-    is_person = True if user_type == "Person" else False
+    is_person = user_type == UTYPE_PER
     me = get_person_or_org(request.user, user_type)
 
     html_display["is_myself"] = True
@@ -1129,13 +1129,13 @@ def accountSetting(request: HttpRequest):
     # bar_display["navbar_name"] = "账户设置"
     # bar_display["help_message"] = local_dict["help_message"]["账户设置"]
 
-    if user_type == "Person":
+    if user_type == UTYPE_PER:
         info = NaturalPerson.objects.filter(person_id=user)
         userinfo = info.values()[0]
 
         useroj = NaturalPerson.objects.get(person_id=user)
 
-        former_wallpaper = utils.get_user_wallpaper(me, "Person")
+        former_wallpaper = utils.get_user_wallpaper(me, UTYPE_PER)
 
         # print(json.loads(request.body.decode("utf-8")))
         if request.method == "POST" and request.POST:
@@ -1197,7 +1197,7 @@ def accountSetting(request: HttpRequest):
         userinfo = info.values()[0]
 
         useroj = Organization.objects.get(organization_id=user)
-        former_wallpaper = utils.get_user_wallpaper(me, "Organization")
+        former_wallpaper = utils.get_user_wallpaper(me, UTYPE_ORG)
         org_tags = list(useroj.tags.all())
         all_tags = list(OrganizationTag.objects.all())
         if request.method == "POST" and request.POST:
@@ -1908,7 +1908,7 @@ def subscribeOrganization(request: HttpRequest):
         html_display.update(readonly=True)
 
     me = get_person_or_org(request.user, user_type)
-    # orgava_list = [(org, utils.get_user_ava(org, "Organization")) for org in org_list]
+    # orgava_list = [(org, utils.get_user_ava(org, UTYPE_ORG)) for org in org_list]
     otype_infos = [(
         otype,
         list(Organization.objects.filter(otype=otype)

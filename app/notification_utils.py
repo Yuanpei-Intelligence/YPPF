@@ -394,7 +394,7 @@ def notification2Display(notification_set):
 
 
         _, user_type, _ = check_user_type(notification.sender)
-        if user_type == "Organization":
+        if user_type == UTYPE_ORG:
             note_display["sender"] = sender_orgs.get(
                 notification.sender_id
             ) if not notification.anonymous_flag else "匿名者"

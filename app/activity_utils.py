@@ -585,7 +585,7 @@ def create_activity(request):
     examine_teacher = NaturalPerson.objects.get_teacher(context["examine_teacher"])
 
     # 检查完毕，创建活动
-    org = get_person_or_org(request.user, "Organization")
+    org = get_person_or_org(request.user, UTYPE_ORG)
     activity = Activity.objects.create(
                     title=context["title"],
                     organization_id=org,

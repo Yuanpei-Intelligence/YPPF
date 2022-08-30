@@ -162,7 +162,7 @@ def create_single_course_activity(request: HttpRequest) -> Tuple[int, bool]:
     context = course_activity_base_check(request)
 
     # 获取组织和课程
-    org = get_person_or_org(request.user, "Organization")
+    org = get_person_or_org(request.user, UTYPE_ORG)
     course = Course.objects.activated().get(organization=org)
 
     # 查找是否有类似活动存在
@@ -1124,7 +1124,7 @@ def course_base_check(request,if_new=None):
             "2": Course.PublishDay.twoday,
             "1": Course.PublishDay.oneday,
     }[context['publish_day']]
-    org = get_person_or_org(request.user, "Organization")
+    org = get_person_or_org(request.user, UTYPE_ORG)
     context['organization'] = org
 
     succeed("合法性检查通过！", context)

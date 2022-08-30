@@ -320,15 +320,15 @@ def update_pos_application(application, me, user_type, applied_org, info):
             return wrong("申请状态异常！")
 
         # 接下来确定访问的个人/小组是不是在做分内的事情
-        if (user_type == "Person" and feasible_post.index(post_type) >= 3) or (
-                user_type == "Organization" and feasible_post.index(post_type) <= 2):
+        if (user_type == UTYPE_PER and feasible_post.index(post_type) >= 3) or (
+                user_type == UTYPE_ORG and feasible_post.index(post_type) <= 2):
             return wrong("您无权进行此操作. 如有疑惑, 请联系管理员")
 
         if feasible_post.index(post_type) <= 2:  # 是个人的操作, 新建\修改\删除
 
             # 访问者一定是个人
             try:
-                assert user_type == "Person"
+                assert user_type == UTYPE_PER
             except:
                 return wrong("访问者身份异常！")
 

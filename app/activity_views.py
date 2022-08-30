@@ -82,10 +82,10 @@ def viewActivity(request: HttpRequest, aid=None):
         org = activity.organization_id
         me = utils.get_person_or_org(request.user, user_type)
         ownership = False
-        if user_type == "Organization" and org == me:
+        if user_type == UTYPE_ORG and org == me:
             ownership = True
         examine = False
-        if user_type == "Person" and activity.examine_teacher == me:
+        if user_type == UTYPE_PER and activity.examine_teacher == me:
             examine = True
         if not (ownership or examine) and activity.status in [
                 Activity.Status.REVIEWING,
@@ -229,7 +229,7 @@ def viewActivity(request: HttpRequest, aid=None):
         apply_manner = "先到先得"
     # person 表示是否是个人而非小组
     person = False
-    if user_type == "Person":
+    if user_type == UTYPE_PER:
         """
         老师能否报名活动？
         if me.identity == NaturalPerson.Identity.STUDENT:
@@ -253,7 +253,7 @@ def viewActivity(request: HttpRequest, aid=None):
         Activity.Status.PROGRESSING
     ]
 
-    if activity.inner and user_type == "Person":
+    if activity.inner and user_type == UTYPE_PER:
         position = Position.objects.activated().filter(person=me, org=activity.organization_id)
         if len(position) == 0:
             not_inner = True
@@ -278,7 +278,7 @@ def viewActivity(request: HttpRequest, aid=None):
     # 参与者, 无论报名是否通过
     participants = Participant.objects.filter(Q(activity_id=activity),
         Q(status=Participant.AttendStatus.APPLYING) | Q(status=Participant.AttendStatus.APLLYSUCCESS) | Q(status=Participant.AttendStatus.ATTENDED) | Q(status=Participant.AttendStatus.UNATTENDED))
-    #participants_ava = [utils.get_user_ava(participant, "Person") for participant in participants.values("person_id")] or None
+    #participants_ava = [utils.get_user_ava(participant, UTYPE_PER) for participant in participants.values("person_id")] or None
     people_list = NaturalPerson.objects.activated().filter(id__in = participants.values("person_id"))
 
 
@@ -427,7 +427,7 @@ def getActivityInfo(request: HttpRequest):
 @log.except_captured(source='activity_views[checkinActivity]', record_user=True)
 def checkinActivity(request: HttpRequest, aid=None):
     valid, user_type, html_display = utils.check_user_type(request.user)
-    if user_type != "Person":
+    if user_type != UTYPE_PER:
         return redirect(message_url(wrong('签到失败：请使用个人账号签到')))
     try:
         np = get_person_or_org(request.user, user_type)
@@ -565,7 +565,7 @@ def addActivity(request: HttpRequest, aid=None):
         # assert valid  已经在check_user_access检查过了
         me = utils.get_person_or_org(request.user, user_type) # 这里的me应该为小组账户
         if aid is None:
-            if user_type != "Organization":
+            if user_type != UTYPE_ORG:
                 return redirect(message_url(wrong('小组账号才能添加活动!')))
             if me.oname == YQP_ONAME:
                 return redirect("/showActivity")
@@ -573,13 +573,13 @@ def addActivity(request: HttpRequest, aid=None):
         else:
             aid = int(aid)
             activity = Activity.objects.get(id=aid)
-            if user_type == "Person":
+            if user_type == UTYPE_PER:
                 html_display=utils.user_login_org(request,activity.organization_id)
                 if html_display['warn_code']==1:
                     return redirect(message_url(wrong(html_display["warn_message"])))
                 else: # 成功以小组账号登陆
                     # 防止后边有使用，因此需要赋值
-                    user_type = "Organization"
+                    user_type = UTYPE_ORG
                     request.user = activity.organization_id.get_user() #小组对应user
                     me = activity.organization_id #小组
             if activity.organization_id != me:
@@ -632,7 +632,7 @@ def addActivity(request: HttpRequest, aid=None):
                 # 只能修改自己的活动
                 with transaction.atomic():
                     activity = Activity.objects.select_for_update().get(id=aid)
-                    org = get_person_or_org(request.user, "Organization")
+                    org = get_person_or_org(request.user, UTYPE_ORG)
                     assert activity.organization_id == org
                     modify_activity(request, activity)
                 html_display["warn_message"] = "修改成功。"
@@ -659,7 +659,7 @@ def addActivity(request: HttpRequest, aid=None):
         available_teachers = NaturalPerson.objects.teachers()
     else:
         try:
-            org = get_person_or_org(request.user, "Organization")
+            org = get_person_or_org(request.user, UTYPE_ORG)
 
             # 没过审，可以编辑评论区
             if not activity.valid:
@@ -750,7 +750,7 @@ def showActivity(request: HttpRequest):
     valid, user_type, html_display = utils.check_user_type(request.user)
     me = utils.get_person_or_org(request.user)  # 获取自身
     is_teacher = False #该变量同时用于前端
-    if user_type == "Person":
+    if user_type == UTYPE_PER:
         try:
             person = utils.get_person_or_org(request.user, user_type)
             is_teacher = person.is_teacher()
@@ -782,7 +782,7 @@ def showActivity(request: HttpRequest):
     bar_display = utils.get_sidebar_and_navbar(request.user, "活动立项")
 
     # 前端不允许元气值中心创建活动
-    if user_type == "Organization" and me.oname == YQP_ONAME:
+    if user_type == UTYPE_ORG and me.oname == YQP_ONAME:
         YQPoint_Source_Org = True
 
     return render(request, "activity_show.html", locals())
@@ -794,7 +794,7 @@ def examineActivity(request: HttpRequest, aid):
     valid, user_type, html_display = utils.check_user_type(request.user)
     try:
         assert valid
-        assert user_type == "Person"
+        assert user_type == UTYPE_PER
         me = utils.get_person_or_org(request.user)
         activity = Activity.objects.get(id=int(aid))
         assert activity.examine_teacher == me
@@ -918,7 +918,7 @@ def offlineCheckinActivity(request: HttpRequest, aid):
         aid = int(aid)
         src = request.GET.get('src')
         activity = Activity.objects.get(id=aid)
-        assert me == activity.organization_id and user_type == "Organization"
+        assert me == activity.organization_id and user_type == UTYPE_ORG
     except:
         return redirect(message_url(wrong('请不要恶意访问其他网页！')))
 
