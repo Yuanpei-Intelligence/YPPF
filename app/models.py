@@ -1952,7 +1952,7 @@ class Pool(models.Model):
     title = models.CharField('名称', max_length=50)
     type = models.CharField('类型', choices=Type.choices, max_length=15)
     # 类型为兑换池时无效
-    re_entry_time = models.IntegerField('进入次数', default=1)
+    entry_time = models.IntegerField('进入次数', default=1)
     ticket_price = models.IntegerField('抽奖费', default=0)
     start = models.DateTimeField('开始时间')
     end = models.DateTimeField('结束时间', null=True, blank=True)
@@ -1968,8 +1968,9 @@ class PoolItem(models.Model):
     pool: Pool = models.ForeignKey(Pool, verbose_name='奖池', on_delete=models.CASCADE)
     prize: Prize = models.ForeignKey(Prize, verbose_name='奖品', on_delete=models.CASCADE)
     origin_num = models.IntegerField('初始数量')
-    reduce_num = models.IntegerField('已兑换', default=0)
+    consumed_num = models.IntegerField('已兑换', default=0)
     # pool 类型为兑换奖池时有效
+    exchange_limit = models.IntegerField('单人兑换上限', default=0)
     exchange_price = models.IntegerField('价格', null=True, blank=True)
 
 
