@@ -6,6 +6,7 @@ from django.db import transaction
 
 from datetime import datetime, timedelta
 import pymssql
+import copy
 import os
 
 
@@ -64,7 +65,7 @@ def update_records():
     """
     # 本地最新记录的时间
     latest_record_time = LendRecord.objects.aggregate(
-        Max('lend_time'))['lend_time__max']
+        Max('lend_time'))['lend_time__max'] + timedelta(seconds=1)
     if not latest_record_time:
         latest_record_time = datetime.now() - timedelta(days=3650)
     with pymssql.connect(server=os.environ["LIB_DB_HOST"],
@@ -72,16 +73,23 @@ def update_records():
                          password=os.environ["LIB_DB_PASSWORD"],
                          database=os.environ["LIB_DB"]) as conn:
         with conn.cursor(as_dict=True) as cursor:
-
+            # 新增借书记录
             cursor.execute(f'''SELECT ID,ReaderID,BarCode,LendTM,DueTm 
                                FROM LendHist 
                                WHERE LendTM > convert(datetime, '{latest_record_time.strftime('%Y-%m-%d %H:%M:%S')}')'''
-                           )
-            # 新增借书记录
+                           )   
+            results = copy.copy(cursor.fetchall())
             with transaction.atomic():
-                for row in cursor:
+                for row in results:
+                    bar_code = row['BarCode'].strip()[-6:]   
+                    # 根据BarCode查询书的编号
+                    cursor.execute(f"""SELECT MarcID FROM Items 
+                                       WHERE BarCode LIKE '{bar_code}%'""")
+                    book_id = cursor.fetchone()
+                    if not book_id:
+                        continue
+                    book_id = book_id['MarcID']      
                     reader_id = row['ReaderID']
-                    book_id = int(row['BarCode'].strip()[-6:])
                     if not (Book.objects.filter(id=book_id).exists()
                             and Reader.objects.filter(id=reader_id).exists()):
                         continue
