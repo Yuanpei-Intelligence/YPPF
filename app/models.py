@@ -82,6 +82,10 @@ __all__ = [
     'AcademicTagEntry',
     'AcademicTextEntry',
     'Chat',
+    'Prize',
+    'Pool',
+    'PoolItem',
+    'PoolRecord',
 ]
 
 # 兼容Django3.0及以下版本
