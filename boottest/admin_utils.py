@@ -2,14 +2,16 @@ from typing import Union
 from functools import wraps, update_wrapper
 
 from django.db import transaction
+from django.db.models import QuerySet
 from django.contrib import messages
-from django.contrib.admin import ModelAdmin
+from django.contrib.admin import ModelAdmin, SimpleListFilter
 from django.contrib.admin.options import InlineModelAdmin
 
 __all__ = [
     'as_display', 'as_action',
     'perms_check', 'need_all_perms',
     'readonly_inline',
+    'SimpleSignFilter', 'get_sign_filter',
 ]
 
 
@@ -145,3 +147,35 @@ def readonly_inline(inline_admin: InlineModelAdmin):
     inline_admin.has_change_permission = _check_failed
     inline_admin.has_delete_permission = _check_failed
     return inline_admin
+
+
+class SimpleSignFilter(SimpleListFilter):
+    '''子类必须以field定义筛选的字段，可以定义lookup_choices'''
+    title = '符号'
+    parameter_name = 'Sign'
+    field: str = NotImplemented
+
+    def lookups(self, request, model_admin):
+        return getattr(self, 'lookup_choices', (('+', '正'), ('-', '负'), ('=', '零'))) 
+    
+    def queryset(self, request, queryset: QuerySet):
+        if self.value() == '+':
+            return queryset.filter(**{self.field + '__gt': 0})
+        elif self.value() == '-':
+            return queryset.filter(**{self.field + '__lt': 0})
+        elif self.value() == '=':
+            return queryset.filter(**{self.field + '__exact': 0})
+        return queryset
+
+
+def get_sign_filter(field: str, title: str = None, param_name: str = None,
+                    choices: 'tuple[tuple[str, str]]' = None):
+    class SignFilter(SimpleSignFilter): pass
+    SignFilter.field = field
+    if title is not None:
+        SignFilter.title = title
+    if param_name is not None:
+        SignFilter.parameter_name = param_name
+    if choices is not None:
+        SignFilter.lookup_choices = choices
+    return SignFilter
