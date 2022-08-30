@@ -534,16 +534,12 @@ def audit_academic_map(author: NaturalPerson) -> None:
     """
     # 筛选所有待审核的记录
     entries = AcademicTagEntry.objects.activated().filter(
-        person=author, status=AcademicEntry.EntryStatus.WAIT_AUDIT)
-    for item in entries:
-        item.status = AcademicEntry.EntryStatus.PUBLIC
-        item.save()
+        person=author, status=AcademicEntry.EntryStatus.WAIT_AUDIT).update(
+        status=AcademicEntry.EntryStatus.PUBLIC)
 
     entries = AcademicTextEntry.objects.activated().filter(
-        person=author, status=AcademicEntry.EntryStatus.WAIT_AUDIT)
-    for item in entries:
-        item.status = AcademicEntry.EntryStatus.PUBLIC
-        item.save()
+        person=author, status=AcademicEntry.EntryStatus.WAIT_AUDIT).update(
+        status=AcademicEntry.EntryStatus.PUBLIC)
 
 
 def have_entries_of_type(author: NaturalPerson, status_in: list) -> bool:
