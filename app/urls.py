@@ -99,6 +99,7 @@ urlpatterns = [
     path("AcademicQA/", academic_views.showChats, name="showChats"),
     path("viewQA/<str:chat_id>", academic_views.viewChat, name="viewChat"),
     path("auditAcademic/", academic_views.auditAcademic, name="auditAcademic"),
+    path("applyAuditAcademic/", academic_views.applyAuditAcademic, name="applyAuditAcademic"),
 ] + [
     # 问答相关
     path("addChatComment/", chat_api.addChatComment, name="addChatComment"),
