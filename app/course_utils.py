@@ -853,7 +853,7 @@ def draw_lots():
                 status=CourseParticipant.Status.SUCCESS,
             ).values_list("person__person_id", flat=True)
             receivers = User.objects.filter(id__in=receivers)
-            sender = course.organization.organization_id
+            sender = course.organization.get_user()
             typename = Notification.Type.NEEDREAD
             title = Notification.Title.ACTIVITY_INFORM
             content = f"您好！您已成功选上课程《{course.name}》！"
@@ -1341,7 +1341,7 @@ def finish_course(course):
         receivers = User.objects.filter(id__in=receivers)
         bulk_notification_create(
             receivers=list(receivers),
-            sender=course.organization.organization_id,
+            sender=course.organization.get_user(),
             typename=Notification.Type.NEEDREAD,
             title=title,
             content=msg,

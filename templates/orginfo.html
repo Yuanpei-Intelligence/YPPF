@@ -679,7 +679,7 @@
         const { success } = await fetch(`/saveSubscribeStatus`, {
             headers: { "Content-Type": `text/plain` },
             method: `POST`,
-            body: JSON.stringify({ id: '{{org.organization_id.username}}', status }),
+            body: JSON.stringify({ id: '{{org.get_user.username}}', status }),
         })
             .then((res) => res.json())
             .catch(() => { success: false });

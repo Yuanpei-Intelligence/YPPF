@@ -122,8 +122,8 @@ def index(request: HttpRequest):
         try:
             user = User.objects.filter(username=username)
             if len(user) == 0:
-                org = Organization.objects.get(oname=username)  # 如果get不到，就是账号不存在了
-                user = org.organization_id
+                org: Organization = Organization.objects.get(oname=username)  # 如果get不到，就是账号不存在了
+                user = org.get_user()
                 username = user.username
             else:
                 user = user[0]
@@ -691,7 +691,7 @@ def requestLoginOrg(request: HttpRequest, name=None):  # 特指个人希望通�
         return redirect(message_url(wrong('无效的小组信息!')))
     else:  # 确认有无这个小组
         try:
-            org = Organization.objects.get(oname=name)
+            org: Organization = Organization.objects.get(oname=name)
         except:  # 找不到对应小组
             urls = "/stuinfo/?name=" + me.name + "&warn_code=1&warn_message=找不到对应小组,请联系管理员!"
             return redirect(urls)
@@ -705,7 +705,7 @@ def requestLoginOrg(request: HttpRequest, name=None):  # 特指个人希望通�
             return redirect(urls)
         # 到这里,是本人小组并且有权限登录
         auth.logout(request)
-        auth.login(request, org.organization_id)  # 切换到小组账号
+        auth.login(request, org.get_user())  # 切换到小组账号
         utils.update_related_account_in_session(request, user.username, oname=org.oname)
         if org.first_time_login:
             return redirect("/modpw/")
@@ -1991,65 +1991,6 @@ def saveSubscribeStatus(request: HttpRequest):
         me.save()
 
     return JsonResponse({"success": True})
-
-'''
-@login_required(redirect_field_name="origin")
-@utils.check_user_access(redirect_url="/logout/")
-@log.except_captured(source='views[apply_position]', record_user=True)
-def apply_position(request, oid=None):
-    """ apply for position in organization, including join, withdraw, transfer
-    Args:
-        - oid <str>: Organization ID in URL path, while actually is the ID of User.
-        - apply_type <str>: Application type, including "JOIN", "WITHDRAW", "TRANSFER".
-        - apply_pos <int>: Position applied for.
-    Return:
-        - Personal `/notification/` web page
-    """
-    valid, user_type, html_display = utils.check_user_type(request.user)
-    if user_type != "Person":
-        return redirect("/index/")
-
-    me = get_person_or_org(request.user, user_type)
-    user = User.objects.get(id=int(oid))
-    org = Organization.objects.get(organization_id=user)
-
-    if request.method == "GET":
-        apply_type = request.GET.get("apply_type", "JOIN")
-        apply_pos = int(request.GET.get("apply_pos", 10))
-    elif request.method == "POST":
-        apply_type = request.POST.get("apply_type", "JOIN")
-        apply_pos = int(request.POST.get("apply_pos", 10))
-
-    try:
-        apply_type, _ = Position.objects.create_application(
-            me, org, apply_type, apply_pos)
-    except Exception as e:
-        # print(e)
-        return redirect(f"/orginfo/?name={org.oname}&warn_code=1&warn_message={e}")
-
-    contents = [f"{apply_type}申请已提交审核", f"{apply_type}申请审核"]
-    notification_create(
-        me.person_id,
-        org.organization_id,
-        Notification.Type.NEEDREAD,
-        Notification.Title.POSITION_INFORM,
-        contents[0],
-        "/personnelMobilization/",
-        publish_to_wechat=True,  # 不要复制这个参数，先去看函数说明
-        publish_kws={'app': WechatApp.AUDIT, 'level': WechatMessageLevel.INFO},
-    )
-    notification_create(
-        org.organization_id,
-        me.person_id,
-        Notification.Type.NEEDDO,
-        Notification.Title.POSITION_INFORM,
-        contents[1],
-        "/personnelMobilization/",
-        publish_to_wechat=True,  # 不要复制这个参数，先去看函数说明
-        publish_kws={'app': WechatApp.AUDIT, 'level': WechatMessageLevel.IMPORTANT},
-    )
-    return redirect("/notifications/")
-'''
 
 
 @login_required(redirect_field_name="origin")

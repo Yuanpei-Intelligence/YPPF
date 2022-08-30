@@ -305,29 +305,22 @@ def modifyPosition(request: HttpRequest):
     position_id = request.GET.get("pos_id", None)
     if position_id is not None: # 如果存在对应小组
         try:
-            application = ModifyPosition.objects.get(id = position_id)
+            application: ModifyPosition = ModifyPosition.objects.get(id = position_id)
             # 接下来检查是否有权限check这个条目
             # 至少应该是申请人或者被申请小组之一
             if user_type == "Person" and application.person != me:
                 # 尝试获取已经新建的Position
-                html_display = utils.user_login_org(request,application.org)
-                if html_display['warn_code']==1:
-                    return redirect(
-                        "/welcome/" +
-                        "?warn_code=1&warn_message={warn_message}".format(
-                            warn_message=html_display["warn_message"]))
+                html_display = utils.user_login_org(request, application.org)
+                if html_display['warn_code'] == 1:
+                    return redirect(message_url(html_display))
                 else:
                     #防止后边有使用，因此需要赋值
-                    user_type = "Organization"
-                    request.user=application.org.organization_id
+                    user_type = UTYPE_ORG
+                    request.user = application.org.get_user()
                     me = application.org
             assert (application.org == me) or (application.person == me)
         except: #恶意跳转
-            html_display["warn_code"] = 1
-            html_display["warn_message"] = "您没有权限访问该网址！"
-            return redirect("/welcome/" +
-                            "?warn_code=1&warn_message={warn_message}".format(
-                                warn_message=html_display["warn_message"]))
+            return redirect(message_url(wrong("您没有权限访问该网址！")))
         is_new_application = False # 前端使用量, 表示是老申请还是新的
         applied_org = application.org
 
@@ -388,9 +381,11 @@ def modifyPosition(request: HttpRequest):
             allow_comment = True if (not is_new_application) and (
                 application.is_pending()) else False
             if not allow_comment:   # 存在不合法的操作
-                return redirect(
-                    "/welcome/?warn_code=1&warn_message=存在不合法操作,请与管理员联系!")
-            context = addComment(request, application, application.org.organization_id if user_type == 'Person' else application.person.person_id)
+                return redirect(message_url("存在不合法操作,请与管理员联系!"))
+            context = addComment(request, application,
+                                 application.org.get_user()
+                                 if user_type == 'Person' else
+                                 application.person.get_user())
 
         # 准备用户提示量
         html_display["warn_code"] = context["warn_code"]

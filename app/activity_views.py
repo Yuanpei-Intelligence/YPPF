@@ -580,7 +580,7 @@ def addActivity(request: HttpRequest, aid=None):
                 else: # 成功以小组账号登陆
                     # 防止后边有使用，因此需要赋值
                     user_type = "Organization"
-                    request.user = activity.organization_id.organization_id #小组对应user
+                    request.user = activity.organization_id.get_user() #小组对应user
                     me = activity.organization_id #小组
             if activity.organization_id != me:
                 return redirect(message_url(wrong("无法修改其他小组的活动!")))
@@ -817,7 +817,7 @@ def examineActivity(request: HttpRequest, aid):
 
         if request.POST.get("comment_submit"):
             try:
-                context = addComment(request, activity, activity.organization_id.organization_id)
+                context = addComment(request, activity, activity.organization_id.get_user())
                 # 评论内容不为空，上传文件类型为图片会在前端检查，这里有错直接跳转
                 assert context["warn_code"] == 2
                 html_display["warn_message"] = "评论成功。"
@@ -879,7 +879,6 @@ def examineActivity(request: HttpRequest, aid):
         no_limit = True
     examine_teacher = activity.examine_teacher.name
     html_display["today"] = datetime.now().strftime("%Y-%m-%d")
-    # html_display["app_avatar_path"] = utils.get_user_ava(activity.organization_id,"Organization")h
     html_display["app_avatar_path"] = activity.organization_id.get_user_ava()
     html_display["applicant_name"] = activity.organization_id.oname
     bar_display = utils.get_sidebar_and_navbar(request.user)

@@ -154,7 +154,7 @@ def add_week_course_activity(course_id: int, weektime_id: int, cur_week: int ,co
     """
     添加每周的课程活动
     """
-    course = Course.objects.get(id=course_id)
+    course: Course = Course.objects.get(id=course_id)
     examine_teacher = NaturalPerson.objects.get_teacher(
         get_setting("course/audit_teacher"))
     # 当前课程在学期已举办的活动
@@ -247,7 +247,7 @@ def add_week_course_activity(course_id: int, weektime_id: int, cur_week: int ,co
 
     notification_create(
         receiver=examine_teacher.person_id,
-        sender=course.organization.organization_id,
+        sender=course.organization.get_user(),
         typename=Notification.Type.NEEDDO,
         title=Notification.Title.VERIFY_INFORM,
         content="新增了一个已审批的课程活动",
@@ -306,9 +306,10 @@ def public_feedback_per_hour():
         feedbacks.select_for_update().update(
             public_status=Feedback.PublicStatus.PUBLIC)
         for feedback in feedbacks:
+            feedback: Feedback
             notification_create(
-                receiver=feedback.person.person_id,
-                sender=feedback.org.otype.incharge.person_id,
+                receiver=feedback.person.get_user(),
+                sender=feedback.org.otype.incharge.get_user(),
                 typename=Notification.Type.NEEDREAD,
                 title="反馈状态更新",
                 content=f"您的反馈[{feedback.title}]已被公开",
@@ -318,8 +319,8 @@ def public_feedback_per_hour():
                 publish_kws={'app': WechatApp.AUDIT, 'level': WechatMessageLevel.INFO},
             )
             notification_create(
-                receiver=feedback.org.organization_id,
-                sender=feedback.org.otype.incharge.person_id,
+                receiver=feedback.org.get_user(),
+                sender=feedback.org.otype.incharge.get_user(),
                 typename=Notification.Type.NEEDREAD,
                 title="反馈状态更新",
                 content=f"您处理的反馈[{feedback.title}]已被公开",
