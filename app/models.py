@@ -292,7 +292,7 @@ class NaturalPerson(models.Model):
         verbose_name_plural = verbose_name
 
     # Common Attributes
-    person_id = models.OneToOneField(to=User, on_delete=models.CASCADE)
+    person_id: User = models.OneToOneField(to=User, on_delete=models.CASCADE)
 
     # 不要在任何地方使用此字段，建议先删除unique进行迁移，然后循环调用save
     stu_id_dbonly = models.CharField("学号——仅数据库", max_length=150,
@@ -599,7 +599,7 @@ class Organization(models.Model):
         verbose_name = "0.小组"
         verbose_name_plural = verbose_name
 
-    organization_id = models.OneToOneField(to=User, on_delete=models.CASCADE)
+    organization_id: User = models.OneToOneField(to=User, on_delete=models.CASCADE)
     oname = models.CharField(max_length=32, unique=True)
     otype: OrganizationType = models.ForeignKey(OrganizationType, on_delete=models.CASCADE)
     status = models.BooleanField("激活状态", default=True)  # 表示一个小组是否上线(或者是已经被下线)

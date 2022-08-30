@@ -704,15 +704,16 @@ def get_promote_receiver(org, alpha=0.1, beta=0.1):
     # 初始化概率列表、tag比重列表
     delta_lst = []
     # org的tag列表
-    org_tags = list(org.tags.all())
+    org_tags: QuerySet[OrganizationTag] = org.tags.all()
     for np in raw_np_lst:
         Max = 0.0
-        for organization in Organization.objects.activated().all():
+        for organization in Organization.objects.activated().exclude(
+                id__in=np.unsubscribe_list.all()):
             # organization的tag列表
             organization_tags = list(organization.tags.all())
-            if (len(organization_tags) > 0) and (not organization in np.unsubscribe_list):
-                Max = max(Max, beta * len([ \
-                    tag for tag in org_tags if tag in organization_tags \
+            if len(organization_tags):
+                Max = max(Max, beta * len([
+                    tag for tag in org_tags if tag in organization_tags
                 ]) / len(organization_tags))
         delta_lst.append(Max)
     prob_lst = [alpha + delta for delta in delta_lst]
