@@ -77,18 +77,18 @@ def update_records():
             cursor.execute(f'''SELECT ID,ReaderID,BarCode,LendTM,DueTm 
                                FROM LendHist 
                                WHERE LendTM > convert(datetime, '{latest_record_time.strftime('%Y-%m-%d %H:%M:%S')}')'''
-                           )   
+                           )
             results = copy.copy(cursor.fetchall())
             with transaction.atomic():
                 for row in results:
-                    bar_code = row['BarCode'].strip()[-6:]   
+                    bar_code = row['BarCode'].strip()[-6:]
                     # 根据BarCode查询书的编号
                     cursor.execute(f"""SELECT MarcID FROM Items 
                                        WHERE BarCode LIKE '{bar_code}%'""")
                     book_id = cursor.fetchone()
                     if not book_id:
                         continue
-                    book_id = book_id['MarcID']      
+                    book_id = book_id['MarcID']
                     reader_id = row['ReaderID']
                     if not (Book.objects.filter(id=book_id).exists()
                             and Reader.objects.filter(id=reader_id).exists()):
@@ -118,14 +118,16 @@ def update_records():
                                FROM LendHist 
                                WHERE ID IN ({unreturned_record_id})''')
 
+            updated_records = []
             for row in cursor:
                 record = unreturned_records.get(id=row['ID'])
                 record.returned = True if row['IsReturn'] == 1 else False
                 record.return_time = row['ReturnTime']
+                updated_records.append(record)
 
             with transaction.atomic():
                 LendRecord.objects.bulk_update(
-                    unreturned_records,
+                    updated_records,
                     fields=['returned', 'return_time'],
                 )
 
