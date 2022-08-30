@@ -13,7 +13,6 @@ models.py
 @Author pht
 @Date 2022-08-19
 '''
-from typing import Optional
 import pypinyin
 from django.db import models
 from django.contrib.auth.models import AbstractUser
@@ -24,6 +23,7 @@ from django.db.models import QuerySet
 __all__ = [
     'User',
     'CreditRecord',
+    'YQPointRecord',
 ]
 
 
