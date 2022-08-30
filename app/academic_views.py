@@ -273,8 +273,13 @@ def auditAcademic(request: HttpRequest) -> HttpResponse:
 @utils.check_user_access(redirect_url="/logout/")
 @log.except_captured(EXCEPT_REDIRECT, source='academic_views[applyAuditAcademic]', record_user=True)
 def applyAuditAcademic(request: HttpRequest):
-    author = NaturalPerson.objects.get(person_id_id=request.POST.get("author_id"))
-    # 需要回传作者的person_id.id
-    audit_academic_map(author)
-    return JsonResponse({})
+    if not NaturalPerson.objects.get_by_user(HttpRequest.user).is_teacher():
+        return JsonResponse(wrong("只有老师才能执行审核操作！"))
+    try:
+        author = NaturalPerson.objects.get(person_id_id=request.POST.get("author_id"))
+        # 需要回传作者的person_id.id
+        audit_academic_map(author)
+        return JsonResponse(succeed("审核成功！"))
+    except:
+        return JsonResponse(wrong("审核发布时发生未知错误，请联系管理员！"))
 

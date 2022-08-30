@@ -1759,6 +1759,7 @@
     }
 
     function confirmAuditAcademic(a) { //审核该页面的学术地图
+        {% if academic_params.user_type == "inspector" %}
         confirm_res = confirm(`确认允许发布？`);
         if (confirm_res == 0){
             return;
@@ -1770,11 +1771,18 @@
                 action: "auditMap",
                 author_id: {{ academic_params.author_id }},
             },
-            success: function () {
-                $(window).attr("location","/auditAcademic/");
+            success: function (context) {
+                if(context.warn_code == 2){
+                    $(window).attr("location","/auditAcademic/");
+                }
+                else{
+                    alert(context.warn_message);
+                }
             }
         })
+        {% endif %}
     }
+
 </script>
 
 {% endblock %}
