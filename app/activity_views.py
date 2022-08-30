@@ -117,11 +117,9 @@ def viewActivity(request: HttpRequest, aid=None):
                 with transaction.atomic():
                     activity = Activity.objects.select_for_update().get(id=aid)
                     cancel_activity(request, activity)
-                    html_display["warn_code"] = 2
-                    html_display["warn_message"] = "成功取消活动。"
+                    succeed("成功取消活动。", html_display)
             except ActivityException as e:
-                html_display["warn_code"] = 1
-                html_display["warn_message"] = str(e)
+                wrong(str(e), html_display)
             except Exception as e:
                 log.record_traceback(request, e)
                 return EXCEPT_REDIRECT
@@ -135,11 +133,9 @@ def viewActivity(request: HttpRequest, aid=None):
             if activity.status == Activity.Status.WAITING:
                 if activity.start + timedelta(hours=1) < datetime.now():
                     return redirect(f"/editActivity/{aid}")
-                html_display["warn_code"] = 1
-                html_display["warn_message"] = f"距离活动开始前1小时内将不再允许修改活动。如确有雨天等意外情况，请及时取消活动，收取的元气值将会退还。"
+                wrong(f"距离活动开始前1小时内将不再允许修改活动。如确有雨天等意外情况，请及时取消活动。", html_display)
             else:
-                html_display["warn_code"] = 1
-                html_display["warn_message"] = f"活动状态为{activity.status}, 不能修改。"
+                wrong(f"活动状态为{activity.status}, 不能修改。", html_display)
 
         elif option == "apply":
             try:
@@ -149,13 +145,11 @@ def viewActivity(request: HttpRequest, aid=None):
                         return redirect(message_url(wrong('活动不在报名状态!'), request.path))
                     applyActivity(request, activity)
                     if activity.bidding:
-                        html_display["warn_message"] = f"活动申请中，请等待报名结果。"
+                        succeed(f"活动申请中，请等待报名结果。", html_display)
                     else:
-                        html_display["warn_message"] = f"报名成功。"
-                    html_display["warn_code"] = 2
+                        succeed(f"报名成功。", html_display)
             except ActivityException as e:
-                html_display["warn_code"] = 1
-                html_display["warn_message"] = str(e)
+                wrong(str(e), html_display)
             except Exception as e:
                 log.record_traceback(request, e)
                 return EXCEPT_REDIRECT
