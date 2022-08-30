@@ -39,6 +39,7 @@ models.py
 from django.db import models, transaction
 from django_mysql.models import ListCharField
 from generic.models import User
+from generic.models import invalid_for_frontend, necessary_for_frontend
 from django.db.models import Q, QuerySet
 from django.db.models.signals import post_save
 from datetime import datetime, timedelta
@@ -287,7 +288,7 @@ class NaturalPersonManager(models.Manager):
 
 class NaturalPerson(models.Model):
     class Meta:
-        verbose_name = "自然人"
+        verbose_name = "0.自然人"
         verbose_name_plural = verbose_name
 
     # Common Attributes
@@ -452,7 +453,7 @@ class NaturalPerson(models.Model):
 
 class Freshman(models.Model):
     class Meta:
-        verbose_name = "新生信息"
+        verbose_name = "0.新生信息"
         verbose_name_plural = verbose_name
 
     sid = models.CharField("学号", max_length=20, unique=True)
@@ -477,7 +478,7 @@ class Freshman(models.Model):
 
 class OrganizationType(models.Model):
     class Meta:
-        verbose_name = "小组类型"
+        verbose_name = "1.小组类型"
         verbose_name_plural = verbose_name
         ordering = ["otype_name"]
 
@@ -557,7 +558,7 @@ class Semester(models.TextChoices):
 
 class OrganizationTag(models.Model):
     class Meta:
-        verbose_name = "组织类型标签"
+        verbose_name = "1.组织类型标签"
         verbose_name_plural = verbose_name
     class ColorChoice(models.TextChoices):
         grey = ("#C1C1C1", "灰色")
@@ -595,7 +596,7 @@ class OrganizationManager(models.Manager):
 
 class Organization(models.Model):
     class Meta:
-        verbose_name = "小组"
+        verbose_name = "0.小组"
         verbose_name_plural = verbose_name
 
     organization_id = models.OneToOneField(to=User, on_delete=models.CASCADE)
@@ -728,7 +729,7 @@ class Position(models.Model):
     """
 
     class Meta:
-        verbose_name = "职务"
+        verbose_name = "1.职务"
         verbose_name_plural = verbose_name
 
     person: NaturalPerson = models.ForeignKey(
@@ -907,7 +908,7 @@ class CommentBase(models.Model):
     @Date 2022-03-11
     '''
     class Meta:
-        verbose_name = "带有评论"
+        verbose_name = "2.带有评论"
         verbose_name_plural = verbose_name
 
     id = models.AutoField(primary_key=True)  # 自增ID，标识唯一的基类信息
@@ -926,7 +927,7 @@ class CommentBase(models.Model):
 
 class Activity(CommentBase):
     class Meta:
-        verbose_name = "活动"
+        verbose_name = "3.活动"
         verbose_name_plural = verbose_name
 
     """
@@ -1088,7 +1089,7 @@ class Activity(CommentBase):
 
 class ActivityPhoto(models.Model):
     class Meta:
-        verbose_name = "活动图片"
+        verbose_name = "3.活动图片"
         verbose_name_plural = verbose_name
         ordering = ["-time"]
 
@@ -1119,7 +1120,7 @@ class ParticipantManager(models.Manager):
 
 class Participant(models.Model):
     class Meta:
-        verbose_name = "活动参与情况"
+        verbose_name = "3.活动参与情况"
         verbose_name_plural = verbose_name
         ordering = ["activity_id"]
 
@@ -1150,7 +1151,7 @@ class NotificationManager(models.Manager):
 
 class Notification(models.Model):
     class Meta:
-        verbose_name = "通知消息"
+        verbose_name = "o.通知消息"
         verbose_name_plural = verbose_name
         ordering = ["id"]
 
@@ -1211,7 +1212,7 @@ class Notification(models.Model):
 
 class Comment(models.Model):
     class Meta:
-        verbose_name = "评论"
+        verbose_name = "2.评论"
         verbose_name_plural = verbose_name
         ordering = ["-time"]
 
@@ -1226,7 +1227,7 @@ class Comment(models.Model):
 
 class CommentPhoto(models.Model):
     class Meta:
-        verbose_name = "评论图片"
+        verbose_name = "2.评论图片"
         verbose_name_plural = verbose_name
 
     image = models.ImageField(
@@ -1243,7 +1244,7 @@ class CommentPhoto(models.Model):
 
 class ModifyOrganization(CommentBase):
     class Meta:
-        verbose_name = "新建小组"
+        verbose_name = "1.新建小组"
         verbose_name_plural = verbose_name
         ordering = ["-modify_time", "-time"]
 
@@ -1302,7 +1303,7 @@ class ModifyOrganization(CommentBase):
 
 class ModifyPosition(CommentBase):
     class Meta:
-        verbose_name = "成员申请详情"
+        verbose_name = "1.成员申请详情"
         verbose_name_plural = verbose_name
         ordering = ["-modify_time", "-time"]
 
@@ -1411,8 +1412,8 @@ class Help(models.Model):
     content = models.TextField("帮助内容", max_length=500)
 
     class Meta:
-        verbose_name = "页面帮助"
-        verbose_name_plural = "页面帮助"
+        verbose_name = "~A.页面帮助"
+        verbose_name_plural = verbose_name
 
     def __str__(self) -> str:
         return self.title
@@ -1420,7 +1421,7 @@ class Help(models.Model):
 
 class Wishes(models.Model):
     class Meta:
-        verbose_name = "心愿"
+        verbose_name = "~A.心愿"
         verbose_name_plural = verbose_name
         ordering = ["-time"]
 
@@ -1440,7 +1441,7 @@ class Wishes(models.Model):
 class ModifyRecord(models.Model):
     # 仅用作记录，之后大概会删除吧，所以条件都设得很宽松
     class Meta:
-        verbose_name = "修改记录"
+        verbose_name = "~R.修改记录"
         verbose_name_plural = verbose_name
         ordering = ["-time"]
     user: User = models.ForeignKey(User, on_delete=models.SET_NULL,
@@ -1485,7 +1486,7 @@ class Course(models.Model):
     助教发布课程需要填写的信息
     """
     class Meta:
-        verbose_name = "书院课程"
+        verbose_name = "4.书院课程"
         verbose_name_plural = verbose_name
         ordering = ["id"]
 
@@ -1562,8 +1563,9 @@ class Course(models.Model):
     def save(self, *args, **kwargs):
         super().save(*args, **kwargs)
 
+    @invalid_for_frontend
     def __str__(self):
-        return self.name
+        return f'{self.name}_{self.year}{self.get_semester_display()}'
 
     def get_photo_path(self):
         # 暂不要求课程的宣传图片必须存在 报错更令人烦恼
@@ -1578,7 +1580,7 @@ class CourseTime(models.Model):
     记录课程每周的上课时间，同一课程可以对应多个上课时间
     """
     class Meta:
-        verbose_name = "上课时间"
+        verbose_name = "4.上课时间"
         verbose_name_plural = verbose_name
         ordering = ["start"]
 
@@ -1599,7 +1601,7 @@ class CourseParticipant(models.Model):
     学生的选课情况
     """
     class Meta:
-        verbose_name = "课程报名情况"
+        verbose_name = "4.课程报名情况"
         verbose_name_plural = verbose_name
 
     course: Course = models.ForeignKey(Course,
@@ -1644,7 +1646,7 @@ class CourseRecord(models.Model):
     学时表
     """
     class Meta:
-        verbose_name = "学时表"
+        verbose_name = "4.学时表"
         verbose_name_plural = verbose_name
 
     person: NaturalPerson = models.ForeignKey(
@@ -1679,7 +1681,7 @@ class CourseRecord(models.Model):
 class PageLog(models.Model):
     # 统计Page类埋点数据(PV/PD)
     class Meta:
-        verbose_name = "Page类埋点记录"
+        verbose_name = "~R.Page类埋点记录"
         verbose_name_plural = verbose_name
 
     class CountType(models.IntegerChoices):
@@ -1699,7 +1701,7 @@ class PageLog(models.Model):
 class ModuleLog(models.Model):
     # 统计Module类埋点数据(MV/MC)
     class Meta:
-        verbose_name = "Module类埋点记录"
+        verbose_name = "~R.Module类埋点记录"
         verbose_name_plural = verbose_name
 
     class CountType(models.IntegerChoices):
@@ -1719,7 +1721,7 @@ class ModuleLog(models.Model):
 
 class FeedbackType(models.Model):
     class Meta:
-        verbose_name = "反馈类型"
+        verbose_name = "#EX.反馈类型"
         verbose_name_plural = verbose_name
 
     id = models.SmallIntegerField("反馈类型编号", primary_key=True)
@@ -1744,7 +1746,7 @@ class FeedbackType(models.Model):
 
 class Feedback(CommentBase):
     class Meta:
-        verbose_name = "反馈"
+        verbose_name = "#EX.反馈"
         verbose_name_plural = verbose_name
 
     type: FeedbackType = models.ForeignKey(FeedbackType, on_delete=models.CASCADE)
@@ -1827,7 +1829,7 @@ class Feedback(CommentBase):
 ####  学术地图相关模型
 class AcademicTag(models.Model):
     class Meta:
-        verbose_name = "学术地图标签"
+        verbose_name = "P.学术地图标签"
         verbose_name_plural = verbose_name
 
     class AcademicTagType(models.IntegerChoices):
@@ -1867,7 +1869,7 @@ class AcademicEntry(models.Model):
 
 class AcademicTagEntry(AcademicEntry):
     class Meta:
-        verbose_name = "学术地图标签项目"
+        verbose_name = "P.学术地图标签项目"
         verbose_name_plural = verbose_name
     
     tag = models.ForeignKey(AcademicTag, on_delete=models.CASCADE)
@@ -1879,7 +1881,7 @@ class AcademicTagEntry(AcademicEntry):
 
 class AcademicTextEntry(AcademicEntry):
     class Meta:
-        verbose_name = "学术地图文本项目"
+        verbose_name = "P.学术地图文本项目"
         verbose_name_plural = verbose_name
 
     class AcademicTextType(models.IntegerChoices):
@@ -1907,7 +1909,7 @@ class Chat(CommentBase):
     应用于学术地图的QA功能
     """
     class Meta:
-        verbose_name = "对话"
+        verbose_name = "2.对话"
         verbose_name_plural = verbose_name
     
     questioner: User = models.ForeignKey(User, on_delete=models.CASCADE,
@@ -1931,7 +1933,7 @@ class Chat(CommentBase):
 
 class Prize(models.Model):
     class Meta:
-        verbose_name = '奖品'
+        verbose_name = '5.奖品'
         verbose_name_plural = verbose_name
 
     name = models.CharField('名称', max_length=50)
@@ -1943,7 +1945,7 @@ class Prize(models.Model):
 
 class Pool(models.Model):
     class Meta:
-        verbose_name = '奖池'
+        verbose_name = '5.奖池'
         verbose_name_plural = verbose_name
 
     class Type(models.TextChoices):
@@ -1966,7 +1968,7 @@ class Pool(models.Model):
 
 class PoolItem(models.Model):
     class Meta:
-        verbose_name = '奖池奖品'
+        verbose_name = '5.奖池奖品'
         verbose_name_plural = verbose_name
 
     pool: Pool = models.ForeignKey(Pool, verbose_name='奖池', on_delete=models.CASCADE)
@@ -1980,7 +1982,7 @@ class PoolItem(models.Model):
 
 class PoolRecord(models.Model):
     class Meta:
-        verbose_name = '奖池记录'
+        verbose_name = '5.奖池记录'
         verbose_name_plural = verbose_name
 
     class Status(models.TextChoices):

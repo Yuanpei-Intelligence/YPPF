@@ -1388,7 +1388,7 @@ def download_course_record(course: Course=None, year: int=None, semester: Semest
     if course is not None:
         # 助教下载自己课程的学时
         records = CourseRecord.objects.filter(**filter_kws)
-        file_name = f'{course}-{ctime}'
+        file_name = f'{course.name}-{ctime}'
     else:
         # 设置明细和汇总两个sheet的相关信息
         total_sheet = wb.create_sheet('汇总', 0)
