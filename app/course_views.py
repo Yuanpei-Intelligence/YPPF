@@ -68,7 +68,7 @@ def editCourseActivity(request: HttpRequest, aid: int):
     except:
         return redirect(message_url(wrong("活动不存在!")))
 
-    if user_type == "Person":
+    if user_type == UTYPE_PER:
         my_messages.transfer_message_context(
             utils.user_login_org(request, activity.organization_id),
             html_display,
@@ -145,7 +145,7 @@ def addSingleCourseActivity(request: HttpRequest):
     # 检查用户身份
     valid, user_type, html_display = utils.check_user_type(request.user)
     me = utils.get_person_or_org(request.user, user_type)  # 这里的me应该为小组账户
-    if user_type != "Organization" or me.otype.otype_name != COURSE_TYPENAME:
+    if user_type != UTYPE_ORG or me.otype.otype_name != COURSE_TYPENAME:
         return redirect(message_url(wrong('书院课程小组账号才能开设课程活动!')))
     if me.oname == YQP_ONAME:
         return redirect("/showActivity/")  # TODO: 可以重定向到书院课程聚合页面
@@ -202,7 +202,7 @@ def showCourseActivity(request: HttpRequest):
     _, user_type, html_display = utils.check_user_type(request.user)
     me = get_person_or_org(request.user, user_type)  # 获取自身
 
-    if user_type != "Organization" or me.otype.otype_name != COURSE_TYPENAME:
+    if user_type != UTYPE_ORG or me.otype.otype_name != COURSE_TYPENAME:
         return redirect(message_url(wrong('只有书院课程组织才能查看此页面!')))
     my_messages.transfer_message_context(request.GET, html_display)
 
@@ -303,7 +303,7 @@ def showCourseRecord(request: HttpRequest) -> HttpResponse:
     # ----身份检查----
     _, user_type, _ = utils.check_user_type(request.user)
     me = utils.get_person_or_org(request.user)  # 获取自身
-    if user_type == "Person":
+    if user_type == UTYPE_PER:
         return redirect(message_url(wrong('学生账号不能访问此界面！')))
     if me.otype.otype_name != COURSE_TYPENAME:
         return redirect(message_url(wrong('非书院课程组织账号不能访问此界面！')))
@@ -460,7 +460,7 @@ def selectCourse(request: HttpRequest):
     valid, user_type, html_display = utils.check_user_type(request.user)
     me = get_person_or_org(request.user, user_type)
 
-    if user_type == "Organization":
+    if user_type == UTYPE_ORG:
         return redirect(message_url(wrong("组织账号无法访问书院选课页面。如需选课，请切换至个人账号；如需查看您发起的书院课程，请点击【我的课程】。")))
 
     is_student = (me.identity == NaturalPerson.Identity.STUDENT)
@@ -594,7 +594,7 @@ def addCourse(request: HttpRequest, cid=None):
     # assert valid  已经在check_user_access检查过了
     me = utils.get_person_or_org(request.user, user_type) # 这里的me应该为小组账户
     if cid is None:
-        if user_type != "Organization" or me.otype.otype_name != COURSE_TYPENAME:
+        if user_type != UTYPE_ORG or me.otype.otype_name != COURSE_TYPENAME:
             return redirect(message_url(wrong('书院课程账号才能发起课程!')))
         #暂时仅支持一个课程账号一学期只能开一门课
         courses = Course.objects.activated().filter(organization=me)
@@ -728,7 +728,7 @@ def outputSelectInfo(request: HttpRequest):
     valid, user_type, html_display = utils.check_user_type(request.user)
     me = utils.get_person_or_org(request.user, user_type)
     try:
-        assert (user_type == "Organization"
+        assert (user_type == UTYPE_ORG
                 and me.otype.otype_name == COURSE_TYPENAME), '只有书院课程账号才能下载选课名单!'
         # 暂时仅支持一个课程账号一学期只能开一门课
         courses = Course.objects.activated().filter(organization=me)

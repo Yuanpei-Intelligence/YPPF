@@ -37,7 +37,7 @@ def days_reminder(days: int, alert_msg: str):
         returned=False,
         due_time__gt=cr_time - timedelta(days=days, hours=1),
         due_time__lte=cr_time - timedelta(days=days))
-    sender = Organization.objects.get(oname="何善衡图书室").organization_id
+    sender = Organization.objects.get(oname="何善衡图书室").get_user()
     URL = "/lendinfo/"
     typename = Notification.Type.NEEDREAD
     

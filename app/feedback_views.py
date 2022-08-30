@@ -57,14 +57,14 @@ def viewFeedback(request: HttpRequest, fid):
             anonymous = False
             # 确定通知消息的发送人，互相发送给对方
             if user_type == UTYPE_PER and feedback.person == me:
-                receiver = feedback.org.organization_id
+                receiver = feedback.org.get_user()
                 anonymous = True
             elif user_type == UTYPE_ORG and feedback.org == me:
                 receiver = feedback.person.person_id
             # 老师可以评论，给双方发送通知消息
             elif user_type == UTYPE_PER and me.is_teacher():
                 receiver = [
-                    feedback.org.organization_id,
+                    feedback.org.get_user(),
                     feedback.person.person_id,
                 ]
             # 其他人没有评论权限

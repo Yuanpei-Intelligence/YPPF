@@ -371,7 +371,7 @@ def notification2Display(notification_set):
     sender_orgs = Organization.objects.filter(
         organization_id__in=sender_userids).values_list('organization_id', 'oname')
     sender_orgs = {userid: name for userid, name in sender_orgs}
-    # 储存这个列表中所有record的元气值的和
+
     for notification in notification_set:
         note_display = {}
 
@@ -394,7 +394,7 @@ def notification2Display(notification_set):
 
 
         _, user_type, _ = check_user_type(notification.sender)
-        if user_type == "Organization":
+        if user_type == UTYPE_ORG:
             note_display["sender"] = sender_orgs.get(
                 notification.sender_id
             ) if not notification.anonymous_flag else "匿名者"

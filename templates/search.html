@@ -66,19 +66,6 @@
                                         <tbody>
                                             {% for person in people_list %}
                                             <tr>
-                                                <!--
-                                                <td><a
-                                                        href="{{person.get_absolute_url}}">{{person.name}}</a>
-                                                </td>
-                                                <td>{{person.pgender}}</td>
-                                                <td>{{person.pyear}}</td>
-                                                <td class="text-center">{{person.pmajor}}</td>
-                                                <td>
-                                                    <center><a class="btn btn-secondary"
-                                                            href=../../?origin=/transPage/{{person.person_id}}
-                                                            role="button">向Ta发起元气值转账</a></center>
-                                                </td>
-                                                -->
                                                 <!-- <td class="text-center"><span class="badge badge-success">元培学生</span></td> -->
                                                 {% for attribute in person.show_info %}
 
@@ -262,7 +249,7 @@
 
                                                 <td style="min-width: 80px;">
                                                     <u>
-                                                        <a href="/orginfo/?name={{ act.organization_id }}">
+                                                        <a href="{{ act.organization_id.get_absolute_url }}">
                                                             <img src="{{ act.organization_id.get_user_ava }}" alt="大头照" style="width: 20px; height: 20px;">
                                                             {{ act.organization_id }}
                                                         </a>
