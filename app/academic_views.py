@@ -259,7 +259,7 @@ def auditAcademic(request: HttpRequest) -> HttpResponse:
     """
     # 身份检查
     person = get_person_or_org(request.user)
-    if not person.is_teacher():
+    if not (person.get_type() == UTYPE_PER and person.is_teacher()):
         return redirect(message_url(wrong('只有教师账号可进入学术地图审核页面!')))
 
     frontend_dict = {}
@@ -273,7 +273,7 @@ def auditAcademic(request: HttpRequest) -> HttpResponse:
 @utils.check_user_access(redirect_url="/logout/")
 @log.except_captured(EXCEPT_REDIRECT, source='academic_views[applyAuditAcademic]', record_user=True)
 def applyAuditAcademic(request: HttpRequest):
-    if not NaturalPerson.objects.get_by_user(HttpRequest.user).is_teacher():
+    if not NaturalPerson.objects.get_by_user(request.user).is_teacher():
         return JsonResponse(wrong("只有老师才能执行审核操作！"))
     try:
         author = NaturalPerson.objects.get(person_id_id=request.POST.get("author_id"))
