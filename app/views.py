@@ -759,8 +759,11 @@ def orginfo(request: HttpRequest, name=None):
 
     # 判断是否为小组账户本身在登录
     html_display["is_myself"] = me == org
-    html_display["is_course_org"] = Course.objects.activated().filter(organization=me).exists()
-    html_display["is_person"] = user_type == "Person"
+    html_display["is_person"] = user_type == UTYPE_PER
+    html_display["is_course_org"] = (
+        isinstance(me, Organization) and
+        Course.objects.activated().filter(organization=me).exists()
+    )
     inform_share, alert_message = utils.get_inform_share(me=me, is_myself=html_display["is_myself"])
 
     organization_name = name
