@@ -65,9 +65,12 @@ def update_records():
     """
     # 本地最新记录的时间
     latest_record_time = LendRecord.objects.aggregate(
-        Max('lend_time'))['lend_time__max'] + timedelta(seconds=1)
+        Max('lend_time'))['lend_time__max']
     if not latest_record_time:
         latest_record_time = datetime.now() - timedelta(days=3650)
+    else:
+        latest_record_time += timedelta(seconds=1)
+
     with pymssql.connect(server=os.environ["LIB_DB_HOST"],
                          user=os.environ["LIB_DB_USER"],
                          password=os.environ["LIB_DB_PASSWORD"],
