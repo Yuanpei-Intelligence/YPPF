@@ -136,3 +136,9 @@ def update_records():
 
     # 发送还书提醒
     bookreturn_notification()
+
+
+def update_lib_data():
+    update_reader()
+    update_book()
+    update_records()
