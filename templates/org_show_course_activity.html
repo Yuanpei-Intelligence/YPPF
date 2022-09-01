@@ -131,12 +131,12 @@
                                                                         <a class="dropdown-item"
                                                                             href="/editCourseActivity/{{act.id}}">修改活动</a>
                                                                         <!-- Dropdown item trigger modal -->
-                                                                        <a class="dropdown-item" data-toggle="modal" data-target="#cancelActivityModal">取消活动</a>
+                                                                        <a class="dropdown-item" data-toggle="modal" data-target="#cancelActivityModal{{act.id}}">取消活动</a>
                                                                     </div>
                                                                 </div>
                                                             </div>
                                                             <!-- BEIGN cancelActivityModal -->
-                                                            <div class="modal fade" id="cancelActivityModal" tabindex="-1" role="dialog" aria-labelledby="cancelActivityModalLabel" aria-hidden="true">
+                                                            <div class="modal fade" id="cancelActivityModal{{act.id}}" tabindex="-1" role="dialog" aria-labelledby="cancelActivityModalLabel" aria-hidden="true">
                                                                 <div class="modal-dialog modal-dialog-centered" role="document">
                                                                     <div class="modal-content">
                                                                         <div class="modal-header">

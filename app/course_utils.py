@@ -360,11 +360,11 @@ def modify_course_activity(request: HttpRequest, activity: Activity):
     #         f"活动开始时间调整为{activity.start.strftime('%Y-%m-%d %H:%M')}")
 
     # 更新定时任务
-    if old_need_apply:
-        scheduler.remove_job(job_id=f"activity_{activity.id}_{Activity.Status.APPLYING}")
-        scheduler.remove_job(job_id=f"activity_{activity.id}_{Activity.Status.WAITING}")
-    if not old_need_apply:
-        scheduler.remove_job(job_id=f"activity_{activity.id}_{Activity.Status.WAITING}")
+    if old_need_apply: 
+        # 删除报名中的状态阶段
+        try: 
+            scheduler.remove_job(job_id=f"activity_{activity.id}_{Activity.Status.APPLYING}")
+        except: pass
     
     if activity.need_apply:
         scheduler.add_job(changeActivityStatus, "date", id=f"activity_{activity.id}_{Activity.Status.APPLYING}",
@@ -435,12 +435,18 @@ def cancel_course_activity(request: HttpRequest, activity: Activity, cancel_all:
 
     # 取消定时任务（需要先判断一下是否已经被执行了）
     if activity.start - timedelta(minutes=15) > datetime.now():
-        scheduler.remove_job(f"activity_{activity.id}_remind")
+        try:
+            scheduler.remove_job(f"activity_{activity.id}_remind")
+        except: pass
     if activity.start > datetime.now():
-        scheduler.remove_job(
-            f"activity_{activity.id}_{Activity.Status.PROGRESSING}")
+        try:
+            scheduler.remove_job(
+                f"activity_{activity.id}_{Activity.Status.PROGRESSING}")
+        except: pass
     if activity.end > datetime.now():
-        scheduler.remove_job(f"activity_{activity.id}_{Activity.Status.END}")
+        try:
+            scheduler.remove_job(f"activity_{activity.id}_{Activity.Status.END}")
+        except: pass
 
     activity.save()
 
