@@ -71,7 +71,7 @@ def _arg2user(participant: Union[Participant, User]):
 def is_valid(participant: Union[Participant, User]):
     '''返回participant对象是否是一个有效的用户'''
     user = _arg2user(participant)
-    return API.is_org(user)
+    return API.is_valid(user)
 
 def is_org(participant: Union[Participant, User]):
     '''返回participant对象是否是组织'''
@@ -205,23 +205,22 @@ def identity_check(
             if cur_part is not None and cur_part.name == '未命名' and update_name:
                 _update_name(cur_part)
 
-            if cur_part is None:
-                if _allow_create:
-                    cur_part = _create_account(request)
-                    if cur_part is not None:
-                        my_messages.succeed('账号不存在，已为您自动创建账号！', context)
-                    else:
-                        warn_message = ('创建地下室账户失败，请联系管理员为您解决。'
-                                        '在此之前，您可以查看实时人数。')
-                        my_messages.wrong(warn_message, context)
+            if cur_part is None and _allow_create:
+                cur_part = _create_account(request)
+                if cur_part is not None:
+                    my_messages.succeed('账号不存在，已为您自动创建账号！', context)
                 else:
-                    warn_message = ('本页面暂不支持地下室账户创建，您可以先查看实时人数。')
+                    warn_message = ('创建地下室账户失败，请联系管理员为您解决。'
+                                    '在此之前，您可以查看实时人数。')
                     my_messages.wrong(warn_message, context)
 
-            if not auth_func(cur_part):
+            if auth_func is not None and not auth_func(cur_part):
                 # TODO: task 0 lzp, log it and notify admin
                 if cur_part is not None:
                     warn_message = ('您访问了未授权的页面，如需访问请先登录。')
+                    my_messages.wrong(warn_message, context)
+                elif not _allow_create:
+                    warn_message = ('本页面暂不支持地下室账户创建，您可以先查看实时人数。')
                     my_messages.wrong(warn_message, context)
 
             if context:
