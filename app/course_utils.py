@@ -97,7 +97,7 @@ def course_activity_base_check(request: HttpRequest) -> dict:
 
     :param request: 修改/发起单次课程活动的请求
     :type request: HttpRequest
-    :raises AssertionError: 活动时间非法
+    :raises AssertionError: 活动时间非法/需要报名的活动必须提前至少一小时发起
     :return: context
     :rtype: dict
     """
@@ -125,16 +125,20 @@ def course_activity_base_check(request: HttpRequest) -> dict:
         }[request.POST.get("publish_day")]  # 活动发布提前日期
 
         if act_publish_day == Course.PublishDay.instant:
-            act_publish_time = datetime.now() + timedelta(seconds=10)   # 活动发布时间，默认为立即发布
+            act_publish_time = datetime.now() + timedelta(seconds=10)   # 活动发布时间，立即发布
         else:
             act_publish_time = datetime.strptime(
-                request.POST["publish_time"], "%Y-%m-%d %H:%M")  # 活动发布时间
+                request.POST["publish_time"], "%Y-%m-%d %H:%M")  # 活动发布时间，指定的发布时间
     except:
         raise AssertionError("活动时间非法")
     context["start"] = act_start
     context["end"] = act_end
     context["publish_day"] = act_publish_day
     context["publish_time"] = act_publish_time
+
+    if request.POST["need_apply"] == "True":
+        assert datetime.now() < context["start"] - timedelta(hours=1), "需要报名的活动必须提前至少一小时发起"
+       
     assert check_ac_time_course(act_start, act_end), "活动时间非法"
 
     # 默认需要签到
@@ -158,7 +162,7 @@ def create_single_course_activity(request: HttpRequest) -> Tuple[int, bool]:
     context = course_activity_base_check(request)
 
     # 获取组织和课程
-    org = get_person_or_org(request.user, "Organization")
+    org = get_person_or_org(request.user, UTYPE_ORG)
     course = Course.objects.activated().get(organization=org)
 
     # 查找是否有类似活动存在
@@ -202,6 +206,11 @@ def create_single_course_activity(request: HttpRequest) -> Tuple[int, bool]:
         # capacity, URL, bidding,
         # inner, end_before均为default
     )
+
+    if context["need_apply"]:
+        activity.endbefore = Activity.EndBefore.onehour
+        activity.apply_end = activity.start - timedelta(hours=1)
+
     if not activity.need_apply:
         # 选课人员自动报名活动
         # 选课结束以后，活动参与人员从小组成员获取
@@ -232,7 +241,7 @@ def create_single_course_activity(request: HttpRequest) -> Tuple[int, bool]:
         scheduler.add_job(changeActivityStatus, "date", id=f"activity_{activity.id}_{Activity.Status.APPLYING}",
                           run_date=activity.publish_time, args=[activity.id, Activity.Status.UNPUBLISHED, Activity.Status.APPLYING], replace_existing=True)
         scheduler.add_job(changeActivityStatus, "date", id=f"activity_{activity.id}_{Activity.Status.WAITING}",
-                          run_date=activity.start - timedelta(minutes=5), args=[activity.id, Activity.Status.APPLYING, Activity.Status.WAITING], replace_existing=True)
+                          run_date=activity.start - timedelta(hours=1), args=[activity.id, Activity.Status.APPLYING, Activity.Status.WAITING], replace_existing=True)
     else:
         scheduler.add_job(changeActivityStatus, "date", id=f"activity_{activity.id}_{Activity.Status.WAITING}",
                           run_date=activity.publish_time, args=[activity.id, Activity.Status.UNPUBLISHED, Activity.Status.WAITING], replace_existing=True)
@@ -301,6 +310,11 @@ def modify_course_activity(request: HttpRequest, activity: Activity):
     activity.publish_time = context["publish_time"]
     old_need_apply = activity.need_apply
     activity.need_apply = context["need_apply"]
+
+    if context["need_apply"]:
+        activity.endbefore = Activity.EndBefore.onehour
+        activity.apply_end = activity.start - timedelta(hours=1)
+
     activity.save()
 
     #修改所有该时段的时间、地点
@@ -346,17 +360,17 @@ def modify_course_activity(request: HttpRequest, activity: Activity):
     #         f"活动开始时间调整为{activity.start.strftime('%Y-%m-%d %H:%M')}")
 
     # 更新定时任务
-    if old_need_apply:
-        scheduler.remove_job(job_id=f"activity_{activity.id}_{Activity.Status.APPLYING}")
-        scheduler.remove_job(job_id=f"activity_{activity.id}_{Activity.Status.WAITING}")
-    if not old_need_apply:
-        scheduler.remove_job(job_id=f"activity_{activity.id}_{Activity.Status.WAITING}")
+    if old_need_apply: 
+        # 删除报名中的状态阶段
+        try: 
+            scheduler.remove_job(job_id=f"activity_{activity.id}_{Activity.Status.APPLYING}")
+        except: pass
     
     if activity.need_apply:
         scheduler.add_job(changeActivityStatus, "date", id=f"activity_{activity.id}_{Activity.Status.APPLYING}",
                           run_date=activity.publish_time, args=[activity.id, Activity.Status.UNPUBLISHED, Activity.Status.APPLYING], replace_existing=True)
         scheduler.add_job(changeActivityStatus, "date", id=f"activity_{activity.id}_{Activity.Status.WAITING}",
-                          run_date=activity.start - timedelta(minutes=5), args=[activity.id, Activity.Status.APPLYING, Activity.Status.WAITING], replace_existing=True)
+                          run_date=activity.start - timedelta(hours=1), args=[activity.id, Activity.Status.APPLYING, Activity.Status.WAITING], replace_existing=True)
     else:
         scheduler.add_job(changeActivityStatus, "date", id=f"activity_{activity.id}_{Activity.Status.WAITING}",
                           run_date=activity.publish_time, args=[activity.id, Activity.Status.UNPUBLISHED, Activity.Status.WAITING], replace_existing=True)
@@ -421,12 +435,18 @@ def cancel_course_activity(request: HttpRequest, activity: Activity, cancel_all:
 
     # 取消定时任务（需要先判断一下是否已经被执行了）
     if activity.start - timedelta(minutes=15) > datetime.now():
-        scheduler.remove_job(f"activity_{activity.id}_remind")
+        try:
+            scheduler.remove_job(f"activity_{activity.id}_remind")
+        except: pass
     if activity.start > datetime.now():
-        scheduler.remove_job(
-            f"activity_{activity.id}_{Activity.Status.PROGRESSING}")
+        try:
+            scheduler.remove_job(
+                f"activity_{activity.id}_{Activity.Status.PROGRESSING}")
+        except: pass
     if activity.end > datetime.now():
-        scheduler.remove_job(f"activity_{activity.id}_{Activity.Status.END}")
+        try:
+            scheduler.remove_job(f"activity_{activity.id}_{Activity.Status.END}")
+        except: pass
 
     activity.save()
 
@@ -839,7 +859,7 @@ def draw_lots():
                 status=CourseParticipant.Status.SUCCESS,
             ).values_list("person__person_id", flat=True)
             receivers = User.objects.filter(id__in=receivers)
-            sender = course.organization.organization_id
+            sender = course.organization.get_user()
             typename = Notification.Type.NEEDREAD
             title = Notification.Title.ACTIVITY_INFORM
             content = f"您好！您已成功选上课程《{course.name}》！"
@@ -1104,8 +1124,13 @@ def course_base_check(request,if_new=None):
         return wrong(str(e))
     context['course_starts'] = course_starts
     context['course_ends'] = course_ends
-
-    org = get_person_or_org(request.user, "Organization")
+    context['publish_day'] = {
+            "instant": Course.PublishDay.instant,
+            "3": Course.PublishDay.threeday,
+            "2": Course.PublishDay.twoday,
+            "1": Course.PublishDay.oneday,
+    }[context['publish_day']]
+    org = get_person_or_org(request.user, UTYPE_ORG)
     context['organization'] = org
 
     succeed("合法性检查通过！", context)
@@ -1322,7 +1347,7 @@ def finish_course(course):
         receivers = User.objects.filter(id__in=receivers)
         bulk_notification_create(
             receivers=list(receivers),
-            sender=course.organization.organization_id,
+            sender=course.organization.get_user(),
             typename=Notification.Type.NEEDREAD,
             title=title,
             content=msg,
@@ -1369,7 +1394,7 @@ def download_course_record(course: Course=None, year: int=None, semester: Semest
     if course is not None:
         # 助教下载自己课程的学时
         records = CourseRecord.objects.filter(**filter_kws)
-        file_name = f'{course}-{ctime}'
+        file_name = f'{course.name}-{ctime}'
     else:
         # 设置明细和汇总两个sheet的相关信息
         total_sheet = wb.create_sheet('汇总', 0)

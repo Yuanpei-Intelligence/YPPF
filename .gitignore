@@ -53,6 +53,9 @@ logstore/
 * old.*
 *_old.*
 *fake.*
+*backup.*
+*backup/
+*local/
 
 # Python #
 __pycache__/

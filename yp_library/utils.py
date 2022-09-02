@@ -35,14 +35,13 @@ def days_reminder(days: int, alert_msg: str):
     cr_time = datetime.now().replace(minute=0, second=0, microsecond=0)
     lendlist = LendRecord.objects.filter(
         returned=False,
-        due_time__gt=cr_time + timedelta(days=days) - timedelta(hours=1),
-        due_time__lte=cr_time + timedelta(days=days)
-        )
-    sender = Organization.objects.get(oname="何善衡图书室").organization_id
+        due_time__gt=cr_time - timedelta(days=days, hours=1),
+        due_time__lte=cr_time - timedelta(days=days))
+    sender = Organization.objects.get(oname="何善衡图书室").get_user()
     URL = "/lendinfo/"
     typename = Notification.Type.NEEDREAD
     
-    receivers = lendlist.values_list('record__reader_id__student_id')
+    receivers = lendlist.values_list('reader_id__student_id')
     receivers = User.objects.filter(username__in=receivers)
     # 逾期一周扣除信用分
     if days == 7:

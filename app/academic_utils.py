@@ -15,7 +15,7 @@ from app.comment_utils import showComment
 from django.http import HttpRequest
 from django.db.models import QuerySet
 
-from typing import List, Dict
+from typing import List, Dict, Set
 from collections import defaultdict
 
 __all__ = [
@@ -29,6 +29,9 @@ __all__ = [
     'update_tag_entry',
     'update_text_entry',
     'update_academic_map',
+    'get_wait_audit_student',
+    'audit_academic_map',
+    'have_entries_of_type',
 ]
 
 
@@ -207,22 +210,36 @@ def comments2Display(chat: Chat, frontend_dict: dict, user: User):
             frontend_dict["academic_url"] = ""
 
 
-def get_js_tag_list(request: HttpRequest, type: AcademicTag.AcademicTagType, selected: bool) -> List[dict]:
+def get_js_tag_list(author: NaturalPerson, type: AcademicTag.AcademicTagType,
+                    selected: bool, status_in: list=None) -> List[dict]:
     """
     用于前端显示支持搜索的专业/项目列表，返回形如[{id, content}]的列表。
 
-    :param tags: http请求，用于读取学号
-    :type tags: HttpRequest
+    :param author: 作者自然人信息
+    :type author: NaturalPerson
     :param type: 标记所需的tag类型
     :type type: AcademicTag.AcademicTagType
     :param selected: 用于标记是否获取本人已有的专业项目，selected代表获取前端默认选中的项目
-    :type tags: bool
+    :type selected: bool
+    :param status_in: 所要检索的状态的字符串的列表，如["public","private"]，默认为None，表示搜索全部
+    :type status_in: list
     :return: 所有专业/项目组成的List[dict]，key值如上所述
     :rtype: List[dict]
     """
+    type_map = {
+        "public": AcademicEntry.EntryStatus.PUBLIC,
+        "wait_audit": AcademicEntry.EntryStatus.WAIT_AUDIT,
+        "private": AcademicEntry.EntryStatus.PRIVATE,
+        "outdate": AcademicEntry.EntryStatus.OUTDATE
+    }
+    stats = []
+    if status_in is not None:
+        stats = [type_map[s] for s in status_in]
     if selected:
-        me = get_person_or_org(request.user, UTYPE_PER)
-        all_my_tags = AcademicTagEntry.objects.activated().filter(person=me)
+        # me = get_person_or_org(request.user, UTYPE_PER)
+        all_my_tags = AcademicTagEntry.objects.activated().filter(person=author)
+        if status_in is not None:
+            all_my_tags = all_my_tags.filter(status__in=stats)
         tags = all_my_tags.filter(tag__atype=type).values('tag__id', 'tag__tag_content')
         js_list = [{"id": tag['tag__id'], "text": tag['tag__tag_content']} for tag in tags]
     else:
@@ -232,19 +249,33 @@ def get_js_tag_list(request: HttpRequest, type: AcademicTag.AcademicTagType, sel
     return js_list
 
 
-def get_text_list(request: HttpRequest, type: AcademicTextEntry.AcademicTextType) -> List[str]:
+def get_text_list(author: NaturalPerson, type: AcademicTextEntry.AcademicTextType,
+                  status_in: list=None) -> List[str]:
     """
     获取自己的所有类型为type的TextEntry的内容列表。
 
-    :param request: http请求
-    :type request: HttpRequest
+    :param author: 作者自然人信息
+    :type author: NaturalPerson
     :param type: TextEntry的类型
     :type type: AcademicTextEntry.AcademicTextType
+    :param status_in: 所要检索的状态的字符串的列表，如["public","private"]，默认为None，表示搜索全部
+    :type status_in: list
     :return: 含有所有类型为type的TextEntry的content的list
     :rtype: List[str]
     """
-    me = get_person_or_org(request.user, UTYPE_PER)
-    all_my_text = AcademicTextEntry.objects.activated().filter(person=me, atype=type)
+    # me = get_person_or_org(request.user, UTYPE_PER)
+    type_map = {
+        "public": AcademicEntry.EntryStatus.PUBLIC,
+        "wait_audit": AcademicEntry.EntryStatus.WAIT_AUDIT,
+        "private": AcademicEntry.EntryStatus.PRIVATE,
+        "outdate": AcademicEntry.EntryStatus.OUTDATE
+    }
+    stats = []
+    if status_in is not None:
+        stats = [type_map[s] for s in status_in]
+    all_my_text = AcademicTextEntry.objects.activated().filter(person=author, atype=type)
+    if status_in is not None:
+        all_my_text = all_my_text.filter(status__in=stats)
     text_list = [text.content for text in all_my_text]
     return text_list
 
@@ -472,3 +503,64 @@ def update_academic_map(request: HttpRequest) -> dict:
         request.user.save()
     
     return succeed("学术地图修改成功！")
+
+
+def get_wait_audit_student() -> Set[NaturalPerson]:
+    """
+    获取当前审核中的AcademicEntry对应的学生，因为要去重，所以返回一个集合
+
+    :return: 当前审核中的AcademicEntry对应的NaturalPerson组成的集合
+    :rtype: Set[NaturalPerson]
+    """
+    wait_audit_tag_entries = AcademicTagEntry.objects.filter(
+        status=AcademicEntry.EntryStatus.WAIT_AUDIT)
+    wait_audit_text_entries = AcademicTextEntry.objects.filter(
+        status=AcademicEntry.EntryStatus.WAIT_AUDIT)
+    
+    wait_audit_students = set()
+    for entry in wait_audit_tag_entries:
+        wait_audit_students.add(entry.person)
+    for entry in wait_audit_text_entries:
+        wait_audit_students.add(entry.person)
+    
+    return wait_audit_students
+
+
+def audit_academic_map(author: NaturalPerson) -> None:
+    """
+    审核通过某用户的记录。
+    :param author: 被审核用户
+    :type author: NaturalPerson
+    """
+    # 筛选所有待审核的记录
+    AcademicTagEntry.objects.activated().filter(
+        person=author, status=AcademicEntry.EntryStatus.WAIT_AUDIT).update(
+        status=AcademicEntry.EntryStatus.PUBLIC)
+
+    AcademicTextEntry.objects.activated().filter(
+        person=author, status=AcademicEntry.EntryStatus.WAIT_AUDIT).update(
+        status=AcademicEntry.EntryStatus.PUBLIC)
+
+
+def have_entries_of_type(author: NaturalPerson, status_in: list) -> bool:
+    """
+    判断用户有无status属性为public/wait_audit...的学术地图条目(tag和text)
+    :param author: 条目作者用户
+    :type author: NaturalPerson
+    :param status_in: ["public", "wait_audit", "private", "outdate"]中的str构成的list
+    :type status_in: list
+    :return: 是否有该类别的条目
+    :rtype: bool
+    """
+    type_map = {
+        "public": AcademicEntry.EntryStatus.PUBLIC,
+        "wait_audit": AcademicEntry.EntryStatus.WAIT_AUDIT,
+        "private": AcademicEntry.EntryStatus.PRIVATE,
+        "outdate": AcademicEntry.EntryStatus.OUTDATE
+    }
+    stats = [type_map[s] for s in status_in]
+    all_tag_entries = AcademicTagEntry.objects.activated().filter(
+        person=author, status__in=stats)
+    all_text_entries = (AcademicTextEntry.objects.activated().filter(
+        person=author, status__in=stats))
+    return bool(all_tag_entries) or bool(all_text_entries)

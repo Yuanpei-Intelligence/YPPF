@@ -199,7 +199,7 @@ def make_relevant_notification(feedback, info, me):
 
     # 准备创建notification需要的构件：发送方、接收方、发送内容、通知类型、通知标题、URL、关联外键
     sender = me.person_id
-    receiver = Organization.objects.get(oname=str(info.get('org'))).organization_id
+    receiver = Organization.objects.get(oname=str(info.get('org'))).get_user()
     typename = (Notification.Type.NEEDDO
                 if post_type == 'new_submit'
                 else Notification.Type.NEEDREAD)
@@ -229,7 +229,7 @@ def examine_notification(feedback):
     examin_teacher = feedback.org.otype.incharge.person_id
     notification_create(
         receiver=examin_teacher,
-        sender=feedback.org.organization_id,
+        sender=feedback.org.get_user(),
         typename=Notification.Type.NEEDREAD,
         title=Notification.Title.VERIFY_INFORM,
         content=f"{feedback.org.oname}申请公开一条反馈信息",
