@@ -1265,7 +1265,7 @@ def _create_freshman_account(sid: str, email: str = None):
             current = "确认注册状态"
             assert freshman.status != Freshman.Status.REGISTERED
             if email is None:
-                domain = "pku.edu.cn" if freshman.grade.startswith("1") else "stu.pku.edu.cn"
+                domain = "pku.edu.cn" if freshman.grade[2:].startswith("1") else "stu.pku.edu.cn"
                 email = f"{sid}@{domain}"
             current = "随机生成密码"
             password = hash_coder.encode(name + str(random.random()))
