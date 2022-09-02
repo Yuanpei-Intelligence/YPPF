@@ -199,20 +199,6 @@ if MY_ENV == "SCHEDULER":
 if MY_ENV == "INNER":
     pass
 
-if MY_ENV == "LIB":
-    DATABASES["yp_lib"] =  {
-        "ENGINE": "mssql",
-        "NAME": os.environ["LIB_DB"],
-        "HOST": os.environ["LIB_DB_HOST"],
-        "PORT": os.environ["LIB_DB_PORT"],
-        "USER": os.environ["LIB_DB_USER"],
-        "PASSWORD": os.environ["LIB_DB_PASSWORD"],
-        'OPTIONS': {
-            'driver': 'ODBC Driver 18 for SQL Server',   
-            'extra_params': 'TrustServerCertificate=yes',
-        },
-    }
-
 # STATIC_ROOT = os.path.join(BASE_DIR, "static")
 STATIC_URL = "/static/"
 

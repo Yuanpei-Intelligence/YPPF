@@ -882,10 +882,19 @@ def reject_activity(request, activity):
         #     ).update(status=Participant.AttendStatus.APLLYFAILED)
         notifyActivity(activity.id, "modification_par", f"您报名的活动{activity.title}已取消。")
         activity.status = Activity.Status.CANCELED
-        scheduler.remove_job(f"activity_{activity.id}_remind")
-        scheduler.remove_job(f"activity_{activity.id}_{Activity.Status.WAITING}")
-        scheduler.remove_job(f"activity_{activity.id}_{Activity.Status.PROGRESSING}")
-        scheduler.remove_job(f"activity_{activity.id}_{Activity.Status.END}")
+        # 防止意外的job丢失
+        try:
+            scheduler.remove_job(f"activity_{activity.id}_remind")
+        except: pass
+        try:
+            scheduler.remove_job(f"activity_{activity.id}_{Activity.Status.WAITING}")
+        except: pass
+        try:
+            scheduler.remove_job(f"activity_{activity.id}_{Activity.Status.PROGRESSING}")
+        except: pass
+        try:
+            scheduler.remove_job(f"activity_{activity.id}_{Activity.Status.END}")
+        except: pass
 
     notification = notification_create(
         receiver=activity.organization_id.get_user(),
@@ -999,12 +1008,19 @@ def cancel_activity(request, activity):
     #         activity_id=activity
     #     ).update(status=Participant.AttendStatus.APLLYFAILED)
 
-
-
-    scheduler.remove_job(f"activity_{activity.id}_remind")
-    scheduler.remove_job(f"activity_{activity.id}_{Activity.Status.WAITING}")
-    scheduler.remove_job(f"activity_{activity.id}_{Activity.Status.PROGRESSING}")
-    scheduler.remove_job(f"activity_{activity.id}_{Activity.Status.END}")
+    # 防止意外的job丢失
+    try:
+        scheduler.remove_job(f"activity_{activity.id}_remind")
+    except: pass
+    try:
+        scheduler.remove_job(f"activity_{activity.id}_{Activity.Status.WAITING}")
+    except: pass
+    try:
+        scheduler.remove_job(f"activity_{activity.id}_{Activity.Status.PROGRESSING}")
+    except: pass
+    try:
+        scheduler.remove_job(f"activity_{activity.id}_{Activity.Status.END}")
+    except: pass
 
     activity.save()
 

@@ -760,9 +760,8 @@ def orginfo(request: HttpRequest, name=None):
     # 判断是否为小组账户本身在登录
     html_display["is_myself"] = me == org
     html_display["is_person"] = user_type == UTYPE_PER
-    html_display["is_course_org"] = (
-        isinstance(me, Organization) and
-        Course.objects.activated().filter(organization=me).exists()
+    html_display["is_course"] = (
+        Course.objects.activated().filter(organization=org).exists()
     )
     inform_share, alert_message = utils.get_inform_share(me=me, is_myself=html_display["is_myself"])
 
@@ -2046,15 +2045,19 @@ def notifications(request: HttpRequest):
     me = get_person_or_org(request.user, user_type)
     html_display["is_myself"] = True
 
-    notification_set = Notification.objects.activated().select_related(
-        'sender').filter(receiver=request.user)
+    done_notifications = Notification.objects.activated().filter(
+        receiver=request.user,
+        status=Notification.Status.DONE).order_by("-finish_time")
+    undone_notifications = Notification.objects.activated().filter(
+        receiver=request.user,
+        status=Notification.Status.UNDONE).order_by("-start_time")
 
-    done_list = notification2Display(notification_set.order_by("-finish_time"))
-
-    undone_list = notification2Display(notification_set.order_by("-start_time"))
+    done_list = notification2Display(done_notifications)
+    undone_list = notification2Display(undone_notifications)
 
     # 新版侧边栏, 顶栏等的呈现，采用 bar_display, 必须放在render前最后一步
-    bar_display = utils.get_sidebar_and_navbar(request.user, navbar_name="通知信箱")
+    bar_display = utils.get_sidebar_and_navbar(request.user,
+                                               navbar_name="通知信箱")
     return render(request, "notifications.html", locals())
 
 

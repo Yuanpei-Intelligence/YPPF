@@ -65,9 +65,12 @@ def update_records():
     """
     # 本地最新记录的时间
     latest_record_time = LendRecord.objects.aggregate(
-        Max('lend_time'))['lend_time__max'] + timedelta(seconds=1)
+        Max('lend_time'))['lend_time__max']
     if not latest_record_time:
         latest_record_time = datetime.now() - timedelta(days=3650)
+    else:
+        latest_record_time += timedelta(seconds=1)
+
     with pymssql.connect(server=os.environ["LIB_DB_HOST"],
                          user=os.environ["LIB_DB_USER"],
                          password=os.environ["LIB_DB_PASSWORD"],
@@ -87,11 +90,12 @@ def update_records():
                                        WHERE BarCode LIKE '{bar_code}%'""")
                     book_id = cursor.fetchone()
                     if not book_id:
-                        continue
-                    book_id = book_id['MarcID']
+                        book_id = None
+                    else:
+                        book_id = book_id['MarcID']
+
                     reader_id = row['ReaderID']
-                    if not (Book.objects.filter(id=book_id).exists()
-                            and Reader.objects.filter(id=reader_id).exists()):
+                    if not Reader.objects.filter(id=reader_id).exists():
                         continue
                     LendRecord.objects.update_or_create(id=row['ID'],
                                                         defaults={
@@ -112,24 +116,35 @@ def update_records():
                 unreturned_records.values_list('id', flat=True))
             unreturned_record_id = ', '.join(
                 list(map(str, unreturned_record_id)))
-            # 更新未归还记录
 
+            # 更新未归还记录
             cursor.execute(f'''SELECT ID,IsReturn,ReturnTime
                                FROM LendHist 
                                WHERE ID IN ({unreturned_record_id})''')
 
             updated_records = []
+            current_time = datetime.now()
             for row in cursor:
-                record = unreturned_records.get(id=row['ID'])
-                record.returned = True if row['IsReturn'] == 1 else False
-                record.return_time = row['ReturnTime']
+                record: LendRecord = unreturned_records.get(id=row['ID'])
+                if row['IsReturn'] == 1:
+                    record.returned = True
+                    record.return_time = row['ReturnTime']
+                elif current_time - record.due_time > timedelta(days=7):
+                    record.status = LendRecord.Status.OVERTIME
+
                 updated_records.append(record)
 
             with transaction.atomic():
                 LendRecord.objects.bulk_update(
                     updated_records,
-                    fields=['returned', 'return_time'],
+                    fields=['returned', 'return_time', 'status'],
                 )
 
     # 发送还书提醒
     bookreturn_notification()
+
+
+def update_lib_data():
+    update_reader()
+    update_book()
+    update_records()

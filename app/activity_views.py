@@ -184,7 +184,7 @@ def viewActivity(request: HttpRequest, aid=None):
                 return redirect(message_url(wrong('活动尚未结束!'), request.path))
             if not ownership:
                 return redirect(message_url(wrong('您没有调整签到信息的权限!'), request.path))
-            return redirect(f"/offlineCheckinActivity/{aid}?src=2")
+            return redirect(f"/offlineCheckinActivity/{aid}")
 
         elif option == "sign" or option == "enroll": #下载活动签到信息或者报名信息
             if not ownership:
@@ -953,12 +953,12 @@ def offlineCheckinActivity(request: HttpRequest, aid):
             except:
                 return redirect(message_url(wrong("修改失败。"), request.path))
             # 修改成功之后根据src的不同返回不同的界面，1代表聚合页面，2代表活动主页
-            if src == 1:
+            if src == "course_center":
                 return redirect(message_url(
-                succeed("修改签到信息成功。"), f"/showCourseActivity/"))
+                    succeed("修改签到信息成功。"), f"/showCourseActivity/"))
             else:
                 return redirect(message_url(
-                succeed("修改签到信息成功。"), f"/viewActivity/{aid}"))
+                    succeed("修改签到信息成功。"), f"/viewActivity/{aid}"))
 
     bar_display = utils.get_sidebar_and_navbar(request.user,
                                                navbar_name="调整签到信息")

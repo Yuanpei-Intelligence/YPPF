@@ -1673,7 +1673,7 @@ class CourseRecord(models.Model):
 
     def get_course_name(self):
         if self.course is not None:
-            return str(self.course)
+            return self.course.name
         return self.extra_name
     get_course_name.short_description = "课程名"
 
