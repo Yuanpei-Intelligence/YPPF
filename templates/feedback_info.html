@@ -111,6 +111,15 @@
                     <textarea name="content" class="form-control" rows="6" placeholder="反馈内容不能为空~" {% if not is_new_feedback %}disabled="disabled"{% endif %}>{% if not is_new_feedback %}{{feedback.content}}{% endif %}</textarea>
                   </div>
 
+                  {% if login_identity == "org" and not is_new_feedback and feedback.url %}
+                  <div class="form-group">
+                    <label for="">相关链接</label>
+                    <a href=""{{feedback.url}}>
+                    <textarea type="text" name="url" rows="1" class="form-control" aria-label="Default"
+                      disabled="disabled">{{feedback.url}}</textarea>
+                    </a>
+                  </div>
+                  {% endif %}
 
 
                   {% if is_new_feedback %}
