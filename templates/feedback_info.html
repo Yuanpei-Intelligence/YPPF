@@ -114,7 +114,7 @@
                   {% if login_identity == "org" and not is_new_feedback and feedback.url %}
                   <div class="form-group">
                     <label for="">相关链接</label>
-                    <a href=""{{feedback.url}}>
+                    <a href="{{feedback.url}}">
                     <textarea type="text" name="url" rows="1" class="form-control" aria-label="Default"
                       disabled="disabled">{{feedback.url}}</textarea>
                     </a>
