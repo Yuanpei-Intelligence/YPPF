@@ -2045,15 +2045,19 @@ def notifications(request: HttpRequest):
     me = get_person_or_org(request.user, user_type)
     html_display["is_myself"] = True
 
-    notification_set = Notification.objects.activated().select_related(
-        'sender').filter(receiver=request.user)
+    done_notifications = Notification.objects.activated().filter(
+        receiver=request.user,
+        status=Notification.Status.DONE).order_by("-finish_time")
+    undone_notifications = Notification.objects.activated().filter(
+        receiver=request.user,
+        status=Notification.Status.UNDONE).order_by("-start_time")
 
-    done_list = notification2Display(notification_set.order_by("-finish_time"))
-
-    undone_list = notification2Display(notification_set.order_by("-start_time"))
+    done_list = notification2Display(done_notifications)
+    undone_list = notification2Display(undone_notifications)
 
     # 新版侧边栏, 顶栏等的呈现，采用 bar_display, 必须放在render前最后一步
-    bar_display = utils.get_sidebar_and_navbar(request.user, navbar_name="通知信箱")
+    bar_display = utils.get_sidebar_and_navbar(request.user,
+                                               navbar_name="通知信箱")
     return render(request, "notifications.html", locals())
 
 
