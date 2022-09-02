@@ -2101,3 +2101,43 @@ def eventTrackingFunc(request: HttpRequest):
         PageLog.objects.create(**kwargs)
 
     return JsonResponse({'status': 'ok'})
+
+
+from generic.models import YQPointRecord
+@login_required(redirect_field_name="origin")
+@utils.check_user_access(redirect_url="/logout/")
+@log.except_captured(source='views[myYQPoint]', record_user=True)
+def myYQPoint(request: HttpRequest):
+    valid, user_type, html_display = utils.check_user_type(request.user)
+    # 获取可能的提示信息
+    my_messages.transfer_message_context(request.GET, html_display)
+
+    # 接下来处理POST相关的内容
+    if request.method == "POST":  # 发生了交易处理的事件
+        try:  # 检查参数合法性
+            post_args = request.POST.get("post_button")
+            record_id, action = post_args.split("+")[0], post_args.split("+")[1]
+            assert action in ["accept", "reject"]
+            reject = action == "reject"
+        except:
+            wrong("交易遇到问题, 请不要修改参数!", html_display)
+
+    html_display.update(
+        YQPoint=User.objects.get(id=request.user.id).YQpoint,
+    )
+ 
+    received_set = YQPointRecord.objects.filter(
+        user=request.user,
+    ).filter(~Q(source_type=6))
+
+    send_set = YQPointRecord.objects.filter(
+        user=request.user,
+        source_type=6,
+    )
+    
+    for record in send_set:
+        pass
+    
+    # 新版侧边栏, 顶栏等的呈现，采用 bar_display, 必须放在render前最后一步
+    bar_display = utils.get_sidebar_and_navbar(request.user, "我的元气值")
+    return render(request, "myYQPoint.html", locals())
