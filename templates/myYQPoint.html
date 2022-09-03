@@ -37,6 +37,151 @@
                                 </b>
                                 {% endif %}
                             </div>
+                            <!--  BEGIN SWITCH TAB  -->
+                            <ul class="nav nav-tabs nav-tabs-solid nav-justified" role="tablist">
+                                <li class="nav-item">
+                                    <b class="nav-link active" data-toggle="tab" role="tab" href="#">奖品兑换</b>
+                                </li>
+                                <li class="nav-item">
+                                    <b class="nav-link" data-toggle="tab" role="tab" href="#myprize">我的奖品</b>
+                                </li>
+                            </ul>
+                            <!--  END SWITCH TAB  -->
+
+                            <!--  BEGIN MYPRIZE TAB  -->
+                            <div class="tab-pane fade" id="myprize" role="tabpanel">
+                                <div class="layout-px-spacing layout-top-spacing">
+                                    <div class="bio layout-spacing ">
+                                        <div class="widget-content widget-content-area my-3">
+                                            <h3>我的抽奖</h3>
+                                            {% if lottery_set is None %}
+                                            <br />
+                                            <p></p>
+                                            <p style="text-align: center;">没有抽奖记录.</p>
+                                            <br />
+                                            {% else %}
+                                            <div class="bio-skill-box">
+                                                <div class="row">
+                                                    {% for record in lottery_set %}
+                                                    <div class="col-12 col-xl-6 col-lg-12 mb-xl-4 mb-4 ">
+
+                                                        <div class=" b-skills">
+                                                            <div class="d-flex justify-content-between">
+                                                                <div>
+                                                                    <h5>
+                                                                        <i class="fa fa-gift"></i> {{record.prize.name}}
+                                                                    </h5>
+                                                                </div>
+                                                                <div>
+                                                                    <h5 style="color: rgb(27, 85, 226);
+                                                                            margin-left: 8px;
+                                                                            display:block;
+                                                                            white-space:nowrap; 
+                                                                            overflow:hidden; ">
+                                                                        {{record.status}}
+                                                                    </h5>
+                                                                </div>
+                                                            </div>
+
+                                                            <div class="d-flex justify-content-between">
+                                                                <div>
+                                                                    <p style="color: rgb(66, 67, 68);"><i
+                                                                        class="fa fa-calendar-o"></i>
+                                                                        {{record.time}}</p>
+                                                                 </div>
+                                                            </div>
+                                                        </div>
+
+                                                    </div>
+                                                    {% endfor %}
+                                                </div>
+                                            </div>
+                                            {% endif %}
+                                        </div>
+
+                                        <div class="widget-content widget-content-area my-3">
+                                            <h3>奖品兑换</h3>
+                                            {% if unexchange_set is None and exchange_set is None %}
+                                            <br />
+                                            <p></p>
+                                            <p style="text-align: center;">没有兑换记录.</p>
+                                            <br />
+                                            {% else %}
+                                            <div class="bio-skill-box">
+                                                <div class="row">
+                                                    {% for record in unexchange_set %}
+                                                    <div class="col-12 col-xl-6 col-lg-12 mb-xl-4 mb-4 ">
+
+                                                        <div class=" b-skills">
+                                                            <div class="d-flex justify-content-between">
+                                                                <div>
+                                                                    <h5>
+                                                                        <i class="fa fa-gift"></i> {{record.prize.name}}
+                                                                    </h5>
+                                                                </div>
+                                                                <div>
+                                                                    <h5 style="color: rgb(27, 85, 226);
+                                                                            margin-left: 8px;
+                                                                            display:block;
+                                                                            white-space:nowrap; 
+                                                                            overflow:hidden; ">
+                                                                        {{record.status}}
+                                                                    </h5>
+                                                                </div>
+                                                            </div>
+
+                                                            <div class="d-flex justify-content-between">
+                                                                <div>
+                                                                    <p style="color: rgb(66, 67, 68);"><i
+                                                                        class="fa fa-calendar-o"></i>
+                                                                        {{record.time}}</p>
+                                                                 </div>
+                                                            </div>
+
+                                                        </div>
+                                                    </div>
+                                                    {% endfor %}
+                                                    {% for record in exchange_set %}
+                                                    <div class="col-12 col-xl-6 col-lg-12 mb-xl-4 mb-4 ">
+
+                                                        <div class=" b-skills">
+                                                            <div class="d-flex justify-content-between">
+                                                                <div>
+                                                                    <h5>
+                                                                        <i class="fa fa-gift"></i> {{record.prize.name}}
+                                                                    </h5>
+                                                                </div>
+                                                                <div>
+                                                                    <h5 style="color: rgb(27, 85, 226);
+                                                                            margin-left: 8px;
+                                                                            display:block;
+                                                                            white-space:nowrap; 
+                                                                            overflow:hidden; ">
+                                                                        {{record.status}} 
+                                                                    </h5>
+                                                                </div>
+                                                            </div>
+
+                                                            <div class="d-flex justify-content-between">
+                                                                <div>
+                                                                    <p style="color: rgb(66, 67, 68);"><i
+                                                                        class="fa fa-calendar-o"></i>
+                                                                        {{record.time}}</p>
+                                                                 </div>
+                                                            </div>
+
+                                                        </div>
+                                                    </div>
+                                                    {% endfor %}
+                                                </div>
+                                            </div>
+                                            {% endif %}
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <!--  END MYPRIZE TAB  -->
+
                         </div>
                      </div>
                  </div>

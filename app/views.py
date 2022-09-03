@@ -27,6 +27,8 @@ from app.models import (
     PageLog,
     ModuleLog,
     Chat,
+    Pool,
+    PoolRecord,
 )
 from app.utils import (
     url_check,
@@ -2124,7 +2126,24 @@ def myYQPoint(request: HttpRequest):
         user=request.user,
         source_type=6,
     ).order_by("-time")
-    
+
+    lottery_set = PoolRecord.objects.filter(
+        Q(user=request.user) & Q(pool__type=Pool.Type.LOTTERY) & (
+        Q(status=PoolRecord.Status.LOTTERING) | Q(status=PoolRecord.Status.NOT_LUCKY) | 
+        Q(status=PoolRecord.Status.UN_EXCHANGE) )
+    ).order_by("-time")
+
+    unexchange_set = PoolRecord.objects.filter(
+        user=request.user,
+        pool__type=Pool.Type.EXCHANGE,
+        status=PoolRecord.Status.UN_EXCHANGE,
+    ).order_by("-time")
+
+    exchange_set = PoolRecord.objects.filter(
+        Q(user=request.user) & Q(pool__type=Pool.Type.EXCHANGE) & (
+        Q(status=PoolRecord.Status.EXCHANGED) | Q(status=PoolRecord.Status.OVERDUE) )
+    ).order_by("-time")
+
     # 新版侧边栏, 顶栏等的呈现，采用 bar_display, 必须放在render前最后一步
     bar_display = utils.get_sidebar_and_navbar(request.user, "我的元气值")
     return render(request, "myYQPoint.html", locals())
