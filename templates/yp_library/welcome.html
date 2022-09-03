@@ -239,6 +239,7 @@
                 style="background-color: var(--my-lend-info-bg); max-height: 200px;">
                   <div class="tab-content" style="overflow: auto; height: 90%">
                     <div id="all" class="tab-pane active" style="overflow: auto;">
+                      {% if records_list %}
                       <table class="table table-striped table-responsive-sm table-active mb-0">
                         <thead>
                           <tr>
@@ -278,6 +279,9 @@
                           {% endfor %}
                         </tbody>
                       </table>
+                      {% else %}
+                      <p style="width: 100%; text-align: center;" class="pt-4 pb-4">当前您没有借阅的书籍！</p>
+                      {% endif %}
                     </div>
                   </div>
                 <!-- </div> -->

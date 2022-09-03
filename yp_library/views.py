@@ -1,3 +1,4 @@
+import imp
 from django.shortcuts import render
 from django.http import HttpRequest, HttpResponse
 from django.shortcuts import render, redirect
@@ -52,7 +53,14 @@ def welcome(request: HttpRequest) -> HttpResponse:
     # 获取最新到馆书目（按id从大到小），暂不启用
     # frontend_dict["newest_books"] = get_recommended_or_newest_books(
     #     num=DISPLAY_NEW_BOOK_NUM, newest=True)
+    try:
+        readers = get_readers_by_user(request.user)
+        records_list = get_lendinfo_by_readers(readers)
+        records_list = (records_list[0] + records_list[1]).sort(key=lambda r: r['due_time'])
+    except:
+        records_list = []
 
+    frontend_dict["records_list"] = records_list
     return render(request, "yp_library/welcome.html", frontend_dict)
 
 
