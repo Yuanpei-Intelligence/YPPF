@@ -108,6 +108,7 @@ urlpatterns = [
 ] + [
     # 元气值
     path("myYQPoint/", views.myYQPoint, name="myYQPoint"),
+    path("myPrize/",views.myPrize, name="myPrize")
 ] + [    # 埋点
     path('eventTrackingFunc/', views.eventTrackingFunc, name='eventTracking'),
 ]

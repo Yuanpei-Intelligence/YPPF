@@ -12,98 +12,58 @@
         {% endif %}
         <div class="container">
             <div class="layout-top-spacing">
-
-                <div class="col-12 row mx-0">
-                    <div class="col-0 col-xl-2 col-lg-2 col-md-2"></div>
-                    <div class="col-sm-12 col-md-8 layout-top-spacing px-0">
-                        <div class="card mx-auto">
-                            <img class="card-img-top" src="/static/assets/img/YQPointCard.jpeg" alt="Card image" style="width:100%">
-                            <div class="card-body">
-                                <b class="d-flex">
-                                    <span class="flex">当前元气值</span>
-                                    <span class="flex ml-auto">{{html_display.YQPoint}}</span>
-                                    <br/>
-                                </b>
-                                {% if user_type != "Person" %}
-                                <b class="d-flex">
-                                    <span class="flex">待收入元气值</span>
-                                    <span class="flex ml-auto">{{amount.recv}}</span>
-                                    <br/>
-                                </b>
-                                <b class="d-flex">
-                                    <span class="flex">待支出元气值</span>
-                                    <span class="flex ml-auto">{{amount.send}}</span>
-                                    <br/>
-                                </b>
-                                {% endif %}
-                            </div>
-                        </div>
-                     </div>
-                 </div>
-                {% if bar_display.help_paragraphs %}
-                    {% include 'help.html' %}
-                {% endif %}
                 <div class="col-12 layout-top-spacing">
                     <div class="bio layout-spacing ">
                         <div class="widget-content widget-content-area">
-                            <h3>元气值记录</h3>
+                            <h3>我的奖品</h3>
 
                             <ul id="myTab" class="nav nav-tabs nav-tabs-solid nav-justified">
                                 
                                 <li class="nav-item">
-                                    <a class="nav-link active" href="#send" data-toggle="tab">
-                                        <h5>支出</h5>
+                                    <a class="nav-link active" href="#lottery" data-toggle="tab">
+                                        <h5>我的抽奖</h5>
                                     </a>
                                 </li>
 
                                 <li class="nav-item">
-                                    <a class="nav-link" href="#received" data-toggle="tab">
-                                        <h5>收入</h5>
+                                    <a class="nav-link" href="#exchange" data-toggle="tab">
+                                        <h5>奖品兑换</h5>
                                     </a>
                                 </li>
                             </ul>
 
                             <div id="myTabContent" class="tab-content">
-                                <div class="tab-pane fade" id="received">
-                                    {% if received_set is None %}
+                                <div class="tab-pane fade in active show" id="lottery">
+                                    {% if lottery_set is None %}
                                     <br />
                                     <p></p>
-                                    <p style="text-align: center;">没有收入记录.</p>
+                                    <p style="text-align: center;">没有抽奖记录.</p>
                                     <br />
                                     {% else %}
 
                                     <div class="bio-skill-box">
                                         <div class="row">
-                                            {% for record in received_set %}
+                                            {% for record in lottery_set %}
                                             <div class="col-12 col-xl-6 col-lg-12 mb-xl-4 mb-4 ">
 
                                                 <div class=" b-skills">
-
-
                                                     <div class="d-flex justify-content-between">
                                                         <div>
                                                             <h5>
-                                                                <i class="	fa fa-bullhorn"></i> {{record.get_source_type_display}}
+                                                                <i class="fa fa-gift"></i> {{record.prize.name}}
                                                             </h5>
                                                         </div>
                                                         <div>
-                                                            <h5 style="color: rgb(250, 44, 44);
+                                                            <h5 style="color: rgb(27, 85, 226);
                                                                     margin-left: 8px;
                                                                     display:block;
                                                                     white-space:nowrap; 
                                                                     overflow:hidden; ">
-                                                                元气值 + {{record.delta}}
+                                                                {{record.status}}
                                                             </h5>
                                                         </div>
                                                     </div>
 
-                                                    <div class="d-flex justify-content-between">
-                                                        <div>
-                                                            <p style="color: rgb(66, 67, 68);"><i
-                                                                    class="fa fa-tags"></i>
-                                                                {{record.source}}</p>
-                                                        </div>
-                                                    </div>
                                                     <div class="d-flex justify-content-between">
                                                         <div>
                                                             <p style="color: rgb(66, 67, 68);"><i
@@ -118,44 +78,38 @@
                                     </div>
                                     {% endif %}
                                 </div>
-                                <div class="tab-pane fade in active show" id="send">
-                                    {% if send_set is None %}
+
+                                <div class="tab-pane fade" id="exchange">
+                                    {% if exchange_set is None %}
                                     <br />
                                     <p></p>
-                                    <p style="text-align: center;">没有支出记录.</p>
+                                    <p style="text-align: center;">没有兑换记录.</p>
                                     <br />
                                     {% else %}
 
                                     <div class="bio-skill-box">
                                         <div class="row">
-                                            {% for record in send_set %}
+                                            {% for record in exchange_set %}
                                             <div class="col-12 col-xl-6 col-lg-12 mb-xl-4 mb-4 ">
 
                                                 <div class=" b-skills">
                                                     <div class="d-flex justify-content-between">
                                                         <div>
                                                             <h5>
-                                                                <i class="	fa fa-bullhorn"></i> {{record.get_source_type_display}}
+                                                                <i class="fa fa-gift"></i> {{record.prize.name}}
                                                             </h5>
                                                         </div>
                                                         <div>
-                                                            <h5 style="color: rgb(48, 212, 76);
+                                                            <h5 style="color: rgb(27, 85, 226);
                                                                     margin-left: 8px;
                                                                     display:block;
                                                                     white-space:nowrap; 
                                                                     overflow:hidden; ">
-                                                                元气值 - {{record.delta}} 
+                                                                {{record.status}}
                                                             </h5>
                                                         </div>
                                                     </div>
 
-                                                    <div class="d-flex justify-content-between">
-                                                        <div>
-                                                            <p style="color: rgb(66, 67, 68);"><i
-                                                                    class="fa fa-tags"></i>
-                                                                {{record.source}}</p>
-                                                        </div>
-                                                    </div>
                                                     <div class="d-flex justify-content-between">
                                                         <div>
                                                             <p style="color: rgb(66, 67, 68);"><i
@@ -163,7 +117,6 @@
                                                                 {{record.time}}</p>
                                                          </div>
                                                     </div>
-
                                                 </div>
                                             </div>
                                             {% endfor %}
@@ -172,6 +125,7 @@
                                     {% endif %}
                                 </div>
                             </div>
+
                         </div>
                     </div>
                 </div>
