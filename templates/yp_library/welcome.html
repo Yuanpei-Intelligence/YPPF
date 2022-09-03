@@ -4,9 +4,16 @@
 
 {% block add_css_file %}
 <style type="text/css">
+  :root {
+    /* constants */
+    --search-book-bg: aliceblue;
+    --my-lend-info-bg: lightpink;
+  }
+
   .text-end {
     text-align: right !important;
   }
+
   #search-tab :hover {
     cursor: pointer;
   }
@@ -132,7 +139,7 @@
     color: #4650dd !important
   }
 
-  .recent-activity-scroll{
+  .recent-activity-scroll {
     scrollbar-width: thin;
     scrollbar-color: #90a4ae #cfd8dc;
   }
@@ -140,15 +147,18 @@
   .recent-activity-scroll::-webkit-scrollbar:horizontal {
     width: 2px;
   }
+
   .recent-activity-scroll::-webkit-scrollbar:vertical {
     width: 0;
     display: none;
   }
+
   .recent-activity-scroll::-webkit-scrollbar-thumb {
-    background-color: #90a4ae ;
+    background-color: #90a4ae;
     border-radius: 6px;
     /* border: 3px solid #cfd8dc; */
   }
+
   .empty {
     position: relative;
     margin: auto;
@@ -157,19 +167,19 @@
   }
 </style>
 <style class="text/css">
-[data-toggle="collapse"] .fa.fa-solid:before {
-  font-family: 'Font Awesome 5 Free';
-  content: "\f107";
-  float: right;
-  font-size: 1.2rem;
-  transform: rotate(0deg);
-  transition: transform 0.4s linear;
-}
+  [data-toggle="collapse"] .fa.fa-solid:before {
+    font-family: 'Font Awesome 5 Free';
+    content: "\f107";
+    float: right;
+    font-size: 1.2rem;
+    transform: rotate(0deg);
+    transition: transform 0.4s linear;
+  }
 
-[data-toggle="collapse"].collapsed .fa.fa-solid:before {
-  transform: rotate(180deg);
-  transition: transform 0.4s linear;
-}
+  [data-toggle="collapse"].collapsed .fa.fa-solid:before {
+    transform: rotate(180deg);
+    transition: transform 0.4s linear;
+  }
 </style>
 
 {% endblock %}
@@ -207,10 +217,10 @@
                 {{ opening_time_end }}
               </h5>
             </div>
-            <div class="row ml-0 mr-0" style="opacity: 0.9; position: relative; top: 15%; left: 10%; width: 80%;">
-              <div class="col-lg-4 col-md-5 col-sm-12 order-2 order-md-1 pt-1 pb-1" data-toggle="collapse" href="#collapseExample" role="button"
-                aria-expanded="false" aria-controls="collapseExample" id="search-tab"
-                style="background-color: aliceblue;">
+            <div class="row ml-0 mr-0" style="opacity: 0.95; position: relative; top: 15%; left: 10%; width: 80%;">
+              <div class="col-lg-4 col-md-5 col-sm-12 order-2 order-md-1 pt-1 pb-1" data-toggle="collapse"
+                href="#collapseExample" role="button" aria-expanded="false" aria-controls="collapseExample"
+                id="search-tab" style="background-color: var(--search-book-bg);">
                 <div class="d-flex justify-content-between">
                   <p style="font-size: 1rem;" class="mb-1 mt-1">
                     <i class="fa fa-search"></i>
@@ -221,16 +231,65 @@
                   </p>
                 </div>
               </div>
-              <div class="col-lg-8 col-md-7 col-sm-12 order-sm-1 order-md-2 pt-1 pb-1" style="background-color:lightpink;"
-                onclick="window.location='/yplibrary/lendinfo/'"">
+              <div class="col-12 collapse mb-4 pt-2 order-last collapsed form-group collapse" id="lendInfos"
+                style="background-color: var(--my-lend-info-bg); max-height: 200px;">
+                <!-- <div class="tab-pane fade in active show" style="overflow: auto; height: 90%;"> -->
+                  <div class="tab-content" style="overflow: auto; height: 90%">
+                    <div id="all" class="tab-pane active" style="overflow: auto;">
+                      <table class="table table-striped table-responsive-sm table-active mb-0">
+                        <thead>
+                          <tr>
+                            <th scope="col" width="25%" style="min-width: 160px;">书名</th>
+                            <th scope="col" width="30%" style="min-width: 160px;">借阅时间</th>
+                            <th scope="col" width="30%" style="min-width: 160px;">归还截止时间</th>
+                            <th scope="col" width="15%" style="min-width: 100px;">状态</th>
+                          </tr>
+                        </thead>
+                        <tbody class="table">
+                          {% for record in records_list %}
+                          <tr>
+                            <th scope="row" style="vertical-align: middle;">
+                              《{{record.book_id__title}}》
+                            </th>
+                            <td>{{record.lend_time}}</td>
+                            <td>{{record.due_time}}</td>
+                            <td>
+                              {% if record.type == "normal" %}
+                              <span class="badge badge-pill" style="border-radius:4px; 
+                                                      background-color:#00C957; color:#FFFFFF; margin:2px;
+                                                      margin-top:0px; margin-bottom:4px;">借阅中
+                              </span>
+                              {% elif record.type == "approaching" %}
+                              <span class="badge badge-pill" style="border-radius:4px; 
+                                                      background-color:#FFD700; color:#FFFFFF; margin:2px;
+                                                      margin-top:0px; margin-bottom:4px;">待归还
+                              </span>
+                              {% else %}
+                              <span class="badge badge-pill" style="border-radius:4px; 
+                                                      background-color:#E3170D; color:#FFFFFF; margin:2px;
+                                                      margin-top:0px; margin-bottom:4px;">已逾期
+                              </span>
+                              {% endif %}
+                            </td>
+                          </tr>
+                          {% endfor %}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                <!-- </div> -->
+              </div>
+              <div class="col-lg-8 col-md-7 col-sm-12 order-sm-1 order-md-2 pt-1 pb-1"
+                style="background-color: var(--my-lend-info-bg);" data-toggle="collapse" href="#lendInfos" role="button"
+                aria-expanded="false" aria-controls="lendInfos" id="lend-info-tab">
                 <p style="font-size: 1rem;" class="mb-1 mt-1">
                   <i class="fa fa-clock"></i>
                   我的借阅 ......
                 </p>
               </div>
               <div class="col-12 collapse mb-4 pt-2 order-last collapsed form-group collapse show" id="collapseExample"
-                style="background-color: aliceblue;">
-              <form action="/yplibrary/search/" method="POST" role="search" id="SearchBookForm">
+                style="background-color: var(--search-book-bg);">
+                <form action="/yplibrary/search/" method="POST" role="search" id="SearchBookForm">
                   <div class="row">
                     <div class="col-12 input-group pt-4 pb-3">
                       <input type="text" class="form-control" id="keywords" placeholder="搜索书名/作者/索书号/出版社"
@@ -261,11 +320,12 @@
                   </div>
                 </form>
               </div>
+              
             </div>
           </div>
           <div class="widget-content widget-content-area"
             style="border-top-left-radius: 0; border-top-right-radius: 0;">
-            <div id="carouselExampleIndicators" class="carousel slide" data-ride="carousel">
+            <div id="carouselExampleIndicators" class="carousel slide" data-ride="carousel" data-interval="10000">
               <ol class="carousel-indicators">
                 <li data-target="#carouselExampleIndicators" data-slide-to="0" class="active"></li>
                 <li data-target="#carouselExampleIndicators" data-slide-to="1"></li>
@@ -420,7 +480,8 @@
                                     {% else %}
                                     {% if act.status == "审核中" %}
                                     <span class="flex badge badge-pill badge-secondary">
-                                      {% elif act.status == "未过审" or act.status == "已取消" or act.status == "已撤销" or act.status == "已结束" %}
+                                      {% elif act.status == "未过审" or act.status == "已取消" or act.status == "已撤销" or
+                                      act.status == "已结束" %}
                                       <span class="badge badge-pill badge-danger">
                                         {% elif act.status == "报名中" %}
                                         <span class="badge badge-pill badge-info">
@@ -539,5 +600,16 @@
     }
   }
   document.getElementById("searchButton").onclick = submit;
+  const lendInfos = $('#lendInfos');
+  const searchBox = $('#collapseExample');
+  function sleep(ms) {
+    return new Promise(resolve => setTimeout(resolve, ms))
+  }
+  lendInfos.on('show.bs.collapse', function () {
+    searchBox.collapse('hide');
+  })
+  searchBox.on('show.bs.collapse', function () {
+    lendInfos.collapse('hide');
+  })
 </script>
 {% endblock %}
