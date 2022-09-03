@@ -115,6 +115,8 @@ def except_captured(return_value=None, except_type=Exception,
             try:
                 return view_function(*args, **kwargs)
             except except_type as e:
+                if settings.DEBUG:
+                    raise
                 if log:
                     msg = f'发生意外的错误：{e}'
                     if record_args:

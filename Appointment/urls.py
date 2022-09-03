@@ -54,4 +54,5 @@ urlpatterns = [
     path('display_getappoint',views.display_getappoint,name='display_getappoint'),
     #path('img_get_func',views.img_get_func,name='img_get_func'),    # 获取头像位置的函数
     path('summary', views.summary, name='summary'),
+    path('summary2', views.summary2, name='summary2'),
 ]

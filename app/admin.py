@@ -53,7 +53,7 @@ class NaturalPersonAdmin(admin.ModelAdmin):
             {
                 "fields": (
                     "person_id", "name", "nickname", "gender", "identity", "status",
-                    "YQPoint", "YQPoint_Bonus", "bonusPoint", "wechat_receive_level",
+                    "bonusPoint", "wechat_receive_level",
                     "accept_promote", "active_score",
                     "stu_id_dbonly",
                     ),
@@ -91,19 +91,11 @@ class NaturalPersonAdmin(admin.ModelAdmin):
         return obj.get_absolute_url(absolute=True)
 
     actions = [
-        'YQ_send',
         'set_student', 'set_teacher',
         'set_graduate', 'set_ungraduate',
         'all_subscribe', 'all_unsubscribe',
         ]
 
-    @as_action("发放元气值")
-    def YQ_send(self, request, queryset):
-        from app.scheduler_func import distribute_YQPoint_per_month
-        distribute_YQPoint_per_month()
-        return self.message_user(request=request,
-                                message='发放成功!')
-    
     @as_action("设为 学生", update=True)
     def set_student(self, request, queryset):
         queryset.update(identity=NaturalPerson.Identity.STUDENT)
@@ -340,7 +332,7 @@ class ActivityAdmin(admin.ModelAdmin):
         "status",
         'year', 'semester', 'category',
         "organization_id__otype",
-        "inner", "need_checkin", "valid", "source",
+        "inner", "need_checkin", "valid",
         ErrorFilter,
         'endbefore',
         "publish_time", 'start', 'end',
@@ -627,28 +619,6 @@ class ModifyOrganizationAdmin(admin.ModelAdmin):
     ModifyOrganization.get_poster_name.short_description = "申请者"
 
 
-@admin.register(Reimbursement)
-class ReimbursementAdmin(admin.ModelAdmin):
-    list_display = ["related_activity", "id", "pos", "get_poster_name",
-                    "amount",
-                    "examine_teacher", "time", "status",]
-    search_fields = ("id", "related_activity__title",
-                    "related_activity__organization_id__oname", "pos__username",
-                    'examine_teacher__name',)
-    list_filter = ('status', 'time', 'modify_time',)
-    Reimbursement.get_poster_name.short_description = "申请者"
-
-
-@admin.register(TransferRecord)
-class TransferRecordAdmin(admin.ModelAdmin):
-    list_display = ["proposer", "recipient", "corres_act",
-                    "amount", "rtype", "status",
-                    "start_time",]
-    search_fields = ("proposer__username", "recipient__username",
-                    "corres_act__title",)
-    list_filter = ("status", "rtype", "start_time", "finish_time",)
-
-
 @admin.register(Course)
 class CourseAdmin(admin.ModelAdmin):
     list_display = [
@@ -805,7 +775,10 @@ class AcademicTextEntryAdmin(admin.ModelAdmin):
     search_fields =  ("person", "status", "atype", "content",)
 
 
-admin.site.register(YQPointDistribute)
 admin.site.register(OrganizationTag)
 admin.site.register(Comment)
 admin.site.register(CommentPhoto)
+admin.site.register(Prize)
+admin.site.register(Pool)
+admin.site.register(PoolItem)
+admin.site.register(PoolRecord)

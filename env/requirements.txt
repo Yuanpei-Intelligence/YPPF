@@ -2,5 +2,4 @@
 # - django
 
 # 连接sql server
-# pyodbc>=3.0
-# mssql-django
+pymssql

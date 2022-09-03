@@ -39,6 +39,7 @@ models.py
 from django.db import models, transaction
 from django_mysql.models import ListCharField
 from generic.models import User
+from generic.models import invalid_for_frontend, necessary_for_frontend
 from django.db.models import Q, QuerySet
 from django.db.models.signals import post_save
 from datetime import datetime, timedelta
@@ -60,16 +61,12 @@ __all__ = [
     'CommentBase',
     'Activity',
     'ActivityPhoto',
-    'TransferRecord',
     'Participant',
-    'YQPointDistribute',
     'Notification',
     'Comment',
     'CommentPhoto',
     'ModifyOrganization',
     'ModifyPosition',
-    'Reimbursement',
-    'ReimbursementPhoto',
     'Help',
     'Wishes',
     'ModifyRecord',
@@ -86,6 +83,10 @@ __all__ = [
     'AcademicTagEntry',
     'AcademicTextEntry',
     'Chat',
+    'Prize',
+    'Pool',
+    'PoolItem',
+    'PoolRecord',
 ]
 
 # 兼容Django3.0及以下版本
@@ -287,11 +288,11 @@ class NaturalPersonManager(models.Manager):
 
 class NaturalPerson(models.Model):
     class Meta:
-        verbose_name = "自然人"
+        verbose_name = "0.自然人"
         verbose_name_plural = verbose_name
 
     # Common Attributes
-    person_id = models.OneToOneField(to=User, on_delete=models.CASCADE)
+    person_id: User = models.OneToOneField(to=User, on_delete=models.CASCADE)
 
     # 不要在任何地方使用此字段，建议先删除unique进行迁移，然后循环调用save
     stu_id_dbonly = models.CharField("学号——仅数据库", max_length=150,
@@ -321,8 +322,6 @@ class NaturalPerson(models.Model):
     QRcode = models.ImageField(upload_to=f"QRcode/", blank=True)
     visit_times = models.IntegerField("浏览次数",default=0) # 浏览主页的次数
 
-    YQPoint_Bonus = models.FloatField("待发放元气值", default=0)
-    YQPoint = models.FloatField("元气值余额", default=0)
     bonusPoint = models.FloatField("积分", default=0)
 
     class Identity(models.IntegerChoices):
@@ -449,14 +448,12 @@ class NaturalPerson(models.Model):
             self.stu_id_dbonly = self.person_id.username
         else:
             assert self.stu_id_dbonly == self.person_id.username, "学号不匹配！"
-        self.YQPoint = round(self.YQPoint, 1)
-        self.bonusPoint = round(self.bonusPoint, 1)
         super().save(*args, **kwargs)
 
 
 class Freshman(models.Model):
     class Meta:
-        verbose_name = "新生信息"
+        verbose_name = "0.新生信息"
         verbose_name_plural = verbose_name
 
     sid = models.CharField("学号", max_length=20, unique=True)
@@ -481,7 +478,7 @@ class Freshman(models.Model):
 
 class OrganizationType(models.Model):
     class Meta:
-        verbose_name = "小组类型"
+        verbose_name = "1.小组类型"
         verbose_name_plural = verbose_name
         ordering = ["otype_name"]
 
@@ -561,7 +558,7 @@ class Semester(models.TextChoices):
 
 class OrganizationTag(models.Model):
     class Meta:
-        verbose_name = "组织类型标签"
+        verbose_name = "1.组织类型标签"
         verbose_name_plural = verbose_name
     class ColorChoice(models.TextChoices):
         grey = ("#C1C1C1", "灰色")
@@ -599,17 +596,16 @@ class OrganizationManager(models.Manager):
 
 class Organization(models.Model):
     class Meta:
-        verbose_name = "小组"
+        verbose_name = "0.小组"
         verbose_name_plural = verbose_name
 
-    organization_id = models.OneToOneField(to=User, on_delete=models.CASCADE)
+    organization_id: User = models.OneToOneField(to=User, on_delete=models.CASCADE)
     oname = models.CharField(max_length=32, unique=True)
     otype: OrganizationType = models.ForeignKey(OrganizationType, on_delete=models.CASCADE)
     status = models.BooleanField("激活状态", default=True)  # 表示一个小组是否上线(或者是已经被下线)
 
     objects: OrganizationManager = OrganizationManager()
 
-    YQPoint = models.FloatField("元气值", default=0.0)
     introduction = models.TextField("介绍", null=True, blank=True, default="这里暂时没有介绍哦~")
     avatar = models.ImageField(upload_to=f"avatar/", blank=True)
     QRcode = models.ImageField(upload_to=f"QRcode/", blank=True)  # 二维码字段
@@ -650,10 +646,6 @@ class Organization(models.Model):
         if not avatar:
             avatar = "avatar/org_default.png"
         return image_url(avatar)
-
-    def save(self, *args, **kwargs):
-        self.YQPoint = round(self.YQPoint, 1)
-        super().save(*args, **kwargs)
 
     def get_subscriber_num(self, activated=True):
         '''仅供前端使用'''
@@ -737,7 +729,7 @@ class Position(models.Model):
     """
 
     class Meta:
-        verbose_name = "职务"
+        verbose_name = "1.职务"
         verbose_name_plural = verbose_name
 
     person: NaturalPerson = models.ForeignKey(
@@ -916,7 +908,7 @@ class CommentBase(models.Model):
     @Date 2022-03-11
     '''
     class Meta:
-        verbose_name = "带有评论"
+        verbose_name = "2.带有评论"
         verbose_name_plural = verbose_name
 
     id = models.AutoField(primary_key=True)  # 自增ID，标识唯一的基类信息
@@ -935,7 +927,7 @@ class CommentBase(models.Model):
 
 class Activity(CommentBase):
     class Meta:
-        verbose_name = "活动"
+        verbose_name = "3.活动"
         verbose_name_plural = verbose_name
 
     """
@@ -998,15 +990,12 @@ class Activity(CommentBase):
 
     location = models.CharField("活动地点", blank=True, max_length=200)
     introduction = models.TextField("活动简介", max_length=225, blank=True)
-    apply_reason = models.TextField("申请理由", max_length=225, blank=True)
 
     QRcode = models.ImageField(upload_to=f"QRcode/", blank=True)  # 二维码字段
 
     # url,活动二维码
 
     bidding = models.BooleanField("是否投点竞价", default=False)
-    YQPoint = models.FloatField("元气值定价/投点基础价格", default=0.0)
-    budget = models.FloatField("预算", default=0.0)
 
     need_checkin = models.BooleanField("是否需要签到", default=False)
 
@@ -1019,14 +1008,6 @@ class Activity(CommentBase):
     valid = models.BooleanField("是否已审核", default=False)
 
     inner = models.BooleanField("内部活动", default=False)
-
-    class YQPointSource(models.IntegerChoices):
-        COLLEGE = (0, "学院")
-        STUDENT = (1, "学生")
-
-    source = models.SmallIntegerField(
-        "元气值来源", choices=YQPointSource.choices, default=1
-    )
 
     # 允许是正无穷, 可以考虑用INTINF
     capacity = models.IntegerField("活动最大参与人数", default=100)
@@ -1067,7 +1048,6 @@ class Activity(CommentBase):
                                     verbose_name="课程每周活动时间")
 
     def save(self, *args, **kwargs):
-        self.YQPoint = round(self.YQPoint, 1)
         self.typename = "activity"
         super().save(*args, **kwargs)
 
@@ -1109,7 +1089,7 @@ class Activity(CommentBase):
 
 class ActivityPhoto(models.Model):
     class Meta:
-        verbose_name = "活动图片"
+        verbose_name = "3.活动图片"
         verbose_name_plural = verbose_name
         ordering = ["-time"]
 
@@ -1127,67 +1107,6 @@ class ActivityPhoto(models.Model):
         return image_url(self.image, enable_abs=True)
 
 
-class TransferRecord(models.Model):
-    class Meta:
-        verbose_name = "转账信息"
-        verbose_name_plural = verbose_name
-        ordering = ["-finish_time", "-start_time"]
-
-    proposer: User = models.ForeignKey(
-        User, related_name="send_trans", on_delete=models.CASCADE
-    )
-    recipient: User = models.ForeignKey(
-        User, related_name="recv_trans", on_delete=models.CASCADE
-    )
-    amount = models.FloatField("转账元气值数量", default=0)
-    start_time = models.DateTimeField("发起时间", auto_now_add=True)
-    finish_time = models.DateTimeField("处理时间", blank=True, null=True)
-    message = models.CharField("备注信息", max_length=255, default="")
-
-    corres_act: Activity = models.ForeignKey(
-        Activity, on_delete=models.SET_NULL, null=True, blank=True
-    )
-
-    class TransferStatus(models.IntegerChoices):
-        """
-        对于活动来说：
-        REFUND 由 ACCEPTED 而来
-        SUSPENDED 由 PENDING 而来
-        """
-        ACCEPTED = (0, "已接收")
-        WAITING = (1, "待确认")
-        REFUSED = (2, "已拒绝")
-        SUSPENDED = (3, "已终止")
-        REFUND = (4, "已退回")
-        PENDING = (5, "待审核")
-
-    class TransferType(models.IntegerChoices):
-        ACTIVITY = (0, "小组活动入账") # 包括像学院申请元气值的部分
-        REIMBURSEMENT = (1, "报销兑换") # 元气值湮灭
-        BONUS = (2, "学院发放") # 学院发放的奖励
-        TRANSACTION = (3, "小组间转账")
-        SERVICE_COFFEE = (4, "咖啡服务")
-        SERVICE_PRINT = (5, "打印服务")
-
-        @classmethod
-        def is_service(cls, type: int) -> bool:
-            return type in {
-                TransferRecord.TransferType.SERVICE_COFFEE,
-                TransferRecord.TransferType.SERVICE_PRINT,
-            }
-
-        @classmethod
-        def is_valid_service(cls, type: int) -> bool:
-            return type == -1 or cls.is_service(type)
-
-    status = models.SmallIntegerField(choices=TransferStatus.choices, default=1)
-    rtype = models.SmallIntegerField(choices=TransferType.choices, default=0)
-
-    def save(self, *args, **kwargs):
-        self.amount = round(self.amount, 1)
-        super(TransferRecord, self).save(*args, **kwargs)
-
-
 class ParticipantManager(models.Manager):
     def activated(self, no_unattend=False):
         '''返回成功报名的参与信息'''
@@ -1201,7 +1120,7 @@ class ParticipantManager(models.Manager):
 
 class Participant(models.Model):
     class Meta:
-        verbose_name = "活动参与情况"
+        verbose_name = "3.活动参与情况"
         verbose_name_plural = verbose_name
         ordering = ["activity_id"]
 
@@ -1225,32 +1144,6 @@ class Participant(models.Model):
     objects: ParticipantManager = ParticipantManager()
 
 
-class YQPointDistribute(models.Model):
-    class DistributionType(models.IntegerChoices):
-        # 定期发放的类型
-        # 每类型各最多有一个status为Yes的实例
-        TEMPORARY = (0, "临时发放")
-        WEEK = (1, "每周发放一次")
-        TWO_WEEK = (2, "每两周发放一次")
-        SEMESTER = (26, "每学期发放一次")  # 一年有52周
-
-    # 发放元气值的上限，多于此值则不发放
-    per_max_dis_YQP = models.FloatField("自然人发放元气值上限")
-    org_max_dis_YQP = models.FloatField("小组发放元气值上限")
-    # 个人和小组所能平分的元气值比例
-    # 发放时，从学院剩余元气值中，抽取向自然人分发的数量，平分给元气值低于上限的自然人；小组同理
-    per_YQP = models.FloatField("自然人获得的元气值", default=0)
-    org_YQP = models.FloatField("小组获得的元气值", default=0)
-
-    start_time = models.DateTimeField("开始时间")
-
-    status = models.BooleanField("是否应用", default=False)
-    type = models.IntegerField("发放类型", choices=DistributionType.choices)
-
-    class Meta:
-        verbose_name = "元气值发放"
-        verbose_name_plural = verbose_name
-
 class NotificationManager(models.Manager):
     def activated(self):
         return self.exclude(status=Notification.Status.DELETE)
@@ -1258,7 +1151,7 @@ class NotificationManager(models.Manager):
 
 class Notification(models.Model):
     class Meta:
-        verbose_name = "通知消息"
+        verbose_name = "o.通知消息"
         verbose_name_plural = verbose_name
         ordering = ["id"]
 
@@ -1303,13 +1196,6 @@ class Notification(models.Model):
     bulk_identifier = models.CharField("批量信息标识", max_length=64, default="",
                                         db_index=True)
     anonymous_flag = models.BooleanField("是否匿名", default=False)
-    relate_TransferRecord: TransferRecord = models.ForeignKey(
-        TransferRecord,
-        related_name="transfer_notification",
-        on_delete=models.CASCADE,
-        blank=True,
-        null=True,
-    )
     relate_instance: CommentBase = models.ForeignKey(
         CommentBase,
         related_name="relate_notifications",
@@ -1326,7 +1212,7 @@ class Notification(models.Model):
 
 class Comment(models.Model):
     class Meta:
-        verbose_name = "评论"
+        verbose_name = "2.评论"
         verbose_name_plural = verbose_name
         ordering = ["-time"]
 
@@ -1341,7 +1227,7 @@ class Comment(models.Model):
 
 class CommentPhoto(models.Model):
     class Meta:
-        verbose_name = "评论图片"
+        verbose_name = "2.评论图片"
         verbose_name_plural = verbose_name
 
     image = models.ImageField(
@@ -1358,7 +1244,7 @@ class CommentPhoto(models.Model):
 
 class ModifyOrganization(CommentBase):
     class Meta:
-        verbose_name = "新建小组"
+        verbose_name = "1.新建小组"
         verbose_name_plural = verbose_name
         ordering = ["-modify_time", "-time"]
 
@@ -1417,7 +1303,7 @@ class ModifyOrganization(CommentBase):
 
 class ModifyPosition(CommentBase):
     class Meta:
-        verbose_name = "成员申请详情"
+        verbose_name = "1.成员申请详情"
         verbose_name_plural = verbose_name
         ordering = ["-modify_time", "-time"]
 
@@ -1518,78 +1404,6 @@ class ModifyPosition(CommentBase):
         super().save(*args, **kwargs)
 
 
-class Reimbursement(CommentBase):
-    class Meta:
-        verbose_name = "新建报销"
-        verbose_name_plural = verbose_name
-        ordering = ["-modify_time", "-time"]
-
-    class ReimburseStatus(models.IntegerChoices):
-        WAITING = (0, "待审核")
-
-        CONFIRM1 = (1, "主管老师已确认")
-        CONFIRM2 = (2, "财务老师已确认")
-
-        CONFIRMED = (3, "已通过")
-        # 如果需要更多审核，每个审核的确认状态应该是2的幂
-        # 根据最新要求，最终不以线上为准，不再设置转账状态
-        CANCELED = (4, "已取消")
-        REFUSED = (5, "已拒绝")
-
-    related_activity: Activity = models.ForeignKey(
-        Activity, on_delete=models.CASCADE
-    )
-    amount = models.FloatField("报销金额", default=0)
-    message = models.TextField("备注信息", default="", blank=True)
-    # 报销的小组
-    pos: User = models.ForeignKey(User, on_delete=models.CASCADE)
-    status = models.SmallIntegerField(choices=ReimburseStatus.choices, default=0)
-    # 转账信息的记录
-    record: TransferRecord = models.ForeignKey(
-        TransferRecord, on_delete=models.CASCADE)
-    examine_teacher: NaturalPerson = models.ForeignKey(
-        NaturalPerson, on_delete=models.CASCADE, verbose_name="审核老师")
-
-    def __str__(self):
-        return f'{self.related_activity.title}活动报销'
-
-    def save(self, *args, **kwargs):
-        self.typename = "reimbursement"
-        super().save(*args, **kwargs)
-
-    def get_poster_name(self):
-        try:
-            org = Organization.objects.get(organization_id=self.pos)
-            return org
-        except:
-            return '未知'
-
-    def extra_display(self):
-        display = []
-        display.append(('报销金额', str(self.amount) + '元', 'money'))
-        if self.message:
-            display.append(('备注', self.message))
-        return display
-
-    def is_pending(self):   #表示是不是pending状态
-        return self.status == Reimbursement.ReimburseStatus.WAITING
-
-
-class ReimbursementPhoto(models.Model):
-    class Meta:
-        verbose_name = "报销相关图片"
-        verbose_name_plural = verbose_name
-        ordering = ["-time"]
-    class PhotoType(models.IntegerChoices):
-        MATERIAL = (0, "报销材料")  #如账单信息等
-        SUMMARY = (1, "总结图片")   #待审核的活动总结图片
-    type = models.SmallIntegerField(choices=PhotoType.choices)
-    image = models.ImageField(upload_to=f"reimbursement/photo/%Y/%m/", verbose_name=u'报销相关图片', null=True, blank=True)
-    related_reimb: Reimbursement = models.ForeignKey(
-        Reimbursement, related_name="reimbphotos", on_delete=models.CASCADE)
-    time = models.DateTimeField("上传时间", auto_now_add=True)
-
-
 class Help(models.Model):
     '''
         页面帮助类
@@ -1598,8 +1412,8 @@ class Help(models.Model):
     content = models.TextField("帮助内容", max_length=500)
 
     class Meta:
-        verbose_name = "页面帮助"
-        verbose_name_plural = "页面帮助"
+        verbose_name = "~A.页面帮助"
+        verbose_name_plural = verbose_name
 
     def __str__(self) -> str:
         return self.title
@@ -1607,7 +1421,7 @@ class Help(models.Model):
 
 class Wishes(models.Model):
     class Meta:
-        verbose_name = "心愿"
+        verbose_name = "~A.心愿"
         verbose_name_plural = verbose_name
         ordering = ["-time"]
 
@@ -1627,7 +1441,7 @@ class Wishes(models.Model):
 class ModifyRecord(models.Model):
     # 仅用作记录，之后大概会删除吧，所以条件都设得很宽松
     class Meta:
-        verbose_name = "修改记录"
+        verbose_name = "~R.修改记录"
         verbose_name_plural = verbose_name
         ordering = ["-time"]
     user: User = models.ForeignKey(User, on_delete=models.SET_NULL,
@@ -1672,7 +1486,7 @@ class Course(models.Model):
     助教发布课程需要填写的信息
     """
     class Meta:
-        verbose_name = "书院课程"
+        verbose_name = "4.书院课程"
         verbose_name_plural = verbose_name
         ordering = ["id"]
 
@@ -1749,8 +1563,9 @@ class Course(models.Model):
     def save(self, *args, **kwargs):
         super().save(*args, **kwargs)
 
+    @invalid_for_frontend
     def __str__(self):
-        return self.name
+        return f'{self.name}_{self.year}{self.get_semester_display()}'
 
     def get_photo_path(self):
         # 暂不要求课程的宣传图片必须存在 报错更令人烦恼
@@ -1765,7 +1580,7 @@ class CourseTime(models.Model):
     记录课程每周的上课时间，同一课程可以对应多个上课时间
     """
     class Meta:
-        verbose_name = "上课时间"
+        verbose_name = "4.上课时间"
         verbose_name_plural = verbose_name
         ordering = ["start"]
 
@@ -1786,7 +1601,7 @@ class CourseParticipant(models.Model):
     学生的选课情况
     """
     class Meta:
-        verbose_name = "课程报名情况"
+        verbose_name = "4.课程报名情况"
         verbose_name_plural = verbose_name
 
     course: Course = models.ForeignKey(Course,
@@ -1831,7 +1646,7 @@ class CourseRecord(models.Model):
     学时表
     """
     class Meta:
-        verbose_name = "学时表"
+        verbose_name = "4.学时表"
         verbose_name_plural = verbose_name
 
     person: NaturalPerson = models.ForeignKey(
@@ -1858,7 +1673,7 @@ class CourseRecord(models.Model):
 
     def get_course_name(self):
         if self.course is not None:
-            return str(self.course)
+            return self.course.name
         return self.extra_name
     get_course_name.short_description = "课程名"
 
@@ -1866,7 +1681,7 @@ class CourseRecord(models.Model):
 class PageLog(models.Model):
     # 统计Page类埋点数据(PV/PD)
     class Meta:
-        verbose_name = "Page类埋点记录"
+        verbose_name = "~R.Page类埋点记录"
         verbose_name_plural = verbose_name
 
     class CountType(models.IntegerChoices):
@@ -1886,7 +1701,7 @@ class PageLog(models.Model):
 class ModuleLog(models.Model):
     # 统计Module类埋点数据(MV/MC)
     class Meta:
-        verbose_name = "Module类埋点记录"
+        verbose_name = "~R.Module类埋点记录"
         verbose_name_plural = verbose_name
 
     class CountType(models.IntegerChoices):
@@ -1906,7 +1721,7 @@ class ModuleLog(models.Model):
 
 class FeedbackType(models.Model):
     class Meta:
-        verbose_name = "反馈类型"
+        verbose_name = "#EX.反馈类型"
         verbose_name_plural = verbose_name
 
     id = models.SmallIntegerField("反馈类型编号", primary_key=True)
@@ -1931,7 +1746,7 @@ class FeedbackType(models.Model):
 
 class Feedback(CommentBase):
     class Meta:
-        verbose_name = "反馈"
+        verbose_name = "#EX.反馈"
         verbose_name_plural = verbose_name
 
     type: FeedbackType = models.ForeignKey(FeedbackType, on_delete=models.CASCADE)
@@ -2014,7 +1829,7 @@ class Feedback(CommentBase):
 ####  学术地图相关模型
 class AcademicTag(models.Model):
     class Meta:
-        verbose_name = "学术地图标签"
+        verbose_name = "P.学术地图标签"
         verbose_name_plural = verbose_name
 
     class AcademicTagType(models.IntegerChoices):
@@ -2054,7 +1869,7 @@ class AcademicEntry(models.Model):
 
 class AcademicTagEntry(AcademicEntry):
     class Meta:
-        verbose_name = "学术地图标签项目"
+        verbose_name = "P.学术地图标签项目"
         verbose_name_plural = verbose_name
     
     tag = models.ForeignKey(AcademicTag, on_delete=models.CASCADE)
@@ -2066,7 +1881,7 @@ class AcademicTagEntry(AcademicEntry):
 
 class AcademicTextEntry(AcademicEntry):
     class Meta:
-        verbose_name = "学术地图文本项目"
+        verbose_name = "P.学术地图文本项目"
         verbose_name_plural = verbose_name
 
     class AcademicTextType(models.IntegerChoices):
@@ -2094,7 +1909,7 @@ class Chat(CommentBase):
     应用于学术地图的QA功能
     """
     class Meta:
-        verbose_name = "对话"
+        verbose_name = "2.对话"
         verbose_name_plural = verbose_name
     
     questioner: User = models.ForeignKey(User, on_delete=models.CASCADE,
@@ -2114,3 +1929,75 @@ class Chat(CommentBase):
     def save(self, *args, **kwargs):
         self.typename = "Chat"
         super().save(*args, **kwargs)   
+
+
+class Prize(models.Model):
+    class Meta:
+        verbose_name = '5.奖品'
+        verbose_name_plural = verbose_name
+
+    name = models.CharField('名称', max_length=50)
+    more_info = models.CharField('详情', max_length=255, default='', blank=True)
+    stock = models.IntegerField('参考库存', default=0)
+    reference_price = models.IntegerField('参考价格')
+    image = models.ImageField('图片', upload_to=f'prize/%Y-%m/', null=True, blank=True)
+
+
+class Pool(models.Model):
+    class Meta:
+        verbose_name = '5.奖池'
+        verbose_name_plural = verbose_name
+
+    class Type(models.TextChoices):
+        EXCHANGE = '兑换', '兑换奖池'
+        # 等结束抽签
+        LOTTERY = '抽奖', '抽奖奖池'
+        # 类似盲盒，每次抽可以获得一件物品，但不一定是大奖
+        RANDOM = '盲盒', '盲盒奖池'
+
+    title = models.CharField('名称', max_length=50)
+    type = models.CharField('类型', choices=Type.choices, max_length=15)
+    # 类型为兑换池时无效
+    entry_time = models.IntegerField('进入次数', default=1)
+    ticket_price = models.IntegerField('抽奖费', default=0)
+    start = models.DateTimeField('开始时间')
+    end = models.DateTimeField('结束时间', null=True, blank=True)
+    exchange_start = models.DateTimeField('兑奖开始时间', null=True, blank=True)
+    exchange_end = models.DateTimeField('兑奖结束时间', null=True, blank=True)
+
+
+class PoolItem(models.Model):
+    class Meta:
+        verbose_name = '5.奖池奖品'
+        verbose_name_plural = verbose_name
+
+    pool: Pool = models.ForeignKey(Pool, verbose_name='奖池', on_delete=models.CASCADE)
+    prize: Prize = models.ForeignKey(Prize, verbose_name='奖品', on_delete=models.CASCADE)
+    origin_num = models.IntegerField('初始数量')
+    consumed_num = models.IntegerField('已兑换', default=0)
+    # pool 类型为兑换奖池时有效
+    exchange_limit = models.IntegerField('单人兑换上限', default=0)
+    exchange_price = models.IntegerField('价格', null=True, blank=True)
+
+
+class PoolRecord(models.Model):
+    class Meta:
+        verbose_name = '5.奖池记录'
+        verbose_name_plural = verbose_name
+
+    class Status(models.TextChoices):
+        # 抽奖奖池时有效
+        LOTTERING = '抽奖中', '抽奖中'
+        NOT_LUCKY = '未中奖', '未中奖'
+        UN_EXCHANGE = '未兑换', '未兑换'
+        EXCHANGED = '已兑换', '已兑换'
+        OVERDUE = '已失效', '已失效'
+
+    user: User = models.ForeignKey(User, verbose_name='用户', on_delete=models.CASCADE)
+    pool: Pool = models.ForeignKey(Pool, verbose_name='奖池', on_delete=models.CASCADE)
+    prize: Prize = models.ForeignKey(
+        Prize, verbose_name='奖品', on_delete=models.CASCADE,
+        null=True, blank=True,
+    )
+    status = models.CharField('状态', choices=Status.choices, max_length=15)
+    time = models.DateTimeField('记录时间', auto_now_add=True)

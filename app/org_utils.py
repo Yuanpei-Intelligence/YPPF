@@ -51,8 +51,8 @@ def find_max_oname():
     organizations = Organization.objects.filter(
         organization_id__username__startswith="zz"
     ).order_by("-organization_id__username")
-    max_org = organizations[0]
-    max_oname = str(max_org.organization_id.username)
+    max_org: Organization = organizations[0]
+    max_oname = str(max_org.get_user().username)
     max_oname = int(max_oname[2:]) + 1
     prefix = "zz"
     max_oname = prefix + str(max_oname).zfill(5)
@@ -65,12 +65,12 @@ def accept_modifyorg_submit(application): #同意申请，假设都是合法操�
     user = User.objects.create_user(
         username=username, name=application.oname,
         usertype=UTYPE_ORG,
-        password=random_code_init(user.id),
+        # 组织首次登录必须通过切换账户
+        # password=random_code_init(username + application.oname)
     )
     org = Organization.objects.create(organization_id=user,
                                       oname=application.oname,
                                       otype=application.otype,
-                                      YQPoint=0.0,
                                       introduction=application.introduction,
                                       avatar=application.avatar)
 
@@ -320,15 +320,15 @@ def update_pos_application(application, me, user_type, applied_org, info):
             return wrong("申请状态异常！")
 
         # 接下来确定访问的个人/小组是不是在做分内的事情
-        if (user_type == "Person" and feasible_post.index(post_type) >= 3) or (
-                user_type == "Organization" and feasible_post.index(post_type) <= 2):
+        if (user_type == UTYPE_PER and feasible_post.index(post_type) >= 3) or (
+                user_type == UTYPE_ORG and feasible_post.index(post_type) <= 2):
             return wrong("您无权进行此操作. 如有疑惑, 请联系管理员")
 
         if feasible_post.index(post_type) <= 2:  # 是个人的操作, 新建\修改\删除
 
             # 访问者一定是个人
             try:
-                assert user_type == "Person"
+                assert user_type == UTYPE_PER
             except:
                 return wrong("访问者身份异常！")
 
@@ -463,27 +463,24 @@ def make_relevant_notification(application, info):
         "accept_submit",
         "refuse_submit",
     ]
-
-    # 统一该函数：判断application的类型
-    application_type = type(application)
     # 准备呈现使用的变量与信息
 
     # 先准备一些复杂变量(只是为了写起来方便所以先定义，不然一大个插在后面的操作里很丑)
-    if application_type == ModifyPosition:
+    if isinstance(application, ModifyPosition):
         try:
             position_name = application.org.otype.get_name(application.pos)  # 职位名称
         except:
             position_name = "退出小组"
-    elif application_type == ModifyOrganization:
+    elif isinstance(application, ModifyOrganization):
         apply_person = NaturalPerson.objects.get(person_id=application.pos)
         inchage_person = application.otype.incharge
         try:
-            new_org = Organization.objects.get(oname=application.oname)
+            new_org: Organization = Organization.objects.get(oname=application.oname)
         except:
             new_org = None
 
     # 准备创建notification需要的构件：发送方、接收方、发送内容、通知类型、通知标题、URL、关联外键
-    if application_type == ModifyPosition:
+    if isinstance(application, ModifyPosition):
         if post_type == 'new_submit':
             content = f'{application.person.name}发起小组成员变动申请，职位申请：{position_name}，请审核~'
         elif post_type == 'modify_submit':
@@ -496,11 +493,11 @@ def make_relevant_notification(application, info):
             content = f'抱歉，您申请的成员变动：{application.org.oname}，审核未通过！申请职位：{position_name}。'
         else:
             raise NotImplementedError
-        applyer_id = application.person.person_id
-        applyee_id = application.org.organization_id
+        applyer_id = application.person.get_user()
+        applyee_id = application.org.get_user()
         not_type = Notification.Title.POSITION_INFORM
         URL = f'/modifyPosition/?pos_id={application.id}'
-    elif application_type == ModifyOrganization:
+    elif isinstance(application, ModifyOrganization):
         if post_type == 'new_submit':
             content = f'{apply_person.name}发起新建小组申请，新建小组：{application.oname}，请审核～'
         elif post_type == 'modify_submit':
@@ -510,11 +507,10 @@ def make_relevant_notification(application, info):
         elif post_type == 'accept_submit':
             content = (
                 f'恭喜，您申请的小组：{application.oname}，审核已通过！'
-                f'小组编号为{new_org.organization_id.username}，'
-                f'初始密码为{random_code_init(new_org.organization_id.id)}，'
-                '请尽快登录修改密码。登录方式：(1)在负责人账户点击左侧「切换账号」；'
-                '(2)从登录页面用小组编号或小组名称以及密码登录。'
-                '你可以把小组的主页转发到微信群或朋友圈，邀请更多朋友订阅关注。'
+                f'小组编号为{new_org.get_user().username}，'
+                '请尽快登录设置密码。登录方式：在负责人账户侧边栏点击左侧「切换账号」；'
+                '设置密码后即可用小组编号或名称登录。'
+                '小tip: 你可以把小组的主页转发到微信群或朋友圈，邀请更多朋友订阅关注。'
                 '这样大家就能及时收到活动消息啦！使用愉快～'
             )
         elif post_type == 'refuse_submit':
@@ -562,7 +558,7 @@ def make_relevant_notification(application, info):
 
 
 @log.except_captured(source='org_utils[send_message_check]')
-def send_message_check(me, request):
+def send_message_check(me: Organization, request):
     # 已经检查了我的类型合法，并且确认是post
     # 设置默认量
     receiver_type = request.POST.get('receiver_type', None)
@@ -598,7 +594,7 @@ def send_message_check(me, request):
             return wrong("请输入正确的链接地址！")
 
     not_list = []
-    sender = me.organization_id
+    sender = me.get_user()
     status = Notification.Status.UNDONE
     title = title
     content = content
@@ -705,15 +701,16 @@ def get_promote_receiver(org, alpha=0.1, beta=0.1):
     # 初始化概率列表、tag比重列表
     delta_lst = []
     # org的tag列表
-    org_tags = list(org.tags.all())
+    org_tags: QuerySet[OrganizationTag] = org.tags.all()
     for np in raw_np_lst:
         Max = 0.0
-        for organization in Organization.objects.activated().all():
+        for organization in Organization.objects.activated().exclude(
+                id__in=np.unsubscribe_list.all()):
             # organization的tag列表
             organization_tags = list(organization.tags.all())
-            if (len(organization_tags) > 0) and (not organization in np.unsubscribe_list):
-                Max = max(Max, beta * len([ \
-                    tag for tag in org_tags if tag in organization_tags \
+            if len(organization_tags):
+                Max = max(Max, beta * len([
+                    tag for tag in org_tags if tag in organization_tags
                 ]) / len(organization_tags))
         delta_lst.append(Max)
     prob_lst = [alpha + delta for delta in delta_lst]

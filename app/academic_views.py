@@ -1,9 +1,11 @@
 from app.views_dependency import *
 from app.models import (
     AcademicTag,
+    AcademicEntry,
     AcademicTagEntry,
     AcademicTextEntry,
     Chat,
+    NaturalPerson,
 )
 from app.academic_utils import (
     get_search_results,
@@ -14,6 +16,8 @@ from app.academic_utils import (
     get_tag_status,
     get_text_status,
     update_academic_map,
+    get_wait_audit_student,
+    audit_academic_map,
 )
 from app.utils import (
     check_user_type, 
@@ -27,6 +31,8 @@ __all__ = [
     'showChats', 
     'viewChat',
     'modifyAcademic',
+    'auditAcademic',
+    'applyAuditAcademic',
 ]
 
 
@@ -133,7 +139,7 @@ def modifyAcademic(request: HttpRequest) -> HttpResponse:
         return redirect(message_url(wrong("只有个人才可以修改自己的学术地图！")))
 
     # POST表明编辑界面发起修改
-    if request.method == "POST" and request.POST: 
+    if request.method == "POST" and request.POST:
         try:
             context = update_academic_map(request)
             if context["warn_code"] == 1:    # 填写的TextEntry太长导致填写失败
@@ -145,36 +151,37 @@ def modifyAcademic(request: HttpRequest) -> HttpResponse:
     
     # 不是POST，说明用户希望编辑学术地图，下面准备前端展示量
     # 获取所有专业/项目的列表，左右前端select框的下拉选项
+    me = get_person_or_org(request.user, UTYPE_PER)
     frontend_dict.update(
-        major_list=get_js_tag_list(request, AcademicTag.AcademicTagType.MAJOR, selected=False),
-        minor_list=get_js_tag_list(request, AcademicTag.AcademicTagType.MINOR, selected=False),
-        double_degree_list=get_js_tag_list(request, AcademicTag.AcademicTagType.DOUBLE_DEGREE, selected=False),
-        project_list=get_js_tag_list(request, AcademicTag.AcademicTagType.PROJECT, selected=False),
+        major_list=get_js_tag_list(me, AcademicTag.AcademicTagType.MAJOR, selected=False),
+        minor_list=get_js_tag_list(me, AcademicTag.AcademicTagType.MINOR, selected=False),
+        double_degree_list=get_js_tag_list(me, AcademicTag.AcademicTagType.DOUBLE_DEGREE, selected=False),
+        project_list=get_js_tag_list(me, AcademicTag.AcademicTagType.PROJECT, selected=False),
     )
     
     # 获取用户已有的专业/项目的列表，用于select的默认选中项
     frontend_dict.update(
-        selected_major_list=get_js_tag_list(request, AcademicTag.AcademicTagType.MAJOR, selected=True),
-        selected_minor_list=get_js_tag_list(request, AcademicTag.AcademicTagType.MINOR, selected=True),
-        selected_double_degree_list=get_js_tag_list(request, AcademicTag.AcademicTagType.DOUBLE_DEGREE, selected=True),
-        selected_project_list=get_js_tag_list(request, AcademicTag.AcademicTagType.PROJECT, selected=True),
+        selected_major_list=get_js_tag_list(me, AcademicTag.AcademicTagType.MAJOR, selected=True),
+        selected_minor_list=get_js_tag_list(me, AcademicTag.AcademicTagType.MINOR, selected=True),
+        selected_double_degree_list=get_js_tag_list(me, AcademicTag.AcademicTagType.DOUBLE_DEGREE, selected=True),
+        selected_project_list=get_js_tag_list(me, AcademicTag.AcademicTagType.PROJECT, selected=True),
     )
     
     # 获取用户已有的TextEntry的contents，用于TextEntry填写栏的前端预填写
     scientific_research_list = get_text_list(
-        request, AcademicTextEntry.AcademicTextType.SCIENTIFIC_RESEARCH
+        me, AcademicTextEntry.AcademicTextType.SCIENTIFIC_RESEARCH
     )
     challenge_cup_list = get_text_list(
-        request, AcademicTextEntry.AcademicTextType.CHALLENGE_CUP
+        me, AcademicTextEntry.AcademicTextType.CHALLENGE_CUP
     )
     internship_list = get_text_list(
-        request, AcademicTextEntry.AcademicTextType.INTERNSHIP
+        me, AcademicTextEntry.AcademicTextType.INTERNSHIP
     )
     scientific_direction_list = get_text_list(
-        request, AcademicTextEntry.AcademicTextType.SCIENTIFIC_DIRECTION
+        me, AcademicTextEntry.AcademicTextType.SCIENTIFIC_DIRECTION
     )
     graduation_list = get_text_list(
-        request, AcademicTextEntry.AcademicTextType.GRADUATION
+        me, AcademicTextEntry.AcademicTextType.GRADUATION
     )
     frontend_dict.update(
         scientific_research_list=scientific_research_list,
@@ -190,7 +197,6 @@ def modifyAcademic(request: HttpRequest) -> HttpResponse:
     )
     
     # 最后获取每一种atype对应的entry的公开状态，如果没有则默认为公开
-    me = get_person_or_org(request.user, UTYPE_PER)
     major_status = get_tag_status(me, AcademicTag.AcademicTagType.MAJOR)
     minor_status = get_tag_status(me, AcademicTag.AcademicTagType.MINOR)
     double_degree_status = get_tag_status(me, AcademicTag.AcademicTagType.DOUBLE_DEGREE)
@@ -237,3 +243,43 @@ def modifyAcademic(request: HttpRequest) -> HttpResponse:
     frontend_dict["warn_code"] = request.GET.get('warn_code', 0)
     frontend_dict["warn_message"] = request.GET.get('warn_message', "")
     return render(request, "modify_academic.html", frontend_dict)
+
+
+@login_required(redirect_field_name="origin")
+@utils.check_user_access(redirect_url="/logout/")
+@log.except_captured(EXCEPT_REDIRECT, source='academic_views[auditAcademic]', record_user=True)
+def auditAcademic(request: HttpRequest) -> HttpResponse:
+    """
+    供教师使用的页面，展示所有待审核的学术地图
+
+    :param request
+    :type request: HttpRequest
+    :return
+    :rtype: HttpResponse
+    """
+    # 身份检查
+    person = get_person_or_org(request.user)
+    if not (person.get_type() == UTYPE_PER and person.is_teacher()):
+        return redirect(message_url(wrong('只有教师账号可进入学术地图审核页面!')))
+
+    frontend_dict = {}
+    frontend_dict["bar_display"] = get_sidebar_and_navbar(request.user, "审核学术地图")
+    frontend_dict["student_list"] = get_wait_audit_student()
+    
+    return render(request, "audit_academic.html", frontend_dict)
+
+
+@login_required(redirect_field_name="origin")
+@utils.check_user_access(redirect_url="/logout/")
+@log.except_captured(EXCEPT_REDIRECT, source='academic_views[applyAuditAcademic]', record_user=True)
+def applyAuditAcademic(request: HttpRequest):
+    if not NaturalPerson.objects.get_by_user(request.user).is_teacher():
+        return JsonResponse(wrong("只有老师才能执行审核操作！"))
+    try:
+        author = NaturalPerson.objects.get(person_id_id=request.POST.get("author_id"))
+        # 需要回传作者的person_id.id
+        audit_academic_map(author)
+        return JsonResponse(succeed("审核成功！"))
+    except:
+        return JsonResponse(wrong("审核发布时发生未知错误，请联系管理员！"))
+

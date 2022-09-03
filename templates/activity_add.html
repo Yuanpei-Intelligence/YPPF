@@ -114,20 +114,6 @@
                                                     aria-label="Default" placeholder="要让参加活动的同学能找到活动地点哦~" required="required" maxlength=200 onclick="fill_value(this)">
                                             </div>
                                             <div class="form-group">
-                                                <label>预算总额</label>
-                                                <a data-toggle="tooltip" data-placement="bottom" title="预算对审批和报销都很重要，请慎重填写，预算详细说明请在提交后点击“修改活动”，并于最下方评论区进行文字描述或上传表格图片。">
-                                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor"
-                                                        class="bi bi-question-circle-fill" viewBox="0 0 22 22">
-                                                        <path
-                                                            d="M16 8A8 8 0 1 1 0 8a8 8 0 0 1 16 0zM5.496 6.033h.825c.138 0 .248-.113.266-.25.09-.656.54-1.134 1.342-1.134.686 0 1.314.343 1.314 1.168 0 .635-.374.927-.965 1.371-.673.489-1.206 1.06-1.168 1.987l.003.217a.25.25 0 0 0 .25.246h.811a.25.25 0 0 0 .25-.25v-.105c0-.718.273-.927 1.01-1.486.609-.463 1.244-.977 1.244-2.056 0-1.511-1.276-2.241-2.673-2.241-1.267 0-2.655.59-2.75 2.286a.237.237 0 0 0 .241.247zm2.325 6.443c.61 0 1.029-.394 1.029-.927 0-.552-.42-.94-1.029-.94-.584 0-1.009.388-1.009.94 0 .533.425.927 1.01.927z" />
-                                                    </svg>
-                                                </a>
-                                                <input type="number" id="budget" name="budget" class="form-control"
-                                                    aria-label="Default" placeholder="预算对报销和审批都很重要，请慎重填写" required="required" 
-                                                    step="0.1" min="0" max="100000" onclick="fill_value(this)">
-                                            </div>
-
-                                            <div class="form-group">
                                                 <label>活动时间</label>
                                                 <a data-toggle="tooltip" data-placement="bottom" title="请选择合理的活动时间，持续时间过长将导致参与者无法获取积分！">
                                                     <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor"
@@ -170,7 +156,7 @@
                                                     name="recorded">
                                                 <label class="form-check-label" for="defaultCheck1">
                                                     已审核
-                                                    <a data-toggle="tooltip" data-placement="bottom" title="已审核活动指学期初已上报学院且获准的活动, 擅自勾选有可能导致小组无法报销或者小组被禁止登录！如果向学院申请元气值，需要二次审核，故不要勾选此选项。">
+                                                    <a data-toggle="tooltip" data-placement="bottom" title="已审核活动指学期初已上报学院且获准的活动, 擅自勾选有可能导致小组无法报销或者小组被禁止登录！">
                                                         <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor"
                                                             class="bi bi-question-circle-fill" viewBox="0 0 22 22">
                                                             <path
@@ -180,71 +166,6 @@
                                                 </label>
 
                                             </div>
-
-
-                                            <hr>
-                                            <p>
-                                                元气值
-                                                <a data-toggle="tooltip" data-placement="bottom" title="点击元气值来源来选择不同的元气值来源（如向同学收取）。在活动通过审核之后，此项不能修改。">
-                                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor"
-                                                        class="bi bi-question-circle-fill" viewBox="0 0 22 22">
-                                                        <path
-                                                            d="M16 8A8 8 0 1 1 0 8a8 8 0 0 1 16 0zM5.496 6.033h.825c.138 0 .248-.113.266-.25.09-.656.54-1.134 1.342-1.134.686 0 1.314.343 1.314 1.168 0 .635-.374.927-.965 1.371-.673.489-1.206 1.06-1.168 1.987l.003.217a.25.25 0 0 0 .25.246h.811a.25.25 0 0 0 .25-.25v-.105c0-.718.273-.927 1.01-1.486.609-.463 1.244-.977 1.244-2.056 0-1.511-1.276-2.241-2.673-2.241-1.267 0-2.655.59-2.75 2.286a.237.237 0 0 0 .241.247zm2.325 6.443c.61 0 1.029-.394 1.029-.927 0-.552-.42-.94-1.029-.94-.584 0-1.009.388-1.009.94 0 .533.425.927 1.01.927z" />
-                                                    </svg>
-                                                </a>
-                                            </p>
-                                            <div class="form-group">
-                                                <div class="input-group mb-3">
-                                                    {% if not edit and not examine or full_editable %}
-
-                                                    <div class="input-group-prepend">
-                                                        <button class="btn btn-outline-primary dropdown-toggle"
-                                                            type="button" data-toggle="dropdown" aria-haspopup="true"
-                                                            aria-expanded="false" id="yq_source">元气值来源
-                                                        </button>
-                                                        <div class="dropdown-menu">
-                                                            <a class="dropdown-item" onclick="another_shows($(this).text())"
-                                                                name="get" value="get">向学生收取</a>
-                                                            <a class="dropdown-item" onclick="another_shows($(this).text())"
-                                                                id="college" name="college" value="college">向学院申请</a>
-                                                        </div>
-                                                        <input type="hidden" id="from_college" name="from_college"
-                                                            value="" />
-                                                    </div>
-                                                    {% else %}
-                                                    <div class="input-group-prepend">
-                                                        <button class="btn btn-outline-primary"
-                                                            type="button" id="yq_source"
-                                                            aria-expanded="false">{{yq_source}}
-                                                        </button>
-                                                    </div>
-                                                    {% endif %}
-
-                                                    <div class="input-group-prepend">
-                                                        <button class="btn btn-outline-primary"
-                                                            type="button"
-                                                            aria-expanded="false">元气值数量
-                                                        </button>
-                                                    </div>
-
-                                                    <!-- TOCHECK: 如果是 applying 记得设成 disable -->
-                                                    <input type="number" class="form-control"
-                                                        aria-label="Text input with dropdown button" id="aprice"
-                                                        name="aprice" placeholder="精度 0.1" step="0.1" min="0" required="required" 
-                                                        οnkeyup="value=value.replace(/^\D*(\d*(?:\.\d{0,1})?).*$/g, '$1')" onclick="fill_value(this)">
-
-                                                </div>
-                                            </div>
-                                            <div class="form-group" id="reason_block" style="display: none">
-                                                <label>元气值申请理由 ( 必填 )</label>
-                                                <textarea id="apply_reason" name="apply_reason" class="form-control" rows="3"
-                                                    placeholder="申请理由将作为老师审核的依据，请仔细填写~" onclick="fill_value(this)" maxlength=225></textarea>
-                                            </div>
-
-
-
-
-
                                             <hr>
                                             <p>
                                                 报名信息
@@ -607,12 +528,8 @@
         if (false === $(this).prop("checked")) {
             document.getElementById("college").style.display = "";
         } else {
-            document.getElementById("yq_source").innerHTML = "向学生收取";
             document.getElementById("college").style.display = "none";
-            document.getElementById("from_college").value = "0";
             document.getElementById("reason_block").style.display = "none";
-            document.getElementById("apply_reason").required = "";
-            document.getElementById("aprice").placeholder = "参与活动元气值价格";
         }
     });
     {% for pic in defaultpics %}
@@ -651,24 +568,6 @@
             document.getElementById("signscheme").value = "1";
         }
     }
-    function another_shows(a) {
-        $("#yq_source").text(a);
-        if ("向学生收取" === a) {
-            {% if not edit %}
-            document.getElementById("aprice").placeholder = "参与活动元气值价格";
-            {% endif %}
-            document.getElementById("from_college").value = "0";
-            document.getElementById("reason_block").style.display = "none";
-            document.getElementById("apply_reason").required = "";
-        } else {
-            {% if not edit %}
-            document.getElementById("aprice").placeholder = "向学院申请的元气值数量";
-            {% endif %}
-            document.getElementById("from_college").value = "1";
-            document.getElementById("reason_block").style.display = "";
-            document.getElementById("apply_reason").required = "required";
-        }
-    }
 </script>
 
 <!-- 选择时间 -->
@@ -700,18 +599,13 @@
 <script type="text/javascript">
     document.getElementById("title").value = "{{title | safe}}";
     document.getElementById("location").value = "{{location | safe}}";
-    document.getElementById("budget").value = "{{budget}}";   
     document.getElementById("datetimepicker3").value="{{start}}";
     document.getElementById("datetimepicker4").value="{{end}}";
     document.getElementById("examine_teacher").value="{{examine_teacher}}";
     {% if activity.recorded %}
     document.getElementById("recorded").checked = true;
-    document.getElementById("yq_source").innerHTML = "向学生收取";
     document.getElementById("college").style.display = "none";
-    document.getElementById("from_college").value = "0";
     document.getElementById("reason_block").style.display = "none";
-    document.getElementById("apply_reason").required = "";
-    document.getElementById("aprice").placeholder = "参与活动元气值价格";
     {% endif %}
     document.getElementById("pricebutton").innerHTML = "&nbsp;&nbsp;{{signscheme}}&nbsp;&nbsp;";
     if ("{{signscheme}}" == "先到先得") {
@@ -719,13 +613,6 @@
     } else {
         document.getElementById("signscheme").value = "1";
     }
-    document.getElementById("yq_source").innerHTML = "{{yq_source}}";
-    if ("{{yq_source}}" == "向学生收取") {
-        document.getElementById("from_college").value = "0";
-    } else {
-        document.getElementById("from_college").value = "1";
-    }
-    document.getElementById("aprice").value = "{{amount}}";
     {% if no_limit %}
     document.getElementById("unlimited_capacity").checked = true;
     document.getElementById("maxpeople").disabled = true;
@@ -739,10 +626,6 @@
     document.getElementById("inner").checked = true;
     {% endif %}  
     document.getElementById("aintro").value = "{{introduction | safe}}";
-    {% if yq_source == "向学院申请" %}
-    document.getElementById("apply_reason").value = "{{apply_reason | safe}}";
-    document.getElementById("reason_block").style.display = "";
-    {% endif %}
     document.getElementById("inputState").value = {{endbefore}};
     document.getElementById("URL").placeholder = "{{url | safe}}";
 
@@ -770,7 +653,6 @@
     // 活动信息
     document.getElementById("title").placeholder = "{{title | safe}}";
     document.getElementById("location").placeholder = "{{location | safe}}";
-    document.getElementById("budget").placeholder="{{budget}}";
     document.getElementById("datetimepicker3").placeholder="{{start}}";
     document.getElementById("datetimepicker4").placeholder="{{end}}";
     {% if not examine %}
@@ -783,8 +665,6 @@
     {% endif %}
     // 报名信息 
     document.getElementById("pricebutton").innerHTML = "&nbsp;&nbsp;{{signscheme}}&nbsp;&nbsp;";
-    document.getElementById("yq_source").innerHTML = "{{yq_source}}";
-    document.getElementById("aprice").placeholder = "{{amount}}";
     {% if no_limit %}
     document.getElementById("unlimited_capacity").checked = true;
     document.getElementById("maxpeople").disabled = true;
@@ -804,10 +684,6 @@
     {% endif %}   
     // 宣传信息
     document.getElementById("aintro").placeholder = "{{introduction | safe}}";
-    {% if yq_source == "向学院申请" %}
-    document.getElementById("apply_reason").placeholder = "{{apply_reason | safe}}";
-    document.getElementById("reason_block").style.display = "";
-    {% endif %}
 
 
     // input 不再必须填写
@@ -816,7 +692,6 @@
         all_inputs[i].required="";
     }
     document.getElementById("aintro").required = "";
-    document.getElementById("apply_reason").required = "";
 
     /* 填充旧图片 */
     {% if full_editable %}
@@ -842,19 +717,8 @@
             {% else %}
             document.getElementById("signscheme").value = "0";
             {% endif %}
-            {% if yq_source == "向学院申请" %}
-            document.getElementById("from_college").value = "1";
-            document.getElementById("reason_block").style.display = "";
-            {% else %}
-            document.getElementById("from_college").value = "0";
-            {% endif %}
         {% else %}
-            {% if yq_source == "向学院申请" %}
-                document.getElementById("aprice").disabled = true;
-            {% endif %}
             document.getElementById("title").disabled = true;
-            document.getElementById("budget").disabled = true;
-            document.getElementById("apply_reason").disabled = true;
         {% endif %}
 
     {% else %}
@@ -867,7 +731,6 @@
             all_inputs[i].disabled = true;
         }
         document.getElementById("aintro").disabled = true;
-        document.getElementById("apply_reason").disabled = true;
         function fill_value(a) {
             console.log(a.value);
         }
@@ -1007,20 +870,7 @@
             document.body.scrollTop = document.documentElement.scrollTop = 0;
             return false;
         }
-        /* 检查选择了元气值来源 */
-        var from_college = document.getElementById("from_college").value;
-        if (from_college == "") {
-            {% if html_display.warn_code == 2 %}
-            document.getElementById("success_msg").style.display = "none";
-            {% endif %}
-            document.getElementById("warn_msg").style.display = "";
-            document.getElementById("warn_msg").innerHTML = "尚未选择元气值来源。";
-            document.body.scrollTop = document.documentElement.scrollTop = 0;
-            return false;
-        }
         {% endif %}
-
-
 
         /* 检查人数限制 */
         // 如果编辑状态都可以不选
@@ -1121,8 +971,6 @@
         }
         if (document.getElementById("aintro").value == "")
             document.getElementById("aintro").value = document.getElementById("aintro").placeholder;
-        if (document.getElementById("apply_reason").value == "")
-            document.getElementById("apply_reason").value = document.getElementById("apply_reason").placeholder;
         {% endif %}
 
         return true;

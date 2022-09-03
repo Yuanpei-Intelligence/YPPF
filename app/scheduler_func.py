@@ -7,7 +7,6 @@ from app.models import (
     User,
     NaturalPerson,
     Organization,
-    TransferRecord,
     Activity,
     ActivityPhoto,
     Participant,
@@ -52,7 +51,6 @@ default_weather = get_config('default_weather', default=None)
 __all__ = [
     'send_to_persons',
     'send_to_orgs',
-    'distribute_YQPoint_per_month',
     'changeAllActivities',
     'get_weather',
     'update_active_score_per_day',
@@ -84,40 +82,6 @@ def send_to_orgs(title, message, url='/index/'):
         publish_kws={'level': WechatMessageLevel.IMPORTANT, 'show_source': False},
         )
 
-
-# 学院每月下发元气值
-def distribute_YQPoint_per_month():
-    with transaction.atomic():
-        recipients = NaturalPerson.objects.activated().select_for_update()
-        YP = Organization.objects.get(oname=YQP_ONAME)
-        trans_time = datetime.now()
-        transfer_list = [TransferRecord(
-                proposer=YP.organization_id,
-                recipient=recipient.person_id,
-                amount=(30 + max(0, (30 - recipient.YQPoint))),
-                start_time=trans_time,
-                finish_time=trans_time,
-                message=f"元气值每月发放。",
-                status=TransferRecord.TransferStatus.ACCEPTED,
-                rtype=TransferRecord.TransferType.BONUS
-        ) for recipient in recipients]
-        notification_lists = [
-            Notification(
-                receiver=recipient.person_id,
-                sender=YP.organization_id,
-                typename=Notification.Type.NEEDREAD,
-                title=Notification.Title.YQ_DISTRIBUTION,
-                content=f"{YP}向您发放了本月元气值{30 + max(0, (30 - recipient.YQPoint))}点，请查收！",
-            ) for recipient in recipients
-        ]
-        TransferRecord.objects.bulk_create(transfer_list)
-        Notification.objects.bulk_create(notification_lists)
-        for recipient in recipients:
-            amount = 30 + max(0, (30 - recipient.YQPoint))
-            recipient.YQPoint += amount
-            recipient.YQPoint += recipient.YQPoint_Bonus
-            recipient.YQPoint_Bonus = 0
-            recipient.save()
 
 
 """
@@ -190,7 +154,7 @@ def add_week_course_activity(course_id: int, weektime_id: int, cur_week: int ,co
     """
     添加每周的课程活动
     """
-    course = Course.objects.get(id=course_id)
+    course: Course = Course.objects.get(id=course_id)
     examine_teacher = NaturalPerson.objects.get_teacher(
         get_setting("course/audit_teacher"))
     # 当前课程在学期已举办的活动
@@ -222,6 +186,11 @@ def add_week_course_activity(course_id: int, weektime_id: int, cur_week: int ,co
             activity.publish_time = week_time.start + timedelta(days=7 * cur_week - course.publish_day)
 
         activity.need_apply = course.need_apply  # 是否需要报名
+        
+        if course.need_apply:
+            activity.endbefore = Activity.EndBefore.onehour
+            activity.apply_end = activity.start - timedelta(hours=1)
+
         activity.need_checkin = True  # 需要签到
         activity.recorded = True
         activity.course_time = week_time
@@ -262,7 +231,7 @@ def add_week_course_activity(course_id: int, weektime_id: int, cur_week: int ,co
         scheduler.add_job(changeActivityStatus, "date", id=f"activity_{activity.id}_{Activity.Status.APPLYING}",
                           run_date=activity.publish_time, args=[activity.id, Activity.Status.UNPUBLISHED, Activity.Status.APPLYING], replace_existing=True)
         scheduler.add_job(changeActivityStatus, "date", id=f"activity_{activity.id}_{Activity.Status.WAITING}",
-                          run_date=activity.start - timedelta(minutes=5), args=[activity.id, Activity.Status.APPLYING, Activity.Status.WAITING], replace_existing=True)
+                          run_date=activity.start - timedelta(hours=1), args=[activity.id, Activity.Status.APPLYING, Activity.Status.WAITING], replace_existing=True)
     else:
         scheduler.add_job(changeActivityStatus, "date", id=f"activity_{activity.id}_{Activity.Status.WAITING}",
                           run_date=activity.publish_time, args=[activity.id, Activity.Status.UNPUBLISHED, Activity.Status.WAITING], replace_existing=True)
@@ -278,7 +247,7 @@ def add_week_course_activity(course_id: int, weektime_id: int, cur_week: int ,co
 
     notification_create(
         receiver=examine_teacher.person_id,
-        sender=course.organization.organization_id,
+        sender=course.organization.get_user(),
         typename=Notification.Type.NEEDDO,
         title=Notification.Title.VERIFY_INFORM,
         content="新增了一个已审批的课程活动",
@@ -337,9 +306,10 @@ def public_feedback_per_hour():
         feedbacks.select_for_update().update(
             public_status=Feedback.PublicStatus.PUBLIC)
         for feedback in feedbacks:
+            feedback: Feedback
             notification_create(
-                receiver=feedback.person.person_id,
-                sender=feedback.org.otype.incharge.person_id,
+                receiver=feedback.person.get_user(),
+                sender=feedback.org.otype.incharge.get_user(),
                 typename=Notification.Type.NEEDREAD,
                 title="反馈状态更新",
                 content=f"您的反馈[{feedback.title}]已被公开",
@@ -349,8 +319,8 @@ def public_feedback_per_hour():
                 publish_kws={'app': WechatApp.AUDIT, 'level': WechatMessageLevel.INFO},
             )
             notification_create(
-                receiver=feedback.org.organization_id,
-                sender=feedback.org.otype.incharge.person_id,
+                receiver=feedback.org.get_user(),
+                sender=feedback.org.otype.incharge.get_user(),
                 typename=Notification.Type.NEEDREAD,
                 title="反馈状态更新",
                 content=f"您处理的反馈[{feedback.title}]已被公开",

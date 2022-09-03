@@ -164,7 +164,7 @@ def set_cancel_wechat(appoint: Appoint, students_id=None):
 
 
 # added by pht: 8.31
-def set_start_wechat(appoint, students_id=None, notify_create=True):
+def set_start_wechat(appoint: Appoint, students_id=None, notify_create=True):
     '''将预约成功和开始前的提醒定时发送给微信'''
     if students_id is None:
         students_id = list(appoint.students.values_list('Sid', flat=True))
@@ -172,7 +172,7 @@ def set_start_wechat(appoint, students_id=None, notify_create=True):
     # modify by pht: 如果已经开始，非临时预约记录log
     if datetime.now() >= appoint.Astart:
         # add by lhw : 临时预约 #
-        if appoint.Atemp_flag == True:
+        if appoint.Atype == Appoint.Type.TEMPORARY:
             set_appoint_wechat(
                 appoint, 'temp_appointment',
                 students_id=students_id, id=f'{appoint.Aid}_new_wechat')
@@ -251,11 +251,9 @@ def addAppoint(contents: dict,
     '''
 
     # 检查是否为临时预约 add by lhw (2021.7.13)
-    # TODO: remove temp flag
-    contents.setdefault('Atemp_flag', False)
     # 首先检查房间是否存在
     try:
-        room = Room.objects.get(Rid=contents['Rid'])
+        room: Room = Room.objects.get(Rid=contents['Rid'])
         assert room.Rstatus == Room.Status.PERMITTED, 'room service suspended!'
     except Exception as e:
         return _error('房间不可预约，请更换房间！', e)
@@ -267,42 +265,12 @@ def addAppoint(contents: dict,
     except Exception as e:
         return _error('预约人信息有误，请检查后重新发起预约！', e)
 
-    # 检查人员信息
-    try:
-        # ---- modify by lhw: 加入考虑临时预约的情况 ---- #
-        current_time = datetime.now()   # 获取当前时间，只获取一次，防止多次获取得到不同时间
-        if current_time.date() != contents['Astart'].date():    # 若不为当天
-            real_min = room.Rmin
-        elif contents['Atemp_flag']:                            # 临时预约，放宽限制
-            real_min = min(room.Rmin, GLOBAL_INFO.temporary_min)
-        else:                                                   # 当天预约，放宽限制
-            real_min = min(room.Rmin, GLOBAL_INFO.today_min)
-        # ----- modify end : 2021.7.10 ----- #
-
-        assert len(students) + contents[
-            'non_yp_num'] >= real_min, f'at least {room.Rmin} students'
-    except Exception as e:
-        return _error('使用总人数需达到房间最小人数！', e)
-    # 检查外院人数是否过多
-    try:
-        # assert len(
-        #    students) >= contents['non_yp_num'], f"too much non-yp students!"
-        assert 2 * len(students) >= real_min, f"too little yp students!"
-    except Exception as e:
-        return _error('院内使用人数需要达到房间最小人数的一半！', e)
-
-    # 检查如果是俄文楼，是否只有一个人使用
-    if "R" in room.Rid:  # 如果是俄文楼系列
-        try:
-            assert len(
-                students) + contents['non_yp_num'] == 1, f"too many people using russian room!"
-        except Exception as e:
-            return _error('俄文楼元创空间仅支持单人预约！', e)
-
     # 检查预约时间是否正确
     try:
-        Astart = contents['Astart']
-        Afinish = contents['Afinish']
+        Astart: datetime = contents['Astart']
+        Afinish: datetime = contents['Afinish']
+        assert isinstance(Astart, datetime), 'Appoint time format error'
+        assert isinstance(Afinish, datetime), 'Appoint time format error'
         assert Astart <= Afinish, 'Appoint time error'
 
         # --- modify by lhw: Astart 可能比datetime.now小 --- #
@@ -312,50 +280,82 @@ def addAppoint(contents: dict,
     except Exception as e:
         return _error('非法预约时间段，请不要擅自修改url！', e)
 
+    # 检查预约类型
+    if datetime.now().date() == Astart.date() and type == Appoint.Type.NORMAL:
+        # 长期预约必须保证预约时达到正常人数要求
+        type = Appoint.Type.TODAY
+
+    # 创建预约时要求的人数
+    create_min: int = room.Rmin
+    if type == Appoint.Type.TODAY:
+        create_min = min(create_min, GLOBAL_INFO.today_min)
+    if type == Appoint.Type.TEMPORARY:
+        create_min = min(create_min, GLOBAL_INFO.temporary_min)
+
+    # 实际监控检查要求的人数
+    check_need_num = create_min
+    if check_need_num > GLOBAL_INFO.today_min:
+        if room.Rid == "B107B":
+            # 107b的监控不太靠谱，正下方看不到
+            check_need_num -= 2
+        elif room.Rid == "B217":
+            # 地下室关灯导致判定不清晰，晚上更严重
+            check_need_num -= 2 if Astart.hour >= 20 else 1
+        # 最多减到当日人数要求
+        check_need_num = max(check_need_num, GLOBAL_INFO.today_min)
+
+    # 检查人员信息
+    try:
+        yp_num = len(students)
+        non_yp_num: int = contents['non_yp_num']
+        assert isinstance(non_yp_num, int)
+        assert yp_num + non_yp_num >= create_min, f'at least {create_min} students'
+    except Exception as e:
+        return _error('使用总人数需达到房间最小人数！', e)
+
+    if 2 * yp_num < create_min:
+        return _error('院内使用人数需要达到房间最小人数的一半！')
+
+    # 检查如果是俄文楼，是否只有一个人使用
+    if room.Rid.startswith('R'):
+        if yp_num != 1 or non_yp_num != 0:
+            return _error('俄文楼元创空间仅支持单人预约！')
+
     # 预约是否超过3小时
     try:
         assert Afinish <= Astart + timedelta(hours=3)
     except:
         return _error('预约时长不能超过3小时！')
 
+    try:
+        usage: str = contents['Ausage']
+        announcement: str = contents['announcement']
+        assert isinstance(usage, str) and isinstance(announcement, str)
+    except:
+        return _error('非法的预约信息！')
+
     # 学号对了，人对了，房间是真实存在的，那就开始预约了
-    # 接下来开始搜索数据库，上锁
     major_student = None    # 避免下面未声明出错
     try:
         with transaction.atomic():
-
             # 获取预约发起者,确认预约状态
             major_student = get_participant(contents['Sid'])
             if major_student is None:
                 return _error('发起人信息不存在！')
 
-            # 等待确认的和结束的肯定是当下时刻已经弄完的，所以不用管
-            # conflict_appoints = Appoint.objects.not_canceled().\
-            #                     select_for_update().filter(Room=room)
             appoint: Appoint = Appoint(
                 Room=room,
                 Astart=Astart,
                 Afinish=Afinish,
-                Ausage=contents['Ausage'],
-                Aannouncement=contents['announcement'],
+                Ausage=usage,
+                Aannouncement=announcement,
                 major_student=major_student,
-                Anon_yp_num=contents['non_yp_num'],
-                Ayp_num=len(students),
-                Aneed_num=real_min,
+                Anon_yp_num=non_yp_num,
+                Ayp_num=yp_num,
+                Aneed_num=check_need_num,
                 Atype=type,
-                Atemp_flag=contents['Atemp_flag'],
             )
             conflict_appoints = utils.get_conflict_appoints(appoint, lock=True)
-            # TODO: remove dup check
-            for duplicate_appoint in conflict_appoints.filter(
-                **{f: getattr(appoint, f) for f in [
-                        'Astart', 'Afinish', 'Ausage', 'Aannouncement',
-                        'Ayp_num', 'Anon_yp_num', 'major_student'
-                ]}):
-                utils.operation_writer(
-                    major_student.get_id(), f'重复发起同时段预约，预约号{duplicate_appoint.Aid}',
-                    "scheduler_func.addAppoint", "OK")
-                return _success(duplicate_appoint.toJson())
             for conflict_appoint in conflict_appoints:
                 return _error('预约时间与已有预约冲突，请重选时间段！', conflict_appoint.toJson())
 
@@ -363,11 +363,11 @@ def addAppoint(contents: dict,
             if major_student.credit <= 0:
                 return _error('信用分不足，本月无法发起预约！')
 
-            # 合法，可以返回了
+            # 成功创建
             appoint.save()
             appoint.students.set(students)
 
-            # modify by pht: 整合定时任务为函数
+            # 设置状态变更和微信提醒定时任务
             set_scheduler(appoint)
             set_start_wechat(appoint, students_id, notify_create=notify_create)
 
