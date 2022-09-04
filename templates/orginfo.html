@@ -67,7 +67,7 @@
                         <div class="d-flex justify-content-between">
                             <h3 class="">小组信息</h3>
                             <br /><br />
-                            {% if html_display.is_person is True and html_display.is_course_org is True and html_display.select_ing is True  %}
+                            {% if html_display.is_person and html_display.is_course and html_display.select_ing  %}
                             <button class="flex btn btn-success btn-primary mb-4 mr-2" id="select_course" 
                                 onclick="location.href='/selectCourse/'" type="button">
                                 跳转至选课界面
@@ -190,26 +190,6 @@
                                     {% endif %}
 
                                     {% if html_display.is_myself == False %}
-                                    <li class="contacts-block__item">
-                                        
-                                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none"
-                                            stroke="currentColor" stroke-width="2" stroke-linecap="round"
-                                            stroke-linejoin="round">
-                                            <polyline points="20 12 20 22 4 22 4 12"></polyline>
-                                            <rect x="2" y="7" width="20" height="5"></rect>
-                                            <line x1="12" y1="22" x2="12" y2="7"></line>
-                                            <path d="M12 7H7.5a2.5 2.5 0 0 1 0-5C11 2 12 7 12 7z"></path>
-                                            <path d="M12 7h4.5a2.5 2.5 0 0 0 0-5C13 2 12 7 12 7z"></path>
-                                        </svg>
-                                        <a href="/transPage/{{ org.organization_id_id }}">给ta元气值</a>
-                                        <a data-toggle="tooltip" data-placement="bottom" title="目前仅支持小组向小组转账">
-                                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor"
-                                                class="bi bi-question-circle-fill" viewBox="0 0 22 22">
-                                                <path
-                                                    d="M16 8A8 8 0 1 1 0 8a8 8 0 0 1 16 0zM5.496 6.033h.825c.138 0 .248-.113.266-.25.09-.656.54-1.134 1.342-1.134.686 0 1.314.343 1.314 1.168 0 .635-.374.927-.965 1.371-.673.489-1.206 1.06-1.168 1.987l.003.217a.25.25 0 0 0 .25.246h.811a.25.25 0 0 0 .25-.25v-.105c0-.718.273-.927 1.01-1.486.609-.463 1.244-.977 1.244-2.056 0-1.511-1.276-2.241-2.673-2.241-1.267 0-2.655.59-2.75 2.286a.237.237 0 0 0 .241.247zm2.325 6.443c.61 0 1.029-.394 1.029-.927 0-.552-.42-.94-1.029-.94-.584 0-1.009.388-1.009.94 0 .533.425.927 1.01.927z" />
-                                            </svg>
-                                        </a>
-                                    </li>
                                     {% if is_person %}
                                     <li class="contacts-block__item">
                                         <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"
@@ -699,7 +679,7 @@
         const { success } = await fetch(`/saveSubscribeStatus`, {
             headers: { "Content-Type": `text/plain` },
             method: `POST`,
-            body: JSON.stringify({ id: '{{org.organization_id.username}}', status }),
+            body: JSON.stringify({ id: '{{org.get_user.username}}', status }),
         })
             .then((res) => res.json())
             .catch(() => { success: false });

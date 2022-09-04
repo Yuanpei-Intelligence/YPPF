@@ -162,7 +162,7 @@ def create_single_course_activity(request: HttpRequest) -> Tuple[int, bool]:
     context = course_activity_base_check(request)
 
     # 获取组织和课程
-    org = get_person_or_org(request.user, "Organization")
+    org = get_person_or_org(request.user, UTYPE_ORG)
     course = Course.objects.activated().get(organization=org)
 
     # 查找是否有类似活动存在
@@ -360,11 +360,11 @@ def modify_course_activity(request: HttpRequest, activity: Activity):
     #         f"活动开始时间调整为{activity.start.strftime('%Y-%m-%d %H:%M')}")
 
     # 更新定时任务
-    if old_need_apply:
-        scheduler.remove_job(job_id=f"activity_{activity.id}_{Activity.Status.APPLYING}")
-        scheduler.remove_job(job_id=f"activity_{activity.id}_{Activity.Status.WAITING}")
-    if not old_need_apply:
-        scheduler.remove_job(job_id=f"activity_{activity.id}_{Activity.Status.WAITING}")
+    if old_need_apply: 
+        # 删除报名中的状态阶段
+        try: 
+            scheduler.remove_job(job_id=f"activity_{activity.id}_{Activity.Status.APPLYING}")
+        except: pass
     
     if activity.need_apply:
         scheduler.add_job(changeActivityStatus, "date", id=f"activity_{activity.id}_{Activity.Status.APPLYING}",
@@ -435,12 +435,18 @@ def cancel_course_activity(request: HttpRequest, activity: Activity, cancel_all:
 
     # 取消定时任务（需要先判断一下是否已经被执行了）
     if activity.start - timedelta(minutes=15) > datetime.now():
-        scheduler.remove_job(f"activity_{activity.id}_remind")
+        try:
+            scheduler.remove_job(f"activity_{activity.id}_remind")
+        except: pass
     if activity.start > datetime.now():
-        scheduler.remove_job(
-            f"activity_{activity.id}_{Activity.Status.PROGRESSING}")
+        try:
+            scheduler.remove_job(
+                f"activity_{activity.id}_{Activity.Status.PROGRESSING}")
+        except: pass
     if activity.end > datetime.now():
-        scheduler.remove_job(f"activity_{activity.id}_{Activity.Status.END}")
+        try:
+            scheduler.remove_job(f"activity_{activity.id}_{Activity.Status.END}")
+        except: pass
 
     activity.save()
 
@@ -632,12 +638,7 @@ def registration_status_change(course_id: int, user: NaturalPerson,
             to_status = CourseParticipant.Status.SUCCESS
 
         # 选课不能超过6门
-        if CourseParticipant.objects.filter(
-                person=user,
-                status__in=[
-                    CourseParticipant.Status.SELECT,
-                    CourseParticipant.Status.SUCCESS,
-                ]).count() >= 6:
+        if Course.objects.selected(user).count() >= 6:
             return wrong("每位同学同时预选或选上的课程数最多为6门！")
 
         # 检查选课时间是否冲突
@@ -853,7 +854,7 @@ def draw_lots():
                 status=CourseParticipant.Status.SUCCESS,
             ).values_list("person__person_id", flat=True)
             receivers = User.objects.filter(id__in=receivers)
-            sender = course.organization.organization_id
+            sender = course.organization.get_user()
             typename = Notification.Type.NEEDREAD
             title = Notification.Title.ACTIVITY_INFORM
             content = f"您好！您已成功选上课程《{course.name}》！"
@@ -1124,7 +1125,7 @@ def course_base_check(request,if_new=None):
             "2": Course.PublishDay.twoday,
             "1": Course.PublishDay.oneday,
     }[context['publish_day']]
-    org = get_person_or_org(request.user, "Organization")
+    org = get_person_or_org(request.user, UTYPE_ORG)
     context['organization'] = org
 
     succeed("合法性检查通过！", context)
@@ -1341,7 +1342,7 @@ def finish_course(course):
         receivers = User.objects.filter(id__in=receivers)
         bulk_notification_create(
             receivers=list(receivers),
-            sender=course.organization.organization_id,
+            sender=course.organization.get_user(),
             typename=Notification.Type.NEEDREAD,
             title=title,
             content=msg,
@@ -1388,7 +1389,7 @@ def download_course_record(course: Course=None, year: int=None, semester: Semest
     if course is not None:
         # 助教下载自己课程的学时
         records = CourseRecord.objects.filter(**filter_kws)
-        file_name = f'{course}-{ctime}'
+        file_name = f'{course.name}-{ctime}'
     else:
         # 设置明细和汇总两个sheet的相关信息
         total_sheet = wb.create_sheet('汇总', 0)
