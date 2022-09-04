@@ -1432,6 +1432,14 @@ def summary(request):  # 主页
     return render(request, 'Appointment/summary.html', locals())
 
 
-def summary2(request):  # 主页
-    
-    return render(request, 'Appointment/summary2.html', locals())
+def summary2(request: HttpRequest):
+    # 主页
+    from data_analysis.summary import generic_info, person_info
+    infos = generic_info()
+    # TODO: auth
+    try:
+        assert request.user.is_authenticated
+        infos.update(person_info(request.user))
+    except:
+        pass
+    return render(request, 'Appointment/summary2.html', infos)
