@@ -58,6 +58,7 @@ from app.academic_utils import (
     get_tag_status,
     get_text_status,
 )
+from generic.models import YQPointRecord
 
 import json
 import random
@@ -1265,7 +1266,7 @@ def _create_freshman_account(sid: str, email: str = None):
             current = "确认注册状态"
             assert freshman.status != Freshman.Status.REGISTERED
             if email is None:
-                domain = "stu.pku.edu.cn" if freshman.grade.startswith("1") else "pku.edu.cn"
+                domain = "pku.edu.cn" if freshman.grade[2:].startswith("1") else "stu.pku.edu.cn"
                 email = f"{sid}@{domain}"
             current = "随机生成密码"
             password = hash_coder.encode(name + str(random.random()))
@@ -2101,3 +2102,29 @@ def eventTrackingFunc(request: HttpRequest):
         PageLog.objects.create(**kwargs)
 
     return JsonResponse({'status': 'ok'})
+
+
+@login_required(redirect_field_name="origin")
+@utils.check_user_access(redirect_url="/logout/")
+@log.except_captured(source='views[myYQPoint]', record_user=True)
+def myYQPoint(request: HttpRequest):
+    valid, user_type, html_display = utils.check_user_type(request.user)
+    # 获取可能的提示信息
+    my_messages.transfer_message_context(request.GET, html_display)
+
+    html_display.update(
+        YQPoint=request.user.YQpoint,
+    )
+ 
+    received_set = YQPointRecord.objects.filter(
+        user=request.user,
+    ).exclude(source_type=6).order_by("-time")
+
+    send_set = YQPointRecord.objects.filter(
+        user=request.user,
+        source_type=6,
+    ).order_by("-time")
+    
+    # 新版侧边栏, 顶栏等的呈现，采用 bar_display, 必须放在render前最后一步
+    bar_display = utils.get_sidebar_and_navbar(request.user, "我的元气值")
+    return render(request, "myYQPoint.html", locals())
