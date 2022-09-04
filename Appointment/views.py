@@ -517,7 +517,7 @@ def door_check(request):
     # 如果失败会得到None
     student = get_participant(Sid)
     try:
-        all_Rid = set(Room.objects.values_list('Rid'))
+        all_Rid = set(Room.objects.values_list('Rid', flat=True))
         Rid = doortoroom(Rid)
         if Rid[:4] in all_Rid:  # 表示增加了一个未知的A\B号
             Rid = Rid[:4]
