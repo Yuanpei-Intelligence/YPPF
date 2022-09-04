@@ -682,15 +682,10 @@ def index(request):  # 主页
         show_admin=(request.user.is_superuser or request.user.is_staff),
     )
     # 处理学院公告
-    if (College_Announcement.objects.all()):
-        try:
-            message_item = College_Announcement.objects.get(
-                show=College_Announcement.Show_Status.Yes)
-            render_context.update(message_code=1, show_message=message_item.announcement)
-            # 必定只有一个才能继续
-        except:
-            render_context.update(message_code=0)
-            # print("无法顺利呈现公告，原因可能是没有将状态设置为YES或者超过一条状态被设置为YES")
+    announcements = College_Announcement.objects.filter(
+        show=College_Announcement.Show_Status.Yes)
+    if announcements:
+        render_context.update(announcements=announcements)
 
     # 获取可能的全局消息
     my_messages.transfer_message_context(request.GET, render_context, normalize=True)

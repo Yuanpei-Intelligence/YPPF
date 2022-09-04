@@ -6,7 +6,7 @@
 
         <meta charset="utf-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=0">
-		<title>Underground Appointment</title>
+		<title>地下动态 | 元培地下空间</title>
 		
 		<!-- Favicons -->
 		<link type="image/x-icon" href="{% static 'Appointment/assets/img/yp_favicon.png' %} " rel="icon">
@@ -78,8 +78,7 @@
 							</li>
 							
 							<li>
-								<a href="admin-index.html">我的账户</a><!--modified by wxy-->
-								<!--<a href="admin/index.html" target="_blank">Admin</a>-->
+								<a href="admin-index.html">我的账户</a>
 							</li>
 							<li>
 								<a href="agreement">无占座协议</a>
@@ -98,17 +97,6 @@
 						</ul>		 
 					</div>		 
 					<ul class="nav header-navbar-rht">
-						<!--
-						<li class="nav-item contact-item">
-							<div class="header-contact-img">
-								<i class="far fa-hospital"></i>							
-							</div>
-							<div class="header-contact-detail">
-								<p class="contact-header">Contact</p>
-								<p class="contact-info-header"> +1 315 369 5943</p>
-							</div>
-						</li>
-						-->
 						<li class="nav-item">
 							<a class="nav-link header-login" href="logout">注销</a>
 						</li>
@@ -121,15 +109,12 @@
 			{% elif warn_code == 2 %}
 			<div class="alert alert-success  text-center" >{{ warn_message }}</div>
 			{% endif %}
-			{% if message_code %}
-			<div class="alert alert-warning  text-center" >{{ show_message }}</div>
+			{% comment %} # TODO: 将公告前后端解耦 {% endcomment %}
+			{% if announcements %}
+			{% for announcement in announcements %}
+			<div class="alert alert-warning  text-center" >{{ announcement.announcement }}</div>
+			{% endfor %}
 			{% endif %}
-			{% if search_code == 1 %}
-				<div class="alert alert-warning  text-center" >{{ search_message }}</div>
-			{% elif search_code == 2 %}
-                <div class="alert alert-success  text-center" >{{ search_message }}</div>
-            {% endif %}
-			
 			  
 			<!-- Clinic and Specialities -->
 			<section class="section section-specialities" >
@@ -551,8 +536,9 @@
 									<div class="copyright-menu">
 										
 										<ul class="policy-menu">
-											<!--<li><a href="http://yuanpei.pku.edu.cn">智慧校园开发组 元培学院</a></li>-->
-											<li style="color: white;">智慧校园开发组 元培学院</li>
+											<li style="color: white;">
+												<a href="https://github.com/Yuanpei-Intelligence/YPPF">智慧校园开发组 元培学院</a>
+											</li>
 										</ul>
 										<ul class="policy-menu">
 											<li style="color: white;">&copy; All rights Reserved.</li>
