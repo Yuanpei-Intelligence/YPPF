@@ -82,8 +82,8 @@ def get_pools_and_items(pool_type: Pool.Type, user: User, frontend_dict: Dict[st
         if pool.start <= datetime.now() and (pool.end is None or pool.end >= datetime.now()):
             this_pool_info = model_to_dict(pool)
             this_pool_info["status"] = 0
-        elif pool.end < datetime.now() and \
-                pool.end is not None and pool.end >= datetime.now() - timedelta(days=1):
+        elif pool.end is not None and pool.end < datetime.now() and \
+                pool.end >= datetime.now() - timedelta(days=1):
             this_pool_info = model_to_dict(pool)
             this_pool_info["status"] = 1
         else:
@@ -106,7 +106,7 @@ def get_pools_and_items(pool_type: Pool.Type, user: User, frontend_dict: Dict[st
                 pool=pool).count()
             if pool_type == Pool.Type.RANDOM:
                 this_pool_info["capacity"] = sum(
-                    [item["origin_num"] - item["consumed_num"] for item in this_pool_items])
+                    [item["origin_num"] for item in this_pool_items])
             # LOTTERY类的pool不需要capacity
         else:
             for item in this_pool_items:
@@ -158,53 +158,61 @@ def buy_exchange_item(user: User, poolitem_id: str) -> MESSAGECONTEXT:
     :return: 表明购买结果的warn_code和warn_message
     :rtype: MESSAGECONTEXT
     """
-    with transaction.atomic():
-        # 检查奖品是否可以购买
-        try:
-            poolitem_id = int(poolitem_id)
+    # 检查奖品是否可以购买
+    try:
+        poolitem_id = int(poolitem_id)
+        poolitem = PoolItem.objects.get(
+            id=poolitem_id, pool__type=Pool.Type.EXCHANGE)
+    except:
+        return wrong('奖品不存在!')
+    if poolitem.pool.start > datetime.now():
+        return wrong('兑换时间未开始!')
+    if poolitem.pool.end is not None and poolitem.pool.end < datetime.now():
+        return wrong('兑换时间已结束!')
+    if poolitem.origin_num - poolitem.consumed_num <= 0:
+        return wrong('奖品已售罄!')
+
+    my_exchanged_time = PoolRecord.objects.filter(
+        user=user, pool=poolitem.pool, prize=poolitem.prize).count()
+    if my_exchanged_time >= poolitem.exchange_limit:
+        return wrong('您兑换该奖品的次数已达上限!')
+    
+    try:
+        with transaction.atomic():
             poolitem = PoolItem.objects.select_for_update().get(
                 id=poolitem_id, pool__type=Pool.Type.EXCHANGE)
-        except:
-            return wrong('奖品不存在!')
-        if poolitem.pool.start > datetime.now():
-            return wrong('兑换时间未开始!')
-        if poolitem.pool.end is not None and poolitem.pool.end < datetime.now():
-            return wrong('兑换时间已结束!')
-        if poolitem.origin_num - poolitem.consumed_num <= 0:
-            return wrong('奖品已售罄!')
+            assert poolitem.pool.start <= datetime.now(), "兑换时间未开始!"
+            assert poolitem.pool.end is None or poolitem.pool.end >= datetime.now(), "兑换时间已结束!"
+            assert poolitem.origin_num - poolitem.consumed_num > 0, "奖品已售罄!"
+            my_exchanged_time = PoolRecord.objects.filter(
+                user=user, pool=poolitem.pool, prize=poolitem.prize).count()
+            assert my_exchanged_time < poolitem.exchange_limit, '您兑换该奖品的次数已达上限!'
+            assert user.YQpoint >= poolitem.exchange_price, '您的元气值不足，兑换失败!'
 
-        my_exchanged_time = PoolRecord.objects.filter(
-            user=user, pool=poolitem.pool, prize=poolitem.prize).count()
-        if my_exchanged_time >= poolitem.exchange_limit:
-            return wrong('您兑换该奖品的次数已达上限!')
+            # 更新奖品状态
+            poolitem.consumed_num += 1
+            poolitem.save()
 
-        # 检查元气值余额并扣除
-        try:
-            User.objects.modify_YQPoint(
-                user,
-                -poolitem.exchange_price,
-                source=f'兑换奖池：{poolitem.pool.title}-{poolitem.prize.name}',
-                source_type=YQPointRecord.SourceType.CONSUMPTION
+            # 创建兑换记录
+            PoolRecord.objects.create(
+                user=user,
+                pool=poolitem.pool,
+                prize=poolitem.prize,
+                status=PoolRecord.Status.UN_REDEEM,
+                time=datetime.now()
             )
-        except Exception as e:
-            if str(e) == "元气值不足":
-                return wrong('您的元气值不足，兑换失败!')
-            return wrong('结算元气值时出现问题，兑换失败!')
+    except AssertionError as e:
+        return wrong(str(e))
+    
+    # 扣除元气值
+    User.objects.modify_YQPoint(
+        user,
+        -poolitem.exchange_price,
+        source=f'兑换奖池：{poolitem.pool.title}-{poolitem.prize.name}',
+        source_type=YQPointRecord.SourceType.CONSUMPTION
+    )
 
-        # 更新奖品状态
-        poolitem.consumed_num += 1
-        poolitem.save()
-
-        # 创建兑换记录
-        PoolRecord.objects.create(
-            user=user,
-            pool=poolitem.pool,
-            prize=poolitem.prize,
-            status=PoolRecord.Status.UN_REDEEM,
-            time=datetime.now()
-        )
-
-        return succeed('兑换成功!')
+    return succeed('兑换成功!')
 
 
 def buy_lottery_pool(user: User, pool_id: str) -> MESSAGECONTEXT:
@@ -218,43 +226,48 @@ def buy_lottery_pool(user: User, pool_id: str) -> MESSAGECONTEXT:
     :return: 表明购买结果的warn_code和warn_message
     :rtype: MESSAGECONTEXT
     """
-    with transaction.atomic():
-        # 检查抽奖奖池状态
-        try:
-            pool_id = int(pool_id)
+    # 检查抽奖奖池状态
+    try:
+        pool_id = int(pool_id)
+        pool = Pool.objects.get(id=pool_id, type=Pool.Type.LOTTERY)
+    except:
+        return wrong('抽奖不存在!')
+    if pool.start > datetime.now():
+        return wrong('抽奖未开始!')
+    if pool.end is not None and pool.end < datetime.now():  # 实际上抽奖类的奖池的end应该不可能是None
+        return wrong('抽奖已结束!')
+    my_entry_time = PoolRecord.objects.filter(pool=pool, user=user).count()
+    if my_entry_time >= pool.entry_time:
+        return wrong('您在本奖池中抽奖的次数已达上限!')
+    
+    try:
+        with transaction.atomic():
             pool = Pool.objects.select_for_update().get(id=pool_id, type=Pool.Type.LOTTERY)
-        except:
-            return wrong('抽奖不存在!')
-        if pool.start > datetime.now():
-            return wrong('抽奖未开始!')
-        if pool.end is not None and pool.end < datetime.now():  # 实际上抽奖类的奖池的end应该不可能是None
-            return wrong('抽奖已结束!')
-        my_entry_time = PoolRecord.objects.filter(pool=pool, user=user).count()
-        if my_entry_time >= pool.entry_time:
-            return wrong('您在本奖池中抽奖的次数已达上限!')
+            assert pool.start <= datetime.now(), '抽奖未开始!'
+            assert pool.end is None or pool.end >= datetime.now(), '抽奖已结束!'
+            my_entry_time = PoolRecord.objects.filter(pool=pool, user=user).count()
+            assert my_entry_time < pool.entry_time, '您在本奖池中抽奖的次数已达上限!'
+            assert user.YQpoint >= pool.ticket_price, '您的元气值不足，兑换失败!'
 
-        # 检查元气值余额并扣除
-        try:
-            User.objects.modify_YQPoint(
-                user,
-                -pool.ticket_price,
-                source=f'抽奖奖池：{pool.title}',
-                source_type=YQPointRecord.SourceType.CONSUMPTION
+            # 创建抽奖记录
+            PoolRecord.objects.create(
+                user=user,
+                pool=pool,
+                status=PoolRecord.Status.LOTTERING,
+                time=datetime.now()
             )
-        except Exception as e:
-            if str(e) == "元气值不足":
-                return wrong('您的元气值不足，兑换失败!')
-            return wrong('结算元气值时出现问题，兑换失败!')
-
-        # 创建抽奖记录
-        PoolRecord.objects.create(
-            user=user,
-            pool=pool,
-            status=PoolRecord.Status.LOTTERING,
-            time=datetime.now()
-        )
-
-        return succeed('成功进行一次抽奖!您可以在抽奖时间结束后查看抽奖结果~')
+    except AssertionError as e:
+        return wrong(str(e))
+    
+    # 扣除元气值
+    User.objects.modify_YQPoint(
+        user,
+        -pool.ticket_price,
+        source=f'抽奖奖池：{pool.title}',
+        source_type=YQPointRecord.SourceType.CONSUMPTION
+    )
+    
+    return succeed('成功进行一次抽奖!您可以在抽奖时间结束后查看抽奖结果~')
 
 
 def select_random_prize(poolitems: QuerySet[PoolItem], select_num: Optional[int] = None) -> List[int]:
@@ -304,47 +317,54 @@ def buy_random_pool(user: User, pool_id: str) -> Tuple[MESSAGECONTEXT, int, int]
                 表明盲盒结果的一个int：2表示无反应、1表示开出空盒、0表示开出奖品
     :rtype: Tuple[MESSAGECONTEXT, int, int]
     """
-    with transaction.atomic():
-        try:
-            pool_id = int(pool_id)
+    # 检查盲盒奖池状态
+    try:
+        pool_id = int(pool_id)
+        pool = Pool.objects.get(id=pool_id, type=Pool.Type.RANDOM)
+    except:
+        return wrong('盲盒不存在!'), -1, 2
+    if pool.start > datetime.now():
+        return wrong('盲盒兑换时间未开始!'), -1, 2
+    if pool.end is not None and pool.end < datetime.now():
+        return wrong('盲盒兑换时间已结束!'), -1, 2
+    my_entry_time = PoolRecord.objects.filter(pool=pool, user=user).count()
+    if my_entry_time >= pool.entry_time:
+        return wrong('您兑换这款盲盒的次数已达上限!'), -1, 2
+    
+    try:
+        with transaction.atomic():
             pool = Pool.objects.select_for_update().get(id=pool_id, type=Pool.Type.RANDOM)
-        except:
-            return wrong('盲盒不存在!'), -1, 2
-        if pool.start > datetime.now():
-            return wrong('盲盒兑换时间未开始!'), -1, 2
-        if pool.end is not None and pool.end < datetime.now():
-            return wrong('盲盒兑换时间已结束!'), -1, 2
-        my_entry_time = PoolRecord.objects.filter(pool=pool, user=user).count()
-        if my_entry_time >= pool.entry_time:
-            return wrong('您兑换这款盲盒的次数已达上限!'), -1, 2
+            assert pool.start <= datetime.now(), '盲盒兑换时间未开始!'
+            assert pool.end is None or pool.end >= datetime.now(), '盲盒兑换时间已结束!'
+            my_entry_time = PoolRecord.objects.filter(pool=pool, user=user).count()
+            assert my_entry_time < pool.entry_time, '您兑换这款盲盒的次数已达上限!'
+            assert user.YQpoint >= pool.ticket_price, '您的元气值不足，兑换失败!'
 
-        try:
-            User.objects.modify_YQPoint(
-                user,
-                -pool.ticket_price,
-                source=f'盲盒奖池：{pool.title}',
-                source_type=YQPointRecord.SourceType.CONSUMPTION
+            # 开盒，修改poolitem记录，创建poolrecord记录
+            items = pool.poolitem_set.select_for_update().all()
+            real_item_id = select_random_prize(items, 1)[0]
+            poolitem_to_be_modified = PoolItem.objects.select_for_update().get(id=real_item_id)
+            poolitem_to_be_modified.consumed_num += 1
+            poolitem_to_be_modified.save()
+            PoolRecord.objects.create(
+                user=user,
+                pool=pool,
+                status=PoolRecord.Status.UN_REDEEM,
+                prize=poolitem_to_be_modified.prize,
+                time=datetime.now()
             )
-        except Exception as e:
-            if str(e) == "元气值不足":
-                return wrong('您的元气值不足，兑换失败!')
-            return wrong('结算元气值时出现问题，兑换失败!')
+    except AssertionError as e:
+        return wrong(str(e)), -1, 2
+    
+    # 扣除元气值
+    User.objects.modify_YQPoint(
+        user,
+        -pool.ticket_price,
+        source=f'盲盒奖池：{pool.title}',
+        source_type=YQPointRecord.SourceType.CONSUMPTION
+    )
 
-        # 开盒，修改poolitem记录，创建poolrecord记录
-        items = pool.poolitem_set.all()
-        real_item_id = select_random_prize(items, 1)[0]
-        poolitem_to_be_modified = PoolItem.objects.select_for_update().get(id=real_item_id)
-        poolitem_to_be_modified.consumed_num += 1
-        poolitem_to_be_modified.save()
-        PoolRecord.objects.create(
-            user=user,
-            pool=pool,
-            status=PoolRecord.Status.UN_REDEEM,
-            prize=poolitem_to_be_modified.prize,
-            time=datetime.now()
-        )
-
-        return succeed('兑换盲盒成功!'), poolitem_to_be_modified.prize.id, int(poolitem_to_be_modified.is_empty)
+    return succeed('兑换盲盒成功!'), poolitem_to_be_modified.prize.id, int(poolitem_to_be_modified.is_empty)
 
 
 def run_lottery(pool_id: int):
