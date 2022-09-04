@@ -108,7 +108,8 @@ urlpatterns = [
 ] + [
     # 元气值
     path("myYQPoint/", views.myYQPoint, name="myYQPoint"),
-] + [    # 埋点
+] + [
+    # 埋点
     path('eventTrackingFunc/', views.eventTrackingFunc, name='eventTracking'),
 ]
 if settings.DEBUG:
