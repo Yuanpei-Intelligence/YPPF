@@ -2,6 +2,7 @@ from django.db.models import *
 from app.constants import *
 from app.models import *
 from Appointment.models import Appoint, CardCheckInfo, Room
+from Appointment.utils.identity import get_participant
 from Appointment import GLOBAL_INFO
 from datetime import *
 from collections import defaultdict, Counter
@@ -113,6 +114,14 @@ def cal_all_course():
 
 
 __persons = None
+
+def test_wrapper(func):
+    def _(np):
+        try:
+            return func(np)
+        except:
+            return {}
+    return _
 
 
 def cal_sharp_appoint(np: NaturalPerson):
@@ -260,7 +269,9 @@ def cal_study_room(np: NaturalPerson):
     _end_time = SUMMARY_SEM_END
 
     _user = np.get_user()
-    _par = Participant.objects.get(Sid=_user)
+    _par = get_participant(_user)
+    if _par is None:
+        return {}
 
     _study_room_record_filter = Q(Cardroom__Rtitle__contains='自习',
                                   Cardtime__gt=_start_time,
@@ -291,7 +302,9 @@ def cal_early_room(np: NaturalPerson):
     _end_time = SUMMARY_SEM_END
 
     _user = np.get_user()
-    _par = Participant.objects.get(Sid=_user)
+    _par = get_participant(_user)
+    if _par is None:
+        return {}
 
     _record_filter = Q(Cardtime__gt=_start_time,
                        Cardtime__lt=_end_time,
@@ -313,7 +326,9 @@ def cal_late_room(np: NaturalPerson):
     _end_time = SUMMARY_SEM_END
 
     _user = np.get_user()
-    _par = Participant.objects.get(Sid=_user)
+    _par = get_participant(_user)
+    if _par is None:
+        return {}
 
     _record_filter = Q(Cardtime__gt=_start_time,
                        Cardtime__lt=_end_time,
@@ -342,7 +357,9 @@ def cal_appoint(np: NaturalPerson):
     _end_time = SUMMARY_SEM_END
 
     _user = np.get_user()
-    _par = Participant.objects.get(Sid=_user)
+    _par = get_participant(_user)
+    if _par is None:
+        return {}
 
     _talk_rooms = Room.objects.talk_rooms().values_list('Rid')
     _func_rooms = Room.objects.function_rooms().values_list('Rid')
@@ -378,7 +395,9 @@ def cal_appoint_kw(np: NaturalPerson):
     _end_time = SUMMARY_SEM_END
 
     _user = np.get_user()
-    _par = Participant.objects.get(Sid=_user)
+    _par = get_participant(_user)
+    if _par is None:
+        return {}
 
     _talk_rooms = Room.objects.talk_rooms().values_list('Rid')
     _func_rooms = Room.objects.function_rooms().values_list('Rid')
@@ -397,7 +416,9 @@ def cal_co_appoint(np: NaturalPerson):
     _end_time = SUMMARY_SEM_END
 
     _user = np.get_user()
-    _par = Participant.objects.get(Sid=_user)
+    _par = get_participant(_user)
+    if _par is None:
+        return {}
 
     _me_act_appoint = Appoint.objects.not_canceled().filter(
         students=_par, Astart__gt=_start_time, Astart__lt=_end_time)

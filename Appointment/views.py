@@ -517,7 +517,7 @@ def door_check(request):
     # 如果失败会得到None
     student = get_participant(Sid)
     try:
-        all_Rid = set(Room.objects.values_list('Rid'))
+        all_Rid = set(Room.objects.values_list('Rid', flat=True))
         Rid = doortoroom(Rid)
         if Rid[:4] in all_Rid:  # 表示增加了一个未知的A\B号
             Rid = Rid[:4]
@@ -527,6 +527,11 @@ def door_check(request):
         return _fail()
     if student is None:
         cardcheckinfo_writer(student, room, False, False, f"学号{Sid}错误")
+        send_wechat_message(
+            [Sid], now_time.replace(second=0, microsecond=0), room,
+            'temp_appointment_fail', student, '临时预约', '', 1,
+            f'您尚未注册地下室账号，无法开门，请先访问任意地下室页面创建账号！\n点击跳转地下室账户，快捷注册',
+            url=reverse('Appointment:account'))
         return _fail()
 
     # --------- 直接进入 --------- #
@@ -1436,7 +1441,7 @@ def summary2021(request: HttpRequest):
 
     base_dir = 'test_data'
 
-    logged_in = not request.user.is_authenticated
+    logged_in = request.user.is_authenticated
     is_freshman = request.user.username.startswith('22')
     user_accept = 'accept' in request.GET.keys()
     infos = generic_info()
