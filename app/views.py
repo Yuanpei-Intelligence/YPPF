@@ -27,6 +27,8 @@ from app.models import (
     PageLog,
     ModuleLog,
     Chat,
+    Pool,
+    PoolRecord,
 )
 from app.utils import (
     url_check,
@@ -2124,7 +2126,37 @@ def myYQPoint(request: HttpRequest):
         user=request.user,
         source_type=6,
     ).order_by("-time")
-    
+
     # 新版侧边栏, 顶栏等的呈现，采用 bar_display, 必须放在render前最后一步
     bar_display = utils.get_sidebar_and_navbar(request.user, "我的元气值")
     return render(request, "myYQPoint.html", locals())
+
+
+@login_required(redirect_field_name="origin")
+@utils.check_user_access(redirect_url="/logout/")
+@log.except_captured(source='views[myPrize]', record_user=True)
+def myPrize(request: HttpRequest):
+    valid, user_type, html_display = utils.check_user_type(request.user)
+    # 获取可能的提示信息
+    my_messages.transfer_message_context(request.GET, html_display)
+
+    lottery_set = PoolRecord.objects.filter(
+        user=request.user,
+        pool__type=Pool.Type.LOTTERY,
+        status__in=[
+            PoolRecord.Status.LOTTERING, 
+            PoolRecord.Status.NOT_LUCKY,
+            PoolRecord.Status.UN_EXCHANGE],
+    ).order_by("-time")
+
+    exchange_set = PoolRecord.objects.filter(
+        user=request.user,
+        status__in=[
+            PoolRecord.Status.UN_EXCHANGE,
+            PoolRecord.Status.EXCHANGED, 
+            PoolRecord.Status.OVERDUE],
+    ).order_by("-status", "-time")
+
+    # 新版侧边栏, 顶栏等的呈现，采用 bar_display, 必须放在render前最后一步
+    bar_display = utils.get_sidebar_and_navbar(request.user, "我的奖品")
+    return render(request, "myPrize.html", locals())

@@ -1,0 +1,159 @@
+{% extends "base.html" %}
+
+{% block mainpage %}
+<link rel="stylesheet" href="https://cdn.staticfile.org/font-awesome/4.7.0/css/font-awesome.css">
+
+    <!--  BEGIN CONTENT AREA  -->
+    <div id="content" class="main-content">
+        {% if html_display.warn_code == 1 %}
+        <div class="alert alert-warning  text-center">{{ html_display.warn_message }}</div>
+        {% elif html_display.warn_code == 2 %}
+        <div class="alert alert-success  text-center">{{ html_display.warn_message }}</div>
+        {% endif %}
+        <div class="container">
+            <div class="layout-top-spacing">
+                <div class="col-12 layout-top-spacing">
+                    <div class="bio layout-spacing ">
+                        <div class="widget-content widget-content-area">
+                            <h3>我的奖品</h3>
+
+                            <ul id="myTab" class="nav nav-tabs nav-tabs-solid nav-justified">
+                                
+                                <li class="nav-item">
+                                    <a class="nav-link active" href="#lottery" data-toggle="tab">
+                                        <h5>我的抽奖</h5>
+                                    </a>
+                                </li>
+
+                                <li class="nav-item">
+                                    <a class="nav-link" href="#exchange" data-toggle="tab">
+                                        <h5>奖品兑换</h5>
+                                    </a>
+                                </li>
+                            </ul>
+
+                            <div id="myTabContent" class="tab-content">
+                                <div class="tab-pane fade in active show" id="lottery">
+                                    {% if lottery_set is None %}
+                                    <br />
+                                    <p></p>
+                                    <p style="text-align: center;">没有抽奖记录.</p>
+                                    <br />
+                                    {% else %}
+
+                                    <div class="bio-skill-box">
+                                        <div class="row">
+                                            {% for record in lottery_set %}
+                                            <div class="col-12 col-xl-6 col-lg-12 mb-xl-4 mb-4 ">
+
+                                                <div class=" b-skills">
+                                                    <div class="d-flex justify-content-between">
+                                                        <div>
+                                                            <h5>
+                                                                <i class="fa fa-gift"></i> {{record.prize.name}}
+                                                            </h5>
+                                                        </div>
+                                                        <div>
+                                                            <h5 style="color: rgb(27, 85, 226);
+                                                                    margin-left: 8px;
+                                                                    display:block;
+                                                                    white-space:nowrap; 
+                                                                    overflow:hidden; ">
+                                                                {{record.status}}
+                                                            </h5>
+                                                        </div>
+                                                    </div>
+
+                                                    <div class="d-flex justify-content-between">
+                                                        <div>
+                                                            <p style="color: rgb(66, 67, 68);"><i
+                                                                class="fa fa-calendar-o"></i>
+                                                                {{record.time}}</p>
+                                                         </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            {% endfor %}
+                                        </div>
+                                    </div>
+                                    {% endif %}
+                                </div>
+
+                                <div class="tab-pane fade" id="exchange">
+                                    {% if exchange_set is None %}
+                                    <br />
+                                    <p></p>
+                                    <p style="text-align: center;">没有兑换记录.</p>
+                                    <br />
+                                    {% else %}
+
+                                    <div class="bio-skill-box">
+                                        <div class="row">
+                                            {% for record in exchange_set %}
+                                            <div class="col-12 col-xl-6 col-lg-12 mb-xl-4 mb-4 ">
+
+                                                <div class=" b-skills">
+                                                    <div class="d-flex justify-content-between">
+                                                        <div>
+                                                            <h5>
+                                                                <i class="fa fa-gift"></i> {{record.prize.name}}
+                                                            </h5>
+                                                        </div>
+                                                        <div>
+                                                            <h5 style="color: rgb(27, 85, 226);
+                                                                    margin-left: 8px;
+                                                                    display:block;
+                                                                    white-space:nowrap; 
+                                                                    overflow:hidden; ">
+                                                                {{record.status}}
+                                                            </h5>
+                                                        </div>
+                                                    </div>
+
+                                                    <div class="d-flex justify-content-between">
+                                                        <div>
+                                                            <p style="color: rgb(66, 67, 68);"><i
+                                                                class="fa fa-calendar-o"></i>
+                                                                {{record.time}}</p>
+                                                         </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            {% endfor %}
+                                        </div>
+                                    </div>
+                                    {% endif %}
+                                </div>
+                            </div>
+
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </div>
+    <!--  END CONTENT AREA  -->
+
+
+<script>
+    $('.nav-tabs').on('shown.bs.tab', 'a', function (e) {
+        if (e.relatedTarget) {
+            $(e.relatedTarget).removeClass('active');
+        }
+    })
+</script>
+
+<script>
+    $('.table').bootstrapTable({
+        onLoadSuccess: function () {
+            $('.table tr td').each(function () {
+
+                $(this).attr("title", $(this).text());
+                $(this).css("cursor", 'pointer');
+            });
+
+        }
+    })
+</script>
+{% endblock %}
