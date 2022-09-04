@@ -1436,7 +1436,8 @@ def summary(request):  # 主页
 def summary2(request: HttpRequest):  # 主页
 
     from data_analysis.summary import generic_info, person_info
-    base_dir = ''
+    
+    base_dir = 'test_data'
 
     ret = dict(
         anonymous_user=not request.user.is_authenticated,
@@ -1444,17 +1445,16 @@ def summary2(request: HttpRequest):  # 主页
         user_accept=request.GET.get('accept', False)
     )
     if ret['anonymous_user'] or ret['freshman'] or (not ret['user_accept']):
-        example_file = os.path.join(base_dir, '')
+        example_file = os.path.join(base_dir, 'example.json')
         with open(example_file) as f:
             ret.update(json.load(f))
     else:
-        info_file = os.path.join(base_dir, f'{request.user.username}.json')
-        with open(info_file) as f:
-            ret.update(json.load(f))
         ret.update(person_info(request.user))
-    
-    with open(os.path.join(base_dir, 'rank_info.json')) as f:
-        ret.update(json.load(f))
+        with open(os.path.join(base_dir, 'rank_info.json')) as f:
+            rank_info = json.load(f)
+            sid = request.user.username
+            for k in ['co_pct', 'func_appoint_pct', 'discuss_appoint_pct']:
+                ret[k] = rank_info[k].index(sid) * 100 // len(rank_info[k])
     ret.update(generic_info())
     
     return render(request, 'Appointment/summary2.html', ret)
