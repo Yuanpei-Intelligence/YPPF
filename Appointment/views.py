@@ -502,30 +502,44 @@ def credit(request):
 # added by wxy
 # modified by dyh
 @csrf_exempt
-def door_check(request):  # 先以Sid Rid作为参数，看之后怎么改
+def door_check(request): 
+    # --------- 对接接口 --------- #
+    def _open():
+        return JsonResponse({"code": 0, "openDoor": "true"}, status=200)
 
+    def _fail():
+        return JsonResponse({"code": 1, "openDoor": "false"}, status=400)
     # --------- 基本信息 --------- #
-
+    
+    # 先以Sid Rid作为参数，看之后怎么改
     Sid, Rid = request.GET.get("Sid", None), request.GET.get("Rid", None)
     student, room, now_time, min15 = None, None, datetime.now(), timedelta(minutes=15)
+    # 如果失败会得到None
+    student = get_participant(Sid)
     try:
-        student = get_participant(Sid, raise_except=True)
-        all_Rid = [room.Rid for room in Room.objects.all()]
+        all_Rid = set(Room.objects.values_list('Rid'))
         Rid = doortoroom(Rid)
         if Rid[:4] in all_Rid:  # 表示增加了一个未知的A\B号
             Rid = Rid[:4]
-        room = Room.objects.get(Rid=Rid)
+        room: Room = Room.objects.get(Rid=Rid)
     except:
-        user = student or None  # TODO: 设置默认刷卡记录者
-        cardcheckinfo_writer(user, room, False, False,
-                             f"学号{Sid}或房间号{Rid}错误")
-        return JsonResponse({"code": 1, "openDoor": "false"}, status=400)
+        cardcheckinfo_writer(student, room, False, False, f"房间号{Rid}错误")
+        return _fail()
+    if student is None:
+        cardcheckinfo_writer(student, room, False, False, f"学号{Sid}错误")
+        return _fail()
 
     # --------- 直接进入 --------- #
+    def _check_succeed(message: str):
+        cardcheckinfo_writer(student, room, True, True, message)
+        return _open()
+
+    def _check_failed(message: str):
+        cardcheckinfo_writer(student, room, False, False, message)
+        return _fail()
 
     if room.Rstatus == Room.Status.FORBIDDEN:   # 禁止使用的房间
-        cardcheckinfo_writer(student, room, False, False, f"刷卡拒绝：禁止使用")
-        return JsonResponse({"code": 1, "openDoor": "false"}, status=400)
+        return _check_failed(f"刷卡拒绝：禁止使用")
 
     if room.RneedAgree:
         if student.agree_time is None:
@@ -542,16 +556,13 @@ def door_check(request):  # 先以Sid Rid作为参数，看之后怎么改
                 reason='',
                 url='/agreement',
             )
-            return JsonResponse({"code": 1, "openDoor": "false"}, status=400)
+            return _fail()
 
     if room.Rstatus == Room.Status.UNLIMITED:   # 自习室
-
-        if room.RIsAllNight:  # 通宵自习室
-            cardcheckinfo_writer(student, room, True, True, f"刷卡开门：通宵自习室")
-            return JsonResponse({"code": 0, "openDoor": "true"}, status=200)
-
-        else:  # 不是通宵自习室
-
+        if room.RIsAllNight:
+            # 通宵自习室
+            return _check_succeed(f"刷卡开门：通宵自习室")
+        else:
             # 考虑到次晨的情况，判断一天内的时段
             now = timedelta(hours=now_time.hour, minutes=now_time.minute)
             start = timedelta(hours=room.Rstart.hour,
@@ -559,14 +570,10 @@ def door_check(request):  # 先以Sid Rid作为参数，看之后怎么改
             finish = timedelta(hours=room.Rfinish.hour,
                                minutes=room.Rfinish.minute)
 
-            if (now >= min(start, finish) and now <= max(start, finish)) ^ (start > finish):   # 在开放时间内
-                cardcheckinfo_writer(student, room, True, True, f"刷卡开门：自习室")
-                return JsonResponse({"code": 0, "openDoor": "true"}, status=200)
-
-            else:  # 不在开放时间内
-                cardcheckinfo_writer(student, room, False,
-                                     False, f"刷卡拒绝：自习室不开放")
-            return JsonResponse({"code": 1, "openDoor": "false"}, status=400)
+            if (now >= min(start, finish) and now <= max(start, finish)) ^ (start > finish):
+                # 在开放时间内
+                return _check_succeed(f"刷卡开门：自习室")
+            return _check_failed(f"刷卡拒绝：自习室不开放")
 
     # --------- 预约进入 --------- #
 
@@ -577,30 +584,33 @@ def door_check(request):  # 先以Sid Rid作为参数，看之后怎么改
     # --- modify by dyh: 更改规则 --- #
     # --- modify by lhw: 临时预约 --- #
 
+    def _temp_failed(message: str, record_temp=True):
+        MSG_TYPE = "temp_appointment_fail"
+        record_msg = f"刷卡拒绝：临时预约失败（{message}）" if record_temp else f"刷卡拒绝：{message}"
+        cardcheckinfo_writer(student, room, False, False, record_msg)
+        send_wechat_message(
+            [student.get_id()], now_time.replace(second=0, microsecond=0), room,
+            MSG_TYPE, student, "临时预约", "", 1, message)
+        return _fail()
+
     if len(room_appoint) != 0:  # 当前有预约
 
-        if len(room_appoint.filter(students__in=[student])) == 0:   # 不是自己的预约
-            cardcheckinfo_writer(student, room, False, False,
-                                 f"刷卡拒绝：该房间有别人的预约，或者距离别人的下一条预约开始不到15min！")
-            return JsonResponse({"code": 1, "openDoor": "false"}, status=400)
+        if not room_appoint.filter(students__in=[student]).exists():   # 不是自己的预约
+            return _temp_failed(f"该房间有别人的预约，或者距离别人的下一条预约开始不到15min！", False)
 
         else:   # 自己的预约
-            cardcheckinfo_writer(student, room, True, True, f"刷卡开门：预约进入")
-            return JsonResponse({"code": 0, "openDoor": "true"}, status=200)
+            return _check_succeed(f"刷卡开门：预约进入")
 
     else:   # 当前无预约
 
-        if check_temp_appoint(room) == False:   # 房间不可以临时预约
-            cardcheckinfo_writer(student, room, False,
-                                 False, f"刷卡拒绝：该房间不可临时预约")
-            return JsonResponse({"code": 1, "openDoor": "false"}, status=400)
+        if not check_temp_appoint(room):   # 房间不可以临时预约
+            return _temp_failed(f"刷卡拒绝：该房间不可临时预约", False)
 
         else:   # 该房间可以用于临时预约
 
             # 注意，由于制度上不允许跨天预约，这里的逻辑也不支持跨日预约（比如从晚上23:00约到明天1:00）。
-            start = datetime(now_time.year, now_time.month, now_time.day,
-                             now_time.hour, now_time.minute, 0)  # 需要剥离秒级以下的数据，否则admin-index无法正确渲染
-            timeid = web_func.get_time_id(room, time(start.hour, start.minute))
+            start = now_time.replace(second=0, microsecond=0)  # 需要剥离秒级以下的数据，否则admin-index无法正确渲染
+            timeid = web_func.get_time_id(room, start.time())
 
             finish, valid = web_func.get_hour_time(room, timeid + 1)
             finish = datetime(now_time.year, now_time.month, now_time.day, int(
@@ -608,12 +618,7 @@ def door_check(request):  # 先以Sid Rid作为参数，看之后怎么改
 
             # 房间未开放
             if timeid < 0 or not valid:
-                message = f"该时段房间未开放！别熬夜了，回去睡觉！"
-                cardcheckinfo_writer(student, room, False,
-                                     False, f"刷卡拒绝：临时预约失败（{message}）")
-                send_wechat_message(
-                    [Sid], start, room, "temp_appointment_fail", student, "临时预约", "", 1, message)
-                return JsonResponse({"code": 1, "openDoor": "false"}, status=400)
+                return _temp_failed(f"该时段房间未开放！别熬夜了，回去睡觉！")
 
             # 检查时间是否合法
             # 合法条件：为避免冲突，临时预约时长必须超过15分钟；预约时在房间可用时段
@@ -633,26 +638,14 @@ def door_check(request):  # 先以Sid Rid作为参数，看之后怎么改
                     contents, type=Appoint.Type.TEMPORARY)
 
                 if response.status_code == 200:  # 临时预约成功
-                    cardcheckinfo_writer(
-                        student, room, True, True, f"刷卡开门：临时预约")
-                    return JsonResponse({"code": 0, "openDoor": "true"}, status=200)
+                    return _check_succeed(f"刷卡开门：临时预约")
 
                 else:   # 无法预约（比如没信用分了）
-                    message = json.loads(response.content)[
-                        "statusInfo"]["message"]
-                    cardcheckinfo_writer(
-                        student, room, False, False, f"刷卡拒绝：临时预约失败（{message}）")
-                    send_wechat_message(
-                        [Sid], start, room, "temp_appointment_fail", student, "临时预约", "", 1, message)
-                    return JsonResponse({"code": 1, "openDoor": "false"}, status=400)
+                    message = json.loads(response.content)["statusInfo"]["message"]
+                    return _temp_failed(message)
 
             else:   # 预约时间不合法
-                message = f"预约时间不合法，请不要恶意篡改数据！"
-                cardcheckinfo_writer(student, room, False,
-                                     False, f"刷卡拒绝：临时预约失败（{message}）")
-                send_wechat_message(
-                    [Sid], start, room, "temp_appointment_fail", student, "临时预约", "", 1, message)
-                return JsonResponse({"code": 1, "openDoor": "false"}, status=400)
+                return _temp_failed(f"预约时间不合法，请不要恶意篡改数据！")
 
     # --- modify end (2021.7.10) --- #
     # --- modify end (2021.8.16) --- #
@@ -1437,28 +1430,37 @@ def summary(request):  # 主页
     return render(request, 'Appointment/summary.html', locals())
 
 
-def summary2(request: HttpRequest):  # 主页
-
+def summary2021(request: HttpRequest):
+    # 年度总结
     from data_analysis.summary import generic_info, person_info
 
     base_dir = 'test_data'
 
-    ret = dict(
-        anonymous_user=not request.user.is_authenticated,
-        freshman=request.user.username.startswith('22'),
-        user_accept=request.GET.get('accept', False)
+    logged_in = not request.user.is_authenticated
+    is_freshman = request.user.username.startswith('22')
+    user_accept = 'accept' in request.GET.keys()
+    infos = generic_info()
+    infos.update(
+        logged_in=logged_in,
+        is_freshman=is_freshman,
+        user_accept=user_accept,
     )
-    if ret['anonymous_user'] or ret['freshman'] or (not ret['user_accept']):
-        example_file = os.path.join(base_dir, 'example.json')
-        with open(example_file) as f:
-            ret.update(json.load(f))
+    if user_accept and logged_in and not is_freshman:
+        infos.update(person_info(request.user))
+        try:
+            with open(os.path.join(base_dir, 'rank_info.json')) as f:
+                rank_info = json.load(f)
+                sid = request.user.username
+                for k in ['co_pct', 'func_appoint_pct', 'discuss_appoint_pct']:
+                    infos[k] = rank_info[k].index(sid) * 100 // len(rank_info[k])
+        except:
+            pass
     else:
-        ret.update(person_info(request.user))
-        with open(os.path.join(base_dir, 'rank_info.json')) as f:
-            rank_info = json.load(f)
-            sid = request.user.username
-            for k in ['co_pct', 'func_appoint_pct', 'discuss_appoint_pct']:
-                ret[k] = rank_info[k].index(sid) * 100 // len(rank_info[k])
-    ret.update(generic_info())
+        try:
+            example_file = os.path.join(base_dir, 'example.json')
+            with open(example_file) as f:
+                infos.update(json.load(f))
+        except:
+            pass
 
-    return render(request, 'Appointment/summary2.html', ret)
+    return render(request, 'Appointment/summary2.html', infos)

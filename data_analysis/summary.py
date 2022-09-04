@@ -8,6 +8,7 @@ from collections import defaultdict, Counter
 
 SUMMARY_YEAR = 2021
 SUMMARY_SEM_START = datetime(2021, 9, 1)
+SUMMARY_SEM_END: datetime = GLOBAL_INFO.semester_start
 
 
 def remove_local_var(d: dict):
@@ -29,17 +30,16 @@ def person_info(np: 'NaturalPerson|User'):
     if isinstance(np, User):
         np = NaturalPerson.objects.get_by_user(np)
     person_info = {}
-    person_info.update(cal_sharp_appoint(np))
-    person_info.update(cal_appoint_sum(np))
-    person_info.update(cal_act(np))
-    person_info.update(cal_course(np))
     person_info.update(cal_study_room(np))
     person_info.update(cal_early_room(np))
     person_info.update(cal_late_room(np))
     person_info.update(cal_appoint(np))
     person_info.update(cal_appoint_kw(np))
     person_info.update(cal_co_appoint(np))
-
+    person_info.update(cal_sharp_appoint(np))
+    person_info.update(cal_appoint_sum(np))
+    person_info.update(cal_act(np))
+    person_info.update(cal_course(np))
     return person_info
 
 
@@ -118,10 +118,10 @@ __persons = None
 def cal_sharp_appoint(np: NaturalPerson):
     appoints = Appoint.objects.filter(
         Astart__gte=SUMMARY_SEM_START,
-        Astart__lt=GLOBAL_INFO.semester_start,
+        Astart__lt=SUMMARY_SEM_END,
         major_student__Sid=np.person_id)
     sharp_appoints = appoints.exclude(Atype=Appoint.Type.TEMPORARY).filter(
-        Astart__lte=F('Atime') + timedelta(minutes=5))
+        Astart__lt=F('Atime') + timedelta(minutes=30))
     sharp_appoint_num = sharp_appoints.count()
     if not sharp_appoint_num:
         return dict(sharp_appoint_num=sharp_appoint_num)
@@ -129,8 +129,11 @@ def cal_sharp_appoint(np: NaturalPerson):
         sharp_appoints, key=lambda x: x.Astart-x.Atime)
     sharp_appoint_day = sharp_appoint.Astart.strftime('%Y年%m月%d日')
     sharp_appoint_reason = sharp_appoint.Ausage
-    sharp_appoint_min = sharp_appoint.Astart - sharp_appoint.Atime
-    sharp_appoint_min = round((sharp_appoint_min.total_seconds() / 60) % 60)
+    sharp_appoint_min = (sharp_appoint.Astart - sharp_appoint.Atime).total_seconds()
+    if sharp_appoint_min < 60:
+        sharp_appoint_min = f'{round(sharp_appoint_min)}秒'
+    else:
+        sharp_appoint_min = f'{round((sharp_appoint_min / 60) % 60)}分钟'
     sharp_appoint_room = str(sharp_appoint.Room)
     disobey_num = appoints.filter(Astatus=Appoint.Status.VIOLATED).count()
     return dict(
@@ -146,7 +149,7 @@ def cal_sharp_appoint(np: NaturalPerson):
 def cal_appoint_sum(np: NaturalPerson):
     appoints = Appoint.objects.not_canceled().filter(
         Astart__gte=SUMMARY_SEM_START,
-        Astart__lt=GLOBAL_INFO.semester_start,
+        Astart__lt=SUMMARY_SEM_END,
         major_student__Sid=np.person_id
     )
     total_time = appoints.aggregate(
@@ -254,7 +257,7 @@ def cal_course(np: NaturalPerson):
 def cal_study_room(np: NaturalPerson):
 
     _start_time = SUMMARY_SEM_START
-    _end_time = SUMMARY_SEM_START + timedelta(days=360)
+    _end_time = SUMMARY_SEM_END
 
     _user = np.get_user()
     _par = Participant.objects.get(Sid=_user)
@@ -285,7 +288,7 @@ def cal_study_room(np: NaturalPerson):
 def cal_early_room(np: NaturalPerson):
 
     _start_time = SUMMARY_SEM_START
-    _end_time = SUMMARY_SEM_START + timedelta(days=360)
+    _end_time = SUMMARY_SEM_END
 
     _user = np.get_user()
     _par = Participant.objects.get(Sid=_user)
@@ -307,7 +310,7 @@ def cal_early_room(np: NaturalPerson):
 def cal_late_room(np: NaturalPerson):
 
     _start_time = SUMMARY_SEM_START
-    _end_time = SUMMARY_SEM_START + timedelta(days=360)
+    _end_time = SUMMARY_SEM_END
 
     _user = np.get_user()
     _par = Participant.objects.get(Sid=_user)
@@ -336,7 +339,7 @@ def cal_late_room(np: NaturalPerson):
 def cal_appoint(np: NaturalPerson):
 
     _start_time = SUMMARY_SEM_START
-    _end_time = SUMMARY_SEM_START + timedelta(days=360)
+    _end_time = SUMMARY_SEM_END
 
     _user = np.get_user()
     _par = Participant.objects.get(Sid=_user)
@@ -372,7 +375,7 @@ def cal_appoint_kw(np: NaturalPerson):
     import jieba
 
     _start_time = SUMMARY_SEM_START
-    _end_time = SUMMARY_SEM_START + timedelta(days=360)
+    _end_time = SUMMARY_SEM_END
 
     _user = np.get_user()
     _par = Participant.objects.get(Sid=_user)
@@ -391,7 +394,7 @@ def cal_appoint_kw(np: NaturalPerson):
 
 def cal_co_appoint(np: NaturalPerson):
     _start_time = SUMMARY_SEM_START
-    _end_time = SUMMARY_SEM_START + timedelta(days=360)
+    _end_time = SUMMARY_SEM_END
 
     _user = np.get_user()
     _par = Participant.objects.get(Sid=_user)
