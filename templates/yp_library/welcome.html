@@ -7,7 +7,8 @@
   :root {
     /* constants */
     --search-book-bg: aliceblue;
-    --my-lend-info-bg: #d7f0dd;
+    --my-lend-info-bg: #fafafa;
+    /* rgb(241, 242, 243); */
   }
 
   .text-end {
@@ -203,7 +204,7 @@
       {% endif %}
       <div class="col-12 layout-top-spacing">
         <div class="bio layout-spacing">
-          <div class="widget-content widget-content-area bg" style="
+          <div class="widget-content widget-content-area bg" id="main" style="
                     background-size: 100%;
                     height: calc(100vw * 0.4);
                     min-height: 420px;
@@ -222,9 +223,9 @@
               </h5>
             </div>
             <div class="row ml-0 mr-0" style="opacity: 0.95; position: relative; top: 15%; left: 10%; width: 80%;">
-              <div class="col-lg-4 col-md-5 col-sm-12 order-2 order-md-1 pt-1 pb-1" data-toggle="collapse"
+              <div class="col-12 col-md-6 order-2 order-md-1 pt-1 pb-1" data-toggle="collapse"
                 href="#collapseExample" role="button" aria-expanded="false" aria-controls="collapseExample"
-                id="search-tab" style="background-color: var(--search-book-bg);">
+                id="search-tab" style="background-color: var(--search-book-bg); border-top-left-radius: 6px;">
                 <div class="d-flex justify-content-between">
                   <p style="font-size: 1rem;" class="mb-1 mt-1">
                     <i class="fa fa-search"></i>
@@ -236,16 +237,16 @@
                 </div>
               </div>
               <div class="col-12 order-last collapsed collapse" id="lendInfos"
-                style="background-color: var(--my-lend-info-bg); max-height: 200px;">
+                style="background-color: var(--my-lend-info-bg); max-height: 300px; border-bottom-left-radius: 6px; border-bottom-right-radius: 6px;">
                   <div class="tab-content" style="overflow: auto; height: 90%">
                     <div id="all" class="tab-pane active" style="overflow: auto;">
                       {% if records_list %}
                       <table class="table table-striped table-responsive-sm table-active mb-0">
                         <thead>
                           <tr>
-                            <th scope="col" width="25%" style="min-width: 160px;">书名</th>
-                            <th scope="col" width="30%" style="min-width: 160px;">借阅时间</th>
-                            <th scope="col" width="30%" style="min-width: 160px;">归还截止时间</th>
+                            <th scope="col" width="45%" style="min-width: 160px;">书名</th>
+                            <th scope="col" width="20%" style="min-width: 160px;">借阅时间</th>
+                            <th scope="col" width="20%" style="min-width: 160px;">归还截止时间</th>
                             <th scope="col" width="15%" style="min-width: 100px;">状态</th>
                           </tr>
                         </thead>
@@ -286,16 +287,16 @@
                   </div>
                 <!-- </div> -->
               </div>
-              <div class="col-lg-8 col-md-7 col-sm-12 order-sm-1 order-md-2 pt-1 pb-1"
-                style="background-color: var(--my-lend-info-bg);" data-toggle="collapse" href="#lendInfos" role="button"
+              <div class="col-12 col-md-6 order-sm-1 order-md-2 pt-1 pb-1"
+                style="background-color: var(--my-lend-info-bg); border-top-right-radius: 6px;" data-toggle="collapse" href="#lendInfos" role="button"
                 aria-expanded="false" aria-controls="lendInfos" id="lend-info-tab">
                 <p style="font-size: 1rem;" class="mb-1 mt-1">
                   <i class="fa fa-clock"></i>
-                  我的借阅 ......
+                  我的借阅
                 </p>
               </div>
               <div class="col-12 collapse mb-4 pt-2 order-last collapsed form-group collapse show" id="collapseExample"
-                style="background-color: var(--search-book-bg);">
+                style="background-color: var(--search-book-bg);  border-bottom-left-radius: 6px; border-bottom-right-radius: 6px;">
                 <form action="/yplibrary/search/" method="POST" role="search" id="SearchBookForm">
                   <div class="row">
                     <div class="col-12 input-group pt-4 pb-3">
@@ -605,11 +606,34 @@
   document.getElementById("searchButton").onclick = submit;
   const lendInfos = $('#lendInfos');
   const searchBox = $('#collapseExample');
+  const main = document.getElementById("main");
+  const lendInfoDiv = document.getElementById("lendInfos");
+  const lendInfoTab = document.getElementById("lend-info-tab");
+  const searchTab = document.getElementById("search-tab");
   lendInfos.on('show.bs.collapse', function () {
     searchBox.collapse('hide');
   })
   searchBox.on('show.bs.collapse', function () {
     lendInfos.collapse('hide');
   })
+  const _resize = function() {
+    let lendInfoHeight = main.offsetHeight - lendInfoTab.offsetParent.offsetTop - 40 - lendInfoTab.offsetHeight;
+    if (this.innerWidth >= 767) {
+      lendInfoDiv.style.maxHeight = `${lendInfoHeight}px`;
+      lendInfoDiv.style.maxHeight = `${lendInfoHeight}px`;
+      lendInfoTab.style.borderTopRightRadius = "6px";
+      lendInfoTab.style.borderTopLeftRadius = "0px";
+      searchTab.style.borderTopLeftRadius = "6px"
+    }
+    else {
+      lendInfoHeight -= lendInfoTab.offsetHeight;
+      lendInfoDiv.style.maxHeight = `${lendInfoHeight}px`;
+      lendInfoTab.style.borderTopRightRadius = "6px";
+      lendInfoTab.style.borderTopLeftRadius = "6px";
+      searchTab.style.borderRadius = "0px"
+    } 
+  }
+  window.addEventListener("load", _resize);
+  window.addEventListener("resize", _resize);
 </script>
 {% endblock %}
