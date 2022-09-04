@@ -1441,7 +1441,7 @@ def summary2021(request: HttpRequest):
 
     base_dir = 'test_data'
 
-    logged_in = not request.user.is_authenticated
+    logged_in = request.user.is_authenticated
     is_freshman = request.user.username.startswith('22')
     user_accept = 'accept' in request.GET.keys()
     infos = generic_info()
