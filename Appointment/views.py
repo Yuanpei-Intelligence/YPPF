@@ -1437,28 +1437,37 @@ def summary(request):  # 主页
     return render(request, 'Appointment/summary.html', locals())
 
 
-def summary2(request: HttpRequest):  # 主页
-
+def summary2021(request: HttpRequest):
+    # 年度总结
     from data_analysis.summary import generic_info, person_info
 
     base_dir = 'test_data'
 
-    ret = dict(
-        anonymous_user=not request.user.is_authenticated,
-        freshman=request.user.username.startswith('22'),
-        user_accept=request.GET.get('accept', False)
+    logged_in = not request.user.is_authenticated
+    is_freshman = request.user.username.startswith('22')
+    user_accept = 'accept' in request.GET.keys()
+    infos = generic_info()
+    infos.update(
+        logged_in=logged_in,
+        is_freshman=is_freshman,
+        user_accept=user_accept,
     )
-    if ret['anonymous_user'] or ret['freshman'] or (not ret['user_accept']):
-        example_file = os.path.join(base_dir, 'example.json')
-        with open(example_file) as f:
-            ret.update(json.load(f))
+    if user_accept and logged_in and not is_freshman:
+        infos.update(person_info(request.user))
+        try:
+            with open(os.path.join(base_dir, 'rank_info.json')) as f:
+                rank_info = json.load(f)
+                sid = request.user.username
+                for k in ['co_pct', 'func_appoint_pct', 'discuss_appoint_pct']:
+                    infos[k] = rank_info[k].index(sid) * 100 // len(rank_info[k])
+        except:
+            pass
     else:
-        ret.update(person_info(request.user))
-        with open(os.path.join(base_dir, 'rank_info.json')) as f:
-            rank_info = json.load(f)
-            sid = request.user.username
-            for k in ['co_pct', 'func_appoint_pct', 'discuss_appoint_pct']:
-                ret[k] = rank_info[k].index(sid) * 100 // len(rank_info[k])
-    ret.update(generic_info())
+        try:
+            example_file = os.path.join(base_dir, 'example.json')
+            with open(example_file) as f:
+                infos.update(json.load(f))
+        except:
+            pass
 
-    return render(request, 'Appointment/summary2.html', ret)
+    return render(request, 'Appointment/summary2.html', infos)
