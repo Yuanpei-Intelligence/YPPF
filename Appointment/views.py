@@ -1,4 +1,5 @@
 # 数据库模型与操作
+import os
 from Appointment.models import (
     Participant,
     Room,
@@ -1432,6 +1433,24 @@ def summary(request):  # 主页
     return render(request, 'Appointment/summary.html', locals())
 
 
-def summary2(request):  # 主页
+def summary2(request: HttpRequest):  # 主页
+
+    base_dir = ''
+
+    ret = dict(
+        anonymous_user=request.user.is_anonymous,
+        freshman=request.user.username.startswith('22'),
+    )
+    if ret['anonymous_user'] or ret['freshman']:
+        example_file = os.path.join(base_dir, '')
+        with open(example_file) as f:
+            ret.update(json.load(f))
+    else:
+        info_file = os.path.join(base_dir, f'{request.user.username}.json')
+        with open(info_file) as f:
+            ret.update(json.load(f))
     
-    return render(request, 'Appointment/summary2.html', locals())
+    with open(os.path.join(base_dir, 'rank_info.json')) as f:
+        ret.update(json.load(f))
+    
+    return render(request, 'Appointment/summary2.html', ret)
