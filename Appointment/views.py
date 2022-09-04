@@ -1441,8 +1441,9 @@ def summary2(request: HttpRequest):  # 主页
     ret = dict(
         anonymous_user=not request.user.is_authenticated,
         freshman=request.user.username.startswith('22'),
+        user_accept=request.GET.get('accept', False)
     )
-    if ret['anonymous_user'] or ret['freshman']:
+    if ret['anonymous_user'] or ret['freshman'] or (not ret['user_accept']):
         example_file = os.path.join(base_dir, '')
         with open(example_file) as f:
             ret.update(json.load(f))
