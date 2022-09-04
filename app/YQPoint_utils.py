@@ -42,11 +42,11 @@ def get_pools_and_items(pool_type: Pool.Type, user: User, frontend_dict: Dict[st
     pools = Pool.objects.filter(
         Q(type=pool_type) & Q(start__lte=datetime.now())
         & (Q(end__isnull=True) | Q(end__gte=datetime.now() - timedelta(days=1))))
-    
+
     pools_info = []
     # 此列表中含有若干dict，每个dict对应一个待展示的pool，例如：
     # {
-    #     "title": "xxx", "type": "兑换/抽奖/盲盒", 
+    #     "title": "xxx", "type": "兑换/抽奖/盲盒",
     #     "entry_time": 1, # 对于盲盒/抽奖奖池，一个用户最多能买几次
     #     "ticket_price": 1, # 盲盒/抽奖奖池价格
     #     "start": "2022-9-4", "end": "2022-9-5", # end可能为空
@@ -57,7 +57,7 @@ def get_pools_and_items(pool_type: Pool.Type, user: User, frontend_dict: Dict[st
     #         # key包括"id", "origin_num", "consumed_num", "exchange_price",
     #         # "exchange_limit", "is_big_prize", "is_empty",
     #         # "prize__name", "prize__more_info", "prize__stock",
-    #         # "prize__reference_price", "prize__image", "prize__id", 
+    #         # "prize__reference_price", "prize__image", "prize__id",
     #         # 以及origin_num-consumed_num得到的remain_num
     #         # 若干是兑换类奖池，还有my_exchange_time，即当前用户兑换过该item多少次
     #     "my_entry_time": 0, # 当前用户进过抽奖/盲盒奖池多少次
@@ -83,12 +83,12 @@ def get_pools_and_items(pool_type: Pool.Type, user: User, frontend_dict: Dict[st
             this_pool_info = model_to_dict(pool)
             this_pool_info["status"] = 0
         elif pool.end < datetime.now() and \
-            pool.end is not None and pool.end >= datetime.now() - timedelta(days=1):
+                pool.end is not None and pool.end >= datetime.now() - timedelta(days=1):
             this_pool_info = model_to_dict(pool)
             this_pool_info["status"] = 1
         else:
             continue
-        
+
         this_pool_items = list(pool.poolitem_set.values(
             "id", "origin_num", "consumed_num", "exchange_price",
             "exchange_limit", "is_big_prize", "is_empty",
@@ -125,21 +125,23 @@ def get_pools_and_items(pool_type: Pool.Type, user: User, frontend_dict: Dict[st
             for big_prize_item in big_prize_items:
                 big_prizes_and_winners.append(
                     {"prize_name": big_prize_item.prize.name, "prize_image": big_prize_item.prize.image})
-                winner_users = PoolRecord.objects.filter(
-                    pool=pool, prize=big_prize_item.prize).values("user").distinct()
-                big_prizes_and_winners[-1]["winners"] = [
-                    get_person_or_org(user, user_type=UTYPE_PER).name for user in winner_users]
+                winner_names = list(PoolRecord.objects.filter(
+                    pool=pool, prize=big_prize_item.prize).values_list(
+                        "user__naturalperson__name", flat=True)) # TODO: 需要distinct()吗？
+                # 这里假定获奖者一定是自然人，因为组织不能抽奖
+                big_prizes_and_winners[-1]["winners"] = winner_names
             for normal_prize_item in normal_prize_items:
                 normal_prizes_and_winners.append(
                     {"prize_name": normal_prize_item.prize.name, "prize_image": normal_prize_item.prize.image})
-                winner_users = PoolRecord.objects.filter(
-                    pool=pool, prize=normal_prize_item.prize).values("user").distinct()
-                normal_prizes_and_winners[-1]["winners"] = [
-                    get_person_or_org(user, user_type=UTYPE_PER).name for user in winner_users]
+                winner_names = list(PoolRecord.objects.filter(
+                    pool=pool, prize=normal_prize_item.prize).values_list(
+                        "user__naturalperson__name", flat=True)) # TODO: 需要distinct()吗？
+                # 这里假定获奖者一定是自然人，因为组织不能抽奖
+                normal_prizes_and_winners[-1]["winners"] = winner_names
             this_pool_info["results"] = {}
             this_pool_info["results"]["big_prize_results"] = big_prizes_and_winners
             this_pool_info["results"]["normal_prize_results"] = normal_prizes_and_winners
-        
+
         pools_info.append(this_pool_info)
 
     frontend_dict["pools_info"] = pools_info
@@ -184,20 +186,21 @@ def buy_exchange_item(user: User, poolitem_id: str) -> MESSAGECONTEXT:
                 source=f'兑换奖池：{poolitem.pool.title}-{poolitem.prize.name}',
                 source_type=YQPointRecord.SourceType.CONSUMPTION
             )
-        except AssertionError as e:
-            if e == "元气值不足":
+        except Exception as e:
+            if str(e) == "元气值不足":
                 return wrong('您的元气值不足，兑换失败!')
+            return wrong('结算元气值时出现问题，兑换失败!')
 
         # 更新奖品状态
         poolitem.consumed_num += 1
         poolitem.save()
 
         # 创建兑换记录
-        PoolRecord.create(
+        PoolRecord.objects.create(
             user=user,
             pool=poolitem.pool,
             prize=poolitem.prize,
-            status=PoolRecord.Status.UN_EXCHANGE,
+            status=PoolRecord.Status.UN_REDEEM,
             time=datetime.now()
         )
 
@@ -226,7 +229,7 @@ def buy_lottery_pool(user: User, pool_id: str) -> MESSAGECONTEXT:
             return wrong('抽奖未开始!')
         if pool.end is not None and pool.end < datetime.now():  # 实际上抽奖类的奖池的end应该不可能是None
             return wrong('抽奖已结束!')
-        my_entry_time = PoolRecord.objects.filter(pool=pool, use=user).count()
+        my_entry_time = PoolRecord.objects.filter(pool=pool, user=user).count()
         if my_entry_time >= pool.entry_time:
             return wrong('您在本奖池中抽奖的次数已达上限!')
 
@@ -238,12 +241,13 @@ def buy_lottery_pool(user: User, pool_id: str) -> MESSAGECONTEXT:
                 source=f'抽奖奖池：{pool.title}',
                 source_type=YQPointRecord.SourceType.CONSUMPTION
             )
-        except AssertionError as e:
-            if e == "元气值不足":
-                return wrong('您的元气值不足，抽奖失败!')
+        except Exception as e:
+            if str(e) == "元气值不足":
+                return wrong('您的元气值不足，兑换失败!')
+            return wrong('结算元气值时出现问题，兑换失败!')
 
         # 创建抽奖记录
-        PoolRecord.create(
+        PoolRecord.objects.create(
             user=user,
             pool=pool,
             status=PoolRecord.Status.LOTTERING,
@@ -308,9 +312,9 @@ def buy_random_pool(user: User, pool_id: str) -> Tuple[MESSAGECONTEXT, int, int]
             return wrong('盲盒不存在!'), -1, 2
         if pool.start > datetime.now():
             return wrong('盲盒兑换时间未开始!'), -1, 2
-        if pool.end is not None and pool.end > datetime.now():
+        if pool.end is not None and pool.end < datetime.now():
             return wrong('盲盒兑换时间已结束!'), -1, 2
-        my_entry_time = PoolRecord.objects.filter(pool=pool, use=user).count()
+        my_entry_time = PoolRecord.objects.filter(pool=pool, user=user).count()
         if my_entry_time >= pool.entry_time:
             return wrong('您兑换这款盲盒的次数已达上限!'), -1, 2
 
@@ -321,20 +325,21 @@ def buy_random_pool(user: User, pool_id: str) -> Tuple[MESSAGECONTEXT, int, int]
                 source=f'盲盒奖池：{pool.title}',
                 source_type=YQPointRecord.SourceType.CONSUMPTION
             )
-        except AssertionError as e:
-            if e == "元气值不足":
-                return wrong('您的元气值不足，兑换盲盒失败!'), -1, 2
+        except Exception as e:
+            if str(e) == "元气值不足":
+                return wrong('您的元气值不足，兑换失败!')
+            return wrong('结算元气值时出现问题，兑换失败!')
 
         # 开盒，修改poolitem记录，创建poolrecord记录
-        items = pool.poolitem_set
+        items = pool.poolitem_set.all()
         real_item_id = select_random_prize(items, 1)[0]
         poolitem_to_be_modified = PoolItem.objects.select_for_update().get(id=real_item_id)
         poolitem_to_be_modified.consumed_num += 1
         poolitem_to_be_modified.save()
-        PoolRecord.create(
+        PoolRecord.objects.create(
             user=user,
             pool=pool,
-            status=PoolRecord.Status.UN_EXCHANGE,
+            status=PoolRecord.Status.UN_REDEEM,
             prize=poolitem_to_be_modified.prize,
             time=datetime.now()
         )
@@ -351,6 +356,8 @@ def run_lottery(pool_id: int):
     """
     # 部分参考了course_utils.py的draw_lots函数
     pool = Pool.objects.get(id=pool_id, type=Pool.Type.LOTTERY)
+    assert not PoolRecord.objects.filter( # 此时pool关联的所有records都应该是LOTTERING
+        pool=pool).exclude(status=PoolRecord.Status.LOTTERING).exists()
     with transaction.atomic():
         related_records = PoolRecord.objects.filter(
             pool=pool, status=PoolRecord.Status.LOTTERING)
