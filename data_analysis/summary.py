@@ -380,12 +380,10 @@ def cal_appoint_kw(np: NaturalPerson):
     _talk_rooms = Room.objects.talk_rooms().values_list('Rid')
     _func_rooms = Room.objects.function_rooms().values_list('Rid')
     _me_act_appoint = Appoint.objects.not_canceled().filter(
-        students=_par, Astart__gt=_start_time, Astart__lt=_end_time)
+        students=_par, Astart__gt=_start_time, Astart__lt=_end_time).exclude(Atype=Appoint.Type.TEMPORARY)
 
     _key_words = []
     for _usage in _me_act_appoint.values_list('Ausage'):
-        if _usage[0] in ['临时预约', '[MASK]']:
-            continue
         _key_words.extend(jieba.cut(_usage[0]))
     Skeywords = Counter(_key_words).most_common(3)
     return remove_local_var(locals())
