@@ -617,7 +617,7 @@
     lendInfos.collapse('hide');
   })
   const _resize = function() {
-    let lendInfoHeight = main.offsetHeight - lendInfoTab.offsetParent.offsetTop - lendInfoTab.offsetHeight;
+    let lendInfoHeight = main.offsetHeight - lendInfoTab.offsetParent.offsetTop - lendInfoTab.offsetHeight - 40;
     lendInfoDiv.style.maxHeight = `${lendInfoHeight}px`;
   }
   window.addEventListener("load", _resize);
