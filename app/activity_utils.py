@@ -169,7 +169,7 @@ def draw_lots(activity):
             status=Participant.AttendStatus.APLLYSUCCESS
         ).values_list('person_id__person_id', flat=True)
     receivers = User.objects.filter(id__in=receivers)
-    sender = activity.organization_id.organization_id
+    sender = activity.organization_id.get_user()
     typename = Notification.Type.NEEDREAD
     content = f'您好！您参与抽签的活动“{activity.title}”报名成功！请准时参加活动！'
     URL = f'/viewActivity/{activity.id}'
@@ -264,7 +264,7 @@ def notifyActivity(aid: int, msg_type: str, msg=""):
 
                     success, _ = bulk_notification_create(
                         receivers=list(receivers),
-                        sender=activity.organization_id.organization_id,
+                        sender=activity.organization_id.get_user(),
                         typename=Notification.Type.NEEDREAD,
                         title=title,
                         content=msg,
@@ -389,7 +389,7 @@ def notifyActivity(aid: int, msg_type: str, msg=""):
 
         success, _ = bulk_notification_create(
             receivers=list(receivers),
-            sender=activity.organization_id.organization_id,
+            sender=activity.organization_id.get_user(),
             typename=Notification.Type.NEEDREAD,
             title=title,
             content=msg,
@@ -585,7 +585,7 @@ def create_activity(request):
     examine_teacher = NaturalPerson.objects.get_teacher(context["examine_teacher"])
 
     # 检查完毕，创建活动
-    org = get_person_or_org(request.user, "Organization")
+    org = get_person_or_org(request.user, UTYPE_ORG)
     activity = Activity.objects.create(
                     title=context["title"],
                     organization_id=org,
@@ -809,7 +809,7 @@ def accept_activity(request, activity):
     notification_status_change(notification, Notification.Status.DONE)
 
     notification_create(
-        receiver=activity.organization_id.organization_id,
+        receiver=activity.organization_id.get_user(),
         sender=request.user,
         typename=Notification.Type.NEEDREAD,
         title=Notification.Title.ACTIVITY_INFORM,
@@ -882,13 +882,22 @@ def reject_activity(request, activity):
         #     ).update(status=Participant.AttendStatus.APLLYFAILED)
         notifyActivity(activity.id, "modification_par", f"您报名的活动{activity.title}已取消。")
         activity.status = Activity.Status.CANCELED
-        scheduler.remove_job(f"activity_{activity.id}_remind")
-        scheduler.remove_job(f"activity_{activity.id}_{Activity.Status.WAITING}")
-        scheduler.remove_job(f"activity_{activity.id}_{Activity.Status.PROGRESSING}")
-        scheduler.remove_job(f"activity_{activity.id}_{Activity.Status.END}")
+        # 防止意外的job丢失
+        try:
+            scheduler.remove_job(f"activity_{activity.id}_remind")
+        except: pass
+        try:
+            scheduler.remove_job(f"activity_{activity.id}_{Activity.Status.WAITING}")
+        except: pass
+        try:
+            scheduler.remove_job(f"activity_{activity.id}_{Activity.Status.PROGRESSING}")
+        except: pass
+        try:
+            scheduler.remove_job(f"activity_{activity.id}_{Activity.Status.END}")
+        except: pass
 
     notification = notification_create(
-        receiver=activity.organization_id.organization_id,
+        receiver=activity.organization_id.get_user(),
         sender=request.user,
         typename=Notification.Type.NEEDREAD,
         title=Notification.Title.ACTIVITY_INFORM,
@@ -999,12 +1008,19 @@ def cancel_activity(request, activity):
     #         activity_id=activity
     #     ).update(status=Participant.AttendStatus.APLLYFAILED)
 
-
-
-    scheduler.remove_job(f"activity_{activity.id}_remind")
-    scheduler.remove_job(f"activity_{activity.id}_{Activity.Status.WAITING}")
-    scheduler.remove_job(f"activity_{activity.id}_{Activity.Status.PROGRESSING}")
-    scheduler.remove_job(f"activity_{activity.id}_{Activity.Status.END}")
+    # 防止意外的job丢失
+    try:
+        scheduler.remove_job(f"activity_{activity.id}_remind")
+    except: pass
+    try:
+        scheduler.remove_job(f"activity_{activity.id}_{Activity.Status.WAITING}")
+    except: pass
+    try:
+        scheduler.remove_job(f"activity_{activity.id}_{Activity.Status.PROGRESSING}")
+    except: pass
+    try:
+        scheduler.remove_job(f"activity_{activity.id}_{Activity.Status.END}")
+    except: pass
 
     activity.save()
 

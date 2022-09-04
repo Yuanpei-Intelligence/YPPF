@@ -778,3 +778,7 @@ class AcademicTextEntryAdmin(admin.ModelAdmin):
 admin.site.register(OrganizationTag)
 admin.site.register(Comment)
 admin.site.register(CommentPhoto)
+admin.site.register(Prize)
+admin.site.register(Pool)
+admin.site.register(PoolItem)
+admin.site.register(PoolRecord)

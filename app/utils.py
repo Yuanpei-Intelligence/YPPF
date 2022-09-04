@@ -96,9 +96,9 @@ def get_user_by_name(name):
         user<object>: 用户对象
         user_type: 用户类型
     """
-    try: return NaturalPerson.objects.get(name=name).person_id, UTYPE_PER
+    try: return NaturalPerson.objects.get(name=name).get_user(), UTYPE_PER
     except: pass
-    try: return Organization.objects.get(oname=name).organization_id, UTYPE_ORG
+    try: return Organization.objects.get(oname=name).get_user(), UTYPE_ORG
     except: pass
     print(f"{name} is neither natural person nor organization!")
 
@@ -468,34 +468,6 @@ def clear_captcha_session(request):
     request.session.pop("received_user", None)        # 成功登录后不再保留
 
 
-def set_nperson_quota_to(quota):
-    """
-        后台设定所有自然人的元气值为一特定值，这个值就是每月的限额
-        给所有用户发送通知
-    """
-    activated_npeople = NaturalPerson.objects.activated()
-
-
-    activated_npeople.update(quota=quota)
-    notification_content = f"学院已经将大家的元气值配额重新设定为{quota},祝您使用愉快！"
-    title = Notification.Title.VERIFY_INFORM
-    YPcollege = Organization.objects.get(oname=YQP_ONAME)
-
-    # 函数内导入是为了防止破坏utils的最高优先级，如果以后确定不会循环引用也可提到外面
-    # 目前不发送到微信哦
-    from notification_utils import bulk_notification_create
-    receivers = activated_npeople.select_related('person_id')
-    receivers = [receiver.person_id for receiver in receivers]
-    success, _ = bulk_notification_create(
-        receivers,
-        YPcollege,
-        Notification.Type.NEEDREAD,
-        title,
-        notification_content,
-    )
-    return success
-
-
 def check_account_setting(request, user_type):
     if user_type == UTYPE_PER:
         html_display = dict()
@@ -717,9 +689,9 @@ def update_related_account_in_session(request, username, shift=False, oname=""):
         if oname not in orgs:
             return False
         orgs.remove(oname)
-        user = Organization.objects.get(oname=oname).organization_id
+        user = Organization.objects.get(oname=oname).get_user()
     else:
-        user = np.person_id
+        user = np.get_user()
 
     if shift:
         auth.logout(request)
@@ -732,7 +704,7 @@ def update_related_account_in_session(request, username, shift=False, oname=""):
 
 
 @log.except_captured(source='utils[user_login_org]', record_user=True)
-def user_login_org(request, org) -> MESSAGECONTEXT:
+def user_login_org(request, org: Organization) -> MESSAGECONTEXT:
     '''
     令人疑惑的函数，需要整改
     尝试从用户登录到org指定的组织，如果不满足权限，则会返回wrong
@@ -755,7 +727,7 @@ def user_login_org(request, org) -> MESSAGECONTEXT:
         return wrong("没有登录到该小组账户的权限!")
     # 到这里, 是本人小组并且有权限登录
     auth.logout(request)
-    auth.login(request, org.organization_id)  # 切换到小组账号
+    auth.login(request, org.get_user())  # 切换到小组账号
     update_related_account_in_session(request, user.username, oname=org.oname)
     return succeed("成功切换到小组账号处理该事务，建议事务处理完成后退出小组账号。")
 

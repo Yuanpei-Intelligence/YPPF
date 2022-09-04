@@ -5,6 +5,10 @@ from app.models import (
     NaturalPerson,
     Freshman,
     Position,
+    AcademicEntry,
+    AcademicTag,
+    AcademicTextEntry,
+    AcademicTagEntry,
     Organization,
     OrganizationTag,
     OrganizationType,
@@ -45,9 +49,16 @@ from app.notification_utils import(
     notification_status_change,
     notification2Display,
 )
-from app.academic_utils import(
+from app.academic_utils import (
     comments2Display,
+    get_js_tag_list,
+    get_text_list,
+    audit_academic_map,
+    have_entries_of_type,
+    get_tag_status,
+    get_text_status,
 )
+from generic.models import YQPointRecord
 
 import json
 import random
@@ -58,7 +69,7 @@ from boottest import local_dict
 from django.contrib import auth, messages
 from django.contrib.auth.hashers import make_password, check_password
 from django.db import transaction
-from django.db.models import Q, F, Sum
+from django.db.models import Q, F, Sum, QuerySet
 from django.contrib.auth.password_validation import CommonPasswordValidator, NumericPasswordValidator
 from django.core.exceptions import ValidationError
 
@@ -112,8 +123,8 @@ def index(request: HttpRequest):
         try:
             user = User.objects.filter(username=username)
             if len(user) == 0:
-                org = Organization.objects.get(oname=username)  # 如果get不到，就是账号不存在了
-                user = org.organization_id
+                org: Organization = Organization.objects.get(oname=username)  # 如果get不到，就是账号不存在了
+                user = org.get_user()
                 username = user.username
             else:
                 user = user[0]
@@ -228,13 +239,14 @@ def stuinfo(request: HttpRequest, name=None):
 
     oneself = get_person_or_org(user, user_type)
 
+
     if name is None:
         name = request.GET.get('name', None)
     if name is None:
-        if user_type == "Organization":
+        if user_type == UTYPE_ORG:
             return redirect("/orginfo/")  # 小组只能指定学生姓名访问
         else:  # 跳轉到自己的頁面
-            assert user_type == "Person"
+            assert user_type == UTYPE_PER
             return redirect(append_query(oneself.get_absolute_url(), **request.GET.dict()))
     else:
         # 先对可能的加号做处理
@@ -247,7 +259,7 @@ def stuinfo(request: HttpRequest, name=None):
             person = person[0]
         else:  # 有很多人，这时候假设加号后面的是user的id
             if len(name_list) == 1:  # 没有任何后缀信息，那么如果是自己则跳转主页，否则跳转搜索
-                if user_type == "Person" and oneself.name == name:
+                if user_type == UTYPE_PER and oneself.name == name:
                     person = oneself
                 else:  # 不是自己，信息不全跳转搜索
                     return redirect("/search?Query=" + name)
@@ -260,7 +272,7 @@ def stuinfo(request: HttpRequest, name=None):
                 assert potential_person in person
                 person = potential_person
 
-        is_myself = user_type == "Person" and person.person_id == user  # 用一个字段储存是否是自己
+        is_myself = user_type == UTYPE_PER and person.person_id == user  # 用一个字段储存是否是自己
         html_display["is_myself"] = is_myself  # 存入显示
         inform_share, alert_message = utils.get_inform_share(me=person, is_myself=is_myself)
 
@@ -276,20 +288,25 @@ def stuinfo(request: HttpRequest, name=None):
 
         # ----------------------------------- 小组卡片 ----------------------------------- #
 
+        def _get_org_latest_pos(positions: QuerySet[Position], org):
+            '''同一组织可能关联多个职位导致的bug，暂用于修复'''
+            # TODO: 重写职位呈现逻辑，减少数据库访问
+            return positions.filter(org=org).order_by('year', 'semester').last()
+
         person_poss = Position.objects.activated().filter(Q(person=person))
-        person_orgs = Organization.objects.filter(
+        person_orgs: QuerySet[Organization] = Organization.objects.filter(
             id__in=person_poss.values("org")
         )  # ta属于的小组
         oneself_orgs = (
             [oneself]
-            if user_type == "Organization"
+            if user_type == UTYPE_ORG
             else Position.objects.activated().filter(
                 Q(person=oneself) & Q(show_post=True)
             )
         )
-        oneself_orgs_id = [oneself.id] if user_type == "Organization" else oneself_orgs.values("org") # 自己的小组
+        oneself_orgs_id = [oneself.id] if user_type == UTYPE_ORG else oneself_orgs.values("org") # 自己的小组
 
-        # 管理的小组
+        # 当前管理的小组
         person_owned_poss = person_poss.filter(is_admin=True, status=Position.Status.INSERVICE)
         person_owned_orgs = person_orgs.filter(
             id__in=person_owned_poss.values("org")
@@ -310,7 +327,7 @@ def stuinfo(request: HttpRequest, name=None):
                 or None
         )
 
-        # 属于的小组
+        # 当前属于的小组
         person_joined_poss = person_poss.filter(~Q(is_admin=True) & Q(show_post=True))
         person_joined_orgs = person_orgs.filter(
             id__in=person_joined_poss.values("org")
@@ -345,16 +362,16 @@ def stuinfo(request: HttpRequest, name=None):
             person=person,
             show_post=True
             )
-        person_history_orgs = Organization.objects.filter(
+        person_history_orgs: QuerySet[Organization] = Organization.objects.filter(
             id__in=person_history_poss.values("org")
         )  # ta属于的小组
         person_history_orgs_ava = [
             # utils.get_user_ava(org, "organization") for org in person_owned_orgs
             org.get_user_ava() for org in person_history_orgs
         ]
-        person_history_orgs_pos = [
-            person_history_poss.get(org=org).pos for org in person_history_orgs
-        ]  # ta在小组中的职位
+        person_history_orgs_poss = [
+            _get_org_latest_pos(person_history_poss, org) for org in person_history_orgs
+        ]  # ta在小组中的职位对象
 
         sems = {
             Semester.FALL: "秋",
@@ -363,11 +380,11 @@ def stuinfo(request: HttpRequest, name=None):
         }
 
         person_history_orgs_pos = [
-            org.otype.get_name(pos) + ' ' +
-            str(person_history_poss.get(org=org).year)[2:] + "-" +
-            str(person_history_poss.get(org=org).year + 1)[2:] +
-            sems[person_history_poss.get(org=org).semester]
-            for pos, org in zip(person_history_orgs_pos, person_history_orgs)
+            org.otype.get_name(pos.pos) + ' ' +
+            str(pos.year)[2:] + "-" +
+            str(pos.year + 1)[2:] +
+            sems[pos.semester]
+            for pos, org in zip(person_history_orgs_poss, person_history_orgs)
         ]  # ta在小组中的职位
         html_display["history_orgs_info"] = (
                 list(zip(person_history_orgs, person_history_orgs_ava, person_history_orgs_pos))
@@ -376,22 +393,18 @@ def stuinfo(request: HttpRequest, name=None):
 
         # 隐藏的小组(所有学期都会呈现，不用activated)
         person_hidden_poss = Position.objects.filter(person=person, show_post = False)
-        person_hidden_orgs = Organization.objects.filter(
+        person_hidden_orgs: QuerySet[Organization] = Organization.objects.filter(
             id__in=person_hidden_poss.values("org")
         )  # ta属于的小组
         person_hidden_orgs_ava = [
-            # utils.get_user_ava(org, "organization") for org in person_hidden_orgs
             org.get_user_ava() for org in person_hidden_orgs
-        ]
-        person_hidden_orgs_pos = [
-            person_hidden_poss.get(org=org).pos for org in person_hidden_orgs
         ]  # ta在小组中的职位
         person_hidden_orgs_pos = [
-            org.otype.get_name(pos)
-            for pos, org in zip(person_hidden_orgs_pos,person_hidden_orgs)
+            org.otype.get_name(_get_org_latest_pos(person_hidden_poss, org).pos)
+            for org in person_hidden_orgs
         ]  # ta在小组中的职位
         person_hidden_orgs_status = [
-            person_hidden_poss.get(org=org).status for org in person_hidden_orgs
+            _get_org_latest_pos(person_hidden_poss, org).status for org in person_hidden_orgs
         ]  # ta职位的状态
         html_display["hidden_orgs_info"] = (
                 list(
@@ -476,7 +489,7 @@ def stuinfo(request: HttpRequest, name=None):
             Q(id__in=participants.values("activity_id")),
             # ~Q(status=Activity.Status.CANCELED), # 暂时可以呈现已取消的活动
         )
-        if user_type == "Person":
+        if user_type == UTYPE_PER:
             # 因为上面筛选过活动，这里就不用筛选了
             # 之前那个写法是O(nm)的
             activities_me = Participant.objects.activated().filter(person_id=oneself)
@@ -540,7 +553,7 @@ def stuinfo(request: HttpRequest, name=None):
             {0: "他", 1: "她"}.get(person.gender, 'Ta') if person.show_gender else "Ta")
 
         context["avatar_path"] = person.get_user_ava()
-        context["wallpaper_path"] = utils.get_user_wallpaper(person, "Person")
+        context["wallpaper_path"] = utils.get_user_wallpaper(person, UTYPE_PER)
 
         # 新版侧边栏, 顶栏等的呈现，采用 bar_display
         bar_display = utils.get_sidebar_and_navbar(
@@ -556,6 +569,102 @@ def stuinfo(request: HttpRequest, name=None):
         NaturalPerson.objects.filter(id=person.id).update(visit_times=F('visit_times')+1)
         # person.visit_times += 1
         # person.save()
+
+        # ------------------ 查看学术地图 ------------------ #
+        academic_params = {"author_id": person.person_id_id}
+        # 下面准备前端展示量
+        status_in = None
+        if is_myself:
+            academic_params["user_type"] = "author"
+        elif user_type == UTYPE_PER and oneself.is_teacher():
+            academic_params["user_type"] = "inspector"
+            status_in = ['public', 'wait_audit']
+        else:
+            academic_params["user_type"] = "viewer"
+            status_in = ['public']
+
+        # 判断用户是否有可以展示的内容
+        if academic_params["user_type"] == "viewer":
+            academic_params["have_content"] = have_entries_of_type(person, ["public"])
+        else:
+            academic_params["have_content"] = have_entries_of_type(person, ["public", "wait_audit"])
+        academic_params["have_unaudit"] = have_entries_of_type(person, ["wait_audit"])
+
+        # 获取用户已有的专业/项目的列表，用于select的默认选中项
+        academic_params.update(
+            selected_major_list=get_js_tag_list(person, AcademicTag.AcademicTagType.MAJOR,
+                                                selected=True, status_in=status_in),
+            selected_minor_list=get_js_tag_list(person, AcademicTag.AcademicTagType.MINOR,
+                                                selected=True, status_in=status_in),
+            selected_double_degree_list=get_js_tag_list(person, AcademicTag.AcademicTagType.DOUBLE_DEGREE,
+                                                        selected=True, status_in=status_in),
+            selected_project_list=get_js_tag_list(person, AcademicTag.AcademicTagType.PROJECT,
+                                                  selected=True, status_in=status_in),
+        )
+
+        # 获取用户已有的TextEntry的contents，用于TextEntry填写栏的前端预填写
+        scientific_research_list = get_text_list(
+            person, AcademicTextEntry.AcademicTextType.SCIENTIFIC_RESEARCH, status_in
+        )
+        challenge_cup_list = get_text_list(
+            person, AcademicTextEntry.AcademicTextType.CHALLENGE_CUP, status_in
+        )
+        internship_list = get_text_list(
+            person, AcademicTextEntry.AcademicTextType.INTERNSHIP, status_in
+        )
+        scientific_direction_list = get_text_list(
+            person, AcademicTextEntry.AcademicTextType.SCIENTIFIC_DIRECTION, status_in
+        )
+        graduation_list = get_text_list(
+            person, AcademicTextEntry.AcademicTextType.GRADUATION, status_in
+        )
+        academic_params.update(
+            scientific_research_list=scientific_research_list,
+            challenge_cup_list=challenge_cup_list,
+            internship_list=internship_list,
+            scientific_direction_list=scientific_direction_list,
+            graduation_list=graduation_list,
+            scientific_research_num=len(scientific_research_list),
+            challenge_cup_num=len(challenge_cup_list),
+            internship_num=len(internship_list),
+            scientific_direction_num=len(scientific_direction_list),
+            graduation_num=len(graduation_list),
+        )
+
+        # 最后获取每一种atype对应的entry的公开状态，如果没有则默认为公开
+        major_status = get_tag_status(person, AcademicTag.AcademicTagType.MAJOR)
+        minor_status = get_tag_status(person, AcademicTag.AcademicTagType.MINOR)
+        double_degree_status = get_tag_status(person, AcademicTag.AcademicTagType.DOUBLE_DEGREE)
+        project_status = get_tag_status(person, AcademicTag.AcademicTagType.PROJECT)
+        scientific_research_status = get_text_status(
+            person, AcademicTextEntry.AcademicTextType.SCIENTIFIC_RESEARCH
+        )
+        challenge_cup_status = get_text_status(
+            person, AcademicTextEntry.AcademicTextType.CHALLENGE_CUP
+        )
+        internship_status = get_text_status(
+            person, AcademicTextEntry.AcademicTextType.INTERNSHIP
+        )
+        scientific_direction_status = get_text_status(
+            person, AcademicTextEntry.AcademicTextType.SCIENTIFIC_DIRECTION
+        )
+        graduation_status = get_text_status(
+            person, AcademicTextEntry.AcademicTextType.GRADUATION
+        )
+
+        status_dict = dict(
+            major_status=major_status,
+            minor_status=minor_status,
+            double_degree_status=double_degree_status,
+            project_status=project_status,
+            scientific_research_status=scientific_research_status,
+            challenge_cup_status=challenge_cup_status,
+            internship_status=internship_status,
+            scientific_direction_status=scientific_direction_status,
+            graduation_status=graduation_status,
+        )
+        academic_params.update(status_dict)
+
         return render(request, "stuinfo.html", locals())
 
 
@@ -571,7 +680,7 @@ def requestLoginOrg(request: HttpRequest, name=None):  # 特指个人希望通�
     user = request.user
     valid, user_type, html_display = utils.check_user_type(request.user)
 
-    if user_type == "Organization":
+    if user_type == UTYPE_ORG:
         return redirect("/orginfo/")
     try:
         me = NaturalPerson.objects.activated().get(person_id=user)
@@ -583,7 +692,7 @@ def requestLoginOrg(request: HttpRequest, name=None):  # 特指个人希望通�
         return redirect(message_url(wrong('无效的小组信息!')))
     else:  # 确认有无这个小组
         try:
-            org = Organization.objects.get(oname=name)
+            org: Organization = Organization.objects.get(oname=name)
         except:  # 找不到对应小组
             urls = "/stuinfo/?name=" + me.name + "&warn_code=1&warn_message=找不到对应小组,请联系管理员!"
             return redirect(urls)
@@ -597,7 +706,7 @@ def requestLoginOrg(request: HttpRequest, name=None):  # 特指个人希望通�
             return redirect(urls)
         # 到这里,是本人小组并且有权限登录
         auth.logout(request)
-        auth.login(request, org.organization_id)  # 切换到小组账号
+        auth.login(request, org.get_user())  # 切换到小组账号
         utils.update_related_account_in_session(request, user.username, oname=org.oname)
         if org.first_time_login:
             return redirect("/modpw/")
@@ -627,7 +736,7 @@ def orginfo(request: HttpRequest, name=None):
         name = request.GET.get('name', None)
 
     if name is None:  # 此时登陆的必需是法人账号，如果是自然人，则跳转welcome
-        if user_type == "Person":
+        if user_type == UTYPE_PER:
             return redirect(message_url(wrong('个人账号不能登陆小组主页!')))
         try:
             org = Organization.objects.activated().get(organization_id=user)
@@ -651,13 +760,16 @@ def orginfo(request: HttpRequest, name=None):
 
     # 判断是否为小组账户本身在登录
     html_display["is_myself"] = me == org
-    html_display["is_person"] = user_type == "Person"
+    html_display["is_person"] = user_type == UTYPE_PER
+    html_display["is_course"] = (
+        Course.objects.activated().filter(organization=org).exists()
+    )
     inform_share, alert_message = utils.get_inform_share(me=me, is_myself=html_display["is_myself"])
 
     organization_name = name
     organization_type_name = org.otype.otype_name
     org_avatar_path = org.get_user_ava()
-    wallpaper_path = utils.get_user_wallpaper(org, "Organization")
+    wallpaper_path = utils.get_user_wallpaper(org, UTYPE_ORG)
     # org的属性 information 不在此赘述，直接在前端调用
 
     # 给前端传递选课的参数
@@ -720,7 +832,7 @@ def orginfo(request: HttpRequest, name=None):
         dictmp = {}
         dictmp["act"] = act
         dictmp["endbefore"] = act.start - timedelta(hours=prepare_times[act.endbefore])
-        if user_type == "Person":
+        if user_type == UTYPE_PER:
 
             existlist = Participant.objects.filter(activity_id_id=act.id).filter(
                 person_id_id=me.id
@@ -737,7 +849,7 @@ def orginfo(request: HttpRequest, name=None):
         dictmp = {}
         dictmp["act"] = act
         dictmp["endbefore"] = act.start - timedelta(hours=prepare_times[act.endbefore])
-        if user_type == "Person":
+        if user_type == UTYPE_PER:
             existlist = Participant.objects.filter(activity_id_id=act.id).filter(
                 person_id_id=me.id
             )
@@ -753,7 +865,7 @@ def orginfo(request: HttpRequest, name=None):
         dictmp = {}
         dictmp["act"] = act
         dictmp["endbefore"] = act.start - timedelta(hours=prepare_times[act.endbefore])
-        if user_type == "Person":
+        if user_type == UTYPE_PER:
             existlist = Participant.objects.filter(activity_id_id=act.id).filter(
                 person_id_id=me.id
             )
@@ -782,7 +894,7 @@ def orginfo(request: HttpRequest, name=None):
             member["highest"] = True if p.pos == 0 else False
 
             member["avatar_path"] = utils.get_user_ava(
-                member["person"], "Person")
+                member["person"], UTYPE_PER)
 
             member_list.append(member)
 
@@ -818,7 +930,7 @@ def orginfo(request: HttpRequest, name=None):
 
     # 补充订阅该小组的按钮
     allow_unsubscribe = org.otype.allow_unsubscribe # 是否允许取关
-    is_person = True if user_type == "Person" else False
+    is_person = user_type == UTYPE_PER
     if is_person:
         subscribe_flag = True if (
             organization_name not in me.unsubscribe_list.values_list("oname", flat=True)) \
@@ -826,7 +938,7 @@ def orginfo(request: HttpRequest, name=None):
 
     # 补充作为小组成员，选择是否展示的按钮
     show_post_change_button = False     # 前端展示“是否不展示我自己”的按钮，若为True则渲染这个按钮
-    if user_type == 'Person':
+    if user_type == UTYPE_PER:
         my_position = Position.objects.activated().filter(org=org, person=me).exclude(is_admin=True)
         if len(my_position):
             show_post_change_button = True
@@ -849,7 +961,7 @@ def orginfo(request: HttpRequest, name=None):
 @log.except_captured(source='views[homepage]', record_user=True)
 def homepage(request: HttpRequest):
     valid, user_type, html_display = utils.check_user_type(request.user)
-    is_person = True if user_type == "Person" else False
+    is_person = user_type == UTYPE_PER
     me = get_person_or_org(request.user, user_type)
 
     html_display["is_myself"] = True
@@ -1017,13 +1129,13 @@ def accountSetting(request: HttpRequest):
     # bar_display["navbar_name"] = "账户设置"
     # bar_display["help_message"] = local_dict["help_message"]["账户设置"]
 
-    if user_type == "Person":
+    if user_type == UTYPE_PER:
         info = NaturalPerson.objects.filter(person_id=user)
         userinfo = info.values()[0]
 
         useroj = NaturalPerson.objects.get(person_id=user)
 
-        former_wallpaper = utils.get_user_wallpaper(me, "Person")
+        former_wallpaper = utils.get_user_wallpaper(me, UTYPE_PER)
 
         # print(json.loads(request.body.decode("utf-8")))
         if request.method == "POST" and request.POST:
@@ -1085,7 +1197,7 @@ def accountSetting(request: HttpRequest):
         userinfo = info.values()[0]
 
         useroj = Organization.objects.get(organization_id=user)
-        former_wallpaper = utils.get_user_wallpaper(me, "Organization")
+        former_wallpaper = utils.get_user_wallpaper(me, UTYPE_ORG)
         org_tags = list(useroj.tags.all())
         all_tags = list(OrganizationTag.objects.all())
         if request.method == "POST" and request.POST:
@@ -1141,6 +1253,47 @@ def accountSetting(request: HttpRequest):
         return render(request, "org_account_setting.html", locals())
 
 
+def _create_freshman_account(sid: str, email: str = None):
+    """创建用户和自然人，检查并修改新生创建状态，原子化操作"""
+    try:
+        with transaction.atomic():
+            current = "获取新生信息"
+            freshman: Freshman = Freshman.objects.select_for_update().get(sid=sid)
+            name = freshman.name
+            np_gender = (NaturalPerson.Gender.MALE
+                         if freshman.gender == "男" else
+                         NaturalPerson.Gender.FEMALE)
+            current = "确认注册状态"
+            assert freshman.status != Freshman.Status.REGISTERED
+            if email is None:
+                domain = "pku.edu.cn" if freshman.grade[2:].startswith("1") else "stu.pku.edu.cn"
+                email = f"{sid}@{domain}"
+            current = "随机生成密码"
+            password = hash_coder.encode(name + str(random.random()))
+            current = "创建用户"
+            user = User.objects.create_user(
+                username=sid, name=name,
+                usertype=UTYPE_PER,
+                password=password
+            )
+            current = "创建个人账号"
+            NaturalPerson.objects.create(
+                person_id=user,
+                stu_id_dbonly=sid,
+                name=name,
+                gender=np_gender,
+                stu_major="元培计划（待定）",
+                stu_grade=freshman.grade,
+                email=email,
+            )
+            current = "更新注册状态"
+            freshman.status = Freshman.Status.REGISTERED
+            freshman.save()
+        return
+    except:
+        return current
+
+
 @log.except_captured(source='views[freshman]', record_user=True,
                      record_request_args=True, show_traceback=True)
 def freshman(request: HttpRequest):
@@ -1158,23 +1311,82 @@ def freshman(request: HttpRequest):
     address_list = sorted(address_set)
     address_list.append("其它")
     html_path = "freshman-top.html"
+    # 准备创建用的变量
+    need_create = False
     if request.method == "POST":
         # 这些也是失败时的前端使用量
         try:
             sid = request.POST["sid"]
             sname = request.POST["sname"]
             gender = request.POST["gender"]
-            birthday = request.POST["birthday"] # 前端使用
-            birthplace = request.POST["birthplace"]
-            email = request.POST["email"]
+            send_to = request.POST.get("type", "")
+            check_more = not send_to
+            if check_more:
+                birthday = request.POST["birthday"] # 前端使用
+                birthplace = request.POST["birthplace"]
+                email = request.POST["email"]
         except:
             err_msg = "提交信息不足"
             return render(request, html_path, locals())
         try:
             sid = str(sid)
-            freshman = Freshman.objects.get(sid=sid)
+            sname = str(sname)
+            gender = str(gender)
+            if check_more:
+                birthday_date = datetime.strptime(birthday, "%Y-%m-%d").date()
+                birthplace = str(birthplace)
+                email = str(email)
         except:
-            err_msg = "不存在该学号信息，你真的是新生吗？"
+            err_msg = "错误的个人信息格式"
+            return render(request, html_path, locals())
+        try:
+            freshman: Freshman = Freshman.objects.get(sid=sid)
+        except:
+            err_msg = "暂不存在该学号的新生信息"
+            return render(request, html_path, locals())
+        try:
+            assert freshman.name == sname, "姓名不匹配"
+            assert freshman.gender == gender, "个人信息错误"
+            if check_more:
+                assert freshman.birthday == birthday_date, "个人信息错误"
+                if freshman.place != "":
+                    assert freshman.place == birthplace, "生源地错误"
+                else:
+                    assert "其它" == birthplace, "生源地错误"
+                assert "@" in email, "请使用合法的邮件地址"
+            assert gender in ["男", "女"], "性别数据异常，请联系管理员"
+        except Exception as e:
+            err_msg = str(e)
+            return render(request, html_path, locals())
+        if check_more:
+            need_create = True
+        elif send_to == "wechat":
+            from app.wechat_send import send_wechat
+            auth = hash_coder.encode(sid + "_freshman_register")
+            send_wechat(
+                [sid], "新生注册邀请\n点击按钮即可注册账号",
+                url=f"/freshman/?sid={sid}&auth={auth}"
+            )
+            err_msg = "已向企业微信发送注册邀请，点击邀请信息即可注册！"
+            return render(request, html_path, locals())
+    
+    if request.GET.get("sid") is not None and request.GET.get("auth") is not None:
+        sid = request.GET["sid"]
+        auth = request.GET["auth"]
+        if auth != hash_coder.encode(sid + "_freshman_register"):
+            err_msg = "密钥错误，验证失败"
+            return render(request, html_path, locals())
+        need_create = True
+
+    if need_create:
+        try:
+            email = email
+        except:
+            email = None
+        try:
+            freshman: Freshman = Freshman.objects.get(sid=sid)
+        except:
+            err_msg = "暂不存在该学号的新生信息"
             return render(request, html_path, locals())
         try:
             exist = freshman.exists()
@@ -1188,57 +1400,9 @@ def freshman(request: HttpRequest):
         except Exception as e:
             err_msg = str(e)
             return render(request, html_path, locals())
-        try:
-            sname = str(sname)
-            gender = str(gender)
-            birthday_date = datetime.strptime(birthday, "%Y-%m-%d").date()
-            birthplace = str(birthplace)
-            email = str(email)
-        except:
-            err_msg = "错误的个人信息格式"
-            return render(request, html_path, locals())
-        try:
-            assert freshman.name == sname, "姓名不匹配"
-            assert freshman.gender == gender, "个人信息错误"
-            assert freshman.birthday == birthday_date, "个人信息错误"
-            if freshman.place != "":
-                assert freshman.place == birthplace, "生源地错误"
-            else:
-                assert "其它" == birthplace, "生源地错误"
-            assert "@" in email, "请使用合法的邮件地址"
-            assert gender in ["男", "女"], "性别数据异常，请联系管理员"
-        except Exception as e:
-            err_msg = str(e)
-            return render(request, html_path, locals())
 
-        np_gender = NaturalPerson.Gender.MALE if gender == "男" else\
-                    NaturalPerson.Gender.FEMALE
-
-        # 检查通过，这里假设user创建成功后自然人也能创建成功
-        current = "随机生成密码"
-        try:
-            with transaction.atomic():
-                password = hash_coder.encode(sname + str(random.random()))
-                current = "创建用户"
-                user = User.objects.create_user(
-                    username=sid, name=sname,
-                    usertype=UTYPE_PER,
-                    password=password
-                )
-                current = "创建个人账号"
-                NaturalPerson.objects.create(
-                    person_id=user,
-                    stu_id_dbonly=sid,
-                    name=sname,
-                    gender=np_gender,
-                    stu_major="元培计划（待定）",
-                    stu_grade=freshman.grade,
-                    email=email,
-                    )
-                current = "更新注册状态"
-                Freshman.objects.filter(sid=sid).select_for_update().update(
-                    status = Freshman.Status.REGISTERED)
-        except:
+        current = _create_freshman_account(sid, email=email)
+        if current is not None:
             err_msg = f"在{current}时意外发生了错误，请联系管理员"
             return render(request, html_path, locals())
 
@@ -1744,7 +1908,7 @@ def subscribeOrganization(request: HttpRequest):
         html_display.update(readonly=True)
 
     me = get_person_or_org(request.user, user_type)
-    # orgava_list = [(org, utils.get_user_ava(org, "Organization")) for org in org_list]
+    # orgava_list = [(org, utils.get_user_ava(org, UTYPE_ORG)) for org in org_list]
     otype_infos = [(
         otype,
         list(Organization.objects.filter(otype=otype)
@@ -1828,65 +1992,6 @@ def saveSubscribeStatus(request: HttpRequest):
 
     return JsonResponse({"success": True})
 
-'''
-@login_required(redirect_field_name="origin")
-@utils.check_user_access(redirect_url="/logout/")
-@log.except_captured(source='views[apply_position]', record_user=True)
-def apply_position(request, oid=None):
-    """ apply for position in organization, including join, withdraw, transfer
-    Args:
-        - oid <str>: Organization ID in URL path, while actually is the ID of User.
-        - apply_type <str>: Application type, including "JOIN", "WITHDRAW", "TRANSFER".
-        - apply_pos <int>: Position applied for.
-    Return:
-        - Personal `/notification/` web page
-    """
-    valid, user_type, html_display = utils.check_user_type(request.user)
-    if user_type != "Person":
-        return redirect("/index/")
-
-    me = get_person_or_org(request.user, user_type)
-    user = User.objects.get(id=int(oid))
-    org = Organization.objects.get(organization_id=user)
-
-    if request.method == "GET":
-        apply_type = request.GET.get("apply_type", "JOIN")
-        apply_pos = int(request.GET.get("apply_pos", 10))
-    elif request.method == "POST":
-        apply_type = request.POST.get("apply_type", "JOIN")
-        apply_pos = int(request.POST.get("apply_pos", 10))
-
-    try:
-        apply_type, _ = Position.objects.create_application(
-            me, org, apply_type, apply_pos)
-    except Exception as e:
-        # print(e)
-        return redirect(f"/orginfo/?name={org.oname}&warn_code=1&warn_message={e}")
-
-    contents = [f"{apply_type}申请已提交审核", f"{apply_type}申请审核"]
-    notification_create(
-        me.person_id,
-        org.organization_id,
-        Notification.Type.NEEDREAD,
-        Notification.Title.POSITION_INFORM,
-        contents[0],
-        "/personnelMobilization/",
-        publish_to_wechat=True,  # 不要复制这个参数，先去看函数说明
-        publish_kws={'app': WechatApp.AUDIT, 'level': WechatMessageLevel.INFO},
-    )
-    notification_create(
-        org.organization_id,
-        me.person_id,
-        Notification.Type.NEEDDO,
-        Notification.Title.POSITION_INFORM,
-        contents[1],
-        "/personnelMobilization/",
-        publish_to_wechat=True,  # 不要复制这个参数，先去看函数说明
-        publish_kws={'app': WechatApp.AUDIT, 'level': WechatMessageLevel.IMPORTANT},
-    )
-    return redirect("/notifications/")
-'''
-
 
 @login_required(redirect_field_name="origin")
 @utils.check_user_access(redirect_url="/logout/")
@@ -1941,15 +2046,19 @@ def notifications(request: HttpRequest):
     me = get_person_or_org(request.user, user_type)
     html_display["is_myself"] = True
 
-    notification_set = Notification.objects.activated().select_related(
-        'sender').filter(receiver=request.user)
+    done_notifications = Notification.objects.activated().filter(
+        receiver=request.user,
+        status=Notification.Status.DONE).order_by("-finish_time")
+    undone_notifications = Notification.objects.activated().filter(
+        receiver=request.user,
+        status=Notification.Status.UNDONE).order_by("-start_time")
 
-    done_list = notification2Display(notification_set.order_by("-finish_time"))
-
-    undone_list = notification2Display(notification_set.order_by("-start_time"))
+    done_list = notification2Display(done_notifications)
+    undone_list = notification2Display(undone_notifications)
 
     # 新版侧边栏, 顶栏等的呈现，采用 bar_display, 必须放在render前最后一步
-    bar_display = utils.get_sidebar_and_navbar(request.user, navbar_name="通知信箱")
+    bar_display = utils.get_sidebar_and_navbar(request.user,
+                                               navbar_name="通知信箱")
     return render(request, "notifications.html", locals())
 
 
@@ -1993,3 +2102,29 @@ def eventTrackingFunc(request: HttpRequest):
         PageLog.objects.create(**kwargs)
 
     return JsonResponse({'status': 'ok'})
+
+
+@login_required(redirect_field_name="origin")
+@utils.check_user_access(redirect_url="/logout/")
+@log.except_captured(source='views[myYQPoint]', record_user=True)
+def myYQPoint(request: HttpRequest):
+    valid, user_type, html_display = utils.check_user_type(request.user)
+    # 获取可能的提示信息
+    my_messages.transfer_message_context(request.GET, html_display)
+
+    html_display.update(
+        YQPoint=request.user.YQpoint,
+    )
+ 
+    received_set = YQPointRecord.objects.filter(
+        user=request.user,
+    ).exclude(source_type=6).order_by("-time")
+
+    send_set = YQPointRecord.objects.filter(
+        user=request.user,
+        source_type=6,
+    ).order_by("-time")
+    
+    # 新版侧边栏, 顶栏等的呈现，采用 bar_display, 必须放在render前最后一步
+    bar_display = utils.get_sidebar_and_navbar(request.user, "我的元气值")
+    return render(request, "myYQPoint.html", locals())

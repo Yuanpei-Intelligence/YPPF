@@ -600,7 +600,7 @@ def to_feedback_url(request: HttpRequest) -> str:
     appoint_reason = appoint.get_status()
     
     # 向session添加信息
-    request.session['feedback_type'] = '地下室预约反馈'
+    request.session['feedback_type'] = '地下室预约问题反馈'
     request.session['feedback_url'] = appoint.get_admin_url()
     request.session['feedback_content'] = '\n'.join((
         f'申请人：{appoint_student}',

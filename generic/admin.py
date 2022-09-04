@@ -14,6 +14,10 @@ class MyUserAdmin(UserAdmin):
     ]
     list_editable = ['credit']
     search_fields = ['id', 'username', 'name', 'acronym']
+    @classmethod
+    def suggest_search_fields(cls, user_field: str = 'user'):
+        return [f'{user_field}__{field}' for field in cls.search_fields[1:]]
+
     list_filter = ['utype', 'is_superuser', 'is_staff', 'groups', 'is_active']
     fieldsets = [
         (None, {'fields': ('username', 'name', 'acronym', 'password')}),
@@ -73,6 +77,21 @@ class MyUserAdmin(UserAdmin):
 @admin.register(CreditRecord)
 class CreditRecordAdmin(admin.ModelAdmin):
     list_display = ['user', 'source', 'delta', 'overflow', 'time']
-    list_filter = ['time', 'source', 'overflow', 'old_credit', 'new_credit']
-    search_fields = ['user', 'source']
+    list_filter = [
+        'time', 'source', 'overflow', 'old_credit', 'new_credit',
+        get_sign_filter('delta', '变化类型'),
+    ]
+    search_fields = [*MyUserAdmin.suggest_search_fields(), 'source']
+    date_hierarchy = 'time'
+
+
+@admin.register(YQPointRecord)
+class YQPointRecordAdmin(admin.ModelAdmin):
+    list_display = ['user', 'source', 'delta', 'time']
+    list_filter = [
+        'time', 'source_type',
+        get_sign_filter('delta', '变化类型',
+                        choices=(('+', '收入'), ('-', '支出'))),
+    ]
+    search_fields = [*MyUserAdmin.suggest_search_fields(), 'source']
     date_hierarchy = 'time'
