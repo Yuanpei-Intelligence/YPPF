@@ -41,5 +41,5 @@ urlpatterns = [
     path('camera-check', views.cameracheck, name='cameracheck'),
     path('display_getappoint', views.display_getappoint, name='display_getappoint'),
     path('summary', views.summary, name='summary'),
-    path('summary2', views.summary2, name='summary2'),
+    path('summary/2021', views.summary2021, name='summary2021'),
 ]
