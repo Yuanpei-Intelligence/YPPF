@@ -253,8 +253,8 @@ def cal_course(np: NaturalPerson):
 
 def cal_study_room(np: NaturalPerson):
 
-    _start_time = datetime.now() - timedelta(days=365)
-    _end_time = datetime.now() - timedelta(days=30)
+    _start_time = SUMMARY_SEM_START
+    _end_time = SUMMARY_SEM_START + timedelta(days=360)
 
     _user = np.get_user()
     _par = Participant.objects.get(Sid=_user)
@@ -284,8 +284,8 @@ def cal_study_room(np: NaturalPerson):
 
 def cal_early_room(np: NaturalPerson):
 
-    _start_time = datetime.now() - timedelta(days=365)
-    _end_time = datetime.now() - timedelta(days=30)
+    _start_time = SUMMARY_SEM_START
+    _end_time = SUMMARY_SEM_START + timedelta(days=360)
 
     _user = np.get_user()
     _par = Participant.objects.get(Sid=_user)
@@ -306,8 +306,8 @@ def cal_early_room(np: NaturalPerson):
 
 def cal_late_room(np: NaturalPerson):
 
-    _start_time = datetime.now() - timedelta(days=365)
-    _end_time = datetime.now() - timedelta(days=30)
+    _start_time = SUMMARY_SEM_START
+    _end_time = SUMMARY_SEM_START + timedelta(days=360)
 
     _user = np.get_user()
     _par = Participant.objects.get(Sid=_user)
@@ -335,8 +335,8 @@ def cal_late_room(np: NaturalPerson):
 
 def cal_appoint(np: NaturalPerson):
 
-    _start_time = datetime.now() - timedelta(days=365)
-    _end_time = datetime.now() - timedelta(days=30)
+    _start_time = SUMMARY_SEM_START
+    _end_time = SUMMARY_SEM_START + timedelta(days=360)
 
     _user = np.get_user()
     _par = Participant.objects.get(Sid=_user)
@@ -371,8 +371,8 @@ def cal_appoint(np: NaturalPerson):
 def cal_appoint_kw(np: NaturalPerson):
     import jieba
 
-    _start_time = datetime.now() - timedelta(days=365)
-    _end_time = datetime.now() - timedelta(days=30)
+    _start_time = SUMMARY_SEM_START
+    _end_time = SUMMARY_SEM_START + timedelta(days=360)
 
     _user = np.get_user()
     _par = Participant.objects.get(Sid=_user)
@@ -392,8 +392,8 @@ def cal_appoint_kw(np: NaturalPerson):
 
 
 def cal_co_appoint(np: NaturalPerson):
-    _start_time = datetime.now() - timedelta(days=365)
-    _end_time = datetime.now() - timedelta(days=30)
+    _start_time = SUMMARY_SEM_START
+    _end_time = SUMMARY_SEM_START + timedelta(days=360)
 
     _user = np.get_user()
     _par = Participant.objects.get(Sid=_user)
