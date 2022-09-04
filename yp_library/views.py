@@ -1,3 +1,4 @@
+from asyncore import read
 from django.shortcuts import render
 from django.http import HttpRequest, HttpResponse
 from django.shortcuts import render, redirect
@@ -55,8 +56,9 @@ def welcome(request: HttpRequest) -> HttpResponse:
     try:
         readers = get_readers_by_user(request.user)
         records_list = get_lendinfo_by_readers(readers)
-        records_list = (records_list[0] + records_list[1]).sort(key=lambda r: r['due_time'])
-    except:
+        records_list = (records_list[0] + records_list[1])
+        records_list.sort(key=lambda r: r['lend_time'])
+    except Exception as e:
         records_list = []
 
     frontend_dict["records_list"] = records_list

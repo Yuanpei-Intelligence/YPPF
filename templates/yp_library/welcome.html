@@ -223,7 +223,7 @@
               </h5>
             </div>
             <div class="row ml-0 mr-0" style="opacity: 0.95; position: relative; top: 15%; left: 10%; width: 80%;">
-              <div class="col-12 col-md-6 order-2 order-md-1 pt-1 pb-1" data-toggle="collapse"
+              <div class="col-6 pt-1 pb-1" data-toggle="collapse"
                 href="#collapseExample" role="button" aria-expanded="false" aria-controls="collapseExample"
                 id="search-tab" style="background-color: var(--search-book-bg); border-top-left-radius: 6px;">
                 <div class="d-flex justify-content-between">
@@ -287,7 +287,7 @@
                   </div>
                 <!-- </div> -->
               </div>
-              <div class="col-12 col-md-6 order-sm-1 order-md-2 pt-1 pb-1"
+              <div class="col-6 pt-1 pb-1"
                 style="background-color: var(--my-lend-info-bg); border-top-right-radius: 6px;" data-toggle="collapse" href="#lendInfos" role="button"
                 aria-expanded="false" aria-controls="lendInfos" id="lend-info-tab">
                 <p style="font-size: 1rem;" class="mb-1 mt-1">
@@ -617,21 +617,8 @@
     lendInfos.collapse('hide');
   })
   const _resize = function() {
-    let lendInfoHeight = main.offsetHeight - lendInfoTab.offsetParent.offsetTop - 40 - lendInfoTab.offsetHeight;
-    if (this.innerWidth >= 767) {
-      lendInfoDiv.style.maxHeight = `${lendInfoHeight}px`;
-      lendInfoDiv.style.maxHeight = `${lendInfoHeight}px`;
-      lendInfoTab.style.borderTopRightRadius = "6px";
-      lendInfoTab.style.borderTopLeftRadius = "0px";
-      searchTab.style.borderTopLeftRadius = "6px"
-    }
-    else {
-      lendInfoHeight -= lendInfoTab.offsetHeight;
-      lendInfoDiv.style.maxHeight = `${lendInfoHeight}px`;
-      lendInfoTab.style.borderTopRightRadius = "6px";
-      lendInfoTab.style.borderTopLeftRadius = "6px";
-      searchTab.style.borderRadius = "0px"
-    } 
+    let lendInfoHeight = main.offsetHeight - lendInfoTab.offsetParent.offsetTop - lendInfoTab.offsetHeight;
+    lendInfoDiv.style.maxHeight = `${lendInfoHeight}px`;
   }
   window.addEventListener("load", _resize);
   window.addEventListener("resize", _resize);
