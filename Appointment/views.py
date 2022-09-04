@@ -527,6 +527,11 @@ def door_check(request):
         return _fail()
     if student is None:
         cardcheckinfo_writer(student, room, False, False, f"学号{Sid}错误")
+        send_wechat_message(
+            [Sid], now_time.replace(second=0, microsecond=0), room,
+            'temp_appointment_fail', student, '临时预约', '', 1,
+            f'您尚未注册地下室账号，无法开门，请先访问任意地下室页面创建账号！\n点击跳转地下室账户，快捷注册',
+            url=reverse('Appointment:account'))
         return _fail()
 
     # --------- 直接进入 --------- #
