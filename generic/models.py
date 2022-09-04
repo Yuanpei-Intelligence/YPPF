@@ -24,6 +24,7 @@ __all__ = [
     'User',
     'CreditRecord',
     'YQPointRecord',
+    'UserManager',
 ]
 
 
@@ -54,7 +55,7 @@ class UserManager(_UserManager):
         if update:
             users = users.select_for_update()
         if isinstance(user, User):
-            user = user.pk
+            return user
         if isinstance(user, str):
             return users.get(username=user)
         return users.get(pk=user)
@@ -142,9 +143,9 @@ class UserManager(_UserManager):
         update_user.YQpoint += delta
         assert update_user.YQpoint >= 0, '元气值不足'
         self._record_yqpoint_change(update_user, delta, source, source_type)
-        update_user.save(update_fields=['credit'])
-        if isinstance(user, User):
-            user.credit = update_user.credit
+        update_user.save(update_fields=['YQpoint'])
+        # if isinstance(user, User):
+        #    user.credit = update_user.credit
 
 
     def _record_yqpoint_change(self, user: 'User', delta: int,

@@ -58,7 +58,7 @@ from app.academic_utils import (
     get_tag_status,
     get_text_status,
 )
-from generic.models import YQPointRecord
+from generic.models import YQPointRecord, UserManager
 
 import json
 import random
@@ -981,7 +981,8 @@ def homepage(request: HttpRequest):
             np = NaturalPerson.objects.select_for_update().get(person_id=request.user)
             if np.last_time_login is None or np.last_time_login.date() != nowtime.date():
                 np.last_time_login = nowtime
-                np.bonusPoint += 0.5
+                UserManager().modify_YQPoint(np.person_id, 1, "每日登录",
+                                             YQPointRecord.SourceType.CHECK_IN)
                 np.save()
                 html_display['first_signin'] = True # 前端显示
 

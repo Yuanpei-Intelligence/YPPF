@@ -42,7 +42,7 @@ __all__ = [
     'CURRENT_ACADEMIC_YEAR',
     'YQP_ONAME',
     # 本应用可选设置的常量
-    'COURSE_TYPENAME', 'LEAST_RECORD_HOURS',
+    'COURSE_TYPENAME', 'LEAST_RECORD_HOURS', 'YQP_FEEDBACK',
 ]
 
 # 本应用的本地设置目录
@@ -87,3 +87,4 @@ YQP_ONAME: str = get_setting('YQPoint_source_oname')
 # 本应用的可选设置，每个都应该给出默认值
 COURSE_TYPENAME: str = get_config('course/type_name', default='书院课程')
 LEAST_RECORD_HOURS: float = get_config('course/valid_hours', float, default=8.0)
+YQP_FEEDBACK: int = get_config('YQPoint_feedback', int, default=10)
