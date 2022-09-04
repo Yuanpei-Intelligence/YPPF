@@ -59,7 +59,7 @@ def get_pools_and_items(pool_type: Pool.Type, user: User, frontend_dict: Dict[st
     #         # "prize__name", "prize__more_info", "prize__stock",
     #         # "prize__reference_price", "prize__image", "prize__id",
     #         # 以及origin_num-consumed_num得到的remain_num
-    #         # 若干是兑换类奖池，还有my_exchange_time，即当前用户兑换过该item多少次
+    #         # 如果是兑换类奖池，还有my_exchange_time，即当前用户兑换过该item多少次
     #     "my_entry_time": 0, # 当前用户进过抽奖/盲盒奖池多少次
     #     "records_num": 0, # 抽奖/盲盒奖池总共被买了多少次
     #     "capacity": 0, # 盲盒奖池最多能被买多少次（即包括谢谢参与在内的所有poolitem的数量和）
@@ -114,7 +114,7 @@ def get_pools_and_items(pool_type: Pool.Type, user: User, frontend_dict: Dict[st
                     user=user, pool=pool, prize=item["prize__id"]).count()
             # EXCHANGE类的pool不需要capcity和records_num和my_entry_time
 
-        if this_pool_info["status"] == 1:
+        if this_pool_info["status"] == 1: # 如果是刚结束的抽奖，需要填充results
             big_prize_items = PoolItem.objects.filter(
                 pool=pool, is_big_prize=True).order_by("-prize__reference_price")
             normal_prize_items = PoolItem.objects.filter(
@@ -127,7 +127,7 @@ def get_pools_and_items(pool_type: Pool.Type, user: User, frontend_dict: Dict[st
                     {"prize_name": big_prize_item.prize.name, "prize_image": big_prize_item.prize.image})
                 winner_names = list(PoolRecord.objects.filter(
                     pool=pool, prize=big_prize_item.prize).values_list(
-                        "user__naturalperson__name", flat=True)) # TODO: 需要distinct()吗？
+                        "user__naturalperson__name", flat=True))  # TODO: 需要distinct()吗？
                 # 这里假定获奖者一定是自然人，因为组织不能抽奖
                 big_prizes_and_winners[-1]["winners"] = winner_names
             for normal_prize_item in normal_prize_items:
@@ -135,7 +135,7 @@ def get_pools_and_items(pool_type: Pool.Type, user: User, frontend_dict: Dict[st
                     {"prize_name": normal_prize_item.prize.name, "prize_image": normal_prize_item.prize.image})
                 winner_names = list(PoolRecord.objects.filter(
                     pool=pool, prize=normal_prize_item.prize).values_list(
-                        "user__naturalperson__name", flat=True)) # TODO: 需要distinct()吗？
+                        "user__naturalperson__name", flat=True))  # TODO: 需要distinct()吗？
                 # 这里假定获奖者一定是自然人，因为组织不能抽奖
                 normal_prizes_and_winners[-1]["winners"] = winner_names
             this_pool_info["results"] = {}
@@ -356,7 +356,7 @@ def run_lottery(pool_id: int):
     """
     # 部分参考了course_utils.py的draw_lots函数
     pool = Pool.objects.get(id=pool_id, type=Pool.Type.LOTTERY)
-    assert not PoolRecord.objects.filter( # 此时pool关联的所有records都应该是LOTTERING
+    assert not PoolRecord.objects.filter(  # 此时pool关联的所有records都应该是LOTTERING
         pool=pool).exclude(status=PoolRecord.Status.LOTTERING).exists()
     with transaction.atomic():
         related_records = PoolRecord.objects.filter(

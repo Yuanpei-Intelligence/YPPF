@@ -19,6 +19,7 @@ from app import (
     feedback_views,
     academic_views,
     chat_api,
+    YQPoint_views,
 )
 from django.conf import settings
 
@@ -108,6 +109,7 @@ urlpatterns = [
 ] + [
     # 元气值
     path("myYQPoint/", views.myYQPoint, name="myYQPoint"),
+    path("showPools/", YQPoint_views.showPools, name="showPools"),
 ] + [    # 埋点
     path('eventTrackingFunc/', views.eventTrackingFunc, name='eventTracking'),
 ]

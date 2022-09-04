@@ -40,6 +40,7 @@ def showPools(request: HttpRequest) -> HttpResponse:
 
     frontend_dict = {"exchange_pools_info": {},
                      "lottery_pools_info": {}, "random_pools_info": {}}
+    frontend_dict["current_pool"] = -1 # 当前所在的tab
     # 2表示无效果，1表示开出空盒（谢谢参与），0表示开出奖品
     frontend_dict["random_pool_effect_code"] = 2
 
@@ -50,21 +51,24 @@ def showPools(request: HttpRequest) -> HttpResponse:
                 request.user, poolitem_id=request.POST['submit_exchange'])
             my_messages.transfer_message_context(
                 context, frontend_dict, normalize=True)
+            frontend_dict["current_pool"] = int(request.POST["pool_id"])
         elif request.POST.get('submit_lottery', '') != '':
             context = buy_lottery_pool(
                 request.user, pool_id=request.POST['submit_lottery'])
             my_messages.transfer_message_context(
                 context, frontend_dict, normalize=True)
+            frontend_dict["current_pool"] = int(request.POST["submit_lottery"])
         elif request.POST.get('submit_random', '') != '':
-            context, prize_id, frontend_dict["random_pool_effect"] = buy_random_pool(
+            context, prize_id, frontend_dict["random_pool_effect_code"] = buy_random_pool(
                 request.user, pool_id=request.POST['submit_random'])
             my_messages.transfer_message_context(
                 context, frontend_dict, normalize=True)
             if prize_id != -1:  # 表明成功购买了一个盲盒
                 prize = Prize.objects.get(id=prize_id)
-                frontend_dict["random_pool_effect_name"] = prize.name
                 # 供前端展示盲盒开出的结果
+                frontend_dict["random_pool_effect_name"] = prize.name
                 frontend_dict["random_pool_effect_image"] = prize.image
+            frontend_dict["current_pool"] = int(request.POST["submit_random"])
 
     get_pools_and_items(Pool.Type.EXCHANGE, request.user,
                         frontend_dict["exchange_pools_info"])
@@ -72,8 +76,18 @@ def showPools(request: HttpRequest) -> HttpResponse:
                         frontend_dict["lottery_pools_info"])  # 这里包含结束一天以内的
     get_pools_and_items(Pool.Type.RANDOM, request.user,
                         frontend_dict["random_pools_info"])
-    frontend_dict["my_YQpoint"] = request.user.YQpoint # 元气值余额
+    
+    frontend_dict["my_YQpoint"] = request.user.YQpoint  # 元气值余额
+    
+    if frontend_dict["current_pool"] == -1:
+        if len(frontend_dict["exchange_pools_info"]["pools_info"]):
+            frontend_dict["current_pool"] = frontend_dict["exchange_pools_info"]["pools_info"][0]["id"]
+        elif len(frontend_dict["lottery_pools_info"]["pools_info"]):
+            frontend_dict["current_pool"] = frontend_dict["lottery_pools_info"]["pools_info"][0]["id"]
+        elif len(frontend_dict["random_pools_info"]["pools_info"]):
+            frontend_dict["current_pool"] = frontend_dict["random_pools_info"]["pools_info"][0]["id"]
+
 
     frontend_dict["bar_display"] = get_sidebar_and_navbar(
         request.user, "元气值兑换与抽奖")
-    return render(request, "showPools.html", frontend_dict) # TODO: 与前端统一
+    return render(request, "showPools.html", frontend_dict)
