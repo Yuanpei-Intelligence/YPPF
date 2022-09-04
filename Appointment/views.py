@@ -224,7 +224,7 @@ def cancelAppoint(request: HttpRequest):
                 Astatus=Appoint.Status.APPOINTED).exists()
         except:
             wrong(f"长期预约不存在或没有权限取消!", context)
-            return redirect(message_url(context, reverse("Appointment:admin_index")))
+            return redirect(message_url(context, reverse("Appointment:account")))
         # 可以取消
         try:
             with transaction.atomic():
@@ -235,14 +235,14 @@ def cancelAppoint(request: HttpRequest):
             operation_writer(SYSTEM_LOG, f"取消长期预约{pk}意外失败",
                              "scheduler_func.cancelAppoint", "Error")
             wrong(f"未能取消长期预约!", context)
-            return redirect(message_url(context, reverse("Appointment:admin_index")))
+            return redirect(message_url(context, reverse("Appointment:account")))
 
         operation_writer(longterm_appoint.get_applicant_id(),
                          f"成功取消长期预约{pk}及{count}条未开始的预约",
                          "scheduler_func.cancelAppoint")
         appoint_room_name = str(longterm_appoint.appoint.Room)
         succeed(f"成功取消对{appoint_room_name}的长期预约!", context)
-        return redirect(message_url(context, reverse("Appointment:admin_index")))
+        return redirect(message_url(context, reverse("Appointment:account")))
 
     try:
         assert cancel_type == 'appoint'
@@ -252,20 +252,20 @@ def cancelAppoint(request: HttpRequest):
     except:
         return redirect(message_url(
             wrong("预约不存在、已经开始或者已取消!"),
-            reverse("Appointment:admin_index")))
+            reverse("Appointment:account")))
 
     try:
         assert appoint.get_major_id() == request.user.username
     except:
         return redirect(message_url(
             wrong("请不要尝试取消不是自己发起的预约!"),
-            reverse("Appointment:admin_index")))
+            reverse("Appointment:account")))
 
     if (GLOBAL_INFO.restrict_cancel_time
             and appoint.Astart < datetime.now() + timedelta(minutes=30)):
         return redirect(message_url(
             wrong("不能取消开始时间在30分钟之内的预约!"),
-            reverse("Appointment:admin_index")))
+            reverse("Appointment:account")))
 
     with transaction.atomic():
         appoint_room_name = appoint.Room.Rtitle
@@ -277,7 +277,7 @@ def cancelAppoint(request: HttpRequest):
         succeed("成功取消对" + appoint_room_name + "的预约!", context)
         scheduler_func.set_cancel_wechat(appoint)
 
-    return redirect(message_url(context, reverse("Appointment:admin_index")))
+    return redirect(message_url(context, reverse("Appointment:account")))
 
 
 @require_POST
@@ -292,7 +292,7 @@ def renewLongtermAppoint(request):
     except:
         return redirect(message_url(
             wrong("长期预约不存在或不符合续约要求!"),
-            reverse("Appointment:admin_index")))
+            reverse("Appointment:account")))
 
     try:
         times = int(request.POST.get('times'))
@@ -303,7 +303,7 @@ def renewLongtermAppoint(request):
     except:
         return redirect(message_url(
             wrong("您选择的续约周数不符合要求!"),
-            reverse("Appointment:admin_index")))
+            reverse("Appointment:account")))
 
     conflict, conflict_appoints = longterm_appoint.renew(times)
     if conflict is None:
@@ -314,7 +314,7 @@ def renewLongtermAppoint(request):
             f"成功对{longterm_appoint.appoint.Room}的长期预约进行了{times}周的续约!", context)
     else:
         wrong(f"续约第{conflict}次失败，后续时间段存在预约冲突!", context)
-    return redirect(message_url(context, reverse("Appointment:admin_index")))
+    return redirect(message_url(context, reverse("Appointment:account")))
 
 
 @csrf_exempt
@@ -369,7 +369,7 @@ def display_getappoint(request):    # 用于为班牌机提供展示预约的信
 
 
 @identity_check(redirect_field_name='origin')
-def admin_index(request: HttpRequest):
+def account(request: HttpRequest):
     """
     显示用户的预约信息
     """
@@ -459,9 +459,8 @@ def admin_index(request: HttpRequest):
     return render(request, 'Appointment/admin-index.html', render_context)
 
 
-# modified by wxy
 @identity_check(redirect_field_name='origin')
-def admin_credit(request):
+def credit(request):
 
     render_context = {}
     render_context.update(
@@ -689,16 +688,10 @@ def index(request):  # 主页
         show_admin=(request.user.is_superuser or request.user.is_staff),
     )
     # 处理学院公告
-    if (College_Announcement.objects.all()):
-        try:
-            message_item = College_Announcement.objects.get(
-                show=College_Announcement.Show_Status.Yes)
-            render_context.update(
-                message_code=1, show_message=message_item.announcement)
-            # 必定只有一个才能继续
-        except:
-            render_context.update(message_code=0)
-            # print("无法顺利呈现公告，原因可能是没有将状态设置为YES或者超过一条状态被设置为YES")
+    announcements = College_Announcement.objects.filter(
+        show=College_Announcement.Show_Status.Yes)
+    if announcements:
+        render_context.update(announcements=announcements)
 
     # 获取可能的全局消息
     my_messages.transfer_message_context(
@@ -800,7 +793,7 @@ def agreement(request):
                 participant.save()
             return redirect(message_url(
                 succeed('协议签署成功!'),
-                reverse("Appointment:admin_index")))
+                reverse("Appointment:account")))
         except:
             my_messages.wrong('签署失败，请重试！', render_context)
     elif request.method == 'POST':
@@ -831,7 +824,7 @@ def arrange_time(request: HttpRequest):
     except:
         return redirect(
             message_url(wrong(f"房间号{Rid}不存在!"),
-                        reverse("Appointment:admin_index")))
+                        reverse("Appointment:account")))
 
     if room.Rstatus == Room.Status.FORBIDDEN:
         return render(request, 'Appointment/booking.html', locals())
@@ -1055,9 +1048,9 @@ def arrange_talk_room(request):
 
 
 @identity_check(redirect_field_name='origin')
-def check_out(request: HttpRequest):
+def checkout_appoint(request: HttpRequest):
     """
-    提交预约表单
+    提交预约表单，检查合法性，进行预约
     """
     if request.method == "GET":
         Rid = request.GET.get('Rid')
@@ -1195,7 +1188,7 @@ def check_out(request: HttpRequest):
                 # 成功预约且非长期
                 return redirect(
                     message_url(succeed(f"预约{room.Rtitle}成功!"),
-                                reverse("Appointment:admin_index")))
+                                reverse("Appointment:account")))
             elif response.status_code != 200:
                 add_dict = json.loads(response.content)['statusInfo']
                 wrong(add_dict['message'], render_context)
@@ -1223,7 +1216,7 @@ def check_out(request: HttpRequest):
                         scheduler_func.set_longterm_reviewing_wechat(longterm)
                         return redirect(
                             message_url(succeed(f"申请长期预约成功，请等待审核。"),
-                                        reverse("Appointment:admin_index")))
+                                        reverse("Appointment:account")))
                 except:
                     appoint.delete()
                     if conflict_appoints:
@@ -1260,7 +1253,7 @@ def review(request: HttpRequest):
     if Lid is None:
         return redirect(message_url(
             wrong("当前没有需要审核的长期预约!"),
-            reverse("Appointment:admin_index")))
+            reverse("Appointment:account")))
 
     # 权限检查
     try:
@@ -1270,7 +1263,7 @@ def review(request: HttpRequest):
     except:
         return redirect(message_url(
             wrong("抱歉，您没有权限审核当前的长期预约!"),
-            reverse("Appointment:admin_index")))
+            reverse("Appointment:account")))
 
     if request.method == "POST":
         try:
@@ -1279,7 +1272,7 @@ def review(request: HttpRequest):
         except:
             return redirect(message_url(
                 wrong("非法的操作类型!"),
-                reverse("Appointment:admin_index")))
+                reverse("Appointment:account")))
         # 处理预约状态
         if operation == "approve":
             try:
