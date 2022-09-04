@@ -1435,10 +1435,11 @@ def summary(request):  # 主页
 
 def summary2(request: HttpRequest):  # 主页
 
+    from data_analysis.summary import generic_info, person_info
     base_dir = ''
 
     ret = dict(
-        anonymous_user=request.user.is_anonymous,
+        anonymous_user=not request.user.is_authenticated,
         freshman=request.user.username.startswith('22'),
     )
     if ret['anonymous_user'] or ret['freshman']:
@@ -1449,8 +1450,10 @@ def summary2(request: HttpRequest):  # 主页
         info_file = os.path.join(base_dir, f'{request.user.username}.json')
         with open(info_file) as f:
             ret.update(json.load(f))
+        ret.update(person_info(request.user))
     
     with open(os.path.join(base_dir, 'rank_info.json')) as f:
         ret.update(json.load(f))
+    ret.update(generic_info())
     
     return render(request, 'Appointment/summary2.html', ret)
