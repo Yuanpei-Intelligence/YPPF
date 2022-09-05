@@ -37,11 +37,11 @@ def myYQPoint(request: HttpRequest):
  
     received_set = YQPointRecord.objects.filter(
         user=request.user,
-    ).exclude(source_type=6).order_by("-time")
+    ).exclude(source_type=YQPointRecord.SourceType.CONSUMPTION).order_by("-time")
 
     send_set = YQPointRecord.objects.filter(
         user=request.user,
-        source_type=6,
+        source_type=YQPointRecord.SourceType.CONSUMPTION,
     ).order_by("-time")
 
     # 新版侧边栏, 顶栏等的呈现，采用 bar_display, 必须放在render前最后一步
