@@ -19,7 +19,9 @@ from app.utils import (
 )
 
 __all__ = [
-    'myYQPoint', 'myPrize', 'showPools'
+    'myYQPoint',
+    'myPrize',
+    'showPools',
 ]
 
 
