@@ -2006,3 +2006,54 @@ class PoolRecord(models.Model):
     )
     status = models.CharField('状态', choices=Status.choices, max_length=15)
     time = models.DateTimeField('记录时间', auto_now_add=True)
+
+
+class ActivitySummary(models.Model):
+    class Meta:
+        verbose_name = "总结图片申请"
+        verbose_name_plural = verbose_name
+        ordering = [ "-time"]
+
+    class Status(models.IntegerChoices):
+        WAITING = (0, "待审核")
+        CONFIRMED = (1, "已通过")
+        CANCELED = (2, "已取消")
+        REFUSED = (3, "已拒绝")
+
+    related_activity: Activity = models.ForeignKey(
+        Activity, on_delete=models.CASCADE
+    )
+
+
+    status = models.SmallIntegerField(choices=Status.choices, default=0)
+    image = models.ImageField(upload_to=f"ActivitySummary/photo/%Y/%m/", verbose_name=u'活动总结图片', null=True, blank=True)
+
+
+    time = models.DateTimeField("上传时间", auto_now_add=True)
+
+    def __str__(self):
+        return f'{self.related_activity.title}活动总结图片申请'
+
+    def get_poster_name(self):
+        try:
+            org = Organization.objects.get(organization_id=self.pos)
+            return org
+        except:
+            return '未知'
+
+    def is_pending(self):   #表示是不是pending状态
+        return self.status == ActivitySummary.Status.WAITING
+
+    def get_status_str(self):
+        return self.Status.choices[self.status][1]
+
+    def get_poster_name(self):
+        try:
+            org = Organization.objects.get(organization_id=self.related_activity.organization_id.organization_id)
+            return org
+        except:
+            return '未知'
+
+    def get_instance(self):
+        return self.__str__()
+
