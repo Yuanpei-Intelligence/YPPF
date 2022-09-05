@@ -2029,17 +2029,11 @@ class ActivitySummary(models.Model):
     image = models.ImageField(upload_to=f"ActivitySummary/photo/%Y/%m/", verbose_name=u'活动总结图片', null=True, blank=True)
 
 
-    time = models.DateTimeField("上传时间", auto_now_add=True)
+    time = models.DateTimeField("申请时间", auto_now_add=True)
 
     def __str__(self):
         return f'{self.related_activity.title}活动总结图片申请'
 
-    def get_poster_name(self):
-        try:
-            org = Organization.objects.get(organization_id=self.pos)
-            return org
-        except:
-            return '未知'
 
     def is_pending(self):   #表示是不是pending状态
         return self.status == ActivitySummary.Status.WAITING
