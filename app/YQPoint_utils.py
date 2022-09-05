@@ -201,17 +201,16 @@ def buy_exchange_item(user: User, poolitem_id: str) -> MESSAGECONTEXT:
                 status=PoolRecord.Status.UN_REDEEM,
                 time=datetime.now()
             )
+
+            # 扣除元气值
+            User.objects.modify_YQPoint(
+                user,
+                -poolitem.exchange_price,
+                source=f'兑换奖池：{poolitem.pool.title}-{poolitem.prize.name}',
+                source_type=YQPointRecord.SourceType.CONSUMPTION
+            )
     except AssertionError as e:
-        return wrong(str(e))
-    
-    # 扣除元气值
-    with transaction.atomic():
-        User.objects.modify_YQPoint(
-            user,
-            -poolitem.exchange_price,
-            source=f'兑换奖池：{poolitem.pool.title}-{poolitem.prize.name}',
-            source_type=YQPointRecord.SourceType.CONSUMPTION
-        )
+        return wrong(str(e))      
 
     return succeed('兑换成功!')
 
@@ -257,17 +256,16 @@ def buy_lottery_pool(user: User, pool_id: str) -> MESSAGECONTEXT:
                 status=PoolRecord.Status.LOTTERING,
                 time=datetime.now()
             )
+
+            # 扣除元气值
+            User.objects.modify_YQPoint(
+                user,
+                -pool.ticket_price,
+                source=f'抽奖奖池：{pool.title}',
+                source_type=YQPointRecord.SourceType.CONSUMPTION
+            )
     except AssertionError as e:
-        return wrong(str(e))
-    
-    # 扣除元气值
-    with transaction.atomic():
-        User.objects.modify_YQPoint(
-            user,
-            -pool.ticket_price,
-            source=f'抽奖奖池：{pool.title}',
-            source_type=YQPointRecord.SourceType.CONSUMPTION
-        )
+        return wrong(str(e))      
     
     return succeed('成功进行一次抽奖!您可以在抽奖时间结束后查看抽奖结果~')
 
@@ -348,24 +346,28 @@ def buy_random_pool(user: User, pool_id: str) -> Tuple[MESSAGECONTEXT, int, int]
             poolitem_to_be_modified = PoolItem.objects.select_for_update().get(id=real_item_id)
             poolitem_to_be_modified.consumed_num += 1
             poolitem_to_be_modified.save()
+
+            if poolitem_to_be_modified.is_empty: # 如果是空盲盒，没法兑奖，record的状态记为NOT_LUCKY
+                item_status = PoolRecord.Status.NOT_LUCKY
+            else:
+                item_status = PoolRecord.Status.UN_REDEEM
             PoolRecord.objects.create(
                 user=user,
                 pool=pool,
-                status=PoolRecord.Status.UN_REDEEM,
+                status=item_status,
                 prize=poolitem_to_be_modified.prize,
                 time=datetime.now()
             )
+
+            # 扣除元气值
+            User.objects.modify_YQPoint(
+                user,
+                -pool.ticket_price,
+                source=f'盲盒奖池：{pool.title}',
+                source_type=YQPointRecord.SourceType.CONSUMPTION
+            )
     except AssertionError as e:
-        return wrong(str(e)), -1, 2
-    
-    # 扣除元气值
-    with transaction.atomic():
-        User.objects.modify_YQPoint(
-            user,
-            -pool.ticket_price,
-            source=f'盲盒奖池：{pool.title}',
-            source_type=YQPointRecord.SourceType.CONSUMPTION
-        )
+        return wrong(str(e)), -1, 2     
 
     return succeed('兑换盲盒成功!'), poolitem_to_be_modified.prize.id, int(poolitem_to_be_modified.is_empty)
 
