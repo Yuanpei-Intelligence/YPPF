@@ -108,9 +108,9 @@ urlpatterns = [
     path("startChat/", chat_api.startChat, name="startChat"),
 ] + [
     # 元气值
-    path("myYQPoint/", views.myYQPoint, name="myYQPoint"),
+    path("myYQPoint/", YQPoint_views.myYQPoint, name="myYQPoint"),
     path("showPools/", YQPoint_views.showPools, name="showPools"),
-    path("myPrize/",views.myPrize, name="myPrize"),
+    path("myPrize/", YQPoint_views.myPrize, name="myPrize"),
 ] + [
     # 埋点
     path('eventTrackingFunc/', views.eventTrackingFunc, name='eventTracking'),
