@@ -1913,7 +1913,7 @@ def subscribeOrganization(request: HttpRequest):
     # orgava_list = [(org, utils.get_user_ava(org, UTYPE_ORG)) for org in org_list]
     otype_infos = [(
         otype,
-        list(Organization.objects.filter(otype=otype)
+        list(Organization.objects.activated().filter(otype=otype)
             .select_related("organization_id")),
     ) for otype in OrganizationType.objects.all().order_by('-otype_id')]
 

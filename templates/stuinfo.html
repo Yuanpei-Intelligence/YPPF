@@ -350,11 +350,13 @@
                                 </p>
                                 {% else %}
                                 <table class="table">
+                                    {% if context.person.stu_grade %}
                                     <tr>
                                         <th width="15%" style="min-width: 60px;color: #1b55e2;">年级</th>
-                                        <th width="75%" style="min-width: 160px;">{{ academic_params.author_grade }}级</th>
+                                        <th width="75%" style="min-width: 160px;">{{ context.person.stu_grade }}级</th>
                                         <th width="10%" style="min-width: 50px;color: #1b55e2;">是否公开</th>
                                     </tr>
+                                    {% endif %}
 
                                     {% if academic_params.selected_major_list|length != 0 %}
                                     <tr>
