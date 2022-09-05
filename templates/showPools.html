@@ -23,15 +23,21 @@
             position:absolute;
             top:0;
             left:0;
-            transform: translateY(-25%) scale(0.5);
+            transform: translateY(-25%) scale(0.1);
             opacity:0;
+        }
+        .random-prize button{
+            visibility:hidden;
         }
         .box.open + .random-prize{
             opacity:1;
             transform: translateY(-25%) scale(1);
             transition:
                 transform 1.5s 0.5s ease-in,
-                opacity 1s 1.8s ease-in;
+                opacity 1s 1.2s ease-in;
+        }
+        .box.open + .random-prize button{
+            visibility:visible;
         }
         .box {
             position: absolute;
@@ -181,7 +187,12 @@
                         </li>
                     {% endfor %}
                 </ul>
-                <div class="mx-0 tab-content bg-white border rounded" style="border-color:#dee2e6!important;min-height:calc(100vh - 13rem)">
+                <div class="mx-0 tab-content bg-white border rounded" style="border-color:#dee2e6!important;min-height:calc(100vh - 13rem);position:relative;">
+                    {% if exchange_pools_info.pools_info.length == 0 and lottery_pools_info.pools_info.length == 0  and random_pools_info.pools_info.length == 0 %}
+                        <div class="text-center w-100" style="position:absolute;top:50%;">
+                            暂时没有开放的元气值奖池
+                        </div>
+                    {% endif %}
                     {% for pool in exchange_pools_info.pools_info %}
                         <div id="pool_{{ pool.id }}" class="{% if current_pool == pool.id %}active show{% endif %} tab-pane fade" role="tabpanel">
                             <div class="row mx-0 p-3">
@@ -225,13 +236,13 @@
                                                 </form>
                                                 <div class="btn-group btn-group-sm w-100" role="group">
                                                     {% if item.exchange_price > my_YQpoint %}
-                                                        <button class="btn btn-warning w-50 px-1">{{ item.exchange_price }} 元气值</button>
+                                                        <button class="btn btn-dark w-50 px-1">{{ item.exchange_price }} 元气值</button>
                                                         <button href="#" class="btn btn-light w-50 px-1 disabled">元气值不足</button>
                                                     {% elif item.my_exchange_time >= item.exchange_limit %}
-                                                        <button class="btn btn-warning w-50 px-1">{{ item.exchange_price }} 元气值</button>
+                                                        <button class="btn btn-dark w-50 px-1">{{ item.exchange_price }} 元气值</button>
                                                         <button href="#" class="btn btn-light w-50 px-1 disabled">次数已用完</button>
                                                     {% elif item.remain_num == 0 %}
-                                                        <button class="btn btn-danger w-50 px-1">{{ item.exchange_price }} 元气值</button>
+                                                        <button class="btn btn-dark w-50 px-1">{{ item.exchange_price }} 元气值</button>
                                                         <button href="#" class="btn btn-light w-50 px-1 disabled">奖品不足</button>
                                                     {% else %}
                                                         <button class="btn btn-success w-50 px-1">{{ item.exchange_price }} 元气值</button>
@@ -357,14 +368,14 @@
                                     <div class="btn-group btn-group-sm w-100" role="group">
                                         {% if pool.status == 0 %}
                                             {% if  pool.ticket_price  > my_YQpoint %}
-                                                <button class="btn btn-warning w-50 px-1">
+                                                <button class="btn btn-dark w-50 px-1">
                                                     {{ pool.ticket_price }} 元气值 / 次
                                                 </button>
                                                 <button href="#" class="btn btn-light w-50 px-1 disabled">
                                                     元气值不足
                                                 </button>
                                             {% elif pool.my_entry_time >= pool.entry_time %}
-                                                <button class="btn btn-danger w-50 px-1">
+                                                <button class="btn btn-dark w-50 px-1">
                                                     {{ pool.ticket_price }} 元气值 / 次
                                                 </button>
                                                 <button href="#" class="btn btn-light w-50 px-1 disabled">
@@ -459,14 +470,14 @@
                                 <div class="col-sm-12 col-md-6 my-3 mx-auto">
                                     <div class="btn-group btn-group-sm w-100" role="group">
                                         {% if  pool.ticket_price  > my_YQpoint %}
-                                            <button class="btn btn-warning w-50 px-1">
+                                            <button class="btn btn-dark w-50 px-1">
                                                 {{ pool.ticket_price }} 元气值 / 次
                                             </button>
                                             <button href="#" class="btn btn-light w-50 px-1 disabled">
                                                 元气值不足
                                             </button>
                                         {% elif pool.my_entry_time >= pool.entry_time %}
-                                            <button class="btn btn-danger w-50 px-1">
+                                            <button class="btn btn-dark w-50 px-1">
                                                 {{ pool.ticket_price }} 元气值 / 次
                                             </button>
                                             <button href="#" class="btn btn-light w-50 px-1 disabled">
@@ -682,11 +693,11 @@
             </div>
         {% endfor %}
     {% endfor %}
-    <div class="modal fade" id="random-result" tabindex="-1" role="dialog" style="background:rgba(0,0,0,0.8">
+    <div class="modal fade" id="random-result" data-backdrop="static" tabindex="-1" role="dialog" style="background:rgba(0,0,0,0.9)">
         <div class="modal-dialog modal-dialog-centered" role="document">
             <div class="modal-content bg-transparent border-0">
                 <div class="modal-body ">
-                    <div class="mx-5">
+                    <div>
                         <div id="random-box" class="w-100">
                             <div class="box">
                                 <div class="side">
@@ -708,16 +719,22 @@
                                          class="w-100 rounded mb-3"
                                          style="object-fit:cover;aspect-ratio:4/3;margin:auto"
                                          alt="{{ irandom_pool_effect_name }}">
-                                    <h6 class="text-center">
+                                    <h6 class="text-center mb-3">
                                         获得 <span class="text-success">{{ random_pool_effect_name }}</span> x 1
                                     </h6>
+                                    <button type="button" class="btn btn-success w-100" data-dismiss="modal">
+                                        收下奖品
+                                    </button>
                                 {% elif random_pool_effect_code == 1  %}
                                     <div class="w-100 rounded my-5 text-center">
                                         <i class="fas fa-rocket"></i>
                                     </div>
-                                    <h6 class="text-center">
+                                    <h6 class="text-center mb-3">
                                         获得 <span class="text-success">空的盒子</span> x 1
                                     </h6>
+                                    <button type="button" class="btn btn-success w-100" data-dismiss="modal">
+                                        下次再来
+                                    </button>
                                 {% endif %}
                             </div>
                             <div id="open-random-box" class="d-block mx-auto text-center">
