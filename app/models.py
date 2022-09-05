@@ -1184,6 +1184,7 @@ class Notification(models.Model):
         PENDING_INFORM = "事务开始通知"
         FEEDBACK_INFORM = "反馈通知"
         YPLIB_INFORM = "元培书房通知"
+        LOTTERY_INFORM = "抽奖结果通知"
 
 
     status = models.SmallIntegerField(choices=Status.choices, default=1)
@@ -1962,8 +1963,8 @@ class Pool(models.Model):
     ticket_price = models.IntegerField('抽奖费', default=0)
     start = models.DateTimeField('开始时间')
     end = models.DateTimeField('结束时间', null=True, blank=True)
-    exchange_start = models.DateTimeField('兑奖开始时间', null=True, blank=True)
-    exchange_end = models.DateTimeField('兑奖结束时间', null=True, blank=True)
+    redeem_start = models.DateTimeField('兑奖开始时间', null=True, blank=True) # 指线下获取奖品实物
+    redeem_end = models.DateTimeField('兑奖结束时间', null=True, blank=True)
 
 
 class PoolItem(models.Model):
@@ -1975,9 +1976,13 @@ class PoolItem(models.Model):
     prize: Prize = models.ForeignKey(Prize, verbose_name='奖品', on_delete=models.CASCADE)
     origin_num = models.IntegerField('初始数量')
     consumed_num = models.IntegerField('已兑换', default=0)
-    # pool 类型为兑换奖池时有效
+    # 下面两个在 pool 类型为兑换奖池时有效
     exchange_limit = models.IntegerField('单人兑换上限', default=0)
     exchange_price = models.IntegerField('价格', null=True, blank=True)
+    # 下面这个在抽奖/盲盒奖池中有效
+    is_big_prize: bool = models.BooleanField('是否特别奖品', default=False)
+    # 下面这个在盲盒奖池中有效，若为真则表示“谢谢参与”
+    is_empty: bool = models.BooleanField('空盲盒', default=False)
 
 
 class PoolRecord(models.Model):
@@ -1989,8 +1994,8 @@ class PoolRecord(models.Model):
         # 抽奖奖池时有效
         LOTTERING = '抽奖中', '抽奖中'
         NOT_LUCKY = '未中奖', '未中奖'
-        UN_EXCHANGE = '未兑换', '未兑换'
-        EXCHANGED = '已兑换', '已兑换'
+        UN_REDEEM = '未兑奖', '未兑奖' # 指线下获取奖品实物
+        REDEEMED = '已兑奖', '已兑奖'
         OVERDUE = '已失效', '已失效'
 
     user: User = models.ForeignKey(User, verbose_name='用户', on_delete=models.CASCADE)
