@@ -103,7 +103,8 @@
     <section class="section page page-2">
       <div class="bg-back"></div>
       <div class="content">
-        <p class="para"><span class="fs-20 fc-red">{{late_room_year}}年{{late_room_month}}月{{late_room_day}}日</span></p>
+        {% comment %} <p class="para"><span class="fs-20 fc-red">{{late_room_year}}年{{late_room_month}}月{{late_room_day}}日</span></p> {% endcomment %}
+        <p class="para"><span class="fs-20 fc-red">{{late_room_date}}</span></p>
         <p class="para mt-10"><span class="fs-20 fc-red">{{late_room}}</span>陪伴你直到<span class="fs-20 fc-red">{{late_room_time}}</span></p>
         <p class="para mt-35">那一天，有<span class="fs-20 fc-red">{{late_room_people}}</span>人也在地下室的另一角研磨属于自己的夜。</p>
         <p class="para mt-10">你们是否在地下空间相遇，</p>
@@ -152,12 +153,12 @@
           <div class="wave wave-4"></div>
         </div>
         <ul class="lines">
-          <li class="line line-1"><span class="text">{{Skeywords.0}}</span></li>
-          <li class="line line-2"><span class="text">{{Skeywords_num.0}}</span></li>
-          <li class="line line-3"><span class="text">{{Skeywords.1}}</span></li>
-          <li class="line line-4"><span class="text">{{Skeywords_num.1}}</span></li>
-          <li class="line line-5"><span class="text">{{Skeywords.2}}</span></li>
-          <li class="line line-6"><span class="text">{{Skeywords_num.2}}</span></li>
+          <li class="line line-1"><span class="text">{{Skeywords.0.0}}</span></li>
+          <li class="line line-2"><span class="text">{{Skeywords.0.1}}</span></li>
+          <li class="line line-3"><span class="text">{{Skeywords.1.0}}</span></li>
+          <li class="line line-4"><span class="text">{{Skeywords.1.1}}</span></li>
+          <li class="line line-5"><span class="text">{{Skeywords.2.0}}</span></li>
+          <li class="line line-6"><span class="text">{{Skeywords.2.1}}</span></li>
         </ul>
         <p class="para mt-35">欢乐、疲惫、热爱、专注…</p>
         <p class="para mt-10">无论是学习工作，还是轻松的欢聚，这里都由你记录，由你定义。</p>

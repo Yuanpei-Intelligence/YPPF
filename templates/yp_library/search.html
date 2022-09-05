@@ -111,3 +111,16 @@
 <!--  END CONTENT AREA  -->
 
 {% endblock %}
+
+{% block add_js_file %}
+<script>
+    function submit() {
+        const checkbox = document.getElementById("returned");
+        const input = document.getElementById("keywords");
+        if (checkbox.checked || input.value) {
+        document.getElementById("SearchBookForm").submit();
+        }
+    }
+    document.getElementById("searchButton").onclick = submit;
+</script>
+{% endblock%}
