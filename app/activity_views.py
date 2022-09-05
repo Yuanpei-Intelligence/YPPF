@@ -9,7 +9,6 @@ from app.models import (
     ActivityPhoto,
     Participant,
     ActivitySummary,
-    ActivitySummaryPhoto,
 )
 from app.activity_utils import (
     ActivityException,
@@ -199,7 +198,8 @@ def viewActivity(request: HttpRequest, aid=None):
             return redirect("/welcome/")
         elif option == "ActivitySummary":
             try:
-                re = ActivitySummary.objects.get(related_activity=activity)
+                re = ActivitySummary.objects.get(related_activity=activity,
+                status__in = [ActivitySummary.Status.WAITING,ActivitySummary.Status.CONFIRMED])
                 return redirect(f"/modifyEndActivity/?apply_id={re.id}")
             except:
                 return redirect(f"/modifyEndActivity/")
@@ -981,7 +981,7 @@ login_required(redirect_field_name="origin")
 @log.except_captured(source='activity_views[endActivity]', record_user=True)
 def endActivity(request: HttpRequest):
     """
-    报销信息的聚合界面
+    之前被用为报销信息的聚合界面，现已将报销删去，留下总结图片的功能
     对审核老师进行了特判
     """
     valid, user_type, html_display = utils.check_user_type(request.user)
@@ -1000,19 +1000,17 @@ def endActivity(request: HttpRequest):
 
     if is_auditor:
         all_instances = {
-            "undone": ActivitySummary.objects.filter(examine_teacher=person, status = ActivitySummary.Status.WAITING),
-            "done": ActivitySummary.objects.filter(examine_teacher=person).exclude(status = ActivitySummary.Status.WAITING)
+            "undone": ActivitySummary.objects.filter(related_activity__examine_teacher=person, status = ActivitySummary.Status.WAITING),
+            "done": ActivitySummary.objects.filter(related_activity__examine_teacher=person).exclude(status = ActivitySummary.Status.WAITING)
         }
 
     else:
         all_instances = {
-            "undone":   ActivitySummary.objects.filter(pos=request.user, status = ActivitySummary.Status.WAITING),
-            "done":     ActivitySummary.objects.filter(pos=request.user).exclude(status = ActivitySummary.Status.WAITING)
+            "undone":   ActivitySummary.objects.filter(related_activity__organization_id__organization_id=request.user, status = ActivitySummary.Status.WAITING),
+            "done":     ActivitySummary.objects.filter(related_activity__organization_id__organization_id=request.user).exclude(status = ActivitySummary.Status.WAITING)
         }
 
     all_instances = {key:value.order_by( "-time") for key, value in all_instances.items()}
-    print(all_instances)
-    #shown_instances = shown_instances.order_by("-modify_time", "-time")
     bar_display = utils.get_sidebar_and_navbar(request.user, "活动结项")
     return render(request, "activity_summary_show.html", locals())
 
@@ -1045,7 +1043,7 @@ def modifyEndActivity(request: HttpRequest):
     if apply_id is not None:  # 如果存在对应申请
         try:  # 尝试获取已经新建的apply
             application = ActivitySummary.objects.get(id=apply_id)
-            auditor = application.examine_teacher.person_id   # 审核老师
+            auditor = application.related_activity.examine_teacher.person_id   # 审核老师
             if user_type == "Person" and auditor!=request.user:
                 html_display=utils.user_login_org(request, application.pos.organization)
                 if html_display['warn_code']==1:
@@ -1057,7 +1055,7 @@ def modifyEndActivity(request: HttpRequest):
 
             # 接下来检查是否有权限check这个条目
             # 至少应该是申请人或者被审核老师之一
-            assert (application.pos == request.user) or (auditor == request.user)
+            assert (application.related_activity.organization_id.organization_id == request.user) or (auditor == request.user)
         except:  # 恶意跳转
             return redirect(message_url(wrong(html_display["您没有权限访问该网址！"])))
     
@@ -1119,12 +1117,6 @@ def modifyEndActivity(request: HttpRequest):
 
         if post_type in ["new_submit", "modify_submit"]:
             if post_type == "new_submit":
-                # 检查是否查找到老师
-                try:
-                    examine_teacher_id=request.POST.get('examine_teacher')
-                    examine_teacher=NaturalPerson.objects.get(id=examine_teacher_id)
-                except:
-                    return redirect(message_url(wrong("找不到该老师，请检查是否选择正确的老师！")))
                 # 检查活动
                 try:
                     act_id = int(request.POST.get('activity_id'))
@@ -1140,31 +1132,26 @@ def modifyEndActivity(request: HttpRequest):
                     # 新建activity summary
                     application = ActivitySummary.objects.create(
                             status=ActivitySummary.Status.WAITING, 
-                            related_activity=activity, pos=me.organization_id,
-                            examine_teacher = examine_teacher)
+                            related_activity=activity,
+                            )
                 #活动总结图片
                 summary_photos = request.FILES.getlist('summaryimages')
                 photo_num = len(summary_photos)
-                if photo_num > 0:
+                if photo_num == 1:
                     #合法性检查
                     for image in summary_photos:
                         if utils.if_image(image) != 2:
                             return redirect(message_url(wrong("上传的总结图片只支持图片格式！")))
-                    old_images = application.summaryimages.all()
-                    if len(old_images) > 0: # 删除旧图片
-                        for payload in old_images.all():
-                            payload.delete()
-                    # 新建图片
-                    for image in summary_photos:
-                        ActivitySummaryPhoto.objects.create(
-                            image=image, related_summary=application)
+                    application.image = summary_photos[0]
+                    application.save()
+                    
                 else:
-                    return redirect(message_url(wrong('图片内容为空！'), request.path))
+                    return redirect(message_url(wrong('图片内容为空或有多张图片！'), request.path))
 
                 if post_type == "new_submit":
-                    context = succeed(f'活动“{application.related_activity.title}”的申请已成功发送，请耐心等待{application.examine_teacher.name}老师审批！' )
+                    context = succeed(f'活动“{application.related_activity.title}”的申请已成功发送，请耐心等待{application.related_activity.examine_teacher.name}老师审批！' )
                 else:
-                    context = succeed(f'活动“{application.related_activity.title}”的申请已成功修改，请耐心等待{application.examine_teacher.name}老师审批！' )
+                    context = succeed(f'活动“{application.related_activity.title}”的申请已成功修改，请耐心等待{application.related_activity.examine_teacher.name}老师审批！' )
                 context["application_id"] = application.id
 
         elif post_type == "cancel_submit":
@@ -1174,7 +1161,6 @@ def modifyEndActivity(request: HttpRequest):
             application.save()
             context = succeed("成功取消“" +application.related_activity.title+ "”的活动总结申请!")
             context["application_id"] = application.id
-            # return redirect(message_url(succeed("成功取消“" +application.related_activity.title+ "”的经费申请!"), '/modifyEndActivity/'))
         
         else:
             if not application.is_pending():
@@ -1225,21 +1211,18 @@ def modifyEndActivity(request: HttpRequest):
         application.is_pending()) else False
 
     # 用于前端展示：如果是新申请，申请人即“me”，否则从application获取。
-    apply_person = me if is_new_application else utils.get_person_or_org(application.pos)
+    apply_person = me if is_new_application else utils.get_person_or_org(application.related_activity.organization_id.organization_id)
     #申请人头像
     app_avatar_path = apply_person.get_user_ava()
 
 
-
     #活动总结图片
-    summary_photos = application.summaryimages.all() if application is not None else None
-
-    summary_photo_len = len(summary_photos) if summary_photos is not None else 0
+    summary_photo = application.image if application is not None else None
+    summary_photo_exist = True if summary_photo is not None else False
     #元培学院
     our_college = Organization.objects.get(oname="元培学院") if allow_audit_submit else None
     #审核老师
-    available_teachers = NaturalPerson.objects.teachers()
-    examine_teacher = application.examine_teacher if application is not None else None
+    examine_teacher = application.related_activity.examine_teacher if application is not None else None
     bar_display = utils.get_sidebar_and_navbar(request.user, navbar_name="活动总结详情")
 
  

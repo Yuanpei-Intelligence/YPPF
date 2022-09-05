@@ -2019,12 +2019,10 @@ class ActivitySummary(models.Model):
         Activity, on_delete=models.CASCADE
     )
 
-    id = models.AutoField(primary_key=True)  # 自增ID，标识唯一的基类信息
-    pos: User = models.ForeignKey(User, on_delete=models.CASCADE)
-    status = models.SmallIntegerField(choices=Status.choices, default=0)
 
-    examine_teacher: NaturalPerson = models.ForeignKey(
-        NaturalPerson, on_delete=models.CASCADE, verbose_name="审核老师")
+    status = models.SmallIntegerField(choices=Status.choices, default=0)
+    image = models.ImageField(upload_to=f"ActivitySummary/photo/%Y/%m/", verbose_name=u'活动总结图片', null=True, blank=True)
+
 
     time = models.DateTimeField("上传时间", auto_now_add=True)
 
@@ -2044,13 +2042,13 @@ class ActivitySummary(models.Model):
     def get_status_str(self):
         return self.Status.choices[self.status][1]
 
-class ActivitySummaryPhoto(models.Model):
-    class Meta:
-        verbose_name = "报销相关图片"
-        verbose_name_plural = verbose_name
-        ordering = ["-time"]
+    def get_poster_name(self):
+        try:
+            org = Organization.objects.get(organization_id=self.related_activity.organization_id.organization_id)
+            return org
+        except:
+            return '未知'
 
-    image = models.ImageField(upload_to=f"ActivitySummary/photo/%Y/%m/", verbose_name=u'报销相关图片', null=True, blank=True)
-    related_summary: ActivitySummary = models.ForeignKey(
-        ActivitySummary, related_name="summaryimages", on_delete=models.CASCADE)
-    time = models.DateTimeField("上传时间", auto_now_add=True)
+    def get_instance(self):
+        return self.__str__()
+
