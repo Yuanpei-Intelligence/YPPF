@@ -2001,3 +2001,56 @@ class PoolRecord(models.Model):
     )
     status = models.CharField('状态', choices=Status.choices, max_length=15)
     time = models.DateTimeField('记录时间', auto_now_add=True)
+
+
+class ActivitySummary(models.Model):
+    class Meta:
+        verbose_name = "总结图片申请"
+        verbose_name_plural = verbose_name
+        ordering = [ "-time"]
+
+    class Status(models.IntegerChoices):
+        WAITING = (0, "待审核")
+        CONFIRMED = (1, "已通过")
+        CANCELED = (2, "已取消")
+        REFUSED = (3, "已拒绝")
+
+    related_activity: Activity = models.ForeignKey(
+        Activity, on_delete=models.CASCADE
+    )
+
+    id = models.AutoField(primary_key=True)  # 自增ID，标识唯一的基类信息
+    pos: User = models.ForeignKey(User, on_delete=models.CASCADE)
+    status = models.SmallIntegerField(choices=Status.choices, default=0)
+
+    examine_teacher: NaturalPerson = models.ForeignKey(
+        NaturalPerson, on_delete=models.CASCADE, verbose_name="审核老师")
+
+    time = models.DateTimeField("上传时间", auto_now_add=True)
+
+    def __str__(self):
+        return f'{self.related_activity.title}活动总结图片申请'
+
+    def get_poster_name(self):
+        try:
+            org = Organization.objects.get(organization_id=self.pos)
+            return org
+        except:
+            return '未知'
+
+    def is_pending(self):   #表示是不是pending状态
+        return self.status == ActivitySummary.Status.WAITING
+
+    def get_status_str(self):
+        return self.Status.choices[self.status][1]
+
+class ActivitySummaryPhoto(models.Model):
+    class Meta:
+        verbose_name = "报销相关图片"
+        verbose_name_plural = verbose_name
+        ordering = ["-time"]
+
+    image = models.ImageField(upload_to=f"ActivitySummary/photo/%Y/%m/", verbose_name=u'报销相关图片', null=True, blank=True)
+    related_summary: ActivitySummary = models.ForeignKey(
+        ActivitySummary, related_name="summaryimages", on_delete=models.CASCADE)
+    time = models.DateTimeField("上传时间", auto_now_add=True)
