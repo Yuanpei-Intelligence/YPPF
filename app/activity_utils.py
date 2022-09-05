@@ -21,7 +21,7 @@ from app.models import (
     Notification,
     ActivityPhoto,
 )
-from generic.models import UserManager, YQPointRecord
+from generic.models import User, YQPointRecord
 from app.utils import get_person_or_org, if_image
 from app.notification_utils import(
     notification_create,
@@ -29,6 +29,12 @@ from app.notification_utils import(
     notification_status_change,
 )
 from app.wechat_send import WechatApp, WechatMessageLevel
+from app.constants import (
+    YQP_PER_HOUR,
+    YQP_INVALID_HOUR,
+    YQP_INVALID_TITLE,
+)
+
 import io
 import os
 import base64
@@ -117,10 +123,10 @@ def changeActivityStatus(aid, cur_status, to_status):
         elif to_status == Activity.Status.END and activity.valid:
             point = calcu_activity_YQP(activity)
             participants = Participant.objects.filter(
-                activity_id=aid, status=Participant.AttendStatus.ATTENDED)
-            for person in NaturalPerson.objects.filter(
-                       id__in=participants.values_list('person_id', flat=True)):
-                UserManager().modify_YQPoint(person, point, "参与活动",
+                activity_id=aid,
+                status=Participant.AttendStatus.ATTENDED).values_list('person_id__person_id')
+            participants = User.objects.filter(id__in=participants)
+            User.objects.bulk_modify_YQPoint(participants, point, "参加活动",
                                              YQPointRecord.SourceType.ACTIVITY)
 
         # 过早进行这个修改，将被写到activity待执行的保存中，导致失败后调用activity.save仍会调整状态
@@ -855,10 +861,11 @@ def accept_activity(request, activity):
         participants = Participant.objects.filter(
             activity_id=activity,
             status=Participant.AttendStatus.ATTENDED
-        ).values_list("person_id", flat=True)
-        for person in NaturalPerson.objects.filter(id__in=participants):
-            UserManager().modify_YQPoint(person, point, "参与活动",
+        ).values_list("person_id__person_id", flat=True)
+        participants = User.objects.filter(id__in=participants)
+        User.objects.bulk_modify_YQPoint(participants, point, "参加活动",
                                          YQPointRecord.SourceType.ACTIVITY)
+
     activity.save()
 
 
@@ -1061,27 +1068,14 @@ def calcu_activity_YQP(activity: Activity) -> int:
     """
 
     hours = (activity.end - activity.start).seconds / 3600
-    try:
-        invalid_hour = float(local_dict["thresholds"]["activity_point_invalid_hour"])
-    except:
-        invalid_hour = 24.0
-    if hours > invalid_hour:
+    if hours > YQP_INVALID_HOUR:
         return 0
     # 以标题筛选不记录元气值的活动，包含筛选词时不记录积分
-    try:
-        invalid_letters = local_dict["thresholds"]["activity_point_invalid_titles"]
-        assert isinstance(invalid_letters, list)
-        for invalid_letter in invalid_letters:
-            if invalid_letter in activity.title:
-                return 0
-    except:
-        pass
+    for invalid_letter in YQP_INVALID_TITLE:
+        if invalid_letter in activity.title:
+            return 0
 
-    try:
-        point_rate = float(local_dict["thresholds"]["activity_point_per_hour"])
-    except:
-        point_rate = 1.0
-    point = ceil(point_rate * hours)
+    point = ceil(YQP_PER_HOUR * hours)
     # 暂时废弃，单次活动记录的积分上限，默认6
     # try:
     #     max_point = float(local_dict["thresholds"]["activity_point"])

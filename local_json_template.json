@@ -42,13 +42,6 @@
     },
     "thresholds": {
         "注释": "下面这些都可以不写",
-        "activity_point_per_hour": 10,
-        "activity_point": 6,
-        "activity_point_invalid_hour": 12,
-        "activity_point_invalid_titles": [
-            "选课",
-            "补选"
-        ],
         "wechat_send_number": "500",
         "wechat_send_batch": "500"
     },
@@ -112,7 +105,6 @@
         "stu_name": "YPadmin"
     },
     "YQPoint_source_oname": "元培元气值中心",
-    "YQPoint_feedback": 10,
     "library": {
         "organization_name": "何善衡图书室",
         "open_time_start": "07:00",
