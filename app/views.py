@@ -57,6 +57,7 @@ from app.academic_utils import (
     have_entries_of_type,
     get_tag_status,
     get_text_status,
+    get_search_results,
 )
 
 import json
@@ -1648,6 +1649,18 @@ def search(request: HttpRequest):
         | Q(org__oname__icontains=query)
     )
 
+    # 学术地图内容
+    academic_map_dict = get_search_results(query)
+    academic_list = []
+    for username, contents in academic_map_dict.items():
+        info = dict()
+        np = NaturalPerson.objects.get(person_id__username=username)
+        info['ref'] = np.get_absolute_url() + '#tab=academic_map'
+        info['avatar'] = np.get_user_ava()
+        info['sname'] = np.name
+        contents = [(k, v) for k, v in contents.items()]
+        academic_list.append((info, contents))
+
     me = get_person_or_org(request.user, user_type)
     html_display["is_myself"] = True
 
@@ -1910,7 +1923,7 @@ def subscribeOrganization(request: HttpRequest):
     # orgava_list = [(org, utils.get_user_ava(org, UTYPE_ORG)) for org in org_list]
     otype_infos = [(
         otype,
-        list(Organization.objects.filter(otype=otype)
+        list(Organization.objects.activated().filter(otype=otype)
             .select_related("organization_id")),
     ) for otype in OrganizationType.objects.all().order_by('-otype_id')]
 
