@@ -281,6 +281,8 @@ def cal_study_room(np: NaturalPerson):
     _study_room_reords = CardCheckInfo.objects.filter(
         _study_room_record_filter)
 
+    if not _study_room_reords.exists():
+        return dict(study_room_num=0)
     study_room_num = _study_room_reords.aggregate(cnt=Count('*')).get('cnt', 0)
     study_room_day = _study_room_reords.values_list('Cardtime__date').annotate(
         cnt=Count('*')).aggregate(cnt=Count('*')).get('cnt', 0)
@@ -312,6 +314,8 @@ def cal_early_room(np: NaturalPerson):
                        Cardtime__hour__lt=8,
                        Cardtime__hour__gte=6)
     _room_reords = CardCheckInfo.objects.filter(_record_filter)
+    if not _room_reords.exists():
+        return dict(early_day_num=0)
     early_day_num = _room_reords.values_list('Cardtime__date').annotate(
         cnt=Count('*')).aggregate(cnt=Count('*')).get('cnt', 0)
     if early_day_num:
@@ -338,17 +342,25 @@ def cal_late_room(np: NaturalPerson):
     _room_reords = CardCheckInfo.objects.filter(_record_filter)
     late_room_num = len(list(set(_room_reords.filter(
         _late_filter_night).values_list('Cardtime__date'))))
+    if not late_room_num:
+        return dict(late_room_num=0)
     _dawn_records = list(_room_reords.filter(_late_filter_dawn).values_list(
-        'Cardroom', 'Cardtime__date', 'Cardtime_time'))
+        'Cardroom', 'Cardtime__date', 'Cardtime__time'))
     if _dawn_records:
         _latest_record = max(_dawn_records, key=lambda x: x[2])
     else:
         _latest_record = max(_room_reords.filter(_late_filter_night).values_list(
-            'Cardroom', 'Cardtime__date', 'Cardtime_time'), key=lambda x: x[2])
+            'Cardroom', 'Cardtime__date', 'Cardtime__time'), key=lambda x: x[2])
     late_room, late_room_date, late_room_time = _latest_record
-    # TODO: late people
+    _late_room_ref_date = late_room_date
+    if late_room_time.hour < 23:
+        _late_room_ref_date = late_room_date - timedelta(days=1)
+    late_room_people = len(list(set(CardCheckInfo.objects.filter(Cardtime__gt=_start_time,
+                                                    Cardtime__lt=_end_time,
+                                                    Cardtime__date=_late_room_ref_date,
+                                                    Cardtime__hour__gte=22
+                                            ).values_list('Cardstudent'))))
     return locals()
-    # 应该是多少个晚上在地下室
 
 
 def cal_appoint(np: NaturalPerson):
@@ -366,25 +378,34 @@ def cal_appoint(np: NaturalPerson):
     _me_act_appoint = Appoint.objects.not_canceled().filter(
         students=_par, Astart__gt=_start_time, Astart__lt=_end_time)
     _me_act_talk_appoint = _me_act_appoint.filter(Room__in=_talk_rooms)
-    discuss_appoint_num = _me_act_talk_appoint.aggregate(cnt=Count('*'))['cnt']
-    discuss_appoint_hour = sum([(finish - start).seconds for start,
-                               finish in _me_act_talk_appoint.values_list('Astart', 'Afinish')])//3600
-    discuss_appoint_long_room, discuss_appoint_long_hour = max([(r[0], _me_act_appoint.filter(Room=r).aggregate(
-        tol=Sum(F('Afinish') - F('Astart')))['tol'].total_seconds()//3600) for r in _talk_rooms], key=lambda x: x[1])
+    if not _me_act_appoint.exists():
+        return {}
+    if not _me_act_talk_appoint.exists():
+        discuss_appoint_num = 0
+    else:
+        discuss_appoint_num = _me_act_talk_appoint.aggregate(cnt=Count('*'))['cnt']
+
+        discuss_appoint_hour = sum([(finish - start).seconds for start,
+                                finish in _me_act_talk_appoint.values_list('Astart', 'Afinish')])//3600
+        _my_talk_rooms = _me_act_talk_appoint.values_list('Room')
+        discuss_appoint_long_room, discuss_appoint_long_hour = max([(r[0], _me_act_appoint.filter(Room=r).aggregate(
+            tol=Sum(F('Afinish') - F('Astart')))['tol'].total_seconds()//3600) for r in _my_talk_rooms], key=lambda x: x[1])
     appiont_most_day, appoint_most_num = Counter(
         _me_act_appoint.values_list('Astart__date')).most_common(1)[0]
     appiont_most_day = appiont_most_day[0].strftime('%m月%d日')
 
     _me_act_func_appoint = _me_act_appoint.filter(Room__in=_func_rooms)
-    func_appoint_num = _me_act_func_appoint.aggregate(cnt=Count('*'))['cnt']
-    func_appoint_hour = _me_act_func_appoint.aggregate(
-        tol=Sum(F('Afinish') - F('Astart')))['tol'].total_seconds()//3600
-    # django 的 groupby 真的烂
-    # func_appoint_most = _me_act_func_appoint.values_list('Room').annotate(cnt=Count('*'))
-    func_appoint_most, func_appoint_most_hour = Counter(
-        _me_act_func_appoint.values_list('Room__Rtitle')).most_common(1)[0]
-    func_appoint_most = func_appoint_most[0]
-    # TODO: add percent
+    if not _me_act_func_appoint.exists():
+        func_appoint_num = func_appoint_hour = 0
+    else:
+        func_appoint_num = _me_act_func_appoint.aggregate(cnt=Count('*'))['cnt']
+        func_appoint_hour = _me_act_func_appoint.aggregate(
+            tol=Sum(F('Afinish') - F('Astart')))['tol'].total_seconds()//3600
+        # django 的 groupby 真的烂
+        # func_appoint_most = _me_act_func_appoint.values_list('Room').annotate(cnt=Count('*'))
+        func_appoint_most, func_appoint_most_hour = Counter(
+            _me_act_func_appoint.values_list('Room__Rtitle')).most_common(1)[0]
+        func_appoint_most = func_appoint_most[0]
     return remove_local_var(locals())
 
 
@@ -427,6 +448,8 @@ def cal_co_appoint(np: NaturalPerson):
         for _co_np in appoint.students.all():
             if _co_np != _par:
                 _co_np_list.append(_co_np)
+    if not _co_np_list:
+        return {}
     co_mate, co_appoint_num = Counter(_co_np_list).most_common(1)[0]
     _co_act_appoint = _me_act_appoint.filter(students=co_mate)
     co_appoint_hour = _co_act_appoint.aggregate(
@@ -449,6 +472,5 @@ def cal_co_appoint(np: NaturalPerson):
             continue
         _key_words.extend(jieba.cut(usage[0]))
     co_keyword = Counter(_key_words).most_common(1)[0]
-    # TODO: percent
 
     return remove_local_var(locals())
