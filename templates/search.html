@@ -440,7 +440,7 @@
                                         </thead>
                                         <tbody>
                                             {% for person in academic_list %}
-                                            {% for content_type in person.contents %}
+                                            {% for content_type, content_list in person.contents.items %}
                                             <tr>
                                                 {% if forloop.counter == 1 %}
                                                 <td style="min-width: 80px;">
@@ -454,9 +454,9 @@
                                                     {{ content_type }}
                                                 </td>
                                                 <td style="min-width: 140px;">
-                                                    {% for content in person.contents.content_type %}
+                                                    {% for content in content_list %}
                                                     <p>
-                                                    {{ content_type }}
+                                                    {{ content }}
                                                     </p>
                                                     {% endfor %}
                                                 </td>

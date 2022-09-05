@@ -62,18 +62,18 @@ def get_search_results(query: str) -> List[dict]:
     )
     
     # 然后根据tag/text对应的人，整合学术地图项目
-    academic_map_dict = defaultdict(dict)
+    academic_map_dict = dict()
     for sid, ty, content in academic_tags:
         # 将choice的值更新为对应的选项名
         tag_type = AcademicTag.AcademicTagType(ty).label
-        # if not sid in academic_map_dict:
-        #     academic_map_dict[sid] = defaultdict(list)
+        if not sid in academic_map_dict:
+            academic_map_dict[sid] = defaultdict(list)
         academic_map_dict[sid][tag_type].append(content)
     
     for sid, ty, content in academic_texts:
         text_type = AcademicTextEntry.AcademicTextType(ty).label
-        # if not sid in academic_map_dict:
-        #     academic_map_dict[sid] = defaultdict(list)
+        if not sid in academic_map_dict:
+            academic_map_dict[sid] = defaultdict(list)
         academic_map_dict[sid][text_type].append(content)
     
     return academic_map_dict
