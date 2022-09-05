@@ -439,22 +439,23 @@
                                             </tr>
                                         </thead>
                                         <tbody>
-                                            {% for person in academic_list %}
-                                            {% for content_type, content_list in person.contents.items %}
+                                            {% for person, content_dict in academic_list %}
+                                            {% for content_type, contents_list in content_dict %}
                                             <tr>
-                                                {% if forloop.counter == 1 %}
                                                 <td style="min-width: 80px;">
+                                                    {% if forloop.counter == 1 %}
                                                     <u>
                                                         <a href="{{ person.ref }}">
                                                             <img src="{{ person.avatar }}" alt="大头照" style="height: 20px; width: 20px;">{{ person.sname }}
                                                         </a>
                                                     </u>
+                                                    {% endif %}
                                                 </td>
                                                 <td style="min-width: 80px;">
                                                     {{ content_type }}
                                                 </td>
                                                 <td style="min-width: 140px;">
-                                                    {% for content in content_list %}
+                                                    {% for content in contents_list %}
                                                     <p>
                                                     {{ content }}
                                                     </p>

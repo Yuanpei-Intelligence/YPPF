@@ -1661,8 +1661,8 @@ def search(request: HttpRequest):
         info['ref'] = np.get_absolute_url() + '#tab=academic_map'
         info['avatar'] = np.get_user_ava()
         info['sname'] = np.name
-        info['contents'] = contents
-        academic_list.append(info)
+        contents = [(k, v) for k, v in contents.items()]
+        academic_list.append((info, contents))
 
     me = get_person_or_org(request.user, user_type)
     html_display["is_myself"] = True
