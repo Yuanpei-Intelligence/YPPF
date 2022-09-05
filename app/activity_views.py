@@ -194,6 +194,30 @@ def viewActivity(request: HttpRequest, aid=None):
             me.inform_share = False
             me.save()
             return redirect("/welcome/")
+        elif option == "submitphoto":
+            if activity.status != Activity.Status.END:
+                return redirect(message_url(wrong('活动尚未结束!'), request.path))
+            if not ownership:
+                return redirect(message_url(wrong('您没有修改活动总结的权限!'), request.path))
+
+            with transaction.atomic():
+                #活动总结图片
+                summary_photos = request.FILES.getlist('images')
+                photo_num = len(summary_photos)
+                if photo_num == 1:
+                    image = summary_photos[0]
+                    #合法性检查
+                    if utils.if_image(image) != 2:
+                        redirect(message_url(wrong("上传的总结图片只支持图片格式！")))
+                    old_images = ActivityPhoto.objects.filter(type=ActivityPhoto.PhotoType.SUMMARY, activity=activity)
+                    if len(old_images) > 0: # 删除旧图片
+                        for payload in old_images.all():
+                            payload.delete()
+                    # 新建图片
+                    ActivityPhoto.objects.create(image=image, type=ActivityPhoto.PhotoType.SUMMARY, activity=activity)
+                else:
+                    return redirect(message_url(wrong('图片内容为空或者有多张图片！'), request.path))
+
         else:
             return redirect(message_url(wrong('无效的请求!'), request.path))
 

@@ -414,7 +414,7 @@
                                     {% endif %}
                                     <!-- ---------------------------- begin summary ---------------------------- -->
                                     {% if status == "已结束" %}
-                                    <!--<button class="btn btn-primary btn-block mb-2" data-toggle="collapse"
+                                    <button class="btn btn-primary btn-block mb-2" data-toggle="collapse"
                                         data-target="#summaryphoto">
                                         上传/更新总结照片
                                     </button>
@@ -432,10 +432,6 @@
                                             <input type="hidden" name="option" value="submitphoto">
                                             <button type="submit" class="btn btn-primary btn-block mb-2">确认上传</button>
                                         </div>
-                                    </form>-->
-                                    <form method="POST">
-                                        <input type="hidden" name="option" value="payment">
-                                        <button class="btn btn-primary btn-block mb-2">申请活动结项</button>
                                     </form>
                                     {% endif %}
                                     <!-- ----------------------------- end summary ----------------------------- -->
@@ -443,7 +439,7 @@
                                     {% if status == "已结束" %}
                                     <form method="POST">
                                         <input type="hidden" name="option" value="checkinoffline">
-                                        <button class="btn btn-primary btn-block mb-2">调整签到信息</button>>
+                                        <button class="btn btn-primary btn-block mb-2">调整签到信息</button>
                                     </form>
                                     {% endif %}
                                    <!-- --------------------------end checkinoffline--------------------------- -->
