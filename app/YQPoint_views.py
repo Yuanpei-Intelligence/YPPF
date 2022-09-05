@@ -77,8 +77,7 @@ def showPools(request: HttpRequest) -> HttpResponse:
     get_pools_and_items(Pool.Type.RANDOM, request.user,
                         frontend_dict["random_pools_info"])
 
-    frontend_dict["my_YQpoint"] = User.objects.get(
-        id=request.user.id).YQpoint  # 元气值余额，因为可能刚刚改过，有必要重新读一下User表
+    frontend_dict["my_YQpoint"] = request.user.YQpoint  # 元气值余额
     
     if frontend_dict["current_pool"] == -1:
         if len(frontend_dict["exchange_pools_info"]["pools_info"]):
