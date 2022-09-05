@@ -59,6 +59,7 @@ from app.academic_utils import (
     have_entries_of_type,
     get_tag_status,
     get_text_status,
+    get_search_results,
 )
 from generic.models import YQPointRecord
 
@@ -1650,6 +1651,18 @@ def search(request: HttpRequest):
         Q(title__icontains=query) 
         | Q(org__oname__icontains=query)
     )
+
+    # 学术地图内容
+    academic_map_dict = get_search_results(query)
+    academic_list = []
+    for username, contents in academic_map_dict.items():
+        info = dict()
+        np = NaturalPerson.objects.get(person_id__username=username)
+        info['ref'] = np.get_absolute_url() + '#tab=academic_map'
+        info['avatar'] = np.get_user_ava()
+        info['sname'] = np.name
+        info['contents'] = contents
+        academic_list.append(info)
 
     me = get_person_or_org(request.user, user_type)
     html_display["is_myself"] = True
