@@ -205,12 +205,13 @@ def buy_exchange_item(user: User, poolitem_id: str) -> MESSAGECONTEXT:
         return wrong(str(e))
     
     # 扣除元气值
-    User.objects.modify_YQPoint(
-        user,
-        -poolitem.exchange_price,
-        source=f'兑换奖池：{poolitem.pool.title}-{poolitem.prize.name}',
-        source_type=YQPointRecord.SourceType.CONSUMPTION
-    )
+    with transaction.atomic():
+        User.objects.modify_YQPoint(
+            user,
+            -poolitem.exchange_price,
+            source=f'兑换奖池：{poolitem.pool.title}-{poolitem.prize.name}',
+            source_type=YQPointRecord.SourceType.CONSUMPTION
+        )
 
     return succeed('兑换成功!')
 
@@ -260,12 +261,13 @@ def buy_lottery_pool(user: User, pool_id: str) -> MESSAGECONTEXT:
         return wrong(str(e))
     
     # 扣除元气值
-    User.objects.modify_YQPoint(
-        user,
-        -pool.ticket_price,
-        source=f'抽奖奖池：{pool.title}',
-        source_type=YQPointRecord.SourceType.CONSUMPTION
-    )
+    with transaction.atomic():
+        User.objects.modify_YQPoint(
+            user,
+            -pool.ticket_price,
+            source=f'抽奖奖池：{pool.title}',
+            source_type=YQPointRecord.SourceType.CONSUMPTION
+        )
     
     return succeed('成功进行一次抽奖!您可以在抽奖时间结束后查看抽奖结果~')
 
@@ -357,12 +359,13 @@ def buy_random_pool(user: User, pool_id: str) -> Tuple[MESSAGECONTEXT, int, int]
         return wrong(str(e)), -1, 2
     
     # 扣除元气值
-    User.objects.modify_YQPoint(
-        user,
-        -pool.ticket_price,
-        source=f'盲盒奖池：{pool.title}',
-        source_type=YQPointRecord.SourceType.CONSUMPTION
-    )
+    with transaction.atomic():
+        User.objects.modify_YQPoint(
+            user,
+            -pool.ticket_price,
+            source=f'盲盒奖池：{pool.title}',
+            source_type=YQPointRecord.SourceType.CONSUMPTION
+        )
 
     return succeed('兑换盲盒成功!'), poolitem_to_be_modified.prize.id, int(poolitem_to_be_modified.is_empty)
 
