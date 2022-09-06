@@ -1450,6 +1450,7 @@ def summary2021(request: HttpRequest):
         is_freshman=is_freshman,
         user_accept=user_accept,
     )
+
     if user_accept and logged_in and not is_freshman:
         infos.update(person_info(request.user))
         try:
@@ -1468,4 +1469,4 @@ def summary2021(request: HttpRequest):
         except:
             pass
 
-    return render(request, 'Appointment/summary2.html', infos)
+    return render(request, 'Appointment/summary2021.html', infos)
