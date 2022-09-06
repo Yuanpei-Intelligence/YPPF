@@ -2042,6 +2042,3 @@ class ActivitySummary(models.Model):
     def get_poster_name(self):
         return self.activity.organization_id
 
-    # def get_instance(self):
-    #     return self.__str__()
-
