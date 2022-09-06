@@ -1211,7 +1211,7 @@ def modifyEndActivity(request: HttpRequest):
         not is_new_application) and (application.is_pending()) else False
 
     # 用于前端展示：如果是新申请，申请人即“me”，否则从application获取。
-    apply_person = me if is_new_application else application.activity.organization_id
+    apply_person = me if is_new_application else application.get_org()
     #申请人头像
     app_avatar_path = apply_person.get_user_ava()
 
