@@ -49,49 +49,34 @@ def get_search_results(query: str) -> List[dict]:
     academic_tags = AcademicTagEntry.objects.filter( 
         tag__tag_content__icontains=query,
         status=AcademicEntry.EntryStatus.PUBLIC,
-    ).values(
-        "person__person_id_id", "person__name",   # person_id_id用于避免重名
-        "person__stu_grade", "tag__atype", "tag__tag_content",
+    ).values_list(
+        "person__person_id__username",  # person_id_id用于避免重名
+        "tag__atype", "tag__tag_content",
     )
     academic_texts = AcademicTextEntry.objects.filter(
         content__icontains=query,
         status=AcademicEntry.EntryStatus.PUBLIC,
-    ).values(
-        "person__person_id_id", "person__name",   # person_id_id用于避免重名
-        "person__stu_grade", "atype", "content",
+    ).values_list(
+        "person__person_id__username", 
+         "atype", "content",
     )
     
-    # 将choice的值更新为对应的选项名
-    for tag in academic_tags:
-        tag.update({"tag__atype": AcademicTag.AcademicTagType(tag["tag__atype"]).label})
-    for text in academic_texts:
-        text.update({"atype": AcademicTextEntry.AcademicTextType(text["atype"]).label})
-        
     # 然后根据tag/text对应的人，整合学术地图项目
-    academic_map_dict = {}  # 整理一个以person_id_id为key，以含有姓名、年级和学术地图项目的dict为value的dict
-    for tag in academic_tags:
-        person_id = tag["person__person_id_id"]
-        tag_type = tag["tag__atype"]
-        tag_content = tag["tag__tag_content"]
-        if not person_id in academic_map_dict:
-            academic_map_dict[person_id] = defaultdict(list)
-            academic_map_dict[person_id]["姓名"] = tag["person__name"]
-            academic_map_dict[person_id]["年级"] = tag["person__stu_grade"]
-        academic_map_dict[person_id][tag_type].append(tag_content)
+    academic_map_dict = dict()
+    for sid, ty, content in academic_tags:
+        # 将choice的值更新为对应的选项名
+        tag_type = AcademicTag.AcademicTagType(ty).label
+        if not sid in academic_map_dict:
+            academic_map_dict[sid] = defaultdict(list)
+        academic_map_dict[sid][tag_type].append(content)
     
-    for text in academic_texts:
-        person_id = text["person__person_id_id"]
-        text_type = text["atype"]
-        text_content = text["content"]
-        if not person_id in academic_map_dict:
-            academic_map_dict[person_id] = defaultdict(list)
-            academic_map_dict[person_id]["姓名"] = text["person__name"]
-            academic_map_dict[person_id]["年级"] = text["person__stu_grade"]
-        academic_map_dict[person_id][text_type].append(text_content)
+    for sid, ty, content in academic_texts:
+        text_type = AcademicTextEntry.AcademicTextType(ty).label
+        if not sid in academic_map_dict:
+            academic_map_dict[sid] = defaultdict(list)
+        academic_map_dict[sid][text_type].append(content)
     
-    # 最后将整理好的dict转换成前端利用的list
-    academic_map_list = [value for value in academic_map_dict.values()]
-    return academic_map_list
+    return academic_map_dict
 
 
 def chats2Display(chats: QuerySet[Chat], sent: bool) -> Dict[str, List[dict]]:
