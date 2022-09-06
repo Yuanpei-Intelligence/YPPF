@@ -986,7 +986,7 @@ def endActivity(request: HttpRequest):
     """
     valid, user_type, html_display = utils.check_user_type(request.user)
     is_auditor = False
-    if user_type == "Person":
+    if user_type == UTYPE_PER:
         try:
             person = utils.get_person_or_org(request.user, user_type)
             is_auditor = person.is_teacher()
@@ -1044,12 +1044,12 @@ def modifyEndActivity(request: HttpRequest):
         try:  # 尝试获取已经新建的apply
             application = ActivitySummary.objects.get(id=apply_id)
             auditor = application.activity.examine_teacher.person_id   # 审核老师
-            if user_type == "Person" and auditor!=request.user:
+            if user_type == UTYPE_PER and auditor!=request.user:
                 html_display=utils.user_login_org(request, application.pos.organization)
                 if html_display['warn_code']==1:
                     return redirect(message_url(wrong(html_display["warn_message"])))
                 else: #成功
-                    user_type = "Organization"
+                    user_type = UTYPE_ORG
                     request.user = application.pos
                     me = application.pos.organization
 
@@ -1064,7 +1064,7 @@ def modifyEndActivity(request: HttpRequest):
     else:  # 如果不存在id, 默认应该传入活动信息
         #只有小组才有可能申请
         try:
-            assert user_type == "Organization"
+            assert user_type == UTYPE_ORG
         except:  # 恶意跳转
             return redirect(message_url(wrong(html_display["您没有权限访问该网址！"])))
            
@@ -1077,7 +1077,7 @@ def modifyEndActivity(request: HttpRequest):
         接下来POST
     '''
 
-    if user_type == "Organization":
+    if user_type == UTYPE_ORG:
         # 未总结活动
         summary_act_ids = (
             ActivitySummary.objects.all()
@@ -1107,8 +1107,8 @@ def modifyEndActivity(request: HttpRequest):
             return redirect(message_url(wrong('申请状态异常！')))
 
         # 接下来确定访问的个人/小组是不是在做分内的事情
-        if (user_type == "Person" and feasible_post.index(post_type) <= 2) or (
-                user_type == "Organization" and feasible_post.index(post_type) >= 3):
+        if (user_type == UTYPE_PER and feasible_post.index(post_type) <= 2) or (
+                user_type == UTYPE_ORG and feasible_post.index(post_type) >= 3):
             return redirect(message_url(wrong('您无权进行此操作，如有疑惑, 请联系管理员')))
 
 
@@ -1202,11 +1202,11 @@ def modifyEndActivity(request: HttpRequest):
 
     # (1) 是否允许修改表单
     # 小组写表格?
-    allow_form_edit = True if (user_type == "Organization") and (
+    allow_form_edit = True if (user_type == UTYPE_ORG) and (
             is_new_application or application.is_pending()) else False
 
     # 老师审核?
-    allow_audit_submit = True if (user_type == "Person") and (not is_new_application) and (
+    allow_audit_submit = True if (user_type == UTYPE_PER) and (not is_new_application) and (
         application.is_pending()) else False
 
     # 用于前端展示：如果是新申请，申请人即“me”，否则从application获取。
