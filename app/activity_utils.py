@@ -126,8 +126,7 @@ def changeActivityStatus(aid, cur_status, to_status):
                 activity_id=aid,
                 status=Participant.AttendStatus.ATTENDED).values_list('person_id__person_id')
             participants = User.objects.filter(id__in=participants)
-            User.objects.bulk_modify_YQPoint(participants, point, "参加活动",
-                                             YQPointRecord.SourceType.ACTIVITY)
+            User.objects.bulk_increase_YQPoint(participants, point, "参加活动", YQPointRecord.SourceType.ACTIVITY)
 
         # 过早进行这个修改，将被写到activity待执行的保存中，导致失败后调用activity.save仍会调整状态
         activity.status = to_status
@@ -863,8 +862,7 @@ def accept_activity(request, activity):
             status=Participant.AttendStatus.ATTENDED
         ).values_list("person_id__person_id", flat=True)
         participants = User.objects.filter(id__in=participants)
-        User.objects.bulk_modify_YQPoint(participants, point, "参加活动",
-                                         YQPointRecord.SourceType.ACTIVITY)
+        User.objects.bulk_increase_YQPoint(participants, point, "参加活动", YQPointRecord.SourceType.ACTIVITY)
 
     activity.save()
 

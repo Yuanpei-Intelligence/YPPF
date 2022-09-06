@@ -132,7 +132,8 @@ class UserManager(_UserManager):
             source=source,
         )
 
-    def bulk_modify_YQPoint(self, user_set: QuerySet['User'], delta: int,
+    @transaction.atomic
+    def bulk_increase_YQPoint(self, user_set: QuerySet['User'], delta: int,
                             source: str, source_type: 'YQPointRecord.SourceType'):
         """
         批量增减元气值
