@@ -142,9 +142,9 @@ class UserManager(_UserManager):
         update_user.YQpoint += delta
         assert update_user.YQpoint >= 0, '元气值不足'
         self._record_yqpoint_change(update_user, delta, source, source_type)
-        update_user.save(update_fields=['credit'])
+        update_user.save(update_fields=['YQpoint'])
         if isinstance(user, User):
-            user.credit = update_user.credit
+            user.YQpoint = update_user.YQpoint
 
 
     def _record_yqpoint_change(self, user: 'User', delta: int,

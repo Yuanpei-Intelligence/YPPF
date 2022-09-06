@@ -27,8 +27,6 @@ from app.models import (
     PageLog,
     ModuleLog,
     Chat,
-    Pool,
-    PoolRecord,
 )
 from app.utils import (
     url_check,
@@ -59,8 +57,8 @@ from app.academic_utils import (
     have_entries_of_type,
     get_tag_status,
     get_text_status,
+    get_search_results,
 )
-from generic.models import YQPointRecord
 
 import json
 import random
@@ -1651,6 +1649,18 @@ def search(request: HttpRequest):
         | Q(org__oname__icontains=query)
     )
 
+    # 学术地图内容
+    academic_map_dict = get_search_results(query)
+    academic_list = []
+    for username, contents in academic_map_dict.items():
+        info = dict()
+        np = NaturalPerson.objects.get(person_id__username=username)
+        info['ref'] = np.get_absolute_url() + '#tab=academic_map'
+        info['avatar'] = np.get_user_ava()
+        info['sname'] = np.name
+        contents = [(k, v) for k, v in contents.items()]
+        academic_list.append((info, contents))
+
     me = get_person_or_org(request.user, user_type)
     html_display["is_myself"] = True
 
@@ -1913,7 +1923,7 @@ def subscribeOrganization(request: HttpRequest):
     # orgava_list = [(org, utils.get_user_ava(org, UTYPE_ORG)) for org in org_list]
     otype_infos = [(
         otype,
-        list(Organization.objects.filter(otype=otype)
+        list(Organization.objects.activated().filter(otype=otype)
             .select_related("organization_id")),
     ) for otype in OrganizationType.objects.all().order_by('-otype_id')]
 
@@ -2104,59 +2114,3 @@ def eventTrackingFunc(request: HttpRequest):
         PageLog.objects.create(**kwargs)
 
     return JsonResponse({'status': 'ok'})
-
-
-@login_required(redirect_field_name="origin")
-@utils.check_user_access(redirect_url="/logout/")
-@log.except_captured(source='views[myYQPoint]', record_user=True)
-def myYQPoint(request: HttpRequest):
-    valid, user_type, html_display = utils.check_user_type(request.user)
-    # 获取可能的提示信息
-    my_messages.transfer_message_context(request.GET, html_display)
-
-    html_display.update(
-        YQPoint=request.user.YQpoint,
-    )
- 
-    received_set = YQPointRecord.objects.filter(
-        user=request.user,
-    ).exclude(source_type=6).order_by("-time")
-
-    send_set = YQPointRecord.objects.filter(
-        user=request.user,
-        source_type=6,
-    ).order_by("-time")
-
-    # 新版侧边栏, 顶栏等的呈现，采用 bar_display, 必须放在render前最后一步
-    bar_display = utils.get_sidebar_and_navbar(request.user, "我的元气值")
-    return render(request, "myYQPoint.html", locals())
-
-
-@login_required(redirect_field_name="origin")
-@utils.check_user_access(redirect_url="/logout/")
-@log.except_captured(source='views[myPrize]', record_user=True)
-def myPrize(request: HttpRequest):
-    valid, user_type, html_display = utils.check_user_type(request.user)
-    # 获取可能的提示信息
-    my_messages.transfer_message_context(request.GET, html_display)
-
-    lottery_set = PoolRecord.objects.filter(
-        user=request.user,
-        pool__type=Pool.Type.LOTTERY,
-        status__in=[
-            PoolRecord.Status.LOTTERING, 
-            PoolRecord.Status.NOT_LUCKY,
-            PoolRecord.Status.UN_EXCHANGE],
-    ).order_by("-time")
-
-    exchange_set = PoolRecord.objects.filter(
-        user=request.user,
-        status__in=[
-            PoolRecord.Status.UN_EXCHANGE,
-            PoolRecord.Status.EXCHANGED, 
-            PoolRecord.Status.OVERDUE],
-    ).order_by("-status", "-time")
-
-    # 新版侧边栏, 顶栏等的呈现，采用 bar_display, 必须放在render前最后一步
-    bar_display = utils.get_sidebar_and_navbar(request.user, "我的奖品")
-    return render(request, "myPrize.html", locals())

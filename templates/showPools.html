@@ -1,0 +1,805 @@
+{% extends "base.html" %}
+{% load static %}
+{% block add_css_file %}
+    <link rel="stylesheet" href="{% static 'plugins/slick/slick.css' %}">
+    <link rel="stylesheet" href="{% static 'plugins/slick/slick-theme.css' %}">
+    <style>
+        #random-box {
+            position: relative;
+            top:0;
+            left:0;
+            font-size: 40px;
+            transform-style: preserve-3d;
+            height:180px;
+        }
+        #open-random-box{
+            font-size:1.2rem;
+            transform:translateY(12rem);
+        }
+        .box.open ~ #open-random-box{
+            opacity: 0;
+        }
+        .random-prize{
+            position:absolute;
+            top:0;
+            left:0;
+            transform: translateY(-25%) scale(0.1);
+            opacity:0;
+        }
+        .random-prize button{
+            visibility:hidden;
+        }
+        .box.open + .random-prize{
+            opacity:1;
+            transform: translateY(-25%) scale(1);
+            transition:
+                transform 1.5s 0.5s ease-in,
+                opacity 1s 1.2s ease-in;
+        }
+        .box.open + .random-prize button{
+            visibility:visible;
+        }
+        .box {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform-style: preserve-3d;
+            transform: rotateX(-35deg) rotateY(-45deg);
+        }
+        .box.open{
+            animation: box 10s both;
+        }
+        .box .side {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 2em;
+            height: 2em;
+            margin: -1em 0 0 -1em;
+            background: #d7b18f;
+            overflow: hidden;
+        }
+        .box.open .side{
+            animation: boxSide 10s both;
+        }
+        .box .side:nth-child(1) {
+            transform: rotateY(0deg) translateZ(1em);
+        }
+        .box .side:nth-child(2) {
+            transform: rotateY(90deg) translateZ(1em);
+            background-color: #a7805a;
+            background-image: linear-gradient(to bottom, #8a5b35, #8a5b35), linear-gradient(to bottom, #8a5b35, #8a5b35);
+            background-position: center top, center bottom;
+            background-size: 0.5em 0.4em, 0.5em 0.2em;
+            background-repeat: no-repeat;
+        }
+        .box .side:nth-child(3),
+        .box .side:nth-child(4) {
+            transform: rotateX(90deg) translateZ(1em) translateY(-1em) rotateX(0deg) translateY(1em);
+            height: 1em;
+            transform-origin: bottom;
+            background: linear-gradient(to top, #a37348 0.25em, #c59e78 0.25em);
+        }
+        .box .side:nth-child(4) {
+            transform: rotateX(90deg) translateZ(1em) translateY(1em) rotateX(0deg) translateY(-1em) rotate(180deg);
+        }
+        .box.open .side:nth-child(3),
+        .box.open .side:nth-child(4) {
+            animation: boxTop1 10s both, boxSide 10s both;
+        }
+        .box.open .side:nth-child(4) {
+            animation: boxTop2 10s both, boxSide 10s both;
+        }
+        
+        .box .side:nth-child(5) {
+            transform: rotateY(-90deg) translateZ(1em);
+            background: #a7805a;
+        }
+        .box .side:nth-child(6) {
+            transform: rotateY(180deg) translateZ(1em);
+        }
+        
+        @keyframes box {
+            from,
+            9.0909090909% {
+                transform: translateY(0) rotateX(-35deg) rotateY(-45deg);
+            }
+            16.6666666667%,
+            to {
+                transform: translateY(1.5em) rotateX(-35deg) rotateY(-45deg);
+            }
+        }
+        @keyframes boxSide {
+            from,
+            9.0909090909% {
+                opacity: 1;
+            }
+            16.6666666667%,
+            to {
+                opacity: 0;
+            }
+        }
+        @keyframes boxTop1 {
+            from,
+            1.5151515152% {
+                transform: rotateX(90deg) translateZ(1em) translateY(-1em) rotateX(0deg) translateY(1em);
+            }
+            9.0909090909%,
+            to {
+                transform: rotateX(90deg) translateZ(1em) translateY(-1em) rotateX(225deg) translateY(1em);
+            }
+        }
+        @keyframes boxTop2 {
+            from,
+            1.5151515152% {
+                transform: rotateX(90deg) translateZ(1em) translateY(1em) rotateX(0deg) translateY(-1em) rotate(180deg);
+            }
+            9.0909090909%,
+            to {
+                transform: rotateX(90deg) translateZ(1em) translateY(1em) rotateX(-225deg) translateY(-1em) rotate(180deg);
+            }
+        }
+        
+    </style>
+{% endblock %}
+{% block mainpage %}
+    <!--  BEGIN CONTENT AREA  -->
+    <div id="content" class="main-content">
+        {% if warn_code == 1 %}
+            <div class="alert alert-warning text-center m-3">{{ warn_message }}</div>
+        {% elif warn_code == 2 %}
+            <div class="alert alert-success text-center m-3">{{ warn_message }}</div>
+        {% endif %}
+        <div class="container">
+            <div class="layout-top-spacing">
+                <ul class="nav nav-pills nav-fill row mb-3" id="myTab" role="tablist">
+                    {% for pool in exchange_pools_info.pools_info %}
+                        <li class="nav-item col-4 ">
+                            <a class="nav-link {% if current_pool == pool.id %}active{% endif %}"
+                               id="pool-{{ pool.id }}"
+                               data-toggle="tab"
+                               href="#pool_{{ pool.id }}"
+                               role="tab">
+                                {{ pool.title }}
+                            </a>
+                        </li>
+                    {% endfor %}
+                    {% for pool in lottery_pools_info.pools_info %}
+                        <li class="nav-item col-4 ">
+                            <a class="nav-link {% if current_pool == pool.id %}active{% endif %}"
+                               id="pool-{{ pool.id }}"
+                               data-toggle="tab"
+                               href="#pool_{{ pool.id }}"
+                               role="tab">
+                                {{ pool.title }}
+                            </a>
+                        </li>
+                    {% endfor %}
+                    {% for pool in random_pools_info.pools_info %}
+                        <li class="nav-item col-4 ">
+                            <a class="nav-link {% if current_pool == pool.id %}active{% endif %}"
+                               id="pool-{{ pool.id }}"
+                               data-toggle="tab"
+                               href="#pool_{{ pool.id }}"
+                               role="tab">
+                                {{ pool.title }}
+                            </a>
+                        </li>
+                    {% endfor %}
+                </ul>
+                <div class="mx-0 tab-content bg-white border rounded" style="border-color:#dee2e6!important;min-height:calc(100vh - 13rem);position:relative;">
+                    {% if exchange_pools_info.pools_info.length == 0 and lottery_pools_info.pools_info.length == 0  and random_pools_info.pools_info.length == 0 %}
+                        <div class="text-center w-100" style="position:absolute;top:50%;">
+                            暂时没有开放的元气值奖池
+                        </div>
+                    {% endif %}
+                    {% for pool in exchange_pools_info.pools_info %}
+                        <div id="pool_{{ pool.id }}" class="{% if current_pool == pool.id %}active show{% endif %} tab-pane fade" role="tabpanel">
+                            <div class="row mx-0 p-3">
+                                <div class="px-1 col-12 d-flex align-items-center justify-content-between">
+                                    <p>
+                                        <span class="badge badge-primary">{{ pool.type }}奖池</span>
+                                        <span class="badge">{{ pool.title }}</span>
+                                    </p>
+                                    <p>
+                                        <span class="badge text-success">我的元气值：{{ my_YQpoint }}</span>
+                                    </p>
+                                </div>
+                                <div class="px-1 col-12">
+                                    <span>活动时间：{{ pool.start }}{% if pool.end %} - {{ pool.end|date:"n月j日 H:i" }}{% endif %}</span>
+                                </div>
+                                <div class="px-1 col-12 mb-3">
+                                    <span>领取时间：{{ pool.redeem_start }} - {{ pool.redeem_end|date:"n月j日 H:i" }}</span>
+                                </div>
+                                {% for item in pool.items %}
+                                    <div class="prize-item p-1 col-6 col-md-4 col-lg-3">
+                                        <div class="card">
+                                            <div class="card-body p-2">
+                                                <div class="d-flex align-items-baseline justify-content-between">
+                                                    <h6>{{ item.prize__name }}</h6>
+                                                    <div>
+                                                        <span class="font-weight-bold {% if item.remain_num == 0 %}text-danger{% else %}text-success{% endif %}">{{ item.remain_num }}</span>
+                                                        <span class="font-weight-bold">/ {{ item.origin_num }}</span>
+                                                    </div>
+                                                </div>
+                                                <img src="/media/{{ item.prize__image }}"
+                                                     class="rounded w-100"
+                                                     style="object-fit:cover;aspect-ratio:4/3"
+                                                     alt="{{ item.prize__name }}">
+                                                <p class="card-text mt-2">
+                                                    <a href="#" data-toggle="modal" data-target="#prize-{{ item.id }}">
+                                                        <span class="text-info px-1"><i class="fa fa-solid fa-info-circle"></i> 详情</span>
+                                                    </a>
+                                                </p>
+                                                <form action="" method="POST" class="invisible" id="getExchangeForm{{ item.id }}">
+                                                    <input type="hidden" name="pool_id" value="{{ pool.id }}">
+                                                </form>
+                                                <div class="btn-group btn-group-sm w-100" role="group">
+                                                    {% if item.exchange_price > my_YQpoint %}
+                                                        <button class="btn btn-dark w-50 px-1">{{ item.exchange_price }} 元气值</button>
+                                                        <button href="#" class="btn btn-light w-50 px-1 disabled">元气值不足</button>
+                                                    {% elif item.my_exchange_time >= item.exchange_limit %}
+                                                        <button class="btn btn-dark w-50 px-1">{{ item.exchange_price }} 元气值</button>
+                                                        <button href="#" class="btn btn-light w-50 px-1 disabled">次数已用完</button>
+                                                    {% elif item.remain_num == 0 %}
+                                                        <button class="btn btn-dark w-50 px-1">{{ item.exchange_price }} 元气值</button>
+                                                        <button href="#" class="btn btn-light w-50 px-1 disabled">奖品不足</button>
+                                                    {% else %}
+                                                        <button class="btn btn-success w-50 px-1">{{ item.exchange_price }} 元气值</button>
+                                                        <button type="submit" 
+                                                            class="btn btn-outline-success w-50 px-1" 
+                                                            form="getExchangeForm{{ item.id }}" 
+                                                            name="submit_exchange" 
+                                                            value="{{ item.id }}"
+                                                            onclick="return confirm('确定要兑换该奖品吗？')"
+                                                            >
+                                                            兑换
+                                                        </button>
+                                                    {% endif %}
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                {% endfor %}
+                            </div>
+                        </div>
+                    {% endfor %}
+                    {% for pool in lottery_pools_info.pools_info %}
+                        <div id="pool_{{ pool.id }}" class="{% if current_pool == pool.id %}active show{% endif %} tab-pane fade" role="tabpanel">
+                            <div class="row mx-0 p-3">
+                                <div class="px-1 col-12 d-flex align-items-center justify-content-between">
+                                    <p>
+                                        <span class="badge badge-primary">{{ pool.type }}奖池</span>
+                                        <span class="badge">{{ pool.title }}</span>
+                                    </p>
+                                    <p>
+                                        <span class="badge text-success">我的元气值：{{ my_YQpoint }}</span>
+                                    </p>
+                                </div>
+                                <div class="px-1 col-12 mb-1">
+                                    <span>当前参与人数：{{ pool.records_num }}</span>
+                                </div>
+                                <div class="px-1 col-12">
+                                    <span>活动时间：{{ pool.start }}{% if pool.end %} - {{ pool.end|date:"n月j日 H:i" }}{% endif %}</span>
+                                </div>
+                                <div class="px-1 col-12 mb-3">
+                                    <span>领取时间：{{ pool.redeem_start }} - {{ pool.redeem_end|date:"n月j日 H:i" }}</span>
+                                </div>
+                                {% if pool.status == 1 %}
+                                    <div class="card col-12 p-3 my-3">
+                                        <div class="card-body">
+                                            {% if pool.results.big_prize_results %}
+                                                <h5 class="card-subtitle my-2 text-center" style="color:gold">
+                                                    <i class="fas fa-crown"></i> 特别奖品获奖同学
+                                                </h5>
+                                                {% for result in pool.results.big_prize_results %}
+                                                    <h6 class="text-center">
+                                                        {{ result.prize_name }}
+                                                    </h6>
+                                                    <p class="card-text text-center">
+                                                        {% for winner in result.winners %}
+                                                            <span>{{ winner }}</span>
+                                                        {% endfor %}
+                                                    </p>
+                                                {% endfor %}
+                                            {% endif %}
+                                            <h6 class="card-subtitle mt-5 mb-3 text-center" style="color:gold">
+                                                <i class="fas fa-gift"></i> 获奖同学
+                                            </h6>
+                                            {% for result in pool.results.normal_prize_results %}
+                                                <h6 class="text-center">
+                                                    {{ result.prize_name }}
+                                                </h6>
+                                                <p class="card-text text-center">
+                                                    {% for winner in result.winners %}
+                                                        <span>{{ winner }}</span>
+                                                    {% endfor %}
+                                                </p>
+                                            {% endfor %}
+                                        </div>
+                                    </div>
+                                {% endif %}
+                                <div class="special-prize col-sm-12 col-md-6 mx-auto ">
+                                    {% for item in pool.items %}
+                                        {% if item.is_big_prize %}
+                                            <h5 class="text-center text-success">
+                                                <i class="fa fa-solid fa-gift"></i> 特别奖品
+                                            </h5>
+                                            <p>
+                                                <h6 class="text-center">
+                                                    {{ item.prize__name }}
+                                                </h6>
+                                                <span class="d-block text-center">X {{ item.origin_num }}</span>
+                                            </p>
+                                            <img src="/media/{{ item.prize__image }}"
+                                                 class="rounded w-100"
+                                                 style="aspect-ratio:4/3;
+                                                        object-fit:cover;"
+                                                 alt="{{ item.prize__name }}"
+                                                 data-toggle="modal"
+                                                 data-target="#prize-{{ item.id }}">
+                                        {% endif %}
+                                    {% endfor %}
+                                </div>
+                                <h6 class="mt-5 mb-1 col-12 text-center mx-auto text-grey">
+                                    <i class="fa fa-solid fa-gifts"></i> 全部奖品
+                                </h6>
+                                <div class="prize-items col-10 mx-auto d-flex justify-content-between">
+                                    {% for item in pool.items %}
+                                        <div class="prize-info p-2">
+                                            <div class="card" data-toggle="modal" data-target="#prize-{{ item.id }}">
+                                                <img src="/media/{{ item.prize__image }}"
+                                                     class="card-img-top"
+                                                     style="object-fit:cover;aspect-ratio:4/3"
+                                                     alt="{{ item.prize__name }}">
+                                                <p>
+                                                    <h6 class="text-center">
+                                                        {{ item.prize__name }}
+                                                    </h6>
+                                                    <span class="d-block text-center">X {{ item.origin_num }}</span>
+                                                </p>
+                                            </div>
+                                        </div>
+                                    {% endfor %}
+                                </div>
+                                <form action="" method="POST" class="invisible" id="getLotteryForm">
+                                </form>
+                                <div class="col-sm-12 col-md-6 my-3 mx-auto">
+                                    <div class="btn-group btn-group-sm w-100" role="group">
+                                        {% if pool.status == 0 %}
+                                            {% if  pool.ticket_price  > my_YQpoint %}
+                                                <button class="btn btn-dark w-50 px-1">
+                                                    {{ pool.ticket_price }} 元气值 / 次
+                                                </button>
+                                                <button href="#" class="btn btn-light w-50 px-1 disabled">
+                                                    元气值不足
+                                                </button>
+                                            {% elif pool.my_entry_time >= pool.entry_time %}
+                                                <button class="btn btn-dark w-50 px-1">
+                                                    {{ pool.ticket_price }} 元气值 / 次
+                                                </button>
+                                                <button href="#" class="btn btn-light w-50 px-1 disabled">
+                                                    次数已用完
+                                                </button>
+                                            {% else %}
+                                                <button class="btn btn-success w-50 px-1">
+                                                    {{ pool.ticket_price }} 元气值 / 次
+                                                </button>
+                                                <button type="submit" 
+                                                    class="btn btn-outline-success w-50 px-1" 
+                                                    form="getLotteryForm" 
+                                                    name="submit_lottery" 
+                                                    value="{{ pool.id }}"
+                                                    onclick="return confirm('确定要参与该抽奖吗？')"
+                                                    >
+                                                    参与抽奖
+                                                </button>
+                                            {% endif %}
+                                        {% else %}
+                                            <button class="btn btn-light w-100 px-1 disabled">
+                                                抽奖已结束
+                                            </button>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    {% endfor %}
+                    {% for pool in random_pools_info.pools_info %}
+                        <div id="pool_{{ pool.id }}" class="{% if current_pool == pool.id %}active show{% endif %} tab-pane fade" role="tabpanel">
+                            <div class="row mx-0 p-3">
+                                <div class="px-1 col-12 d-flex align-items-center justify-content-between">
+                                    <p>
+                                        <span class="badge badge-primary">{{ pool.type }}奖池</span>
+                                        <span class="badge">{{ pool.title }}</span>
+                                    </p>
+                                    <p>
+                                        <span class="badge text-success">我的元气值：{{ my_YQpoint }}</span>
+                                    </p>
+                                </div>
+                                <div class="px-1 col-12">
+                                    <span>活动时间：{{ pool.start }}{% if pool.end %} - {{ pool.end|date:"n月j日 H:i" }}{% endif %}</span>
+                                </div>
+                                <div class="px-1 col-12 mb-3">
+                                    <span>领取时间：{{ pool.redeem_start }} - {{ pool.redeem_end|date:"n月j日 H:i" }}</span>
+                                </div>
+                                <div class="special-prize col-sm-12 col-md-6 mx-auto ">
+                                    {% for item in pool.items %}
+                                        {% if item.is_big_prize %}
+                                            <h5 class="text-center text-success">
+                                                <i class="fa fa-solid fa-gift"></i> 特别奖品
+                                            </h5>
+                                            <p>
+                                                <h6 class="text-center">
+                                                    {{ item.prize__name }}
+                                                </h6>
+                                                <span class="d-block text-center">获取概率 {% widthratio item.origin_num pool.capacity 100 %}%</span>
+                                            </p>
+                                            <img src="/media/{{ item.prize__image }}"
+                                                 class="rounded w-100"
+                                                 style="aspect-ratio:4/3;
+                                                        object-fit:cover;"
+                                                 alt="{{ item.prize__name }}"
+                                                 data-toggle="modal"
+                                                 data-target="#prize-{{ item.id }}">
+                                        {% endif %}
+                                    {% endfor %}
+                                </div>
+                                <h6 class="mt-5 mb-1 col-12 text-center mx-auto text-grey">
+                                    <i class="fa fa-solid fa-gifts"></i> 全部奖品
+                                </h6>
+                                <div class="prize-items col-10 mx-auto d-flex justify-content-between">
+                                    {% for item in pool.items %}
+                                        <div class="prize-info p-2">
+                                            <div class="card" data-toggle="modal" data-target="#prize-{{ item.id }}">
+                                                <img src="/media/{{ item.prize__image }}"
+                                                     class="card-img-top"
+                                                     style="object-fit:cover;aspect-ratio:4/3"
+                                                     alt="{{ item.prize__name }}">
+                                                <p>
+                                                    <h6 class="text-center">
+                                                        {{ item.prize__name }}
+                                                    </h6>
+                                                </p>
+                                            </div>
+                                        </div>
+                                    {% endfor %}
+                                </div>
+                                <form action="" method="POST" class="invisible" id="getRandomForm">
+                                </form>
+                                <div class="col-sm-12 col-md-6 my-3 mx-auto">
+                                    <div class="btn-group btn-group-sm w-100" role="group">
+                                        {% if  pool.ticket_price  > my_YQpoint %}
+                                            <button class="btn btn-dark w-50 px-1">
+                                                {{ pool.ticket_price }} 元气值 / 次
+                                            </button>
+                                            <button href="#" class="btn btn-light w-50 px-1 disabled">
+                                                元气值不足
+                                            </button>
+                                        {% elif pool.my_entry_time >= pool.entry_time %}
+                                            <button class="btn btn-dark w-50 px-1">
+                                                {{ pool.ticket_price }} 元气值 / 次
+                                            </button>
+                                            <button href="#" class="btn btn-light w-50 px-1 disabled">
+                                                次数已用完
+                                            </button>
+                                        {% else %}
+                                            <button class="btn btn-success w-50 px-1">
+                                                {{ pool.ticket_price }} 元气值 / 次
+                                            </button>
+                                            <button type="submit" 
+                                                class="btn btn-outline-success w-50 px-1" 
+                                                form="getRandomForm" 
+                                                name="submit_random" 
+                                                value="{{ pool.id }}"
+                                                onclick="return confirm('确定要购买该盲盒吗？')"
+                                                >
+                                                获取盲盒
+                                            </button>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    </div>
+    <!-- Modal -->
+    {% for pool in exchange_pools_info.pools_info %}
+        {% for item in pool.items %}
+            <div class="modal fade" id="prize-{{ item.id }}" tabindex="-1" role="dialog">
+                <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable" role="document">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h5 class="modal-title" id="prize-{{ item.id }}-label">
+                                {{ item.prize__name }}
+                            </h5>
+                            <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                                <span aria-hidden="true">&times;</span>
+                            </button>
+                        </div>
+                        <div class="modal-body">
+                            <div class="mx-5">
+                                <img src="/media/{{ item.prize__image }}"
+                                     class="w-100 rounded mb-3"
+                                     style="object-fit:cover;aspect-ratio:4/3;margin:auto"
+                                     alt="{{ item.prize__name }}">
+                                <p>
+                                    <span class="badge badge-primary">{{ pool.type }}奖品</span>
+                                </p>
+                                <p>
+                                    <i class="fa fa-fw fa-gift"></i> 奖品名称：{{ item.prize__name }}
+                                </p>
+                                <p>
+                                    <i class="fa fa-fw fa-info"></i> 奖品说明：{{ item.prize__more_info }}
+                                </p>
+                                {% comment %} <p>
+                                    <i class="fa fa-fw fa-yen-sign"></i> 参考价格：{{ item.prize__reference_price }} 元
+                                </p> {% endcomment %}
+                                {% if pool.type == "兑换" %}
+                                    <p>
+                                        <i class="fa fa-fw fa-exchange-alt"></i> 兑换比例：{{ item.exchange_price }} 元气值/个
+                                    </p>
+                                    <p>
+                                        <i class="fa fa-fw fa-boxes"></i> 奖品总数：{{ item.origin_num }} 个
+                                    </p>
+                                    <p>
+                                        <i class="fa fa-fw fa-hourglass-end"></i> 剩余数量：{{ item.remain_num }} 个
+                                    </p>
+                                    <p>
+                                        <i class="fas fa-fw fa-ticket-alt"></i> 剩余兑换次数：{{ item.my_exchange_time }} / {{ item.exchange_limit }} 次
+                                    </p>
+                                {% endif %}
+                                {% if pool.type == "抽奖" %}
+                                    <p>
+                                        <i class="fa fa-fw fa-boxes"></i> 奖品数量：{{ item.origin_num }} 个
+                                    </p>
+                                {% endif %}
+                                {% if pool.type == "盲盒" and item.is_big_prize %}
+                                    <p>
+                                        <i class="far fa-fw fa-star"></i> 获取概率：{% widthratio item.origin_num pool.capacity 100 %}%
+                                    </p>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        {% endfor %}
+    {% endfor %}
+    {% for pool in lottery_pools_info.pools_info %}
+        {% for item in pool.items %}
+            <div class="modal fade" id="prize-{{ item.id }}" tabindex="-1" role="dialog">
+                <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable" role="document">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h5 class="modal-title" id="prize-{{ item.id }}-label">
+                                {{ item.prize__name }}
+                            </h5>
+                            <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                                <span aria-hidden="true">&times;</span>
+                            </button>
+                        </div>
+                        <div class="modal-body">
+                            <div class="w-75">
+                                <img src="/media/{{ item.prize__image }}"
+                                     class="w-100 rounded mb-3"
+                                     style="object-fit:cover;aspect-ratio:4/3;margin:auto"
+                                     alt="{{ item.prize__name }}">
+                                <p>
+                                    <span class="badge badge-primary">{{ pool.type }}奖品</span>
+                                </p>
+                                <p>
+                                    <i class="fa fa-fw fa-gift"></i> 奖品名称：{{ item.prize__name }}
+                                </p>
+                                <p>
+                                    <i class="fa fa-fw fa-info"></i> 奖品说明：{{ item.prize__more_info }}
+                                </p>
+                                {% comment %} <p>
+                                    <i class="fa fa-fw fa-yen-sign"></i> 参考价格：{{ item.prize__reference_price }} 元
+                                </p> {% endcomment %}
+                                {% if pool.type == "兑换" %}
+                                    <p>
+                                        <i class="fa fa-fw fa-exchange-alt"></i> 兑换比例：{{ item.exchange_price }} 元气值/个
+                                    </p>
+                                    <p>
+                                        <i class="fa fa-fw fa-boxes"></i> 奖品总数：{{ item.origin_num }} 个
+                                    </p>
+                                    <p>
+                                        <i class="fa fa-fw fa-hourglass-end"></i> 剩余数量：{{ item.remain_num }} 个
+                                    </p>
+                                    <p>
+                                        <i class="fas fa-fw fa-ticket-alt"></i> 剩余兑换次数：{{ item.my_exchange_time }} / {{ item.exchange_limit }} 次
+                                    </p>
+                                {% endif %}
+                                {% if pool.type == "抽奖" %}
+                                    <p>
+                                        <i class="fa fa-fw fa-boxes"></i> 奖品数量：{{ item.origin_num }} 个
+                                    </p>
+                                {% endif %}
+                                {% if pool.type == "盲盒" and item.is_big_prize %}
+                                    <p>
+                                        <i class="far fa-fw fa-star"></i> 获取概率：{% widthratio item.origin_num pool.capacity 100 %}%
+                                    </p>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        {% endfor %}
+    {% endfor %}
+    {% for pool in random_pools_info.pools_info %}
+        {% for item in pool.items %}
+            <div class="modal fade" id="prize-{{ item.id }}" tabindex="-1" role="dialog">
+                <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable" role="document">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h5 class="modal-title" id="prize-{{ item.id }}-label">
+                                {{ item.prize__name }}
+                            </h5>
+                            <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                                <span aria-hidden="true">&times;</span>
+                            </button>
+                        </div>
+                        <div class="modal-body">
+                            <div class="mx-5">
+                                <img src="/media/{{ item.prize__image }}"
+                                     class="w-100 rounded mb-3"
+                                     style="object-fit:cover;aspect-ratio:4/3;margin:auto"
+                                     alt="{{ item.prize__name }}">
+                                <p>
+                                    <span class="badge badge-primary">{{ pool.type }}奖品</span>
+                                </p>
+                                <p>
+                                    <i class="fa fa-fw fa-gift"></i> 奖品名称：{{ item.prize__name }}
+                                </p>
+                                <p>
+                                    <i class="fa fa-fw fa-info"></i> 奖品说明：{{ item.prize__more_info }}
+                                </p>
+                                {% comment %} <p>
+                                    <i class="fa fa-fw fa-yen-sign"></i> 参考价格：{{ item.prize__reference_price }} 元
+                                </p> {% endcomment %}
+                                {% if pool.type == "兑换" %}
+                                    <p>
+                                        <i class="fa fa-fw fa-exchange-alt"></i> 兑换比例：{{ item.exchange_price }} 元气值/个
+                                    </p>
+                                    <p>
+                                        <i class="fa fa-fw fa-boxes"></i> 奖品总数：{{ item.origin_num }} 个
+                                    </p>
+                                    <p>
+                                        <i class="fa fa-fw fa-hourglass-end"></i> 剩余数量：{{ item.remain_num }} 个
+                                    </p>
+                                    <p>
+                                        <i class="fas fa-fw fa-ticket-alt"></i> 剩余兑换次数：{{ item.my_exchange_time }} / {{ item.exchange_limit }} 次
+                                    </p>
+                                {% endif %}
+                                {% if pool.type == "抽奖" %}
+                                    <p>
+                                        <i class="fa fa-fw fa-boxes"></i> 奖品数量：{{ item.origin_num }} 个
+                                    </p>
+                                {% endif %}
+                                {% if pool.type == "盲盒" and item.is_big_prize %}
+                                    <p>
+                                        <i class="far fa-fw fa-star"></i> 获取概率：{% widthratio item.origin_num pool.capacity 100 %}%
+                                    </p>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        {% endfor %}
+    {% endfor %}
+    <div class="modal fade" id="random-result" data-backdrop="static" tabindex="-1" role="dialog" style="background:rgba(0,0,0,0.9)">
+        <div class="modal-dialog modal-dialog-centered" role="document">
+            <div class="modal-content bg-transparent border-0">
+                <div class="modal-body ">
+                    <div>
+                        <div id="random-box" class="w-100">
+                            <div class="box">
+                                <div class="side">
+                                </div>
+                                <div class="side">
+                                </div>
+                                <div class="side">
+                                </div>
+                                <div class="side">
+                                </div>
+                                <div class="side">
+                                </div>
+                                <div class="side">
+                                </div>
+                            </div>
+                            <div class="random-prize w-100 card p-3">
+                                {% if random_pool_effect_code == 0 %}
+                                    <img src="/media/{{ random_pool_effect_image }}"
+                                         class="w-100 rounded mb-3"
+                                         style="object-fit:cover;aspect-ratio:4/3;margin:auto"
+                                         alt="{{ irandom_pool_effect_name }}">
+                                    <h6 class="text-center mb-3">
+                                        获得 <span class="text-success">{{ random_pool_effect_name }}</span> x 1
+                                    </h6>
+                                    <button type="button" class="btn btn-success w-100" data-dismiss="modal">
+                                        收下奖品
+                                    </button>
+                                {% elif random_pool_effect_code == 1  %}
+                                    <div class="w-100 rounded mb-3 d-flex align-items-center justify-content-center" style="aspect-ratio:4/3;">
+                                        <i class="fas fa-rocket"></i>
+                                    </div>
+                                    <h6 class="text-center mb-3">
+                                        获得 <span class="text-success">空的盒子</span> x 1
+                                    </h6>
+                                    <button type="button" class="btn btn-success w-100" data-dismiss="modal">
+                                        下次再来
+                                    </button>
+                                {% endif %}
+                            </div>
+                            <div id="open-random-box" class="d-block mx-auto text-center">
+                                点击开启盲盒
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+{% endblock %}
+{% block add_js_file %}
+    <script src={% static 'plugins/slick/slick.js' %}></script>
+    <script type="text/javascript">
+        $(document).ready(function(){
+            $(".prize-items").each(function(slickTarget){
+                $(this).slick({
+                    infinite: true,
+                    slidesToShow: 3,
+                    slidesToScroll: 1,
+                    autoplay: true,
+                    autoplaySpeed: 2000,
+                    dots: true,
+                    responsive: [
+                        {
+                            breakpoint: 1024,
+                            settings: {
+                                slidesToShow: 3,
+                                slidesToScroll: 1,
+                                infinite: true,
+                                dots: true
+                            }
+                        },
+                        {
+                            breakpoint: 600,
+                            settings: {
+                                slidesToShow: 2,
+                                slidesToScroll: 1,
+                                infinite: true,
+                                dots: true
+                            }
+                        }
+                    ]
+                });
+            })
+        });
+        $('a[data-toggle="tab"]').on('shown.bs.tab', function(e){
+            $(".prize-items").each(function(slickTarget){
+                $(this).slick("refresh")
+            })
+        });
+    </script>
+    {% if random_pool_effect_code != 2 %}
+        <script>
+        // 清除浏览器上次表单历史
+        if ( window.history.replaceState ) {
+            window.history.replaceState( null, null, window.location.href );
+        }
+        $(document).ready(function(){
+            $("#random-result").modal('show')
+            $("#random-box").on("click",function(){
+                $("#random-box .box").addClass("open")
+            })
+        })
+        </script>
+    {% endif %}
+{% endblock %}
