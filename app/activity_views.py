@@ -1130,7 +1130,7 @@ def modifyEndActivity(request: HttpRequest):
             with transaction.atomic():
                 if post_type == "new_submit":
                     # 新建activity summary
-                    application = ActivitySummary.objects.create(
+                    application: ActivitySummary = ActivitySummary.objects.create(
                             status=ActivitySummary.Status.WAITING, 
                             activity=activity,
                             )

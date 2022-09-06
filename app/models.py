@@ -2032,13 +2032,13 @@ class ActivitySummary(models.Model):
     def __str__(self):
         return f'{self.activity.title}活动总结'
 
-
     def is_pending(self):   #表示是不是pending状态
         return self.status == ActivitySummary.Status.WAITING
 
-    def get_status_str(self):
-        return self.Status.choices[self.status][1]
-
-    def get_poster_name(self):
+    @necessary_for_frontend('activity.organization_id')
+    def get_org(self):
         return self.activity.organization_id
 
+    @necessary_for_frontend('activity.title', '__str__')
+    def get_audit_display(self):
+        return f'{self.activity.title}总结'
