@@ -57,7 +57,7 @@ class UserManager(_UserManager):
         if isinstance(user, User):
             return user
         if isinstance(user, str):
-            return users.get(username=user)
+            user = user.pk
         return users.get(pk=user)
 
     def create_user(self, username: str, name: str,
