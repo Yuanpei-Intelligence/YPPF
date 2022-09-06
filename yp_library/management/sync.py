@@ -18,7 +18,7 @@ def update_reader():
                          user=os.environ["LIB_DB_USER"],
                          password=os.environ["LIB_DB_PASSWORD"],
                          database=os.environ["LIB_DB"],
-                         timeout=5) as conn:
+                         login_timeout=5) as conn:
         with conn.cursor(as_dict=True) as cursor:
             cursor.execute('SELECT ID,IDCardNo FROM Readers')
             # 暂时采用全部遍历的更新方式，因为存在空缺的数据较多，待书房的数据修订完成后，
@@ -41,7 +41,7 @@ def update_book():
                          user=os.environ["LIB_DB_USER"],
                          password=os.environ["LIB_DB_PASSWORD"],
                          database=os.environ["LIB_DB"],
-                         timeout=5) as conn:
+                         login_timeout=5) as conn:
         with conn.cursor(as_dict=True) as cursor:
             # 筛选新增数据
             cursor.execute(f'''SELECT MarcID,Title,Author,Publisher,ReqNo
@@ -77,7 +77,7 @@ def update_records():
                          user=os.environ["LIB_DB_USER"],
                          password=os.environ["LIB_DB_PASSWORD"],
                          database=os.environ["LIB_DB"],
-                         timeout=5) as conn:
+                         login_timeout=5) as conn:
         with conn.cursor(as_dict=True) as cursor:
             # 新增借书记录
             cursor.execute(f'''SELECT ID,ReaderID,BarCode,LendTM,DueTm 
