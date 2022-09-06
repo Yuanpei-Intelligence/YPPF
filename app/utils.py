@@ -8,7 +8,6 @@ from app.models import (
     Notification,
     Activity,
     Help,
-    Reimbursement,
     Participant,
     ModifyRecord,
 )
@@ -76,11 +75,8 @@ def get_classified_user(user: User, user_type=None, *,
         只获取活跃的用户，由对应的模型管理器检查，用户不活跃可能报错
     '''
     if user_type is None:
-        if hasattr(user, "naturalperson"):
-            return NaturalPerson.objects.get_by_user(user, update=update, activate=activate)
-        else:
-            return Organization.objects.get_by_user(user, update=update, activate=activate)
-    elif user_type == UTYPE_PER:
+        user_type = user.utype
+    if user_type == UTYPE_PER:
         return NaturalPerson.objects.get_by_user(user, update=update, activate=activate)
     elif user_type == UTYPE_ORG:
         return Organization.objects.get_by_user(user, update=update, activate=activate)
@@ -100,9 +96,9 @@ def get_user_by_name(name):
         user<object>: 用户对象
         user_type: 用户类型
     """
-    try: return NaturalPerson.objects.get(name=name).person_id, UTYPE_PER
+    try: return NaturalPerson.objects.get(name=name).get_user(), UTYPE_PER
     except: pass
-    try: return Organization.objects.get(oname=name).organization_id, UTYPE_ORG
+    try: return Organization.objects.get(oname=name).get_user(), UTYPE_ORG
     except: pass
     print(f"{name} is neither natural person nor organization!")
 
@@ -110,26 +106,14 @@ def get_user_by_name(name):
 # YWolfeee, Aug 16
 # check_user_type只是获得user的类型，其他用于呈现html_display的内容全部转移到get_siderbar_and_navbar中
 # 同步开启一个html_display，方便拓展前端逻辑的呈现
-def check_user_type(user):
+def check_user_type(user: User):
+    '''待废弃'''
     html_display = {}
-    if user.is_superuser or user.is_staff:
-        if user.is_staff:
-            for user_type, model_name in [
-                (UTYPE_ORG, "organization"),
-                (UTYPE_PER, "naturalperson"),
-                ]:
-                if hasattr(user, model_name):
-                    html_display["user_type"] = user_type
-                    return True, user_type, html_display
-        return False, "", html_display
-    if user.username[:2] == "zz":
-        user_type = UTYPE_ORG
+    user_type = user.utype
+    valid = user.is_valid()
+    if valid:
         html_display["user_type"] = user_type
-    else:
-        user_type = UTYPE_PER
-        html_display["user_type"] = user_type
-
-    return True, user_type, html_display
+    return valid, user_type, html_display
 
 
 def get_user_ava(obj: ClassifiedUser, user_type):
@@ -435,12 +419,10 @@ def if_image(image):
 
 
 def random_code_init(seed):
-    '''用于新建小组时，生成6位随机密码'''
+    '''用于新建小组时，根据种子生成6位伪随机密码（如果种子可知则密码可知）'''
     b = string.digits + string.ascii_letters  # 构建密码池
-    password = ""
     random.seed(seed)
-    for i in range(0, 6):
-        password = password + random.choice(b)
+    password = ''.join(random.choices(b, k=6))
     return password
 
 
@@ -481,37 +463,9 @@ def set_captcha_session(request, username, captcha):
 
 def clear_captcha_session(request):
     '''noexcept'''
-    request.session.pop("captcha")
-    request.session.pop("captcha_create_time")  # 验证码只能登录一次
-    request.session.pop("received_user")        # 成功登录后不再保留
-
-
-def set_nperson_quota_to(quota):
-    """
-        后台设定所有自然人的元气值为一特定值，这个值就是每月的限额
-        给所有用户发送通知
-    """
-    activated_npeople = NaturalPerson.objects.activated()
-
-
-    activated_npeople.update(quota=quota)
-    notification_content = f"学院已经将大家的元气值配额重新设定为{quota},祝您使用愉快！"
-    title = Notification.Title.VERIFY_INFORM
-    YPcollege = Organization.objects.get(oname=YQP_ONAME)
-
-    # 函数内导入是为了防止破坏utils的最高优先级，如果以后确定不会循环引用也可提到外面
-    # 目前不发送到微信哦
-    from notification_utils import bulk_notification_create
-    receivers = activated_npeople.select_related('person_id')
-    receivers = [receiver.person_id for receiver in receivers]
-    success, _ = bulk_notification_create(
-        receivers,
-        YPcollege,
-        Notification.Type.NEEDREAD,
-        title,
-        notification_content,
-    )
-    return success
+    request.session.pop("captcha", None)
+    request.session.pop("captcha_create_time", None)  # 验证码只能登录一次
+    request.session.pop("received_user", None)        # 成功登录后不再保留
 
 
 def check_account_setting(request, user_type):
@@ -573,27 +527,6 @@ def check_account_setting(request, user_type):
         attr_dict['introduction'] = request.POST['introduction']
         attr_dict['tags_modify'] = request.POST['tags_modify']
     return attr_dict, show_dict, html_display
-
-#获取未报销的活动
-def get_unreimb_activity(org):
-    """
-    用于views.py&reimbursement_utils.py
-    注意：默认传入参数org类型为Organization
-    """
-    reimbursed_act_ids = (
-        Reimbursement.objects.all()
-            .exclude(status=Reimbursement.ReimburseStatus.CANCELED)  # 未取消的
-            .exclude(status=Reimbursement.ReimburseStatus.REFUSED)   # 未被拒绝的
-            .values_list("related_activity_id", flat=True)
-    )
-    activities = (
-        Activity.objects.activated()  # 本学期的
-            .filter(organization_id=org)  # 本部门小组的
-            .filter(status=Activity.Status.END)  # 已结束的
-            .exclude(id__in=reimbursed_act_ids))  # 还没有报销的
-    activities.len = len(activities)
-    return activities
-
 
 # 导出Excel文件
 def export_activity(activity, inf_type):
@@ -756,9 +689,9 @@ def update_related_account_in_session(request, username, shift=False, oname=""):
         if oname not in orgs:
             return False
         orgs.remove(oname)
-        user = Organization.objects.get(oname=oname).organization_id
+        user = Organization.objects.get(oname=oname).get_user()
     else:
-        user = np.person_id
+        user = np.get_user()
 
     if shift:
         auth.logout(request)
@@ -771,7 +704,7 @@ def update_related_account_in_session(request, username, shift=False, oname=""):
 
 
 @log.except_captured(source='utils[user_login_org]', record_user=True)
-def user_login_org(request, org) -> MESSAGECONTEXT:
+def user_login_org(request, org: Organization) -> MESSAGECONTEXT:
     '''
     令人疑惑的函数，需要整改
     尝试从用户登录到org指定的组织，如果不满足权限，则会返回wrong
@@ -794,7 +727,7 @@ def user_login_org(request, org) -> MESSAGECONTEXT:
         return wrong("没有登录到该小组账户的权限!")
     # 到这里, 是本人小组并且有权限登录
     auth.logout(request)
-    auth.login(request, org.organization_id)  # 切换到小组账号
+    auth.login(request, org.get_user())  # 切换到小组账号
     update_related_account_in_session(request, user.username, oname=org.oname)
     return succeed("成功切换到小组账号处理该事务，建议事务处理完成后退出小组账号。")
 

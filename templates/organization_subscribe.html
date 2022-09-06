@@ -129,7 +129,7 @@
                                                     <!--<td>
                                                         {{org.otype.otype_name}}
                                                     </td>-->
-                                                    {% with username=org.organization_id.username %}
+                                                    {% with username=org.get_user.username %}
                                                     {% if username not in unsubscribe_set %}
                                                     <td bgColor="F3FDFF" , id="td{{username}}_{{type_id}}">
                                                         <div class="custom-control custom-switch">

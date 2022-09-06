@@ -17,7 +17,7 @@
 
 {% block mainpage %}
 
-{% with title='结项信息' link='/modifyEndActivity/' new_link='' query_field='reimb_id' new_btn_name='新建结项' btn_name='详情' empty_info='列表空空如也~' %}
+{% with title='结项信息' link='/modifyEndActivity/' new_link='' query_field='apply_id' new_btn_name='新建结项' btn_name='详情' empty_info='列表空空如也~' %}
 
 <!--  BEGIN CONTENT AREA  -->
 <div id="content" class="main-content">
@@ -90,7 +90,7 @@
 
 
 {% for instance in shown_instances %}
-    {% with instance.get_instance.get_status_display as status %}
+    {% with instance.get_status_str as status %}
 <div class="col-12 col-xl-6 col-lg-12 mb-xl-4 mb-4 ">
 
     <div class=" b-skills">
@@ -129,12 +129,6 @@
                 </p>
             </div>
             {% endwith %}
-            <div>
-                <p style="color: rgb(66, 67, 68);">
-                        报销: {{instance.amount}}元
-                   
-                </p>
-            </div>
         </div>
         <div class="d-flex justify-content-between">
             <div>

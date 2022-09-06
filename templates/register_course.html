@@ -198,7 +198,59 @@
                                             </div>
                                         </div>
                                     </div>
-
+                                    <div class="form-group " >
+                                        <label>本次课程活动是否需要报名</label>
+                                        <div class="form-control" >
+                                            <div class="row">
+                                                <label for="need_apply" class="col-6">
+                                                    需要报名
+                                                <input type="radio" id="need_apply" value="True" name="need_apply" class="align-middle" style="height:1em"
+                                                required="required"
+                                                {% if need_apply %}checked{% endif %}>
+                                            </label>
+                                            <label for="not_need_apply" class="col-6">全员参与
+                                                <input type="radio" id="not_need_apply" value="False" name="need_apply" class="align-middle" style="height:1em"
+                                                required="required"
+                                                {% if not need_apply %}checked{% endif %}>
+                                            </label>
+                                            </div>
+                                        </div>
+                                    </div>   
+                                    <div class="form-group" >
+                                        <label>本次课程活动信息发布时间</label>
+                                        <div class="form-control h-100" >
+                                            <div class="row">
+                                                <label for="3days" class="form-check-label col-sm-12 col-md-6 col-lg-3">
+                                                    提前三天
+                                                    <input type="radio" id="3days" value="3" name="publish_day" class="align-middle" style="height:1em"
+                                                    required="required"
+                                                    {% if not edit %}checked{% endif %}
+                                                    {% if edit and publish_day == 3 %}checked{% endif %} >
+                                                </label>
+                                                <label for="2days" class="form-check-label col-sm-12 col-md-6 col-lg-3">
+                                                    提前两天
+                                                    <input type="radio" id="2days" value="2" name="publish_day" class="align-middle" style="height:1em"
+                                                    required="required"
+                                                    {% if edit and publish_day == 2 %}checked{% endif %} 
+                                                   >
+                                                </label>
+                                                <label for="1day" class="form-check-label col-sm-12 col-md-6 col-lg-3">
+                                                    提前一天
+                                                    <input type="radio" id="1day" value="1" name="publish_day" class="align-middle" style="height:1em"
+                                                    required="required"
+                                                    {% if edit and publish_day == 1 %}checked{% endif %} 
+                                                    >
+                                                </label>
+                                                <label for="instant" class="form-check-label col-sm-12 col-md-6 col-lg-3">
+                                                    立即发布 
+                                                    <input type="radio" id="instant" value="instant" name="publish_day" class="align-middle" style="height:1em"
+                                                    required="required"
+                                                    {% if edit and publish_day == 0 %}checked{% endif %} 
+                                                    >
+                                                </label>
+                                            </div>
+                                        </div>
+                                    </div>       
                                     <hr>
                                     <p>课程宣传信息
                                         <a data-toggle="tooltip" data-placement="bottom"

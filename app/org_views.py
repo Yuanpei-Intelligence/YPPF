@@ -42,7 +42,7 @@ def showNewOrganization(request: HttpRequest):
     新建小组的聚合界面
     """
     valid, user_type, html_display = utils.check_user_type(request.user)
-    if user_type == "Organization":
+    if user_type == UTYPE_ORG:
         html_display["warn_code"] = 1
         html_display["warn_message"] = "请不要使用小组账号申请新小组！"
         return redirect("/welcome/" +
@@ -74,7 +74,7 @@ def modifyOrganization(request: HttpRequest):
     # YWolfeee: 重构小组申请页面 Aug 24 12:30 UTC-8
     valid, user_type, html_display = utils.check_user_type(request.user)
     me = get_person_or_org(request.user)  # 获取自身
-    if user_type == "Organization":
+    if user_type == UTYPE_ORG:
         html_display["warn_code"] = 1
         html_display["warn_message"] = "请不要使用小组账号申请新小组！"
         return redirect("/welcome/" +
@@ -217,7 +217,7 @@ def modifyOrganization(request: HttpRequest):
     # 用于前端展示
     apply_person = me if is_new_application else NaturalPerson.objects.get(person_id=application.pos)
     app_avatar_path = apply_person.get_user_ava()
-    org_avatar_path = utils.get_user_ava(application, "Organization")
+    org_avatar_path = utils.get_user_ava(application, UTYPE_ORG)
     org_types = OrganizationType.objects.order_by("-otype_id").all()  # 当前小组类型，前端展示需要
     former_img = Organization().get_user_ava()
     all_tags = list(OrganizationTag.objects.all())
@@ -241,7 +241,7 @@ def showPosition(request: HttpRequest):
     me = get_person_or_org(request.user)
 
     # 查看成员聚合页面：拉取个人或小组相关的申请
-    if user_type == "Person":
+    if user_type == UTYPE_PER:
         #shown_instances = ModifyPosition.objects.filter(person=me)
         all_instances = {
             "undone": ModifyPosition.objects.filter(person=me, status=ModifyPosition.Status.PENDING).order_by('-modify_time', '-time'),
@@ -305,29 +305,22 @@ def modifyPosition(request: HttpRequest):
     position_id = request.GET.get("pos_id", None)
     if position_id is not None: # 如果存在对应小组
         try:
-            application = ModifyPosition.objects.get(id = position_id)
+            application: ModifyPosition = ModifyPosition.objects.get(id = position_id)
             # 接下来检查是否有权限check这个条目
             # 至少应该是申请人或者被申请小组之一
-            if user_type == "Person" and application.person != me:
+            if user_type == UTYPE_PER and application.person != me:
                 # 尝试获取已经新建的Position
-                html_display = utils.user_login_org(request,application.org)
-                if html_display['warn_code']==1:
-                    return redirect(
-                        "/welcome/" +
-                        "?warn_code=1&warn_message={warn_message}".format(
-                            warn_message=html_display["warn_message"]))
+                html_display = utils.user_login_org(request, application.org)
+                if html_display['warn_code'] == 1:
+                    return redirect(message_url(html_display))
                 else:
                     #防止后边有使用，因此需要赋值
-                    user_type = "Organization"
-                    request.user=application.org.organization_id
+                    user_type = UTYPE_ORG
+                    request.user = application.org.get_user()
                     me = application.org
             assert (application.org == me) or (application.person == me)
         except: #恶意跳转
-            html_display["warn_code"] = 1
-            html_display["warn_message"] = "您没有权限访问该网址！"
-            return redirect("/welcome/" +
-                            "?warn_code=1&warn_message={warn_message}".format(
-                                warn_message=html_display["warn_message"]))
+            return redirect(message_url(wrong("您没有权限访问该网址！")))
         is_new_application = False # 前端使用量, 表示是老申请还是新的
         applied_org = application.org
 
@@ -335,7 +328,7 @@ def modifyPosition(request: HttpRequest):
         org_name = request.GET.get("org_name", None)
         try:
             applied_org = Organization.objects.activated().get(oname=org_name)
-            assert user_type == "Person" # 只有个人能看到这个新建申请的界面
+            assert user_type == UTYPE_PER # 只有个人能看到这个新建申请的界面
 
         except:
             # 非法的名字, 出现恶意修改参数的情况
@@ -388,9 +381,11 @@ def modifyPosition(request: HttpRequest):
             allow_comment = True if (not is_new_application) and (
                 application.is_pending()) else False
             if not allow_comment:   # 存在不合法的操作
-                return redirect(
-                    "/welcome/?warn_code=1&warn_message=存在不合法操作,请与管理员联系!")
-            context = addComment(request, application, application.org.organization_id if user_type == 'Person' else application.person.person_id)
+                return redirect(message_url("存在不合法操作,请与管理员联系!"))
+            context = addComment(request, application,
+                                 application.org.get_user()
+                                 if user_type == UTYPE_PER else
+                                 application.person.get_user())
 
         # 准备用户提示量
         html_display["warn_code"] = context["warn_code"]
@@ -430,10 +425,10 @@ def modifyPosition(request: HttpRequest):
 
     # (1) 是否允许修改&允许评论
     # 用户写表格?
-    allow_form_edit = True if (user_type == "Person") and (
+    allow_form_edit = True if (user_type == UTYPE_PER) and (
                 is_new_application or application.is_pending()) else False
     # 小组审核?
-    allow_audit_submit = True if (not user_type == "Person") and (not is_new_application) and (
+    allow_audit_submit = True if (not user_type == UTYPE_PER) and (not is_new_application) and (
                 application.is_pending()) else False
     # 评论区?
     allow_comment = True if (not is_new_application) and (application.is_pending()) \
@@ -490,7 +485,7 @@ def modifyPosition(request: HttpRequest):
 def sendMessage(request: HttpRequest):
     valid, user_type, html_display = utils.check_user_type(request.user)
     me = get_person_or_org(request.user)  # 获取自身
-    if user_type == "Person":
+    if user_type == UTYPE_PER:
         html_display["warn_code"] = 1
         html_display["warn_message"] = "只有小组账号才能发送通知！"
         return redirect("/welcome/" +
@@ -517,6 +512,8 @@ def sendMessage(request: HttpRequest):
     }
 
     # 设置默认量
+    if request.GET.get('receiver_type', None) is not None:
+        receiver_type_list[request.GET.get('receiver_type')]['selected'] = True
     if request.POST.get('receiver_type', None) is not None:
         receiver_type_list[request.POST.get('receiver_type')]['selected'] = True
     if request.POST.get('url', None) is not None:

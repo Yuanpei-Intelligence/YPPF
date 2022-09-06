@@ -66,19 +66,6 @@
                                         <tbody>
                                             {% for person in people_list %}
                                             <tr>
-                                                <!--
-                                                <td><a
-                                                        href="{{person.get_absolute_url}}">{{person.name}}</a>
-                                                </td>
-                                                <td>{{person.pgender}}</td>
-                                                <td>{{person.pyear}}</td>
-                                                <td class="text-center">{{person.pmajor}}</td>
-                                                <td>
-                                                    <center><a class="btn btn-secondary"
-                                                            href=../../?origin=/transPage/{{person.person_id}}
-                                                            role="button">向Ta发起元气值转账</a></center>
-                                                </td>
-                                                -->
                                                 <!-- <td class="text-center"><span class="badge badge-success">元培学生</span></td> -->
                                                 {% for attribute in person.show_info %}
 
@@ -262,7 +249,7 @@
 
                                                 <td style="min-width: 80px;">
                                                     <u>
-                                                        <a href="/orginfo/?name={{ act.organization_id }}">
+                                                        <a href="{{ act.organization_id.get_absolute_url }}">
                                                             <img src="{{ act.organization_id.get_user_ava }}" alt="大头照" style="width: 20px; height: 20px;">
                                                             {{ act.organization_id }}
                                                         </a>
@@ -415,6 +402,85 @@
                     </div>
                 </div>
             </div>
+
+            <!-- 学术地图搜索 -->
+            <div class="row layout-top-spacing">
+                <div id="tableDropdown" class="col-lg-12 col-12 layout-spacing" style="text-align:center">
+                    <div class="statbox widget box box-shadow">
+                        <div class="widget-header">
+                            <div class="row">
+                                <div class="col-xl-12 col-md-12 col-sm-12 col-12">
+                                    <div data-toggle="collapse" href="#personsearch" role="button" aria-expanded="false"
+                                        aria-controls="collapseExample">
+                                        <div class="d-flex justify-content-between">
+                                            <div>
+                                                <h4>学术地图搜索({{academic_list|length}}条)</h4>
+                                            </div>
+                                            <div style="display:flex;
+                                            justify-content: center;
+                                            align-items: center;">
+                                                <i class="fa" aria-hidden="true"></i>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="collapse show" id="personsearch">
+                            <div class="widget-content widget-content-area">
+                                <div class="table-responsive">
+                                    <table class="table table-bordered mb-4">
+                                        {% if academic_list.count != 0 %}
+                                        <thead>
+                                            <tr>
+                                                <th class="text-center"> 姓名 </th>
+                                                <th class="text-center"> 信息类型 </th>
+                                                <th class="text-center"> 具体内容 </th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {% for person, content_dict in academic_list %}
+                                            {% for content_type, contents_list in content_dict %}
+                                            <tr>
+                                                <td style="min-width: 80px;">
+                                                    {% if forloop.counter == 1 %}
+                                                    <u>
+                                                        <a href="{{ person.ref }}">
+                                                            <img src="{{ person.avatar }}" alt="大头照" style="height: 20px; width: 20px;">{{ person.sname }}
+                                                        </a>
+                                                    </u>
+                                                    {% endif %}
+                                                </td>
+                                                <td style="min-width: 80px;">
+                                                    {{ content_type }}
+                                                </td>
+                                                <td style="min-width: 140px;">
+                                                    {% for content in contents_list %}
+                                                    <p>
+                                                    {{ content }}
+                                                    </p>
+                                                    {% endfor %}
+                                                </td>
+                                            {% endfor %}
+                                            {% endfor %}
+                                        </tbody>
+                                        {% else %}
+                                        <thead></thead>
+                                        <tbody>
+                                            <tr>
+                                                <td> {{not_found_message}}</td>
+                                            </tr>
+                                        </tbody>
+                                        {% endif %}
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+
         </div>
     </div>
 </div>

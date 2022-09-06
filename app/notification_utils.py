@@ -8,7 +8,7 @@ from app.wechat_send import (
 )
 
 from random import random
-from typing import Union
+from typing import Union, List
 from datetime import datetime, timedelta
 
 hasher = MySHA256Hasher("")
@@ -97,7 +97,6 @@ def notification_create(
         title,
         content,
         URL=None,
-        relate_TransferRecord=None,
         relate_instance=None,
         anonymous_flag=False,
         *,
@@ -130,7 +129,6 @@ def notification_create(
         title=title,
         content=content,
         URL=URL,
-        relate_TransferRecord=relate_TransferRecord,
         relate_instance=relate_instance,
         anonymous_flag=anonymous_flag,
     )
@@ -175,7 +173,6 @@ def bulk_notification_create(
         title,
         content,
         URL=None,
-        relate_TransferRecord=None,
         relate_instance=None,
         *,
         duplicate_behavior='ok',
@@ -264,7 +261,6 @@ def bulk_notification_create(
                 content=content,
                 URL=URL,
                 bulk_identifier=bulk_identifier,
-                relate_TransferRecord=relate_TransferRecord,
                 relate_instance=relate_instance,
                 # start_time=start_time, # 该参数无效，bulk_create会分批生成并覆盖auto_now的字段
             ) for receiver in receivers
@@ -329,7 +325,6 @@ def make_notification(application, request, content, receiver):
     URL = {
         'modifyposition': f'/modifyPosition/?pos_id={application.id}',
         'neworganization': f'/modifyOrganization/?org_id={application.id}',
-        'reimbursement': f'/modifyEndActivity/?reimb_id={application.id}',
     }
     sender = request.user
     typename = Notification.Type.NEEDDO if post_type == 'new_submit' else Notification.Type.NEEDREAD
@@ -365,28 +360,30 @@ def make_notification(application, request, content, receiver):
 
 
 @log.except_captured(source='notification_utils[notification2Display]')
-def notification2Display(notification_set):
-    from app.models import NaturalPerson, Organization
-    from app.utils import check_user_type
+def notification2Display(notifications: QuerySet[Notification]) -> List[dict]:
+    """
+    将通知转化为方便前端显示的形式
+
+    :param notifications: 通知的查询集
+    :type notifications: QuerySet[Notification]
+    :return: 通知的列表，其中每一项是一个包含通知具体信息的字典
+    :rtype: List[dict]
+    """
+    notifications.select_related("sender")
+    
     displays = []
-    sender_userids = notification_set.values_list('sender_id', flat=True)
-    sender_persons = NaturalPerson.objects.filter(
-        person_id__in=sender_userids).values_list('person_id', 'name')
-    sender_persons = {userid: name for userid, name in sender_persons}
-    sender_orgs = Organization.objects.filter(
-        organization_id__in=sender_userids).values_list('organization_id', 'oname')
-    sender_orgs = {userid: name for userid, name in sender_orgs}
-    # 储存这个列表中所有record的元气值的和
-    for notification in notification_set:
+    for notification in notifications:
         note_display = {}
 
         # id
         note_display["id"] = notification.id
 
         # 时间
-        note_display["start_time"] = notification.start_time.strftime("%Y-%m-%d %H:%M")
+        note_display["start_time"] = notification.start_time.strftime(
+            "%Y-%m-%d %H:%M")
         if notification.finish_time is not None:
-            note_display["finish_time"] = notification.finish_time.strftime("%Y-%m-%d %H:%M")
+            note_display["finish_time"] = notification.finish_time.strftime(
+                "%Y-%m-%d %H:%M")
 
         # 留言
         note_display["content"] = notification.content
@@ -397,15 +394,7 @@ def notification2Display(notification_set):
         note_display["type"] = notification.get_typename_display()
         note_display["title"] = notification.get_title_display()
 
-
-        _, user_type, _ = check_user_type(notification.sender)
-        if user_type == "Organization":
-            note_display["sender"] = sender_orgs.get(
-                notification.sender_id
-            ) if not notification.anonymous_flag else "匿名者"
-        else:
-            note_display["sender"] = sender_persons.get(
-                notification.sender_id
-            ) if not notification.anonymous_flag else "匿名者"
+        note_display["sender"] = (notification.sender.name if
+                                  not notification.anonymous_flag else "匿名者")
         displays.append(note_display)
     return displays

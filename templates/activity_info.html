@@ -397,7 +397,7 @@
                                     <form method="POST">
                                         <input type="hidden" name="option" value="quit">
                                         <button class="btn btn-danger btn-block mb-2"
-                                            onclick="return confirm('确认退出活动？{% if activity.source == "学生" and activity.YQPoint > 0 %}{% if status != "报名中" %}当前状态将无法取回全部元气值！{% else %}用于报名的元气值将被退回至您的账户。{% endif %}{% endif %}')">
+                                            onclick="return confirm('确认退出活动？')">
                                             退出活动
                                         </button>
                                     </form>
@@ -434,7 +434,7 @@
                                         </div>
                                     </form>-->
                                     <form method="POST">
-                                        <input type="hidden" name="option" value="payment">
+                                        <input type="hidden" name="option" value="ActivitySummary">
                                         <button class="btn btn-primary btn-block mb-2">申请活动结项</button>
                                     </form>
                                     {% endif %}
@@ -443,7 +443,7 @@
                                     {% if status == "已结束" %}
                                     <form method="POST">
                                         <input type="hidden" name="option" value="checkinoffline">
-                                        <button class="btn btn-primary btn-block mb-2">调整签到信息</button>>
+                                        <button class="btn btn-primary btn-block mb-2">调整签到信息</button>
                                     </form>
                                     {% endif %}
                                    <!-- --------------------------end checkinoffline--------------------------- -->

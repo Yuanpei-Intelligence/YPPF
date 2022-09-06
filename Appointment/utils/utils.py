@@ -385,9 +385,8 @@ def appoint_violate(input_appoint: Appoint, reason: Appoint.Reason):
 
             if real_credit_point and appoint.Astatus != Appoint.Status.VIOLATED:
                 # 不出现负分；如果已经是violated了就不重复扣分了
-                if major_student.credit > 0:  # 这个时候需要扣分
-                    major_student.credit -= 1
-                    major_student.save()
+                if User.objects.modify_credit(major_student.Sid, -1, '地下室：违规') < 0:
+                    # 成功扣分
                     really_deduct = True
                 appoint.Astatus = Appoint.Status.VIOLATED
                 appoint.Areason = reason
@@ -601,7 +600,7 @@ def to_feedback_url(request: HttpRequest) -> str:
     appoint_reason = appoint.get_status()
     
     # 向session添加信息
-    request.session['feedback_type'] = '地下室预约反馈'
+    request.session['feedback_type'] = '地下室预约问题反馈'
     request.session['feedback_url'] = appoint.get_admin_url()
     request.session['feedback_content'] = '\n'.join((
         f'申请人：{appoint_student}',

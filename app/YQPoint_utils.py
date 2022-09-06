@@ -1,342 +1,486 @@
 from app.utils_dependency import *
 from app.models import (
-    User,
-    NaturalPerson,
-    Organization,
-    YQPointDistribute,
-    TransferRecord,
+    Prize,
+    Pool,
+    PoolItem,
+    PoolRecord,
     Notification,
+    Organization,
 )
-from app.notification_utils import notification_create, notification_status_change
-from app.wechat_send import publish_notification, WechatApp, WechatMessageLevel
-from app.utils import get_classified_user
+from app.utils import get_person_or_org
+from app.wechat_send import WechatApp, WechatMessageLevel
+from app.notification_utils import bulk_notification_create, notification_create
+from generic.models import User, YQPointRecord
 
+from django.db.models import QuerySet, Q
+from django.forms.models import model_to_dict
+
+from typing import List, Dict, Optional, Tuple
 from datetime import datetime, timedelta
-from django.db.models import F
-
-from app.scheduler import scheduler
+import random
 
 __all__ = [
-    # 'distribute_YQPoint',
-    'add_YQPoints_distribute',
-    'create_transfer_record',
-    'accept_transfer',
-    'reject_transfer',
-    'record2Display',
+    'get_pools_and_items'
+    'buy_exchange_item',
+    'buy_lottery_pool',
+    'buy_random_pool',
+    'run_lottery',
 ]
 
-def _distribute_YQPoint_to_users(proposer, recipients, YQPoints, trans_time):
-    '''
-        内容：
-        由proposer账户(默认为一个小组账户)，向每一个在recipients中的账户中发起数额为YQPoints的转账
-        并且自动生成默认为ACCEPTED的转账记录以便查阅
-        这里的recipients期待为一个Queryset，要么全为自然人，要么全为小组
-        proposer默认为一个小组账户
-    '''
-    try:
-        assert proposer.YQPoint >= recipients.count() * YQPoints
-    except:
-        # 说明此时proposer账户的元气值不足
-        print(
-            f"由{proposer}向自然人{recipients[:3]}...等{recipients.count()}个用户"
-            + "发放元气值失败，原因可能是{proposer}的元气值剩余不足"
-        )
-    try:
-        is_nperson = isinstance(recipients[0], NaturalPerson)  # 不为自然人则为小组
-    except:
-        print("没有转账对象！")
-        return
-    # 更新元气值
-    recipients.update(YQPoint=F('YQPoint') + YQPoints)
-    proposer.YQPoint -= recipients.count() * YQPoints
-    proposer.save()
-    # 生成转账记录
-    trans_msg = f"{proposer}向您发放了{YQPoints}元气值，请查收！"
-    transfer_list = [TransferRecord(
-        proposer=proposer.organization_id,
-        recipient=recipient.get_user(),
-        amount=YQPoints,
-        start_time=trans_time,
-        finish_time=trans_time,
-        message=trans_msg,
-        status=TransferRecord.TransferStatus.ACCEPTED
-    ) for recipient in recipients]
-    TransferRecord.objects.bulk_create(transfer_list)
 
+def get_pools_and_items(pool_type: Pool.Type, user: User, frontend_dict: Dict[str, any]):
+    """
+    获取某一种类的所有当前开放的pool的前端所需信息
 
-def distribute_YQPoint(distributer):
-    '''
-        调用_distribute_YQPoint_to_users, 给大家发放元气值
-        这个函数的内容：根据distributer，找到发放对象，调用函数完成发放，（统计时间）
-        distributer应该为一个YQPointDistribute类的实例
-    '''
-    trans_time = distributer.start_time
+    :param pool_type: pool种类
+    :type pool_type: Pool.Type
+    :param user: 当前用户
+    :type user: User
+    :param frontend_dict: 前端字典
+    :type frontend_dict: Dict[str, any]
+    """
+    pools = Pool.objects.filter(
+        Q(type=pool_type) & Q(start__lte=datetime.now())
+        & (Q(end__isnull=True) | Q(end__gte=datetime.now() - timedelta(days=1))))
 
-    # 没有问题，找到要发放元气值的人和小组
-    per_to_dis = NaturalPerson.objects.activated().filter(
-        YQPoint__lte=distributer.per_max_dis_YQP)
-    org_to_dis = Organization.objects.activated().filter(
-        YQPoint__lte=distributer.org_max_dis_YQP).exclude(oname=YQP_ONAME)
-    # 由学院账号给大家发放
-    YPcollege = Organization.objects.get(oname=YQP_ONAME)
+    pools_info = []
+    # 此列表中含有若干dict，每个dict对应一个待展示的pool，例如：
+    # {
+    #     "title": "xxx", "type": "兑换/抽奖/盲盒",
+    #     "entry_time": 1, # 对于盲盒/抽奖奖池，一个用户最多能买几次
+    #     "ticket_price": 1, # 盲盒/抽奖奖池价格
+    #     "start": "2022-9-4", "end": "2022-9-5", # end可能为空
+    #     "redeem_start": "2022-9-10", "redeem_end": "2022-9-20", # 指线下获取奖品实物的时间，均可能为空
+    #
+    #     "status": 0/1, # 0表示进行中的奖池，1表示结束一天内的抽奖奖池
+    #     "items": [], # 含有若干dict，每个dict代表该奖池中的一个poolitem
+    #         # key包括"id", "origin_num", "consumed_num", "exchange_price",
+    #         # "exchange_limit", "is_big_prize", "is_empty",
+    #         # "prize__name", "prize__more_info", "prize__stock",
+    #         # "prize__reference_price", "prize__image", "prize__id",
+    #         # 以及origin_num-consumed_num得到的remain_num
+    #         # 如果是兑换类奖池，还有my_exchange_time，即当前用户兑换过该item多少次
+    #     "my_entry_time": 0, # 当前用户进过抽奖/盲盒奖池多少次
+    #     "records_num": 0, # 抽奖/盲盒奖池总共被买了多少次
+    #     "capacity": 0, # 盲盒奖池最多能被买多少次（即包括谢谢参与在内的所有poolitem的数量和）
+    #     "results": { # 已结束的抽奖奖池有这一项，表示抽奖结果，
+    #         # 其中包含"big_prize_results"和"normal_prize_results"两个列表
+    #         # 每个列表中又是若干词典，每个词典表示一种奖品的获奖情况（这些词典按奖品参考价格的降序排列），
+    #         # 其key包括prize_name、prize_image和winners，其中winners是NaturalPerson.name的list，即这种奖品的获奖者列表
+    #         "big_prize_results": [
+    #             {"prize_name": "大奖1", "prize_image": "imageurl", "winners": ["张三", "李四"]},
+    #             {"prize_name": "大奖2", "prize_image": "imageurl", "winners": ["Alice"]},
+    #         ],
+    #         "normal_prize_results": [
+    #             {"prize_name": "奖品1", "prize_image": "imageurl", "winners": ["王五"]},
+    #             {"prize_name": "奖品2", "prize_image": "imageurl", "winners": ["Alice", "Bob"]},
+    #         ]
+    #     }
+    # }
 
-    _distribute_YQPoint_to_users(proposer=YPcollege,
-                                 recipients=per_to_dis,
-                                 YQPoints=distributer.per_YQP,
-                                 trans_time=trans_time)
-    _distribute_YQPoint_to_users(proposer=YPcollege,
-                                 recipients=org_to_dis,
-                                 YQPoints=distributer.org_YQP,
-                                 trans_time=trans_time)
-    end_time = datetime.now()
-
-    diff_time = end_time - trans_time
-    debug_msg = (
-        f"已向{per_to_dis.count()}个自然人和{org_to_dis.count()}个小组转账，"
-        + f"用时{diff_time.seconds}s,{diff_time.microseconds}microsecond\n"
-    )
-    print(debug_msg)
-
-
-def add_YQPoints_distribute(dtype):
-    '''
-    内容：
-        用于注册已知type=dtype的发放元气值的实例
-        每种类型（临时发放、每周发放、每两周发放）都必须只有一个正在应用的实例;
-        在注册时，如果已经有另一个正在进行的、类型相同的定时任务，会覆盖
-        暂时还没写怎么取消
-    '''
-    try:
-        distributer = YQPointDistribute.objects.get(type=dtype, status=True)
-    except Exception as e:
-        print(f"按类型{dtype}注册任务失败，原因可能是没有状态为YES或者有多个状态为YES的发放实例\n{e}")
-    if dtype == YQPointDistribute.DistributionType.TEMPORARY:
-        # 说明此时是临时发放
-        scheduler.add_job(distribute_YQPoint,
-                          "date",
-                          id="temporary_YQP_distribute",
-                          run_date=distributer.start_time,
-                          args=[distributer])
-    else:
-        # 说明此时是定期发放
-        scheduler.add_job(distribute_YQPoint,
-                          "interval",
-                          id=f"{dtype}weeks_interval_YQP_distribute",
-                          weeks=distributer.type,
-                          next_run_time=distributer.start_time,
-                          args=[distributer])
-
-
-def create_transfer_record(payer: User, recipient: User, amount: float,
-                           transaction_msg="", service=-1,
-                           accept='no') -> MESSAGECONTEXT:
-    '''
-    创建一个转账记录，返回创建信息和记录id
-
-    Parameters
-    ----------
-    service : TransferRecord.TransferType, 经过is_valid_service检查的服务类型
-    accept : str, 立刻接收转账的行为，合法值包括`append`, `no`
-
-    Returns
-    -------
-    MESSAGECONTEXT
-    - 成功时具有record_id的额外字段
-    - 创建成功且允许append追加接收时，具有accept_context的额外字段
-    '''
-    context, accepted = {}, False
-    with transaction.atomic():
-        # 上锁并查询余额
-        payer_obj = get_classified_user(payer, update=True)
-        if payer_obj.YQPoint < amount:
-            return wrong(f'现存元气值余额为{payer_obj.YQPoint}, 不足以发起额度为{amount}的转账!')
-
-        # 执行创建部分
-        record: TransferRecord = TransferRecord.objects.create(
-            proposer=payer,
-            recipient=recipient,
-            amount=amount,
-            message=transaction_msg,
-            rtype=(service if TransferRecord.TransferType.is_service(service)
-                           else TransferRecord.TransferType.TRANSACTION),
-            status=TransferRecord.TransferStatus.WAITING,
-        )
-        payer_obj.YQPoint -= amount
-        payer_obj.save()
-
-        notification = notification_create(
-            receiver=recipient,
-            sender=payer,
-            typename=Notification.Type.NEEDDO,
-            title=Notification.Title.TRANSFER_CONFIRM,
-            content=transaction_msg or f'转账金额：{amount}',
-            URL='/myYQPoint/',
-            relate_TransferRecord=record,
-        )
-        # 更新返回的id
-        context.update(record_id=record.id)
-
-    # 如果立即追加接收转账逻辑
-    if accept == 'append':
-        accept_context = accept_transfer(record.id, notify=False)
-        context.update(accept_context=accept_context)
-        if accept_context[my_messages.CODE_FIELD] == SUCCEED:
-            Notification.objects.filter(id=notification.id).update(
-                title=Notification.Title.TRANSFER_INFORM)
-            accepted = True
-
-    # 发送微信提醒
-    publish_notification(
-        notification,
-        app=WechatApp.TRANSFER,
-        level=WechatMessageLevel.INFO if accepted else WechatMessageLevel.IMPORTANT,
-    )
-    return succeed('转账成功!' if accepted else
-                   '成功发起转账，元气值将在对方确认后到账。', context)
-
-
-def get_transfer_record(record_id, user=None) -> TransferRecord:
-    '''获取、加锁并检查，失败时抛出对用户可见的`AssertionError`信息'''
-    try:
-        record = TransferRecord.objects.select_for_update().get(id=record_id)
-    except:
-        # 避免恶意的测试，不存在与无权限返回相同的报错信息
-        raise AssertionError("没有权限调整该交易!")
-    if user is not None and record.recipient != user:
-        raise AssertionError("没有权限调整该交易!")
-    if record.status != TransferRecord.TransferStatus.WAITING:
-        raise AssertionError("交易已经完成, 请不要重复操作!")
-    return record
-
-
-def confirm_notifications(transaction_record):
-    # 理应只有一个
-    notification_status_change(
-        transaction_record.transfer_notification.get(),
-        Notification.Status.DONE
-    )
-
-
-@log.except_captured(wrong('交易意外失败, 请联系管理员!'), source='YQPoint_utils[accept_transfer]')
-def accept_transfer(record_id, user=None, notify=True) -> MESSAGECONTEXT:
-    with transaction.atomic():
-        try:
-            record = get_transfer_record(record_id, user)
-        except AssertionError as e:
-            return wrong(str(e))
-
-        # 增加元气值
-        recipient = get_classified_user(record.recipient, update=True)
-        recipient.YQPoint += record.amount
-        recipient.save()
-        confirm_notifications(record)
-        # 修改状态
-        record.status = TransferRecord.TransferStatus.ACCEPTED
-        # 交易完成时间
-        record.finish_time = datetime.now()
-        record.save()
-
-        if notify:
-            new_notification = notification_create(
-                receiver=record.proposer,
-                sender=record.recipient,
-                typename=Notification.Type.NEEDREAD,
-                title=Notification.Title.TRANSFER_FEEDBACK,
-                content=f'{recipient}接受了您的转账。',
-                URL='/myYQPoint/',
-            )
-    if notify:
-        publish_notification(new_notification, app=WechatApp.TRANSFER)
-    return succeed('交易成功!')
-
-
-@log.except_captured(wrong('交易意外失败, 请联系管理员!'), source='YQPoint_utils[reject_transfer]')
-def reject_transfer(record_id, user=None, notify=True) -> MESSAGECONTEXT:
-    with transaction.atomic():
-        try:
-            record = get_transfer_record(record_id, user)
-        except AssertionError as e:
-            return wrong(str(e))
-
-        # 返还元气值
-        payer = get_classified_user(record.proposer, update=True)
-        payer.YQPoint += record.amount
-        payer.save()
-        confirm_notifications(record)
-        # 修改状态
-        record.status = TransferRecord.TransferStatus.REFUSED
-        # 交易完成时间
-        record.finish_time = datetime.now()
-        record.save()
-
-        if notify:
-            recipient = get_classified_user(record.recipient)
-            new_notification = notification_create(
-                receiver=record.proposer,
-                sender=record.recipient,
-                typename=Notification.Type.NEEDREAD,
-                title=Notification.Title.TRANSFER_FEEDBACK,
-                content=f'{recipient}拒绝了您的转账。',
-                URL='/myYQPoint/',
-            )
-    if notify:
-        publish_notification(new_notification, app=WechatApp.TRANSFER)
-    return succeed('拒绝转账成功!')
-
-
-@log.except_captured(source='YQPoint_utils[record2Display]')
-def record2Display(record_list, user):  # 对应myYQPoint函数中的table_show_list
-    lis = []
-    amount = {"send": 0.0, "recv": 0.0}
-    # 储存这个列表中所有record的元气值的和
-    for record in record_list:
-        lis.append({})
-
-        # 确定类型
-        record_type = "send" if record.proposer.username == user.username else "recv"
-
-        # id
-        lis[-1]["id"] = record.id
-
-        # 时间
-        lis[-1]["start_time"] = record.start_time.strftime("%Y-%m-%d %H:%M")
-        if record.finish_time is not None:
-            lis[-1]["finish_time"] = record.finish_time.strftime("%Y-%m-%d %H:%M")
-
-        # 对象
-        # 如果是给出列表，那么对象就是接收者
-
-        obj_user = record.recipient if record_type == "send" else record.proposer
-        lis[-1]["obj_direct"] = "To  " if record_type == "send" else "From"
-        obj = get_classified_user(obj_user)
-        lis[-1]["obj"] = obj.get_display_name()
-        lis[-1]["obj_url"] = obj.get_absolute_url()
-
-        # 金额
-        lis[-1]["amount"] = record.amount
-        amount[record_type] += record.amount
-
-        # 留言
-        lis[-1]["message"] = record.message
-        lis[-1]["if_act_url"] = False
-        if record.corres_act is not None:
-            lis[-1]["message"] = "报名活动" + record.corres_act.title
-            # TODO 这里还需要补充一个活动跳转链接
-
-        # 状态
-        if record.status == TransferRecord.TransferStatus.PENDING:
-            # PENDING 就不对个人可见了，个人看到的就是元气值已经转过去了
-            lis[-1]["status"] = "已接收"
+    for pool in pools:
+        if pool.start <= datetime.now() and (pool.end is None or pool.end >= datetime.now()):
+            this_pool_info = model_to_dict(pool)
+            this_pool_info["status"] = 0
+        elif pool.end is not None and pool.end < datetime.now() and \
+                pool.end >= datetime.now() - timedelta(days=1):
+            this_pool_info = model_to_dict(pool)
+            this_pool_info["status"] = 1
         else:
-            lis[-1]["status"] = record.get_status_display()
+            continue
 
-    # 对外展示为 1/10
+        this_pool_items = list(pool.poolitem_set.values(
+            "id", "origin_num", "consumed_num", "exchange_price",
+            "exchange_limit", "is_big_prize", "is_empty",
+            "prize__name", "prize__more_info", "prize__stock",
+            "prize__reference_price", "prize__image", "prize__id"
+        ))
+        for item in this_pool_items:
+            item["remain_num"] = item["origin_num"] - item["consumed_num"]
+        this_pool_info["items"] = this_pool_items
+
+        if pool_type != Pool.Type.EXCHANGE:
+            this_pool_info["my_entry_time"] = PoolRecord.objects.filter(
+                user=user, pool=pool).count()
+            this_pool_info["records_num"] = PoolRecord.objects.filter(
+                pool=pool).count()
+            if pool_type == Pool.Type.RANDOM:
+                this_pool_info["capacity"] = sum(
+                    [item["origin_num"] for item in this_pool_items])
+            # LOTTERY类的pool不需要capacity
+        else:
+            for item in this_pool_items:
+                item["my_exchange_time"] = PoolRecord.objects.filter(
+                    user=user, pool=pool, prize=item["prize__id"]).count()
+            # EXCHANGE类的pool不需要capcity和records_num和my_entry_time
+
+        if this_pool_info["status"] == 1: # 如果是刚结束的抽奖，需要填充results
+            big_prize_items = PoolItem.objects.filter(
+                pool=pool, is_big_prize=True).order_by("-prize__reference_price")
+            normal_prize_items = PoolItem.objects.filter(
+                pool=pool, is_big_prize=False).order_by("-prize__reference_price")
+            big_prizes_and_winners = []
+            normal_prizes_and_winners = []
+
+            for big_prize_item in big_prize_items:
+                big_prizes_and_winners.append(
+                    {"prize_name": big_prize_item.prize.name, "prize_image": big_prize_item.prize.image})
+                winner_names = list(PoolRecord.objects.filter(
+                    pool=pool, prize=big_prize_item.prize).values_list(
+                        "user__naturalperson__name", flat=True))  # TODO: 需要distinct()吗？
+                # 这里假定获奖者一定是自然人，因为组织不能抽奖
+                big_prizes_and_winners[-1]["winners"] = winner_names
+            for normal_prize_item in normal_prize_items:
+                normal_prizes_and_winners.append(
+                    {"prize_name": normal_prize_item.prize.name, "prize_image": normal_prize_item.prize.image})
+                winner_names = list(PoolRecord.objects.filter(
+                    pool=pool, prize=normal_prize_item.prize).values_list(
+                        "user__naturalperson__name", flat=True))  # TODO: 需要distinct()吗？
+                # 这里假定获奖者一定是自然人，因为组织不能抽奖
+                normal_prizes_and_winners[-1]["winners"] = winner_names
+            this_pool_info["results"] = {}
+            this_pool_info["results"]["big_prize_results"] = big_prizes_and_winners
+            this_pool_info["results"]["normal_prize_results"] = normal_prizes_and_winners
+
+        pools_info.append(this_pool_info)
+
+    frontend_dict["pools_info"] = pools_info
+
+
+def buy_exchange_item(user: User, poolitem_id: str) -> MESSAGECONTEXT:
     """
-    统一在前端修改
-    for key in amount:
-        amount[key] = amount[key]/10
+    购买兑换奖池的某个奖品
+
+    :param user: 当前用户
+    :type user: User
+    :param poolitem_id: 待购买的奖池奖品id，因为是前端传过来的所以是str
+    :type poolitem_id: str
+    :return: 表明购买结果的warn_code和warn_message
+    :rtype: MESSAGECONTEXT
     """
-    # 由于误差, 将amount调整为小数位数不超过2
-    for key in amount.keys():
-        amount[key] = round(amount[key], 1)
-    return lis, amount
+    # 检查奖品是否可以购买
+    try:
+        poolitem_id = int(poolitem_id)
+        poolitem = PoolItem.objects.get(
+            id=poolitem_id, pool__type=Pool.Type.EXCHANGE)
+    except:
+        return wrong('奖品不存在!')
+    if poolitem.pool.start > datetime.now():
+        return wrong('兑换时间未开始!')
+    if poolitem.pool.end is not None and poolitem.pool.end < datetime.now():
+        return wrong('兑换时间已结束!')
+    if poolitem.origin_num - poolitem.consumed_num <= 0:
+        return wrong('奖品已售罄!')
+
+    my_exchanged_time = PoolRecord.objects.filter(
+        user=user, pool=poolitem.pool, prize=poolitem.prize).count()
+    if my_exchanged_time >= poolitem.exchange_limit:
+        return wrong('您兑换该奖品的次数已达上限!')
+    
+    try:
+        with transaction.atomic():
+            poolitem = PoolItem.objects.select_for_update().get(
+                id=poolitem_id, pool__type=Pool.Type.EXCHANGE)
+            assert poolitem.pool.start <= datetime.now(), "兑换时间未开始!"
+            assert poolitem.pool.end is None or poolitem.pool.end >= datetime.now(), "兑换时间已结束!"
+            assert poolitem.origin_num - poolitem.consumed_num > 0, "奖品已售罄!"
+            my_exchanged_time = PoolRecord.objects.filter(
+                user=user, pool=poolitem.pool, prize=poolitem.prize).count()
+            assert my_exchanged_time < poolitem.exchange_limit, '您兑换该奖品的次数已达上限!'
+            assert user.YQpoint >= poolitem.exchange_price, '您的元气值不足，兑换失败!'
+
+            # 更新奖品状态
+            poolitem.consumed_num += 1
+            poolitem.save()
+
+            # 创建兑换记录
+            PoolRecord.objects.create(
+                user=user,
+                pool=poolitem.pool,
+                prize=poolitem.prize,
+                status=PoolRecord.Status.UN_REDEEM,
+                time=datetime.now()
+            )
+
+            # 扣除元气值
+            User.objects.modify_YQPoint(
+                user,
+                -poolitem.exchange_price,
+                source=f'兑换奖池：{poolitem.pool.title}-{poolitem.prize.name}',
+                source_type=YQPointRecord.SourceType.CONSUMPTION
+            )
+    except AssertionError as e:
+        return wrong(str(e))      
+
+    return succeed('兑换成功!')
+
+
+def buy_lottery_pool(user: User, pool_id: str) -> MESSAGECONTEXT:
+    """
+    购买抽奖奖池
+
+    :param user: 当前用户
+    :type user: User
+    :param pool_id: 待购买的奖池id，因为是前端传过来的所以是str
+    :type pool_id: str
+    :return: 表明购买结果的warn_code和warn_message
+    :rtype: MESSAGECONTEXT
+    """
+    # 检查抽奖奖池状态
+    try:
+        pool_id = int(pool_id)
+        pool = Pool.objects.get(id=pool_id, type=Pool.Type.LOTTERY)
+    except:
+        return wrong('抽奖不存在!')
+    if pool.start > datetime.now():
+        return wrong('抽奖未开始!')
+    if pool.end is not None and pool.end < datetime.now():  # 实际上抽奖类的奖池的end应该不可能是None
+        return wrong('抽奖已结束!')
+    my_entry_time = PoolRecord.objects.filter(pool=pool, user=user).count()
+    if my_entry_time >= pool.entry_time:
+        return wrong('您在本奖池中抽奖的次数已达上限!')
+    
+    try:
+        with transaction.atomic():
+            pool = Pool.objects.select_for_update().get(id=pool_id, type=Pool.Type.LOTTERY)
+            assert pool.start <= datetime.now(), '抽奖未开始!'
+            assert pool.end is None or pool.end >= datetime.now(), '抽奖已结束!'
+            my_entry_time = PoolRecord.objects.filter(pool=pool, user=user).count()
+            assert my_entry_time < pool.entry_time, '您在本奖池中抽奖的次数已达上限!'
+            assert user.YQpoint >= pool.ticket_price, '您的元气值不足，兑换失败!'
+
+            # 创建抽奖记录
+            PoolRecord.objects.create(
+                user=user,
+                pool=pool,
+                status=PoolRecord.Status.LOTTERING,
+                time=datetime.now()
+            )
+
+            # 扣除元气值
+            User.objects.modify_YQPoint(
+                user,
+                -pool.ticket_price,
+                source=f'抽奖奖池：{pool.title}',
+                source_type=YQPointRecord.SourceType.CONSUMPTION
+            )
+    except AssertionError as e:
+        return wrong(str(e))      
+    
+    return succeed('成功进行一次抽奖!您可以在抽奖时间结束后查看抽奖结果~')
+
+
+def select_random_prize(poolitems: QuerySet[PoolItem], select_num: Optional[int] = None) -> List[int]:
+    """
+    实现无放回随机抽取select_num个PoolItem（的id）,初始时每种PoolItem有origin_num-consumed_num个
+
+    :param poolitems: 待抽取的PoolItem构成的QuerySet（每个元素表示一种PoolItem而非一个）
+    :type poolitems: QuerySet[PoolItem]
+    :param select_num: 抽几个，若为None则抽取所有奖品，也即对poolitems做一次shuffle, defaults to None
+    :type select_num: Optional[int], optional
+    :return: 抽出的poolitem的id组成的list，长度等于select_num
+    :rtype: List[int]
+    """
+    assert poolitems.count() > 0
+
+    num_all_items = 0  # 奖品的总数
+    item_dict = {}  # int: PoolItem，实现把一个自然数区间映射到一种奖品
+    for item in poolitems:
+        item_dict[num_all_items] = item
+        num_all_items += item.origin_num - item.consumed_num
+
+    if select_num is None:  # 不给出select_num就默认抽取所有奖品，也即对poolitems做一次shuffle
+        select_num = num_all_items
+    assert select_num <= num_all_items
+
+    selected_idx = random.sample(
+        range(num_all_items), select_num)  # 选出select_num个序号
+    selected_items_id = []
+    for idx in selected_idx:
+        for key in sorted(item_dict.keys(), reverse=True):
+            if idx >= key:  # 寻找idx落入的区间
+                selected_items_id.append(
+                    item_dict[key].id)  # 把idx映射为PoolItem.id
+                break
+    return selected_items_id
+
+
+def buy_random_pool(user: User, pool_id: str) -> Tuple[MESSAGECONTEXT, int, int]:
+    """
+    购买盲盒
+
+    :param user: 当前用户
+    :type user: User
+    :param pool_id: 待购买的奖池id，因为是前端传过来的所以是str
+    :type pool_id: str
+    :return: 表明购买结果的warn_code和warn_message；买到的prize的id（如果购买失败就是-1）；
+                表明盲盒结果的一个int：2表示无反应、1表示开出空盒、0表示开出奖品
+    :rtype: Tuple[MESSAGECONTEXT, int, int]
+    """
+    # 检查盲盒奖池状态
+    try:
+        pool_id = int(pool_id)
+        pool = Pool.objects.get(id=pool_id, type=Pool.Type.RANDOM)
+    except:
+        return wrong('盲盒不存在!'), -1, 2
+    if pool.start > datetime.now():
+        return wrong('盲盒兑换时间未开始!'), -1, 2
+    if pool.end is not None and pool.end < datetime.now():
+        return wrong('盲盒兑换时间已结束!'), -1, 2
+    my_entry_time = PoolRecord.objects.filter(pool=pool, user=user).count()
+    if my_entry_time >= pool.entry_time:
+        return wrong('您兑换这款盲盒的次数已达上限!'), -1, 2
+    
+    try:
+        with transaction.atomic():
+            pool = Pool.objects.select_for_update().get(id=pool_id, type=Pool.Type.RANDOM)
+            assert pool.start <= datetime.now(), '盲盒兑换时间未开始!'
+            assert pool.end is None or pool.end >= datetime.now(), '盲盒兑换时间已结束!'
+            my_entry_time = PoolRecord.objects.filter(pool=pool, user=user).count()
+            assert my_entry_time < pool.entry_time, '您兑换这款盲盒的次数已达上限!'
+            assert user.YQpoint >= pool.ticket_price, '您的元气值不足，兑换失败!'
+
+            # 开盒，修改poolitem记录，创建poolrecord记录
+            items = pool.poolitem_set.select_for_update().all()
+            real_item_id = select_random_prize(items, 1)[0]
+            poolitem_to_be_modified = PoolItem.objects.select_for_update().get(id=real_item_id)
+            poolitem_to_be_modified.consumed_num += 1
+            poolitem_to_be_modified.save()
+
+            if poolitem_to_be_modified.is_empty: # 如果是空盲盒，没法兑奖，record的状态记为NOT_LUCKY
+                item_status = PoolRecord.Status.NOT_LUCKY
+            else:
+                item_status = PoolRecord.Status.UN_REDEEM
+            PoolRecord.objects.create(
+                user=user,
+                pool=pool,
+                status=item_status,
+                prize=poolitem_to_be_modified.prize,
+                time=datetime.now()
+            )
+
+            # 扣除元气值
+            User.objects.modify_YQPoint(
+                user,
+                -pool.ticket_price,
+                source=f'盲盒奖池：{pool.title}',
+                source_type=YQPointRecord.SourceType.CONSUMPTION
+            )
+    except AssertionError as e:
+        return wrong(str(e)), -1, 2     
+
+    return succeed('兑换盲盒成功!'), poolitem_to_be_modified.prize.id, int(poolitem_to_be_modified.is_empty)
+
+
+def run_lottery(pool_id: int):
+    """
+    抽奖；更新PoolRecord表和PoolItem表；给所有参与者发送通知
+
+    :param pool_id: 待抽取的抽奖奖池id
+    :type pool_id: int
+    """
+    # 部分参考了course_utils.py的draw_lots函数
+    pool = Pool.objects.get(id=pool_id, type=Pool.Type.LOTTERY)
+    assert not PoolRecord.objects.filter(  # 此时pool关联的所有records都应该是LOTTERING
+        pool=pool).exclude(status=PoolRecord.Status.LOTTERING).exists()
+    with transaction.atomic():
+        related_records = PoolRecord.objects.filter(
+            pool=pool, status=PoolRecord.Status.LOTTERING)
+        records_num = related_records.count()
+        if records_num == 0:
+            return
+
+        # 抽奖
+        record_ids_and_participant_ids = list(
+            related_records.values("id", "user__id"))
+        items = pool.poolitem_set.all()
+        user2prize_names = {d["user__id"]: []
+                            for d in record_ids_and_participant_ids}  # 便于发通知
+        winner_record_id2item_id = {}  # poolrecord.id: poolitem.id，便于更新poolrecord
+        loser_record_ids = []  # poolrecord.id，便于更新poolrecord
+        num_all_items = 0  # 该奖池中奖品总数
+        for item in items:
+            num_all_items += item.origin_num - item.consumed_num
+        if num_all_items >= records_num:  # 抽奖记录数少于或等于奖品数，人人有奖，给每个记录分配一个随机奖品
+            shuffled_items = select_random_prize(
+                items, records_num)  # 随机选出待发放的奖品
+            for i in range(records_num):  # 遍历所有记录，每个记录都有奖品
+                user2prize_names[record_ids_and_participant_ids[i]["user__id"]].append(
+                    items.get(id=shuffled_items[i]).prize.name
+                )
+                winner_record_id2item_id[record_ids_and_participant_ids[i]
+                                         ["id"]] = shuffled_items[i]
+        else:  # 抽奖记录数多于奖品数，给每个奖品分配一个中奖者
+            for item in items:  # 遍历所有奖品，每个奖品都会送给一个记录
+                for i in range(item.origin_num - item.consumed_num):
+                    winner_record_index = random.randint(
+                        0, len(record_ids_and_participant_ids) - 1)
+                    user2prize_names[record_ids_and_participant_ids[winner_record_index]["user__id"]].append(
+                        item.prize.name)
+                    winner_record_id2item_id[record_ids_and_participant_ids[winner_record_index]["id"]] = item.id
+                    # 因为记录多，奖品少，这里肯定不会pop成空列表
+                    record_ids_and_participant_ids.pop(winner_record_index)
+            # pop剩下的就是没中奖的那些记录
+            loser_record_ids = [d["id"]
+                                for d in record_ids_and_participant_ids]
+
+        # 更新数据库
+        for winner_record_id, poolitem_id in winner_record_id2item_id.items():
+            record = PoolRecord.objects.select_for_update().get(id=winner_record_id)
+            item = PoolItem.objects.select_for_update().get(id=poolitem_id)
+            record.status = PoolRecord.Status.UN_REDEEM
+            record.prize = item.prize
+            record.time = datetime.now()
+            item.consumed_num += 1
+            record.save()
+            item.save()
+        for loser_record_id in loser_record_ids:
+            record = PoolRecord.objects.select_for_update().get(id=loser_record_id)
+            record.status = PoolRecord.Status.NOT_LUCKY
+            record.time = datetime.now()
+            record.save()
+
+        # 给中奖的同学发送通知
+        sender = Organization.objects.get(oname=YQP_ONAME).get_user()
+        for user_id in user2prize_names.keys():
+            receiver = User.objects.get(id=user_id)
+            typename = Notification.Type.NEEDREAD
+            title = Notification.Title.LOTTERY_INFORM
+            content = f"恭喜您在奖池【{pool.title}】中抽中奖品"
+            for prize_name in user2prize_names[user_id]:
+                content += f"【{prize_name}】"  # 可能出现重复，即一种奖品中了好几次，不过感觉问题也不太大
+            notification_create(
+                receiver=receiver,
+                sender=sender,
+                typename=typename,
+                title=title,
+                content=content,
+                # URL=f'', # TODO: 我的奖品页面？
+                publish_to_wechat=True,
+                publish_kws={
+                    "app": WechatApp.TO_PARTICIPANT,
+                    "level": WechatMessageLevel.IMPORTANT,
+                },
+            )
+
+        # 给没中奖的同学发送通知
+        receivers = PoolRecord.objects.filter(
+            id__in=loser_record_ids,
+        ).values_list("user", flat=True)
+        receivers = User.objects.filter(id__in=receivers)
+        content = f"很抱歉通知您，您在奖池【{pool.title}】中没有中奖"
+
+        if len(receivers) > 0:
+            bulk_notification_create(
+                receivers=receivers,
+                sender=sender,
+                typename=typename,
+                title=title,
+                content=content,
+                # URL=f'', # TODO: 我的奖品页面？
+                publish_to_wechat=True,
+                publish_kws={
+                    "app": WechatApp.TO_PARTICIPANT,
+                    "level": WechatMessageLevel.IMPORTANT,
+                },
+            )

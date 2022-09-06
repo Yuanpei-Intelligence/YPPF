@@ -5,7 +5,7 @@
         <meta charset="UTF-8">
         <meta http-equiv="X-UA-Compatible" content="IE=edge">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>Underground Appointment</title>
+        <title>我的预约 | 元培地下空间</title>
         <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=0">
         <!-- Favicons -->
         <link type="image/x-icon" href="{% static 'Appointment/assets/img/yp_favicon.png' %} " rel="icon">
@@ -67,7 +67,7 @@
                             </li>
                             {% if show_admin %}
                                 <li>
-                                    <a href="admin">管理后台</a>
+                                    <a href="/admin">管理后台</a>
                                 </li>
                             {% endif %}
                             <li class="login-link">
@@ -335,13 +335,11 @@
                                                                         <i class="far fa fa-child"></i>
                                                                         人数：本院 {{ appoint.yp_num }} 人，非本院 {{ appoint.non_yp_num }} 人
                                                                     </h5>
-                                                                    {% if appoint.Aannouncement != "" %}
-                                                                        {% if appoint.Aannouncement != null %}
-                                                                            <h5 style="white-space: normal;">
-                                                                                <i class="fas fa fa-envelope"></i>
-                                                                                预约通知：{{ appoint.Aannouncement }}
-                                                                            </h5>
-                                                                        {% endif %}
+                                                                    {% if appoint.Aannouncement %}
+                                                                        <h5 style="white-space: normal;">
+                                                                            <i class="fas fa fa-envelope"></i>
+                                                                            预约通知：{{ appoint.Aannouncement }}
+                                                                        </h5>
                                                                     {% endif %}
                                                                 </div>
                                                             </div>
@@ -477,7 +475,7 @@
                                     <div class="copyright-menu">
                                         <ul class="policy-menu">
                                             <li>
-                                                <a href="https://yuanpei.pku.edu.cn">智慧校园开发组 元培学院</a>
+                                                <a href="https://github.com/Yuanpei-Intelligence/YPPF">智慧校园开发组 元培学院</a>
                                             </li>
                                         </ul>
                                         <ul class="policy-menu">

@@ -2,12 +2,13 @@ from app.views_dependency import *
 from app.models import (
     NaturalPerson,
     Position,
+    Organization,
     OrganizationType,
     Position,
     Activity,
     ActivityPhoto,
     Participant,
-    Reimbursement,
+    ActivitySummary,
 )
 from app.activity_utils import (
     ActivityException,
@@ -72,7 +73,6 @@ def viewActivity(request: HttpRequest, aid=None):
     content = str(request.POST["content"])
     URL = str(request.POST["URL"])  # 活动推送链接
     QRcode = request.POST["QRcode"]  # 收取元气值的二维码
-    aprice = request.POST["aprice"]  # 活动价格
     capacity = request.POST["capacity"]  # 活动举办的容量
     """
 
@@ -84,10 +84,10 @@ def viewActivity(request: HttpRequest, aid=None):
         org = activity.organization_id
         me = utils.get_person_or_org(request.user, user_type)
         ownership = False
-        if user_type == "Organization" and org == me:
+        if user_type == UTYPE_ORG and org == me:
             ownership = True
         examine = False
-        if user_type == "Person" and activity.examine_teacher == me:
+        if user_type == UTYPE_PER and activity.examine_teacher == me:
             examine = True
         if not (ownership or examine) and activity.status in [
                 Activity.Status.REVIEWING,
@@ -95,6 +95,7 @@ def viewActivity(request: HttpRequest, aid=None):
                 Activity.Status.REJECT,
             ]:
             return redirect(message_url(wrong('该活动暂不可见!')))
+
     except Exception as e:
         log.record_traceback(request, e)
         return EXCEPT_REDIRECT
@@ -118,11 +119,9 @@ def viewActivity(request: HttpRequest, aid=None):
                 with transaction.atomic():
                     activity = Activity.objects.select_for_update().get(id=aid)
                     cancel_activity(request, activity)
-                    html_display["warn_code"] = 2
-                    html_display["warn_message"] = "成功取消活动。"
+                    succeed("成功取消活动。", html_display)
             except ActivityException as e:
-                html_display["warn_code"] = 1
-                html_display["warn_message"] = str(e)
+                wrong(str(e), html_display)
             except Exception as e:
                 log.record_traceback(request, e)
                 return EXCEPT_REDIRECT
@@ -136,11 +135,9 @@ def viewActivity(request: HttpRequest, aid=None):
             if activity.status == Activity.Status.WAITING:
                 if activity.start + timedelta(hours=1) < datetime.now():
                     return redirect(f"/editActivity/{aid}")
-                html_display["warn_code"] = 1
-                html_display["warn_message"] = f"距离活动开始前1小时内将不再允许修改活动。如确有雨天等意外情况，请及时取消活动，收取的元气值将会退还。"
+                wrong(f"距离活动开始前1小时内将不再允许修改活动。如确有雨天等意外情况，请及时取消活动。", html_display)
             else:
-                html_display["warn_code"] = 1
-                html_display["warn_message"] = f"活动状态为{activity.status}, 不能修改。"
+                wrong(f"活动状态为{activity.status}, 不能修改。", html_display)
 
         elif option == "apply":
             try:
@@ -150,13 +147,11 @@ def viewActivity(request: HttpRequest, aid=None):
                         return redirect(message_url(wrong('活动不在报名状态!'), request.path))
                     applyActivity(request, activity)
                     if activity.bidding:
-                        html_display["warn_message"] = f"活动申请中，请等待报名结果。"
+                        succeed(f"活动申请中，请等待报名结果。", html_display)
                     else:
-                        html_display["warn_message"] = f"报名成功。"
-                    html_display["warn_code"] = 2
+                        succeed(f"报名成功。", html_display)
             except ActivityException as e:
-                html_display["warn_code"] = 1
-                html_display["warn_message"] = str(e)
+                wrong(str(e), html_display)
             except Exception as e:
                 log.record_traceback(request, e)
                 return EXCEPT_REDIRECT
@@ -185,17 +180,6 @@ def viewActivity(request: HttpRequest, aid=None):
                 log.record_traceback(request, e)
                 return EXCEPT_REDIRECT
 
-        elif option == "payment":
-            if activity.status != Activity.Status.END:
-                return redirect(message_url(wrong('活动尚未结束!'), request.path))
-            if not ownership:
-                return redirect(message_url(wrong('您没有申请活动结项的权限!'), request.path))
-            try:
-                re = Reimbursement.objects.get(related_activity=activity)
-                return redirect(f"/modifyEndActivity/?reimb_id={re.id}")
-            except:
-                return redirect(f"/modifyEndActivity/")
-
         elif option == "checkinoffline":
             # 进入调整签到界面
             if activity.status != Activity.Status.END:
@@ -212,6 +196,13 @@ def viewActivity(request: HttpRequest, aid=None):
             me.inform_share = False
             me.save()
             return redirect("/welcome/")
+        elif option == "ActivitySummary":
+            try:
+                re = ActivitySummary.objects.get(related_activity=activity,
+                status__in = [ActivitySummary.Status.WAITING,ActivitySummary.Status.CONFIRMED])
+                return redirect(f"/modifyEndActivity/?apply_id={re.id}")
+            except:
+                return redirect(f"/modifyEndActivity/")
         else:
             return redirect(message_url(wrong('无效的请求!'), request.path))
 
@@ -236,22 +227,18 @@ def viewActivity(request: HttpRequest, aid=None):
     if (aURL is None) or (aURL == ""):
         show_url = False
     bidding = activity.bidding
-    price = activity.YQPoint
-    from_student = activity.source == Activity.YQPointSource.STUDENT
     current_participants = activity.current_participants
     status = activity.status
     capacity = activity.capacity
     if capacity == -1 or capacity == 10000:
         capacity = "INF"
-    if activity.source == Activity.YQPointSource.COLLEGE:
-        price = 0
     if activity.bidding:
         apply_manner = "抽签模式"
     else:
         apply_manner = "先到先得"
     # person 表示是否是个人而非小组
     person = False
-    if user_type == "Person":
+    if user_type == UTYPE_PER:
         """
         老师能否报名活动？
         if me.identity == NaturalPerson.Identity.STUDENT:
@@ -275,7 +262,7 @@ def viewActivity(request: HttpRequest, aid=None):
         Activity.Status.PROGRESSING
     ]
 
-    if activity.inner and user_type == "Person":
+    if activity.inner and user_type == UTYPE_PER:
         position = Position.objects.activated().filter(person=me, org=activity.organization_id)
         if len(position) == 0:
             not_inner = True
@@ -300,7 +287,7 @@ def viewActivity(request: HttpRequest, aid=None):
     # 参与者, 无论报名是否通过
     participants = Participant.objects.filter(Q(activity_id=activity),
         Q(status=Participant.AttendStatus.APPLYING) | Q(status=Participant.AttendStatus.APLLYSUCCESS) | Q(status=Participant.AttendStatus.ATTENDED) | Q(status=Participant.AttendStatus.UNATTENDED))
-    #participants_ava = [utils.get_user_ava(participant, "Person") for participant in participants.values("person_id")] or None
+    #participants_ava = [utils.get_user_ava(participant, UTYPE_PER) for participant in participants.values("person_id")] or None
     people_list = NaturalPerson.objects.activated().filter(id__in = participants.values("person_id"))
 
 
@@ -449,7 +436,7 @@ def getActivityInfo(request: HttpRequest):
 @log.except_captured(source='activity_views[checkinActivity]', record_user=True)
 def checkinActivity(request: HttpRequest, aid=None):
     valid, user_type, html_display = utils.check_user_type(request.user)
-    if user_type != "Person":
+    if user_type != UTYPE_PER:
         return redirect(message_url(wrong('签到失败：请使用个人账号签到')))
     try:
         np = get_person_or_org(request.user, user_type)
@@ -587,7 +574,7 @@ def addActivity(request: HttpRequest, aid=None):
         # assert valid  已经在check_user_access检查过了
         me = utils.get_person_or_org(request.user, user_type) # 这里的me应该为小组账户
         if aid is None:
-            if user_type != "Organization":
+            if user_type != UTYPE_ORG:
                 return redirect(message_url(wrong('小组账号才能添加活动!')))
             if me.oname == YQP_ONAME:
                 return redirect("/showActivity")
@@ -595,14 +582,14 @@ def addActivity(request: HttpRequest, aid=None):
         else:
             aid = int(aid)
             activity = Activity.objects.get(id=aid)
-            if user_type == "Person":
+            if user_type == UTYPE_PER:
                 html_display=utils.user_login_org(request,activity.organization_id)
                 if html_display['warn_code']==1:
                     return redirect(message_url(wrong(html_display["warn_message"])))
                 else: # 成功以小组账号登陆
                     # 防止后边有使用，因此需要赋值
-                    user_type = "Organization"
-                    request.user = activity.organization_id.organization_id #小组对应user
+                    user_type = UTYPE_ORG
+                    request.user = activity.organization_id.get_user() #小组对应user
                     me = activity.organization_id #小组
             if activity.organization_id != me:
                 return redirect(message_url(wrong("无法修改其他小组的活动!")))
@@ -654,7 +641,7 @@ def addActivity(request: HttpRequest, aid=None):
                 # 只能修改自己的活动
                 with transaction.atomic():
                     activity = Activity.objects.select_for_update().get(id=aid)
-                    org = get_person_or_org(request.user, "Organization")
+                    org = get_person_or_org(request.user, UTYPE_ORG)
                     assert activity.organization_id == org
                     modify_activity(request, activity)
                 html_display["warn_message"] = "修改成功。"
@@ -681,7 +668,7 @@ def addActivity(request: HttpRequest, aid=None):
         available_teachers = NaturalPerson.objects.teachers()
     else:
         try:
-            org = get_person_or_org(request.user, "Organization")
+            org = get_person_or_org(request.user, UTYPE_ORG)
 
             # 没过审，可以编辑评论区
             if not activity.valid:
@@ -718,7 +705,6 @@ def addActivity(request: HttpRequest, aid=None):
         # 下面是前端展示的变量
 
         title = utils.escape_for_templates(activity.title)
-        budget = activity.budget
         location = utils.escape_for_templates(activity.location)
         apply_end = activity.apply_end.strftime("%Y-%m-%d %H:%M")
         # apply_end_for_js = activity.apply_end.strftime("%Y-%m-%d %H:%M")
@@ -729,14 +715,10 @@ def addActivity(request: HttpRequest, aid=None):
 
         endbefore = activity.endbefore
         bidding = activity.bidding
-        amount = activity.YQPoint
         signscheme = "先到先得"
         if bidding:
             signscheme = "抽签模式"
         capacity = activity.capacity
-        yq_source = "向学生收取"
-        if activity.source == Activity.YQPointSource.COLLEGE:
-            yq_source = "向学院申请"
         no_limit = False
         if capacity == 10000:
             no_limit = True
@@ -745,7 +727,6 @@ def addActivity(request: HttpRequest, aid=None):
         available_teachers = NaturalPerson.objects.teachers()
         need_checkin = activity.need_checkin
         inner = activity.inner
-        apply_reason = utils.escape_for_templates(activity.apply_reason)
         if not use_template:
             comments = showComment(activity)
         photo = str(activity.photos.get(type=ActivityPhoto.PhotoType.ANNOUNCE).image)
@@ -778,7 +759,7 @@ def showActivity(request: HttpRequest):
     valid, user_type, html_display = utils.check_user_type(request.user)
     me = utils.get_person_or_org(request.user)  # 获取自身
     is_teacher = False #该变量同时用于前端
-    if user_type == "Person":
+    if user_type == UTYPE_PER:
         try:
             person = utils.get_person_or_org(request.user, user_type)
             is_teacher = person.is_teacher()
@@ -810,7 +791,7 @@ def showActivity(request: HttpRequest):
     bar_display = utils.get_sidebar_and_navbar(request.user, "活动立项")
 
     # 前端不允许元气值中心创建活动
-    if user_type == "Organization" and me.oname == YQP_ONAME:
+    if user_type == UTYPE_ORG and me.oname == YQP_ONAME:
         YQPoint_Source_Org = True
 
     return render(request, "activity_show.html", locals())
@@ -822,7 +803,7 @@ def examineActivity(request: HttpRequest, aid):
     valid, user_type, html_display = utils.check_user_type(request.user)
     try:
         assert valid
-        assert user_type == "Person"
+        assert user_type == UTYPE_PER
         me = utils.get_person_or_org(request.user)
         activity = Activity.objects.get(id=int(aid))
         assert activity.examine_teacher == me
@@ -845,7 +826,7 @@ def examineActivity(request: HttpRequest, aid):
 
         if request.POST.get("comment_submit"):
             try:
-                context = addComment(request, activity, activity.organization_id.organization_id)
+                context = addComment(request, activity, activity.organization_id.get_user())
                 # 评论内容不为空，上传文件类型为图片会在前端检查，这里有错直接跳转
                 assert context["warn_code"] == 2
                 html_display["warn_message"] = "评论成功。"
@@ -889,7 +870,6 @@ def examineActivity(request: HttpRequest, aid):
 
     # 展示变量
     title = utils.escape_for_templates(activity.title)
-    budget = activity.budget
     location = utils.escape_for_templates(activity.location)
     apply_end = activity.apply_end.strftime("%Y-%m-%d %H:%M")
     start = activity.start.strftime("%Y-%m-%d %H:%M")
@@ -899,20 +879,15 @@ def examineActivity(request: HttpRequest, aid):
     url = utils.escape_for_templates(activity.URL)
     endbefore = activity.endbefore
     bidding = activity.bidding
-    amount = activity.YQPoint
     signscheme = "先到先得"
     if bidding:
         signscheme = "投点参与"
     capacity = activity.capacity
-    yq_source = "向学生收取"
-    if activity.source == Activity.YQPointSource.COLLEGE:
-        yq_source = "向学院申请"
     no_limit = False
     if capacity == 10000:
         no_limit = True
     examine_teacher = activity.examine_teacher.name
     html_display["today"] = datetime.now().strftime("%Y-%m-%d")
-    # html_display["app_avatar_path"] = utils.get_user_ava(activity.organization_id,"Organization")h
     html_display["app_avatar_path"] = activity.organization_id.get_user_ava()
     html_display["applicant_name"] = activity.organization_id.oname
     bar_display = utils.get_sidebar_and_navbar(request.user)
@@ -925,7 +900,6 @@ def examineActivity(request: HttpRequest, aid):
     intro_pic = examine_pic.image
 
     need_checkin = activity.need_checkin
-    apply_reason = utils.escape_for_templates(activity.apply_reason)
 
     bar_display = utils.get_sidebar_and_navbar(request.user, "活动审核")
     # bar_display["title_name"] = "审查活动"
@@ -951,8 +925,9 @@ def offlineCheckinActivity(request: HttpRequest, aid):
     me = get_person_or_org(request.user, user_type)
     try:
         aid = int(aid)
+        src = request.GET.get('src')
         activity = Activity.objects.get(id=aid)
-        assert me == activity.organization_id and user_type == "Organization"
+        assert me == activity.organization_id and user_type == UTYPE_ORG
     except:
         return redirect(message_url(wrong('请不要恶意访问其他网页！')))
 
@@ -986,11 +961,272 @@ def offlineCheckinActivity(request: HttpRequest, aid):
                             status = Participant.AttendStatus.UNATTENDED)
             except:
                 return redirect(message_url(wrong("修改失败。"), request.path))
-            return redirect(message_url(
-                succeed("修改签到信息成功。"), f"/viewActivity/{aid}"))
+            # 修改成功之后根据src的不同返回不同的界面，1代表聚合页面，2代表活动主页
+            if src == "course_center":
+                return redirect(message_url(
+                    succeed("修改签到信息成功。"), f"/showCourseActivity/"))
+            else:
+                return redirect(message_url(
+                    succeed("修改签到信息成功。"), f"/viewActivity/{aid}"))
 
     bar_display = utils.get_sidebar_and_navbar(request.user,
                                                navbar_name="调整签到信息")
     member_list = member_list.select_related('person_id')
     render_context = dict(bar_display=bar_display, member_list=member_list)
     return render(request, "activity_checkinoffline.html", render_context)
+    
+
+login_required(redirect_field_name="origin")
+@utils.check_user_access(redirect_url="/logout/")
+@log.except_captured(source='activity_views[endActivity]', record_user=True)
+def endActivity(request: HttpRequest):
+    """
+    之前被用为报销信息的聚合界面，现已将报销删去，留下总结图片的功能
+    对审核老师进行了特判
+    """
+    valid, user_type, html_display = utils.check_user_type(request.user)
+    is_auditor = False
+    if user_type == "Person":
+        try:
+            person = utils.get_person_or_org(request.user, user_type)
+            is_auditor = person.is_teacher()
+        except:
+            pass
+        if not is_auditor:
+            html_display["warn_code"] = 1
+            html_display["warn_message"] = "请不要使用个人账号申请活动结项！"
+            return redirect(message_url(wrong(html_display["warn_message"])))
+            
+
+    if is_auditor:
+        all_instances = {
+            "undone": ActivitySummary.objects.filter(related_activity__examine_teacher=person, status = ActivitySummary.Status.WAITING),
+            "done": ActivitySummary.objects.filter(related_activity__examine_teacher=person).exclude(status = ActivitySummary.Status.WAITING)
+        }
+
+    else:
+        all_instances = {
+            "undone":   ActivitySummary.objects.filter(related_activity__organization_id__organization_id=request.user, status = ActivitySummary.Status.WAITING),
+            "done":     ActivitySummary.objects.filter(related_activity__organization_id__organization_id=request.user).exclude(status = ActivitySummary.Status.WAITING)
+        }
+
+    all_instances = {key:value.order_by( "-time") for key, value in all_instances.items()}
+    bar_display = utils.get_sidebar_and_navbar(request.user, "活动结项")
+    return render(request, "activity_summary_show.html", locals())
+
+
+# 新建+修改+取消+审核 报销信息
+@login_required(redirect_field_name="origin")
+@utils.check_user_access(redirect_url="/logout/")
+@log.except_captured(source='activity_views[modifyEndActivity]', record_user=True)
+def modifyEndActivity(request: HttpRequest):
+    # return
+    valid, user_type, html_display = utils.check_user_type(request.user)
+    me = utils.get_person_or_org(request.user)  # 获取自身
+
+    # 前端使用量user_type，表示观察者是小组还是个人
+
+    # ———————————————— 读取可能存在的申请 为POST和GET做准备 ————————————————
+
+    # 设置application为None, 如果非None则自动覆盖
+    application = None
+    # 根据是否有newid来判断是否是第一次
+    apply_id = request.GET.get("apply_id", None)
+    # 获取前端页面中可能存在的提示
+    try:
+        if request.GET.get("warn_code", None) is not None:
+            html_display["warn_code"] = int(request.GET.get("warn_code"))
+            html_display["warn_message"] = request.GET.get("warn_message")
+    except:
+        pass
+
+    if apply_id is not None:  # 如果存在对应申请
+        try:  # 尝试获取已经新建的apply
+            application = ActivitySummary.objects.get(id=apply_id)
+            auditor = application.related_activity.examine_teacher.person_id   # 审核老师
+            if user_type == "Person" and auditor!=request.user:
+                html_display=utils.user_login_org(request, application.pos.organization)
+                if html_display['warn_code']==1:
+                    return redirect(message_url(wrong(html_display["warn_message"])))
+                else: #成功
+                    user_type = "Organization"
+                    request.user = application.pos
+                    me = application.pos.organization
+
+            # 接下来检查是否有权限check这个条目
+            # 至少应该是申请人或者被审核老师之一
+            assert (application.related_activity.organization_id.organization_id == request.user) or (auditor == request.user)
+        except:  # 恶意跳转
+            return redirect(message_url(wrong(html_display["您没有权限访问该网址！"])))
+    
+        is_new_application = False  # 前端使用量, 表示是老申请还是新的
+
+    else:  # 如果不存在id, 默认应该传入活动信息
+        #只有小组才有可能申请
+        try:
+            assert user_type == "Organization"
+        except:  # 恶意跳转
+            return redirect(message_url(wrong(html_display["您没有权限访问该网址！"])))
+           
+        is_new_application = True  # 新的申请
+
+        # 这种写法是为了方便随时取消某个条件
+    '''
+        至此，如果是新申请那么application为None，否则为对应申请
+        application = None只有在小组新建申请的时候才可能出现，对应位is_new_application为True
+        接下来POST
+    '''
+
+    if user_type == "Organization":
+        # 未总结活动
+        summary_act_ids = (
+            ActivitySummary.objects.all()
+                .exclude(status=ActivitySummary.Status.CANCELED)  # 未被取消的
+                .exclude(status=ActivitySummary.Status.REFUSED)   # 未被拒绝的
+                .values_list("related_activity__id", flat=True)
+        )
+        # 可以新建申请的活动
+        activities = (
+            Activity.objects.activated()  # 本学期的
+                .filter(organization_id=me)  # 本部门小组的
+                .filter(status=Activity.Status.END)  # 已结束的
+                .exclude(id__in=summary_act_ids))  # 还没有报销的
+
+        activities.len = len(activities)
+    else:
+        activities = None
+
+    # ———————— Post操作，分为申请变更以及添加评论   ————————
+
+    if request.method == "POST" and request.POST.get("post_type", None) is not None:
+        # 首先确定申请状态
+        post_type = request.POST.get("post_type")
+        feasible_post = ["new_submit", "modify_submit",
+                        "cancel_submit", "accept_submit", "refuse_submit"]
+        if post_type not in feasible_post:
+            return redirect(message_url(wrong('申请状态异常！')))
+
+        # 接下来确定访问的个人/小组是不是在做分内的事情
+        if (user_type == "Person" and feasible_post.index(post_type) <= 2) or (
+                user_type == "Organization" and feasible_post.index(post_type) >= 3):
+            return redirect(message_url(wrong('您无权进行此操作，如有疑惑, 请联系管理员')))
+
+
+        if (post_type != "new_submit") and not application.is_pending():
+            return redirect(message_url(wrong("不可以修改状态不为申请中的申请")))
+
+        if post_type in ["new_submit", "modify_submit"]:
+            if post_type == "new_submit":
+                # 检查活动
+                try:
+                    act_id = int(request.POST.get('activity_id'))
+                    activity = Activity.objects.get(id=act_id)
+                    if activity not in activities:  # 防止篡改POST导致伪造
+                        return redirect(message_url(wrong('找不到该活动，请检查活动总结的合法性！')))
+                except:
+                    return redirect(message_url(wrong('找不到该活动，请检查活动总结的合法性！')))
+                    
+        
+            with transaction.atomic():
+                if post_type == "new_submit":
+                    # 新建activity summary
+                    application = ActivitySummary.objects.create(
+                            status=ActivitySummary.Status.WAITING, 
+                            related_activity=activity,
+                            )
+                #活动总结图片
+                summary_photos = request.FILES.getlist('summaryimages')
+                photo_num = len(summary_photos)
+                if photo_num == 1:
+                    #合法性检查
+                    for image in summary_photos:
+                        if utils.if_image(image) != 2:
+                            return redirect(message_url(wrong("上传的总结图片只支持图片格式！")))
+                    application.image = summary_photos[0]
+                    application.save()
+                    
+                else:
+                    return redirect(message_url(wrong('图片内容为空或有多张图片！'), request.path))
+
+                if post_type == "new_submit":
+                    context = succeed(f'活动“{application.related_activity.title}”的申请已成功发送，请耐心等待{application.related_activity.examine_teacher.name}老师审批！' )
+                else:
+                    context = succeed(f'活动“{application.related_activity.title}”的申请已成功修改，请耐心等待{application.related_activity.examine_teacher.name}老师审批！' )
+                context["application_id"] = application.id
+
+        elif post_type == "cancel_submit":
+            if not application.is_pending():  # 如果不在pending状态, 可能是重复点击
+                return redirect(message_url(wrong("该申请已经完成或被取消")))
+            application.status = ActivitySummary.Status.CANCELED
+            application.save()
+            context = succeed("成功取消“" +application.related_activity.title+ "”的活动总结申请!")
+            context["application_id"] = application.id
+        
+        else:
+            if not application.is_pending():
+                return redirect(message_url(wrong("无法操作, 该申请已经完成或被取消!")))
+
+            if post_type == "refuse_submit":
+                #修改申请状态
+                application.status = ActivitySummary.Status.REFUSED
+                application.save()
+                context = succeed(f'已成功拒绝活动“{application.related_activity.title}”的活动总结申请！')
+                context["application_id"] = application.id
+            elif post_type == "accept_submit":
+                # 修改申请的状态
+                application.status = ActivitySummary.Status.CONFIRMED
+                old_images = application.summaryimages.all()
+                if len(old_images) > 0:
+                    for payload in old_images:
+                        ActivityPhoto.objects.create(
+                            image=payload.image,
+                            activity=application.related_activity,
+                            time=datetime.now(),
+                            type=ActivityPhoto.PhotoType.SUMMARY
+                        )
+                application.save()
+                context = succeed(f'活动“{application.related_activity.title}”的总结申请已通过！')
+                context["application_id"] = application.id
+
+
+        # 为了保证稳定性，完成POST操作后同意全体回调函数，进入GET状态
+        if application is None:
+            return redirect(message_url(context, '/modifyEndActivity/'))
+        else:
+            return redirect(message_url(context, f'/modifyEndActivity/?apply_id={application.id}'))
+
+    # ———————— 完成Post操作, 接下来开始准备前端呈现 ————————
+    '''
+        小组：可能是新建、修改申请
+        老师：可能是审核申请
+    '''
+
+    # (1) 是否允许修改表单
+    # 小组写表格?
+    allow_form_edit = True if (user_type == "Organization") and (
+            is_new_application or application.is_pending()) else False
+
+    # 老师审核?
+    allow_audit_submit = True if (user_type == "Person") and (not is_new_application) and (
+        application.is_pending()) else False
+
+    # 用于前端展示：如果是新申请，申请人即“me”，否则从application获取。
+    apply_person = me if is_new_application else utils.get_person_or_org(application.related_activity.organization_id.organization_id)
+    #申请人头像
+    app_avatar_path = apply_person.get_user_ava()
+
+
+    #活动总结图片
+    summary_photo = application.image if application is not None else None
+    summary_photo_exist = True if summary_photo is not None else False
+    #元培学院
+    our_college = Organization.objects.get(oname="元培学院") if allow_audit_submit else None
+    #审核老师
+    examine_teacher = application.related_activity.examine_teacher if application is not None else None
+    bar_display = utils.get_sidebar_and_navbar(request.user, navbar_name="活动总结详情")
+
+ 
+
+
+    return render(request, "modify_activity_summary.html", locals())
+

@@ -8,15 +8,16 @@ import rpyc
 from rpyc.utils.server import ThreadedServer
 
 import logging
+
 logging.getLogger('apscheduler').setLevel(settings.MY_LOG_LEVEL)
 logger = logging.getLogger(__name__)
 
-
 from app.scheduler_func import *
 from Appointment.utils.scheduler_func import clear_appointments
+from yp_library.management.sync import update_lib_data
+
 
 class SchedulerService(rpyc.Service):
-
     def __init__(self, scheduler):
         # It is OK to pass an instance of service to Threadserver now
         self.scheduler = scheduler
@@ -58,21 +59,28 @@ class Command(BaseCommand):
                           hour=1,
                           replace_existing=True)
         scheduler.add_job(longterm_launch_course,
-                            "interval",
-                            id="courseWeeklyActivitylauncher",
-                            minutes=5,
-                            replace_existing=True)
+                          "interval",
+                          id="courseWeeklyActivitylauncher",
+                          minutes=5,
+                          replace_existing=True)
         scheduler.add_job(public_feedback_per_hour,
                           "cron",
                           id='feedback_public_updater',
                           minute=5,
+                          replace_existing=True)
+        scheduler.add_job(update_lib_data,
+                          "cron",
+                          id="update_yp_library_data",
+                          minute=10,
                           replace_existing=True)
 
         protocol_config = {
             'allow_all_attrs': True,
             'logger': logger,
         }
-        server = ThreadedServer(SchedulerService(scheduler), port=settings.MY_RPC_PORT, protocol_config=protocol_config)
+        server = ThreadedServer(SchedulerService(scheduler),
+                                port=settings.MY_RPC_PORT,
+                                protocol_config=protocol_config)
         try:
             # logging.info("Starting thread server...")
             server.start()
@@ -80,4 +88,3 @@ class Command(BaseCommand):
             pass
         finally:
             scheduler.shutdown()
-

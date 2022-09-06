@@ -68,7 +68,7 @@ def editCourseActivity(request: HttpRequest, aid: int):
     except:
         return redirect(message_url(wrong("活动不存在!")))
 
-    if user_type == "Person":
+    if user_type == UTYPE_PER:
         my_messages.transfer_message_context(
             utils.user_login_org(request, activity.organization_id),
             html_display,
@@ -86,8 +86,8 @@ def editCourseActivity(request: HttpRequest, aid: int):
     if activity.category != Activity.ActivityCategory.COURSE:
         return redirect(message_url(wrong('当前活动不是书院课程活动!'),
                                     f'/viewActivity/{activity.id}'))
-    # 课程活动无需报名，在开始前都是等待中的状态
-    if activity.status != Activity.Status.WAITING:
+    # 课程活动只能在发布前进行修改
+    if activity.status != Activity.Status.UNPUBLISHED:
         return redirect(message_url(wrong('当前活动状态不允许修改!'),
                                     f'/viewActivity/{activity.id}'))
 
@@ -106,6 +106,7 @@ def editCourseActivity(request: HttpRequest, aid: int):
             return redirect(message_url(wrong(str(err_info)),
                                         request.get_full_path()))
         except Exception as e:
+            print(e)
             return redirect(message_url(wrong("修改课程活动失败!"),
                                         request.get_full_path()))
 
@@ -121,7 +122,8 @@ def editCourseActivity(request: HttpRequest, aid: int):
     end = activity.end.strftime("%Y-%m-%d %H:%M")
     # introduction = escape_for_templates(activity.introduction) # 暂定不需要简介
     edit = True  # 前端据此区分是编辑还是创建
-
+    publish_day = activity.publish_day
+    need_apply = activity.need_apply
     # 判断本活动是否为长期定时活动
     course_time_tag = (activity.course_time is not None)
 
@@ -143,7 +145,7 @@ def addSingleCourseActivity(request: HttpRequest):
     # 检查用户身份
     valid, user_type, html_display = utils.check_user_type(request.user)
     me = utils.get_person_or_org(request.user, user_type)  # 这里的me应该为小组账户
-    if user_type != "Organization" or me.otype.otype_name != COURSE_TYPENAME:
+    if user_type != UTYPE_ORG or me.otype.otype_name != COURSE_TYPENAME:
         return redirect(message_url(wrong('书院课程小组账号才能开设课程活动!')))
     if me.oname == YQP_ONAME:
         return redirect("/showActivity/")  # TODO: 可以重定向到书院课程聚合页面
@@ -200,7 +202,7 @@ def showCourseActivity(request: HttpRequest):
     _, user_type, html_display = utils.check_user_type(request.user)
     me = get_person_or_org(request.user, user_type)  # 获取自身
 
-    if user_type != "Organization" or me.otype.otype_name != COURSE_TYPENAME:
+    if user_type != UTYPE_ORG or me.otype.otype_name != COURSE_TYPENAME:
         return redirect(message_url(wrong('只有书院课程组织才能查看此页面!')))
     my_messages.transfer_message_context(request.GET, html_display)
 
@@ -215,6 +217,7 @@ def showCourseActivity(request: HttpRequest):
     future_activity_list = (
         all_activity_list.filter(
             status__in=[
+                Activity.Status.UNPUBLISHED,
                 Activity.Status.REVIEWING,
                 Activity.Status.APPLYING,
                 Activity.Status.WAITING,
@@ -266,8 +269,8 @@ def showCourseActivity(request: HttpRequest):
 
         assert activity.status not in [
             Activity.Status.REVIEWING,
-            Activity.Status.APPLYING,
-        ], "课程活动状态非法"  # 课程活动不应出现这两个状态
+            # Activity.Status.APPLYING,
+        ], "课程活动状态非法"  # 课程活动不应出现审核状态
 
         # 取消活动
         with transaction.atomic():
@@ -300,7 +303,7 @@ def showCourseRecord(request: HttpRequest) -> HttpResponse:
     # ----身份检查----
     _, user_type, _ = utils.check_user_type(request.user)
     me = utils.get_person_or_org(request.user)  # 获取自身
-    if user_type == "Person":
+    if user_type == UTYPE_PER:
         return redirect(message_url(wrong('学生账号不能访问此界面！')))
     if me.otype.otype_name != COURSE_TYPENAME:
         return redirect(message_url(wrong('非书院课程组织账号不能访问此界面！')))
@@ -415,6 +418,9 @@ def showCourseRecord(request: HttpRequest) -> HttpResponse:
                     "hours": record.total_hours
                 })
             CourseRecord.objects.bulk_update(record_search, ["attend_times"])
+            # 如果点击提交学时按钮，修改数据库之后，跳转至已结束的活动界面
+            if request.method == "POST":
+                return(redirect("/showCourseActivity"))
 
     # 前端呈现信息，用于展示
     course_info = {
@@ -454,7 +460,7 @@ def selectCourse(request: HttpRequest):
     valid, user_type, html_display = utils.check_user_type(request.user)
     me = get_person_or_org(request.user, user_type)
 
-    if user_type == "Organization":
+    if user_type == UTYPE_ORG:
         return redirect(message_url(wrong("组织账号无法访问书院选课页面。如需选课，请切换至个人账号；如需查看您发起的书院课程，请点击【我的课程】。")))
 
     is_student = (me.identity == NaturalPerson.Identity.STUDENT)
@@ -533,7 +539,6 @@ def selectCourse(request: HttpRequest):
     selected_display = course_to_display(selected_courses, me)
 
     bar_display = utils.get_sidebar_and_navbar(request.user, "书院课程")
-
     return render(request, "select_course.html", locals())
 
 
@@ -589,7 +594,7 @@ def addCourse(request: HttpRequest, cid=None):
     # assert valid  已经在check_user_access检查过了
     me = utils.get_person_or_org(request.user, user_type) # 这里的me应该为小组账户
     if cid is None:
-        if user_type != "Organization" or me.otype.otype_name != COURSE_TYPENAME:
+        if user_type != UTYPE_ORG or me.otype.otype_name != COURSE_TYPENAME:
             return redirect(message_url(wrong('书院课程账号才能发起课程!')))
         #暂时仅支持一个课程账号一学期只能开一门课
         courses = Course.objects.activated().filter(organization=me)
@@ -627,6 +632,8 @@ def addCourse(request: HttpRequest, cid=None):
         if not edit:
             # 发起选课
             course_DDL = str_to_time(get_setting("course/btx_election_end"))
+
+
             if datetime.now() > course_DDL:
                 return redirect(message_url(succeed("已超过选课时间节点，无法发起课程！"),
                                             f'/showCourseActivity/'))
@@ -671,6 +678,8 @@ def addCourse(request: HttpRequest, cid=None):
         teaching_plan=utils.escape_for_templates(course.teaching_plan)
         record_cal_method=utils.escape_for_templates(course.record_cal_method)
         status = course.status
+        need_apply = course.need_apply
+        publish_day = course.publish_day
         capacity = course.capacity
         type = course.type
         current_participants = course.current_participants
@@ -719,7 +728,7 @@ def outputSelectInfo(request: HttpRequest):
     valid, user_type, html_display = utils.check_user_type(request.user)
     me = utils.get_person_or_org(request.user, user_type)
     try:
-        assert (user_type == "Organization"
+        assert (user_type == UTYPE_ORG
                 and me.otype.otype_name == COURSE_TYPENAME), '只有书院课程账号才能下载选课名单!'
         # 暂时仅支持一个课程账号一学期只能开一门课
         courses = Course.objects.activated().filter(organization=me)
