@@ -198,7 +198,7 @@ def viewActivity(request: HttpRequest, aid=None):
             return redirect("/welcome/")
         elif option == "ActivitySummary":
             try:
-                re = ActivitySummary.objects.get(related_activity=activity,
+                re = ActivitySummary.objects.get(activity=activity,
                 status__in = [ActivitySummary.Status.WAITING,ActivitySummary.Status.CONFIRMED])
                 return redirect(f"/modifyEndActivity/?apply_id={re.id}")
             except:
@@ -1000,14 +1000,14 @@ def endActivity(request: HttpRequest):
 
     if is_auditor:
         all_instances = {
-            "undone": ActivitySummary.objects.filter(related_activity__examine_teacher=person, status = ActivitySummary.Status.WAITING),
-            "done": ActivitySummary.objects.filter(related_activity__examine_teacher=person).exclude(status = ActivitySummary.Status.WAITING)
+            "undone": ActivitySummary.objects.filter(activity__examine_teacher=person, status = ActivitySummary.Status.WAITING),
+            "done": ActivitySummary.objects.filter(activity__examine_teacher=person).exclude(status = ActivitySummary.Status.WAITING)
         }
 
     else:
         all_instances = {
-            "undone":   ActivitySummary.objects.filter(related_activity__organization_id__organization_id=request.user, status = ActivitySummary.Status.WAITING),
-            "done":     ActivitySummary.objects.filter(related_activity__organization_id__organization_id=request.user).exclude(status = ActivitySummary.Status.WAITING)
+            "undone":   ActivitySummary.objects.filter(activity__organization_id__organization_id=request.user, status = ActivitySummary.Status.WAITING),
+            "done":     ActivitySummary.objects.filter(activity__organization_id__organization_id=request.user).exclude(status = ActivitySummary.Status.WAITING)
         }
 
     all_instances = {key:value.order_by( "-time") for key, value in all_instances.items()}
@@ -1043,7 +1043,7 @@ def modifyEndActivity(request: HttpRequest):
     if apply_id is not None:  # 如果存在对应申请
         try:  # 尝试获取已经新建的apply
             application = ActivitySummary.objects.get(id=apply_id)
-            auditor = application.related_activity.examine_teacher.person_id   # 审核老师
+            auditor = application.activity.examine_teacher.person_id   # 审核老师
             if user_type == "Person" and auditor!=request.user:
                 html_display=utils.user_login_org(request, application.pos.organization)
                 if html_display['warn_code']==1:
@@ -1055,7 +1055,7 @@ def modifyEndActivity(request: HttpRequest):
 
             # 接下来检查是否有权限check这个条目
             # 至少应该是申请人或者被审核老师之一
-            assert (application.related_activity.organization_id.organization_id == request.user) or (auditor == request.user)
+            assert (application.activity.organization_id.organization_id == request.user) or (auditor == request.user)
         except:  # 恶意跳转
             return redirect(message_url(wrong(html_display["您没有权限访问该网址！"])))
     
@@ -1083,7 +1083,7 @@ def modifyEndActivity(request: HttpRequest):
             ActivitySummary.objects.all()
                 .exclude(status=ActivitySummary.Status.CANCELED)  # 未被取消的
                 .exclude(status=ActivitySummary.Status.REFUSED)   # 未被拒绝的
-                .values_list("related_activity__id", flat=True)
+                .values_list("activity__id", flat=True)
         )
         # 可以新建申请的活动
         activities = (
@@ -1132,7 +1132,7 @@ def modifyEndActivity(request: HttpRequest):
                     # 新建activity summary
                     application = ActivitySummary.objects.create(
                             status=ActivitySummary.Status.WAITING, 
-                            related_activity=activity,
+                            activity=activity,
                             )
                 #活动总结图片
                 summary_photos = request.FILES.getlist('summaryimages')
@@ -1149,9 +1149,9 @@ def modifyEndActivity(request: HttpRequest):
                     return redirect(message_url(wrong('图片内容为空或有多张图片！'), request.path))
 
                 if post_type == "new_submit":
-                    context = succeed(f'活动“{application.related_activity.title}”的申请已成功发送，请耐心等待{application.related_activity.examine_teacher.name}老师审批！' )
+                    context = succeed(f'活动“{application.activity.title}”的申请已成功发送，请耐心等待{application.activity.examine_teacher.name}老师审批！' )
                 else:
-                    context = succeed(f'活动“{application.related_activity.title}”的申请已成功修改，请耐心等待{application.related_activity.examine_teacher.name}老师审批！' )
+                    context = succeed(f'活动“{application.activity.title}”的申请已成功修改，请耐心等待{application.activity.examine_teacher.name}老师审批！' )
                 context["application_id"] = application.id
 
         elif post_type == "cancel_submit":
@@ -1159,7 +1159,7 @@ def modifyEndActivity(request: HttpRequest):
                 return redirect(message_url(wrong("该申请已经完成或被取消")))
             application.status = ActivitySummary.Status.CANCELED
             application.save()
-            context = succeed("成功取消“" +application.related_activity.title+ "”的活动总结申请!")
+            context = succeed("成功取消“" +application.activity.title+ "”的活动总结申请!")
             context["application_id"] = application.id
         
         else:
@@ -1170,22 +1170,21 @@ def modifyEndActivity(request: HttpRequest):
                 #修改申请状态
                 application.status = ActivitySummary.Status.REFUSED
                 application.save()
-                context = succeed(f'已成功拒绝活动“{application.related_activity.title}”的活动总结申请！')
+                context = succeed(f'已成功拒绝活动“{application.activity.title}”的活动总结申请！')
                 context["application_id"] = application.id
             elif post_type == "accept_submit":
                 # 修改申请的状态
                 application.status = ActivitySummary.Status.CONFIRMED
-                old_images = application.summaryimages.all()
-                if len(old_images) > 0:
-                    for payload in old_images:
-                        ActivityPhoto.objects.create(
-                            image=payload.image,
-                            activity=application.related_activity,
-                            time=datetime.now(),
-                            type=ActivityPhoto.PhotoType.SUMMARY
-                        )
+                old_image = application.image
+                if not old_image is None: 
+                    ActivityPhoto.objects.create(
+                        image=old_image,
+                        activity=application.activity,
+                        time=datetime.now(),
+                        type=ActivityPhoto.PhotoType.SUMMARY
+                    )
                 application.save()
-                context = succeed(f'活动“{application.related_activity.title}”的总结申请已通过！')
+                context = succeed(f'活动“{application.activity.title}”的总结申请已通过！')
                 context["application_id"] = application.id
 
 
@@ -1211,7 +1210,7 @@ def modifyEndActivity(request: HttpRequest):
         application.is_pending()) else False
 
     # 用于前端展示：如果是新申请，申请人即“me”，否则从application获取。
-    apply_person = me if is_new_application else utils.get_person_or_org(application.related_activity.organization_id.organization_id)
+    apply_person = me if is_new_application else utils.get_person_or_org(application.activity.organization_id.organization_id)
     #申请人头像
     app_avatar_path = apply_person.get_user_ava()
 
@@ -1222,7 +1221,7 @@ def modifyEndActivity(request: HttpRequest):
     #元培学院
     our_college = Organization.objects.get(oname="元培学院") if allow_audit_submit else None
     #审核老师
-    examine_teacher = application.related_activity.examine_teacher if application is not None else None
+    examine_teacher = application.activity.examine_teacher if application is not None else None
     bar_display = utils.get_sidebar_and_navbar(request.user, navbar_name="活动总结详情")
 
  
