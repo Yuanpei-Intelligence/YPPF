@@ -1,4 +1,5 @@
 # 数据库模型与操作
+from operator import is_
 import os
 from Appointment.models import (
     Participant,
@@ -1445,11 +1446,21 @@ def summary2021(request: HttpRequest):
     is_freshman = request.user.username.startswith('22')
     user_accept = 'accept' in request.GET.keys()
     infos = generic_info()
+    if logged_in:
+        if is_freshman:
+            window = "“新同学你好，系统中还没有你的数据。将为你展示年度总结示例，之后在系统中多留下自己的足迹吧～"
+        else:
+            window= "点击确认则视为允许我们访问你的必要数据，但是我们保证不会将其泄露给其他人"
+    else:
+        window = "您尚未登录，将为您展示年度总结示例"
     infos.update(
         logged_in=logged_in,
         is_freshman=is_freshman,
         user_accept=user_accept,
+        window = window,
+        name=['上官紫苑','陈一格','上官紫苑','黎滢钰','刘展鹏','潘宏弢','杜思娴']
     )
+
     if user_accept and logged_in and not is_freshman:
         infos.update(person_info(request.user))
         try:
@@ -1468,4 +1479,4 @@ def summary2021(request: HttpRequest):
         except:
             pass
 
-    return render(request, 'Appointment/summary2.html', infos)
+    return render(request, 'Appointment/summary2021.html', infos)

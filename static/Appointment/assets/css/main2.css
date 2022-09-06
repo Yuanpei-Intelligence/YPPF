@@ -6809,7 +6809,7 @@
     position: absolute;
     left: 0;
     right: 0;
-    top: 45%;
+    top: 50%;
     text-align: center;
     transform: translateY(-50%);
   }
@@ -7315,5 +7315,45 @@
     z-index:5;
   }
 
+
+  /*page-end*/
+
+  .page-end .bg-back {
+    height: 100%;
+    width: 100%;
+    position: absolute;
+    top: 0;
+    left: 0;
+    opacity: 100%;
+    background: url("../img/summary2022/home_page/底图.png") no-repeat;
+    background-size: cover;
+    background-position: center;
+  }
+  
+  .page-end .content {
+    position: absolute;
+    left: 10%;
+    right: 10%;
+    top: 45%;
+    text-align: center;
+    transform: translateY(-50%);
+  }
+
+  .page-end .content2 {
+    position: absolute;
+    left: 10%;
+    right: 10%;
+    top: 45%;
+    text-align: left;
+    transform: translateY(-50%);
+  }
+
+  .page-end .content-annotation {
+    position: absolute;
+    right: 5%;
+    bottom: 2%;
+    text-align: right;
+    /* transform: translateY(50%); */
+  }
 
   
