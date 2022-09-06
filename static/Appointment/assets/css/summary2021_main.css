@@ -5971,7 +5971,7 @@
     position: absolute;
     top: 0;
     left: 0;
-    background: url("../img/summary2022/home_page/底图.png") no-repeat;
+    background: url("../img/summary2021/home_page/底图.png") no-repeat;
     background-size: cover;
     background-position: center;
   }
@@ -5983,7 +5983,7 @@
     bottom: 25%;
     left:2%;
     right:2%;
-    background: url("../img/summary2022/home_page/大标题.png") no-repeat;
+    background: url("../img/summary2021/home_page/大标题.png") no-repeat;
     background-size: cover;
     display:table;
   }
@@ -5995,7 +5995,7 @@
     bottom: 5%;
     left:0;
     right:0;
-    background: url("../img/summary2022/home_page/底部文本框.png") no-repeat;
+    background: url("../img/summary2021/home_page/底部文本框.png") no-repeat;
     background-size: cover;
     display:table;
   }
@@ -6007,7 +6007,7 @@
     top: 5%;
     left: 5%;
     right: 5%;
-    background: url("../img/summary2022/home_page/顶部文本框.png") no-repeat;
+    background: url("../img/summary2021/home_page/顶部文本框.png") no-repeat;
     background-size: cover;
     display:table;
   }
@@ -6018,7 +6018,7 @@
     position: absolute;
     top: 20%;
     right: 0%;
-    background: url("../img/summary2022/home_page/右侧文本框.png") no-repeat;
+    background: url("../img/summary2021/home_page/右侧文本框.png") no-repeat;
     background-size: cover;
     display:table;
   }
@@ -6029,7 +6029,7 @@
     position: absolute;
     bottom: 0%;
     left:0;
-    background: url("../img/summary2022/home_page/“元”图标.png") no-repeat;
+    background: url("../img/summary2021/home_page/“元”图标.png") no-repeat;
     background-size: cover;
     display:table;
     z-index: 3;
@@ -6136,7 +6136,7 @@
     top: 0;
     left: 0;
     opacity: 1;
-    background: url("../img/summary2022/P1.png") no-repeat;
+    background: url("../img/summary2021/P1.png") no-repeat;
     background-size: cover;
     background-position: center;
   }
@@ -6169,7 +6169,7 @@
     top: 0;
     left: 0;
     opacity: 1;
-    background: url("../img/summary2022/p2.png") no-repeat;
+    background: url("../img/summary2021/p2.png") no-repeat;
     background-size: cover;
     background-position: center;
   }
@@ -6201,7 +6201,7 @@
     top: 0;
     left: 0;
     opacity: 100%;
-    background: url("../img/summary2022/p3.png") no-repeat;
+    background: url("../img/summary2021/p3.png") no-repeat;
     background-size: cover;
     background-position: center;
   }
@@ -6230,7 +6230,7 @@
     top: 0;
     left: 0;
     opacity: 100%;
-    background: url("../img/summary2022/p4.png") no-repeat;
+    background: url("../img/summary2021/p4.png") no-repeat;
     background-size: cover;
   }
   
@@ -6259,7 +6259,7 @@
     top: 0;
     left: 0;
     opacity: 100%;
-    background: url("../img/summary2022/p5.png") no-repeat;
+    background: url("../img/summary2021/p5.png") no-repeat;
     background-size: cover;
     background-position: center;
   }
@@ -6286,7 +6286,7 @@
     top: 0;
     left: 0;
     opacity: 1;
-    background: url("../img/summary2022/P6.png") no-repeat;
+    background: url("../img/summary2021/P6.png") no-repeat;
     background-size: cover;
     background-position: right;
   }
@@ -6316,7 +6316,7 @@
     top: 0;
     left: 0;
     opacity: 1;
-    background: url("../img/summary2022/P7.png") no-repeat;
+    background: url("../img/summary2021/P7.png") no-repeat;
     background-size: cover;
   }
 
@@ -6327,7 +6327,7 @@
     width: 400px;
     height: 450px;
     z-index: 2;
-    background: url("../img/summary2022/P7k.png") no-repeat;
+    background: url("../img/summary2021/P7k.png") no-repeat;
     background-size: 100%;
     transform: translate(-50%,-50%);
   }
@@ -6377,7 +6377,7 @@
     top: 0;
     left: 0;
     opacity: 100%;
-    background: url("../img/summary2022/P8.png") no-repeat;
+    background: url("../img/summary2021/P8.png") no-repeat;
     background-size: cover;
   }
 
@@ -6389,7 +6389,7 @@
     width: 300px;
     height: 100px;
     z-index: 2;
-    background: url("../img/summary2022/P8k.png") no-repeat;
+    background: url("../img/summary2021/P8k.png") no-repeat;
     background-size: 100%;
     display:table;
   }
@@ -6412,7 +6412,7 @@
     width: 300px;
     height: 100px;
     z-index: 2;
-    background: url("../img/summary2022/P8k.png") no-repeat;
+    background: url("../img/summary2021/P8k.png") no-repeat;
     background-size: 100%;
   }
   
@@ -6435,7 +6435,7 @@
     width: 300px;
     height: 100px;
     z-index: 2;
-    background: url("../img/summary2022/P8k.png") no-repeat;
+    background: url("../img/summary2021/P8k.png") no-repeat;
     background-size: 100%;
   }
   
@@ -6484,7 +6484,7 @@
     top: 0;
     left: 0;
     opacity: 100%;
-    background: url("../img/summary2022/P9.png") no-repeat;
+    background: url("../img/summary2021/P9.png") no-repeat;
     background-size: cover;
   }
   
@@ -6514,7 +6514,7 @@
     top: 0;
     left: 0;
     opacity: 100%;
-    background: url("../img/summary2022/P10.png") no-repeat;
+    background: url("../img/summary2021/P10.png") no-repeat;
     background-size: cover;
   }
   
@@ -6553,7 +6553,7 @@
     top: 0;
     left: 0;
     opacity: 100%;
-    background: url("../img/summary2022/P11.png") no-repeat;
+    background: url("../img/summary2021/P11.png") no-repeat;
     background-size: cover;
   }
   
@@ -6586,7 +6586,7 @@
     width: 400px;
     height: 700px;
     z-index: 2;
-    background: url("../img/summary2022/P11k.png") no-repeat;
+    background: url("../img/summary2021/P11k.png") no-repeat;
     background-size: 100%;
     display:table;
     transform: translateX(-50%);
@@ -6615,7 +6615,7 @@
     top: 0;
     left: 0;
     opacity: 100%;
-    background: url("../img/summary2022/p12A.png") no-repeat;
+    background: url("../img/summary2021/p12A.png") no-repeat;
     background-size: cover;
     background-position: center;
   }
@@ -6639,7 +6639,7 @@
     top: 0;
     left: 0;
     opacity: 100%;
-    background: url("../img/summary2022/p12B.png") no-repeat;
+    background: url("../img/summary2021/p12B.png") no-repeat;
     background-size: cover;
     background-position: center;
   }
@@ -6660,7 +6660,7 @@
     top: 0;
     left: 0;
     opacity: 100%;
-    background: url("../img/summary2022/p13.png") no-repeat;
+    background: url("../img/summary2021/p13.png") no-repeat;
     background-size: cover;
     background-position: center;
   }
@@ -6690,7 +6690,7 @@
     top: 0;
     left: 0;
     opacity: 100%;
-    background: url("../img/summary2022/p14A.png") no-repeat;
+    background: url("../img/summary2021/p14A.png") no-repeat;
     background-size: cover;
     background-position: center;
   }
@@ -6713,7 +6713,7 @@
     top: 0;
     left: 0;
     opacity: 100%;
-    background: url("../img/summary2022/p14B/底图.png") no-repeat;
+    background: url("../img/summary2021/p14B/底图.png") no-repeat;
     background-size: cover;
   }
   
@@ -6741,7 +6741,7 @@
     width: 120px;
     text-align: center;
     transform: translate(-50%, -50%);
-    background: url("../img/summary2022/p14B/1.png") no-repeat;
+    background: url("../img/summary2021/p14B/1.png") no-repeat;
     z-index: 2;
   }
 
@@ -6764,7 +6764,7 @@
     width: 120px;
     text-align: center;
     transform: translate(-50%, -50%);
-    background: url("../img/summary2022/p14B/2.png") no-repeat;
+    background: url("../img/summary2021/p14B/2.png") no-repeat;
     z-index: 2;
   }
 
@@ -6787,7 +6787,7 @@
     width: 120px;
     text-align: center;
     transform: translate(-50%, -50%);
-    background: url("../img/summary2022/p14B/3.png") no-repeat;
+    background: url("../img/summary2021/p14B/3.png") no-repeat;
     z-index: 2;
   }
 
@@ -6800,7 +6800,7 @@
     top: 0;
     left: 0;
     opacity: 100%;
-    background: url("../img/summary2022/p15.png") no-repeat;
+    background: url("../img/summary2021/p15.png") no-repeat;
     background-size: cover;
     background-position: center;
   }
@@ -6836,7 +6836,7 @@
     top: 0;
     left: 0;
     opacity: 100%;
-    background: url("../img/summary2022/growing/p1（底图）.png") no-repeat;
+    background: url("../img/summary2021/growing/p1（底图）.png") no-repeat;
     background-size: cover;
     background-position: center;
   }
@@ -6865,7 +6865,7 @@
     top: 0;
     left: 0;
     opacity: 100%;
-    background: url("../img/summary2022/growing/p2（底图）.png") no-repeat;
+    background: url("../img/summary2021/growing/p2（底图）.png") no-repeat;
     background-size: cover;
   }
   
@@ -6893,7 +6893,7 @@
     top: 0;
     left: 0;
     opacity: 100%;
-    background: url("../img/summary2022/growing/p3-1（底图）.png") no-repeat;
+    background: url("../img/summary2021/growing/p3-1（底图）.png") no-repeat;
     background-size: cover;
   }
   
@@ -6926,7 +6926,7 @@
     left: 50%;
     width: 450px;
     height: 450px;
-    background: url("../img/summary2022/growing/p3-1（对话框）.png") no-repeat;
+    background: url("../img/summary2021/growing/p3-1（对话框）.png") no-repeat;
     background-size: 100%;
     display:table;
     transform: translate(-50%, 50%);
@@ -6942,7 +6942,7 @@
     top: 0;
     left: 0;
     opacity: 100%;
-    background: url("../img/summary2022/growing/p3-2（底图）.png") no-repeat;
+    background: url("../img/summary2021/growing/p3-2（底图）.png") no-repeat;
     background-size: cover;
   }
   
@@ -6977,7 +6977,7 @@
     left: 50%;
     width: 500px;
     height: 1000px;
-    background: url("../img/summary2022/growing/p3-2（边框）.png") no-repeat;
+    background: url("../img/summary2021/growing/p3-2（边框）.png") no-repeat;
     background-size: 100%;
     display:table;
     transform: translateX(-50%);
@@ -6990,7 +6990,7 @@
     left: 50%;
     width: 450px;
     height: 450px;
-    background: url("../img/summary2022/growing/p3-2（图章）.png") no-repeat;
+    background: url("../img/summary2021/growing/p3-2（图章）.png") no-repeat;
     background-size: 100%;
     display:table;
     transform: translateX(-50%);
@@ -7004,7 +7004,7 @@
     top: 0;
     left: 0;
     opacity: 100%;
-    background: url("../img/summary2022/growing/p3-3（底图）.png") no-repeat;
+    background: url("../img/summary2021/growing/p3-3（底图）.png") no-repeat;
     background-size: cover;
   }
   
@@ -7015,7 +7015,7 @@
     left: 50%;
     width: 500px;
     height: 1000px;
-    background: url("../img/summary2022/growing/p3-3（边框）.png") no-repeat;
+    background: url("../img/summary2021/growing/p3-3（边框）.png") no-repeat;
     background-size: 100%;
     display:table;
     transform: translateX(-50%);
@@ -7028,7 +7028,7 @@
     left: 50%;
     width: 450px;
     height: 450px;
-    background: url("../img/summary2022/growing/p3-3（图章）.png") no-repeat;
+    background: url("../img/summary2021/growing/p3-3（图章）.png") no-repeat;
     background-size: 100%;
     display:table;
     transform: translateX(-50%);
@@ -7042,7 +7042,7 @@
     top: 0;
     left: 0;
     opacity: 100%;
-    background: url("../img/summary2022/growing/p3-4（底图）.png") no-repeat;
+    background: url("../img/summary2021/growing/p3-4（底图）.png") no-repeat;
     background-size: cover;
   }
   
@@ -7053,7 +7053,7 @@
     left: 50%;
     width: 500px;
     height: 1000px;
-    background: url("../img/summary2022/growing/p3-4（边框）.png") no-repeat;
+    background: url("../img/summary2021/growing/p3-4（边框）.png") no-repeat;
     background-size: 100%;
     display:table;
     transform: translateX(-50%);
@@ -7066,7 +7066,7 @@
     left: 50%;
     width: 450px;
     height: 450px;
-    background: url("../img/summary2022/growing/p3-4（图章）.png") no-repeat;
+    background: url("../img/summary2021/growing/p3-4（图章）.png") no-repeat;
     background-size: 100%;
     display:table;
     transform: translateX(-50%);
@@ -7080,7 +7080,7 @@
     top: 0;
     left: 0;
     opacity: 100%;
-    background: url("../img/summary2022/growing/p5-2（底图）.png") no-repeat;
+    background: url("../img/summary2021/growing/p5-2（底图）.png") no-repeat;
     background-size: cover;
   }
   
@@ -7091,7 +7091,7 @@
     left: 50%;
     width: 500px;
     height: 1000px;
-    background: url("../img/summary2022/growing/p5-2（边框）.png") no-repeat;
+    background: url("../img/summary2021/growing/p5-2（边框）.png") no-repeat;
     background-size: 100%;
     display:table;
     transform: translateX(-50%);
@@ -7104,7 +7104,7 @@
     left: 50%;
     width: 450px;
     height: 450px;
-    background: url("../img/summary2022/growing/p5-2（图章）.png") no-repeat;
+    background: url("../img/summary2021/growing/p5-2（图章）.png") no-repeat;
     background-size: 100%;
     display:table;
     transform: translateX(-50%);
@@ -7127,7 +7127,7 @@
     top: 0;
     left: 0;
     opacity: 100%;
-    background: url("../img/summary2022/growing/p5-3（底图）.png") no-repeat;
+    background: url("../img/summary2021/growing/p5-3（底图）.png") no-repeat;
     background-size: cover;
   }
   
@@ -7138,7 +7138,7 @@
     left: 50%;
     width: 500px;
     height: 1000px;
-    background: url("../img/summary2022/growing/p5-3（边框）.png") no-repeat;
+    background: url("../img/summary2021/growing/p5-3（边框）.png") no-repeat;
     background-size: 100%;
     display:table;
     transform: translateX(-50%);
@@ -7151,7 +7151,7 @@
     left: 50%;
     width: 450px;
     height: 450px;
-    background: url("../img/summary2022/growing/p5-3（图章）.png") no-repeat;
+    background: url("../img/summary2021/growing/p5-3（图章）.png") no-repeat;
     background-size: 100%;
     display:table;
     transform: translateX(-50%);
@@ -7168,7 +7168,7 @@
     top: 0;
     left: 0;
     opacity: 100%;
-    background: url("../img/summary2022/growing/p4（底图）.png") no-repeat;
+    background: url("../img/summary2021/growing/p4（底图）.png") no-repeat;
     background-size: cover;
     background-position: right;
   }
@@ -7198,7 +7198,7 @@
     top: 0;
     left: 0;
     opacity: 100%;
-    background: url("../img/summary2022/growing/p5-1（底图）.png") no-repeat;
+    background: url("../img/summary2021/growing/p5-1（底图）.png") no-repeat;
     background-size: cover;
   }
   
@@ -7225,7 +7225,7 @@
     left: 0%;
     width: 400px;
     height: 700px;
-    background: url("../img/summary2022/growing/p5-1（边框1）.png") no-repeat;
+    background: url("../img/summary2021/growing/p5-1（边框1）.png") no-repeat;
     background-size: 100%;
     display:table;
     margin-left: -5px;
@@ -7237,7 +7237,7 @@
     right: 0%;
     width: 380px;
     height: 530px;
-    background: url("../img/summary2022/growing/p5-1（边框2）.png") no-repeat;
+    background: url("../img/summary2021/growing/p5-1（边框2）.png") no-repeat;
     background-size: 100%;
     display:table;
     margin-right: -5px;
@@ -7253,7 +7253,7 @@
     top: 0;
     left: 0;
     opacity: 100%;
-    background: url("../img/summary2022/growing/p6（底图）.png") no-repeat;
+    background: url("../img/summary2021/growing/p6（底图）.png") no-repeat;
     background-size: cover;
   }
   
@@ -7285,7 +7285,7 @@
     right: 0%;
     width: 350px;
     height: 450px;
-    background: url("../img/summary2022/growing/p6（框右）.png") no-repeat;
+    background: url("../img/summary2021/growing/p6（框右）.png") no-repeat;
     background-size: 100%;
     display:table;
     margin-top: -28px;
@@ -7297,7 +7297,7 @@
     left: 0%;
     width: 330px;
     height: 430px;
-    background: url("../img/summary2022/growing/p6（框左）.png") no-repeat;
+    background: url("../img/summary2021/growing/p6（框左）.png") no-repeat;
     background-size: 100%;
     display:table;
     margin-top: -40px;
@@ -7309,7 +7309,7 @@
     right: 0%;
     width: 60vw;
     height: 60vw;
-    background: url("../img/summary2022/growing/p6（图案，最上层，与边框2存在遮挡关系）.png") no-repeat;
+    background: url("../img/summary2021/growing/p6（图案，最上层，与边框2存在遮挡关系）.png") no-repeat;
     background-size: 100%;
     /* transform: translateX(-50%); */
     z-index:5;
@@ -7325,7 +7325,7 @@
     top: 0;
     left: 0;
     opacity: 100%;
-    background: url("../img/summary2022/home_page/底图.png") no-repeat;
+    background: url("../img/summary2021/home_page/底图.png") no-repeat;
     background-size: cover;
     background-position: center;
   }
@@ -7334,7 +7334,16 @@
     position: absolute;
     left: 10%;
     right: 10%;
-    top: 45%;
+    top: 35%;
+    text-align: center;
+    transform: translateY(-50%);
+  }
+
+  .page-end .buttons {
+    position: absolute;
+    left: 10%;
+    right: 10%;
+    bottom: 15%;
     text-align: center;
     transform: translateY(-50%);
   }
@@ -7343,8 +7352,8 @@
     position: absolute;
     left: 10%;
     right: 10%;
-    top: 45%;
-    text-align: left;
+    top: 40%;
+    text-align: center;
     transform: translateY(-50%);
   }
 
@@ -7356,4 +7365,30 @@
     /* transform: translateY(50%); */
   }
 
+  .page-end .pic1 {
+    position: absolute;
+    left: 50%;
+    height: 150px;
+    width: 150px;
+    margin-top: 20px;
+    background-position: center;
+    transform: translateX(-50%);
+    background: url("../img/summary2021/QR1.png") no-repeat;
+    z-index: 2;
+    background-size: 100%;
+  }
+
+  .page-end .pic2 {
+    position: absolute;
+    left: 50%;
+    height: 150px;
+    width: 150px;
+    margin-top: 20px;
+    background-position: center;
+    transform: translateX(-50%);
+    background: url("../img/summary2021/QR2.png") no-repeat;
+    z-index: 2;
+    background-size: 100%;
+  }
+  
   

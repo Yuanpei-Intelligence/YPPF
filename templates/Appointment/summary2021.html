@@ -19,7 +19,7 @@
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="format-detection" content="telephone=no, email=no">
   <link rel="stylesheet" href="{% static 'Appointment/assets/css/jquery.fullpage.css' %}">
-  <link rel="stylesheet" href="{% static 'Appointment/assets/css/main2.css' %}">
+  <link rel="stylesheet" href="{% static 'Appointment/assets/css/summary2021_main.css' %}">
 </head>
 </head>
 
@@ -273,7 +273,7 @@
     </section>
 
 
-    {% if co_appoint_num > 3}
+    {% if co_appoint_num > 3%}
     <section class="section page page-12">
       <div class="bg-back1"></div>
       <div class="content">
@@ -424,7 +424,7 @@
     {% endif %}
 
 
-    {% if club_num >= 2 or act_num >=5}
+    {% if club_num >= 2 or act_num >= 5 %}
     <section class="section page page-award">
       <div class="bg-back2"></div>
       <div class="content1">
@@ -567,28 +567,37 @@
       </div>
     </section>
 
+    
     <section class="section page page-end">
       <div class="bg-back"></div>
-      {% if logged_in %}
-        <div class="content">
-          <p class="para mt-10">来加入我们一起建设更好的元培</p>
-      {% else %}
-        <div class="content2">
-          <p class="para mt-10"><span style="font-weight: bold">元培智慧书院</span>系统致力为高校院系提供<span style="font-weight: bold">综合化、信息化、智能化的管理成长平台</span>，</p>
-          <p class="para mt-10">目前已在元培学院有了长足的积累与发展。</p>
-          <p class="para mt-10">如果您对智慧书院有兴趣，欢迎扫码进一步联系！</p>
-      {% endif %}
-        <div class="buttons mt-35">
-          <a href="javascript:;" class="button">重温我的年度回忆</a>
+      <div class="content">
+        {% if logged_in %}
+            <p class="para mt-10">来加入我们一起建设更好的元培!</p>
+            <p class="para_small mt-10" style="font-size: 15px; color: grey;">欢迎扫码咨询智慧校园招新</p>
+            <div class="pic1"></div>
+          </div>
+        {% else %} 
+            <p class="para_small mt-10"><span style="font-weight: bold">元培智慧书院</span>系统致力为高校院系提供<span style="font-weight: bold">综合化、信息化、智能化的管理成长平台</span></p>
+            <p class="para_small mt-10">目前已在元培学院有了长足的积累与发展</p>
+            <p class="para_small mt-35">如果您对智慧书院有兴趣</p>
+            <p class="para_small mt-10">欢迎扫码进一步联系</p>
+          
+            <div class="pic2"></div>
         </div>
+        {% endif %}
+      <div class="buttons mt-35">
+        <a href="javascript:;" class="button">重温我的年度回忆</a>
       </div>
       <div class="content-annotation">
-        <p class="para_small" style="font-size: 15px; color: grey; line-height: 22px;">文案｜{{name.0}} {{name.1}}</p>
-        <p class="para_small" style="font-size: 15px; color: grey; line-height: 22px;">图片｜{{name.2}} {{name.3}}</p>
-        <p class="para_small" style="font-size: 15px; color: grey; line-height: 22px;">制作｜{{name.4}} {{name.5}} {{name.6}}</p>
+        <p class="para_small" style="font-size: 15px; color: grey; line-height: 22px;">文案｜智慧书院产品组</p>
+        <p class="para_small" style="font-size: 15px; color: grey; line-height: 22px;">图片｜元培学院设计组</p>
+        <p class="para_small" style="font-size: 15px; color: grey; line-height: 22px;">制作｜智慧书院开发组</p>
         <p class="para_small" style="font-size: 15px; color: grey; line-height: 22px;">感谢JohnieXu在Github的开源项目</p>
       </div>
     </section>
+    
+    
+  
 
 
 
@@ -619,8 +628,17 @@
       $('#app').fullpage({
         onLeave: function (index, nextIndex, direction) {
           if (index == 1) {
-            // rst = window.confirm('点击确认则视为允许我们访问你的必要数据，但是我们保证不会将其泄露给其他人')
-            rst = window.confirm("{{window}}")
+            if ("{{logged_in}}" == "True"){
+              if ("{{is_freshman}}" == "True"){
+                rst = window.confirm('新同学你好，系统中还没有你的数据。将为你展示年度总结示例，之后在系统中多留下自己的足迹吧～')
+              }
+              else{
+                rst = window.confirm('点击确认则视为允许我们访问你的必要数据，但是我们保证不会将其泄露给其他人')
+              }
+            }
+            else{
+              rst = window.confirm('您尚未登录，将为您展示年度总结示例')
+            }
             if (!rst) {
               return false
             }
