@@ -45,7 +45,7 @@
         "point": {
             "per_feedback": 10,
             "per_hour": 1,
-            "limit": 6,
+            "limit": null,
             "invalid_hour": 12,
             "invalid_titles": [
                 "选课",
