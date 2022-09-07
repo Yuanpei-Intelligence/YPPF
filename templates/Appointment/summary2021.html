@@ -631,6 +631,9 @@
 
       {% if user_accept %}
       history.pushState(null, null, "{% url 'Appointment:summary2021' %}");
+      $('#app').ready(function() {
+        $.fn.fullpage.moveTo(2, 0);
+      })
       {% endif %}
 
       $('#app').fullpage({
