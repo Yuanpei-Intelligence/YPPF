@@ -83,8 +83,8 @@ UTYPE_ORG = User.Type.ORG.value
 # 本应用的必要设置
 CURRENT_ACADEMIC_YEAR: int = get_setting('semester_data/year', int)
 YQP_ONAME: str = get_setting('YQPoint_source_oname')
-YQP_PER_HOUR: float = 1.0
-YQP_INVALID_HOUR: float = 24.0
+YQP_PER_HOUR = 1
+YQP_INVALID_HOUR = 12
 YQP_INVALID_TITLE: list = ['选课', '补选']
 YQP_FEEDBACK: int = 10
 

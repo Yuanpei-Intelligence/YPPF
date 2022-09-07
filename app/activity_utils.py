@@ -124,7 +124,7 @@ def changeActivityStatus(aid, cur_status, to_status):
             point = calcu_activity_YQP(activity)
             participants = Participant.objects.filter(
                 activity_id=aid,
-                status=Participant.AttendStatus.ATTENDED).values_list('person_id__person_id')
+                status=Participant.AttendStatus.ATTENDED).values_list('person_id__person_id', flat=True)
             participants = User.objects.filter(id__in=participants)
             User.objects.bulk_increase_YQPoint(participants, point, "参加活动", YQPointRecord.SourceType.ACTIVITY)
 
