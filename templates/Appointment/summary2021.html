@@ -629,7 +629,10 @@
       }
       var flag = true;
 
-
+      {% if user_accept %}
+      {% comment %} $.fn.fullpage.moveTo(2, 0); {% endcomment %}
+      history.pushState(null, null, "{% url 'Appointment:summary2021' %}");
+      {% endif %}
 
       $('#app').fullpage({
         onLeave: function (index, nextIndex, direction) {
