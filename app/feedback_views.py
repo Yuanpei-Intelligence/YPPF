@@ -377,7 +377,7 @@ def feedbackWelcome(request: HttpRequest):
     is_person = user_type == UTYPE_PER
     me = get_person_or_org(request.user, user_type)
 
-    if request.session.has_key('feedback_type'):
+    if 'argue' in request.GET.keys() and request.session.has_key('feedback_type'):
         if not request.session.has_key('feedback_url'):
             # 弹出
             feedback_type = request.session.pop('feedback_type')

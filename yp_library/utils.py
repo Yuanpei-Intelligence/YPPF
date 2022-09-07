@@ -344,4 +344,4 @@ def to_feedback_url(request: HttpRequest) -> str:
     ))
     
     # 最终返回填写feedback的url
-    return '/feedback/'
+    return '/feedback/?argue'
