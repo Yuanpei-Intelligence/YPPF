@@ -42,7 +42,7 @@ __all__ = [
     'CURRENT_ACADEMIC_YEAR',
     'YQP_ONAME',
     # 本应用可选设置的常量
-    'COURSE_TYPENAME', 'LEAST_RECORD_HOURS',
+    'COURSE_TYPENAME', 'LEAST_RECORD_HOURS', 'YQP_FEEDBACK',
 ]
 
 # 本应用的本地设置目录
@@ -83,6 +83,10 @@ UTYPE_ORG = User.Type.ORG.value
 # 本应用的必要设置
 CURRENT_ACADEMIC_YEAR: int = get_setting('semester_data/year', int)
 YQP_ONAME: str = get_setting('YQPoint_source_oname')
+YQP_PER_HOUR = 1
+YQP_INVALID_HOUR = 12
+YQP_INVALID_TITLE: list = ['选课', '补选']
+YQP_FEEDBACK: int = 10
 
 # 本应用的可选设置，每个都应该给出默认值
 COURSE_TYPENAME: str = get_config('course/type_name', default='书院课程')

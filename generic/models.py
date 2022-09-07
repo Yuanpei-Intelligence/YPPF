@@ -18,12 +18,13 @@ from django.db import models
 from django.contrib.auth.models import AbstractUser
 from django.contrib.auth.models import UserManager as _UserManager
 from django.db import transaction
-from django.db.models import QuerySet
+from django.db.models import QuerySet, F
 
 __all__ = [
     'User',
     'CreditRecord',
     'YQPointRecord',
+    'UserManager',
 ]
 
 
@@ -54,9 +55,9 @@ class UserManager(_UserManager):
         if update:
             users = users.select_for_update()
         if isinstance(user, User):
-            user = user.pk
+            return user
         if isinstance(user, str):
-            return users.get(username=user)
+            user = user.pk
         return users.get(pk=user)
 
     def create_user(self, username: str, name: str,
@@ -130,6 +131,34 @@ class UserManager(_UserManager):
             overflow=overflow,
             source=source,
         )
+
+    @transaction.atomic
+    def bulk_increase_YQPoint(self, user_set: QuerySet['User'], delta: int,
+                              source: str, source_type: 'YQPointRecord.SourceType'):
+        """
+        批量增加元气值
+        :param user_set: 待更改User的QuerySet
+        :type user_set: QuerySet['User']
+        :param delta: 增减元气值多少
+        :type delta: int
+        :param source: 元气值来源的简短说明
+        :type source: str
+        :param source_type: 元气值来源类型
+        :type source_type: YQPointRecord.SourceType
+        """
+        assert delta > 0
+        user_set.update(YQpoint=F('YQpoint') + delta)
+        point_records = [
+            YQPointRecord(
+                user=person,
+                delat=delta,
+                source=source,
+                source_type=source_type,
+            ) for person in user_set
+        ]
+        YQPointRecord.objects.bulk_create(point_records)
+
+
 
 
     @transaction.atomic
