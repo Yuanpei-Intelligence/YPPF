@@ -638,11 +638,12 @@ def registration_status_change(course_id: int, user: NaturalPerson,
             to_status = CourseParticipant.Status.SUCCESS
 
         # 选课不能超过6门
-        if Course.objects.filter(participant_set__person=user,
-                                 participant_set__status__in=[
-                                     CourseParticipant.Status.SELECT,
-                                     CourseParticipant.Status.SUCCESS,
-                                 ]).count() >= 6:
+        if Course.objects.activated().filter(
+                participant_set__person=user,
+                participant_set__status__in=[
+                    CourseParticipant.Status.SELECT,
+                    CourseParticipant.Status.SUCCESS,
+                ]).count() >= 6:
             return wrong("每位同学同时预选或选上的课程数最多为6门！")
 
         # 检查选课时间是否冲突
