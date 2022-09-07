@@ -223,7 +223,7 @@ def cal_course(np: NaturalPerson):
             continue
         t = t.aggregate(Sum('total_hours'), Sum('attend_times'), count=Count('*'))
         pro.append([course_type.label, t['total_hours__sum']
-                   or 0, t['attend_times__sum'] or 0], t['count'] or 0)
+                   or 0, t['attend_times__sum'] or 0, t['count'] or 0])
 
     unclassified_hour = course_me_past.filter(course__isnull=True).aggregate(
         Sum('total_hours'))['total_hours__sum'] or 0
