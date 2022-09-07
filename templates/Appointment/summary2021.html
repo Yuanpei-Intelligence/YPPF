@@ -25,7 +25,7 @@
 
 <body>
 
-  <audio loop src="/static/Appointment/assets/Ivoris - honeysea.mp3">不支持播放音乐</audio>
+  <audio loop src="/static/Appointment/assets/风摇盛夏.mp3">不支持播放音乐</audio>
 
   <div style="position: fixed; right: 2%; top: 2%; z-index: 100000;">
     <button class="btn" style="border: none; background-color: transparent;" id="play-music">
@@ -70,6 +70,10 @@
       <div class="title_bottom"></div>
       <div class="title_right"></div>
       <div class="pic_yuan"></div>
+      <div class="content">
+        <p class="para_small mt-10" style="color:grey; font-size: 15px;">(点击右上角打开音乐体验更佳)</p>
+        {% comment %} <p class="para_small mt-10" style="color:grey">体验更佳 </p> {% endcomment %}
+      </div>
     </section>
 
 
@@ -185,7 +189,7 @@
       <div class="table">
         <p class="para_small">你总共预约了<span class="fc-red">{{discuss_appoint_num}}</span>次研讨室</p>
         <p class="para_small">总预约时长为<span class="fc-red">{{discuss_appoint_hour}}</span>小时</p>
-        <p class="para_small">超过了<span class="fc-red">{{discuss_appoint_pct}}</span>%的同学</p>
+        <p class="para_small">超过了<span class="fc-red">{{discuss_appoint_pct}}%</span>的同学</p>
         <p class="para_small">其中，你在<span class="fc-red">{{discuss_appoint_long_room}}</span></p>
         <p class="para_small">共经历了<span class="fc-red">{{discuss_appoint_long_hour}}</span>小时的激烈讨论</p>
       </div>
@@ -205,15 +209,15 @@
       </div>
       <div class="table_bg1"></div>
       <div class="table1">
-        <span class="fs-20 fc-red">{{Skeywords.0}}次</span>
+        <span class="fs-20 fc-red" style="font-weight: bold;">{{Skeywords.0.0}}&nbsp;&nbsp;{{Skeywords.0.1}}次</span>
       </div>
       <div class="table_bg2"></div>
       <div class="table2">
-        <span class="fs-20 fc-red">{{Skeywords.1}}次</span>
+        <span class="fs-20 fc-red" style="font-weight: bold;">{{Skeywords.1.0}}&nbsp;&nbsp;{{Skeywords.1.1}}次</span>
       </div>
       <div class="table_bg3"></div>
       <div class="table3">
-        <span class="fs-20 fc-red">{{Skeywords.2}}次</span>
+        <span class="fs-20 fc-red" style="font-weight: bold;">{{Skeywords.2.0}}&nbsp;&nbsp;{{Skeywords.2.1}}次</span>
       </div>
       <div class="bottom" style="text-align:center;">
         <p class="para mt-35">欢乐、疲惫、热爱、专注…</p>
@@ -263,7 +267,7 @@
       <div class="table">
         <p class="para_small mt-10">你预约了<span class="fc-red">{{func_appoint_num}}</span>次功能室</p>
         <p class="para_small mt-10">总预约时长为<span class="fc-red">{{func_appoint_hour}}</span>小时</p>
-        <p class="para_small mt-10">超过了<span class="fc-red">{{func_appoint_pct}}</span>%的元培er</p>
+        <p class="para_small mt-10">超过了<span class="fc-red">{{func_appoint_pct}}%</span>的元培er</p>
         {% if appoint_num > 0 %}
         <p class="para_small mt-10">其中，你最常去<span class="fc-red">{{func_appoint_most}}</span></p>
         {% endif %}
@@ -293,10 +297,10 @@
         <p class="para_small mt-10">你们在地下空间共同经历了<span class="fc-red">{{co_appoint_hour}}</span>小时的时光</p>
         <p class="para_small mt-10">预约次数超<span class="fc-red">{{co_appoint_num}}</span>次</p>
         <p class="para_small mt-10">你们的常用预约关键词为</p>
-        <p class="para_small mt-10"><span class="fc-red">{{co_keyword}}</span></p>
+        <p class="para_small mt-10"><span class="fc-red">{{co_keyword.0}}</span></p>
         <p class="para_small mt-35">在这一年，你们是</p>
         <p class="para_small mt-10"><span class="fc-red">{{co_title}}</span></p>
-        <p class="para_small mt-35">你们的匹配度超过了<span class="fc-red">{{co_pct}}</span>的同学!</p>
+        <p class="para_small mt-35">你们的匹配度超过了<span class="fc-red">{{co_pct}}%</span>的同学!</p>
         <p class="para_small mt-10">致陪伴!致共同!</p>
       </div>
     </section>
@@ -311,14 +315,17 @@
         <p class="para_small mt-10">至少在地下空间</p>
         <p class="para_small mt-10">你总共极限预约<span class="fc-red">{{sharp_appoint_num}}</span>次</p>
         <p class="para_small mt-10">其中，在<span class="fc-red">{{sharp_appoint_day}}</span>，你为<span class="fc-red">{{sharp_appoint_reason}}</span></p>
-        <p class="para_small mt-10">在预约时间前<span class="fc-red">{{sharp_appoint_min}}1分钟</span>成功预约了<span class="fc-red">{{sharp_appoint_room}}</span></p>
+        <p class="para_small mt-10">在预约时间前<span class="fc-red">{{sharp_appoint_min}}</span>成功预约了<span class="fc-red">{{sharp_appoint_room}}</span></p>
         <p class="para_small mt-10">恭喜你在人生的二十岁实现了光速入住自由!</p>
         <p class="para_small mt-35">而在过去的一年</p>
         <p class="para_small mt-10">你留下了<span class="fc-red">{{disobey_num}}</span>条违规记录</p>
-        <p class="para_small mt-35">嗯...怎么不算在违规的极限边缘反复试探呢？</p>
-        <p class="para_small mt-10">温馨提示：要好好遵守地下空间使用规则哦~</p>
-        <p class="para_small mt-35">恭喜你达成了“地下空间极限守序记录保持者”成就！</p>
-        <p class="para_small mt-10">接下来也要继续保持呀~</p> 
+        {% if disobey_num > 0%}
+          <p class="para_small mt-35">嗯...怎么不算在违规的极限边缘反复试探呢？</p>
+          <p class="para_small mt-10">温馨提示：要好好遵守地下空间使用规则哦~</p>
+        {% else %}
+          <p class="para_small mt-35">恭喜你达成了“地下空间极限守序记录保持者”成就！</p>
+          <p class="para_small mt-10">接下来也要继续保持呀~</p> 
+        {% endif %}
       </div>
     </section>
     {% endif %}
@@ -359,10 +366,8 @@
 
    <section class="section page page-2-1">
       <div class="bg-back"></div>
-      <div class="content1">
+      <div class="content">
         <p class="para"><span class="fs-30b">回</span>溯完有关地下物理空间的记忆</p>
-      </div>
-      <div class="content2">
         <p class="para mt-10">让我们再去YPers共同的线上家园看看吧</p>
       </div>
     </section>
@@ -416,7 +421,7 @@
       <div class="pic1"></div>
       <div class="content2">
         <p class="para mt-10"><span class="fc-blue fs-25b">评选标准</span></p>
-        <p class="para_small"><span class="fc-blue">参加0次小组发起的活动</span></p>
+        <p class="para_small"><span class="fc-blue">未参加过小组发起的活动</span></p>
         <p class="para_small mt-35">to社恐：减少焦虑，重在参与</p>
         <p class="para_small mt-10">to卷王：停止内卷，速来玩耍</p>
       </div>
@@ -443,7 +448,7 @@
     {% endif %}
 
 
-    {% if club_num >= 5 %}
+    {% if position_num >= 5 %}
     <section class="section page page-award">
       <div class="bg-back3"></div>
       <div class="content1">
@@ -476,6 +481,7 @@
       </div>
     </section>
 
+    {% if course_num > 0 %}
     <section class="section page page-2-5">
       <div class="bg-back"></div>
       <div class="table1"></div>
@@ -485,17 +491,17 @@
         <p class="para mt-10">共计<span class="fc-purple">{{course_hour}}</span>个学时</p>
         <p class="para mt-10">分布在<span class="fc-purple">{{course_type}}</span>类</p>
       </div>
-      <div class="table2"></div>
-      {% if course_num > 0 and course_most_hour > 0 and course_most_num > 0%}
+      {% if course_most_hour > 0 and course_most_num > 0%}
+        <div class="table2"></div>
         <div class="content2">
-          <p class="para mt-10">其中，你在<span class="fc-purple">{{course_most_time_name}}</span>投入的时间最长</p>
-          <p class="para mt-10">共计<span class="fc-purple">{{course_most_hour}}</span>个学时</p>
-          <p class="para mt-10">参与<span class="fc-purple">{{course_most_num_name}}</span>的次数最多，共计<span class="fc-purple">{{course_most_num}}</span>次</p>
+          <p class="para_small mt-10">其中，你在<span class="fc-purple">{{course_most_time_name}}</span>投入的时间最长，共计<span class="fc-purple">{{course_most_hour}}</span>个学时</p>
+          <p class="para_small mt-10">参与<span class="fc-purple">{{course_most_num_name}}</span>的次数最多，共计<span class="fc-purple">{{course_most_num}}</span>次</p>
         </div>
       {% endif %}
     </section> 
+    {% endif %}
 
-    {% if IsOneType %}
+    {% if max_type_info.1 >= 2 %}
     <section class="section page page-award">
       <div class="bg-back4"></div>
       <div class="content1">
@@ -514,7 +520,7 @@
     </section>
     {% endif %}
 
-    {% if IsManyType %}
+    {% if type_count >= 3 %}
     <section class="section page page-award">
       <div class="bg-back5"></div>
       <div class="content1">
@@ -622,27 +628,36 @@
         // bgBack: 'http://s3.music.126.net/nact/s/client/images/year2017/cover/light.png?282c69970cb1ace98b08e594888bcc5e',
         // bgBack: '../img/cover.png'
       }
+      var flag = true;
 
 
 
       $('#app').fullpage({
         onLeave: function (index, nextIndex, direction) {
-          if (index == 1) {
+          if (index == 1 && "{{user_accept}}" == "False") {
             if ("{{logged_in}}" == "True"){
               if ("{{is_freshman}}" == "True"){
                 rst = window.confirm('新同学你好，系统中还没有你的数据。将为你展示年度总结示例，之后在系统中多留下自己的足迹吧～')
               }
               else{
-                rst = window.confirm('点击确认则视为允许我们访问你的必要数据，但是我们保证不会将其泄露给其他人')
+                rst = window.confirm('点击确认则视为允许我们访问你的必要数据，但是我们保证不会将其泄露给其他人。点击取消将展示年度总结示例。')
               }
             }
             else{
               rst = window.confirm('您尚未登录，将为您展示年度总结示例')
             }
             if (!rst) {
-              return false
+              if ("{{logged_in}}" != "True" || "{{is_freshman}}" != "False"){
+                return false
+              }
+            }
+            else{
+              if("{{logged_in}}" == "True" && "{{is_freshman}}" == "False"){
+                window.location ="?accept=true" 
+              }
             }
           }
+          
           console.log(index + ' leave direction: ' + direction);
         },
         afterLoad: function (anchorLink, index) {
@@ -656,7 +671,7 @@
         $.fn.fullpage.moveSectionDown();
       });
       /*回顶部=>重温TA的2017*/
-      $('#app .page-15 .buttons .button').click(function () {
+      $('#app .page-end .buttons .button').click(function () {
         $.fn.fullpage.moveTo(1, 0);
         // console.log('aaa');
       });
