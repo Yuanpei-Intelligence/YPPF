@@ -29,11 +29,6 @@ from app.notification_utils import(
     notification_status_change,
 )
 from app.wechat_send import WechatApp, WechatMessageLevel
-from app.constants import (
-    YQP_PER_HOUR,
-    YQP_INVALID_HOUR,
-    YQP_INVALID_TITLE,
-)
 
 import io
 import os
@@ -1069,15 +1064,13 @@ def calcu_activity_YQP(activity: Activity) -> int:
     if hours > YQP_INVALID_HOUR:
         return 0
     # 以标题筛选不记录元气值的活动，包含筛选词时不记录积分
-    for invalid_letter in YQP_INVALID_TITLE:
+    for invalid_letter in YQP_INVALID_TITLES:
         if invalid_letter in activity.title:
             return 0
 
     point = ceil(YQP_PER_HOUR * hours)
-    # 暂时废弃，单次活动记录的积分上限，默认6
-    # try:
-    #     max_point = float(local_dict["thresholds"]["activity_point"])
-    # except:
-    #     max_point = 6.0
+    # 单次活动记录的积分上限，默认无上限
+    if YQP_ACTIVITY_MAX is not None:
+        point = min(YQP_ACTIVITY_MAX, point)
     return point
 

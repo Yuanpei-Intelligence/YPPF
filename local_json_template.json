@@ -42,6 +42,16 @@
     },
     "thresholds": {
         "注释": "下面这些都可以不写",
+        "point": {
+            "per_feedback": 10,
+            "per_hour": 1,
+            "limit": 6,
+            "invalid_hour": 12,
+            "invalid_titles": [
+                "选课",
+                "补选"
+            ]
+        },
         "wechat_send_number": "500",
         "wechat_send_batch": "500"
     },

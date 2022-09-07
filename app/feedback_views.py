@@ -9,8 +9,7 @@ from app.models import (
 from app.utils import (
     get_person_or_org,
 )
-from generic.models import YQPointRecord, UserManager
-from app.constants import YQP_FEEDBACK
+from generic.models import YQPointRecord
 from django.db.models import Q
 from django.db import transaction
 from app.feedback_utils import (
@@ -204,8 +203,8 @@ def viewFeedback(request: HttpRequest, fid):
                     feedback.public_status = Feedback.PublicStatus.PUBLIC
                     feedback.save()
                     # 为提出者增加元气值
-                    UserManager().modify_YQPoint(feedback.person.get_user(), YQP_FEEDBACK,
-                                                 "问题反馈", YQPointRecord.SourceType.FEEDBACK)
+                    User.objects.modify_YQPoint(feedback.person.get_user(), YQP_PER_FEEDBACK,
+                                                "问题反馈", YQPointRecord.SourceType.FEEDBACK)
                     succeed_message.append("成功修改反馈公开状态为【公开】！所有学生都有访问权限。")
                     inform_notification(me, feedback.person, f"已公开您的反馈[{feedback.title}]。", feedback, anonymous=False)
                     inform_notification(me, feedback.org, f"已公开您处理的反馈[{feedback.title}]。", feedback, anonymous=False)

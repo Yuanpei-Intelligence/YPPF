@@ -229,7 +229,7 @@ class PositionAdmin(admin.ModelAdmin):
     @as_action("职务等级 降低(升职)", update=True)
     def promote(self, request, queryset):
         for pos in queryset:
-            pos.pos = min(0, pos.pos - 1)
+            pos.pos = max(0, pos.pos - 1)
             pos.save()
         return self.message_user(request=request,
                                  message='修改成功!')

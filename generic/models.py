@@ -24,7 +24,6 @@ __all__ = [
     'User',
     'CreditRecord',
     'YQPointRecord',
-    'UserManager',
 ]
 
 
@@ -55,9 +54,9 @@ class UserManager(_UserManager):
         if update:
             users = users.select_for_update()
         if isinstance(user, User):
-            return user
-        if isinstance(user, str):
             user = user.pk
+        if isinstance(user, str):
+            return users.get(username=user)
         return users.get(pk=user)
 
     def create_user(self, username: str, name: str,
@@ -132,6 +131,7 @@ class UserManager(_UserManager):
             source=source,
         )
 
+
     @transaction.atomic
     def bulk_increase_YQPoint(self, user_set: QuerySet['User'], delta: int,
                               source: str, source_type: 'YQPointRecord.SourceType'):
@@ -157,8 +157,6 @@ class UserManager(_UserManager):
             ) for person in user_set
         ]
         YQPointRecord.objects.bulk_create(point_records)
-
-
 
 
     @transaction.atomic
