@@ -658,10 +658,12 @@
                                 <p style="text-align: center;">用户的学术地图未公开或无内容</p>
                                 {% else %}
                                 <table class="table">
+                                    {% if context.person.stu_grade %}
                                     <tr>
                                         <th width="10%" style="min-width: 100px;color: #1b55e2;">年级</th>
-                                        <th width="85%" style="min-width: 160px;">{{ author_grade }}级</th>
+                                        <th width="85%" style="min-width: 160px;">{{ context.person.stu_grade }}级</th>
                                     </tr>
+                                    {% endif %}
 
                                     {% if academic_params.selected_major_list|length != 0 %}
                                     <tr>
