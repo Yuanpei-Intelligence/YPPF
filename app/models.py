@@ -1461,24 +1461,22 @@ class CourseManager(models.Manager):
         return select_current(
             self.exclude(status=Course.Status.ABORT), noncurrent=noncurrent)
 
-    def selected(self, person: NaturalPerson):
+    def selected(self, person: NaturalPerson, unfailed=False):
+        all_status = [
+            CourseParticipant.Status.SELECT,
+            CourseParticipant.Status.SUCCESS,
+        ]
+        if not unfailed:
+            all_status.append(CourseParticipant.Status.FAILED)
         # 返回当前学生所选的所有课程，选课失败也要算入
         # participant_set是对CourseParticipant的反向查询
         return self.activated().filter(participant_set__person=person,
-                                       participant_set__status__in=[
-                                           CourseParticipant.Status.SELECT,
-                                           CourseParticipant.Status.SUCCESS,
-                                           CourseParticipant.Status.FAILED,
-                                       ])
+                                       participant_set__status__in=all_status)
 
 
     def unselected(self, person: NaturalPerson):
         # 返回当前学生没选上的所有课程
-        my_course_list = self.activated().filter(participant_set__person=person,
-                                                       participant_set__status__in=[
-                                                           CourseParticipant.Status.SELECT,
-                                                           CourseParticipant.Status.SUCCESS,
-                                                       ]).values_list("id", flat=True)
+        my_course_list = self.selected(person, unfailed=True).values_list("id", flat=True)
         return self.activated().exclude(id__in=my_course_list)
 
 
