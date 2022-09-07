@@ -633,28 +633,24 @@
 
       $('#app').fullpage({
         onLeave: function (index, nextIndex, direction) {
-          if (index == 1 && "{{user_accept}}" == "False") {
-            if ("{{logged_in}}" == "True"){
-              if ("{{is_freshman}}" == "True"){
-                rst = window.confirm('新同学你好，系统中还没有你的数据。将为你展示年度总结示例，之后在系统中多留下自己的足迹吧～')
+          if (index == 1) {
+            {% if logged_in %}
+            {% if is_freshman %}
+              alert("新同学你好，系统中还没有你的数据。将为你展示年度总结示例，之后在系统中多留下自己的足迹吧～");
+            {% elif not user_accept %}
+              rst = confirm("点击确认则视为允许我们访问你的必要数据，但是我们保证不会将其泄露给其他人。点击取消将展示年度总结示例。");
+              if (rst) {
+                window.location.replace(window.location + "?accept=true");
+                return false;
               }
-              else{
-                rst = window.confirm('点击确认则视为允许我们访问你的必要数据，但是我们保证不会将其泄露给其他人。点击取消将展示年度总结示例。')
+            {% endif %}
+            {% else %}
+              rst = confirm("您尚未登录，将为您展示年度总结示例。点击取消跳转至登录界面。");
+              if (!rst) {
+                window.location.href = "{% url 'index' %}?origin=/underground/summary/2021";
+                return false;
               }
-            }
-            else{
-              rst = window.confirm('您尚未登录，将为您展示年度总结示例')
-            }
-            if (!rst) {
-              if ("{{logged_in}}" != "True" || "{{is_freshman}}" != "False"){
-                return false
-              }
-            }
-            else{
-              if("{{logged_in}}" == "True" && "{{is_freshman}}" == "False"){
-                window.location ="?accept=true" 
-              }
-            }
+            {% endif %}
           }
           
           console.log(index + ' leave direction: ' + direction);
