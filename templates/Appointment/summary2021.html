@@ -642,7 +642,7 @@
             {% elif not user_accept %}
               rst = confirm("点击确认则视为允许我们访问你的必要数据，但是我们保证不会将其泄露给其他人。点击取消将展示年度总结示例。");
               if (rst) {
-                window.location.replace(window.location + "?accept=true");
+                window.location.replace(window.location + "{% url 'Appointment:summary2021' %}?accept=true");
                 return false;
               }
             {% endif %}
