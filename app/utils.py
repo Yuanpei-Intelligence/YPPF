@@ -674,7 +674,7 @@ def update_related_account_in_session(request, username, shift=False, oname=""):
     """
     外层保证 username 是一个自然人的 username 并且合法
 
-    登录时 shift 为 false，切换时为 True
+    登录时 shift 为 false，切换时为 True，并设置request.user
     切换到某个组织时 oname 不为空，否则都是空
     """
 
