@@ -1442,6 +1442,12 @@ def summary2021(request: HttpRequest):
     base_dir = 'test_data'
 
     logged_in = request.user.is_authenticated
+    if logged_in:
+        username = request.session.get("NP", "")
+        if username:
+            from app.utils import update_related_account_in_session
+            update_related_account_in_session(request, username, shift=True)
+
     is_freshman = request.user.username.startswith('22')
     user_accept = request.GET.get('accept') == 'true'
     infos = generic_info()

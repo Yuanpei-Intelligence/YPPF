@@ -628,6 +628,7 @@
         // bgBack: '../img/cover.png'
       }
       var flag = true;
+      var accepted = false;
 
       {% if user_accept %}
       history.pushState(null, null, "{% url 'Appointment:summary2021' %}");
@@ -640,15 +641,19 @@
         onLeave: function (index, nextIndex, direction) {
           if (index == 1) {
             {% if logged_in %}
-            {% if is_freshman %}
-              alert("新同学你好，系统中还没有你的数据。将为你展示年度总结示例，之后在系统中多留下自己的足迹吧～");
-            {% elif not user_accept %}
-              rst = confirm("点击确认则视为允许我们访问你的必要数据，但是我们保证不会将其泄露给其他人。点击取消将展示年度总结示例。");
-              if (rst) {
-                window.location.replace(window.location.href + "?accept=true");
-                return false;
-              }
-            {% endif %}
+              {% if is_freshman %}
+                alert("新同学你好，系统中还没有你的数据。将为你展示年度总结示例，之后在系统中多留下自己的足迹吧～");
+              {% elif not user_accept %}
+                if (accept) {
+                  return false;
+                }
+                rst = confirm("点击确认则视为允许我们访问你的必要数据，但是我们保证不会将其泄露给其他人。点击取消将展示年度总结示例。");
+                if (rst) {
+                  accept = true;
+                  window.location.replace(window.location.href + "?accept=true");
+                  return false;
+                }
+              {% endif %}
             {% else %}
               rst = confirm("您尚未登录，将为您展示年度总结示例。点击取消跳转至登录界面。");
               if (!rst) {
