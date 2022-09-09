@@ -1,3 +1,5 @@
+import json
+
 from django.core.management.base import BaseCommand
 from app.models import NaturalPerson
 from data_analysis.summary import cal_co_appoint, cal_appoint
@@ -20,8 +22,10 @@ class Command(BaseCommand):
         co_list = sorted(co_list, key=lambda x: x[1])
         func_list = sorted(func_list, key=lambda x: x[1])
         discuss_list = sorted(discuss_list, key=lambda x: x[1])
-        return dict(
+        d = dict(
             co_pct=[s for s, _ in co_list],
             func_appoint_pct=[s for s, _ in func_list],
-            discuss_list=[s for s, _ in discuss_list]
+            discuss_appoint_pct=[s for s, _ in discuss_list]
         )
+        with open('test_data/rank_info.json', 'w') as f:
+            json.dump(d, f)

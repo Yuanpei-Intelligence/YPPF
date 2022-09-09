@@ -161,7 +161,7 @@ class OrganizationTypeAdmin(admin.ModelAdmin):
 class OrganizationAdmin(admin.ModelAdmin):
     list_display = ["organization_id", "oname", "otype", "Managers"]
     search_fields = ("organization_id__username", "oname", "otype__otype_name")
-    list_filter = ("otype", )
+    list_filter = ["otype", "status"]
 
     def Managers(self, obj):
         display = ''
@@ -207,9 +207,9 @@ class OrganizationAdmin(admin.ModelAdmin):
 
 @admin.register(Position)
 class PositionAdmin(admin.ModelAdmin):
-    list_display = ["person", "org", "pos", "pos_name", "is_admin"]
+    list_display = ["person", "org", "pos", "pos_name", "year", "semester", "is_admin"]
     search_fields = ("person__name", "org__oname", 'org__otype__otype_name')
-    list_filter = ('pos', 'is_admin', 'org__otype')
+    list_filter = ('year', 'semester','is_admin', 'org__otype', 'pos')
     autocomplete_fields = ['person', 'org']
 
     def pos_name(self, obj):
@@ -229,7 +229,7 @@ class PositionAdmin(admin.ModelAdmin):
     @as_action("职务等级 降低(升职)", update=True)
     def promote(self, request, queryset):
         for pos in queryset:
-            pos.pos = min(0, pos.pos - 1)
+            pos.pos = max(0, pos.pos - 1)
             pos.save()
         return self.message_user(request=request,
                                  message='修改成功!')

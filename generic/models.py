@@ -18,7 +18,7 @@ from django.db import models
 from django.contrib.auth.models import AbstractUser
 from django.contrib.auth.models import UserManager as _UserManager
 from django.db import transaction
-from django.db.models import QuerySet
+from django.db.models import QuerySet, F
 
 __all__ = [
     'User',
@@ -133,6 +133,33 @@ class UserManager(_UserManager):
 
 
     @transaction.atomic
+    def bulk_increase_YQPoint(self, user_set: QuerySet['User'], delta: int,
+                              source: str, source_type: 'YQPointRecord.SourceType'):
+        """
+        批量增加元气值
+        :param user_set: 待更改User的QuerySet
+        :type user_set: QuerySet['User']
+        :param delta: 增减元气值多少
+        :type delta: int
+        :param source: 元气值来源的简短说明
+        :type source: str
+        :param source_type: 元气值来源类型
+        :type source_type: YQPointRecord.SourceType
+        """
+        assert delta > 0
+        user_set.update(YQpoint=F('YQpoint') + delta)
+        point_records = [
+            YQPointRecord(
+                user=person,
+                delat=delta,
+                source=source,
+                source_type=source_type,
+            ) for person in user_set
+        ]
+        YQPointRecord.objects.bulk_create(point_records)
+
+
+    @transaction.atomic
     def modify_YQPoint(self, user: 'User|int|str', delta: int,
                        source: str, source_type: 'YQPointRecord.SourceType'):
         '''
@@ -142,9 +169,9 @@ class UserManager(_UserManager):
         update_user.YQpoint += delta
         assert update_user.YQpoint >= 0, '元气值不足'
         self._record_yqpoint_change(update_user, delta, source, source_type)
-        update_user.save(update_fields=['credit'])
+        update_user.save(update_fields=['YQpoint'])
         if isinstance(user, User):
-            user.credit = update_user.credit
+            user.YQpoint = update_user.YQpoint
 
 
     def _record_yqpoint_change(self, user: 'User', delta: int,

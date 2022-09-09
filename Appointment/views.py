@@ -1441,18 +1441,19 @@ def summary2021(request: HttpRequest):
 
     base_dir = 'test_data'
 
-    logged_in = not request.user.is_authenticated
+    logged_in = request.user.is_authenticated
     is_freshman = request.user.username.startswith('22')
-    user_accept = 'accept' in request.GET.keys()
+    user_accept = request.GET.get('accept') == 'true'
     infos = generic_info()
     infos.update(
         logged_in=logged_in,
         is_freshman=is_freshman,
         user_accept=user_accept,
     )
+
     if user_accept and logged_in and not is_freshman:
-        infos.update(person_info(request.user))
         try:
+            infos.update(person_info(request.user))
             with open(os.path.join(base_dir, 'rank_info.json')) as f:
                 rank_info = json.load(f)
                 sid = request.user.username
@@ -1468,4 +1469,4 @@ def summary2021(request: HttpRequest):
         except:
             pass
 
-    return render(request, 'Appointment/summary2.html', infos)
+    return render(request, 'Appointment/summary2021.html', infos)
