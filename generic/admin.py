@@ -12,7 +12,7 @@ class MyUserAdmin(UserAdmin):
         'id', 'username', 'name',
         'credit', 'utype', 'is_staff', 'is_superuser',
     ]
-    list_editable = ['credit']
+    # list_editable = ['credit']
     search_fields = ['id', 'username', 'name', 'acronym']
     @classmethod
     def suggest_search_fields(cls, user_field: str = 'user'):

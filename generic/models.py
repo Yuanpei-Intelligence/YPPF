@@ -117,7 +117,7 @@ class UserManager(_UserManager):
 
     @transaction.atomic
     def bulk_recover_credit(self, users: QuerySet['User'],
-                              delta: int, source: str):
+                            delta: int, source: str):
         '''
         批量恢复信用分并记录，原子化操作
 

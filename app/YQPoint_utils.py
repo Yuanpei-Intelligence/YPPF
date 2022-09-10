@@ -199,7 +199,6 @@ def buy_exchange_item(user: User, poolitem_id: str) -> MESSAGECONTEXT:
                 pool=poolitem.pool,
                 prize=poolitem.prize,
                 status=PoolRecord.Status.UN_REDEEM,
-                time=datetime.now()
             )
 
             # 扣除元气值
@@ -254,7 +253,6 @@ def buy_lottery_pool(user: User, pool_id: str) -> MESSAGECONTEXT:
                 user=user,
                 pool=pool,
                 status=PoolRecord.Status.LOTTERING,
-                time=datetime.now()
             )
 
             # 扣除元气值
@@ -343,11 +341,11 @@ def buy_random_pool(user: User, pool_id: str) -> Tuple[MESSAGECONTEXT, int, int]
             # 开盒，修改poolitem记录，创建poolrecord记录
             items = pool.poolitem_set.select_for_update().all()
             real_item_id = select_random_prize(items, 1)[0]
-            poolitem_to_be_modified = PoolItem.objects.select_for_update().get(id=real_item_id)
-            poolitem_to_be_modified.consumed_num += 1
-            poolitem_to_be_modified.save()
+            modify_item: PoolItem = PoolItem.objects.select_for_update().get(id=real_item_id)
+            modify_item.consumed_num += 1
+            modify_item.save()
 
-            if poolitem_to_be_modified.is_empty: # 如果是空盲盒，没法兑奖，record的状态记为NOT_LUCKY
+            if modify_item.is_empty: # 如果是空盲盒，没法兑奖，record的状态记为NOT_LUCKY
                 item_status = PoolRecord.Status.NOT_LUCKY
             else:
                 item_status = PoolRecord.Status.UN_REDEEM
@@ -355,8 +353,7 @@ def buy_random_pool(user: User, pool_id: str) -> Tuple[MESSAGECONTEXT, int, int]
                 user=user,
                 pool=pool,
                 status=item_status,
-                prize=poolitem_to_be_modified.prize,
-                time=datetime.now()
+                prize=modify_item.prize,
             )
 
             # 扣除元气值
@@ -369,7 +366,7 @@ def buy_random_pool(user: User, pool_id: str) -> Tuple[MESSAGECONTEXT, int, int]
     except AssertionError as e:
         return wrong(str(e)), -1, 2     
 
-    return succeed('兑换盲盒成功!'), poolitem_to_be_modified.prize.id, int(poolitem_to_be_modified.is_empty)
+    return succeed('兑换盲盒成功!'), modify_item.prize.id, int(modify_item.is_empty)
 
 
 def run_lottery(pool_id: int):
