@@ -42,7 +42,7 @@ def start_scheduler():
     if scheduler._event is None or scheduler._event.is_set():
         scheduler._event = Event()
 
-    scheduler._check_uwsgi()
+    # scheduler._check_uwsgi()
 
     with scheduler._jobstores_lock:
 

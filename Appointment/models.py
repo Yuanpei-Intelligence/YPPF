@@ -297,14 +297,14 @@ class CardCheckInfo(models.Model):
     Cardtime = models.DateTimeField('刷卡时间', auto_now_add=True)
 
     class Status(models.IntegerChoices):
-        DOOR_CLOSE = 0  # 开门：否
-        DOOR_OPEN = 1  # 开门：是
+        DOOR_CLOSE = 0, '不开门'  # 开门：否
+        DOOR_OPEN = 1, '开门'  # 开门：是
 
     CardStatus = models.SmallIntegerField(
         '刷卡状态', choices=Status.choices, default=0)
 
     ShouldOpenStatus = models.SmallIntegerField(
-        '是否应该开门', choices=Status.choices, default=0)
+        '应该开门', choices=Status.choices, default=0)
 
     Message = models.CharField(
         '记录信息', max_length=256, null=True, blank=True)

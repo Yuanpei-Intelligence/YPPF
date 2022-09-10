@@ -12,7 +12,7 @@ class MyUserAdmin(UserAdmin):
         'id', 'username', 'name',
         'credit', 'utype', 'is_staff', 'is_superuser',
     ]
-    list_editable = ['credit']
+    # list_editable = ['credit']
     search_fields = ['id', 'username', 'name', 'acronym']
     @classmethod
     def suggest_search_fields(cls, user_field: str = 'user'):
@@ -72,6 +72,22 @@ class MyUserAdmin(UserAdmin):
     def renew_pinyin(self, request, queryset):
         self._update_acronym(queryset)
         return self.message_user(request, '更新名称缩写成功!')
+
+
+    @as_action('重置信用分', actions, atomic=True)
+    def refresh_credit(self, request, queryset):
+        User.objects.bulk_recover_credit(queryset, User.MAX_CREDIT, '用户：重置')
+        return self.message_user(request, '操作成功!')
+
+    @as_action('恢复信用分 1分', actions, atomic=True)
+    def recover_credit(self, request, queryset):
+        User.objects.bulk_recover_credit(queryset, 1, '用户：恢复')
+        return self.message_user(request, '操作成功!')
+
+    @as_action('全体恢复信用分 1分', actions, atomic=True)
+    def recover(self, request, queryset):
+        User.objects.bulk_recover_credit(User.objects.all(), 1, '用户：全体恢复')
+        return self.message_user(request, '操作成功!')
 
 
 @admin.register(CreditRecord)
