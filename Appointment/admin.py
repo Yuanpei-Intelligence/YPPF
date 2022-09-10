@@ -85,11 +85,8 @@ class ParticipantAdmin(admin.ModelAdmin):
     def recover(self, request, queryset):
         stu_all = Participant.objects.all()
         stu_all = stu_all.filter(hidden=False)
-        # TODO: 恢复信用分调整至通用模型后台
         stu_all = User.objects.filter(id__in=stu_all.values_list('Sid__id'))
-        stu_all.filter(credit__lt=3).select_for_update().update(
-            credit=F('credit') + 1
-        )
+        User.objects.bulk_recover_credit(stu_all, 1, '地下室：全体学生恢复')
         return self.message_user(request, '操作成功!')
 
     @as_action('更新姓名拼音', actions, update=True)

@@ -74,6 +74,22 @@ class MyUserAdmin(UserAdmin):
         return self.message_user(request, '更新名称缩写成功!')
 
 
+    @as_action('重置信用分', actions, atomic=True)
+    def refresh_credit(self, request, queryset):
+        User.objects.bulk_recover_credit(queryset, User.MAX_CREDIT, '用户：重置')
+        return self.message_user(request, '操作成功!')
+
+    @as_action('恢复信用分 1分', actions, atomic=True)
+    def recover_credit(self, request, queryset):
+        User.objects.bulk_recover_credit(queryset, 1, '用户：恢复')
+        return self.message_user(request, '操作成功!')
+
+    @as_action('全体恢复信用分 1分', actions, atomic=True)
+    def recover(self, request, queryset):
+        User.objects.bulk_recover_credit(User.objects.all(), 1, '用户：全体恢复')
+        return self.message_user(request, '操作成功!')
+
+
 @admin.register(CreditRecord)
 class CreditRecordAdmin(admin.ModelAdmin):
     list_display = ['user', 'source', 'delta', 'overflow', 'time']
