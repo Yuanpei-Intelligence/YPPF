@@ -90,7 +90,7 @@ def update_records():
                     bar_code = row['BarCode'].strip()[-6:]
                     # 根据BarCode查询书的编号
                     cursor.execute(f"""SELECT MarcID FROM Items 
-                                       WHERE BarCode LIKE '{bar_code}%'""")
+                                       WHERE BarCode LIKE '%{bar_code}%'""")
                     book_id = cursor.fetchone()
                     if not book_id:
                         book_id = None
