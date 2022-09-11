@@ -1090,7 +1090,7 @@ def checkout_appoint(request: HttpRequest):
         assert start_week == 0 or start_week == 1
         assert has_longterm_permission or not is_longterm  # 检查长期预约权限
     except:
-        return redirect(wrong('参数不合法'), reverse('Appointment:index'))
+        return redirect(message_url(wrong('参数不合法'), reverse('Appointment:index')))
 
     appoint_params = {
         'Rid': Rid,
