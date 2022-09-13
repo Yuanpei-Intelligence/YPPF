@@ -258,8 +258,7 @@ class AppointAdmin(admin.ModelAdmin):
                     elif appoint.Astatus == Appoint.Status.VIOLATED:
                         appoint.Astatus = Appoint.Status.JUDGED
                         # for stu in appoint.students.all():
-                        if appoint.major_student.credit < 3:
-                            User.objects.modify_credit(appoint.get_major_id(), 1, '地下室：申诉')
+                        User.objects.modify_credit(appoint.get_major_id(), 1, '地下室：申诉')
                         appoint.save()
                         have_success = 1
                         # send wechat message
