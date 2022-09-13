@@ -15,6 +15,7 @@ logger = logging.getLogger(__name__)
 from app.scheduler_func import *
 from Appointment.utils.scheduler_func import clear_appointments
 from yp_library.management.sync import update_lib_data
+from yp_library.utils import bookreturn_notification
 
 
 class SchedulerService(rpyc.Service):
@@ -72,6 +73,11 @@ class Command(BaseCommand):
                           "cron",
                           id="update_yp_library_data",
                           minute=10,
+                          replace_existing=True)
+        scheduler.add_job(bookreturn_notification,
+                          "cron",
+                          id="book_return_notification",
+                          hour=0,
                           replace_existing=True)
 
         protocol_config = {

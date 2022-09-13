@@ -36,7 +36,7 @@ def days_reminder(days: int, alert_msg: str):
     lendlist = LendRecord.objects.filter(
         returned=False,
         due_time__gt=cr_time - timedelta(days=days, hours=1),
-        due_time__lte=cr_time - timedelta(days=days))
+        due_time__lte=cr_time - timedelta(days=days, hours=-1))
     sender = Organization.objects.get(oname="何善衡图书室").get_user()
     URL = "/lendinfo/"
     typename = Notification.Type.NEEDREAD
