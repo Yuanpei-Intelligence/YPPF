@@ -25,7 +25,8 @@ from datetime import datetime, timedelta
 from functools import wraps
 from django.contrib import auth
 from django.shortcuts import redirect
-from django.http import HttpResponse
+from django.http import HttpResponse, HttpRequest
+from generic.http.utils import get_ip
 from django.db.models import F
 
 
@@ -55,6 +56,53 @@ def check_user_access(redirect_url="/logout/", is_modpw=False):
 
         return _wrapped_view
 
+    return actual_decorator
+
+
+_block_ips: set = get_config('safety/blocked_ips', set, set())
+def block_attack(view_function):
+    @wraps(view_function)
+    def _wrapped_view(request: HttpRequest, *args, **kwargs):
+        ip = get_ip(request)
+        if ip in _block_ips:
+            log.operation_writer(SYSTEM_LOG, f'已拦截{ip}在{request.path}的请求',
+                                    view_function.__name__, log.STATE_WARNING)
+            return HttpResponse(status=403)
+        return view_function(request, *args, **kwargs)
+    return _wrapped_view
+
+
+def record_attack(except_type=None, as_attack=False):
+    '''临时用于拦截ip的装饰器，在用户验证层下、错误捕获层上，需要整理本函数至其他位置'''
+    # TODO: 重构代码，调整本函数位置
+    def actual_decorator(view_function):
+        @block_attack
+        @wraps(view_function)
+        def _wrapped_view(request: HttpRequest, *args, **kwargs):
+            if except_type is None:
+                except_type = ()
+            ip = get_ip(request)
+            is_attack, err = False, None
+            try:
+                return view_function(request, *args, **kwargs)
+            except except_type as e:
+                is_attack, err = as_attack, e
+            except Exception as e:
+                is_attack, err = not as_attack, e
+            finally:
+                if not is_attack:
+                    raise err
+                _block_ips.add(ip)
+                log.operation_writer(
+                    SYSTEM_LOG,
+                    '\n'.join([
+                        '记录到恶意行为: ', f'发生{type(e)}错误: {e}', f'IP: {ip}',
+                    ]),
+                    view_function.__name__,
+                    log.STATE_ERROR,
+                )
+                return HttpResponse(status=403)
+        return _wrapped_view
     return actual_decorator
 
 
