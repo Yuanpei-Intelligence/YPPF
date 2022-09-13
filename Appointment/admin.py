@@ -406,31 +406,31 @@ class AppointAdmin(admin.ModelAdmin):
         return self.message_user(request, f'长线化成功!生成预约{";".join(new_appoints)}')
 
 
-    @as_action('增加一周本预约', actions, 'add', single=True)
+    # @as_action('增加一周本预约', actions, 'add', single=True)
     def longterm1(self, request, queryset):
         return self.longterm_wk(request, queryset, 1)
 
-    @as_action('增加两周本预约', actions, 'add', single=True)
+    # @as_action('增加两周本预约', actions, 'add', single=True)
     def longterm2(self, request, queryset):
         return self.longterm_wk(request, queryset, 2)
 
-    @as_action('增加四周本预约', actions, 'add', single=True)
+    # @as_action('增加四周本预约', actions, 'add', single=True)
     def longterm4(self, request, queryset):
         return self.longterm_wk(request, queryset, 4)
 
-    @as_action('增加八周本预约', actions, 'add', single=True)
+    # @as_action('增加八周本预约', actions, 'add', single=True)
     def longterm8(self, request, queryset):
         return self.longterm_wk(request, queryset, 8)
 
-    @as_action('按单双周 增加一次本预约', actions, 'add', single=True)
+    # @as_action('按单双周 增加一次本预约', actions, 'add', single=True)
     def longterm1_2(self, request, queryset):
         return self.longterm_wk(request, queryset, 1, 2)
 
-    @as_action('按单双周 增加两次本预约', actions, 'add', single=True)
+    # @as_action('按单双周 增加两次本预约', actions, 'add', single=True)
     def longterm2_2(self, request, queryset):
         return self.longterm_wk(request, queryset, 2, 2)
 
-    @as_action('按单双周 增加四次本预约', actions, 'add', single=True)
+    # @as_action('按单双周 增加四次本预约', actions, 'add', single=True)
     def longterm4_2(self, request, queryset):
         return self.longterm_wk(request, queryset, 4, 2)
 
