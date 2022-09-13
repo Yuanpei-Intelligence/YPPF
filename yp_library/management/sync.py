@@ -143,9 +143,6 @@ def update_records():
                     fields=['returned', 'return_time', 'status'],
                 )
 
-    # 发送还书提醒
-    bookreturn_notification()
-
 
 def update_lib_data():
     update_reader()
