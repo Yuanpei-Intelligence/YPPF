@@ -6,13 +6,6 @@ from django.contrib import admin
 from django.db import transaction
 from django.utils.safestring import mark_safe
 
-# Register your models here.
-admin.site.site_title = '元培智慧校园管理后台'
-admin.site.site_header = '元培智慧校园 - 管理后台'
-# 合并后只需声明一次
-# admin.site.site_title = '元培成长档案管理后台'
-# admin.site.site_header = '元培成长档案 - 管理后台'
-
 
 # 通用内联模型
 @readonly_inline

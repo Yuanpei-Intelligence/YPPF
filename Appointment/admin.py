@@ -16,11 +16,6 @@ from Appointment.utils.utils import operation_writer
 from Appointment.models import *
 
 
-# Register your models here.
-# 合并后无需修改
-# admin.site.site_title = '元培地下室管理后台'
-# admin.site.site_header = '元培地下室 - 管理后台'
-
 @admin.register(College_Announcement)
 class College_AnnouncementAdmin(admin.ModelAdmin):
     list_display = ['id', 'announcement', 'show']
