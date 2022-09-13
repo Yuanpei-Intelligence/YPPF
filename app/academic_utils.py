@@ -375,9 +375,8 @@ def update_text_entry(person: NaturalPerson,
     
     # 即将修改/创建的entry总数一定不小于原有的，因此先遍历原有的entry，判断是否更改/删除
     for i, entry in enumerate(all_text_entries):
-        if entry.content != contents[i] or entry.status != updated_status: 
-            # 只有content或status与原有的不同才更改
-            # 无论如何，先将原有的content设置为“已弃用”
+        if entry.content != contents[i]: 
+            # 内容发生修改，需要先将原有的content设置为“已弃用”
             entry.status = AcademicEntry.EntryStatus.OUTDATE
             entry.save()
             if contents[i] != "":  # 只有新的entry的内容不为空才创建
@@ -385,6 +384,10 @@ def update_text_entry(person: NaturalPerson,
                     person=person, atype=type, content=contents[i], 
                     status=updated_status,
                 )
+        elif entry.status != updated_status:
+            # 内容未修改但status修改，只更新entry的状态，不删除
+            entry.status = updated_status
+            entry.save()
     
     # 接下来遍历的entry均为需要新建的
     for content in contents[previous_num:]:
