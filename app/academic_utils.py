@@ -35,7 +35,7 @@ __all__ = [
 ]
 
 
-def get_search_results(query: str) -> List[dict]:
+def get_search_results(query: str):
     """
     根据提供的关键词获取搜索结果。
 
@@ -45,6 +45,7 @@ def get_search_results(query: str) -> List[dict]:
              一个条目名可能对应一个或多个内容（如参与多个科研项目等），因此条目名对应的value统一用list打包。
     :rtype: List[dict]
     """
+    # TODO: 更新文档
     # 首先搜索所有含有关键词的公开的学术地图项目，忽略大小写，同时转换成QuerySet[dict]
     academic_tags = AcademicTagEntry.objects.filter( 
         tag__tag_content__icontains=query,
@@ -60,20 +61,23 @@ def get_search_results(query: str) -> List[dict]:
         "person__person_id__username", 
          "atype", "content",
     )
-    
+
+    type2display = {ty: label for ty, label in AcademicTag.AcademicTagType.choices}
+
     # 然后根据tag/text对应的人，整合学术地图项目
-    academic_map_dict = dict()
+    # 使用defaultdict会导致前端items不可用，原因未知
+    academic_map_dict: 'dict[str, dict[str, list]]' = dict()
     for sid, ty, content in academic_tags:
         # 将choice的值更新为对应的选项名
-        tag_type = AcademicTag.AcademicTagType(ty).label
-        if not sid in academic_map_dict:
-            academic_map_dict[sid] = defaultdict(list)
+        tag_type = type2display[ty]
+        academic_map_dict.setdefault(sid, {})
+        academic_map_dict[sid].setdefault(text_type, [])
         academic_map_dict[sid][tag_type].append(content)
     
     for sid, ty, content in academic_texts:
-        text_type = AcademicTextEntry.AcademicTextType(ty).label
-        if not sid in academic_map_dict:
-            academic_map_dict[sid] = defaultdict(list)
+        text_type = type2display[ty]
+        academic_map_dict.setdefault(sid, {})
+        academic_map_dict[sid].setdefault(text_type, [])
         academic_map_dict[sid][text_type].append(content)
     
     return academic_map_dict
