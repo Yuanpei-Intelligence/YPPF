@@ -35,7 +35,7 @@ __all__ = [
 ]
 
 
-def get_search_results(query: str) -> List[dict]:
+def get_search_results(query: str):
     """
     根据提供的关键词获取搜索结果。
 
@@ -45,6 +45,7 @@ def get_search_results(query: str) -> List[dict]:
              一个条目名可能对应一个或多个内容（如参与多个科研项目等），因此条目名对应的value统一用list打包。
     :rtype: List[dict]
     """
+    # TODO: 更新文档
     # 首先搜索所有含有关键词的公开的学术地图项目，忽略大小写，同时转换成QuerySet[dict]
     academic_tags = AcademicTagEntry.objects.filter( 
         tag__tag_content__icontains=query,
@@ -60,20 +61,23 @@ def get_search_results(query: str) -> List[dict]:
         "person__person_id__username", 
          "atype", "content",
     )
-    
+
+    type2display = {ty: label for ty, label in AcademicTag.Type.choices}
+
     # 然后根据tag/text对应的人，整合学术地图项目
-    academic_map_dict = dict()
+    # 使用defaultdict会导致前端items不可用，原因未知
+    academic_map_dict: 'dict[str, dict[str, list]]' = dict()
     for sid, ty, content in academic_tags:
         # 将choice的值更新为对应的选项名
-        tag_type = AcademicTag.AcademicTagType(ty).label
-        if not sid in academic_map_dict:
-            academic_map_dict[sid] = defaultdict(list)
+        tag_type = type2display[ty]
+        academic_map_dict.setdefault(sid, {})
+        academic_map_dict[sid].setdefault(text_type, [])
         academic_map_dict[sid][tag_type].append(content)
     
     for sid, ty, content in academic_texts:
-        text_type = AcademicTextEntry.AcademicTextType(ty).label
-        if not sid in academic_map_dict:
-            academic_map_dict[sid] = defaultdict(list)
+        text_type = type2display[ty]
+        academic_map_dict.setdefault(sid, {})
+        academic_map_dict[sid].setdefault(text_type, [])
         academic_map_dict[sid][text_type].append(content)
     
     return academic_map_dict
@@ -195,7 +199,7 @@ def comments2Display(chat: Chat, frontend_dict: dict, user: User):
             frontend_dict["academic_url"] = ""
 
 
-def get_js_tag_list(author: NaturalPerson, type: AcademicTag.AcademicTagType,
+def get_js_tag_list(author: NaturalPerson, type: AcademicTag.Type,
                     selected: bool, status_in: list=None) -> List[dict]:
     """
     用于前端显示支持搜索的专业/项目列表，返回形如[{id, content}]的列表。
@@ -203,7 +207,7 @@ def get_js_tag_list(author: NaturalPerson, type: AcademicTag.AcademicTagType,
     :param author: 作者自然人信息
     :type author: NaturalPerson
     :param type: 标记所需的tag类型
-    :type type: AcademicTag.AcademicTagType
+    :type type: AcademicTag.Type
     :param selected: 用于标记是否获取本人已有的专业项目，selected代表获取前端默认选中的项目
     :type selected: bool
     :param status_in: 所要检索的状态的字符串的列表，如["public","private"]，默认为None，表示搜索全部
@@ -265,7 +269,7 @@ def get_text_list(author: NaturalPerson, type: AcademicTextEntry.AcademicTextTyp
     return text_list
 
 
-def get_tag_status(person: NaturalPerson, type: AcademicTag.AcademicTagType) -> str:
+def get_tag_status(person: NaturalPerson, type: AcademicTag.Type) -> str:
     """
     获取person的类型为type的TagEntry的公开状态。
     如果person没有类型为type的TagEntry，返回"公开"。
@@ -273,7 +277,7 @@ def get_tag_status(person: NaturalPerson, type: AcademicTag.AcademicTagType) -> 
     :param person: 需要获取公开状态的人
     :type person: NaturalPerson
     :param type: TagEntry的类型
-    :type type: AcademicTag.AcademicTagType
+    :type type: AcademicTag.Type
     :return: 公开状态，返回"公开/私密"
     :rtype: str
     """
@@ -314,7 +318,7 @@ def get_text_status(person: NaturalPerson, type: AcademicTextEntry.AcademicTextT
 def update_tag_entry(person: NaturalPerson, 
                      tag_ids: List[str], 
                      status: bool,
-                     type: AcademicTag.AcademicTagType) -> None:
+                     type: AcademicTag.Type) -> None:
     """
     更新TagEntry的工具函数。
 
@@ -325,10 +329,14 @@ def update_tag_entry(person: NaturalPerson,
     :param status: tag_ids对应的所有tags的公开状态
     :type status: bool
     :param type: tag_ids对应的所有tags的类型
-    :type type: AcademicTag.AcademicTagType
+    :type type: AcademicTag.Type
     """
     # 首先获取person所有的TagEntry
     all_tag_entries = AcademicTagEntry.objects.activated().filter(person=person, tag__atype=type)
+    # 标签类型无需审核
+    updated_status = (AcademicEntry.EntryStatus.PUBLIC
+                      if status == "公开" else
+                      AcademicEntry.EntryStatus.PRIVATE)
     
     for entry in all_tag_entries:
         if not str(entry.tag.id) in tag_ids:
@@ -337,8 +345,7 @@ def update_tag_entry(person: NaturalPerson,
             entry.save()
         else:
             # 如果出现，直接更新其状态，并将这个id从tag_ids移除
-            entry.status = AcademicEntry.EntryStatus.WAIT_AUDIT if status == "公开" \
-                           else AcademicEntry.EntryStatus.PRIVATE
+            entry.status = updated_status
             entry.save()
             tag_ids.remove(str(entry.tag.id))
     
@@ -346,8 +353,7 @@ def update_tag_entry(person: NaturalPerson,
     for tag_id in tag_ids:
         AcademicTagEntry.objects.create(
             person=person, tag=AcademicTag.objects.get(id=int(tag_id)),
-            status=AcademicEntry.EntryStatus.WAIT_AUDIT if status == "公开" \
-                else AcademicEntry.EntryStatus.PRIVATE
+            status=updated_status
         )
 
 
@@ -369,20 +375,26 @@ def update_text_entry(person: NaturalPerson,
     """
     # 首先获取person所有的类型为type的TextEntry
     all_text_entries = AcademicTextEntry.objects.activated().filter(person=person, atype=type)
+    updated_status = (AcademicEntry.EntryStatus.WAIT_AUDIT
+                      if status == "公开" else
+                      AcademicEntry.EntryStatus.PRIVATE)
     previous_num = len(all_text_entries)
     
     # 即将修改/创建的entry总数一定不小于原有的，因此先遍历原有的entry，判断是否更改/删除
     for i, entry in enumerate(all_text_entries):
-        if (entry.content != contents[i]):  # 只有content与原有的不同才更改
-            # 无论如何，先将原有的content设置为“已弃用”
+        if entry.content != contents[i]: 
+            # 内容发生修改，需要先将原有的content设置为“已弃用”
             entry.status = AcademicEntry.EntryStatus.OUTDATE
             entry.save()
             if contents[i] != "":  # 只有新的entry的内容不为空才创建
                 AcademicTextEntry.objects.create(
-                    person=person, atype=type, content=contents[i],
-                    status=AcademicEntry.EntryStatus.WAIT_AUDIT if status == "公开" \
-                        else AcademicEntry.EntryStatus.PRIVATE
+                    person=person, atype=type, content=contents[i], 
+                    status=updated_status,
                 )
+        elif entry.status != updated_status:
+            # 内容未修改但status修改，只更新entry的状态，不删除
+            entry.status = updated_status
+            entry.save()
     
     # 接下来遍历的entry均为需要新建的
     for content in contents[previous_num:]:
@@ -454,11 +466,11 @@ def update_academic_map(request: HttpRequest) -> dict:
         me = get_person_or_org(request.user, UTYPE_PER)
         
         # 首先更新自己的TagEntry
-        update_tag_entry(me, majors, major_status, AcademicTag.AcademicTagType.MAJOR)
-        update_tag_entry(me, minors, minor_status, AcademicTag.AcademicTagType.MINOR)
+        update_tag_entry(me, majors, major_status, AcademicTag.Type.MAJOR)
+        update_tag_entry(me, minors, minor_status, AcademicTag.Type.MINOR)
         update_tag_entry(me, double_degrees, double_degree_status, 
-                         AcademicTag.AcademicTagType.DOUBLE_DEGREE)
-        update_tag_entry(me, projects, project_status, AcademicTag.AcademicTagType.PROJECT)
+                         AcademicTag.Type.DOUBLE_DEGREE)
+        update_tag_entry(me, projects, project_status, AcademicTag.Type.PROJECT)
         
         # 然后更新自己的TextEntry
         update_text_entry(

@@ -21,56 +21,56 @@ class GetSearchAcademicTestCase(TestCase):
         NaturalPerson.objects.create(person_id=u2, name="2", stu_grade="2018")
         NaturalPerson.objects.create(person_id=u3, name="3", stu_grade="2019")
 
-        AcademicTag.objects.create(atype=AcademicTag.AcademicTagType.MAJOR, tag_content="数学")
-        AcademicTag.objects.create(atype=AcademicTag.AcademicTagType.MAJOR, tag_content="物理")
-        AcademicTag.objects.create(atype=AcademicTag.AcademicTagType.MAJOR, tag_content="中文")
-        AcademicTag.objects.create(atype=AcademicTag.AcademicTagType.MINOR, tag_content="数学")
-        AcademicTag.objects.create(atype=AcademicTag.AcademicTagType.MINOR, tag_content="物理")
-        AcademicTag.objects.create(atype=AcademicTag.AcademicTagType.MINOR, tag_content="中文")
-        AcademicTag.objects.create(atype=AcademicTag.AcademicTagType.DOUBLE_DEGREE, tag_content="数学")
-        AcademicTag.objects.create(atype=AcademicTag.AcademicTagType.DOUBLE_DEGREE, tag_content="物理")
-        AcademicTag.objects.create(atype=AcademicTag.AcademicTagType.DOUBLE_DEGREE, tag_content="中文")
+        AcademicTag.objects.create(atype=AcademicTag.Type.MAJOR, tag_content="数学")
+        AcademicTag.objects.create(atype=AcademicTag.Type.MAJOR, tag_content="物理")
+        AcademicTag.objects.create(atype=AcademicTag.Type.MAJOR, tag_content="中文")
+        AcademicTag.objects.create(atype=AcademicTag.Type.MINOR, tag_content="数学")
+        AcademicTag.objects.create(atype=AcademicTag.Type.MINOR, tag_content="物理")
+        AcademicTag.objects.create(atype=AcademicTag.Type.MINOR, tag_content="中文")
+        AcademicTag.objects.create(atype=AcademicTag.Type.DOUBLE_DEGREE, tag_content="数学")
+        AcademicTag.objects.create(atype=AcademicTag.Type.DOUBLE_DEGREE, tag_content="物理")
+        AcademicTag.objects.create(atype=AcademicTag.Type.DOUBLE_DEGREE, tag_content="中文")
         
         AcademicTagEntry.objects.create(
             person=NaturalPerson.objects.get(name="1"),
             status=AcademicEntry.EntryStatus.PUBLIC,
             tag=AcademicTag.objects.get(
-                atype=AcademicTag.AcademicTagType.MAJOR, 
+                atype=AcademicTag.Type.MAJOR, 
                 tag_content="数学",
         ))
         AcademicTagEntry.objects.create(
             person=NaturalPerson.objects.get(name="1"),
             status=AcademicEntry.EntryStatus.PUBLIC,
             tag=AcademicTag.objects.get(
-                atype=AcademicTag.AcademicTagType.MINOR, 
+                atype=AcademicTag.Type.MINOR, 
                 tag_content="中文",
         ))
         AcademicTagEntry.objects.create(
             person=NaturalPerson.objects.get(name="2"),
             status=AcademicEntry.EntryStatus.PUBLIC,
             tag=AcademicTag.objects.get(
-                atype=AcademicTag.AcademicTagType.MAJOR, 
+                atype=AcademicTag.Type.MAJOR, 
                 tag_content="物理",
         ))
         AcademicTagEntry.objects.create(
             person=NaturalPerson.objects.get(name="2"),
             status=AcademicEntry.EntryStatus.PRIVATE,
             tag=AcademicTag.objects.get(
-                atype=AcademicTag.AcademicTagType.DOUBLE_DEGREE, 
+                atype=AcademicTag.Type.DOUBLE_DEGREE, 
                 tag_content="数学",
         ))
         AcademicTagEntry.objects.create(
             person=NaturalPerson.objects.get(name="3"),
             status=AcademicEntry.EntryStatus.PRIVATE,
             tag=AcademicTag.objects.get(
-                atype=AcademicTag.AcademicTagType.MAJOR, 
+                atype=AcademicTag.Type.MAJOR, 
                 tag_content="中文",
         ))
         AcademicTagEntry.objects.create(
             person=NaturalPerson.objects.get(name="3"),
             status=AcademicEntry.EntryStatus.PRIVATE,
             tag=AcademicTag.objects.get(
-                atype=AcademicTag.AcademicTagType.MINOR,
+                atype=AcademicTag.Type.MINOR,
                 tag_content="物理",
         ))
         
@@ -115,7 +115,7 @@ class GetSearchAcademicTestCase(TestCase):
         self.assertEqual(len(NaturalPerson.objects.all().values()), 3)
         self.assertEqual(len(AcademicTag.objects.all().values()), 9)
         self.assertEqual(len(AcademicTag.objects.filter(
-            atype=AcademicTag.AcademicTagType.DOUBLE_DEGREE
+            atype=AcademicTag.Type.DOUBLE_DEGREE
         ).values()), 3)
         self.assertEqual(len(AcademicTagEntry.objects.all().values()), 6)
         self.assertEqual(len(AcademicTagEntry.objects.filter(

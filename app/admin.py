@@ -756,14 +756,29 @@ class AcademicTagAdmin(admin.ModelAdmin):
     search_fields =  ("atype", "tag_content",)
 
 
+class AcademicEntryAdmin(admin.ModelAdmin):
+    actions = []
+
+    @as_action("通过审核", actions, 'change', update=True)
+    def accept(self, request, queryset):
+        queryset.filter(status=AcademicEntry.EntryStatus.WAIT_AUDIT
+                        ).update(status=AcademicEntry.EntryStatus.PUBLIC)
+        return self.message_user(request, '修改成功!')
+
+    @as_action("取消公开", actions, 'change', update=True)
+    def reject(self, request, queryset):
+        queryset.filter(status=AcademicEntry.EntryStatus.PUBLIC
+                        ).update(status=AcademicEntry.EntryStatus.WAIT_AUDIT)
+        return self.message_user(request, '修改成功!')
+
 @admin.register(AcademicTagEntry)
-class AcademicTagEntryAdmin(admin.ModelAdmin):
+class AcademicTagEntryAdmin(AcademicEntryAdmin):
     list_display = ["person", "status", "tag",]
     search_fields =  ("person", "status", "tag",)
 
 
 @admin.register(AcademicTextEntry)
-class AcademicTextEntryAdmin(admin.ModelAdmin):
+class AcademicTextEntryAdmin(AcademicEntryAdmin):
     list_display = ["person", "status", "atype", "content",]
     search_fields =  ("person", "status", "atype", "content",)
 
