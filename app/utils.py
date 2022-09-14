@@ -96,7 +96,7 @@ def record_attack(except_type=None, as_attack=False):
                 log.operation_writer(
                     SYSTEM_LOG,
                     '\n'.join([
-                        '记录到恶意行为: ', f'发生{type(e)}错误: {e}', f'IP: {ip}',
+                        '记录到恶意行为: ', f'发生{type(err)}错误: {err}', f'IP: {ip}',
                     ]),
                     view_function.__name__,
                     log.STATE_ERROR,
