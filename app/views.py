@@ -596,13 +596,13 @@ def stuinfo(request: HttpRequest, name=None):
 
         # 获取用户已有的专业/项目的列表，用于select的默认选中项
         academic_params.update(
-            selected_major_list=get_js_tag_list(person, AcademicTag.AcademicTagType.MAJOR,
+            selected_major_list=get_js_tag_list(person, AcademicTag.Type.MAJOR,
                                                 selected=True, status_in=status_in),
-            selected_minor_list=get_js_tag_list(person, AcademicTag.AcademicTagType.MINOR,
+            selected_minor_list=get_js_tag_list(person, AcademicTag.Type.MINOR,
                                                 selected=True, status_in=status_in),
-            selected_double_degree_list=get_js_tag_list(person, AcademicTag.AcademicTagType.DOUBLE_DEGREE,
+            selected_double_degree_list=get_js_tag_list(person, AcademicTag.Type.DOUBLE_DEGREE,
                                                         selected=True, status_in=status_in),
-            selected_project_list=get_js_tag_list(person, AcademicTag.AcademicTagType.PROJECT,
+            selected_project_list=get_js_tag_list(person, AcademicTag.Type.PROJECT,
                                                   selected=True, status_in=status_in),
         )
 
@@ -636,10 +636,10 @@ def stuinfo(request: HttpRequest, name=None):
         )
 
         # 最后获取每一种atype对应的entry的公开状态，如果没有则默认为公开
-        major_status = get_tag_status(person, AcademicTag.AcademicTagType.MAJOR)
-        minor_status = get_tag_status(person, AcademicTag.AcademicTagType.MINOR)
-        double_degree_status = get_tag_status(person, AcademicTag.AcademicTagType.DOUBLE_DEGREE)
-        project_status = get_tag_status(person, AcademicTag.AcademicTagType.PROJECT)
+        major_status = get_tag_status(person, AcademicTag.Type.MAJOR)
+        minor_status = get_tag_status(person, AcademicTag.Type.MINOR)
+        double_degree_status = get_tag_status(person, AcademicTag.Type.DOUBLE_DEGREE)
+        project_status = get_tag_status(person, AcademicTag.Type.PROJECT)
         scientific_research_status = get_text_status(
             person, AcademicTextEntry.AcademicTextType.SCIENTIFIC_RESEARCH
         )

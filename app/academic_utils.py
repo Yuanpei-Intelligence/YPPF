@@ -62,7 +62,7 @@ def get_search_results(query: str):
          "atype", "content",
     )
 
-    type2display = {ty: label for ty, label in AcademicTag.AcademicTagType.choices}
+    type2display = {ty: label for ty, label in AcademicTag.Type.choices}
 
     # 然后根据tag/text对应的人，整合学术地图项目
     # 使用defaultdict会导致前端items不可用，原因未知
@@ -199,7 +199,7 @@ def comments2Display(chat: Chat, frontend_dict: dict, user: User):
             frontend_dict["academic_url"] = ""
 
 
-def get_js_tag_list(author: NaturalPerson, type: AcademicTag.AcademicTagType,
+def get_js_tag_list(author: NaturalPerson, type: AcademicTag.Type,
                     selected: bool, status_in: list=None) -> List[dict]:
     """
     用于前端显示支持搜索的专业/项目列表，返回形如[{id, content}]的列表。
@@ -207,7 +207,7 @@ def get_js_tag_list(author: NaturalPerson, type: AcademicTag.AcademicTagType,
     :param author: 作者自然人信息
     :type author: NaturalPerson
     :param type: 标记所需的tag类型
-    :type type: AcademicTag.AcademicTagType
+    :type type: AcademicTag.Type
     :param selected: 用于标记是否获取本人已有的专业项目，selected代表获取前端默认选中的项目
     :type selected: bool
     :param status_in: 所要检索的状态的字符串的列表，如["public","private"]，默认为None，表示搜索全部
@@ -269,7 +269,7 @@ def get_text_list(author: NaturalPerson, type: AcademicTextEntry.AcademicTextTyp
     return text_list
 
 
-def get_tag_status(person: NaturalPerson, type: AcademicTag.AcademicTagType) -> str:
+def get_tag_status(person: NaturalPerson, type: AcademicTag.Type) -> str:
     """
     获取person的类型为type的TagEntry的公开状态。
     如果person没有类型为type的TagEntry，返回"公开"。
@@ -277,7 +277,7 @@ def get_tag_status(person: NaturalPerson, type: AcademicTag.AcademicTagType) -> 
     :param person: 需要获取公开状态的人
     :type person: NaturalPerson
     :param type: TagEntry的类型
-    :type type: AcademicTag.AcademicTagType
+    :type type: AcademicTag.Type
     :return: 公开状态，返回"公开/私密"
     :rtype: str
     """
@@ -318,7 +318,7 @@ def get_text_status(person: NaturalPerson, type: AcademicTextEntry.AcademicTextT
 def update_tag_entry(person: NaturalPerson, 
                      tag_ids: List[str], 
                      status: bool,
-                     type: AcademicTag.AcademicTagType) -> None:
+                     type: AcademicTag.Type) -> None:
     """
     更新TagEntry的工具函数。
 
@@ -329,7 +329,7 @@ def update_tag_entry(person: NaturalPerson,
     :param status: tag_ids对应的所有tags的公开状态
     :type status: bool
     :param type: tag_ids对应的所有tags的类型
-    :type type: AcademicTag.AcademicTagType
+    :type type: AcademicTag.Type
     """
     # 首先获取person所有的TagEntry
     all_tag_entries = AcademicTagEntry.objects.activated().filter(person=person, tag__atype=type)
@@ -458,11 +458,11 @@ def update_academic_map(request: HttpRequest) -> dict:
         me = get_person_or_org(request.user, UTYPE_PER)
         
         # 首先更新自己的TagEntry
-        update_tag_entry(me, majors, major_status, AcademicTag.AcademicTagType.MAJOR)
-        update_tag_entry(me, minors, minor_status, AcademicTag.AcademicTagType.MINOR)
+        update_tag_entry(me, majors, major_status, AcademicTag.Type.MAJOR)
+        update_tag_entry(me, minors, minor_status, AcademicTag.Type.MINOR)
         update_tag_entry(me, double_degrees, double_degree_status, 
-                         AcademicTag.AcademicTagType.DOUBLE_DEGREE)
-        update_tag_entry(me, projects, project_status, AcademicTag.AcademicTagType.PROJECT)
+                         AcademicTag.Type.DOUBLE_DEGREE)
+        update_tag_entry(me, projects, project_status, AcademicTag.Type.PROJECT)
         
         # 然后更新自己的TextEntry
         update_text_entry(
