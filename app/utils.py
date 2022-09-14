@@ -90,18 +90,19 @@ def record_attack(except_type=None, as_attack=False):
             except Exception as e:
                 is_attack, err = not as_attack, e
             finally:
-                if not is_attack and err is not None:
-                    raise err
-                _block_ips.add(ip)
-                log.operation_writer(
-                    SYSTEM_LOG,
-                    '\n'.join([
-                        '记录到恶意行为: ', f'发生{type(err)}错误: {err}', f'IP: {ip}',
-                    ]),
-                    view_function.__name__,
-                    log.STATE_ERROR,
-                )
-                return HttpResponse(status=403)
+                if err is not None:
+                    if not is_attack:
+                        raise err
+                    _block_ips.add(ip)
+                    log.operation_writer(
+                        SYSTEM_LOG,
+                        '\n'.join([
+                            '记录到恶意行为: ', f'发生{type(err)}错误: {err}', f'IP: {ip}',
+                        ]),
+                        view_function.__name__,
+                        log.STATE_ERROR,
+                    )
+                    return HttpResponse(status=403)
         return _wrapped_view
     return actual_decorator
 
