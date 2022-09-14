@@ -333,6 +333,10 @@ def update_tag_entry(person: NaturalPerson,
     """
     # 首先获取person所有的TagEntry
     all_tag_entries = AcademicTagEntry.objects.activated().filter(person=person, tag__atype=type)
+    # 标签类型无需审核
+    updated_status = (AcademicEntry.EntryStatus.PUBLIC
+                      if status == "公开" else
+                      AcademicEntry.EntryStatus.PRIVATE)
     
     for entry in all_tag_entries:
         if not str(entry.tag.id) in tag_ids:
@@ -341,8 +345,7 @@ def update_tag_entry(person: NaturalPerson,
             entry.save()
         else:
             # 如果出现，直接更新其状态，并将这个id从tag_ids移除
-            entry.status = AcademicEntry.EntryStatus.WAIT_AUDIT if status == "公开" \
-                           else AcademicEntry.EntryStatus.PRIVATE
+            entry.status = updated_status
             entry.save()
             tag_ids.remove(str(entry.tag.id))
     
@@ -350,8 +353,7 @@ def update_tag_entry(person: NaturalPerson,
     for tag_id in tag_ids:
         AcademicTagEntry.objects.create(
             person=person, tag=AcademicTag.objects.get(id=int(tag_id)),
-            status=AcademicEntry.EntryStatus.WAIT_AUDIT if status == "公开" \
-                else AcademicEntry.EntryStatus.PRIVATE
+            status=updated_status
         )
 
 
@@ -373,8 +375,9 @@ def update_text_entry(person: NaturalPerson,
     """
     # 首先获取person所有的类型为type的TextEntry
     all_text_entries = AcademicTextEntry.objects.activated().filter(person=person, atype=type)
-    updated_status = AcademicEntry.EntryStatus.WAIT_AUDIT if status == "公开" \
-                        else AcademicEntry.EntryStatus.PRIVATE
+    updated_status = (AcademicEntry.EntryStatus.WAIT_AUDIT
+                      if status == "公开" else
+                      AcademicEntry.EntryStatus.PRIVATE)
     previous_num = len(all_text_entries)
     
     # 即将修改/创建的entry总数一定不小于原有的，因此先遍历原有的entry，判断是否更改/删除
