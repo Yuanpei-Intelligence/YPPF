@@ -132,8 +132,8 @@ class AppointAdmin(admin.ModelAdmin):
     actions_on_top = True
     actions_on_bottom = True
     LETTERS = set(string.digits + string.ascii_letters + string.punctuation)
-    search_fields = ('Aid', 'Room__Rtitle',
-                     'major_student__name', 'Room__Rid', "students__name",
+    search_fields = ('Room__Rtitle', 'Room__Rid',
+                     'major_student__name', "students__name",
                      'major_student__pinyin', # 仅发起者缩写，方便搜索者区分发起者和参与者
                      )
     list_display = (
@@ -181,6 +181,29 @@ class AppointAdmin(admin.ModelAdmin):
             return queryset
 
     list_filter = ('Astart', 'Atime', 'Astatus', ActivateFilter, 'Atype')
+
+    def get_search_results(self, request, queryset, search_term: str):
+        if not search_term:
+            return queryset, False
+        try:
+            search_term = int(search_term)
+            return queryset.filter(pk=search_term), False
+        except:
+            pass
+        if ' ' not in search_term:
+            if str.isascii(search_term) and str.isalpha(search_term):
+                pinyin_result = queryset.filter(major_student__pinyin__icontains=search_term)
+                if pinyin_result:
+                    return pinyin_result, False
+            elif str.isascii(search_term) and str.isalnum(search_term):
+                room_result = queryset.filter(Room__Rid__iexact=search_term)
+                if room_result:
+                    return room_result, False
+            else:
+                room_result = queryset.filter(Room__Rtitle__icontains=search_term)
+                if room_result:
+                    return room_result, False
+        return super().get_search_results(request, queryset, search_term)
 
     @as_display('参与人')
     def Participants(self, obj):

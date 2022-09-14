@@ -609,7 +609,7 @@ def door_check(request):
     else:   # 当前无预约
 
         if not check_temp_appoint(room):   # 房间不可以临时预约
-            return _temp_failed(f"刷卡拒绝：该房间不可临时预约", False)
+            return _temp_failed(f"该房间不可临时预约", False)
 
         else:   # 该房间可以用于临时预约
 
