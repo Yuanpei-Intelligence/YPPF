@@ -82,6 +82,7 @@ email_coder = MySHA256Hasher(local_dict["hash"]["email"])
 
 @log.except_captured(source='views[index]', record_user=True,
                      record_request_args=True, show_traceback=True)
+@utils.record_attack(AssertionError, as_attack=True)
 def index(request: HttpRequest):
     arg_origin = request.GET.get("origin")
     modpw_status = request.GET.get("modinfo")
@@ -118,8 +119,10 @@ def index(request: HttpRequest):
         return redirect("/index/?alert=1")
 
     if request.method == "POST" and request.POST:
-        username = request.POST["username"]
-        password = request.POST["password"]
+        username = request.POST.get("username")
+        password = request.POST.get("password")
+        assert username is not None
+        assert password is not None
 
         try:
             user = User.objects.filter(username=username)
@@ -1676,6 +1679,7 @@ def search(request: HttpRequest):
 
 @log.except_captured(source='views[forgetPassword]', record_user=True,
                      record_request_args=True, show_traceback=True)
+@utils.record_attack(Exception, as_attack=True)
 def forgetPassword(request: HttpRequest):
     """
         忘记密码页（Pylance可以提供文档字符串支持）
