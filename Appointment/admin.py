@@ -191,17 +191,18 @@ class AppointAdmin(admin.ModelAdmin):
         except:
             pass
         if ' ' not in search_term:
+            # 判断时需要增加exists，否则会报错，似乎是QuerySet的缓存问题？
             if str.isascii(search_term) and str.isalpha(search_term):
                 pinyin_result = queryset.filter(major_student__pinyin__icontains=search_term)
-                if pinyin_result:
+                if pinyin_result.exists():
                     return pinyin_result, False
             elif str.isascii(search_term) and str.isalnum(search_term):
                 room_result = queryset.filter(Room__Rid__iexact=search_term)
-                if room_result:
+                if room_result.exists():
                     return room_result, False
             else:
                 room_result = queryset.filter(Room__Rtitle__icontains=search_term)
-                if room_result:
+                if room_result.exists():
                     return room_result, False
         return super().get_search_results(request, queryset, search_term)
 
