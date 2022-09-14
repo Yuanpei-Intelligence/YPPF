@@ -752,8 +752,9 @@ class ModuleLogAdmin(admin.ModelAdmin):
 
 @admin.register(AcademicTag)
 class AcademicTagAdmin(admin.ModelAdmin):
-    list_display = ["atype", "tag_content",]
-    search_fields =  ("atype", "tag_content",)
+    list_display = ["atype", "tag_content"]
+    search_fields =  ("atype", "tag_content")
+    list_filter = ["atype"]
 
 
 class AcademicEntryAdmin(admin.ModelAdmin):
@@ -771,16 +772,19 @@ class AcademicEntryAdmin(admin.ModelAdmin):
                         ).update(status=AcademicEntry.EntryStatus.WAIT_AUDIT)
         return self.message_user(request, '修改成功!')
 
+
 @admin.register(AcademicTagEntry)
 class AcademicTagEntryAdmin(AcademicEntryAdmin):
-    list_display = ["person", "status", "tag",]
-    search_fields =  ("person", "status", "tag",)
+    list_display = ["person", "status", "tag"]
+    search_fields =  ("person", "status", "tag")
+    list_filter = ["tag__atype", "status"]
 
 
 @admin.register(AcademicTextEntry)
 class AcademicTextEntryAdmin(AcademicEntryAdmin):
-    list_display = ["person", "status", "atype", "content",]
-    search_fields =  ("person", "status", "atype", "content",)
+    list_display = ["person", "status", "atype", "content"]
+    search_fields =  ("person", "status", "atype", "content")
+    list_filter = ["atype", "status"]
 
 
 admin.site.register(OrganizationTag)
