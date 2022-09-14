@@ -75,11 +75,9 @@ def block_attack(view_function):
 def record_attack(except_type=None, as_attack=False):
     '''临时用于拦截ip的装饰器，在用户验证层下、错误捕获层上，需要整理本函数至其他位置'''
     # TODO: 重构代码，调整本函数位置
+    if except_type is None:
+        except_type = ()
     def actual_decorator(view_function):
-        nonlocal except_type
-        if except_type is None:
-            except_type = ()
-
         @block_attack
         @wraps(view_function)
         def _wrapped_view(request: HttpRequest, *args, **kwargs):
@@ -92,7 +90,7 @@ def record_attack(except_type=None, as_attack=False):
             except Exception as e:
                 is_attack, err = not as_attack, e
             finally:
-                if not is_attack:
+                if not is_attack and err is not None:
                     raise err
                 _block_ips.add(ip)
                 log.operation_writer(
