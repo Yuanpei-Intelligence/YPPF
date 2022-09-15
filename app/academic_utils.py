@@ -62,18 +62,19 @@ def get_search_results(query: str):
          "atype", "content",
     )
 
-    type2display = {ty: label for ty, label in AcademicTag.Type.choices}
 
     # 然后根据tag/text对应的人，整合学术地图项目
     # 使用defaultdict会导致前端items不可用，原因未知
     academic_map_dict: 'dict[str, dict[str, list]]' = dict()
+    type2display = {ty: label for ty, label in AcademicTag.Type.choices}
     for sid, ty, content in academic_tags:
         # 将choice的值更新为对应的选项名
         tag_type = type2display[ty]
         academic_map_dict.setdefault(sid, {})
-        academic_map_dict[sid].setdefault(text_type, [])
+        academic_map_dict[sid].setdefault(tag_type, [])
         academic_map_dict[sid][tag_type].append(content)
     
+    type2display = {ty: label for ty, label in AcademicTextEntry.Type.choices}
     for sid, ty, content in academic_texts:
         text_type = type2display[ty]
         academic_map_dict.setdefault(sid, {})
@@ -238,7 +239,7 @@ def get_js_tag_list(author: NaturalPerson, type: AcademicTag.Type,
     return js_list
 
 
-def get_text_list(author: NaturalPerson, type: AcademicTextEntry.AcademicTextType,
+def get_text_list(author: NaturalPerson, type: AcademicTextEntry.Type,
                   status_in: list=None) -> List[str]:
     """
     获取自己的所有类型为type的TextEntry的内容列表。
@@ -246,7 +247,7 @@ def get_text_list(author: NaturalPerson, type: AcademicTextEntry.AcademicTextTyp
     :param author: 作者自然人信息
     :type author: NaturalPerson
     :param type: TextEntry的类型
-    :type type: AcademicTextEntry.AcademicTextType
+    :type type: AcademicTextEntry.Type
     :param status_in: 所要检索的状态的字符串的列表，如["public","private"]，默认为None，表示搜索全部
     :type status_in: list
     :return: 含有所有类型为type的TextEntry的content的list
@@ -292,7 +293,7 @@ def get_tag_status(person: NaturalPerson, type: AcademicTag.Type) -> str:
         return "公开"
 
 
-def get_text_status(person: NaturalPerson, type: AcademicTextEntry.AcademicTextType) -> str:
+def get_text_status(person: NaturalPerson, type: AcademicTextEntry.Type) -> str:
     """
     获取person的类型为type的TextEntry的公开状态。
     如果person没有类型为type的TextEntry，返回"公开"。
@@ -300,7 +301,7 @@ def get_text_status(person: NaturalPerson, type: AcademicTextEntry.AcademicTextT
     :param person: 需要获取公开状态的人
     :type person: NaturalPerson
     :param type: TextEntry的类型
-    :type type: AcademicTextEntry.AcademicTextType
+    :type type: AcademicTextEntry.Type
     :return: 公开状态，返回"公开/私密"
     :rtype: str
     """
@@ -360,7 +361,7 @@ def update_tag_entry(person: NaturalPerson,
 def update_text_entry(person: NaturalPerson, 
                       contents: List[str], 
                       status: bool, 
-                      type: AcademicTextEntry.AcademicTextType) -> None:
+                      type: AcademicTextEntry.Type) -> None:
     """
     更新TextEntry的工具函数。
 
@@ -371,7 +372,7 @@ def update_text_entry(person: NaturalPerson,
     :param status: 该用户所有类型为type的TextEntry的公开状态
     :type status: bool
     :param type: contents对应的TextEntry的类型
-    :type type: AcademicTextEntry.AcademicTextType
+    :type type: AcademicTextEntry.Type
     """
     # 首先获取person所有的类型为type的TextEntry
     all_text_entries = AcademicTextEntry.objects.activated().filter(person=person, atype=type)
@@ -475,23 +476,23 @@ def update_academic_map(request: HttpRequest) -> dict:
         # 然后更新自己的TextEntry
         update_text_entry(
             me, scientific_research, scientific_research_status, 
-            AcademicTextEntry.AcademicTextType.SCIENTIFIC_RESEARCH
+            AcademicTextEntry.Type.SCIENTIFIC_RESEARCH
         )
         update_text_entry(
             me, challenge_cup, challenge_cup_status, 
-            AcademicTextEntry.AcademicTextType.CHALLENGE_CUP
+            AcademicTextEntry.Type.CHALLENGE_CUP
         )
         update_text_entry(
             me, internship, internship_status, 
-            AcademicTextEntry.AcademicTextType.INTERNSHIP
+            AcademicTextEntry.Type.INTERNSHIP
         )
         update_text_entry(
             me, scientific_direction, scientific_direction_status, 
-            AcademicTextEntry.AcademicTextType.SCIENTIFIC_DIRECTION
+            AcademicTextEntry.Type.SCIENTIFIC_DIRECTION
         )
         update_text_entry(
             me, graduation, graduation_status, 
-            AcademicTextEntry.AcademicTextType.GRADUATION
+            AcademicTextEntry.Type.GRADUATION
         )
         
         # 最后更新是否允许他人提问

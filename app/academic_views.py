@@ -169,19 +169,19 @@ def modifyAcademic(request: HttpRequest) -> HttpResponse:
     
     # 获取用户已有的TextEntry的contents，用于TextEntry填写栏的前端预填写
     scientific_research_list = get_text_list(
-        me, AcademicTextEntry.AcademicTextType.SCIENTIFIC_RESEARCH
+        me, AcademicTextEntry.Type.SCIENTIFIC_RESEARCH
     )
     challenge_cup_list = get_text_list(
-        me, AcademicTextEntry.AcademicTextType.CHALLENGE_CUP
+        me, AcademicTextEntry.Type.CHALLENGE_CUP
     )
     internship_list = get_text_list(
-        me, AcademicTextEntry.AcademicTextType.INTERNSHIP
+        me, AcademicTextEntry.Type.INTERNSHIP
     )
     scientific_direction_list = get_text_list(
-        me, AcademicTextEntry.AcademicTextType.SCIENTIFIC_DIRECTION
+        me, AcademicTextEntry.Type.SCIENTIFIC_DIRECTION
     )
     graduation_list = get_text_list(
-        me, AcademicTextEntry.AcademicTextType.GRADUATION
+        me, AcademicTextEntry.Type.GRADUATION
     )
     frontend_dict.update(
         scientific_research_list=scientific_research_list,
@@ -202,19 +202,19 @@ def modifyAcademic(request: HttpRequest) -> HttpResponse:
     double_degree_status = get_tag_status(me, AcademicTag.Type.DOUBLE_DEGREE)
     project_status = get_tag_status(me, AcademicTag.Type.PROJECT)
     scientific_research_status = get_text_status(
-        me, AcademicTextEntry.AcademicTextType.SCIENTIFIC_RESEARCH
+        me, AcademicTextEntry.Type.SCIENTIFIC_RESEARCH
     )
     challenge_cup_status = get_text_status(
-        me, AcademicTextEntry.AcademicTextType.CHALLENGE_CUP
+        me, AcademicTextEntry.Type.CHALLENGE_CUP
     )
     internship_status = get_text_status(
-        me, AcademicTextEntry.AcademicTextType.INTERNSHIP
+        me, AcademicTextEntry.Type.INTERNSHIP
     )
     scientific_direction_status = get_text_status(
-        me, AcademicTextEntry.AcademicTextType.SCIENTIFIC_DIRECTION
+        me, AcademicTextEntry.Type.SCIENTIFIC_DIRECTION
     )
     graduation_status = get_text_status(
-        me, AcademicTextEntry.AcademicTextType.GRADUATION
+        me, AcademicTextEntry.Type.GRADUATION
     )
     
     status_dict = dict(

@@ -95,49 +95,49 @@ class GetWaitAuditStudentsTestCase(TestCase):
         AcademicTextEntry.objects.create(
             person=NaturalPerson.objects.get(name="1"),
             status=AcademicEntry.EntryStatus.WAIT_AUDIT,
-            atype=AcademicTextEntry.AcademicTextType.INTERNSHIP,
+            atype=AcademicTextEntry.Type.INTERNSHIP,
             content="数学物理方法qwq",
         )
         AcademicTextEntry.objects.create(
             person=NaturalPerson.objects.get(name="1"),
             status=AcademicEntry.EntryStatus.OUTDATE,
-            atype=AcademicTextEntry.AcademicTextType.SCIENTIFIC_RESEARCH,
+            atype=AcademicTextEntry.Type.SCIENTIFIC_RESEARCH,
             content="浩浩中文，卷帙浩繁。",
         )
         AcademicTextEntry.objects.create(
             person=NaturalPerson.objects.get(name="2"),
             status=AcademicEntry.EntryStatus.PUBLIC,
-            atype=AcademicTextEntry.AcademicTextType.SCIENTIFIC_RESEARCH,
+            atype=AcademicTextEntry.Type.SCIENTIFIC_RESEARCH,
             content="数学分析123456789",
         )
         AcademicTextEntry.objects.create(
             person=NaturalPerson.objects.get(name="2"),
             status=AcademicEntry.EntryStatus.WAIT_AUDIT,
-            atype=AcademicTextEntry.AcademicTextType.SCIENTIFIC_RESEARCH,
+            atype=AcademicTextEntry.Type.SCIENTIFIC_RESEARCH,
             content="物理物理物理物理物理11111111的",
         )
         AcademicTextEntry.objects.create(
             person=NaturalPerson.objects.get(name="3"),
             status=AcademicEntry.EntryStatus.PRIVATE,
-            atype=AcademicTextEntry.AcademicTextType.INTERNSHIP,
+            atype=AcademicTextEntry.Type.INTERNSHIP,
             content="中文实习",
         )
         AcademicTextEntry.objects.create(
             person=NaturalPerson.objects.get(name="3"),
             status=AcademicEntry.EntryStatus.PUBLIC,
-            atype=AcademicTextEntry.AcademicTextType.CHALLENGE_CUP,
+            atype=AcademicTextEntry.Type.CHALLENGE_CUP,
             content="离散数学的原理是非常美妙的",
         )
         AcademicTextEntry.objects.create(
             person=NaturalPerson.objects.get(name="4"),
             status=AcademicEntry.EntryStatus.PUBLIC,
-            atype=AcademicTextEntry.AcademicTextType.CHALLENGE_CUP,
+            atype=AcademicTextEntry.Type.CHALLENGE_CUP,
             content="离散数学的原理是非常美妙的",
         )
         AcademicTextEntry.objects.create(
             person=NaturalPerson.objects.get(name="5"),
             status=AcademicEntry.EntryStatus.WAIT_AUDIT,
-            atype=AcademicTextEntry.AcademicTextType.CHALLENGE_CUP,
+            atype=AcademicTextEntry.Type.CHALLENGE_CUP,
             content="离散数学的原理是非常美妙的",
         )
 

@@ -608,19 +608,19 @@ def stuinfo(request: HttpRequest, name=None):
 
         # 获取用户已有的TextEntry的contents，用于TextEntry填写栏的前端预填写
         scientific_research_list = get_text_list(
-            person, AcademicTextEntry.AcademicTextType.SCIENTIFIC_RESEARCH, status_in
+            person, AcademicTextEntry.Type.SCIENTIFIC_RESEARCH, status_in
         )
         challenge_cup_list = get_text_list(
-            person, AcademicTextEntry.AcademicTextType.CHALLENGE_CUP, status_in
+            person, AcademicTextEntry.Type.CHALLENGE_CUP, status_in
         )
         internship_list = get_text_list(
-            person, AcademicTextEntry.AcademicTextType.INTERNSHIP, status_in
+            person, AcademicTextEntry.Type.INTERNSHIP, status_in
         )
         scientific_direction_list = get_text_list(
-            person, AcademicTextEntry.AcademicTextType.SCIENTIFIC_DIRECTION, status_in
+            person, AcademicTextEntry.Type.SCIENTIFIC_DIRECTION, status_in
         )
         graduation_list = get_text_list(
-            person, AcademicTextEntry.AcademicTextType.GRADUATION, status_in
+            person, AcademicTextEntry.Type.GRADUATION, status_in
         )
         academic_params.update(
             scientific_research_list=scientific_research_list,
@@ -641,19 +641,19 @@ def stuinfo(request: HttpRequest, name=None):
         double_degree_status = get_tag_status(person, AcademicTag.Type.DOUBLE_DEGREE)
         project_status = get_tag_status(person, AcademicTag.Type.PROJECT)
         scientific_research_status = get_text_status(
-            person, AcademicTextEntry.AcademicTextType.SCIENTIFIC_RESEARCH
+            person, AcademicTextEntry.Type.SCIENTIFIC_RESEARCH
         )
         challenge_cup_status = get_text_status(
-            person, AcademicTextEntry.AcademicTextType.CHALLENGE_CUP
+            person, AcademicTextEntry.Type.CHALLENGE_CUP
         )
         internship_status = get_text_status(
-            person, AcademicTextEntry.AcademicTextType.INTERNSHIP
+            person, AcademicTextEntry.Type.INTERNSHIP
         )
         scientific_direction_status = get_text_status(
-            person, AcademicTextEntry.AcademicTextType.SCIENTIFIC_DIRECTION
+            person, AcademicTextEntry.Type.SCIENTIFIC_DIRECTION
         )
         graduation_status = get_text_status(
-            person, AcademicTextEntry.AcademicTextType.GRADUATION
+            person, AcademicTextEntry.Type.GRADUATION
         )
 
         status_dict = dict(
