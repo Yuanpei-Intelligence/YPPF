@@ -76,7 +76,7 @@ class ParticipantAdmin(admin.ModelAdmin):
 
     actions = []
 
-    @as_action('全院学生信用分恢复一分', actions, 'change', atomic=True)
+    @as_action('全院学生信用分恢复一分', actions, atomic=True)
     def recover(self, request, queryset):
         stu_all = Participant.objects.all()
         stu_all = stu_all.filter(hidden=False)
