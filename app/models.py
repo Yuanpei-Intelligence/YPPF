@@ -1883,14 +1883,14 @@ class AcademicTextEntry(AcademicEntry):
         verbose_name = "P.学术地图文本项目"
         verbose_name_plural = verbose_name
 
-    class AcademicTextType(models.IntegerChoices):
+    class Type(models.IntegerChoices):
         SCIENTIFIC_RESEARCH = (0, '本科生科研')
         CHALLENGE_CUP = (1, '挑战杯')
         INTERNSHIP = (2, '实习经历')
         SCIENTIFIC_DIRECTION = (3, '科研方向')
         GRADUATION = (4, '毕业去向')
 
-    atype = models.SmallIntegerField('类型', choices=AcademicTextType.choices)
+    atype = models.SmallIntegerField('类型', choices=Type.choices)
     content = models.CharField('内容', max_length=4095)
 
 
