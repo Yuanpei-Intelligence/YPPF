@@ -692,15 +692,15 @@ def index(request):  # 主页
         render_context.update(announcements=announcements)
 
     # 获取可能的全局消息
-    my_messages.transfer_message_context(
-        request.GET, render_context, normalize=True)
+    my_messages.transfer_message_context(request.GET, render_context)
 
     #--------- 前端变量 ---------#
 
     room_list = Room.objects.all()
     now, tomorrow = datetime.now(), datetime.today() + timedelta(days=1)
-    occupied_rooms = Appoint.objects.not_canceled().filter(
-        Astart__lte=now + timedelta(minutes=15), Afinish__gte=now).values('Room')   # 接下来有预约的房间
+    occupied_rooms = set(Appoint.objects.not_canceled().filter(
+        Astart__lte=now + timedelta(minutes=15),
+        Afinish__gte=now).values_list('Room__Rid', flat=True))                      # 接下来有预约的房间
     future_appointments = Appoint.objects.not_canceled().filter(
         Astart__gte=now + timedelta(minutes=15), Astart__lt=tomorrow)               # 接下来的预约
     room_appointments = {room.Rid: None for room in room_list}
@@ -718,20 +718,20 @@ def index(request):  # 主页
     function_room_list = Room.objects.function_rooms().order_by('Rid')
 
     #--------- 地下室状态：left tab ---------#
-    suspended_room_list = room_list.filter(
-        Rstatus=Room.Status.UNLIMITED).order_by('-Rtitle')                          # 开放房间
+    unlimited_rooms = room_list.unlimited().order_by('-Rtitle')                     # 开放房间
     statistics_info = [(room, (room.Rpresent * 10) // (room.Rmax or 1))
-                       for room in suspended_room_list]                             # 开放房间人数统计
+                       for room in unlimited_rooms]                                 # 开放房间人数统计
 
     #--------- 地下室状态：right tab ---------#
     talk_room_list = Room.objects.talk_rooms().order_by('Rid')
-    room_info = [(room, {'Room': room.Rid} in occupied_rooms, format_time(          # 研讨室占用情况
-        room_appointments[room.Rid])) for room in talk_room_list]
+    room_info = [(room,
+                  room.Rid in occupied_rooms,
+                  format_time(room_appointments[room.Rid]))
+                  for room in talk_room_list]                                       # 研讨室占用情况
 
     #--------- 3 俄文楼部分 ---------#
 
-    russian_room_list = room_list.filter(Rstatus=Room.Status.PERMITTED).filter(     # 俄文楼
-        Rid__icontains="R").order_by('Rid')
+    russian_room_list = Room.objects.russian_rooms().order_by('Rid')                # 俄文楼
     russ_len = len(russian_room_list)
 
     render_context.update(
@@ -966,11 +966,9 @@ def arrange_talk_room(request):
         if re_time.date() == datetime.now().date():
             is_today = True
             show_min = GLOBAL_INFO.today_min
-        room_list = Room.objects.filter(
-            Rtitle__contains='研讨').filter(Rstatus=Room.Status.PERMITTED).order_by('Rmin', 'Rid')
+        room_list = Room.objects.talk_rooms().basement_only().order_by('Rmin', 'Rid')
     else:  # type == "russ"
-        room_list = Room.objects.filter(Rstatus=Room.Status.PERMITTED).filter(
-            Rid__icontains="R").order_by('Rid')
+        room_list = Room.objects.russian_rooms().order_by('Rid')
     # YHT: added for russian search
     Rids = [room.Rid for room in room_list]
     t_start, t_finish = web_func.get_talkroom_timerange(
@@ -1014,7 +1012,6 @@ def arrange_talk_room(request):
 
         for time_id in range(start_id, finish_id + 1):
             rooms_time_list[sequence][time_id]['status'] = 0
-        print("in arrange talk room，present_time_id", present_time_id)
 
         # case 2
         for time_id in range(min(present_time_id + 1, t_range)):
