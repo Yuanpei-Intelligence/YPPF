@@ -74,24 +74,57 @@ class Participant(models.Model):
         return self.name + ('' if self.pinyin is None else '_' + self.pinyin)
 
 
-class RoomManager(models.Manager):
+class RoomQuerySet(models.QuerySet):
     def permitted(self):
+        '''只保留所有可预约的房间'''
         return self.filter(Rstatus=Room.Status.PERMITTED)
 
+    def unlimited(self):
+        '''只保留所有无需预约的房间'''
+        return self.filter(Rstatus=Room.Status.UNLIMITED)
+
+    def activated(self):
+        '''只保留所有可用的房间'''
+        return self.filter(Rstatus__in=[Room.Status.UNLIMITED, Room.Status.PERMITTED])
+
+    def basement_only(self):
+        '''只保留所有地下室的房间'''
+        return self.exclude(Rid__icontains="R")
+
+    def russian_only(self):
+        '''只保留所有俄文楼的房间'''
+        return self.filter(Rid__icontains="R")
+
+
+class RoomManager(models.Manager):
+    def get_queryset(self) -> RoomQuerySet['Room']:
+        return RoomQuerySet(self.model, using=self._db, hints=self._hints)
+
+    def all(self) -> RoomQuerySet['Room']:
+        return super().all()
+
+    def permitted(self):
+        return self.get_queryset().permitted()
+
+    def unlimited(self):
+        return self.get_queryset().unlimited()
+
     def function_rooms(self):
-        # 获取所有功能房
+        '''获取所有可预约功能房'''
         titles = ['航模', '绘画', '书法', '活动']
         title_query = ~Q(Rtitle__icontains="研讨")
         title_query |= Q(Rtitle__icontains="/")
         for room_title in titles:
             title_query |= Q(Rtitle__icontains=room_title)
-        return self.exclude(Rid__icontains="R").filter(
-            title_query, Rstatus=Room.Status.PERMITTED)
+        return self.get_queryset().permitted().basement_only().filter(title_query)
 
     def talk_rooms(self):
-        # 获取所有研讨室
-        return self.filter(Rtitle__icontains="研讨",
-                           Rstatus=Room.Status.PERMITTED)
+        '''获取所有研讨室'''
+        return self.get_queryset().permitted().filter(Rtitle__icontains="研讨")
+
+    def russian_rooms(self):
+        '''获取所有可预约俄文楼教室'''
+        return self.get_queryset().permitted().russian_only()
 
 
 class Room(models.Model):
