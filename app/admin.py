@@ -197,6 +197,16 @@ class OrganizationAdmin(admin.ModelAdmin):
         return self.message_user(request=request,
                                  message='修改成功!')
 
+    @as_action("激活", actions, update=True)
+    def set_activate(self, request, queryset):
+        queryset.update(status=True)
+        return self.message_user(request, '修改成功!')
+
+    @as_action("失效", actions, update=True)
+    def set_disabled(self, request, queryset):
+        queryset.update(status=False)
+        return self.message_user(request, '修改成功!')
+
 
 @admin.register(Position)
 class PositionAdmin(admin.ModelAdmin):
@@ -256,6 +266,21 @@ class PositionAdmin(admin.ModelAdmin):
         queryset.update(is_admin=False)
         return self.message_user(request=request,
                                  message='修改成功!')
+
+    @as_action("延长职务年限", actions, atomic=True)
+    def refresh(self, request, queryset):
+        from app.constants import CURRENT_ACADEMIC_YEAR
+        new = []
+        for position in queryset:
+            position: Position
+            if position.year != CURRENT_ACADEMIC_YEAR and not Position.objects.filter(
+                    person=position.person, org=position.org,
+                    year=CURRENT_ACADEMIC_YEAR).exists():
+                position.year = CURRENT_ACADEMIC_YEAR
+                position.pk = None
+                position.save(force_insert=True)
+                new.append([position.pk, position.person.get_display_name()])
+        return self.message_user(request, f'修改成功!新增职务：{new}')
 
 
 @admin.register(Activity)

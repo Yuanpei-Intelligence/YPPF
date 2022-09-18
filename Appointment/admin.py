@@ -476,5 +476,6 @@ class CardCheckInfoAdmin(admin.ModelAdmin):
 
 @admin.register(LongTermAppoint)
 class LongTermAppointAdmin(admin.ModelAdmin):
-    list_display = ['id', 'applicant', 'appoint', 'times', 'interval', 'status']
+    list_display = ['id', 'applicant', 'times', 'interval', 'status']
     list_filter = ['status', 'times', 'interval']
+    raw_id_fields = ['appoint']

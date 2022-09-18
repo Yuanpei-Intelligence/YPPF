@@ -1098,7 +1098,8 @@ def checkout_appoint(request: HttpRequest):
         'start_week': start_week,
     }
     room = Room.objects.get(Rid=Rid)
-    dayrange_list = web_func.get_dayrange(day_offset=start_week * 7)[0]
+    # 表单参数都统一为可预约的第一周，具体预约哪周根据POST的start_week判断
+    dayrange_list = web_func.get_dayrange(day_offset=0)[0]
     for day in dayrange_list:
         if day['weekday'] == appoint_params['weekday']:
             appoint_params['date'] = day['date']
@@ -1169,7 +1170,7 @@ def checkout_appoint(request: HttpRequest):
         contents['Afinish'] = datetime(contents['year'], contents['month'],
                                        contents['day'],
                                        *map(int, contents['endtime'].split(":")))
-        # TODO: 隔周预约的处理可优化
+        # TODO: 隔周预约的处理可优化，根据start_week调整实际预约时间
         contents['Astart'] += timedelta(weeks=start_week)
         contents['Afinish'] += timedelta(weeks=start_week)
         if my_messages.get_warning(render_context)[0] is None:
