@@ -102,6 +102,16 @@ class ParticipantAdmin(admin.ModelAdmin):
         queryset.update(longterm=False)
         return self.message_user(request, '操作成功!')
 
+    @as_action('设为不可见', actions, 'change', update=True)
+    def set_hidden(self, request, queryset: QuerySet[Participant]):
+        queryset.update(hidden=True)
+        return self.message_user(request, '操作成功!')
+
+    @as_action('设为可见', actions, 'change', update=True)
+    def remove_hidden(self, request, queryset: QuerySet[Participant]):
+        queryset.update(hidden=False)
+        return self.message_user(request, '操作成功!')
+
 
 @admin.register(Room)
 class RoomAdmin(admin.ModelAdmin):
@@ -479,3 +489,6 @@ class LongTermAppointAdmin(admin.ModelAdmin):
     list_display = ['id', 'applicant', 'times', 'interval', 'status']
     list_filter = ['status', 'times', 'interval']
     raw_id_fields = ['appoint']
+
+    def view_on_site(self, obj: LongTermAppoint):
+        return f'/underground/review?Lid={obj.pk}'

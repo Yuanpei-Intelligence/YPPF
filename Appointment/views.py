@@ -1255,6 +1255,9 @@ def review(request: HttpRequest):
     try:
         longterm_appoint: LongTermAppoint = LongTermAppoint.objects.get(pk=Lid)
         reviewer_list = get_auditor_ids(longterm_appoint.applicant)
+        if request.user.is_staff and request.user.has_perm(
+                'Appointment.change_' + LongTermAppoint.__name__.lower()):
+            reviewer_list.append(request.user.username)
         assert request.user.username in reviewer_list
     except:
         return redirect(message_url(
