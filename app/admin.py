@@ -197,6 +197,16 @@ class OrganizationAdmin(admin.ModelAdmin):
         return self.message_user(request=request,
                                  message='修改成功!')
 
+    @as_action("激活", actions, update=True)
+    def set_activate(self, request, queryset):
+        queryset.update(status=True)
+        return self.message_user(request, '修改成功!')
+
+    @as_action("失效", actions, update=True)
+    def set_disabled(self, request, queryset):
+        queryset.update(status=False)
+        return self.message_user(request, '修改成功!')
+
 
 @admin.register(Position)
 class PositionAdmin(admin.ModelAdmin):
