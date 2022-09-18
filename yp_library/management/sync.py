@@ -144,7 +144,15 @@ def update_records():
                 )
 
 
+def update_book_status():
+    books = Book.objects.all()
+    for book in books:
+        book.returned = not book.lendrecord_set.filter(returned=False).exists()
+    Book.objects.bulk_update(books, fields=['returned'])
+
+
 def update_lib_data():
+    update_book_status()
     update_reader()
     update_book()
     update_records()
