@@ -1195,8 +1195,8 @@ def checkout_appoint(request: HttpRequest):
                         Aid = json.loads(response.content)['data']['Aid']
                         appoint: Appoint = Appoint.objects.get(Aid=Aid)
                         conflict_appoints = get_conflict_appoints(
-                            appoint, times, interval,
-                            week_offset=interval, lock=True)
+                            appoint, times - 1, interval,
+                            week_offset=interval, exclude_this=True, lock=True)
                         assert not conflict_appoints
                         longterm: LongTermAppoint = LongTermAppoint.objects.create(
                             appoint=appoint,

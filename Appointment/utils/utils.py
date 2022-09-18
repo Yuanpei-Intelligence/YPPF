@@ -564,7 +564,10 @@ def get_conflict_appoints(appoint: Appoint, times: int = 1,
                 Afinish__gt=appoint.Astart + timedelta(weeks=week + week_offset),
             )
     # 检查时预约还不应创建，冲突预约可以包含自身
-    conflict_appoints = activate_appoints.filter(conditions)
+    if conditions == Q():
+        conflict_appoints = activate_appoints.none()
+    else:
+        conflict_appoints = activate_appoints.filter(conditions)
     if exclude_this:
         conflict_appoints = conflict_appoints.exclude(pk=appoint.pk)
     return conflict_appoints.order_by('Astart', 'Afinish')
