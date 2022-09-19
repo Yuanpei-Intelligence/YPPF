@@ -177,7 +177,9 @@
                                                         <div class="form-group d-flex align-items-center">
                                                             <input type="checkbox" name="interview" id="interview" value="yes" />
                                                             <label for="interview" class="my-0 ml-1" style="font-size:14px;">用于面试</label>
-                                                            <i class="fas fa-info-circle" data-toggle="tooltip" title="单人即可预约面试，可用预约不超过1条"></i>
+                                                            <i class="fas fa-info-circle" data-toggle="tooltip" 
+                                                                title="勾选本条目意味着您承诺本预约用于面试用途，允许单人使用。若发现以此用作其他用途，元培学院将永久回收您的面试预约权利。由于学院面试人数较多，房间紧张，每人同时不得拥有超过{{interview_max_count}}条面试预约，敬请谅解。祝您面试顺利！">
+                                                            </i>
                                                         </div>
                                                     </div>
                                                 {% endif %}

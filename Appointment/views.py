@@ -1138,7 +1138,8 @@ def checkout_appoint(request: HttpRequest):
     render_context.update(room_object=room,
                           appoint_params=appoint_params,
                           has_longterm_permission=has_longterm_permission,
-                          has_interview_permission=has_interview_permission)
+                          has_interview_permission=has_interview_permission,
+                          interview_max_count=GLOBAL_INFO.interview_max_num)
 
     # 提交预约信息
     if request.method == 'POST':
