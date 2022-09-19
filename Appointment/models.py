@@ -246,9 +246,10 @@ class Appoint(models.Model):
     class Type(models.IntegerChoices):
         '''预约类型'''
         NORMAL = 0, '常规预约'
-        TODAY = 1, '当天预约'  # 保留，暂不使用
+        TODAY = 1, '当天预约'
         TEMPORARY = 2, '临时预约'
         LONGTERM = 3, '长期预约'
+        INTERVIEW = 4, '面试预约'
 
     Atype: 'int|Type' = models.SmallIntegerField(
         '预约类型', choices=Type.choices, default=Type.NORMAL)
