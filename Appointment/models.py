@@ -169,6 +169,10 @@ class AppointManager(models.Manager):
     def not_canceled(self):
         return self.exclude(Astatus=Appoint.Status.CANCELED)
 
+    def unfinished(self):
+        '''用于检查而非呈现，筛选还未结束的预约'''
+        return self.exclude(Astatus__in=Appoint.Status.Terminals())
+
     def displayable(self):
         '''个人主页页面，在"普通预约"和"查看下周"中会显示的预约'''
         return self.exclude(Atype=Appoint.Type.LONGTERM, Astatus=Appoint.Status.CANCELED)

@@ -1054,6 +1054,7 @@ def checkout_appoint(request: HttpRequest):
         endid = request.GET.get('endid')
         start_week = request.GET.get('start_week', 0)
         is_longterm = True if request.GET.get('longterm') == 'on' else False
+        is_interview = False
     else:
         Rid = request.POST.get('Rid')
         weekday = request.POST.get('weekday')
@@ -1061,12 +1062,15 @@ def checkout_appoint(request: HttpRequest):
         endid = request.POST.get('endid')
         is_longterm = True if request.POST.get('longterm') == 'on' else False
         start_week = 0
+        is_interview = False
         if is_longterm:
             start_week = request.POST.get('start_week', 0)
             # 长期预约的次数
             times = request.POST.get('times', 0)
             # 间隔为1代表每周，为2代表隔周
             interval = request.POST.get('interval', 0)
+        else:
+            is_interview = request.POST.get('interview') == 'yes'
 
     applicant = get_participant(request.user)
     has_longterm_permission = applicant.longterm
@@ -1087,6 +1091,8 @@ def checkout_appoint(request: HttpRequest):
         assert endid >= startid, '起始时间晚于结束时间'
         assert start_week == 0 or start_week == 1, '预约周数'
         assert has_longterm_permission or not is_longterm, '没有长期预约权限'
+        if is_interview:
+            assert not (has_longterm_permission or applicant.hidden), '没有面试权限'
     except AssertionError as e:
         return redirect(message_url(wrong(f'参数不合法: {e}'), reverse('Appointment:index')))
     except:
@@ -1167,6 +1173,12 @@ def checkout_appoint(request: HttpRequest):
                 applicant=applicant).count() >= GLOBAL_INFO.longterm_max_num:
             wrong("您的长期预约总数已超过上限", render_context)
 
+        # 检查面试次数
+        if is_interview and Appoint.objects.unfinished().filter(
+                major_student=applicant, Atype=Appoint.Type.INTERVIEW
+                ).count() >= GLOBAL_INFO.interview_max_num:
+            wrong('您预约的面试次数已达到上限，结束后方可继续预约', render_context)
+
         contents['Astart'] = datetime(contents['year'], contents['month'],
                                       contents['day'],
                                       *map(int, contents['starttime'].split(":")))
@@ -1181,6 +1193,8 @@ def checkout_appoint(request: HttpRequest):
             if is_longterm:
                 response = scheduler_func.addAppoint(contents,
                                                      type=Appoint.Type.LONGTERM, notify_create=False)
+            elif is_interview:
+                response = scheduler_func.addAppoint(contents, type=Appoint.Type.INTERVIEW)
             else:
                 response = scheduler_func.addAppoint(contents)
             if response.status_code == 200 and not is_longterm:
