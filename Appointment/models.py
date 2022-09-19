@@ -126,6 +126,10 @@ class RoomManager(models.Manager):
         '''获取所有可预约俄文楼教室'''
         return self.get_queryset().permitted().russian_only()
 
+    def interview_room_ids(self):
+        '''获取所有可面试俄文楼教室'''
+        return set()
+
 
 class Room(models.Model):
     class Meta:
@@ -165,9 +169,30 @@ class Room(models.Model):
         return self.Rid + ' ' + self.Rtitle
 
 
-class AppointManager(models.Manager):
+class AppointQuerySet(models.QuerySet):
     def not_canceled(self):
         return self.exclude(Astatus=Appoint.Status.CANCELED)
+
+    def terminated(self):
+        return self.filter(Astatus__in=Appoint.Status.Terminals())
+
+    def unfinished(self):
+        return self.exclude(Astatus__in=Appoint.Status.Terminals())
+
+
+class AppointManager(models.Manager):
+    def get_queryset(self) -> AppointQuerySet['Appoint']:
+        return AppointQuerySet(self.model, using=self._db, hints=self._hints)
+
+    def all(self) -> AppointQuerySet['Appoint']:
+        return super().all()
+
+    def not_canceled(self):
+        return self.get_queryset().not_canceled()
+
+    def unfinished(self):
+        '''用于检查而非呈现，筛选还未结束的预约'''
+        return self.exclude(Astatus__in=Appoint.Status.Terminals())
 
     def displayable(self):
         '''个人主页页面，在"普通预约"和"查看下周"中会显示的预约'''
@@ -246,9 +271,10 @@ class Appoint(models.Model):
     class Type(models.IntegerChoices):
         '''预约类型'''
         NORMAL = 0, '常规预约'
-        TODAY = 1, '当天预约'  # 保留，暂不使用
+        TODAY = 1, '当天预约'
         TEMPORARY = 2, '临时预约'
         LONGTERM = 3, '长期预约'
+        INTERVIEW = 4, '面试预约'
 
     Atype: 'int|Type' = models.SmallIntegerField(
         '预约类型', choices=Type.choices, default=Type.NORMAL)

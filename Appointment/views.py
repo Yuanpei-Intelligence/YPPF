@@ -1054,6 +1054,7 @@ def checkout_appoint(request: HttpRequest):
         endid = request.GET.get('endid')
         start_week = request.GET.get('start_week', 0)
         is_longterm = True if request.GET.get('longterm') == 'on' else False
+        is_interview = False
     else:
         Rid = request.POST.get('Rid')
         weekday = request.POST.get('weekday')
@@ -1061,15 +1062,20 @@ def checkout_appoint(request: HttpRequest):
         endid = request.POST.get('endid')
         is_longterm = True if request.POST.get('longterm') == 'on' else False
         start_week = 0
+        is_interview = False
         if is_longterm:
             start_week = request.POST.get('start_week', 0)
             # 长期预约的次数
             times = request.POST.get('times', 0)
             # 间隔为1代表每周，为2代表隔周
             interval = request.POST.get('interval', 0)
+        else:
+            is_interview = request.POST.get('interview') == 'yes'
 
     applicant = get_participant(request.user)
     has_longterm_permission = applicant.longterm
+    has_interview_permission = not (applicant.longterm or applicant.hidden)
+    has_interview_permission &= Rid in Room.objects.interview_room_ids()
 
     try:
         # 参数类型转换与合法性检查
@@ -1077,15 +1083,20 @@ def checkout_appoint(request: HttpRequest):
         startid = int(startid)
         endid = int(endid)
         if is_longterm and request.method == 'POST':
+            assert times, '长期预约周数未填写'
             times = int(times)
             interval = int(interval)
-            assert 1 <= interval <= GLOBAL_INFO.longterm_max_interval
-        assert weekday in wklist
-        assert startid >= 0
-        assert endid >= 0
-        assert endid >= startid
-        assert start_week == 0 or start_week == 1
-        assert has_longterm_permission or not is_longterm  # 检查长期预约权限
+            assert 1 <= interval <= GLOBAL_INFO.longterm_max_interval, '间隔周数'
+        assert weekday in wklist, '星期几'
+        assert startid >= 0, '起始时间'
+        assert endid >= 0, '结束时间'
+        assert endid >= startid, '起始时间晚于结束时间'
+        assert start_week == 0 or start_week == 1, '预约周数'
+        assert has_longterm_permission or not is_longterm, '没有长期预约权限'
+        if is_interview:
+            assert has_interview_permission, '没有面试权限'
+    except AssertionError as e:
+        return redirect(message_url(wrong(f'参数不合法: {e}'), reverse('Appointment:index')))
     except:
         return redirect(message_url(wrong('参数不合法'), reverse('Appointment:index')))
 
@@ -1126,7 +1137,9 @@ def checkout_appoint(request: HttpRequest):
     render_context = {}
     render_context.update(room_object=room,
                           appoint_params=appoint_params,
-                          has_longterm_permission=has_longterm_permission)
+                          has_longterm_permission=has_longterm_permission,
+                          has_interview_permission=has_interview_permission,
+                          interview_max_count=GLOBAL_INFO.interview_max_num)
 
     # 提交预约信息
     if request.method == 'POST':
@@ -1164,6 +1177,12 @@ def checkout_appoint(request: HttpRequest):
                 applicant=applicant).count() >= GLOBAL_INFO.longterm_max_num:
             wrong("您的长期预约总数已超过上限", render_context)
 
+        # 检查面试次数
+        if is_interview and Appoint.objects.unfinished().filter(
+                major_student=applicant, Atype=Appoint.Type.INTERVIEW
+                ).count() >= GLOBAL_INFO.interview_max_num:
+            wrong('您预约的面试次数已达到上限，结束后方可继续预约', render_context)
+
         contents['Astart'] = datetime(contents['year'], contents['month'],
                                       contents['day'],
                                       *map(int, contents['starttime'].split(":")))
@@ -1178,6 +1197,8 @@ def checkout_appoint(request: HttpRequest):
             if is_longterm:
                 response = scheduler_func.addAppoint(contents,
                                                      type=Appoint.Type.LONGTERM, notify_create=False)
+            elif is_interview:
+                response = scheduler_func.addAppoint(contents, type=Appoint.Type.INTERVIEW)
             else:
                 response = scheduler_func.addAppoint(contents)
             if response.status_code == 200 and not is_longterm:
@@ -1255,6 +1276,9 @@ def review(request: HttpRequest):
     try:
         longterm_appoint: LongTermAppoint = LongTermAppoint.objects.get(pk=Lid)
         reviewer_list = get_auditor_ids(longterm_appoint.applicant)
+        if request.user.is_staff and request.user.has_perm(
+                'Appointment.change_' + LongTermAppoint.__name__.lower()):
+            reviewer_list.append(request.user.username)
         assert request.user.username in reviewer_list
     except:
         return redirect(message_url(
