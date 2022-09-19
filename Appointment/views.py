@@ -1077,15 +1077,18 @@ def checkout_appoint(request: HttpRequest):
         startid = int(startid)
         endid = int(endid)
         if is_longterm and request.method == 'POST':
+            assert times, '长期预约周数未填写'
             times = int(times)
             interval = int(interval)
-            assert 1 <= interval <= GLOBAL_INFO.longterm_max_interval
-        assert weekday in wklist
-        assert startid >= 0
-        assert endid >= 0
-        assert endid >= startid
-        assert start_week == 0 or start_week == 1
-        assert has_longterm_permission or not is_longterm  # 检查长期预约权限
+            assert 1 <= interval <= GLOBAL_INFO.longterm_max_interval, '间隔周数'
+        assert weekday in wklist, '星期几'
+        assert startid >= 0, '起始时间'
+        assert endid >= 0, '结束时间'
+        assert endid >= startid, '起始时间晚于结束时间'
+        assert start_week == 0 or start_week == 1, '预约周数'
+        assert has_longterm_permission or not is_longterm, '没有长期预约权限'
+    except AssertionError as e:
+        return redirect(message_url(wrong(f'参数不合法: {e}'), reverse('Appointment:index')))
     except:
         return redirect(message_url(wrong('参数不合法'), reverse('Appointment:index')))
 
