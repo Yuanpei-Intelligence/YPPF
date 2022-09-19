@@ -126,6 +126,10 @@ class RoomManager(models.Manager):
         '''获取所有可预约俄文楼教室'''
         return self.get_queryset().permitted().russian_only()
 
+    def interview_room_ids(self):
+        '''获取所有可面试俄文楼教室'''
+        return set()
+
 
 class Room(models.Model):
     class Meta:
