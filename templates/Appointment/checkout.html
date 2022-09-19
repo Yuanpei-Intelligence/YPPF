@@ -172,6 +172,15 @@
                                                         </div>
                                                     </div>
                                                 {% endif %}
+                                                {% if has_interview_permission %}
+                                                    <div class="col-md-12 col-sm-12 ">
+                                                        <div class="form-group d-flex align-items-center">
+                                                            <input type="checkbox" name="interview" id="interview" value="yes" />
+                                                            <label for="interview" class="my-0 ml-1" style="font-size:14px;">用于面试</label>
+                                                            <i class="fas fa-info-circle" data-toggle="tooltip" title="单人即可预约面试，可用预约不超过1条"></i>
+                                                        </div>
+                                                    </div>
+                                                {% endif %}
                                             </div>
                                             {% if has_longterm_permission %}
                                                 <div class="tab-content pt-0">
