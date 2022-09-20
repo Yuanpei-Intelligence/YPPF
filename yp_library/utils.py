@@ -6,7 +6,7 @@ from yp_library.models import (
 )
 
 from typing import Union, List, Tuple, Optional
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, time
 
 from django.db import transaction
 from django.db.models import Q, QuerySet, F
@@ -25,18 +25,21 @@ __all__ = [
 
 
 def days_reminder(days: int, alert_msg: str):
-    """根据逾期时间时间向对应用户发送通知，若逾期一周另扣信用分一分
+    '''
+    根据逾期时间时间向对应用户发送通知，不负责扣分
 
     :param days: 逾期时间
     :type days: int
     :param alert_msg: 通知内容
     :type alert_msg: str
-    """
-    today = datetime.now().replace(hour=0, minute=0)
+    '''
+    now = datetime.now()
     lendlist = LendRecord.objects.filter(
         returned=False,
-        due_time__gt=today - timedelta(days=days, hours=1),
-        due_time__lte=today - timedelta(days=days, hours=-1))
+        # 书房截止日期只包含日期信息，不包含时间
+        due_time__date=now.date() - timedelta(days=days),
+        lend_time__hour=now.hour,
+    )
 
     receivers = lendlist.values_list('reader_id__student_id')
     receivers = User.objects.filter(username__in=receivers)
@@ -52,9 +55,11 @@ def violate_reminder(days: int, alert_msg: str):
     :param alert_msg: 通知内容
     :type alert_msg: str
     '''
+    before = datetime.now() - timedelta(hours=1)
     violate_lendlist = LendRecord.objects.filter(
         returned=False,
-        due_time__lte=datetime.now() - timedelta(days=days),
+        due_time__lte=before - timedelta(days=days),
+        lend_time__hour=before.hour,
         status=LendRecord.Status.NORMAL)
 
     # 逾期一周扣除信用分

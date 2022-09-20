@@ -72,12 +72,12 @@ class Command(BaseCommand):
         scheduler.add_job(update_lib_data,
                           "cron",
                           id="update_yp_library_data",
-                          minute=10,
+                          minute=50,
                           replace_existing=True)
         scheduler.add_job(bookreturn_notification,
                           "cron",
                           id="book_return_notification",
-                          hour=12,
+                          minute=0,
                           replace_existing=True)
 
         protocol_config = {
