@@ -77,7 +77,7 @@ class Command(BaseCommand):
         scheduler.add_job(bookreturn_notification,
                           "cron",
                           id="book_return_notification",
-                          hour=0,
+                          hour=12,
                           replace_existing=True)
 
         protocol_config = {

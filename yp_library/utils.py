@@ -8,6 +8,7 @@ from yp_library.models import (
 from typing import Union, List, Tuple, Optional
 from datetime import datetime, timedelta
 
+from django.db import transaction
 from django.db.models import Q, QuerySet, F
 from django.http import QueryDict, HttpRequest
 
@@ -31,24 +32,34 @@ def days_reminder(days: int, alert_msg: str):
     :param alert_msg: 通知内容
     :type alert_msg: str
     """
-    # 获取发送通知所需参数，包括发送者、接收者，URL，类名，通知内容
-    cr_time = datetime.now().replace(minute=0, second=0, microsecond=0)
-    lendlist = LendRecord.objects.filter(
-        returned=False,
-        due_time__gt=cr_time - timedelta(days=days, hours=1),
-        due_time__lte=cr_time - timedelta(days=days, hours=-1))
-    sender = Organization.objects.get(oname="何善衡图书室").get_user()
-    URL = "/lendinfo/"
-    typename = Notification.Type.NEEDREAD
-    
+    today = datetime.now().replace(hour=0, minute=0)
+    if days == 7:
+        lendlist = LendRecord.objects.filter(returned=False,
+                                             due_time__lte=today -
+                                             timedelta(days=days, hours=-1),
+                                             status=LendRecord.Status.NORMAL)
+    else:
+        lendlist = LendRecord.objects.filter(
+            returned=False,
+            due_time__gt=today - timedelta(days=days, hours=1),
+            due_time__lte=today - timedelta(days=days, hours=-1))
+
     receivers = lendlist.values_list('reader_id__student_id')
     receivers = User.objects.filter(username__in=receivers)
     # 逾期一周扣除信用分
     if days == 7:
+        # 逾期一周扣除信用分
+        # 绑定扣分和状态修改
+        with transaction.atomic():
+            lendlist.update(status=LendRecord.Status.OVERTIME)
         for receiver in receivers:
             User.objects.modify_credit(receiver, -1, '书房：归还逾期')
-    # 发送通知，使用群发
-    if len(receivers) > 0:
+
+    # 发送通知
+    URL = "/lendinfo/"
+    typename = Notification.Type.NEEDREAD
+    sender = Organization.objects.get(oname="何善衡图书室").get_user()
+    if receivers.exists():
         bulk_notification_create(
             receivers=receivers,
             sender=sender,
