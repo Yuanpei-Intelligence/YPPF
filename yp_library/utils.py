@@ -33,28 +33,42 @@ def days_reminder(days: int, alert_msg: str):
     :type alert_msg: str
     """
     today = datetime.now().replace(hour=0, minute=0)
-    if days == 7:
-        lendlist = LendRecord.objects.filter(returned=False,
-                                             due_time__lte=today -
-                                             timedelta(days=days, hours=-1),
-                                             status=LendRecord.Status.NORMAL)
-    else:
-        lendlist = LendRecord.objects.filter(
-            returned=False,
-            due_time__gt=today - timedelta(days=days, hours=1),
-            due_time__lte=today - timedelta(days=days, hours=-1))
+    lendlist = LendRecord.objects.filter(
+        returned=False,
+        due_time__gt=today - timedelta(days=days, hours=1),
+        due_time__lte=today - timedelta(days=days, hours=-1))
 
     receivers = lendlist.values_list('reader_id__student_id')
     receivers = User.objects.filter(username__in=receivers)
+    _send_remind_notification(receivers, alert_msg)
+
+
+def violate_reminder(days: int, alert_msg: str):
+    '''
+    扣除逾期超过指定天数的用户信用分一分并发送通知
+
+    :param days: 逾期时间
+    :type days: int
+    :param alert_msg: 通知内容
+    :type alert_msg: str
+    '''
+    violate_lendlist = LendRecord.objects.filter(
+        returned=False,
+        due_time__lte=datetime.now() - timedelta(days=days),
+        status=LendRecord.Status.NORMAL)
+
     # 逾期一周扣除信用分
-    if days == 7:
-        # 逾期一周扣除信用分
-        # 绑定扣分和状态修改
-        with transaction.atomic():
-            lendlist.update(status=LendRecord.Status.OVERTIME)
+    receivers = violate_lendlist.values_list('reader_id__student_id')
+    receivers = User.objects.filter(username__in=receivers)
+    # 绑定扣分和状态修改
+    with transaction.atomic():
+        violate_lendlist.select_for_update().update(status=LendRecord.Status.OVERTIME)
         for receiver in receivers:
             User.objects.modify_credit(receiver, -1, '书房：归还逾期')
+    _send_remind_notification(receivers, alert_msg)
 
+
+def _send_remind_notification(receivers: QuerySet[User], content: str):
     # 发送通知
     URL = "/lendinfo/"
     typename = Notification.Type.NEEDREAD
@@ -65,7 +79,7 @@ def days_reminder(days: int, alert_msg: str):
             sender=sender,
             typename=typename,
             title=Notification.Title.YPLIB_INFORM,
-            content=alert_msg,
+            content=content,
             URL=URL,
             publish_to_wechat=True,
             publish_kws={
@@ -84,7 +98,8 @@ def bookreturn_notification():
     days_reminder(-1, "您好！您现有未归还的图书，将于一天内借阅到期，请按时归还至元培书房！")
     days_reminder(0, "您好！您现有未归还的图书，已经借阅到期，请及时归还至元培书房！")
     days_reminder(5, "您好！您现有未归还的图书，已经借阅到期五天，请尽快归还至元培书房！到期一周未归还将扣除您的信用分1分！")
-    days_reminder(7, "您好！您现有未归还的图书，已经借阅到期一周，请尽快归还至元培书房！由于借阅超时一周，您已被扣除信用分1分！")
+    days_reminder(7, "您好！您现有未归还的图书，已经借阅到期一周，请尽快归还至元培书房！")
+    violate_reminder(7, "由于借阅超时一周，您已被扣除信用分1分！")
 
 
 def get_readers_by_user(user: User) -> QuerySet[Reader]:
