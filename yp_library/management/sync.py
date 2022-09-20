@@ -145,7 +145,12 @@ def update_records():
 
 
 def update_book_status():
-    books = Book.objects.all()
+    time_lower_bound = datetime.now() - timedelta(days=1)
+    recent_records = LendRecord.objects.filter(
+        Q(lend_time__gt=time_lower_bound)
+        | Q(return_time__gt=time_lower_bound)).values_list('book_id',
+                                                           flat=True)
+    books = Book.objects.filter(id__in=recent_records)
     for book in books:
         book.returned = not book.lendrecord_set.filter(returned=False).exists()
     Book.objects.bulk_update(books, fields=['returned'])
