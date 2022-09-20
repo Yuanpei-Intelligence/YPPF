@@ -74,23 +74,24 @@ def violate_reminder(days: int, alert_msg: str):
 
 
 def _send_remind_notification(receivers: QuerySet[User], content: str):
+    if not receivers:
+        return
     # 发送通知
     URL = "/lendinfo/"
     typename = Notification.Type.NEEDREAD
     sender = Organization.objects.get(oname="何善衡图书室").get_user()
-    if receivers.exists():
-        bulk_notification_create(
-            receivers=receivers,
-            sender=sender,
-            typename=typename,
-            title=Notification.Title.YPLIB_INFORM,
-            content=content,
-            URL=URL,
-            publish_to_wechat=True,
-            publish_kws={
-                'level': WechatMessageLevel.IMPORTANT,
-            },
-        )
+    bulk_notification_create(
+        receivers=receivers,
+        sender=sender,
+        typename=typename,
+        title=Notification.Title.YPLIB_INFORM,
+        content=content,
+        URL=URL,
+        publish_to_wechat=True,
+        publish_kws={
+            'level': WechatMessageLevel.IMPORTANT,
+        },
+    )
 
 
 def bookreturn_notification():
