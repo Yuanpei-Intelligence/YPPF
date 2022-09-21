@@ -1074,6 +1074,8 @@ def checkout_appoint(request: HttpRequest):
 
     applicant = get_participant(request.user)
     has_longterm_permission = applicant.longterm
+    has_interview_permission = not (applicant.longterm or applicant.hidden)
+    has_interview_permission &= Rid in Room.objects.interview_room_ids()
 
     try:
         # 参数类型转换与合法性检查
@@ -1092,7 +1094,7 @@ def checkout_appoint(request: HttpRequest):
         assert start_week == 0 or start_week == 1, '预约周数'
         assert has_longterm_permission or not is_longterm, '没有长期预约权限'
         if is_interview:
-            assert not (has_longterm_permission or applicant.hidden), '没有面试权限'
+            assert has_interview_permission, '没有面试权限'
     except AssertionError as e:
         return redirect(message_url(wrong(f'参数不合法: {e}'), reverse('Appointment:index')))
     except:
@@ -1135,7 +1137,9 @@ def checkout_appoint(request: HttpRequest):
     render_context = {}
     render_context.update(room_object=room,
                           appoint_params=appoint_params,
-                          has_longterm_permission=has_longterm_permission)
+                          has_longterm_permission=has_longterm_permission,
+                          has_interview_permission=has_interview_permission,
+                          interview_max_count=GLOBAL_INFO.interview_max_num)
 
     # 提交预约信息
     if request.method == 'POST':

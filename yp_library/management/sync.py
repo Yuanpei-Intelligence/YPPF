@@ -126,29 +126,32 @@ def update_records():
                                WHERE ID IN ({unreturned_record_id})''')
 
             updated_records = []
-            current_time = datetime.now()
             for row in cursor:
                 record: LendRecord = unreturned_records.get(id=row['ID'])
                 if row['IsReturn'] == 1:
                     record.returned = True
                     record.return_time = row['ReturnTime']
-                elif current_time - record.due_time > timedelta(days=7):
-                    record.status = LendRecord.Status.OVERTIME
-
-                updated_records.append(record)
+                    updated_records.append(record)
 
             with transaction.atomic():
                 LendRecord.objects.bulk_update(
                     updated_records,
-                    fields=['returned', 'return_time', 'status'],
+                    fields=['returned', 'return_time'],
                 )
 
 
 def update_book_status():
-    books = Book.objects.all()
+    time_lower_bound = datetime.now() - timedelta(days=1)
+    recent_records = LendRecord.objects.filter(
+        Q(lend_time__gt=time_lower_bound)
+        | Q(return_time__gt=time_lower_bound)).values_list('book_id',
+                                                           flat=True)
+    books = Book.objects.filter(id__in=recent_records)
     for book in books:
         book.returned = not book.lendrecord_set.filter(returned=False).exists()
-    Book.objects.bulk_update(books, fields=['returned'])
+    
+    with transaction.atomic():
+        Book.objects.bulk_update(books, fields=['returned'])
 
 
 def update_lib_data():

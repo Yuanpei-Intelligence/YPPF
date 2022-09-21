@@ -1,14 +1,19 @@
-from typing import Union
+from typing import Union, Callable, Optional
 from functools import wraps, update_wrapper
 
 from django.db import transaction
-from django.db.models import QuerySet
+from django.db.models import QuerySet, Model
 from django.contrib import messages
+from generic.http import HttpRequest
+
+from django.contrib.auth import get_permission_codename
 from django.contrib.admin import ModelAdmin, SimpleListFilter
 from django.contrib.admin.options import InlineModelAdmin
 
 __all__ = [
     'as_display', 'as_action',
+    'no_perm', 'has_superuser_permission',
+    'inhirit_permissions',
     'perms_check', 'need_all_perms',
     'readonly_inline',
     'SimpleSignFilter', 'get_sign_filter',
@@ -94,12 +99,70 @@ def as_action(description: str = None, /,
     return actual_decorator
 
 
+PermFunc = Callable[[ModelAdmin, HttpRequest, Optional[Model]], bool]
+
+def no_perm(self: ModelAdmin, request: HttpRequest, obj=None):
+    '''总是返回没有权限'''
+    return False
+
+def has_superuser_permission(self: ModelAdmin, request: HttpRequest):
+    '''检查是否为超级用户'''
+    return request.user.is_superuser
+
+
+def has_perm(action: str, model: Model = None) -> PermFunc:
+    '''
+    检查模型的指定权限
+
+    :param action: 需要检查的权限名
+    :type action: str
+    :param model: 权限模型, defaults to None
+    :type model: Type[Model], optional
+    :return: 权限检查函数
+    :rtype: PermFunc
+    '''
+    if model is not None:
+        codename = get_permission_codename(action, model)
+        perm = f'{model.app_label}.{codename}'
+        def _check_func(self: ModelAdmin, request: HttpRequest, obj=None) -> bool:
+            return request.user.has_perm(perm)
+        return _check_func
+    # 否则执行时计算
+    def _check_func(self: ModelAdmin, request: HttpRequest, obj=None) -> bool:
+        codename = get_permission_codename(action, self.opts)
+        return request.user.has_perm(f'{self.opts.app_label}.{codename}')
+    return _check_func
+
+
+def inhirit_permissions(model: Model, superuser: bool = True):
+    '''
+    包装器，根据关联模型，
+    被包装的模型的action除四种自带权限以外，还可使用superuser和模型声明的各种权限
+    实现细节：为后台自动生成has_%perm%_permission权限检查函数，不覆盖已存在函数
+
+    :param model: 后台的关联模型
+    :type model: Type[Model]
+    :param superuser: 是否产生has_superuser_permission检查函数, defaults to True
+    :type superuser: bool, optional
+    '''
+    def _actual_wrapper(admin: ModelAdmin):
+        for perm in model._meta.permissions:
+            check_name = f'has_{perm}_permission'
+            if hasattr(admin, check_name):
+                continue
+            setattr(admin, check_name, has_perm(perm, model))
+        if superuser and not hasattr(admin, 'has_superuser_permission'):
+            admin.has_superuser_permission = has_superuser_permission
+        return admin
+    return _actual_wrapper
+
+
 def perms_check(necessary_perms: Union[str, list]=None,
                 optional_perms: Union[str, list]=None, *,
                 superuser=False):
     '''检查函数，必须具有全部必要权限和至少一个可选权限（如果非空），单个权限可为字符串'''
-    def _check_func(self: ModelAdmin, request):
-        if superuser and not request.user.is_admin:
+    def _check_func(self: ModelAdmin, request: HttpRequest):
+        if superuser and not request.user.is_superuser:
             return False
         necessary_checks = (
             getattr(self, f'has_{perm}_permission')
@@ -140,12 +203,9 @@ def readonly_inline(inline_admin: InlineModelAdmin):
     if hasattr(inline_admin, 'fields'):
         inline_admin.readonly_fields = inline_admin.fields
 
-    def _check_failed(self, request, obj=None):
-        return False
-
-    inline_admin.has_add_permission = _check_failed
-    inline_admin.has_change_permission = _check_failed
-    inline_admin.has_delete_permission = _check_failed
+    inline_admin.has_add_permission = no_perm
+    inline_admin.has_change_permission = no_perm
+    inline_admin.has_delete_permission = no_perm
     return inline_admin
 
 
