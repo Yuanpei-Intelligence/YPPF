@@ -108,6 +108,8 @@ class LocalSetting():
         # 单个长期预约总周数上限
         self.longterm_max_interval = 2
         self.longterm_max_week = 16
+        # 面试预约总数上限
+        self.interview_max_num = 1
         # 是否允许不存在学生自动注册
         self.allow_newstu_appoint = True
         # 是否限制开始前的预约取消时间

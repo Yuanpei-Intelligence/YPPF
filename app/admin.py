@@ -6,13 +6,6 @@ from django.contrib import admin
 from django.db import transaction
 from django.utils.safestring import mark_safe
 
-# Register your models here.
-admin.site.site_title = '元培智慧校园管理后台'
-admin.site.site_header = '元培智慧校园 - 管理后台'
-# 合并后只需声明一次
-# admin.site.site_title = '元培成长档案管理后台'
-# admin.site.site_header = '元培成长档案 - 管理后台'
-
 
 # 通用内联模型
 @readonly_inline
@@ -204,6 +197,16 @@ class OrganizationAdmin(admin.ModelAdmin):
         return self.message_user(request=request,
                                  message='修改成功!')
 
+    @as_action("激活", actions, update=True)
+    def set_activate(self, request, queryset):
+        queryset.update(status=True)
+        return self.message_user(request, '修改成功!')
+
+    @as_action("失效", actions, update=True)
+    def set_disabled(self, request, queryset):
+        queryset.update(status=False)
+        return self.message_user(request, '修改成功!')
+
 
 @admin.register(Position)
 class PositionAdmin(admin.ModelAdmin):
@@ -263,6 +266,21 @@ class PositionAdmin(admin.ModelAdmin):
         queryset.update(is_admin=False)
         return self.message_user(request=request,
                                  message='修改成功!')
+
+    @as_action("延长职务年限", actions, atomic=True)
+    def refresh(self, request, queryset):
+        from app.constants import CURRENT_ACADEMIC_YEAR
+        new = []
+        for position in queryset:
+            position: Position
+            if position.year != CURRENT_ACADEMIC_YEAR and not Position.objects.filter(
+                    person=position.person, org=position.org,
+                    year=CURRENT_ACADEMIC_YEAR).exists():
+                position.year = CURRENT_ACADEMIC_YEAR
+                position.pk = None
+                position.save(force_insert=True)
+                new.append([position.pk, position.person.get_display_name()])
+        return self.message_user(request, f'修改成功!新增职务：{new}')
 
 
 @admin.register(Activity)
@@ -759,20 +777,39 @@ class ModuleLogAdmin(admin.ModelAdmin):
 
 @admin.register(AcademicTag)
 class AcademicTagAdmin(admin.ModelAdmin):
-    list_display = ["atype", "tag_content",]
-    search_fields =  ("atype", "tag_content",)
+    list_display = ["atype", "tag_content"]
+    search_fields =  ("atype", "tag_content")
+    list_filter = ["atype"]
+
+
+class AcademicEntryAdmin(admin.ModelAdmin):
+    actions = []
+
+    @as_action("通过审核", actions, 'change', update=True)
+    def accept(self, request, queryset):
+        queryset.filter(status=AcademicEntry.EntryStatus.WAIT_AUDIT
+                        ).update(status=AcademicEntry.EntryStatus.PUBLIC)
+        return self.message_user(request, '修改成功!')
+
+    @as_action("取消公开", actions, 'change', update=True)
+    def reject(self, request, queryset):
+        queryset.filter(status=AcademicEntry.EntryStatus.PUBLIC
+                        ).update(status=AcademicEntry.EntryStatus.WAIT_AUDIT)
+        return self.message_user(request, '修改成功!')
 
 
 @admin.register(AcademicTagEntry)
-class AcademicTagEntryAdmin(admin.ModelAdmin):
-    list_display = ["person", "status", "tag",]
-    search_fields =  ("person", "status", "tag",)
+class AcademicTagEntryAdmin(AcademicEntryAdmin):
+    list_display = ["person", "status", "tag"]
+    search_fields =  ("person", "status", "tag")
+    list_filter = ["tag__atype", "status"]
 
 
 @admin.register(AcademicTextEntry)
-class AcademicTextEntryAdmin(admin.ModelAdmin):
-    list_display = ["person", "status", "atype", "content",]
-    search_fields =  ("person", "status", "atype", "content",)
+class AcademicTextEntryAdmin(AcademicEntryAdmin):
+    list_display = ["person", "status", "atype", "content"]
+    search_fields =  ("person", "status", "atype", "content")
+    list_filter = ["atype", "status"]
 
 
 admin.site.register(OrganizationTag)

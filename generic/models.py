@@ -203,7 +203,7 @@ class UserManager(_UserManager):
         point_records = [
             YQPointRecord(
                 user=user,
-                delat=delta,
+                delta=delta,
                 source=source,
                 source_type=source_type,
             ) for user in users

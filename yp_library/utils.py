@@ -6,8 +6,9 @@ from yp_library.models import (
 )
 
 from typing import Union, List, Tuple, Optional
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, time
 
+from django.db import transaction
 from django.db.models import Q, QuerySet, F
 from django.http import QueryDict, HttpRequest
 
@@ -24,43 +25,73 @@ __all__ = [
 
 
 def days_reminder(days: int, alert_msg: str):
-    """根据逾期时间时间向对应用户发送通知，若逾期一周另扣信用分一分
+    '''
+    根据逾期时间时间向对应用户发送通知，不负责扣分
 
     :param days: 逾期时间
     :type days: int
     :param alert_msg: 通知内容
     :type alert_msg: str
-    """
-    # 获取发送通知所需参数，包括发送者、接收者，URL，类名，通知内容
-    cr_time = datetime.now().replace(minute=0, second=0, microsecond=0)
+    '''
+    now = datetime.now()
     lendlist = LendRecord.objects.filter(
         returned=False,
-        due_time__gt=cr_time - timedelta(days=days, hours=1),
-        due_time__lte=cr_time - timedelta(days=days))
-    sender = Organization.objects.get(oname="何善衡图书室").get_user()
-    URL = "/lendinfo/"
-    typename = Notification.Type.NEEDREAD
-    
+        # 书房截止日期只包含日期信息，不包含时间
+        due_time__date=now.date() - timedelta(days=days),
+        lend_time__hour=now.hour,
+    )
+
     receivers = lendlist.values_list('reader_id__student_id')
     receivers = User.objects.filter(username__in=receivers)
+    _send_remind_notification(receivers, alert_msg)
+
+
+def violate_reminder(days: int, alert_msg: str):
+    '''
+    扣除逾期超过指定天数的用户信用分一分并发送通知
+
+    :param days: 逾期时间
+    :type days: int
+    :param alert_msg: 通知内容
+    :type alert_msg: str
+    '''
+    before = datetime.now() - timedelta(hours=1)
+    violate_lendlist = LendRecord.objects.filter(
+        returned=False,
+        due_time__lte=before - timedelta(days=days),
+        lend_time__hour=before.hour,
+        status=LendRecord.Status.NORMAL)
+
     # 逾期一周扣除信用分
-    if days == 7:
+    receivers = violate_lendlist.values_list('reader_id__student_id')
+    receivers = User.objects.filter(username__in=receivers)
+    # 绑定扣分和状态修改
+    with transaction.atomic():
+        violate_lendlist.select_for_update().update(status=LendRecord.Status.OVERTIME)
         for receiver in receivers:
             User.objects.modify_credit(receiver, -1, '书房：归还逾期')
-    # 发送通知，使用群发
-    if len(receivers) > 0:
-        bulk_notification_create(
-            receivers=receivers,
-            sender=sender,
-            typename=typename,
-            title=Notification.Title.YPLIB_INFORM,
-            content=alert_msg,
-            URL=URL,
-            publish_to_wechat=True,
-            publish_kws={
-                'level': WechatMessageLevel.IMPORTANT,
-            },
-        )
+    _send_remind_notification(receivers, alert_msg)
+
+
+def _send_remind_notification(receivers: QuerySet[User], content: str):
+    if not receivers:
+        return
+    # 发送通知
+    URL = "/lendinfo/"
+    typename = Notification.Type.NEEDREAD
+    sender = Organization.objects.get(oname="何善衡图书室").get_user()
+    bulk_notification_create(
+        receivers=receivers,
+        sender=sender,
+        typename=typename,
+        title=Notification.Title.YPLIB_INFORM,
+        content=content,
+        URL=URL,
+        publish_to_wechat=True,
+        publish_kws={
+            'level': WechatMessageLevel.IMPORTANT,
+        },
+    )
 
 
 def bookreturn_notification():
@@ -73,7 +104,8 @@ def bookreturn_notification():
     days_reminder(-1, "您好！您现有未归还的图书，将于一天内借阅到期，请按时归还至元培书房！")
     days_reminder(0, "您好！您现有未归还的图书，已经借阅到期，请及时归还至元培书房！")
     days_reminder(5, "您好！您现有未归还的图书，已经借阅到期五天，请尽快归还至元培书房！到期一周未归还将扣除您的信用分1分！")
-    days_reminder(7, "您好！您现有未归还的图书，已经借阅到期一周，请尽快归还至元培书房！由于借阅超时一周，您已被扣除信用分1分！")
+    days_reminder(7, "您好！您现有未归还的图书，已经借阅到期一周，请尽快归还至元培书房！")
+    violate_reminder(7, "由于借阅超时一周，您已被扣除信用分1分！")
 
 
 def get_readers_by_user(user: User) -> QuerySet[Reader]:

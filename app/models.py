@@ -1831,17 +1831,17 @@ class AcademicTag(models.Model):
         verbose_name = "P.学术地图标签"
         verbose_name_plural = verbose_name
 
-    class AcademicTagType(models.IntegerChoices):
+    class Type(models.IntegerChoices):
         MAJOR = (0, '主修专业')
         MINOR = (1, '辅修专业')
         DOUBLE_DEGREE = (2, '双学位专业')
         PROJECT = (3, '参与项目')
 
-    atype = models.SmallIntegerField('标签类型', choices=AcademicTagType.choices)
+    atype = models.SmallIntegerField('标签类型', choices=Type.choices)
     tag_content = models.CharField('标签内容', max_length=63)
     
-    def __str__(self):
-        return AcademicTag.AcademicTagType(self.atype).label + ' - ' + self.tag_content
+    def __str__(self) -> str:
+        return self.get_atype_display() + ' - ' + self.tag_content
 
 
 class AcademicEntryManager(models.Manager):
@@ -1883,14 +1883,14 @@ class AcademicTextEntry(AcademicEntry):
         verbose_name = "P.学术地图文本项目"
         verbose_name_plural = verbose_name
 
-    class AcademicTextType(models.IntegerChoices):
+    class Type(models.IntegerChoices):
         SCIENTIFIC_RESEARCH = (0, '本科生科研')
         CHALLENGE_CUP = (1, '挑战杯')
         INTERNSHIP = (2, '实习经历')
         SCIENTIFIC_DIRECTION = (3, '科研方向')
         GRADUATION = (4, '毕业去向')
 
-    atype = models.SmallIntegerField('类型', choices=AcademicTextType.choices)
+    atype = models.SmallIntegerField('类型', choices=Type.choices)
     content = models.CharField('内容', max_length=4095)
 
 
