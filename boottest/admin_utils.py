@@ -134,7 +134,7 @@ def has_perm(action: str, model: Model = None) -> PermFunc:
     return _check_func
 
 
-def inhirit_permissions(model: Model, superuser: bool = True):
+def inherit_permissions(model: Model, superuser: bool = True):
     '''
     包装器，根据关联模型，
     被包装的模型的action除四种自带权限以外，还可使用superuser和模型声明的各种权限

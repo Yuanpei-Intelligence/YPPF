@@ -20,6 +20,8 @@ from django.contrib.auth.models import UserManager as _UserManager
 from django.db import transaction
 from django.db.models import QuerySet, F
 
+from boottest import base_get_setting
+
 __all__ = [
     'User',
     'CreditRecord',
@@ -42,6 +44,57 @@ def to_acronym(name: str) -> str:
     '''生成缩写'''
     pinyin_list = pypinyin.pinyin(name, style=pypinyin.NORMAL)
     return ''.join([w[0][0] for w in pinyin_list])
+
+
+
+class SemesterMixin(models.Model):
+    class Meta:
+        abstract = True
+
+    class Semester(models.TextChoices):
+        FALL = "Fall", "秋"
+        SPRING = "Spring", "春"
+        ANNUAL = "Annual", "全年"
+
+    def str2semester(semester: str) -> Semester:
+        '''read a string indicating the semester, return the correspoding status'''
+        if semester in ["Fall", "秋", "秋季"]:
+            return SemesterMixin.Semester.FALL
+        elif semester in ["Spring", "春", "春季"]:
+            return SemesterMixin.Semester.SPRING
+        elif semester in ["Annual", "Fall+Spring", "全年", "春秋"]:
+            return SemesterMixin.Semester.ANNUAL
+        else:
+            raise NotImplementedError("出现未设计的学期状态")
+
+    def cur_year():
+        return base_get_setting("semester_data/semester", trans_func=SemesterMixin.str2semester)
+
+    def cur_semester():
+        return base_get_setting("semester_data/year", trans_func=int)
+
+    year = models.SmallIntegerField('学年', default=cur_year)
+    semester = models.CharField('学期', choices=Semester.choices, default=cur_semester)
+
+
+class AuditableMixin(models.Model):
+    """所有公开类，待审核模型可加入的 Mixin
+    """
+    class Meta:
+        abstract = True
+        permissions = [('可审核', 'can_audit'), ('可强制取消', 'can_ban')]
+
+    class AuditStatus(models.IntegerChoices):
+        WAIT_AUDIT = (0, '等待审核')
+        ACCEPTED = (1, '审核通过')
+        REJECTED = (2, '审核拒绝')
+        CANCELED = (3, '审核取消')
+
+    audit_status = models.SmallIntegerField('审核状态', 
+                                            choices=AuditStatus.choices,
+                                            default=AuditStatus.WAIT_AUDIT)
+    allow_public = models.BooleanField('允许公开', default=True)
+    banned = models.BooleanField('强制取消', default=False)
 
 
 class UserManager(_UserManager):
