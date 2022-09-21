@@ -89,7 +89,7 @@ YQP_ONAME: str = get_setting('YQPoint_source_oname')
 # 本应用的可选设置，每个都应该给出默认值
 COURSE_TYPENAME: str = get_config('course/type_name', default='书院课程')
 LEAST_RECORD_HOURS: float = get_config('course/valid_hours', float, default=8.0)
-YQP_PER_HOUR: float = get_config('thresholds/point/per_hour', float, default=1)
+YQP_PER_HOUR: float = get_config('thresholds/point/per_hour', float, default=10)
 YQP_ACTIVITY_MAX: 'int|None' = get_config('thresholds/point/limit', int, default=None)
 YQP_INVALID_HOUR: float = get_config('thresholds/point/invalid_hour', float, default=12)
 YQP_INVALID_TITLES: list = get_config('thresholds/point/invalid_titles', default=[])

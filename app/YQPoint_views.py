@@ -148,5 +148,5 @@ def showPools(request: HttpRequest) -> HttpResponse:
 
 
     frontend_dict["bar_display"] = get_sidebar_and_navbar(
-        request.user, "元气值兑换与抽奖")
+        request.user, "元气值商城")
     return render(request, "showPools.html", frontend_dict)

@@ -1941,6 +1941,9 @@ class Prize(models.Model):
     reference_price = models.IntegerField('参考价格')
     image = models.ImageField('图片', upload_to=f'prize/%Y-%m/', null=True, blank=True)
 
+    def __str__(self):
+        return self.name
+
 
 class Pool(models.Model):
     class Meta:
@@ -1964,6 +1967,9 @@ class Pool(models.Model):
     redeem_start = models.DateTimeField('兑奖开始时间', null=True, blank=True) # 指线下获取奖品实物
     redeem_end = models.DateTimeField('兑奖结束时间', null=True, blank=True)
 
+    def __str__(self):
+        return self.title
+
 
 class PoolItem(models.Model):
     class Meta:
@@ -1981,6 +1987,9 @@ class PoolItem(models.Model):
     is_big_prize: bool = models.BooleanField('是否特别奖品', default=False)
     # 下面这个在盲盒奖池中有效，若为真则表示“谢谢参与”
     is_empty: bool = models.BooleanField('空盲盒', default=False)
+
+    def __str__(self):
+        return f'{self.pool} {self.prize}'
 
 
 class PoolRecord(models.Model):
