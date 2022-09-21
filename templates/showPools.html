@@ -150,6 +150,10 @@
         {% elif warn_code == 2 %}
             <div class="alert alert-success text-center m-3">{{ warn_message }}</div>
         {% endif %}
+
+        {% if bar_display.help_paragraphs %}
+            {% include 'help.html' %}
+        {% endif %}
         <div class="container">
             <div class="layout-top-spacing">
                 <ul class="nav nav-pills nav-fill row mb-3" id="myTab" role="tablist">

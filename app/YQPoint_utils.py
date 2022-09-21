@@ -97,7 +97,8 @@ def get_pools_and_items(pool_type: Pool.Type, user: User, frontend_dict: Dict[st
         ))
         for item in this_pool_items:
             item["remain_num"] = item["origin_num"] - item["consumed_num"]
-        this_pool_info["items"] = this_pool_items
+        this_pool_info["items"] = sorted(
+            this_pool_items, key=lambda x: -x["remain_num"]) # 按剩余数量降序排序，已卖完的在最后
 
         if pool_type != Pool.Type.EXCHANGE:
             this_pool_info["my_entry_time"] = PoolRecord.objects.filter(

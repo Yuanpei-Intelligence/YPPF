@@ -44,8 +44,8 @@
         "注释": "下面这些都可以不写",
         "point": {
             "per_feedback": 10,
-            "per_hour": 1,
-            "limit": null,
+            "per_hour": 10,
+            "limit": 30,
             "invalid_hour": 12,
             "invalid_titles": [
                 "选课",
