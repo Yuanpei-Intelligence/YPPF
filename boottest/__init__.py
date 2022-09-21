@@ -61,6 +61,15 @@ def base_get_setting(path: str='', trans_func=None, default=None,
         return default
 
 
+def optional(type):
+    '''产生用于可选设置的转换函数，None被直接返回'''
+    def _trans_func(value):
+        if value is None:
+            return None
+        return type(value)
+    return _trans_func
+
+
 # 全局设置
 # 加载settings.xxx时会加载文件
 DEBUG: bool = settings.DEBUG
