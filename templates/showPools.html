@@ -212,9 +212,6 @@
                                 <div class="px-1 col-12">
                                     <span>活动时间：{{ pool.start }}{% if pool.end %} - {{ pool.end|date:"n月j日 H:i" }}{% endif %}</span>
                                 </div>
-                                <div class="px-1 col-12 mb-3">
-                                    <span>领取时间：{{ pool.redeem_start }} - {{ pool.redeem_end|date:"n月j日 H:i" }}</span>
-                                </div>
                                 {% for item in pool.items %}
                                     <div class="prize-item p-1 col-6 col-md-4 col-lg-3">
                                         <div class="card">
@@ -285,9 +282,6 @@
                                 </div>
                                 <div class="px-1 col-12">
                                     <span>活动时间：{{ pool.start }}{% if pool.end %} - {{ pool.end|date:"n月j日 H:i" }}{% endif %}</span>
-                                </div>
-                                <div class="px-1 col-12 mb-3">
-                                    <span>领取时间：{{ pool.redeem_start }} - {{ pool.redeem_end|date:"n月j日 H:i" }}</span>
                                 </div>
                                 {% if pool.status == 1 %}
                                     <div class="card col-12 p-3 my-3">
@@ -423,9 +417,6 @@
                                 </div>
                                 <div class="px-1 col-12">
                                     <span>活动时间：{{ pool.start }}{% if pool.end %} - {{ pool.end|date:"n月j日 H:i" }}{% endif %}</span>
-                                </div>
-                                <div class="px-1 col-12 mb-3">
-                                    <span>领取时间：{{ pool.redeem_start }} - {{ pool.redeem_end|date:"n月j日 H:i" }}</span>
                                 </div>
                                 <div class="special-prize col-sm-12 col-md-6 mx-auto ">
                                     {% for item in pool.items %}
