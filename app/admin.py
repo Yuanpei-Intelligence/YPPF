@@ -829,6 +829,9 @@ class PoolRecordAdmin(admin.ModelAdmin):
             return record.prize.provider == request.user
         return super().get_queryset(request).filter(prize__provider=request.user).exists()
 
+    def has_view_permission(self, request: HttpRequest, obj: PoolRecord = None) -> bool:
+        return super().has_view_permission(request, obj) or self.has_manage_permission(request, obj)
+
     def get_queryset(self, request: HttpRequest):
         qs = super().get_queryset(request)
         if self.has_manage_permission(request):
