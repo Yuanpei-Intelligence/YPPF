@@ -71,7 +71,16 @@
                                                         <div>
                                                             <p style="color: rgb(66, 67, 68);"><i
                                                                 class="fa fa-calendar-o"></i>
-                                                                {{record.time}}</p>
+                                                                {{record.time}}
+                                                                {% if record.pool.redeem_start and record.pool.redeem_end %}
+                                                                    <span class="d-inline-block" tabindex="0" 
+                                                                        data-toggle="tooltip"  
+                                                                        data-html=true 
+                                                                        data-title="领取时间：<br/>{{record.pool.redeem_start}} 起<br/> {{record.pool.redeem_end}} 止">
+                                                                        <i class="fa fa-question-circle"></i>
+                                                                    </span>
+                                                                {% endif %} 
+                                                            </p>
                                                          </div>
                                                     </div>
                                                 </div>
@@ -117,7 +126,16 @@
                                                         <div>
                                                             <p style="color: rgb(66, 67, 68);"><i
                                                                 class="fa fa-calendar-o"></i>
-                                                                {{record.time}}</p>
+                                                                {{record.time}}
+                                                                {% if record.pool.redeem_start and record.pool.redeem_end %}
+                                                                    <span class="d-inline-block" tabindex="0" 
+                                                                        data-toggle="tooltip" 
+                                                                        data-html="true" 
+                                                                        data-title="领取时间：<br/>{{record.pool.redeem_start}} 起<br/> {{record.pool.redeem_end}} 止">
+                                                                        <i class="fa fa-question-circle"></i>
+                                                                    </span>
+                                                                {% endif %}
+                                                            </p>
                                                          </div>
                                                     </div>
                                                 </div>
