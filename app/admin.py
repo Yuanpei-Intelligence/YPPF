@@ -1,5 +1,6 @@
 from app.models import *
 from boottest.admin_utils import *
+from generic.http.dependency import HttpRequest
 
 from datetime import datetime
 from django.contrib import admin
@@ -811,35 +812,47 @@ class AcademicTextEntryAdmin(AcademicEntryAdmin):
     search_fields =  ("person", "status", "atype", "content")
     list_filter = ["atype", "status"]
 
+
 @admin.register(PoolRecord)
 class PoolRecordAdmin(admin.ModelAdmin):
-
-    readonly_fields = ['user', 'prize']
     list_display = ['user_display', 'status', 'prize', 'time']
-    list_filter = ['status', 'prize']
     search_fields = ['user__name']
+    list_filter = ['status', 'prize', 'time']
+    readonly_fields = ['user', 'prize']
     actions = []
 
     def user_display(self, obj: PoolRecord):
         return obj.user.name
 
-    @as_action('兑换', actions, 'view', update=True)
+    def has_manage_permission(self, request: HttpRequest, record: PoolRecord = None) -> bool:
+        if record is not None:
+            return record.prize.provider == request.user
+        return super().get_queryset(request).filter(prize__provider=request.user).exists()
+
+    def get_queryset(self, request: HttpRequest):
+        qs = super().get_queryset(request)
+        if self.has_manage_permission(request):
+            qs = qs.filter(prize__provider=request.user)
+        return qs
+
+    @as_action('兑换', actions, ['change', 'manage'], update=True, single=True)
     def redeem_prize(self, request, queryset):
-        if len(queryset) != 1:
-            return self.message_user(request=request, message='每次操作仅允许兑换单个奖品')
-        record: PoolRecord = queryset.first()
+        record: PoolRecord = queryset[0]
+        if (not self.has_change_permission(request, record)
+                and not self.has_manage_permission(request, record)):
+            return self.message_user(request, '无权负责该礼品的兑换!', 'error')
         if record.status != PoolRecord.Status.UN_REDEEM:
-            return self.message_user(request=request, message='仅可兑换尚未兑换的奖品')
-        if record.prize.provider == request.user or request.user.has_perm('app.edit_poolrecord'):
-            record.status = PoolRecord.Status.REDEEMED
-            record.time = datetime.now()
-            record.save()
-            return self.message_user(request=request, message='兑换成功')
-        return self.message_user(request=request, message='该账号不能兑换该礼品')
+            return self.message_user(request, '仅可兑换尚未兑换的奖品!', 'error')
+        record.status = PoolRecord.Status.REDEEMED
+        # record.time = datetime.now()
+        record.save()
+        return self.message_user(request, '兑换成功!')
+
 
 @admin.register(Prize)
 class PrizeAdmin(admin.ModelAdmin):
     autocomplete_fields = ['provider']
+
 
 admin.site.register(OrganizationTag)
 admin.site.register(Comment)
