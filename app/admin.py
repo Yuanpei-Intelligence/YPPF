@@ -811,11 +811,38 @@ class AcademicTextEntryAdmin(AcademicEntryAdmin):
     search_fields =  ("person", "status", "atype", "content")
     list_filter = ["atype", "status"]
 
+@admin.register(PoolRecord)
+class PoolRecordAdmin(admin.ModelAdmin):
+
+    readonly_fields = ['user', 'prize']
+    list_display = ['user_display', 'status', 'prize', 'time']
+    list_filter = ['status', 'prize']
+    search_fields = ['user__name']
+    actions = []
+
+    def user_display(self, obj: PoolRecord):
+        return obj.user.name
+
+    @as_action('兑换', actions, 'view', update=True)
+    def redeem_prize(self, request, queryset):
+        if len(queryset) != 1:
+            return self.message_user(request=request, message='每次操作仅允许兑换单个奖品')
+        record: PoolRecord = queryset.first()
+        if record.status != PoolRecord.Status.UN_REDEEM:
+            return self.message_user(request=request, message='仅可兑换尚未兑换的奖品')
+        if record.prize.provider == request.user or request.user.has_perm('app.edit_poolrecord'):
+            record.status = PoolRecord.Status.REDEEMED
+            record.time = datetime.now()
+            record.save()
+            return self.message_user(request=request, message='兑换成功')
+        return self.message_user(request=request, message='该账号不能兑换该礼品')
+
+@admin.register(Prize)
+class PrizeAdmin(admin.ModelAdmin):
+    autocomplete_fields = ['provider']
 
 admin.site.register(OrganizationTag)
 admin.site.register(Comment)
 admin.site.register(CommentPhoto)
-admin.site.register(Prize)
 admin.site.register(Pool)
 admin.site.register(PoolItem)
-admin.site.register(PoolRecord)
