@@ -1940,7 +1940,7 @@ class Prize(models.Model):
     stock = models.IntegerField('参考库存', default=0)
     reference_price = models.IntegerField('参考价格')
     image = models.ImageField('图片', upload_to=f'prize/%Y-%m/', null=True, blank=True)
-    provider = models.ForeignKey(User, on_delete=models.CASCADE, null=True, blank=True)
+    provider = models.ForeignKey('提供者', User, on_delete=models.CASCADE, null=True, blank=True)
 
     @invalid_for_frontend
     def __str__(self):
