@@ -212,9 +212,6 @@
                                 <div class="px-1 col-12">
                                     <span>活动时间：{{ pool.start }}{% if pool.end %} - {{ pool.end|date:"n月j日 H:i" }}{% endif %}</span>
                                 </div>
-                                <div class="px-1 col-12 mb-3">
-                                    <span>领取时间：{{ pool.redeem_start }} - {{ pool.redeem_end|date:"n月j日 H:i" }}</span>
-                                </div>
                                 {% for item in pool.items %}
                                     <div class="prize-item p-1 col-6 col-md-4 col-lg-3">
                                         <div class="card">
@@ -286,9 +283,6 @@
                                 <div class="px-1 col-12">
                                     <span>活动时间：{{ pool.start }}{% if pool.end %} - {{ pool.end|date:"n月j日 H:i" }}{% endif %}</span>
                                 </div>
-                                <div class="px-1 col-12 mb-3">
-                                    <span>领取时间：{{ pool.redeem_start }} - {{ pool.redeem_end|date:"n月j日 H:i" }}</span>
-                                </div>
                                 {% if pool.status == 1 %}
                                     <div class="card col-12 p-3 my-3">
                                         <div class="card-body">
@@ -326,7 +320,7 @@
                                 <div class="special-prize col-sm-12 col-md-6 mx-auto ">
                                     {% for item in pool.items %}
                                         {% if item.is_big_prize %}
-                                            <h5 class="text-center text-success">
+                                            <h5 class="mt-5 text-center text-success">
                                                 <i class="fa fa-solid fa-gift"></i> 特别奖品
                                             </h5>
                                             <p>
@@ -371,32 +365,23 @@
                                 <div class="col-sm-12 col-md-6 my-3 mx-auto">
                                     <div class="btn-group btn-group-sm w-100" role="group">
                                         {% if pool.status == 0 %}
-                                            {% if  pool.ticket_price  > my_YQpoint %}
-                                                <button class="btn btn-dark w-50 px-1">
-                                                    {{ pool.ticket_price }} 元气值 / 次
-                                                </button>
-                                                <button href="#" class="btn btn-light w-50 px-1 disabled">
+                                            {% if pool.ticket_price > my_YQpoint %}
+                                                <button class="btn btn-light w-50 px-1 disabled">
                                                     元气值不足
                                                 </button>
                                             {% elif pool.my_entry_time >= pool.entry_time %}
-                                                <button class="btn btn-dark w-50 px-1">
-                                                    {{ pool.ticket_price }} 元气值 / 次
-                                                </button>
-                                                <button href="#" class="btn btn-light w-50 px-1 disabled">
+                                                <button class="btn btn-light w-50 px-1 disabled">
                                                     次数已用完
                                                 </button>
                                             {% else %}
-                                                <button class="btn btn-success w-50 px-1">
-                                                    {{ pool.ticket_price }} 元气值 / 次
-                                                </button>
                                                 <button type="submit" 
-                                                    class="btn btn-outline-success w-50 px-1" 
+                                                    class="btn btn-success w-50 px-1" 
                                                     form="getLotteryForm" 
                                                     name="submit_lottery" 
                                                     value="{{ pool.id }}"
                                                     onclick="return confirm('确定要参与该抽奖吗？')"
                                                     >
-                                                    参与抽奖
+                                                    {{ pool.ticket_price }} 元气值 / 次
                                                 </button>
                                             {% endif %}
                                         {% else %}
@@ -424,13 +409,10 @@
                                 <div class="px-1 col-12">
                                     <span>活动时间：{{ pool.start }}{% if pool.end %} - {{ pool.end|date:"n月j日 H:i" }}{% endif %}</span>
                                 </div>
-                                <div class="px-1 col-12 mb-3">
-                                    <span>领取时间：{{ pool.redeem_start }} - {{ pool.redeem_end|date:"n月j日 H:i" }}</span>
-                                </div>
                                 <div class="special-prize col-sm-12 col-md-6 mx-auto ">
                                     {% for item in pool.items %}
                                         {% if item.is_big_prize %}
-                                            <h5 class="text-center text-success">
+                                            <h5 class="mt-5 text-center text-success">
                                                 <i class="fa fa-solid fa-gift"></i> 特别奖品
                                             </h5>
                                             <p>
@@ -473,39 +455,28 @@
                                 </form>
                                 <div class="col-sm-12 col-md-6 my-3 mx-auto">
                                     <div class="btn-group btn-group-sm w-100" role="group">
-                                        {% if  pool.ticket_price  > my_YQpoint %}
-                                            <button class="btn btn-dark w-50 px-1">
-                                                {{ pool.ticket_price }} 元气值 / 次
-                                            </button>
-                                            <button href="#" class="btn btn-light w-50 px-1 disabled">
+                                        {% if pool.ticket_price > my_YQpoint %}
+                                            <button class="btn btn-light w-50 px-1 disabled">
                                                 元气值不足
                                             </button>
                                         {% elif pool.my_entry_time >= pool.entry_time %}
-                                            <button class="btn btn-dark w-50 px-1">
-                                                {{ pool.ticket_price }} 元气值 / 次
-                                            </button>
-                                            <button href="#" class="btn btn-light w-50 px-1 disabled">
+                                            <button class="btn btn-light w-50 px-1 disabled">
                                                 次数已用完
                                             </button>
                                         {% else %}
                                             {% if pool.capacity > pool.records_num %}
-                                                <button class="btn btn-success w-50 px-1">
-                                                    {{ pool.ticket_price }} 元气值 / 次
-                                                </button>
                                                 <button type="submit" 
-                                                    class="btn btn-outline-success w-50 px-1" 
+                                                    class="btn btn-success w-50 px-1" 
                                                     form="getRandomForm" 
                                                     name="submit_random" 
                                                     value="{{ pool.id }}"
                                                     onclick="return confirm('确定要购买该盲盒吗？')"
                                                     >
-                                                    获取盲盒
-                                                </button>
-                                            {% else %}
-                                                <button class="btn btn-dark w-50 px-1">
                                                     {{ pool.ticket_price }} 元气值 / 次
                                                 </button>
-                                                <button href="#" class="btn btn-light w-50 px-1 disabled">
+                                            {% else %}
+                                                <button href="#"
+                                                    class="btn btn-light w-50 px-1 disabled">
                                                     盲盒已售罄
                                                 </button>
                                             {% endif %}
