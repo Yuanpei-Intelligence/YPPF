@@ -15,7 +15,7 @@ __all__ = [
     'no_perm', 'has_superuser_permission',
     'inhirit_permissions',
     'perms_check', 'need_all_perms',
-    'readonly_inline',
+    'readonly_admin', 'readonly_inline',
     'SimpleSignFilter', 'get_sign_filter',
 ]
 
@@ -122,8 +122,8 @@ def has_perm(action: str, model: Model = None) -> PermFunc:
     :rtype: PermFunc
     '''
     if model is not None:
-        codename = get_permission_codename(action, model)
-        perm = f'{model.app_label}.{codename}'
+        codename = get_permission_codename(action, model._meta)
+        perm = f'{model._meta.app_label}.{codename}'
         def _check_func(self: ModelAdmin, request: HttpRequest, obj=None) -> bool:
             return request.user.has_perm(perm)
         return _check_func
@@ -196,18 +196,20 @@ def need_all_perms(necessary_perms: Union[str, list]=None,
     return actual_decorator
 
 
-def readonly_inline(inline_admin: InlineModelAdmin):
-    '''将内联模型设为只读'''
-    inline_admin.extra = 0
-    inline_admin.can_delete = False
-    if hasattr(inline_admin, 'fields'):
-        inline_admin.readonly_fields = inline_admin.fields
+def readonly_admin(admin: ModelAdmin, inline_attrs: bool = True):
+    '''将管理模型设为只读，inline_attrs决定是否设置内联模型相关属性，通常无影响'''
+    # 设置内联模型的属性，对通用管理模型无影响，一般都可以设置
+    if inline_attrs:
+        admin.extra = 0
+        admin.can_delete = False
+    if admin.fields is not None:
+        admin.readonly_fields = admin.fields
+    admin.has_add_permission = no_perm
+    admin.has_change_permission = no_perm
+    admin.has_delete_permission = no_perm
+    return admin
 
-    inline_admin.has_add_permission = no_perm
-    inline_admin.has_change_permission = no_perm
-    inline_admin.has_delete_permission = no_perm
-    return inline_admin
-
+readonly_inline = readonly_admin
 
 class SimpleSignFilter(SimpleListFilter):
     '''子类必须以field定义筛选的字段，可以定义lookup_choices'''
