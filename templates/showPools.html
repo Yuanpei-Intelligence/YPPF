@@ -488,18 +488,27 @@
                                                 次数已用完
                                             </button>
                                         {% else %}
-                                            <button class="btn btn-success w-50 px-1">
-                                                {{ pool.ticket_price }} 元气值 / 次
-                                            </button>
-                                            <button type="submit" 
-                                                class="btn btn-outline-success w-50 px-1" 
-                                                form="getRandomForm" 
-                                                name="submit_random" 
-                                                value="{{ pool.id }}"
-                                                onclick="return confirm('确定要购买该盲盒吗？')"
-                                                >
-                                                获取盲盒
-                                            </button>
+                                            {% if pool.capacity > pool.records_num %}
+                                                <button class="btn btn-success w-50 px-1">
+                                                    {{ pool.ticket_price }} 元气值 / 次
+                                                </button>
+                                                <button type="submit" 
+                                                    class="btn btn-outline-success w-50 px-1" 
+                                                    form="getRandomForm" 
+                                                    name="submit_random" 
+                                                    value="{{ pool.id }}"
+                                                    onclick="return confirm('确定要购买该盲盒吗？')"
+                                                    >
+                                                    获取盲盒
+                                                </button>
+                                            {% else %}
+                                                <button class="btn btn-dark w-50 px-1">
+                                                    {{ pool.ticket_price }} 元气值 / 次
+                                                </button>
+                                                <button href="#" class="btn btn-light w-50 px-1 disabled">
+                                                    盲盒已售罄
+                                                </button>
+                                            {% endif %}
                                         {% endif %}
                                     </div>
                                 </div>
