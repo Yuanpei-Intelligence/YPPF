@@ -200,6 +200,8 @@ class UserManager(_UserManager):
         :param source_type: 元气值来源类型
         :type source_type: YQPointRecord.SourceType
         '''
+        if delta == 0:
+            return
         assert delta > 0, '元气值增量为负数'
         users = users.select_for_update()
         point_records = [
