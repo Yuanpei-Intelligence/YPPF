@@ -13,7 +13,7 @@ from django.contrib.admin.options import InlineModelAdmin
 __all__ = [
     'as_display', 'as_action',
     'no_perm', 'has_superuser_permission',
-    'inhirit_permissions',
+    'inherit_permissions',
     'perms_check', 'need_all_perms',
     'readonly_admin', 'readonly_inline',
     'SimpleSignFilter', 'get_sign_filter',
