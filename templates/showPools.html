@@ -366,9 +366,8 @@
                                     <div class="btn-group btn-group-sm w-100" role="group">
                                         {% if pool.status == 0 %}
                                             {% if pool.ticket_price > my_YQpoint %}
-                                                <button class="btn btn-light w-50 px-1 disabled">
-                                                    {{ pool.ticket_price }} 元气值 / 次
-                                                </button>
+                                                <button class="btn btn-dark w-50 px-1">{{ pool.ticket_price }} 元气值 / 次</button>
+                                                <button href="#" class="btn btn-light w-50 px-1 disabled">元气值不足</button>
                                             {% elif pool.my_entry_time >= pool.entry_time %}
                                                 <button class="btn btn-light w-50 px-1 disabled">
                                                     次数已用完
@@ -456,9 +455,8 @@
                                 <div class="col-sm-12 col-md-6 my-3 mx-auto">
                                     <div class="btn-group btn-group-sm w-100" role="group">
                                         {% if pool.ticket_price > my_YQpoint %}
-                                            <button class="btn btn-light w-50 px-1 disabled">
-                                                元气值不足
-                                            </button>
+                                            <button class="btn btn-dark w-50 px-1">{{ pool.ticket_price }} 元气值 / 次</button>
+                                            <button href="#" class="btn btn-light w-50 px-1 disabled">元气值不足</button>
                                         {% elif pool.my_entry_time >= pool.entry_time %}
                                             <button class="btn btn-light w-50 px-1 disabled">
                                                 次数已用完
