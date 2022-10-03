@@ -47,7 +47,7 @@ class NaturalPersonAdmin(admin.ModelAdmin):
             {
                 "fields": (
                     "person_id", "name", "nickname", "gender", "identity", "status",
-                    "bonusPoint", "wechat_receive_level",
+                    "wechat_receive_level",
                     "accept_promote", "active_score",
                     "stu_id_dbonly",
                     ),
