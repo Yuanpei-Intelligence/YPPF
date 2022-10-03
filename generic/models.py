@@ -209,7 +209,8 @@ class UserManager(_UserManager):
             ) for user in users
         ]
         YQPointRecord.objects.bulk_create(point_records)
-        users.update(YQpoint=F('YQpoint') + delta)
+        if delta != 0:
+            users.update(YQpoint=F('YQpoint') + delta)
 
 
     def _record_YQpoint_change(self, user: 'User', delta: int,

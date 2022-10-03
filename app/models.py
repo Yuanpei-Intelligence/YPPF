@@ -322,8 +322,6 @@ class NaturalPerson(models.Model):
     QRcode = models.ImageField(upload_to=f"QRcode/", blank=True)
     visit_times = models.IntegerField("浏览次数",default=0) # 浏览主页的次数
 
-    bonusPoint = models.FloatField("积分", default=0)
-
     class Identity(models.IntegerChoices):
         TEACHER = (0, "教职工")
         STUDENT = (1, "学生")
@@ -1940,6 +1938,12 @@ class Prize(models.Model):
     stock = models.IntegerField('参考库存', default=0)
     reference_price = models.IntegerField('参考价格')
     image = models.ImageField('图片', upload_to=f'prize/%Y-%m/', null=True, blank=True)
+    provider = models.ForeignKey(User, verbose_name='提供者', on_delete=models.CASCADE,
+                                 null=True, blank=True)
+
+    @invalid_for_frontend
+    def __str__(self):
+        return self.name
 
     @invalid_for_frontend
     def __str__(self):
@@ -1979,7 +1983,8 @@ class PoolItem(models.Model):
         verbose_name_plural = verbose_name
 
     pool: Pool = models.ForeignKey(Pool, verbose_name='奖池', on_delete=models.CASCADE)
-    prize: Prize = models.ForeignKey(Prize, verbose_name='奖品', on_delete=models.CASCADE)
+    prize: Prize = models.ForeignKey(Prize, verbose_name='奖品', on_delete=models.CASCADE,
+                                     null=True, blank=True)
     origin_num = models.IntegerField('初始数量')
     consumed_num = models.IntegerField('已兑换', default=0)
     # 下面两个在 pool 类型为兑换奖池时有效
@@ -1987,8 +1992,16 @@ class PoolItem(models.Model):
     exchange_price = models.IntegerField('价格', null=True, blank=True)
     # 下面这个在抽奖/盲盒奖池中有效
     is_big_prize: bool = models.BooleanField('是否特别奖品', default=False)
-    # 下面这个在盲盒奖池中有效，若为真则表示“谢谢参与”
-    is_empty: bool = models.BooleanField('空盲盒', default=False)
+
+    @property
+    def is_empty(self) -> bool:
+        return self.prize is None
+
+    @invalid_for_frontend
+    def __str__(self):
+        if self.is_empty:
+            return f'{self.pool} 空盒'
+        return f'{self.pool} {self.prize}'
 
     @invalid_for_frontend
     def __str__(self):

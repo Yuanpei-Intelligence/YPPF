@@ -1,5 +1,6 @@
 from app.models import *
 from boottest.admin_utils import *
+from generic.http.dependency import HttpRequest
 
 from datetime import datetime
 from django.contrib import admin
@@ -46,7 +47,7 @@ class NaturalPersonAdmin(admin.ModelAdmin):
             {
                 "fields": (
                     "person_id", "name", "nickname", "gender", "identity", "status",
-                    "bonusPoint", "wechat_receive_level",
+                    "wechat_receive_level",
                     "accept_promote", "active_score",
                     "stu_id_dbonly",
                     ),
@@ -812,10 +813,77 @@ class AcademicTextEntryAdmin(AcademicEntryAdmin):
     list_filter = ["atype", "status"]
 
 
+class PoolItemInline(admin.TabularInline):
+    model = PoolItem
+    classes = ['collapse']
+    ordering = ['-id']
+    fields = ['pool', 'prize', 'origin_num', 'consumed_num', 'exchange_limit', 'exchange_price']
+    show_change_link = True
+PoolItemInline = readonly_inline(PoolItemInline, can_add=True)
+
+
+@admin.register(Prize)
+class PrizeAdmin(admin.ModelAdmin):
+    autocomplete_fields = ['provider']
+    inlines = [PoolItemInline]
+
+
+@admin.register(Pool)
+class PoolAdmin(admin.ModelAdmin):
+    inlines = [PoolItemInline]
+
+
+@admin.register(PoolRecord)
+class PoolRecordAdmin(admin.ModelAdmin):
+    list_display = ['user_display', 'status', 'prize', 'time']
+    search_fields = ['user__name']
+    list_filter = [
+        'status', 'prize', 'time',
+        ('prize__provider', admin.RelatedOnlyFieldListFilter),
+    ]
+    readonly_fields = ['time']
+    autocomplete_fields = ['user']
+    actions = []
+
+    @as_display('用户')
+    def user_display(self, obj: PoolRecord):
+        return obj.user.name
+
+    def has_manage_permission(self, request: HttpRequest, record: PoolRecord = None) -> bool:
+        if not request.user.is_authenticated:
+            return False
+        if record is not None:
+            return record.prize.provider == request.user
+        return Prize.objects.filter(provider=request.user).exists()
+        # return super().get_queryset(request).filter(prize__provider=request.user).exists()
+
+    def has_module_permission(self, request: HttpRequest) -> bool:
+        return super().has_module_permission(request) or self.has_manage_permission(request)
+
+    def has_view_permission(self, request: HttpRequest, obj: PoolRecord = None) -> bool:
+        return super().has_view_permission(request, obj) or self.has_manage_permission(request, obj)
+
+    def get_queryset(self, request: HttpRequest):
+        qs = super().get_queryset(request)
+        if self.has_manage_permission(request):
+            qs = qs.filter(prize__provider=request.user)
+        return qs
+
+    @as_action('兑换', actions, ['change', 'manage'], update=True, single=True)
+    def redeem_prize(self, request, queryset):
+        record: PoolRecord = queryset[0]
+        if (not self.has_change_permission(request, record)
+                and not self.has_manage_permission(request, record)):
+            return self.message_user(request, '无权负责该礼品的兑换!', 'error')
+        if record.status != PoolRecord.Status.UN_REDEEM:
+            return self.message_user(request, '仅可兑换尚未兑换的奖品!', 'error')
+        record.status = PoolRecord.Status.REDEEMED
+        # record.time = datetime.now()
+        record.save()
+        return self.message_user(request, '兑换成功!')
+
+
 admin.site.register(OrganizationTag)
 admin.site.register(Comment)
 admin.site.register(CommentPhoto)
-admin.site.register(Prize)
-admin.site.register(Pool)
 admin.site.register(PoolItem)
-admin.site.register(PoolRecord)
