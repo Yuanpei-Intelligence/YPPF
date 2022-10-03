@@ -174,8 +174,6 @@ class UserManager(_UserManager):
         '''
         修改元气值并记录，不足时抛出AssertionError，原子化操作
         '''
-        if delta == 0:
-            return
         update_user = self.get_user(user, update=True)
         update_user.YQpoint += delta
         assert update_user.YQpoint >= 0, '元气值不足'
@@ -200,9 +198,7 @@ class UserManager(_UserManager):
         :param source_type: 元气值来源类型
         :type source_type: YQPointRecord.SourceType
         '''
-        if delta == 0:
-            return
-        assert delta > 0, '元气值增量为负数'
+        assert delta >= 0, '元气值增量为负数'
         users = users.select_for_update()
         point_records = [
             YQPointRecord(
@@ -213,7 +209,8 @@ class UserManager(_UserManager):
             ) for user in users
         ]
         YQPointRecord.objects.bulk_create(point_records)
-        users.update(YQpoint=F('YQpoint') + delta)
+        if delta != 0:
+            users.update(YQpoint=F('YQpoint') + delta)
 
 
     def _record_YQpoint_change(self, user: 'User', delta: int,
