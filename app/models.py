@@ -322,8 +322,6 @@ class NaturalPerson(models.Model):
     QRcode = models.ImageField(upload_to=f"QRcode/", blank=True)
     visit_times = models.IntegerField("浏览次数",default=0) # 浏览主页的次数
 
-    bonusPoint = models.FloatField("积分", default=0)
-
     class Identity(models.IntegerChoices):
         TEACHER = (0, "教职工")
         STUDENT = (1, "学生")
