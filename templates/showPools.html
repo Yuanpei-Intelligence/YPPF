@@ -163,6 +163,7 @@
                                id="pool-{{ pool.id }}"
                                data-toggle="tab"
                                href="#pool_{{ pool.id }}"
+                               onclick="ModuleTrackFunction(3, '查看奖池: {{ pool.title }}')"
                                role="tab">
                                 {{ pool.title }}
                             </a>
@@ -228,7 +229,8 @@
                                                      style="object-fit:cover;aspect-ratio:4/3"
                                                      alt="{{ item.prize__name }}">
                                                 <p class="card-text mt-2">
-                                                    <a href="#" data-toggle="modal" data-target="#prize-{{ item.id }}">
+                                                    <a href="#" data-toggle="modal" data-target="#prize-{{ item.id }}"
+                                                       onclick="ModuleTrackFunction(3, '奖品详情: {{item.prize__name}}')>"
                                                         <span class="text-info px-1"><i class="fa fa-solid fa-info-circle"></i> 详情</span>
                                                     </a>
                                                 </p>
@@ -379,7 +381,8 @@
                                                     form="getLotteryForm" 
                                                     name="submit_lottery" 
                                                     value="{{ pool.id }}"
-                                                    onclick="return confirm('确定要参与该抽奖吗？')"
+                                                    onclick="ModuleTrackFunction(3, '参与抽奖'); 
+                                                             return confirm('确定要参与该抽奖吗？')"
                                                     >
                                                     {{ pool.ticket_price }} 元气值 / 次
                                                 </button>
