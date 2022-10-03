@@ -813,9 +813,24 @@ class AcademicTextEntryAdmin(AcademicEntryAdmin):
     list_filter = ["atype", "status"]
 
 
+class PoolItemInline(admin.TabularInline):
+    model = PoolItem
+    classes = ['collapse']
+    ordering = ['-id']
+    fields = ['pool', 'prize', 'origin_num', 'consumed_num', 'exchange_limit', 'exchange_price']
+    show_change_link = True
+PoolItemInline = readonly_inline(PoolItemInline, can_add=True)
+
+
 @admin.register(Prize)
 class PrizeAdmin(admin.ModelAdmin):
     autocomplete_fields = ['provider']
+    inlines = [PoolItemInline]
+
+
+@admin.register(Pool)
+class PoolAdmin(admin.ModelAdmin):
+    inlines = [PoolItemInline]
 
 
 @admin.register(PoolRecord)
@@ -871,5 +886,4 @@ class PoolRecordAdmin(admin.ModelAdmin):
 admin.site.register(OrganizationTag)
 admin.site.register(Comment)
 admin.site.register(CommentPhoto)
-admin.site.register(Pool)
 admin.site.register(PoolItem)
