@@ -12,7 +12,7 @@ from app.wechat_send import WechatApp, WechatMessageLevel
 from app.notification_utils import bulk_notification_create, notification_create
 from generic.models import User, YQPointRecord
 
-from django.db.models import QuerySet, Q
+from django.db.models import QuerySet, Q, Sum
 from django.forms.models import model_to_dict
 
 from typing import List, Dict, Optional, Tuple
@@ -329,6 +329,10 @@ def buy_random_pool(user: User, pool_id: str) -> Tuple[MESSAGECONTEXT, int, int]
     my_entry_time = PoolRecord.objects.filter(pool=pool, user=user).count()
     if my_entry_time >= pool.entry_time:
         return wrong('您兑换这款盲盒的次数已达上限!'), -1, 2
+    total_entry_time = PoolRecord.objects.filter(pool=pool).count()
+    capacity = PoolItem.objects.filter(pool=pool).aggregate(Sum("origin_num"))["origin_num__sum"]
+    if capacity <= total_entry_time:
+        return wrong('盲盒已售罄!'), -1, 2
     
     try:
         with transaction.atomic():
@@ -338,6 +342,9 @@ def buy_random_pool(user: User, pool_id: str) -> Tuple[MESSAGECONTEXT, int, int]
             my_entry_time = PoolRecord.objects.filter(pool=pool, user=user).count()
             assert my_entry_time < pool.entry_time, '您兑换这款盲盒的次数已达上限!'
             assert user.YQpoint >= pool.ticket_price, '您的元气值不足，兑换失败!'
+            total_entry_time = PoolRecord.objects.filter(pool=pool).count()
+            capacity = PoolItem.objects.filter(pool=pool).aggregate(Sum("origin_num"))["origin_num__sum"]
+            assert capacity > total_entry_time, '盲盒已售罄!'
 
             # 开盒，修改poolitem记录，创建poolrecord记录
             items = pool.poolitem_set.select_for_update().all()

@@ -13,7 +13,7 @@ from django.contrib.admin.options import InlineModelAdmin
 __all__ = [
     'as_display', 'as_action',
     'no_perm', 'has_superuser_permission',
-    'inhirit_permissions',
+    'inherit_permissions',
     'perms_check', 'need_all_perms',
     'readonly_admin', 'readonly_inline',
     'SimpleSignFilter', 'get_sign_filter',
@@ -105,7 +105,7 @@ def no_perm(self: ModelAdmin, request: HttpRequest, obj=None):
     '''总是返回没有权限'''
     return False
 
-def has_superuser_permission(self: ModelAdmin, request: HttpRequest):
+def has_superuser_permission(self: ModelAdmin, request: HttpRequest, obj=None):
     '''检查是否为超级用户'''
     return request.user.is_superuser
 
@@ -134,7 +134,7 @@ def has_perm(action: str, model: Model = None) -> PermFunc:
     return _check_func
 
 
-def inhirit_permissions(model: Model, superuser: bool = True):
+def inherit_permissions(model: Model, superuser: bool = True):
     '''
     包装器，根据关联模型，
     被包装的模型的action除四种自带权限以外，还可使用superuser和模型声明的各种权限
@@ -196,15 +196,17 @@ def need_all_perms(necessary_perms: Union[str, list]=None,
     return actual_decorator
 
 
-def readonly_admin(admin: ModelAdmin, inline_attrs: bool = True):
+def readonly_admin(admin: ModelAdmin,
+                   inline_attrs: bool = True, can_add: bool = False):
     '''将管理模型设为只读，inline_attrs决定是否设置内联模型相关属性，通常无影响'''
     # 设置内联模型的属性，对通用管理模型无影响，一般都可以设置
     if inline_attrs:
         admin.extra = 0
         admin.can_delete = False
-    if admin.fields is not None:
-        admin.readonly_fields = admin.fields
-    admin.has_add_permission = no_perm
+    if not can_add:
+        if admin.fields is not None:
+            admin.readonly_fields = admin.fields
+        admin.has_add_permission = no_perm
     admin.has_change_permission = no_perm
     admin.has_delete_permission = no_perm
     return admin
