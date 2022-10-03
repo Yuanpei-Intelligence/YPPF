@@ -813,21 +813,37 @@ class AcademicTextEntryAdmin(AcademicEntryAdmin):
     list_filter = ["atype", "status"]
 
 
+@admin.register(Prize)
+class PrizeAdmin(admin.ModelAdmin):
+    autocomplete_fields = ['provider']
+
+
 @admin.register(PoolRecord)
 class PoolRecordAdmin(admin.ModelAdmin):
     list_display = ['user_display', 'status', 'prize', 'time']
     search_fields = ['user__name']
-    list_filter = ['status', 'prize', 'time']
-    readonly_fields = ['user', 'prize']
+    list_filter = [
+        'status', 'prize', 'time',
+        ('prize__provider', admin.RelatedOnlyFieldListFilter),
+    ]
+    readonly_fields = ['time']
+    autocomplete_fields = ['user']
     actions = []
 
+    @as_display('用户')
     def user_display(self, obj: PoolRecord):
         return obj.user.name
 
     def has_manage_permission(self, request: HttpRequest, record: PoolRecord = None) -> bool:
+        if not request.user.is_authenticated:
+            return False
         if record is not None:
             return record.prize.provider == request.user
-        return super().get_queryset(request).filter(prize__provider=request.user).exists()
+        return Prize.objects.filter(provider=request.user).exists()
+        # return super().get_queryset(request).filter(prize__provider=request.user).exists()
+
+    def has_module_permission(self, request: HttpRequest) -> bool:
+        return super().has_module_permission(request) or self.has_manage_permission(request)
 
     def has_view_permission(self, request: HttpRequest, obj: PoolRecord = None) -> bool:
         return super().has_view_permission(request, obj) or self.has_manage_permission(request, obj)
@@ -850,11 +866,6 @@ class PoolRecordAdmin(admin.ModelAdmin):
         # record.time = datetime.now()
         record.save()
         return self.message_user(request, '兑换成功!')
-
-
-@admin.register(Prize)
-class PrizeAdmin(admin.ModelAdmin):
-    autocomplete_fields = ['provider']
 
 
 admin.site.register(OrganizationTag)

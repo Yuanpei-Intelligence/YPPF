@@ -1938,7 +1938,8 @@ class Prize(models.Model):
     stock = models.IntegerField('参考库存', default=0)
     reference_price = models.IntegerField('参考价格')
     image = models.ImageField('图片', upload_to=f'prize/%Y-%m/', null=True, blank=True)
-    provider = models.ForeignKey(to=User, on_delete=models.CASCADE, null=True, blank=True)
+    provider = models.ForeignKey(User, verbose_name='提供者', on_delete=models.CASCADE,
+                                 null=True, blank=True)
 
     @invalid_for_frontend
     def __str__(self):
@@ -1995,7 +1996,7 @@ class PoolItem(models.Model):
     @invalid_for_frontend
     def __str__(self):
         if self.is_empty:
-            return f'{self.pool} 空的盒子'
+            return f'{self.pool} 空盒'
         return f'{self.pool} {self.prize}'
 
 
