@@ -80,20 +80,13 @@ def get_pools_and_items(pool_type: Pool.Type, user: User, frontend_dict: Dict[st
 
     for pool in pools:
         if pool.start <= datetime.now() and (pool.end is None or pool.end >= datetime.now()):
-            this_pool_info = model_to_dict(pool)
             this_pool_info["status"] = 0
-        elif pool.end is not None and pool.end < datetime.now() and \
-                pool.end >= datetime.now() - timedelta(days=1):
-            this_pool_info = model_to_dict(pool)
-            this_pool_info["status"] = 1
         else:
-            continue
+            this_pool_info["status"] = 1
 
-        this_pool_all_items = PoolItem.objects.filter(pool=pool)
-        this_pool_info["capacity"] = this_pool_all_items.aggregate(
-            capacity=Sum("origin_num"))["capacity"] or 0
-        this_pool_items = this_pool_all_items.filter(prize__isnull=False)
-        this_pool_items = list(this_pool_items.values(
+        this_pool_info = model_to_dict(pool)
+        this_pool_info["capacity"] = pool.get_capacity()
+        this_pool_items = list(pool.items.filter(prize__isnull=False).values(
             "id", "origin_num", "consumed_num", "exchange_price",
             "exchange_limit", "is_big_prize",
             "prize__name", "prize__more_info", "prize__stock",
@@ -294,6 +287,8 @@ def select_random_prize(poolitems: QuerySet[PoolItem], select_num: Optional[int]
     num_all_items = 0  # 奖品的总数
     item_dict = {}  # int: PoolItem，实现把一个自然数区间映射到一种奖品
     for item in poolitems:
+        if item.origin_num - item.consumed_num <= 0:
+            continue
         item_dict[num_all_items] = item
         num_all_items += item.origin_num - item.consumed_num
 
@@ -339,7 +334,7 @@ def buy_random_pool(user: User, pool_id: str) -> Tuple[MESSAGECONTEXT, int, int]
     if my_entry_time >= pool.entry_time:
         return wrong('您兑换这款盲盒的次数已达上限!'), -1, 2
     total_entry_time = PoolRecord.objects.filter(pool=pool).count()
-    capacity = PoolItem.objects.filter(pool=pool).aggregate(Sum("origin_num"))["origin_num__sum"]
+    capacity = pool.get_capacity()
     if capacity <= total_entry_time:
         return wrong('盲盒已售罄!'), -1, 2
     
@@ -352,11 +347,11 @@ def buy_random_pool(user: User, pool_id: str) -> Tuple[MESSAGECONTEXT, int, int]
             assert my_entry_time < pool.entry_time, '您兑换这款盲盒的次数已达上限!'
             assert user.YQpoint >= pool.ticket_price, '您的元气值不足，兑换失败!'
             total_entry_time = PoolRecord.objects.filter(pool=pool).count()
-            capacity = PoolItem.objects.filter(pool=pool).aggregate(Sum("origin_num"))["origin_num__sum"]
+            capacity = pool.get_capacity()
             assert capacity > total_entry_time, '盲盒已售罄!'
 
             # 开盒，修改poolitem记录，创建poolrecord记录
-            items = pool.poolitem_set.select_for_update().all()
+            items = pool.items.select_for_update().all()
             real_item_id = select_random_prize(items, 1)[0]
             modify_item: PoolItem = PoolItem.objects.select_for_update().get(id=real_item_id)
             modify_item.consumed_num += 1
@@ -408,7 +403,7 @@ def run_lottery(pool_id: int):
         # 抽奖
         record_ids_and_participant_ids = list(
             related_records.values("id", "user__id"))
-        items = pool.poolitem_set.all()
+        items = pool.items.all()
         user2prize_names = {d["user__id"]: []
                             for d in record_ids_and_participant_ids}  # 便于发通知
         winner_record_id2item_id = {}  # poolrecord.id: poolitem.id，便于更新poolrecord
