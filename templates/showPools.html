@@ -421,7 +421,7 @@
                                                 <h6 class="text-center">
                                                     {{ item.prize__name }}
                                                 </h6>
-                                                <span class="d-block text-center">获取概率 {% widthratio item.origin_num pool.capacity 100 %}%</span>
+                                                <span class="d-block text-center">获取概率 {{ item.probability }}%</span>
                                             </p>
                                             <img src="/media/{{ item.prize__image }}"
                                                  class="rounded w-100"
@@ -544,7 +544,7 @@
                                 {% endif %}
                                 {% if pool.type == "盲盒" and item.is_big_prize %}
                                     <p>
-                                        <i class="far fa-fw fa-star"></i> 获取概率：{% widthratio item.origin_num pool.capacity 100 %}%
+                                        <i class="far fa-fw fa-star"></i> 获取概率：{{ item.probability }}%
                                     </p>
                                 {% endif %}
                             </div>
@@ -606,7 +606,7 @@
                                 {% endif %}
                                 {% if pool.type == "盲盒" and item.is_big_prize %}
                                     <p>
-                                        <i class="far fa-fw fa-star"></i> 获取概率：{% widthratio item.origin_num pool.capacity 100 %}%
+                                        <i class="far fa-fw fa-star"></i> 获取概率：{{ item.probability }}%
                                     </p>
                                 {% endif %}
                             </div>
@@ -668,7 +668,7 @@
                                 {% endif %}
                                 {% if pool.type == "盲盒" and item.is_big_prize %}
                                     <p>
-                                        <i class="far fa-fw fa-star"></i> 获取概率：{% widthratio item.origin_num pool.capacity 100 %}%
+                                        <i class="far fa-fw fa-star"></i> 获取概率：{{ item.probability }}%
                                     </p>
                                 {% endif %}
                             </div>

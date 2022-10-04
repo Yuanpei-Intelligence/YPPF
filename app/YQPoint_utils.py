@@ -108,6 +108,15 @@ def get_pools_and_items(pool_type: Pool.Type, user: User, frontend_dict: Dict[st
             if pool_type == Pool.Type.RANDOM:
                 this_pool_info["capacity"] = sum(
                     [item["origin_num"] for item in this_pool_items])
+                for item in this_pool_items:
+                    # 此处显示的是抽奖概率，目前使用原始的占比
+                    percent = (100 * item["origin_num"] / this_pool_info["capacity"])
+                    if percent == int(percent):
+                        percent = int(percent)
+                    elif round(percent, 1) != 0:
+                        # 保留最低精度
+                        percent = round(percent, 1)
+                    item["probability"] = percent
             # LOTTERY类的pool不需要capacity
         else:
             for item in this_pool_items:
