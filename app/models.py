@@ -2003,10 +2003,6 @@ class PoolItem(models.Model):
             return f'{self.pool} 空盒'
         return f'{self.pool} {self.prize}'
 
-    @invalid_for_frontend
-    def __str__(self):
-        return f'{self.pool} {self.prize}'
-
 
 class PoolRecord(models.Model):
     class Meta:
