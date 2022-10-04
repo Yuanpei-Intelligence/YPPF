@@ -89,9 +89,13 @@ def get_pools_and_items(pool_type: Pool.Type, user: User, frontend_dict: Dict[st
         else:
             continue
 
-        this_pool_items = list(pool.poolitem_set.values(
+        this_pool_all_items = PoolItem.objects.filter(pool=pool)
+        this_pool_info["capacity"] = this_pool_all_items.aggregate(
+            capacity=Sum("origin_num"))["capacity"] or 0
+        this_pool_items = this_pool_all_items.filter(prize__isnull=False)
+        this_pool_items = list(this_pool_items.values(
             "id", "origin_num", "consumed_num", "exchange_price",
-            "exchange_limit", "is_big_prize", "is_empty",
+            "exchange_limit", "is_big_prize",
             "prize__name", "prize__more_info", "prize__stock",
             "prize__reference_price", "prize__image", "prize__id"
         ))
@@ -106,8 +110,6 @@ def get_pools_and_items(pool_type: Pool.Type, user: User, frontend_dict: Dict[st
             this_pool_info["records_num"] = PoolRecord.objects.filter(
                 pool=pool).count()
             if pool_type == Pool.Type.RANDOM:
-                this_pool_info["capacity"] = sum(
-                    [item["origin_num"] for item in this_pool_items])
                 for item in this_pool_items:
                     # 此处显示的是抽奖概率，目前使用原始的占比
                     percent = (100 * item["origin_num"] / this_pool_info["capacity"])
@@ -137,16 +139,14 @@ def get_pools_and_items(pool_type: Pool.Type, user: User, frontend_dict: Dict[st
                     {"prize_name": big_prize_item.prize.name, "prize_image": big_prize_item.prize.image})
                 winner_names = list(PoolRecord.objects.filter(
                     pool=pool, prize=big_prize_item.prize).values_list(
-                        "user__naturalperson__name", flat=True))  # TODO: 需要distinct()吗？
-                # 这里假定获奖者一定是自然人，因为组织不能抽奖
+                        "user__name", flat=True))  # TODO: 需要distinct()吗？
                 big_prizes_and_winners[-1]["winners"] = winner_names
             for normal_prize_item in normal_prize_items:
                 normal_prizes_and_winners.append(
                     {"prize_name": normal_prize_item.prize.name, "prize_image": normal_prize_item.prize.image})
                 winner_names = list(PoolRecord.objects.filter(
                     pool=pool, prize=normal_prize_item.prize).values_list(
-                        "user__naturalperson__name", flat=True))  # TODO: 需要distinct()吗？
-                # 这里假定获奖者一定是自然人，因为组织不能抽奖
+                        "user__name", flat=True))  # TODO: 需要distinct()吗？
                 normal_prizes_and_winners[-1]["winners"] = winner_names
             this_pool_info["results"] = {}
             this_pool_info["results"]["big_prize_results"] = big_prizes_and_winners
@@ -380,10 +380,11 @@ def buy_random_pool(user: User, pool_id: str) -> Tuple[MESSAGECONTEXT, int, int]
                 source=f'盲盒奖池：{pool.title}',
                 source_type=YQPointRecord.SourceType.CONSUMPTION
             )
+            if modify_item.prize is None:
+                return succeed('兑换盲盒成功!'), -1, 1
+            return succeed('兑换盲盒成功!'), modify_item.prize.id, int(modify_item.is_empty)
     except AssertionError as e:
-        return wrong(str(e)), -1, 2     
-
-    return succeed('兑换盲盒成功!'), modify_item.prize.id, int(modify_item.is_empty)
+        return wrong(str(e)), -1, 2
 
 
 def run_lottery(pool_id: int):
