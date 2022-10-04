@@ -534,7 +534,7 @@
                                         <i class="fa fa-fw fa-hourglass-end"></i> 剩余数量：{{ item.remain_num }} 个
                                     </p>
                                     <p>
-                                        <i class="fas fa-fw fa-ticket-alt"></i> 剩余兑换次数：{{ item.my_exchange_time }} / {{ item.exchange_limit }} 次
+                                        <i class="fas fa-fw fa-ticket-alt"></i> 已兑换次数：{{ item.my_exchange_time }} / {{ item.exchange_limit }} 次
                                     </p>
                                 {% endif %}
                                 {% if pool.type == "抽奖" %}
@@ -568,7 +568,7 @@
                             </button>
                         </div>
                         <div class="modal-body">
-                            <div class="w-75">
+                            <div class="mx-5">
                                 <img src="/media/{{ item.prize__image }}"
                                      class="w-100 rounded mb-3"
                                      style="object-fit:cover;aspect-ratio:4/3;margin:auto"
@@ -596,7 +596,7 @@
                                         <i class="fa fa-fw fa-hourglass-end"></i> 剩余数量：{{ item.remain_num }} 个
                                     </p>
                                     <p>
-                                        <i class="fas fa-fw fa-ticket-alt"></i> 剩余兑换次数：{{ item.my_exchange_time }} / {{ item.exchange_limit }} 次
+                                        <i class="fas fa-fw fa-ticket-alt"></i> 已兑换次数：{{ item.my_exchange_time }} / {{ item.exchange_limit }} 次
                                     </p>
                                 {% endif %}
                                 {% if pool.type == "抽奖" %}
@@ -658,7 +658,7 @@
                                         <i class="fa fa-fw fa-hourglass-end"></i> 剩余数量：{{ item.remain_num }} 个
                                     </p>
                                     <p>
-                                        <i class="fas fa-fw fa-ticket-alt"></i> 剩余兑换次数：{{ item.my_exchange_time }} / {{ item.exchange_limit }} 次
+                                        <i class="fas fa-fw fa-ticket-alt"></i> 已兑换次数：{{ item.my_exchange_time }} / {{ item.exchange_limit }} 次
                                     </p>
                                 {% endif %}
                                 {% if pool.type == "抽奖" %}
