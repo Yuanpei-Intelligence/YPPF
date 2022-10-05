@@ -236,7 +236,7 @@ def get_my_records(reader_id: str, returned: Optional[bool] = None,
             if  record['return_time'] > record['due_time']:
                 record['type'] = 'overtime'     # 逾期记录
             else:
-                record['type'] = 'normal'       # 正常记录
+                record['type'] = 'returned'       # 正常记录
     else:
         now_time = datetime.now()
         for record in records:

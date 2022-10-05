@@ -55,7 +55,6 @@ def welcome(request: HttpRequest) -> HttpResponse:
         readers = get_readers_by_user(request.user)
         records_list = get_lendinfo_by_readers(readers)
         records_list = (records_list[0] + records_list[1])
-        records_list.sort(key=lambda r: r['lend_time'])
     except Exception as e:
         records_list = []
 
