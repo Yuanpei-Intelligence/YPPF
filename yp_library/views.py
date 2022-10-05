@@ -53,10 +53,11 @@ def welcome(request: HttpRequest) -> HttpResponse:
     #     num=DISPLAY_NEW_BOOK_NUM, newest=True)
     try:
         readers = get_readers_by_user(request.user)
-        records_list = get_lendinfo_by_readers(readers)
-        records_list = (records_list[0] + records_list[1])
-    except Exception as e:
+    except AssertionError as e:
         records_list = []
+    else:
+        unreturned_records_list, returned_records_list = get_lendinfo_by_readers(readers)
+        records_list = unreturned_records_list + returned_records_list
 
     frontend_dict["records_list"] = records_list
     return render(request, "yp_library/welcome.html", frontend_dict)
@@ -112,8 +113,7 @@ def lendInfo(request: HttpRequest) -> HttpResponse:
     try:
         readers = get_readers_by_user(request.user)
     except AssertionError as e:
-        frontend_dict["warn_message"] = e
-        frontend_dict["warn_code"] = 1
+        wrong(str(e), frontend_dict)
         frontend_dict['unreturned_records_list'] = []
         frontend_dict['returned_records_list'] = []
         return render(request, "yp_library/lendinfo.html", frontend_dict)
