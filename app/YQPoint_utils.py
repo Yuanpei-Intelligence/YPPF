@@ -79,12 +79,12 @@ def get_pools_and_items(pool_type: Pool.Type, user: User, frontend_dict: Dict[st
     # }
 
     for pool in pools:
+        this_pool_info = model_to_dict(pool)
         if pool.start <= datetime.now() and (pool.end is None or pool.end >= datetime.now()):
             this_pool_info["status"] = 0
         else:
             this_pool_info["status"] = 1
 
-        this_pool_info = model_to_dict(pool)
         this_pool_info["capacity"] = pool.get_capacity()
         this_pool_items = list(pool.items.filter(prize__isnull=False).values(
             "id", "origin_num", "consumed_num", "exchange_price",
