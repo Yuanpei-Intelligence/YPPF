@@ -80,18 +80,15 @@ def get_pools_and_items(pool_type: Pool.Type, user: User, frontend_dict: Dict[st
 
     for pool in pools:
         if pool.start <= datetime.now() and (pool.end is None or pool.end >= datetime.now()):
-            this_pool_info = model_to_dict(pool)
             this_pool_info["status"] = 0
-        elif pool.end is not None and pool.end < datetime.now() and \
-                pool.end >= datetime.now() - timedelta(days=1):
-            this_pool_info = model_to_dict(pool)
-            this_pool_info["status"] = 1
         else:
-            continue
+            this_pool_info["status"] = 1
 
-        this_pool_items = list(pool.poolitem_set.values(
+        this_pool_info = model_to_dict(pool)
+        this_pool_info["capacity"] = pool.get_capacity()
+        this_pool_items = list(pool.items.filter(prize__isnull=False).values(
             "id", "origin_num", "consumed_num", "exchange_price",
-            "exchange_limit", "is_big_prize", "is_empty",
+            "exchange_limit", "is_big_prize",
             "prize__name", "prize__more_info", "prize__stock",
             "prize__reference_price", "prize__image", "prize__id"
         ))
@@ -106,8 +103,15 @@ def get_pools_and_items(pool_type: Pool.Type, user: User, frontend_dict: Dict[st
             this_pool_info["records_num"] = PoolRecord.objects.filter(
                 pool=pool).count()
             if pool_type == Pool.Type.RANDOM:
-                this_pool_info["capacity"] = sum(
-                    [item["origin_num"] for item in this_pool_items])
+                for item in this_pool_items:
+                    # 此处显示的是抽奖概率，目前使用原始的占比
+                    percent = (100 * item["origin_num"] / this_pool_info["capacity"])
+                    if percent == int(percent):
+                        percent = int(percent)
+                    elif round(percent, 1) != 0:
+                        # 保留最低精度
+                        percent = round(percent, 1)
+                    item["probability"] = percent
             # LOTTERY类的pool不需要capacity
         else:
             for item in this_pool_items:
@@ -128,16 +132,14 @@ def get_pools_and_items(pool_type: Pool.Type, user: User, frontend_dict: Dict[st
                     {"prize_name": big_prize_item.prize.name, "prize_image": big_prize_item.prize.image})
                 winner_names = list(PoolRecord.objects.filter(
                     pool=pool, prize=big_prize_item.prize).values_list(
-                        "user__naturalperson__name", flat=True))  # TODO: 需要distinct()吗？
-                # 这里假定获奖者一定是自然人，因为组织不能抽奖
+                        "user__name", flat=True))  # TODO: 需要distinct()吗？
                 big_prizes_and_winners[-1]["winners"] = winner_names
             for normal_prize_item in normal_prize_items:
                 normal_prizes_and_winners.append(
                     {"prize_name": normal_prize_item.prize.name, "prize_image": normal_prize_item.prize.image})
                 winner_names = list(PoolRecord.objects.filter(
                     pool=pool, prize=normal_prize_item.prize).values_list(
-                        "user__naturalperson__name", flat=True))  # TODO: 需要distinct()吗？
-                # 这里假定获奖者一定是自然人，因为组织不能抽奖
+                        "user__name", flat=True))  # TODO: 需要distinct()吗？
                 normal_prizes_and_winners[-1]["winners"] = winner_names
             this_pool_info["results"] = {}
             this_pool_info["results"]["big_prize_results"] = big_prizes_and_winners
@@ -285,6 +287,8 @@ def select_random_prize(poolitems: QuerySet[PoolItem], select_num: Optional[int]
     num_all_items = 0  # 奖品的总数
     item_dict = {}  # int: PoolItem，实现把一个自然数区间映射到一种奖品
     for item in poolitems:
+        if item.origin_num - item.consumed_num <= 0:
+            continue
         item_dict[num_all_items] = item
         num_all_items += item.origin_num - item.consumed_num
 
@@ -330,7 +334,7 @@ def buy_random_pool(user: User, pool_id: str) -> Tuple[MESSAGECONTEXT, int, int]
     if my_entry_time >= pool.entry_time:
         return wrong('您兑换这款盲盒的次数已达上限!'), -1, 2
     total_entry_time = PoolRecord.objects.filter(pool=pool).count()
-    capacity = PoolItem.objects.filter(pool=pool).aggregate(Sum("origin_num"))["origin_num__sum"]
+    capacity = pool.get_capacity()
     if capacity <= total_entry_time:
         return wrong('盲盒已售罄!'), -1, 2
     
@@ -343,11 +347,11 @@ def buy_random_pool(user: User, pool_id: str) -> Tuple[MESSAGECONTEXT, int, int]
             assert my_entry_time < pool.entry_time, '您兑换这款盲盒的次数已达上限!'
             assert user.YQpoint >= pool.ticket_price, '您的元气值不足，兑换失败!'
             total_entry_time = PoolRecord.objects.filter(pool=pool).count()
-            capacity = PoolItem.objects.filter(pool=pool).aggregate(Sum("origin_num"))["origin_num__sum"]
+            capacity = pool.get_capacity()
             assert capacity > total_entry_time, '盲盒已售罄!'
 
             # 开盒，修改poolitem记录，创建poolrecord记录
-            items = pool.poolitem_set.select_for_update().all()
+            items = pool.items.select_for_update().all()
             real_item_id = select_random_prize(items, 1)[0]
             modify_item: PoolItem = PoolItem.objects.select_for_update().get(id=real_item_id)
             modify_item.consumed_num += 1
@@ -371,10 +375,11 @@ def buy_random_pool(user: User, pool_id: str) -> Tuple[MESSAGECONTEXT, int, int]
                 source=f'盲盒奖池：{pool.title}',
                 source_type=YQPointRecord.SourceType.CONSUMPTION
             )
+            if modify_item.prize is None:
+                return succeed('兑换盲盒成功!'), -1, 1
+            return succeed('兑换盲盒成功!'), modify_item.prize.id, int(modify_item.is_empty)
     except AssertionError as e:
-        return wrong(str(e)), -1, 2     
-
-    return succeed('兑换盲盒成功!'), modify_item.prize.id, int(modify_item.is_empty)
+        return wrong(str(e)), -1, 2
 
 
 def run_lottery(pool_id: int):
@@ -398,7 +403,7 @@ def run_lottery(pool_id: int):
         # 抽奖
         record_ids_and_participant_ids = list(
             related_records.values("id", "user__id"))
-        items = pool.poolitem_set.all()
+        items = pool.items.all()
         user2prize_names = {d["user__id"]: []
                             for d in record_ids_and_participant_ids}  # 便于发通知
         winner_record_id2item_id = {}  # poolrecord.id: poolitem.id，便于更新poolrecord

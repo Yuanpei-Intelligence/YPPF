@@ -269,6 +269,11 @@
                                                       background-color:#FFD700; color:#FFFFFF; margin:2px;
                                                       margin-top:0px; margin-bottom:4px;">待归还
                               </span>
+                              {% elif record.type == "returned" %}
+                              <span class="badge badge-pill" style="border-radius:4px; 
+                                                      background-color:#0093FF; color:#FFFFFF; margin:2px;
+                                                      margin-top:0px; margin-bottom:4px;">已归还
+                              </span>    
                               {% else %}
                               <span class="badge badge-pill" style="border-radius:4px; 
                                                       background-color:#E3170D; color:#FFFFFF; margin:2px;
@@ -362,7 +367,7 @@
                                 </svg>
                               </div>
                               <div>
-                                <h4 class="fw-normal text-blue">{{book.title}}</h4>
+                                <h4 class="fw-normal text-blue text-end">{{book.title}}</h4>
                                 <p class="subtitle text-sm text-muted text-end mb-0">{{book.author}}</p>
                               </div>
                             </div>

@@ -40,7 +40,7 @@ from django.db import models, transaction
 from django_mysql.models import ListCharField
 from generic.models import User
 from generic.models import invalid_for_frontend, necessary_for_frontend
-from django.db.models import Q, QuerySet
+from django.db.models import Q, Sum, QuerySet
 from django.db.models.signals import post_save
 from datetime import datetime, timedelta
 from app.constants import *
@@ -1975,6 +1975,14 @@ class Pool(models.Model):
     @invalid_for_frontend
     def __str__(self):
         return self.title
+
+    @property
+    def items(self) -> 'models.manager.RelatedManager[PoolItem]':
+        return self.poolitem_set
+
+    @invalid_for_frontend
+    def get_capacity(self):
+        return self.items.aggregate(Sum('origin_num'))['origin_num__sum'] or 0
 
 
 class PoolItem(models.Model):

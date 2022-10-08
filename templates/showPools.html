@@ -230,7 +230,7 @@
                                                      alt="{{ item.prize__name }}">
                                                 <p class="card-text mt-2">
                                                     <a href="#" data-toggle="modal" data-target="#prize-{{ item.id }}"
-                                                       onclick="ModuleTrackFunction(3, '奖品详情: {{item.prize__name}}')>"
+                                                       onclick="ModuleTrackFunction(3, '奖品详情: {{item.prize__name}}')"
                                                         <span class="text-info px-1"><i class="fa fa-solid fa-info-circle"></i> 详情</span>
                                                     </a>
                                                 </p>
@@ -421,7 +421,7 @@
                                                 <h6 class="text-center">
                                                     {{ item.prize__name }}
                                                 </h6>
-                                                <span class="d-block text-center">获取概率 {% widthratio item.origin_num pool.capacity 100 %}%</span>
+                                                <span class="d-block text-center">获取概率 {{ item.probability }}%</span>
                                             </p>
                                             <img src="/media/{{ item.prize__image }}"
                                                  class="rounded w-100"
@@ -534,7 +534,7 @@
                                         <i class="fa fa-fw fa-hourglass-end"></i> 剩余数量：{{ item.remain_num }} 个
                                     </p>
                                     <p>
-                                        <i class="fas fa-fw fa-ticket-alt"></i> 剩余兑换次数：{{ item.my_exchange_time }} / {{ item.exchange_limit }} 次
+                                        <i class="fas fa-fw fa-ticket-alt"></i> 已兑换次数：{{ item.my_exchange_time }} / {{ item.exchange_limit }} 次
                                     </p>
                                 {% endif %}
                                 {% if pool.type == "抽奖" %}
@@ -544,7 +544,7 @@
                                 {% endif %}
                                 {% if pool.type == "盲盒" and item.is_big_prize %}
                                     <p>
-                                        <i class="far fa-fw fa-star"></i> 获取概率：{% widthratio item.origin_num pool.capacity 100 %}%
+                                        <i class="far fa-fw fa-star"></i> 获取概率：{{ item.probability }}%
                                     </p>
                                 {% endif %}
                             </div>
@@ -568,7 +568,7 @@
                             </button>
                         </div>
                         <div class="modal-body">
-                            <div class="w-75">
+                            <div class="mx-5">
                                 <img src="/media/{{ item.prize__image }}"
                                      class="w-100 rounded mb-3"
                                      style="object-fit:cover;aspect-ratio:4/3;margin:auto"
@@ -596,7 +596,7 @@
                                         <i class="fa fa-fw fa-hourglass-end"></i> 剩余数量：{{ item.remain_num }} 个
                                     </p>
                                     <p>
-                                        <i class="fas fa-fw fa-ticket-alt"></i> 剩余兑换次数：{{ item.my_exchange_time }} / {{ item.exchange_limit }} 次
+                                        <i class="fas fa-fw fa-ticket-alt"></i> 已兑换次数：{{ item.my_exchange_time }} / {{ item.exchange_limit }} 次
                                     </p>
                                 {% endif %}
                                 {% if pool.type == "抽奖" %}
@@ -606,7 +606,7 @@
                                 {% endif %}
                                 {% if pool.type == "盲盒" and item.is_big_prize %}
                                     <p>
-                                        <i class="far fa-fw fa-star"></i> 获取概率：{% widthratio item.origin_num pool.capacity 100 %}%
+                                        <i class="far fa-fw fa-star"></i> 获取概率：{{ item.probability }}%
                                     </p>
                                 {% endif %}
                             </div>
@@ -658,7 +658,7 @@
                                         <i class="fa fa-fw fa-hourglass-end"></i> 剩余数量：{{ item.remain_num }} 个
                                     </p>
                                     <p>
-                                        <i class="fas fa-fw fa-ticket-alt"></i> 剩余兑换次数：{{ item.my_exchange_time }} / {{ item.exchange_limit }} 次
+                                        <i class="fas fa-fw fa-ticket-alt"></i> 已兑换次数：{{ item.my_exchange_time }} / {{ item.exchange_limit }} 次
                                     </p>
                                 {% endif %}
                                 {% if pool.type == "抽奖" %}
@@ -668,7 +668,7 @@
                                 {% endif %}
                                 {% if pool.type == "盲盒" and item.is_big_prize %}
                                     <p>
-                                        <i class="far fa-fw fa-star"></i> 获取概率：{% widthratio item.origin_num pool.capacity 100 %}%
+                                        <i class="far fa-fw fa-star"></i> 获取概率：{{ item.probability }}%
                                     </p>
                                 {% endif %}
                             </div>

@@ -122,8 +122,8 @@ def get_readers_by_user(user: User) -> QuerySet[Reader]:
     valid, user_type, _ = check_user_type(user)
     if user_type != UTYPE_PER:  # 只允许个人账户登录
         raise AssertionError('您目前使用非个人账号登录，如要查询借阅记录，请使用个人账号。')
-    readers = Reader.objects.filter(
-        student_id=user.username).values()  # 获取与当前user的学号对应的所有readers
+    # 获取与当前user的学号对应的所有readers
+    readers = Reader.objects.filter(student_id=user.username)
     if len(readers) == 0:
         raise AssertionError('您的学号没有关联任何书房账号，如有借书需要，请前往书房开通账号。')
     return readers
@@ -236,7 +236,7 @@ def get_my_records(reader_id: str, returned: Optional[bool] = None,
             if  record['return_time'] > record['due_time']:
                 record['type'] = 'overtime'     # 逾期记录
             else:
-                record['type'] = 'normal'       # 正常记录
+                record['type'] = 'returned'       # 正常记录
     else:
         now_time = datetime.now()
         for record in records:
