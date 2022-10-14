@@ -1301,7 +1301,8 @@ def review(request: HttpRequest):
                     longterm_appoint.save()
                     scheduler_func.set_appoint_wechat(
                         longterm_appoint.appoint, 'longterm_approved',
-                        students_id=[longterm_appoint.get_applicant_id()])
+                        students_id=[longterm_appoint.get_applicant_id()],
+                        id=f'{longterm_appoint.pk}_longterm_approved')
                 succeed(
                     f"已通过对{longterm_appoint.appoint.Room}的长期预约!", render_context)
             except:
@@ -1317,7 +1318,8 @@ def review(request: HttpRequest):
                     longterm_appoint.save()
                     scheduler_func.set_appoint_wechat(
                         longterm_appoint.appoint, 'longterm_rejected', reason,
-                        students_id=[longterm_appoint.get_applicant_id()])
+                        students_id=[longterm_appoint.get_applicant_id()],
+                        id=f'{longterm_appoint.pk}_longterm_rejected')
             except:
                 wrong(f"对于该条长期预约的拒绝操作失败!", render_context)
 

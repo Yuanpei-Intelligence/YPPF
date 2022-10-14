@@ -138,6 +138,8 @@ def set_appoint_wechat(appoint: Appoint, message_type: str, *extra_infos,
         job_time = datetime.now() + timedelta(seconds=5)
     # 添加定时任务的关键字参数
     add_job_kws = dict(replace_existing=True, next_run_time=job_time)
+    if id is None:
+        id = f'{appoint.pk}_{message_type}'
     if id is not None:
         add_job_kws.update(id=id)
     scheduler.add_job(utils.send_wechat_message,
