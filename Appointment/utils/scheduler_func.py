@@ -133,11 +133,11 @@ def set_appoint_wechat(appoint: Appoint, message_type: str, *extra_infos,
     if url is not None: wechat_kws.update(url=url)
     if admin is not None: wechat_kws.update(is_admin=admin)
 
-    # 添加定时任务的关键字参数
-    add_job_kws = dict(replace_existing=True, next_run_time=job_time)
     # 默认立刻发送
     if job_time is None:
         job_time = datetime.now() + timedelta(seconds=5)
+    # 添加定时任务的关键字参数
+    add_job_kws = dict(replace_existing=True, next_run_time=job_time)
     if id is not None:
         add_job_kws.update(id=id)
     scheduler.add_job(utils.send_wechat_message,
