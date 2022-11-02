@@ -15,7 +15,6 @@ __all__ = [
     'STATE_DEBUG', 'STATE_INFO', 'STATE_WARNING', 'STATE_ERROR',
     'operation_writer',
     'except_captured',
-    'record_traceback',
 ]
 
 # 状态常量
@@ -172,29 +171,3 @@ def except_captured(return_value=None, except_type=Exception,
         return _wrapped_view
 
     return actual_decorator
-
-
-def record_traceback(request, e):
-    '''尽量避免使用本函数'''
-    d = {}
-    d["time"] = datetime.now().strftime("%Y/%m/%d-%H%M")
-    d["username"] = request.user.username
-    d["request_path"] = request.path
-    if request.GET:
-        d["GET_Param"] = request.GET
-    if request.POST:
-        d["POST_Param"] = request.POST
-    d["traceback"] = traceback.format_exc()
-
-    hash_value = hashlib.sha1(json.dumps(d).encode()).digest().hex()
-    __log_dir = os.path.join(__log_detailed_path, request.user.username)
-    __log_path = os.path.join(__log_dir, hash_value + ".json")
-    os.makedirs(__log_dir, exist_ok=True)
-    with open(__log_path, "w") as f:
-        json.dump(d, f)
-
-    if DEBUG_IDS:
-        from app.wechat_send import send_wechat
-        message = f"错误信息：{repr(e)}\n + 记录路径：{__log_path}\n"
-        message = f'YPPF {settings.MY_ENV} 记录到错误详情\n{message}'
-        send_wechat(DEBUG_IDS, message)
