@@ -44,11 +44,14 @@ local_json*.json
 weather*.json
 migrations/
 test_data/
-comment/
-course/
-avatar/
-wallpaper/
-activity/
+# Media #
+media/
+# comment/
+# course/
+# avatar/
+# wallpaper/
+# activity/
+# prize/
 logstore/
 * old.*
 *_old.*

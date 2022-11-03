@@ -1,8 +1,7 @@
 {% extends "base.html" %}
 
-
 {% block mainpage %}
-
+<link rel="stylesheet" href="https://cdn.staticfile.org/font-awesome/4.7.0/css/font-awesome.css">
 
     <!--  BEGIN CONTENT AREA  -->
     <div id="content" class="main-content">
@@ -47,19 +46,8 @@
                 <div class="col-12 layout-top-spacing">
                     <div class="bio layout-spacing ">
                         <div class="widget-content widget-content-area">
-                            <h3>既存交易</h3>
-                            <!--
-                                    <ul class="nav nav-tabs nav-tabs-solid nav-justified">
-                                        <li class="nav-item">
-                                            <a class="nav-link " onclick="window.location='admin-index.html'"
-                                                data-toggle="tab">未开始预约</a>
-                                        </li>
-                                        <li class="nav-item">
-                                            <a class="nav-link active" href="#solid-justified-tab2"
-                                                data-toggle="tab">过去一周</a>
-                                        </li>
-                                    </ul>
-                                    -->
+                            <h3>元气值记录</h3>
+
                             <ul id="myTab" class="nav nav-tabs nav-tabs-solid nav-justified">
                                 
                                 <li class="nav-item">
@@ -73,19 +61,11 @@
                                         <h5>收入</h5>
                                     </a>
                                 </li>
-                            
-                                {% if user_type != "Person" %}
-                                <li class="nav-item">
-                                    <a class="nav-link" href="#unissued" data-toggle="tab">
-                                        <h5>待处理</h5>
-                                    </a>
-                                </li>
-                                {% endif %}
                             </ul>
 
                             <div id="myTabContent" class="tab-content">
                                 <div class="tab-pane fade" id="received">
-                                    {% if receive_list|length == 0 %}
+                                    {% if received_set is None %}
                                     <br />
                                     <p></p>
                                     <p style="text-align: center;">没有收入记录.</p>
@@ -94,7 +74,7 @@
 
                                     <div class="bio-skill-box">
                                         <div class="row">
-                                            {% for record in receive_list %}
+                                            {% for record in received_set %}
                                             <div class="col-12 col-xl-6 col-lg-12 mb-xl-4 mb-4 ">
 
                                                 <div class=" b-skills">
@@ -103,43 +83,25 @@
                                                     <div class="d-flex justify-content-between">
                                                         <div>
                                                             <h5>
-                                                                {{record.obj_direct}} <a
-                                                                    href='{{record.obj_url}}'><u>{{record.obj}}</u></a>
+                                                                <i class="fa fa-bullhorn"></i> {{record.source}}
                                                             </h5>
                                                         </div>
                                                         <div>
-                                                            <h5>
-                                                                <i class="	fa fa-rmb"></i>{{record.amount}}
-                                                            </h5>
-                                                        </div>
-                                                    </div>
-                                                    <div class="d-flex justify-content-between">
-                                                        <div>
-                                                            <p style="color: rgb(66, 67, 68);"><i
-                                                                    class="fa fa-calendar-o"></i>
-                                                                {{record.start_time}}发起</p>
-                                                        </div>
-                                                        <div>
-                                                            <p style="color: rgb(66, 67, 68);">
-                                                                {{record.finish_time}}处理</p>
-                                                        </div>
-
-                                                    </div>
-                                                    <div class="d-flex justify-content-between">
-                                                        <div>
-                                                            <p style="color: rgb(66, 67, 68);"><i
-                                                                    class="fa fa-envelope-o"></i>
-                                                                {{record.message}}</p>
-                                                        </div>
-                                                        <div>
-                                                            <p style="color: rgb(66, 67, 68);
+                                                            <h5 style="color: rgb(27, 85, 226);
                                                                     margin-left: 8px;
                                                                     display:block;
                                                                     white-space:nowrap; 
                                                                     overflow:hidden; ">
-                                                                {{record.status}}
-                                                            </p>
+                                                                元气值 +{{record.delta}}
+                                                            </h5>
                                                         </div>
+                                                    </div>
+                                                    <div class="d-flex justify-content-between">
+                                                        <div>
+                                                            <p style="color: rgb(66, 67, 68);"><i
+                                                                class="fa fa-calendar-o"></i>
+                                                                {{record.time}}</p>
+                                                         </div>
                                                     </div>
                                                 </div>
                                             </div>
@@ -149,7 +111,7 @@
                                     {% endif %}
                                 </div>
                                 <div class="tab-pane fade in active show" id="send">
-                                    {% if send_list|length == 0 %}
+                                    {% if send_set is None %}
                                     <br />
                                     <p></p>
                                     <p style="text-align: center;">没有支出记录.</p>
@@ -158,143 +120,41 @@
 
                                     <div class="bio-skill-box">
                                         <div class="row">
-                                            {% for record in send_list %}
+                                            {% for record in send_set %}
                                             <div class="col-12 col-xl-6 col-lg-12 mb-xl-4 mb-4 ">
 
                                                 <div class=" b-skills">
-
-
                                                     <div class="d-flex justify-content-between">
                                                         <div>
                                                             <h5>
-                                                                {{record.obj_direct}} <a
-                                                                    href='{{record.obj_url}}'><u>{{record.obj}}</u></a>
+                                                                <i class="	fa fa-bullhorn"></i> {{record.source}}
                                                             </h5>
                                                         </div>
                                                         <div>
-                                                            <h5>
-                                                                <i class="	fa fa-rmb"></i>{{record.amount}}
-                                                            </h5>
-                                                        </div>
-                                                    </div>
-                                                    <div class="d-flex justify-content-between">
-                                                        <div>
-                                                            <p style="color: rgb(66, 67, 68);"><i
-                                                                    class="fa fa-calendar-o"></i>
-                                                                {{record.start_time}}发起</p>
-                                                        </div>
-                                                        <div>
-                                                            <p style="color: rgb(66, 67, 68);">
-                                                                {{record.finish_time}}处理</p>
-                                                        </div>
-
-                                                    </div>
-                                                    <div class="d-flex justify-content-between">
-                                                        <div>
-                                                            <p style="color: rgb(66, 67, 68);"><i
-                                                                    class="fa fa-envelope-o"></i>
-                                                                {{record.message}}</p>
-                                                        </div>
-                                                        <div>
-                                                            <p style="color: rgb(66, 67, 68);
+                                                            <h5 class="text-success" style="
                                                                     margin-left: 8px;
                                                                     display:block;
                                                                     white-space:nowrap; 
                                                                     overflow:hidden; ">
-                                                                {{record.status}}
-                                                            </p>
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                            {% endfor %}
-                                        </div>
-                                    </div>
-                                    {% endif %}
-                                </div>
-                                {% if user_type != "Person" %}
-                                <div class="tab-pane fade " id="unissued">
-                                    {% if to_list|length == 0 %}
-                                    <br />
-                                    <p></p>
-                                    <p style="text-align: center;">没有待处理的转账记录.</p>
-                                    <br />
-                                    {% else %}
-                                    <div class="bio-skill-box">
-                                        <div class="row">
-                                        {% for record in to_list %}
-                                            <div class="col-12 col-xl-6 col-lg-12 mb-xl-4 mb-4 ">
-                                                <div class=" b-skills">
-                                                    <div class="d-flex justify-content-between">
-                                                        <div>
-                                                            <h5>
-                                                                {{record.obj_direct}} <a
-                                                                    href='{{record.obj_url}}'><u>{{record.obj}}</u></a>
-                                                            </h5>
-                                                        </div>
-                                                        <div>
-                                                            <h5>
-                                                                <i class="	fa fa-rmb"></i>
-                                                                {{record.amount}}
+                                                                元气值 {{record.delta}} 
                                                             </h5>
                                                         </div>
                                                     </div>
                                                     <div class="d-flex justify-content-between">
                                                         <div>
                                                             <p style="color: rgb(66, 67, 68);"><i
-                                                                    class="fa fa-calendar-o"></i>
-                                                                {{record.start_time}}</p>
-                                                        </div>
-                                                        <div>
-                                                            <p style="color: rgb(66, 67, 68);">{{record.status}}
-                                                            </p>
-                                                        </div>
+                                                                class="fa fa-calendar-o"></i>
+                                                                {{record.time}}</p>
+                                                         </div>
                                                     </div>
-                                                    {% if record.obj_direct == 'From' %}
-                                                    <div class="d-flex justify-content-between">
-                                                        <div>
-                                                            <p style="color: rgb(66, 67, 68);"><i
-                                                                    class="fa fa-envelope-o"></i>
-                                                                {{record.message}}</p>
-                                                        </div>
-                                                        <form method="POST">
-                                                            <div style="margin-left: 8px; ">
-                                                                <div class="btn-group btn-group-sm">
-                                                                    <button type="button"
-                                                                        class="btn btn-primary dropdown-toggle dropdown-toggle-split"
-                                                                        data-toggle="dropdown" style="display:block;
-                                                                    white-space:nowrap; 
-                                                                    overflow:hidden; ">
-                                                                        <span class="">操作</span>
-                                                                    </button>
-                                                                    <div class="dropdown-menu">
-                                                                        <button class="dropdown-item" type="submit"
-                                                                            name='post_button'
-                                                                            value="{{record.id}}+accept"
-                                                                            onclick="return confirm('确定接收来自{{record.obj}}的转账?')">接收</button>
-                                                                        <button class="dropdown-item" type="submit"
-                                                                            name='post_button'
-                                                                            value="{{record.id}}+reject"
-                                                                            onclick="return confirm('确定拒绝来自{{record.obj}}的转账?')">拒绝</button>
-                                                                    </div>
-                                                                </div>
-                                                            </div>
-                                                        </form>
-                                                    </div>
-                                                    {% else %}
-                                                    <p style="color: rgb(66, 67, 68);"><i
-                                                            class="fa fa-envelope-o"></i>
-                                                        {{record.message}}</p>
-                                                    {% endif %}
-                                                </div>
-                                            </div>
-                                            {% endfor %}
-                                        </div>
-                                    </div>
 
+                                                </div>
+                                            </div>
+                                            {% endfor %}
+                                        </div>
+                                    </div>
                                     {% endif %}
                                 </div>
-                                {% endif %}
                             </div>
                         </div>
                     </div>

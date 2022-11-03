@@ -3,7 +3,7 @@
 <html lang="zh-CN">
     <head>
         <meta charset="utf-8">
-        <title>Underground Appointment</title>
+        <title>发起预约 | 元培地下空间</title>
         <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=0">
         <!-- Favicons -->
         <link href="{% static 'Appointment/assets/img/yp_favicon.png' %}" rel="icon">
@@ -172,6 +172,17 @@
                                                         </div>
                                                     </div>
                                                 {% endif %}
+                                                {% if has_interview_permission %}
+                                                    <div class="col-md-12 col-sm-12 ">
+                                                        <div class="form-group d-flex align-items-center">
+                                                            <input type="checkbox" name="interview" id="interview" value="yes" />
+                                                            <label for="interview" class="my-0 ml-1" style="font-size:14px;">用于面试</label>
+                                                            <i class="fas fa-info-circle" data-toggle="tooltip" 
+                                                                title="勾选本条目意味着您承诺本预约用于面试用途，允许单人使用。若发现以此用作其他用途，元培学院将永久回收您的面试预约权利。由于学院面试人数较多，房间紧张，每人同时不得拥有超过{{interview_max_count}}条面试预约，敬请谅解。祝您面试顺利！">
+                                                            </i>
+                                                        </div>
+                                                    </div>
+                                                {% endif %}
                                             </div>
                                             {% if has_longterm_permission %}
                                                 <div class="tab-content pt-0">
@@ -278,7 +289,7 @@
                                     <div class="copyright-menu">
                                         <ul class="policy-menu">
                                             <li>
-                                                <a href="https://yuanpei.pku.edu.cn">智慧校园开发组 元培学院</a>
+                                                <a href="https://github.com/Yuanpei-Intelligence/YPPF">智慧校园开发组 元培学院</a>
                                             </li>
                                         </ul>
                                         <ul class="policy-menu">

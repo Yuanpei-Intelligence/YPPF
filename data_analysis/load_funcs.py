@@ -929,7 +929,7 @@ def load_major(filepath: str, output_func: Callable=None, html=False):
     majors = [line for i, line in enumerate(lines) if (line != '') and (i > 0 and lines[i-1] != '')]
     for major in majors:
         AcademicTag.objects.get_or_create(
-            atype=AcademicTag.AcademicTagType.MAJOR,
+            atype=AcademicTag.Type.MAJOR,
             tag_content=major,
         )
     file.close()
@@ -950,7 +950,7 @@ def load_minor(filepath: str, output_func: Callable=None, html=False):
     minors = [line for i, line in enumerate(lines) if (line != '') and (i > 0 and lines[i-1] != '')]
     for minor in minors:
         AcademicTag.objects.get_or_create(
-            atype=AcademicTag.AcademicTagType.MINOR,
+            atype=AcademicTag.Type.MINOR,
             tag_content=minor,
         )
     file.close()
@@ -971,7 +971,7 @@ def load_double_degree(filepath: str, output_func: Callable=None, html=False):
     majors = [line for i, line in enumerate(lines) if (line != '') and (i > 0 and lines[i-1] != '')]
     for major in majors:
         AcademicTag.objects.get_or_create(
-            atype=AcademicTag.AcademicTagType.DOUBLE_DEGREE,
+            atype=AcademicTag.Type.DOUBLE_DEGREE,
             tag_content=major,
         )
     file.close()
@@ -992,7 +992,7 @@ def load_project(filepath: str, output_func: Callable=None, html=False):
     projects = [line for line in lines if line != '']
     for project in projects:
         AcademicTag.objects.get_or_create(
-            atype=AcademicTag.AcademicTagType.PROJECT,
+            atype=AcademicTag.Type.PROJECT,
             tag_content=project,
         )
     file.close()

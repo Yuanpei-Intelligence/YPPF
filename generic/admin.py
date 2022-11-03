@@ -1,18 +1,73 @@
 from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin
+from django.contrib.auth.models import Permission
+from django.contrib.contenttypes.models import ContentType
 from django.db.models import QuerySet
 from generic.models import *
 from generic.models import to_acronym
 from boottest.admin_utils import *
 
 
+# 后台显示
+admin.site.site_title = '元培智慧书院管理后台'
+admin.site.site_header = '元培智慧书院 - 管理后台'
+
+
+# Django自带模型
+@admin.register(ContentType)
+class ContentTypeAdmin(admin.ModelAdmin):
+    list_display = ['app_label', 'model', 'name']
+    list_filter = ['app_label']
+    def _check_invalid(self, request, obj: ContentType = None):
+        if request.user.is_superuser and obj is not None:
+            return obj.model_class() is None
+        return False
+
+    has_add_permission = _check_invalid
+    has_change_permission = _check_invalid
+    has_delete_permission = _check_invalid
+
+
+@admin.register(Permission)
+class PermissionAdmin(admin.ModelAdmin):
+    list_display = ['name', 'codename']
+    list_filter = ['content_type__app_label']
+
+    def _check_failed(self, request, obj=None):
+        return False
+
+    has_add_permission = _check_failed
+    has_change_permission = _check_failed
+    def has_delete_permission(self, request, obj: Permission = None):
+        if request.user.is_superuser and obj is not None:
+            return ContentTypeAdmin._check_invalid(None, request, obj.content_type)
+        return False
+    
+    actions = []
+    @as_action('更新权限名称', actions, update=True)
+    def update_name(self, request, queryset: QuerySet[Permission]):
+        for perm in queryset:
+            content_type: ContentType = perm.content_type
+            if content_type.model_class() is None:
+                continue
+            try:
+                prefix, perm_name, model = perm.name.split(maxsplit=2)
+            except:
+                continue
+            model = content_type.name
+            perm.name = ' '.join([prefix, perm_name, model])
+            perm.save(update_fields=['name'])
+        return self.message_user(request, '操作成功')
+
+
+# 通用模型后台
 @admin.register(User)
 class MyUserAdmin(UserAdmin):
     list_display = [
         'id', 'username', 'name',
         'credit', 'utype', 'is_staff', 'is_superuser',
     ]
-    list_editable = ['credit']
+    # list_editable = ['credit']
     search_fields = ['id', 'username', 'name', 'acronym']
     @classmethod
     def suggest_search_fields(cls, user_field: str = 'user'):
@@ -72,6 +127,22 @@ class MyUserAdmin(UserAdmin):
     def renew_pinyin(self, request, queryset):
         self._update_acronym(queryset)
         return self.message_user(request, '更新名称缩写成功!')
+
+
+    @as_action('重置信用分', actions, atomic=True)
+    def refresh_credit(self, request, queryset):
+        User.objects.bulk_recover_credit(queryset, User.MAX_CREDIT, '用户：重置')
+        return self.message_user(request, '操作成功!')
+
+    @as_action('恢复信用分 1分', actions, atomic=True)
+    def recover_credit(self, request, queryset):
+        User.objects.bulk_recover_credit(queryset, 1, '用户：恢复')
+        return self.message_user(request, '操作成功!')
+
+    @as_action('全体恢复信用分 1分', actions, atomic=True)
+    def recover(self, request, queryset):
+        User.objects.bulk_recover_credit(User.objects.all(), 1, '用户：全体恢复')
+        return self.message_user(request, '操作成功!')
 
 
 @admin.register(CreditRecord)

@@ -21,6 +21,7 @@ from app.models import (
     Notification,
     ActivityPhoto,
 )
+from generic.models import User, YQPointRecord
 from app.utils import get_person_or_org, if_image
 from app.notification_utils import(
     notification_create,
@@ -28,11 +29,13 @@ from app.notification_utils import(
     notification_status_change,
 )
 from app.wechat_send import WechatApp, WechatMessageLevel
+
 import io
 import os
 import base64
 import qrcode
 
+from math import ceil
 from random import sample
 from datetime import datetime, timedelta
 from boottest import local_dict
@@ -111,14 +114,14 @@ def changeActivityStatus(aid, cur_status, to_status):
             #     )
             #     notification_status_change(notification, Notification.Status.DONE)
 
-        # 结束，计算积分    
+        # 结束，计算元气值
         elif to_status == Activity.Status.END and activity.valid:
-            point = calcu_activity_bonus(activity)
+            point = calcu_activity_YQP(activity)
             participants = Participant.objects.filter(
-                activity_id=aid, status=Participant.AttendStatus.ATTENDED)
-            NaturalPerson.objects.filter(id__in=participants.values_list(
-                'person_id', flat=True)).update(
-                bonusPoint=F('bonusPoint') + point)
+                activity_id=aid,
+                status=Participant.AttendStatus.ATTENDED).values_list('person_id__person_id', flat=True)
+            participants = User.objects.filter(id__in=participants)
+            User.objects.bulk_increase_YQPoint(participants, point, "参加活动", YQPointRecord.SourceType.ACTIVITY)
 
         # 过早进行这个修改，将被写到activity待执行的保存中，导致失败后调用activity.save仍会调整状态
         activity.status = to_status
@@ -848,12 +851,13 @@ def accept_activity(request, activity):
                 run_date=activity.start - timedelta(minutes=15), args=[activity.id, "remind"], replace_existing=True)
 
     if activity.status == Activity.Status.END:
-        point = calcu_activity_bonus(activity)
+        point = calcu_activity_YQP(activity)
         participants = Participant.objects.filter(
             activity_id=activity,
             status=Participant.AttendStatus.ATTENDED
-        ).values_list("person_id", flat=True)
-        NaturalPerson.objects.filter(id__in=participants).update(bonusPoint=F("bonusPoint") + point)
+        ).values_list("person_id__person_id", flat=True)
+        participants = User.objects.filter(id__in=participants)
+        User.objects.bulk_increase_YQPoint(participants, point, "参加活动", YQPointRecord.SourceType.ACTIVITY)
 
     activity.save()
 
@@ -1048,33 +1052,25 @@ def withdraw_activity(request, activity):
     activity.save()
 
 
-def calcu_activity_bonus(activity):
-    hours = (activity.end - activity.start).seconds / 3600
-    try:
-        invalid_hour = float(local_dict["thresholds"]["activity_point_invalid_hour"])
-    except:
-        invalid_hour = 24.0
-    if hours > invalid_hour:
-        return 0.0
-    # 以标题筛选不记录积分的活动，包含筛选词时不记录积分
-    try:
-        invalid_letters = local_dict["thresholds"]["activity_point_invalid_titles"]
-        assert isinstance(invalid_letters, list)
-        for invalid_letter in invalid_letters:
-            if invalid_letter in activity.title:
-                return 0.0
-    except:
-        pass
+def calcu_activity_YQP(activity: Activity) -> int:
+    """计算参与活动所能获得的元气值，活动结束时调用
+    :param activity: 活动对象
+    :type activity: Activity
+    :return: 参与活动所获得的元气值
+    :return type: int
+    """
 
-    try:
-        point_rate = float(local_dict["thresholds"]["activity_point_per_hour"])
-    except:
-        point_rate = 1.0
-    point = point_rate * hours
-    # 单次活动记录的积分上限，默认6
-    try:
-        max_point = float(local_dict["thresholds"]["activity_point"])
-    except:
-        max_point = 6.0
-    return min(point, max_point)
+    hours = (activity.end - activity.start).seconds / 3600
+    if hours > YQP_INVALID_HOUR:
+        return 0
+    # 以标题筛选不记录元气值的活动，包含筛选词时不记录积分
+    for invalid_letter in YQP_INVALID_TITLES:
+        if invalid_letter in activity.title:
+            return 0
+
+    point = ceil(YQP_PER_HOUR * hours)
+    # 单次活动记录的积分上限，默认无上限
+    if YQP_ACTIVITY_MAX is not None:
+        point = min(YQP_ACTIVITY_MAX, point)
+    return point
 

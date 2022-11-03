@@ -18,7 +18,7 @@ from django.db import models
 from django.contrib.auth.models import AbstractUser
 from django.contrib.auth.models import UserManager as _UserManager
 from django.db import transaction
-from django.db.models import QuerySet
+from django.db.models import QuerySet, F
 
 __all__ = [
     'User',
@@ -115,6 +115,42 @@ class UserManager(_UserManager):
         return new_credit - old_credit
 
 
+    @transaction.atomic
+    def bulk_recover_credit(self, users: QuerySet['User'],
+                            delta: int, source: str):
+        '''
+        批量恢复信用分并记录，原子化操作
+
+        :param users: 修改的用户集合，**不修改**内部对象
+        :type users: QuerySet[User]
+        :param delta: 希望的变化量，至多恢复到MAX_CREDIT，超出不扣分
+        :type delta: int
+        :param source: 修改来源，可以是“地下室”等应用名，尽量简单
+        :type source: str
+        '''
+        assert delta > 0, '恢复的信用分必须为正数'
+        records = []
+        users = users.select_for_update().all()
+        for user in users:
+            old_value = user.credit
+            if user.credit > User.MAX_CREDIT:
+                user.credit = old_value
+            else:
+                user.credit = min(old_value + delta, User.MAX_CREDIT)
+            overflow = (user.credit != old_value + delta)
+            records.append(
+                CreditRecord(
+                    user=user,
+                    old_credit=old_value,
+                    new_credit=user.credit,
+                    delta=delta,
+                    overflow=overflow,
+                    source=source,
+                ))
+        CreditRecord.objects.bulk_create(records)
+        self.select_for_update().bulk_update(users, ['credit'])
+
+
     def _record_credit_modify(self, user: 'User', delta: int, source: str,
                               old_value: int = None, new_value: int = None):
         if old_value is None:
@@ -141,13 +177,43 @@ class UserManager(_UserManager):
         update_user = self.get_user(user, update=True)
         update_user.YQpoint += delta
         assert update_user.YQpoint >= 0, '元气值不足'
-        self._record_yqpoint_change(update_user, delta, source, source_type)
-        update_user.save(update_fields=['credit'])
+        self._record_YQpoint_change(update_user, delta, source, source_type)
+        update_user.save(update_fields=['YQpoint'])
         if isinstance(user, User):
-            user.credit = update_user.credit
+            user.YQpoint = update_user.YQpoint
 
 
-    def _record_yqpoint_change(self, user: 'User', delta: int,
+    @transaction.atomic
+    def bulk_increase_YQPoint(self, users: QuerySet['User'], delta: int,
+                              source: str, source_type: 'YQPointRecord.SourceType'):
+        '''
+        批量增加元气值
+        :param users: 待更改User的QuerySet，不修改内部对象
+
+        :type users: QuerySet['User']
+        :param delta: 增加多少元气值
+        :type delta: int
+        :param source: 元气值来源的简短说明
+        :type source: str
+        :param source_type: 元气值来源类型
+        :type source_type: YQPointRecord.SourceType
+        '''
+        assert delta >= 0, '元气值增量为负数'
+        users = users.select_for_update()
+        point_records = [
+            YQPointRecord(
+                user=user,
+                delta=delta,
+                source=source,
+                source_type=source_type,
+            ) for user in users
+        ]
+        YQPointRecord.objects.bulk_create(point_records)
+        if delta != 0:
+            users.update(YQpoint=F('YQpoint') + delta)
+
+
+    def _record_YQpoint_change(self, user: 'User', delta: int,
                                source: str, source_type: 'YQPointRecord.SourceType'):
         YQPointRecord.objects.create(
             user=user,

@@ -157,6 +157,8 @@ def append_query(url, *, _query: str='', **querys):
     - _query开头无需包含`?`或`&`
     - 基于字符串(`str`)拼接，URL不能包含段参数`#`
     '''
+    if not querys and not _query:
+        return url
     concat = '&' if '?' in url else '?'
     new_querys = []
     if _query:

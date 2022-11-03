@@ -1,0 +1,696 @@
+{% load static %}
+
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+  <meta charset="UTF-8">
+  <title>我的地下室年度回忆</title>
+  <link type="image/x-icon" href="{% static 'Appointment/assets/img/yp_favicon.png' %} " rel="icon">
+  <meta name="theme-color" content="#f00">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+  <meta name="viewport"
+    content="width=device-width, user-scalable=no, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0, minimal-ui">
+  <meta name="full-screen" content="yes">
+  <meta name="browsermode" content="application">
+  <meta name="x5-fullscreen" content="true">
+  <meta name="x5-page-mode" content="app">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="format-detection" content="telephone=no, email=no">
+  <link rel="stylesheet" href="{% static 'Appointment/assets/css/jquery.fullpage.css' %}">
+  <link rel="stylesheet" href="{% static 'Appointment/assets/css/summary2021_main.css' %}">
+</head>
+</head>
+
+<body>
+
+  <audio loop src="/static/Appointment/assets/风摇盛夏.mp3">不支持播放音乐</audio>
+
+  <div style="position: fixed; right: 2%; top: 2%; z-index: 100000;">
+    <button class="btn" style="border: none; background-color: transparent;" id="play-music">
+      <div id="playing" class="" style="display: none;">
+        <svg xmlns="http://www.w3.org/2000/svg" width="30" height="30" fill="currentColor" class="bi bi-music-note-beamed" viewBox="0 0 16 16">
+          <path d="M6 13c0 1.105-1.12 2-2.5 2S1 14.105 1 13c0-1.104 1.12-2 2.5-2s2.5.896 2.5 2zm9-2c0 1.105-1.12 2-2.5 2s-2.5-.895-2.5-2 1.12-2 2.5-2 2.5.895 2.5 2z"/>
+          <path fill-rule="evenodd" d="M14 11V2h1v9h-1zM6 3v10H5V3h1z"/>
+          <path d="M5 2.905a1 1 0 0 1 .9-.995l8-.8a1 1 0 0 1 1.1.995V3L5 4V2.905z"/>
+        </svg>
+      </div>
+      <div id="paused" class="">
+        <svg xmlns="http://www.w3.org/2000/svg" width="30" height="30" fill="currentColor" class="bi bi-volume-mute-fill" viewBox="0 0 16 16">
+          <path d="M6.717 3.55A.5.5 0 0 1 7 4v8a.5.5 0 0 1-.812.39L3.825 10.5H1.5A.5.5 0 0 1 1 10V6a.5.5 0 0 1 .5-.5h2.325l2.363-1.89a.5.5 0 0 1 .529-.06zm7.137 2.096a.5.5 0 0 1 0 .708L12.207 8l1.647 1.646a.5.5 0 0 1-.708.708L11.5 8.707l-1.646 1.647a.5.5 0 0 1-.708-.708L10.793 8 9.146 6.354a.5.5 0 1 1 .708-.708L11.5 7.293l1.646-1.647a.5.5 0 0 1 .708 0z"/>
+        </svg>
+      </div>
+    </button>
+    <script>
+      var button = document.querySelector("button#play-music");
+      button.addEventListener("click", () => {
+        const audio = document.querySelector("audio");
+        if (audio.paused) {
+          audio.play();
+          button.querySelector("div#playing").style.setProperty("display", "block")
+          button.querySelector("div#paused").style.setProperty("display", "none")
+        } else {
+          audio.pause();
+          button.querySelector("div#playing").style.setProperty("display", "none")
+          button.querySelector("div#paused").style.setProperty("display", "block")
+        }
+      })
+    </script>
+  </div>
+
+  <div id="app">
+  
+
+
+    <section class="section page page-1 page-home">
+      <div class="bg-back"></div>
+      <div class="title1"></div>
+      <div class="title_top"></div>
+      <div class="title_bottom"></div>
+      <div class="title_right"></div>
+      <div class="pic_yuan"></div>
+      <div class="content">
+        <p class="para_small mt-10" style="color:grey; font-size: 15px;">(点击右上角打开音乐体验更佳)</p>
+      </div>
+    </section>
+
+
+
+
+
+    <section class="section page page-1b">
+      <div class="bg-back"></div>
+      <div class="content1">
+        <p class="para"><span class="fs-30b">你</span>好，<span class="fc-red">{{ Sname }}</span></p>
+        <p class="para mt-10">这是我们的初遇</p>
+        <p class="para mt-10">还是重逢呢</p>
+      </div>
+      <div class="content2">
+        <p class="para mt-35">那么</p>
+        <p class="para mt-10">迈下阶梯</p>
+        <p class="para mt-10">去看看你与地下空间</p>
+        <p class="para mt-10">在过去一年的共同记忆吧</p>
+      </div>
+    </section>
+
+
+
+    <section class="section page page-2">
+      <div class="bg-back"></div>
+      <div class="content1">
+        <p class="para"><span class="fs-30b">你</span>是否曾与我对视呢？</p>
+      </div>
+      <div class="content2">
+        <p class="para_small mt-35">你好，</p>
+        <p class="para_small mt-10">我是地下室入口的那面凸面镜~</p>
+        <p class="para_small mt-35"></p>
+        <p class="para_small mt-35">我记得我们的每一次相遇，</p>
+        <p class="para_small mt-10">也记得你的每一次来去匆匆的模样。</p>
+      </div>
+    </section>
+
+
+    {% if study_room_num > 0 %}
+    <section class="section page page-3">
+      <div class="bg-back"></div>
+      <div class="content">
+        <p class="para_small">咔哒，咔哒</p>
+        <p class="para_small mt-10">这一年中</p>
+        <p class="para_small mt-10">自习室的门扉同你问过<span class="fc-red">{{study_room_num}}</span>次好</p>
+        <p class="para_small mt-10">也记得你这一年在自习室中有<span class="fc-red">{{study_room_day}}</span>天的共同时光</p>
+        <p class="para_small mt-35">其中</p>
+        <p class="para_small mt-10"><span class="fc-red">{{study_room_top}}</span>与你共同见证<span class="fc-red">{{study_room_top_day}}</span>天的时间滴答</p>
+        <p class="para_small mt-10">你知道，在地下室的某一角</p>
+        <p class="para_small mt-10">多少属于你的忙碌沉淀于此</p>
+        <p class="para_small mt-10">静静生长</p>
+      </div>
+    </section>
+    {% endif %}
+
+
+    {% if early_day_num > 0 %}
+    <section class="section page page-4">
+      <div class="bg-back"></div>
+      <div class="content">
+        <p class="para_small"><span class="fc-red">{{early_room_date}}</span></p>
+        <p class="para_small mt-10">告别眷恋的床</p>
+        <p class="para_small mt-10">和初生的朝阳问好</p>
+        <p class="para_small mt-10">你早早开启了美好的一天</p>
+        <p class="para_small mt-10">你在<span class="fc-red">{{early_room_time}}</span>来到了<span class="fc-red">{{early_room}}{{early_room_type}}</span></p>
+        <p class="para_small mt-35">这一年中有<span class="fc-red">{{early_day_num}}</span>天</p>
+        <p class="para_small mt-10">你在8:00前的清晨便来到了地下空间</p>
+        <p class="para_small mt-10">早安，愿你在每一个自律的清晨元气满满</p>
+      </div>
+    </section>
+    {% endif %}
+
+
+
+    {% if late_room_num > 0 %}
+    <section class="section page page-5">
+      <div class="bg-back"></div>
+      <div class="content">
+        <p class="para_small"><span class="fc-red">{{late_room_date}}</span></p>
+        <p class="para_small mt-10"><span class="fc-red">{{late_room}}</span>陪伴你直到<span class="fc-red">{{late_room_time}}</span></p>
+        <p class="para_small mt-10">那一天，有<span class="fc-red">{{late_room_people}}</span>人也在地下室的另一角研磨属于自己的夜</p>
+        <p class="para_small mt-10">你们是否在地下空间相遇</p>
+        <p class="para_small mt-10">共同见证了地球上最后的夜晚呢</p>
+        <p class="para_small mt-10">也许你甚至能够见到新一天的朝阳</p>
+        <p class="para_small mt-35">时针走过23点</p>
+        <p class="para_small mt-10">像这样在地下空间等待午夜的钟声敲响之时，你一共经历了<span class="fc-red">{{late_room_num}}</span>次</p>
+        <p class="para_small mt-10">无论如何，记得好好休息</p>
+        <p class="para_small mt-10">梦中的星空总会为你留出最佳观赏位置</p>
+      </div>
+    </section>
+    {% endif %}
+
+
+
+    <section class="section page page-6">
+      <div class="bg-back"></div>
+      <div class="content">
+        <p class="para"><span class="fs-30b">Hi~</span>你好！</p>
+        <p class="para mt-10">我是新入住这里的咖啡角~</p>
+        <p class="para mt-10">我想我已经记住你最喜欢的口味啦！</p>
+        <p class="para mt-10">哦等等，我这里也有一些记录，</p>
+        <p class="para mt-10">希望能唤醒你的一些记忆！</p>
+      </div>
+    </section>
+
+    {% if discuss_appoint_num > 0 %}
+    <section class="section page page-7">
+      <div class="bg-back"></div>
+      <div class="content">
+        <p class="para"><span class="fs-30b">在</span>过去的一年中，</p>
+      </div>
+      <div class="table_bg"></div>
+      <div class="table">
+        <p class="para_small">你总共预约了<span class="fc-red">{{discuss_appoint_num}}</span>次研讨室</p>
+        <p class="para_small">总预约时长为<span class="fc-red">{{discuss_appoint_hour}}</span>小时</p>
+        <p class="para_small">超过了<span class="fc-red">{{discuss_appoint_pct}}%</span>的同学</p>
+        <p class="para_small">其中，你在<span class="fc-red">{{discuss_appoint_long_room}}</span></p>
+        <p class="para_small">共经历了<span class="fc-red">{{discuss_appoint_long_hour}}</span>小时的激烈讨论</p>
+      </div>
+      <div class="bottom">
+        <p class="para mt-10">那些流转的时间</p>
+        <p class="para mt-10">到底见证了多少灵感的碰撞呢？</p>
+      </div>
+    </section>
+    {% endif %}
+
+    
+    {% if appoint_num >= 3 %}
+    <section class="section page page-8">
+      <div class="bg-back"></div>
+      <div class="content">
+        <p class="para"><span class="fs-30b">这</span>一年，你的年度预约关键词为</p>
+      </div>
+      <div class="table_bg1"></div>
+      <div class="table1">
+        <span class="fs-20 fc-red" style="font-weight: bold;">{{Skeywords.0.0}}&nbsp;&nbsp;{{Skeywords.0.1}}次</span>
+      </div>
+      <div class="table_bg2"></div>
+      <div class="table2">
+        <span class="fs-20 fc-red" style="font-weight: bold;">{{Skeywords.1.0}}&nbsp;&nbsp;{{Skeywords.1.1}}次</span>
+      </div>
+      <div class="table_bg3"></div>
+      <div class="table3">
+        <span class="fs-20 fc-red" style="font-weight: bold;">{{Skeywords.2.0}}&nbsp;&nbsp;{{Skeywords.2.1}}次</span>
+      </div>
+      <div class="bottom" style="text-align:center;">
+        <p class="para mt-35">欢乐、疲惫、热爱、专注…</p>
+        <p class="para mt-10">无论是学习工作，</p>
+        <p class="para mt-10">还是轻松的欢聚...</p>
+        <p class="para mt-10">这里都由你记录，由你定义。</p>
+      </div>
+    </section>
+    {% endif %}
+    
+
+    {% if appoint_num >= 3 %}
+    <section class="section page page-9">
+      <div class="bg-back"></div>
+      <div class="content">
+        <p class="para"><span class="fs-30b">还</span>记得<span class="fc-red">{{appiont_most_day}}</span>吗？</p>
+        <p class="para mt-10">这一天中，你共有<span class="fc-red">{{appoint_most_num}}</span>条预约</p>
+        <p class="para mt-10">那一天，整个地下空间都记得你忙碌奔走的模样吧。</p>
+        <p class="para mt-10">你留下了什么特别的记忆呢？</p>
+      </div>
+    </section>
+    {% endif %}
+
+
+
+    <section class="section page page-10">
+      <div class="bg-back"></div>
+      <div class="content">
+        <p class="para_small">（不知是哪里传来了窸窸窣窣的声音...）</p>
+      </div>
+      <div class="bottom">
+        <p class="para mt-10"><span class="fs-30b">你</span>要下楼吗？</p>
+        <p class="para mt-10">我们是住在绿植墙上的每一抹绿色！</p>
+        <p class="para mt-10">从每一扇窗户中安静地注视着，</p>
+        <p class="para mt-10">每一个特别的灵魂、</p>
+        <p class="para mt-10">每一种特别的生活...</p>
+        <p class="para mt-35">你也想跳舞吗？</p>
+      </div>
+    </section>
+
+    <section class="section page page-11">
+      <div class="bg-back"></div>
+      <div class="content">
+        <p class="para"><span class="fs-30b">在</span>过去的一年中，</p>
+      </div>
+      <div class="table_bg"></div>
+      <div class="table">
+        <p class="para_small mt-10">你预约了<span class="fc-red">{{func_appoint_num}}</span>次功能室</p>
+        <p class="para_small mt-10">总预约时长为<span class="fc-red">{{func_appoint_hour}}</span>小时</p>
+        <p class="para_small mt-10">超过了<span class="fc-red">{{func_appoint_pct}}%</span>的元培er</p>
+        {% if appoint_num > 0 %}
+        <p class="para_small mt-10">其中，你最常去<span class="fc-red">{{func_appoint_most}}</span></p>
+        {% endif %}
+      </div>
+        <p class="bottom para mt-10">你一定有一份特别的热爱！</p>
+      
+    </section>
+
+
+    {% if co_appoint_num > 3%}
+    <section class="section page page-12">
+      <div class="bg-back1"></div>
+      <div class="content">
+        <p class="para_small"><span class="fs-30b">在</span>茫茫世界中，</p>
+        <p class="para_small mt-10">在碌碌时光中，</p>
+        <p class="para_small mt-10">相遇、相知、相陪，也许是最大的幸运。</p>
+        <p class="para_small mt-35">我们在这片海洋中</p>
+        <p class="para_small mt-10">为你找到了另一片共鸣的浪花：</p>
+        <p class="para_small mt-10"><span class="fc-red">{{co_mate}}</span></p>
+      </div>
+    </section>
+
+    <section class="section page page-12">
+      <div class="bg-back2"></div>
+      <div class="content">
+        <p class="para_small mt-10"><span class="fs-30b">过</span>去的一年</p>
+        <p class="para_small mt-10">你们在地下空间共同经历了<span class="fc-red">{{co_appoint_hour}}</span>小时的时光</p>
+        <p class="para_small mt-10">预约次数超<span class="fc-red">{{co_appoint_num}}</span>次</p>
+        <p class="para_small mt-10">你们的常用预约关键词为</p>
+        <p class="para_small mt-10"><span class="fc-red">{{co_keyword.0}}</span></p>
+        <p class="para_small mt-35">在这一年，你们是</p>
+        <p class="para_small mt-10"><span class="fc-red">{{co_title}}</span></p>
+        <p class="para_small mt-35">你们的匹配度超过了<span class="fc-red">{{co_pct}}%</span>的同学!</p>
+        <p class="para_small mt-10">致陪伴!致共同!</p>
+      </div>
+    </section>
+    {% endif %}
+
+    
+    {% if sharp_appoint_num > 0%}
+    <section class="section page page-13">
+      <div class="bg-back"></div>
+      <div class="content">
+        <p class="para_small"><span class="fs-30b">你</span>的极限是什么？</p>
+        <p class="para_small mt-10">至少在地下空间</p>
+        <p class="para_small mt-10">你总共极限预约<span class="fc-red">{{sharp_appoint_num}}</span>次</p>
+        <p class="para_small mt-10">其中，在<span class="fc-red">{{sharp_appoint_day}}</span>，你为<span class="fc-red">{{sharp_appoint_reason}}</span></p>
+        <p class="para_small mt-10">在预约时间前<span class="fc-red">{{sharp_appoint_min}}</span>成功预约了<span class="fc-red">{{sharp_appoint_room}}</span></p>
+        <p class="para_small mt-10">恭喜你在人生的二十岁实现了光速入住自由!</p>
+        <p class="para_small mt-35">而在过去的一年</p>
+        <p class="para_small mt-10">你留下了<span class="fc-red">{{disobey_num}}</span>条违规记录</p>
+        {% if disobey_num > 0%}
+          <p class="para_small mt-35">嗯...怎么不算在违规的极限边缘反复试探呢？</p>
+          <p class="para_small mt-10">温馨提示：要好好遵守地下空间使用规则哦~</p>
+        {% else %}
+          <p class="para_small mt-35">恭喜你达成了“地下空间极限守序记录保持者”成就！</p>
+          <p class="para_small mt-10">接下来也要继续保持呀~</p> 
+        {% endif %}
+      </div>
+    </section>
+    {% endif %}
+
+
+
+    <section class="section page page-14">
+      <div class="bg-back1"></div>
+      <div class="content">
+        <p class="para_small"><span class="fs-30b">我</span>们的地下空间溯回旅行即将到达终点站</p>
+        <p class="para_small mt-10">这一年中</p>
+        <p class="para_small mt-10">你在地下空间总使用时长为<span class="fc-red">{{appoint_hour}}</span>小时，</p>
+        <p class="para_small mt-10">总使用次数为<span class="fc-red">{{appoint_num}}</span>次</p>
+        <p class="para_small mt-35">当然，</p>
+        <p class="para_small mt-10">也许你更偏好在公共讨论区，</p>
+        <p class="para_small mt-10">在书房，在绿植墙下....</p>
+        <p class="para_small mt-10">在地下空间的每一个角落、每一种生活中，</p>
+        <p class="para_small mt-10">拉近灵魂与灵魂之间的距离，</p>
+        <p class="para_small mt-10">或是消磨属于自己的时光。</p>
+      </div>
+    </section>
+
+    <!-- <section class="section page page-14b">
+      <div class="bg-back"></div>
+      <div class="content">
+        <p class="para mt-10"><span class="fs-30b">那</span>么，在地下空间，你的生活是...</p>
+        <p class="para mt-10">{{poem_word1}} {{poem_word2}} {{poem_word3}} {{poem_word4}}</p>
+      </div>
+      <div class="word1"><p class="para mt-10">自习</p></div>
+      <div class="pic1"></div>
+      <div class="word2"><p class="para mt-10">热烈的</p></div>
+      <div class="pic2"></div>
+      <div class="word2"><p class="para mt-10">热烈的</p></div>
+      <div class="pic2"></div>
+    </section> -->
+
+<!-- 个人成长档案部分 -->
+  
+
+   <section class="section page page-2-1">
+      <div class="bg-back"></div>
+      <div class="content">
+        <p class="para"><span class="fs-30b">回</span>溯完有关地下物理空间的记忆</p>
+        <p class="para mt-10">让我们再去YPers共同的线上家园看看吧</p>
+      </div>
+    </section>
+
+    <section class="section page page-2-2">
+      <div class="bg-back"></div>
+      <div class="content1">
+        <p class="para_small"><span class="fs-30b">这</span>一年里</p>
+        <p class="para_small mt-10">YPers一共创建起</p>
+        <p class="para_small mt-10"><span class="fc-blue">{{total_club_num}}</span>个学生小组与<span class="fc-blue">{{total_courseorg_num}}</span>个书院课程小组</p>
+        <p class="para_small mt-10">总计发起了<span class="fc-blue">{{total_act_num}}</span>次活动</p>
+        <p class="para_small mt-10">总时长为<span class="fc-blue">{{total_act_hour}}</span>个小时</p>
+      </div>
+      <div class="content2">
+        <p class="para_small mt-10">“嘤其鸣矣，求其友声”</p>
+        <p class="para_small mt-10">大家因相似的兴趣爱好聚集在一起</p>
+        <p class="para_small mt-10">交流、陪伴、成长……</p>
+        <p class="para_small mt-10">化孤独为共同</p>
+      </div>
+    </section>
+
+    <section class="section page page-2-3">
+      <div class="bg-back"></div>
+      <div class="content1">
+        <p class="para"><span class="fs-30b">这</span>一年中：</p>
+      </div>
+      <div class="table"></div>
+      <div class="content2">
+        {% if IScreate %}
+        <p class="para_small mt-10">你创建了<span class="fc-purple">{{myclub_name}}</span></p>
+        {% endif %}
+        <p class="para_small mt-10">参加了<span class="fc-purple">{{club_num}}</span>个学生小组与</p>
+        <p class="para_small mt-10"><span class="fc-purple">{{course_org_num}}</span>个书院课程小组</p>
+        <p class="para_small mt-10">参与了<span class="fc-purple">{{act_num}}</span>个由小组发起的活动</p>
+      </div>
+      <div class="content3">
+        <p class="para_small mt-10">新的学期</p>
+        <p class="para_small mt-10">也请多多参与线上家园的营建哦~</p>
+      </div>
+    </section>
+
+
+    {% if act_num == 0 %}
+    <section class="section page page-award">
+      <div class="bg-back1"></div>
+      <div class="content1">
+        <p class="para_small mt-10">恭喜你解锁成就:</p>
+        <p class="para mt-10"><span class="fc-white fs-30b">“潜水冠军”</span></p>
+      </div>
+      <div class="table1"></div>
+      <div class="pic1"></div>
+      <div class="content2">
+        <p class="para mt-10"><span class="fc-blue fs-25b">评选标准</span></p>
+        <p class="para_small"><span class="fc-blue">未参加过小组发起的活动</span></p>
+        <p class="para_small mt-35">to社恐：减少焦虑，重在参与</p>
+        <p class="para_small mt-10">to卷王：停止内卷，速来玩耍</p>
+      </div>
+    </section>
+    {% endif %}
+
+
+    {% if club_num >= 2 or act_num >= 5 %}
+    <section class="section page page-award">
+      <div class="bg-back2"></div>
+      <div class="content1">
+        <p class="para_small mt-10">恭喜你解锁成就:</p>
+        <p class="para mt-10"><span class="fc-white fs-30b">“社牛”</span></p>
+      </div>
+      <div class="table2"></div>
+      <div class="pic2"></div>
+      <div class="content2">
+        <p class="para mt-10"><span class="fc-brown fs-25b">评选标准</span></p>
+        <p class="para_small"><span class="fc-brown">参加小组数>=2个</span></p>
+        <p class="para_small"><span class="fc-brown">或参与活动数>=5次</span></p>
+        <p class="para_small mt-35">心有多大，舞台就有多大</p>
+      </div>
+    </section>
+    {% endif %}
+
+
+    {% if position_num >= 5 %}
+    <section class="section page page-award">
+      <div class="bg-back3"></div>
+      <div class="content1">
+        <p class="para_small mt-10">恭喜你解锁成就:</p>
+        <p class="para mt-10"><span class="fc-white fs-30b">“我全都要”</span></p>
+      </div>
+      <div class="table3"></div>
+      <div class="pic3"></div>
+      <div class="content2">
+        <p class="para mt-10"><span class="fc-blue fs-25b">评选标准</span></p>
+        <p class="para_small"><span class="fc-blue">参与小组数>=5个</span></p>
+        <p class="para_small mt-35">……小孩子才做选择题!</p>
+      </div>
+    </section>
+    {% endif %}
+
+    <section class="section page page-2-4">
+      <div class="bg-back"></div>
+      <div class="content1">
+        <p class="para_small"><span class="fs-30b">在</span>丰富的线上社区之外</p>
+        <p class="para_small mt-10">多元的书院课程</p>
+        <p class="para_small mt-10">同样濡染着YPers的共同生活</p>
+      </div>
+      <div class="content2">
+        <p class="para_small mt-10">在这一年里，学院共开设了<span class="fc-green">{{total_course_num}}</span>门书院课</p>
+        <p class="para_small mt-10">总计开展课程活动<span class="fc-green">{{total_course_act_num}}</span>次</p>
+        <p class="para_small mt-10">总时长为<span class="fc-green">{{total_course_act_hour}}</span>个小时</p>
+        <p class="para_small mt-10">有<span class="fc-green">{{have_course_num}}</span>位同学至少选修了一门书院课</p>
+        <p class="para_small mt-10">有<span class="fc-green">{{have_three_course_num}}</span>位同学选修了三门及以上的书院课</p>
+      </div>
+    </section>
+
+    {% if course_num > 0 %}
+    <section class="section page page-2-5">
+      <div class="bg-back"></div>
+      <div class="table1"></div>
+      <div class="content1">
+        <p class="para"><span class="fs-30b">在</span>这一年里</p>
+        <p class="para mt-10">你选修了<span class="fc-purple">{{course_num}}</span>门课程</p>
+        <p class="para mt-10">共计<span class="fc-purple">{{course_hour}}</span>个学时</p>
+        <p class="para mt-10">分布在<span class="fc-purple">{{course_type}}</span>类</p>
+      </div>
+      {% if course_most_hour > 0 and course_most_num > 0%}
+        <div class="table2"></div>
+        <div class="content2">
+          <p class="para_small mt-10">其中，你在<span class="fc-purple">{{course_most_time_name}}</span>投入的时间最长，共计<span class="fc-purple">{{course_most_hour}}</span>个学时</p>
+          <p class="para_small mt-10">参与<span class="fc-purple">{{course_most_num_name}}</span>的次数最多，共计<span class="fc-purple">{{course_most_num}}</span>次</p>
+        </div>
+      {% endif %}
+    </section> 
+    {% endif %}
+
+    {% if max_type_info.1 >= 2 %}
+    <section class="section page page-award">
+      <div class="bg-back4"></div>
+      <div class="content1">
+        <p class="para_small mt-10">恭喜你解锁成就:</p>
+        <p class="para mt-10"><span class="fc-white fs-30b">“垂直深耕”</span></p>
+      </div>
+      <div class="table4"></div>
+      <div class="pic4"></div>
+      <div class="content3">
+        <p class="para mt-10"><span class="fc-green fs-25b">评选标准</span></p>
+        <p class="para_small"><span class="fc-green">选修同类(德智体美劳)</span></p>
+        <p class="para_small"><span class="fc-green">书院课程>=2门</span></p>
+        <p class="para_small mt-10">砥砺深耕，笃行致远</p>
+        <p class="para_small mt-10">“一万小时定律”在向你招手!</p>
+      </div>
+    </section>
+    {% endif %}
+
+    {% if type_count >= 3 %}
+    <section class="section page page-award">
+      <div class="bg-back5"></div>
+      <div class="content1">
+        <p class="para_small mt-10">恭喜你解锁成就:</p>
+        <p class="para mt-10"><span class="fc-white fs-30b">“通识先锋”</span></p>
+      </div>
+      <div class="table5"></div>
+      <div class="pic5"></div>
+      <div class="content3">
+        <p class="para mt-10"><span class="fc-pink fs-25b">评选标准</span></p>
+        <p class="para_small"><span class="fc-pink">选修的书院课程</span></p>
+        <p class="para_small"><span class="fc-pink">类别(德智体美劳)>=3类</span></p>
+        <p class="para_small mt-10">通识教育的先锋</p>
+        <p class="para_small mt-10">我辈学子的楷模</p>
+      </div>
+    </section>
+    {% endif %}
+
+    <section class="section page page-2-6">
+      <div class="bg-back"></div>
+      <div class="content1">
+        <p class="para_small"><span class="fs-30b">回</span>忆起上个学期初紧张刺激的选课战况</p>
+        <p class="para_small mt-10">你依然记忆犹新……</p>
+      </div>
+      <div class="table1"></div>
+      <div class="content2">
+        <p class="para_small mt-10">你或许是非酋体质，选的全掉</p>
+        <p class="para_small mt-10">又或许是欧皇再世，选课都中</p>
+      </div>
+      <div class="table2"></div>
+      <div class="content3">
+        <p class="para_small mt-10">不论如何，都衷心祝愿你</p>
+        <p class="para_small mt-10">新学期顺利</p>
+      </div>
+      <div class="pic"></div>
+    </section>
+
+    <section class="section page page-15">
+      <div class="bg-back"></div>
+      <div class="content">
+        <p class="para_small"><span class="fs-30b">我</span>们的旅途还未结束</p>
+        <p class="para_small mt-10">也许未来</p>
+        <p class="para_small mt-10">还有满载美好的相遇</p>
+        <p class="para_small mt-10">还有令人欣喜的忙碌</p>
+        <p class="para_small mt-10">还有无限的灵感与热爱</p>
+        <p class="para_small mt-10">也许元培地下早已成为你生活的一部分</p>
+        <p class="para_small mt-35">如果，你仍然将在这里度过未来的几年</p>
+        <p class="para_small mt-10">那么请在这里</p>
+        <p class="para_small mt-10">继续书写你的故事吧</p>
+        {% comment %} <p class="para_small mt-35">那么，从这里</p>
+        <p class="para_small mt-10">开启新的旅程吧</p> {% endcomment %}
+        <p class="para_small mt-35">又如果，你已经从元培毕业</p>
+        <p class="para_small mt-10">走上了新的人生道路</p>
+        <p class="para_small mt-10">也欢迎常回来看看</p>
+      </div>
+    </section>
+
+    
+    <section class="section page page-end">
+      <div class="bg-back"></div>
+      <div class="content">
+        {% if logged_in %}
+            <p class="para mt-10">来加入我们一起建设更好的元培!</p>
+            <p class="para_small mt-10" style="font-size: 15px; color: grey;">欢迎扫码咨询智慧校园招新</p>
+            <div class="pic1"></div>
+          </div>
+        {% else %} 
+            <p class="para_small mt-10"><span style="font-weight: bold">元培智慧书院</span>系统致力为高校院系提供<span style="font-weight: bold">综合化、信息化、智能化的管理成长平台</span></p>
+            <p class="para_small mt-10">目前已在元培学院有了长足的积累与发展</p>
+            <p class="para_small mt-35">如果您对智慧书院有兴趣</p>
+            <p class="para_small mt-10">欢迎扫码进一步联系</p>
+          
+            <div class="pic2"></div>
+        </div>
+        {% endif %}
+      <div class="buttons mt-35">
+        <a href="javascript:;" class="button">重温我的年度回忆</a>
+      </div>
+      <div class="content-annotation">
+        <p class="para_small" style="font-size: 15px; color: grey; line-height: 22px;">文案｜智慧书院产品组</p>
+        <p class="para_small" style="font-size: 15px; color: grey; line-height: 22px;">图片｜元培学院设计组</p>
+        <p class="para_small" style="font-size: 15px; color: grey; line-height: 22px;">制作｜智慧书院开发组</p>
+        <p class="para_small" style="font-size: 15px; color: grey; line-height: 22px;">感谢JohnieXu在Github的开源项目</p>
+      </div>
+    </section>
+    
+    
+  
+
+
+
+  </div>
+  <!-- lib -->
+  <script src="{% static 'Appointment/assets/js/jquery.min.js' %}"></script>
+  <!-- <script src="https://unpkg.com/jplayer@2.9.2/dist/jplayer/jquery.jplayer.min.js"></script> -->
+  <script src="{% static 'Appointment/assets/js/jquery.fullpage.js' %}"></script>
+  <!-- components -->
+  <script src="{% static 'Appointment/./assets/js/App.js' %}"></script>
+  <!-- main -->
+  <script lang="javascript">
+    jQuery(document).ready(function ($) {
+      var app = new App();
+      var ajaxData = {
+      }
+      var page1Css = {
+        background: 'red'
+      }
+      var bg = {
+        // bgLight: 'http://s3.music.126.net/nact/s/client/images/year2017/cover/cover_bg.jpg?91115a3fd39e5158b3387c3eec828793',
+        // bgBack: 'http://s3.music.126.net/nact/s/client/images/year2017/cover/light.png?282c69970cb1ace98b08e594888bcc5e',
+        // bgBack: '../img/cover.png'
+      }
+      var flag = true;
+      var accepted = false;
+
+      {% if user_accept %}
+      history.pushState(null, null, "{% url 'Appointment:summary2021' %}");
+      $('#app').ready(function() {
+        $.fn.fullpage.moveTo(2, 0);
+      })
+      {% endif %}
+
+      $('#app').fullpage({
+        onLeave: function (index, nextIndex, direction) {
+          if (index == 1) {
+            {% if logged_in %}
+              {% if is_freshman %}
+                alert("新同学你好，系统中还没有你的数据。将为你展示年度总结示例，之后在系统中多留下自己的足迹吧～");
+              {% elif not user_accept %}
+                if (accept) {
+                  return false;
+                }
+                rst = confirm("点击确认则视为允许我们访问你的必要数据，但是我们保证不会将其泄露给其他人。点击取消将展示年度总结示例。");
+                if (rst) {
+                  accept = true;
+                  window.location.replace(window.location.href + "?accept=true");
+                  return false;
+                }
+              {% endif %}
+            {% else %}
+              rst = confirm("您尚未登录，将为您展示年度总结示例。点击取消跳转至登录界面。");
+              if (!rst) {
+                window.location.href = "{% url 'index' %}?origin={% url 'Appointment:summary2021' %}";
+                return false;
+              }
+            {% endif %}
+          }
+          
+          console.log(index + ' leave direction: ' + direction);
+        },
+        afterLoad: function (anchorLink, index) {
+          console.log(index + ' loaded');
+        },
+        sectionColor: ['yellow', 'green', 'blue', 'purple'],
+        fadingEffect: true
+      });
+      /*前往正文页面=>立即查看*/
+      $('#app .page-1 .button').click(function () {
+        $.fn.fullpage.moveSectionDown();
+      });
+      /*回顶部=>重温TA的2017*/
+      $('#app .page-end .buttons .button').click(function () {
+        $.fn.fullpage.moveTo(1, 0);
+        // console.log('aaa');
+      });
+      /*测试*/
+      // $.fn.fullpage.moveTo(16, 0);
+    });
+
+  </script>
+</body>
+
+</html>

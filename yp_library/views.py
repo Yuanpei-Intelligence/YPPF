@@ -1,4 +1,3 @@
-from django.shortcuts import render
 from django.http import HttpRequest, HttpResponse
 from django.shortcuts import render, redirect
 from django.contrib.auth.decorators import login_required
@@ -52,7 +51,15 @@ def welcome(request: HttpRequest) -> HttpResponse:
     # 获取最新到馆书目（按id从大到小），暂不启用
     # frontend_dict["newest_books"] = get_recommended_or_newest_books(
     #     num=DISPLAY_NEW_BOOK_NUM, newest=True)
+    try:
+        readers = get_readers_by_user(request.user)
+    except AssertionError as e:
+        records_list = []
+    else:
+        unreturned_records_list, returned_records_list = get_lendinfo_by_readers(readers)
+        records_list = unreturned_records_list + returned_records_list
 
+    frontend_dict["records_list"] = records_list
     return render(request, "yp_library/welcome.html", frontend_dict)
 
 
@@ -106,8 +113,7 @@ def lendInfo(request: HttpRequest) -> HttpResponse:
     try:
         readers = get_readers_by_user(request.user)
     except AssertionError as e:
-        frontend_dict["warn_message"] = e
-        frontend_dict["warn_code"] = 1
+        wrong(str(e), frontend_dict)
         frontend_dict['unreturned_records_list'] = []
         frontend_dict['returned_records_list'] = []
         return render(request, "yp_library/lendinfo.html", frontend_dict)

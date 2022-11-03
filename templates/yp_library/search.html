@@ -33,7 +33,8 @@
                             <input type="text" class="form-control" id="keywords" 
                               placeholder="搜索书名/作者/索书号/出版社" name="keywords">
                             <div class="input-group-append">
-                              <button type="button" class="btn btn-outline-info" id="searchButton">
+                              <button type="button" class="btn btn-outline-info" 
+                               onclick="ModuleTrackFunction(3, '搜索馆藏')" id="searchButton">
                                 搜索
                               </button>
                             </div>
@@ -111,3 +112,16 @@
 <!--  END CONTENT AREA  -->
 
 {% endblock %}
+
+{% block add_js_file %}
+<script>
+    function submit() {
+        const checkbox = document.getElementById("returned");
+        const input = document.getElementById("keywords");
+        if (checkbox.checked || input.value) {
+        document.getElementById("SearchBookForm").submit();
+        }
+    }
+    document.getElementById("searchButton").onclick = submit;
+</script>
+{% endblock%}

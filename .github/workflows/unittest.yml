@@ -32,7 +32,7 @@ jobs:
       run: |
         docker ps -a
         sleep 10
-        timeout 30s bash -c "while ! curl -Is localhost:8000; do
+        timeout 45s bash -c "while ! curl -Is localhost:8000; do
                                 sleep 3
                                 echo 'Failed to fetch web page.'
                               done" ||

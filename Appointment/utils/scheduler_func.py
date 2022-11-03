@@ -133,11 +133,13 @@ def set_appoint_wechat(appoint: Appoint, message_type: str, *extra_infos,
     if url is not None: wechat_kws.update(url=url)
     if admin is not None: wechat_kws.update(is_admin=admin)
 
-    # 添加定时任务的关键字参数
-    add_job_kws = dict(replace_existing=True, next_run_time=job_time)
     # 默认立刻发送
     if job_time is None:
         job_time = datetime.now() + timedelta(seconds=5)
+    # 添加定时任务的关键字参数
+    add_job_kws = dict(replace_existing=True, next_run_time=job_time)
+    if id is None:
+        id = f'{appoint.pk}_{message_type}'
     if id is not None:
         add_job_kws.update(id=id)
     scheduler.add_job(utils.send_wechat_message,
@@ -291,6 +293,8 @@ def addAppoint(contents: dict,
         create_min = min(create_min, GLOBAL_INFO.today_min)
     if type == Appoint.Type.TEMPORARY:
         create_min = min(create_min, GLOBAL_INFO.temporary_min)
+    if type == Appoint.Type.INTERVIEW:
+        create_min = min(create_min, 1)
 
     # 实际监控检查要求的人数
     check_need_num = create_min
@@ -320,6 +324,11 @@ def addAppoint(contents: dict,
     if room.Rid.startswith('R'):
         if yp_num != 1 or non_yp_num != 0:
             return _error('俄文楼元创空间仅支持单人预约！')
+
+    # 检查如果是面试，是否只有一个人使用
+    if type == Appoint.Type.INTERVIEW:
+        if yp_num != 1 or non_yp_num != 0:
+            return _error('面试仅支持单人预约！')
 
     # 预约是否超过3小时
     try:
