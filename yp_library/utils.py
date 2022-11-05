@@ -67,9 +67,9 @@ def violate_reminder(days: int, alert_msg: str):
     receivers = User.objects.filter(username__in=receivers)
     # 绑定扣分和状态修改
     with transaction.atomic():
-        violate_lendlist.select_for_update().update(status=LendRecord.Status.OVERTIME)
         for receiver in receivers:
             User.objects.modify_credit(receiver, -1, '书房：归还逾期')
+        violate_lendlist.select_for_update().update(status=LendRecord.Status.OVERTIME)
     _send_remind_notification(receivers, alert_msg)
 
 
