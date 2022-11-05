@@ -63,7 +63,7 @@ def violate_reminder(days: int, alert_msg: str):
         status=LendRecord.Status.NORMAL)
 
     # 逾期一周扣除信用分
-    receivers = violate_lendlist.values_list('reader_id__student_id')
+    receivers = list(violate_lendlist.values_list('reader_id__student_id', flat=True))
     receivers = User.objects.filter(username__in=receivers)
     # 绑定扣分和状态修改
     with transaction.atomic():
