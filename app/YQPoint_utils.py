@@ -101,6 +101,9 @@ def add_signin_point(user: User):
                                 YQPointRecord.SourceType.CHECK_IN)
     # 元气值活动等获得的额外元气值
     bonus_point = 0
+    if bonus_point:
+        User.objects.modify_YQPoint(user, bonus_point, "登录额外奖励",
+                                    YQPointRecord.SourceType.CHECK_IN)
     # 用户应看到的信息
     user_display = [
         f'今日首次签到，获得{add_point}元气值!',
@@ -112,6 +115,8 @@ def add_signin_point(user: User):
         f'第7日签到，获得{add_point}元气值!',
     ][day_type]
     # 获取的额外元气值可能需要提示
+    if bonus_point:
+        pass
     total_point = add_point + bonus_point
     return total_point, user_display
 
