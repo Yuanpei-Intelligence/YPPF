@@ -49,6 +49,7 @@ from app.notification_utils import(
     notification_status_change,
     notification2Display,
 )
+from app.YQPoint_utils import add_signin_point
 from app.academic_utils import (
     comments2Display,
     get_js_tag_list,
@@ -989,6 +990,7 @@ def homepage(request: HttpRequest):
                                             YQPointRecord.SourceType.CHECK_IN)
                 np.save()
                 html_display['first_signin'] = True # 前端显示
+                html_display['signin_display'] = None
 
     # 开始时间在前后一周内，除了取消和审核中的活动。按时间逆序排序
     recentactivity_list = Activity.objects.get_recent_activity().select_related('organization_id')
