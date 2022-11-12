@@ -32,7 +32,8 @@ __all__ = [
 MAX_CHECK_DAYS = 7
 
 def get_signin_infos(user: User, detailed_days: int = MAX_CHECK_DAYS,
-                     check_days: int = None, today: date = None):
+                     check_days: int = None, today: date = None,
+                     signin_today: bool = True):
     '''
     获取一定日期内每天的签到信息
 
@@ -44,6 +45,8 @@ def get_signin_infos(user: User, detailed_days: int = MAX_CHECK_DAYS,
     :type check_days: int, optional
     :param today: 查询的当天, defaults to None
     :type today: date, optional
+    :param signin_today: 计算连续签到天数时认为今天已签到, defaults to True
+    :type signin_today: bool, optional
     :return: 已连续签到天数，和今天起共detailed_days天的签到信息
     :rtype: tuple[int, list[bool] | None]
     '''
@@ -59,9 +62,13 @@ def get_signin_infos(user: User, detailed_days: int = MAX_CHECK_DAYS,
     ).order_by('time').values_list('time__date', flat=True).distinct())
     # 获取连续签到天数
     last_day = today
-    while last_day in signin_days or last_day == today:
+    if signin_today:
+        last_day -= timedelta(days=1)
+    while last_day in signin_days:
         last_day -= timedelta(days=1)
     continuous_days = (today - last_day).days - 1
+    if signin_today:
+        continuous_days += 1
     if detailed_days is not None:
         # 从今天开始，第前n天是否签到（今天不计入本次签到）
         # 可用来提供提示信息
@@ -92,7 +99,7 @@ def add_signin_point(user: User):
     :rtype: tuple[int, str]
     '''
     # 获取已连续签到的日期和近几天签到信息
-    continuous_days, signed_in = get_signin_infos(user, MAX_CHECK_DAYS)
+    continuous_days, signed_in = get_signin_infos(user, MAX_CHECK_DAYS, signin_today=True)
     day_type = continuous_days % MAX_CHECK_DAYS
     # 可以从文件中读取，连续签到的基础元气值，此类写法便于分析
     DAY2POINT = [1, 2, 1, (1, 3), 2, 2, (3, 5)]
