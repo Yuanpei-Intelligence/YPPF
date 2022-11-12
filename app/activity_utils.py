@@ -115,7 +115,7 @@ def changeActivityStatus(aid, cur_status, to_status):
             #     notification_status_change(notification, Notification.Status.DONE)
 
         # 结束，计算元气值
-        elif to_status == Activity.Status.END and activity.valid:
+        elif to_status == Activity.Status.END:
             point = calcu_activity_YQP(activity)
             participants = Participant.objects.filter(
                 activity_id=aid,
@@ -849,15 +849,6 @@ def accept_activity(request, activity):
                 run_date=activity.apply_end, args=[activity.id, Activity.Status.APPLYING, Activity.Status.WAITING])
             scheduler.add_job(notifyActivity, "date", id=f"activity_{activity.id}_remind",
                 run_date=activity.start - timedelta(minutes=15), args=[activity.id, "remind"], replace_existing=True)
-
-    if activity.status == Activity.Status.END:
-        point = calcu_activity_YQP(activity)
-        participants = Participant.objects.filter(
-            activity_id=activity,
-            status=Participant.AttendStatus.ATTENDED
-        ).values_list("person_id__person_id", flat=True)
-        participants = User.objects.filter(id__in=participants)
-        User.objects.bulk_increase_YQPoint(participants, point, "参加活动", YQPointRecord.SourceType.ACTIVITY)
 
     activity.save()
 
