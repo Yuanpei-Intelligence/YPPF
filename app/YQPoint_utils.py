@@ -29,7 +29,10 @@ __all__ = [
 ]
 
 
-MAX_CHECK_DAYS = 7
+_DEFAULT_DAY2POINT = [1, 2, 2, (2, 4), 2, 2, (5, 7)]
+DAY2POINT = get_config('thresholds/point/signin_points', default=_DEFAULT_DAY2POINT)
+MAX_CHECK_DAYS = len(DAY2POINT)
+
 
 def get_signin_infos(user: User, detailed_days: int = MAX_CHECK_DAYS,
                      check_days: int = None, today: date = None,
@@ -101,8 +104,7 @@ def add_signin_point(user: User):
     # 获取已连续签到的日期和近几天签到信息
     continuous_days, signed_in = get_signin_infos(user, MAX_CHECK_DAYS, signin_today=True)
     day_type = continuous_days % MAX_CHECK_DAYS
-    # 可以从文件中读取，连续签到的基础元气值，此类写法便于分析
-    DAY2POINT = [1, 2, 1, (1, 3), 2, 2, (3, 5)]
+    # 连续签到的基础元气值，可以从文件中读取，此类写法便于分析
     add_point = distribution2point(DAY2POINT, day_type)
     User.objects.modify_YQPoint(user, add_point, "每日登录",
                                 YQPointRecord.SourceType.CHECK_IN)
@@ -115,7 +117,7 @@ def add_signin_point(user: User):
     user_display = [
         f'今日首次签到，获得{add_point}元气值!',
         f'连续签到{continuous_days}天，获得{add_point}元气值!',
-        f'今日签到获得{add_point}元气值，连续签到{7}天有惊喜!',
+        f'连续签到{continuous_days}天，获得{add_point}元气值，连续签到{7}天有惊喜!',
         f'连续签到{continuous_days}天，获得{add_point}元气值!',
         f'连续签到{continuous_days}天，再签到{2}天即可获得大量元气值!',
         f'连续签到{continuous_days}天，获得{add_point}元气值，明日可获得大量元气值!',
