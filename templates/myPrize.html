@@ -1,7 +1,6 @@
 {% extends "base.html" %}
 
 {% block mainpage %}
-<link rel="stylesheet" href="https://cdn.staticfile.org/font-awesome/4.7.0/css/font-awesome.css">
 
     <!--  BEGIN CONTENT AREA  -->
     <div id="content" class="main-content">
@@ -37,7 +36,7 @@
 
                             <div id="myTabContent" class="tab-content">
                                 <div class="tab-pane fade in active show" id="lottery">
-                                    {% if lottery_set is None %}
+                                    {% if not lottery_set %}
                                     <br />
                                     <p></p>
                                     <p style="text-align: center;">没有抽奖记录.</p>
@@ -92,7 +91,7 @@
                                 </div>
 
                                 <div class="tab-pane fade" id="exchange">
-                                    {% if exchange_set is None %}
+                                    {% if not exchange_set %}
                                     <br />
                                     <p></p>
                                     <p style="text-align: center;">没有兑换记录.</p>

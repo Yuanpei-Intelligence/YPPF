@@ -273,7 +273,12 @@
                               <span class="badge badge-pill" style="border-radius:4px; 
                                                       background-color:#0093FF; color:#FFFFFF; margin:2px;
                                                       margin-top:0px; margin-bottom:4px;">已归还
-                              </span>    
+                              </span>
+                              {% elif record.type == "overtime_returned" %}
+                              <span class="badge badge-pill" style="border-radius:4px; 
+                                                      background-color:#0093FF; color:#FFFFFF; margin:2px;
+                                                      margin-top:0px; margin-bottom:4px;">逾期归还
+                              </span>
                               {% else %}
                               <span class="badge badge-pill" style="border-radius:4px; 
                                                       background-color:#E3170D; color:#FFFFFF; margin:2px;

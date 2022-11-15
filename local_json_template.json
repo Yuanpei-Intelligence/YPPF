@@ -43,6 +43,7 @@
     "thresholds": {
         "注释": "下面这些都可以不写",
         "point": {
+            "signin_points": [1, 2, 2, [2, 4], 2, 2, [5, 7]],
             "per_feedback": 10,
             "per_hour": 10,
             "limit": 30,
