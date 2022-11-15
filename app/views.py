@@ -980,17 +980,15 @@ def homepage(request: HttpRequest):
         "warn_message", "")  # 提醒的具体内容
 
     nowtime = datetime.now()
-    # 今天第一次访问 welcome 界面，积分加 0.5
+    # 今天第一次访问 welcome 界面，积分增加
     if is_person:
         with transaction.atomic():
             np: NaturalPerson = NaturalPerson.objects.select_for_update().get(person_id=request.user)
             if np.last_time_login is None or np.last_time_login.date() != nowtime.date():
                 np.last_time_login = nowtime
-                User.objects.modify_YQPoint(np.person_id, 1, "每日登录",
-                                            YQPointRecord.SourceType.CHECK_IN)
                 np.save()
+                add_point, html_display['signin_display'] = add_signin_point(request.user)
                 html_display['first_signin'] = True # 前端显示
-                html_display['signin_display'] = None
 
     # 开始时间在前后一周内，除了取消和审核中的活动。按时间逆序排序
     recentactivity_list = Activity.objects.get_recent_activity().select_related('organization_id')
