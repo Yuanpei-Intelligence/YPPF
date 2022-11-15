@@ -16,16 +16,118 @@ from django.db.models import QuerySet, Q, Sum
 from django.forms.models import model_to_dict
 
 from typing import List, Dict, Optional, Tuple
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, date
 import random
 
 __all__ = [
+    'add_signin_point',
     'get_pools_and_items'
     'buy_exchange_item',
     'buy_lottery_pool',
     'buy_random_pool',
     'run_lottery',
 ]
+
+
+_DEFAULT_DAY2POINT = [1, 2, 2, (2, 4), 2, 2, (5, 7)]
+DAY2POINT = get_config('thresholds/point/signin_points', default=_DEFAULT_DAY2POINT)
+MAX_CHECK_DAYS = len(DAY2POINT)
+
+
+def get_signin_infos(user: User, detailed_days: int = MAX_CHECK_DAYS,
+                     check_days: int = None, today: date = None,
+                     signin_today: bool = True):
+    '''
+    获取一定日期内每天的签到信息
+
+    :param user: 要查询的用户
+    :type user: User
+    :param detailed_days: 显示详细签到信息的天数, defaults to None
+    :type detailed_days: int, optional
+    :param check_days: 查询天数（包括今天）, defaults to None
+    :type check_days: int, optional
+    :param today: 查询的当天, defaults to None
+    :type today: date, optional
+    :param signin_today: 计算连续签到天数时认为今天已签到, defaults to True
+    :type signin_today: bool, optional
+    :return: 已连续签到天数，和今天起共detailed_days天的签到信息
+    :rtype: tuple[int, list[bool] | None]
+    '''
+    if today is None:
+        today = datetime.now().date()
+    day_check_kws = {}
+    if check_days is not None:
+        day_check_kws.update(time__date__gt=today - timedelta(days=check_days))
+    signin_days = set(YQPointRecord.objects.filter(
+        user=user,
+        source_type=YQPointRecord.SourceType.CHECK_IN,
+        **day_check_kws,
+    ).order_by('time').values_list('time__date', flat=True).distinct())
+    # 获取连续签到天数
+    last_day = today
+    if signin_today:
+        last_day -= timedelta(days=1)
+    while last_day in signin_days:
+        last_day -= timedelta(days=1)
+    continuous_days = (today - last_day).days - 1
+    if signin_today:
+        continuous_days += 1
+    if detailed_days is not None:
+        # 从今天开始，第前n天是否签到（今天不计入本次签到）
+        # 可用来提供提示信息
+        detailed_infos = [
+            (today - timedelta(days=day)) in signin_days
+            for day in range(detailed_days)
+        ]
+    else:
+        detailed_infos = None
+    return continuous_days, detailed_infos
+
+
+def distribution2point(distribution: list, day_type: int) -> int:
+    '''根据获取积分分布和当日类别，获取应获得的实际元气值'''
+    result = distribution[day_type]
+    if isinstance(result, (tuple, list)) and len(result) == 2:
+        result = random.randint(*result)
+    return result
+
+
+def add_signin_point(user: User):
+    '''
+    用户获得今日签到的积分，并返回用户提示信息
+
+    :param user: 签到的用户
+    :type user: User
+    :return: 本次签到获得的积分，以及应看到的提示（若为空则显示默认提示）
+    :rtype: tuple[int, str]
+    '''
+    # 获取已连续签到的日期和近几天签到信息
+    continuous_days, signed_in = get_signin_infos(user, MAX_CHECK_DAYS, signin_today=True)
+    day_type = continuous_days % MAX_CHECK_DAYS
+    # 连续签到的基础元气值，可以从文件中读取，此类写法便于分析
+    add_point = distribution2point(DAY2POINT, day_type)
+    User.objects.modify_YQPoint(user, add_point, "每日登录",
+                                YQPointRecord.SourceType.CHECK_IN)
+    # 元气值活动等获得的额外元气值
+    bonus_point = 0
+    if bonus_point:
+        User.objects.modify_YQPoint(user, bonus_point, "登录额外奖励",
+                                    YQPointRecord.SourceType.CHECK_IN)
+    # 用户应看到的信息
+    user_display = [
+        f'今日首次签到，获得{add_point}元气值!',
+        f'连续签到{continuous_days}天，获得{add_point}元气值!',
+        f'连续签到{continuous_days}天，获得{add_point}元气值，连续签到{7}天有惊喜!',
+        f'连续签到{continuous_days}天，获得{add_point}元气值!',
+        f'连续签到{continuous_days}天，再签到{2}天即可获得大量元气值!',
+        f'连续签到{continuous_days}天，获得{add_point}元气值，明日可获得大量元气值!',
+        f'第7日签到，获得{add_point}元气值!',
+    ][day_type]
+    # 获取的额外元气值可能需要提示
+    if bonus_point:
+        pass
+    total_point = add_point + bonus_point
+    return total_point, user_display
 
 
 def get_pools_and_items(pool_type: Pool.Type, user: User, frontend_dict: Dict[str, any]):

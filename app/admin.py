@@ -865,7 +865,7 @@ class PoolRecordAdmin(admin.ModelAdmin):
 
     def get_queryset(self, request: HttpRequest):
         qs = super().get_queryset(request)
-        if self.has_manage_permission(request):
+        if not self.has_change_permission(request) and self.has_manage_permission(request):
             qs = qs.filter(prize__provider=request.user)
         return qs
 
@@ -877,6 +877,8 @@ class PoolRecordAdmin(admin.ModelAdmin):
             return self.message_user(request, '无权负责该礼品的兑换!', 'error')
         if record.status != PoolRecord.Status.UN_REDEEM:
             return self.message_user(request, '仅可兑换尚未兑换的奖品!', 'error')
+        if record.prize.name.startswith('信用分'):
+            User.objects.modify_credit(record.user, 1, '元气值：兑换')
         record.status = PoolRecord.Status.REDEEMED
         # record.time = datetime.now()
         record.save()
