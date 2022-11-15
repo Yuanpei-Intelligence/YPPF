@@ -21,7 +21,7 @@ import random
 
 __all__ = [
     'add_signin_point',
-    'get_pools_and_items'
+    'get_pools_and_items',
     'buy_exchange_item',
     'buy_lottery_pool',
     'buy_random_pool',
@@ -237,6 +237,8 @@ def get_pools_and_items(pool_type: Pool.Type, user: User, frontend_dict: Dict[st
                         "user__name", flat=True))  # TODO: 需要distinct()吗？
                 big_prizes_and_winners[-1]["winners"] = winner_names
             for normal_prize_item in normal_prize_items:
+                if normal_prize_item.is_empty:
+                    continue
                 normal_prizes_and_winners.append(
                     {"prize_name": normal_prize_item.prize.name, "prize_image": normal_prize_item.prize.image})
                 winner_names = list(PoolRecord.objects.filter(
