@@ -103,7 +103,7 @@ def add_signin_point(user: User):
     '''
     # 获取已连续签到的日期和近几天签到信息
     continuous_days, signed_in = get_signin_infos(user, MAX_CHECK_DAYS, signin_today=True)
-    day_type = continuous_days % MAX_CHECK_DAYS
+    day_type = (continuous_days - 1) % MAX_CHECK_DAYS
     # 连续签到的基础元气值，可以从文件中读取，此类写法便于分析
     add_point = distribution2point(DAY2POINT, day_type)
     User.objects.modify_YQPoint(user, add_point, "每日登录",
