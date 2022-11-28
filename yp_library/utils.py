@@ -63,13 +63,13 @@ def violate_reminder(days: int, alert_msg: str):
         status=LendRecord.Status.NORMAL)
 
     # 逾期一周扣除信用分
-    receivers = violate_lendlist.values_list('reader_id__student_id')
+    receivers = list(violate_lendlist.values_list('reader_id__student_id', flat=True))
     receivers = User.objects.filter(username__in=receivers)
     # 绑定扣分和状态修改
     with transaction.atomic():
-        violate_lendlist.select_for_update().update(status=LendRecord.Status.OVERTIME)
         for receiver in receivers:
             User.objects.modify_credit(receiver, -1, '书房：归还逾期')
+        violate_lendlist.select_for_update().update(status=LendRecord.Status.OVERTIME)
     _send_remind_notification(receivers, alert_msg)
 
 
@@ -234,7 +234,7 @@ def get_my_records(reader_id: str, returned: Optional[bool] = None,
     if returned:
         for record in records:
             if  record['return_time'] > record['due_time']:
-                record['type'] = 'overtime'     # 逾期记录
+                record['type'] = 'overtime_returned'     # 逾期记录
             else:
                 record['type'] = 'returned'       # 正常记录
     else:

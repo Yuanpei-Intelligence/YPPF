@@ -1,6 +1,7 @@
 # 数据库模型与操作
 import os
 from Appointment.models import (
+    User,
     Participant,
     Room,
     Appoint,
@@ -1276,8 +1277,7 @@ def review(request: HttpRequest):
     try:
         longterm_appoint: LongTermAppoint = LongTermAppoint.objects.get(pk=Lid)
         reviewer_list = get_auditor_ids(longterm_appoint.applicant)
-        if request.user.is_staff and request.user.has_perm(
-                'Appointment.change_' + LongTermAppoint.__name__.lower()):
+        if request.user.is_staff and User.objects.check_perm(request.user, LongTermAppoint, 'view'):
             reviewer_list.append(request.user.username)
         assert request.user.username in reviewer_list
     except:

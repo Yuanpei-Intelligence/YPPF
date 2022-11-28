@@ -14,8 +14,10 @@ models.py
 @Date 2022-08-19
 '''
 import pypinyin
+from typing import Type, NoReturn
 from django.db import models
-from django.contrib.auth.models import AbstractUser
+from django.contrib.auth import get_permission_codename
+from django.contrib.auth.models import AbstractUser, AnonymousUser
 from django.contrib.auth.models import UserManager as _UserManager
 from django.db import transaction
 from django.db.models import QuerySet, F
@@ -70,18 +72,29 @@ class UserManager(_UserManager):
         extra_fields.setdefault('acronym', to_acronym(name))
         return super().create_user(username=username, password=password, **extra_fields)
 
-    def create(self, **fields):
+    def create(self, **fields) -> 'NoReturn':
         '''User.objects.create已废弃'''
         raise NotImplementedError
 
-    def get(self, *args, **kwargs) -> 'User':
-        return super().get(*args, **kwargs)
 
-    def all(self) -> 'QuerySet[User]':
-        return super().all()
+    def check_perm(self, user: 'User|AnonymousUser',
+                   model: 'Type[models.Model]|models.Model', perm: str) -> bool:
+        '''
+        检查当前用户在对应模型中是否具有对应权限
 
-    def filter(self, *args, **kwargs) -> 'QuerySet[User]':
-        return super().filter(*args, **kwargs)
+        :param user: 未经验证的用户
+        :type user: User|AnonymousUser
+        :param model: 待检查的模型或实例
+        :type model: Type[Model]|Model
+        :param perm: 权限名称，如change, view
+        :type perm: str
+        :return: 是否具有权限
+        :rtype: bool
+        '''
+        opts = model._meta
+        codename = get_permission_codename(perm, opts)
+        perm_name = f'{opts.app_label}.{codename}'
+        return user.has_perm(perm_name)
 
 
     @transaction.atomic
@@ -262,7 +275,7 @@ class User(AbstractUser, PointMixin):
     )
 
     REQUIRED_FIELDS = ['name']
-    objects: UserManager = UserManager()
+    objects: UserManager['User'] = UserManager()
 
     @necessary_for_frontend(name)
     def get_full_name(self) -> str:
