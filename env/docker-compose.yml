@@ -17,18 +17,32 @@ services:
       MYSQL_DATABASE: yppf
 
   yppf:
-    image: yuanpei/yppf
-    command: sh -c "sleep 10 &&
-                    conda run -n yppf pip3 install -r env/requirements.txt &&
-                    conda run -n yppf python3 manage.py makemigrations generic app Appointment yp_library &&
-                    conda run -n yppf python3 manage.py migrate &&
-                    conda run -n yppf python3 manage.py runserver 0.0.0.0:80"
+    image: yuanpei/profile
     ports:
-      - 8000:80
+      - 8000:8000
     volumes:
       - .././:/code
     depends_on:
       - mysql
+    environment:
+      - YPPF_SCHEDULER_LOG_FILE=logstore/scheduler.log # 和system_log放到一起
+      - YPPF_SCHEDULER_PORT=6666
+    command: sh -c "sleep 10 && python3 manage.py runserver 0.0.0.0:8000"
+
+  scheduler:
+    image: yuanpei/profile
+    volumes:
+      - .././:/code
+    ports:
+      - 6666:6666
+    depends_on:
+      - mysql
+    environment:
+      - YPPF_SCHEDULER_LOG_FILE=logstore/scheduler.log # 和system_log放到一起
+      - YPPF_SCHEDULER_PORT=6666
+      - YPPF_LOG_DEBUG=Y                               # 只影响scheduler的log level
+    command: sh -c "sleep 10 && python3 manage.py runscheduler" 
+
 
 volumes:
   yppf-mysql-data:
