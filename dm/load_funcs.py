@@ -42,7 +42,7 @@ __all__ = [
     'load_freshman', 'load_help', 'load_course_record', 
     'load_org_tag', 'load_old_org_tags', 'load_feedback_type', 
     'load_feedback', 'load_feedback_comments', 'load_major',
-    'load_minor', 'load_double_degree', 'load_project',
+    'load_minor', 'load_double_degree', 'load_project', 'load_default'
 ]
 
 
@@ -997,3 +997,39 @@ def load_project(filepath: str, output_func: Callable=None, html=False):
         )
     file.close()
     return try_output("导入项目信息成功！", output_func, html)
+
+
+def load_default(*args, **kwargs):
+    sid = username = "2000000000"
+    password = username
+    name = "小明"
+    gender = NaturalPerson.Gender.MALE
+    stu_major = "元培计划（待定）"
+    stu_grade = "20" + sid[:2]
+    stu_class = 5
+    email = sid + "@stu.pku.edu.cn"
+    tel = None
+
+    user, created = User.objects.get_or_create(username=username)
+    user.set_password(password)
+    user.utype = User.Type.PERSON
+    user.save()
+    if not created:
+        stu = NaturalPerson.objects.create(
+            person_id=user,
+            stu_id_dbonly=sid,
+            name=name,
+            gender=gender,
+            stu_major=stu_major,
+            stu_grade=stu_grade,
+            stu_class=stu_class,
+            email=email,
+            telephone=tel,
+        )
+        stu.save()
+    try:
+        User.objects.create_superuser(username='admin', password='password', email='admin@notexist.com')
+    except:
+        # 说明已经存在superuser
+        pass
+    
