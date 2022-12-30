@@ -26,17 +26,17 @@ jobs:
 
     - name: Start containers
       run: |
-        docker-compose -f env/docker-compose.yml up -d --build
+        docker-compose -f env/docker-compose.yml up -d --build && docker-compose -f env/docker-compose.yml logs
     
     - name: Check host
       run: |
+        docker-compose -f env/docker-compose.yml logs
         docker ps -a
         sleep 10
-        timeout 45s bash -c "while ! curl -Is localhost:8000; do
+        timeout 60s bash -c "while ! curl -Is localhost:8000; do
                                 sleep 3
                                 echo 'Failed to fetch web page.'
-                              done" ||
-        "docker-compose -f env/docker-compose.yml logs && exit 1"
+                              done" || "docker-compose -f env/docker-compose.yml logs && exit 1"
 
     - name: Test 
       run: |
