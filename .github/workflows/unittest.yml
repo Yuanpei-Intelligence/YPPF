@@ -40,4 +40,4 @@ jobs:
 
     - name: Test 
       run: |
-        docker-compose -f env/docker-compose.yml run yppf conda run -n yppf python3 manage.py test
+        docker-compose -f env/docker-compose.yml run yppf python3 manage.py test
