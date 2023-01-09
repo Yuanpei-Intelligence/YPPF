@@ -1,8 +1,8 @@
 from datetime import datetime
 from boottest import base_get_setting
 from boottest import DEBUG, LOGIN_URL, UNDERGROUND_URL, WECHAT_URL
-from boottest.hasher import MyMD5PasswordHasher, MySHA256Hasher
-import boottest.global_messages as my_messages
+from boottest.utils.hasher import MyMD5PasswordHasher, MySHA256Hasher
+import boottest.utils.global_messages as my_messages
 
 from django.conf import settings
 

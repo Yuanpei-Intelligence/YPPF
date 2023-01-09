@@ -33,8 +33,8 @@ import threading
 from Appointment import *
 
 # 消息读取
-from boottest.global_messages import wrong, succeed, message_url
-import boottest.global_messages as my_messages
+from boottest.utils.global_messages import wrong, succeed, message_url
+import boottest.utils.global_messages as my_messages
 
 # utils对接工具
 from Appointment.utils.utils import (

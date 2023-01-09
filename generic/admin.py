@@ -5,7 +5,7 @@ from django.contrib.contenttypes.models import ContentType
 from django.db.models import QuerySet
 from generic.models import *
 from generic.models import to_acronym
-from boottest.admin_utils import *
+from boottest.utils.admin_utils import *
 
 
 # 后台显示
