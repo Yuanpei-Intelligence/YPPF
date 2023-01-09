@@ -140,7 +140,7 @@ AUTH_PASSWORD_VALIDATORS = [
 # 正式上线时要去掉这里！如果先导入数据再修改hasher可能会出现账号无法登录！
 # if DEBUG:
 #     PASSWORD_HASHERS = [
-#         "boottest.utils.hasher.MyPBKDF2PasswordHasher",
+#         "utils.hasher.MyPBKDF2PasswordHasher",
 #     ]
 
 # Internationalization
@@ -175,6 +175,8 @@ USE_TZ = False
 
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/2.1/howto/static-files/
+MY_STATIC_DIR = os.getenv("YPPF_STATIC_DIR", BASE_DIR)
+MY_TMP_DIR = os.getenv("YPPF_TMP_DIR", BASE_DIR)
 STATIC_URL = "/static/"
 STATICFILES_DIRS = (os.path.join(MY_STATIC_DIR, "static"),)
 
@@ -183,18 +185,16 @@ MEDIA_ROOT = os.path.join(MY_STATIC_DIR, "media/")
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
-# Read env vars
+# 标识环境、相关的端口和日志设置
 MY_ENV = os.getenv("YPPF_ENV", "")
-MY_STATIC_DIR = os.getenv("YPPF_STATIC_DIR", BASE_DIR)
-MY_TMP_DIR = os.getenv("YPPF_TMP_DIR", BASE_DIR)
 
 # port
 MY_RPC_PORT = os.getenv("YPPF_SCHEDULER_PORT", 6666)
-MY_LIB_RPC_PORT = os.getenv("YPPF_SCHEDULER_PORT", 6699)
+# MY_LIB_RPC_PORT = os.getenv("YPPF_SCHEDULER_PORT", 6699)
 MY_INNER_PORT = os.getenv("YPPF_INNER_PORT", 80)
 
 # LOG
-MY_LOG_DIR = os.getenv("YPPF_LOG_DIR", BASE_DIR)
+MY_LOG_DIR = os.getenv("YPPF_LOG_DIR", BASE_DIR+"/logstore/")
 MY_LOG_LEVEL = logging.DEBUG if os.getenv("YPPF_LOG_DEBUG", "") else logging.INFO
 MY_SCHEDULER_LOG = os.getenv("YPPF_SCHEDULER_LOG_FILE", "scheduler.log")
 

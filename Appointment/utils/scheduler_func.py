@@ -19,7 +19,7 @@ scheduler_func.py是所有和scheduler定时任务发生交互的函数集合。
 如果需要实现新的函数，建议先详细阅读本py中其他函数的实现方式。
 '''
 
-from boottest.utils.scheduler import scheduler
+from utils.scheduler import scheduler
 
 
 # 每周清除预约的程序，会写入logstore中

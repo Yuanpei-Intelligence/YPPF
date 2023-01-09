@@ -1,6 +1,6 @@
 from django.contrib import admin
 
-from boottest.utils.admin_utils import *
+from utils.admin_utils import *
 from yp_library.models import *
 
 
