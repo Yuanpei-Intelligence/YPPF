@@ -140,7 +140,7 @@ AUTH_PASSWORD_VALIDATORS = [
 # 正式上线时要去掉这里！如果先导入数据再修改hasher可能会出现账号无法登录！
 # if DEBUG:
 #     PASSWORD_HASHERS = [
-#         "boottest.hasher.MyPBKDF2PasswordHasher",
+#         "boottest.utils.hasher.MyPBKDF2PasswordHasher",
 #     ]
 
 # Internationalization

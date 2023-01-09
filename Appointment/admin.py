@@ -9,7 +9,7 @@ from django.utils.html import format_html, format_html_join
 from django.db import transaction  # 原子化更改数据库
 from django.db.models import F, QuerySet
 
-from boottest.admin_utils import *
+from boottest.utils.admin_utils import *
 from Appointment import *
 from Appointment.utils import scheduler_func, utils
 from Appointment.utils.utils import operation_writer

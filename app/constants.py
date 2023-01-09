@@ -21,7 +21,7 @@ from boottest import (
     # 全局的其它常量
     UNDERGROUND_URL, WECHAT_URL,
 )
-from boottest.global_messages import (
+from boottest.utils.global_messages import (
     WRONG, SUCCEED,
 )
 from generic.models import User
