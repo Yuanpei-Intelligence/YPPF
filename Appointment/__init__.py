@@ -4,8 +4,6 @@ from boottest import DEBUG, LOGIN_URL, UNDERGROUND_URL, WECHAT_URL
 from boottest.utils.hasher import MyMD5PasswordHasher, MySHA256Hasher
 import boottest.utils.global_messages as my_messages
 
-from django.conf import settings
-
 __all__ = [
     # 本应用的本地设置
     'GLOBAL_INFO',

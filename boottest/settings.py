@@ -175,17 +175,28 @@ USE_TZ = False
 
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/2.1/howto/static-files/
+STATIC_URL = "/static/"
+STATICFILES_DIRS = (os.path.join(MY_STATIC_DIR, "static"),)
+
+MEDIA_URL = "/media/"
+MEDIA_ROOT = os.path.join(MY_STATIC_DIR, "media/")
+
+DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
+
+# Read env vars
 MY_ENV = os.getenv("YPPF_ENV", "")
 MY_STATIC_DIR = os.getenv("YPPF_STATIC_DIR", BASE_DIR)
-MY_LOG_DIR = os.getenv("YPPF_LOG_DIR", BASE_DIR)
 MY_TMP_DIR = os.getenv("YPPF_TMP_DIR", BASE_DIR)
-MY_LOG_LEVEL = logging.DEBUG if os.getenv("YPPF_LOG_DEBUG", "") else logging.INFO
 
-MY_SCHEDULER_LOG = os.getenv("YPPF_SCHEDULER_LOG_FILE", "scheduler.log")
+# port
 MY_RPC_PORT = os.getenv("YPPF_SCHEDULER_PORT", 6666)
 MY_LIB_RPC_PORT = os.getenv("YPPF_SCHEDULER_PORT", 6699)
 MY_INNER_PORT = os.getenv("YPPF_INNER_PORT", 80)
 
+# LOG
+MY_LOG_DIR = os.getenv("YPPF_LOG_DIR", BASE_DIR)
+MY_LOG_LEVEL = logging.DEBUG if os.getenv("YPPF_LOG_DEBUG", "") else logging.INFO
+MY_SCHEDULER_LOG = os.getenv("YPPF_SCHEDULER_LOG_FILE", "scheduler.log")
 
 if MY_ENV in ["PRODUCT", "TEST"]:
     # Set cookie session domain to allow two sites share the session
@@ -198,16 +209,6 @@ if MY_ENV == "SCHEDULER":
 
 if MY_ENV == "INNER":
     pass
-
-# STATIC_ROOT = os.path.join(BASE_DIR, "static")
-STATIC_URL = "/static/"
-
-STATICFILES_DIRS = (os.path.join(MY_STATIC_DIR, "static"),)
-
-MEDIA_URL = "/media/"
-MEDIA_ROOT = os.path.join(MY_STATIC_DIR, "media/")
-
-DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
 '''
 LOGGING = {
