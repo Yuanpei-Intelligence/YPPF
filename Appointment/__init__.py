@@ -1,8 +1,8 @@
 from datetime import datetime
 from boottest import base_get_setting
 from boottest import DEBUG, LOGIN_URL, UNDERGROUND_URL, WECHAT_URL
-from boottest.utils.hasher import MyMD5PasswordHasher, MySHA256Hasher
-import boottest.utils.global_messages as my_messages
+from utils.hasher import MyMD5PasswordHasher, MySHA256Hasher
+import utils.global_messages as my_messages
 
 __all__ = [
     # 本应用的本地设置

@@ -31,18 +31,18 @@ views
 @Date 2022-01-17
 '''
 from app.constants import *
-from boottest.utils.global_messages import (
+from utils.global_messages import (
     wrong,
     succeed,
     message_url,
     append_query,
 )
-import boottest.utils.global_messages as my_messages
+import utils.global_messages as my_messages
 from app import log
 from app import utils
 
 # 内部加密用，不同views文件不共享，如果依赖的utils使用了，尽量从utils导入
-from boottest.utils.hasher import MyMD5PasswordHasher, MySHA256Hasher
+from utils.hasher import MyMD5PasswordHasher, MySHA256Hasher
 
 from django.contrib.auth.decorators import login_required
 from generic.http.dependency import *

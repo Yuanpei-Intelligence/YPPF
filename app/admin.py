@@ -1,5 +1,5 @@
 from app.models import *
-from boottest.utils.admin_utils import *
+from utils.admin_utils import *
 from generic.http.dependency import HttpRequest
 
 from datetime import datetime

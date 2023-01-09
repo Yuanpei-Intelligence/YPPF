@@ -1,1 +1,1 @@
-from boottest.utils.scheduler import scheduler
+from utils.scheduler import scheduler

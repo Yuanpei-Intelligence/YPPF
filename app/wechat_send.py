@@ -17,7 +17,7 @@ from boottest import base_get_setting
 
 # 模型与加密模型
 from app.models import NaturalPerson, Organization, Activity, Notification, Position
-from boottest.utils.hasher import MyMD5PasswordHasher, MySHA256Hasher
+from utils.hasher import MyMD5PasswordHasher, MySHA256Hasher
 
 # 日期与定时任务
 from datetime import datetime, timedelta
