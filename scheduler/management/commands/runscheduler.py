@@ -12,7 +12,7 @@ import logging
 logging.getLogger('apscheduler').setLevel(settings.MY_LOG_LEVEL)
 logger = logging.getLogger(__name__)
 
-from app.scheduler_func import *
+from utils.scheduler_func import *
 from Appointment.utils.scheduler_func import clear_appointments
 from yp_library.management.sync import update_lib_data
 from yp_library.utils import bookreturn_notification

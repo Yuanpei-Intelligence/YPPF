@@ -44,7 +44,7 @@ from django.db.models import F
 # from django_apscheduler.util import close_old_connections
 
 # 引入定时任务还是放上面吧
-from app.scheduler import scheduler
+from utils.scheduler import scheduler
 
 default_weather = get_config('default_weather', default=None)
 

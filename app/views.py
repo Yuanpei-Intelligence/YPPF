@@ -190,7 +190,7 @@ def shiftAccount(request: HttpRequest):
 
 # Return content
 # Sname 姓名 Succeed 成功与否
-wechat_login_coder = MyMD5PasswordHasher("wechat_login")
+wechat_login_coder = MyMD5Hasher("wechat_login")
 
 
 @log.except_captured(source='views[miniLogin]', record_user=True)
@@ -1090,7 +1090,7 @@ def homepage(request: HttpRequest):
         with open("./weather.json") as weather_json:
             html_display['weather'] = json.load(weather_json)
     except:
-        from app.scheduler_func import get_weather
+        from utils.scheduler_func import get_weather
         html_display['weather'] = get_weather()
     update_time_delta = datetime.now() - datetime.strptime(html_display["weather"]["modify_time"],'%Y-%m-%d %H:%M:%S.%f')
     # 根据更新时间长短，展示不同的更新天气时间状态

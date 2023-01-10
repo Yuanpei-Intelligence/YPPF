@@ -17,7 +17,7 @@ from boottest import base_get_setting
 
 # 模型与加密模型
 from app.models import NaturalPerson, Organization, Activity, Notification, Position
-from utils.hasher import MyMD5PasswordHasher, MySHA256Hasher
+from utils.hasher import MySHA256Hasher
 
 # 日期与定时任务
 from datetime import datetime, timedelta
@@ -46,7 +46,7 @@ RETRY = False
 
 if USE_SCHEDULER:
     try:
-        from app.scheduler import scheduler
+        from utils.scheduler import scheduler
     except:
         from apscheduler.schedulers.background import BackgroundScheduler
         from django_apscheduler.jobstores import DjangoJobStore
