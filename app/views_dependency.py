@@ -42,7 +42,7 @@ from app import log
 from app import utils
 
 # 内部加密用，不同views文件不共享，如果依赖的utils使用了，尽量从utils导入
-from utils.hasher import MyMD5PasswordHasher, MySHA256Hasher
+from utils.hasher import MyMD5Hasher, MySHA256Hasher
 
 from django.contrib.auth.decorators import login_required
 from generic.http.dependency import *

@@ -397,7 +397,7 @@ class ActivityAdmin(admin.ModelAdmin):
         from app.activity_utils import changeActivityStatus
         changeActivityStatus(activity.id, Activity.Status.APPLYING, Activity.Status.WAITING)
         try:
-            from app.scheduler_func import scheduler
+            from utils.scheduler_func import scheduler
             scheduler.remove_job(f'activity_{activity.id}_{Activity.Status.WAITING}')
             return self.message_user(request=request,
                                     message='修改成功, 并移除了定时任务!')
@@ -414,7 +414,7 @@ class ActivityAdmin(admin.ModelAdmin):
         from app.activity_utils import changeActivityStatus
         changeActivityStatus(activity.id, Activity.Status.WAITING, Activity.Status.PROGRESSING)
         try:
-            from app.scheduler_func import scheduler
+            from utils.scheduler_func import scheduler
             scheduler.remove_job(f'activity_{activity.id}_{Activity.Status.PROGRESSING}')
             return self.message_user(request=request,
                                     message='修改成功, 并移除了定时任务!')
@@ -430,7 +430,7 @@ class ActivityAdmin(admin.ModelAdmin):
         from app.activity_utils import changeActivityStatus
         changeActivityStatus(activity.id, Activity.Status.PROGRESSING, Activity.Status.END)
         try:
-            from app.scheduler_func import scheduler
+            from utils.scheduler_func import scheduler
             scheduler.remove_job(f'activity_{activity.id}_{Activity.Status.END}')
             return self.message_user(request=request,
                                     message='修改成功, 并移除了定时任务!')
@@ -441,7 +441,7 @@ class ActivityAdmin(admin.ModelAdmin):
     def cancel_scheduler(self, request, queryset):
         success_list = []
         failed_list = []
-        from app.scheduler_func import scheduler
+        from utils.scheduler_func import scheduler
         CANCEL_STATUSES = [
             'remind',
             Activity.Status.END,
