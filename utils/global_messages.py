@@ -21,8 +21,7 @@ __all__ = [
     # 生成全局消息
     'wrong', 'succeed', 'alert',
     # 读取全局消息
-    'get_warning', 'get_alert', 'get_all',
-    'get_global_message',
+    'get_warning', 'get_alert',
     # 转移全局消息
     'transfer_message_context',
     # 生成URL
@@ -47,7 +46,7 @@ MESSAGECONTEXT = TypedDict(
 
 
 # 生成全局消息
-def wrong(message, context: dict=None) -> MESSAGECONTEXT:
+def wrong(message, context: dict = None) -> MESSAGECONTEXT:
     '''
     在错误的情况下返回的字典, message为错误信息
     如果提供了context，则向其中添加信息
@@ -59,7 +58,7 @@ def wrong(message, context: dict=None) -> MESSAGECONTEXT:
     return context
 
 
-def succeed(message, context: dict=None) -> MESSAGECONTEXT:
+def succeed(message, context: dict = None) -> MESSAGECONTEXT:
     '''
     在成功的情况下返回的字典, message为提示信息
     如果提供了context，则向其中添加信息
@@ -71,7 +70,7 @@ def succeed(message, context: dict=None) -> MESSAGECONTEXT:
     return context
 
 
-def alert(message, context: dict=None) -> MESSAGECONTEXT:
+def alert(message, context: dict = None) -> MESSAGECONTEXT:
     if context is None:
         context = dict()
     context[ALERT_FIELD] = message
@@ -132,6 +131,7 @@ def _move(context, warn_code, warn_message, alert_message=None):
         count += 1
     return count
 
+
 def transfer_message_context(source: dict, context=None,
                              with_alert=False, normalize=True) -> MESSAGECONTEXT:
     '''
@@ -145,7 +145,7 @@ def transfer_message_context(source: dict, context=None,
 
 
 # 生成URL
-def append_query(url, *, _query: str='', **querys):
+def append_query(url, *, _query: str = '', **querys):
     '''
     在URL末尾附加GET参数
 
@@ -168,7 +168,7 @@ def append_query(url, *, _query: str='', **querys):
     return url + concat + '&'.join(new_querys)
 
 
-def message_url(context: Union[dict, list], url: str='/welcome/')-> str:
+def message_url(context: Union[dict, list], url: str = '/welcome/') -> str:
     '''
     提供要发送的信息体和原始URL，返回带提示信息的URL
     - context: 包含`warn_code`和`warn_message`的字典或者二元数组
@@ -187,8 +187,8 @@ def message_url(context: Union[dict, list], url: str='/welcome/')-> str:
 # 读取其它目录类内容
 def read_key(
     content: Mapping, key: str,
-    trans_func: Callable=None, default=None, raise_exception=False,
-    ):
+    trans_func: Callable = None, default=None, raise_exception=False,
+):
     '''
     读取键
 
@@ -209,10 +209,10 @@ def read_key(
 def read_content(
     _content: Mapping,
     *_keys: str,
-    _default=None, _trans_func: Callable=None, _raise: bool=False,
-    _flat: bool=False,
+    _default=None, _trans_func: Callable = None, _raise: bool = False,
+    _flat: bool = False,
     **_fields: Union[Callable, Any, Sequence],
-    )-> Union[dict, tuple]:
+) -> Union[dict, tuple]:
     '''
     ### 读取目录
 
@@ -253,7 +253,7 @@ def read_content(
     ...     d=(int, True), e=(None, None, True),
     ... )
     <<< ValueError: invalid literal for int() with base 10: 'msg'
-    
+
     # 同时读取必要和可选字段并检查/转化(必要为主)
     >>> read_content(
     ...     c, 'a', _raise=True,
