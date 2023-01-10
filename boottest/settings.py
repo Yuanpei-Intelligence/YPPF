@@ -194,7 +194,7 @@ MY_RPC_PORT = os.getenv("YPPF_SCHEDULER_PORT", 6666)
 MY_INNER_PORT = os.getenv("YPPF_INNER_PORT", 80)
 
 # LOG
-MY_LOG_DIR = os.getenv("YPPF_LOG_DIR", BASE_DIR+"/logstore/")
+MY_LOG_DIR = os.getenv("YPPF_LOG_DIR", BASE_DIR)
 MY_LOG_LEVEL = logging.DEBUG if os.getenv("YPPF_LOG_DEBUG", "") else logging.INFO
 MY_SCHEDULER_LOG = os.getenv("YPPF_SCHEDULER_LOG_FILE", "scheduler.log")
 
