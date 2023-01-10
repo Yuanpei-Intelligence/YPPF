@@ -40,7 +40,7 @@ from django.db import models, transaction
 from django_mysql.models import ListCharField
 from generic.models import User
 from generic.models import invalid_for_frontend, necessary_for_frontend
-from django.db.models import Q, QuerySet
+from django.db.models import Q, Sum, QuerySet
 from django.db.models.signals import post_save
 from datetime import datetime, timedelta
 from app.constants import *
@@ -321,8 +321,6 @@ class NaturalPerson(models.Model):
     objects: NaturalPersonManager = NaturalPersonManager()
     QRcode = models.ImageField(upload_to=f"QRcode/", blank=True)
     visit_times = models.IntegerField("浏览次数",default=0) # 浏览主页的次数
-
-    bonusPoint = models.FloatField("积分", default=0)
 
     class Identity(models.IntegerChoices):
         TEACHER = (0, "教职工")
@@ -1462,24 +1460,22 @@ class CourseManager(models.Manager):
         return select_current(
             self.exclude(status=Course.Status.ABORT), noncurrent=noncurrent)
 
-    def selected(self, person: NaturalPerson):
+    def selected(self, person: NaturalPerson, unfailed=False):
+        all_status = [
+            CourseParticipant.Status.SELECT,
+            CourseParticipant.Status.SUCCESS,
+        ]
+        if not unfailed:
+            all_status.append(CourseParticipant.Status.FAILED)
         # 返回当前学生所选的所有课程，选课失败也要算入
         # participant_set是对CourseParticipant的反向查询
         return self.activated().filter(participant_set__person=person,
-                                       participant_set__status__in=[
-                                           CourseParticipant.Status.SELECT,
-                                           CourseParticipant.Status.SUCCESS,
-                                           CourseParticipant.Status.FAILED,
-                                       ])
+                                       participant_set__status__in=all_status)
 
 
     def unselected(self, person: NaturalPerson):
         # 返回当前学生没选上的所有课程
-        my_course_list = self.activated().filter(participant_set__person=person,
-                                                       participant_set__status__in=[
-                                                           CourseParticipant.Status.SELECT,
-                                                           CourseParticipant.Status.SUCCESS,
-                                                       ]).values_list("id", flat=True)
+        my_course_list = self.selected(person, unfailed=True).values_list("id", flat=True)
         return self.activated().exclude(id__in=my_course_list)
 
 
@@ -1834,17 +1830,17 @@ class AcademicTag(models.Model):
         verbose_name = "P.学术地图标签"
         verbose_name_plural = verbose_name
 
-    class AcademicTagType(models.IntegerChoices):
+    class Type(models.IntegerChoices):
         MAJOR = (0, '主修专业')
         MINOR = (1, '辅修专业')
         DOUBLE_DEGREE = (2, '双学位专业')
         PROJECT = (3, '参与项目')
 
-    atype = models.SmallIntegerField('标签类型', choices=AcademicTagType.choices)
+    atype = models.SmallIntegerField('标签类型', choices=Type.choices)
     tag_content = models.CharField('标签内容', max_length=63)
     
-    def __str__(self):
-        return AcademicTag.AcademicTagType(self.atype).label + ' - ' + self.tag_content
+    def __str__(self) -> str:
+        return self.get_atype_display() + ' - ' + self.tag_content
 
 
 class AcademicEntryManager(models.Manager):
@@ -1886,14 +1882,14 @@ class AcademicTextEntry(AcademicEntry):
         verbose_name = "P.学术地图文本项目"
         verbose_name_plural = verbose_name
 
-    class AcademicTextType(models.IntegerChoices):
+    class Type(models.IntegerChoices):
         SCIENTIFIC_RESEARCH = (0, '本科生科研')
         CHALLENGE_CUP = (1, '挑战杯')
         INTERNSHIP = (2, '实习经历')
         SCIENTIFIC_DIRECTION = (3, '科研方向')
         GRADUATION = (4, '毕业去向')
 
-    atype = models.SmallIntegerField('类型', choices=AcademicTextType.choices)
+    atype = models.SmallIntegerField('类型', choices=Type.choices)
     content = models.CharField('内容', max_length=4095)
 
 
@@ -1943,6 +1939,12 @@ class Prize(models.Model):
     stock = models.IntegerField('参考库存', default=0)
     reference_price = models.IntegerField('参考价格')
     image = models.ImageField('图片', upload_to=f'prize/%Y-%m/', null=True, blank=True)
+    provider = models.ForeignKey(User, verbose_name='提供者', on_delete=models.CASCADE,
+                                 null=True, blank=True)
+
+    @invalid_for_frontend
+    def __str__(self):
+        return self.name
 
 
 class Pool(models.Model):
@@ -1967,6 +1969,18 @@ class Pool(models.Model):
     redeem_start = models.DateTimeField('兑奖开始时间', null=True, blank=True) # 指线下获取奖品实物
     redeem_end = models.DateTimeField('兑奖结束时间', null=True, blank=True)
 
+    @invalid_for_frontend
+    def __str__(self):
+        return self.title
+
+    @property
+    def items(self) -> 'models.manager.RelatedManager[PoolItem]':
+        return self.poolitem_set
+
+    @invalid_for_frontend
+    def get_capacity(self):
+        return self.items.aggregate(Sum('origin_num'))['origin_num__sum'] or 0
+
 
 class PoolItem(models.Model):
     class Meta:
@@ -1974,7 +1988,8 @@ class PoolItem(models.Model):
         verbose_name_plural = verbose_name
 
     pool: Pool = models.ForeignKey(Pool, verbose_name='奖池', on_delete=models.CASCADE)
-    prize: Prize = models.ForeignKey(Prize, verbose_name='奖品', on_delete=models.CASCADE)
+    prize: Prize = models.ForeignKey(Prize, verbose_name='奖品', on_delete=models.CASCADE,
+                                     null=True, blank=True)
     origin_num = models.IntegerField('初始数量')
     consumed_num = models.IntegerField('已兑换', default=0)
     # 下面两个在 pool 类型为兑换奖池时有效
@@ -1982,8 +1997,16 @@ class PoolItem(models.Model):
     exchange_price = models.IntegerField('价格', null=True, blank=True)
     # 下面这个在抽奖/盲盒奖池中有效
     is_big_prize: bool = models.BooleanField('是否特别奖品', default=False)
-    # 下面这个在盲盒奖池中有效，若为真则表示“谢谢参与”
-    is_empty: bool = models.BooleanField('空盲盒', default=False)
+
+    @property
+    def is_empty(self) -> bool:
+        return self.prize is None
+
+    @invalid_for_frontend
+    def __str__(self):
+        if self.is_empty:
+            return f'{self.pool} 空盒'
+        return f'{self.pool} {self.prize}'
 
 
 class PoolRecord(models.Model):
@@ -2011,7 +2034,7 @@ class PoolRecord(models.Model):
 
 class ActivitySummary(models.Model):
     class Meta:
-        verbose_name = "总结图片申请"
+        verbose_name = "3.活动总结"
         verbose_name_plural = verbose_name
         ordering = [ "-time"]
 
@@ -2021,34 +2044,25 @@ class ActivitySummary(models.Model):
         CANCELED = (2, "已取消")
         REFUSED = (3, "已拒绝")
 
-    related_activity: Activity = models.ForeignKey(
+    activity: Activity = models.ForeignKey(
         Activity, on_delete=models.CASCADE
     )
 
 
     status = models.SmallIntegerField(choices=Status.choices, default=0)
-    image = models.ImageField(upload_to=f"ActivitySummary/photo/%Y/%m/", verbose_name=u'活动总结图片', null=True, blank=True)
-
-
+    image = models.ImageField(upload_to=f"ActivitySummary/photo/%Y/%m/", verbose_name='活动总结图片', null=True, blank=True)
     time = models.DateTimeField("申请时间", auto_now_add=True)
 
     def __str__(self):
-        return f'{self.related_activity.title}活动总结图片申请'
-
+        return f'{self.activity.title}活动总结'
 
     def is_pending(self):   #表示是不是pending状态
         return self.status == ActivitySummary.Status.WAITING
 
-    def get_status_str(self):
-        return self.Status.choices[self.status][1]
+    @necessary_for_frontend('activity.organization_id')
+    def get_org(self):
+        return self.activity.organization_id
 
-    def get_poster_name(self):
-        try:
-            org = Organization.objects.get(organization_id=self.related_activity.organization_id.organization_id)
-            return org
-        except:
-            return '未知'
-
-    def get_instance(self):
-        return self.__str__()
-
+    @necessary_for_frontend('activity.title', '__str__')
+    def get_audit_display(self):
+        return f'{self.activity.title}总结'

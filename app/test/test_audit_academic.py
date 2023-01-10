@@ -25,119 +25,119 @@ class GetWaitAuditStudentsTestCase(TestCase):
         NaturalPerson.objects.create(person_id=u4, name="4", stu_grade="2020")
         NaturalPerson.objects.create(person_id=u5, name="5", stu_grade="2021")
 
-        AcademicTag.objects.create(atype=AcademicTag.AcademicTagType.MAJOR, tag_content="数学")
-        AcademicTag.objects.create(atype=AcademicTag.AcademicTagType.MAJOR, tag_content="物理")
-        AcademicTag.objects.create(atype=AcademicTag.AcademicTagType.MAJOR, tag_content="中文")
-        AcademicTag.objects.create(atype=AcademicTag.AcademicTagType.MINOR, tag_content="数学")
-        AcademicTag.objects.create(atype=AcademicTag.AcademicTagType.MINOR, tag_content="物理")
-        AcademicTag.objects.create(atype=AcademicTag.AcademicTagType.MINOR, tag_content="中文")
-        AcademicTag.objects.create(atype=AcademicTag.AcademicTagType.DOUBLE_DEGREE, tag_content="数学")
-        AcademicTag.objects.create(atype=AcademicTag.AcademicTagType.DOUBLE_DEGREE, tag_content="物理")
-        AcademicTag.objects.create(atype=AcademicTag.AcademicTagType.DOUBLE_DEGREE, tag_content="中文")
+        AcademicTag.objects.create(atype=AcademicTag.Type.MAJOR, tag_content="数学")
+        AcademicTag.objects.create(atype=AcademicTag.Type.MAJOR, tag_content="物理")
+        AcademicTag.objects.create(atype=AcademicTag.Type.MAJOR, tag_content="中文")
+        AcademicTag.objects.create(atype=AcademicTag.Type.MINOR, tag_content="数学")
+        AcademicTag.objects.create(atype=AcademicTag.Type.MINOR, tag_content="物理")
+        AcademicTag.objects.create(atype=AcademicTag.Type.MINOR, tag_content="中文")
+        AcademicTag.objects.create(atype=AcademicTag.Type.DOUBLE_DEGREE, tag_content="数学")
+        AcademicTag.objects.create(atype=AcademicTag.Type.DOUBLE_DEGREE, tag_content="物理")
+        AcademicTag.objects.create(atype=AcademicTag.Type.DOUBLE_DEGREE, tag_content="中文")
         
         AcademicTagEntry.objects.create(
             person=NaturalPerson.objects.get(name="1"),
             status=AcademicEntry.EntryStatus.PUBLIC,
             tag=AcademicTag.objects.get(
-                atype=AcademicTag.AcademicTagType.MAJOR, 
+                atype=AcademicTag.Type.MAJOR, 
                 tag_content="数学",
         ))
         AcademicTagEntry.objects.create(
             person=NaturalPerson.objects.get(name="1"),
             status=AcademicEntry.EntryStatus.PRIVATE,
             tag=AcademicTag.objects.get(
-                atype=AcademicTag.AcademicTagType.MINOR, 
+                atype=AcademicTag.Type.MINOR, 
                 tag_content="中文",
         ))
         AcademicTagEntry.objects.create(
             person=NaturalPerson.objects.get(name="2"),
             status=AcademicEntry.EntryStatus.WAIT_AUDIT,
             tag=AcademicTag.objects.get(
-                atype=AcademicTag.AcademicTagType.MAJOR, 
+                atype=AcademicTag.Type.MAJOR, 
                 tag_content="物理",
         ))
         AcademicTagEntry.objects.create(
             person=NaturalPerson.objects.get(name="2"),
             status=AcademicEntry.EntryStatus.WAIT_AUDIT,
             tag=AcademicTag.objects.get(
-                atype=AcademicTag.AcademicTagType.DOUBLE_DEGREE, 
+                atype=AcademicTag.Type.DOUBLE_DEGREE, 
                 tag_content="数学",
         ))
         AcademicTagEntry.objects.create(
             person=NaturalPerson.objects.get(name="3"),
             status=AcademicEntry.EntryStatus.PRIVATE,
             tag=AcademicTag.objects.get(
-                atype=AcademicTag.AcademicTagType.MAJOR, 
+                atype=AcademicTag.Type.MAJOR, 
                 tag_content="中文",
         ))
         AcademicTagEntry.objects.create(
             person=NaturalPerson.objects.get(name="3"),
             status=AcademicEntry.EntryStatus.PRIVATE,
             tag=AcademicTag.objects.get(
-                atype=AcademicTag.AcademicTagType.MINOR,
+                atype=AcademicTag.Type.MINOR,
                 tag_content="物理",
         ))
         AcademicTagEntry.objects.create(
             person=NaturalPerson.objects.get(name="4"),
             status=AcademicEntry.EntryStatus.WAIT_AUDIT,
             tag=AcademicTag.objects.get(
-                atype=AcademicTag.AcademicTagType.MINOR,
+                atype=AcademicTag.Type.MINOR,
                 tag_content="物理",
         ))
         AcademicTagEntry.objects.create(
             person=NaturalPerson.objects.get(name="5"),
             status=AcademicEntry.EntryStatus.OUTDATE,
             tag=AcademicTag.objects.get(
-                atype=AcademicTag.AcademicTagType.MINOR,
+                atype=AcademicTag.Type.MINOR,
                 tag_content="物理",
         ))
         
         AcademicTextEntry.objects.create(
             person=NaturalPerson.objects.get(name="1"),
             status=AcademicEntry.EntryStatus.WAIT_AUDIT,
-            atype=AcademicTextEntry.AcademicTextType.INTERNSHIP,
+            atype=AcademicTextEntry.Type.INTERNSHIP,
             content="数学物理方法qwq",
         )
         AcademicTextEntry.objects.create(
             person=NaturalPerson.objects.get(name="1"),
             status=AcademicEntry.EntryStatus.OUTDATE,
-            atype=AcademicTextEntry.AcademicTextType.SCIENTIFIC_RESEARCH,
+            atype=AcademicTextEntry.Type.SCIENTIFIC_RESEARCH,
             content="浩浩中文，卷帙浩繁。",
         )
         AcademicTextEntry.objects.create(
             person=NaturalPerson.objects.get(name="2"),
             status=AcademicEntry.EntryStatus.PUBLIC,
-            atype=AcademicTextEntry.AcademicTextType.SCIENTIFIC_RESEARCH,
+            atype=AcademicTextEntry.Type.SCIENTIFIC_RESEARCH,
             content="数学分析123456789",
         )
         AcademicTextEntry.objects.create(
             person=NaturalPerson.objects.get(name="2"),
             status=AcademicEntry.EntryStatus.WAIT_AUDIT,
-            atype=AcademicTextEntry.AcademicTextType.SCIENTIFIC_RESEARCH,
+            atype=AcademicTextEntry.Type.SCIENTIFIC_RESEARCH,
             content="物理物理物理物理物理11111111的",
         )
         AcademicTextEntry.objects.create(
             person=NaturalPerson.objects.get(name="3"),
             status=AcademicEntry.EntryStatus.PRIVATE,
-            atype=AcademicTextEntry.AcademicTextType.INTERNSHIP,
+            atype=AcademicTextEntry.Type.INTERNSHIP,
             content="中文实习",
         )
         AcademicTextEntry.objects.create(
             person=NaturalPerson.objects.get(name="3"),
             status=AcademicEntry.EntryStatus.PUBLIC,
-            atype=AcademicTextEntry.AcademicTextType.CHALLENGE_CUP,
+            atype=AcademicTextEntry.Type.CHALLENGE_CUP,
             content="离散数学的原理是非常美妙的",
         )
         AcademicTextEntry.objects.create(
             person=NaturalPerson.objects.get(name="4"),
             status=AcademicEntry.EntryStatus.PUBLIC,
-            atype=AcademicTextEntry.AcademicTextType.CHALLENGE_CUP,
+            atype=AcademicTextEntry.Type.CHALLENGE_CUP,
             content="离散数学的原理是非常美妙的",
         )
         AcademicTextEntry.objects.create(
             person=NaturalPerson.objects.get(name="5"),
             status=AcademicEntry.EntryStatus.WAIT_AUDIT,
-            atype=AcademicTextEntry.AcademicTextType.CHALLENGE_CUP,
+            atype=AcademicTextEntry.Type.CHALLENGE_CUP,
             content="离散数学的原理是非常美妙的",
         )
 
@@ -160,7 +160,7 @@ class GetWaitAuditStudentsTestCase(TestCase):
         entry1.save()
         entry2 = AcademicTagEntry.objects.select_for_update().get(
             tag=AcademicTag.objects.get(
-                atype=AcademicTag.AcademicTagType.DOUBLE_DEGREE, 
+                atype=AcademicTag.Type.DOUBLE_DEGREE, 
                 tag_content="数学"
             )
         )

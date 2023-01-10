@@ -74,24 +74,61 @@ class Participant(models.Model):
         return self.name + ('' if self.pinyin is None else '_' + self.pinyin)
 
 
-class RoomManager(models.Manager):
+class RoomQuerySet(models.QuerySet):
     def permitted(self):
+        '''只保留所有可预约的房间'''
         return self.filter(Rstatus=Room.Status.PERMITTED)
 
+    def unlimited(self):
+        '''只保留所有无需预约的房间'''
+        return self.filter(Rstatus=Room.Status.UNLIMITED)
+
+    def activated(self):
+        '''只保留所有可用的房间'''
+        return self.filter(Rstatus__in=[Room.Status.UNLIMITED, Room.Status.PERMITTED])
+
+    def basement_only(self):
+        '''只保留所有地下室的房间'''
+        return self.exclude(Rid__icontains="R")
+
+    def russian_only(self):
+        '''只保留所有俄文楼的房间'''
+        return self.filter(Rid__icontains="R")
+
+
+class RoomManager(models.Manager):
+    def get_queryset(self) -> RoomQuerySet['Room']:
+        return RoomQuerySet(self.model, using=self._db, hints=self._hints)
+
+    def all(self) -> RoomQuerySet['Room']:
+        return super().all()
+
+    def permitted(self):
+        return self.get_queryset().permitted()
+
+    def unlimited(self):
+        return self.get_queryset().unlimited()
+
     def function_rooms(self):
-        # 获取所有功能房
+        '''获取所有可预约功能房'''
         titles = ['航模', '绘画', '书法', '活动']
         title_query = ~Q(Rtitle__icontains="研讨")
         title_query |= Q(Rtitle__icontains="/")
         for room_title in titles:
             title_query |= Q(Rtitle__icontains=room_title)
-        return self.exclude(Rid__icontains="R").filter(
-            title_query, Rstatus=Room.Status.PERMITTED)
+        return self.get_queryset().permitted().basement_only().filter(title_query)
 
     def talk_rooms(self):
-        # 获取所有研讨室
-        return self.filter(Rtitle__icontains="研讨",
-                           Rstatus=Room.Status.PERMITTED)
+        '''获取所有研讨室'''
+        return self.get_queryset().permitted().filter(Rtitle__icontains="研讨")
+
+    def russian_rooms(self):
+        '''获取所有可预约俄文楼教室'''
+        return self.get_queryset().permitted().russian_only()
+
+    def interview_room_ids(self):
+        '''获取所有可面试俄文楼教室'''
+        return set()
 
 
 class Room(models.Model):
@@ -132,9 +169,30 @@ class Room(models.Model):
         return self.Rid + ' ' + self.Rtitle
 
 
-class AppointManager(models.Manager):
+class AppointQuerySet(models.QuerySet):
     def not_canceled(self):
         return self.exclude(Astatus=Appoint.Status.CANCELED)
+
+    def terminated(self):
+        return self.filter(Astatus__in=Appoint.Status.Terminals())
+
+    def unfinished(self):
+        return self.exclude(Astatus__in=Appoint.Status.Terminals())
+
+
+class AppointManager(models.Manager):
+    def get_queryset(self) -> AppointQuerySet['Appoint']:
+        return AppointQuerySet(self.model, using=self._db, hints=self._hints)
+
+    def all(self) -> AppointQuerySet['Appoint']:
+        return super().all()
+
+    def not_canceled(self):
+        return self.get_queryset().not_canceled()
+
+    def unfinished(self):
+        '''用于检查而非呈现，筛选还未结束的预约'''
+        return self.exclude(Astatus__in=Appoint.Status.Terminals())
 
     def displayable(self):
         '''个人主页页面，在"普通预约"和"查看下周"中会显示的预约'''
@@ -213,9 +271,10 @@ class Appoint(models.Model):
     class Type(models.IntegerChoices):
         '''预约类型'''
         NORMAL = 0, '常规预约'
-        TODAY = 1, '当天预约'  # 保留，暂不使用
+        TODAY = 1, '当天预约'
         TEMPORARY = 2, '临时预约'
         LONGTERM = 3, '长期预约'
+        INTERVIEW = 4, '面试预约'
 
     Atype: 'int|Type' = models.SmallIntegerField(
         '预约类型', choices=Type.choices, default=Type.NORMAL)
@@ -297,14 +356,14 @@ class CardCheckInfo(models.Model):
     Cardtime = models.DateTimeField('刷卡时间', auto_now_add=True)
 
     class Status(models.IntegerChoices):
-        DOOR_CLOSE = 0  # 开门：否
-        DOOR_OPEN = 1  # 开门：是
+        DOOR_CLOSE = 0, '不开门'  # 开门：否
+        DOOR_OPEN = 1, '开门'  # 开门：是
 
     CardStatus = models.SmallIntegerField(
         '刷卡状态', choices=Status.choices, default=0)
 
     ShouldOpenStatus = models.SmallIntegerField(
-        '是否应该开门', choices=Status.choices, default=0)
+        '应该开门', choices=Status.choices, default=0)
 
     Message = models.CharField(
         '记录信息', max_length=256, null=True, blank=True)

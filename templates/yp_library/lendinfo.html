@@ -119,11 +119,11 @@
                                                             </th>
                                                             <td>{{record.lend_time}}</td>
                                                             <td>{{record.due_time}}</td>
-                                                            <td {% if record.type != "normal" %} style="color:#E3170D" {% endif %}>
+                                                            <td {% if record.type != "returned" %} style="color:#E3170D" {% endif %}>
                                                                 {{record.return_time}}
                                                             </td>
                                                             <td>
-                                                                {% if record.type != "normal" %}
+                                                                {% if record.type != "returned" %}
                                                                     <!-- 逾期记录还需分情况 -->
                                                                     {% if record.status == 0 or record.status == 1 %}
                                                                         <!-- 未申诉的逾期记录 -->

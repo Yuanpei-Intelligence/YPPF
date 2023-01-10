@@ -28,8 +28,8 @@
                                                 <br>
                                                 {% with application.get_status_display as status %}
                                                 <div align="center">
-                                                    <h4><a href="/viewActivity/{{application.related_activity.id}}"><u>{{application.related_activity.title}}</u></a>
-                                                        ({{application.related_activity.start.month}}月{{application.related_activity.start.day}}日)
+                                                    <h4><a href="/viewActivity/{{application.activity.id}}"><u>{{application.activity.title}}</u></a>
+                                                        ({{application.activity.start.month}}月{{application.activity.start.day}}日)
                                                         {%if status == "待审核"%}
                                                         <span class="badge badge-primary">{{status}}</span>
                                                         {%elif status == "已通过"%}

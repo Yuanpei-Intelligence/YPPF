@@ -17,6 +17,8 @@ def remove_local_var(d: dict):
     for k in keys:
         if k.startswith('_'):
             d.pop(k)
+        if k == 'np':
+            d.pop(k)
     return d
 
 
@@ -30,7 +32,7 @@ def generic_info():
 def person_info(np: 'NaturalPerson|User'):
     if isinstance(np, User):
         np = NaturalPerson.objects.get_by_user(np)
-    person_info = {}
+    person_info = dict(Sname=np.name)
     person_info.update(cal_study_room(np))
     person_info.update(cal_early_room(np))
     person_info.update(cal_late_room(np))
@@ -189,17 +191,11 @@ def cal_act(np: NaturalPerson):
         person_id=np,
         activity_id__year=SUMMARY_YEAR
     ).count()
-    activity_awards = []
-    if act_num == 0:
-        activity_awards.append('“潜水冠军”')
-    if orgs.count() >= 2 or act_num >= 5:
-        activity_awards.append('“社牛”')
-    if pos.count() >= 5:
-        activity_awards.append('“我全都要”')
+    position_num = pos.count()
     return dict(
         IScreate=IScreate, myclub_name=myclub_name,
         club_num=club_num, course_org_num=course_org_num, act_num=act_num,
-        activity_award='，'.join(activity_awards)
+        position_num=position_num,
     )
 
 
@@ -225,16 +221,19 @@ def cal_course(np: NaturalPerson):
         t = course_me_past.filter(course__type=course_type)
         if not t:
             continue
-        t = t.aggregate(Sum('total_hours'), Sum('attend_times'))
+        t = t.aggregate(Sum('total_hours'), Sum('attend_times'), count=Count('*'))
         pro.append([course_type.label, t['total_hours__sum']
-                   or 0, t['attend_times__sum'] or 0])
+                   or 0, t['attend_times__sum'] or 0, t['count'] or 0])
 
     unclassified_hour = course_me_past.filter(course__isnull=True).aggregate(
         Sum('total_hours'))['total_hours__sum'] or 0
     course_hour = 0
 
     types = []
-    for label, hour, _ in pro:
+    max_type_info = '无', 0
+    for label, hour, _, count in pro:
+        if count > max_type_info[1]:
+            max_type_info = label, count
         types.append(label)
         course_hour += hour
 
@@ -243,7 +242,7 @@ def cal_course(np: NaturalPerson):
         course_hour += unclassified_hour
 
     course_type = '/'.join(types) + f' {len(types)}'
-    IsOneType, IsManyType = len(types) == 1, len(types) > 1
+    type_count = len(types)
 
     if course_me_past:
         most_time: CourseRecord = max(
@@ -259,7 +258,7 @@ def cal_course(np: NaturalPerson):
     return dict(course_num=course_num, course_hour=course_hour, course_type=course_type,
                 course_most_time_name=course_most_time_name, course_most_hour=course_most_hour,
                 course_most_num_name=course_most_num_name, course_most_num=course_most_num,
-                IsOneType=IsOneType, IsManyType=IsManyType
+                max_type_info=max_type_info, type_count=type_count
                 )
 
 

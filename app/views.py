@@ -49,6 +49,7 @@ from app.notification_utils import(
     notification_status_change,
     notification2Display,
 )
+from app.YQPoint_utils import add_signin_point
 from app.academic_utils import (
     comments2Display,
     get_js_tag_list,
@@ -59,6 +60,7 @@ from app.academic_utils import (
     get_text_status,
     get_search_results,
 )
+from generic.models import YQPointRecord
 
 import json
 import random
@@ -81,6 +83,7 @@ email_coder = MySHA256Hasher(local_dict["hash"]["email"])
 
 @log.except_captured(source='views[index]', record_user=True,
                      record_request_args=True, show_traceback=True)
+@utils.record_attack(AssertionError, as_attack=True)
 def index(request: HttpRequest):
     arg_origin = request.GET.get("origin")
     modpw_status = request.GET.get("modinfo")
@@ -117,8 +120,10 @@ def index(request: HttpRequest):
         return redirect("/index/?alert=1")
 
     if request.method == "POST" and request.POST:
-        username = request.POST["username"]
-        password = request.POST["password"]
+        username = request.POST.get("username")
+        password = request.POST.get("password")
+        assert username is not None
+        assert password is not None
 
         try:
             user = User.objects.filter(username=username)
@@ -592,31 +597,31 @@ def stuinfo(request: HttpRequest, name=None):
 
         # 获取用户已有的专业/项目的列表，用于select的默认选中项
         academic_params.update(
-            selected_major_list=get_js_tag_list(person, AcademicTag.AcademicTagType.MAJOR,
+            selected_major_list=get_js_tag_list(person, AcademicTag.Type.MAJOR,
                                                 selected=True, status_in=status_in),
-            selected_minor_list=get_js_tag_list(person, AcademicTag.AcademicTagType.MINOR,
+            selected_minor_list=get_js_tag_list(person, AcademicTag.Type.MINOR,
                                                 selected=True, status_in=status_in),
-            selected_double_degree_list=get_js_tag_list(person, AcademicTag.AcademicTagType.DOUBLE_DEGREE,
+            selected_double_degree_list=get_js_tag_list(person, AcademicTag.Type.DOUBLE_DEGREE,
                                                         selected=True, status_in=status_in),
-            selected_project_list=get_js_tag_list(person, AcademicTag.AcademicTagType.PROJECT,
+            selected_project_list=get_js_tag_list(person, AcademicTag.Type.PROJECT,
                                                   selected=True, status_in=status_in),
         )
 
         # 获取用户已有的TextEntry的contents，用于TextEntry填写栏的前端预填写
         scientific_research_list = get_text_list(
-            person, AcademicTextEntry.AcademicTextType.SCIENTIFIC_RESEARCH, status_in
+            person, AcademicTextEntry.Type.SCIENTIFIC_RESEARCH, status_in
         )
         challenge_cup_list = get_text_list(
-            person, AcademicTextEntry.AcademicTextType.CHALLENGE_CUP, status_in
+            person, AcademicTextEntry.Type.CHALLENGE_CUP, status_in
         )
         internship_list = get_text_list(
-            person, AcademicTextEntry.AcademicTextType.INTERNSHIP, status_in
+            person, AcademicTextEntry.Type.INTERNSHIP, status_in
         )
         scientific_direction_list = get_text_list(
-            person, AcademicTextEntry.AcademicTextType.SCIENTIFIC_DIRECTION, status_in
+            person, AcademicTextEntry.Type.SCIENTIFIC_DIRECTION, status_in
         )
         graduation_list = get_text_list(
-            person, AcademicTextEntry.AcademicTextType.GRADUATION, status_in
+            person, AcademicTextEntry.Type.GRADUATION, status_in
         )
         academic_params.update(
             scientific_research_list=scientific_research_list,
@@ -632,24 +637,24 @@ def stuinfo(request: HttpRequest, name=None):
         )
 
         # 最后获取每一种atype对应的entry的公开状态，如果没有则默认为公开
-        major_status = get_tag_status(person, AcademicTag.AcademicTagType.MAJOR)
-        minor_status = get_tag_status(person, AcademicTag.AcademicTagType.MINOR)
-        double_degree_status = get_tag_status(person, AcademicTag.AcademicTagType.DOUBLE_DEGREE)
-        project_status = get_tag_status(person, AcademicTag.AcademicTagType.PROJECT)
+        major_status = get_tag_status(person, AcademicTag.Type.MAJOR)
+        minor_status = get_tag_status(person, AcademicTag.Type.MINOR)
+        double_degree_status = get_tag_status(person, AcademicTag.Type.DOUBLE_DEGREE)
+        project_status = get_tag_status(person, AcademicTag.Type.PROJECT)
         scientific_research_status = get_text_status(
-            person, AcademicTextEntry.AcademicTextType.SCIENTIFIC_RESEARCH
+            person, AcademicTextEntry.Type.SCIENTIFIC_RESEARCH
         )
         challenge_cup_status = get_text_status(
-            person, AcademicTextEntry.AcademicTextType.CHALLENGE_CUP
+            person, AcademicTextEntry.Type.CHALLENGE_CUP
         )
         internship_status = get_text_status(
-            person, AcademicTextEntry.AcademicTextType.INTERNSHIP
+            person, AcademicTextEntry.Type.INTERNSHIP
         )
         scientific_direction_status = get_text_status(
-            person, AcademicTextEntry.AcademicTextType.SCIENTIFIC_DIRECTION
+            person, AcademicTextEntry.Type.SCIENTIFIC_DIRECTION
         )
         graduation_status = get_text_status(
-            person, AcademicTextEntry.AcademicTextType.GRADUATION
+            person, AcademicTextEntry.Type.GRADUATION
         )
 
         status_dict = dict(
@@ -975,14 +980,14 @@ def homepage(request: HttpRequest):
         "warn_message", "")  # 提醒的具体内容
 
     nowtime = datetime.now()
-    # 今天第一次访问 welcome 界面，积分加 0.5
+    # 今天第一次访问 welcome 界面，积分增加
     if is_person:
         with transaction.atomic():
-            np = NaturalPerson.objects.select_for_update().get(person_id=request.user)
+            np: NaturalPerson = NaturalPerson.objects.select_for_update().get(person_id=request.user)
             if np.last_time_login is None or np.last_time_login.date() != nowtime.date():
                 np.last_time_login = nowtime
-                np.bonusPoint += 0.5
                 np.save()
+                add_point, html_display['signin_display'] = add_signin_point(request.user)
                 html_display['first_signin'] = True # 前端显示
 
     # 开始时间在前后一周内，除了取消和审核中的活动。按时间逆序排序
@@ -1658,7 +1663,6 @@ def search(request: HttpRequest):
         info['ref'] = np.get_absolute_url() + '#tab=academic_map'
         info['avatar'] = np.get_user_ava()
         info['sname'] = np.name
-        contents = [(k, v) for k, v in contents.items()]
         academic_list.append((info, contents))
 
     me = get_person_or_org(request.user, user_type)
@@ -1674,6 +1678,7 @@ def search(request: HttpRequest):
 
 @log.except_captured(source='views[forgetPassword]', record_user=True,
                      record_request_args=True, show_traceback=True)
+@utils.record_attack(Exception, as_attack=True)
 def forgetPassword(request: HttpRequest):
     """
         忘记密码页（Pylance可以提供文档字符串支持）

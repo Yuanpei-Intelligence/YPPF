@@ -153,35 +153,35 @@ def modifyAcademic(request: HttpRequest) -> HttpResponse:
     # 获取所有专业/项目的列表，左右前端select框的下拉选项
     me = get_person_or_org(request.user, UTYPE_PER)
     frontend_dict.update(
-        major_list=get_js_tag_list(me, AcademicTag.AcademicTagType.MAJOR, selected=False),
-        minor_list=get_js_tag_list(me, AcademicTag.AcademicTagType.MINOR, selected=False),
-        double_degree_list=get_js_tag_list(me, AcademicTag.AcademicTagType.DOUBLE_DEGREE, selected=False),
-        project_list=get_js_tag_list(me, AcademicTag.AcademicTagType.PROJECT, selected=False),
+        major_list=get_js_tag_list(me, AcademicTag.Type.MAJOR, selected=False),
+        minor_list=get_js_tag_list(me, AcademicTag.Type.MINOR, selected=False),
+        double_degree_list=get_js_tag_list(me, AcademicTag.Type.DOUBLE_DEGREE, selected=False),
+        project_list=get_js_tag_list(me, AcademicTag.Type.PROJECT, selected=False),
     )
     
     # 获取用户已有的专业/项目的列表，用于select的默认选中项
     frontend_dict.update(
-        selected_major_list=get_js_tag_list(me, AcademicTag.AcademicTagType.MAJOR, selected=True),
-        selected_minor_list=get_js_tag_list(me, AcademicTag.AcademicTagType.MINOR, selected=True),
-        selected_double_degree_list=get_js_tag_list(me, AcademicTag.AcademicTagType.DOUBLE_DEGREE, selected=True),
-        selected_project_list=get_js_tag_list(me, AcademicTag.AcademicTagType.PROJECT, selected=True),
+        selected_major_list=get_js_tag_list(me, AcademicTag.Type.MAJOR, selected=True),
+        selected_minor_list=get_js_tag_list(me, AcademicTag.Type.MINOR, selected=True),
+        selected_double_degree_list=get_js_tag_list(me, AcademicTag.Type.DOUBLE_DEGREE, selected=True),
+        selected_project_list=get_js_tag_list(me, AcademicTag.Type.PROJECT, selected=True),
     )
     
     # 获取用户已有的TextEntry的contents，用于TextEntry填写栏的前端预填写
     scientific_research_list = get_text_list(
-        me, AcademicTextEntry.AcademicTextType.SCIENTIFIC_RESEARCH
+        me, AcademicTextEntry.Type.SCIENTIFIC_RESEARCH
     )
     challenge_cup_list = get_text_list(
-        me, AcademicTextEntry.AcademicTextType.CHALLENGE_CUP
+        me, AcademicTextEntry.Type.CHALLENGE_CUP
     )
     internship_list = get_text_list(
-        me, AcademicTextEntry.AcademicTextType.INTERNSHIP
+        me, AcademicTextEntry.Type.INTERNSHIP
     )
     scientific_direction_list = get_text_list(
-        me, AcademicTextEntry.AcademicTextType.SCIENTIFIC_DIRECTION
+        me, AcademicTextEntry.Type.SCIENTIFIC_DIRECTION
     )
     graduation_list = get_text_list(
-        me, AcademicTextEntry.AcademicTextType.GRADUATION
+        me, AcademicTextEntry.Type.GRADUATION
     )
     frontend_dict.update(
         scientific_research_list=scientific_research_list,
@@ -197,24 +197,24 @@ def modifyAcademic(request: HttpRequest) -> HttpResponse:
     )
     
     # 最后获取每一种atype对应的entry的公开状态，如果没有则默认为公开
-    major_status = get_tag_status(me, AcademicTag.AcademicTagType.MAJOR)
-    minor_status = get_tag_status(me, AcademicTag.AcademicTagType.MINOR)
-    double_degree_status = get_tag_status(me, AcademicTag.AcademicTagType.DOUBLE_DEGREE)
-    project_status = get_tag_status(me, AcademicTag.AcademicTagType.PROJECT)
+    major_status = get_tag_status(me, AcademicTag.Type.MAJOR)
+    minor_status = get_tag_status(me, AcademicTag.Type.MINOR)
+    double_degree_status = get_tag_status(me, AcademicTag.Type.DOUBLE_DEGREE)
+    project_status = get_tag_status(me, AcademicTag.Type.PROJECT)
     scientific_research_status = get_text_status(
-        me, AcademicTextEntry.AcademicTextType.SCIENTIFIC_RESEARCH
+        me, AcademicTextEntry.Type.SCIENTIFIC_RESEARCH
     )
     challenge_cup_status = get_text_status(
-        me, AcademicTextEntry.AcademicTextType.CHALLENGE_CUP
+        me, AcademicTextEntry.Type.CHALLENGE_CUP
     )
     internship_status = get_text_status(
-        me, AcademicTextEntry.AcademicTextType.INTERNSHIP
+        me, AcademicTextEntry.Type.INTERNSHIP
     )
     scientific_direction_status = get_text_status(
-        me, AcademicTextEntry.AcademicTextType.SCIENTIFIC_DIRECTION
+        me, AcademicTextEntry.Type.SCIENTIFIC_DIRECTION
     )
     graduation_status = get_text_status(
-        me, AcademicTextEntry.AcademicTextType.GRADUATION
+        me, AcademicTextEntry.Type.GRADUATION
     )
     
     status_dict = dict(

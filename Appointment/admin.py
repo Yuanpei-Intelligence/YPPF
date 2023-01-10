@@ -16,11 +16,6 @@ from Appointment.utils.utils import operation_writer
 from Appointment.models import *
 
 
-# Register your models here.
-# 合并后无需修改
-# admin.site.site_title = '元培地下室管理后台'
-# admin.site.site_header = '元培地下室 - 管理后台'
-
 @admin.register(College_Announcement)
 class College_AnnouncementAdmin(admin.ModelAdmin):
     list_display = ['id', 'announcement', 'show']
@@ -81,15 +76,12 @@ class ParticipantAdmin(admin.ModelAdmin):
 
     actions = []
 
-    @as_action('全院学生信用分恢复一分', actions, 'change', atomic=True)
+    @as_action('全院学生信用分恢复一分', actions, atomic=True)
     def recover(self, request, queryset):
         stu_all = Participant.objects.all()
         stu_all = stu_all.filter(hidden=False)
-        # TODO: 恢复信用分调整至通用模型后台
         stu_all = User.objects.filter(id__in=stu_all.values_list('Sid__id'))
-        stu_all.filter(credit__lt=3).select_for_update().update(
-            credit=F('credit') + 1
-        )
+        User.objects.bulk_recover_credit(stu_all, 1, '地下室：全体学生恢复')
         return self.message_user(request, '操作成功!')
 
     @as_action('更新姓名拼音', actions, update=True)
@@ -108,6 +100,16 @@ class ParticipantAdmin(admin.ModelAdmin):
     @as_action('收回长期预约权限', actions, 'change', update=True)
     def remove_longterm_perm(self, request, queryset: QuerySet[Participant]):
         queryset.update(longterm=False)
+        return self.message_user(request, '操作成功!')
+
+    @as_action('设为不可见', actions, 'change', update=True)
+    def set_hidden(self, request, queryset: QuerySet[Participant]):
+        queryset.update(hidden=True)
+        return self.message_user(request, '操作成功!')
+
+    @as_action('设为可见', actions, 'change', update=True)
+    def remove_hidden(self, request, queryset: QuerySet[Participant]):
+        queryset.update(hidden=False)
         return self.message_user(request, '操作成功!')
 
 
@@ -140,8 +142,8 @@ class AppointAdmin(admin.ModelAdmin):
     actions_on_top = True
     actions_on_bottom = True
     LETTERS = set(string.digits + string.ascii_letters + string.punctuation)
-    search_fields = ('Aid', 'Room__Rtitle',
-                     'major_student__name', 'Room__Rid', "students__name",
+    search_fields = ('Room__Rtitle', 'Room__Rid',
+                     'major_student__name', "students__name",
                      'major_student__pinyin', # 仅发起者缩写，方便搜索者区分发起者和参与者
                      )
     list_display = (
@@ -189,6 +191,30 @@ class AppointAdmin(admin.ModelAdmin):
             return queryset
 
     list_filter = ('Astart', 'Atime', 'Astatus', ActivateFilter, 'Atype')
+
+    def get_search_results(self, request, queryset, search_term: str):
+        if not search_term:
+            return queryset, False
+        try:
+            search_term = int(search_term)
+            return queryset.filter(pk=search_term), False
+        except:
+            pass
+        if ' ' not in search_term:
+            # 判断时需要增加exists，否则会报错，似乎是QuerySet的缓存问题？
+            if str.isascii(search_term) and str.isalpha(search_term):
+                pinyin_result = queryset.filter(major_student__pinyin__icontains=search_term)
+                if pinyin_result.exists():
+                    return pinyin_result, False
+            elif str.isascii(search_term) and str.isalnum(search_term):
+                room_result = queryset.filter(Room__Rid__iexact=search_term)
+                if room_result.exists():
+                    return room_result, False
+            else:
+                room_result = queryset.filter(Room__Rtitle__icontains=search_term)
+                if room_result.exists():
+                    return room_result, False
+        return super().get_search_results(request, queryset, search_term)
 
     @as_display('参与人')
     def Participants(self, obj):
@@ -266,8 +292,7 @@ class AppointAdmin(admin.ModelAdmin):
                     elif appoint.Astatus == Appoint.Status.VIOLATED:
                         appoint.Astatus = Appoint.Status.JUDGED
                         # for stu in appoint.students.all():
-                        if appoint.major_student.credit < 3:
-                            User.objects.modify_credit(appoint.get_major_id(), 1, '地下室：申诉')
+                        User.objects.modify_credit(appoint.get_major_id(), 1, '地下室：申诉')
                         appoint.save()
                         have_success = 1
                         # send wechat message
@@ -414,31 +439,31 @@ class AppointAdmin(admin.ModelAdmin):
         return self.message_user(request, f'长线化成功!生成预约{";".join(new_appoints)}')
 
 
-    @as_action('增加一周本预约', actions, 'add', single=True)
+    # @as_action('增加一周本预约', actions, 'add', single=True)
     def longterm1(self, request, queryset):
         return self.longterm_wk(request, queryset, 1)
 
-    @as_action('增加两周本预约', actions, 'add', single=True)
+    # @as_action('增加两周本预约', actions, 'add', single=True)
     def longterm2(self, request, queryset):
         return self.longterm_wk(request, queryset, 2)
 
-    @as_action('增加四周本预约', actions, 'add', single=True)
+    # @as_action('增加四周本预约', actions, 'add', single=True)
     def longterm4(self, request, queryset):
         return self.longterm_wk(request, queryset, 4)
 
-    @as_action('增加八周本预约', actions, 'add', single=True)
+    # @as_action('增加八周本预约', actions, 'add', single=True)
     def longterm8(self, request, queryset):
         return self.longterm_wk(request, queryset, 8)
 
-    @as_action('按单双周 增加一次本预约', actions, 'add', single=True)
+    # @as_action('按单双周 增加一次本预约', actions, 'add', single=True)
     def longterm1_2(self, request, queryset):
         return self.longterm_wk(request, queryset, 1, 2)
 
-    @as_action('按单双周 增加两次本预约', actions, 'add', single=True)
+    # @as_action('按单双周 增加两次本预约', actions, 'add', single=True)
     def longterm2_2(self, request, queryset):
         return self.longterm_wk(request, queryset, 2, 2)
 
-    @as_action('按单双周 增加四次本预约', actions, 'add', single=True)
+    # @as_action('按单双周 增加四次本预约', actions, 'add', single=True)
     def longterm4_2(self, request, queryset):
         return self.longterm_wk(request, queryset, 4, 2)
 
@@ -446,10 +471,13 @@ class AppointAdmin(admin.ModelAdmin):
 @admin.register(CardCheckInfo)
 class CardCheckInfoAdmin(admin.ModelAdmin):
     list_display = ('id', 'Cardroom', 'student_display', 'Cardtime',
-                    'CardStatus', 'ShouldOpenStatus', 'Message')  # 'is_delete'
+                    'CardStatus', 'ShouldOpenStatus', 'Message')
     search_fields = ('Cardroom__Rtitle',
                      'Cardstudent__name', 'Cardroom__Rid', "id")
-    list_filter = ('CardStatus', 'ShouldOpenStatus')
+    list_filter = [
+        'Cardtime', 'CardStatus', 'ShouldOpenStatus',
+        ('Cardroom', admin.EmptyFieldListFilter),
+    ]
     
     @as_display('刷卡者', except_value='-')
     def student_display(self, obj):
@@ -458,5 +486,9 @@ class CardCheckInfoAdmin(admin.ModelAdmin):
 
 @admin.register(LongTermAppoint)
 class LongTermAppointAdmin(admin.ModelAdmin):
-    list_display = ['id', 'applicant', 'appoint', 'times', 'interval', 'status']
+    list_display = ['id', 'applicant', 'times', 'interval', 'status']
     list_filter = ['status', 'times', 'interval']
+    raw_id_fields = ['appoint']
+
+    def view_on_site(self, obj: LongTermAppoint):
+        return f'/underground/review?Lid={obj.pk}'

@@ -45,9 +45,9 @@ from app import utils
 from boottest.hasher import MyMD5PasswordHasher, MySHA256Hasher
 
 from django.contrib.auth.decorators import login_required
-from django.http import HttpRequest, HttpResponse, HttpResponseRedirect, JsonResponse
-from django.shortcuts import render, redirect
-from django.urls import reverse
+from generic.http.dependency import *
+from django.http import HttpResponseRedirect
+from django.shortcuts import render
 from generic.models import User
 from django.views.decorators.http import require_POST, require_GET
 
