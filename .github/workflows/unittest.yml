@@ -32,8 +32,8 @@ jobs:
       run: |
         docker ps -a
         sleep 10
-        timeout 90s bash -c "while ! curl -Is localhost:8000; do
-                                sleep 5
+        timeout 45s bash -c "while ! curl -Is localhost:8000; do
+                                sleep 3
                                 echo 'Failed to fetch web page.'
                               done" ||
         "docker-compose -f env/docker-compose.yml logs && exit 1"
