@@ -1,4 +1,3 @@
-import os
 import rpyc
 import six
 import logging
@@ -13,35 +12,45 @@ from boottest import base_get_setting
 
 class Scheduler():
 
-    def __init__(self, wrapped_schedule):
+    def __init__(self, wrapped_schedule: BackgroundScheduler):
         self.wrapped_schedule = wrapped_schedule
         self.remote_scheduler = None
         self.remain_times = 3
 
-    def __getattr__(self, name):
+    def __getattr__(self, name: str):
         target_method = getattr(self.wrapped_schedule, name)
         def wrapper(*args, **kwargs):
             target_method(*args, **kwargs)
             if self.remote_scheduler is None and self.remain_times > 0:
                 self.remain_times -= 1
+                # TODO: Unify settings.
                 self.remote_scheduler = rpyc.connect(
                     "localhost", settings.MY_RPC_PORT,
                     config={"allow_all_attrs": True}).root
             if self.remote_scheduler is not None:
                 self.remote_scheduler.wakeup()
             else:
+                # TODO: Unify the logs.
                 logging.warning('remote scheduler not found, job may not be executed.')
         update_wrapper(wrapper, target_method)
         return wrapper
 
 
-def start_scheduler():
+def start_scheduler() -> BackgroundScheduler:
+    """Return a background scheduler that can add job, but not
+    actually run the job.
+    Roughly a copy of Django's start scheduler.
+
+    :return: a background scheduler
+    :rtype: BackgroundScheduler
+    """
 
     scheduler = BackgroundScheduler(timezone=settings.TIME_ZONE)
     scheduler.add_jobstore(DjangoJobStore(), "default")
     if scheduler._event is None or scheduler._event.is_set():
         scheduler._event = Event()
 
+    # Scheduler is running as a stand alone process, no need to check uwsgi
     # scheduler._check_uwsgi()
 
     with scheduler._jobstores_lock:

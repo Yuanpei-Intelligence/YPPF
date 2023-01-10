@@ -1,7 +1,7 @@
 from datetime import datetime
 from boottest import base_get_setting
 from boottest import DEBUG, LOGIN_URL, UNDERGROUND_URL, WECHAT_URL
-from utils.hasher import MyMD5PasswordHasher, MySHA256Hasher
+from utils.hasher import MySHA256Hasher
 import utils.global_messages as my_messages
 
 __all__ = [
