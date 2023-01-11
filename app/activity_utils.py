@@ -38,7 +38,7 @@ import qrcode
 from math import ceil
 from random import sample
 from datetime import datetime, timedelta
-from boottest import local_dict
+from boot import local_dict
 from django.db.models import Sum
 from django.db.models import F
 

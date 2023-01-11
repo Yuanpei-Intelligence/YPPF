@@ -31,7 +31,7 @@ from app.notification_utils import (
 from app.wechat_send import publish_notifications, WechatMessageLevel, WechatApp
 from app import log
 from app.constants import *
-from boottest import local_dict
+from boot import local_dict
 
 import json
 import urllib.request

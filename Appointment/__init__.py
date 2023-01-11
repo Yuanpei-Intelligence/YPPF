@@ -1,6 +1,6 @@
 from datetime import datetime
-from boottest import base_get_setting
-from boottest import DEBUG, LOGIN_URL, UNDERGROUND_URL, WECHAT_URL
+from boot import base_get_setting
+from boot import DEBUG, LOGIN_URL, UNDERGROUND_URL, WECHAT_URL
 from utils.hasher import MySHA256Hasher
 import utils.global_messages as my_messages
 
