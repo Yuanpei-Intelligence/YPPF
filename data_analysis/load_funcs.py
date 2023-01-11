@@ -7,7 +7,7 @@ from tqdm import tqdm
 
 from django.db import transaction
 
-from boottest import local_dict
+from boot import local_dict
 from app.constants import *
 from app.models import (
     User,

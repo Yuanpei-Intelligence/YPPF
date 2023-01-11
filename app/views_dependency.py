@@ -25,7 +25,7 @@ views
 依赖关系
 -------
 - 依赖于constants, log和global_messages
-- 依赖于boottest.hasher的哈希类定义
+- 依赖于utils.hasher的哈希类定义
 - 灵活依赖于utils
 
 @Date 2022-01-17

@@ -67,7 +67,7 @@ import random
 import requests  # 发送验证码
 from datetime import date, datetime, timedelta
 
-from boottest import local_dict
+from boot import local_dict
 from django.contrib import auth, messages
 from django.contrib.auth.hashers import make_password, check_password
 from django.db import transaction

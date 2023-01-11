@@ -14,7 +14,7 @@ def _load_local_json(path="./local_json.json"):
 local_dict = _load_local_json()
 
 
-# settings是懒惰的，所以可以提前导入并读取正确的值，导入boottest.settings则会错误
+# settings是懒惰的，所以可以提前导入并读取正确的值，导入boot.settings则会错误
 from django.conf import settings
 
 

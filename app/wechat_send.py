@@ -13,7 +13,7 @@ import json
 
 # 设置
 from app.constants import *
-from boottest import base_get_setting
+from boot import base_get_setting
 
 # 模型与加密模型
 from app.models import NaturalPerson, Organization, Activity, Notification, Position

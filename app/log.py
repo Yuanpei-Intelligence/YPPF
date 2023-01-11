@@ -1,6 +1,6 @@
 import threading
 import os
-from boottest import base_get_setting
+from boot import base_get_setting
 from app.constants import SYSTEM_LOG
 from datetime import datetime, timedelta
 
