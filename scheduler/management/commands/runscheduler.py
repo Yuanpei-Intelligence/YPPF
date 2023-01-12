@@ -1,25 +1,21 @@
-from django.conf import settings
-
 from apscheduler.schedulers.background import BackgroundScheduler
+from django.conf import settings
 from django.core.management.base import BaseCommand
 from django_apscheduler.jobstores import DjangoJobStore
-
 import rpyc
 from rpyc.utils.server import ThreadedServer
 
-import logging
+from utils.log import get_logger
 
-logging.getLogger('apscheduler').setLevel(settings.MY_LOG_LEVEL)
-logger = logging.getLogger(__name__)
 
-from utils.scheduler_func import *
-from Appointment.utils.scheduler_func import clear_appointments
-from yp_library.management.sync import update_lib_data
-from yp_library.utils import bookreturn_notification
+EXECUTOR_PORT = settings.MY_RPC_PORT
+TZ = settings.TIME_ZONE
+
+logger = get_logger('apscheduler')
 
 
 class SchedulerService(rpyc.Service):
-    def __init__(self, scheduler):
+    def __init__(self, scheduler: BackgroundScheduler):
         # It is OK to pass an instance of service to Threadserver now
         self.scheduler = scheduler
 
@@ -32,63 +28,19 @@ class Command(BaseCommand):
 
     def handle(self, *args, **options):
 
-        scheduler = BackgroundScheduler(timezone=settings.TIME_ZONE)
+        scheduler = BackgroundScheduler(timezone=TZ)
         scheduler.add_jobstore(DjangoJobStore(), "default")
         scheduler.start()
-
-        scheduler.add_job(get_weather,
-                          'interval',
-                          id='get_weather',
-                          minutes=5,
-                          replace_existing=True)
-        scheduler.add_job(changeAllActivities,
-                          'interval',
-                          id='activityStatusUpdater',
-                          minutes=5,
-                          replace_existing=True)
-        scheduler.add_job(clear_appointments,
-                          'cron',
-                          id='ontime_delete',
-                          day_of_week='sat',
-                          hour=3,
-                          minute=30,
-                          second=0,
-                          replace_existing=True)
-        scheduler.add_job(update_active_score_per_day,
-                          "cron",
-                          id='active_score_updater',
-                          hour=1,
-                          replace_existing=True)
-        scheduler.add_job(longterm_launch_course,
-                          "interval",
-                          id="courseWeeklyActivitylauncher",
-                          minutes=5,
-                          replace_existing=True)
-        scheduler.add_job(public_feedback_per_hour,
-                          "cron",
-                          id='feedback_public_updater',
-                          minute=5,
-                          replace_existing=True)
-        scheduler.add_job(update_lib_data,
-                          "cron",
-                          id="update_yp_library_data",
-                          minute=50,
-                          replace_existing=True)
-        scheduler.add_job(bookreturn_notification,
-                          "cron",
-                          id="book_return_notification",
-                          minute=0,
-                          replace_existing=True)
 
         protocol_config = {
             'allow_all_attrs': True,
             'logger': logger,
         }
         server = ThreadedServer(SchedulerService(scheduler),
-                                port=settings.MY_RPC_PORT,
+                                port=EXECUTOR_PORT,
                                 protocol_config=protocol_config)
         try:
-            # logging.info("Starting thread server...")
+            logger.info('Starting scheduler with executor')
             server.start()
         except (KeyboardInterrupt, SystemExit):
             pass

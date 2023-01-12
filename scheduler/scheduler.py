@@ -1,14 +1,22 @@
-import rpyc
+from typing import Callable, Dict, Any
 import six
-import logging
 from threading import Event
 from functools import update_wrapper
+from dataclasses import dataclass
 
+import rpyc
 from django.conf import settings
 from apscheduler.schedulers.background import BackgroundScheduler
 from django_apscheduler.jobstores import DjangoJobStore
 
 from boot import base_get_setting
+from utils.log import get_logger
+
+
+EXECUTOR_PORT = settings.MY_RPC_PORT
+# Custom handler
+logger = get_logger('apscheduler')
+
 
 class Scheduler():
 
@@ -19,58 +27,61 @@ class Scheduler():
 
     def __getattr__(self, name: str):
         target_method = getattr(self.wrapped_schedule, name)
+
         def wrapper(*args, **kwargs):
             target_method(*args, **kwargs)
             if self.remote_scheduler is None and self.remain_times > 0:
                 self.remain_times -= 1
-                # TODO: Unify settings.
                 self.remote_scheduler = rpyc.connect(
-                    "localhost", settings.MY_RPC_PORT,
+                    "localhost", EXECUTOR_PORT,
                     config={"allow_all_attrs": True}).root
             if self.remote_scheduler is not None:
                 self.remote_scheduler.wakeup()
             else:
-                # TODO: Unify the logs.
-                logging.warning('remote scheduler not found, job may not be executed.')
+                logger.warning(
+                    'Remote scheduler not found, job may not be executed.')
         update_wrapper(wrapper, target_method)
         return wrapper
 
 
-def start_scheduler() -> BackgroundScheduler:
-    """Return a background scheduler that can add job, but not
-    actually run the job.
-    Roughly a copy of Django's start scheduler.
-
-    :return: a background scheduler
-    :rtype: BackgroundScheduler
+@dataclass
+class PeriodicalJob():
     """
+    Not a callable
+    """
+    function: Callable[[], None]
+    job_id: str
+    trigger: str
+    tg_args: Dict[str, int]
 
+    def run(self, *args: Any, **kwds: Any):
+        self.function(*args, **kwds)
+
+
+def periodical(trigger: str, job_id: str = '', **trigger_args):
+    def wrapper(fn: Callable[[], None]) -> PeriodicalJob:
+        return PeriodicalJob(fn, job_id or fn.__name__, trigger, trigger_args)
+    return wrapper
+
+
+def start_scheduler() -> BackgroundScheduler:
+    """Return a background scheduler that can add job to database,
+    but not actually run the job.
+    """
     scheduler = BackgroundScheduler(timezone=settings.TIME_ZONE)
     scheduler.add_jobstore(DjangoJobStore(), "default")
-    if scheduler._event is None or scheduler._event.is_set():
-        scheduler._event = Event()
-
-    # Scheduler is running as a stand alone process, no need to check uwsgi
-    # scheduler._check_uwsgi()
-
-    with scheduler._jobstores_lock:
-
-        # Start all the job stores
-        for alias, store in six.iteritems(scheduler._jobstores):
+    scheduler._event = Event()  # type: ignore
+    with scheduler._jobstores_lock:                                # type: ignore
+        for alias, store in six.iteritems(scheduler._jobstores):   # type: ignore
             store.start(scheduler, alias)
-
-        # Schedule all pending jobs
-        for job, jobstore_alias, replace_existing in scheduler._pending_jobs:
-            scheduler._real_add_job(job, jobstore_alias, replace_existing)
-        del scheduler._pending_jobs[:]
-
-    scheduler.state = 1 # STATE_RUNNING
-
+    scheduler.state = 1  # STATE_RUNNING
     return scheduler
 
+
 if base_get_setting("use_scheduler", bool, False, raise_exception=False):
-    scheduler = Scheduler(start_scheduler())
+    scheduler: BackgroundScheduler = Scheduler(
+        start_scheduler())  # type: ignore
 else:
-    # No real_add_job
+    # Not start, no real_add_job
     scheduler = BackgroundScheduler(timezone=settings.TIME_ZONE)
     scheduler.add_jobstore(DjangoJobStore(), "default")
