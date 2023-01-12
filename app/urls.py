@@ -28,6 +28,7 @@ urlpatterns = [
     # 登录和验证
     path("", views.index, name="index"),
     path("index/", views.index, name="index"),
+    path("newindex/", views.NewIndexView.as_view(), name="newindex"),
     # path("requestLoginOrg/", views.requestLoginOrg, name="requestLoginOrg"), # 已废弃
     # path("requestLoginOrg/<str:name>", views.requestLoginOrg, name="requestLoginOrg"),
     path("welcome/", views.homepage, name="welcome"),

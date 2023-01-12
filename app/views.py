@@ -56,14 +56,131 @@ from app.academic_utils import (
     get_text_status,
     get_search_results,
 )
+from generic.models import YQPointRecord
+
+import json
+import random
+import requests  # 发送验证码
+from datetime import date, datetime, timedelta
+
+from boot import local_dict
+from django.contrib import auth, messages
+from django.db import transaction
+from django.db.models import Q, F, Sum, QuerySet
+from django.views import View
+from typing import Any, Dict, Tuple, Union
 
 email_url = CONFIG.url["email_url"]
 hash_coder = MySHA256Hasher(CONFIG.hash_base)
 email_coder = MySHA256Hasher(CONFIG.hash_email)
 
 
-@log.except_captured(source='views[index]', record_user=True,
-                     record_request_args=True, show_traceback=True)
+class NewIndexView(View):
+    template_name = "index.html"
+
+    def param_check(
+        self, request: HttpRequest
+    ) -> Tuple[Dict[str, Any], Union[None, HttpResponse,
+                                     HttpResponseRedirect]]:
+        arg_origin = request.GET.get("origin")
+        modpw_status = request.GET.get("modinfo")
+        arg_islogout = request.GET.get("is_logout")
+        alert = request.GET.get("alert")
+        if request.session.get('alert_message'):
+            load_alert_message = request.session.pop('alert_message')
+        html_display = dict()
+        if (request.method == "GET" and modpw_status is not None
+                and modpw_status == "success"):
+            succeed("修改密码成功!", html_display)
+            auth.logout(request)
+            return locals(), render(request, "index.html", locals())
+
+        if alert is not None:
+            wrong("检测到异常行为，请联系系统管理员。", html_display)
+            auth.logout(request)
+            return locals(), render(request, "index.html", locals())
+
+        if arg_islogout is not None:
+            if request.user.is_authenticated:
+                auth.logout(request)
+                return render(request, "index.html", locals())
+        if arg_origin is None:  # 非外部接入
+            if request.user.is_authenticated:
+                return locals(), redirect("/welcome/")
+
+        # 非法的 origin
+        if not url_check(arg_origin):
+            request.session[
+                'alert_message'] = f"尝试跳转到非法 URL: {arg_origin}，跳转已取消。"
+            return locals(), redirect("/index/?alert=1")
+
+        return locals(), None
+
+    def get(self, request: HttpRequest) -> HttpResponse:
+        context, response = self.param_check(request)
+        if response is not None:
+            return response
+
+        if context['arg_origin'] is not None and request.user.is_authenticated:
+            if not check_cross_site(request, context['arg_origin']):
+                return redirect(message_url(wrong('目标域名非法，请警惕陌生链接。')))
+            return redirect(context['arg_origin'])
+
+        return render(request, "index.html", context)
+
+    def post(self, request: HttpRequest) -> HttpResponse:
+        context, response = self.param_check(request)
+        if response is not None:
+            return response
+
+        username = request.POST.get("username")
+        password = request.POST.get("password")
+        assert username is not None
+        assert password is not None
+
+        try:
+            user = User.objects.filter(username=username)
+            if len(user) == 0:
+                org: Organization = Organization.objects.get(
+                    oname=username)  # 如果get不到，就是账号不存在了
+                user = org.get_user()
+                username = user.username
+            else:
+                user = user[0]
+        except:
+            wrong(local_dict["msg"]["404"], context['html_display'])
+            return render(request, self.template_name, context)
+        userinfo = auth.authenticate(username=username, password=password)
+        if userinfo:
+            auth.login(request, userinfo)
+            valid, user_type, context['html_display'] = utils.check_user_type(
+                request.user)
+            if not valid:
+                return redirect("/logout/")
+            if user_type == UTYPE_PER:
+                me = get_person_or_org(userinfo, user_type)
+                if me.first_time_login:
+                    # 不管有没有跳转，这个逻辑都应该是优先的
+                    # TODO：应该在修改密码之后做一个跳转
+                    return redirect("/modpw/")
+                update_related_account_in_session(request, username)
+            if context['arg_origin'] is None:
+                return redirect("/welcome/")
+        else:
+            wrong(local_dict["msg"]["406"], context['html_display'])
+
+        if context['arg_origin'] is not None and request.user.is_authenticated:
+            if not check_cross_site(request, context['arg_origin']):
+                return redirect(message_url(wrong('目标域名非法，请警惕陌生链接。')))
+            return redirect(context['arg_origin'])
+
+        return render(request, self.template_name, context)
+
+
+@log.except_captured(source='views[index]',
+                     record_user=True,
+                     record_request_args=True,
+                     show_traceback=True)
 @utils.record_attack(AssertionError, as_attack=True)
 def index(request: HttpRequest):
     arg_origin = request.GET.get("origin")
