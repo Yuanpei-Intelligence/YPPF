@@ -10,8 +10,6 @@ wechat_send.py
 '''
 import requests
 import json
-
-# 设置
 from datetime import datetime, timedelta
 
 from boot import base_get_setting

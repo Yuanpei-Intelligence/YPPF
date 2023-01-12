@@ -1,7 +1,6 @@
 from typing import Dict, Any
 import json
 import urllib.request
-from functools import partial
 
 from datetime import datetime, timedelta
 from django.db import transaction  # 原子化更改数据库
@@ -38,7 +37,6 @@ from app.notification_utils import (
     notification_create,
 )
 from app.wechat_send import WechatMessageLevel, WechatApp
-from app import log
 from app.constants import *
 
 
