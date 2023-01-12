@@ -1,11 +1,11 @@
 from django.test import TestCase, SimpleTestCase
 
-from boottest.context_managers import *
+from utils.context_managers import *
 
 class CheckerTest(SimpleTestCase):
     @classmethod
     def setUpClass(cls) -> None:
-        from boottest.context_managers import DEFAULT_EXC_TYPE
+        from utils.context_managers import DEFAULT_EXC_TYPE
         cls.exc_type = DEFAULT_EXC_TYPE
         return super().setUpClass()
 

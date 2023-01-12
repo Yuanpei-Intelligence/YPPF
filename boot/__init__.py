@@ -5,16 +5,16 @@ pymysql.install_as_MySQLdb()
 pymysql.version_info = (1, 4, 6, "final", 0)
 
 
-def load_local_json(path="./local_json.json"):
+def _load_local_json(path="./local_json.json"):
     with open(path, encoding="utf_8") as f:
         local_dict = json.load(f)
     return local_dict
 
 
-local_dict = load_local_json()
+local_dict = _load_local_json()
 
 
-# settings是懒惰的，所以可以提前导入并读取正确的值，导入boottest.settings则会错误
+# settings是懒惰的，所以可以提前导入并读取正确的值，导入boot.settings则会错误
 from django.conf import settings
 
 

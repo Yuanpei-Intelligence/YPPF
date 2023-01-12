@@ -16,10 +16,10 @@ from app.utils import check_user_type
 from app.notification_utils import bulk_notification_create
 from app.constants import get_setting, UTYPE_PER
 from app.models import Notification, Organization, Activity
-from app.wechat_send import WechatMessageLevel, WechatApp
+from app.wechat_send import WechatMessageLevel
 
 __all__ = [
-    'bookreturn_notifcation', 'get_readers_by_user', 'seach_books',
+    'get_readers_by_user', 'search_books',
     'get_query_dict', 'get_my_records', 'get_lendinfo_by_readers'
 ]
 
@@ -63,13 +63,13 @@ def violate_reminder(days: int, alert_msg: str):
         status=LendRecord.Status.NORMAL)
 
     # 逾期一周扣除信用分
-    receivers = violate_lendlist.values_list('reader_id__student_id')
+    receivers = list(violate_lendlist.values_list('reader_id__student_id', flat=True))
     receivers = User.objects.filter(username__in=receivers)
     # 绑定扣分和状态修改
     with transaction.atomic():
-        violate_lendlist.select_for_update().update(status=LendRecord.Status.OVERTIME)
         for receiver in receivers:
             User.objects.modify_credit(receiver, -1, '书房：归还逾期')
+        violate_lendlist.select_for_update().update(status=LendRecord.Status.OVERTIME)
     _send_remind_notification(receivers, alert_msg)
 
 
@@ -92,20 +92,6 @@ def _send_remind_notification(receivers: QuerySet[User], content: str):
             'level': WechatMessageLevel.IMPORTANT,
         },
     )
-
-
-def bookreturn_notification():
-    """
-    该函数每小时在外部被调用，对每一条未归还的借阅记录进行检查
-    在应还书时间前1天、应还书时间、应还书时间逾期5天发送还书提醒，提醒链接到“我的借阅”界面
-    在应还书时间逾期7天，将借阅信息改为“超时扣分”，扣除1信用分并发送提醒
-    """
-    # 调用days_reminder()发送
-    days_reminder(-1, "您好！您现有未归还的图书，将于一天内借阅到期，请按时归还至元培书房！")
-    days_reminder(0, "您好！您现有未归还的图书，已经借阅到期，请及时归还至元培书房！")
-    days_reminder(5, "您好！您现有未归还的图书，已经借阅到期五天，请尽快归还至元培书房！到期一周未归还将扣除您的信用分1分！")
-    days_reminder(7, "您好！您现有未归还的图书，已经借阅到期一周，请尽快归还至元培书房！")
-    violate_reminder(7, "由于借阅超时一周，您已被扣除信用分1分！")
 
 
 def get_readers_by_user(user: User) -> QuerySet[Reader]:
@@ -234,7 +220,7 @@ def get_my_records(reader_id: str, returned: Optional[bool] = None,
     if returned:
         for record in records:
             if  record['return_time'] > record['due_time']:
-                record['type'] = 'overtime'     # 逾期记录
+                record['type'] = 'overtime_returned'     # 逾期记录
             else:
                 record['type'] = 'returned'       # 正常记录
     else:

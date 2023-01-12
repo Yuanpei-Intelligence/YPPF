@@ -1,13 +1,14 @@
-from yp_library.models import Reader, Book, LendRecord
-from yp_library.utils import bookreturn_notification
+import os
+from datetime import datetime, timedelta
+import copy
 
+import pymssql
 from django.db.models import Max, Q
 from django.db import transaction
 
-from datetime import datetime, timedelta
-import pymssql
-import copy
-import os
+from scheduler.scheduler import periodical
+from yp_library.models import Reader, Book, LendRecord
+from yp_library.utils import days_reminder, violate_reminder
 
 
 def update_reader():
@@ -110,7 +111,7 @@ def update_records():
                                                             row['LendTM'],
                                                             'due_time':
                                                             row['DueTm'],
-                                                        })
+                    })
 
             # 未归还的借书记录
             unreturned_records = LendRecord.objects.filter(returned=False)
@@ -149,13 +150,29 @@ def update_book_status():
     books = Book.objects.filter(id__in=recent_records)
     for book in books:
         book.returned = not book.lendrecord_set.filter(returned=False).exists()
-    
+
     with transaction.atomic():
         Book.objects.bulk_update(books, fields=['returned'])
 
 
+@periodical('cron', minute=50)
 def update_lib_data():
     update_book_status()
     update_reader()
     update_book()
     update_records()
+
+
+@periodical('cron', minute=0)
+def bookreturn_notification():
+    """
+    该函数每小时在外部被调用，对每一条未归还的借阅记录进行检查
+    在应还书时间前1天、应还书时间、应还书时间逾期5天发送还书提醒，提醒链接到“我的借阅”界面
+    在应还书时间逾期7天，将借阅信息改为“超时扣分”，扣除1信用分并发送提醒
+    """
+    # 调用days_reminder()发送
+    days_reminder(-1, '您好！您现有未归还的图书，将于一天内借阅到期，请按时归还至元培书房！')
+    days_reminder(0, '您好！您现有未归还的图书，已经借阅到期，请及时归还至元培书房！')
+    days_reminder(5, '您好！您现有未归还的图书，已经借阅到期五天，请尽快归还至元培书房！到期一周未归还将扣除您的信用分1分！')
+    days_reminder(7, '您好！您现有未归还的图书，已经借阅到期一周，请尽快归还至元培书房！')
+    violate_reminder(7, '由于借阅超时一周，您已被扣除信用分1分！')

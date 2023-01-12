@@ -5,7 +5,7 @@ from datetime import datetime
 
 from django.core.management.base import BaseCommand
 
-from boottest.hasher import MySHA256Hasher
+from utils.hasher import MySHA256Hasher
 from data_analysis.management import dump_map, dump_groups
 
 

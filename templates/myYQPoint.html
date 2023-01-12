@@ -1,7 +1,6 @@
 {% extends "base.html" %}
 
 {% block mainpage %}
-<link rel="stylesheet" href="https://cdn.staticfile.org/font-awesome/4.7.0/css/font-awesome.css">
 
     <!--  BEGIN CONTENT AREA  -->
     <div id="content" class="main-content">
@@ -65,7 +64,7 @@
 
                             <div id="myTabContent" class="tab-content">
                                 <div class="tab-pane fade" id="received">
-                                    {% if received_set is None %}
+                                    {% if not received_set %}
                                     <br />
                                     <p></p>
                                     <p style="text-align: center;">没有收入记录.</p>
@@ -111,7 +110,7 @@
                                     {% endif %}
                                 </div>
                                 <div class="tab-pane fade in active show" id="send">
-                                    {% if send_set is None %}
+                                    {% if not send_set %}
                                     <br />
                                     <p></p>
                                     <p style="text-align: center;">没有支出记录.</p>

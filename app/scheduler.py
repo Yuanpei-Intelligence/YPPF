@@ -1,1 +1,0 @@
-from boottest.scheduler import scheduler

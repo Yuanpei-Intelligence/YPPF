@@ -11,7 +11,7 @@ from app.models import (
     Participant,
     ModifyRecord,
 )
-from boottest import local_dict
+from boot import local_dict
 
 import re
 import imghdr

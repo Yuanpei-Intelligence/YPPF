@@ -14,14 +14,14 @@ constants.py
 # 本文件是最基础的依赖文件，应当只加入跨架构的必要常量，而不导入其他文件
 # 与使用环境有关的内容应在对应文件中定义
 
-from boottest import base_get_setting, optional
-from boottest import (
+from boot import base_get_setting, optional
+from boot import (
     # settings相关常量
     DEBUG, MEDIA_URL, LOGIN_URL,
     # 全局的其它常量
     UNDERGROUND_URL, WECHAT_URL,
 )
-from boottest.global_messages import (
+from utils.global_messages import (
     WRONG, SUCCEED,
 )
 from generic.models import User
