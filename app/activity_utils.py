@@ -42,7 +42,7 @@ from boot import local_dict
 from django.db.models import Sum
 from django.db.models import F
 
-from utils.scheduler import scheduler
+from scheduler.scheduler import scheduler
 
 hash_coder = MySHA256Hasher(local_dict["hash"]["base_hasher"])
 
