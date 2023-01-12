@@ -1,3 +1,10 @@
+"""
+scheduler.py: provide 
+
+1. `scheduler` as a "client", 
+2. `periodical` as a way to register periodical jobs
+"""
+
 from typing import Callable, Dict, Any
 import six
 from threading import Event
@@ -19,6 +26,12 @@ logger = get_logger('apscheduler')
 
 
 class Scheduler():
+    """
+    A wrapper around `BackgroundScheduler`
+
+    It won't execute the job.
+    When adding the job to database, also try to wakeup the executor
+    """
 
     def __init__(self, wrapped_schedule: BackgroundScheduler):
         self.wrapped_schedule = wrapped_schedule
@@ -47,7 +60,8 @@ class Scheduler():
 @dataclass
 class PeriodicalJob():
     """
-    Not a callable
+    Wrap a function as a periodical job.
+    Notice that it is not a callable.
     """
     function: Callable[[], None]
     job_id: str
@@ -59,6 +73,13 @@ class PeriodicalJob():
 
 
 def periodical(trigger: str, job_id: str = '', **trigger_args):
+    """Wrap a function into a periodical job.
+
+    If `job_id` is not provided, use function name.
+
+    :param trigger: 'cron' or 'interval'
+    :type trigger: str
+    """
     def wrapper(fn: Callable[[], None]) -> PeriodicalJob:
         return PeriodicalJob(fn, job_id or fn.__name__, trigger, trigger_args)
     return wrapper

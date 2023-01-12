@@ -10,6 +10,7 @@ import pypinyin
 
 from utils.admin_utils import *
 from Appointment import *
+from Appointment import jobs
 from Appointment.utils.utils import operation_writer
 from Appointment.models import *
 

@@ -38,6 +38,7 @@ from Appointment.utils.identity import (
     get_participant, identity_check,
 )
 from Appointment import *
+from Appointment import jobs
 
 
 # 日志操作相关
