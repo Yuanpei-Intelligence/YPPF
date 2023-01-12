@@ -75,8 +75,24 @@ hash_coder = MySHA256Hasher(CONFIG.hash_base)
 email_coder = MySHA256Hasher(CONFIG.hash_email)
 
 
-class NewIndexView(View):
+class SecureView(View):
+    login_required = True
+    redirect_field_name="origin"
+    source = ""
+
+    def dispatch(self, request: HttpRequest, *args: Any, **kwargs: Any) -> HttpResponse:
+        wrapped_dispatch = log.except_captured(source=self.source, record_user=True)(super().dispatch)
+        if self.login_required:
+            wrapped_dispatch = login_required(wrapped_dispatch, self.redirect_field_name)
+        
+        return wrapped_dispatch(request, args, kwargs)
+
+
+class NewIndexView(SecureView):
     template_name = "index.html"
+
+    login_required = False
+    source = "views[index]"
 
     def param_check(
         self, request: HttpRequest
@@ -116,7 +132,7 @@ class NewIndexView(View):
 
         return locals(), None
 
-    def get(self, request: HttpRequest) -> HttpResponse:
+    def get(self, request: HttpRequest, *args, **kwargs) -> HttpResponse:
         context, response = self.param_check(request)
         if response is not None:
             return response
@@ -128,7 +144,7 @@ class NewIndexView(View):
 
         return render(request, "index.html", context)
 
-    def post(self, request: HttpRequest) -> HttpResponse:
+    def post(self, request: HttpRequest, *args, **kwargs) -> HttpResponse:
         context, response = self.param_check(request)
         if response is not None:
             return response
