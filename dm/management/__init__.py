@@ -3,8 +3,8 @@ from typing import Callable, Optional, List
 from datetime import datetime
 from pandas import DataFrame
 
-from data_analysis.load_funcs import *
-from data_analysis.dump_funcs import *
+from dm.load_funcs import *
+from dm.dump_funcs import *
 
 load_map = {}
 dump_map = {}

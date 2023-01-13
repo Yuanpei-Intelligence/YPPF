@@ -2,7 +2,7 @@ from io import StringIO
 from django.core.management import call_command
 from django.test import TestCase
 
-from data_analysis.management import register_load
+from dm.management import register_load
 
 class LoadCommandTest(TestCase):
     def test_register_command(self):

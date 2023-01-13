@@ -1,15 +1,14 @@
 import threading
 import os
-from boot import base_get_setting
-from app.constants import SYSTEM_LOG
-from datetime import datetime, timedelta
-
-from functools import wraps
-import traceback
 import json
-import hashlib
+from datetime import datetime
+from functools import wraps
 
 from django.conf import settings
+
+from boot import base_get_setting
+from app.constants import SYSTEM_LOG
+
 
 __all__ = [
     'STATE_DEBUG', 'STATE_INFO', 'STATE_WARNING', 'STATE_ERROR',
@@ -62,7 +61,7 @@ def status_enabled(status_code: str):
         return False
 
 
-def operation_writer(user: str, message: str, source: str='', status_code: str=STATE_INFO):
+def operation_writer(user: str, message: str, source: str = '', status_code: str = STATE_INFO):
     '''
     通用日志写入程序
     - 写入时间, 操作主体(user), 操作说明(Str),写入函数(Str)
@@ -71,7 +70,7 @@ def operation_writer(user: str, message: str, source: str='', status_code: str=S
     '''
     if not status_enabled(status_code):
         return
-    
+
     __lock.acquire()
     try:
         timestamp = datetime.now()
@@ -91,7 +90,8 @@ def operation_writer(user: str, message: str, source: str='', status_code: str=S
                     send_message[-100:],
                     '详情请查看log'
                 ])
-            send_wechat(DEBUG_IDS, f'YPPF {settings.MY_ENV}发生异常\n' + send_message, card=len(message) < 200)
+            send_wechat(
+                DEBUG_IDS, f'YPPF {settings.MY_ENV}发生异常\n' + send_message, card=len(message) < 200)
     except Exception as e:
         # 最好是发送邮件通知存在问题
         # TODO:
@@ -132,10 +132,14 @@ def except_captured(return_value=None, except_type=Exception,
                             else:
                                 user = args[0].user
                             msg += f', 用户为{user.username}'
-                            try: msg += f', 姓名: {user.naturalperson}'
-                            except: pass
-                            try: msg += f', 组织名: {user.organization}'
-                            except: pass
+                            try:
+                                msg += f', 姓名: {user.naturalperson}'
+                            except:
+                                pass
+                            try:
+                                msg += f', 组织名: {user.organization}'
+                            except:
+                                pass
                         except:
                             msg += f', 尝试追踪用户, 但未能找到该参数'
                     if record_request_args:
@@ -146,16 +150,19 @@ def except_captured(return_value=None, except_type=Exception,
                             else:
                                 request = args[0]
                             infos = []
-                            infos.append(f'请求方式: {request.method}, 请求地址: {request.path}')
+                            infos.append(
+                                f'请求方式: {request.method}, 请求地址: {request.path}')
                             if request.GET:
                                 infos.append(
                                     'GET参数: ' +
-                                    ';'.join([f'{k}: {v}' for k, v in request.GET.items()])
+                                    ';'.join(
+                                        [f'{k}: {v}' for k, v in request.GET.items()])
                                 )
                             if request.POST:
                                 infos.append(
                                     'POST参数: ' +
-                                    ';'.join([f'{k}: {v}' for k, v in request.POST.items()])
+                                    ';'.join(
+                                        [f'{k}: {v}' for k, v in request.POST.items()])
                                 )
                             msg = msg + '\n' + '\n'.join(infos)
                         except:
@@ -164,7 +171,7 @@ def except_captured(return_value=None, except_type=Exception,
                         msg += '\n详细信息：\n\t'
                         msg += traceback.format_exc().replace('\n', '\n\t')
                     operation_writer(SYSTEM_LOG,
-                        msg, source, status_code)
+                                     msg, source, status_code)
                 if return_value is not None:
                     return return_value
                 raise

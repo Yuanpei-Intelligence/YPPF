@@ -2,7 +2,7 @@ import json
 
 from django.core.management.base import BaseCommand
 from app.models import NaturalPerson
-from data_analysis.summary import cal_co_appoint, cal_appoint
+from dm.summary import cal_co_appoint, cal_appoint
 
 
 class Command(BaseCommand):
