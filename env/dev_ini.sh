@@ -10,6 +10,4 @@ cat ../local_json_template.json | \
     sed 's/\$HOST\$/mysql/g' > ../local_json.json
 
 docker-compose up -d
-docker-compose exec yppf conda run -n yppf \
-    python3 manage.py collectstatic --noinput
 docker-compose exec yppf conda run -n yppf python3 manage.py fill_devdb 
