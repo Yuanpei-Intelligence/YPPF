@@ -69,62 +69,72 @@ class IndexView(SecureView):
     template_name = 'index.html'
     source = 'views[index]'
     login_required = False
+    extra_context = {}
 
-    def param_check(
-        self, request: HttpRequest
-    ) -> 'HttpResponse | HttpResponseRedirect | None':
-        super().param_check(request)
-        arg_origin = self.params.get('origin')
-        modpw_status = self.params.get('modinfo')
-        is_logout = self.params.get('is_logout')
-        alert = self.params.get('alert')
+    def is_arg_valid(self,
+                     request: HttpRequest) -> 'HttpResponseRedirect | None':
+        super().is_arg_valid(request)
+        origin = self.args.get('origin')
+        modpw_status = self.args.get('modinfo')
+        is_logout = self.args.get('is_logout')
+        alert = self.args.get('alert')
         if request.session.get('alert_message'):
             load_alert_message = request.session.pop('alert_message')
-        
-        html_display = dict()
+
         if (request.method == 'GET' and modpw_status is not None
                 and modpw_status == 'success'):
-            succeed("修改密码成功!", html_display)
+            succeed("修改密码成功!", self.extra_context)
             auth.logout(request)
-            return render(request, self.template_name, locals())
 
         if alert is not None:
-            wrong("检测到异常行为，请联系系统管理员。", html_display)
+            wrong("检测到异常行为，请联系系统管理员。", self.extra_context)
             auth.logout(request)
-            return render(request, self.template_name, locals())
 
-        if is_logout is not None:
-            if request.user.is_authenticated:
-                auth.logout(request)
-                return render(request, 'index.html', locals())
-        if arg_origin is None:  # 非外部接入
-            if request.user.is_authenticated:
-                return redirect('/welcome/')
+        if is_logout is not None and request.user.is_authenticated:
+            auth.logout(request)
+
+        if origin is None and request.user.is_authenticated:
+            return redirect('/welcome/')
 
         # 非法的 origin
-        if not url_check(arg_origin):
-            request.session[
-                'alert_message'] = f"尝试跳转到非法 URL: {arg_origin}，跳转已取消。"
+        if not url_check(origin):
+            request.session['alert_message'] = f"尝试跳转到非法 URL: {origin}，跳转已取消。"
             return redirect('/index/?alert=1')
 
-    def get(self, request: HttpRequest, *args, **kwargs) -> HttpResponse:
-        arg_origin = self.params.get('arg_origin')
-        if arg_origin is not None and request.user.is_authenticated:
-            if not check_cross_site(request, arg_origin):
-                return redirect(message_url(wrong('目标域名非法，请警惕陌生链接。')))
-            return redirect(arg_origin)
-
-        context = self.params
-        return render(request, self.template_name, context)
-
-    def post(self, request: HttpRequest, *args, **kwargs) -> HttpResponse:
-        username = request.POST.get('username')
-        password = request.POST.get('password')
+    def is_form_valid(self,
+                      request: HttpRequest) -> 'HttpResponseRedirect | None':
+        super().is_form_valid(request)
+        username = self.form_data.get('username')
+        password = self.form_data.get('password')
         assert username is not None
         assert password is not None
 
-        context = self.params
-        context['html_display'] = {}
+    def is_origin_safe(self, request: HttpRequest, origin=None) -> bool:
+        if origin is None:
+            return True
+        if not request.user.is_authenticated:
+            return True
+        if not check_cross_site(request, origin):
+            return False
+        return True
+
+    def get(self, request: HttpRequest, *args,
+            **kwargs) -> 'HttpResponse | HttpResponseRedirect':
+        origin = self.args.get('arg_origin')
+        if origin is None:
+            return super().get(request, *args, **kwargs)
+
+        if self.is_origin_safe(request, origin):
+            return redirect(origin)
+        else:
+            return redirect(message_url(wrong('目标域名非法，请警惕陌生链接。')))
+
+    def post(self, request: HttpRequest, *args,
+             **kwargs) -> 'HttpResponse | HttpResponseRedirect':
+        origin = self.args.get('arg_origin')
+        username = self.form_data.get('username')
+        password = self.form_data.get('password')
+        
         try:
             user = User.objects.filter(username=username)
             if len(user) == 0:
@@ -135,15 +145,13 @@ class IndexView(SecureView):
             else:
                 user = user[0]
         except:
-            wrong(local_dict['msg']['404'], context['html_display'])
-            return render(request, self.template_name, context)
+            wrong(local_dict['msg']['404'], self.extra_context)
+            return super().get(request, *args, **kwargs)
 
-        arg_origin = context.get('arg_origin')
         userinfo = auth.authenticate(username=username, password=password)
         if userinfo:
             auth.login(request, userinfo)
-            valid, user_type, context['html_display'] = utils.check_user_type(
-                request.user)
+            valid, user_type, _ = utils.check_user_type(request.user)
             if not valid:
                 return redirect('/logout/')
             if user_type == UTYPE_PER:
@@ -151,17 +159,15 @@ class IndexView(SecureView):
                 if me.first_time_login:
                     return redirect('/modpw/')
                 update_related_account_in_session(request, username)
-            if arg_origin is None:
+            if origin is None:
                 return redirect('/welcome/')
         else:
-            wrong(local_dict['msg']['406'], context['html_display'])
+            wrong(local_dict['msg']['406'], self.extra_context)
 
-        if arg_origin is not None and request.user.is_authenticated:
-            if not check_cross_site(request, arg_origin):
-                return redirect(message_url(wrong('目标域名非法，请警惕陌生链接。')))
-            return redirect(arg_origin)
-
-        return render(request, self.template_name, context)
+        if self.is_origin_safe(request, origin):
+            return redirect(origin)
+        else:
+            return redirect(message_url(wrong('目标域名非法，请警惕陌生链接。')))
 
 
 @login_required(redirect_field_name="origin")
@@ -185,8 +191,6 @@ def shiftAccount(request: HttpRequest):
             if not arg_url.startswith('http'): # 暂时只允许内部链接
                 return redirect(arg_url)
     return redirect("/welcome/")
-
-
 
 
 # Return content
@@ -717,9 +721,6 @@ def requestLoginOrg(request: HttpRequest, name=None):  # 特指个人希望通�
         if org.first_time_login:
             return redirect("/modpw/")
         return redirect("/orginfo/?warn_code=2&warn_message=成功切换到"+str(org)+"的账号!")
-
-
-
 
 
 @login_required(redirect_field_name="origin")
@@ -1436,7 +1437,6 @@ def userAgreement(request: HttpRequest):
     return render(request, 'user_agreement.html', locals())
 
 
-
 @log.except_captured(source='views[authRegister]', record_user=True)
 def authRegister(request: HttpRequest):
     if request.user.is_superuser:
@@ -1491,30 +1491,11 @@ def authRegister(request: HttpRequest):
         return HttpResponseRedirect("/index/")
 
 
-# @login_required(redirect_field_name=None)
 @log.except_captured(source='views[logout]', record_user=True)
 def logout(request: HttpRequest):
     auth.logout(request)
     return HttpResponseRedirect("/index/")
 
-
-"""
-@log.except_captured(source='views[org_spec]', record_user=True)
-def org_spec(request, *args, **kwargs):
-    arg = args[0]
-    org_dict = local_dict['org']
-    topic = org_dict[arg]
-    org = Organization.objects.filter(oname=topic)
-    pos = Position.objects.filter(Q(org=org) | Q(pos='部长') | Q(pos='老板'))
-    try:
-        pos = Position.objects.filter(Q(org=org) | Q(pos='部长') | Q(pos='老板'))
-        boss_no = pos.values()[0]['person_id']#存疑，可能还有bug here
-        boss = NaturalPerson.objects.get(person_id=boss_no).name
-        job = pos.values()[0]['pos']
-    except:
-        person_incharge = '负责人'
-    return render(request, 'org_spec.html', locals())
-"""
 
 @log.except_captured(source='views[get_stu_img]', record_user=True)
 def get_stu_img(request: HttpRequest):
@@ -1910,7 +1891,6 @@ def modpw(request: HttpRequest):
     return render(request, "modpw.html", locals())
 
 
-
 @login_required(redirect_field_name="origin")
 @utils.check_user_access(redirect_url="/logout/")
 @log.except_captured(source='views[subscribeOrganization]', record_user=True)
@@ -1943,8 +1923,6 @@ def subscribeOrganization(request: HttpRequest):
 
     # all_number = NaturalPerson.objects.activated().all().count()    # 人数全体 优化查询
     return render(request, "organization_subscribe.html", locals())
-
-
 
 
 @login_required(redirect_field_name="origin")
