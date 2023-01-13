@@ -276,6 +276,10 @@ class User(AbstractUser, PointMixin):
     REQUIRED_FIELDS = ['name']
     objects: UserManager['User'] = UserManager()
 
+
+    def __str__(self) -> str:
+        return f'{self.username} ({self.name})'
+
     @necessary_for_frontend(name)
     def get_full_name(self) -> str:
         '''User的通用方法，展示用户的名称'''
