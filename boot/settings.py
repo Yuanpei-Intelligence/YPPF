@@ -166,12 +166,13 @@ USE_TZ = False
 
 
 # Static files (CSS, JavaScript, Images)
-# https://docs.djangoproject.com/en/2.1/howto/static-files/
+# Django's staticfile doc is confusing...
+# Just use STATICFILES_DIRS instead of STATIC_ROOT for develop
 MY_STATIC_DIR = os.getenv("YPPF_STATIC_DIR", BASE_DIR)
 MY_TMP_DIR = os.getenv("YPPF_TMP_DIR", BASE_DIR)
 STATIC_URL = "/static/"
-STATIC_ROOT = os.path.join(MY_STATIC_DIR, "static")
-
+STATICFILES_DIRS = (os.path.join(MY_STATIC_DIR, "static"),)
+# Media files (user uploaded imgs)
 MEDIA_URL = "/media/"
 MEDIA_ROOT = os.path.join(MY_STATIC_DIR, "media/")
 
