@@ -38,7 +38,7 @@ INSTALLED_APPS = [
     "generic",
     "app",
     "Appointment",
-    'data_analysis',
+    'dm',
     "scheduler",
     "yp_library",
 ]

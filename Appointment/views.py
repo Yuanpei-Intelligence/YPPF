@@ -1448,7 +1448,7 @@ def summary(request):  # 主页
 
 def summary2021(request: HttpRequest):
     # 年度总结
-    from data_analysis.summary import generic_info, person_info
+    from dm.summary import generic_info, person_info
 
     base_dir = 'test_data'
 
