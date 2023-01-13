@@ -1,5 +1,5 @@
 from django.db.models import *
-from app.constants import *
+from app.config import *
 from app.models import *
 from Appointment.models import Appoint, CardCheckInfo, Room
 from Appointment.utils.identity import get_participant

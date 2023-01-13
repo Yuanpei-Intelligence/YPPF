@@ -12,10 +12,9 @@ import requests
 import json
 from datetime import datetime, timedelta
 
-from boot import base_get_setting
 from utils.hasher import MySHA256Hasher
 from scheduler import scheduler
-from app.constants import *
+from app.config import *
 from app.models import NaturalPerson, Organization, Activity, Notification, Position
 from app.utils import get_person_or_org
 from app import log
@@ -29,7 +28,7 @@ __all__ = [
 
 # 全局设置
 # 是否启用定时任务，请最好仅在服务器启用，如果不启用，后面的多个设置也会随之变化
-USE_SCHEDULER = get_config('config/wechat_send/use_scheduler', bool, True)
+USE_SCHEDULER = CONFIG.wechat_use_scheduler
 # 是否多线程发送，必须启用scheduler，如果启用则发送时无需等待
 USE_MULTITHREAD = True if USE_SCHEDULER else False
 # 决定单次连接的超时时间，响应时间一般为1s或12s（偶尔），建议考虑前端等待时间放弃12s
@@ -43,32 +42,27 @@ DEFAULT_URL = LOGIN_URL
 THIS_URL = LOGIN_URL.rstrip('/')        # 增加默认url前缀, 去除尾部的/
 WECHAT_SITE = WECHAT_URL.rstrip('/')    # 去除尾部的/
 INVITE_URL = WECHAT_SITE + '/invite_user'
-wechat_coder = MySHA256Hasher(base_get_setting("hash/wechat"))
+wechat_coder = MySHA256Hasher(CONFIG.hash_wechat)
 
 # 发送应用设置
 # 不要求接收等级的应用
-UNBLOCK_APPS = get_config('config/wechat_send/unblock_apps', set, set())
+UNBLOCK_APPS = CONFIG.wechat_unblock_apps
 # 应用名到域名的转换，可以是相对地址，也可以是绝对地址
-APP2URL = get_config('config/wechat_send/app2url', dict, dict())
+APP2URL = CONFIG.wechat_app2url
 APP2URL.setdefault('default', '')
 
 
 # 一批发送的最大数量
 # 底层单次发送的上限，不超过1000
-SEND_LIMIT = min(1000, get_config('thresholds/wechat_send_number', int, 500))
+SEND_LIMIT = min(1000, int(CONFIG.thresholds["wechat_send_number"]))
 # 中间层一批发送的数量，不超过1000
-SEND_BATCH = min(1000, get_config('thresholds/wechat_send_batch', int, 500))
+SEND_BATCH = min(1000, int(CONFIG.thresholds["wechat_send_batch"]))
 
 # 限制接收范围
 # 可接收范围，默认全体(None表示不限制范围)
-RECEIVER_SET = get_config('config/wechat_send/receivers',
-                          default=None,
-                          trans_func=lambda x: set(map(str, x))
-                          if x is not None else None)
+RECEIVER_SET = CONFIG.wechat_receiver_set
 # 黑名单，默认没有，可以用来排除元培学院等特殊用户
-BLACKLIST_SET = get_config('config/wechat_send/blacklist',
-                          default=set(),
-                          trans_func=lambda x: set(map(str, x)))
+BLACKLIST_SET = CONFIG.wechat_blacklist_set
 
 
 class WechatMessageLevel:

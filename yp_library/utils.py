@@ -14,7 +14,7 @@ from django.http import QueryDict, HttpRequest
 
 from app.utils import check_user_type
 from app.notification_utils import bulk_notification_create
-from app.constants import get_setting, UTYPE_PER
+from app.config import get_setting, UTYPE_PER
 from app.models import Notification, Organization, Activity
 from app.wechat_send import WechatMessageLevel
 

@@ -273,7 +273,7 @@ class PositionAdmin(admin.ModelAdmin):
 
     @as_action("延长职务年限", actions, atomic=True)
     def refresh(self, request, queryset):
-        from app.constants import CURRENT_ACADEMIC_YEAR
+        from app.config import CURRENT_ACADEMIC_YEAR
         new = []
         for position in queryset:
             position: Position

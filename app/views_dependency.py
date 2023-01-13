@@ -44,7 +44,7 @@ from utils.global_messages import (
 )
 from generic.http.dependency import *
 from generic.models import User
-from app.constants import *
+from app.config import *
 from app import utils, log
 
 

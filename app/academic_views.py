@@ -24,7 +24,7 @@ from app.utils import (
     get_sidebar_and_navbar,
     get_person_or_org,
 )
-from app.constants import UTYPE_PER
+from app.config import UTYPE_PER
 
 __all__ = [
     'searchAcademic', 

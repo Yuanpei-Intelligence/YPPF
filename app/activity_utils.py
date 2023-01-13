@@ -38,13 +38,10 @@ import qrcode
 from math import ceil
 from random import sample
 from datetime import datetime, timedelta
-from boot import local_dict
-from django.db.models import Sum
-from django.db.models import F
 
 from scheduler.scheduler import scheduler
 
-hash_coder = MySHA256Hasher(local_dict["hash"]["base_hasher"])
+hash_coder = MySHA256Hasher(CONFIG.hash_base)
 
 
 """
@@ -1052,16 +1049,16 @@ def calcu_activity_YQP(activity: Activity) -> int:
     """
 
     hours = (activity.end - activity.start).seconds / 3600
-    if hours > YQP_INVALID_HOUR:
+    if hours > CONFIG.yqp_invalid_hour:
         return 0
     # 以标题筛选不记录元气值的活动，包含筛选词时不记录积分
-    for invalid_letter in YQP_INVALID_TITLES:
+    for invalid_letter in CONFIG.yqp_invalid_title:
         if invalid_letter in activity.title:
             return 0
 
-    point = ceil(YQP_PER_HOUR * hours)
+    point = ceil(CONFIG.yqp_per_hour * hours)
     # 单次活动记录的积分上限，默认无上限
-    if YQP_ACTIVITY_MAX is not None:
-        point = min(YQP_ACTIVITY_MAX, point)
+    if CONFIG.yqp_activity_max is not None:
+        point = min(CONFIG.yqp_activity_max, point)
     return point
 

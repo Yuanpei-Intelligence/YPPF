@@ -8,7 +8,7 @@ from tqdm import tqdm
 from django.db import transaction
 
 from boot import local_dict
-from app.constants import *
+from app.config import *
 from app.models import (
     User,
     NaturalPerson,
@@ -634,7 +634,7 @@ def load_course_record(filepath: str, output_func: Callable=None, html:bool=Fals
             record_search_course = record.filter(course__name=course)
             record_search_extra = record.filter(extra_name=course)
             # 需要时临时修改即可
-            invalid = float(hours) < LEAST_RECORD_HOURS
+            invalid = float(hours) < CONFIG.least_record_hours
 
             if record_search_course.exists():
                 record_search_course.update(

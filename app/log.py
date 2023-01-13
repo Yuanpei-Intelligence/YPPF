@@ -6,9 +6,8 @@ from functools import wraps
 
 from django.conf import settings
 
-from boot import base_get_setting
-from app.constants import SYSTEM_LOG
-
+from app.config import CONFIG
+from utils.config import LazySetting
 
 __all__ = [
     'STATE_DEBUG', 'STATE_INFO', 'STATE_WARNING', 'STATE_ERROR',
@@ -42,12 +41,12 @@ __log_detailed_path = os.path.join(__log_root_path, "traceback_record")
 
 
 # 记录相关的常量
-SYSTEM_LOG = SYSTEM_LOG
-DEBUG_IDS: list = base_get_setting(
+SYSTEM_LOG = CONFIG.system_log
+DEBUG_IDS: list = LazySetting(
     'debug_stuids',
     lambda x: x.replace(' ', '').split(',') if isinstance(x, str) else x,
-    default=[], raise_exception=False,
-)
+    default=[]
+).get()
 
 
 # 屏蔽设置记录等级以下的等级
