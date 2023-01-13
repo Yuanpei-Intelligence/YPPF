@@ -46,6 +46,7 @@ migrations/
 test_data/
 # Media #
 media/
+static/admin
 # comment/
 # course/
 # avatar/
@@ -66,4 +67,3 @@ __pycache__/
 
 # OPS Files *
 *.ini
-*.sh

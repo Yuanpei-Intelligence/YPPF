@@ -13,14 +13,15 @@ models.py
 @Author pht
 @Date 2022-08-19
 '''
-import pypinyin
 from typing import Type, NoReturn
+
 from django.db import models
 from django.contrib.auth import get_permission_codename
 from django.contrib.auth.models import AbstractUser, AnonymousUser
 from django.contrib.auth.models import UserManager as _UserManager
 from django.db import transaction
 from django.db.models import QuerySet, F
+import pypinyin
 
 __all__ = [
     'User',
@@ -34,6 +35,7 @@ def necessary_for_frontend(method, *fields):
     if isinstance(method, (str, models.Field)):
         return necessary_for_frontend
     return method
+
 
 def invalid_for_frontend(method):
     '''前端不能使用这个方法'''
@@ -50,6 +52,7 @@ class UserManager(_UserManager):
     '''
     用户管理器，提供对信用分等通用
     '''
+
     def get_user(self, user: 'User|int|str', update=False) -> 'User':
         '''根据主键或用户名(学号)等唯一字段查询对应的用户'''
         users = self.all()
@@ -76,7 +79,6 @@ class UserManager(_UserManager):
         '''User.objects.create已废弃'''
         raise NotImplementedError
 
-
     def check_perm(self, user: 'User|AnonymousUser',
                    model: 'Type[models.Model]|models.Model', perm: str) -> bool:
         '''
@@ -95,7 +97,6 @@ class UserManager(_UserManager):
         codename = get_permission_codename(perm, opts)
         perm_name = f'{opts.app_label}.{codename}'
         return user.has_perm(perm_name)
-
 
     @transaction.atomic
     def modify_credit(self, user: 'User|int|str', delta: int, source: str) -> int:
@@ -126,7 +127,6 @@ class UserManager(_UserManager):
         if isinstance(user, User):
             user.credit = update_user.credit
         return new_credit - old_credit
-
 
     @transaction.atomic
     def bulk_recover_credit(self, users: QuerySet['User'],
@@ -163,7 +163,6 @@ class UserManager(_UserManager):
         CreditRecord.objects.bulk_create(records)
         self.select_for_update().bulk_update(users, ['credit'])
 
-
     def _record_credit_modify(self, user: 'User', delta: int, source: str,
                               old_value: int = None, new_value: int = None):
         if old_value is None:
@@ -180,7 +179,6 @@ class UserManager(_UserManager):
             source=source,
         )
 
-
     @transaction.atomic
     def modify_YQPoint(self, user: 'User|int|str', delta: int,
                        source: str, source_type: 'YQPointRecord.SourceType'):
@@ -194,7 +192,6 @@ class UserManager(_UserManager):
         update_user.save(update_fields=['YQpoint'])
         if isinstance(user, User):
             user.YQpoint = update_user.YQpoint
-
 
     @transaction.atomic
     def bulk_increase_YQPoint(self, users: QuerySet['User'], delta: int,
@@ -225,7 +222,6 @@ class UserManager(_UserManager):
         if delta != 0:
             users.update(YQpoint=F('YQpoint') + delta)
 
-
     def _record_YQpoint_change(self, user: 'User', delta: int,
                                source: str, source_type: 'YQPointRecord.SourceType'):
         YQPointRecord.objects.create(
@@ -249,6 +245,7 @@ class PointMixin(models.Model):
 
 
 class User(AbstractUser, PointMixin):
+
     class Meta:
         verbose_name = '用户'
         verbose_name_plural = verbose_name
@@ -257,11 +254,13 @@ class User(AbstractUser, PointMixin):
     MIN_CREDIT = 0
     MAX_CREDIT = 3
     credit = models.IntegerField('信用分', default=MAX_CREDIT)
-    
+
     accept_chat = models.BooleanField('允许提问', default=True)
     accept_anonymous_chat = models.BooleanField('允许匿名提问', default=True)
 
     class Type(models.TextChoices):
+        # TODO: Better naming? 
+        # Like person, group, admin, vistor
         PERSON = 'Person', '自然人'
         ORG = 'Organization', '组织'
         SPECIAL = '', '特殊用户'
@@ -331,7 +330,7 @@ class YQPointRecord(models.Model):
     class Meta:
         verbose_name = '元气值记录'
         verbose_name_plural = verbose_name
-    
+
     user = models.ForeignKey(
         User, verbose_name='用户', on_delete=models.CASCADE,
         to_field='username',
@@ -339,6 +338,7 @@ class YQPointRecord(models.Model):
     delta = models.IntegerField('变化量')
     source = models.CharField('来源', max_length=50, blank=True)
 
+    # TODO: Can we remove this? 
     class SourceType(models.IntegerChoices):
         SYSTEM = (0, '系统操作')
         CHECK_IN = (1, '每日签到')
