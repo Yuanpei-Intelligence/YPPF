@@ -54,10 +54,10 @@ class GetLendRecordTestCase(TestCase):
     def test_records_type(self):
         records = get_my_records(123456789, returned=1, status=0)
         self.assertEqual(len(records), 1)
-        self.assertEqual(records[0]['type'], 'normal')
+        self.assertEqual(records[0]['type'], 'returned')
         records = get_my_records(123456789, returned=1, status=1)
         self.assertEqual(len(records), 1)
-        self.assertEqual(records[0]['type'], 'overtime')
+        self.assertEqual(records[0]['type'], 'overtime_returned')
         '''
         # 测试记录类型'type', 对于未归还记录，结果会随测试时的时间不同而变化
         records = get_my_records(1234567, returned=0, status=1)

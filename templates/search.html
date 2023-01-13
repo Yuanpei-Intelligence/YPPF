@@ -30,7 +30,7 @@
                         <div class="widget-header">
                             <div class="row">
                                 <div class="col-xl-12 col-md-12 col-sm-12 col-12">
-                                    <div data-toggle="collapse" href="#personsearch" role="button" aria-expanded="false"
+                                    <div data-toggle="collapse" href="#person-search" role="button" aria-expanded="false"
                                         aria-controls="collapseExample">
                                         <div class="d-flex justify-content-between">
                                             <div>
@@ -46,7 +46,7 @@
                                 </div>
                             </div>
                         </div>
-                        <div class="collapse show" id="personsearch">
+                        <div class="collapse show" id="person-search">
                             <div class="widget-content widget-content-area">
                                 <div class="table-responsive">
                                     <table class="table table-bordered mb-4">
@@ -124,7 +124,7 @@
                         <div class="widget-header">
                             <div class="row">
                                 <div class="col-xl-12 col-md-12 col-sm-12 col-12">
-                                    <div data-toggle="collapse" href="#orgsearch" role="button" aria-expanded="false"
+                                    <div data-toggle="collapse" href="#org-search" role="button" aria-expanded="false"
                                         aria-controls="collapseExample">
                                         <div class="d-flex justify-content-between">
                                             <div>
@@ -140,7 +140,7 @@
                                 </div>
                             </div>
                         </div>
-                        <div class="collapse show" id="orgsearch">
+                        <div class="collapse show" id="org-search">
                             <div class="widget-content widget-content-area">
                                 <div class="table-responsive">
                                     <table class="table table-bordered mb-4">
@@ -212,7 +212,7 @@
                         <div class="widget-header">
                             <div class="row">
                                 <div class="col-xl-12 col-md-12 col-sm-12 col-12">
-                                    <div data-toggle="collapse" href="#activitysearch" role="button"
+                                    <div data-toggle="collapse" href="#activity-search" role="button"
                                         aria-expanded="false" aria-controls="collapseExample">
                                         <div class="d-flex justify-content-between">
                                             <div>
@@ -228,7 +228,7 @@
                                 </div>
                             </div>
                         </div>
-                        <div class="collapse show" id="activitysearch">
+                        <div class="collapse show" id="activity-search">
                             <div class="widget-content widget-content-area">
                                 <div class="table-responsive">
                                     <table class="table table-bordered mb-4">
@@ -410,7 +410,7 @@
                         <div class="widget-header">
                             <div class="row">
                                 <div class="col-xl-12 col-md-12 col-sm-12 col-12">
-                                    <div data-toggle="collapse" href="#personsearch" role="button" aria-expanded="false"
+                                    <div data-toggle="collapse" href="#academic-search" role="button" aria-expanded="false"
                                         aria-controls="collapseExample">
                                         <div class="d-flex justify-content-between">
                                             <div>
@@ -426,7 +426,7 @@
                                 </div>
                             </div>
                         </div>
-                        <div class="collapse show" id="personsearch">
+                        <div class="collapse show" id="academic-search">
                             <div class="widget-content widget-content-area">
                                 <div class="table-responsive">
                                     <table class="table table-bordered mb-4">
@@ -440,7 +440,7 @@
                                         </thead>
                                         <tbody>
                                             {% for person, content_dict in academic_list %}
-                                            {% for content_type, contents_list in content_dict %}
+                                            {% for content_type, contents_list in content_dict.items %}
                                             <tr>
                                                 <td style="min-width: 80px;">
                                                     {% if forloop.counter == 1 %}

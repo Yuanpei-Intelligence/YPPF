@@ -1,63 +1,45 @@
-# 数据库模型与操作
 import os
+import json
+import html
+from datetime import datetime, timedelta, date
+import random
+
+# Http操作相关
+from django.views.decorators.http import require_POST
+from django.http import JsonResponse, HttpRequest  # Json响应
+from django.shortcuts import render, redirect  # 网页render & redirect
+from django.urls import reverse
+from django.contrib import auth
+from django.db.models import QuerySet
+from django.db import transaction  # 原子化更改数据库
+from django.views.decorators.csrf import csrf_exempt  # csrf 检测和完善
+
+# 消息读取
+from utils.global_messages import wrong, succeed, message_url
+import utils.global_messages as my_messages
 from Appointment.models import (
+    User,
     Participant,
     Room,
     Appoint,
     College_Announcement,
     LongTermAppoint,
 )
-from django.db.models import Q, QuerySet
-from django.db import transaction  # 原子化更改数据库
-
-# Http操作相关
-from django.views.decorators.http import require_POST
-from django.http import JsonResponse, HttpResponse, HttpRequest  # Json响应
-from django.shortcuts import render, redirect  # 网页render & redirect
-from django.urls import reverse
-from django.contrib import auth
-import json  # 读取Json请求
-import html  # 解码保证安全
-
-# csrf 检测和完善
-from django.views.decorators.csrf import csrf_exempt
-from django.middleware.csrf import get_token
-
-# 时间任务
-from datetime import datetime, timedelta, timezone, time, date
-import random
-import threading
-
-# 全局参数读取
-from Appointment import *
-
-# 消息读取
-from boottest.global_messages import wrong, succeed, message_url
-import boottest.global_messages as my_messages
-
 # utils对接工具
 from Appointment.utils.utils import (
-    send_wechat_message, appoint_violate, doortoroom, iptoroom,
-    operation_writer, write_before_delete, cardcheckinfo_writer,
+    send_wechat_message, doortoroom, iptoroom,
+    operation_writer, cardcheckinfo_writer,
     check_temp_appoint, set_appoint_reason, get_conflict_appoints,
     to_feedback_url,
 )
 import Appointment.utils.web_func as web_func
 from Appointment.utils.identity import (
-    get_name, get_avatar, get_member_ids, get_members, get_auditor_ids,
+    get_avatar, get_members, get_auditor_ids,
     get_participant, identity_check,
 )
+from Appointment import *
+from Appointment import jobs
 
-# 定时任务注册
-import Appointment.utils.scheduler_func as scheduler_func
-
-'''
-
-Views.py 使用说明
-    尽可能把所有工具类的函数放到utils文件夹对应的py下，保持views.py中基本上是直接会被web调用的函数(见urls.py)
-    如果存在一些依赖较多的函数，可以留在views.py中
-
-'''
 
 # 日志操作相关
 # 返回数据的接口规范如下：(相当于不返回，调用函数写入日志)
@@ -270,12 +252,12 @@ def cancelAppoint(request: HttpRequest):
     with transaction.atomic():
         appoint_room_name = appoint.Room.Rtitle
         appoint.cancel()
-        scheduler_func.cancel_scheduler(appoint.Aid, "Problem")
+        jobs.cancel_scheduler(appoint.Aid, "Problem")
 
         operation_writer(appoint.get_major_id(), f"取消了预约{pk}",
                          "scheduler_func.cancelAppoint", "OK")
         succeed("成功取消对" + appoint_room_name + "的预约!", context)
-        scheduler_func.set_cancel_wechat(appoint)
+        jobs.set_cancel_wechat(appoint)
 
     return redirect(message_url(context, reverse("Appointment:account")))
 
@@ -502,7 +484,7 @@ def credit(request):
 # added by wxy
 # modified by dyh
 @csrf_exempt
-def door_check(request): 
+def door_check(request):
     # --------- 对接接口 --------- #
     def _open():
         return JsonResponse({"code": 0, "openDoor": "true"}, status=200)
@@ -510,7 +492,7 @@ def door_check(request):
     def _fail():
         return JsonResponse({"code": 1, "openDoor": "false"}, status=400)
     # --------- 基本信息 --------- #
-    
+
     # 先以Sid Rid作为参数，看之后怎么改
     Sid, Rid = request.GET.get("Sid", None), request.GET.get("Rid", None)
     student, room, now_time, min15 = None, None, datetime.now(), timedelta(minutes=15)
@@ -594,13 +576,15 @@ def door_check(request):
         record_msg = f"刷卡拒绝：临时预约失败（{message}）" if record_temp else f"刷卡拒绝：{message}"
         cardcheckinfo_writer(student, room, False, False, record_msg)
         send_wechat_message(
-            [student.get_id()], now_time.replace(second=0, microsecond=0), room,
+            [student.get_id()], now_time.replace(
+                second=0, microsecond=0), room,
             MSG_TYPE, student, "临时预约", "", 1, message)
         return _fail()
 
     if len(room_appoint) != 0:  # 当前有预约
 
-        if not room_appoint.filter(students__in=[student]).exists():   # 不是自己的预约
+        # 不是自己的预约
+        if not room_appoint.filter(students__in=[student]).exists():
             return _temp_failed(f"该房间有别人的预约，或者距离别人的下一条预约开始不到15min！", False)
 
         else:   # 自己的预约
@@ -609,12 +593,13 @@ def door_check(request):
     else:   # 当前无预约
 
         if not check_temp_appoint(room):   # 房间不可以临时预约
-            return _temp_failed(f"刷卡拒绝：该房间不可临时预约", False)
+            return _temp_failed(f"该房间不可临时预约", False)
 
         else:   # 该房间可以用于临时预约
 
             # 注意，由于制度上不允许跨天预约，这里的逻辑也不支持跨日预约（比如从晚上23:00约到明天1:00）。
-            start = now_time.replace(second=0, microsecond=0)  # 需要剥离秒级以下的数据，否则admin-index无法正确渲染
+            # 需要剥离秒级以下的数据，否则admin-index无法正确渲染
+            start = now_time.replace(second=0, microsecond=0)
             timeid = web_func.get_time_id(room, start.time())
 
             finish, valid = web_func.get_hour_time(room, timeid + 1)
@@ -639,14 +624,15 @@ def door_check(request):
                     'Ausage': "临时预约",
                     'announcement': "",
                 }
-                response = scheduler_func.addAppoint(
+                response = jobs.addAppoint(
                     contents, type=Appoint.Type.TEMPORARY)
 
                 if response.status_code == 200:  # 临时预约成功
                     return _check_succeed(f"刷卡开门：临时预约")
 
                 else:   # 无法预约（比如没信用分了）
-                    message = json.loads(response.content)["statusInfo"]["message"]
+                    message = json.loads(response.content)[
+                        "statusInfo"]["message"]
                     return _temp_failed(message)
 
             else:   # 预约时间不合法
@@ -692,15 +678,15 @@ def index(request):  # 主页
         render_context.update(announcements=announcements)
 
     # 获取可能的全局消息
-    my_messages.transfer_message_context(
-        request.GET, render_context, normalize=True)
+    my_messages.transfer_message_context(request.GET, render_context)
 
-    #--------- 前端变量 ---------#
+    # --------- 前端变量 ---------#
 
     room_list = Room.objects.all()
     now, tomorrow = datetime.now(), datetime.today() + timedelta(days=1)
-    occupied_rooms = Appoint.objects.not_canceled().filter(
-        Astart__lte=now + timedelta(minutes=15), Afinish__gte=now).values('Room')   # 接下来有预约的房间
+    occupied_rooms = set(Appoint.objects.not_canceled().filter(
+        Astart__lte=now + timedelta(minutes=15),
+        Afinish__gte=now).values_list('Room__Rid', flat=True))                      # 接下来有预约的房间
     future_appointments = Appoint.objects.not_canceled().filter(
         Astart__gte=now + timedelta(minutes=15), Astart__lt=tomorrow)               # 接下来的预约
     room_appointments = {room.Rid: None for room in room_list}
@@ -714,24 +700,25 @@ def index(request):  # 主页
         hour, rem = divmod(delta.seconds, 3600)
         return f"{rem // 60}min" if hour == 0 else f"{hour}h{rem // 60}min"
 
-    #--------- 1,2 地下室状态部分 ---------#
+    # --------- 1,2 地下室状态部分 ---------#
     function_room_list = Room.objects.function_rooms().order_by('Rid')
 
-    #--------- 地下室状态：left tab ---------#
-    suspended_room_list = room_list.filter(
-        Rstatus=Room.Status.UNLIMITED).order_by('-Rtitle')                          # 开放房间
+    # --------- 地下室状态：left tab ---------#
+    unlimited_rooms = room_list.unlimited().order_by(
+        '-Rtitle')                     # 开放房间
     statistics_info = [(room, (room.Rpresent * 10) // (room.Rmax or 1))
-                       for room in suspended_room_list]                             # 开放房间人数统计
+                       for room in unlimited_rooms]                                 # 开放房间人数统计
 
-    #--------- 地下室状态：right tab ---------#
+    # --------- 地下室状态：right tab ---------#
     talk_room_list = Room.objects.talk_rooms().order_by('Rid')
-    room_info = [(room, {'Room': room.Rid} in occupied_rooms, format_time(          # 研讨室占用情况
-        room_appointments[room.Rid])) for room in talk_room_list]
+    room_info = [(room,
+                  room.Rid in occupied_rooms,
+                  format_time(room_appointments[room.Rid]))
+                 for room in talk_room_list]                                       # 研讨室占用情况
 
-    #--------- 3 俄文楼部分 ---------#
+    # --------- 3 俄文楼部分 ---------#
 
-    russian_room_list = room_list.filter(Rstatus=Room.Status.PERMITTED).filter(     # 俄文楼
-        Rid__icontains="R").order_by('Rid')
+    russian_room_list = Room.objects.russian_rooms().order_by('Rid')                # 俄文楼
     russ_len = len(russian_room_list)
 
     render_context.update(
@@ -913,7 +900,7 @@ def arrange_time(request: HttpRequest):
 
             if related_longterm_appoint is not None:
                 display_info.append(
-                    scheduler_func.get_longterm_display(
+                    jobs.get_longterm_display(
                         times=related_longterm_appoint.times,
                         interval_week=related_longterm_appoint.interval,
                         type="inline",
@@ -966,11 +953,9 @@ def arrange_talk_room(request):
         if re_time.date() == datetime.now().date():
             is_today = True
             show_min = GLOBAL_INFO.today_min
-        room_list = Room.objects.filter(
-            Rtitle__contains='研讨').filter(Rstatus=Room.Status.PERMITTED).order_by('Rmin', 'Rid')
+        room_list = Room.objects.talk_rooms().basement_only().order_by('Rmin', 'Rid')
     else:  # type == "russ"
-        room_list = Room.objects.filter(Rstatus=Room.Status.PERMITTED).filter(
-            Rid__icontains="R").order_by('Rid')
+        room_list = Room.objects.russian_rooms().order_by('Rid')
     # YHT: added for russian search
     Rids = [room.Rid for room in room_list]
     t_start, t_finish = web_func.get_talkroom_timerange(
@@ -1014,7 +999,6 @@ def arrange_talk_room(request):
 
         for time_id in range(start_id, finish_id + 1):
             rooms_time_list[sequence][time_id]['status'] = 0
-        print("in arrange talk room，present_time_id", present_time_id)
 
         # case 2
         for time_id in range(min(present_time_id + 1, t_range)):
@@ -1057,6 +1041,7 @@ def checkout_appoint(request: HttpRequest):
         endid = request.GET.get('endid')
         start_week = request.GET.get('start_week', 0)
         is_longterm = True if request.GET.get('longterm') == 'on' else False
+        is_interview = False
     else:
         Rid = request.POST.get('Rid')
         weekday = request.POST.get('weekday')
@@ -1064,15 +1049,20 @@ def checkout_appoint(request: HttpRequest):
         endid = request.POST.get('endid')
         is_longterm = True if request.POST.get('longterm') == 'on' else False
         start_week = 0
+        is_interview = False
         if is_longterm:
             start_week = request.POST.get('start_week', 0)
             # 长期预约的次数
             times = request.POST.get('times', 0)
             # 间隔为1代表每周，为2代表隔周
             interval = request.POST.get('interval', 0)
+        else:
+            is_interview = request.POST.get('interview') == 'yes'
 
     applicant = get_participant(request.user)
     has_longterm_permission = applicant.longterm
+    has_interview_permission = not (applicant.longterm or applicant.hidden)
+    has_interview_permission &= Rid in Room.objects.interview_room_ids()
 
     try:
         # 参数类型转换与合法性检查
@@ -1080,15 +1070,20 @@ def checkout_appoint(request: HttpRequest):
         startid = int(startid)
         endid = int(endid)
         if is_longterm and request.method == 'POST':
+            assert times, '长期预约周数未填写'
             times = int(times)
             interval = int(interval)
-            assert 1 <= interval <= GLOBAL_INFO.longterm_max_interval
-        assert weekday in wklist
-        assert startid >= 0
-        assert endid >= 0
-        assert endid >= startid
-        assert start_week == 0 or start_week == 1
-        assert has_longterm_permission or not is_longterm  # 检查长期预约权限
+            assert 1 <= interval <= GLOBAL_INFO.longterm_max_interval, '间隔周数'
+        assert weekday in wklist, '星期几'
+        assert startid >= 0, '起始时间'
+        assert endid >= 0, '结束时间'
+        assert endid >= startid, '起始时间晚于结束时间'
+        assert start_week == 0 or start_week == 1, '预约周数'
+        assert has_longterm_permission or not is_longterm, '没有长期预约权限'
+        if is_interview:
+            assert has_interview_permission, '没有面试权限'
+    except AssertionError as e:
+        return redirect(message_url(wrong(f'参数不合法: {e}'), reverse('Appointment:index')))
     except:
         return redirect(message_url(wrong('参数不合法'), reverse('Appointment:index')))
 
@@ -1101,7 +1096,8 @@ def checkout_appoint(request: HttpRequest):
         'start_week': start_week,
     }
     room = Room.objects.get(Rid=Rid)
-    dayrange_list = web_func.get_dayrange(day_offset=start_week * 7)[0]
+    # 表单参数都统一为可预约的第一周，具体预约哪周根据POST的start_week判断
+    dayrange_list = web_func.get_dayrange(day_offset=0)[0]
     for day in dayrange_list:
         if day['weekday'] == appoint_params['weekday']:
             appoint_params['date'] = day['date']
@@ -1128,7 +1124,9 @@ def checkout_appoint(request: HttpRequest):
     render_context = {}
     render_context.update(room_object=room,
                           appoint_params=appoint_params,
-                          has_longterm_permission=has_longterm_permission)
+                          has_longterm_permission=has_longterm_permission,
+                          has_interview_permission=has_interview_permission,
+                          interview_max_count=GLOBAL_INFO.interview_max_num)
 
     # 提交预约信息
     if request.method == 'POST':
@@ -1166,22 +1164,31 @@ def checkout_appoint(request: HttpRequest):
                 applicant=applicant).count() >= GLOBAL_INFO.longterm_max_num:
             wrong("您的长期预约总数已超过上限", render_context)
 
+        # 检查面试次数
+        if is_interview and Appoint.objects.unfinished().filter(
+                major_student=applicant, Atype=Appoint.Type.INTERVIEW
+        ).count() >= GLOBAL_INFO.interview_max_num:
+            wrong('您预约的面试次数已达到上限，结束后方可继续预约', render_context)
+
         contents['Astart'] = datetime(contents['year'], contents['month'],
                                       contents['day'],
                                       *map(int, contents['starttime'].split(":")))
         contents['Afinish'] = datetime(contents['year'], contents['month'],
                                        contents['day'],
                                        *map(int, contents['endtime'].split(":")))
-        # TODO: 隔周预约的处理可优化
+        # TODO: 隔周预约的处理可优化，根据start_week调整实际预约时间
         contents['Astart'] += timedelta(weeks=start_week)
         contents['Afinish'] += timedelta(weeks=start_week)
         if my_messages.get_warning(render_context)[0] is None:
             # 参数检查全部通过，下面开始创建预约
             if is_longterm:
-                response = scheduler_func.addAppoint(contents,
-                                                     type=Appoint.Type.LONGTERM, notify_create=False)
+                response = jobs.addAppoint(contents,
+                                           type=Appoint.Type.LONGTERM, notify_create=False)
+            elif is_interview:
+                response = jobs.addAppoint(
+                    contents, type=Appoint.Type.INTERVIEW)
             else:
-                response = scheduler_func.addAppoint(contents)
+                response = jobs.addAppoint(contents)
             if response.status_code == 200 and not is_longterm:
                 # 成功预约且非长期
                 return redirect(
@@ -1198,8 +1205,8 @@ def checkout_appoint(request: HttpRequest):
                         Aid = json.loads(response.content)['data']['Aid']
                         appoint: Appoint = Appoint.objects.get(Aid=Aid)
                         conflict_appoints = get_conflict_appoints(
-                            appoint, times, interval,
-                            week_offset=interval, lock=True)
+                            appoint, times - 1, interval,
+                            week_offset=interval, exclude_this=True, lock=True)
                         assert not conflict_appoints
                         longterm: LongTermAppoint = LongTermAppoint.objects.create(
                             appoint=appoint,
@@ -1211,7 +1218,7 @@ def checkout_appoint(request: HttpRequest):
                         conflict, conflict_appoints = longterm.create()
                         assert conflict is None, f"创建长期预约意外失败"
                         # 向审核老师发送微信通知
-                        scheduler_func.set_longterm_reviewing_wechat(longterm)
+                        jobs.set_longterm_reviewing_wechat(longterm)
                         return redirect(
                             message_url(succeed(f"申请长期预约成功，请等待审核。"),
                                         reverse("Appointment:account")))
@@ -1257,6 +1264,8 @@ def review(request: HttpRequest):
     try:
         longterm_appoint: LongTermAppoint = LongTermAppoint.objects.get(pk=Lid)
         reviewer_list = get_auditor_ids(longterm_appoint.applicant)
+        if request.user.is_staff and User.objects.check_perm(request.user, LongTermAppoint, 'view'):
+            reviewer_list.append(request.user.username)
         assert request.user.username in reviewer_list
     except:
         return redirect(message_url(
@@ -1277,9 +1286,10 @@ def review(request: HttpRequest):
                 with transaction.atomic():
                     longterm_appoint.status = LongTermAppoint.Status.APPROVED
                     longterm_appoint.save()
-                    scheduler_func.set_appoint_wechat(
+                    jobs.set_appoint_wechat(
                         longterm_appoint.appoint, 'longterm_approved',
-                        students_id=[longterm_appoint.get_applicant_id()])
+                        students_id=[longterm_appoint.get_applicant_id()],
+                        id=f'{longterm_appoint.pk}_longterm_approved')
                 succeed(
                     f"已通过对{longterm_appoint.appoint.Room}的长期预约!", render_context)
             except:
@@ -1293,9 +1303,10 @@ def review(request: HttpRequest):
                     longterm_appoint.status = LongTermAppoint.Status.REJECTED
                     longterm_appoint.review_comment = reason
                     longterm_appoint.save()
-                    scheduler_func.set_appoint_wechat(
+                    jobs.set_appoint_wechat(
                         longterm_appoint.appoint, 'longterm_rejected', reason,
-                        students_id=[longterm_appoint.get_applicant_id()])
+                        students_id=[longterm_appoint.get_applicant_id()],
+                        id=f'{longterm_appoint.pk}_longterm_rejected')
             except:
                 wrong(f"对于该条长期预约的拒绝操作失败!", render_context)
 
@@ -1437,7 +1448,7 @@ def summary(request):  # 主页
 
 def summary2021(request: HttpRequest):
     # 年度总结
-    from data_analysis.summary import generic_info, person_info
+    from dm.summary import generic_info, person_info
 
     base_dir = 'test_data'
 
@@ -1464,7 +1475,8 @@ def summary2021(request: HttpRequest):
                 rank_info = json.load(f)
                 sid = request.user.username
                 for k in ['co_pct', 'func_appoint_pct', 'discuss_appoint_pct']:
-                    infos[k] = rank_info[k].index(sid) * 100 // len(rank_info[k])
+                    infos[k] = rank_info[k].index(
+                        sid) * 100 // len(rank_info[k])
         except:
             pass
     else:

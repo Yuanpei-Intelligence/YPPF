@@ -1,17 +1,14 @@
-from app.models import *
-from boottest.admin_utils import *
-
 from datetime import datetime
 from django.contrib import admin
 from django.db import transaction
 from django.utils.safestring import mark_safe
 
-# Register your models here.
-admin.site.site_title = '元培智慧校园管理后台'
-admin.site.site_header = '元培智慧校园 - 管理后台'
-# 合并后只需声明一次
-# admin.site.site_title = '元培成长档案管理后台'
-# admin.site.site_header = '元培成长档案 - 管理后台'
+from generic.http.dependency import HttpRequest
+from app.models import *
+from utils.admin_utils import *
+from scheduler.scheduler import scheduler
+
+
 
 
 # 通用内联模型
@@ -53,7 +50,7 @@ class NaturalPersonAdmin(admin.ModelAdmin):
             {
                 "fields": (
                     "person_id", "name", "nickname", "gender", "identity", "status",
-                    "bonusPoint", "wechat_receive_level",
+                    "wechat_receive_level",
                     "accept_promote", "active_score",
                     "stu_id_dbonly",
                     ),
@@ -204,6 +201,16 @@ class OrganizationAdmin(admin.ModelAdmin):
         return self.message_user(request=request,
                                  message='修改成功!')
 
+    @as_action("激活", actions, update=True)
+    def set_activate(self, request, queryset):
+        queryset.update(status=True)
+        return self.message_user(request, '修改成功!')
+
+    @as_action("失效", actions, update=True)
+    def set_disabled(self, request, queryset):
+        queryset.update(status=False)
+        return self.message_user(request, '修改成功!')
+
 
 @admin.register(Position)
 class PositionAdmin(admin.ModelAdmin):
@@ -263,6 +270,21 @@ class PositionAdmin(admin.ModelAdmin):
         queryset.update(is_admin=False)
         return self.message_user(request=request,
                                  message='修改成功!')
+
+    @as_action("延长职务年限", actions, atomic=True)
+    def refresh(self, request, queryset):
+        from app.constants import CURRENT_ACADEMIC_YEAR
+        new = []
+        for position in queryset:
+            position: Position
+            if position.year != CURRENT_ACADEMIC_YEAR and not Position.objects.filter(
+                    person=position.person, org=position.org,
+                    year=CURRENT_ACADEMIC_YEAR).exists():
+                position.year = CURRENT_ACADEMIC_YEAR
+                position.pk = None
+                position.save(force_insert=True)
+                new.append([position.pk, position.person.get_display_name()])
+        return self.message_user(request, f'修改成功!新增职务：{new}')
 
 
 @admin.register(Activity)
@@ -378,7 +400,6 @@ class ActivityAdmin(admin.ModelAdmin):
         from app.activity_utils import changeActivityStatus
         changeActivityStatus(activity.id, Activity.Status.APPLYING, Activity.Status.WAITING)
         try:
-            from app.scheduler_func import scheduler
             scheduler.remove_job(f'activity_{activity.id}_{Activity.Status.WAITING}')
             return self.message_user(request=request,
                                     message='修改成功, 并移除了定时任务!')
@@ -395,7 +416,6 @@ class ActivityAdmin(admin.ModelAdmin):
         from app.activity_utils import changeActivityStatus
         changeActivityStatus(activity.id, Activity.Status.WAITING, Activity.Status.PROGRESSING)
         try:
-            from app.scheduler_func import scheduler
             scheduler.remove_job(f'activity_{activity.id}_{Activity.Status.PROGRESSING}')
             return self.message_user(request=request,
                                     message='修改成功, 并移除了定时任务!')
@@ -411,7 +431,6 @@ class ActivityAdmin(admin.ModelAdmin):
         from app.activity_utils import changeActivityStatus
         changeActivityStatus(activity.id, Activity.Status.PROGRESSING, Activity.Status.END)
         try:
-            from app.scheduler_func import scheduler
             scheduler.remove_job(f'activity_{activity.id}_{Activity.Status.END}')
             return self.message_user(request=request,
                                     message='修改成功, 并移除了定时任务!')
@@ -422,7 +441,6 @@ class ActivityAdmin(admin.ModelAdmin):
     def cancel_scheduler(self, request, queryset):
         success_list = []
         failed_list = []
-        from app.scheduler_func import scheduler
         CANCEL_STATUSES = [
             'remind',
             Activity.Status.END,
@@ -759,26 +777,114 @@ class ModuleLogAdmin(admin.ModelAdmin):
 
 @admin.register(AcademicTag)
 class AcademicTagAdmin(admin.ModelAdmin):
-    list_display = ["atype", "tag_content",]
-    search_fields =  ("atype", "tag_content",)
+    list_display = ["atype", "tag_content"]
+    search_fields =  ("atype", "tag_content")
+    list_filter = ["atype"]
+
+
+class AcademicEntryAdmin(admin.ModelAdmin):
+    actions = []
+
+    @as_action("通过审核", actions, 'change', update=True)
+    def accept(self, request, queryset):
+        queryset.filter(status=AcademicEntry.EntryStatus.WAIT_AUDIT
+                        ).update(status=AcademicEntry.EntryStatus.PUBLIC)
+        return self.message_user(request, '修改成功!')
+
+    @as_action("取消公开", actions, 'change', update=True)
+    def reject(self, request, queryset):
+        queryset.filter(status=AcademicEntry.EntryStatus.PUBLIC
+                        ).update(status=AcademicEntry.EntryStatus.WAIT_AUDIT)
+        return self.message_user(request, '修改成功!')
 
 
 @admin.register(AcademicTagEntry)
-class AcademicTagEntryAdmin(admin.ModelAdmin):
-    list_display = ["person", "status", "tag",]
-    search_fields =  ("person", "status", "tag",)
+class AcademicTagEntryAdmin(AcademicEntryAdmin):
+    list_display = ["person", "status", "tag"]
+    search_fields =  ("person", "status", "tag")
+    list_filter = ["tag__atype", "status"]
 
 
 @admin.register(AcademicTextEntry)
-class AcademicTextEntryAdmin(admin.ModelAdmin):
-    list_display = ["person", "status", "atype", "content",]
-    search_fields =  ("person", "status", "atype", "content",)
+class AcademicTextEntryAdmin(AcademicEntryAdmin):
+    list_display = ["person", "status", "atype", "content"]
+    search_fields =  ("person", "status", "atype", "content")
+    list_filter = ["atype", "status"]
+
+
+class PoolItemInline(admin.TabularInline):
+    model = PoolItem
+    classes = ['collapse']
+    ordering = ['-id']
+    fields = ['pool', 'prize', 'origin_num', 'consumed_num', 'exchange_limit', 'exchange_price']
+    show_change_link = True
+PoolItemInline = readonly_inline(PoolItemInline, can_add=True)
+
+
+@admin.register(Prize)
+class PrizeAdmin(admin.ModelAdmin):
+    autocomplete_fields = ['provider']
+    inlines = [PoolItemInline]
+
+
+@admin.register(Pool)
+class PoolAdmin(admin.ModelAdmin):
+    inlines = [PoolItemInline]
+
+
+@admin.register(PoolRecord)
+class PoolRecordAdmin(admin.ModelAdmin):
+    list_display = ['user_display', 'status', 'prize', 'time']
+    search_fields = ['user__name']
+    list_filter = [
+        'status', 'prize', 'time',
+        ('prize__provider', admin.RelatedOnlyFieldListFilter),
+    ]
+    readonly_fields = ['time']
+    autocomplete_fields = ['user']
+    actions = []
+
+    @as_display('用户')
+    def user_display(self, obj: PoolRecord):
+        return obj.user.name
+
+    def has_manage_permission(self, request: HttpRequest, record: PoolRecord = None) -> bool:
+        if not request.user.is_authenticated:
+            return False
+        if record is not None:
+            return record.prize.provider == request.user
+        return Prize.objects.filter(provider=request.user).exists()
+        # return super().get_queryset(request).filter(prize__provider=request.user).exists()
+
+    def has_module_permission(self, request: HttpRequest) -> bool:
+        return super().has_module_permission(request) or self.has_manage_permission(request)
+
+    def has_view_permission(self, request: HttpRequest, obj: PoolRecord = None) -> bool:
+        return super().has_view_permission(request, obj) or self.has_manage_permission(request, obj)
+
+    def get_queryset(self, request: HttpRequest):
+        qs = super().get_queryset(request)
+        if not self.has_change_permission(request) and self.has_manage_permission(request):
+            qs = qs.filter(prize__provider=request.user)
+        return qs
+
+    @as_action('兑换', actions, ['change', 'manage'], update=True, single=True)
+    def redeem_prize(self, request, queryset):
+        record: PoolRecord = queryset[0]
+        if (not self.has_change_permission(request, record)
+                and not self.has_manage_permission(request, record)):
+            return self.message_user(request, '无权负责该礼品的兑换!', 'error')
+        if record.status != PoolRecord.Status.UN_REDEEM:
+            return self.message_user(request, '仅可兑换尚未兑换的奖品!', 'error')
+        if record.prize.name.startswith('信用分'):
+            User.objects.modify_credit(record.user, 1, '元气值：兑换')
+        record.status = PoolRecord.Status.REDEEMED
+        # record.time = datetime.now()
+        record.save()
+        return self.message_user(request, '兑换成功!')
 
 
 admin.site.register(OrganizationTag)
 admin.site.register(Comment)
 admin.site.register(CommentPhoto)
-admin.site.register(Prize)
-admin.site.register(Pool)
 admin.site.register(PoolItem)
-admin.site.register(PoolRecord)

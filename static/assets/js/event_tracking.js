@@ -65,7 +65,7 @@ function ModuleTrackFunction(type, name){
             'Time': myDate.getTime(),
             'Url': window.location.pathname,
             'Name': name,
-            'Type': type, // models.ModuleLog.MV(type=0) or MC(type=1)
+            'Type': type, // models.ModuleLog.MV(type=2) or MC(type=3)
             'Platform': navigator.platform,
             'Explore': getExplore()
         },

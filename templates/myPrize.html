@@ -1,7 +1,6 @@
 {% extends "base.html" %}
 
 {% block mainpage %}
-<link rel="stylesheet" href="https://cdn.staticfile.org/font-awesome/4.7.0/css/font-awesome.css">
 
     <!--  BEGIN CONTENT AREA  -->
     <div id="content" class="main-content">
@@ -12,6 +11,9 @@
         {% endif %}
         <div class="container">
             <div class="layout-top-spacing">
+                {% if bar_display.help_paragraphs %}
+                    {% include 'help.html' %}
+                {% endif %}
                 <div class="col-12 layout-top-spacing">
                     <div class="bio layout-spacing ">
                         <div class="widget-content widget-content-area">
@@ -34,7 +36,7 @@
 
                             <div id="myTabContent" class="tab-content">
                                 <div class="tab-pane fade in active show" id="lottery">
-                                    {% if lottery_set is None %}
+                                    {% if not lottery_set %}
                                     <br />
                                     <p></p>
                                     <p style="text-align: center;">没有抽奖记录.</p>
@@ -68,7 +70,16 @@
                                                         <div>
                                                             <p style="color: rgb(66, 67, 68);"><i
                                                                 class="fa fa-calendar-o"></i>
-                                                                {{record.time}}</p>
+                                                                {{record.time}}
+                                                                {% if record.pool.redeem_start and record.pool.redeem_end %}
+                                                                    <span class="d-inline-block" tabindex="0" 
+                                                                        data-toggle="tooltip"  
+                                                                        data-html=true 
+                                                                        data-title="领取时间：<br/>{{record.pool.redeem_start}} 起<br/> {{record.pool.redeem_end}} 止">
+                                                                        <i class="fa fa-question-circle"></i>
+                                                                    </span>
+                                                                {% endif %} 
+                                                            </p>
                                                          </div>
                                                     </div>
                                                 </div>
@@ -80,7 +91,7 @@
                                 </div>
 
                                 <div class="tab-pane fade" id="exchange">
-                                    {% if exchange_set is None %}
+                                    {% if not exchange_set %}
                                     <br />
                                     <p></p>
                                     <p style="text-align: center;">没有兑换记录.</p>
@@ -114,7 +125,16 @@
                                                         <div>
                                                             <p style="color: rgb(66, 67, 68);"><i
                                                                 class="fa fa-calendar-o"></i>
-                                                                {{record.time}}</p>
+                                                                {{record.time}}
+                                                                {% if record.pool.redeem_start and record.pool.redeem_end %}
+                                                                    <span class="d-inline-block" tabindex="0" 
+                                                                        data-toggle="tooltip" 
+                                                                        data-html="true" 
+                                                                        data-title="领取时间：<br/>{{record.pool.redeem_start}} 起<br/> {{record.pool.redeem_end}} 止">
+                                                                        <i class="fa fa-question-circle"></i>
+                                                                    </span>
+                                                                {% endif %}
+                                                            </p>
                                                          </div>
                                                     </div>
                                                 </div>

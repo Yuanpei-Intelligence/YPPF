@@ -53,7 +53,7 @@ from django.http import HttpRequest, HttpResponse
 from django.db import transaction
 from django.db.models import F, Q, Sum, Prefetch
 
-from app.scheduler import scheduler
+from scheduler.scheduler import scheduler
 
 
 __all__ = [

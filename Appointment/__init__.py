@@ -1,10 +1,8 @@
 from datetime import datetime
-from boottest import base_get_setting
-from boottest import DEBUG, LOGIN_URL, UNDERGROUND_URL, WECHAT_URL
-from boottest.hasher import MyMD5PasswordHasher, MySHA256Hasher
-import boottest.global_messages as my_messages
-
-from django.conf import settings
+from boot import base_get_setting
+from boot import DEBUG, LOGIN_URL, UNDERGROUND_URL, WECHAT_URL
+from utils.hasher import MySHA256Hasher
+import utils.global_messages as my_messages
 
 __all__ = [
     # 本应用的本地设置
@@ -108,6 +106,8 @@ class LocalSetting():
         # 单个长期预约总周数上限
         self.longterm_max_interval = 2
         self.longterm_max_week = 16
+        # 面试预约总数上限
+        self.interview_max_num = 1
         # 是否允许不存在学生自动注册
         self.allow_newstu_appoint = True
         # 是否限制开始前的预约取消时间

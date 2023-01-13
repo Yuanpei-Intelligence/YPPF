@@ -1,6 +1,6 @@
 from django.contrib import admin
 
-from boottest.admin_utils import *
+from utils.admin_utils import *
 from yp_library.models import *
 
 
@@ -20,6 +20,6 @@ class BookAdmin(admin.ModelAdmin):
 class LendRecordAdmin(admin.ModelAdmin):
     list_display = [
         "id", "reader_stu_id", "book_name", "lend_time", 
-        "due_time", "return_time", "returned",
+        "due_time", "return_time", "returned", "status",
     ]
     search_fields =  ("id", "reader_id__student_id", "book_id__title")

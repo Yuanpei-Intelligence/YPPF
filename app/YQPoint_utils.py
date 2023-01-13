@@ -12,20 +12,122 @@ from app.wechat_send import WechatApp, WechatMessageLevel
 from app.notification_utils import bulk_notification_create, notification_create
 from generic.models import User, YQPointRecord
 
-from django.db.models import QuerySet, Q
+from django.db.models import QuerySet, Q, Sum
 from django.forms.models import model_to_dict
 
 from typing import List, Dict, Optional, Tuple
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, date
 import random
 
 __all__ = [
-    'get_pools_and_items'
+    'add_signin_point',
+    'get_pools_and_items',
     'buy_exchange_item',
     'buy_lottery_pool',
     'buy_random_pool',
     'run_lottery',
 ]
+
+
+_DEFAULT_DAY2POINT = [1, 2, 2, (2, 4), 2, 2, (5, 7)]
+DAY2POINT = get_config('thresholds/point/signin_points', default=_DEFAULT_DAY2POINT)
+MAX_CHECK_DAYS = len(DAY2POINT)
+
+
+def get_signin_infos(user: User, detailed_days: int = MAX_CHECK_DAYS,
+                     check_days: int = None, today: date = None,
+                     signin_today: bool = True):
+    '''
+    获取一定日期内每天的签到信息
+
+    :param user: 要查询的用户
+    :type user: User
+    :param detailed_days: 显示详细签到信息的天数, defaults to None
+    :type detailed_days: int, optional
+    :param check_days: 查询天数（包括今天）, defaults to None
+    :type check_days: int, optional
+    :param today: 查询的当天, defaults to None
+    :type today: date, optional
+    :param signin_today: 计算连续签到天数时认为今天已签到, defaults to True
+    :type signin_today: bool, optional
+    :return: 已连续签到天数，和今天起共detailed_days天的签到信息
+    :rtype: tuple[int, list[bool] | None]
+    '''
+    if today is None:
+        today = datetime.now().date()
+    day_check_kws = {}
+    if check_days is not None:
+        day_check_kws.update(time__date__gt=today - timedelta(days=check_days))
+    signin_days = set(YQPointRecord.objects.filter(
+        user=user,
+        source_type=YQPointRecord.SourceType.CHECK_IN,
+        **day_check_kws,
+    ).order_by('time').values_list('time__date', flat=True).distinct())
+    # 获取连续签到天数
+    last_day = today
+    if signin_today:
+        last_day -= timedelta(days=1)
+    while last_day in signin_days:
+        last_day -= timedelta(days=1)
+    continuous_days = (today - last_day).days - 1
+    if signin_today:
+        continuous_days += 1
+    if detailed_days is not None:
+        # 从今天开始，第前n天是否签到（今天不计入本次签到）
+        # 可用来提供提示信息
+        detailed_infos = [
+            (today - timedelta(days=day)) in signin_days
+            for day in range(detailed_days)
+        ]
+    else:
+        detailed_infos = None
+    return continuous_days, detailed_infos
+
+
+def distribution2point(distribution: list, day_type: int) -> int:
+    '''根据获取积分分布和当日类别，获取应获得的实际元气值'''
+    result = distribution[day_type]
+    if isinstance(result, (tuple, list)) and len(result) == 2:
+        result = random.randint(*result)
+    return result
+
+
+def add_signin_point(user: User):
+    '''
+    用户获得今日签到的积分，并返回用户提示信息
+
+    :param user: 签到的用户
+    :type user: User
+    :return: 本次签到获得的积分，以及应看到的提示（若为空则显示默认提示）
+    :rtype: tuple[int, str]
+    '''
+    # 获取已连续签到的日期和近几天签到信息
+    continuous_days, signed_in = get_signin_infos(user, MAX_CHECK_DAYS, signin_today=True)
+    day_type = (continuous_days - 1) % MAX_CHECK_DAYS
+    # 连续签到的基础元气值，可以从文件中读取，此类写法便于分析
+    add_point = distribution2point(DAY2POINT, day_type)
+    User.objects.modify_YQPoint(user, add_point, "每日登录",
+                                YQPointRecord.SourceType.CHECK_IN)
+    # 元气值活动等获得的额外元气值
+    bonus_point = 0
+    if bonus_point:
+        User.objects.modify_YQPoint(user, bonus_point, "登录额外奖励",
+                                    YQPointRecord.SourceType.CHECK_IN)
+    # 用户应看到的信息
+    user_display = [
+        f'今日首次签到，获得{add_point}元气值!',
+        f'连续签到{continuous_days}天，获得{add_point}元气值!',
+        f'连续签到{continuous_days}天，获得{add_point}元气值，连续签到{7}天有惊喜!',
+        f'连续签到{continuous_days}天，获得{add_point}元气值!',
+        f'连续签到{continuous_days}天，再签到{2}天即可获得大量元气值!',
+        f'连续签到{continuous_days}天，获得{add_point}元气值，明日可获得大量元气值!',
+        f'第7日签到，获得{add_point}元气值!',
+    ][day_type]
+    # 获取的额外元气值可能需要提示
+    if bonus_point:
+        pass
+    total_point = add_point + bonus_point
+    return total_point, user_display
 
 
 def get_pools_and_items(pool_type: Pool.Type, user: User, frontend_dict: Dict[str, any]):
@@ -79,25 +181,23 @@ def get_pools_and_items(pool_type: Pool.Type, user: User, frontend_dict: Dict[st
     # }
 
     for pool in pools:
+        this_pool_info = model_to_dict(pool)
         if pool.start <= datetime.now() and (pool.end is None or pool.end >= datetime.now()):
-            this_pool_info = model_to_dict(pool)
             this_pool_info["status"] = 0
-        elif pool.end is not None and pool.end < datetime.now() and \
-                pool.end >= datetime.now() - timedelta(days=1):
-            this_pool_info = model_to_dict(pool)
-            this_pool_info["status"] = 1
         else:
-            continue
+            this_pool_info["status"] = 1
 
-        this_pool_items = list(pool.poolitem_set.values(
+        this_pool_info["capacity"] = pool.get_capacity()
+        this_pool_items = list(pool.items.filter(prize__isnull=False).values(
             "id", "origin_num", "consumed_num", "exchange_price",
-            "exchange_limit", "is_big_prize", "is_empty",
+            "exchange_limit", "is_big_prize",
             "prize__name", "prize__more_info", "prize__stock",
             "prize__reference_price", "prize__image", "prize__id"
         ))
         for item in this_pool_items:
             item["remain_num"] = item["origin_num"] - item["consumed_num"]
-        this_pool_info["items"] = this_pool_items
+        this_pool_info["items"] = sorted(
+            this_pool_items, key=lambda x: -x["remain_num"]) # 按剩余数量降序排序，已卖完的在最后
 
         if pool_type != Pool.Type.EXCHANGE:
             this_pool_info["my_entry_time"] = PoolRecord.objects.filter(
@@ -105,8 +205,15 @@ def get_pools_and_items(pool_type: Pool.Type, user: User, frontend_dict: Dict[st
             this_pool_info["records_num"] = PoolRecord.objects.filter(
                 pool=pool).count()
             if pool_type == Pool.Type.RANDOM:
-                this_pool_info["capacity"] = sum(
-                    [item["origin_num"] for item in this_pool_items])
+                for item in this_pool_items:
+                    # 此处显示的是抽奖概率，目前使用原始的占比
+                    percent = (100 * item["origin_num"] / this_pool_info["capacity"])
+                    if percent == int(percent):
+                        percent = int(percent)
+                    elif round(percent, 1) != 0:
+                        # 保留最低精度
+                        percent = round(percent, 1)
+                    item["probability"] = percent
             # LOTTERY类的pool不需要capacity
         else:
             for item in this_pool_items:
@@ -127,16 +234,16 @@ def get_pools_and_items(pool_type: Pool.Type, user: User, frontend_dict: Dict[st
                     {"prize_name": big_prize_item.prize.name, "prize_image": big_prize_item.prize.image})
                 winner_names = list(PoolRecord.objects.filter(
                     pool=pool, prize=big_prize_item.prize).values_list(
-                        "user__naturalperson__name", flat=True))  # TODO: 需要distinct()吗？
-                # 这里假定获奖者一定是自然人，因为组织不能抽奖
+                        "user__name", flat=True))  # TODO: 需要distinct()吗？
                 big_prizes_and_winners[-1]["winners"] = winner_names
             for normal_prize_item in normal_prize_items:
+                if normal_prize_item.is_empty:
+                    continue
                 normal_prizes_and_winners.append(
                     {"prize_name": normal_prize_item.prize.name, "prize_image": normal_prize_item.prize.image})
                 winner_names = list(PoolRecord.objects.filter(
                     pool=pool, prize=normal_prize_item.prize).values_list(
-                        "user__naturalperson__name", flat=True))  # TODO: 需要distinct()吗？
-                # 这里假定获奖者一定是自然人，因为组织不能抽奖
+                        "user__name", flat=True))  # TODO: 需要distinct()吗？
                 normal_prizes_and_winners[-1]["winners"] = winner_names
             this_pool_info["results"] = {}
             this_pool_info["results"]["big_prize_results"] = big_prizes_and_winners
@@ -284,6 +391,8 @@ def select_random_prize(poolitems: QuerySet[PoolItem], select_num: Optional[int]
     num_all_items = 0  # 奖品的总数
     item_dict = {}  # int: PoolItem，实现把一个自然数区间映射到一种奖品
     for item in poolitems:
+        if item.origin_num - item.consumed_num <= 0:
+            continue
         item_dict[num_all_items] = item
         num_all_items += item.origin_num - item.consumed_num
 
@@ -328,6 +437,10 @@ def buy_random_pool(user: User, pool_id: str) -> Tuple[MESSAGECONTEXT, int, int]
     my_entry_time = PoolRecord.objects.filter(pool=pool, user=user).count()
     if my_entry_time >= pool.entry_time:
         return wrong('您兑换这款盲盒的次数已达上限!'), -1, 2
+    total_entry_time = PoolRecord.objects.filter(pool=pool).count()
+    capacity = pool.get_capacity()
+    if capacity <= total_entry_time:
+        return wrong('盲盒已售罄!'), -1, 2
     
     try:
         with transaction.atomic():
@@ -337,9 +450,12 @@ def buy_random_pool(user: User, pool_id: str) -> Tuple[MESSAGECONTEXT, int, int]
             my_entry_time = PoolRecord.objects.filter(pool=pool, user=user).count()
             assert my_entry_time < pool.entry_time, '您兑换这款盲盒的次数已达上限!'
             assert user.YQpoint >= pool.ticket_price, '您的元气值不足，兑换失败!'
+            total_entry_time = PoolRecord.objects.filter(pool=pool).count()
+            capacity = pool.get_capacity()
+            assert capacity > total_entry_time, '盲盒已售罄!'
 
             # 开盒，修改poolitem记录，创建poolrecord记录
-            items = pool.poolitem_set.select_for_update().all()
+            items = pool.items.select_for_update().all()
             real_item_id = select_random_prize(items, 1)[0]
             modify_item: PoolItem = PoolItem.objects.select_for_update().get(id=real_item_id)
             modify_item.consumed_num += 1
@@ -363,10 +479,11 @@ def buy_random_pool(user: User, pool_id: str) -> Tuple[MESSAGECONTEXT, int, int]
                 source=f'盲盒奖池：{pool.title}',
                 source_type=YQPointRecord.SourceType.CONSUMPTION
             )
+            if modify_item.prize is None:
+                return succeed('兑换盲盒成功!'), -1, 1
+            return succeed('兑换盲盒成功!'), modify_item.prize.id, int(modify_item.is_empty)
     except AssertionError as e:
-        return wrong(str(e)), -1, 2     
-
-    return succeed('兑换盲盒成功!'), modify_item.prize.id, int(modify_item.is_empty)
+        return wrong(str(e)), -1, 2
 
 
 def run_lottery(pool_id: int):
@@ -390,7 +507,7 @@ def run_lottery(pool_id: int):
         # 抽奖
         record_ids_and_participant_ids = list(
             related_records.values("id", "user__id"))
-        items = pool.poolitem_set.all()
+        items = pool.items.all()
         user2prize_names = {d["user__id"]: []
                             for d in record_ids_and_participant_ids}  # 便于发通知
         winner_record_id2item_id = {}  # poolrecord.id: poolitem.id，便于更新poolrecord

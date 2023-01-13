@@ -1,5 +1,5 @@
-<!-- 此界面的折叠来自于search.html中的style，在其他需要添加的页面需要在add_css_file的block添加所需的style
-    具体请参看search.html -->
+{% comment %} 此界面的折叠来自于search.html中的style，在其他需要添加的页面需要在add_css_file的block添加所需的style
+    具体请参看search.html {% endcomment %}
     <style class="text/css">
         [data-toggle="collapse"] .fa:before {
             font-family: 'Font Awesome 5 Free';  
@@ -15,7 +15,8 @@
     <div class="bio layout-spacing ">
         <div class="widget-content widget-content-area">
             <div data-toggle="collapse" href="#help-content" role="button"
-                aria-expanded="true" aria-controls="collapseExample" class="collapsed">
+                aria-expanded="true" aria-controls="collapseExample" 
+                onclick="ModuleTrackFunction(3, '查看帮助')" class="collapsed">
                     <div class="d-flex justify-content-between">
                         <div>
                         <h3 style="margin: 0px 0 12px 0;">使用帮助</h3>

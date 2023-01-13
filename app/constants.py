@@ -14,14 +14,14 @@ constants.py
 # 本文件是最基础的依赖文件，应当只加入跨架构的必要常量，而不导入其他文件
 # 与使用环境有关的内容应在对应文件中定义
 
-from boottest import base_get_setting
-from boottest import (
+from boot import base_get_setting, optional
+from boot import (
     # settings相关常量
     DEBUG, MEDIA_URL, LOGIN_URL,
     # 全局的其它常量
     UNDERGROUND_URL, WECHAT_URL,
 )
-from boottest.global_messages import (
+from utils.global_messages import (
     WRONG, SUCCEED,
 )
 from generic.models import User
@@ -89,8 +89,8 @@ YQP_ONAME: str = get_setting('YQPoint_source_oname')
 # 本应用的可选设置，每个都应该给出默认值
 COURSE_TYPENAME: str = get_config('course/type_name', default='书院课程')
 LEAST_RECORD_HOURS: float = get_config('course/valid_hours', float, default=8.0)
-YQP_PER_HOUR: float = get_config('thresholds/point/per_hour', float, default=1)
-YQP_ACTIVITY_MAX: 'int|None' = get_config('thresholds/point/limit', int, default=None)
+YQP_PER_HOUR: float = get_config('thresholds/point/per_hour', float, default=10)
+YQP_ACTIVITY_MAX: 'int|None' = get_config('thresholds/point/limit', optional(int), default=30)
 YQP_INVALID_HOUR: float = get_config('thresholds/point/invalid_hour', float, default=12)
 YQP_INVALID_TITLES: list = get_config('thresholds/point/invalid_titles', default=[])
 YQP_PER_FEEDBACK: int = get_config('thresholds/point/per_feedback', int, default=10)

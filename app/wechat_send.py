@@ -10,19 +10,13 @@ wechat_send.py
 '''
 import requests
 import json
-
-# 设置
-from app.constants import *
-from boottest import base_get_setting
-
-# 模型与加密模型
-from app.models import NaturalPerson, Organization, Activity, Notification, Position
-from boottest.hasher import MyMD5PasswordHasher, MySHA256Hasher
-
-# 日期与定时任务
 from datetime import datetime, timedelta
 
-# 获取对象等操作
+from boot import base_get_setting
+from utils.hasher import MySHA256Hasher
+from scheduler import scheduler
+from app.constants import *
+from app.models import NaturalPerson, Organization, Activity, Notification, Position
 from app.utils import get_person_or_org
 from app import log
 
@@ -43,17 +37,6 @@ TIMEOUT = 15 if USE_MULTITHREAD else 5 or 3.05 or 12 or 15
 # 订阅系统的发送量非常大，不建议重发，因为发送失败之后短时间内重发大概率也会失败
 # 如果未来实现重发，应在base_send_wechat中定义作为参数读入，现在提供了几句简单的代码
 RETRY = False
-
-if USE_SCHEDULER:
-    try:
-        from app.scheduler import scheduler
-    except:
-        from apscheduler.schedulers.background import BackgroundScheduler
-        from django_apscheduler.jobstores import DjangoJobStore
-
-        scheduler = BackgroundScheduler()
-        scheduler.add_jobstore(DjangoJobStore(), "default")
-        scheduler.start()
 
 # 全局变量 用来发送和确认默认的导航网址
 DEFAULT_URL = LOGIN_URL

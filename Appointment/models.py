@@ -1,15 +1,13 @@
-from django.db import models
-from generic.models import User
+from datetime import datetime, time, timedelta
 
+from django.db import models
 from django.db.models.signals import pre_delete
 from django.db.models import QuerySet
 from django.dispatch import receiver
 from django.db.models import Q
 from django.db import transaction
 
-from datetime import datetime, time, timedelta
-
-from Appointment import *
+from generic.models import User
 
 
 __all__ = [
@@ -21,6 +19,7 @@ __all__ = [
     'LongTermAppoint',
     'CardCheckInfo',
 ]
+
 
 
 class College_Announcement(models.Model):
@@ -53,6 +52,7 @@ class Participant(models.Model):
         primary_key=True,
     )
     name = models.CharField('姓名', max_length=64)
+
     @property
     def credit(self) -> int:
         '''通过此方法访问的信用分是只读的，修改应使用User.objects方法'''
@@ -74,24 +74,61 @@ class Participant(models.Model):
         return self.name + ('' if self.pinyin is None else '_' + self.pinyin)
 
 
-class RoomManager(models.Manager):
+class RoomQuerySet(models.QuerySet):
     def permitted(self):
+        '''只保留所有可预约的房间'''
         return self.filter(Rstatus=Room.Status.PERMITTED)
 
+    def unlimited(self):
+        '''只保留所有无需预约的房间'''
+        return self.filter(Rstatus=Room.Status.UNLIMITED)
+
+    def activated(self):
+        '''只保留所有可用的房间'''
+        return self.filter(Rstatus__in=[Room.Status.UNLIMITED, Room.Status.PERMITTED])
+
+    def basement_only(self):
+        '''只保留所有地下室的房间'''
+        return self.exclude(Rid__icontains="R")
+
+    def russian_only(self):
+        '''只保留所有俄文楼的房间'''
+        return self.filter(Rid__icontains="R")
+
+
+class RoomManager(models.Manager):
+    def get_queryset(self) -> RoomQuerySet['Room']:
+        return RoomQuerySet(self.model, using=self._db, hints=self._hints)
+
+    def all(self) -> RoomQuerySet['Room']:
+        return super().all()
+
+    def permitted(self):
+        return self.get_queryset().permitted()
+
+    def unlimited(self):
+        return self.get_queryset().unlimited()
+
     def function_rooms(self):
-        # 获取所有功能房
+        '''获取所有可预约功能房'''
         titles = ['航模', '绘画', '书法', '活动']
         title_query = ~Q(Rtitle__icontains="研讨")
         title_query |= Q(Rtitle__icontains="/")
         for room_title in titles:
             title_query |= Q(Rtitle__icontains=room_title)
-        return self.exclude(Rid__icontains="R").filter(
-            title_query, Rstatus=Room.Status.PERMITTED)
+        return self.get_queryset().permitted().basement_only().filter(title_query)
 
     def talk_rooms(self):
-        # 获取所有研讨室
-        return self.filter(Rtitle__icontains="研讨",
-                           Rstatus=Room.Status.PERMITTED)
+        '''获取所有研讨室'''
+        return self.get_queryset().permitted().filter(Rtitle__icontains="研讨")
+
+    def russian_rooms(self):
+        '''获取所有可预约俄文楼教室'''
+        return self.get_queryset().permitted().russian_only()
+
+    def interview_room_ids(self):
+        '''获取所有可面试俄文楼教室'''
+        return set()
 
 
 class Room(models.Model):
@@ -118,8 +155,8 @@ class Room(models.Model):
         FORBIDDEN = 2, '禁止使用'  # 禁止使用
 
     Rstatus: 'int|Status' = models.SmallIntegerField('房间状态',
-                                       choices=Status.choices,
-                                       default=0)
+                                                     choices=Status.choices,
+                                                     default=0)
 
     # 标记当前房间是否可以通宵使用，可由管理员修改（主要针对自习室）
     RIsAllNight = models.BooleanField('可通宵使用', default=False)
@@ -132,9 +169,30 @@ class Room(models.Model):
         return self.Rid + ' ' + self.Rtitle
 
 
-class AppointManager(models.Manager):
+class AppointQuerySet(models.QuerySet):
     def not_canceled(self):
         return self.exclude(Astatus=Appoint.Status.CANCELED)
+
+    def terminated(self):
+        return self.filter(Astatus__in=Appoint.Status.Terminals())
+
+    def unfinished(self):
+        return self.exclude(Astatus__in=Appoint.Status.Terminals())
+
+
+class AppointManager(models.Manager):
+    def get_queryset(self) -> AppointQuerySet['Appoint']:
+        return AppointQuerySet(self.model, using=self._db, hints=self._hints)
+
+    def all(self) -> AppointQuerySet['Appoint']:
+        return super().all()
+
+    def not_canceled(self):
+        return self.get_queryset().not_canceled()
+
+    def unfinished(self):
+        '''用于检查而非呈现，筛选还未结束的预约'''
+        return self.exclude(Astatus__in=Appoint.Status.Terminals())
 
     def displayable(self):
         '''个人主页页面，在"普通预约"和"查看下周"中会显示的预约'''
@@ -162,7 +220,7 @@ class Appoint(models.Model):
     class CheckStatus(models.IntegerChoices):
         FAILED = 0  # 预约在此分钟的检查尚未通过
         PASSED = 1  # 预约在特定分钟内的检查是通过的
-        UNSAVED = 2 # 预约在此分钟内尚未记录检测状态
+        UNSAVED = 2  # 预约在此分钟内尚未记录检测状态
     Acheck_status: 'int|CheckStatus' = models.SmallIntegerField(
         '检测状态', choices=CheckStatus.choices, default=2)
 
@@ -213,9 +271,10 @@ class Appoint(models.Model):
     class Type(models.IntegerChoices):
         '''预约类型'''
         NORMAL = 0, '常规预约'
-        TODAY = 1, '当天预约'  # 保留，暂不使用
+        TODAY = 1, '当天预约'
         TEMPORARY = 2, '临时预约'
         LONGTERM = 3, '长期预约'
+        INTERVIEW = 4, '面试预约'
 
     Atype: 'int|Type' = models.SmallIntegerField(
         '预约类型', choices=Type.choices, default=Type.NORMAL)
@@ -274,8 +333,8 @@ class Appoint(models.Model):
                 "Sid": self.get_major_id(),
             },
             'students': [{
-                    'Sname': student.name,  # 参与人姓名
-                    'Sid': student.get_id(),
+                'Sname': student.name,  # 参与人姓名
+                'Sid': student.get_id(),
             } for student in self.students.all()],
         }
         return data
@@ -320,7 +379,7 @@ class LongTermAppointManager(models.Manager):
             status__in=[
                 LongTermAppoint.Status.APPROVED,
                 LongTermAppoint.Status.REVIEWING,
-        ])
+            ])
         if this_semester:
             result = result.filter(
                 appoint__Astart__gt=GLOBAL_INFO.semester_start,
@@ -362,7 +421,7 @@ class LongTermAppoint(models.Model):
 
     def create(self):
         '''原子化创建长期预约的全部后续子预约'''
-        from Appointment.utils.scheduler_func import add_longterm_appoint
+        from Appointment.jobs import add_longterm_appoint
         conflict_week, appoints = add_longterm_appoint(
             appoint=self.appoint.pk,
             times=self.times - 1,
@@ -381,7 +440,7 @@ class LongTermAppoint(models.Model):
         :return: 取消的子预约数量
         :rtype: int
         '''
-        from Appointment.utils.scheduler_func import cancel_scheduler
+        from Appointment.jobs import cancel_scheduler
         with transaction.atomic():
             # 取消子预约
             appoints = self.sub_appoints(lock=True)
@@ -399,7 +458,7 @@ class LongTermAppoint(models.Model):
 
     def renew(self, times: int):
         '''原子化添加新的后续子预约，不应出错'''
-        from Appointment.utils.scheduler_func import add_longterm_appoint
+        from Appointment.jobs import add_longterm_appoint
         times = max(0, times)
         with transaction.atomic():
             conflict_week, appoints = add_longterm_appoint(
@@ -434,8 +493,7 @@ class LongTermAppoint(models.Model):
         return self.applicant.get_id()
 
 
-from Appointment.utils.scheduler_func import cancel_scheduler
-
 @receiver(pre_delete, sender=Appoint)
 def before_delete_Appoint(sender, instance, **kwargs):
+    from Appointment.jobs import cancel_scheduler
     cancel_scheduler(instance.Aid)
