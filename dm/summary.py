@@ -1,18 +1,25 @@
+"""Generating summary data
+TODO: Remove type errors
+"""
+
+from typing import Dict, Any
+from datetime import *
+from collections import defaultdict, Counter
+
 from django.db.models import *
+
 from app.config import *
 from app.models import *
 from Appointment.models import Appoint, CardCheckInfo, Room
 from Appointment.utils.identity import get_participant
 from Appointment import GLOBAL_INFO
-from datetime import *
-from collections import defaultdict, Counter
 
 SUMMARY_YEAR = 2021
 SUMMARY_SEM_START = datetime(2021, 9, 1)
 SUMMARY_SEM_END: datetime = GLOBAL_INFO.semester_start
 
 
-def remove_local_var(d: dict):
+def remove_local_var(d: Dict[str, Any]):
     keys = list(d.keys())
     for k in keys:
         if k.startswith('_'):

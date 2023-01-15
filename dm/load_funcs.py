@@ -1,10 +1,10 @@
 from datetime import datetime
 from typing import Callable
 import math
+
 import numpy
 import pandas as pd
 from tqdm import tqdm
-
 from django.db import transaction
 
 from boot import local_dict

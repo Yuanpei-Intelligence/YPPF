@@ -13,7 +13,7 @@ import json
 from datetime import datetime, timedelta
 
 from utils.hasher import MySHA256Hasher
-from scheduler import scheduler
+from scheduler.scheduler import scheduler
 from app.config import *
 from app.models import NaturalPerson, Organization, Activity, Notification, Position
 from app.utils import get_person_or_org

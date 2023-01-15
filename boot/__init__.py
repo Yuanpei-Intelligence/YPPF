@@ -2,6 +2,7 @@
 这个文件中的很多内容实际上已经不需要了，但是还有一些依赖没改完。
 '''
 
+from django.conf import settings
 import pymysql
 import json
 
@@ -18,11 +19,10 @@ def _load_local_json(path="./local_json.json"):
 
 
 local_dict = _load_local_json()
-local_dict_template = _load_local_json("./local_json_template.json")
 
 
 # settings是懒惰的，所以可以提前导入并读取正确的值，导入boot.settings则会错误
-from django.conf import settings
+
 
 def _query_setting(paths, dic=local_dict, fuzzy_lookup=False):
     current_dir: dict = dic
@@ -42,7 +42,9 @@ def _query_setting(paths, dic=local_dict, fuzzy_lookup=False):
     return current_dir
 
 # 寻找本地设置
-def base_get_setting(path: str='', trans_func=None, default=None,
+
+
+def base_get_setting(path: str = '', trans_func=None, default=None,
                      fuzzy_lookup=False, raise_exception=True):
     '''
     提供/或\\分割的setting路径，尝试寻找对应路径的设置，失败时返回default
@@ -69,18 +71,6 @@ def base_get_setting(path: str='', trans_func=None, default=None,
             else:
                 print(f'{e}, returning {default} instead')
         return default
-
-# 如果本地设置中找不到，到local_json_template中寻找默认设置
-def get_setting_with_default(path: str='', trans_func=None):
-    try:
-        paths = path.replace('\\', '/').strip('/').split('/')
-        current_dir = _query_setting(paths, local_dict)
-        return current_dir if trans_func is None else trans_func(current_dir)
-    except Exception as e:
-        current_dir = _query_setting(paths, local_dict_template)
-        # 上面这步按理来说不该出错
-        print(f'{e}, returning default value instead: {current_dir}')
-        return current_dir if trans_func is None else trans_func(current_dir)
 
 
 def optional(type):
