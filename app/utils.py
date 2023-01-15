@@ -1,33 +1,32 @@
+
+import re
+import string
+import random
+from io import BytesIO
+import imghdr
+from datetime import datetime, timedelta
+from functools import wraps
+import urllib.parse
+
+from django.contrib import auth
+from django.shortcuts import redirect
+from django.http import HttpResponse, HttpRequest
+from django.db.models import F
+import xlwt
+
+from boot import local_dict
+from utils.http.utils import get_ip
 from app.utils_dependency import *
 from app.models import (
     User,
     NaturalPerson,
     Organization,
-    OrganizationType,
     Position,
     Notification,
-    Activity,
     Help,
     Participant,
     ModifyRecord,
 )
-from boot import local_dict
-
-import re
-import imghdr
-import string
-import random
-import xlwt
-from io import BytesIO
-import urllib.parse
-
-from datetime import datetime, timedelta
-from functools import wraps
-from django.contrib import auth
-from django.shortcuts import redirect
-from django.http import HttpResponse, HttpRequest
-from generic.http.utils import get_ip
-from django.db.models import F
 
 
 def check_user_access(redirect_url="/logout/", is_modpw=False):

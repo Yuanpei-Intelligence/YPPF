@@ -1,6 +1,5 @@
 import json
 import random
-import requests  # 发送验证码
 from datetime import datetime, timedelta
 
 from django.contrib import auth
@@ -8,6 +7,7 @@ from django.db import transaction
 from django.db.models import Q, F, Sum, QuerySet
 from django.contrib.auth.password_validation import CommonPasswordValidator, NumericPasswordValidator
 from django.core.exceptions import ValidationError
+import requests  # 发送验证码
 
 from boot import local_dict
 from app.course_utils import str_to_time
@@ -30,8 +30,6 @@ from app.models import (
     Course,
     CourseRecord,
     Semester,
-    PageLog,
-    ModuleLog,
     Chat,
 )
 from app.utils import (
@@ -2056,45 +2054,3 @@ def notifications(request: HttpRequest):
     bar_display = utils.get_sidebar_and_navbar(request.user,
                                                navbar_name="通知信箱")
     return render(request, "notifications.html", locals())
-
-
-@login_required(redirect_field_name='origin')
-@utils.check_user_access(redirect_url="/logout/")
-@log.except_captured(EXCEPT_REDIRECT, log=False)
-def eventTrackingFunc(request: HttpRequest):
-    # unpack request:
-    logType = int(request.POST['Type'])
-    logUrl = request.POST['Url']
-    try:
-        logTime = int(request.POST['Time'])
-        logTime = datetime.fromtimestamp(logTime / 1000)
-    except:
-        logTime = datetime.now()
-    # 由于对PV/PD埋点的JavaScript脚本在base.html中实现，所以所有页面的PV/PD都会被track
-    logPlatform = request.POST.get('Platform', None)
-    try:
-        logExploreName, logExploreVer = request.POST['Explore'].rsplit(maxsplit=1)
-    except:
-        logExploreName, logExploreVer = None, None
-
-    kwargs = {}
-    kwargs.update(
-        user=request.user,
-        type=logType,
-        page=logUrl,
-        time=logTime,
-        platform=logPlatform,
-        explore_name=logExploreName,
-        explore_version=logExploreVer,
-    )
-    if logType in ModuleLog.CountType.values:
-        # Module类埋点
-        kwargs.update(
-            module_name=request.POST['Name'],
-        )
-        ModuleLog.objects.create(**kwargs)
-    elif logType in PageLog.CountType.values:
-        # Page类的埋点
-        PageLog.objects.create(**kwargs)
-
-    return JsonResponse({'status': 'ok'})
