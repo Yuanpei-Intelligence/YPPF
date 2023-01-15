@@ -10,7 +10,7 @@ from django.core.exceptions import ValidationError
 import requests  # 发送验证码
 
 from boot import local_dict
-from utils.views import SecureView
+from utils.views import SecureTemplateView
 
 from app.course_utils import str_to_time
 from app.views_dependency import *
@@ -65,13 +65,13 @@ hash_coder = MySHA256Hasher(CONFIG.hash_base)
 email_coder = MySHA256Hasher(CONFIG.hash_email)
 
 
-class IndexView(SecureView):
+class IndexView(SecureTemplateView):
     login_required = False
 
     template_name = 'index.html'
 
     def check_get(self, request: HttpRequest, *args,
-                  **kwargs) -> 'HttpResponseRedirect | None':
+                  **kwargs) -> HttpResponseRedirect | None:
         origin = self.args.get('origin')
         modpw_status = self.args.get('modinfo')
         is_logout = self.args.get('is_logout')
@@ -100,7 +100,7 @@ class IndexView(SecureView):
             return redirect('/index/?alert=1')
 
     def check_post(self, request: HttpRequest, *args,
-                   **kwargs) -> 'HttpResponseRedirect | None':
+                   **kwargs) -> HttpResponseRedirect | None:
         username = self.form_data.get('username')
         password = self.form_data.get('password')
         assert username is not None
@@ -116,10 +116,10 @@ class IndexView(SecureView):
         return True
 
     def get(self, request: HttpRequest, *args,
-            **kwargs) -> 'HttpResponse | HttpResponseRedirect':
+            **kwargs) -> HttpResponseRedirect | None:
         origin = self.args.get('arg_origin')
         if origin is None:
-            return self.render(request)
+            return
 
         if self.is_origin_safe(request, origin):
             return redirect(origin)
@@ -127,7 +127,7 @@ class IndexView(SecureView):
             return redirect(message_url(wrong('目标域名非法，请警惕陌生链接。')))
 
     def post(self, request: HttpRequest, *args,
-             **kwargs) -> 'HttpResponse | HttpResponseRedirect':
+             **kwargs) -> HttpResponseRedirect | None:
         origin = self.args.get('arg_origin')
         username = self.form_data.get('username')
         password = self.form_data.get('password')
@@ -143,7 +143,7 @@ class IndexView(SecureView):
                 user = user[0]
         except:
             wrong(local_dict['msg']['404'], self.extra_context)
-            return self.render(request)
+            return
 
         userinfo = auth.authenticate(username=username, password=password)
         if userinfo:
