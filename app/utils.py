@@ -15,6 +15,7 @@ import xlwt
 
 from boot import local_dict
 from utils.http.utils import get_ip
+from utils.config import LazySetting 
 from app.utils_dependency import *
 from app.models import (
     User,
