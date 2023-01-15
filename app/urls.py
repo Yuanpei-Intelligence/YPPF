@@ -26,14 +26,14 @@ from django.conf import settings
 # 尽量不使用<type:arg>, 不支持
 urlpatterns = [
     # 登录和验证
-    path("", views.index, name="index"),
-    path("index/", views.index, name="index"),
+    path("", views.IndexView.as_view(), name="index"),
+    path("index/", views.IndexView.as_view(), name="index"),
+    path("login/", views.IndexView.as_view(), name="index"),
     # path("requestLoginOrg/", views.requestLoginOrg, name="requestLoginOrg"), # 已废弃
     # path("requestLoginOrg/<str:name>", views.requestLoginOrg, name="requestLoginOrg"),
     path("welcome/", views.homepage, name="welcome"),
     path("freshman/", views.freshman, name="freshman"),
     path("register/", views.authRegister, name="register"),
-    path("login/", views.index, name="index"),
     path("agreement/", views.userAgreement, name="userAgreement"),
     path("logout/", views.logout, name="logout"),
     path("shiftAccount/", views.shiftAccount, name="shiftAccount"),
