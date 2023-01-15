@@ -1,22 +1,21 @@
+from typing import List, Dict, Tuple, Optional, Any
+from datetime import datetime, timedelta
+
+from django.db import transaction
+from django.db.models import Q, QuerySet
+from django.http import QueryDict, HttpRequest
+
+from app.utils import check_user_type
+from app.notification_utils import bulk_notification_create
+from app.config import get_setting, UTYPE_PER
+from app.models import Notification, Organization, Activity
+from app.wechat_send import WechatMessageLevel
 from yp_library.models import (
     User,
     Reader,
     Book,
     LendRecord,
 )
-
-from typing import Union, List, Tuple, Optional
-from datetime import datetime, timedelta, time
-
-from django.db import transaction
-from django.db.models import Q, QuerySet, F
-from django.http import QueryDict, HttpRequest
-
-from app.utils import check_user_type
-from app.notification_utils import bulk_notification_create
-from app.constants import get_setting, UTYPE_PER
-from app.models import Notification, Organization, Activity
-from app.wechat_send import WechatMessageLevel
 
 __all__ = [
     'get_readers_by_user', 'search_books',
@@ -63,7 +62,8 @@ def violate_reminder(days: int, alert_msg: str):
         status=LendRecord.Status.NORMAL)
 
     # 逾期一周扣除信用分
-    receivers = list(violate_lendlist.values_list('reader_id__student_id', flat=True))
+    receivers = list(violate_lendlist.values_list(
+        'reader_id__student_id', flat=True))
     receivers = User.objects.filter(username__in=receivers)
     # 绑定扣分和状态修改
     with transaction.atomic():
@@ -141,17 +141,18 @@ def search_books(**query_dict) -> QuerySet[Book]:
         query &= Q(returned=query_dict["returned"])
 
     if query_dict.get("keywords", "") != "":
-        kw_query = (Q(title__contains=query_dict["keywords"]) |\
-             Q(author__contains=query_dict["keywords"]) |\
-             Q(publisher__contains=query_dict["keywords"]) |\
-             Q(identity_code__contains=query_dict["keywords"]))
+        kw_query = (Q(title__contains=query_dict["keywords"]) |
+                    Q(author__contains=query_dict["keywords"]) |
+                    Q(publisher__contains=query_dict["keywords"]) |
+                    Q(identity_code__contains=query_dict["keywords"]))
         query &= kw_query
 
     search_results = Book.objects.filter(query).values()
+    # TODO: Return type doesn't match
     return search_results
 
 
-def get_query_dict(post_dict: QueryDict) -> dict:
+def get_query_dict(post_dict: QueryDict) -> Dict[str, Any]:
     """
     从HttpRequest的POST中提取出用作search_books参数的query_dict
 
@@ -170,7 +171,7 @@ def get_query_dict(post_dict: QueryDict) -> dict:
     for query_type in ["identity_code", "title", "author", "publisher"]:
         if query_type in post_dict.keys():
             query_dict[query_type] = post_dict[query_type]
-    
+
     # 上面的"identity_code", "title", "author", "publisher"在post_dict中可以没有（如welcome页面的搜索），
     # 下面的"returned"和"keywords"必须有
     if len(post_dict.getlist("returned")) == 1:  # 如果对returned有要求
@@ -182,7 +183,8 @@ def get_query_dict(post_dict: QueryDict) -> dict:
     return query_dict
 
 
-def get_my_records(reader_id: str, returned: Optional[bool] = None, 
+# TODO: Invalid type annotation
+def get_my_records(reader_id: str, returned: Optional[bool] = None,
                    status: 'list | int | LendRecord.Status' = None) -> List[dict]:
     """
     查询给定读者的借书记录
@@ -214,12 +216,12 @@ def get_my_records(reader_id: str, returned: Optional[bool] = None,
             results = results.filter(status=status)
         else:
             results = results.filter(status__in=status)
-    
+
     records = list(results.values(*val_list))
     # 标记记录类型
     if returned:
         for record in records:
-            if  record['return_time'] > record['due_time']:
+            if record['return_time'] > record['due_time']:
                 record['type'] = 'overtime_returned'     # 逾期记录
             else:
                 record['type'] = 'returned'       # 正常记录
@@ -227,7 +229,8 @@ def get_my_records(reader_id: str, returned: Optional[bool] = None,
         now_time = datetime.now()
         for record in records:
             # 计算距离应归还时间的天数
-            delta_days = (record['due_time'] - now_time).total_seconds() / float(60 * 60 * 24)
+            delta_days = (record['due_time'] -
+                          now_time).total_seconds() / float(60 * 60 * 24)
             if delta_days > 1:
                 record['type'] = 'normal'       # 一般记录
             elif delta_days < 0:
@@ -238,6 +241,7 @@ def get_my_records(reader_id: str, returned: Optional[bool] = None,
     return records
 
 
+# TODO: Invalid type annotation
 def get_lendinfo_by_readers(readers: QuerySet[Reader]) -> Tuple[List[dict], List[dict]]:
     '''
     查询同一user关联的读者的借阅信息
@@ -252,12 +256,16 @@ def get_lendinfo_by_readers(readers: QuerySet[Reader]) -> Tuple[List[dict], List
 
     reader_ids = list(readers.values('id'))
     for reader_id in reader_ids:
-        unreturned_records_list.extend(get_my_records(reader_id['id'], returned=False))
-        returned_records_list.extend(get_my_records(reader_id['id'], returned=True))
-    
-    unreturned_records_list.sort(key=lambda r: r['due_time'])                 # 进行中记录按照应归还时间排序
-    returned_records_list.sort(key=lambda r: r['return_time'], reverse=True)  # 已完成记录按照归还时间逆序排列
-    
+        unreturned_records_list.extend(
+            get_my_records(reader_id['id'], returned=False))
+        returned_records_list.extend(
+            get_my_records(reader_id['id'], returned=True))
+
+    unreturned_records_list.sort(
+        key=lambda r: r['due_time'])                 # 进行中记录按照应归还时间排序
+    returned_records_list.sort(
+        key=lambda r: r['return_time'], reverse=True)  # 已完成记录按照归还时间逆序排列
+
     return unreturned_records_list, returned_records_list
 
 
@@ -280,6 +288,7 @@ def get_library_activity(num: int) -> QuerySet[Activity]:
         ]
     ).order_by('-start')
     display_activities = all_valid_library_activities[:num].values()
+    # TODO: Return type doesn't match
     return display_activities
 
 
@@ -296,14 +305,16 @@ def get_recommended_or_newest_books(num: int, newest: bool = False) -> QuerySet[
     """
     book_counts = Book.objects.count()
     select_num = min(num, book_counts)
-    if newest: # 最新到馆
+    if newest:  # 最新到馆
         all_books_sorted = Book.objects.all().order_by('-id')
+        # TODO: Return type doesn't match
         return all_books_sorted[:select_num].values()
-    else: # 随机推荐
+    else:  # 随机推荐
         recommended_books = Book.objects.order_by('?')[:num].values()
         # 这种获取随机记录的方法不适合于数据量极大的情况，见
         # https://stackoverflow.com/a/6405601
         # https://blog.csdn.net/CuGBabyBeaR/article/details/17141103
+        # TODO: Return type doesn't match
         return recommended_books
 
 
@@ -316,6 +327,7 @@ def get_opening_time() -> Tuple[str, str]:
     """
     start_time = get_setting("library/open_time_start")
     end_time = get_setting("library/open_time_end")
+    # TODO: Return type doesn't match
     return start_time, end_time
 
 
@@ -330,26 +342,27 @@ def to_feedback_url(request: HttpRequest) -> str:
     :return: 即将跳转到的url
     :rtype: str
     """
-    
+
     # 首先检查预约记录是否存在
     try:
         id = request.POST['feedback']
         record: LendRecord = LendRecord.objects.get(id=id)
     except:
         raise AssertionError("借阅记录不存在！")
-    
+
     # 然后检查借阅记录是否可申诉
+    # TODO: May encounter None Value
     assert record.due_time < record.return_time, "该借阅记录不可申诉！"
-    
+
     # 将record的状态改为“申诉中”
     record.status = LendRecord.Status.APPEALING
     record.save()
-    
+
     book_name = record.book_id.title
     lend_time = record.lend_time.strftime('%Y-%m-%d %H:%M')
     due_time = record.due_time.strftime('%Y-%m-%d %H:%M')
     return_time = record.return_time.strftime('%Y-%m-%d %H:%M')
-    
+
     # 向session添加信息
     request.session['feedback_type'] = '书房借阅申诉'
     request.session['feedback_url'] = record.get_admin_url()
@@ -360,6 +373,6 @@ def to_feedback_url(request: HttpRequest) -> str:
         f'实际归还时间：{return_time}',
         '姓名：', '申诉理由：'
     ))
-    
+
     # 最终返回填写feedback的url
     return '/feedback/?argue'

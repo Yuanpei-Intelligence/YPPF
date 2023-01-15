@@ -43,7 +43,7 @@ from generic.models import invalid_for_frontend, necessary_for_frontend
 from django.db.models import Q, Sum, QuerySet
 from django.db.models.signals import post_save
 from datetime import datetime, timedelta
-from app.constants import *
+from app.config import *
 from random import choice
 
 

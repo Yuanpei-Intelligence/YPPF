@@ -30,7 +30,7 @@ utils
 
 @Date 2022-01-17
 '''
-from app.constants import *
+from app.config import *
 from app import log
 from utils.global_messages import (
     MESSAGECONTEXT,

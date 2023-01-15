@@ -11,6 +11,7 @@ from app.utils import get_person_or_org
 from app.wechat_send import WechatApp, WechatMessageLevel
 from app.notification_utils import bulk_notification_create, notification_create
 from generic.models import User, YQPointRecord
+from utils.config import LazySetting
 
 from django.db.models import QuerySet, Q, Sum
 from django.forms.models import model_to_dict
@@ -30,7 +31,8 @@ __all__ = [
 
 
 _DEFAULT_DAY2POINT = [1, 2, 2, (2, 4), 2, 2, (5, 7)]
-DAY2POINT = get_config('thresholds/point/signin_points', default=_DEFAULT_DAY2POINT)
+DAY2POINT = LazySetting('thresholds/point/signin_points', 
+    default=_DEFAULT_DAY2POINT).get()
 MAX_CHECK_DAYS = len(DAY2POINT)
 
 
@@ -555,7 +557,7 @@ def run_lottery(pool_id: int):
             record.save()
 
         # 给中奖的同学发送通知
-        sender = Organization.objects.get(oname=YQP_ONAME).get_user()
+        sender = Organization.objects.get(oname=CONFIG.yqp_oname).get_user()
         for user_id in user2prize_names.keys():
             receiver = User.objects.get(id=user_id)
             typename = Notification.Type.NEEDREAD

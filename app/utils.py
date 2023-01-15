@@ -1,4 +1,3 @@
-
 import re
 import string
 import random
@@ -16,6 +15,7 @@ import xlwt
 
 from boot import local_dict
 from utils.http.utils import get_ip
+from utils.config import LazySetting 
 from app.utils_dependency import *
 from app.models import (
     User,
@@ -58,13 +58,13 @@ def check_user_access(redirect_url="/logout/", is_modpw=False):
     return actual_decorator
 
 
-_block_ips: set = get_config('safety/blocked_ips', set, set())
+_block_ips: set = LazySetting('safety/blocked_ips', set, set()).get()
 def block_attack(view_function):
     @wraps(view_function)
     def _wrapped_view(request: HttpRequest, *args, **kwargs):
         ip = get_ip(request)
         if ip in _block_ips:
-            log.operation_writer(SYSTEM_LOG, f'已拦截{ip}在{request.path}的请求',
+            log.operation_writer(CONFIG.system_log, f'已拦截{ip}在{request.path}的请求',
                                     view_function.__name__, log.STATE_WARNING)
             return HttpResponse(status=403)
         return view_function(request, *args, **kwargs)
@@ -94,7 +94,7 @@ def record_attack(except_type=None, as_attack=False):
                         raise err
                     _block_ips.add(ip)
                     log.operation_writer(
-                        SYSTEM_LOG,
+                        CONFIG.system_log,
                         '\n'.join([
                             '记录到恶意行为: ', f'发生{type(err)}错误: {err}', f'IP: {ip}',
                         ]),
@@ -290,7 +290,7 @@ def get_sidebar_and_navbar(user, navbar_name="", title_name="", bar_display=None
     bar_display["title_name"] = title_name if title_name else navbar_name
 
     if navbar_name == "我的元气值":
-        bar_display["help_message"] = local_dict["help_message"].get(
+        bar_display["help_message"] = APP_CONFIG.help_message.get(
             (navbar_name + user_type.lower()),  ""
         )
         try:
@@ -299,7 +299,7 @@ def get_sidebar_and_navbar(user, navbar_name="", title_name="", bar_display=None
             bar_display["help_paragraphs"] = ""
     elif navbar_name != "":
         try:
-            bar_display["help_message"] = local_dict["help_message"].get(
+            bar_display["help_message"] = APP_CONFIG.help_message.get(
                 navbar_name, ""
             )
         except:
@@ -319,13 +319,13 @@ def url_check(arg_url):
         return True
     if re.match("^/[^/?]*/", arg_url):  # 相对地址
         return True
-    for url in local_dict["url"].values():
+    for url in CONFIG.url.values():
         base = re.findall("^https?://([^/]*)/?", url)[0]
         base = f'^https?://{base}/?'
         # print('base:', base)
         if re.match(base, arg_url):
             return True
-    log.operation_writer(SYSTEM_LOG, f'URL检查不合格: {arg_url}', 'utils[url_check]', log.STATE_WARNING)
+    log.operation_writer(CONFIG.system_log, f'URL检查不合格: {arg_url}', 'utils[url_check]', log.STATE_WARNING)
     return False
 
 def url2site(url):
@@ -706,7 +706,7 @@ def record_modify_with_session(request, info=""):
         if recorded == True:
             rank = get_modify_rank(request.user)
             is_person = usertype == UTYPE_PER
-            info_rank = local_dict.get("max_inform_rank", {}).get(usertype, -1)
+            info_rank = APP_CONFIG.max_inform_rank.get(usertype, -1)
             if rank > -1 and rank <= info_rank:
                 msg = (
                     f'您是第{rank}名修改账号信息的'+
@@ -780,4 +780,4 @@ def user_login_org(request, org: Organization) -> MESSAGECONTEXT:
     return succeed("成功切换到小组账号处理该事务，建议事务处理完成后退出小组账号。")
 
 
-log.operation_writer(SYSTEM_LOG, "系统启动", "util_底部")
+log.operation_writer(CONFIG.system_log, "系统启动", "util_底部")

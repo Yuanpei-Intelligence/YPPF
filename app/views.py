@@ -9,7 +9,6 @@ from django.contrib.auth.password_validation import CommonPasswordValidator, Num
 from django.core.exceptions import ValidationError
 import requests  # 发送验证码
 
-from boot import local_dict
 from app.course_utils import str_to_time
 from app.views_dependency import *
 from app.models import (
@@ -58,9 +57,9 @@ from app.academic_utils import (
     get_search_results,
 )
 
-email_url = local_dict["url"]["email_url"]
-hash_coder = MySHA256Hasher(local_dict["hash"]["base_hasher"])
-email_coder = MySHA256Hasher(local_dict["hash"]["email"])
+email_url = CONFIG.url["email_url"]
+hash_coder = MySHA256Hasher(CONFIG.hash_base)
+email_coder = MySHA256Hasher(CONFIG.hash_email)
 
 
 @log.except_captured(source='views[index]', record_user=True,
@@ -116,7 +115,7 @@ def index(request: HttpRequest):
             else:
                 user = user[0]
         except:
-            wrong(local_dict["msg"]["404"], html_display)
+            wrong(CONFIG.msg["user_not_exist"], html_display)
             return render(request, "index.html", locals())
         userinfo = auth.authenticate(username=username, password=password)
         if userinfo:
@@ -134,7 +133,7 @@ def index(request: HttpRequest):
             if arg_origin is None:
                 return redirect("/welcome/")
         else:
-            wrong(local_dict["msg"]["406"], html_display)
+            wrong(CONFIG.msg["wrong_pw"], html_display)
 
     # 所有跳转，现在不管是不是post了
     if arg_origin is not None and request.user.is_authenticated:
@@ -760,8 +759,8 @@ def orginfo(request: HttpRequest, name=None):
     # org的属性 information 不在此赘述，直接在前端调用
 
     # 给前端传递选课的参数
-    yx_election_start = get_setting("course/yx_election_start")
-    yx_election_end = get_setting("course/yx_election_end")
+    yx_election_start = APP_CONFIG.course.yx_election_start
+    yx_election_end = APP_CONFIG.course.yx_election_end
     if (str_to_time(yx_election_start) <= datetime.now() < (
             str_to_time(yx_election_end))):
         html_display["select_ing"] = True
