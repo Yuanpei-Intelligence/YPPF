@@ -3,7 +3,7 @@ from django.contrib import admin
 from django.db import transaction
 from django.utils.safestring import mark_safe
 
-from generic.http.dependency import HttpRequest
+from utils.http.dependency import HttpRequest
 from app.models import *
 from utils.admin_utils import *
 from scheduler.scheduler import scheduler

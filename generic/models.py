@@ -14,6 +14,7 @@ models.py
 @Date 2022-08-19
 '''
 from typing import Type, NoReturn
+from datetime import datetime
 
 from django.db import models
 from django.contrib.auth import get_permission_codename
@@ -21,7 +22,6 @@ from django.contrib.auth.models import AbstractUser, AnonymousUser
 from django.contrib.auth.models import UserManager as _UserManager
 from django.db import transaction
 from django.db.models import QuerySet, F
-from datetime import datetime
 import pypinyin
 
 __all__ = [
@@ -362,7 +362,9 @@ class YQPointRecord(models.Model):
 
 
 class PageLog(models.Model):
-    # 统计Page类埋点数据(PV/PD)
+    '''
+    统计Page类埋点数据(PV/PD)
+    '''
     class Meta:
         verbose_name = "~R.Page类埋点记录"
         verbose_name_plural = verbose_name
@@ -382,7 +384,9 @@ class PageLog(models.Model):
 
 
 class ModuleLog(models.Model):
-    # 统计Module类埋点数据(MV/MC)
+    '''
+    统计Module类埋点数据(MV/MC)
+    '''
     class Meta:
         verbose_name = "~R.Module类埋点记录"
         verbose_name_plural = verbose_name

@@ -26,7 +26,7 @@ from functools import wraps
 from django.contrib import auth
 from django.shortcuts import redirect
 from django.http import HttpResponse, HttpRequest
-from generic.http.utils import get_ip
+from utils.http.utils import get_ip
 from django.db.models import F
 
 

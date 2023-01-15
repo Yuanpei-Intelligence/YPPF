@@ -1,12 +1,27 @@
 from datetime import datetime
+
 from generic.models import (
     PageLog,
     ModuleLog,
 )
-from generic.http.dependency import *
+from utils.http.dependency import *
 
 
 def eventTrackingFunc(request: HttpRequest):
+    """
+    用于处理埋点的视图函数。监测用户的访问情况并更新相关数据库表。
+    TODO: 当前的函数还未对齐前端的请求。
+
+    :param request: HTTP请求
+    :type request: HttpRequest
+    :return: 如未登录，返回一个重定向(到登录页面); 否则返回Json响应
+    :rtype: HttpResponseRedirect | JsonResponse
+    """
+    
+    # 首先检查有无登录，如未登录则重定向到登录页面
+    if not request.user.is_authenticated:
+        return redirect("/index/")
+    
     # unpack request:
     logType = int(request.POST['Type'])
     logUrl = request.POST['Url']

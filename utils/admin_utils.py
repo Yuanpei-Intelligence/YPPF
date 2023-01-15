@@ -4,7 +4,7 @@ from functools import wraps, update_wrapper
 from django.db import transaction
 from django.db.models import QuerySet, Model
 from django.contrib import messages
-from generic.http import HttpRequest
+from utils.http import HttpRequest
 
 from django.contrib.auth import get_permission_codename
 from django.contrib.admin import ModelAdmin, SimpleListFilter
