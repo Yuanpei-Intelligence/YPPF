@@ -1,3 +1,5 @@
+from typing import Dict, List, Any
+
 from django.views.generic import View
 from django.http import HttpRequest, HttpResponseRedirect
 from django.core.exceptions import ImproperlyConfigured
@@ -20,7 +22,7 @@ class SecureView(View):
     - method_names里面的每个方法，都需要实现方法的同名函数method_name()，和参数检查函数check_method_name()
 
     模板渲染：
-    - template_name对应模板的文件名
+    - template_name对应模板的文件名，继承类必须设置这个属性
     - get_context_data()用于获取模板所需的context
     - extra_context作为get_context_data()的补充，可以按需向其中添加内容
     - render()进行模板渲染
@@ -29,13 +31,13 @@ class SecureView(View):
     login_required = True
     redirect_field_name = "index/"
 
-    args = None  # GET方法的参数
-    form_data = None  # 表单数据
+    args : Dict[str, Any] | None = None  # GET方法的参数
+    form_data : Dict[str, Any] | None = None  # 表单数据
 
-    method_names = ['get', 'post']
+    method_names : List[str] = ['get', 'post']
 
     template_name = None
-    extra_context = None
+    extra_context : Dict[str, Any] | None = None
     response_class = TemplateResponse
 
     def check_perm(self,
