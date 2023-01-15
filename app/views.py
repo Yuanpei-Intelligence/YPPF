@@ -1,6 +1,5 @@
 import json
 import random
-import requests  # 发送验证码
 from datetime import datetime, timedelta
 
 from django.contrib import auth
@@ -8,6 +7,7 @@ from django.db import transaction
 from django.db.models import Q, F, Sum, QuerySet
 from django.contrib.auth.password_validation import CommonPasswordValidator, NumericPasswordValidator
 from django.core.exceptions import ValidationError
+import requests  # 发送验证码
 
 from boot import local_dict
 from app.course_utils import str_to_time
