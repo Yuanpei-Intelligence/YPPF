@@ -66,14 +66,12 @@ email_coder = MySHA256Hasher(CONFIG.hash_email)
 
 
 class IndexView(SecureView):
-    template_name = 'index.html'
-    source = 'views[index]'
     login_required = False
-    extra_context = {}
 
-    def is_arg_valid(self,
-                     request: HttpRequest) -> 'HttpResponseRedirect | None':
-        super().is_arg_valid(request)
+    template_name = 'index.html'
+
+    def check_get(self, request: HttpRequest, *args,
+                  **kwargs) -> 'HttpResponseRedirect | None':
         origin = self.args.get('origin')
         modpw_status = self.args.get('modinfo')
         is_logout = self.args.get('is_logout')
@@ -101,9 +99,8 @@ class IndexView(SecureView):
             request.session['alert_message'] = f"尝试跳转到非法 URL: {origin}，跳转已取消。"
             return redirect('/index/?alert=1')
 
-    def is_form_valid(self,
-                      request: HttpRequest) -> 'HttpResponseRedirect | None':
-        super().is_form_valid(request)
+    def check_post(self, request: HttpRequest, *args,
+                   **kwargs) -> 'HttpResponseRedirect | None':
         username = self.form_data.get('username')
         password = self.form_data.get('password')
         assert username is not None
@@ -122,7 +119,7 @@ class IndexView(SecureView):
             **kwargs) -> 'HttpResponse | HttpResponseRedirect':
         origin = self.args.get('arg_origin')
         if origin is None:
-            return super().get(request, *args, **kwargs)
+            return self.render(request)
 
         if self.is_origin_safe(request, origin):
             return redirect(origin)
@@ -134,7 +131,7 @@ class IndexView(SecureView):
         origin = self.args.get('arg_origin')
         username = self.form_data.get('username')
         password = self.form_data.get('password')
-        
+
         try:
             user = User.objects.filter(username=username)
             if len(user) == 0:
@@ -146,7 +143,7 @@ class IndexView(SecureView):
                 user = user[0]
         except:
             wrong(local_dict['msg']['404'], self.extra_context)
-            return super().get(request, *args, **kwargs)
+            return self.render(request)
 
         userinfo = auth.authenticate(username=username, password=password)
         if userinfo:
