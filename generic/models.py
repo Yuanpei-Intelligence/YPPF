@@ -14,6 +14,7 @@ models.py
 @Date 2022-08-19
 '''
 from typing import Type, NoReturn
+from datetime import datetime
 
 from django.db import models
 from django.contrib.auth import get_permission_codename
@@ -27,6 +28,8 @@ __all__ = [
     'User',
     'CreditRecord',
     'YQPointRecord',
+    'PageLog',
+    'ModuleLog',
 ]
 
 
@@ -356,3 +359,48 @@ class YQPointRecord(models.Model):
     source_type: 'SourceType|int' = models.SmallIntegerField(
         '来源类型', choices=SourceType.choices, default=SourceType.SYSTEM)
     time = models.DateTimeField("时间", auto_now_add=True)
+
+
+class PageLog(models.Model):
+    '''
+    统计Page类埋点数据(PV/PD)
+    '''
+    class Meta:
+        verbose_name = "~R.Page类埋点记录"
+        verbose_name_plural = verbose_name
+
+    class CountType(models.IntegerChoices):
+        PV = 0, "Page View"
+        PD = 1, "Page Disappear"
+
+    user: User = models.ForeignKey(User, on_delete=models.CASCADE)
+    type = models.IntegerField('事件类型', choices=CountType.choices)
+
+    page = models.URLField('页面url', max_length=256, blank=True)
+    time = models.DateTimeField('发生时间', default=datetime.now)
+    platform = models.CharField('设备类型', max_length=32, null=True, blank=True)
+    explore_name = models.CharField('浏览器类型', max_length=32, null=True, blank=True)
+    explore_version = models.CharField('浏览器版本', max_length=32, null=True, blank=True)
+
+
+class ModuleLog(models.Model):
+    '''
+    统计Module类埋点数据(MV/MC)
+    '''
+    class Meta:
+        verbose_name = "~R.Module类埋点记录"
+        verbose_name_plural = verbose_name
+
+    class CountType(models.IntegerChoices):
+        MV = 2, "Module View"
+        MC = 3, "Module Click"
+
+    user: User = models.ForeignKey(User, on_delete=models.CASCADE)
+    type = models.IntegerField('事件类型', choices=CountType.choices)
+
+    page = models.URLField('页面url', max_length=256, blank=True)
+    module_name = models.CharField('模块名称', max_length=64, blank=True)
+    time = models.DateTimeField('发生时间', default=datetime.now)
+    platform = models.CharField('设备类型', max_length=32, null=True, blank=True)
+    explore_name = models.CharField('浏览器类型', max_length=32, null=True, blank=True)
+    explore_version = models.CharField('浏览器版本', max_length=32, null=True, blank=True)

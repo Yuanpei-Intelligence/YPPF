@@ -74,8 +74,6 @@ __all__ = [
     'CourseTime',
     'CourseParticipant',
     'CourseRecord',
-    'PageLog',
-    'ModuleLog',
     'FeedbackType',
     'Feedback',
     'AcademicTag',
@@ -1673,47 +1671,6 @@ class CourseRecord(models.Model):
             return self.course.name
         return self.extra_name
     get_course_name.short_description = "课程名"
-
-
-class PageLog(models.Model):
-    # 统计Page类埋点数据(PV/PD)
-    class Meta:
-        verbose_name = "~R.Page类埋点记录"
-        verbose_name_plural = verbose_name
-
-    class CountType(models.IntegerChoices):
-        PV = 0, "Page View"
-        PD = 1, "Page Disappear"
-
-    user: User = models.ForeignKey(User, on_delete=models.CASCADE)
-    type = models.IntegerField('事件类型', choices=CountType.choices)
-
-    page = models.URLField('页面url', max_length=256, blank=True)
-    time = models.DateTimeField('发生时间', default=datetime.now)
-    platform = models.CharField('设备类型', max_length=32, null=True, blank=True)
-    explore_name = models.CharField('浏览器类型', max_length=32, null=True, blank=True)
-    explore_version = models.CharField('浏览器版本', max_length=32, null=True, blank=True)
-
-
-class ModuleLog(models.Model):
-    # 统计Module类埋点数据(MV/MC)
-    class Meta:
-        verbose_name = "~R.Module类埋点记录"
-        verbose_name_plural = verbose_name
-
-    class CountType(models.IntegerChoices):
-        MV = 2, "Module View"
-        MC = 3, "Module Click"
-
-    user: User = models.ForeignKey(User, on_delete=models.CASCADE)
-    type = models.IntegerField('事件类型', choices=CountType.choices)
-
-    page = models.URLField('页面url', max_length=256, blank=True)
-    module_name = models.CharField('模块名称', max_length=64, blank=True)
-    time = models.DateTimeField('发生时间', default=datetime.now)
-    platform = models.CharField('设备类型', max_length=32, null=True, blank=True)
-    explore_name = models.CharField('浏览器类型', max_length=32, null=True, blank=True)
-    explore_version = models.CharField('浏览器版本', max_length=32, null=True, blank=True)
 
 
 class FeedbackType(models.Model):

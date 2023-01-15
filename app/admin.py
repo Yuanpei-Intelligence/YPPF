@@ -3,7 +3,7 @@ from django.contrib import admin
 from django.db import transaction
 from django.utils.safestring import mark_safe
 
-from generic.http.dependency import HttpRequest
+from utils.http.dependency import HttpRequest
 from app.models import *
 from utils.admin_utils import *
 from scheduler.scheduler import scheduler
@@ -757,22 +757,6 @@ class FeedbackAdmin(admin.ModelAdmin):
 class FeedbackTypeAdmin(admin.ModelAdmin):
     list_display = ["name","org_type","org",]
     search_fields =  ("name","org_type","org",)
-
-
-@admin.register(PageLog)
-class PageLogAdmin(admin.ModelAdmin):
-    list_display = ["user", "type", "page", "time"]
-    list_filter = ["type", "time", "platform"]
-    search_fields =  ["user__username", "page"]
-    date_hierarchy = "time"
-
-
-@admin.register(ModuleLog)
-class ModuleLogAdmin(admin.ModelAdmin):
-    list_display = ["user", "type", "page", "module_name", "time"]
-    list_filter = ["type", "module_name", "time", "platform", "page"]
-    search_fields = ["user__username", "page", "module_name"]
-    date_hierarchy = "time"
 
 
 @admin.register(AcademicTag)

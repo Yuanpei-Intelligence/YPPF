@@ -113,9 +113,6 @@ urlpatterns = [
     path("myYQPoint/", YQPoint_views.myYQPoint, name="myYQPoint"),
     path("showPools/", YQPoint_views.showPools, name="showPools"),
     path("myPrize/", YQPoint_views.myPrize, name="myPrize"),
-] + [
-    # 埋点
-    path('eventTrackingFunc/', views.eventTrackingFunc, name='eventTracking'),
 ]
 if settings.DEBUG:
     urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
