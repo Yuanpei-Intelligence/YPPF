@@ -20,7 +20,8 @@ jobs:
         sed 's/\$DATABASE\$/yppf/g' |
         sed 's/\$USER\$/root/g' |
         sed 's/\$PASSWORD\$/secret/g' |
-        sed 's/\$HOST\$/mysql/g' >
+        sed 's/\$HOST\$/mysql/g' |
+        sed 's/\"use_scheduler\": false/\"use_scheduler\": true/g'>
         local_json.json
           cat local_json.json
 
@@ -31,7 +32,6 @@ jobs:
     - name: Check host
       run: |
         docker ps -a
-        sleep 40
         timeout 30s bash -c "while ! curl -Is localhost:8000; do
                                 sleep 3
                                 echo 'Failed to fetch web page.'

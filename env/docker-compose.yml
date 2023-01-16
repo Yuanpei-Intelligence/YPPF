@@ -19,7 +19,7 @@ services:
       test: ["CMD", "mysqladmin" ,"ping", "-h", "localhost", "-uroot", "-ppass"]
       interval: 5s
       timeout: 5s
-      retries: 10
+      retries: 100
 
   yppf:
     image: yuanpei/profile
@@ -35,7 +35,7 @@ services:
       test: ["CMD", "curl", "-f", "localhost:8000"]
       interval: 5s
       timeout: 5s
-      retries: 5
+      retries: 100
     environment:
       - YPPF_SCHEDULER_LOG_FILE=scheduler.log # 和system_log放到一起
       - YPPF_SCHEDULER_PORT=6666
