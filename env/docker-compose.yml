@@ -15,6 +15,11 @@ services:
     environment:
       MYSQL_ROOT_PASSWORD: secret
       MYSQL_DATABASE: yppf
+    healthcheck:
+      test: ["CMD", "mysqladmin" ,"ping", "-h", "localhost", "-uroot", "-ppass"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
 
   yppf:
     image: yuanpei/profile
@@ -23,15 +28,21 @@ services:
     volumes:
       - .././:/code
     depends_on:
-      - mysql
+      # wait mysql
+      mysql:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "localhost:8000"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
     environment:
       - YPPF_SCHEDULER_LOG_FILE=scheduler.log # 和system_log放到一起
       - YPPF_SCHEDULER_PORT=6666
-    command: bash -c "sleep 10 && 
-                    python3 manage.py makemigrations generic app Appointment yp_library &&
-                    python3 manage.py migrate &&
-                    python3 manage.py load default &&
-                    python3 manage.py runserver 0.0.0.0:8000"
+    command: bash -c "python3 manage.py makemigrations generic app Appointment &&
+                      python3 manage.py migrate &&
+                      python3 manage.py load default &&
+                      python3 manage.py runserver 0.0.0.0:8000"
 
   scheduler:
     image: yuanpei/profile
@@ -40,12 +51,16 @@ services:
     ports:
       - 6666:6666
     depends_on:
-      - mysql
+      # wait mysql & apscheduler migrations apply
+      mysql:
+        condition: service_healthy
+      yppf:
+        condition: service_healthy
     environment:
-      - YPPF_SCHEDULER_LOG_FILE=scheduler.log 
+      - YPPF_SCHEDULER_LOG_FILE=scheduler.log
       - YPPF_SCHEDULER_PORT=6666
-      - YPPF_LOG_DEBUG=Y                         # 只影响scheduler的log level
-    command: sh -c "sleep 30 && python3 manage.py runscheduler" # 需要等待apscheduler相关的migration apply
+      - YPPF_LOG_DEBUG=Y
+    command: sh -c "python3 manage.py runscheduler" 
 
 
 volumes:
