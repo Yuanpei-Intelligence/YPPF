@@ -1014,7 +1014,7 @@ def load_default(*args, **kwargs):
     user.set_password(password)
     user.utype = User.Type.PERSON
     user.save()
-    if not created:
+    if created:
         stu = NaturalPerson.objects.create(
             person_id=user,
             stu_id_dbonly=sid,
@@ -1028,7 +1028,8 @@ def load_default(*args, **kwargs):
         )
         stu.save()
     try:
-        User.objects.create_superuser(username='admin', password='password', email='admin@notexist.com')
+        User.objects.create_superuser(username='admin', password='password', 
+                                      email='admin@notexist.com')
     except:
         # 说明已经存在superuser
         pass

@@ -31,10 +31,13 @@ jobs:
     - name: Check host
       run: |
         docker ps -a
-        sleep 90
-        ! curl -Is localhost:8000 || 
+        sleep 40
+        timeout 30s bash -c "while ! curl -Is localhost:8000; do
+                                sleep 3
+                                echo 'Failed to fetch web page.'
+                              done" ||
         "docker-compose -f env/docker-compose.yml logs && exit 1"
 
     - name: Test 
       run: |
-        docker-compose -f env/docker-compose.yml run yppf conda run -n yppf python3 manage.py test
+        docker-compose -f env/docker-compose.yml run yppf python3 manage.py test

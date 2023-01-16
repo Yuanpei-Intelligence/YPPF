@@ -27,7 +27,7 @@ services:
     environment:
       - YPPF_SCHEDULER_LOG_FILE=scheduler.log # 和system_log放到一起
       - YPPF_SCHEDULER_PORT=6666
-    command: bash -c "sleep 5 && 
+    command: bash -c "sleep 10 && 
                     python3 manage.py makemigrations generic app Appointment yp_library &&
                     python3 manage.py migrate &&
                     python3 manage.py load default &&
