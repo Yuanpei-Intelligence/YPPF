@@ -28,7 +28,7 @@ jobs:
     - name: Start containers
       run: |
         docker-compose -f env/docker-compose.yml up -d --build
-    
+
     - name: Check host
       run: |
         docker ps -a

@@ -16,7 +16,7 @@ services:
       MYSQL_ROOT_PASSWORD: secret
       MYSQL_DATABASE: yppf
     healthcheck:
-      test: ["CMD", "mysqladmin" ,"ping", "-h", "localhost", "-uroot", "-ppass"]
+      test: ["CMD", "mysqladmin" ,"ping", "-h", "localhost", "-uroot", "-psecret"]
       interval: 5s
       timeout: 5s
       retries: 100
