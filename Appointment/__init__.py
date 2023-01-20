@@ -1,6 +1,8 @@
 from datetime import datetime
+
 from boot import base_get_setting
-from boot import DEBUG, LOGIN_URL, UNDERGROUND_URL, WECHAT_URL
+from boot import DEBUG, UNDERGROUND_URL, WECHAT_URL
+from boot.config import GLOBAL_CONF
 from utils.hasher import MySHA256Hasher
 import utils.global_messages as my_messages
 
@@ -71,13 +73,11 @@ class LocalSetting():
         self.json = load_json
 
         if DEBUG: print('Loading necessary field...')
-        self.login_url = LOGIN_URL              # 由陈子维学长提供的统一登录入口
         self.this_url = UNDERGROUND_URL         # 地下室的访问入口
         self.wechat_url = WECHAT_URL            # 访问企业微信封装层的接口
         self.system_log = get_setting('system_log')
 
         if DEBUG: print('Loading token field...')
-        self.YPPF_salt = base_get_setting('hash/base_hasher')
         self.wechat_salt = base_get_setting('hash/wechat')
         self.display_token = get_setting('token/display')
 

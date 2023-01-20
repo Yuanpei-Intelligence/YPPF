@@ -1,21 +1,17 @@
-import re
 import string
 import random
+import urllib.parse
 from io import BytesIO
-import imghdr
 from datetime import datetime, timedelta
 from functools import wraps
-import urllib.parse
 
+import imghdr
 from django.contrib import auth
 from django.shortcuts import redirect
 from django.http import HttpResponse, HttpRequest
-from django.db.models import F
 import xlwt
 
-from boot import local_dict
 from utils.http.utils import get_ip
-from utils.config import LazySetting 
 from app.utils_dependency import *
 from app.models import (
     User,
@@ -58,14 +54,15 @@ def check_user_access(redirect_url="/logout/", is_modpw=False):
     return actual_decorator
 
 
-_block_ips: set = LazySetting('safety/blocked_ips', set, set()).get()
+# TODO: Handle ip blocking
+_block_ips = set()
 def block_attack(view_function):
     @wraps(view_function)
     def _wrapped_view(request: HttpRequest, *args, **kwargs):
         ip = get_ip(request)
         if ip in _block_ips:
-            log.operation_writer(CONFIG.system_log, f'已拦截{ip}在{request.path}的请求',
-                                    view_function.__name__, log.STATE_WARNING)
+            # log.operation_writer(CONFIG.system_log, f'已拦截{ip}在{request.path}的请求',
+            #                         view_function.__name__, log.STATE_WARNING)
             return HttpResponse(status=403)
         return view_function(request, *args, **kwargs)
     return _wrapped_view
@@ -93,14 +90,14 @@ def record_attack(except_type=None, as_attack=False):
                     if not is_attack:
                         raise err
                     _block_ips.add(ip)
-                    log.operation_writer(
-                        CONFIG.system_log,
-                        '\n'.join([
-                            '记录到恶意行为: ', f'发生{type(err)}错误: {err}', f'IP: {ip}',
-                        ]),
-                        view_function.__name__,
-                        log.STATE_ERROR,
-                    )
+                    # log.operation_writer(
+                    #     CONFIG.system_log,
+                    #     '\n'.join([
+                    #         '记录到恶意行为: ', f'发生{type(err)}错误: {err}', f'IP: {ip}',
+                    #     ]),
+                    #     view_function.__name__,
+                    #     log.STATE_ERROR,
+                    # )
                     return HttpResponse(status=403)
         return _wrapped_view
     return actual_decorator
@@ -312,24 +309,6 @@ def get_sidebar_and_navbar(user, navbar_name="", title_name="", bar_display=None
     return bar_display
 
 
-def url_check(arg_url):
-    if DEBUG:  # DEBUG默认通过
-        return True
-    if arg_url is None:
-        return True
-    if re.match("^/[^/?]*/", arg_url):  # 相对地址
-        return True
-    for url in CONFIG.url.values():
-        base = re.findall("^https?://([^/]*)/?", url)[0]
-        base = f'^https?://{base}/?'
-        # print('base:', base)
-        if re.match(base, arg_url):
-            return True
-    log.operation_writer(CONFIG.system_log, f'URL检查不合格: {arg_url}', 'utils[url_check]', log.STATE_WARNING)
-    return False
-
-def url2site(url):
-    return urllib.parse.urlparse(url).netloc
 
 def site_match(site, url, path_check_level=0, scheme_check=False):
     '''检查是否是同一个域名，也可以检查路径是否相同
@@ -409,38 +388,6 @@ def get_std_underground_url(underground_url):
             + urllib.parse.urlparse(underground_url)[2:])
         return True, underground_url
     return False, underground_url
-
-def get_std_inner_url(inner_url):
-    '''检查是否是内部网址，返回(is_inner, standard_url)
-    - 如果是，规范化网址，否则返回原URL
-    - 如果参数为None，返回URL为主页相对地址'''
-    site_url = LOGIN_URL
-    return get_std_url(
-        inner_url, '/welcome/',
-        match_func=lambda x: (site_match(site_url, x)
-                           or site_match('', x, scheme_check=True)),
-    )
-    if inner_url is None:
-        inner_url = '/welcome/'
-    if site_match(site_url, inner_url):
-        inner_url = urllib.parse.urlunparse(
-            ('', '') + urllib.parse.urlparse(inner_url)[2:])
-    url_parse = urllib.parse.urlparse(inner_url)
-    if url_parse.scheme or url_parse.netloc:
-        return False, inner_url
-    return True, inner_url
-
-
-# 允许进行 cross site 授权时，return True
-def check_cross_site(request, arg_url):
-    netloc = url2site(arg_url)
-    if netloc not in [
-        '',  # 内部相对地址
-        url2site(UNDERGROUND_URL),  # 地下室
-        url2site(LOGIN_URL),  # yppf
-    ]:
-        return False
-    return True
 
 
 def get_url_params(request, html_display):
@@ -778,6 +725,3 @@ def user_login_org(request, org: Organization) -> MESSAGECONTEXT:
     auth.login(request, org.get_user())  # 切换到小组账号
     update_related_account_in_session(request, user.username, oname=org.oname)
     return succeed("成功切换到小组账号处理该事务，建议事务处理完成后退出小组账号。")
-
-
-log.operation_writer(CONFIG.system_log, "系统启动", "util_底部")

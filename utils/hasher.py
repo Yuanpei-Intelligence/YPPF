@@ -1,5 +1,7 @@
 import hashlib
 
+from boot.config import GLOBAL_CONF
+
 
 class MyMD5Hasher(object):
 
@@ -26,3 +28,6 @@ class MySHA256Hasher(object):
 
     def verify(self, identifier: str, encoded: str) -> bool:
         return encoded.upper() == self.encode(identifier).upper()
+
+
+base_hasher = MySHA256Hasher(GLOBAL_CONF.hash_salt)

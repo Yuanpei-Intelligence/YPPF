@@ -85,7 +85,7 @@ class NaturalPersonAdmin(admin.ModelAdmin):
     inlines = [PositionInline, ParticipantInline, CourseParticipantInline]
 
     def view_on_site(self, obj: NaturalPerson):
-        return obj.get_absolute_url(absolute=True)
+        return obj.get_absolute_url()
 
     actions = [
         'set_student', 'set_teacher',
@@ -180,7 +180,7 @@ class OrganizationAdmin(admin.ModelAdmin):
     inlines = [PositionInline]
 
     def view_on_site(self, obj: Organization):
-        return obj.get_absolute_url(absolute=True)
+        return obj.get_absolute_url()
 
     actions = ['all_subscribe', 'all_unsubscribe']
 

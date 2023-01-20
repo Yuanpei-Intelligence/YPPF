@@ -9,6 +9,18 @@ scheduler_func 依赖于 wechat_send 依赖于 utils
 文件中参数存在 activity 的函数需要在 transaction.atomic() 块中进行。
 如果存在预期异常，抛出 ActivityException，否则抛出其他异常
 """
+import io
+import base64
+from math import ceil
+from random import sample
+from datetime import datetime, timedelta
+
+import qrcode
+
+# TODO: Change it
+from utils.http.utils import build_full_url
+from generic.models import User, YQPointRecord
+from scheduler.scheduler import scheduler
 from app.utils_dependency import *
 from app.models import (
     User,
@@ -21,7 +33,6 @@ from app.models import (
     Notification,
     ActivityPhoto,
 )
-from generic.models import User, YQPointRecord
 from app.utils import get_person_or_org, if_image
 from app.notification_utils import(
     notification_create,
@@ -30,18 +41,6 @@ from app.notification_utils import(
 )
 from app.wechat_send import WechatApp, WechatMessageLevel
 
-import io
-import os
-import base64
-import qrcode
-
-from math import ceil
-from random import sample
-from datetime import datetime, timedelta
-
-from scheduler.scheduler import scheduler
-
-hash_coder = MySHA256Hasher(CONFIG.hash_base)
 
 
 """
@@ -405,13 +404,8 @@ def notifyActivity(aid: int, msg_type: str, msg=""):
 
 
 def get_activity_QRcode(activity):
-    auth_code = hash_coder.encode(str(activity.id))
-    url_components = [
-        LOGIN_URL.strip("/"),
-        "checkinActivity",
-        f"{activity.id}?auth={auth_code}",
-    ]
-    url = "/".join(url_components)
+    auth_code = base_hasher.encode(str(activity.id))
+    url = build_full_url(f'checkinActivity/{activity.id}?auth={auth_code}')
     qr = qrcode.QRCode(
         version=2,
         error_correction=qrcode.constants.ERROR_CORRECT_L,

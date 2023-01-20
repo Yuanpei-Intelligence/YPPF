@@ -1,12 +1,13 @@
 '''
 这个文件中的很多内容实际上已经不需要了，但是还有一些依赖没改完。
+后续里面不应该再有任何内容，或者只引入 GLOBAL_CONF
+
 '''
 
 from django.conf import settings
 import pymysql
 import json
 
-from boot.config import CONFIG
 
 pymysql.install_as_MySQLdb()
 pymysql.version_info = (1, 4, 6, "final", 0)
@@ -20,8 +21,6 @@ def _load_local_json(path="./local_json.json"):
 
 local_dict = _load_local_json()
 
-
-# settings是懒惰的，所以可以提前导入并读取正确的值，导入boot.settings则会错误
 
 
 def _query_setting(paths, dic=local_dict, fuzzy_lookup=False):
@@ -73,21 +72,12 @@ def base_get_setting(path: str = '', trans_func=None, default=None,
         return default
 
 
-def optional(type):
-    '''产生用于可选设置的转换函数，None被直接返回'''
-    def _trans_func(value):
-        if value is None:
-            return None
-        return type(value)
-    return _trans_func
-
 
 # 全局设置
 # 加载settings.xxx时会加载文件
 DEBUG: bool = settings.DEBUG
 MEDIA_URL: str = settings.MEDIA_URL
-LOGIN_URL: str = settings.LOGIN_URL
 
 # 全局设置变量
-UNDERGROUND_URL: str = CONFIG.underground_url
-WECHAT_URL: str = CONFIG.wechat_url
+UNDERGROUND_URL: str = ''
+WECHAT_URL: str = ''

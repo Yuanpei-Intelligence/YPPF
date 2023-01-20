@@ -5,8 +5,8 @@ scheduler.py: provide
 2. `periodical` as a way to register periodical jobs
 """
 
-from typing import Callable, Dict, Any
 import six
+from typing import Callable, Dict, Any
 from threading import Event
 from functools import update_wrapper
 from dataclasses import dataclass
@@ -16,11 +16,11 @@ from django.conf import settings
 from apscheduler.schedulers.background import BackgroundScheduler
 from django_apscheduler.jobstores import DjangoJobStore
 
-from boot import base_get_setting
 from utils.log import get_logger
+from scheduler.config import scheduler_conf
 
 
-EXECUTOR_PORT = settings.MY_RPC_PORT
+EXECUTOR_PORT = scheduler_conf.rpc_port
 # Custom handler
 logger = get_logger('apscheduler')
 
@@ -99,7 +99,7 @@ def start_scheduler() -> BackgroundScheduler:
     return scheduler
 
 
-if base_get_setting("use_scheduler", bool, False, raise_exception=False):
+if scheduler_conf.use_scheduler:
     scheduler: BackgroundScheduler = Scheduler(
         start_scheduler())  # type: ignore
 else:

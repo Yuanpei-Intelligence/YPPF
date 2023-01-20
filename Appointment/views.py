@@ -357,7 +357,6 @@ def account(request: HttpRequest):
     """
     render_context = {}
     render_context.update(
-        login_url=GLOBAL_INFO.login_url,
         show_admin=(request.user.is_superuser or request.user.is_staff),
     )
 
@@ -446,7 +445,6 @@ def credit(request):
 
     render_context = {}
     render_context.update(
-        login_url=GLOBAL_INFO.login_url,
         show_admin=(request.user.is_superuser or request.user.is_staff),
     )
 
@@ -668,7 +666,6 @@ def door_check(request):
 def index(request):  # 主页
     render_context = {}
     render_context.update(
-        login_url=GLOBAL_INFO.login_url,
         show_admin=(request.user.is_superuser or request.user.is_staff),
     )
     # 处理学院公告
