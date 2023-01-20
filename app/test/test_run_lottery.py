@@ -1,4 +1,7 @@
+from datetime import datetime
+
 from django.test import TestCase
+
 from app.models import (
     User,
     NaturalPerson,
@@ -11,7 +14,6 @@ from app.models import (
     Notification,
 )
 from app.YQPoint_utils import run_lottery
-from datetime import datetime
 from app.config import *
 
 

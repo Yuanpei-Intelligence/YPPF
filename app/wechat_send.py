@@ -13,6 +13,8 @@ import json
 from datetime import datetime, timedelta
 
 from utils.hasher import MySHA256Hasher
+# TODO: Change it
+from utils.http.utils import build_full_url
 from scheduler.scheduler import scheduler
 from app.config import *
 from app.models import NaturalPerson, Organization, Activity, Notification, Position
@@ -38,8 +40,8 @@ TIMEOUT = 15 if USE_MULTITHREAD else 5 or 3.05 or 12 or 15
 RETRY = False
 
 # 全局变量 用来发送和确认默认的导航网址
-DEFAULT_URL = LOGIN_URL
-THIS_URL = LOGIN_URL.rstrip('/')        # 增加默认url前缀, 去除尾部的/
+DEFAULT_URL = build_full_url('/')
+THIS_URL = DEFAULT_URL.rstrip('/')        # 增加默认url前缀, 去除尾部的/
 WECHAT_SITE = WECHAT_URL.rstrip('/')    # 去除尾部的/
 INVITE_URL = WECHAT_SITE + '/invite_user'
 wechat_coder = MySHA256Hasher(CONFIG.hash_wechat)
@@ -54,9 +56,11 @@ APP2URL.setdefault('default', '')
 
 # 一批发送的最大数量
 # 底层单次发送的上限，不超过1000
-SEND_LIMIT = min(1000, int(CONFIG.thresholds["wechat_send_number"]))
+# SEND_LIMIT = min(1000, int(CONFIG.thresholds["wechat_send_number"]))
+SEND_LIMIT = 500
 # 中间层一批发送的数量，不超过1000
-SEND_BATCH = min(1000, int(CONFIG.thresholds["wechat_send_batch"]))
+# SEND_BATCH = min(1000, int(CONFIG.thresholds["wechat_send_batch"]))
+SEND_BATCH = 500
 
 # 限制接收范围
 # 可接收范围，默认全体(None表示不限制范围)

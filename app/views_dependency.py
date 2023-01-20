@@ -34,7 +34,7 @@ from django.http import HttpResponseRedirect
 from django.shortcuts import render
 from django.views.decorators.http import require_POST, require_GET
 
-from utils.hasher import MyMD5Hasher, MySHA256Hasher
+from utils.hasher import MyMD5Hasher, MySHA256Hasher, base_hasher
 import utils.global_messages as my_messages
 from utils.global_messages import (
     wrong,

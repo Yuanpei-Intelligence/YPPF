@@ -1,32 +1,62 @@
 import os
-import logging
 
-from boot.config import CONFIG
-
-# Build paths inside the project like this: os.path.join(BASE_DIR, ...)
-BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+from boot import config
+from boot.config import LazySetting
 
 
-# LOGIN_URL，未登录时重定向到的 URL
-LOGIN_URL = CONFIG.login_url
-# LOGIN_URL = local_dict["url"]["login_url"]
-# LOGIN_URL = 'http:localhost:8000/'
+class __Config(config.Config):
+    """Configurables in django framework w.r.t the project.
+
+    For example, login url is not configurable and should be hard-coded.
+    """
+
+    def __init__(self, dict_prefix: str = ''):
+        super().__init__(dict_prefix)
+        self.db_host = os.getenv('DB_HOST') or LazySetting(
+            'db/NAME', default='localhost')
+        self.db_user = os.getenv('DB_USER') or LazySetting(
+            'db/USER', default='root')
+        self.db_password = os.getenv('DB_PASSWORD') or LazySetting(
+            'db/PASSWORD', default='secret')
+        self.db_name = os.getenv('DB_DATABASE') or LazySetting(
+            'db/DATABASE', default='yppf'
+        )
+        self.secret_key = 'k+8az5x&aq_!*@%v17(ptpeo@gp2$u-uc30^fze3u_+rqhb#@9'
+        if not config.DEBUG:
+            self.secret_key = os.environ['SESSION_KEY']
+        self.db_port = os.getenv('DB_PORT')
+        self.static_dir = os.getenv('DB_PORT') or config.BASE_DIR
+        # self.installed_apps = []      # Maybe useful in the future
 
 
-# Quick-start development settings - unsuitable for production
-# See https://docs.djangoproject.com/en/2.1/howto/deployment/checklist/
+__configurables = __Config('django')
 
-# SECURITY WARNING: keep the secret key used in production secret!
+
+# SECURITY
+# WARNING: don't run with debug turned on in production!
+DEBUG = config.DEBUG
 SECRET_KEY = "k+8az5x&aq_!*@%v17(ptpeo@gp2$u-uc30^fze3u_+rqhb#@9"
-
-# SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
-
 ALLOWED_HOSTS = ["*"]
+AUTH_USER_MODEL = 'generic.User'
+AUTHENTICATION_BACKENDS = [
+    "django.contrib.auth.backends.AllowAllUsersModelBackend"]
+AUTH_PASSWORD_VALIDATORS = [
+    {
+        "NAME": "django.contrib.auth.password_validation.UserAttributeSimilarityValidator",
+    },
+    {"NAME": "django.contrib.auth.password_validation.MinimumLengthValidator", },
+    {"NAME": "django.contrib.auth.password_validation.CommonPasswordValidator", },
+    {"NAME": "django.contrib.auth.password_validation.NumericPasswordValidator", },
+]
 
 
-# Application definition
+# URL Config
+LOGIN_URL = '/'
+ROOT_URLCONF = "boot.urls"
+WSGI_APPLICATION = "boot.wsgi.application"
 
+
+# Application definition & Middlewares
 INSTALLED_APPS = [
     "django.contrib.admin",
     "django.contrib.auth",
@@ -43,7 +73,6 @@ INSTALLED_APPS = [
     "yp_library",
 ]
 
-AUTH_USER_MODEL = 'generic.User'
 
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
@@ -55,12 +84,12 @@ MIDDLEWARE = [
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
 ]
 
-ROOT_URLCONF = "boot.urls"
 
+# Templates
 TEMPLATES = [
     {
         "BACKEND": "django.template.backends.django.DjangoTemplates",
-        "DIRS": [os.path.join(BASE_DIR, "templates")],
+        "DIRS": [os.path.join(config.BASE_DIR, "templates")],
         "APP_DIRS": True,
         "OPTIONS": {
             "context_processors": [
@@ -74,36 +103,21 @@ TEMPLATES = [
     },
 ]
 
-WSGI_APPLICATION = "boot.wsgi.application"
-AUTHENTICATION_BACKENDS = [
-    "django.contrib.auth.backends.AllowAllUsersModelBackend"]
 
 # Database
-# https://docs.djangoproject.com/en/2.1/ref/settings/#databases
-
-"""
-DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': os.path.join(BASE_DIR, 'db.sqlite3'),
-    }
-}
-"""
+DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 DATABASES = {
     # 使用自己的数据库的时候请修改这里的配置
-    # 注意underground数据库需要事先创建
+    # 注意需要先创建数据库
     # mysql -u root -p
-    # create database underground charset='utf8mb4';
+    # create database db_dev charset='utf8mb4';
     "default": {
         "ENGINE": "django.db.backends.mysql",
-        # local_dict["database"]["NAME"],
-        "NAME": CONFIG.db_name,
-        "HOST": CONFIG.db_host,
-        "PORT": 3306,
-        # local_dict["database"]["USER"],
-        "USER": CONFIG.db_user,
-        # local_dict["database"]["PASSWORD"],
-        "PASSWORD": CONFIG.db_password,
+        "NAME": __configurables.db_name,
+        "HOST": __configurables.db_host,
+        "PORT": __configurables.db_port,
+        "USER": __configurables.db_user,
+        "PASSWORD": __configurables.db_password,
         'OPTIONS': {
             'charset': 'utf8mb4',
             #     "init_command": "SET sql_mode='STRICT_TRANS_TABLES'",
@@ -115,40 +129,21 @@ DATABASES = {
     },
 }
 
-# Password validation
-# https://docs.djangoproject.com/en/2.1/ref/settings/#auth-password-validators
 
-AUTH_PASSWORD_VALIDATORS = [
-    {
-        "NAME": "django.contrib.auth.password_validation.UserAttributeSimilarityValidator",
-    },
-    {"NAME": "django.contrib.auth.password_validation.MinimumLengthValidator", },
-    {"NAME": "django.contrib.auth.password_validation.CommonPasswordValidator", },
-    {"NAME": "django.contrib.auth.password_validation.NumericPasswordValidator", },
-]
+# Static files (CSS, JavaScript, Images)
+# Django's staticfile doc is confusing...
+# Just use STATICFILES_DIRS instead of STATIC_ROOT for develop
+STATIC_URL = "/static/"
+STATICFILES_DIRS = (os.path.join(__configurables.static_dir, "static"),)
+# Media files (user uploaded imgs)
+MEDIA_URL = "/media/"
+MEDIA_ROOT = os.path.join(__configurables.static_dir, "media/")
 
 
-# 加快测试时的数据导入速度，降低加密算法的迭代次数
-# 正式上线时要去掉这里！如果先导入数据再修改hasher可能会出现账号无法登录！
-# if DEBUG:
-#     PASSWORD_HASHERS = [
-#         "utils.hasher.MyPBKDF2PasswordHasher",
-#     ]
-
-# Internationalization
-# https://docs.djangoproject.com/en/2.1/topics/i18n/
-
-# LANGUAGE_CODE = 'en-us'
-
-# TIME_ZONE = 'UTC'
-
-
+# Disordered settings
 LANGUAGE_CODE = "zh-Hans"
-
 TIME_ZONE = "Asia/Shanghai"
-
 USE_I18N = True
-
 # 是否启用数据的本地化格式，如果开启将会导致django以他认为的本地格式显示后台数据
 # 主要表现为时间的呈现形式变为年/月/日 小时:分钟 关闭时则为yyyy-mm-dd HH:MM:SS
 # 关闭后，后台才能正常显示秒并进行修改
@@ -157,62 +152,8 @@ USE_I18N = True
 # 而该文件中的其它变量被证明对后台呈现无效
 # https://docs.djangoproject.com/zh-hans/3.1/ref/settings/#use-i18n
 USE_L10N = True
-
 # USE_TZ限制了Datetime等时间Field被存入数据库时是否必须包含时区信息
 # 这导致定时任务和常用的datetime.now()等无时区时间在存入时被强制-8h转化为UTC时间
 # 从而使数据库可读性差，存储前需要强制增加时区信息，且发送消息容易出错
 # 从数据库取出的数据将是有时区信息的，几乎与datetime.now()不可比
 USE_TZ = False
-
-
-# Static files (CSS, JavaScript, Images)
-# Django's staticfile doc is confusing...
-# Just use STATICFILES_DIRS instead of STATIC_ROOT for develop
-MY_STATIC_DIR = CONFIG.static_dir
-MY_TMP_DIR = CONFIG.tmp_dir
-STATIC_URL = "/static/"
-STATICFILES_DIRS = (os.path.join(MY_STATIC_DIR, "static"),)
-# Media files (user uploaded imgs)
-MEDIA_URL = "/media/"
-MEDIA_ROOT = os.path.join(MY_STATIC_DIR, "media/")
-
-DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
-
-# 标识环境、相关的端口和日志设置
-MY_ENV = CONFIG.env
-
-# port
-MY_RPC_PORT = CONFIG.scheduler_port
-# MY_LIB_RPC_PORT = os.getenv("YPPF_SCHEDULER_PORT", 6699)
-MY_INNER_PORT = CONFIG.inner_port
-
-# LOG
-MY_LOG_DIR = CONFIG.log_dir
-MY_LOG_LEVEL = CONFIG.log_level
-
-if MY_ENV in ["PRODUCT", "TEST"]:
-    # Set cookie session domain to allow two sites share the session
-    SESSION_COOKIE_DOMAIN = os.environ["YPPF_SESSION_COOKIE_DOMAIN"]
-    if MY_ENV == "PRODUCT":
-        SECRET_KEY = os.environ["YPPF_SECRET_KEY"]
-
-if MY_ENV == "INNER":
-    pass
-
-'''
-LOGGING = {
-    'version': 1,
-    'disable_existing_loggers': False,
-    'handlers': {
-        'console': {
-            'class': 'logging.StreamHandler',
-        },
-    },
-    'loggers': {
-        'django.db.backends': {
-            'handlers': ['console'],
-            'level': 'DEBUG' if DEBUG else 'INFO',
-        },
-    },
-}
-'''

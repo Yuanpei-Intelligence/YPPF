@@ -15,29 +15,13 @@ jobs:
       uses: actions/checkout@v3
 
     - name: Configure local json
-      run: >
-        cat local_json_template.json |
-        sed 's/\$DATABASE\$/yppf/g' |
-        sed 's/\$USER\$/root/g' |
-        sed 's/\$PASSWORD\$/secret/g' |
-        sed 's/\$HOST\$/mysql/g' |
-        sed 's/\"use_scheduler\": false/\"use_scheduler\": true/g'>
-        local_json.json
-          cat local_json.json
+      run: |
+        bash env/config.sh
 
     - name: Start containers
       run: |
-        docker-compose -f env/docker-compose.yml up -d --build
-
-    - name: Check host
-      run: |
-        docker ps -a
-        timeout 30s bash -c "while ! curl -Is localhost:8000; do
-                                sleep 3
-                                echo 'Failed to fetch web page.'
-                              done" ||
-        "docker-compose -f env/docker-compose.yml logs && exit 1"
+        docker-compose -f env/docker-compose.yml up -d
 
     - name: Test 
       run: |
-        docker-compose -f env/docker-compose.yml run yppf python3 manage.py test
+        docker-compose -f env/docker-compose.yml exec -T yppf python3 manage.py test

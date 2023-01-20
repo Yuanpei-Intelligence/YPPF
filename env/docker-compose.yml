@@ -37,11 +37,13 @@ services:
       timeout: 5s
       retries: 100
     environment:
-      - YPPF_SCHEDULER_LOG_FILE=scheduler.log # 和system_log放到一起
-      - YPPF_SCHEDULER_PORT=6666
+      - DB_HOST=mysql
+      - DB_USER=root
+      - DB_PASSWORD=secret
+      - DB_DATABASE=yppf
     command: bash -c "python3 manage.py makemigrations generic app Appointment &&
                       python3 manage.py migrate &&
-                      python3 manage.py load default &&
+                      python3 manage.py fill_devdb &&
                       python3 manage.py runserver 0.0.0.0:8000"
 
   scheduler:
@@ -54,6 +56,7 @@ services:
       # wait mysql & apscheduler migrations apply
       mysql:
         condition: service_healthy
+      # TODO: "yppf" depends on "scheduler" is better?
       yppf:
         condition: service_healthy
     environment:

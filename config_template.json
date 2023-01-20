@@ -1,0 +1,59 @@
+{
+    "global": {
+        "base_url": "http://localhost:8000",
+        "hash_salt": "default_hash_salt",
+        "acadamic_year": 2023,
+        "semester": "Spring" 
+    },
+    "django": {
+        "db": {
+            "NAME": "$DATABASE$",
+            "USER": "$USER$",
+            "PASSWORD": "$PASSWORD$",
+            "HOST": "$HOST$"
+        }
+    },
+    "weather": {
+        "api_key": "$API_KEY$"
+    },
+    "scheduler": {
+        "rpc_port": "$SCHEDULER_RPC_PORT$",
+        "use_scheduler": false
+    },
+    "notification": {
+        "max_inform_rank": null
+    },
+    "wechat": {
+        "salt": "debug_hasher_salt",
+        "debug_stuids": [],
+        "send_batch": 500,
+        "send_number": 500,
+        "blacklist": []
+    },
+    "email": {
+        "url": "",
+        "salt": "debug_hasher_salt" 
+    },
+    "underground": {},
+    "course": {
+        "type_name": "课程",
+        "auditors": ["admin"],
+        "valid_hours": 8,
+        "yx_election_start": "2022-02-16 10:00:00",
+        "yx_election_end": "2022-02-16 12:00:00",
+        "btx_election_start": "2022-02-16 12:00:00",
+        "btx_election_end": "2022-02-16 14:00:00",
+        "publish_time": "2022-02-20 20:35:00"
+    },
+    "YQPoint": {
+
+    },
+    "library": {
+        "organization_name": "图书室",
+        "open_time_start": "07:00",
+        "open_time_end": "23:00"
+    },
+    "help_messages": {
+
+    }
+}

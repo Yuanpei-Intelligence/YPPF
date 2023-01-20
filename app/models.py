@@ -36,15 +36,16 @@ models.py
 
 @Date 2022-03-11
 '''
+from random import choice
+
 from django.db import models, transaction
+from django.db.models import Q, Sum, QuerySet
 from django_mysql.models import ListCharField
+
 from generic.models import User
 from generic.models import invalid_for_frontend, necessary_for_frontend
-from django.db.models import Q, Sum, QuerySet
-from django.db.models.signals import post_save
 from datetime import datetime, timedelta
 from app.config import *
-from random import choice
 
 
 __all__ = [
@@ -192,10 +193,7 @@ class ClassifiedUser(models.Model):
         :return: 主页的网址
         :rtype: str
         '''
-        url = '/'
-        if absolute:
-            url = LOGIN_URL.rstrip('/') + url
-        return url
+        return '/'
     
     def get_user_ava(self=None) -> str:
         '''
@@ -390,8 +388,6 @@ class NaturalPerson(models.Model):
         '''User一对一模型的建议方法'''
         url = f'/stuinfo/?name={self.name}'
         url += f'+{self.person_id_id}'
-        if absolute:
-            url = LOGIN_URL.rstrip('/') + url
         return url
 
     def get_user_ava(self=None):
@@ -539,7 +535,7 @@ class Semester(models.TextChoices):
 
     def now():
         '''返回本地设置中当前学期对应的Semester状态'''
-        return get_setting("semester_data/semester", trans_func=Semester.get)
+        return Semester.get(GLOBAL_CONF.semester)
 
     def match(sem1, sem2):
         try:
@@ -632,8 +628,6 @@ class Organization(models.Model):
     def get_absolute_url(self, absolute=False):
         '''User一对一模型的建议方法'''
         url = f'/orginfo/?name={self.oname}'
-        if absolute:
-            url = LOGIN_URL.rstrip('/') + url
         return url
 
     def get_user_ava(self=None):
@@ -1775,8 +1769,6 @@ class Feedback(CommentBase):
             url = f'/modifyFeedback/?feedback_id={self.id}'
         else:
             url = f'/viewFeedback/{self.id}'
-        if absolute:
-            url = LOGIN_URL.rstrip('/') + url
         return url
 
 

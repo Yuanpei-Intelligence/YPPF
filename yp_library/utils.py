@@ -7,7 +7,7 @@ from django.http import QueryDict, HttpRequest
 
 from app.utils import check_user_type
 from app.notification_utils import bulk_notification_create
-from app.config import get_setting, UTYPE_PER
+from app.config import UTYPE_PER
 from app.models import Notification, Organization, Activity
 from app.wechat_send import WechatMessageLevel
 from yp_library.models import (
@@ -16,6 +16,7 @@ from yp_library.models import (
     Book,
     LendRecord,
 )
+from yp_library.config import library_conf
 
 __all__ = [
     'get_readers_by_user', 'search_books',
@@ -280,7 +281,7 @@ def get_library_activity(num: int) -> QuerySet[Activity]:
     :rtype: QuerySet[Activity]
     """
     all_valid_library_activities = Activity.objects.activated().filter(
-        organization_id__oname=get_setting("library/organization_name"),
+        organization_id__oname=library_conf.organization_name,
         status__in=[
             Activity.Status.APPLYING,
             Activity.Status.WAITING,
@@ -325,8 +326,8 @@ def get_opening_time() -> Tuple[str, str]:
     :return: 开馆、闭馆时间
     :rtype: Tuple[str, str]
     """
-    start_time = get_setting("library/open_time_start")
-    end_time = get_setting("library/open_time_end")
+    start_time = library_conf.start_time
+    end_time = library_conf.end_time
     # TODO: Return type doesn't match
     return start_time, end_time
 
