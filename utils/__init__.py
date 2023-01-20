@@ -7,8 +7,11 @@ A module for cross app utils, generally some wrappers for library, including:
 - configurations
 - ...
 
-This module should not not depend on any other local modules. Or, it only depends
-on boot, if only necessary. Make sure no circular reference is ever introduced.
-As for now, boot only depend on config module, and this module doesn't depend on
-boot. Thus, no circular reference.
+This module should not not depend on any other local modules, except for `boot`.
+
+When adding dependencies between this module and `boot`, be careful.
+Make sure no circular reference is ever introduced.
+
+As for now, `boot.config` depends on `utils.config`, while `utils.log` depends on
+`boot.settings`. No circular dependency at the fine-grain level.
 """

@@ -54,6 +54,7 @@ services:
       # wait mysql & apscheduler migrations apply
       mysql:
         condition: service_healthy
+      # TODO: "yppf" depends on "scheduler" is better?
       yppf:
         condition: service_healthy
     environment:

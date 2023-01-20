@@ -24,6 +24,7 @@ from functools import partial, wraps
 import json
 
 from django.http import HttpRequest
+from django.conf import settings
 
 
 # TODO: Get info from settings
@@ -75,6 +76,8 @@ def err_capture(logger: str | logging.Logger = 'err', message: str = '',
             try:
                 return fn(*args, **argvs)
             except Exception:
+                if settings.DEBUG:
+                    raise
                 # Get logger
                 _logger = logger
                 if isinstance(_logger, str):
