@@ -1,23 +1,23 @@
+import random
+from typing import List, Dict, Optional, Tuple
+from datetime import datetime, timedelta, date
+
+from django.db.models import QuerySet, Q
+from django.forms.models import model_to_dict
+
+from generic.models import User, YQPointRecord
+from app.config import CONFIG
 from app.utils_dependency import *
 from app.models import (
-    Prize,
     Pool,
     PoolItem,
     PoolRecord,
     Notification,
     Organization,
 )
-from app.utils import get_person_or_org
 from app.wechat_send import WechatApp, WechatMessageLevel
 from app.notification_utils import bulk_notification_create, notification_create
-from generic.models import User, YQPointRecord
 
-from django.db.models import QuerySet, Q, Sum
-from django.forms.models import model_to_dict
-
-from typing import List, Dict, Optional, Tuple
-from datetime import datetime, timedelta, date
-import random
 
 __all__ = [
     'add_signin_point',
@@ -29,8 +29,7 @@ __all__ = [
 ]
 
 
-_DEFAULT_DAY2POINT = [1, 2, 2, (2, 4), 2, 2, (5, 7)]
-DAY2POINT = get_config('thresholds/point/signin_points', default=_DEFAULT_DAY2POINT)
+DAY2POINT = CONFIG.yqp_signin_points
 MAX_CHECK_DAYS = len(DAY2POINT)
 
 
@@ -102,7 +101,8 @@ def add_signin_point(user: User):
     :rtype: tuple[int, str]
     '''
     # 获取已连续签到的日期和近几天签到信息
-    continuous_days, signed_in = get_signin_infos(user, MAX_CHECK_DAYS, signin_today=True)
+    continuous_days, signed_in = get_signin_infos(
+        user, MAX_CHECK_DAYS, signin_today=True)
     day_type = (continuous_days - 1) % MAX_CHECK_DAYS
     # 连续签到的基础元气值，可以从文件中读取，此类写法便于分析
     add_point = distribution2point(DAY2POINT, day_type)
@@ -197,7 +197,7 @@ def get_pools_and_items(pool_type: Pool.Type, user: User, frontend_dict: Dict[st
         for item in this_pool_items:
             item["remain_num"] = item["origin_num"] - item["consumed_num"]
         this_pool_info["items"] = sorted(
-            this_pool_items, key=lambda x: -x["remain_num"]) # 按剩余数量降序排序，已卖完的在最后
+            this_pool_items, key=lambda x: -x["remain_num"])  # 按剩余数量降序排序，已卖完的在最后
 
         if pool_type != Pool.Type.EXCHANGE:
             this_pool_info["my_entry_time"] = PoolRecord.objects.filter(
@@ -207,7 +207,8 @@ def get_pools_and_items(pool_type: Pool.Type, user: User, frontend_dict: Dict[st
             if pool_type == Pool.Type.RANDOM:
                 for item in this_pool_items:
                     # 此处显示的是抽奖概率，目前使用原始的占比
-                    percent = (100 * item["origin_num"] / this_pool_info["capacity"])
+                    percent = (100 * item["origin_num"] /
+                               this_pool_info["capacity"])
                     if percent == int(percent):
                         percent = int(percent)
                     elif round(percent, 1) != 0:
@@ -221,7 +222,7 @@ def get_pools_and_items(pool_type: Pool.Type, user: User, frontend_dict: Dict[st
                     user=user, pool=pool, prize=item["prize__id"]).count()
             # EXCHANGE类的pool不需要capcity和records_num和my_entry_time
 
-        if this_pool_info["status"] == 1: # 如果是刚结束的抽奖，需要填充results
+        if this_pool_info["status"] == 1:  # 如果是刚结束的抽奖，需要填充results
             big_prize_items = PoolItem.objects.filter(
                 pool=pool, is_big_prize=True).order_by("-prize__reference_price")
             normal_prize_items = PoolItem.objects.filter(
@@ -283,7 +284,7 @@ def buy_exchange_item(user: User, poolitem_id: str) -> MESSAGECONTEXT:
         user=user, pool=poolitem.pool, prize=poolitem.prize).count()
     if my_exchanged_time >= poolitem.exchange_limit:
         return wrong('您兑换该奖品的次数已达上限!')
-    
+
     try:
         with transaction.atomic():
             poolitem = PoolItem.objects.select_for_update().get(
@@ -316,7 +317,7 @@ def buy_exchange_item(user: User, poolitem_id: str) -> MESSAGECONTEXT:
                 source_type=YQPointRecord.SourceType.CONSUMPTION
             )
     except AssertionError as e:
-        return wrong(str(e))      
+        return wrong(str(e))
 
     return succeed('兑换成功!')
 
@@ -345,13 +346,14 @@ def buy_lottery_pool(user: User, pool_id: str) -> MESSAGECONTEXT:
     my_entry_time = PoolRecord.objects.filter(pool=pool, user=user).count()
     if my_entry_time >= pool.entry_time:
         return wrong('您在本奖池中抽奖的次数已达上限!')
-    
+
     try:
         with transaction.atomic():
             pool = Pool.objects.select_for_update().get(id=pool_id, type=Pool.Type.LOTTERY)
             assert pool.start <= datetime.now(), '抽奖未开始!'
             assert pool.end is None or pool.end >= datetime.now(), '抽奖已结束!'
-            my_entry_time = PoolRecord.objects.filter(pool=pool, user=user).count()
+            my_entry_time = PoolRecord.objects.filter(
+                pool=pool, user=user).count()
             assert my_entry_time < pool.entry_time, '您在本奖池中抽奖的次数已达上限!'
             assert user.YQpoint >= pool.ticket_price, '您的元气值不足，兑换失败!'
 
@@ -370,8 +372,8 @@ def buy_lottery_pool(user: User, pool_id: str) -> MESSAGECONTEXT:
                 source_type=YQPointRecord.SourceType.CONSUMPTION
             )
     except AssertionError as e:
-        return wrong(str(e))      
-    
+        return wrong(str(e))
+
     return succeed('成功进行一次抽奖!您可以在抽奖时间结束后查看抽奖结果~')
 
 
@@ -441,13 +443,14 @@ def buy_random_pool(user: User, pool_id: str) -> Tuple[MESSAGECONTEXT, int, int]
     capacity = pool.get_capacity()
     if capacity <= total_entry_time:
         return wrong('盲盒已售罄!'), -1, 2
-    
+
     try:
         with transaction.atomic():
             pool = Pool.objects.select_for_update().get(id=pool_id, type=Pool.Type.RANDOM)
             assert pool.start <= datetime.now(), '盲盒兑换时间未开始!'
             assert pool.end is None or pool.end >= datetime.now(), '盲盒兑换时间已结束!'
-            my_entry_time = PoolRecord.objects.filter(pool=pool, user=user).count()
+            my_entry_time = PoolRecord.objects.filter(
+                pool=pool, user=user).count()
             assert my_entry_time < pool.entry_time, '您兑换这款盲盒的次数已达上限!'
             assert user.YQpoint >= pool.ticket_price, '您的元气值不足，兑换失败!'
             total_entry_time = PoolRecord.objects.filter(pool=pool).count()
@@ -461,7 +464,7 @@ def buy_random_pool(user: User, pool_id: str) -> Tuple[MESSAGECONTEXT, int, int]
             modify_item.consumed_num += 1
             modify_item.save()
 
-            if modify_item.is_empty: # 如果是空盲盒，没法兑奖，record的状态记为NOT_LUCKY
+            if modify_item.is_empty:  # 如果是空盲盒，没法兑奖，record的状态记为NOT_LUCKY
                 item_status = PoolRecord.Status.NOT_LUCKY
             else:
                 item_status = PoolRecord.Status.UN_REDEEM
@@ -555,7 +558,7 @@ def run_lottery(pool_id: int):
             record.save()
 
         # 给中奖的同学发送通知
-        sender = Organization.objects.get(oname=YQP_ONAME).get_user()
+        sender = Organization.objects.get(oname=CONFIG.yqp_oname).get_user()
         for user_id in user2prize_names.keys():
             receiver = User.objects.get(id=user_id)
             typename = Notification.Type.NEEDREAD

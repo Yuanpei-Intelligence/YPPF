@@ -53,7 +53,7 @@ from django.http import HttpRequest, HttpResponse
 from django.db import transaction
 from django.db.models import F, Q, Sum, Prefetch
 
-from app.scheduler import scheduler
+from scheduler.scheduler import scheduler
 
 
 __all__ = [
@@ -179,7 +179,7 @@ def create_single_course_activity(request: HttpRequest) -> Tuple[int, bool]:
 
     # 获取默认审核老师
     examine_teacher = NaturalPerson.objects.get_teacher(
-        get_setting("course/audit_teacher"))
+        APP_CONFIG.course.audit_teacher)
 
     # 获取活动所属课程的图片，用于viewActivity, examineActivity等页面展示
     image = str(course.photo)
@@ -1000,15 +1000,15 @@ def register_selection(wait_for: timedelta=None):
     now = datetime.now()
     if wait_for is not None:
         now = wait_for + wait_for
-    stage1_start = str_to_time(get_setting("course/yx_election_start"))
+    stage1_start = str_to_time(APP_CONFIG.course.yx_election_start)
     stage1_start = max(stage1_start, now + timedelta(seconds=5))
-    stage1_end = str_to_time(get_setting("course/yx_election_end"))
+    stage1_end = str_to_time(APP_CONFIG.course.yx_election_end)
     stage1_end = max(stage1_end, now + timedelta(seconds=10))
-    publish_time = str_to_time(get_setting("course/publish_time"))
+    publish_time = str_to_time(APP_CONFIG.course.publish_time)
     publish_time = max(publish_time, now + timedelta(seconds=15))
-    stage2_start = str_to_time(get_setting("course/btx_election_start"))
+    stage2_start = str_to_time(APP_CONFIG.course.btx_election_start)
     stage2_start = max(stage2_start, now + timedelta(seconds=20))
-    stage2_end = str_to_time(get_setting("course/btx_election_end"))
+    stage2_end = str_to_time(APP_CONFIG.course.btx_election_end)
     stage2_end = max(stage2_end, now + timedelta(seconds=25))
     # 定时任务：修改课程状态
     scheduler.add_job(change_course_status, "date", id=f"course_selection_{year+semster}_stage1_start",
@@ -1272,7 +1272,7 @@ def check_post_and_modify(records: list, post_data: dict) -> MESSAGECONTEXT:
             assert float(hours) >= 0, "学时数据为负数，请检查输入数据！"
             record.total_hours = float(hours)
             # 更新是否有效
-            record.invalid = (record.total_hours < LEAST_RECORD_HOURS)
+            record.invalid = (record.total_hours < CONFIG.least_record_hours)
 
         CourseRecord.objects.bulk_update(records, ["total_hours", "invalid"])
         return succeed("修改学时信息成功！")

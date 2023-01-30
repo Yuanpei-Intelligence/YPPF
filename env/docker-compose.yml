@@ -15,20 +15,56 @@ services:
     environment:
       MYSQL_ROOT_PASSWORD: secret
       MYSQL_DATABASE: yppf
+    healthcheck:
+      test: ["CMD", "mysqladmin" ,"ping", "-h", "localhost", "-uroot", "-psecret"]
+      interval: 5s
+      timeout: 5s
+      retries: 100
 
   yppf:
-    image: yuanpei/yppf
-    command: sh -c "sleep 10 &&
-                    conda run -n yppf pip3 install -r env/requirements.txt &&
-                    conda run -n yppf python3 manage.py makemigrations generic app Appointment yp_library &&
-                    conda run -n yppf python3 manage.py migrate &&
-                    conda run -n yppf python3 manage.py runserver 0.0.0.0:80"
+    image: yuanpei/profile
     ports:
-      - 8000:80
+      - 8000:8000
     volumes:
       - .././:/code
     depends_on:
-      - mysql
+      # wait mysql
+      mysql:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "localhost:8000"]
+      interval: 5s
+      timeout: 5s
+      retries: 100
+    environment:
+      - DB_HOST=mysql
+      - DB_USER=root
+      - DB_PASSWORD=secret
+      - DB_DATABASE=yppf
+    command: bash -c "python3 manage.py makemigrations generic app Appointment &&
+                      python3 manage.py migrate &&
+                      python3 manage.py fill_devdb &&
+                      python3 manage.py runserver 0.0.0.0:8000"
+
+  scheduler:
+    image: yuanpei/profile
+    volumes:
+      - .././:/code
+    ports:
+      - 6666:6666
+    depends_on:
+      # wait mysql & apscheduler migrations apply
+      mysql:
+        condition: service_healthy
+      # TODO: "yppf" depends on "scheduler" is better?
+      yppf:
+        condition: service_healthy
+    environment:
+      - YPPF_SCHEDULER_LOG_FILE=scheduler.log
+      - YPPF_SCHEDULER_PORT=6666
+      - YPPF_LOG_DEBUG=Y
+    command: sh -c "python3 manage.py runscheduler" 
+
 
 volumes:
   yppf-mysql-data:

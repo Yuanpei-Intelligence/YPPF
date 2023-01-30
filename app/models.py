@@ -36,15 +36,16 @@ models.py
 
 @Date 2022-03-11
 '''
+from random import choice
+
 from django.db import models, transaction
+from django.db.models import Q, Sum, QuerySet
 from django_mysql.models import ListCharField
+
 from generic.models import User
 from generic.models import invalid_for_frontend, necessary_for_frontend
-from django.db.models import Q, Sum, QuerySet
-from django.db.models.signals import post_save
 from datetime import datetime, timedelta
-from app.constants import *
-from random import choice
+from app.config import *
 
 
 __all__ = [
@@ -74,8 +75,6 @@ __all__ = [
     'CourseTime',
     'CourseParticipant',
     'CourseRecord',
-    'PageLog',
-    'ModuleLog',
     'FeedbackType',
     'Feedback',
     'AcademicTag',
@@ -194,10 +193,7 @@ class ClassifiedUser(models.Model):
         :return: 主页的网址
         :rtype: str
         '''
-        url = '/'
-        if absolute:
-            url = LOGIN_URL.rstrip('/') + url
-        return url
+        return '/'
     
     def get_user_ava(self=None) -> str:
         '''
@@ -392,8 +388,6 @@ class NaturalPerson(models.Model):
         '''User一对一模型的建议方法'''
         url = f'/stuinfo/?name={self.name}'
         url += f'+{self.person_id_id}'
-        if absolute:
-            url = LOGIN_URL.rstrip('/') + url
         return url
 
     def get_user_ava(self=None):
@@ -541,7 +535,7 @@ class Semester(models.TextChoices):
 
     def now():
         '''返回本地设置中当前学期对应的Semester状态'''
-        return get_setting("semester_data/semester", trans_func=Semester.get)
+        return Semester.get(GLOBAL_CONF.semester)
 
     def match(sem1, sem2):
         try:
@@ -634,8 +628,6 @@ class Organization(models.Model):
     def get_absolute_url(self, absolute=False):
         '''User一对一模型的建议方法'''
         url = f'/orginfo/?name={self.oname}'
-        if absolute:
-            url = LOGIN_URL.rstrip('/') + url
         return url
 
     def get_user_ava(self=None):
@@ -1676,47 +1668,6 @@ class CourseRecord(models.Model):
     get_course_name.short_description = "课程名"
 
 
-class PageLog(models.Model):
-    # 统计Page类埋点数据(PV/PD)
-    class Meta:
-        verbose_name = "~R.Page类埋点记录"
-        verbose_name_plural = verbose_name
-
-    class CountType(models.IntegerChoices):
-        PV = 0, "Page View"
-        PD = 1, "Page Disappear"
-
-    user: User = models.ForeignKey(User, on_delete=models.CASCADE)
-    type = models.IntegerField('事件类型', choices=CountType.choices)
-
-    page = models.URLField('页面url', max_length=256, blank=True)
-    time = models.DateTimeField('发生时间', default=datetime.now)
-    platform = models.CharField('设备类型', max_length=32, null=True, blank=True)
-    explore_name = models.CharField('浏览器类型', max_length=32, null=True, blank=True)
-    explore_version = models.CharField('浏览器版本', max_length=32, null=True, blank=True)
-
-
-class ModuleLog(models.Model):
-    # 统计Module类埋点数据(MV/MC)
-    class Meta:
-        verbose_name = "~R.Module类埋点记录"
-        verbose_name_plural = verbose_name
-
-    class CountType(models.IntegerChoices):
-        MV = 2, "Module View"
-        MC = 3, "Module Click"
-
-    user: User = models.ForeignKey(User, on_delete=models.CASCADE)
-    type = models.IntegerField('事件类型', choices=CountType.choices)
-
-    page = models.URLField('页面url', max_length=256, blank=True)
-    module_name = models.CharField('模块名称', max_length=64, blank=True)
-    time = models.DateTimeField('发生时间', default=datetime.now)
-    platform = models.CharField('设备类型', max_length=32, null=True, blank=True)
-    explore_name = models.CharField('浏览器类型', max_length=32, null=True, blank=True)
-    explore_version = models.CharField('浏览器版本', max_length=32, null=True, blank=True)
-
-
 class FeedbackType(models.Model):
     class Meta:
         verbose_name = "#EX.反馈类型"
@@ -1819,8 +1770,6 @@ class Feedback(CommentBase):
             url = f'/modifyFeedback/?feedback_id={self.id}'
         else:
             url = f'/viewFeedback/{self.id}'
-        if absolute:
-            url = LOGIN_URL.rstrip('/') + url
         return url
 
 

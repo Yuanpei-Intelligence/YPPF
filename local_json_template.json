@@ -17,8 +17,8 @@
         "wechat_url": "http://$OUTER_IP$"
     },
     "msg": {
-        "404": "用户不存在，请在元培学院官方公众号后台留言注册！",
-        "406": "密码错误！请重新输入!"
+        "user_not_exist": "用户不存在，请在元培学院官方公众号后台留言注册！",
+        "wrong_pw": "密码错误！请重新输入!"
     },
     "use_scheduler": false,
     "system_log": "$LOG_NAME$",
@@ -120,5 +120,7 @@
         "organization_name": "何善衡图书室",
         "open_time_start": "07:00",
         "open_time_end": "23:00"
-    }
+    },
+    "rpc_port": 6666,
+    "inner_port": 80    
 }

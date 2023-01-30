@@ -2,7 +2,7 @@ from django.http import HttpRequest, HttpResponse
 from django.shortcuts import render, redirect
 from django.contrib.auth.decorators import login_required
 
-from boottest.global_messages import wrong, succeed, message_url, transfer_message_context
+from utils.global_messages import wrong, succeed, message_url, transfer_message_context
 from yp_library.utils import (
     get_readers_by_user,
     search_books,

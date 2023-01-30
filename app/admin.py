@@ -1,11 +1,14 @@
-from app.models import *
-from boottest.admin_utils import *
-from generic.http.dependency import HttpRequest
-
 from datetime import datetime
 from django.contrib import admin
 from django.db import transaction
 from django.utils.safestring import mark_safe
+
+from utils.http.dependency import HttpRequest
+from app.models import *
+from utils.admin_utils import *
+from scheduler.scheduler import scheduler
+
+
 
 
 # 通用内联模型
@@ -82,7 +85,7 @@ class NaturalPersonAdmin(admin.ModelAdmin):
     inlines = [PositionInline, ParticipantInline, CourseParticipantInline]
 
     def view_on_site(self, obj: NaturalPerson):
-        return obj.get_absolute_url(absolute=True)
+        return obj.get_absolute_url()
 
     actions = [
         'set_student', 'set_teacher',
@@ -177,7 +180,7 @@ class OrganizationAdmin(admin.ModelAdmin):
     inlines = [PositionInline]
 
     def view_on_site(self, obj: Organization):
-        return obj.get_absolute_url(absolute=True)
+        return obj.get_absolute_url()
 
     actions = ['all_subscribe', 'all_unsubscribe']
 
@@ -270,7 +273,7 @@ class PositionAdmin(admin.ModelAdmin):
 
     @as_action("延长职务年限", actions, atomic=True)
     def refresh(self, request, queryset):
-        from app.constants import CURRENT_ACADEMIC_YEAR
+        from app.config import CURRENT_ACADEMIC_YEAR
         new = []
         for position in queryset:
             position: Position
@@ -397,7 +400,6 @@ class ActivityAdmin(admin.ModelAdmin):
         from app.activity_utils import changeActivityStatus
         changeActivityStatus(activity.id, Activity.Status.APPLYING, Activity.Status.WAITING)
         try:
-            from app.scheduler_func import scheduler
             scheduler.remove_job(f'activity_{activity.id}_{Activity.Status.WAITING}')
             return self.message_user(request=request,
                                     message='修改成功, 并移除了定时任务!')
@@ -414,7 +416,6 @@ class ActivityAdmin(admin.ModelAdmin):
         from app.activity_utils import changeActivityStatus
         changeActivityStatus(activity.id, Activity.Status.WAITING, Activity.Status.PROGRESSING)
         try:
-            from app.scheduler_func import scheduler
             scheduler.remove_job(f'activity_{activity.id}_{Activity.Status.PROGRESSING}')
             return self.message_user(request=request,
                                     message='修改成功, 并移除了定时任务!')
@@ -430,7 +431,6 @@ class ActivityAdmin(admin.ModelAdmin):
         from app.activity_utils import changeActivityStatus
         changeActivityStatus(activity.id, Activity.Status.PROGRESSING, Activity.Status.END)
         try:
-            from app.scheduler_func import scheduler
             scheduler.remove_job(f'activity_{activity.id}_{Activity.Status.END}')
             return self.message_user(request=request,
                                     message='修改成功, 并移除了定时任务!')
@@ -441,7 +441,6 @@ class ActivityAdmin(admin.ModelAdmin):
     def cancel_scheduler(self, request, queryset):
         success_list = []
         failed_list = []
-        from app.scheduler_func import scheduler
         CANCEL_STATUSES = [
             'remind',
             Activity.Status.END,
@@ -758,22 +757,6 @@ class FeedbackAdmin(admin.ModelAdmin):
 class FeedbackTypeAdmin(admin.ModelAdmin):
     list_display = ["name","org_type","org",]
     search_fields =  ("name","org_type","org",)
-
-
-@admin.register(PageLog)
-class PageLogAdmin(admin.ModelAdmin):
-    list_display = ["user", "type", "page", "time"]
-    list_filter = ["type", "time", "platform"]
-    search_fields =  ["user__username", "page"]
-    date_hierarchy = "time"
-
-
-@admin.register(ModuleLog)
-class ModuleLogAdmin(admin.ModelAdmin):
-    list_display = ["user", "type", "page", "module_name", "time"]
-    list_filter = ["type", "module_name", "time", "platform", "page"]
-    search_fields = ["user__username", "page", "module_name"]
-    date_hierarchy = "time"
 
 
 @admin.register(AcademicTag)

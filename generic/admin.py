@@ -5,7 +5,7 @@ from django.contrib.contenttypes.models import ContentType
 from django.db.models import QuerySet
 from generic.models import *
 from generic.models import to_acronym
-from boottest.admin_utils import *
+from utils.admin_utils import *
 
 
 # 后台显示
@@ -166,3 +166,19 @@ class YQPointRecordAdmin(admin.ModelAdmin):
     ]
     search_fields = [*MyUserAdmin.suggest_search_fields(), 'source']
     date_hierarchy = 'time'
+
+
+@admin.register(PageLog)
+class PageLogAdmin(admin.ModelAdmin):
+    list_display = ["user", "type", "page", "time"]
+    list_filter = ["type", "time", "platform"]
+    search_fields =  ["user__username", "page"]
+    date_hierarchy = "time"
+
+
+@admin.register(ModuleLog)
+class ModuleLogAdmin(admin.ModelAdmin):
+    list_display = ["user", "type", "page", "module_name", "time"]
+    list_filter = ["type", "module_name", "time", "platform", "page"]
+    search_fields = ["user__username", "page", "module_name"]
+    date_hierarchy = "time"

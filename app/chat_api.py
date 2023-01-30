@@ -5,7 +5,7 @@ from app.chat_utils import (
     add_chat_message,
     create_chat,
 )
-from boottest.global_messages import MSG_FIELD, CODE_FIELD
+from utils.global_messages import MSG_FIELD, CODE_FIELD
 
 __all__ = [
     'startChat', 'addChatComment', 'closeChat'

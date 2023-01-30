@@ -1,21 +1,15 @@
 import threading
 import os
-from boottest import base_get_setting
-from app.constants import SYSTEM_LOG
-from datetime import datetime, timedelta
-
+from datetime import datetime
 from functools import wraps
-import traceback
-import json
-import hashlib
 
 from django.conf import settings
+
 
 __all__ = [
     'STATE_DEBUG', 'STATE_INFO', 'STATE_WARNING', 'STATE_ERROR',
     'operation_writer',
     'except_captured',
-    'record_traceback',
 ]
 
 # 状态常量
@@ -44,13 +38,9 @@ __log_detailed_path = os.path.join(__log_root_path, "traceback_record")
 
 
 # 记录相关的常量
-SYSTEM_LOG = SYSTEM_LOG
-DEBUG_IDS: list = base_get_setting(
-    'debug_stuids',
-    lambda x: x.replace(' ', '').split(',') if isinstance(x, str) else x,
-    default=[], raise_exception=False,
-)
-
+SYSTEM_LOG = 'deprecated'
+# TODO: Change it
+DEBUG_IDS = []
 
 # 屏蔽设置记录等级以下的等级
 def status_enabled(status_code: str):
@@ -62,7 +52,7 @@ def status_enabled(status_code: str):
         return False
 
 
-def operation_writer(user: str, message: str, source: str='', status_code: str=STATE_INFO):
+def operation_writer(user: str, message: str, source: str = '', status_code: str = STATE_INFO):
     '''
     通用日志写入程序
     - 写入时间, 操作主体(user), 操作说明(Str),写入函数(Str)
@@ -71,7 +61,7 @@ def operation_writer(user: str, message: str, source: str='', status_code: str=S
     '''
     if not status_enabled(status_code):
         return
-    
+
     __lock.acquire()
     try:
         timestamp = datetime.now()
@@ -91,7 +81,8 @@ def operation_writer(user: str, message: str, source: str='', status_code: str=S
                     send_message[-100:],
                     '详情请查看log'
                 ])
-            send_wechat(DEBUG_IDS, f'YPPF {settings.MY_ENV}发生异常\n' + send_message, card=len(message) < 200)
+            send_wechat(
+                DEBUG_IDS, f'YPPF {settings.MY_ENV}发生异常\n' + send_message, card=len(message) < 200)
     except Exception as e:
         # 最好是发送邮件通知存在问题
         # TODO:
@@ -132,10 +123,14 @@ def except_captured(return_value=None, except_type=Exception,
                             else:
                                 user = args[0].user
                             msg += f', 用户为{user.username}'
-                            try: msg += f', 姓名: {user.naturalperson}'
-                            except: pass
-                            try: msg += f', 组织名: {user.organization}'
-                            except: pass
+                            try:
+                                msg += f', 姓名: {user.naturalperson}'
+                            except:
+                                pass
+                            try:
+                                msg += f', 组织名: {user.organization}'
+                            except:
+                                pass
                         except:
                             msg += f', 尝试追踪用户, 但未能找到该参数'
                     if record_request_args:
@@ -146,16 +141,19 @@ def except_captured(return_value=None, except_type=Exception,
                             else:
                                 request = args[0]
                             infos = []
-                            infos.append(f'请求方式: {request.method}, 请求地址: {request.path}')
+                            infos.append(
+                                f'请求方式: {request.method}, 请求地址: {request.path}')
                             if request.GET:
                                 infos.append(
                                     'GET参数: ' +
-                                    ';'.join([f'{k}: {v}' for k, v in request.GET.items()])
+                                    ';'.join(
+                                        [f'{k}: {v}' for k, v in request.GET.items()])
                                 )
                             if request.POST:
                                 infos.append(
                                     'POST参数: ' +
-                                    ';'.join([f'{k}: {v}' for k, v in request.POST.items()])
+                                    ';'.join(
+                                        [f'{k}: {v}' for k, v in request.POST.items()])
                                 )
                             msg = msg + '\n' + '\n'.join(infos)
                         except:
@@ -164,7 +162,7 @@ def except_captured(return_value=None, except_type=Exception,
                         msg += '\n详细信息：\n\t'
                         msg += traceback.format_exc().replace('\n', '\n\t')
                     operation_writer(SYSTEM_LOG,
-                        msg, source, status_code)
+                                     msg, source, status_code)
                 if return_value is not None:
                     return return_value
                 raise
@@ -172,29 +170,3 @@ def except_captured(return_value=None, except_type=Exception,
         return _wrapped_view
 
     return actual_decorator
-
-
-def record_traceback(request, e):
-    '''尽量避免使用本函数'''
-    d = {}
-    d["time"] = datetime.now().strftime("%Y/%m/%d-%H%M")
-    d["username"] = request.user.username
-    d["request_path"] = request.path
-    if request.GET:
-        d["GET_Param"] = request.GET
-    if request.POST:
-        d["POST_Param"] = request.POST
-    d["traceback"] = traceback.format_exc()
-
-    hash_value = hashlib.sha1(json.dumps(d).encode()).digest().hex()
-    __log_dir = os.path.join(__log_detailed_path, request.user.username)
-    __log_path = os.path.join(__log_dir, hash_value + ".json")
-    os.makedirs(__log_dir, exist_ok=True)
-    with open(__log_path, "w") as f:
-        json.dump(d, f)
-
-    if DEBUG_IDS:
-        from app.wechat_send import send_wechat
-        message = f"错误信息：{repr(e)}\n + 记录路径：{__log_path}\n"
-        message = f'YPPF {settings.MY_ENV} 记录到错误详情\n{message}'
-        send_wechat(DEBUG_IDS, message)

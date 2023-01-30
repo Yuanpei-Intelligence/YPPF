@@ -1,3 +1,9 @@
+from typing import List, Dict, Set
+from collections import defaultdict
+
+from django.http import HttpRequest
+from django.db.models import QuerySet
+
 from app.utils_dependency import *
 from app.models import (
     NaturalPerson,
@@ -8,15 +14,9 @@ from app.models import (
     User,
     Chat,
 )
-from app.constants import UTYPE_PER
+from app.config import UTYPE_PER
 from app.utils import get_person_or_org, check_user_type
 from app.comment_utils import showComment
-
-from django.http import HttpRequest
-from django.db.models import QuerySet
-
-from typing import List, Dict, Set
-from collections import defaultdict
 
 __all__ = [
     'get_search_results',

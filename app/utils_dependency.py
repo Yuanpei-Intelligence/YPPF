@@ -30,17 +30,17 @@ utils
 
 @Date 2022-01-17
 '''
-from app.constants import *
+from app.config import *
 from app import log
-from boottest.global_messages import (
+from utils.global_messages import (
     MESSAGECONTEXT,
     wrong,
     succeed,
 )
-import boottest.global_messages as my_messages
+import utils.global_messages as my_messages
 
 # 内部加密用，不同utils文件不共享，可能被对应的views依赖
-from boottest.hasher import MyMD5PasswordHasher, MySHA256Hasher
+from utils.hasher import MySHA256Hasher, base_hasher
 
 # 针对模型的工具函数常常需要原子化操作
 from django.db import transaction
