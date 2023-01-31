@@ -24,6 +24,9 @@ BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 class Config:
     """
+    为各个 app 提供的 Config 基类
+
+    使用方法可参考 scheduler/config.py
     """
 
     with open('./config.json') as f:
@@ -44,6 +47,8 @@ T = TypeVar('T')
 
 
 class LazySetting(Generic[T]):
+    """
+    """
 
     def __init__(self, path: str, trans_fn: Optional[Callable[[Any], T]] = None,
                  default: Optional[T] = None) -> None:

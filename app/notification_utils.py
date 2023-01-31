@@ -1,3 +1,7 @@
+from random import random
+from typing import Union, List
+from datetime import datetime, timedelta
+
 from app.utils_dependency import *
 from app.models import Notification
 from app.wechat_send import (
@@ -6,10 +10,6 @@ from app.wechat_send import (
     WechatApp,
     WechatMessageLevel,
 )
-
-from random import random
-from typing import Union, List
-from datetime import datetime, timedelta
 
 hasher = MySHA256Hasher("")
 

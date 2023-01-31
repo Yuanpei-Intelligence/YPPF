@@ -3,9 +3,10 @@ from django.contrib.auth.admin import UserAdmin
 from django.contrib.auth.models import Permission
 from django.contrib.contenttypes.models import ContentType
 from django.db.models import QuerySet
+
+from utils.admin_utils import *
 from generic.models import *
 from generic.models import to_acronym
-from utils.admin_utils import *
 
 
 # 后台显示
