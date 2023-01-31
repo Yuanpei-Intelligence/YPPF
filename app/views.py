@@ -63,99 +63,84 @@ email_coder = MySHA256Hasher(CONFIG.email_salt)
 
 
 class IndexView(SecureTemplateView):
-    login_required = False
 
+    login_required = False
     template_name = 'index.html'
 
-    def check_get(self, request: HttpRequest, *args,
-                  **kwargs) -> HttpResponseRedirect | None:
-        origin = self.args.get('origin')
-        modpw_status = self.args.get('modinfo')
-        is_logout = self.args.get('is_logout')
-        alert = self.args.get('alert')
-        if request.session.get('alert_message'):
-            load_alert_message = request.session.pop('alert_message')
 
-        if (request.method == 'GET' and modpw_status is not None
-                and modpw_status == 'success'):
-            succeed("修改密码成功!", self.extra_context)
+    def get(self, request: HttpRequest, *args, **kwarg) -> HttpResponse | None:
+
+        # Not authenticated
+        if not request.user.is_authenticated:
+            # Modify password
+            # Seems that after modification, log out by default?
+            if request.GET.get('modinfo') is not None:
+                succeed("修改密码成功!", self.extra_context)
+            return
+
+        # Special user
+        if not request.user.is_valid():  # type: ignore
+            wrong(f'当前用户“{request.user}”无权访问成长档案', self.extra_context)
+            return
+
+        # Logout
+        if request.GET.get('is_logout') is not None:
             auth.logout(request)
+            return
 
-        if alert is not None:
-            wrong("检测到异常行为，请联系系统管理员。", self.extra_context)
-            auth.logout(request)
+        return redirect(reverse('welcome'))
 
-        if is_logout is not None and request.user.is_authenticated:
-            auth.logout(request)
+    def check_post(self, request: HttpRequest, *args, **kwargs):
+        assert 'username' in request.POST
+        assert 'password' in request.POST
 
-        if origin is None and request.user.is_authenticated:
-            return redirect('/welcome/')
-
-        # 非法的 origin
-        if origin and not origin.startswith('/'):
-            request.session['alert_message'] = f"尝试跳转外部 URL: {origin}，跳转已取消。"
-            return redirect('/index/?alert=1')
-
-    def check_post(self, request: HttpRequest, *args,
-                   **kwargs) -> HttpResponseRedirect | None:
-        username = self.form_data.get('username')
-        password = self.form_data.get('password')
-        assert username is not None
-        assert password is not None
-
-    def is_origin_safe(self, request: HttpRequest, origin: Optional[str] = None) -> bool:
+    def __is_origin_safe(self, request: HttpRequest,
+                         origin: Optional[str] = None) -> bool:
         return origin is None or origin.startswith('/')
 
-    def get(self, request: HttpRequest, *args,
-            **kwargs) -> HttpResponseRedirect | None:
-        origin = self.args.get('arg_origin')
-        if origin is None:
-            return
+    def post(self, request: HttpRequest, *args, **kwargs) -> HttpResponse | None:
+        username = request.POST['username']
+        password = request.POST['password']
 
-        if self.is_origin_safe(request, origin):
-            return redirect(origin)
-        else:
-            return redirect(message_url(wrong('目标域名非法，请警惕陌生链接。')))
-
-    def post(self, request: HttpRequest, *args,
-             **kwargs) -> HttpResponseRedirect | None:
-        origin = self.args.get('arg_origin')
-        username = self.form_data.get('username')
-        password = self.form_data.get('password')
-
-        try:
-            user = User.objects.filter(username=username)
-            if len(user) == 0:
-                org: Organization = Organization.objects.get(
-                    oname=username)  # 如果get不到，就是账号不存在了
-                user = org.get_user()
-                username = user.username
+        # Check weather username exists
+        if not User.objects.filter(username=username).exists():
+            # Allow org to login with orgname
+            org: Organization | None = Organization.objects.filter(
+                oname=username).first()
+            if org is not None:
+                username = org.get_user().username
             else:
-                user = user[0]
-        except:
-            wrong('TODO: ', self.extra_context)
+                wrong('用户名不存在', self.extra_context)
+                return
+
+        # Try login
+        userinfo = auth.authenticate(username=username, password=password)
+        if userinfo is None:
+            wrong('密码错误', self.extra_context)
             return
 
-        userinfo = auth.authenticate(username=username, password=password)
-        if userinfo:
-            auth.login(request, userinfo)
-            valid, user_type, _ = utils.check_user_type(request.user)
-            if not valid:
-                return redirect('/logout/')
-            if user_type == UTYPE_PER:
-                me = get_person_or_org(userinfo, user_type)
-                if me.first_time_login:
-                    return redirect('/modpw/')
-                update_related_account_in_session(request, username)
-            if origin is None:
-                return redirect('/welcome/')
-        else:
-            wrong('TODO: ', self.extra_context)
+        # special user
+        auth.login(request, userinfo)
+        user: User = request.user  # type: ignore
+        if not user.is_valid():
+            wrong(f'当前用户“{request.user}”无权访问成长档案')
+            return
 
-        if self.is_origin_safe(request, origin):
+        # first time login
+        if user.first_time_login:
+            return redirect(reverse('modpw'))
+
+        # Related account
+        # When login as np, related org accout is also available
+        update_related_account_in_session(request, username)
+
+        # If origin is present and valid, redirect
+        # Otherwise, redirect to welcome page
+        origin = request.GET.get('origin')
+        if origin and self.__is_origin_safe(request, origin):
             return redirect(origin)
         else:
-            return redirect(message_url(wrong('目标域名非法，请警惕陌生链接。')))
+            return redirect(reverse('welcome'))
 
 
 @login_required(redirect_field_name="origin")
@@ -716,7 +701,7 @@ def requestLoginOrg(request: HttpRequest, name=None):  # 特指个人希望通�
         auth.login(request, org.get_user())  # 切换到小组账号
         utils.update_related_account_in_session(
             request, user.username, oname=org.oname)
-        if org.first_time_login:
+        if user.first_time_login:
             return redirect("/modpw/")
         return redirect("/orginfo/?warn_code=2&warn_message=成功切换到"+str(org)+"的账号!")
 
@@ -1820,6 +1805,27 @@ def forgetPassword(request: HttpRequest):
     return render(request, "forget_password.html", locals())
 
 
+class ModpwView(SecureTemplateView):
+    """Draft
+    """
+
+    template_name = 'modpw.html'
+
+    def check_perm(self, request: HttpRequest) -> HttpResponse | None:
+        response = super().check_perm(request)
+        if response is not None:
+            return response
+
+        if not request.user.is_valid(): # type: ignore
+            return redirect(reverse('index'))
+
+    def check_post(self, request: HttpRequest) -> HttpResponse | None:
+        return super().check_post(request)
+    
+    def post(self, request: HttpRequest) -> HttpResponse | None:
+        pass
+
+
 @login_required(redirect_field_name="origin")
 @utils.check_user_access(redirect_url="/logout/", is_modpw=True)
 @log.except_captured(source='views[modpw]', record_user=True)
@@ -1831,11 +1837,11 @@ def modpw(request: HttpRequest):
             以上两种情况都可以直接进行密码修改
         常规修改要审核旧的密码
     """
-    valid, user_type, html_display = utils.check_user_type(request.user)
+    user: User = request.user # type: ignore
+    valid, _, html_display = utils.check_user_type(user)
     if not valid:
         return redirect("/index/")
-    me = get_person_or_org(request.user, user_type)
-    isFirst = me.first_time_login
+    isFirst = user.first_time_login
     # 在其他界面，如果isFirst为真，会跳转到这个页面
     # 现在，请使用@utils.check_user_access(redirect_url)包装器完成用户检查
 
@@ -1844,7 +1850,6 @@ def modpw(request: HttpRequest):
     err_code = 0
     err_message = None
     forgetpw = request.session.get("forgetpw", "") == "yes"  # added by pht
-    user = request.user
     username = user.username
 
     if request.method == "POST" and request.POST:
@@ -1890,9 +1895,8 @@ def modpw(request: HttpRequest):
             if userauth:  # 可以修改
                 try:  # modified by pht: if检查是错误的，不存在时get会报错
                     user.set_password(newpw)
+                    user.first_time_login = False
                     user.save()
-                    me.first_time_login = False
-                    me.save()
 
                     if forgetpw:
                         request.session.pop("forgetpw")  # 删除session记录

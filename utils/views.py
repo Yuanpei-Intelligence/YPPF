@@ -1,7 +1,7 @@
 from typing import Dict, List, Any
 
 from django.views.generic import View
-from django.http import HttpRequest, HttpResponseRedirect, JsonResponse
+from django.http import HttpRequest, HttpResponse, HttpResponseRedirect, JsonResponse
 from django.core.exceptions import ImproperlyConfigured
 from django.template.response import TemplateResponse
 
@@ -13,7 +13,7 @@ class SecureView(View):
     通用的视图类
 
     主要功能：权限检查、方法分发、参数检查
-    
+
     权限检查：
     - 可以根据需要重载check_perm()
 
@@ -24,7 +24,6 @@ class SecureView(View):
     """
 
     login_required = True
-    redirect_field_name = "index/"
 
     args: Dict[str, Any] | None = None  # GET方法的参数
     form_data: Dict[str, Any] | None = None  # 表单数据
@@ -33,67 +32,62 @@ class SecureView(View):
     response_class = None
 
     def check_perm(self,
-                   request: HttpRequest) -> 'HttpResponseRedirect | None':
+                   request: HttpRequest) -> HttpResponse | None:
         """
-        检查用户权限
+        检查用户是否登录及权限
         """
         if self.login_required and not request.user.is_authenticated:
-            return HttpResponseRedirect(self.redirect_field_name)
+            return HttpResponseRedirect('/?origin=' + request.path)
 
-    def get_method_name(self,
-                        request: HttpRequest) -> 'HttpResponseRedirect | str':
-        return request.method.lower()
+    def permission_denied(self, context: Dict[str, Any]) -> HttpResponse:
+        raise NotImplementedError
 
-    def get_context_data(self, **kwargs):
-        if self.extra_context is not None:
-            kwargs.update(self.extra_context)
-        return kwargs
+    def get_method_name(self, request: HttpRequest) -> HttpResponse | str:
+        return request.method.lower()  # type: ignore
 
+    @err_capture()
     def dispatch(self, request: HttpRequest, *args, **kwargs):
+        # Check permission
         response = self.check_perm(request)
         if response is not None:
             return response
 
+        # Decide handler
         method_name = self.get_method_name(request)
-        self.get_args(request)
-        if method_name == 'post':
-            self.get_form_data(request)
-
+        if isinstance(method_name, HttpResponse):
+            return method_name
         if method_name in self.method_names:
             handler = getattr(self, method_name, self.http_method_not_allowed)
         else:
-            handler = self.http_method_not_allowed
-        if handler is self.http_method_not_allowed:
-            return handler(request, *args, **kwargs)
+            return self.http_method_not_allowed(request, *args, **kwargs)
 
-        checker = getattr(self, 'check_' + method_name, self.undefined_checker)
-        response = checker(request, method_name=method_name)
+        # Per method checker
+        checker = getattr(self, 'check_' + method_name, None)
+        if checker is None:
+            raise ImproperlyConfigured(
+                f'SecureView requires an implementation of "{method_name}_check"'
+            )
+        response = checker(request)
         if response is not None:
             return response
 
+        # Handle
         response = handler(request, *args, **kwargs)
         if response is not None:
             return response
 
-    def get_template_names(self):
-        if self.template_name is None:
-            raise ImproperlyConfigured(
-                "SecureView requires either a definition of "
-                "'template_name' or an implementation of 'get_template_names()'"
-            )
-        else:
-            return [self.template_name]
+    def check_get(self, request: HttpRequest) -> HttpResponse | None:
+        self.get_args(request)
+
+    def check_post(self, request: HttpRequest) -> HttpResponse | None:
+        self.get_args(request)
+        self.get_form_data(request)
 
     def get_args(self, request: HttpRequest) -> None:
         self.args = request.GET.dict()
 
     def get_form_data(self, request: HttpRequest) -> None:
         self.form_data = request.POST.dict()
-
-    def undefined_checker(self, **kwargs):
-        raise ImproperlyConfigured(
-            f"SecureView requires an implementation of '{kwargs['method_name']}_check()'"
-        )
 
 
 class SecureTemplateView(SecureView):
@@ -106,8 +100,20 @@ class SecureTemplateView(SecureView):
     - extra_context作为get_context_data()的补充，在处理请求的过程中可以随时向其中添加内容
     """
     template_name = None
-    extra_context: Dict[str, Any] | None = None
+    extra_context: Dict[str, Any] = dict()
     response_class = TemplateResponse
+
+    def get(self, request: HttpRequest, *args, **kwargs) -> HttpResponse | None:
+        pass
+
+    def get_template_names(self):
+        if self.template_name is None:
+            raise ImproperlyConfigured(
+                "SecureTemplateView requires either a definition of "
+                "'template_name' or an implementation of 'get_template_names()'"
+            )
+        else:
+            return [self.template_name]
 
     def get_context_data(self, **kwargs):
         if self.extra_context is not None:

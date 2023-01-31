@@ -311,7 +311,6 @@ class NaturalPerson(models.Model):
     biography = models.TextField("自我介绍", max_length=1024, default="还没有填写哦～")
     avatar = models.ImageField(upload_to=f"avatar/", blank=True)
     wallpaper = models.ImageField(upload_to=f"wallpaper/", blank=True)
-    first_time_login = models.BooleanField("首次登录", default=True)
     inform_share = models.BooleanField(default=True) # 是否第一次展示有关分享的帮助
     last_time_login = models.DateTimeField("上次登录时间", blank=True, null=True)
     objects: NaturalPersonManager = NaturalPersonManager()
@@ -604,7 +603,6 @@ class Organization(models.Model):
     wallpaper = models.ImageField(upload_to=f"wallpaper/", blank=True)
     visit_times = models.IntegerField("浏览次数",default=0) # 浏览主页的次数
 
-    first_time_login = models.BooleanField(default=True)  # 是否第一次登录
     inform_share = models.BooleanField(default=True) # 是否第一次展示有关分享的帮助
 
     # 组织类型标签，一个组织可能同时有多个标签

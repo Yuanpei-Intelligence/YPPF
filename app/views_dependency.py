@@ -43,6 +43,7 @@ from utils.global_messages import (
     append_query,
 )
 from utils.http.dependency import *
+from utils.views import *
 from generic.models import User
 from app.config import *
 from app import utils, log
