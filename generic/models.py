@@ -51,7 +51,7 @@ def to_acronym(name: str) -> str:
     return ''.join([w[0][0] for w in pinyin_list])
 
 
-class UserManager(_UserManager):
+class UserManager(_UserManager['User']):
     '''
     用户管理器，提供对信用分等通用
     '''
@@ -262,19 +262,22 @@ class User(AbstractUser, PointMixin):
     accept_anonymous_chat = models.BooleanField('允许匿名提问', default=True)
 
     class Type(models.TextChoices):
-        # TODO: Better naming? 
-        # Like person, group, admin, vistor
-        PERSON = 'Person', '自然人'
+        PERSON = 'Person', '自然人' # Deprecated
+        STUDENT = 'Student', '学生'
+        TEACHER = 'Teacher', '老师'
         ORG = 'Organization', '组织'
+        UNAUTHORIZED = 'Unauthorized', '未授权'
         SPECIAL = '', '特殊用户'
 
     name = models.CharField('名称', max_length=32)
+
     acronym = models.CharField('缩写', max_length=32, default='', blank=True)
     utype: 'str|Type' = models.CharField(
         '用户类型', max_length=20,
         choices=Type.choices,
         default='', blank=True,
     )
+    first_time_login = models.BooleanField(default=True)
 
     REQUIRED_FIELDS = ['name']
     objects: UserManager['User'] = UserManager()
@@ -300,6 +303,15 @@ class User(AbstractUser, PointMixin):
     @necessary_for_frontend(utype)
     def is_person(self) -> bool:
         return self.utype == self.Type.PERSON
+        return self.is_student() or self.is_teacher()
+
+    @necessary_for_frontend(utype)
+    def is_student(self) -> bool:
+        return self.utype == self.Type.STUDENT
+
+    @necessary_for_frontend(utype)
+    def is_teacher(self) -> bool:
+        return self.utype == self.Type.TEACHER
 
     @necessary_for_frontend(utype)
     def is_org(self) -> bool:

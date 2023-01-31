@@ -26,9 +26,9 @@ from django.conf import settings
 # 尽量不使用<type:arg>, 不支持
 urlpatterns = [
     # 登录和验证
-    path("", views.IndexView.as_view(), name="index"),
+    path("", views.IndexView.as_view(), name=""),
     path("index/", views.IndexView.as_view(), name="index"),
-    path("login/", views.IndexView.as_view(), name="index"),
+    path("login/", views.IndexView.as_view(), name="login"),
     # path("requestLoginOrg/", views.requestLoginOrg, name="requestLoginOrg"), # 已废弃
     # path("requestLoginOrg/<str:name>", views.requestLoginOrg, name="requestLoginOrg"),
     path("welcome/", views.homepage, name="welcome"),
