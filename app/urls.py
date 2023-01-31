@@ -11,6 +11,9 @@
 """
 from django.urls import path
 from django.conf.urls.static import static
+from django.conf import settings
+
+from boot.config import DEBUG
 from app import (
     views,
     org_views,
@@ -21,7 +24,6 @@ from app import (
     chat_api,
     YQPoint_views,
 )
-from django.conf import settings
 
 # 尽量不使用<type:arg>, 不支持
 urlpatterns = [
@@ -51,28 +53,38 @@ urlpatterns = [
     path("userAccountSetting/", views.accountSetting, name="userAccountSetting"),
     path("notifications/", views.notifications, name="notifications"),
     path("search/", views.search, name="search"),
-    path("subscribeOrganization/", views.subscribeOrganization, name="subscribeOrganization"),
-    path("saveSubscribeStatus", views.saveSubscribeStatus, name="saveSubscribeStatus"),
+    path("subscribeOrganization/", views.subscribeOrganization,
+         name="subscribeOrganization"),
+    path("saveSubscribeStatus", views.saveSubscribeStatus,
+         name="saveSubscribeStatus"),
 ] + [
     # 活动
-    path("applyActivity/<str:aid>", activity_views.applyActivity, name="applyActivity"),
+    path("applyActivity/<str:aid>",
+         activity_views.applyActivity, name="applyActivity"),
     path("viewActivity/<str:aid>", activity_views.viewActivity, name="viewActivity"),
     path("getActivityInfo/", activity_views.getActivityInfo, name="getActivityInfo"),
-    path("checkinActivity/<str:aid>", activity_views.checkinActivity, name="checkinActivity"),
+    path("checkinActivity/<str:aid>",
+         activity_views.checkinActivity, name="checkinActivity"),
     path("addActivity/", activity_views.addActivity, name="addActivity"),
     path("showActivity/", activity_views.showActivity, name="showActivity"),
     path("editActivity/<str:aid>", activity_views.addActivity, name="editActivity"),
-    path("examineActivity/<str:aid>", activity_views.examineActivity, name="examineActivity"),
-    path("offlineCheckinActivity/<str:aid>", activity_views.offlineCheckinActivity, name="offlineCheckinActivity"),
+    path("examineActivity/<str:aid>",
+         activity_views.examineActivity, name="examineActivity"),
+    path("offlineCheckinActivity/<str:aid>",
+         activity_views.offlineCheckinActivity, name="offlineCheckinActivity"),
     path("endActivity/", activity_views.endActivity, name="endActivity"),
-    path("modifyEndActivity/", activity_views.modifyEndActivity, name="modifyEndActivity"),
+    path("modifyEndActivity/", activity_views.modifyEndActivity,
+         name="modifyEndActivity"),
 ] + [
     # 组织相关操作
-    path("saveShowPositionStatus", org_views.saveShowPositionStatus, name="saveShowPositionStatus"),
-    path("showNewOrganization/", org_views.showNewOrganization, name="showNewOrganization"),
+    path("saveShowPositionStatus", org_views.saveShowPositionStatus,
+         name="saveShowPositionStatus"),
+    path("showNewOrganization/", org_views.showNewOrganization,
+         name="showNewOrganization"),
     path('showPosition/', org_views.showPosition, name="showPosition"),
     path("modifyPosition/", org_views.modifyPosition, name="modifyPosition"),
-    path("modifyOrganization/", org_views.modifyOrganization, name="modifyOrganization"),
+    path("modifyOrganization/", org_views.modifyOrganization,
+         name="modifyOrganization"),
     path("sendMessage/", org_views.sendMessage, name="sendMessage"),
     # path("applyPosition/<str:oid>", views.apply_position, name="applyPosition"), 弃用多年
 ] + [
@@ -83,13 +95,18 @@ urlpatterns = [
     path("selectCourse/", course_views.selectCourse, name="selectCourse"),
     path("viewCourse/", course_views.viewCourse, name="viewCourse"),
     # 课程相关操作
-    path("addSingleCourseActivity/", course_views.addSingleCourseActivity, name="addSingleCourseActivity"),
-    path("editCourseActivity/<str:aid>", course_views.editCourseActivity, name="editCourseActivity"),
-    path("showCourseActivity/", course_views.showCourseActivity, name="showCourseActivity"),
-    path("showCourseRecord/", course_views.showCourseRecord, name="showCourseRecord"),
+    path("addSingleCourseActivity/", course_views.addSingleCourseActivity,
+         name="addSingleCourseActivity"),
+    path("editCourseActivity/<str:aid>",
+         course_views.editCourseActivity, name="editCourseActivity"),
+    path("showCourseActivity/", course_views.showCourseActivity,
+         name="showCourseActivity"),
+    path("showCourseRecord/", course_views.showCourseRecord,
+         name="showCourseRecord"),
     # 数据导出
     path("outputRecord/", course_views.outputRecord, name="outputRecord"),
-    path("outputSelectInfo/", course_views.outputSelectInfo, name="outputSelectInfo"),
+    path("outputSelectInfo/", course_views.outputSelectInfo,
+         name="outputSelectInfo"),
 ] + [
     # 反馈中心
     path("feedback/", feedback_views.feedbackWelcome, name="feadbackWelcome"),
@@ -97,12 +114,14 @@ urlpatterns = [
     path("viewFeedback/<str:fid>", feedback_views.viewFeedback, name="viewFeedback"),
 ] + [
     # 学术地图
-    path("searchAcademic/", academic_views.searchAcademic, name="searchAcademic"),
+    path("searchAcademic/", academic_views.SearchAcademicView.as_view(),
+         name="searchAcademic"),
     path("modifyAcademic/", academic_views.modifyAcademic, name="modifyAcademic"),
-    path("AcademicQA/", academic_views.showChats, name="showChats"),
-    path("viewQA/<str:chat_id>", academic_views.viewChat, name="viewChat"),
+    path("AcademicQA/", academic_views.ShowChatsView.as_view(), name="showChats"),
+    path("viewQA/<str:chat_id>", academic_views.ChatView.as_view(), name="viewChat"),
     path("auditAcademic/", academic_views.auditAcademic, name="auditAcademic"),
-    path("applyAuditAcademic/", academic_views.applyAuditAcademic, name="applyAuditAcademic"),
+    path("applyAuditAcademic/", academic_views.applyAuditAcademic,
+         name="applyAuditAcademic"),
 ] + [
     # 问答相关
     path("addChatComment/", chat_api.addChatComment, name="addChatComment"),
@@ -114,5 +133,7 @@ urlpatterns = [
     path("showPools/", YQPoint_views.showPools, name="showPools"),
     path("myPrize/", YQPoint_views.myPrize, name="myPrize"),
 ]
-if settings.DEBUG:
-    urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
+
+if DEBUG:
+    urlpatterns += static(settings.MEDIA_URL,
+                          document_root=settings.MEDIA_ROOT)
