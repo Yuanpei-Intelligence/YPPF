@@ -39,9 +39,8 @@ def check_user_access(redirect_url="/logout/", is_modpw=False):
             if not valid:
                 return redirect(redirect_url)
 
-            isFirst = get_person_or_org(request.user, user_type).first_time_login
             # 如果是首次登陆，会跳转到用户须知的页面
-            if isFirst:
+            if request.user.first_time_login:
                 if request.session.get('confirmed') != 'yes':
                     return redirect("/agreement/")
                 if not is_modpw:

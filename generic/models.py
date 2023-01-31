@@ -277,6 +277,7 @@ class User(AbstractUser, PointMixin):
         choices=Type.choices,
         default='', blank=True,
     )
+    first_time_login = models.BooleanField(default=True)
 
     REQUIRED_FIELDS = ['name']
     objects: UserManager['User'] = UserManager()

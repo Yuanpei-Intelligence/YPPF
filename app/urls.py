@@ -27,8 +27,8 @@ from django.conf import settings
 urlpatterns = [
     # 登录和验证
     path("", views.IndexView.as_view(), name="index"),
-    path("index/", views.IndexView.as_view(), name="index"),
-    path("login/", views.IndexView.as_view(), name="index"),
+    # path("index/", views.IndexView.as_view(), name="index"),
+    # path("login/", views.IndexView.as_view(), name="index"),
     # path("requestLoginOrg/", views.requestLoginOrg, name="requestLoginOrg"), # 已废弃
     # path("requestLoginOrg/<str:name>", views.requestLoginOrg, name="requestLoginOrg"),
     path("welcome/", views.homepage, name="welcome"),

@@ -1,6 +1,5 @@
 from datetime import datetime
 from django.contrib import admin
-from django.db import transaction
 from django.utils.safestring import mark_safe
 
 from utils.http.dependency import HttpRequest
@@ -72,13 +71,12 @@ class NaturalPersonAdmin(admin.ModelAdmin):
         "person_id",
         "name",
         "identity",
-        "first_time_login",
     ]
     search_fields = ("person_id__username", "name")
     readonly_fields = ("stu_id_dbonly",)
     list_filter = (
         "status", "identity",
-        "first_time_login", "wechat_receive_level",
+        "wechat_receive_level",
         "stu_grade", "stu_class",
         )
 
