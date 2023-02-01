@@ -57,7 +57,6 @@ class WelcomeView(SecureTemplateView):
             "recommendation": get_recommended_or_newest_books(
                         num=DISPLAY_RECOMMENDATION_NUM, newest=False),
         })
-        return
 
 
 @login_required(redirect_field_name="origin")
@@ -87,45 +86,39 @@ def search(request: HttpRequest) -> HttpResponse:
     return render(request, "yp_library/search.html", frontend_dict)
 
 
-@login_required(redirect_field_name="origin")
-@check_user_access(redirect_url="/logout/")
-def lendInfo(request: HttpRequest) -> HttpResponse:
-    '''
-    借阅信息页面
+class LendInfoView(SecureTemplateView):
+    '''这个页面似乎弃用了'''
 
-    :param request: 进入借阅信息页面的请求
-    :type request: HttpRequest
-    :return: lendinfo页面，显示与当前user学号关联的所有读者的所有借阅记录
-    :rtype: HttpResponse
-    '''
-    bar_display = get_sidebar_and_navbar(request.user, "借阅信息")
-    frontend_dict = {
-        "bar_display": bar_display,
-    }
-    transfer_message_context(request.GET, frontend_dict,
-                             normalize=True)
+    login_required = True
+    template_name = "yp_library/lendinfo.html"
 
-    # 检查用户身份
-    # 要求用户为个人账号且账号必须通过学号关联至少一个reader，否则给出提示语
-    try:
-        readers = get_readers_by_user(request.user)
-    except AssertionError as e:
-        wrong(str(e), frontend_dict)
-        frontend_dict['unreturned_records_list'] = []
-        frontend_dict['returned_records_list'] = []
-        return render(request, "yp_library/lendinfo.html", frontend_dict)
-
-    unreturned_records_list, returned_records_list = get_lendinfo_by_readers(readers)
-    frontend_dict['unreturned_records_list'] = unreturned_records_list
-    frontend_dict['returned_records_list'] = returned_records_list
+    def check_get(self, request: HttpRequest) -> HttpResponse | None:
+        try:
+            self.readers = get_readers_by_user(request.user)
+        except AssertionError as e:
+            wrong(str(e), self.extra_context)
+            self.extra_context.update({
+                'unreturnedd_records_list': [],
+                'returned_records_list': [],
+            })
+            return self.render(request)
     
-    # 用户发起申诉
-    if request.method == 'POST' and request.POST:
+    def get(self, request: HttpRequest, *args, **kwargs) -> HttpResponse | None:
+        unreturned_list, returned_list = get_lendinfo_by_readers(self.readers)
+
+        transfer_message_context(request.GET, self.extra_context,
+                                 normalize=True)
+        self.extra_context.update({
+            "bar_display": get_sidebar_and_navbar(request.user, "借阅信息"),
+            "unreturned_records_list": unreturned_list,
+            "returned_records_list": returned_list,
+        })
+
+    def post(self, request: HttpRequest, *args, **kwargs) -> HttpResponse | None:
         if request.POST.get('feedback') is not None:
             try:
                 url = to_feedback_url(request)
                 return redirect(url)
             except AssertionError as e:
-                wrong(str(e), frontend_dict) 
-
-    return render(request, "yp_library/lendinfo.html", frontend_dict)
+                wrong(str(e), self.extra_context)
+                return self.render(request)

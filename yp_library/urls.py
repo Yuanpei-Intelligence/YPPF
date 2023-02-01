@@ -16,5 +16,5 @@ app_name = 'yp_library'
 urlpatterns = [
     path('', views.WelcomeView.as_view(), name="welcome"),
     path('search/', views.search, name="search"),
-    path('lendinfo/', views.lendInfo, name="lendinfo"),
+    path('lendinfo/', views.LendInfoView.as_view(), name="lendinfo"),
 ]
