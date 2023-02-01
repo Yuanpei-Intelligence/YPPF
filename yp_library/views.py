@@ -2,6 +2,7 @@ from django.http import HttpRequest, HttpResponse
 from django.shortcuts import render, redirect
 from django.contrib.auth.decorators import login_required
 
+from utils.views import SecureTemplateView
 from utils.global_messages import wrong, succeed, message_url, transfer_message_context
 from yp_library.utils import (
     get_readers_by_user,
@@ -20,47 +21,43 @@ DISPLAY_RECOMMENDATION_NUM = 5 # 首页展示的推荐书目数量
 # DISPLAY_NEW_BOOK_NUM = 5 # 首页展示的新入馆书目数量
 
 
-@login_required(redirect_field_name="origin")
-@check_user_access(redirect_url="/logout/")
-def welcome(request: HttpRequest) -> HttpResponse:
+class WelcomeView(SecureTemplateView):
     """
     书房首页，提供近期活动、随机推荐、开馆时间；
     首页的查询功能应该可以通过前端转到search页面，这里未做处理
-
-    :param request: 进入书房首页的请求
-    :type request: HttpRequest
-    :return: 书房首页
-    :rtype: HttpResponse
     """
-    bar_display = get_sidebar_and_navbar(request.user, "元培书房")
-    frontend_dict = {
-        "bar_display": bar_display,
-    }
-    transfer_message_context(request.GET, frontend_dict,
-                             normalize=True)
-    
-    # 书房首页不再额外检查是否个人账号、是否关联reader
-        
-    # 获取首页展示的近期活动
-    frontend_dict["activities"] = get_library_activity(num=DISPLAY_ACTIVITY_NUM)
-    # 获取开馆时间
-    frontend_dict["opening_time_start"], frontend_dict["opening_time_end"] = get_opening_time()
-    # 获取随机推荐书目
-    frontend_dict["recommendation"] = get_recommended_or_newest_books(
-        num=DISPLAY_RECOMMENDATION_NUM, newest=False)
-    # 获取最新到馆书目（按id从大到小），暂不启用
-    # frontend_dict["newest_books"] = get_recommended_or_newest_books(
-    #     num=DISPLAY_NEW_BOOK_NUM, newest=True)
-    try:
-        readers = get_readers_by_user(request.user)
-    except AssertionError as e:
-        records_list = []
-    else:
-        unreturned_records_list, returned_records_list = get_lendinfo_by_readers(readers)
-        records_list = unreturned_records_list + returned_records_list
 
-    frontend_dict["records_list"] = records_list
-    return render(request, "yp_library/welcome.html", frontend_dict)
+    login_required = True
+    template_name = "yp_library/welcome.html"
+
+    def check_get(self, request: HttpRequest) -> HttpResponse | None:
+        return super().check_get(request)
+
+    def get(self, request: HttpRequest, *args, **kwargs) -> HttpResponse | None:
+        bar_display = get_sidebar_and_navbar(request.user, "元培书房")
+        # 借阅记录
+        try:
+            readers = get_readers_by_user(request.user)
+        except AssertionError as e:
+            records_list = []
+        else:
+            unreturned_records_list, returned_records_list = get_lendinfo_by_readers(readers)
+            records_list = unreturned_records_list + returned_records_list
+        # 开放时间
+        opening_time_start, opening_time_end = get_opening_time()
+
+        transfer_message_context(request.GET, self.extra_context,
+                                normalize=True)
+        self.extra_context.update({
+            "activities": get_library_activity(num=DISPLAY_ACTIVITY_NUM),
+            "bar_display": bar_display,
+            "opening_time_start": opening_time_start,
+            "opening_time_end": opening_time_end,
+            "records_list": records_list,
+            "recommendation": get_recommended_or_newest_books(
+                        num=DISPLAY_RECOMMENDATION_NUM, newest=False),
+        })
+        return
 
 
 @login_required(redirect_field_name="origin")
