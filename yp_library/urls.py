@@ -14,7 +14,7 @@ from yp_library import views
 app_name = 'yp_library'
 
 urlpatterns = [
-    path('', views.WelcomeView.as_view(), name="welcome"),
-    path('search/', views.search, name="search"),
+    path('', views.WelcomeView.as_view(), name="libWelcome"),
+    path('search/', views.search, name="libSearch"),
     path('lendinfo/', views.LendInfoView.as_view(), name="lendinfo"),
 ]
