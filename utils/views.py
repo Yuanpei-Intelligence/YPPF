@@ -1,4 +1,4 @@
-from typing import Dict, List, Any
+from typing import Dict, List, Any, final
 from abc import ABC, abstractmethod
 
 from django.views.generic import View
@@ -7,7 +7,7 @@ from django.core.exceptions import ImproperlyConfigured
 from django.template.response import TemplateResponse
 
 from .log import err_capture
-from .http import HttpRequest
+from .http import HttpRequest, UserRequest
 from .global_messages import wrong
 
 
@@ -40,6 +40,23 @@ class SecureView(View, ABC):
     method_names: List[str] = ['get', 'post']
     response_class = None
 
+    @final
+    def redirect_to_login(self, request: HttpRequest,
+                          login_url: str = None) -> HttpResponseRedirect:
+        """
+        重定向用户至登录页，登录后跳转回当前页面
+
+        :param request: 正在处理的请求
+        :type request: HttpRequest
+        :param login_url: 登录页，可包含GET参数，默认使用Django设置, defaults to None
+        :type login_url: str, optional
+        :return: 页面重定向
+        :rtype: HttpResponseRedirect
+        """
+        path = request.build_absolute_uri()
+        from django.contrib.auth.views import redirect_to_login
+        return redirect_to_login(path, login_url, 'origin')
+
     def check_perm(self, request: HttpRequest,
                    *args, **kwargs) -> HttpResponse | None:
         """
@@ -48,7 +65,7 @@ class SecureView(View, ABC):
         if not self.login_required:
             return
         if not request.user.is_authenticated:
-            return HttpResponseRedirect('/?origin=' + request.path)
+            return self.redirect_to_login(request)
         for perm in self.perms_required:
             if not request.user.has_perm(perm):
                 return self.permission_denied(request)
@@ -59,7 +76,7 @@ class SecureView(View, ABC):
         raise NotImplementedError
 
     def get_method_name(self, request: HttpRequest) -> HttpResponse | str:
-        return request.method.lower()  # type: ignore
+        return request.method.lower()
 
     def dispatch(self, request: HttpRequest,
                  *args, **kwargs) -> HttpResponse | None:
