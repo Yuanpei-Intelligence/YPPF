@@ -11,6 +11,11 @@ from .http import HttpRequest
 from .global_messages import wrong
 
 
+__all__ = [
+    'SecureView', 'SecureJsonView', 'SecureTemplateView',
+]
+
+
 class SecureView(View, ABC):
     """
     通用的视图类基类

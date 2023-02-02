@@ -96,7 +96,7 @@ class RoomQuerySet(models.QuerySet):
         return self.filter(Rid__icontains="R")
 
 
-class RoomManager(models.Manager):
+class RoomManager(models.Manager['Room']):
     def get_queryset(self) -> RoomQuerySet['Room']:
         return RoomQuerySet(self.model, using=self._db, hints=self._hints)
 
@@ -180,7 +180,7 @@ class AppointQuerySet(models.QuerySet):
         return self.exclude(Astatus__in=Appoint.Status.Terminals())
 
 
-class AppointManager(models.Manager):
+class AppointManager(models.Manager['Appoint']):
     def get_queryset(self) -> AppointQuerySet['Appoint']:
         return AppointQuerySet(self.model, using=self._db, hints=self._hints)
 
@@ -373,7 +373,7 @@ class CardCheckInfo(models.Model):
         verbose_name_plural = verbose_name
 
 
-class LongTermAppointManager(models.Manager):
+class LongTermAppointManager(models.Manager['LongTermAppoint']):
     def activated(self, this_semester=True) -> 'QuerySet[LongTermAppoint]':
         result = self.filter(
             status__in=[
