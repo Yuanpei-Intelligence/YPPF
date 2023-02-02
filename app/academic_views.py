@@ -122,7 +122,7 @@ class ModifyAcademicView(SecureTemplateView):
     def post(self, request: HttpRequest) -> HttpResponse:
         pass
 
-    def get_context_data(self, request: HttpRequest, **kwargs) -> Dict[str, Any] | None:
+    def get_context_data(self, request: HttpRequest, **kwargs) -> dict[str] | None:
         return super().get_context_data(request, **kwargs)
 
 
