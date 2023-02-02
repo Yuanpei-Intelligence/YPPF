@@ -27,11 +27,7 @@ class WelcomeView(SecureTemplateView):
     首页的查询功能应该可以通过前端转到search页面，这里未做处理
     """
 
-    login_required = True
     template_name = "yp_library/welcome.html"
-
-    def check_get(self, request: HttpRequest) -> HttpResponse | None:
-        return super().check_get(request)
 
     def get(self, request: HttpRequest, *args, **kwargs) -> HttpResponse | None:
         bar_display = get_sidebar_and_navbar(request.user, "元培书房")
@@ -59,37 +55,31 @@ class WelcomeView(SecureTemplateView):
         })
 
 
-@login_required(redirect_field_name="origin")
-@check_user_access(redirect_url="/logout/")
-def search(request: HttpRequest) -> HttpResponse:
+class SearchView(SecureTemplateView):
     """
     图书检索页面
-
-    :param request: 进入检索页面/发起检索的请求
-    :type request: HttpRequest
-    :return: 仍为search页面，显示检索结果
-    :rtype: HttpResponse
     """
-    bar_display = get_sidebar_and_navbar(request.user, "书籍搜索结果")
-    frontend_dict = {
-        "bar_display": bar_display,
-    }
-    transfer_message_context(request.GET, frontend_dict,
-                             normalize=True)
 
-    # 检索页面不再额外检查是否个人账号、是否关联reader
+    template_name = "yp_library/search.html"
 
-    if request.method == "POST" and request.POST:  # POST表明发起检索
+    def get(self, request: HttpRequest, *args, **kwargs) -> HttpResponse | None:
+        transfer_message_context(request.GET, self.extra_context,
+                                 normalize=True)
+        self.extra_context.update({
+            "bar_display": get_sidebar_and_navbar(request.user, "书籍搜索结果"),
+        })
+    
+    def post(self, request: HttpRequest, *args, **kwargs) -> HttpResponse | None:
         query_dict = get_query_dict(request.POST)  # 提取出检索条件
-        frontend_dict["search_results_list"] = search_books(**query_dict)
-
-    return render(request, "yp_library/search.html", frontend_dict)
+        self.extra_context.update({
+            "bar_display": get_sidebar_and_navbar(request.user, "书籍搜索结果"),
+            "search_results_list": search_books(**query_dict),
+        })
 
 
 class LendInfoView(SecureTemplateView):
     '''这个页面似乎弃用了'''
 
-    login_required = True
     template_name = "yp_library/lendinfo.html"
 
     def check_get(self, request: HttpRequest) -> HttpResponse | None:
