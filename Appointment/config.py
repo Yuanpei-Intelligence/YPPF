@@ -1,17 +1,13 @@
-import os
-
-from django.apps import apps
-
 from . import str_to_time
-from .apps import AppConfig
+from .apps import AppointmentConfig as APP
 from boot.config import Config, LazySetting, GLOBAL_CONF
 from app.config import CONFIG as PROFILE_CONFIG
 from utils.log import get_logger
 from utils.hasher import MySHA256Hasher
-import utils.global_messages as my_messages
 
 
-APP_NAME = apps.get_app_config('Appointment').name
+# 暂不允许*导入
+__all__ = []
 
 
 class AppointmentConfig(Config):
@@ -19,7 +15,7 @@ class AppointmentConfig(Config):
     def __init__(self, dict_prefix: str = 'underground'):
         super().__init__(dict_prefix)
 
-        self.this_url = LazySetting('underground/base_url')         # 地下室的访问入口
+        self.this_url = LazySetting('base_url')         # 地下室的访问入口
         self.display_token = LazySetting('token/display')
 
         # 读取学期开始，用于过滤既往预约
@@ -58,4 +54,4 @@ class AppointmentConfig(Config):
 
 CONFIG = AppointmentConfig()
 hash_wechat_coder = MySHA256Hasher(secret=PROFILE_CONFIG.hash_wechat)
-logger = get_logger(APP_NAME)
+logger = get_logger(APP.name)

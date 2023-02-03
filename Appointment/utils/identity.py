@@ -7,16 +7,17 @@
 依赖于app.API
 '''
 from typing import Union, Callable
+from functools import wraps
 
 from django.http import HttpRequest
 from django.db.models import QuerySet
-from functools import wraps
 from django.shortcuts import redirect
 from django.urls import reverse
 from django.contrib.auth.decorators import login_required
 
 from Appointment.models import User, Participant
-from Appointment.config import *
+from Appointment.config import CONFIG
+import utils.global_messages as my_messages
 from app import API
 
 __all__ = [

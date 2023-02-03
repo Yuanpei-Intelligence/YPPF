@@ -19,7 +19,7 @@ from Appointment.models import (
     Appoint,
     CardCheckInfo,
 )
-from Appointment.config import *
+from Appointment.config import CONFIG, hash_wechat_coder, logger
 
 '''
 YWolfeee:

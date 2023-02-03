@@ -88,13 +88,12 @@ class GlobalConfig(Config):
             'acadamic_year', int)                     # type: ignore
         self.semester: str = LazySetting('semester')  # type: ignore
 
-        try:
-            self.debug_stuids = LazySetting('debug_stuid')
-            if isinstance(self.debug_stuids, str):
-                self.debug_stuids = self.debug_stuids.replace(' ', '').split(',')
-            self.debug_stuids = list(map(str, self.debug_stuids))
-        except:
-            self.debug_stuids = []
+        def _to_list_str(raw: str | list) -> list[str]:
+            if isinstance(raw, str):
+                raw = raw.replace(' ', '').split(',')
+            return list(map(str, raw))
+        self.debug_stuids: list[str] = LazySetting(
+            'debug_stuids', _to_list_str, [])           # type: ignore
 
         assert self.semester is not None
 
