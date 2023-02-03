@@ -451,7 +451,7 @@ def write_before_delete(appoint_list: QuerySet[Appoint]):
         log.write("end of file\n")
 
 
-def operation_writer(user: Union[str, User, Participant], message: str, source: str,
+def _original_writer(user: Union[str, User, Participant], message: str, source: str,
                      status_code="OK") -> None:
     """
     通用日志写入程序 写入时间(datetime.now()),操作主体(Sid),操作说明(Str),写入函数(Str)
@@ -465,7 +465,49 @@ def operation_writer(user: Union[str, User, Participant], message: str, source: 
     :param status_code: 状态, defaults to "OK"
     :type status_code: str, optional
     """
+    if isinstance(user, Participant):
+        user = user.Sid_id
+    if isinstance(user, User):
+        user = user.username
+    timestamp = str(datetime.now())
+    source = str(source).ljust(30)
+    status = status_code.ljust(10)
+    message = f"{timestamp} {source}{status}: {message}\n"
+
+    with open(os.path.join(log_user_path, f"{str(user)}.log"), mode="a") as journal:
+        journal.write(message)
+
+
+def operation_writer(user: str | User | Participant | None, message: str, source: str,
+                     status_code="OK") -> None:
+    """
+    通用日志写入程序 错误时发送微信提示
+
+    :param user: Sid，决定文件名, `None`使用新日志方法
+    :type user: str | User | Participant | None
+    :param message: 消息
+    :type message: str
+    :param source: 来源的函数名，格式通常为 文件名.函数名
+    :type source: str
+    :param status_code: 状态, defaults to "OK", 可用值为OK Problem Error
+    :type status_code: str, optional
+    """
     lock.acquire()
+    if user is None:
+        func_map = dict(
+            # 原先的状态名
+            OK="info", Problem="warning", Error="exception",
+            # logger支持的函数名
+            debug="debug", info="info", warning="warning", warn="warn",
+            error="error", exception="exception",
+        )
+        assert status_code in func_map.keys(), "非法的状态名"
+        func_name = func_map[status_code]
+        log_func = getattr(logger, func_name, logger.exception)
+        log_func(message, source)
+    else:
+        _original_writer(user, message, source, status_code)
+    # 发送微信
     try:
         if isinstance(user, Participant):
             user = user.Sid_id
