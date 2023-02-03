@@ -8,6 +8,7 @@ from django.db.models import (
     Count, Aggregate, QuerySet
 )
 
+from generic.models import *
 from app.models import *
 from Appointment.models import Appoint
 
