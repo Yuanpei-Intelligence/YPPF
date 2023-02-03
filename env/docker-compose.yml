@@ -3,9 +3,6 @@ version: '3.7'
 services:
   mysql:
     image: mysql:5.7
-    volumes:
-      - yppf-mysql-data:/var/lib/mysql
-      - yppf-mysql-config:/etc/mysql
     command:
       [
         "mysqld",
@@ -63,9 +60,4 @@ services:
       - YPPF_SCHEDULER_LOG_FILE=scheduler.log
       - YPPF_SCHEDULER_PORT=6666
       - YPPF_LOG_DEBUG=Y
-    command: sh -c "python3 manage.py runscheduler" 
-
-
-volumes:
-  yppf-mysql-data:
-  yppf-mysql-config:
+    command: sh -c "python3 manage.py runscheduler"
