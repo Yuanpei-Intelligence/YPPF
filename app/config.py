@@ -61,6 +61,7 @@ class ProfileConfig(Config):
         self.wechat_unblock_apps = set()
         self.wechat_use_scheduler: bool = True
         self.wechat_batch = LazySetting('wechat/batch')
+        self.wechat_url = LazySetting('wechat/api_url')
 
         # Notification
         self.max_inform_rank = LazySetting('notification/max_inform_rank')
