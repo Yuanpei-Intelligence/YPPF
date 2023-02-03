@@ -37,9 +37,8 @@ from Appointment.utils.identity import (
     get_avatar, get_members, get_auditor_ids,
     get_participant, identity_check,
 )
-from Appointment import *
 from Appointment import jobs
-
+from Appointment.config import CONFIG
 
 # 日志操作相关
 # 返回数据的接口规范如下：(相当于不返回，调用函数写入日志)
@@ -49,7 +48,7 @@ from Appointment import jobs
 #   source,
 #   status_code
 # )
-# user表示这条数据对应的log记录对象，为Sid或者是system_log
+# user表示这条数据对应的log记录对象，为Sid或者是None
 # message记录这条log的主体信息
 # source表示写入这个log的位置，表示为"文件名.函数名"
 # status_code为"OK","Problem","Error",其中Error表示需要紧急处理的问题，会发送到管理员的手机上
@@ -103,7 +102,7 @@ def _update_check_state(appoint: Appoint, current_num, refresh=False):
     if appoint.Acheck_status == Appoint.CheckStatus.UNSAVED or refresh:
         # 说明是新的一分钟或者本分钟还没有记录
         # 如果随机成功，记录新的检查结果
-        if random.uniform(0, 1) < GLOBAL_INFO.check_rate:
+        if random.uniform(0, 1) < CONFIG.check_rate:
             appoint.Acheck_status = Appoint.CheckStatus.FAILED
             appoint.Acamera_check_num += 1
             if current_num >= appoint.Aneed_num:  # 如果本次检测合规
@@ -150,7 +149,7 @@ def cameracheck(request):
             room.Rlatest_time = now_time
             room.save()
     except Exception as e:
-        operation_writer(SYSTEM_LOG,
+        operation_writer(None,
                          f"更新房间{rid}人数失败: {e}", "views.cameracheck", "Error")
         return JsonResponse({'statusInfo': {'message': '更新摄像头人数失败!'}}, status=400)
 
@@ -177,11 +176,11 @@ def cameracheck(request):
                     # status, message = appoint_violate(
                     #     appoint, Appoint.Reason.R_LATE)
                     if not status:
-                        operation_writer(SYSTEM_LOG,
+                        operation_writer(None,
                                          f"预约{appoint.Aid}设置迟到失败: {message}",
                                          "views.cameracheck", "Error")
     except Exception as e:
-        operation_writer(SYSTEM_LOG,
+        operation_writer(None,
                          f"更新预约检查人数失败: {e}", "views.cameracheck", "Error")
         return JsonResponse({'statusInfo': {'message': '更新预约状态失败!'}}, status=400)
     return JsonResponse({}, status=200)
@@ -214,7 +213,7 @@ def cancelAppoint(request: HttpRequest):
                     LongTermAppoint.objects.select_for_update().get(pk=pk))
                 count = longterm_appoint.cancel()
         except:
-            operation_writer(SYSTEM_LOG, f"取消长期预约{pk}意外失败",
+            operation_writer(None, f"取消长期预约{pk}意外失败",
                              "scheduler_func.cancelAppoint", "Error")
             wrong(f"未能取消长期预约!", context)
             return redirect(message_url(context, reverse("Appointment:account")))
@@ -243,7 +242,7 @@ def cancelAppoint(request: HttpRequest):
             wrong("请不要尝试取消不是自己发起的预约!"),
             reverse("Appointment:account")))
 
-    if (GLOBAL_INFO.restrict_cancel_time
+    if (CONFIG.restrict_cancel_time
             and appoint.Astart < datetime.now() + timedelta(minutes=30)):
         return redirect(message_url(
             wrong("不能取消开始时间在30分钟之内的预约!"),
@@ -279,9 +278,9 @@ def renewLongtermAppoint(request):
     try:
         times = int(request.POST.get('times'))
         total_times = longterm_appoint.times + times
-        assert 1 <= times <= GLOBAL_INFO.longterm_max_time_once
-        assert total_times <= GLOBAL_INFO.longterm_max_time
-        assert total_times * longterm_appoint.interval <= GLOBAL_INFO.longterm_max_week
+        assert 1 <= times <= CONFIG.longterm_max_time_once
+        assert total_times <= CONFIG.longterm_max_time
+        assert total_times * longterm_appoint.interval <= CONFIG.longterm_max_week
     except:
         return redirect(message_url(
             wrong("您选择的续约周数不符合要求!"),
@@ -316,7 +315,7 @@ def display_getappoint(request):    # 用于为班牌机提供展示预约的信
                     'message': 'invalid params',
                 }},
                 status=400)
-        if display_token != GLOBAL_INFO.display_token:
+        if display_token != CONFIG.display_token:
             return JsonResponse(
                 {'statusInfo': {
                     'message': 'invalid token:'+str(display_token),
@@ -401,7 +400,7 @@ def account(request: HttpRequest):
             applicant=participant)
         # 判断是否达到上限
         count = LongTermAppoint.objects.activated().filter(applicant=participant).count()
-        is_full = count >= GLOBAL_INFO.longterm_max_num
+        is_full = count >= CONFIG.longterm_max_num
         for longterm_appoint in longterm_appoints:
             longterm_appoint: LongTermAppoint
             appoint_info = web_func.appointment2Display(
@@ -647,7 +646,7 @@ def door_check(request):
     #                 now_appoint.Astatus = Appoint.Status.PROCESSING
     #                 now_appoint.save()
     # except Exception as e:
-    #     operation_writer(SYSTEM_LOG,
+    #     operation_writer(None,
     #                      "可以开门却不开门的致命错误，房间号为" +
     #                      str(Rid) + ",学生为"+str(Sid)+",错误为:"+str(e),
     #                      "views.doorcheck",
@@ -883,7 +882,7 @@ def arrange_time(request: HttpRequest):
         if has_longterm_permission and appoint.Atype == Appoint.Type.LONGTERM:
             # 查找对应的长期预约
             time_status = TimeStatus.LONGTERM
-            max_week = GLOBAL_INFO.longterm_max_week
+            max_week = CONFIG.longterm_max_week
             potential_appoints = get_conflict_appoints(
                 appoint, times=max_week, week_offset=1 - max_week,
             ).filter(major_student=appoint.major_student)
@@ -949,7 +948,7 @@ def arrange_talk_room(request):
     if check_type == "talk":
         if re_time.date() == datetime.now().date():
             is_today = True
-            show_min = GLOBAL_INFO.today_min
+            show_min = CONFIG.today_min
         room_list = Room.objects.talk_rooms().basement_only().order_by('Rmin', 'Rid')
     else:  # type == "russ"
         room_list = Room.objects.russian_rooms().order_by('Rid')
@@ -1070,7 +1069,7 @@ def checkout_appoint(request: HttpRequest):
             assert times, '长期预约周数未填写'
             times = int(times)
             interval = int(interval)
-            assert 1 <= interval <= GLOBAL_INFO.longterm_max_interval, '间隔周数'
+            assert 1 <= interval <= CONFIG.longterm_max_interval, '间隔周数'
         assert weekday in wklist, '星期几'
         assert startid >= 0, '起始时间'
         assert endid >= 0, '结束时间'
@@ -1111,7 +1110,7 @@ def checkout_appoint(request: HttpRequest):
             appoint_params['Rmin'] = room.Rmin
             if start_week == 0 and datetime.now().strftime(
                     "%a") == appoint_params['weekday']:
-                appoint_params['Rmin'] = min(GLOBAL_INFO.today_min,
+                appoint_params['Rmin'] = min(CONFIG.today_min,
                                              room.Rmin)
             break
     appoint_params['Sid'] = applicant.get_id()
@@ -1123,7 +1122,7 @@ def checkout_appoint(request: HttpRequest):
                           appoint_params=appoint_params,
                           has_longterm_permission=has_longterm_permission,
                           has_interview_permission=has_interview_permission,
-                          interview_max_count=GLOBAL_INFO.interview_max_num)
+                          interview_max_count=CONFIG.interview_max_num)
 
     # 提交预约信息
     if request.method == 'POST':
@@ -1152,19 +1151,19 @@ def checkout_appoint(request: HttpRequest):
             contents['students'].append(contents['Sid'])
 
         # 检查预约次数
-        if is_longterm and not (1 <= times <= GLOBAL_INFO.longterm_max_time_once
-                                and 1 <= interval * times <= GLOBAL_INFO.longterm_max_week):
+        if is_longterm and not (1 <= times <= CONFIG.longterm_max_time_once
+                                and 1 <= interval * times <= CONFIG.longterm_max_week):
             wrong("您填写的预约周数不符合要求", render_context)
 
         # 检查长期预约次数
         if is_longterm and LongTermAppoint.objects.activated().filter(
-                applicant=applicant).count() >= GLOBAL_INFO.longterm_max_num:
+                applicant=applicant).count() >= CONFIG.longterm_max_num:
             wrong("您的长期预约总数已超过上限", render_context)
 
         # 检查面试次数
         if is_interview and Appoint.objects.unfinished().filter(
                 major_student=applicant, Atype=Appoint.Type.INTERVIEW
-        ).count() >= GLOBAL_INFO.interview_max_num:
+        ).count() >= CONFIG.interview_max_num:
             wrong('您预约的面试次数已达到上限，结束后方可继续预约', render_context)
 
         contents['Astart'] = datetime(contents['year'], contents['month'],
