@@ -1,16 +1,24 @@
-from typing import Dict, List, Any
+from typing import Dict, List, Any, final
+from abc import ABC, abstractmethod
 
 from django.views.generic import View
-from django.http import HttpRequest, HttpResponse, HttpResponseRedirect, JsonResponse
+from django.http import HttpResponse, HttpResponseRedirect, JsonResponse
 from django.core.exceptions import ImproperlyConfigured
 from django.template.response import TemplateResponse
 
 from .log import err_capture
+from .http import HttpRequest, UserRequest
+from .global_messages import wrong
 
 
-class SecureView(View):
+__all__ = [
+    'SecureView', 'SecureJsonView', 'SecureTemplateView',
+]
+
+
+class SecureView(View, ABC):
     """
-    通用的视图类
+    通用的视图类基类
 
     主要功能：权限检查、方法分发、参数检查
 
@@ -23,7 +31,8 @@ class SecureView(View):
     - method_names里面的每个方法，都需要实现方法的同名函数method_name()，和参数检查函数check_method_name()
     """
 
-    login_required = True
+    login_required: bool = True
+    perms_required: List[str] = []
 
     args: Dict[str, Any] | None = None  # GET方法的参数
     form_data: Dict[str, Any] | None = None  # 表单数据
@@ -31,24 +40,48 @@ class SecureView(View):
     method_names: List[str] = ['get', 'post']
     response_class = None
 
-    def check_perm(self,
-                   request: HttpRequest) -> HttpResponse | None:
+    @final
+    def redirect_to_login(self, request: HttpRequest,
+                          login_url: str = None) -> HttpResponseRedirect:
+        """
+        重定向用户至登录页，登录后跳转回当前页面
+
+        :param request: 正在处理的请求
+        :type request: HttpRequest
+        :param login_url: 登录页，可包含GET参数，默认使用Django设置, defaults to None
+        :type login_url: str, optional
+        :return: 页面重定向
+        :rtype: HttpResponseRedirect
+        """
+        path = request.build_absolute_uri()
+        from django.contrib.auth.views import redirect_to_login
+        return redirect_to_login(path, login_url, 'origin')
+
+    def check_perm(self, request: HttpRequest,
+                   *args, **kwargs) -> HttpResponse | None:
         """
         检查用户是否登录及权限
         """
-        if self.login_required and not request.user.is_authenticated:
-            return HttpResponseRedirect('/?origin=' + request.path)
+        if not self.login_required:
+            return
+        if not request.user.is_authenticated:
+            return self.redirect_to_login(request)
+        for perm in self.perms_required:
+            if not request.user.has_perm(perm):
+                return self.permission_denied(request)
 
-    def permission_denied(self, context: Dict[str, Any]) -> HttpResponse:
+    @abstractmethod
+    def permission_denied(self, request: HttpRequest,
+                          *args, **kwargs) -> HttpResponse:
         raise NotImplementedError
 
     def get_method_name(self, request: HttpRequest) -> HttpResponse | str:
-        return request.method.lower()  # type: ignore
+        return request.method.lower()
 
-    @err_capture()
-    def dispatch(self, request: HttpRequest, *args, **kwargs):
+    def dispatch(self, request: HttpRequest,
+                 *args, **kwargs) -> HttpResponse | None:
         # Check permission
-        response = self.check_perm(request)
+        response = self.check_perm(request, *args, **kwargs)
         if response is not None:
             return response
 
@@ -67,7 +100,7 @@ class SecureView(View):
             raise ImproperlyConfigured(
                 f'SecureView requires an implementation of "{method_name}_check"'
             )
-        response = checker(request)
+        response = checker(request, *args, **kwargs)
         if response is not None:
             return response
 
@@ -76,10 +109,12 @@ class SecureView(View):
         if response is not None:
             return response
 
-    def check_get(self, request: HttpRequest) -> HttpResponse | None:
+    def check_get(self, request: HttpRequest,
+                  *args, **kwargs) -> HttpResponse | None:
         self.get_args(request)
 
-    def check_post(self, request: HttpRequest) -> HttpResponse | None:
+    def check_post(self, request: HttpRequest,
+                   *args, **kwargs) -> HttpResponse | None:
         self.get_args(request)
         self.get_form_data(request)
 
@@ -103,8 +138,12 @@ class SecureTemplateView(SecureView):
     extra_context: Dict[str, Any] = dict()
     response_class = TemplateResponse
 
-    def get(self, request: HttpRequest, *args, **kwargs) -> HttpResponse | None:
-        pass
+    def permission_denied(self, request: HttpRequest,
+                          context: Dict[str, Any] | None = None) -> HttpResponse:
+        wrong(f'当前用户{request.user}无权访问该页面')
+        if context is not None:
+            self.extra_context.update(context)
+        return self.render(request)
 
     def get_template_names(self):
         if self.template_name is None:
@@ -115,7 +154,8 @@ class SecureTemplateView(SecureView):
         else:
             return [self.template_name]
 
-    def get_context_data(self, **kwargs):
+    def get_context_data(self, request: HttpRequest,
+                         **kwargs) -> Dict[str, Any] | None:
         if self.extra_context is not None:
             kwargs.update(self.extra_context)
         return kwargs
@@ -123,10 +163,10 @@ class SecureTemplateView(SecureView):
     def render(self, request: HttpRequest):
         return self.response_class(request=request,
                                    template=self.get_template_names(),
-                                   context=self.get_context_data())
+                                   context=self.get_context_data(request))
 
     @err_capture()
-    def dispatch(self, request: HttpRequest, *args, **kwargs):
+    def dispatch(self, request: HttpRequest, *args, **kwargs) -> HttpResponse:
         response = super().dispatch(request, *args, **kwargs)
         if response is not None:
             return response

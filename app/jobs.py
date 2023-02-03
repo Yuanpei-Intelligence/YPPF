@@ -12,6 +12,7 @@ from django.db.models import F
 
 from utils.log import get_logger
 from scheduler.scheduler import scheduler, periodical
+from generic.models import PageLog
 from app.models import (
     User,
     NaturalPerson,
@@ -21,7 +22,6 @@ from app.models import (
     Participant,
     Notification,
     Position,
-    PageLog,
     Course,
     CourseTime,
     CourseParticipant,

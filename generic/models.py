@@ -280,7 +280,7 @@ class User(AbstractUser, PointMixin):
     first_time_login = models.BooleanField(default=True)
 
     REQUIRED_FIELDS = ['name']
-    objects: UserManager['User'] = UserManager()
+    objects: UserManager = UserManager()
 
 
     def __str__(self) -> str:

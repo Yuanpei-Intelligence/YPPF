@@ -38,9 +38,9 @@ services:
       - DB_USER=root
       - DB_PASSWORD=secret
       - DB_DATABASE=yppf
-    command: bash -c "python3 manage.py makemigrations generic app Appointment &&
+    command: bash -c "pip install -r env/requirements.txt &&
+                      python3 manage.py makemigrations generic app Appointment &&
                       python3 manage.py migrate &&
-                      python3 manage.py fill_devdb &&
                       python3 manage.py runserver 0.0.0.0:8000"
 
   scheduler:

@@ -205,7 +205,7 @@ class ClassifiedUser(models.Model):
         return image_url('avatar/person_default.jpg')
 
 
-class ClassifiedUserManager(models.Manager):
+class ClassifiedUserManager(models.Manager[ClassifiedUser]):
     '''
     已分类的用户模型管理器，定义了与User具有一对一关系的模型管理器的通用接口
 
@@ -250,7 +250,7 @@ class ClassifiedUserManager(models.Manager):
         return self.all()
 
 
-class NaturalPersonManager(models.Manager):
+class NaturalPersonManager(models.Manager['NaturalPerson']):
     def get_by_user(self, user: User, *,
                     update=False, activate=False):
         '''User一对一模型管理器的必要方法, 通过关联的User获取实例'''
@@ -570,7 +570,7 @@ class OrganizationTag(models.Model):
         return self.name
 
 
-class OrganizationManager(models.Manager):
+class OrganizationManager(models.Manager['Organization']):
     def get_by_user(self, user: User, *,
                     update=False, activate=False):
         '''User一对一模型管理器的必要方法, 通过关联的User获取实例'''
@@ -643,7 +643,7 @@ class Organization(models.Model):
         return NaturalPerson.objects.all().count() - self.unsubscribers.count()
 
 
-class PositionManager(models.Manager):
+class PositionManager(models.Manager['Position']):
     def current(self):
         return select_current(self, 'year', 'semester')
 
@@ -778,7 +778,7 @@ class Position(models.Model):
         return min(len(self.org.otype.job_name_list), self.pos)
 
 
-class ActivityManager(models.Manager):
+class ActivityManager(models.Manager['Activity']):
     def activated(self, only_displayable=True, noncurrent=False):
         # 选择学年相同，并且学期相同或者覆盖的
         # 请保证query_range是一个queryset，将manager的行为包装在query_range计算完之前
@@ -1095,7 +1095,7 @@ class ActivityPhoto(models.Model):
         return image_url(self.image, enable_abs=True)
 
 
-class ParticipantManager(models.Manager):
+class ParticipantManager(models.Manager['Participant']):
     def activated(self, no_unattend=False):
         '''返回成功报名的参与信息'''
         exclude_status = [
@@ -1132,7 +1132,7 @@ class Participant(models.Model):
     objects: ParticipantManager = ParticipantManager()
 
 
-class NotificationManager(models.Manager):
+class NotificationManager(models.Manager['Notification']):
     def activated(self):
         return self.exclude(status=Notification.Status.DELETE)
 
@@ -1443,7 +1443,7 @@ class ModifyRecord(models.Model):
     time = models.DateTimeField('修改时间', auto_now_add=True)
 
 
-class CourseManager(models.Manager):
+class CourseManager(models.Manager['Course']):
     def activated(self, noncurrent=False):
         # 选择当前学期的开设课程
         # 不显示已撤销的课程信息
@@ -1611,7 +1611,7 @@ class CourseParticipant(models.Model):
     )
 
 
-class CourseRecordManager(models.Manager):
+class CourseRecordManager(models.Manager['CourseRecord']):
     def current(self):
         # 选择当前学期的学时
         return select_current(self)
@@ -1790,7 +1790,7 @@ class AcademicTag(models.Model):
         return self.get_atype_display() + ' - ' + self.tag_content
 
 
-class AcademicEntryManager(models.Manager):
+class AcademicEntryManager(models.Manager['AcademicEntry']):
     def activated(self):
         # 筛选未被删除的entry
         return self.exclude(status=AcademicEntry.EntryStatus.OUTDATE)
@@ -1840,7 +1840,7 @@ class AcademicTextEntry(AcademicEntry):
     content = models.CharField('内容', max_length=4095)
 
 
-class ChatManager(models.Manager):
+class ChatManager(models.Manager['Chat']):
     def activated(self):
         # 筛选进行中的对话
         return self.filter(status=Chat.Status.PROGRESSING)
