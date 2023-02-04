@@ -1,4 +1,4 @@
-from typing import Dict, List, Any, final
+from typing import Any, final, overload, TypedDict, NoReturn, Callable
 from abc import ABC, abstractmethod
 
 from django.views.generic import View
@@ -16,6 +16,13 @@ __all__ = [
 ]
 
 
+class ResponseCreated(Exception):
+    '''标识response已经被创建，不再需要继续处理'''
+    def __init__(self, response: HttpResponse | None = None) -> None:
+        self.response = response
+
+
+
 class SecureView(View, ABC):
     """
     通用的视图类基类
@@ -30,20 +37,118 @@ class SecureView(View, ABC):
     - method_names列表存放所有可用的方法，默认有get、post两种方法
     - method_names里面的每个方法，都需要实现方法的同名函数method_name()，和参数检查函数check_method_name()
     """
+    # 由View.setup自动设置，在子类修改以提供更多类型提示信息
+    request: HttpRequest
+    _ArgType = tuple
+    args: _ArgType
+    _KWType = TypedDict('kwargs', {})
+    kwargs: _KWType
+    # TODO: 不准确的类型提示，全面使用新接口后修改
+    _PrepareFuncType = Callable[[HttpRequest, _ArgType, _KWType], HttpResponse | None]
+    _HandlerFuncType = Callable[[HttpRequest, _ArgType, _KWType], HttpResponse]
+    # TODO: 兼容以下新接口，减少函数参数使用
+    # _PrepareFuncType = Callable[[], None]
+    # _HandlerFuncType = Callable[[], HttpResponse]
 
+    # 视图设置
     login_required: bool = True
-    perms_required: List[str] = []
+    perms_required: list[str] = []
+    http_method_names: list[str] = ['get', 'post']
+    method_names: list[str] = http_method_names
 
-    args: Dict[str, Any] | None = None  # GET方法的参数
-    form_data: Dict[str, Any] | None = None  # 表单数据
+    def setup(self, request: HttpRequest, *args: Any, **kwargs: Any) -> None:
+        # 设置request, args, kwargs
+        super().setup(request, *args, **kwargs)
 
-    method_names: List[str] = ['get', 'post']
-    response_class = None
+    def dispatch(self, request, *args, **kwargs):
+        '''自动捕获ResponseCreated信号，错误时由error_response处理'''
+        # 类型注释继承自父类，无需重写
+        try:
+            return self._dispatch()
+        except ResponseCreated:
+            return self.response
+        except Exception as e:
+            err = e
+        # 出错时理应不再抛出异常，但以防万一仍然捕获ResponseCreated信号
+        try:
+            return self.error_response(err)
+        except ResponseCreated:
+            return self.response
+
+    def _dispatch(self) -> HttpResponse:
+        '''
+        实际dispatch函数
+        通过response_created产生信号ResponseCreated传递
+        暂时兼容正常返回
+        '''
+        # Check method
+        self.check_http()
+
+        # Check permission
+        self.check_perm()
+
+        # Decide prepare handler
+        method_name = self.get_method_name(self.request)
+        if method_name not in self.method_names:
+            return self._check_http_method()
+
+        # Prepare and decide final handler
+        method_name = self.dispatch_prepare(method_name)
+        if not hasattr(self, method_name):
+            raise ImproperlyConfigured(
+                f'SecureView requires an implementation of `{method_name}`'
+            )
+        handler: SecureView._HandlerFuncType = getattr(self, method_name)
+
+        # Handle
+        return handler(self.request, self.args, self.kwargs)
+
+    def response_created(self, response: HttpResponse) -> NoReturn:
+        '''
+        保存生成的Response，并发送ResponseCreated信号
+
+        :param response: 
+        :type response: HttpResponse
+        :raise ResponseCreated: 不包含信息的信号
+        '''
+        self.response = response
+        raise ResponseCreated()
+
+    def _allow_methods(self):
+        '''被http_method_not_allowed调用的方法，仅用于保持提示信息正常'''
+        return [m.upper() for m in self.http_method_names]
+
+    def check_http(self) -> None:
+        '''
+        检查请求是否合法，拦截攻击行为，只使用request
+        '''
+        self._check_http_method(*self.http_method_names)
+
+    @overload
+    def _check_http_method(self) -> NoReturn: ...
+    @overload
+    def _check_http_method(self, *allowed_methods: str) -> None: ...
+    @final
+    def _check_http_method(self, *allowed_methods: str) -> None:
+        '''检查请求类型，准备和处理函数应做好相应的检查'''
+        if self.request.method.lower() not in allowed_methods:
+            response = self.http_method_not_allowed(self.request, *self.args, **self.kwargs)
+            return self.response_created(response)
+
+    def check_perm(self) -> None:
+        '''
+        检查用户是否登录及权限
+        '''
+        if self.login_required and not self.request.user.is_authenticated:
+            return self.response_created(self.redirect_to_login(self.request))
+        for perm in self.perms_required:
+            if not self.request.user.has_perm(perm):
+                return self.response_created(self.permission_denied(self.request))
 
     @final
     def redirect_to_login(self, request: HttpRequest,
-                          login_url: str = None) -> HttpResponseRedirect:
-        """
+                          login_url: str | None = None) -> HttpResponseRedirect:
+        '''
         重定向用户至登录页，登录后跳转回当前页面
 
         :param request: 正在处理的请求
@@ -52,77 +157,48 @@ class SecureView(View, ABC):
         :type login_url: str, optional
         :return: 页面重定向
         :rtype: HttpResponseRedirect
-        """
-        path = request.build_absolute_uri()
+        '''
+        # 相对路径，避免产生跨域问题
+        path = request.get_full_path()
         from django.contrib.auth.views import redirect_to_login
         return redirect_to_login(path, login_url, 'origin')
 
-    def check_perm(self, request: HttpRequest,
-                   *args, **kwargs) -> HttpResponse | None:
-        """
-        检查用户是否登录及权限
-        """
-        if not self.login_required:
-            return
-        if not request.user.is_authenticated:
-            return self.redirect_to_login(request)
-        for perm in self.perms_required:
-            if not request.user.has_perm(perm):
-                return self.permission_denied(request)
-
     @abstractmethod
-    def permission_denied(self, request: HttpRequest,
-                          *args, **kwargs) -> HttpResponse:
+    def permission_denied(self, request: HttpRequest) -> HttpResponse:
         raise NotImplementedError
 
-    def get_method_name(self, request: HttpRequest) -> HttpResponse | str:
+    def get_method_name(self, request: HttpRequest) -> str:
         return request.method.lower()
 
-    def dispatch(self, request: HttpRequest,
-                 *args, **kwargs) -> HttpResponse | None:
-        # Check permission
-        response = self.check_perm(request, *args, **kwargs)
-        if response is not None:
-            return response
-
-        # Decide handler
-        method_name = self.get_method_name(request)
-        if isinstance(method_name, HttpResponse):
-            return method_name
-        if method_name in self.method_names:
-            handler = getattr(self, method_name, self.http_method_not_allowed)
+    def dispatch_prepare(self, method: str) -> str:
+        '''
+        每个方法执行前的准备工作，返回重定向的方法名
+        
+        子类建议使用match语句
+        不存在对应方法时，调用`default_prepare`
+        '''
+        default_name = f'check_{method}'
+        if not hasattr(self, default_name):
+            prepare_func = self.default_prepare(method, default_name)
         else:
-            return self.http_method_not_allowed(request, *args, **kwargs)
-
-        # Per method checker
-        checker = getattr(self, 'check_' + method_name, None)
-        if checker is None:
-            raise ImproperlyConfigured(
-                f'SecureView requires an implementation of "{method_name}_check"'
-            )
-        response = checker(request, *args, **kwargs)
+            prepare_func: SecureView._PrepareFuncType = getattr(self, default_name)
+        # TODO: prepare_func返回str，重设method
+        response = prepare_func(self.request, *self.args, **self.kwargs)
         if response is not None:
-            return response
+            return self.response_created(response)
+        return method
 
-        # Handle
-        response = handler(request, *args, **kwargs)
-        if response is not None:
-            return response
+    def default_prepare(self, method: str, default_name: str) -> _PrepareFuncType:
+        '''不存在准备方法时，提供默认准备函数，SecureView抛出异常'''
+        raise ImproperlyConfigured(
+            f'SecureView requires an implementation of `{default_name}`'
+        )
 
-    def check_get(self, request: HttpRequest,
-                  *args, **kwargs) -> HttpResponse | None:
-        self.get_args(request)
+    def error_response(self, exception: Exception) -> HttpResponse:
+        '''错误处理，子类可重写，不应产生异常'''
+        # TODO: 错误处理和http_method_not_allowed不同
+        return self._check_http_method()
 
-    def check_post(self, request: HttpRequest,
-                   *args, **kwargs) -> HttpResponse | None:
-        self.get_args(request)
-        self.get_form_data(request)
-
-    def get_args(self, request: HttpRequest) -> None:
-        self.args = request.GET.dict()
-
-    def get_form_data(self, request: HttpRequest) -> None:
-        self.form_data = request.POST.dict()
 
 
 class SecureTemplateView(SecureView):
@@ -135,11 +211,11 @@ class SecureTemplateView(SecureView):
     - extra_context作为get_context_data()的补充，在处理请求的过程中可以随时向其中添加内容
     """
     template_name = None
-    extra_context: Dict[str, Any] = dict()
+    extra_context: dict[str, Any] = dict()
     response_class = TemplateResponse
 
     def permission_denied(self, request: HttpRequest,
-                          context: Dict[str, Any] | None = None) -> HttpResponse:
+                          context: dict[str, Any] | None = None) -> HttpResponse:
         wrong(f'当前用户{request.user}无权访问该页面')
         if context is not None:
             self.extra_context.update(context)
@@ -155,7 +231,7 @@ class SecureTemplateView(SecureView):
             return [self.template_name]
 
     def get_context_data(self, request: HttpRequest,
-                         **kwargs) -> Dict[str, Any] | None:
+                         **kwargs) -> dict[str, Any] | None:
         if self.extra_context is not None:
             kwargs.update(self.extra_context)
         return kwargs
@@ -177,9 +253,9 @@ class SecureTemplateView(SecureView):
 class SecureJsonView(SecureView):
     response_class = JsonResponse
 
-    def get_default_data() -> Dict[str, Any]:
+    def get_default_data(self) -> dict[str, Any]:
         # TODO: 默认的返回数据
-        pass
+        raise NotImplementedError
 
     @err_capture()
     def dispatch(self, request: HttpRequest, *args, **kwargs):
@@ -189,6 +265,6 @@ class SecureJsonView(SecureView):
         if isinstance(response, dict):
             return self.response_class(data=response)
         if response is None:
-            return self.response_class(data=self.get_default_data)
+            return self.response_class(data=self.get_default_data())
         else:
             raise TypeError
