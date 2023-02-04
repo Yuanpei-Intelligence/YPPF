@@ -7,7 +7,7 @@ from django.core.exceptions import ImproperlyConfigured
 from django.template.response import TemplateResponse
 
 from .log import err_capture
-from .http import HttpRequest, UserRequest
+from .http import HttpRequest
 from .global_messages import wrong
 
 
@@ -54,6 +54,7 @@ class SecureView(View, ABC):
     login_required: bool = True
     perms_required: list[str] = []
     http_method_names: list[str] = ['get', 'post']
+    # get_method_name 的有效返回值，对dispatch_prepare的返回值不做检查
     method_names: list[str] = http_method_names
 
     def setup(self, request: HttpRequest, *args: Any, **kwargs: Any) -> None:
@@ -174,22 +175,24 @@ class SecureView(View, ABC):
         '''
         每个方法执行前的准备工作，返回重定向的方法名
         
+        被信任的方法，返回的函数名可以不在method_names中
         子类建议使用match语句
         不存在对应方法时，调用`default_prepare`
         '''
         default_name = f'check_{method}'
         if not hasattr(self, default_name):
-            prepare_func = self.default_prepare(method, default_name)
-        else:
-            prepare_func: SecureView._PrepareFuncType = getattr(self, default_name)
+            return self.default_prepare(method, default_name)
+        prepare_func: SecureView._PrepareFuncType = getattr(self, default_name)
         # TODO: prepare_func返回str，重设method
         response = prepare_func(self.request, *self.args, **self.kwargs)
         if response is not None:
             return self.response_created(response)
         return method
 
-    def default_prepare(self, method: str, default_name: str) -> _PrepareFuncType:
+    def default_prepare(self, method: str, default_name: str | None = None) -> str:
         '''不存在准备方法时，提供默认准备函数，SecureView抛出异常'''
+        if default_name is None:
+            default_name = f'check_{method}'
         raise ImproperlyConfigured(
             f'SecureView requires an implementation of `{default_name}`'
         )
@@ -199,6 +202,10 @@ class SecureView(View, ABC):
         # TODO: 错误处理和http_method_not_allowed不同
         return self._check_http_method()
 
+    def redirect(self, to: str, *args, permanent=False, **kwargs):
+        '''重定向，由于类的重定向对象无需提前确定，使用redirect动态加载即可'''
+        from django.shortcuts import redirect
+        return self.response_created(redirect(to, *args, permanent=permanent, **kwargs))
 
 
 class SecureTemplateView(SecureView):
@@ -211,8 +218,12 @@ class SecureTemplateView(SecureView):
     - extra_context作为get_context_data()的补充，在处理请求的过程中可以随时向其中添加内容
     """
     template_name = None
-    extra_context: dict[str, Any] = dict()
+    extra_context: dict[str, Any]
     response_class = TemplateResponse
+
+    def setup(self, request: HttpRequest, *args: Any, **kwargs: Any) -> None:
+        super().setup(request, *args, **kwargs)
+        self.extra_context = {}
 
     def permission_denied(self, request: HttpRequest,
                           context: dict[str, Any] | None = None) -> HttpResponse:
@@ -236,18 +247,29 @@ class SecureTemplateView(SecureView):
             kwargs.update(self.extra_context)
         return kwargs
 
-    def render(self, request: HttpRequest):
-        return self.response_class(request=request,
-                                   template=self.get_template_names(),
-                                   context=self.get_context_data(request))
+    def render(self, request: HttpRequest | None = None, **kwargs):
+        response = self.response_class(
+            request=self.request,
+            template=self.get_template_names(),
+            context=self.get_context_data(self.request, **kwargs),
+        )
+        return self.response_created(response)
 
-    @err_capture()
-    def dispatch(self, request: HttpRequest, *args, **kwargs) -> HttpResponse:
-        response = super().dispatch(request, *args, **kwargs)
+    def wrong(self, message: str):
+        wrong(message, self.extra_context)
+        return self.render(self.request)
+
+    def _dispatch(self) -> HttpResponse:
+        response = super()._dispatch()
         if response is not None:
             return response
+        return self.render()
 
-        return self.render(request)
+    def error_response(self, exception: Exception) -> HttpResponse:
+        from utils.log import _format_request, get_logger
+        _message = _format_request(self.request)
+        get_logger('err').exception(_message)
+        return super().error_response(exception)
 
 
 class SecureJsonView(SecureView):
