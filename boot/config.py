@@ -15,7 +15,7 @@ vars.
 
 import os
 import json
-from typing import Optional, Any, Callable, Generic, TypeVar, Dict
+from typing import Optional, Any, Callable, Generic, TypeVar, Dict, overload
 
 
 DEBUG = True  # WARNING! TODO: Set to False in main branch
@@ -42,6 +42,10 @@ class Config:
             object.__setattr__(self, __name, attr.resolve(self.__root_conf))
         return object.__getattribute__(self, __name)
 
+    def _lazy_setting_get_conf(self):
+        '''仅供LazySetting使用'''
+        return self.__root_conf
+
 
 T = TypeVar('T')
 
@@ -51,12 +55,28 @@ class LazySetting(Generic[T]):
     """
 
     def __init__(self, path: str, trans_fn: Optional[Callable[[Any], T]] = None,
-                 default: Optional[T] = None) -> None:
+                 default: T = None) -> None:
         self.path = path
         self.trans_fn = trans_fn
         self.default = default
 
-    def resolve(self, d: Dict[str, Any]) -> Optional[T]:
+    @overload
+    def __get__(self, instance: None, owner: Any) -> 'LazySetting[T]': ...
+    @overload
+    def __get__(self, instance: Config, owner: Any) -> T: ...
+    @overload
+    def __get__(self, instance: Any, owner: Any) -> 'LazySetting[T]': ...
+    def __get__(self, instance: Any, owner: Any):
+        '''作为类属性时，访问时会调用此方法，提供更好的类型提示'''
+        if instance is None or not isinstance(instance, Config):
+            return self
+        # 此处假设一个类只会有一个实例，否则需要建立dict来存储不同实例的值
+        if hasattr(self, '_data'):
+            return self._data
+        self._data = self.resolve(instance._lazy_setting_get_conf())
+        return self._data
+
+    def resolve(self, d: dict[str, Any]) -> T:
         value = self.__walk_dict(self.path, d)
         if value is None:
             return self.default
