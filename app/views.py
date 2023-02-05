@@ -70,20 +70,22 @@ class IndexView(SecureTemplateView):
     def dispatch_prepare(self, method: str) -> str:
         match method:
             case 'get':
-                return 'user_get' if self.request.user.is_authenticated else 'visitor_get'
+                return (self.user_get.__name__
+                        if self.request.user.is_authenticated else
+                        self.visitor_get.__name__)
             case 'post':
-                return self.prepare_login(self.request)
+                return self.prepare_login()
             case _:
                 return self.default_prepare(method)
 
-    def visitor_get(self, request, *args, **kwarg) -> HttpResponse:
+    def visitor_get(self) -> HttpResponse:
         # Modify password
         # Seems that after modification, log out by default?
         if self.request.GET.get('modinfo') is not None:
             succeed("修改密码成功!", self.extra_context)
         return self.render()
 
-    def user_get(self, request, *args, **kwarg) -> HttpResponse:
+    def user_get(self) -> HttpResponse:
         self.request = cast(UserRequest, self.request)
         # Special user
         if not self.request.user.is_valid():
@@ -96,9 +98,9 @@ class IndexView(SecureTemplateView):
 
         return self.redirect('welcome')
 
-    def prepare_login(self, request: HttpRequest, *args, **kwargs):
-        assert 'username' in request.POST
-        assert 'password' in request.POST
+    def prepare_login(self) -> str:
+        assert 'username' in self.request.POST
+        assert 'password' in self.request.POST
         assert not self.request.user.is_authenticated
         username = self.request.POST['username']
         # Check weather username exists
@@ -110,9 +112,9 @@ class IndexView(SecureTemplateView):
             username = org.get_user().username
         self.username = username
         self.password = self.request.POST['password']
-        return 'login'
+        return self.login.__name__
 
-    def login(self, request, *args, **kwargs) -> HttpResponse:
+    def login(self) -> HttpResponse:
         # Try login
         userinfo = auth.authenticate(username=self.username, password=self.password)
         if userinfo is None:
@@ -1502,8 +1504,6 @@ def logout(request: HttpRequest):
 
 @log.except_captured(source='views[get_stu_img]', record_user=True)
 def get_stu_img(request: HttpRequest):
-    if DEBUG:
-        print("in get stu img")
     stuId = request.GET.get("stuId")
     if stuId is not None:
         try:

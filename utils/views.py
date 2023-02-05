@@ -30,12 +30,14 @@ class SecureView(View, ABC):
     主要功能：权限检查、方法分发、参数检查
 
     权限检查：
-    - 可以根据需要重载check_perm()
+    - 可以根据需要设置perms_required，访问者需要同时具有所有权限才能访问
 
     方法分发 + 参数检查：
-    - 可以重载get_method_name()来实现request到method的映射
-    - method_names列表存放所有可用的方法，默认有get、post两种方法
-    - method_names里面的每个方法，都需要实现方法的同名函数method_name()，和参数检查函数check_method_name()
+    - 通过`get_method_name`获取`dispatch_prepare`参数名，被`method_names`检查
+    - 通过`dispatch_prepare`执行该参数的准备过程，并获取处理函数名
+    - `dispatch_prepare`调用`_PrepareFuncType`类型的函数，返回值为方法名
+    - 检查存在性后，通过处理函数名调用对应方法处理最终请求，实现业务逻辑
+    - 子类可以重载`_dispatch`以强化分发的功能，不建议重载`dispatch`
     """
     # 由View.setup自动设置，在子类修改以提供更多类型提示信息
     request: HttpRequest
@@ -43,12 +45,9 @@ class SecureView(View, ABC):
     args: _ArgType
     _KWType = TypedDict('kwargs', {})
     kwargs: _KWType
-    # TODO: 不准确的类型提示，全面使用新接口后修改
-    _PrepareFuncType = Callable[[HttpRequest, _ArgType, _KWType], HttpResponse | None]
-    _HandlerFuncType = Callable[[HttpRequest, _ArgType, _KWType], HttpResponse]
     # TODO: 兼容以下新接口，减少函数参数使用
-    # _PrepareFuncType = Callable[[], None]
-    # _HandlerFuncType = Callable[[], HttpResponse]
+    _PrepareFuncType = Callable[[], str]
+    _HandlerFuncType = Callable[[], HttpResponse]
 
     # 视图设置
     login_required: bool = True
@@ -102,7 +101,7 @@ class SecureView(View, ABC):
         handler: SecureView._HandlerFuncType = getattr(self, method_name)
 
         # Handle
-        return handler(self.request, self.args, self.kwargs)
+        return handler()
 
     def response_created(self, response: HttpResponse) -> NoReturn:
         '''
@@ -183,10 +182,8 @@ class SecureView(View, ABC):
         if not hasattr(self, default_name):
             return self.default_prepare(method, default_name)
         prepare_func: SecureView._PrepareFuncType = getattr(self, default_name)
-        # TODO: prepare_func返回str，重设method
-        response = prepare_func(self.request, *self.args, **self.kwargs)
-        if response is not None:
-            return self.response_created(response)
+        # prepare_func返回str，重设method
+        method = prepare_func()
         return method
 
     def default_prepare(self, method: str, default_name: str | None = None) -> str:
@@ -217,7 +214,7 @@ class SecureTemplateView(SecureView):
     - get_context_data()用于获取模板所需的context
     - extra_context作为get_context_data()的补充，在处理请求的过程中可以随时向其中添加内容
     """
-    template_name = None
+    template_name: str
     extra_context: dict[str, Any]
     response_class = TemplateResponse
 
@@ -230,39 +227,31 @@ class SecureTemplateView(SecureView):
         wrong(f'当前用户{request.user}无权访问该页面')
         if context is not None:
             self.extra_context.update(context)
-        return self.render(request)
+        return self.render()
 
     def get_template_names(self):
-        if self.template_name is None:
+        if getattr(self, 'template_name', None) is None:
             raise ImproperlyConfigured(
                 "SecureTemplateView requires either a definition of "
                 "'template_name' or an implementation of 'get_template_names()'"
             )
-        else:
-            return [self.template_name]
+        return [self.template_name]
 
-    def get_context_data(self, request: HttpRequest,
-                         **kwargs) -> dict[str, Any] | None:
+    def get_context_data(self, **kwargs) -> dict[str, Any]:
         if self.extra_context is not None:
             kwargs.update(self.extra_context)
         return kwargs
 
-    def render(self, request: HttpRequest | None = None, **kwargs):
+    def render(self, **kwargs):
         response = self.response_class(
             request=self.request,
             template=self.get_template_names(),
-            context=self.get_context_data(self.request, **kwargs),
+            context=self.get_context_data(**kwargs),
         )
         return self.response_created(response)
 
     def wrong(self, message: str):
         wrong(message, self.extra_context)
-        return self.render(self.request)
-
-    def _dispatch(self) -> HttpResponse:
-        response = super()._dispatch()
-        if response is not None:
-            return response
         return self.render()
 
     def error_response(self, exception: Exception) -> HttpResponse:
@@ -279,8 +268,8 @@ class SecureJsonView(SecureView):
         # TODO: 默认的返回数据
         raise NotImplementedError
 
-    @err_capture()
     def dispatch(self, request: HttpRequest, *args, **kwargs):
+        # TODO: 重写dispatch是不推荐的，super().dispatch之后的部分不捕获异常
         response = super().dispatch(request, *args, **kwargs)
         if isinstance(response, HttpResponseRedirect):
             return response
@@ -290,3 +279,9 @@ class SecureJsonView(SecureView):
             return self.response_class(data=self.get_default_data())
         else:
             raise TypeError
+
+    def error_response(self, exception: Exception) -> HttpResponse:
+        from utils.log import _format_request, get_logger
+        _message = _format_request(self.request)
+        get_logger('err').exception(_message)
+        return super().error_response(exception)
