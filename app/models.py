@@ -509,7 +509,7 @@ class OrganizationType(models.Model):
 
     def default_semester(self):
         '''供生成时方便调用的函数，职位的默认持续时间'''
-        return Semester.now() if self.otype_name == COURSE_TYPENAME else Semester.ANNUAL
+        return Semester.now() if self.otype_name == CONFIG.course_type_name else Semester.ANNUAL
 
     def default_is_admin(self, position):
         '''供生成时方便调用的函数，是否成为负责人的默认值'''
