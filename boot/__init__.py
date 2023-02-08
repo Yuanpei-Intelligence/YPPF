@@ -37,7 +37,7 @@ def _query_setting(paths, dic=local_dict, fuzzy_lookup=False):
         elif fuzzy_lookup and query.upper() in current_dir.keys():
             current_dir = current_dir[query.upper()]
         else:
-            raise ValueError(f'setting not found: {query} in {path}')
+            raise ValueError(f'setting not found: {query} in {paths}')
     return current_dir
 
 # 寻找本地设置

@@ -1,7 +1,7 @@
 import json
 import random
 from datetime import datetime, timedelta
-from typing import Optional
+from typing import Optional, cast
 
 from django.contrib import auth
 from django.db import transaction
@@ -67,80 +67,84 @@ class IndexView(SecureTemplateView):
     login_required = False
     template_name = 'index.html'
 
+    def dispatch_prepare(self, method: str) -> str:
+        match method:
+            case 'get':
+                return (self.user_get.__name__
+                        if self.request.user.is_authenticated else
+                        self.visitor_get.__name__)
+            case 'post':
+                return self.prepare_login()
+            case _:
+                return self.default_prepare(method)
 
-    def get(self, request: HttpRequest, *args, **kwarg) -> HttpResponse | None:
+    def visitor_get(self) -> HttpResponse:
+        # Modify password
+        # Seems that after modification, log out by default?
+        if self.request.GET.get('modinfo') is not None:
+            succeed("修改密码成功!", self.extra_context)
+        return self.render()
 
-        # Not authenticated
-        if not request.user.is_authenticated:
-            # Modify password
-            # Seems that after modification, log out by default?
-            if request.GET.get('modinfo') is not None:
-                succeed("修改密码成功!", self.extra_context)
-            return
-
+    def user_get(self) -> HttpResponse:
+        self.request = cast(UserRequest, self.request)
         # Special user
-        if not request.user.is_valid():  # type: ignore
-            wrong(f'当前用户“{request.user}”无权访问成长档案', self.extra_context)
-            return
+        if not self.request.user.is_valid():
+            return self.wrong(f'当前用户“{self.request.user}”无权访问成长档案')
 
         # Logout
-        if request.GET.get('is_logout') is not None:
-            auth.logout(request)
-            return
+        if self.request.GET.get('is_logout') is not None:
+            auth.logout(self.request)
+            return self.render()
 
-        return redirect(reverse('welcome'))
+        return self.redirect('welcome')
 
-    def check_post(self, request: HttpRequest, *args, **kwargs):
-        assert 'username' in request.POST
-        assert 'password' in request.POST
-
-    def __is_origin_safe(self, request: HttpRequest,
-                         origin: Optional[str] = None) -> bool:
-        return origin is None or origin.startswith('/')
-
-    def post(self, request: HttpRequest, *args, **kwargs) -> HttpResponse | None:
-        username = request.POST['username']
-        password = request.POST['password']
-
+    def prepare_login(self) -> str:
+        assert 'username' in self.request.POST
+        assert 'password' in self.request.POST
+        assert not self.request.user.is_authenticated
+        username = self.request.POST['username']
         # Check weather username exists
         if not User.objects.filter(username=username).exists():
             # Allow org to login with orgname
-            org: Organization | None = Organization.objects.filter(
-                oname=username).first()
-            if org is not None:
-                username = org.get_user().username
-            else:
-                wrong('用户名不存在', self.extra_context)
-                return
+            org = Organization.objects.filter(oname=username).first()
+            if org is None:
+                return self.wrong('用户名不存在')
+            username = org.get_user().username
+        self.username = username
+        self.password = self.request.POST['password']
+        return self.login.__name__
 
+    def login(self) -> HttpResponse:
         # Try login
-        userinfo = auth.authenticate(username=username, password=password)
+        userinfo = auth.authenticate(username=self.username, password=self.password)
         if userinfo is None:
-            wrong('密码错误', self.extra_context)
-            return
+            return self.wrong('密码错误')
 
         # special user
-        auth.login(request, userinfo)
-        user: User = request.user  # type: ignore
-        if not user.is_valid():
-            wrong(f'当前用户“{request.user}”无权访问成长档案')
-            return
+        auth.login(self.request, userinfo)
+        self.request = cast(UserRequest, self.request)
+        if not self.request.user.is_valid():
+            return self.wrong(f'当前用户“{self.request.user}”无权访问成长档案')
 
         # first time login
-        if user.first_time_login:
-            return redirect(reverse('modpw'))
+        if self.request.user.first_time_login:
+            return self.redirect('modpw')
 
         # Related account
         # When login as np, related org accout is also available
-        update_related_account_in_session(request, username)
+        update_related_account_in_session(self.request, self.username)
 
         # If origin is present and valid, redirect
         # Otherwise, redirect to welcome page
-        origin = request.GET.get('origin')
-        if origin and self.__is_origin_safe(request, origin):
-            return redirect(origin)
+        origin = self.request.GET.get('origin')
+        if origin and self._is_origin_safe(self.request, origin):
+            return self.redirect(origin)
         else:
-            return redirect(reverse('welcome'))
+            return self.redirect('welcome')
+
+    def _is_origin_safe(self, request: HttpRequest,
+                         origin: Optional[str] = None) -> bool:
+        return origin is None or origin.startswith('/')
 
 
 @login_required(redirect_field_name="origin")
@@ -1500,8 +1504,6 @@ def logout(request: HttpRequest):
 
 @log.except_captured(source='views[get_stu_img]', record_user=True)
 def get_stu_img(request: HttpRequest):
-    if DEBUG:
-        print("in get stu img")
     stuId = request.GET.get("stuId")
     if stuId is not None:
         try:
