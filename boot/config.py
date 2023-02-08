@@ -97,8 +97,8 @@ class LazySetting(Generic[T]):
     def __new__( # type: ignore
         self,
         path: str,
-        trans_fn: Optional[Callable[[Any], T]] = ...,
-        default: T = ...,
+        trans_fn: Optional[Callable[[Any], T]] = None,
+        default: T = None,
     ) -> 'LazySetting[T]': ...
     # 必须要有这个重载，否则会报错
     def __new__(cls, *args, **kwargs): # type: ignore
@@ -140,21 +140,22 @@ class LazySetting(Generic[T]):
         return current_dir  # type: ignore
 
 
+def _to_list_str(raw: str | list) -> list[str]:
+    if isinstance(raw, str):
+        raw = raw.replace(' ', '').split(',')
+    return list(map(str, raw))
+
+
 class GlobalConfig(Config):
+
+    def __init__(self, dict_prefix: str = 'global'):
+        super().__init__(dict_prefix)
+        assert self.semester is not None
+
     base_url = LazySetting('base_url', default='http://localhost:8000')
     hash_salt = LazySetting('hash_salt', default='salt')
     acadamic_year = LazySetting('acadamic_year', int)
     semester = LazySetting('semester')
-
-    def __init__(self, dict_prefix: str = 'global'):
-        super().__init__(dict_prefix)
-        def _to_list_str(raw: str | list) -> list[str]:
-            if isinstance(raw, str):
-                raw = raw.replace(' ', '').split(',')
-            return list(map(str, raw))
-        self.debug_stuids: list[str] = LazySetting(
-            'debug_stuids', _to_list_str, [])           # type: ignore
-
-        assert self.semester is not None
+    debug_stuids = LazySetting('debug_stuids', _to_list_str, [])
 
 GLOBAL_CONF = GlobalConfig()
