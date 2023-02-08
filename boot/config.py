@@ -51,55 +51,14 @@ T = TypeVar('T')
 
 
 class LazySetting(Generic[T]):
-    '''
-    延迟加载的配置项
-
-    在Config类中作为属性定义，如：
-    ```
-    class AppConfig(Config):
-        # 由语言服务器自动推断类型
-        value = LazySetting('value', default=0)
-        op1 = LazySetting('op1', int)
-        op2 = LazySetting('op2', int, default=0)
-    ```
-    上述代码在访问时会自动计算并缓存结果：
-    ```
-    config = AppConfig()
-    # 自动推断的类型
-    config.value: int
-    config.op1: int | None
-    config.op2: int
-    ```
-    '''
+    """
+    """
 
     def __init__(self, path: str, trans_fn: Optional[Callable[[Any], T]] = None,
                  default: T = None) -> None:
-        '''
-        :param path: 配置路径，以'/'分隔
-        :type path: str
-        :param trans_fn: 转换函数，将配置值转换为最终值，defaults to None
-        :type trans_fn: Callable[[Any], T], optional
-        :param default: 默认值, defaults to None
-        :type default: T, optional
-        '''
         self.path = path
         self.trans_fn = trans_fn
         self.default = default
-
-    # 为了支持更准确的泛型类型提示，重载 __new__ 方法
-    # 无参数时，标注为Any
-    @overload
-    def __new__( # type: ignore
-        self,
-        path: str,
-    ) -> 'LazySetting[Any | None]': ...
-    @overload
-    def __new__( # type: ignore
-        self,
-        path: str,
-        trans_fn: Optional[Callable[[Any], T]] = ...,
-        default: T = ...,
-    ) -> 'LazySetting[T]': ...
 
     @overload
     def __get__(self, instance: None, owner: Any) -> 'LazySetting[T]': ...
