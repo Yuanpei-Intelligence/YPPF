@@ -100,6 +100,9 @@ class LazySetting(Generic[T]):
         trans_fn: Optional[Callable[[Any], T]] = ...,
         default: T = ...,
     ) -> 'LazySetting[T]': ...
+    # 必须要有这个重载，否则会报错
+    def __new__(cls, *args, **kwargs): # type: ignore
+        return super().__new__(cls)
 
     @overload
     def __get__(self, instance: None, owner: Any) -> 'LazySetting[T]': ...
