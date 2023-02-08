@@ -9,7 +9,6 @@ from django.db.models import QuerySet
 import pypinyin
 
 from utils.admin_utils import *
-from Appointment import *
 from Appointment import jobs
 from Appointment.utils.utils import operation_writer
 from Appointment.models import *
@@ -286,7 +285,7 @@ class AppointAdmin(admin.ModelAdmin):
                             appoint, 'confirm_admin_w2c', appoint.get_status(),
                             students_id=[appoint.get_major_id()], admin=True,
                             id=f'{appoint.Aid}_confirm_admin_wechat')
-                        operation_writer(SYSTEM_LOG, str(appoint.Aid)+"号预约被管理员从WAITING改为CONFIRMED" +
+                        operation_writer(None, str(appoint.Aid)+"号预约被管理员从WAITING改为CONFIRMED" +
                                  "发起人："+str(appoint.major_student), "admin.confirm", "OK")
                     elif appoint.Astatus == Appoint.Status.VIOLATED:
                         appoint.Astatus = Appoint.Status.JUDGED
@@ -299,7 +298,7 @@ class AppointAdmin(admin.ModelAdmin):
                             appoint, 'confirm_admin_v2j', appoint.get_status(),
                             students_id=[appoint.get_major_id()], admin=True,
                             id=f'{appoint.Aid}_confirm_admin_wechat')
-                        operation_writer(SYSTEM_LOG, str(appoint.Aid)+"号预约被管理员从VIOLATED改为JUDGED" +
+                        operation_writer(None, str(appoint.Aid)+"号预约被管理员从VIOLATED改为JUDGED" +
                                  "发起人："+str(appoint.major_student), "admin.confirm", "OK")
 
                     else:  # 不允许更改
@@ -340,7 +339,7 @@ class AppointAdmin(admin.ModelAdmin):
                     appoint, 'violate_admin', f'原状态：{ori_status}',
                     students_id=[appoint.get_major_id()], admin=True,
                     id=f'{appoint.Aid}_violate_admin_wechat')
-                operation_writer(SYSTEM_LOG, f"{appoint.Aid}号预约被管理员设为违约"
+                operation_writer(None, f"{appoint.Aid}号预约被管理员设为违约"
                     + f"发起人：{appoint.major_student}", "admin.violate")
         except:
             return self.message_user(request, '操作失败!只允许对未审核的条目操作!', messages.WARNING)
@@ -367,7 +366,7 @@ class AppointAdmin(admin.ModelAdmin):
                 if datetime.now() < start:              # 如果未开始，修改开始提醒
                     jobs.set_start_wechat(appoint, notify_create=False)
             except Exception as e:
-                operation_writer(SYSTEM_LOG,
+                operation_writer(None,
                                  "出现更新定时任务失败的问题: " + str(e),
                                  "admin.longterm", "Error")
                 return self.message_user(request, str(e), messages.WARNING)
@@ -398,7 +397,7 @@ class AppointAdmin(admin.ModelAdmin):
                             print(warning)
                             raise Exception(warning)
             except Exception as e:
-                operation_writer(SYSTEM_LOG, "学生" + str(appoint.major_student) +
+                operation_writer(None, "学生" + str(appoint.major_student) +
                                  "出现添加长线化预约失败的问题:"+str(e), "admin.longterm", "Problem")
                 return self.message_user(request, str(e), messages.WARNING)
 

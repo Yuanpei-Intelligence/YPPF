@@ -148,6 +148,13 @@ class GlobalConfig(Config):
 
     def __init__(self, dict_prefix: str = 'global'):
         super().__init__(dict_prefix)
+        def _to_list_str(raw: str | list) -> list[str]:
+            if isinstance(raw, str):
+                raw = raw.replace(' ', '').split(',')
+            return list(map(str, raw))
+        self.debug_stuids: list[str] = LazySetting(
+            'debug_stuids', _to_list_str, [])           # type: ignore
+
         assert self.semester is not None
 
 GLOBAL_CONF = GlobalConfig()

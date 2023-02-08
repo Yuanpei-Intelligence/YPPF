@@ -12,11 +12,11 @@ from app.config import *
 from app.models import *
 from Appointment.models import Appoint, CardCheckInfo, Room
 from Appointment.utils.identity import get_participant
-from Appointment import GLOBAL_INFO
+from Appointment.config import CONFIG
 
 SUMMARY_YEAR = 2021
 SUMMARY_SEM_START = datetime(2021, 9, 1)
-SUMMARY_SEM_END: datetime = GLOBAL_INFO.semester_start
+SUMMARY_SEM_END: datetime = CONFIG.semester_start
 
 
 def remove_local_var(d: Dict[str, Any]):
