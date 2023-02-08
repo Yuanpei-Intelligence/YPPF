@@ -97,8 +97,8 @@ class LazySetting(Generic[T]):
     def __new__( # type: ignore
         self,
         path: str,
-        trans_fn: Optional[Callable[[Any], T]] = None,
-        default: T = None,
+        trans_fn: Optional[Callable[[Any], T]] = ...,
+        default: T = ...,
     ) -> 'LazySetting[T]': ...
     # 必须要有这个重载，否则会报错
     def __new__(cls, *args, **kwargs): # type: ignore
