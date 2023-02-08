@@ -56,6 +56,7 @@ def get_logger(name: str) -> logging.Logger:
 def _format_request(request: HttpRequest) -> str:
     ret = []
     if request.user.is_authenticated:
+        # Implicit Call: generic.models.User.__str__
         ret.append('User: ' + str(request.user))
     ret.append('URL: ' + request.get_full_path())
     if request.method is not None:
