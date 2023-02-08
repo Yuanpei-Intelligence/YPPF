@@ -1172,7 +1172,6 @@ class Notification(models.Model):
         PENDING_INFORM = "事务开始通知"
         FEEDBACK_INFORM = "反馈通知"
         YPLIB_INFORM = "元培书房通知"
-
         LOTTERY_INFORM = "抽奖结果通知"
 
 
