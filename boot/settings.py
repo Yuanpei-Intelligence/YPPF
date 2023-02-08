@@ -9,18 +9,13 @@ class __Config(config.Config):
 
     For example, login url is not configurable and should be hard-coded.
     """
+    db_host = os.getenv('DB_HOST') or LazySetting('db/NAME', default='localhost')
+    db_user = os.getenv('DB_USER') or LazySetting('db/USER', default='root')
+    db_password = os.getenv('DB_PASSWORD') or LazySetting('db/PASSWORD', default='secret')
+    db_name = os.getenv('DB_DATABASE') or LazySetting('db/DATABASE', default='yppf')
 
     def __init__(self, dict_prefix: str = ''):
         super().__init__(dict_prefix)
-        self.db_host = os.getenv('DB_HOST') or LazySetting(
-            'db/NAME', default='localhost')
-        self.db_user = os.getenv('DB_USER') or LazySetting(
-            'db/USER', default='root')
-        self.db_password = os.getenv('DB_PASSWORD') or LazySetting(
-            'db/PASSWORD', default='secret')
-        self.db_name = os.getenv('DB_DATABASE') or LazySetting(
-            'db/DATABASE', default='yppf'
-        )
         self.secret_key = 'k+8az5x&aq_!*@%v17(ptpeo@gp2$u-uc30^fze3u_+rqhb#@9'
         if not config.DEBUG:
             self.secret_key = os.environ['SESSION_KEY']
@@ -35,15 +30,13 @@ __configurables = __Config('django')
 # SECURITY
 # WARNING: don't run with debug turned on in production!
 DEBUG = config.DEBUG
-SECRET_KEY = "k+8az5x&aq_!*@%v17(ptpeo@gp2$u-uc30^fze3u_+rqhb#@9"
+SECRET_KEY = __configurables.secret_key
 ALLOWED_HOSTS = ["*"]
 AUTH_USER_MODEL = 'generic.User'
 AUTHENTICATION_BACKENDS = [
     "django.contrib.auth.backends.AllowAllUsersModelBackend"]
 AUTH_PASSWORD_VALIDATORS = [
-    {
-        "NAME": "django.contrib.auth.password_validation.UserAttributeSimilarityValidator",
-    },
+    {"NAME": "django.contrib.auth.password_validation.UserAttributeSimilarityValidator", },
     {"NAME": "django.contrib.auth.password_validation.MinimumLengthValidator", },
     {"NAME": "django.contrib.auth.password_validation.CommonPasswordValidator", },
     {"NAME": "django.contrib.auth.password_validation.NumericPasswordValidator", },

@@ -141,18 +141,13 @@ class LazySetting(Generic[T]):
 
 
 class GlobalConfig(Config):
+    base_url = LazySetting('base_url', default='http://localhost:8000')
+    hash_salt = LazySetting('hash_salt', default='salt')
+    acadamic_year = LazySetting('acadamic_year', int)
+    semester = LazySetting('semester')
 
     def __init__(self, dict_prefix: str = 'global'):
         super().__init__(dict_prefix)
-        self.base_url: str = LazySetting(
-            'base_url', default='http://localhost:8000')  # type: ignore
-        self.hash_salt: str = LazySetting(
-            'hash_salt', default='salt')              # type: ignore
-        self.acadamic_year: int = LazySetting(
-            'acadamic_year', int)                     # type: ignore
-        self.semester: str = LazySetting('semester')  # type: ignore
-
         assert self.semester is not None
-
 
 GLOBAL_CONF = GlobalConfig()
