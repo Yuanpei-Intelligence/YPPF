@@ -54,7 +54,7 @@ from django.db import transaction
 from django.db.models import F, Q, Sum, Prefetch
 
 from scheduler.scheduler import scheduler
-
+from app.config import CONFIG as APP_CONFIG
 
 __all__ = [
     'check_ac_time_course',
