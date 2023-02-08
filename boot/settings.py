@@ -130,11 +130,10 @@ DATABASES = {
 }
 
 
+# 两类文件的URL配置并不会自动生成，在urls.py查看开发环境如何配置
 # Static files (CSS, JavaScript, Images)
-# Django's staticfile doc is confusing...
-# Just use STATICFILES_DIRS instead of STATIC_ROOT for develop
 STATIC_URL = "/static/"
-STATICFILES_DIRS = (os.path.join(__configurables.static_dir, "static"),)
+STATIC_ROOT = os.path.join(__configurables.static_dir, "static")
 # Media files (user uploaded imgs)
 MEDIA_URL = "/media/"
 MEDIA_ROOT = os.path.join(__configurables.static_dir, "media/")

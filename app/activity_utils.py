@@ -25,7 +25,6 @@ from app.utils_dependency import *
 from app.models import (
     User,
     NaturalPerson,
-    Position,
     Organization,
     Position,
     Activity,
@@ -900,7 +899,7 @@ def reject_activity(request, activity):
 
 # 调用的时候用 try
 # 调用者把 activity_id 作为参数传过来
-def applyActivity(request, activity):
+def apply_activity(request, activity):
     '''这个函数在正常情况下只应该抛出提示错误信息的ActivityException'''
     context = dict()
     context["success"] = False

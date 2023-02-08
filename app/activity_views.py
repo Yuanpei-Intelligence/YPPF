@@ -11,7 +11,6 @@ import qrcode
 from app.views_dependency import *
 from app.models import (
     NaturalPerson,
-    Position,
     Organization,
     OrganizationType,
     Position,
@@ -27,7 +26,7 @@ from app.activity_utils import (
     modify_activity,
     accept_activity,
     reject_activity,
-    applyActivity,
+    apply_activity,
     cancel_activity,
     withdraw_activity,
     get_activity_QRcode,
@@ -145,7 +144,7 @@ def viewActivity(request: HttpRequest, aid=None):
                     activity = Activity.objects.select_for_update().get(id=int(aid))
                     if activity.status != Activity.Status.APPLYING:
                         return redirect(message_url(wrong('活动不在报名状态!'), request.path))
-                    applyActivity(request, activity)
+                    apply_activity(request, activity)
                     if activity.bidding:
                         succeed(f"活动申请中，请等待报名结果。", html_display)
                     else:
