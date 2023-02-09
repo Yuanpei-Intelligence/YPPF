@@ -2,7 +2,7 @@ from typing import Any, final, overload, TypedDict, NoReturn, Callable
 from abc import ABC, abstractmethod
 
 from django.views.generic import View
-from django.http import HttpResponse, HttpResponseRedirect, JsonResponse
+from django.http import HttpResponse, HttpResponseRedirect, HttpResponseForbidden, JsonResponse
 from django.core.exceptions import ImproperlyConfigured
 from django.template.response import TemplateResponse
 
@@ -43,7 +43,7 @@ class SecureView(View, ABC):
     request: HttpRequest
     _ArgType = tuple
     args: _ArgType
-    _KWType = TypedDict('kwargs', {})
+    _KWType = TypedDict('_KWType', {})
     kwargs: _KWType
     # TODO: 兼容以下新接口，减少函数参数使用
     _PrepareFuncType = Callable[[], str]
@@ -69,11 +69,11 @@ class SecureView(View, ABC):
             return self.response
         except Exception as e:
             err = e
+            try:
+                return self.error_response(err)
+            except ResponseCreated:
+                return self.response
         # 出错时理应不再抛出异常，但以防万一仍然捕获ResponseCreated信号
-        try:
-            return self.error_response(err)
-        except ResponseCreated:
-            return self.response
 
     def _dispatch(self) -> HttpResponse:
         '''
@@ -143,7 +143,7 @@ class SecureView(View, ABC):
             return self.response_created(self.redirect_to_login(self.request))
         for perm in self.perms_required:
             if not self.request.user.has_perm(perm):
-                return self.response_created(self.permission_denied(self.request))
+                return self.permission_denied()
 
     @final
     def redirect_to_login(self, request: HttpRequest,
@@ -163,9 +163,20 @@ class SecureView(View, ABC):
         from django.contrib.auth.views import redirect_to_login
         return redirect_to_login(path, login_url, 'origin')
 
-    @abstractmethod
-    def permission_denied(self, request: HttpRequest) -> HttpResponse:
-        raise NotImplementedError
+    def permission_denied(self, user_info: str | None = None) -> NoReturn:
+        '''
+        抛出用户提示，无权访问该页面，必须抛出异常
+
+        :param user_info: 直接呈现给用户的附加信息, defaults to None
+        :type user_info: str | None, optional
+        '''
+        user_message = f'无权访问该页面'
+        if user_info is not None:
+            user_message += f'：{user_info}'
+        return self.response_created(self.http_forbidden(user_message))
+
+    def http_forbidden(self, user_message: str = '') -> HttpResponse:
+        return HttpResponseForbidden(user_message)
 
     def get_method_name(self, request: HttpRequest) -> str:
         return request.method.lower()
@@ -197,6 +208,8 @@ class SecureView(View, ABC):
     def error_response(self, exception: Exception) -> HttpResponse:
         '''错误处理，子类可重写，不应产生异常'''
         # TODO: 错误处理和http_method_not_allowed不同
+        # from boot.config import DEBUG
+        # if DEBUG: raise
         return self._check_http_method()
 
     def redirect(self, to: str, *args, permanent=False, **kwargs):
@@ -222,12 +235,14 @@ class SecureTemplateView(SecureView):
         super().setup(request, *args, **kwargs)
         self.extra_context = {}
 
-    def permission_denied(self, request: HttpRequest,
-                          context: dict[str, Any] | None = None) -> HttpResponse:
-        wrong(f'当前用户{request.user}无权访问该页面')
+    def permission_denied(self, user_info: str | None = None,
+                          context: dict[str, Any] | None = None) -> NoReturn:
+        user_message = f'当前用户无权访问该页面'
+        if user_info is not None:
+            user_message += f'：{user_info}'
         if context is not None:
             self.extra_context.update(context)
-        return self.render()
+        return self.response_created(self.wrong(user_message))
 
     def get_template_names(self):
         if getattr(self, 'template_name', None) is None:

@@ -45,6 +45,11 @@ def invalid_for_frontend(method):
     return method
 
 
+def debug_only(method):
+    '''仅用于提供调试信息，如报错、后台、日志记录等，必须对用户不可见'''
+    return method
+
+
 def to_acronym(name: str) -> str:
     '''生成缩写'''
     pinyin_list = pypinyin.pinyin(name, style=pypinyin.NORMAL)
@@ -282,7 +287,7 @@ class User(AbstractUser, PointMixin):
     REQUIRED_FIELDS = ['name']
     objects: UserManager = UserManager()
 
-
+    @debug_only
     def __str__(self) -> str:
         return f'{self.username} ({self.name})'
 

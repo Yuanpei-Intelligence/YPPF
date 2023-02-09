@@ -9,24 +9,18 @@ class __Config(config.Config):
 
     For example, login url is not configurable and should be hard-coded.
     """
-
     def __init__(self, dict_prefix: str = ''):
         super().__init__(dict_prefix)
-        self.db_host = os.getenv('DB_HOST') or LazySetting(
-            'db/NAME', default='localhost')
-        self.db_user = os.getenv('DB_USER') or LazySetting(
-            'db/USER', default='root')
-        self.db_password = os.getenv('DB_PASSWORD') or LazySetting(
-            'db/PASSWORD', default='secret')
-        self.db_name = os.getenv('DB_DATABASE') or LazySetting(
-            'db/DATABASE', default='yppf'
-        )
-        self.secret_key = 'k+8az5x&aq_!*@%v17(ptpeo@gp2$u-uc30^fze3u_+rqhb#@9'
-        if not config.DEBUG:
-            self.secret_key = os.environ['SESSION_KEY']
-        self.db_port = os.getenv('DB_PORT')
-        self.static_dir = os.getenv('DB_PORT') or config.BASE_DIR
-        # self.installed_apps = []      # Maybe useful in the future
+
+    db_host = os.getenv('DB_HOST') or LazySetting('db/HOST', default='localhost')
+    db_user = os.getenv('DB_USER') or LazySetting('db/USER', default='root')
+    db_password = os.getenv('DB_PASSWORD') or LazySetting('db/PASSWORD', default='secret')
+    db_name = os.getenv('DB_DATABASE') or LazySetting('db/NAME', default='yppf')
+    db_port = os.getenv('DB_PORT') or LazySetting('db/PORT', default='3306')
+
+    secret_key = ('k+8az5x&aq_!*@%v17(ptpeo@gp2$u-uc30^fze3u_+rqhb#@9'
+                  if config.DEBUG else os.environ['SESSION_KEY'])
+    static_dir = os.getenv('STATIC_DIR') or config.BASE_DIR
 
 
 __configurables = __Config('django')
@@ -35,15 +29,13 @@ __configurables = __Config('django')
 # SECURITY
 # WARNING: don't run with debug turned on in production!
 DEBUG = config.DEBUG
-SECRET_KEY = "k+8az5x&aq_!*@%v17(ptpeo@gp2$u-uc30^fze3u_+rqhb#@9"
+SECRET_KEY = __configurables.secret_key
 ALLOWED_HOSTS = ["*"]
 AUTH_USER_MODEL = 'generic.User'
 AUTHENTICATION_BACKENDS = [
     "django.contrib.auth.backends.AllowAllUsersModelBackend"]
 AUTH_PASSWORD_VALIDATORS = [
-    {
-        "NAME": "django.contrib.auth.password_validation.UserAttributeSimilarityValidator",
-    },
+    {"NAME": "django.contrib.auth.password_validation.UserAttributeSimilarityValidator", },
     {"NAME": "django.contrib.auth.password_validation.MinimumLengthValidator", },
     {"NAME": "django.contrib.auth.password_validation.CommonPasswordValidator", },
     {"NAME": "django.contrib.auth.password_validation.NumericPasswordValidator", },
@@ -130,11 +122,14 @@ DATABASES = {
 }
 
 
+# 两类文件URL配置在生产环境失效，在urls.py查看开发环境如何配置
+
 # Static files (CSS, JavaScript, Images)
-# Django's staticfile doc is confusing...
-# Just use STATICFILES_DIRS instead of STATIC_ROOT for develop
+# staticfiles应用默认只搜寻STATICFILES_DIRS和%APP%/static目录，不符合项目需求
+# 由于使用统一static，无需支持collectstatic，废弃STATIC_ROOT
 STATIC_URL = "/static/"
-STATICFILES_DIRS = (os.path.join(__configurables.static_dir, "static"),)
+STATICFILES_DIRS = (os.path.join(__configurables.static_dir, "static/"),)
+
 # Media files (user uploaded imgs)
 MEDIA_URL = "/media/"
 MEDIA_ROOT = os.path.join(__configurables.static_dir, "media/")

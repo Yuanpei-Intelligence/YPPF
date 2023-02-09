@@ -8,7 +8,7 @@ from django.db.models import Q
 from django.db import transaction
 
 from generic.models import User
-
+from Appointment.config import CONFIG
 
 __all__ = [
     'User',
@@ -382,7 +382,7 @@ class LongTermAppointManager(models.Manager['LongTermAppoint']):
             ])
         if this_semester:
             result = result.filter(
-                appoint__Astart__gt=GLOBAL_INFO.semester_start,
+                appoint__Astart__gt=CONFIG.semester_start,
             )
         return result
 

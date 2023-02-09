@@ -57,48 +57,40 @@ class CourseConfig(Config):
                 'course/publish_time')
 
 class ProfileConfig(Config):
-    def __init__(self) -> None:
+    def __init__(self, dict_prefix: str = ''):
+        super().__init__(dict_prefix)
 
-        # email
-        self.email_salt: str = LazySetting('email/salt')
-        self.email_url = LazySetting('email/url')
+    # email
+    email_salt = LazySetting('email/salt')
+    email_url = LazySetting('email/url')
 
-        # Wechat
-        self.hash_wechat: str = LazySetting('wechat/salt')
-        self.wechat_app2url = LazySetting(
-            'wechat/app2url', default=dict())
-        self.wechat_receiver_set = None
-        self.wechat_blacklist_set = LazySetting(
-            'wechat/blacklist', default=set(),
-            trans_fn=lambda x: set(map(str, x)))
-        self.wechat_unblock_apps = set()
-        self.wechat_use_scheduler: bool = True
-        self.wechat_batch = LazySetting('wechat/batch')
+    # Wechat
+    hash_wechat = LazySetting('wechat/salt')
+    wechat_app2url = LazySetting('wechat/app2url', default=dict())
+    wechat_receiver_set = None
+    wechat_blacklist_set = LazySetting(
+        'wechat/blacklist', default=set(),
+        trans_fn=lambda x: set(map(str, x)))
+    wechat_unblock_apps = set()
+    wechat_use_scheduler: bool = True
+    wechat_batch = LazySetting('wechat/batch')
+    wechat_url = LazySetting('wechat/api_url')
 
-        # Notification
-        self.max_inform_rank = LazySetting('notification/max_inform_rank')
-        self.help_message = LazySetting('help_message')
+    # Notification
+    max_inform_rank = LazySetting('notification/max_inform_rank')
+    help_message = LazySetting('help_message')
 
-        # Course Info
-        self.course_type_name: str = LazySetting(
-            'course/type_name', default='书院课程')
-        self.least_record_hours: float = LazySetting(
-            'course/valid_hours', float, default=8.0)
-        
-        self.course = CourseConfig()
+    # Course Info
+    course_type_name = LazySetting('course/type_name', default='书院课程')
+    least_record_hours = LazySetting('course/valid_hours', float, default=8.0)
 
-        # YQPoint
-        # TODO: Change it
-        self.yqp_oname = ''
-        self.yqp_activity_max: int = LazySetting(
-            'YQPoint/activity/max', default=30)
-        self.yqp_activity_per_hour: float = LazySetting(
-            'YQPoint/activity/per_hour', float, default=10)
-        self.yqp_per_feedback: int = LazySetting(
-            'YQPoint/feedback/per_accept', default=10)
-        self.yqp_signin_points = LazySetting(
-            'YQPoint/signin_points', default=[1, 2, 2, (2, 4), 2, 2, (5, 7)]
-        )
+    # YQPoint
+    # TODO: Change it
+    yqp_oname = ''
+    yqp_activity_max = LazySetting('YQPoint/activity/max', default=30)
+    yqp_activity_per_hour = LazySetting('YQPoint/activity/per_hour', float, default=10)
+    yqp_per_feedback = LazySetting('YQPoint/feedback/per_accept', default=10)
+    yqp_signin_points = LazySetting('YQPoint/signin_points', default=[1, 2, 2, (2, 4), 2, 2, (5, 7)])
 
 
 CONFIG = ProfileConfig()
