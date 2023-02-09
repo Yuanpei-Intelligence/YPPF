@@ -15,6 +15,7 @@ vars.
 
 import os
 import json
+import types
 from typing import Optional, Any, Callable, Generic, TypeVar, overload, Type
 from django.core.exceptions import ImproperlyConfigured
 
@@ -66,7 +67,7 @@ class LazySetting(Generic[T]):
         value = LazySetting('value', default=0)
         op1 = LazySetting('op1', int)
         op2 = LazySetting('op2', int, default=0)
-        # 也可以使用type指定类型
+        # 也可以使用type指定类型，写法建议参考`LazySetting.checkable_type`的文档
         assert_d = LazySetting('value/dict', type=dict)
     ```
     上述代码在访问时会自动计算并缓存结果：
@@ -92,13 +93,13 @@ class LazySetting(Generic[T]):
         :type trans_fn: Callable[[Any], T], optional
         :param default: 默认值, defaults to None
         :type default: T, optional
-        :param type: 最终值类型，None时不检查，defaults to None
+        :param type: 最终值类型，None时不检查，参考`checkable_type`的文档，defaults to None
         :type type: Type[T], optional
         '''
         self.path = path
         self.trans_fn = trans_fn
         self.default = default
-        self.type = type
+        self.type = self.checkable_type(type)
 
     # 为了支持更准确的泛型类型提示，重载 __new__ 方法
     # 无参数时，标注为Any
@@ -127,6 +128,52 @@ class LazySetting(Generic[T]):
     # 必须要有这个重载，否则会报错
     def __new__(cls, *args, **kwargs): # type: ignore
         return super().__new__(cls)
+
+    _CheckableType = type | types.UnionType | tuple['_CheckableType', ...]
+    _AvailableType = _CheckableType | None
+    def checkable_type(self, type: Any | None) -> _AvailableType:
+        '''
+        提供可用于检查类型的类，只能进行初级检查(isinstance)
+
+        type应小心以下写法：
+        - `list[int] | ...` 极不推荐，无法检查，无法提示，应尽量避免
+        - `tuple[...]` 默认的JSON解析器会将元组解析为列表，务必提供tuple转化函数
+
+        合法的最终检查类型由以下规则定义（语法略有扩展）：
+        ```
+        FAT := AT | TF                              # final available type
+        TF: tuple[CT, ...] := ...                   # tuple of checkable types
+        AT := CT | None                             # available type
+        CT := RT | UT                               # checkable type
+        RT := RNT | RGT                             # raw type
+        RNT := RBT | _RNT                           # raw normal type
+        RBT := int | str | float | bool             # buildin types
+            |  list | dict | set | tuple | ...
+        _RNT := types.NoneType | any class          # normal class & NoneType
+        RGT := List | Dict | Set | Tuple | ...      # generic types
+        UT := UNT | UGA                             # union type
+        _N := _NT | None
+        _NT := RNT | UNT | Optional[None]
+        UNT := _N '|' RNT | _NT '|' None            # union normal types
+        _GT := RGT | UGA
+        UGA := Optional[CT] | Union[CT, AT{, AT}]   # union generic alias
+            |  _GT '|' AT | _N '|' _GT
+        ```
+        :param type: 上文所定义的FAT形式
+        :type type: Any | None，如果希望检查，则应该是_CheckableType
+        :return: 可用于检查的类型
+        :rtype: _CheckableType | None
+        '''
+        if type is None:
+            return None
+
+        # 符合FAT定义的_CheckableType都能通过isinstance检查
+        try:
+            isinstance(None, type)
+            return type
+        except:
+            pass
+        return None
 
     @overload
     def __get__(self, instance: None, owner: Any) -> 'LazySetting[T]': ...
