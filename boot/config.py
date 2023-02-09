@@ -16,7 +16,7 @@ vars.
 import os
 import json
 import types
-from typing import Optional, Any, Callable, Generic, TypeVar, Type, Literal, overload
+from typing import Optional, Any, Callable, Generic, TypeVar, overload, Type
 from django.core.exceptions import ImproperlyConfigured
 
 
@@ -32,7 +32,7 @@ def _init_config(path = './config.json', encoding = 'utf8') -> dict[str, Any]:
 class Config:
     """
     为各个 app 提供的 Config 基类
-    
+
     使用方法可参考 scheduler/config.py
     """
 
@@ -59,7 +59,7 @@ T = TypeVar('T')
 class LazySetting(Generic[T]):
     '''
     延迟加载的配置项
-    
+
     在Config类中作为属性定义，如：
     ```
     class AppConfig(Config):
@@ -87,12 +87,11 @@ class LazySetting(Generic[T]):
     ```
     :raises ImproperlyConfigured: 配置最终值不匹配期望类型
     '''
-    class TypeCheck: '默认类型检查，忽略默认值'
 
     _real_type = type
     def __init__(self, path: str, trans_fn: Optional[Callable[[Any], T]] = None,
                  default: T = None, *,
-                 type: Optional[Type[T|TypeCheck] | tuple[Type[T], ...]] = None) -> None:
+                 type: Optional[Type[T] | tuple[Type[T], ...]] = None) -> None:
         '''
         :param path: 配置路径，以'/'分隔
         :type path: str
@@ -100,7 +99,7 @@ class LazySetting(Generic[T]):
         :type trans_fn: Callable[[Any], T], optional
         :param default: 默认值, defaults to None
         :type default: T, optional
-        :param type: 最终值类型，参考`checkable_type`的文档，defaults to None
+        :param type: 最终值类型，None时不检查，参考`checkable_type`的文档，defaults to None
         :type type: Type[T] | tuple[Type[T], ...], optional
         '''
         self.path = path
@@ -144,13 +143,13 @@ class LazySetting(Generic[T]):
     def checkable_type(self, type: Any | None, or_none: bool = False) -> _AvailableType:
         '''
         提供可用于检查类型的类，只能进行初级检查(isinstance)
-        
+
         type应小心以下写法：
         - `list[int] | ...` 极不推荐，无法检查，无法提示，应尽量避免
         - `list[int]` 只能进行简单检查，无法检查列表内的元素类型
         - `int | str`或`Union[int, str]` IDE无法正确提示类型，应使用`(int, str)`
         - `tuple[...]` 默认的JSON解析器会将元组解析为列表，务必提供tuple转化函数
-        
+
         合法的最终检查类型由以下规则定义（语法略有扩展）：
         ```
         FAT := AT | TF                              # final available type
@@ -268,8 +267,8 @@ class GlobalConfig(Config):
 
     base_url = LazySetting('base_url', default='http://localhost:8000')
     hash_salt = LazySetting('hash_salt', default='salt')
-    acadamic_year = LazySetting('acadamic_year', type=int)
-    semester = LazySetting('semester', type=str)
+    acadamic_year = LazySetting('acadamic_year', int)
+    semester = LazySetting('semester')
     debug_stuids = LazySetting('debug_stuids', _to_list_str, [])
 
 GLOBAL_CONF = GlobalConfig()
