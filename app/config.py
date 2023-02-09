@@ -42,15 +42,20 @@ __all__ = [
 UTYPE_PER = User.Type.PERSON.value
 UTYPE_ORG = User.Type.ORG.value
 
-class CourseElection:
-    def __init__(self, yx_st:str, yx_ed:str, btx_st:str, btx_ed:str, pub_tm:str):
-            # %Y-%m-%d %H:%M:%S
-            self.yx_election_start: str = yx_st
-            self.yx_election_end: str = yx_st
-            self.btx_election_start: str = btx_st
-            self.btx_election_end: str = btx_ed
-            self.publish_time: str = pub_tm
-        
+class CourseConfig(Config):
+    def __init__(self):
+        # str format: %Y-%m-%d %H:%M:%S
+        self.yx_election_start: str = LazySetting(
+                'course/yx_election_start')
+        self.yx_election_end: str = LazySetting(
+                'course/yx_election_end')
+        self.btx_election_start: str = LazySetting(
+                'course/btx_election_start')
+        self.btx_election_end: str = LazySetting(
+                'course/btx_election_end')
+        self.publish_time: str = LazySetting(
+                'course/publish_time')
+
 class ProfileConfig(Config):
     def __init__(self) -> None:
 
@@ -80,22 +85,7 @@ class ProfileConfig(Config):
         self.least_record_hours: float = LazySetting(
             'course/valid_hours', float, default=8.0)
         
-        self.yx_election_start: str = LazySetting(
-                'course/yx_election_start')
-        self.yx_election_end: str = LazySetting(
-                'course/yx_election_end')
-        self.btx_election_start: str = LazySetting(
-                'course/btx_election_start')
-        self.btx_election_end: str = LazySetting(
-                'course/btx_election_end')
-        self.publish_time: str = LazySetting(
-                'course/publish_time')
-        
-        self.course = CourseElection(self.yx_election_start,
-                                     self.yx_election_end,
-                                     self.btx_election_start,
-                                     self.btx_election_end,
-                                     self.publish_time)
+        self.course = CourseConfig()
 
         # YQPoint
         # TODO: Change it

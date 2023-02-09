@@ -32,7 +32,7 @@ from datetime import datetime
 
 from django.db import transaction
 
-from app.config import CONFIG as APP_CONFIG
+
 COURSE_TYPENAME = CONFIG.course_type_name
 
 __all__ = [
