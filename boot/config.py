@@ -88,7 +88,6 @@ class LazySetting(Generic[T]):
     :raises ImproperlyConfigured: 配置最终值不匹配期望类型
     '''
 
-    _real_type = type
     def __init__(self, path: str, trans_fn: Optional[Callable[[Any], T]] = None,
                  default: T = None, *,
                  type: Optional[Type[T] | tuple[Type[T], ...]] = None) -> None:
@@ -264,7 +263,7 @@ class GlobalConfig(Config):
 
     def __init__(self, dict_prefix: str = 'global'):
         super().__init__(dict_prefix)
-
+        assert self.semester is not None
     base_url = LazySetting('base_url', default='http://localhost:8000')
     hash_salt = LazySetting('hash_salt', default='salt')
     acadamic_year = LazySetting('acadamic_year', int)
