@@ -44,7 +44,7 @@ def get_logger(name: str) -> logging.Logger:
     for handle in logger.handlers:
         logger.removeHandler(handle)
     handler = logging.FileHandler(
-        os.path.join(LOG_DIR, name + '.log'))
+        os.path.join(LOG_DIR, name + '.log'), encoding='utf8', mode='a')
     handler.setFormatter(logging.Formatter(LOG_FORMAT))
     logger.addHandler(handler)
     logger.setLevel(LOG_LEVEL)
@@ -55,10 +55,10 @@ def get_logger(name: str) -> logging.Logger:
 
 def _format_request(request: HttpRequest) -> str:
     ret = []
+    ret.append('URL: ' + request.get_full_path())
     if request.user.is_authenticated:
         # Implicit Call: generic.models.User.__str__
         ret.append('User: ' + str(request.user))
-    ret.append('URL: ' + request.get_full_path())
     if request.method is not None:
         ret.append('Method: ' + request.method)
         if request.method.lower() == 'POST':
