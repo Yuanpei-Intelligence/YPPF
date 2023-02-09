@@ -15,11 +15,16 @@ vars.
 
 import os
 import json
-from typing import Optional, Any, Callable, Generic, TypeVar, Dict, overload
+from typing import Optional, Any, Callable, Generic, TypeVar, overload
 
 
 DEBUG = True  # WARNING! TODO: Set to False in main branch
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
+
+def _init_config(path = './config.json', encoding = 'utf8') -> dict[str, Any]:
+    with open(path, encoding=encoding) as f:
+        return json.load(f)
 
 
 class Config:
@@ -29,12 +34,11 @@ class Config:
     使用方法可参考 scheduler/config.py
     """
 
-    with open('./config.json') as f:
-        __root_conf = json.load(f)
+    __root_conf = _init_config()
 
     def __init__(self, dict_prefix: str = ''):
         if dict_prefix:
-            self.__root_conf = self.__root_conf[dict_prefix]
+            self.__root_conf: dict[str, Any] = self.__root_conf[dict_prefix]
 
     def __getattribute__(self, __name: str) -> Any:
         attr = object.__getattribute__(self, __name)
@@ -129,7 +133,7 @@ class LazySetting(Generic[T]):
         return value
 
     @staticmethod
-    def __walk_dict(path: str, d: Dict[str, Any]) -> Optional[T]:
+    def __walk_dict(path: str, d: dict[str, Any]) -> Optional[T]:
         paths = path.strip("/").split("/")
         current_dir = d
         for query in paths:

@@ -9,19 +9,18 @@ class __Config(config.Config):
 
     For example, login url is not configurable and should be hard-coded.
     """
-    db_host = os.getenv('DB_HOST') or LazySetting('db/NAME', default='localhost')
-    db_user = os.getenv('DB_USER') or LazySetting('db/USER', default='root')
-    db_password = os.getenv('DB_PASSWORD') or LazySetting('db/PASSWORD', default='secret')
-    db_name = os.getenv('DB_DATABASE') or LazySetting('db/DATABASE', default='yppf')
-
     def __init__(self, dict_prefix: str = ''):
         super().__init__(dict_prefix)
-        self.secret_key = 'k+8az5x&aq_!*@%v17(ptpeo@gp2$u-uc30^fze3u_+rqhb#@9'
-        if not config.DEBUG:
-            self.secret_key = os.environ['SESSION_KEY']
-        self.db_port = os.getenv('DB_PORT')
-        self.static_dir = os.getenv('DB_PORT') or config.BASE_DIR
-        # self.installed_apps = []      # Maybe useful in the future
+
+    db_host = os.getenv('DB_HOST') or LazySetting('db/HOST', default='localhost')
+    db_user = os.getenv('DB_USER') or LazySetting('db/USER', default='root')
+    db_password = os.getenv('DB_PASSWORD') or LazySetting('db/PASSWORD', default='secret')
+    db_name = os.getenv('DB_DATABASE') or LazySetting('db/NAME', default='yppf')
+    db_port = os.getenv('DB_PORT') or LazySetting('db/PORT', default='3306')
+
+    secret_key = ('k+8az5x&aq_!*@%v17(ptpeo@gp2$u-uc30^fze3u_+rqhb#@9'
+                  if config.DEBUG else os.environ['SESSION_KEY'])
+    static_dir = os.getenv('STATIC_DIR') or config.BASE_DIR
 
 
 __configurables = __Config('django')
@@ -123,10 +122,14 @@ DATABASES = {
 }
 
 
-# 两类文件的URL配置并不会自动生成，在urls.py查看开发环境如何配置
+# 两类文件URL配置在生产环境失效，在urls.py查看开发环境如何配置
+
 # Static files (CSS, JavaScript, Images)
+# staticfiles应用默认只搜寻STATICFILES_DIRS和%APP%/static目录，不符合项目需求
+# 由于使用统一static，无需支持collectstatic，废弃STATIC_ROOT
 STATIC_URL = "/static/"
-STATIC_ROOT = os.path.join(__configurables.static_dir, "static")
+STATICFILES_DIRS = (os.path.join(__configurables.static_dir, "static/"),)
+
 # Media files (user uploaded imgs)
 MEDIA_URL = "/media/"
 MEDIA_ROOT = os.path.join(__configurables.static_dir, "media/")
