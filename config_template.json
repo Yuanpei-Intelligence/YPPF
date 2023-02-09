@@ -29,6 +29,9 @@
         "send_batch": 500,
         "send_number": 500,
         "blacklist": [],
+        "unblock_apps": [
+            "promote"
+        ],
         "api_url": ""
     },
     "email": {

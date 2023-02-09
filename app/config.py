@@ -32,7 +32,6 @@ __all__ = [
     'WRONG', 'SUCCEED',
     # 本应用的常量
     'UTYPE_PER', 'UTYPE_ORG',
-    'CURRENT_ACADEMIC_YEAR',
     # 本应用的CONFIG
     'CONFIG', 'GLOBAL_CONF'
 ]
@@ -49,20 +48,22 @@ class ProfileConfig(Config):
         super().__init__(dict_prefix)
 
     # email
-    email_salt = LazySetting('email/salt')
-    email_url = LazySetting('email/url')
+    email_salt = LazySetting('email/salt', type=str)
+    email_url = LazySetting('email/url', type=str)
 
     # Wechat
-    hash_wechat = LazySetting('wechat/salt')
+    hash_wechat = LazySetting('wechat/salt', type=str)
     wechat_app2url = LazySetting('wechat/app2url', default=dict())
     wechat_receiver_set = None
     wechat_blacklist_set = LazySetting(
         'wechat/blacklist', default=set(),
         trans_fn=lambda x: set(map(str, x)))
-    wechat_unblock_apps = set()
+    wechat_unblock_apps = LazySetting(
+        'wechat/unblock_apps', default=set(),
+        trans_fn=lambda x: set(map(str, x)))
     wechat_use_scheduler: bool = True
-    wechat_batch = LazySetting('wechat/batch')
-    wechat_url = LazySetting('wechat/api_url')
+    wechat_batch = LazySetting('wechat/batch', default=500)
+    wechat_url = LazySetting('wechat/api_url', type=str)
 
     # Notification
     max_inform_rank = LazySetting('notification/max_inform_rank')
@@ -82,4 +83,3 @@ class ProfileConfig(Config):
 
 
 CONFIG = ProfileConfig()
-CURRENT_ACADEMIC_YEAR = GLOBAL_CONF.acadamic_year

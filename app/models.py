@@ -95,7 +95,7 @@ if not hasattr(QuerySet, '__class_getitem__'):
 
 def current_year() -> int:
     '''不导出的函数，用于实时获取学年设置'''
-    return CURRENT_ACADEMIC_YEAR
+    return GLOBAL_CONF.acadamic_year
 
 
 def select_current(queryset,
