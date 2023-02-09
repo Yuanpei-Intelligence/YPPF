@@ -69,6 +69,7 @@ class LazySetting(Generic[T]):
         op2 = LazySetting('op2', int, default=0)
         # 也可以使用type指定类型，写法建议参考`LazySetting.checkable_type`的文档
         assert_d = LazySetting('value/dict', type=dict)
+        i_or_s = LazySetting('value/i_or_s', type=(int, str))
     ```
     上述代码在访问时会自动计算并缓存结果：
     ```
@@ -99,7 +100,10 @@ class LazySetting(Generic[T]):
         self.path = path
         self.trans_fn = trans_fn
         self.default = default
-        self.type = self.checkable_type(type)
+        if type is None:
+            self.type = self.checkable_type(trans_fn, or_none=type is None)
+        else:
+            self.type = self.checkable_type(type)
 
     # 为了支持更准确的泛型类型提示，重载 __new__ 方法
     # 无参数时，标注为Any
@@ -131,7 +135,7 @@ class LazySetting(Generic[T]):
 
     _CheckableType = type | types.UnionType | tuple['_CheckableType', ...]
     _AvailableType = _CheckableType | None
-    def checkable_type(self, type: Any | None) -> _AvailableType:
+    def checkable_type(self, type: Any | None, or_none: bool = False) -> _AvailableType:
         '''
         提供可用于检查类型的类，只能进行初级检查(isinstance)
 
@@ -166,6 +170,8 @@ class LazySetting(Generic[T]):
         '''
         if type is None:
             return None
+        if or_none:
+            return self._or_none(self.checkable_type(type, or_none=False))
 
         # 符合FAT定义的_CheckableType都能通过isinstance检查
         try:
@@ -174,6 +180,14 @@ class LazySetting(Generic[T]):
         except:
             pass
         return None
+
+    @staticmethod
+    def _or_none(checkable_type: _AvailableType)-> _AvailableType:
+        if checkable_type is None:
+            return None
+        if isinstance(checkable_type, tuple):
+            return (type(None),) + checkable_type
+        return type(None) | checkable_type
 
     @overload
     def __get__(self, instance: None, owner: Any) -> 'LazySetting[T]': ...
