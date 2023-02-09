@@ -264,7 +264,7 @@ class GlobalConfig(Config):
     def __init__(self, dict_prefix: str = 'global'):
         super().__init__(dict_prefix)
         assert self.semester is not None
-    
+
     base_url = LazySetting('base_url', default='http://localhost:8000')
     hash_salt = LazySetting('hash_salt', default='salt')
     acadamic_year = LazySetting('acadamic_year', int)
