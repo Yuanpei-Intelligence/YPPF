@@ -27,15 +27,20 @@ from functools import partial, wraps
 from django.http import HttpRequest
 from django.conf import settings
 
-from boot.config import GLOBAL_CONF
+from boot.config import Config, LazySetting
 
 
-# TODO: Get info from settings
-# Format, loglevel,
-LOG_FORMAT = '%(asctime)s [%(levelname)s] %(message)s'
-LOG_LEVEL = logging.INFO
-LOG_STACK_LEVEL = 8
+class LogConfig(Config):
+    def __init__(self, dict_prefix: str = 'log'):
+        super().__init__(dict_prefix)
 
+    log_dir = LazySetting('dir', default='./logstore')
+    format = LazySetting('format', default='%(asctime)s [%(levelname)s] %(message)s')
+    level = LazySetting('level', default=logging.INFO, type=(int, str))
+    stack_level = LazySetting('stack_level', default=8)
+
+
+_LOGCONFIG = LogConfig()
 _loggers: Dict[str, logging.Logger] = dict()
 
 
@@ -46,12 +51,12 @@ def get_logger(name: str) -> logging.Logger:
     for handle in logger.handlers:
         logger.removeHandler(handle)
     handler = logging.FileHandler(
-        os.path.join(GLOBAL_CONF.log_dir, name + '.log'), encoding='utf8', mode='a')
-    handler.setFormatter(logging.Formatter(LOG_FORMAT))
+        os.path.join(_LOGCONFIG.log_dir, name + '.log'), encoding='utf8', mode='a')
+    handler.setFormatter(logging.Formatter(_LOGCONFIG.format))
     logger.addHandler(handler)
-    logger.setLevel(LOG_LEVEL)
+    logger.setLevel(_LOGCONFIG.level)
     _loggers[name] = logger
-    logger.exception = partial(logger.exception, stacklevel=LOG_STACK_LEVEL)
+    logger.exception = partial(logger.exception, stacklevel=_LOGCONFIG.stack_level)
     return logger
 
 
