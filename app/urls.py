@@ -10,10 +10,7 @@
 - 同一类页面风格相同
 """
 from django.urls import path
-from django.conf.urls.static import static
-from django.conf import settings
 
-from boot.config import DEBUG
 from app import (
     views,
     org_views,
@@ -59,8 +56,6 @@ urlpatterns = [
          name="saveSubscribeStatus"),
 ] + [
     # 活动
-    path("applyActivity/<str:aid>",
-         activity_views.applyActivity, name="applyActivity"),
     path("viewActivity/<str:aid>", activity_views.viewActivity, name="viewActivity"),
     path("getActivityInfo/", activity_views.getActivityInfo, name="getActivityInfo"),
     path("checkinActivity/<str:aid>",
@@ -133,7 +128,3 @@ urlpatterns = [
     path("showPools/", YQPoint_views.showPools, name="showPools"),
     path("myPrize/", YQPoint_views.myPrize, name="myPrize"),
 ]
-
-if DEBUG:
-    urlpatterns += static(settings.MEDIA_URL,
-                          document_root=settings.MEDIA_ROOT)

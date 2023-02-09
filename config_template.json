@@ -3,7 +3,8 @@
         "base_url": "http://localhost:8000",
         "hash_salt": "default_hash_salt",
         "acadamic_year": 2023,
-        "semester": "Spring" 
+        "semester": "Spring",
+        "debug_stuids": []
     },
     "django": {
         "db": {
@@ -25,16 +26,24 @@
     },
     "wechat": {
         "salt": "debug_hasher_salt",
-        "debug_stuids": [],
         "send_batch": 500,
         "send_number": 500,
-        "blacklist": []
+        "blacklist": [],
+        "api_url": ""
     },
     "email": {
         "url": "",
         "salt": "debug_hasher_salt" 
     },
-    "underground": {},
+    "underground": {
+        "token": {
+            "display": ""
+        },
+        "base_url": "http://localhost:8000/underground",
+        "semester_data": {
+            "semester_start": "2023-02-20"
+        }
+    },
     "course": {
         "type_name": "课程",
         "auditors": ["admin"],

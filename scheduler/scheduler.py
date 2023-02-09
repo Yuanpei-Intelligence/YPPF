@@ -20,7 +20,6 @@ from utils.log import get_logger
 from scheduler.config import scheduler_conf
 
 
-EXECUTOR_PORT = scheduler_conf.rpc_port
 # Custom handler
 logger = get_logger('apscheduler')
 
@@ -46,7 +45,7 @@ class Scheduler():
             if self.remote_scheduler is None and self.remain_times > 0:
                 self.remain_times -= 1
                 self.remote_scheduler = rpyc.connect(
-                    "localhost", EXECUTOR_PORT,
+                    "localhost", scheduler_conf.rpc_port,
                     config={"allow_all_attrs": True}).root
             if self.remote_scheduler is not None:
                 self.remote_scheduler.wakeup()
