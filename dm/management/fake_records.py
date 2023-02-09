@@ -35,7 +35,12 @@ def create_np():
     email = sid + "@stu.pku.edu.cn"
     visit_times = 100
     tel = None
-    biography = '为按死的鸟发哪家低年级你杀菌灯假设的静安寺的静安寺大石街道'
+    biography = '各位考官好，今天能够站在这里参加面试，有机会向各位考官请教和学习，' \
+                '我感到非常的荣幸。希 望通过这次面试能够把自己展示给大家，希望大家记住我。' \
+                '我叫xxx，今年xx岁。汉族，法学本科。我 平时喜欢看书和上网浏览信息。我的性格比较开朗，' \
+                '随和。能关系周围的任何事，和亲人朋友能够和睦 相处，并且对生活充满了信心。我以前在检察院实习过，' \
+                '所以有一定的实践经验。在外地求学的四年 中，我养成了坚强的性格，这种性格使我克服了学习和生活中的一些困难，' \
+                '积极进去。成为一名法律工 作者是我多年以来的强烈愿望。'
     first_time_login = False
 
     user, created = User.objects.get_or_create(username=username)
@@ -61,7 +66,6 @@ def create_np():
 
 
 def create_org_type():
-    # 先删除所有再创建
     OrganizationType.objects.all().delete()
 
     otype_id = 1
@@ -84,7 +88,6 @@ def create_org_type():
 
 
 def create_org_tag():
-    # 先删除所有再创建
     OrganizationTag.objects.all().delete()
 
     name = '兴趣'
@@ -105,9 +108,6 @@ def create_org_tag():
 
 
 def create_org():
-    # 先删除所有再创建
-    Organization.objects.all().delete()
-
     username='huihuaban'
     user, created = User.objects.get_or_create(username=username)
     user.utype = User.Type.ORG
@@ -153,9 +153,6 @@ def create_participant():
 
 
 def create_all():
-    # 先删除再创建
-    User.objects.all().delete()
-
     # TODO: Add more
     # Order.objects.all().values().delete()
     create_superuser()
