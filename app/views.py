@@ -88,8 +88,7 @@ class IndexView(SecureTemplateView):
     def user_get(self) -> HttpResponse:
         self.request = cast(UserRequest, self.request)
         # Special user
-        if not self.request.user.is_valid():
-            return self.wrong(f'当前用户“{self.request.user}”无权访问成长档案')
+        self.valid_user_check(self.request.user)
 
         # Logout
         if self.request.GET.get('is_logout') is not None:
@@ -98,10 +97,18 @@ class IndexView(SecureTemplateView):
 
         return self.redirect('welcome')
 
+    def valid_user_check(self, user: User):
+        # Special user
+        if not user.is_valid():
+            self.permission_denied(
+                f'“{user.get_full_name()}”不存在成长档案，您可以登录其他账号'
+            )
+
     def prepare_login(self) -> str:
         assert 'username' in self.request.POST
         assert 'password' in self.request.POST
-        assert not self.request.user.is_authenticated
+        _user = self.request.user
+        assert not _user.is_authenticated and not cast(User, _user).is_valid()
         username = self.request.POST['username']
         # Check weather username exists
         if not User.objects.filter(username=username).exists():
@@ -123,8 +130,7 @@ class IndexView(SecureTemplateView):
         # special user
         auth.login(self.request, userinfo)
         self.request = cast(UserRequest, self.request)
-        if not self.request.user.is_valid():
-            return self.wrong(f'当前用户“{self.request.user}”无权访问成长档案')
+        self.valid_user_check(self.request.user)
 
         # first time login
         if self.request.user.first_time_login:

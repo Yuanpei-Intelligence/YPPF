@@ -208,8 +208,8 @@ class SecureView(View, ABC):
     def error_response(self, exception: Exception) -> HttpResponse:
         '''错误处理，子类可重写，不应产生异常'''
         # TODO: 错误处理和http_method_not_allowed不同
-        # from boot.config import DEBUG
-        # if DEBUG: raise
+        from boot.config import DEBUG
+        if DEBUG: raise
         return self._check_http_method()
 
     def redirect(self, to: str, *args, permanent=False, **kwargs):
