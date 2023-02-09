@@ -46,8 +46,8 @@ class SecureView(View, ABC):
     _KWType = TypedDict('_KWType', {})
     kwargs: _KWType
     # TODO: 兼容以下新接口，减少函数参数使用
-    _PrepareFuncType = Callable[[], str | None]
     _HandlerFuncType = Callable[[], HttpResponse]
+    _PrepareFuncType = Callable[[], _HandlerFuncType]
 
     # 视图设置
     login_required: bool = True
@@ -93,12 +93,7 @@ class SecureView(View, ABC):
             return self._check_http_method()
 
         # Prepare and decide final handler
-        method_name = self.dispatch_prepare(method_name) or method_name
-        if not hasattr(self, method_name):
-            raise ImproperlyConfigured(
-                f'SecureView requires an implementation of `{method_name}`'
-            )
-        handler: SecureView._HandlerFuncType = getattr(self, method_name)
+        handler = self.dispatch_prepare(method_name)
 
         # Handle
         return handler()
@@ -181,36 +176,30 @@ class SecureView(View, ABC):
     def get_method_name(self, request: HttpRequest) -> str:
         return request.method.lower()
 
-    def dispatch_prepare(self, method: str) -> str:
+    def dispatch_prepare(self, method: str) -> _HandlerFuncType:
         '''
-        每个方法执行前的准备工作，返回重定向的方法名
-        
-        被信任的方法，返回的函数名可以不在method_names中
-        子类建议使用match语句
-        不存在对应方法时，调用`default_prepare`
-        '''
-        default_name = f'check_{method}'
-        if not hasattr(self, default_name):
-            return self.default_prepare(method, default_name)
-        prepare_func: SecureView._PrepareFuncType = getattr(self, default_name)
-        # prepare_func返回str，重设method
-        method = prepare_func()
-        return method
+        每个方法执行前的准备工作，返回重定向的方法
 
-    def default_prepare(self, method: str, default_name: str | None = None) -> str:
+        子类建议使用match语句，不存在时可调用`default_prepare`
+        '''
+        return self.default_prepare(method)
+
+    def default_prepare(self, method: str, default_name: str | None = None) -> _HandlerFuncType:
         '''不存在准备方法时，提供默认准备函数，SecureView抛出异常'''
         if default_name is None:
             default_name = f'check_{method}'
+        prepare_func: SecureView._PrepareFuncType | None = getattr(self, default_name, None)
+        if prepare_func is not None:
+            return prepare_func
         raise ImproperlyConfigured(
             f'SecureView requires an implementation of `{default_name}`'
         )
 
     def error_response(self, exception: Exception) -> HttpResponse:
-        '''错误处理，子类可重写，不应产生异常'''
-        # TODO: 错误处理和http_method_not_allowed不同
+        '''错误处理，子类可重写，生产环境不应产生异常'''
         from boot.config import DEBUG
         if DEBUG: raise
-        return self._check_http_method()
+        return self.http_forbidden('出现错误，请联系管理员')
 
     def redirect(self, to: str, *args, permanent=False, **kwargs):
         '''重定向，由于类的重定向对象无需提前确定，使用redirect动态加载即可'''
@@ -253,9 +242,7 @@ class SecureTemplateView(SecureView):
         return [self.template_name]
 
     def get_context_data(self, **kwargs) -> dict[str, Any]:
-        if self.extra_context is not None:
-            kwargs.update(self.extra_context)
-        return kwargs
+        return self.extra_context | kwargs
 
     def render(self, **kwargs):
         response = self.response_class(

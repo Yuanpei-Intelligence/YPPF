@@ -59,12 +59,16 @@ from utils.log import err_capture as __err_capture
 err_capture = __partial(__err_capture, ret=EXCEPT_REDIRECT)
 
 
+# 不应导出，接口内部使用
+from django.core.exceptions import ImproperlyConfigured as _ImproperlyConfigured
 class ProfileTemplateView(SecureTemplateView):
 
     page_name: str
     request: UserRequest
 
     def render(self, **kwargs):
+        if not hasattr(self, 'page_name'):
+            raise _ImproperlyConfigured('page_name is not defined!')
         self.extra_context['bar_display'] = utils.get_sidebar_and_navbar(
             self.request.user, self.page_name)
         return super().render(**kwargs)

@@ -67,12 +67,12 @@ class IndexView(SecureTemplateView):
     login_required = False
     template_name = 'index.html'
 
-    def dispatch_prepare(self, method: str) -> str:
+    def dispatch_prepare(self, method: str) -> SecureView._HandlerFuncType:
         match method:
             case 'get':
-                return (self.user_get.__name__
+                return (self.user_get
                         if self.request.user.is_authenticated else
-                        self.visitor_get.__name__)
+                        self.visitor_get)
             case 'post':
                 return self.prepare_login()
             case _:
@@ -104,7 +104,7 @@ class IndexView(SecureTemplateView):
                 f'“{user.get_full_name()}”不存在成长档案，您可以登录其他账号'
             )
 
-    def prepare_login(self) -> str:
+    def prepare_login(self) -> SecureView._HandlerFuncType:
         assert 'username' in self.request.POST
         assert 'password' in self.request.POST
         _user = self.request.user
@@ -119,7 +119,7 @@ class IndexView(SecureTemplateView):
             username = org.get_user().username
         self.username = username
         self.password = self.request.POST['password']
-        return self.login.__name__
+        return self.login
 
     def login(self) -> HttpResponse:
         # Try login

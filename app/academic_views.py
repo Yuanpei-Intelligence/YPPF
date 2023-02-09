@@ -34,6 +34,7 @@ __all__ = [
 
 class ShowChatsView(ProfileTemplateView):
 
+    http_method_names = ['get']
     template_name = 'showChats.html'
     page_name = '学术地图问答'
 
@@ -42,6 +43,7 @@ class ShowChatsView(ProfileTemplateView):
         if not user.is_person():
             # 后续或许可以开放任意的聊天
             return self.wrong('请使用个人账号访问问答中心页面!')
+        return self.get
 
     def get(self) -> HttpResponse:
         user = self.request.user
@@ -58,13 +60,13 @@ class ShowChatsView(ProfileTemplateView):
 
 class ChatView(ProfileTemplateView):
 
-    chat_id: int
+    http_method_names = ['get']
     template_name = 'viewChat.html'
     page_name = '学术地图问答'
 
     def setup(self, request: HttpRequest, chat_id: int):
         self.chat_id = chat_id
-        return super().setup(request)
+        return super().setup(request, chat_id=chat_id)
 
     def check_get(self):
         possible_chat = Chat.objects.filter(id=self.chat_id).first()
@@ -74,6 +76,7 @@ class ChatView(ProfileTemplateView):
         if self.request.user not in [chat.questioner, chat.respondent]:
             return self.wrong('您只能访问自己参与的问答!')
         self.chat = chat
+        return self.get
 
     def get(self) -> HttpResponse:
         user = self.request.user
