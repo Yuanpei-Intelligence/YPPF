@@ -17,19 +17,21 @@ It is big enough for most of the situation, except for backtracing.
 Have to restrict backtrace level.
 """
 
-from typing import Dict, Callable, Any
 import os
+import sys
 import logging
-from functools import partial, wraps
 import json
+from typing import Dict, Callable, Any
+from functools import partial, wraps
 
 from django.http import HttpRequest
 from django.conf import settings
 
+from boot.config import GLOBAL_CONF
+
 
 # TODO: Get info from settings
-# LogDir, Format, loglevel,
-LOG_DIR = '/var/log'
+# Format, loglevel,
 LOG_FORMAT = '%(asctime)s [%(levelname)s] %(message)s'
 LOG_LEVEL = logging.INFO
 LOG_STACK_LEVEL = 8
@@ -44,7 +46,7 @@ def get_logger(name: str) -> logging.Logger:
     for handle in logger.handlers:
         logger.removeHandler(handle)
     handler = logging.FileHandler(
-        os.path.join(LOG_DIR, name + '.log'), encoding='utf8', mode='a')
+        os.path.join(GLOBAL_CONF.log_dir, name + '.log'), encoding='utf8', mode='a')
     handler.setFormatter(logging.Formatter(LOG_FORMAT))
     logger.addHandler(handler)
     logger.setLevel(LOG_LEVEL)

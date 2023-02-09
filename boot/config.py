@@ -16,7 +16,11 @@ vars.
 import os
 import json
 import types
-from typing import Optional, Any, Callable, Generic, TypeVar, Type, Literal, overload
+from typing import (
+    Optional, Any, Callable, Generic,
+    TypeVar, Type, Literal, overload
+)
+
 from django.core.exceptions import ImproperlyConfigured
 
 
@@ -294,6 +298,7 @@ class GlobalConfig(Config):
         super().__init__(dict_prefix)
 
     base_url = LazySetting('base_url', default='http://localhost:8000')
+    log_dir = LazySetting('log_dir', default='./logstore')
     hash_salt = LazySetting('hash_salt', default='salt')
     acadamic_year = LazySetting('acadamic_year', type=int)
     semester = LazySetting('semester', type=str)
