@@ -12,6 +12,17 @@ USER_NAME = "2000000000"
 assert settings.DEBUG, 'Should not import fake_records in production env.'
 
 
+def delete_all():
+    User.objects.all().delete()
+    NaturalPerson.objects.all().delete()
+    OrganizationType.objects.all().delete()
+    OrganizationTag.objects.all().delete()
+    Organization.objects.all().delete()
+
+
+
+
+
 def create_superuser():
     try:
         User.objects.create_superuser(username='admin', password='admin',
@@ -66,7 +77,6 @@ def create_org_type():
     otype_id = 1
     otype_name = '学生小组'
     user = User.objects.get(username=USER_NAME)
-    user.save()
 
     incharge = NaturalPerson.objects.get_by_user(user)
     job_name_list = ['部长']
@@ -135,6 +145,12 @@ def create_org():
         org_2.save()
 
 
+def create_position():
+    user = User.objects.get(username=USER_NAME)
+
+    person =
+
+
 def create_activity():
     ...
 
@@ -145,9 +161,19 @@ def create_participant():
 
 def create_all():
     # TODO: Add more
+    # delete all
+    delete_all()
+
+    # person
     create_superuser()
     create_np()
+
+    # org
     create_org_type()
     create_org_tag()
     create_org()
+    create_position()
+
+
+
 
