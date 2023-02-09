@@ -83,6 +83,7 @@ class ProfileConfig(Config):
     # Course Info
     course_type_name = LazySetting('course/type_name', default='书院课程')
     least_record_hours = LazySetting('course/valid_hours', float, default=8.0)
+    course = CourseConfig()
 
     # YQPoint
     # TODO: Change it
