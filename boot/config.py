@@ -1,7 +1,7 @@
 """
 Provides a uniform way to read settings from *config.json*. 
-
 假设要在名为 app_name 的 app 下加入新的设置，可按以下步骤：
+
 1. 在 *config.json* 中添加相应设置
 2. 在 *app_name/config.py* 中，将新设置添加到 `class AppnameConfig(Config)` 中
 3. 在要用到的文件中引用 from app_name.config import CONFIG
@@ -16,7 +16,7 @@ vars.
 import os
 import json
 import types
-from typing import Optional, Any, Callable, Generic, TypeVar, overload, Type
+from typing import Optional, Any, Callable, Generic, TypeVar, Type, Literal, overload
 from django.core.exceptions import ImproperlyConfigured
 
 
@@ -32,7 +32,6 @@ def _init_config(path = './config.json', encoding = 'utf8') -> dict[str, Any]:
 class Config:
     """
     为各个 app 提供的 Config 基类
-
     使用方法可参考 scheduler/config.py
     """
 
@@ -59,7 +58,6 @@ T = TypeVar('T')
 class LazySetting(Generic[T]):
     '''
     延迟加载的配置项
-
     在Config类中作为属性定义，如：
     ```
     class AppConfig(Config):
@@ -89,6 +87,7 @@ class LazySetting(Generic[T]):
     '''
     class TypeCheck: '默认类型检查，忽略默认值'
 
+    _real_type = type
     def __init__(self, path: str, trans_fn: Optional[Callable[[Any], T]] = None,
                  default: T = None, *,
                  type: Optional[Type[T|TypeCheck] | tuple[Type[T], ...]] = None) -> None:
@@ -107,8 +106,13 @@ class LazySetting(Generic[T]):
         self.trans_fn = trans_fn
         self.default = default
         if type is None or type is LazySetting.TypeCheck:
-            or_none = type is None and default is None
-            self.type = self.checkable_type(trans_fn, or_none=or_none)
+            if default is not None and not isinstance(default, self._real_type):
+                self.type = self.checkable_type(self._real_type(default))
+            elif isinstance(trans_fn, self._real_type):
+                or_none = type is None and default is None
+                self.type = self.checkable_type(trans_fn, or_none=or_none)
+            else:
+                self.type = None
         else:
             self.type = self.checkable_type(type)
 
@@ -126,13 +130,23 @@ class LazySetting(Generic[T]):
         trans_fn: Optional[Callable[[Any], T]] = None,
         default: T = None,
     ) -> 'LazySetting[T]': ...
-    # 忽略default类型
+    # TypeCheck时，忽略default=None类型
     @overload
     def __new__( # type: ignore
         self,
         path: str,
         trans_fn: Callable[[Any], T] = ...,
-        default: Any = ...,
+        default: Literal[None] = ...,
+        *,
+        type: Type[TypeCheck] = ...,
+    ) -> 'LazySetting[T]': ...
+    # 否则正常检查（但这个时候为什么要传入type=TypeCheck呢？）
+    @overload
+    def __new__( # type: ignore
+        self,
+        path: str,
+        trans_fn: Optional[Callable[[Any], T]] = ...,
+        default: T = ...,
         *,
         type: Type[TypeCheck] = ...,
     ) -> 'LazySetting[T]': ...
@@ -155,13 +169,11 @@ class LazySetting(Generic[T]):
     def checkable_type(self, type: Any | None, or_none: bool = False) -> _AvailableType:
         '''
         提供可用于检查类型的类，只能进行初级检查(isinstance)
-
         type应小心以下写法：
         - `list[int] | ...` 极不推荐，无法检查，无法提示，应尽量避免
         - `list[int]` 只能进行简单检查，无法检查列表内的元素类型
         - `int | str`或`Union[int, str]` IDE无法正确提示类型，应使用`(int, str)`
         - `tuple[...]` 默认的JSON解析器会将元组解析为列表，务必提供tuple转化函数
-
         合法的最终检查类型由以下规则定义（语法略有扩展）：
         ```
         FAT := AT | TF                              # final available type
@@ -276,12 +288,11 @@ class GlobalConfig(Config):
 
     def __init__(self, dict_prefix: str = 'global'):
         super().__init__(dict_prefix)
-        assert self.semester is not None
 
     base_url = LazySetting('base_url', default='http://localhost:8000')
     hash_salt = LazySetting('hash_salt', default='salt')
-    acadamic_year = LazySetting('acadamic_year', int)
-    semester = LazySetting('semester')
+    acadamic_year = LazySetting('acadamic_year', type=int)
+    semester = LazySetting('semester', type=str)
     debug_stuids = LazySetting('debug_stuids', _to_list_str, [])
 
 GLOBAL_CONF = GlobalConfig()
