@@ -1,11 +1,14 @@
 """
 Provides a uniform way to read settings from *config.json*. 
+
 假设要在名为 app_name 的 app 下加入新的设置，可按以下步骤：
 1. 在 *config.json* 中添加相应设置
 2. 在 *app_name/config.py* 中，将新设置添加到 `class AppnameConfig(Config)` 中
 3. 在要用到的文件中引用 from app_name.config import CONFIG
+
 Env variables are not taken into consideration since they are relatively rare,
 and do not share the hierarchy structure.
+
 As for now, only part of django configuration and "service" can be set with env
 vars.
 """
@@ -29,6 +32,7 @@ def _init_config(path = './config.json', encoding = 'utf8') -> dict[str, Any]:
 class Config:
     """
     为各个 app 提供的 Config 基类
+    
     使用方法可参考 scheduler/config.py
     """
 
@@ -55,6 +59,7 @@ T = TypeVar('T')
 class LazySetting(Generic[T]):
     '''
     延迟加载的配置项
+    
     在Config类中作为属性定义，如：
     ```
     class AppConfig(Config):
@@ -166,11 +171,13 @@ class LazySetting(Generic[T]):
     def checkable_type(self, type: Any | None, or_none: bool = False) -> _AvailableType:
         '''
         提供可用于检查类型的类，只能进行初级检查(isinstance)
+        
         type应小心以下写法：
         - `list[int] | ...` 极不推荐，无法检查，无法提示，应尽量避免
         - `list[int]` 只能进行简单检查，无法检查列表内的元素类型
         - `int | str`或`Union[int, str]` IDE无法正确提示类型，应使用`(int, str)`
         - `tuple[...]` 默认的JSON解析器会将元组解析为列表，务必提供tuple转化函数
+        
         合法的最终检查类型由以下规则定义（语法略有扩展）：
         ```
         FAT := AT | TF                              # final available type
