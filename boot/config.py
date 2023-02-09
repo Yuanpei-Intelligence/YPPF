@@ -70,6 +70,8 @@ class LazySetting(Generic[T]):
         # 也可以使用type指定类型，写法建议参考`LazySetting.checkable_type`的文档
         assert_d = LazySetting('value/dict', type=dict)
         i_or_s = LazySetting('value/i_or_s', type=(int, str))
+        assert_ls = LazySetting('value/ls', type=list[str])
+        tuple = LazySetting('value/tuple', type=tuple[int, str])
     ```
     上述代码在访问时会自动计算并缓存结果：
     ```
@@ -79,14 +81,16 @@ class LazySetting(Generic[T]):
     config.op1: int | None
     config.op2: int
     # 用type指定的类型
-    dict
+    config.assert_d: dict
+    config.i_or_s: int | str    # 检查是否为int或str
+    list[str], tuple[int, str]  # 检查是否为列表，元组等，不检查元素类型
     ```
     :raises ImproperlyConfigured: 配置最终值不匹配期望类型
     '''
 
     def __init__(self, path: str, trans_fn: Optional[Callable[[Any], T]] = None,
                  default: T = None, *,
-                 type: Optional[Type[T]] = None) -> None:
+                 type: Optional[Type[T] | tuple[Type[T], ...]] = None) -> None:
         '''
         :param path: 配置路径，以'/'分隔
         :type path: str
@@ -95,7 +99,7 @@ class LazySetting(Generic[T]):
         :param default: 默认值, defaults to None
         :type default: T, optional
         :param type: 最终值类型，None时不检查，参考`checkable_type`的文档，defaults to None
-        :type type: Type[T], optional
+        :type type: Type[T] | tuple[Type[T], ...], optional
         '''
         self.path = path
         self.trans_fn = trans_fn
@@ -124,10 +128,10 @@ class LazySetting(Generic[T]):
     def __new__( # type: ignore
         self,
         path: str,
-        trans_fn: Optional[Callable[[Any], T]] = ...,
+        trans_fn: Optional[Callable[[Any], Any]] = ...,
         default: Any = ...,
         *,
-        type: Type[T] = ...,
+        type: Type[T] | tuple[Type[T], ...] = ...,
     ) -> 'LazySetting[T]': ...
     # 必须要有这个重载，否则会报错
     def __new__(cls, *args, **kwargs): # type: ignore
@@ -141,6 +145,8 @@ class LazySetting(Generic[T]):
 
         type应小心以下写法：
         - `list[int] | ...` 极不推荐，无法检查，无法提示，应尽量避免
+        - `list[int]` 只能进行简单检查，无法检查列表内的元素类型
+        - `int | str`或`Union[int, str]` IDE无法正确提示类型，应使用`(int, str)`
         - `tuple[...]` 默认的JSON解析器会将元组解析为列表，务必提供tuple转化函数
 
         合法的最终检查类型由以下规则定义（语法略有扩展）：
@@ -177,6 +183,16 @@ class LazySetting(Generic[T]):
         try:
             isinstance(None, type)
             return type
+        except:
+            pass
+
+        # 可能进行了泛型参数化，尝试回退到原始类型
+        # __origin__只支持实例化CT, ParamSpecArgs, ParamSpecKwargs
+        # 后两种可通过isinstance排除
+        try:
+            origin = type.__origin__
+            isinstance(None, origin)
+            return origin
         except:
             pass
         return None
