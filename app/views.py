@@ -108,7 +108,7 @@ class IndexView(SecureTemplateView):
         assert 'username' in self.request.POST
         assert 'password' in self.request.POST
         _user = self.request.user
-        assert not _user.is_authenticated and not cast(User, _user).is_valid()
+        assert not _user.is_authenticated or not cast(User, _user).is_valid()
         username = self.request.POST['username']
         # Check weather username exists
         if not User.objects.filter(username=username).exists():

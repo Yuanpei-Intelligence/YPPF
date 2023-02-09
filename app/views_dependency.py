@@ -50,10 +50,21 @@ from app import utils, log
 
 
 # 用于重定向的视图专用常量
-EXCEPT_REDIRECT = HttpResponseRedirect(message_url(wrong('出现意料之外的错误, 请联系管理员!')))
+EXCEPT_REDIRECT = HttpResponseRedirect(
+    message_url(wrong('出现意料之外的错误, 请联系管理员!')))
 
 # Used for exception capture
 from functools import partial as __partial
 from utils.log import err_capture as __err_capture
 err_capture = __partial(__err_capture, ret=EXCEPT_REDIRECT)
 
+
+class ProfileTemplateView(SecureTemplateView):
+
+    page_name: str
+    request: UserRequest
+
+    def render(self, **kwargs):
+        self.extra_context['bar_display'] = utils.get_sidebar_and_navbar(
+            self.request.user, self.page_name)
+        return super().render(**kwargs)

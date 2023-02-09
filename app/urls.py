@@ -109,11 +109,9 @@ urlpatterns = [
     path("viewFeedback/<str:fid>", feedback_views.viewFeedback, name="viewFeedback"),
 ] + [
     # 学术地图
-    path("searchAcademic/", academic_views.SearchAcademicView.as_view(),
-         name="searchAcademic"),
     path("modifyAcademic/", academic_views.modifyAcademic, name="modifyAcademic"),
     path("AcademicQA/", academic_views.ShowChatsView.as_view(), name="showChats"),
-    path("viewQA/<str:chat_id>", academic_views.ChatView.as_view(), name="viewChat"),
+    path("viewQA/<int:chat_id>", academic_views.ChatView.as_view(), name="viewChat"),
     path("auditAcademic/", academic_views.auditAcademic, name="auditAcademic"),
     path("applyAuditAcademic/", academic_views.applyAuditAcademic,
          name="applyAuditAcademic"),

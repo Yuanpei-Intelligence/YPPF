@@ -46,7 +46,7 @@ class SecureView(View, ABC):
     _KWType = TypedDict('_KWType', {})
     kwargs: _KWType
     # TODO: 兼容以下新接口，减少函数参数使用
-    _PrepareFuncType = Callable[[], str]
+    _PrepareFuncType = Callable[[], str | None]
     _HandlerFuncType = Callable[[], HttpResponse]
 
     # 视图设置
@@ -93,7 +93,7 @@ class SecureView(View, ABC):
             return self._check_http_method()
 
         # Prepare and decide final handler
-        method_name = self.dispatch_prepare(method_name)
+        method_name = self.dispatch_prepare(method_name) or method_name
         if not hasattr(self, method_name):
             raise ImproperlyConfigured(
                 f'SecureView requires an implementation of `{method_name}`'
