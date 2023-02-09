@@ -7,6 +7,7 @@ from generic.models import User
 from app.models import *
 
 USER_NAME = "2000000000"
+ORGANIZATION_USER_NAME = ['huihuaban', 'wudaoban']
 
 # TODO: Change Settings
 assert settings.DEBUG, 'Should not import fake_records in production env.'
@@ -18,9 +19,7 @@ def delete_all():
     OrganizationType.objects.all().delete()
     OrganizationTag.objects.all().delete()
     Organization.objects.all().delete()
-
-
-
+    Position.objects.all().delete()
 
 
 def create_superuser():
@@ -76,9 +75,10 @@ def create_np():
 def create_org_type():
     otype_id = 1
     otype_name = '学生小组'
-    user = User.objects.get(username=USER_NAME)
 
+    user = User.objects.get(username=USER_NAME)
     incharge = NaturalPerson.objects.get_by_user(user)
+
     job_name_list = ['部长']
 
     org_type = OrganizationType.objects.create(
@@ -109,8 +109,7 @@ def create_org_tag():
 
 
 def create_org():
-    username='huihuaban'
-    user, created = User.objects.get_or_create(username=username)
+    user, created = User.objects.get_or_create(username=ORGANIZATION_USER_NAME[0])
     user.utype = User.Type.ORG
     oname = '绘画班'
     otype = OrganizationType.objects.get(otype_id=1)
@@ -126,8 +125,7 @@ def create_org():
         org.tags.set([tags])
         org.save()
 
-    username_2='wudaoban'
-    user_2, created_2 = User.objects.get_or_create(username=username_2)
+    user_2, created_2 = User.objects.get_or_create(username=ORGANIZATION_USER_NAME[1])
     user_2.utype = User.Type.ORG
     oname_2 = '舞蹈班'
     otype_2 = OrganizationType.objects.get(otype_id=1)
@@ -147,8 +145,20 @@ def create_org():
 
 def create_position():
     user = User.objects.get(username=USER_NAME)
+    person = NaturalPerson.objects.get_by_user(user)
 
-    person =
+    org_user = User.objects.get(username=ORGANIZATION_USER_NAME[0])
+    org = NaturalPerson.objects.get_by_user(org_user)
+    pos = 0
+    is_admin = 1
+
+    Position.objects.create(
+        person=person,
+        org=org,
+        pos=pos,
+        is_admin=is_admin,
+    )
+
 
 
 def create_activity():
