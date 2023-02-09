@@ -3,10 +3,10 @@ Generate fake records. Only used in dev & test.
 """
 
 from django.conf import settings
-
-
 from generic.models import User
 from app.models import *
+
+USER_NAME = "2000000000"
 
 # TODO: Change Settings
 assert settings.DEBUG, 'Should not import fake_records in production env.'
@@ -22,10 +22,7 @@ def create_superuser():
 
 def create_np():
     # TODO: Modify it
-    # 先删除所有再创建
-    NaturalPerson.objects.all().delete()
-
-    sid = username = "1800017710"
+    sid = username = USER_NAME
     password = username
     name = "小明"
     gender = NaturalPerson.Gender.MALE
@@ -66,30 +63,24 @@ def create_np():
 
 
 def create_org_type():
-    OrganizationType.objects.all().delete()
-
     otype_id = 1
     otype_name = '学生小组'
-    user = User.objects.get(username='1800017710')
+    user = User.objects.get(username=USER_NAME)
     user.save()
 
     incharge = NaturalPerson.objects.get_by_user(user)
     job_name_list = ['部长']
 
-    exist = OrganizationType.objects.filter(otype_id=otype_id)
-    if len(exist) == 0:
-        org_type = OrganizationType.objects.create(
-            otype_id=otype_id,
-            otype_name=otype_name,
-            incharge=incharge,
-            job_name_list=job_name_list,
-        )
-        org_type.save()
+    org_type = OrganizationType.objects.create(
+        otype_id=otype_id,
+        otype_name=otype_name,
+        incharge=incharge,
+        job_name_list=job_name_list,
+    )
+    org_type.save()
 
 
 def create_org_tag():
-    OrganizationTag.objects.all().delete()
-
     name = '兴趣'
     color = OrganizationTag.ColorChoice.red
     org_tag = OrganizationTag.objects.create(
@@ -154,7 +145,6 @@ def create_participant():
 
 def create_all():
     # TODO: Add more
-    # Order.objects.all().values().delete()
     create_superuser()
     create_np()
     create_org_type()
