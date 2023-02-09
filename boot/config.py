@@ -32,7 +32,7 @@ def _init_config(path = './config.json', encoding = 'utf8') -> dict[str, Any]:
 class Config:
     """
     为各个 app 提供的 Config 基类
-
+    
     使用方法可参考 scheduler/config.py
     """
 
@@ -59,7 +59,7 @@ T = TypeVar('T')
 class LazySetting(Generic[T]):
     '''
     延迟加载的配置项
-
+    
     在Config类中作为属性定义，如：
     ```
     class AppConfig(Config):
@@ -100,21 +100,14 @@ class LazySetting(Generic[T]):
         :type trans_fn: Callable[[Any], T], optional
         :param default: 默认值, defaults to None
         :type default: T, optional
-        :param type: 最终值类型，参考`checkable_type`的文档，
-                     None时按其他参数推断，TypeCheck时忽略default，defaults to None
+        :param type: 最终值类型，参考`checkable_type`的文档，defaults to None
         :type type: Type[T] | tuple[Type[T], ...], optional
         '''
         self.path = path
         self.trans_fn = trans_fn
         self.default = default
-        if type is None or type is LazySetting.TypeCheck:
-            if default is not None and not isinstance(default, self._real_type):
-                self.type = self.checkable_type(self._real_type(default))
-            elif isinstance(trans_fn, self._real_type):
-                or_none = type is None and default is None
-                self.type = self.checkable_type(trans_fn, or_none=or_none)
-            else:
-                self.type = None
+        if type is None:
+            self.type = self.checkable_type(trans_fn, or_none=type is None)
         else:
             self.type = self.checkable_type(type)
 
@@ -131,26 +124,6 @@ class LazySetting(Generic[T]):
         path: str,
         trans_fn: Optional[Callable[[Any], T]] = None,
         default: T = None,
-    ) -> 'LazySetting[T]': ...
-    # TypeCheck时，忽略default=None类型
-    @overload
-    def __new__( # type: ignore
-        self,
-        path: str,
-        trans_fn: Callable[[Any], T] = ...,
-        default: Literal[None] = ...,
-        *,
-        type: Type[TypeCheck] = ...,
-    ) -> 'LazySetting[T]': ...
-    # 否则正常检查（但这个时候为什么要传入type=TypeCheck呢？）
-    @overload
-    def __new__( # type: ignore
-        self,
-        path: str,
-        trans_fn: Optional[Callable[[Any], T]] = ...,
-        default: T = ...,
-        *,
-        type: Type[TypeCheck] = ...,
     ) -> 'LazySetting[T]': ...
     # 提供type参数时，忽略default类型，无论如何都标注为该类型
     @overload
@@ -171,13 +144,13 @@ class LazySetting(Generic[T]):
     def checkable_type(self, type: Any | None, or_none: bool = False) -> _AvailableType:
         '''
         提供可用于检查类型的类，只能进行初级检查(isinstance)
-
+        
         type应小心以下写法：
         - `list[int] | ...` 极不推荐，无法检查，无法提示，应尽量避免
         - `list[int]` 只能进行简单检查，无法检查列表内的元素类型
         - `int | str`或`Union[int, str]` IDE无法正确提示类型，应使用`(int, str)`
         - `tuple[...]` 默认的JSON解析器会将元组解析为列表，务必提供tuple转化函数
-
+        
         合法的最终检查类型由以下规则定义（语法略有扩展）：
         ```
         FAT := AT | TF                              # final available type
