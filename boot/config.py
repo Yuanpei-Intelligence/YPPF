@@ -15,7 +15,8 @@ vars.
 
 import os
 import json
-from typing import Optional, Any, Callable, Generic, TypeVar, overload
+from typing import Optional, Any, Callable, Generic, TypeVar, overload, Type
+from django.core.exceptions import ImproperlyConfigured
 
 
 DEBUG = True  # WARNING! TODO: Set to False in main branch
@@ -65,6 +66,8 @@ class LazySetting(Generic[T]):
         value = LazySetting('value', default=0)
         op1 = LazySetting('op1', int)
         op2 = LazySetting('op2', int, default=0)
+        # 也可以使用type指定类型
+        assert_d = LazySetting('value/dict', type=dict)
     ```
     上述代码在访问时会自动计算并缓存结果：
     ```
@@ -73,11 +76,15 @@ class LazySetting(Generic[T]):
     config.value: int
     config.op1: int | None
     config.op2: int
+    # 用type指定的类型
+    dict
     ```
+    :raises ImproperlyConfigured: 配置最终值不匹配期望类型
     '''
 
     def __init__(self, path: str, trans_fn: Optional[Callable[[Any], T]] = None,
-                 default: T = None) -> None:
+                 default: T = None, *,
+                 type: Optional[Type[T]] = None) -> None:
         '''
         :param path: 配置路径，以'/'分隔
         :type path: str
@@ -85,10 +92,13 @@ class LazySetting(Generic[T]):
         :type trans_fn: Callable[[Any], T], optional
         :param default: 默认值, defaults to None
         :type default: T, optional
+        :param type: 最终值类型，None时不检查，defaults to None
+        :type type: Type[T], optional
         '''
         self.path = path
         self.trans_fn = trans_fn
         self.default = default
+        self.type = type
 
     # 为了支持更准确的泛型类型提示，重载 __new__ 方法
     # 无参数时，标注为Any
@@ -103,6 +113,16 @@ class LazySetting(Generic[T]):
         path: str,
         trans_fn: Optional[Callable[[Any], T]] = None,
         default: T = None,
+    ) -> 'LazySetting[T]': ...
+    # 提供type参数时，忽略default类型，无论如何都标注为该类型
+    @overload
+    def __new__( # type: ignore
+        self,
+        path: str,
+        trans_fn: Optional[Callable[[Any], T]] = ...,
+        default: Any = ...,
+        *,
+        type: Type[T] = ...,
     ) -> 'LazySetting[T]': ...
     # 必须要有这个重载，否则会报错
     def __new__(cls, *args, **kwargs): # type: ignore
@@ -127,10 +147,22 @@ class LazySetting(Generic[T]):
     def resolve(self, d: dict[str, Any]) -> T:
         value = self.__walk_dict(self.path, d)
         if value is None:
-            return self.default
-        if self.trans_fn is not None:
+            value = self.default
+        elif self.trans_fn is not None:
             value = self.trans_fn(value)
+        self.check_type(value)
         return value
+
+    def check_type(self, value: Any) -> bool:
+        '''检查value是否符合待检查的类型，如果不符合则抛出异常'''
+        if self.type is None:
+            return True
+        if not isinstance(value, self.type):  # type: ignore  Why?
+            raise ImproperlyConfigured(
+                f'Config value {self.path} should be {self.type}, '
+                f'but got {type(value)}'
+            )
+        return True
 
     @staticmethod
     def __walk_dict(path: str, d: dict[str, Any]) -> Optional[T]:
