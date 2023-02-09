@@ -87,10 +87,11 @@ class LazySetting(Generic[T]):
     ```
     :raises ImproperlyConfigured: 配置最终值不匹配期望类型
     '''
+    class TypeCheck: '默认类型检查，忽略默认值'
 
     def __init__(self, path: str, trans_fn: Optional[Callable[[Any], T]] = None,
                  default: T = None, *,
-                 type: Optional[Type[T] | tuple[Type[T], ...]] = None) -> None:
+                 type: Optional[Type[T|TypeCheck] | tuple[Type[T], ...]] = None) -> None:
         '''
         :param path: 配置路径，以'/'分隔
         :type path: str
@@ -98,14 +99,16 @@ class LazySetting(Generic[T]):
         :type trans_fn: Callable[[Any], T], optional
         :param default: 默认值, defaults to None
         :type default: T, optional
-        :param type: 最终值类型，None时不检查，参考`checkable_type`的文档，defaults to None
+        :param type: 最终值类型，参考`checkable_type`的文档，
+                     None时按其他参数推断，TypeCheck时忽略default，defaults to None
         :type type: Type[T] | tuple[Type[T], ...], optional
         '''
         self.path = path
         self.trans_fn = trans_fn
         self.default = default
-        if type is None:
-            self.type = self.checkable_type(trans_fn, or_none=type is None)
+        if type is None or type is LazySetting.TypeCheck:
+            or_none = type is None and default is None
+            self.type = self.checkable_type(trans_fn, or_none=or_none)
         else:
             self.type = self.checkable_type(type)
 
@@ -122,6 +125,16 @@ class LazySetting(Generic[T]):
         path: str,
         trans_fn: Optional[Callable[[Any], T]] = None,
         default: T = None,
+    ) -> 'LazySetting[T]': ...
+    # 忽略default类型
+    @overload
+    def __new__( # type: ignore
+        self,
+        path: str,
+        trans_fn: Callable[[Any], T] = ...,
+        default: Any = ...,
+        *,
+        type: Type[TypeCheck] = ...,
     ) -> 'LazySetting[T]': ...
     # 提供type参数时，忽略default类型，无论如何都标注为该类型
     @overload
