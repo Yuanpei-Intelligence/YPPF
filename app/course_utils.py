@@ -55,7 +55,6 @@ from django.db.models import F, Q, Sum, Prefetch
 
 from scheduler.scheduler import scheduler
 
-
 __all__ = [
     'check_ac_time_course',
     'course_activity_base_check',
@@ -179,7 +178,7 @@ def create_single_course_activity(request: HttpRequest) -> Tuple[int, bool]:
 
     # 获取默认审核老师
     examine_teacher = NaturalPerson.objects.get_teacher(
-        APP_CONFIG.course.audit_teacher)
+        CONFIG.course.audit_teacher)
 
     # 获取活动所属课程的图片，用于viewActivity, examineActivity等页面展示
     image = str(course.photo)
@@ -1000,15 +999,15 @@ def register_selection(wait_for: timedelta=None):
     now = datetime.now()
     if wait_for is not None:
         now = wait_for + wait_for
-    stage1_start = str_to_time(APP_CONFIG.course.yx_election_start)
+    stage1_start = str_to_time(CONFIG.course.yx_election_start)
     stage1_start = max(stage1_start, now + timedelta(seconds=5))
-    stage1_end = str_to_time(APP_CONFIG.course.yx_election_end)
+    stage1_end = str_to_time(CONFIG.course.yx_election_end)
     stage1_end = max(stage1_end, now + timedelta(seconds=10))
-    publish_time = str_to_time(APP_CONFIG.course.publish_time)
+    publish_time = str_to_time(CONFIG.course.publish_time)
     publish_time = max(publish_time, now + timedelta(seconds=15))
-    stage2_start = str_to_time(APP_CONFIG.course.btx_election_start)
+    stage2_start = str_to_time(CONFIG.course.btx_election_start)
     stage2_start = max(stage2_start, now + timedelta(seconds=20))
-    stage2_end = str_to_time(APP_CONFIG.course.btx_election_end)
+    stage2_end = str_to_time(CONFIG.course.btx_election_end)
     stage2_end = max(stage2_end, now + timedelta(seconds=25))
     # 定时任务：修改课程状态
     scheduler.add_job(change_course_status, "date", id=f"course_selection_{year+semster}_stage1_start",

@@ -33,6 +33,8 @@ from datetime import datetime
 from django.db import transaction
 
 
+COURSE_TYPENAME = CONFIG.course_type_name
+
 __all__ = [
     'editCourseActivity',
     'addSingleCourseActivity',
@@ -499,11 +501,11 @@ def selectCourse(request: HttpRequest):
     html_display["current_year"] = GLOBAL_CONF.acadamic_year
     html_display["semester"] = ("春" if Semester.now() == Semester.SPRING else "秋")
 
-    html_display["yx_election_start"] = APP_CONFIG.course.yx_election_start
-    html_display["yx_election_end"] = APP_CONFIG.course.yx_election_end
-    html_display["btx_election_start"] = APP_CONFIG.course.btx_election_start
-    html_display["btx_election_end"] = APP_CONFIG.course.btx_election_end
-    html_display["publish_time"] = APP_CONFIG.course.publish_time
+    html_display["yx_election_start"] = CONFIG.course.yx_election_start
+    html_display["yx_election_end"] = CONFIG.course.yx_election_end
+    html_display["btx_election_start"] = CONFIG.course.btx_election_start
+    html_display["btx_election_end"] = CONFIG.course.btx_election_end
+    html_display["publish_time"] = CONFIG.course.publish_time
     html_display["status"] = None
     is_drawing = False  # 是否正在进行抽签
 
@@ -631,7 +633,7 @@ def addCourse(request: HttpRequest, cid=None):
     if request.method == "POST" and request.POST:
         if not edit:
             # 发起选课
-            course_DDL = str_to_time(APP_CONFIG.course.btx_election_end)
+            course_DDL = str_to_time(CONFIG.course.btx_election_end)
 
 
             if datetime.now() > course_DDL:
@@ -710,7 +712,7 @@ def outputRecord(request: HttpRequest):
     me = utils.get_person_or_org(request.user, user_type)
     # 获取默认审核老师，不应该出错
     examine_teacher = NaturalPerson.objects.get_teacher(
-        APP_CONFIG.course.audit_teacher)
+        CONFIG.course.audit_teacher)
 
     if examine_teacher != me:
         return redirect(message_url(wrong("只有书院课审核老师账号可以访问该链接！")))

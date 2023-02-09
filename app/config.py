@@ -42,8 +42,19 @@ UTYPE_PER = User.Type.PERSON.value
 UTYPE_ORG = User.Type.ORG.value
 
 
-class ProfileConfig(Config):
+class CourseConfig(Config):
+    # str format: %Y-%m-%d %H:%M:%S
+    yx_election_start = LazySetting('yx_election_start', type=str)
+    yx_election_end = LazySetting('yx_election_end', type=str)
+    btx_election_start = LazySetting('btx_election_start')
+    btx_election_end = LazySetting('btx_election_end', type=str)
+    publish_time = LazySetting('publish_time', type=str)
 
+    def __init__(self, dict_prefix: str = 'course'):
+        super().__init__(dict_prefix)
+
+
+class ProfileConfig(Config):
     def __init__(self, dict_prefix: str = ''):
         super().__init__(dict_prefix)
 
@@ -72,14 +83,17 @@ class ProfileConfig(Config):
     # Course Info
     course_type_name = LazySetting('course/type_name', default='书院课程')
     least_record_hours = LazySetting('course/valid_hours', float, default=8.0)
+    course = CourseConfig()
 
     # YQPoint
     # TODO: Change it
     yqp_oname = ''
     yqp_activity_max = LazySetting('YQPoint/activity/max', default=30)
-    yqp_activity_per_hour = LazySetting('YQPoint/activity/per_hour', float, default=10)
+    yqp_activity_per_hour = LazySetting(
+        'YQPoint/activity/per_hour', float, default=10)
     yqp_per_feedback = LazySetting('YQPoint/feedback/per_accept', default=10)
-    yqp_signin_points = LazySetting('YQPoint/signin_points', default=[1, 2, 2, (2, 4), 2, 2, (5, 7)])
+    yqp_signin_points = LazySetting(
+        'YQPoint/signin_points', default=[1, 2, 2, (2, 4), 2, 2, (5, 7)])
 
 
 CONFIG = ProfileConfig()
