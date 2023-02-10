@@ -1,9 +1,5 @@
-from django.http import HttpRequest, HttpResponse
-from django.shortcuts import render, redirect
-from django.contrib.auth.decorators import login_required
-
-from utils.views import SecureTemplateView
-from utils.global_messages import wrong, succeed, message_url, transfer_message_context
+from app.views_dependency import ProfileTemplateView
+from utils.global_messages import transfer_message_context
 from yp_library.utils import (
     get_readers_by_user,
     search_books,
@@ -12,7 +8,6 @@ from yp_library.utils import (
     get_library_activity, 
     get_recommended_or_newest_books, 
     get_opening_time,
-    to_feedback_url,
 )
 from app.utils import get_sidebar_and_navbar, check_user_access
 
@@ -21,19 +16,22 @@ DISPLAY_RECOMMENDATION_NUM = 5 # 首页展示的推荐书目数量
 # DISPLAY_NEW_BOOK_NUM = 5 # 首页展示的新入馆书目数量
 
 
-class WelcomeView(SecureTemplateView):
+class WelcomeView(ProfileTemplateView):
     """
     书房首页，提供近期活动、随机推荐、开馆时间；
     首页的查询功能应该可以通过前端转到search页面，这里未做处理
     """
 
     template_name = "yp_library/welcome.html"
+    page_name = "元培书房"
 
-    def get(self, request: HttpRequest, *args, **kwargs) -> HttpResponse | None:
-        bar_display = get_sidebar_and_navbar(request.user, "元培书房")
+    def check_get(self):
+        return self.get
+
+    def get(self):
         # 借阅记录
         try:
-            readers = get_readers_by_user(request.user)
+            readers = get_readers_by_user(self.request.user)
         except AssertionError as e:
             records_list = []
         else:
@@ -42,11 +40,10 @@ class WelcomeView(SecureTemplateView):
         # 开放时间
         opening_time_start, opening_time_end = get_opening_time()
 
-        transfer_message_context(request.GET, self.extra_context,
-                                normalize=True)
+        transfer_message_context(self.request.GET, self.extra_context,
+                                 normalize=True)
         self.extra_context.update({
             "activities": get_library_activity(num=DISPLAY_ACTIVITY_NUM),
-            "bar_display": bar_display,
             "opening_time_start": opening_time_start,
             "opening_time_end": opening_time_end,
             "records_list": records_list,
@@ -54,61 +51,31 @@ class WelcomeView(SecureTemplateView):
                         num=DISPLAY_RECOMMENDATION_NUM, newest=False),
         })
 
+        self.render()
 
-class SearchView(SecureTemplateView):
+
+class SearchView(ProfileTemplateView):
     """
     图书检索页面
     """
 
     template_name = "yp_library/search.html"
+    page_name = "书籍搜索结果"
 
-    def get(self, request: HttpRequest, *args, **kwargs) -> HttpResponse | None:
-        transfer_message_context(request.GET, self.extra_context,
+    def check_get(self):
+        return self.get
+
+    def get(self):
+        transfer_message_context(self.request.GET, self.extra_context,
                                  normalize=True)
-        self.extra_context.update({
-            "bar_display": get_sidebar_and_navbar(request.user, "书籍搜索结果"),
-        })
+        self.render()
+
+    def check_post(self):
+        return self.post
     
-    def post(self, request: HttpRequest, *args, **kwargs) -> HttpResponse | None:
-        query_dict = get_query_dict(request.POST)  # 提取出检索条件
+    def post(self):
         self.extra_context.update({
-            "bar_display": get_sidebar_and_navbar(request.user, "书籍搜索结果"),
-            "search_results_list": search_books(**query_dict),
+            "search_results_list": search_books(**get_query_dict(self.request.POST)),
         })
 
-
-class LendInfoView(SecureTemplateView):
-    '''这个页面似乎弃用了'''
-
-    template_name = "yp_library/lendinfo.html"
-
-    def check_get(self, request: HttpRequest) -> HttpResponse | None:
-        try:
-            self.readers = get_readers_by_user(request.user)
-        except AssertionError as e:
-            wrong(str(e), self.extra_context)
-            self.extra_context.update({
-                'unreturnedd_records_list': [],
-                'returned_records_list': [],
-            })
-            return self.render(request)
-    
-    def get(self, request: HttpRequest, *args, **kwargs) -> HttpResponse | None:
-        unreturned_list, returned_list = get_lendinfo_by_readers(self.readers)
-
-        transfer_message_context(request.GET, self.extra_context,
-                                 normalize=True)
-        self.extra_context.update({
-            "bar_display": get_sidebar_and_navbar(request.user, "借阅信息"),
-            "unreturned_records_list": unreturned_list,
-            "returned_records_list": returned_list,
-        })
-
-    def post(self, request: HttpRequest, *args, **kwargs) -> HttpResponse | None:
-        if request.POST.get('feedback') is not None:
-            try:
-                url = to_feedback_url(request)
-                return redirect(url)
-            except AssertionError as e:
-                wrong(str(e), self.extra_context)
-                return self.render(request)
+        self.render()
