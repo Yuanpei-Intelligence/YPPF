@@ -276,7 +276,7 @@ def get_sidebar_and_navbar(user, navbar_name="", title_name="", bar_display=None
     else:
         bar_display["profile_name"] = "小组主页"
         bar_display["profile_url"] = "/orginfo/"
-        bar_display["is_course"] = me.otype.otype_name == COURSE_TYPENAME
+        bar_display["is_course"] = me.otype.otype_name == CONFIG.course.type_name
         # 组织也可以预约
         bar_display["underground_url"] = UNDERGROUND_URL
 
@@ -652,7 +652,7 @@ def record_modify_with_session(request, info=""):
         if recorded == True:
             rank = get_modify_rank(request.user)
             is_person = usertype == UTYPE_PER
-            info_rank = APP_CONFIG.max_inform_rank.get(usertype, -1)
+            info_rank = CONFIG.max_inform_rank.get(usertype, -1)
             if rank > -1 and rank <= info_rank:
                 msg = (
                     f'您是第{rank}名修改账号信息的'+

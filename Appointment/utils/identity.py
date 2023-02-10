@@ -32,10 +32,6 @@ __all__ = [
 ]
 
 
-# 兼容Django3.0及以下版本
-if not hasattr(QuerySet, '__class_getitem__'):
-    QuerySet.__class_getitem__ = classmethod(lambda cls, *args, **kwargs: cls)
-
 
 def get_participant(user: Union[User, str], update=False, raise_except=False):
     '''通过User对象或学号获取对应的参与人对象

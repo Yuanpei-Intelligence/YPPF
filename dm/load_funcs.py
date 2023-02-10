@@ -633,7 +633,7 @@ def load_course_record(filepath: str, output_func: Callable=None, html:bool=Fals
             record_search_course = record.filter(course__name=course)
             record_search_extra = record.filter(extra_name=course)
             # 需要时临时修改即可
-            invalid = float(hours) < CONFIG.least_record_hours
+            invalid = float(hours) < CONFIG.course.least_record_hours
 
             if record_search_course.exists():
                 record_search_course.update(

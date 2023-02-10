@@ -126,12 +126,12 @@ class LazySetting(Generic[T]):
     # 无参数时，标注为Any
     @overload
     def __new__( # type: ignore
-        self,
+        self,    # type: ignore
         path: str,
     ) -> 'LazySetting[Any | None]': ...
     @overload
     def __new__( # type: ignore
-        self,
+        self,    # type: ignore
         path: str,
         trans_fn: Optional[Callable[[Any], T]] = None,
         default: T = None,
@@ -139,7 +139,7 @@ class LazySetting(Generic[T]):
     # TypeCheck时，忽略default=None类型
     @overload
     def __new__( # type: ignore
-        self,
+        self,    # type: ignore
         path: str,
         trans_fn: Callable[[Any], T] = ...,
         default: Literal[None] = ...,
@@ -149,7 +149,7 @@ class LazySetting(Generic[T]):
     # 否则正常检查（但这个时候为什么要传入type=TypeCheck呢？）
     @overload
     def __new__( # type: ignore
-        self,
+        self,    # type: ignore
         path: str,
         trans_fn: Optional[Callable[[Any], T]] = ...,
         default: T = ...,
@@ -159,7 +159,7 @@ class LazySetting(Generic[T]):
     # 提供type参数时，忽略default类型，无论如何都标注为该类型
     @overload
     def __new__( # type: ignore
-        self,
+        self,    # type: ignore
         path: str,
         trans_fn: Optional[Callable[[Any], Any]] = ...,
         default: Any = ...,

@@ -48,9 +48,6 @@ from django.db import transaction
 # 一些类型信息提示
 from typing import Union, Iterable
 from django.db.models import QuerySet
-# 兼容Django3.0及以下版本
-if not hasattr(QuerySet, '__class_getitem__'):
-    QuerySet.__class_getitem__ = classmethod(lambda cls, *args, **kwargs: cls)
 ClassifiedUser = None
 try:
     0 / 0

@@ -27,9 +27,6 @@
         "rpc_port": "$SCHEDULER_RPC_PORT$",
         "use_scheduler": false
     },
-    "notification": {
-        "max_inform_rank": null
-    },
     "wechat": {
         "salt": "debug_hasher_salt",
         "send_batch": 500,
@@ -71,6 +68,7 @@
         "open_time_start": "07:00",
         "open_time_end": "23:00"
     },
+    "max_inform_rank": {},
     "help_messages": {
 
     }

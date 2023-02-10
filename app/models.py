@@ -88,10 +88,6 @@ __all__ = [
     'PoolRecord',
 ]
 
-# 兼容Django3.0及以下版本
-if not hasattr(QuerySet, '__class_getitem__'):
-    QuerySet.__class_getitem__ = classmethod(lambda cls, *args, **kwargs: cls)
-
 
 def current_year() -> int:
     '''不导出的函数，用于实时获取学年设置'''
@@ -509,7 +505,7 @@ class OrganizationType(models.Model):
 
     def default_semester(self):
         '''供生成时方便调用的函数，职位的默认持续时间'''
-        return Semester.now() if self.otype_name == CONFIG.course_type_name else Semester.ANNUAL
+        return Semester.now() if self.otype_name == CONFIG.course.type_name else Semester.ANNUAL
 
     def default_is_admin(self, position):
         '''供生成时方便调用的函数，是否成为负责人的默认值'''
