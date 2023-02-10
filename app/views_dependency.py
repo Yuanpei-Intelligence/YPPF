@@ -62,9 +62,14 @@ err_capture = __partial(__err_capture, ret=EXCEPT_REDIRECT)
 # 不应导出，接口内部使用
 from django.core.exceptions import ImproperlyConfigured as _ImproperlyConfigured
 class ProfileTemplateView(SecureTemplateView):
-
-    page_name: str
     request: UserRequest
+    PrepareType = SecureView.PrepareType | SecureTemplateView.SkippablePrepareType
+
+    need_prepare: bool = False
+    page_name: str
+
+    def dispatch_prepare(self, method: str):
+        return self.default_prepare(method, prepare_needed=self.need_prepare)
 
     def render(self, **kwargs):
         if not hasattr(self, 'page_name'):

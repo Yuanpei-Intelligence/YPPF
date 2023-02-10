@@ -38,7 +38,7 @@ class ShowChatsView(ProfileTemplateView):
     template_name = 'showChats.html'
     page_name = '学术地图问答'
 
-    def check_get(self):
+    def prepare_get(self):
         user = self.request.user
         if not user.is_person():
             # 后续或许可以开放任意的聊天
@@ -68,7 +68,7 @@ class ChatView(ProfileTemplateView):
         self.chat_id = chat_id
         return super().setup(request, chat_id=chat_id)
 
-    def check_get(self):
+    def prepare_get(self):
         possible_chat = Chat.objects.filter(id=self.chat_id).first()
         if possible_chat is None:
             return self.wrong('问答不存在')
