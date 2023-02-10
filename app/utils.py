@@ -286,7 +286,7 @@ def get_sidebar_and_navbar(user, navbar_name="", title_name="", bar_display=None
     bar_display["title_name"] = title_name if title_name else navbar_name
 
     if navbar_name == "我的元气值":
-        bar_display["help_message"] = APP_CONFIG.help_message.get(
+        bar_display["help_message"] = CONFIG.help_message.get(
             (navbar_name + user_type.lower()),  ""
         )
         try:
@@ -295,7 +295,7 @@ def get_sidebar_and_navbar(user, navbar_name="", title_name="", bar_display=None
             bar_display["help_paragraphs"] = ""
     elif navbar_name != "":
         try:
-            bar_display["help_message"] = APP_CONFIG.help_message.get(
+            bar_display["help_message"] = CONFIG.help_message.get(
                 navbar_name, ""
             )
         except:

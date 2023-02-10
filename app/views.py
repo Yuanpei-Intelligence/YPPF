@@ -775,8 +775,8 @@ def orginfo(request: HttpRequest, name=None):
     # org的属性 information 不在此赘述，直接在前端调用
 
     # 给前端传递选课的参数
-    yx_election_start = APP_CONFIG.course.yx_election_start
-    yx_election_end = APP_CONFIG.course.yx_election_end
+    yx_election_start = CONFIG.course.yx_election_start
+    yx_election_end = CONFIG.course.yx_election_end
     if (str_to_time(yx_election_start) <= datetime.now() < (
             str_to_time(yx_election_end))):
         html_display["select_ing"] = True

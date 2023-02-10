@@ -49,6 +49,7 @@ class CourseConfig(Config):
     btx_election_start = LazySetting('btx_election_start')
     btx_election_end = LazySetting('btx_election_end', type=str)
     publish_time = LazySetting('publish_time', type=str)
+    audit_teacher = LazySetting('auditors')
 
     def __init__(self, dict_prefix: str = 'course'):
         super().__init__(dict_prefix)
@@ -78,8 +79,11 @@ class ProfileConfig(Config):
 
     # Notification
     max_inform_rank = LazySetting('notification/max_inform_rank')
-    help_message = LazySetting('help_message')
+    help_message = LazySetting('help_messages')
 
+    # Weather
+    weather_api_key = LazySetting('weather/api_key')
+    
     # Course Info
     course_type_name = LazySetting('course/type_name', default='书院课程')
     least_record_hours = LazySetting('course/valid_hours', float, default=8.0)
