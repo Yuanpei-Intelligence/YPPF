@@ -27,7 +27,7 @@ from functools import partial, wraps
 from django.http import HttpRequest
 from django.conf import settings
 
-from boot.config import Config, LazySetting
+from boot.config import Config, LazySetting, absolute_path
 
 
 class LogConfig(Config):
@@ -51,7 +51,8 @@ def get_logger(name: str) -> logging.Logger:
     for handle in logger.handlers:
         logger.removeHandler(handle)
     handler = logging.FileHandler(
-        os.path.join(_LOGCONFIG.log_dir, name + '.log'), encoding='utf8', mode='a')
+        os.path.join(absolute_path(_LOGCONFIG.log_dir), name + '.log'),
+        encoding='utf8', mode='a')
     handler.setFormatter(logging.Formatter(_LOGCONFIG.format))
     logger.addHandler(handler)
     logger.setLevel(_LOGCONFIG.level)

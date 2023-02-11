@@ -4,17 +4,18 @@
 
 '''
 
-from django.conf import settings
 import pymysql
 import json
 
+from django.conf import settings
+from boot.config import absolute_path
 
 pymysql.install_as_MySQLdb()
 pymysql.version_info = (1, 4, 6, "final", 0)
 
 
 def _load_local_json(path="./local_json.json"):
-    with open(path, encoding="utf_8") as f:
+    with open(absolute_path(path), encoding="utf_8") as f:
         local_dict = json.load(f)
     return local_dict
 

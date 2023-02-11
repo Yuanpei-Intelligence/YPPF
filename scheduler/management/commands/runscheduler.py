@@ -6,9 +6,9 @@ import rpyc
 from rpyc.utils.server import ThreadedServer
 
 from utils.log import get_logger
+from scheduler.config import scheduler_conf
 
 
-EXECUTOR_PORT = settings.MY_RPC_PORT
 TZ = settings.TIME_ZONE
 
 logger = get_logger('apscheduler')
@@ -37,7 +37,7 @@ class Command(BaseCommand):
             'logger': logger,
         }
         server = ThreadedServer(SchedulerService(scheduler),
-                                port=EXECUTOR_PORT,
+                                port=scheduler_conf.rpc_port,
                                 protocol_config=protocol_config)
         try:
             logger.info('Starting scheduler with executor')

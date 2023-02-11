@@ -6,6 +6,8 @@ from functools import wraps
 
 from django.conf import settings
 
+from boot.config import BASE_DIR
+
 
 __all__ = [
     'STATE_DEBUG', 'STATE_INFO', 'STATE_WARNING', 'STATE_ERROR',
@@ -28,7 +30,7 @@ __log_level = STATE_INFO
 __log_root = "logstore"
 if not os.path.exists(__log_root):
     os.mkdir(__log_root)
-__log_root_path = os.path.join(os.getcwd(), __log_root)
+__log_root_path = os.path.join(BASE_DIR, __log_root)
 if os.getenv("YPPF_ENV") in ["PRODUCT", "TEST"]:
     __log_root_path = os.environ["YPPF_LOG_DIR"]
 __log_user = "user_detail"

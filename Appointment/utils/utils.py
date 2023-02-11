@@ -427,10 +427,11 @@ def appoint_violate(input_appoint: Appoint, reason: Appoint.Reason):
 
 
 # 文件操作体系
+from boot.config import BASE_DIR
 log_root = "logstore"
 if not os.path.exists(log_root):
     os.mkdir(log_root)
-log_root_path = os.path.join(os.getcwd(), log_root)
+log_root_path = os.path.join(BASE_DIR, log_root)
 log_user = "user_detail"
 if not os.path.exists(os.path.join(log_root_path, log_user)):
     os.mkdir(os.path.join(log_root_path, log_user))

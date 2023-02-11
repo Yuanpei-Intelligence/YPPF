@@ -28,8 +28,22 @@ DEBUG = True  # WARNING! TODO: Set to False in main branch
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 
+def absolute_path(path: str) -> str:
+    '''
+    Sphinx生成文档时执行目录是错误的，所以要用这个函数
+    
+    :param path: 相对于项目根目录的路径
+    :type path: str
+    :return: 绝对路径
+    :rtype: str
+    '''
+    if not path.startswith('./'):
+        return path
+    return os.path.join(BASE_DIR, path[2:])
+
+
 def _init_config(path = './config.json', encoding = 'utf8') -> dict[str, Any]:
-    with open(path, encoding=encoding) as f:
+    with open(absolute_path(path), encoding=encoding) as f:
         return json.load(f)
 
 
@@ -64,31 +78,31 @@ class LazySetting(Generic[T]):
     '''
     延迟加载的配置项
 
-    在Config类中作为属性定义，如：
-    ```
-    class AppConfig(Config):
-        # 由语言服务器自动推断类型
-        value = LazySetting('value', default=0)
-        op1 = LazySetting('op1', int)
-        op2 = LazySetting('op2', int, default=0)
-        # 也可以使用type指定类型，写法建议参考`LazySetting.checkable_type`的文档
-        assert_d = LazySetting('value/dict', type=dict)
-        i_or_s = LazySetting('value/i_or_s', type=(int, str))
-        assert_ls = LazySetting('value/ls', type=list[str])
-        tuple = LazySetting('value/tuple', type=tuple[int, str])
-    ```
-    上述代码在访问时会自动计算并缓存结果：
-    ```
-    config = AppConfig()
-    # 自动推断的类型
-    config.value: int
-    config.op1: int | None
-    config.op2: int
-    # 用type指定的类型
-    config.assert_d: dict
-    config.i_or_s: int | str    # 检查是否为int或str
-    list[str], tuple[int, str]  # 检查是否为列表，元组等，不检查元素类型
-    ```
+    在Config类中作为属性定义，如::
+
+        class AppConfig(Config):
+            # 由语言服务器自动推断类型
+            value = LazySetting('value', default=0)
+            op1 = LazySetting('op1', int)
+            op2 = LazySetting('op2', int, default=0)
+            # 也可以使用type指定类型，写法建议参考`LazySetting.checkable_type`的文档
+            assert_d = LazySetting('value/dict', type=dict)
+            i_or_s = LazySetting('value/i_or_s', type=(int, str))
+            assert_ls = LazySetting('value/ls', type=list[str])
+            tuple = LazySetting('value/tuple', type=tuple[int, str])
+
+    上述代码在访问时会自动计算并缓存结果::
+
+        config = AppConfig()
+        # 自动推断的类型
+        config.value: int
+        config.op1: int | None
+        config.op2: int
+        # 用type指定的类型
+        config.assert_d: dict
+        config.i_or_s: int | str    # 检查是否为int或str
+        list[str], tuple[int, str]  # 检查是否为列表，元组等，不检查元素类型
+
     :raises ImproperlyConfigured: 配置最终值不匹配期望类型
     '''
     class TypeCheck: '默认类型检查，忽略默认值'
@@ -177,31 +191,32 @@ class LazySetting(Generic[T]):
         提供可用于检查类型的类，只能进行初级检查(isinstance)
 
         type应小心以下写法：
+
         - `list[int] | ...` 极不推荐，无法检查，无法提示，应尽量避免
         - `list[int]` 只能进行简单检查，无法检查列表内的元素类型
         - `int | str`或`Union[int, str]` IDE无法正确提示类型，应使用`(int, str)`
         - `tuple[...]` 默认的JSON解析器会将元组解析为列表，务必提供tuple转化函数
 
-        合法的最终检查类型由以下规则定义（语法略有扩展）：
-        ```
-        FAT := AT | TF                              # final available type
-        TF: tuple[CT, ...] := ...                   # tuple of checkable types
-        AT := CT | None                             # available type
-        CT := RT | UT                               # checkable type
-        RT := RNT | RGT                             # raw type
-        RNT := RBT | _RNT                           # raw normal type
-        RBT := int | str | float | bool             # buildin types
-            |  list | dict | set | tuple | ...
-        _RNT := types.NoneType | any class          # normal class & NoneType
-        RGT := List | Dict | Set | Tuple | ...      # generic types
-        UT := UNT | UGA                             # union type
-        _N := _NT | None
-        _NT := RNT | UNT | Optional[None]
-        UNT := _N '|' RNT | _NT '|' None            # union normal types
-        _GT := RGT | UGA
-        UGA := Optional[CT] | Union[CT, AT{, AT}]   # union generic alias
-            |  _GT '|' AT | _N '|' _GT
-        ```
+        合法的最终检查类型由以下规则定义（语法略有扩展）::
+
+            FAT := AT | TF                              # final available type
+            TF: tuple[CT, ...] := ...                   # tuple of checkable types
+            AT := CT | None                             # available type
+            CT := RT | UT                               # checkable type
+            RT := RNT | RGT                             # raw type
+            RNT := RBT | _RNT                           # raw normal type
+            RBT := int | str | float | bool             # buildin types
+                |  list | dict | set | tuple | ...
+            _RNT := types.NoneType | any class          # normal class & NoneType
+            RGT := List | Dict | Set | Tuple | ...      # generic types
+            UT := UNT | UGA                             # union type
+            _N := _NT | None
+            _NT := RNT | UNT | Optional[None]
+            UNT := _N '|' RNT | _NT '|' None            # union normal types
+            _GT := RGT | UGA
+            UGA := Optional[CT] | Union[CT, AT{, AT}]   # union generic alias
+                |  _GT '|' AT | _N '|' _GT
+
         :param type: 上文所定义的FAT形式
         :type type: Any | None，如果希望检查，则应该是_CheckableType
         :return: 可用于检查的类型

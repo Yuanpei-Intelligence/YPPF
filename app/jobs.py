@@ -39,7 +39,6 @@ from app.wechat_send import WechatMessageLevel, WechatApp
 from app.config import *
 
 
-default_weather = CONFIG.default_weather
 logger = get_logger('app')
 
 __all__ = [
@@ -141,6 +140,7 @@ def get_weather_async():
 
 
 def get_weather() -> Dict[str, Any]:
+    # TODO: Get dict from somewhere
     return dict()
 
 
