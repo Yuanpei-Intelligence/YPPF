@@ -65,7 +65,7 @@ class ProfileTemplateView(SecureTemplateView):
     request: UserRequest
     PrepareType = SecureView.PrepareType | SecureTemplateView.SkippablePrepareType
 
-    need_prepare: bool = False
+    need_prepare: bool = True
     page_name: str
 
     def dispatch_prepare(self, method: str):
