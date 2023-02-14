@@ -7,9 +7,8 @@ from yp_library.utils import (
     get_lendinfo_by_readers,
     get_library_activity, 
     get_recommended_or_newest_books, 
-    get_opening_time,
 )
-from app.utils import get_sidebar_and_navbar, check_user_access
+from yp_library.config import library_conf
 
 DISPLAY_ACTIVITY_NUM = 3 # 首页展示的书房活动数量
 DISPLAY_RECOMMENDATION_NUM = 5 # 首页展示的推荐书目数量
@@ -24,9 +23,7 @@ class WelcomeView(ProfileTemplateView):
 
     template_name = "yp_library/welcome.html"
     page_name = "元培书房"
-
-    def check_get(self):
-        return self.get
+    need_prepare = False
 
     def get(self):
         # 借阅记录
@@ -37,21 +34,18 @@ class WelcomeView(ProfileTemplateView):
         else:
             unreturned_records_list, returned_records_list = get_lendinfo_by_readers(readers)
             records_list = unreturned_records_list + returned_records_list
-        # 开放时间
-        opening_time_start, opening_time_end = get_opening_time()
 
         transfer_message_context(self.request.GET, self.extra_context,
                                  normalize=True)
         self.extra_context.update({
             "activities": get_library_activity(num=DISPLAY_ACTIVITY_NUM),
-            "opening_time_start": opening_time_start,
-            "opening_time_end": opening_time_end,
+            "opening_time_start": library_conf.start_time,
+            "opening_time_end": library_conf.end_time,
             "records_list": records_list,
             "recommendation": get_recommended_or_newest_books(
                         num=DISPLAY_RECOMMENDATION_NUM, newest=False),
         })
-
-        self.render()
+        return self.render()
 
 
 class SearchView(ProfileTemplateView):
@@ -61,21 +55,15 @@ class SearchView(ProfileTemplateView):
 
     template_name = "yp_library/search.html"
     page_name = "书籍搜索结果"
-
-    def check_get(self):
-        return self.get
+    need_prepare = False
 
     def get(self):
         transfer_message_context(self.request.GET, self.extra_context,
                                  normalize=True)
-        self.render()
+        return self.render()
 
-    def check_post(self):
-        return self.post
-    
     def post(self):
         self.extra_context.update({
             "search_results_list": search_books(**get_query_dict(self.request.POST)),
         })
-
-        self.render()
+        return self.render()
