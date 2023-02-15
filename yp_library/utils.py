@@ -319,19 +319,6 @@ def get_recommended_or_newest_books(num: int, newest: bool = False) -> QuerySet[
         return recommended_books
 
 
-def get_opening_time() -> Tuple[str, str]:
-    """
-    从setting读取开馆、闭馆时间（直接用字符串格式）
-
-    :return: 开馆、闭馆时间
-    :rtype: Tuple[str, str]
-    """
-    start_time = library_conf.start_time
-    end_time = library_conf.end_time
-    # TODO: Return type doesn't match
-    return start_time, end_time
-
-
 def to_feedback_url(request: HttpRequest) -> str:
     """
     检查预约记录是否可以申诉。
