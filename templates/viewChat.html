@@ -2,7 +2,7 @@
 
 {% load static %}
 
-
+#TODO:
 {% block mainpage %}
 <style>
     select[readonly] {
@@ -24,6 +24,18 @@
         /* 和h3.noafter对齐 */
         vertical-align: middle !important;
         margin: 2px 0px 6px !important;
+    }
+</style>
+<style>
+    /* 评价回答的选项样式 */
+    input[name="rate_answer"] + label {
+        font-size:0.8em;    
+    }
+    input[name="rate_answer"]:checked + label {
+        color: #8dbf42;
+    }
+    input[name="rate_answer"]:checked + label svg{
+        fill: #daedbd;
     }
 </style>
     <!--  BEGIN CONTENT AREA  -->
@@ -59,13 +71,13 @@
                                         {% if academic_url != "" and respondent_name != "匿名用户" %}
                                         发给<a href='{{academic_url}}#tab=academic_map'><u>{{respondent_name}}</u></a>的问答：{{title}}&emsp;
                                         {% else %}
-                                        发给{{respondent_name}}的问答：{{title}}&emsp;
+                                        发给{{respondent_tags|join:" "}}的问答：{{title}}&emsp;
                                         {% endif %}
                                     {% else %}
                                         {% if academic_url != "" and questioner_name != "匿名用户" %}
                                         来自<a href='{{academic_url}}#tab=academica_map'><u>{{questioner_name}}</u></a>的问答：{{title}}&emsp;
                                         {% else %}
-                                        来自{{questioner_name}}的问答：{{title}}&emsp;
+                                        来自{{questioner_tags|join:" "}}的问答：{{title}}&emsp;
                                         {% endif %}
                                     {% endif %}
                                     
@@ -192,6 +204,12 @@
                                                         <div>
                                                         </div>
                                                         <div class="" style="text-align: right;">
+                                                                {% if not anonymous_chat or accept_anonymous %}
+                                                                <div class="form-check form-check-inline">
+                                                                    <input class="form-check-input" type="checkbox" name="anonymous" id="anonymous" checked>
+                                                                    <label class="form-check-label" for="anonymous">匿名回复</label>
+                                                                </div>
+                                                                {% endif %}
                                                                 <button type="submit"
                                                                         class="btn btn-primary"
                                                                         name="comment_submit" 
@@ -217,13 +235,103 @@
                             </div>
                             {% endif %}
                             <!--  END REPLY AREA  -->
+
+                            <!--  BEGIN RATE AREA  -->
+                            {% if my_name == questioner_name and answered %}
+                                <div class="row">
+                                    <div class="col-md-12 mb-4">
+                                        <div class="statbox widget box box-shadow">
+                                            <div class="widget-content widget-content-area pb-4">
+                                                <p>这个回答对您有帮助吗？</p>
+                                                <div class="form-check form-check-inline">
+                                                    <input type="radio" name="rate_answer" value="1" id="rate1" 
+                                                        {% if rate == 1 %} checked {% endif %}  
+                                                        {% if rate != 0 %} disabled {% endif %}  
+                                                        style="display:none"/>
+                                                    <label for="rate1">
+                                                        <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" 
+                                                            fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" 
+                                                            class="feather feather-thumbs-up">
+                                                            <path d="M14 9V5a3 3 0 0 0-3-3l-4 9v11h11.28a2 2 0 0 0 2-1.7l1.38-9a2 2 0 0 0-2-2.3zM7 22H4a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2h3"></path>
+                                                        </svg>
+                                                        一般
+                                                    </label>
+                                                </div>
+                                                <div class="form-check form-check-inline">
+                                                    <input type="radio" name="rate_answer" value="2" id="rate2" 
+                                                        {% if rate == 2 %} checked {% endif %}  
+                                                        {% if rate != 0 %} disabled {% endif %}  
+                                                        style="display:none"/>
+                                                    <label for="rate2">
+                                                        <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" 
+                                                            fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" 
+                                                            class="feather feather-thumbs-up">
+                                                            <path d="M14 9V5a3 3 0 0 0-3-3l-4 9v11h11.28a2 2 0 0 0 2-1.7l1.38-9a2 2 0 0 0-2-2.3zM7 22H4a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2h3"></path>
+                                                        </svg>
+                                                        <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" 
+                                                            fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" 
+                                                            class="feather feather-thumbs-up">
+                                                            <path d="M14 9V5a3 3 0 0 0-3-3l-4 9v11h11.28a2 2 0 0 0 2-1.7l1.38-9a2 2 0 0 0-2-2.3zM7 22H4a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2h3"></path>
+                                                        </svg>
+                                                        有帮助
+                                                    </label>   
+                                                </div>    
+                                                <div class="form-check form-check-inline">
+                                                    <input type="radio" name="rate_answer" value="3" id="rate3" 
+                                                            {% if rate == 3 %} checked {% endif %} 
+                                                            {% if rate != 0 %} disabled {% endif %}  
+                                                            style="display:none"/>
+                                                    <label for="rate3">
+                                                        <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" 
+                                                            fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" 
+                                                            class="feather feather-thumbs-up">
+                                                            <path d="M14 9V5a3 3 0 0 0-3-3l-4 9v11h11.28a2 2 0 0 0 2-1.7l1.38-9a2 2 0 0 0-2-2.3zM7 22H4a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2h3"></path>
+                                                        </svg>
+                                                        <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" 
+                                                            fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" 
+                                                            class="feather feather-thumbs-up">
+                                                            <path d="M14 9V5a3 3 0 0 0-3-3l-4 9v11h11.28a2 2 0 0 0 2-1.7l1.38-9a2 2 0 0 0-2-2.3zM7 22H4a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2h3"></path>
+                                                        </svg>
+                                                        <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" 
+                                                            fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" 
+                                                            class="feather feather-thumbs-up">
+                                                            <path d="M14 9V5a3 3 0 0 0-3-3l-4 9v11h11.28a2 2 0 0 0 2-1.7l1.38-9a2 2 0 0 0-2-2.3zM7 22H4a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2h3"></path>
+                                                        </svg>
+                                                        很有帮助
+                                                    </label>
+                                                </div>
+                                                <div class="form-check pl-0 mt-2">
+                                                    {% if rate == 0 %}
+                                                        <button class="btn btn-sm btn-primary"
+                                                                value="{{chat_id}}"
+                                                                onclick="rate_answer(this)">
+                                                                提交评价
+                                                        </button>
+                                                    {% else %}
+                                                        <button class="btn btn-sm btn-primary disabled">
+                                                                已评价
+                                                        </button>
+                                                    {% endif %}
+
+                                                </div>
+                                                
+                                            </div>
+
+                                        </div>
+                                    </div>
+                                </div>
+                            {% endif %}
+                            <!--  END RATE AREA  -->
                         </div>
                     </div>
                 </div>
             </div>
         </div>
     </div>
+{% endblock %}
 
+
+{% block add_js_file %}
 <script  type="text/javascript">
     // post请求后会reload，reload之后需要在顶部显示warn_message，
     // 而通常情况下history.scrollRestoration="auto"会导致reload后页面滚动到刷新前浏览的位置，有可能看不见顶部的warn_message
@@ -282,6 +390,7 @@
                 comment: document.getElementById("comment").value,
                 chat_id: Number(a.value),
                 comment_submit: 1,
+                anonymous: document.getElementById("anonymous").checked
             },
             success: function(context){
                 // console.log(context)
@@ -316,6 +425,32 @@
                     sessionStorage.setItem("warn_message", context.warn_message);
                 }
                 document.location.reload(); // 刷新页面
+            }
+        })
+    }
+
+    function rate_answer(a) {
+        console.log()
+        let rate = Number($("input[name='rate_answer']:checked").val())
+        // console.log(rate)
+        if(![1,2,3].includes(rate)){
+            return;
+        }
+        $.ajax({
+            url: "/rateAnswer/",
+            type: "post",
+            data:{
+                chat_id: Number(a.value),
+                rate: rate, // 对答复的评价，1表示一般，2表示有帮助，3表示很有帮助
+            },
+            success: function(context){
+                //console.log(context)
+                if (context.warn_code){
+                    sessionStorage.setItem("reloading", "chatRelatedReloading");
+                    sessionStorage.setItem("warn_code", context.warn_code);
+                    sessionStorage.setItem("warn_message", context.warn_message);
+                }
+                document.location.reload(); //刷新页面
             }
         })
     }
