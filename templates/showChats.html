@@ -1,5 +1,10 @@
 {% extends "base.html" %}
 
+{% load static %}
+
+{% block add_css_file %}
+    <link href="{% static "assets/css/select2/select2.min.css" %}" rel="stylesheet" />
+{% endblock %}
 
 {% block mainpage %}
 
@@ -52,13 +57,13 @@
                         <ul id="myTab" class="nav nav-tabs nav-tabs-solid nav-justified">
                             <li class="nav-item">
                                 <a class="nav-link active" href="#sent" data-toggle="tab">
-                                    <h5><i class="fa fa-envelope-o"></i> 我发出的提问</h5>
+                                    <h5><i class="fa fa-envelope-o"></i> 我的提问</h5>
                                 </a>
                             </li>
 
                             <li class="nav-item">
                                 <a class="nav-link" href="#received" data-toggle="tab">
-                                    <h5><i class="fa fa-envelope-o"></i> 我收到的提问</h5>
+                                    <h5><i class="fa fa-envelope-o"></i> 我的回答</h5>
                                 </a>
                             </li>
                         </ul>
@@ -68,11 +73,104 @@
                         <div id="myTabContent" class="tab-content">
                             <!--  BEGIN SENT CHATS  -->
                             <div class="tab-pane fade in active show" id="sent">
-                                <div id="sent-empty" style="display: none; margin-top: 40px; margin-bottom: -40px;">
-                                    <p style="text-align: center;">您没有进行过任何提问，可前往感兴趣的学术地图页面发起提问.</p>
-                                </div>
                                 <div class="bio-skill-box">
                                     <div id="sent-list" class="row">
+                                        <div class="col-md-12 mb-4">
+                                            <button type="button"
+                                                    class="btn btn-outline-primary btn-block"
+                                                    data-toggle="modal"
+                                                    data-target="#newQuestionModal">
+                                                发起新的提问
+                                            </button>
+                                        </div>
+
+                                        <!-- BEGIN NEW QUESTION MODAL -->
+                                        <div class="modal fade" id="newQuestionModal" tabindex="-1" data-backdrop="static" data-keyboard="false" aria-labelledby="questionModalLabel" aria-hidden="true">
+                                            <div class="modal-dialog modal-dialog-centered  modal-dialog-scrollable">
+                                            <div class="modal-content">
+                                                <div class="modal-header">
+                                                <h5 class="modal-title" id="questionModalLabel">编辑问题</h5>
+                                                </div>
+                                                <div class="modal-body">
+                                                    <div>
+                                                        <div>
+                                                            <label>主题</label>
+                                                            <textarea type="text" id="comment_title" name="comment_title"
+                                                                class="form-control"
+                                                                aria-label="Default" rows="1"
+                                                                placeholder="50字以内，可以为空"></textarea>
+                                                            <br \>
+                                                            <label>问题描述</label>
+                                                            <textarea type="text" id="comment" name="comment" 
+                                                                    class="form-control"
+                                                                    aria-label="Default" rows="5"
+                                                                    placeholder="具体内容不能为空"></textarea> <!-- 因为创建问答要复用comment_utils.py，这里必须叫“comment”  -->
+                                                            <br \>
+                                                            <label>
+                                                                提问对象
+                                                            </label>
+                                                            <select name="type" id="target_type" class="form-control">
+                                                                <option value="keywords" selected>
+                                                                    根据关键词发送
+                                                                </option>
+                                                                <option value="personal">
+                                                                    向指定同学发送
+                                                                </option>
+                                                            </select>
+                                                            <br/>
+                                                            <div id="select_keywords_tab">
+                                                                <label>关键词
+                                                                    <a data-toggle="tooltip" data-placement="bottom" title="选择或输入目标回答者的年级、专业方向、选修双学位、参与学业活动等信息">
+                                                                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor"
+                                                                            class="bi bi-question-circle-fill" viewBox="0 0 22 22">
+                                                                            <path d="M16 8A8 8 0 1 1 0 8a8 8 0 0 1 16 0zM5.496 6.033h.825c.138 0 .248-.113.266-.25.09-.656.54-1.134 1.342-1.134.686 0 1.314.343 1.314 1.168 0 .635-.374.927-.965 1.371-.673.489-1.206 1.06-1.168 1.987l.003.217a.25.25 0 0 0 .25.246h.811a.25.25 0 0 0 .25-.25v-.105c0-.718.273-.927 1.01-1.486.609-.463 1.244-.977 1.244-2.056 0-1.511-1.276-2.241-2.673-2.241-1.267 0-2.655.59-2.75 2.286a.237.237 0 0 0 .241.247zm2.325 6.443c.61 0 1.029-.394 1.029-.927 0-.552-.42-.94-1.029-.94-.584 0-1.009.388-1.009.94 0 .533.425.927 1.01.927z" />
+                                                                        </svg>
+                                                                    </a>
+                                                                </label>
+                                                                <select class="select_keywords" name="keywords" value="" required multiple="multiple" style="width: 100%; z-index: 200;">
+                                                                </select>
+                                                            </div>
+                                                            
+                                                            <div id="select_receiver_tab" style="display:none">
+                                                                <label>姓名
+                                                                </label>
+                                                                <select class="select_receiver" name="receiver" value="" required multiple="multiple" style="width: 100%; z-index: 200;">
+                                                                </select>
+                                                            </div>
+                                                            
+                                                            
+                                                        </div>
+                                                        <br />
+                                                        <div class="d-flex justify-content-between">
+                                                            <div class="" style="text-align: right;">
+                                                                <label>  
+                                                                    <input type="checkbox" id="comment_anonymous" name="comment_anonymous" style="vertical-align:middle;" />
+                                                                    <span style="vertical-align:middle;" >匿名提问&emsp;</span>
+                                                                </label>
+                                                            </div>
+                                                        </div>
+
+                                                    </div>
+                                                </div>
+                                                <div class="modal-footer">
+                                                <button type="button" class="btn btn-danger" data-dismiss="modal">放弃修改</button>
+                                                <button type="/button"
+                                                        class="btn btn-primary"
+                                                        name="comment_submit"
+                                                         onclick="start_chat()">
+                                                        发送问题
+                                                </button>
+                                                </div>
+                                            </div>
+                                            </div>
+                                        </div>
+										<!-- END NEW QUESTION MODAL -->
+
+                                        {% if sent_chats.progressing|length == 0 and sent_chats.not_progressing|length == 0 %}
+                                        	<div id="sent-empty" class="col-md-12">
+                                    			<p style="text-align: center;">您还没有进行过任何提问.</p>
+                                			</div>
+                                		{% endif %}
                                         <!--  BEGIN SENT PROGRESSING CHATS  -->
                                         {% for chat in sent_chats.progressing %}
                                         <div class="col-12 col-xl-6 col-lg-12 mb-xl-4 mb-4 " id="sent-undone={{chat.id}}">
@@ -111,7 +209,10 @@
                                                         {% if chat.anonymously_sent %}
                                                         <b>[匿名]</b>
                                                         {% endif %}
-                                                        发给&nbsp;<b><a href='{{chat.academic_url}}#tab=academic_map'><u>{{chat.receiver_name}}</u></a></b>
+                                                        发给&nbsp;<b>
+                                                            {% if chat.receiver_name and chat.academic_url %}<a href='{{chat.academic_url}}#tab=academic_map'><u>{{chat.receiver_name}}</u></a>
+                                                            {% else %}[未知]
+                                                            {% endif %}</b>
                                                     </span>
                                                 </p>
 
@@ -172,7 +273,10 @@
                                                         {% if chat.anonymously_sent %}
                                                         <b>[匿名]</b>
                                                         {% endif %}
-                                                        发给&nbsp;<b><a href='{{chat.academic_url}}#tab=academic_map'><u>{{chat.receiver_name}}</u></a></b>
+                                                        发给&nbsp;<b>
+                                                            {% if chat.receiver_name and chat.academic_url %}<a href='{{chat.academic_url}}#tab=academic_map'><u>{{chat.receiver_name}}</u></a>
+                                                            {% else %}[未知]
+                                                            {% endif %}</b>
                                                     </span>
                                                 </p>
 
@@ -344,7 +448,87 @@
     </div>
 </div>
 <!--  END CONTENT AREA  -->
+{% endblock %}
 
+{% block add_js_file %}
+<script src={% static "assets/js/select2/select2.min.js" %}></script>
+
+
+<script>
+    // 用于选择标签的组件初始化
+    function matchCustom(params, data) {
+        // If there are no search terms, return all of the data
+        if ($.trim(params.term) === '') {
+            return data;
+        }
+        // Do not display the item if there is no 'text' property
+        if (typeof data.text === 'undefined') {
+            return null;
+        }
+        // `params.term` should be the term that is used for searching
+        // `data.text` is the text that is displayed for the data object
+        if (data.text.indexOf(params.term) > -1) {
+            //var modifiedData = $.extend({}, data, true);
+            //modifiedData.text += ' (matched)';
+            return data;
+            // You can return modified objects from here
+            // This includes matching the `children` how you want in nested data sets
+            //return modifiedData;
+        }
+        if (data.pinyin && data.pinyin.indexOf(params.term) > -1 ){
+            return data;
+        }
+        // Return `null` if the term should not be displayed
+        return null;
+    }
+    
+    let stu_data = {{ stu_list| safe }};
+    let tag_data = {{ tag_list |safe }}
+
+    $(document).ready(function () {
+        $('.select_keywords').select2({
+            theme: "classic",
+            placeholder: "请选择1-3个标签",
+            allowClear: true,
+            data: tag_data,
+            matcher: matchCustom,
+            maximumSelectionLength: 3,
+			tags: true,
+    		tokenSeparators: [' '],
+            createTag: function (params) {
+                var term = $.trim(params.term);
+            
+                if (term === '') {
+                  return null;
+                }
+            
+                return {
+                  id: term,
+                  text: term,
+                }
+              }
+        });
+        $('.select_receiver').select2({
+            theme: "classic",
+            placeholder: "搜索提问目标",
+            allowClear: true,
+            data: stu_data,
+            matcher: matchCustom,
+            maximumSelectionLength: 1,
+        });
+        $("#target_type").on("change",(e)=>{
+            let target_type = $("#target_type").val();
+            if (target_type === "keywords"){
+                $('#select_keywords_tab').show();
+                $('#select_receiver_tab').hide();
+            }
+            else {
+                $('#select_keywords_tab').hide();
+                $('#select_receiver_tab').show();
+            }
+        })
+    })
+</script>
 
 <script>
     $('.nav-tabs').on('shown.bs.tab', 'a', function (e) {
@@ -352,6 +536,7 @@
             $(e.relatedTarget).removeClass('active');
         }
     })
+    {% comment %} 
     $('.table').bootstrapTable({
         onLoadSuccess: function () {
             $('.table tr td').each(function () {
@@ -362,6 +547,8 @@
 
         }
     })
+    {% endcomment %}
+    
 </script>
 
 <script  type="text/javascript">
@@ -427,6 +614,48 @@
                 warn_msg.hidden = false;
             }
         }
+    }
+    
+    function start_chat() { // 创建新问答
+        confirm_res = confirm('是否确认提问?');
+        if (confirm_res == 0){
+            return;
+        }
+		// 准备请求
+		let data = {
+			comment: document.getElementById("comment").value,
+			comment_submit: 1,
+			comment_title: document.getElementById("comment_title").value,
+			comment_anonymous: document.getElementById("comment_anonymous").checked, // 这里转换为Boolean的话是false/true，而后端需要False/True，所以在后端转为bool()
+		}
+		let target_type = $("#target_type").val();
+        console.log(target_type)
+		let target_url = "";
+        if (target_type === "keywords"){
+            target_url = "/startUndirectedChat/";
+		    data.keywords = $(".select_keywords").select2("data").map(option => option.text).slice(0,3).join(",")
+        }
+        else if (target_type === "personal"){
+            target_url = "/startChat/";
+            data.receiver_id = $(".select_receiver").val();
+        }
+
+        $.ajax({
+            url: target_url,
+            type: "post",
+            data: data,
+            success: function(context){
+                // console.log(context)
+                if (context.warn_code){
+                    if (context.warn_message != "发送成功。") { // 发送信息成功效果比较明显，没必要专门给出warn_message了
+                        sessionStorage.setItem("reloading", "chatRelatedReloading");
+                        sessionStorage.setItem("warn_code", context.warn_code);
+                        sessionStorage.setItem("warn_message", context.warn_message);
+                    }
+                }
+                document.location.reload(true);
+            }
+        })
     }
 
     function close_chat(a) { // 关闭问答
