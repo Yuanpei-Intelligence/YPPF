@@ -1851,13 +1851,14 @@ class Chat(CommentBase):
     class Meta:
         verbose_name = "2.对话"
         verbose_name_plural = verbose_name
-    
+
     questioner: User = models.ForeignKey(User, on_delete=models.CASCADE,
                              related_name="send_chat_set")
     respondent: User = models.ForeignKey(User, on_delete=models.CASCADE,
                              related_name="receive_chat_set")
     title = models.CharField("主题", default="", max_length=50)
-    anonymous = models.BooleanField("是否匿名", default=False) # 指发送方
+    questioner_anonymous = models.BooleanField("提问方是否匿名", default=False)
+    respondent_anonymous = models.BooleanField("回答方是否匿名", default=False)
 
     class Status(models.IntegerChoices):
         PROGRESSING = (0, "进行中")
@@ -1865,10 +1866,30 @@ class Chat(CommentBase):
     status = models.SmallIntegerField(choices=Status.choices, default=0)
 
     objects: ChatManager = ChatManager()
-    
+
     def save(self, *args, **kwargs):
         self.typename = "Chat"
-        super().save(*args, **kwargs)   
+        super().save(*args, **kwargs)
+
+
+class AcademicQAManager(models.Manager):
+    def directed(self):
+        return self.filter(directed=True)
+
+    def undirected(self):
+        return self.filter(directed=False)
+
+class AcademicQA(models.Model):
+    class Meta:
+        # TODO
+        verbose_name = ''
+        verbose_name_plural = verbose_name
+
+    chat = models.OneToOneField(to=Chat, on_delete=models.CASCADE)
+    keywords = models.JSONField('关键词')
+    directed = models.BooleanField('是否定向', default=False)
+
+    objects: AcademicQAManager = AcademicQAManager()
 
 
 class Prize(models.Model):

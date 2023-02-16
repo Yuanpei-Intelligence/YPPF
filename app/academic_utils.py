@@ -20,7 +20,7 @@ from app.comment_utils import showComment
 
 __all__ = [
     'get_search_results',
-    'chats2Display', 
+    'chats2Display',
     'comments2Display',
     'get_js_tag_list',
     'get_text_list',
@@ -32,21 +32,18 @@ __all__ = [
     'get_wait_audit_student',
     'audit_academic_map',
     'have_entries_of_type',
+    'get_students_for_search',
+    'get_tags_for_search',
 ]
 
 
 def get_search_results(query: str):
+    # TODO: 更新文档
     """
     根据提供的关键词获取搜索结果。
-
-    :param keyword: 关键词
-    :type keyword: str
-    :return: 搜索结果list，元素为dict，包含key：姓名、年级、条目内容中包含关键词的条目名。
-             一个条目名可能对应一个或多个内容（如参与多个科研项目等），因此条目名对应的value统一用list打包。
-    :rtype: List[dict]
     """
-    # TODO: 更新文档
-    # 首先搜索所有含有关键词的公开的学术地图项目，忽略大小写，同时转换成QuerySet[dict]
+
+    # 搜索所有含有关键词的公开的学术地图项目，忽略大小写
     academic_tags = AcademicTagEntry.objects.filter( 
         tag__tag_content__icontains=query,
         status=AcademicEntry.EntryStatus.PUBLIC,
@@ -62,8 +59,7 @@ def get_search_results(query: str):
          "atype", "content",
     )
 
-
-    # 然后根据tag/text对应的人，整合学术地图项目
+    # 根据tag/text对应的人，整合学术地图项目
     # 使用defaultdict会导致前端items不可用，原因未知
     academic_map_dict: 'dict[str, dict[str, list]]' = dict()
     type2display = {ty: label for ty, label in AcademicTag.Type.choices}
@@ -74,6 +70,7 @@ def get_search_results(query: str):
         academic_map_dict[sid].setdefault(tag_type, [])
         academic_map_dict[sid][tag_type].append(content)
     
+    # TODO: 写法有点怪
     type2display = {ty: label for ty, label in AcademicTextEntry.Type.choices}
     for sid, ty, content in academic_texts:
         text_type = type2display[ty]
@@ -103,14 +100,20 @@ def chats2Display(chats: QuerySet[Chat], sent: bool) -> Dict[str, List[dict]]:
         chat_dict['id'] = chat.id
 
         if sent:
-            chat_dict['anonymously_sent'] = chat.anonymous # 我以匿名方式发给别人，“问答中心”页面的卡片上会显示[匿名]
+            chat_dict['anonymously_sent'] = chat.questioner_anonymous # 我以匿名方式发给别人，“问答中心”页面的卡片上会显示[匿名]
             valid, receiver_type, _ = check_user_type(chat.respondent) # 学术地图应该只能是个人，不过以后或许可能复用Chat模型？
-            chat_dict['receiver_type'] = receiver_type
-            receiver = get_person_or_org(chat.respondent, receiver_type)
-            chat_dict['receiver_name'] = receiver.get_display_name()
-            chat_dict['academic_url'] = receiver.get_absolute_url() # 为了在“问答中心”页面的卡片上加入学术地图的url，超链接放在receiver_name上
+            if chat.respondent_anonymous:
+                chat_dict['receiver_type'] = 'anonymous'
+                chat_dict['receiver_name'] = '匿名用户'
+                chat_dict['academic_url'] = ''
+            else:
+                chat_dict['receiver_type'] = receiver_type
+                receiver = get_person_or_org(chat.respondent, receiver_type)
+                chat_dict['receiver_name'] = receiver.get_display_name()
+                # 为了在“问答中心”页面的卡片上加入学术地图的url，超链接放在receiver_name上
+                chat_dict['academic_url'] = receiver.get_absolute_url() 
         else:
-            if chat.anonymous: # 他人匿名发给我
+            if chat.questioner_anonymous: # 他人匿名发给我
                 chat_dict['sender_type'] = 'anonymous'
                 chat_dict['sender_name'] = '匿名用户'
                 chat_dict['academic_url'] = ''
@@ -131,9 +134,7 @@ def chats2Display(chats: QuerySet[Chat], sent: bool) -> Dict[str, List[dict]]:
         chat_dict['last_modification_time'] = chat.modify_time
         chat_dict['chat_url'] = f"/viewQA/{chat.id}" # 问答详情的url，超链接放在title上
         chat_dict['message_count'] = chat.comments.count()
-        # chat_dict["messages"] = showComment(
-        #     chat, anonymous_users=[chat.questioner] if chat.anonymous else None) # "问答中心"页面不再显示每个chat的comment
-        
+
         if chat.status == Chat.Status.PROGRESSING:
             progressing_chats.append(chat_dict)
         else:
@@ -158,14 +159,14 @@ def comments2Display(chat: Chat, frontend_dict: dict, user: User):
 
     # 获取当前chat的所有comment
     frontend_dict["messages"] = showComment(
-        chat, anonymous_users=[chat.questioner] if chat.anonymous else None)
+        chat, anonymous_users=[chat.questioner] if chat.questioner_anonymous else None)
     if len(frontend_dict["messages"]) == 0:
         # Chat一定有Comment，正常情况下不会到这里
         frontend_dict["not_found_messages"] = "当前问答没有信息." 
     
     frontend_dict['status'] = chat.get_status_display()
     frontend_dict["commentable"] = (chat.status == Chat.Status.PROGRESSING) # 若为True，则前端会给出评论区和“关闭当前问答”的按钮
-    frontend_dict["anonymous_chat"] = chat.anonymous
+    frontend_dict["anonymous_chat"] = chat.questioner_anonymous
     frontend_dict["accept_anonymous"] = chat.respondent.accept_anonymous_chat
 
     # 问答详情页面需要展示“发给xxx的问答”或“来自xxx的问答”，且xxx附有指向学术地图页面的超链接
@@ -173,7 +174,7 @@ def comments2Display(chat: Chat, frontend_dict: dict, user: User):
     # 问答详情页面对于我的信息和对方的信息以不同的格式显示
     # 因而还需要记录我的名字，通过和frontend_dict["messages"]中每条记录的commentator.name对比来判断是不是我发的
     # 事实上这些操作如果放到showComment里能减少一些get_display_name、get_person_or_org、get_absolute_url的调用，但需要对showComment做较大修改，就暂时没有整合进去
-    if chat.anonymous == False:
+    if chat.questioner_anonymous == False:
         frontend_dict['my_name'] = get_person_or_org(user).get_display_name()
         if user == chat.questioner:
             frontend_dict["questioner_name"] = frontend_dict['my_name']
@@ -562,3 +563,27 @@ def have_entries_of_type(author: NaturalPerson, status_in: list) -> bool:
     all_text_entries = (AcademicTextEntry.objects.activated().filter(
         person=author, status__in=stats))
     return bool(all_tag_entries) or bool(all_text_entries)
+
+
+def get_students_for_search(request: HttpRequest):
+    students = NaturalPerson.objects.activated().exclude(
+        person_id=request.user).select_related('person_id')
+
+    students_for_search = []
+    for s in students:
+        user = s.person_id
+        students_for_search.append({
+            'id': user.name,
+            'text': user.name + user.username[:2],
+            'pinyin': user.acronym,
+        })
+
+    return students_for_search
+
+
+def get_tags_for_search():
+    tags = AcademicTag.objects.all()
+    tags_for_search = []
+    for t in tags:
+        tags_for_search.append({'id': t.id, 'text': t.tag_content})
+    return tags_for_search

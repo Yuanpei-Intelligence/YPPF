@@ -5,8 +5,8 @@ from django.http import HttpResponse, HttpResponseRedirect, HttpResponseForbidde
 from django.core.exceptions import ImproperlyConfigured
 from django.template.response import TemplateResponse
 
-from utils.http import HttpRequest
-from utils.global_messages import wrong
+from .http import HttpRequest
+from .global_messages import wrong, MESSAGECONTEXT, MSG_FIELD, CODE_FIELD
 
 
 __all__ = [
@@ -297,22 +297,30 @@ class SecureTemplateView(SecureView):
 
 class SecureJsonView(SecureView):
     response_class = JsonResponse
+    data = None
+    need_prepare = False
+    http_method_names = ['post']
 
-    def get_default_data(self) -> dict[str, Any]:
-        # TODO: 默认的返回数据
-        raise NotImplementedError
+    ExtraDataType = dict[Any, Any] | None
 
-    def dispatch(self, request: HttpRequest, *args, **kwargs):
-        # TODO: 重写dispatch是不推荐的，super().dispatch之后的部分不捕获异常
-        response = super().dispatch(request, *args, **kwargs)
-        if isinstance(response, HttpResponseRedirect):
-            return response
-        if isinstance(response, dict):
-            return self.response_class(data=response)
-        if response is None:
-            return self.response_class(data=self.get_default_data())
-        else:
-            raise TypeError
+    def dispatch_prepare(self, method: str):
+        return self.default_prepare(method, prepare_needed=self.need_prepare)
+
+    def json_response(self, extra_data: ExtraDataType = None, **kwargs):
+        from utils.log import get_logger
+        get_logger('recording').info("json_response")
+        if self.data is None:
+            self.data = {}
+        if extra_data is not None:
+            self.data |= extra_data
+        return self.response_class(self.data, **kwargs)
+
+    def message_response(self, message: MESSAGECONTEXT):
+        if self.data is None:
+            self.data = {}
+        self.data[MSG_FIELD] = message[MSG_FIELD]
+        self.data[CODE_FIELD] = message[CODE_FIELD]
+        return self.json_response()
 
     def error_response(self, exception: Exception) -> HttpResponse:
         from utils.log import get_logger

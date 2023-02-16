@@ -15,6 +15,8 @@ from app.academic_utils import (
     update_academic_map,
     get_wait_audit_student,
     audit_academic_map,
+    get_students_for_search,
+    get_tags_for_search,
 )
 from app.utils import (
     check_user_type,
@@ -32,7 +34,7 @@ __all__ = [
 ]
 
 
-class ShowChatsView(ProfileTemplateView):
+class ShowChats(ProfileTemplateView):
 
     http_method_names = ['get']
     template_name = 'showChats.html'
@@ -42,7 +44,7 @@ class ShowChatsView(ProfileTemplateView):
         user = self.request.user
         if not user.is_person():
             # 后续或许可以开放任意的聊天
-            return self.wrong('请使用个人账号访问问答中心页面!')
+            return self.wrong('请使用个人账号访问问答中心页面！')
         return self.get
 
     def get(self) -> HttpResponse:
@@ -53,12 +55,15 @@ class ShowChatsView(ProfileTemplateView):
             respondent=user).order_by("-modify_time", "-time")
         self.extra_context.update({
             'sent_chats': chats2Display(sent_chats, sent=True),
-            'received_chats': chats2Display(received_chats, sent=False)
+            'received_chats': chats2Display(received_chats, sent=False),
+            'stu_list': get_students_for_search(self.request),
+            'tag_list': get_tags_for_search(),
         })
+        
         return self.render()
 
 
-class ChatView(ProfileTemplateView):
+class ViewChat(ProfileTemplateView):
 
     http_method_names = ['get']
     template_name = 'viewChat.html'

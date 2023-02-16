@@ -110,16 +110,17 @@ urlpatterns = [
 ] + [
     # 学术地图
     path("modifyAcademic/", academic_views.modifyAcademic, name="modifyAcademic"),
-    path("AcademicQA/", academic_views.ShowChatsView.as_view(), name="showChats"),
-    path("viewQA/<int:chat_id>", academic_views.ChatView.as_view(), name="viewChat"),
+    path("AcademicQA/", academic_views.ShowChats.as_view(), name="showChats"),
+    path("viewQA/<int:chat_id>", academic_views.ViewChat.as_view(), name="viewChat"),
     path("auditAcademic/", academic_views.auditAcademic, name="auditAcademic"),
     path("applyAuditAcademic/", academic_views.applyAuditAcademic,
          name="applyAuditAcademic"),
 ] + [
     # 问答相关
-    path("addChatComment/", chat_api.addChatComment, name="addChatComment"),
-    path("closeChat/", chat_api.closeChat, name="closeChat"),
-    path("startChat/", chat_api.startChat, name="startChat"),
+    path("addChatComment/", chat_api.AddChatComment.as_view(), name="addChatComment"),
+    path("closeChat/", chat_api.CloseChat.as_view(), name="closeChat"),
+    path("startChat/", chat_api.StartChat.as_view(), name="startChat"),
+    path("startUndirectedChat/", chat_api.StartUndirectedChat.as_view(), name="startUndirectedChat")
 ] + [
     # 元气值
     path("myYQPoint/", YQPoint_views.myYQPoint, name="myYQPoint"),
