@@ -120,7 +120,8 @@ urlpatterns = [
     path("addChatComment/", chat_api.AddChatComment.as_view(), name="addChatComment"),
     path("closeChat/", chat_api.CloseChat.as_view(), name="closeChat"),
     path("startChat/", chat_api.StartChat.as_view(), name="startChat"),
-    path("startUndirectedChat/", chat_api.StartUndirectedChat.as_view(), name="startUndirectedChat")
+    path("startUndirectedChat/", chat_api.StartUndirectedChat.as_view(), name="startUndirectedChat"),
+    path("rateAnswer/", chat_api.RateAnswer.as_view(), name="rateAnswer")
 ] + [
     # 元气值
     path("myYQPoint/", YQPoint_views.myYQPoint, name="myYQPoint"),

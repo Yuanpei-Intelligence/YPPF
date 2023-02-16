@@ -6,11 +6,13 @@ from app.chat_utils import (
     create_chat,
     create_undirected_chat,
     select_by_keywords,
+    modify_rating,
 )
 
-
-__all__ = ['StartChat', 'AddChatComment', 'CloseChat',
-           'StartUndirectedChat']
+__all__ = [
+    'StartChat', 'AddChatComment', 'CloseChat', 'StartUndirectedChat',
+    'RateAnswer'
+]
 
 
 class StartChat(SecureJsonView):
@@ -59,14 +61,13 @@ class StartUndirectedChat(SecureJsonView):
         """
         开始非定向问答
         """
-        # keywords = self.request.POST.get('keywords')
-        keywords = "物理"
-        respondent, message_context = select_by_keywords(self.request.user, keywords)
+        keywords = self.request.POST.get('keywords').split(sep=',')
+        respondent, message_context = select_by_keywords(
+            self.request.user, keywords)
         if respondent is None:
             return self.message_response(message_context)
-        
         anonymous = (self.request.POST['comment_anonymous'] == 'true')
-        
+
         chat_id, message_context = create_chat(
             self.request,
             respondent=respondent,
@@ -79,3 +80,14 @@ class StartUndirectedChat(SecureJsonView):
 
         message_context = create_undirected_chat(chat_id, keywords)
         return self.message_response(message_context)
+
+
+class RateAnswer(SecureJsonView):
+    def post(self):
+        """
+        提问方对回答质量给出评价
+        """
+        chat_id = self.request.POST.get('chat_id')
+        rating = self.request.POST.get('rating')
+
+        return self.message_response(modify_rating(chat_id, rating))

@@ -11,6 +11,7 @@ from app.models import (
     AcademicEntry,
     AcademicTagEntry,
     AcademicTextEntry,
+    AcademicQA,
     User,
     Chat,
 )
@@ -143,62 +144,71 @@ def chats2Display(chats: QuerySet[Chat], sent: bool) -> Dict[str, List[dict]]:
     return {"progressing": progressing_chats, "not_progressing": not_progressing_chats}
 
 
-def comments2Display(chat: Chat, frontend_dict: dict, user: User):
+def comments2Display(chat: Chat, context: dict, user: User):
     """
     获取一个chat中的所有comment并转化为前端展示所需的形式（复用了comment_utils.py/showComment）
-
-    :param chat: 
-    :type chat: Chat
-    :param frontend_dict: 前端词典
-    :type frontend_dict: dict
-    :param user: 当前用户
-    :type user: User
     """
-    frontend_dict['title'] = chat.title or "无主题"
-    frontend_dict["chat_id"] = chat.id
-
-    # 获取当前chat的所有comment
-    frontend_dict["messages"] = showComment(
+    context['title'] = chat.title or "无主题"
+    context['chat_id'] = chat.id
+    context['messages'] = showComment(
         chat, anonymous_users=[chat.questioner] if chat.questioner_anonymous else None)
-    if len(frontend_dict["messages"]) == 0:
+    if not context['messages']:
         # Chat一定有Comment，正常情况下不会到这里
-        frontend_dict["not_found_messages"] = "当前问答没有信息." 
+        context['not_found_messages'] = "当前问答没有信息." 
     
-    frontend_dict['status'] = chat.get_status_display()
-    frontend_dict["commentable"] = (chat.status == Chat.Status.PROGRESSING) # 若为True，则前端会给出评论区和“关闭当前问答”的按钮
-    frontend_dict["anonymous_chat"] = chat.questioner_anonymous
-    frontend_dict["accept_anonymous"] = chat.respondent.accept_anonymous_chat
+    context['status'] = chat.get_status_display()
+    context['commentable'] = (chat.status == Chat.Status.PROGRESSING)  #若为True，则前端会给出评论区和“关闭当前问答”的按钮
+    context['anonymous_chat'] = chat.questioner_anonymous
+    context['accept_anonymous'] = chat.respondent.accept_anonymous_chat
+    context['answered'] = chat.comments.filter(commentator=chat.respondent).exists()
+    
+    try:
+        qa: AcademicQA = AcademicQA.objects.get(chat_id=chat.id)
+        context['directed'] = qa.directed
+        context['rating'] = qa.rating
+        context['respondent_tags'] = list(qa.keywords)
+    except:
+        # TODO: 统一模型之后可以去掉
+        context['directed'] = True
+        context['rating'] = 0
+        context['respondent_tags'] = []
 
-    # 问答详情页面需要展示“发给xxx的问答”或“来自xxx的问答”，且xxx附有指向学术地图页面的超链接
-    # 因而需要判断我是提问者还是回答者，并记录对方的名字
-    # 问答详情页面对于我的信息和对方的信息以不同的格式显示
-    # 因而还需要记录我的名字，通过和frontend_dict["messages"]中每条记录的commentator.name对比来判断是不是我发的
-    # 事实上这些操作如果放到showComment里能减少一些get_display_name、get_person_or_org、get_absolute_url的调用，但需要对showComment做较大修改，就暂时没有整合进去
+    try:
+        major = AcademicTagEntry.objects.get(person=chat.questioner, tag__atype=AcademicTag.Type.MAJOR)
+        major_display = major.content
+    except:
+        major_display = ""
+    # 提供提问方的年级和专业
+    context['questioner_tags'] = {'grade': chat.questioner.username[:2], 'major': major_display}
+
+    # 实名提问
     if chat.questioner_anonymous == False:
-        frontend_dict['my_name'] = get_person_or_org(user).get_display_name()
+        context['my_name'] = get_person_or_org(user).get_display_name()
         if user == chat.questioner:
-            frontend_dict["questioner_name"] = frontend_dict['my_name']
+            context['questioner_name'] = context['my_name']
             the_other = get_person_or_org(chat.respondent)
-            frontend_dict["respondent_name"] = the_other.get_display_name()
-            frontend_dict["academic_url"] = the_other.get_absolute_url()
+            context['respondent_name'] = the_other.get_display_name()
+            context['academic_url'] = the_other.get_absolute_url()
         else:
             the_other = get_person_or_org(chat.questioner)
-            frontend_dict["questioner_name"] = the_other.get_display_name()
-            frontend_dict["respondent_name"] = frontend_dict['my_name']
-            frontend_dict["academic_url"] = the_other.get_absolute_url()
-    else: # 如果存在匿名情况，要注意删去指向学术地图页面的超链接
-        if user == chat.questioner: # 我匿名向他人提问
-            frontend_dict['my_name'] = "匿名用户"
-            frontend_dict["questioner_name"] = "匿名用户"
-            you = get_person_or_org(chat.respondent)
-            frontend_dict["respondent_name"] = you.get_display_name()
-            frontend_dict["academic_url"] = you.get_absolute_url()
-        else: # 他人匿名向我提问
-            me = get_person_or_org(user)
-            frontend_dict['my_name'] = me.get_display_name()
-            frontend_dict["questioner_name"] = "匿名用户"
-            frontend_dict["respondent_name"] = frontend_dict['my_name']
-            frontend_dict["academic_url"] = ""
+            context['questioner_name'] = the_other.get_display_name()
+            context['respondent_name'] = context['my_name']
+            context['academic_url'] = the_other.get_absolute_url()
+        return
+    
+    # 匿名提问
+    if user == chat.questioner:
+        context['my_name'] = "匿名用户"
+        context['questioner_name'] = "匿名用户"
+        you = get_person_or_org(chat.respondent)
+        context['respondent_name'] = you.get_display_name()
+        context['academic_url'] = you.get_absolute_url()
+    else: # 他人匿名向我提问
+        me = get_person_or_org(user)
+        context['my_name'] = me.get_display_name()
+        context['questioner_name'] = "匿名用户"
+        context['respondent_name'] = context['my_name']
+        context['academic_url'] = ""
 
 
 def get_js_tag_list(author: NaturalPerson, type: AcademicTag.Type,

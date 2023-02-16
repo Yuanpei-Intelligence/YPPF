@@ -81,6 +81,7 @@ __all__ = [
     'AcademicEntry',
     'AcademicTagEntry',
     'AcademicTextEntry',
+    'AcademicQA',
     'Chat',
     'Prize',
     'Pool',
@@ -1882,12 +1883,13 @@ class AcademicQAManager(models.Manager):
 class AcademicQA(models.Model):
     class Meta:
         # TODO
-        verbose_name = ''
+        verbose_name = "P.学术地图问答"
         verbose_name_plural = verbose_name
 
     chat = models.OneToOneField(to=Chat, on_delete=models.CASCADE)
     keywords = models.JSONField('关键词')
     directed = models.BooleanField('是否定向', default=False)
+    rating = models.IntegerField('评价', default=0)
 
     objects: AcademicQAManager = AcademicQAManager()
 
