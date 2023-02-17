@@ -4,7 +4,7 @@ from datetime import datetime, timedelta
 
 from app.utils_dependency import *
 from app.models import Notification
-from app.wechat_send import (
+from app.extern.wechat import (
     publish_notification,
     publish_notifications,
     WechatApp,

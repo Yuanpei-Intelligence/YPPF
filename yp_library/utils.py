@@ -9,7 +9,7 @@ from app.utils import check_user_type
 from app.notification_utils import bulk_notification_create
 from app.config import UTYPE_PER
 from app.models import Notification, Organization, Activity
-from app.wechat_send import WechatMessageLevel
+from app.extern.wechat import WechatMessageLevel
 from yp_library.models import (
     User,
     Reader,

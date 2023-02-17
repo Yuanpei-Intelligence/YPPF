@@ -12,7 +12,7 @@ from app.utils import (
     if_image,
 )
 from app.notification_utils import notification_create
-from app.wechat_send import (
+from app.extern.wechat import (
     WechatApp,
     WechatMessageLevel,
 )
