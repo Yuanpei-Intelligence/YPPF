@@ -28,14 +28,21 @@
         "use_scheduler": false
     },
     "wechat": {
+        "api_url": "",
         "salt": "debug_hasher_salt",
-        "send_batch": 500,
-        "send_number": 500,
+        "app2url": {
+            "default": "",
+            "message": "",
+            "promote": ""
+        },
+        "limit": 500,
+        "batch": 500,
+        "receivers": [],
         "blacklist": [],
+        "use_scheduler": true,
         "unblock_apps": [
             "promote"
-        ],
-        "api_url": ""
+        ]
     },
     "email": {
         "url": "",

@@ -1,7 +1,7 @@
 from . import str_to_time
 from .apps import AppointmentConfig as APP
 from boot.config import Config, LazySetting
-from app.config import CONFIG as PROFILE_CONFIG
+from extern.config import wechat_config as WECHAT_CONFIG
 from utils.log import get_logger
 from utils.hasher import MySHA256Hasher
 
@@ -53,5 +53,5 @@ class AppointmentConfig(Config):
 
 
 CONFIG = AppointmentConfig()
-hash_wechat_coder = MySHA256Hasher(secret=PROFILE_CONFIG.hash_wechat)
+hash_wechat_coder = MySHA256Hasher(secret=WECHAT_CONFIG.salt)
 logger = get_logger(APP.name)

@@ -52,20 +52,6 @@ class ProfileConfig(Config):
     email_salt = LazySetting('email/salt', type=str)
     email_url = LazySetting('email/url', type=str)
 
-    # Wechat
-    hash_wechat = LazySetting('wechat/salt', type=str)
-    wechat_app2url = LazySetting('wechat/app2url', default=dict())
-    wechat_receiver_set = None
-    wechat_blacklist_set = LazySetting(
-        'wechat/blacklist', default=set(),
-        trans_fn=lambda x: set(map(str, x)))
-    wechat_unblock_apps = LazySetting(
-        'wechat/unblock_apps', default=set(),
-        trans_fn=lambda x: set(map(str, x)))
-    wechat_use_scheduler: bool = True
-    wechat_batch = LazySetting('wechat/batch', default=500)
-    wechat_url = LazySetting('wechat/api_url', type=str)
-
     # Informations
     max_inform_rank = LazySetting('max_inform_rank', default={}, type=dict[str, int])
     help_message = LazySetting('help_message', type=dict[str, str])
