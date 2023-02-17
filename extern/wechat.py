@@ -38,9 +38,6 @@ RETRY = CONFIG.retry
 
 # 全局变量 用来发送和确认默认的导航网址
 DEFAULT_URL = build_full_url('/')
-THIS_URL = DEFAULT_URL.rstrip('/')        # 增加默认url前缀, 去除尾部的/
-WECHAT_SITE = CONFIG.api_url.rstrip('/')    # 去除尾部的/
-INVITE_URL = WECHAT_SITE + '/invite_user'
 wechat_coder = MySHA256Hasher(CONFIG.salt)
 
 # 发送应用设置
@@ -62,17 +59,12 @@ RECEIVER_SET = CONFIG.receivers
 BLACKLIST_SET = CONFIG.blacklist
 
 
-def app2absolute_url(app):
+def app2absolute_url(app: str) -> str:
     '''default必须被定义 这里放宽了'''
     url = APP2URL.get(app)
     if url is None:
         url = APP2URL.get('default', '')
-    if not url.startswith('http'):
-        if not url:
-            url = WECHAT_SITE
-        else:
-            url = WECHAT_SITE + '/' + url.lstrip('/')
-    return url
+    return build_full_url(url, CONFIG.api_url)
 
 
 def base_send_wechat(users, message, app='default',
@@ -101,7 +93,7 @@ def base_send_wechat(users, message, app='default',
     }
     if card:
         if url is not None and url[:1] in ["", "/"]:  # 空或者相对路径，变为绝对路径
-            url = THIS_URL + url
+            url = build_full_url(url)
         post_data["card"] = True
         if default:
             post_data["url"] = url if url is not None else DEFAULT_URL
@@ -187,7 +179,7 @@ def send_wechat_captcha(stu_id: str or int, captcha: str, url='/forgetpw/'):
     users = (stu_id, )
     kws = {"card": True}
     if url and url[0] == "/":  # 相对路径变为绝对路径
-        url = THIS_URL + url
+        url = build_full_url(url)
     message = (
                 "YPPF登录验证\n"
                 "您的账号正在进行企业微信验证\n本次请求的验证码为："
@@ -218,6 +210,7 @@ def base_invite(stu_id:str or int, retry_times=None):
         end = False
         try:
             errmsg = "连接api失败"
+            INVITE_URL = build_full_url('/invite_user', CONFIG.api_url)
             response = requests.post(INVITE_URL, post_data, timeout=TIMEOUT)
             response = response.json()
             if response["status"] == 200:  # 全部发送成功

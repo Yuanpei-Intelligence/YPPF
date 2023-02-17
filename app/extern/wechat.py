@@ -13,6 +13,7 @@ from extern.wechat import send_wechat, DEFAULT_URL
 from extern.config import wechat_config as CONFIG
 from app.models import NaturalPerson, Organization, Activity, Notification, Position
 from app.utils import get_person_or_org
+from utils.http.utils import build_full_url
 from app import log
 
 
@@ -23,9 +24,6 @@ __all__ = [
 
 
 # 全局设置
-# 全局变量 用来发送和确认默认的导航网址
-THIS_URL = DEFAULT_URL.rstrip('/')        # 增加默认url前缀, 去除尾部的/
-
 # 发送应用设置
 # 不要求接收等级的应用
 UNBLOCK_APPS = CONFIG.unblock_apps
@@ -164,7 +162,7 @@ def publish_notification(notification_or_id,
     check_block = app not in UNBLOCK_APPS
     url = notification.URL
     if url and url[0] == "/":  # 相对路径变为绝对路径
-        url = THIS_URL + url
+        url = build_full_url(url)
 
     messages = [notification.get_title_display()]
     if len(notification.content) < 120:
@@ -293,7 +291,7 @@ def publish_notifications(
         raise Exception("检查失败，发生了未知错误，这里不该发生异常")
 
     if url and url[0] == "/":  # 相对路径变为绝对路径
-        url = THIS_URL + url
+        url = build_full_url(url)
 
     messages = [latest_notification.get_title_display()]
     if len(latest_notification.content) < 120:
@@ -384,7 +382,7 @@ def publish_activity(activity_or_id):
     )  # 模型发生了改变
     url = activity.URL
     if url and url[0] == "/":  # 相对路径变为绝对路径
-        url = THIS_URL + url
+        url = build_full_url(url)
 
     if len(content) < 120:  # 卡片类型消息最多显示256字节
         kws = {"card": True}  # 因留白等原因，内容120字左右就超出了
