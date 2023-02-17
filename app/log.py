@@ -75,7 +75,7 @@ def operation_writer(user: str, message: str, source: str = '', status_code: str
             journal.write(file_message)
 
         if status_code == STATE_ERROR and DEBUG_IDS:
-            from app.wechat_send import send_wechat
+            from app.extern.wechat import send_wechat
             send_message = f'{source} {timestamp}: {message}'
             if len(send_message) > 400:
                 send_message = '\n'.join([

@@ -38,7 +38,7 @@ from app.utils import (
     record_modify_with_session,
     update_related_account_in_session,
 )
-from app.wechat_send import (
+from app.extern.wechat import (
     send_wechat_captcha,
     invite,
 )
@@ -1374,7 +1374,7 @@ def freshman(request: HttpRequest):
         if check_more:
             need_create = True
         elif send_to == "wechat":
-            from app.wechat_send import send_wechat
+            from app.extern.wechat import send_wechat
             auth = hash_coder.encode(sid + "_freshman_register")
             send_wechat(
                 [sid], "新生注册邀请\n点击按钮即可注册账号",

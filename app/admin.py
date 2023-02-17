@@ -500,7 +500,7 @@ class NotificationAdmin(admin.ModelAdmin):
                                      message='一次只能重发一个通知!',
                                      level='error')
         notification = queryset[0]
-        from app.wechat_send import publish_notification, WechatApp
+        from app.extern.wechat import publish_notification, WechatApp
         if not publish_notification(
             notification,
             app=WechatApp.NORMAL,
@@ -526,7 +526,7 @@ class NotificationAdmin(admin.ModelAdmin):
                                      message='该通知不存在批次标识!',
                                      level='error')
         try:
-            from app.wechat_send import publish_notifications
+            from app.extern.wechat import publish_notifications
         except Exception as e:
             return self.message_user(request=request,
                                      message=f'导入失败, 原因: {e}',
@@ -545,7 +545,7 @@ class NotificationAdmin(admin.ModelAdmin):
     @as_action("重发 所在批次 于 订阅窗口")
     def republish_bulk_at_promote(self, request, queryset):
         try:
-            from app.wechat_send import WechatApp
+            from app.extern.wechat import WechatApp
             app = WechatApp._PROMOTE
         except Exception as e:
             return self.message_user(request=request,
@@ -556,7 +556,7 @@ class NotificationAdmin(admin.ModelAdmin):
     @as_action("重发 所在批次 于 消息窗口")
     def republish_bulk_at_message(self, request, queryset):
         try:
-            from app.wechat_send import WechatApp
+            from app.extern.wechat import WechatApp
             app = WechatApp._MESSAGE
         except Exception as e:
             return self.message_user(request=request,

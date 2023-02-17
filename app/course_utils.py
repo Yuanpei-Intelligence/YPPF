@@ -40,7 +40,7 @@ from app.activity_utils import (
     changeActivityStatus,
     notifyActivity,
 )
-from app.wechat_send import WechatApp, WechatMessageLevel
+from app.extern.wechat import WechatApp, WechatMessageLevel
 
 import openpyxl
 from random import sample
