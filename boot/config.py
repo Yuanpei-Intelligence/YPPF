@@ -108,12 +108,13 @@ class LazySetting(Generic[T]):
     class TypeCheck: '默认类型检查，忽略默认值'
 
     _real_type = type
-    def __init__(self, path: str, trans_fn: Optional[Callable[[Any], T]] = None,
+    def __init__(self, source: 'str | LazySetting[Any]', /,
+                 trans_fn: Optional[Callable[[Any], T]] = None,
                  default: T = None, *,
                  type: Optional[Type[T|TypeCheck] | tuple[Type[T], ...]] = None) -> None:
         '''
-        :param path: 配置路径，以'/'分隔
-        :type path: str
+        :param source: 配置路径或来源，路径以'/'分隔，加载项应在同一类内使用，否则行为未定义
+        :type source: str | LazySetting
         :param trans_fn: 转换函数，将配置值转换为最终值，defaults to None
         :type trans_fn: Callable[[Any], T], optional
         :param default: 默认值, defaults to None
@@ -122,7 +123,7 @@ class LazySetting(Generic[T]):
                      None时按其他参数推断，TypeCheck时忽略default，defaults to None
         :type type: Type[T] | tuple[Type[T], ...], optional
         '''
-        self.path = path
+        self.source = source
         self.trans_fn = trans_fn
         self.default = default
         if type is None or type is LazySetting.TypeCheck:
@@ -141,12 +142,17 @@ class LazySetting(Generic[T]):
     @overload
     def __new__( # type: ignore
         self,    # type: ignore
-        path: str,
+        source: str,
     ) -> 'LazySetting[Any | None]': ...
     @overload
     def __new__( # type: ignore
         self,    # type: ignore
-        path: str,
+        source: 'LazySetting[T]',
+    ) -> 'LazySetting[T]': ...
+    @overload
+    def __new__( # type: ignore
+        self,    # type: ignore
+        source: 'str | LazySetting',
         trans_fn: Optional[Callable[[Any], T]] = None,
         default: T = None,
     ) -> 'LazySetting[T]': ...
@@ -154,7 +160,7 @@ class LazySetting(Generic[T]):
     @overload
     def __new__( # type: ignore
         self,    # type: ignore
-        path: str,
+        source: 'str | LazySetting',
         trans_fn: Callable[[Any], T] = ...,
         default: Literal[None] = ...,
         *,
@@ -164,7 +170,7 @@ class LazySetting(Generic[T]):
     @overload
     def __new__( # type: ignore
         self,    # type: ignore
-        path: str,
+        source: 'str | LazySetting',
         trans_fn: Optional[Callable[[Any], T]] = ...,
         default: T = ...,
         *,
@@ -174,7 +180,7 @@ class LazySetting(Generic[T]):
     @overload
     def __new__( # type: ignore
         self,    # type: ignore
-        path: str,
+        source: 'str | LazySetting',
         trans_fn: Optional[Callable[[Any], Any]] = ...,
         default: Any = ...,
         *,
@@ -270,7 +276,10 @@ class LazySetting(Generic[T]):
         return self._data
 
     def resolve(self, d: dict[str, Any]) -> T:
-        value = self.__walk_dict(self.path, d)
+        if isinstance(self.source, LazySetting):
+            value = self.source.resolve(d)
+        else:
+            value = self.__walk_dict(self.source, d)
         if value is None:
             value = self.default
         elif self.trans_fn is not None:
@@ -284,10 +293,20 @@ class LazySetting(Generic[T]):
             return True
         if not isinstance(value, self.type):  # type: ignore  Why?
             raise ImproperlyConfigured(
-                f'Config value {self.path} should be {self.type}, '
+                f'Config value {self.source} should be {self.type}, '
                 f'but got {type(value)}'
             )
         return True
+
+    def _get_path(self) -> str:
+        if isinstance(self.source, LazySetting):
+            return self.source._get_path()
+        return self.source
+
+    def __str__(self) -> str:
+        if self.type is None:
+            return f'LazySetting({self._get_path()})'
+        return f'LazySetting({self._get_path()}: {self.type})'
 
     @staticmethod
     def __walk_dict(path: str, d: dict[str, Any]) -> Optional[T]:
