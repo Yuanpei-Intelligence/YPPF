@@ -19,8 +19,8 @@ from scheduler.scheduler import scheduler
 
 __all__ = [
     'send_wechat',
-    'send_wechat_captcha',
-    'invite',
+    'send_verify_code',
+    'invite_to_wechat',
 ]
 
 
@@ -36,7 +36,7 @@ def app2absolute_url(app: str) -> str:
     return build_full_url(url, CONFIG.api_url)
 
 
-def base_send_wechat(users, message, app='default',
+def _send_wechat(users, message, app='default',
                      card=True, url=None, btntxt=None, default=True):
     """底层实现发送到微信，是为了方便设置定时任务"""
     post_url = app2absolute_url(app)
@@ -112,13 +112,13 @@ def send_wechat(
     """
     附带了去重、多线程和batch的发送，默认不去重；注意这个函数不应被直接调用
 
-    参数(部分)
+    参数
     --------
     - users: 随机访问容器，如果检查重复，则可以是任何可迭代对象
     - message: 一段文字，第一个`\\n`被视为标题和内容的分隔符
     - app: 标识应用名的字符串，可以直接使用WechatApp的宏
     - card: 发送文本卡片，建议message长度小于120时开启
-    - url: 文本卡片的链接
+    - url: 文本卡片的链接，相对路径会被转换为绝对路径
     - btntxt: 文本卡片的提示短语，不超过4个字
     - default: 填充默认值
     - 仅关键字参数
@@ -135,42 +135,33 @@ def send_wechat(
         if CONFIG.multithread and multithread:
             # 多线程
             scheduler.add_job(
-                base_send_wechat,
+                _send_wechat,
                 "date",
                 args=args,
                 kwargs=kws,
                 next_run_time=datetime.now() + timedelta(seconds=5 + round(i / 50)),
             )
         else:
-            base_send_wechat(*args, **kws)  # 不使用定时任务请改为这句
+            _send_wechat(*args, **kws)  # 不使用定时任务请改为这句
 
 
-def send_wechat_captcha(stu_id: str or int, captcha: str, url='/forgetpw/'):
-    users = (stu_id, )
-    kws = {"card": True}
-    if url and url[0] == "/":  # 相对路径变为绝对路径
-        url = build_full_url(url)
+def send_verify_code(stu_id: str | int, captcha: str, url: str = '/forgetpw/'):
+    users = [stu_id]
+    kws = {}
+    kws["card"] = True
     message = (
-                "YPPF登录验证\n"
-                "您的账号正在进行企业微信验证\n本次请求的验证码为："
-                f"<div class=\"highlight\">{captcha}</div>"
-                f"发送时间：{datetime.now().strftime('%m月%d日 %H:%M:%S')}"
-            )
+        "YPPF登录验证\n"
+        "您的账号正在进行企业微信验证\n本次请求的验证码为："
+        f"<div class=\"highlight\">{captcha}</div>"
+        f"发送时间：{datetime.now().strftime('%m月%d日 %H:%M:%S')}"
+    )
     if url:
-        kws["url"] = url
+        kws["url"] = build_full_url(url)
         kws["btntxt"] = "登录"
     send_wechat(users, message, **kws)
 
 
-def base_invite(stu_id:str or int, retry_times=None):
-    if retry_times is None:
-        retry_times = 1
-    try:
-        stu_id = str(stu_id)
-        retry_times = int(retry_times)
-    except:
-        print(f"发送邀请的参数异常：学号为{stu_id}，重试次数为{retry_times}")
-
+def _invite_to_wechat(stu_id: str, retry_times: int = 1):
     post_data = {
         "user": stu_id,
         "secret": CONFIG.hasher.encode(stu_id),
@@ -178,8 +169,8 @@ def base_invite(stu_id:str or int, retry_times=None):
     post_data = json.dumps(post_data)
     for i in range(retry_times):
         end = False
+        errmsg = "连接api失败"
         try:
-            errmsg = "连接api失败"
             INVITE_URL = build_full_url('/invite_user', CONFIG.api_url)
             response = requests.post(INVITE_URL, post_data, timeout=CONFIG.timeout)
             response = response.json()
@@ -197,17 +188,18 @@ def base_invite(stu_id:str or int, retry_times=None):
                 return
 
 
-def invite(stu_id: str or int, retry_times=3, *, multithread=True):
+def invite_to_wechat(stu_id: str | int, retry_times: int = 3, *, multithread: bool = True):
+    stu_id = str(stu_id)
     args = (stu_id, )
     kwargs = {'retry_times': retry_times}
     if CONFIG.multithread and multithread:
         # 多线程
         scheduler.add_job(
-            base_invite,
+            _invite_to_wechat,
             "date",
             args=args,
             kwargs=kwargs,
             next_run_time=datetime.now() + timedelta(seconds=5),
         )
     else:
-        base_invite(*args, **kwargs)  # 不使用定时任务请改为这句
+        _invite_to_wechat(*args, **kwargs)  # 不使用定时任务请改为这句
