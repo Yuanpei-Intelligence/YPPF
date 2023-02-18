@@ -1,15 +1,15 @@
 '''
 wechat.py
 
-集合了需要发送到微信的函数
+集合发送到微信的函数
 
-调用提示
-    base开头的函数是基础函数，通常作为定时任务，无返回值，但可能打印报错信息
-    其他函数可以假设是异步IO，参数符合条件时不抛出异常
-    由于异步假设，函数只返回尝试状态，即是否设置了定时任务，不保证成功发送
+- 可导出函数可以假设是异步IO，参数符合条件时不抛出异常，具体情况见配置文件
+- 异步时，函数只返回尝试状态，即是否设置了定时任务，不保证成功发送
+- _开头的函数是私有函数，子模块不应调用
 '''
 import requests
 import json
+from typing import Callable, ParamSpec, TypeVar, Any
 from datetime import datetime, timedelta
 
 from extern.config import wechat_config as CONFIG
@@ -34,6 +34,31 @@ def app2absolute_url(app: str) -> str:
     if url is None:
         url = CONFIG.app2url.get('default', '')
     return build_full_url(url, CONFIG.api_url)
+
+
+_P = ParamSpec('_P')
+_T = TypeVar('_T')
+def _get_caller(func: Callable[_P, _T], multithread: bool = True,
+                next_run_time: datetime | timedelta | None = None):
+    '''获取函数的调用者'''
+    multithread = multithread and CONFIG.multithread
+    if not multithread:
+        return func
+    def _func(*args: _P.args, **kwargs: _P.kwargs):
+        if isinstance(next_run_time, datetime):
+            _next_run = next_run_time
+        elif isinstance(next_run_time, timedelta):
+            _next_run = datetime.now() + next_run_time
+        else:
+            _next_run = datetime.now() + timedelta(seconds=5)
+        scheduler.add_job(
+            func,
+            "date",
+            args=args,
+            kwargs=kwargs,
+            next_run_time=_next_run,
+        )
+    return _func
 
 
 def _send_wechat(users, message, app='default',
@@ -128,21 +153,14 @@ def send_wechat(
     if check_duplicate:
         users = sorted(set(users))
     total_ct = len(users)
-    for i in range(0, total_ct, CONFIG.send_batch):
-        userids = users[i : i + CONFIG.send_batch]  # 一次最多接受1000个
-        args = (userids, message, app)
-        kws = {"card": card, "url": url, "btntxt": btntxt, "default": default}
-        if CONFIG.multithread and multithread:
-            # 多线程
-            scheduler.add_job(
-                _send_wechat,
-                "date",
-                args=args,
-                kwargs=kws,
-                next_run_time=datetime.now() + timedelta(seconds=5 + round(i / 50)),
-            )
-        else:
-            _send_wechat(*args, **kws)  # 不使用定时任务请改为这句
+    SEND_BATCH = min(CONFIG.send_batch, CONFIG.send_limit)
+    caller = _get_caller(_send_wechat, multithread=multithread)
+    for i in range(0, total_ct, SEND_BATCH):
+        userids = users[i : i + SEND_BATCH]  # 一次最多接受1000个
+        caller(
+            userids, message, app,
+            card=card, url=url, btntxt=btntxt, default=default,
+        )
 
 
 def send_verify_code(stu_id: str | int, captcha: str, url: str = '/forgetpw/'):
@@ -189,17 +207,5 @@ def _invite_to_wechat(stu_id: str, retry_times: int = 1):
 
 
 def invite_to_wechat(stu_id: str | int, retry_times: int = 3, *, multithread: bool = True):
-    stu_id = str(stu_id)
-    args = (stu_id, )
-    kwargs = {'retry_times': retry_times}
-    if CONFIG.multithread and multithread:
-        # 多线程
-        scheduler.add_job(
-            _invite_to_wechat,
-            "date",
-            args=args,
-            kwargs=kwargs,
-            next_run_time=datetime.now() + timedelta(seconds=5),
-        )
-    else:
-        _invite_to_wechat(*args, **kwargs)  # 不使用定时任务请改为这句
+    caller = _get_caller(_invite_to_wechat, multithread=multithread)
+    caller(str(stu_id), retry_times=retry_times)
