@@ -39,8 +39,8 @@ from app.utils import (
     update_related_account_in_session,
 )
 from extern.wechat import (
-    send_wechat_captcha,
-    invite,
+    send_verify_code,
+    invite_to_wechat,
 )
 from app.notification_utils import (
     notification_status_change,
@@ -1420,7 +1420,7 @@ def freshman(request: HttpRequest):
             return render(request, html_path, locals())
 
         # 发送企业微信邀请，不会报错
-        invite(sid, multithread=True)
+        invite_to_wechat(sid, multithread=True)
 
         err_msg = "您的账号已成功注册，请尽快加入企业微信以接受后续通知！"
         return redirect("/freshman/?success=1&alert=" + err_msg)
@@ -1786,7 +1786,7 @@ def forgetPassword(request: HttpRequest):
             elif send_captcha in ["wechat"]:    # 发送企业微信消息
                 username = person.person_id.username
                 captcha = utils.get_captcha(request, username)
-                send_wechat_captcha(username, captcha)
+                send_verify_code(username, captcha)
                 display = succeed(f"验证码已发送至企业微信")
                 display["noshow"] = True
                 display["alert"] = True
