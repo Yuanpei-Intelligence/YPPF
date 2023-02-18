@@ -19,7 +19,8 @@ from Appointment.models import (
     Appoint,
     CardCheckInfo,
 )
-from Appointment.config import CONFIG, hash_wechat_coder, logger
+from Appointment.config import CONFIG, logger
+from extern.config import wechat_config as WECHAT_CONFIG
 
 '''
 YWolfeee:
@@ -257,7 +258,7 @@ def send_wechat_message(
                          "Problem")
     # --- modify end(2021.9.1) --- #
 
-    secret = hash_wechat_coder.encode(message)
+    secret = WECHAT_CONFIG.hasher.encode(message)
     url = url if url is not None else '/admin-index.html'
     if url.startswith('/'):
         url = CONFIG.this_url.rstrip('/') + '/' + url.lstrip('/')

@@ -23,12 +23,6 @@ __all__ = [
 ]
 
 
-# 全局设置
-# 发送应用设置
-# 不要求接收等级的应用
-UNBLOCK_APPS = CONFIG.unblock_apps
-
-
 class WechatMessageLevel:
     '''
     永远开放：DEFAULT INFO IMPORTANT
@@ -159,7 +153,7 @@ def publish_notification(notification_or_id,
         raise ValueError("未找到该id的通知")
     if app is None or app == WechatApp.DEFAULT:
         app = WechatDefault.get_app('notification', notification)
-    check_block = app not in UNBLOCK_APPS
+    check_block = app not in CONFIG.unblock_apps
     url = notification.URL
     if url and url[0] == "/":  # 相对路径变为绝对路径
         url = build_full_url(url)
@@ -326,7 +320,7 @@ def publish_notifications(
     # 获得发送应用和消息发送等级
     if app is None or app == WechatApp.DEFAULT:
         app = WechatDefault.get_app('notification', latest_notification)
-    check_block = app not in UNBLOCK_APPS
+    check_block = app not in CONFIG.unblock_apps
     if check_block and (level is None or level == WechatMessageLevel.DEFAULT):
         level = WechatDefault.get_level('notification', latest_notification)
     if not check_block:

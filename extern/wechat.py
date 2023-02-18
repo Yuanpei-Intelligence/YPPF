@@ -13,7 +13,6 @@ import json
 from datetime import datetime, timedelta
 
 from extern.config import wechat_config as CONFIG
-from utils.hasher import MySHA256Hasher
 from utils.http.utils import build_full_url
 from scheduler.scheduler import scheduler
 
@@ -25,45 +24,15 @@ __all__ = [
 ]
 
 
-# 全局设置
-# 是否启用定时任务，请最好仅在服务器启用，如果不启用，后面的多个设置也会随之变化
-USE_SCHEDULER = CONFIG.use_scheduler
-# 是否多线程发送，必须启用scheduler，如果启用则发送时无需等待
-USE_MULTITHREAD = True if USE_SCHEDULER else False
-# 决定单次连接的超时时间，响应时间一般为1s或12s（偶尔），建议考虑前端等待时间放弃12s
-TIMEOUT = 15 if USE_MULTITHREAD else 5 or 3.05 or 12 or 15
-# 订阅系统的发送量非常大，不建议重发，因为发送失败之后短时间内重发大概率也会失败
-# 如果未来实现重发，应在base_send_wechat中定义作为参数读入，现在提供了几句简单的代码
-RETRY = CONFIG.retry
-
 # 全局变量 用来发送和确认默认的导航网址
 DEFAULT_URL = build_full_url('/')
-wechat_coder = MySHA256Hasher(CONFIG.salt)
-
-# 发送应用设置
-# 应用名到域名的转换，可以是相对地址，也可以是绝对地址
-APP2URL = CONFIG.app2url
-APP2URL.setdefault('default', '')
-
-
-# 一批发送的最大数量
-# 底层单次发送的上限，不超过1000
-SEND_LIMIT = CONFIG.send_limit
-# 中间层一批发送的数量，不超过1000
-SEND_BATCH = CONFIG.send_batch
-
-# 限制接收范围
-# 可接收范围，默认全体(None表示不限制范围)
-RECEIVER_SET = CONFIG.receivers
-# 黑名单，默认没有，可以用来排除元培学院等特殊用户
-BLACKLIST_SET = CONFIG.blacklist
 
 
 def app2absolute_url(app: str) -> str:
     '''default必须被定义 这里放宽了'''
-    url = APP2URL.get(app)
+    url = CONFIG.app2url.get(app)
     if url is None:
-        url = APP2URL.get('default', '')
+        url = CONFIG.app2url.get('default', '')
     return build_full_url(url, CONFIG.api_url)
 
 
@@ -72,24 +41,25 @@ def base_send_wechat(users, message, app='default',
     """底层实现发送到微信，是为了方便设置定时任务"""
     post_url = app2absolute_url(app)
 
-    if RECEIVER_SET is not None:
-        users = sorted((set(users) & RECEIVER_SET) - BLACKLIST_SET)
-    elif BLACKLIST_SET is not None and BLACKLIST_SET:
-        users = sorted(set(users) - BLACKLIST_SET)
+    if CONFIG.receivers is not None:
+        users = sorted((set(users) & CONFIG.receivers) - CONFIG.blacklist)
+    elif CONFIG.blacklist is not None and CONFIG.blacklist:
+        users = sorted(set(users) - CONFIG.blacklist)
     else:
         users = sorted(users)
     user_num = len(users)
     if user_num == 0:
         print("没有合法的用户")
         return
-    if user_num > SEND_LIMIT:
-        print("用户列表过长,", f"{users[SEND_LIMIT: SEND_LIMIT+3]}等{user_num-SEND_LIMIT}人被舍去")
-        users = users[:SEND_LIMIT]
+    if user_num > CONFIG.send_limit:
+        removed_rep = users[CONFIG.send_limit: CONFIG.send_limit+3]
+        print("用户列表过长,", f"{removed_rep}等{user_num-CONFIG.send_limit}人被舍去")
+        users = users[:CONFIG.send_limit]
     post_data = {
         "touser": users,
         "content": message,
         "toall": True,
-        "secret": wechat_coder.encode(message),
+        "secret": CONFIG.hasher.encode(message),
     }
     if card:
         if url is not None and url[:1] in ["", "/"]:  # 空或者相对路径，变为绝对路径
@@ -104,13 +74,13 @@ def base_send_wechat(users, message, app='default',
             if btntxt is not None:
                 post_data["btntxt"] = btntxt
     post_data = json.dumps(post_data)
-    # if not RETRY or not retry_times:
+    # if not CONFIG.retry or not retry_times:
     #     retry_times = 1
     # for i in range(retry_times):
     try:
         failed = users
         errmsg = "连接api失败"
-        response = requests.post(post_url, post_data, timeout=TIMEOUT)
+        response = requests.post(post_url, post_data, timeout=CONFIG.timeout)
         response = response.json()
         if response["status"] == 200:           # 全部发送成功
             return
@@ -158,11 +128,11 @@ def send_wechat(
     if check_duplicate:
         users = sorted(set(users))
     total_ct = len(users)
-    for i in range(0, total_ct, SEND_BATCH):
-        userids = users[i : i + SEND_BATCH]  # 一次最多接受1000个
+    for i in range(0, total_ct, CONFIG.send_batch):
+        userids = users[i : i + CONFIG.send_batch]  # 一次最多接受1000个
         args = (userids, message, app)
         kws = {"card": card, "url": url, "btntxt": btntxt, "default": default}
-        if USE_MULTITHREAD and multithread:
+        if CONFIG.multithread and multithread:
             # 多线程
             scheduler.add_job(
                 base_send_wechat,
@@ -203,7 +173,7 @@ def base_invite(stu_id:str or int, retry_times=None):
 
     post_data = {
         "user": stu_id,
-        "secret": wechat_coder.encode(stu_id),
+        "secret": CONFIG.hasher.encode(stu_id),
     }
     post_data = json.dumps(post_data)
     for i in range(retry_times):
@@ -211,7 +181,7 @@ def base_invite(stu_id:str or int, retry_times=None):
         try:
             errmsg = "连接api失败"
             INVITE_URL = build_full_url('/invite_user', CONFIG.api_url)
-            response = requests.post(INVITE_URL, post_data, timeout=TIMEOUT)
+            response = requests.post(INVITE_URL, post_data, timeout=CONFIG.timeout)
             response = response.json()
             if response["status"] == 200:  # 全部发送成功
                 return
@@ -230,7 +200,7 @@ def base_invite(stu_id:str or int, retry_times=None):
 def invite(stu_id: str or int, retry_times=3, *, multithread=True):
     args = (stu_id, )
     kwargs = {'retry_times': retry_times}
-    if USE_MULTITHREAD and multithread:
+    if CONFIG.multithread and multithread:
         # 多线程
         scheduler.add_job(
             base_invite,
