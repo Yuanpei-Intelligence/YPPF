@@ -10,7 +10,11 @@ wechat.py
 from datetime import timedelta
 
 from extern.wechat import send_wechat, DEFAULT_URL
-from extern.config import wechat_config as CONFIG
+from app.extern.config import (
+    notification_wechat_config as CONFIG,
+    Levels as WechatMessageLevel,
+    Apps as WechatApp,
+)
 from app.models import NaturalPerson, Organization, Activity, Notification, Position
 from app.utils import get_person_or_org
 from utils.http.utils import build_full_url
@@ -23,72 +27,27 @@ __all__ = [
 ]
 
 
-class WechatMessageLevel:
-    '''
-    永远开放：DEFAULT INFO IMPORTANT
-    常规上限是1000
-    '''
-    DEFAULT = None
-    DEBUG = -1000
-    # ERROR = -100
-    INFO = 0
-    # NORMAL = 200
-    IMPORTANT = 500
-    # FATAL = 1000
-    # NOREJECT = 1001
+def _get_default_level(typename, instance=None) -> int:
+    if typename == 'notification':
+        if (instance is not None and
+            instance.typename == Notification.Type.NEEDDO):
+            # 处理类通知默认等级较高
+            return WechatMessageLevel.IMPORTANT
+        return WechatMessageLevel.INFO
+    else:
+        return WechatMessageLevel.INFO
 
 
-class WechatApp:
-    '''
-    永远开放：DEFAULT NORMAL _*
-    注意DEFAULT是指本系统设定的默认窗口
-    NORMAL则是发送系统的默认窗口
-
-    请先判断是否符合接受者条件，再判断消息类型
-    如果符合接受者条件，请务必显式指定发送的应用，默认值不能判断接受者的范围
-    一般建议外部推广也要显示指定应用
-    '''
-    DEFAULT = None
-    # 以接受者
-    TO_SUBSCRIBER = 'promote'   # 一切订阅内容都是推广
-    TO_PARTICIPANT = 'message'  # 参与者是内部群体
-    TO_MEMBER = 'message'       # 发送给成员的是内部消息
-    # 以消息类型
-    # 状态变更请以接受者为准
-    NORMAL = 'default'          # 常规通知，默认窗口即可
-    PROMOTION = 'promote'       # 推广消息当然是推广
-    TERMINATE = 'message'       # 终止应该发给内部成员
-    AUDIT = 'message'           # 审核是重要通知
-    TRANSFER = 'message'        # 转账需要通知
-    # 固有应用名
-    _PROMOTE = 'promote'
-    _MESSAGE = 'message'
-
-
-class WechatDefault:
-    '''定义微信发送的默认行为'''
-    @staticmethod
-    def get_level(typename, instance=None):
-        if typename == 'notification':
-            if( instance is not None and
-                instance.typename == Notification.Type.NEEDDO):
-                # 处理类通知默认等级较高
-                return WechatMessageLevel.IMPORTANT
-            return WechatMessageLevel.INFO
-        else:
-            return WechatMessageLevel.INFO
-
-    @staticmethod
-    def get_app(typename, instance=None):
-        if typename == 'activity':
+def _get_default_app(typename, instance=None) -> str:
+    if typename == 'activity':
+        return WechatApp._PROMOTE
+    elif typename == 'notification':
+        if (instance is not None and
+            instance.title == Notification.Title.ACTIVITY_INFORM):
             return WechatApp._PROMOTE
-        elif typename == 'notification':
-            if( instance is not None and
-                instance.title == Notification.Title.ACTIVITY_INFORM):
-                return WechatApp._PROMOTE
-            return WechatApp._MESSAGE
-        else:
-            return WechatApp.NORMAL
+        return WechatApp._MESSAGE
+    else:
+        return WechatApp.NORMAL
 
 
 def can_send(person, level=None):
@@ -152,7 +111,7 @@ def publish_notification(notification_or_id,
     except:
         raise ValueError("未找到该id的通知")
     if app is None or app == WechatApp.DEFAULT:
-        app = WechatDefault.get_app('notification', notification)
+        app = _get_default_app('notification', notification)
     check_block = app not in CONFIG.unblock_apps
     url = notification.URL
     if url and url[0] == "/":  # 相对路径变为绝对路径
@@ -190,7 +149,7 @@ def publish_notification(notification_or_id,
 
     if check_block and (level is None or level == WechatMessageLevel.DEFAULT):
         # 考虑屏蔽时，获得默认行为的消息等级
-        level = WechatDefault.get_level('notification', notification)
+        level = _get_default_level('notification', notification)
     elif not check_block:
         # 不屏蔽时，消息等级设置为空
         level = None
@@ -319,10 +278,10 @@ def publish_notifications(
 
     # 获得发送应用和消息发送等级
     if app is None or app == WechatApp.DEFAULT:
-        app = WechatDefault.get_app('notification', latest_notification)
+        app = _get_default_app('notification', latest_notification)
     check_block = app not in CONFIG.unblock_apps
     if check_block and (level is None or level == WechatMessageLevel.DEFAULT):
-        level = WechatDefault.get_level('notification', latest_notification)
+        level = _get_default_level('notification', latest_notification)
     if not check_block:
         level = None
 

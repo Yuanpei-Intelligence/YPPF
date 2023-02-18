@@ -44,8 +44,5 @@ class WechatConfig(Config):
     # 单次连接超时时间，响应时间一般为1s或12s（偶尔）
     timeout = LazySetting(multithread, lambda x: 15 if x else 5, type=(int, float))
 
-    # 不要求接收等级的应用
-    unblock_apps = LazySetting('unblock_apps', _to_set_str, set())
-
 
 wechat_config = WechatConfig()
