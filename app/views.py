@@ -1,7 +1,7 @@
 import json
 import random
 from datetime import datetime, timedelta
-from typing import Optional, cast
+from typing import Optional, cast, Tuple
 
 from django.contrib import auth
 from django.db import transaction
@@ -1265,11 +1265,11 @@ def accountSetting(request: HttpRequest):
         return render(request, "org_account_setting.html", locals())
 
 
-def _create_freshman_account(sid: str, email: str = None):
-    """创建用户和自然人，检查并修改新生创建状态，原子化操作"""
+def _create_account(model, alumnus: bool, sid: str, email: str = None):
+    """创建用户和自然人，检查并修改新生、校友创建状态，原子化操作"""
     try:
         with transaction.atomic():
-            current = "获取新生信息"
+            current = "获取新生/校友信息"
             freshman: Freshman = Freshman.objects.select_for_update().get(sid=sid)
             name = freshman.name
             np_gender = (NaturalPerson.Gender.MALE
@@ -1298,6 +1298,8 @@ def _create_freshman_account(sid: str, email: str = None):
                 stu_major="元培计划（待定）",
                 stu_grade=freshman.grade,
                 email=email,
+                status=NaturalPerson.GraduateStatus.GRADUATED if alumnus
+                    else NaturalPerson.GraduateStatus.UNDERGRADUATED
             )
             current = "更新注册状态"
             freshman.status = Freshman.Status.REGISTERED
@@ -1306,6 +1308,181 @@ def _create_freshman_account(sid: str, email: str = None):
     except:
         return current
 
+
+class RegisterView(SecureTemplateView):
+    '''
+    用于校友和新生注册。均提供企业微信和信息验证的方式。
+    '''
+
+    login_required = False
+    template_name = "registerAccount.html"
+    from django.db.models import Model
+    model: Model = Freshman
+    title: str
+
+    def dispatch_prepare(self, method: str) -> SecureView.HandlerType:
+        '''
+        每个方法执行前的准备工作，返回重定向的方法
+
+        准备方法的约定以当前类PrepareType为准，PrepareType包含None的可只实现处理方法
+        SecureView要求必须实现准备方法，子类如果准备方法命名错误未调用则无法提供错误信息
+        子类建议使用match语句，不存在时可调用`default_prepare`
+        '''
+        address_set = set(self.model.objects.all().values_list("place", flat=True))
+        address_set.discard("")
+        address_set.discard("其它")
+        address_list = sorted(address_set)
+        address_list.append("其它")
+        self.extra_context.update(address_list=address_list, title=self.title)
+
+        match method:
+            case 'get':
+                return self.prepare_get()
+            case 'post':
+                return self.prepare_post(wechat=self.request.POST.get("type", ""))
+            case _:
+                return self.default_prepare(method)
+
+    def prepare_get(self) -> SecureView.HandlerType:
+        self.sid = self.request.GET.get("sid")
+        self.auth = self.request.GET.get("auth")
+        if self.sid is not None and self.auth is not None:
+            return self.verify_get
+        return self.get
+
+    def verify_get(self) -> HttpResponse:
+        if self.auth != hash_coder.encode(self.sid + "_freshman_register"):
+            return self.render(err_msg="密钥错误，验证失败")
+        
+        success, msg = self.create()
+        if success:
+            return self.redirect("/freshman/?success=1&alert=" + msg)
+        return self.render(err_msg=msg)      
+
+    def create(self, email: str=None) -> Tuple[bool, str]:
+        try:
+            freshman: Freshman = Freshman.objects.get(sid=self.sid)
+        except:
+            return False, "暂不存在该学号的新生信息"
+        try:
+            exist = freshman.exists()
+            assert exist != "user", "用户仅部分注册，请联系管理员"
+            registered = freshman.status == Freshman.Status.REGISTERED
+            assert not (exist and not registered), "您尚未注册，但用户已存在，请联系管理员"
+            assert not (not exist and registered), "您已经注册，但用户不存在，请联系管理员"
+            if exist or registered:
+                err_msg = "您的账号已被注册过，请阅读使用说明！"
+                return True, err_msg
+        except Exception as e:
+            err_msg = str(e)
+            return False, err_msg
+
+        current = _create_account(self.sid, email=email)
+        if current is not None:
+            err_msg = f"在{current}时意外发生了错误，请联系管理员"
+            return False, err_msg
+
+        # 发送企业微信邀请，不会报错
+        invite(self.sid, multithread=True)
+
+        err_msg = "您的账号已成功注册，请尽快加入企业微信以接受后续通知！"
+        return True, err_msg
+
+    def get(self) -> HttpResponse:
+        if self.request.user.is_authenticated:
+            return self.redirect(message_url(wrong('你已经登录，无需进行注册!')))
+        return self.render()
+    
+    def prepare_post(self, wechat) -> SecureView.HandlerType:
+        def _real_post():
+            try:
+                sid = self.request.POST["sid"]
+                sname = self.request.POST["sname"]
+                gender = self.request.POST["gender"]
+                self.extra_context.update(sid=sid, sname=sname, gender=gender)
+                if not wechat:
+                    birthday = self.request.POST["birthday"]  # 前端使用
+                    birthplace = self.request.POST["birthplace"]
+                    email = self.request.POST["email"]
+                    self.extra_context.update(
+                        birthday=birthday, birthplace=birthplace, email=email)
+            except:
+                msg = "提交信息不足"
+                return self.render(err_msg=msg)
+            
+            try:
+                sid = str(sid)
+                sname = str(sname)
+                gender = str(gender)
+                if not wechat:
+                    birthday_date = datetime.strptime(birthday, "%Y-%m-%d").date()
+                    birthplace = str(birthplace)
+                    email = str(email)
+            except:
+                msg = "错误的个人信息格式"
+                return self.render(err_msg=msg)
+
+            try:
+                freshman: Freshman = Freshman.objects.get(sid=sid)
+            except:
+                msg = "暂不存在该学号的新生信息"
+                return self.render(err_msg=msg)
+
+            try:
+                assert freshman.name == sname, "姓名不匹配"
+                assert freshman.gender == gender, "个人信息错误"
+                if not wechat:
+                    assert freshman.birthday == birthday_date, "个人信息错误"
+                    if freshman.place != "":
+                        assert freshman.place == birthplace, "生源地错误"
+                    else:
+                        assert "其它" == birthplace, "生源地错误"
+                    assert "@" in email, "请使用合法的邮件地址"
+                assert gender in ["男", "女"], "性别数据异常，请联系管理员"
+            except Exception as e:
+                msg = str(e)
+                return self.render(err_msg=msg)
+            
+            if wechat == "wechat":
+                from app.wechat_send import send_wechat
+                auth = hash_coder.encode(sid + "_freshman_register")
+                send_wechat(
+                    [sid], "新生注册邀请\n点击按钮即可注册账号",
+                    url=f"/freshman/?sid={sid}&auth={auth}"
+                )
+                msg = "已向企业微信发送注册邀请，点击邀请信息即可注册！"
+                return self.render(err_msg=msg, auth=auth)
+            else:
+                self.sid = sid
+                success, msg = self.create()
+                if success:
+                    return self.redirect("/registerSuccess/?alert=" + msg)
+                return self.render(err_msg=msg)
+            
+        return _real_post
+
+
+class FreshmanView(RegisterView):
+    model = Freshman
+    title = "新生注册"
+
+
+class AlumnusView(RegisterView):
+    model = Freshman
+    title = "校友注册"
+
+
+class RegisterSuccessView(SecureTemplateView):
+
+    login_required = False
+    template_name = "registerSuccess.html"
+    need_prepare: bool = True
+
+    def dispatch_prepare(self, method: str) -> SecureTemplateView.HandlerType:
+        return self.default_prepare(method, prepare_needed=self.need_prepare)
+    
+    def get(self) -> HttpResponse:
+        return self.render(alert=self.request.GET.get("alert"))
 
 @log.except_captured(source='views[freshman]', record_user=True,
                      record_request_args=True, show_traceback=True)
