@@ -30,16 +30,15 @@
     "wechat": {
         "api_url": "",
         "salt": "debug_hasher_salt",
+        "batch": 500,
+        "receivers": [],
+        "blacklist": [],
+        "use_scheduler": true,
         "app2url": {
             "default": "",
             "message": "",
             "promote": ""
         },
-        "limit": 500,
-        "batch": 500,
-        "receivers": [],
-        "blacklist": [],
-        "use_scheduler": true,
         "unblock_apps": [
             "promote"
         ]

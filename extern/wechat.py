@@ -9,7 +9,7 @@ wechat.py
 '''
 import requests
 import json
-from typing import Callable, ParamSpec, TypeVar, Any
+from typing import Iterable, Callable, ParamSpec, TypeVar, Any
 from datetime import datetime, timedelta
 
 from extern.config import wechat_config as CONFIG
@@ -26,14 +26,6 @@ __all__ = [
 
 # 全局变量 用来发送和确认默认的导航网址
 DEFAULT_URL = build_full_url('/')
-
-
-def app2absolute_url(app: str) -> str:
-    '''default必须被定义 这里放宽了'''
-    url = CONFIG.app2url.get(app)
-    if url is None:
-        url = CONFIG.app2url.get('default', '')
-    return build_full_url(url, CONFIG.api_url)
 
 
 _P = ParamSpec('_P')
@@ -61,25 +53,66 @@ def _get_caller(func: Callable[_P, _T], multithread: bool = True,
     return _func
 
 
-def _send_wechat(users, message, app='default',
-                     card=True, url=None, btntxt=None, default=True):
-    """底层实现发送到微信，是为了方便设置定时任务"""
-    post_url = app2absolute_url(app)
-
+def _get_available_users(users: Iterable[str | int]) -> list[str]:
+    _users = map(str, users)
+    _users = set(_users)
     if CONFIG.receivers is not None:
-        users = sorted((set(users) & CONFIG.receivers) - CONFIG.blacklist)
-    elif CONFIG.blacklist is not None and CONFIG.blacklist:
-        users = sorted(set(users) - CONFIG.blacklist)
-    else:
-        users = sorted(users)
-    user_num = len(users)
-    if user_num == 0:
-        print("没有合法的用户")
-        return
-    if user_num > CONFIG.send_limit:
-        removed_rep = users[CONFIG.send_limit: CONFIG.send_limit+3]
-        print("用户列表过长,", f"{removed_rep}等{user_num-CONFIG.send_limit}人被舍去")
-        users = users[:CONFIG.send_limit]
+        _users &= CONFIG.receivers
+    if CONFIG.blacklist:
+        _users -= CONFIG.blacklist
+    _users = sorted(_users)
+    return _users
+
+
+ParseResult = tuple[str | None, list[str] | None]
+def _post_and_parse(
+    post_url: str,
+    post_data: dict[str, Any],
+    timeout: int | float,
+    detail_parser: Callable[[Any], ParseResult] | None = None,
+) -> ParseResult:
+    '''
+    发送post请求并解析回应，返回解析结果，解析结果
+
+    Args:
+        post_url(str): 请求的url
+        post_data(dict): 请求的数据
+        timeout(int | float): 超时时间
+        detail_parser(Callable[[Any], ParseResult], optional): 解析回应中细节部分的函数
+    
+    Returns:
+        parseResult: 解析结果，包含错误信息（成功时为None）和建议重发的失败用户列表
+    '''
+    try: _post_data = json.dumps(post_data)
+    except: return "JSON编码失败", None
+    try: raw_response = requests.post(post_url, _post_data, timeout=timeout)
+    except: return "连接api失败", None
+    try: response: dict[str, Any] = raw_response.json()
+    except: return "JSON解析失败", None
+    try:
+        if response["status"] == 200:           # 全部发送成功
+            return None, []
+        datas: dict = response["data"]
+        if datas.get("detail"):                 # 部分发送失败
+            assert detail_parser is not None
+            return detail_parser(datas["detail"])
+        errmsg: str = datas["errMsg"]           # 参数等其他传入格式问题
+        return errmsg, None
+    except:
+        return "回应解析失败", None
+
+
+def _send_wechat(
+    users: list[str],
+    message: str,
+    api_url: str,
+    card: bool = True,
+    url: str | None = None,
+    btntxt: str | None = None,
+    *,
+    retry_times: int = 1,
+):
+    """底层实现发送到微信，是为了方便设置定时任务"""
     post_data = {
         "touser": users,
         "content": message,
@@ -87,123 +120,108 @@ def _send_wechat(users, message, app='default',
         "secret": CONFIG.hasher.encode(message),
     }
     if card:
-        if url is not None and url[:1] in ["", "/"]:  # 空或者相对路径，变为绝对路径
-            url = build_full_url(url)
         post_data["card"] = True
-        if default:
-            post_data["url"] = url if url is not None else DEFAULT_URL
-            post_data["btntxt"] = btntxt if btntxt is not None else "详情"
-        else:
-            if url is not None:
-                post_data["url"] = url
-            if btntxt is not None:
-                post_data["btntxt"] = btntxt
-    post_data = json.dumps(post_data)
-    # if not CONFIG.retry or not retry_times:
-    #     retry_times = 1
-    # for i in range(retry_times):
-    try:
-        failed = users
-        errmsg = "连接api失败"
-        response = requests.post(post_url, post_data, timeout=CONFIG.timeout)
-        response = response.json()
-        if response["status"] == 200:           # 全部发送成功
-            return
-        elif response["data"].get("detail"):    # 部分发送失败
-            errinfos = response["data"]["detail"]
-            failed = [x[0] for x in errinfos]
-            errmsg = errinfos[0][1]             # 失败原因基本相同，取一个即可
-        elif response["data"].get("errMsg"):
-            errmsg = response["data"]["errMsg"] # 参数等其他传入格式问题
-        # users = failed                        # 如果允许重发，则向失败用户重发
-        raise OSError("企业微信发送不完全成功")
-    except:
-        # print(f"第{i+1}次尝试")
-        print(f"向企业微信发送失败：失败用户：{failed[:3]}等{len(failed)}人，主要失败原因：{errmsg}")
+        if url is not None:
+            post_data["url"] = url
+        if btntxt is not None:
+            post_data["btntxt"] = btntxt
+
+    def _parser(detail: list[tuple[str, str]]) -> ParseResult:
+        failed = [x[0] for x in detail]
+        errmsg = detail[0][1]             # 失败原因基本相同，取一个即可
+        return errmsg, failed
+
+    for i in range(retry_times):
+        errmsg, failed = _post_and_parse(api_url, post_data, CONFIG.timeout, _parser)
+        if errmsg is None: break
+        # 全部发送失败且不可重发
+        if failed is None: break
+        post_data["touser"] = failed
+        print(f"部分发送失败：{failed[:3]}等{len(failed)}人，原因：{errmsg}")
 
 
 def send_wechat(
-    users,
-    message,
-    app='default',
-    card=True,
-    url=None,
-    btntxt=None,
-    default=True,
+    users: Iterable[str | int],
+    message: str,
+    api_path: str = '',
+    card: bool = True,
+    url: str | None = None,
+    btntxt: str | None = None,
     *,
-    multithread=True,
-    check_duplicate=False,
+    default: bool = True,
+    multithread: bool = True,
+    retry_times: int = 1,
 ):
     """
-    附带了去重、多线程和batch的发送，默认不去重；注意这个函数不应被直接调用
+    附带了去重、多线程和batch的发送；注意这个函数不应被直接调用
 
     参数
     --------
-    - users: 随机访问容器，如果检查重复，则可以是任何可迭代对象
-    - message: 一段文字，第一个`\\n`被视为标题和内容的分隔符
-    - app: 标识应用名的字符串，可以直接使用WechatApp的宏
-    - card: 发送文本卡片，建议message长度小于120时开启
-    - url: 文本卡片的链接，相对路径会被转换为绝对路径
-    - btntxt: 文本卡片的提示短语，不超过4个字
-    - default: 填充默认值
+    - users(Iterable[str | int]): 用户列表
+    - message(str): 发送的文字，第一个`\\n`被视为标题和内容的分隔符
+    - api_path(str, optional): API路径，相对路径会被转换为绝对路径
+    - card(bool): 发送文本卡片，建议message长度小于120时开启
+    - url(str, optional): 文本卡片的链接，相对路径会被转换为绝对路径
+    - btntxt(str, optional): 文本卡片的提示短语，不超过4个字
     - 仅关键字参数
-    - multithread: 不堵塞线程
-    - check_duplicate: 检查重复值
+        - default(bool, optional): 填充默认值
+        - multithread(bool, optional): 使用多线程（需要启用多线程），不堵塞当前线程
     """
-    if check_duplicate:
-        users = sorted(set(users))
+    users = _get_available_users(users)
+    if not users:
+        return
+    if card:
+        if url is not None:
+            url = build_full_url(url)
+        elif default:
+            url = DEFAULT_URL
+        if btntxt is None and default:
+            btntxt = "详情"
+    if not CONFIG.retry:
+        retry_times = 1
+
     total_ct = len(users)
-    SEND_BATCH = min(CONFIG.send_batch, CONFIG.send_limit)
     caller = _get_caller(_send_wechat, multithread=multithread)
-    for i in range(0, total_ct, SEND_BATCH):
-        userids = users[i : i + SEND_BATCH]  # 一次最多接受1000个
+    for i in range(0, total_ct, CONFIG.send_batch):
+        userids = users[i : i + CONFIG.send_batch]  # 一次最多接受1000个
         caller(
-            userids, message, app,
-            card=card, url=url, btntxt=btntxt, default=default,
+            userids, message, build_full_url(api_path, CONFIG.api_url),
+            card=card, url=url, btntxt=btntxt,
+            retry_times=retry_times,
         )
 
 
 def send_verify_code(stu_id: str | int, captcha: str, url: str = '/forgetpw/'):
-    users = [stu_id]
-    kws = {}
-    kws["card"] = True
+    time = datetime.now().strftime('%m月%d日 %H:%M:%S')
     message = (
         "YPPF登录验证\n"
         "您的账号正在进行企业微信验证\n本次请求的验证码为："
         f"<div class=\"highlight\">{captcha}</div>"
-        f"发送时间：{datetime.now().strftime('%m月%d日 %H:%M:%S')}"
+        f"发送时间：{time}"
     )
-    if url:
-        kws["url"] = build_full_url(url)
-        kws["btntxt"] = "登录"
-    send_wechat(users, message, **kws)
+    if not url:
+        send_wechat([stu_id], message, card=True)
+    else:
+        send_wechat([stu_id], message, card=True,
+                    url=build_full_url(url), btntxt="登录")
 
 
 def _invite_to_wechat(stu_id: str, retry_times: int = 1):
+    INVITE_URL = build_full_url('/invite_user', CONFIG.api_url)
     post_data = {
         "user": stu_id,
         "secret": CONFIG.hasher.encode(stu_id),
     }
-    post_data = json.dumps(post_data)
+
+    def _parser(detail: str) -> ParseResult:
+        return detail, [stu_id]
+
     for i in range(retry_times):
-        end = False
-        errmsg = "连接api失败"
-        try:
-            INVITE_URL = build_full_url('/invite_user', CONFIG.api_url)
-            response = requests.post(INVITE_URL, post_data, timeout=CONFIG.timeout)
-            response = response.json()
-            if response["status"] == 200:  # 全部发送成功
-                return
-            elif response["data"].get("detail"):    # 发送失败
-                errmsg = response["data"]["detail"]
-            elif response["data"].get("errMsg"):    # 参数等其他传入格式问题
-                errmsg = response["data"]["errMsg"]
-                end = True
-            raise OSError("企业微信发送不完全成功")
-        except:
-            print(f"第{i+1}次向企业微信发送邀请失败：用户：{stu_id}，原因：{errmsg}")
-            if end:
-                return
+        errmsg, failed = _post_and_parse(INVITE_URL, post_data, CONFIG.timeout, _parser)
+        if errmsg is None: break
+        # 全部发送失败且不可重发
+        if failed is None: break
+        print(f"第{i+1}次向企业微信发送邀请失败：用户：{stu_id}，原因：{errmsg}")
 
 
 def invite_to_wechat(stu_id: str | int, retry_times: int = 3, *, multithread: bool = True):
