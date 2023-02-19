@@ -15,10 +15,10 @@ from app.academic_utils import get_search_results
 
 __all__ = [
     'change_chat_status',
-    'add_chat_message',
-    'create_chat',
-    'create_undirected_chat',
     'select_from_keywords',
+    'create_QA',
+    'add_comment_to_QA',
+    'modify_rating',
 ]
 
 
@@ -123,15 +123,6 @@ def create_chat(
     if questioner_type != UTYPE_PER or respondent_type != UTYPE_PER:
         return None, wrong("目前只允许个人用户进行问答！")
 
-    # 不允许一个用户向另一个用户发起超过一个“进行中”的问答
-    cur_chat = Chat.objects.filter(
-        questioner=request.user,
-        respondent=respondent,
-        status=Chat.Status.PROGRESSING,
-    )
-    if cur_chat.exists():
-        return None, wrong("您与该用户有进行中的提问，请关闭后再发起新的提问！")
-
     if len(title) > 50:  # Chat.title的max_length为50
         return None, wrong("主题过长！请勿超过50字")
     if len(request.POST["comment"]) == 0:
@@ -153,17 +144,14 @@ def create_chat(
 
 def select_by_keywords(
         user: User, keywords: list[str]) -> Tuple[User | None, MESSAGECONTEXT]:
+    """
+    根据关键词从学生中抽取一个回答者
+    """
+    # TODO: 可能允许用户之间存在多个进行的聊天
     matched_users = set()
     for k in keywords:
         matched_users.update(set(get_search_results(k).keys()))
-    if user.username in matched_users:
-        matched_users.remove(user.username)
-    # 暂时不从正在聊天的对象中抽取
-    chatting_with = list(Chat.objects.activated().filter(
-        questioner=user).values_list('respondent__name', flat=True))
-    for user in matched_users:
-        if user in chatting_with:
-            matched_users.remove(user)
+    matched_users.discard(user.username)
     if not matched_users:
         return None, wrong("没有和标签匹配的对象！")
     chosen_username = sample(sorted(matched_users), k=1)[0]
@@ -171,13 +159,40 @@ def select_by_keywords(
     return chosen_user, succeed("成功找到回答者")
 
 
-def create_undirected_chat(chat_id: int, keywords) -> MESSAGECONTEXT:
+def create_QA(request: HttpRequest,
+              respondent: User,
+              directed: bool,
+              questioner_anonymous: bool,
+              keywords: None | list[str] = None) -> MESSAGECONTEXT:
+    """
+    创建学术地图问答，包括定向和非定向
+
+    :param respondent: 回答者
+    :type respondent: User
+    :param directed: 是否为定向问答
+    :type directed: bool
+    :param questioner_anonymous: 提问者是否匿名
+    :type questioner_anonymous: bool
+    :param keywords: 关键词，暂时只在非定向问答中使用，用来定位回答者。
+    :type keywords: None | list[str]
+    """
+    respondent_anonymous = not directed
+    chat_id, message_context = create_chat(
+        request,
+        respondent=respondent,
+        title=request.POST.get('comment_title'),
+        questioner_anonymous=questioner_anonymous,
+        respondent_anonymous=respondent_anonymous,
+    )
+    if chat_id is None:
+        return message_context
+
     try:
         with transaction.atomic():
             AcademicQA.objects.create(
                 chat_id=chat_id,
                 keywords=keywords,
-                directed=True,
+                directed=directed,
             )
         return succeed("提问成功")
     except:
@@ -193,3 +208,28 @@ def modify_rating(chat_id: int, rating: int) -> MESSAGECONTEXT:
         return succeed("成功修改评价")
     except:
         return wrong("对话不存在")
+
+
+def add_comment_to_QA(request: HttpRequest) -> MESSAGECONTEXT:
+    try:
+        # TODO: 以后换成AcademicQA的id
+        chat = Chat.objects.get(id=request.POST.get('chat_id'))
+    except:
+        return wrong('问答不存在!')
+
+    message_context = add_chat_message(request, chat)
+    if message_context[my_messages.CODE_FIELD] == my_messages.WRONG:
+        return message_context
+
+    anonymous = request.POST.get('anonymous')
+    if anonymous == 'true':
+        return message_context
+
+    with transaction.atomic():
+        if request.user == chat.respondent:
+            Chat.objects.select_for_update().filter(id=chat.id).update(
+                respondent_anonymous=False)
+        else:
+            Chat.objects.select_for_update().filter(id=chat.id).update(
+                questioner_anonymous=False)
+    return message_context

@@ -117,7 +117,8 @@ urlpatterns = [
          name="applyAuditAcademic"),
 ] + [
     # 问答相关
-    path("addChatComment/", chat_api.AddChatComment.as_view(), name="addChatComment"),
+    # TODO: url等合并前端后再改
+    path("addChatComment/", chat_api.AddComment.as_view(), name="addComment"),
     path("closeChat/", chat_api.CloseChat.as_view(), name="closeChat"),
     path("startChat/", chat_api.StartChat.as_view(), name="startChat"),
     path("startUndirectedChat/", chat_api.StartUndirectedChat.as_view(), name="startUndirectedChat"),

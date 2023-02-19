@@ -2,15 +2,14 @@ from app.views_dependency import *
 from app.models import Chat
 from app.chat_utils import (
     change_chat_status,
-    add_chat_message,
-    create_chat,
-    create_undirected_chat,
     select_by_keywords,
     modify_rating,
+    create_QA,
+    add_comment_to_QA,
 )
 
 __all__ = [
-    'StartChat', 'AddChatComment', 'CloseChat', 'StartUndirectedChat',
+    'StartChat', 'AddComment', 'CloseChat', 'StartUndirectedChat',
     'RateAnswer'
 ]
 
@@ -20,30 +19,23 @@ class StartChat(SecureJsonView):
         """
         创建一条新的chat
         """
-        receiver = User.objects.get(id=self.request.POST['receiver_id'])
-        anonymous = (self.request.POST['comment_anonymous'] == 'true')
+        respondent = User.objects.get(id=self.request.POST['receiver_id'])
+        questioner_anonymous = (
+            self.request.POST['comment_anonymous'] == 'true')
 
-        _, message_context = create_chat(
-            self.request,
-            receiver,
-            self.request.POST['comment_title'],
-            questioner_anonymous=anonymous,
-        )
-        return self.message_response(message_context)
+        return self.message_response(
+            create_QA(self.request,
+                      respondent,
+                      directed=True,
+                      questioner_anonymous=questioner_anonymous))
 
 
-class AddChatComment(SecureJsonView):
+class AddComment(SecureJsonView):
     def post(self):
         """
         向聊天中添加对话
         """
-        try:
-            chat = Chat.objects.get(id=self.request.POST.get('chat_id'))
-        except:
-            return self.json_response(wrong('问答不存在!'))
-
-        message_context = add_chat_message(self.request, chat)
-        return self.message_response(message_context)
+        return self.message_response(add_comment_to_QA(self.request))
 
 
 class CloseChat(SecureJsonView):
@@ -66,20 +58,15 @@ class StartUndirectedChat(SecureJsonView):
             self.request.user, keywords)
         if respondent is None:
             return self.message_response(message_context)
-        anonymous = (self.request.POST['comment_anonymous'] == 'true')
+        questioner_anonymous = (
+            self.request.POST['comment_anonymous'] == 'true')
 
-        chat_id, message_context = create_chat(
-            self.request,
-            respondent=respondent,
-            title=self.request.POST.get('comment_title'),
-            questioner_anonymous=anonymous,
-            respondent_anonymous=True,
-        )
-        if chat_id is None:
-            return self.message_response(message_context)
-
-        message_context = create_undirected_chat(chat_id, keywords)
-        return self.message_response(message_context)
+        return self.message_response(
+            create_QA(self.request,
+                      respondent,
+                      directed=False,
+                      questioner_anonymous=questioner_anonymous,
+                      keywords=keywords))
 
 
 class RateAnswer(SecureJsonView):

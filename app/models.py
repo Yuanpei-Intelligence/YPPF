@@ -138,7 +138,7 @@ class ClassifiedUser(models.Model):
 
     _USER_FIELD: str = NotImplemented
     _DISPLAY_FIELD: str = NotImplemented
-    
+
     def __str__(self):
         return str(self.get_display_name())
 
@@ -151,7 +151,7 @@ class ClassifiedUser(models.Model):
         :rtype: str
         '''
         return ''
-    
+
     def is_type(self, utype: str) -> bool:
         '''
         判断用户类型
@@ -191,7 +191,7 @@ class ClassifiedUser(models.Model):
         :rtype: str
         '''
         return '/'
-    
+
     def get_user_ava(self=None) -> str:
         '''
         获取头像路径
@@ -817,7 +817,7 @@ class ActivityManager(models.Manager['Activity']):
                 Activity.Status.END
             ],
         )).order_by("category", "-start")
-    
+
     def get_newlyreleased_activity(self):
         nowtime = datetime.now()
         return select_current(self.filter(
@@ -950,7 +950,7 @@ class Activity(CommentBase):
 
     publish_day = models.SmallIntegerField("信息发布提前时间", default=PublishDay.threeday)  # 默认为提前三天时间
     publish_time = models.DateTimeField("信息发布时间", default=datetime.now)  # 默认为当前时间，可以被覆盖
-    need_apply = models.BooleanField("是否需要报名", default=False) 
+    need_apply = models.BooleanField("是否需要报名", default=False)
 
     # 删除显示报名时间, 保留一个字段表示报名截止于活动开始前多久：1h / 1d / 3d / 7d
     class EndBefore(models.IntegerChoices):
@@ -1531,7 +1531,7 @@ class Course(models.Model):
         threeday = (3, "提前三天")
 
     publish_day = models.SmallIntegerField("信息发布时间", default=PublishDay.threeday)  # 默认为提前三天时间
-    need_apply = models.BooleanField("是否需要报名", default=False)  
+    need_apply = models.BooleanField("是否需要报名", default=False)
     # 暂时只允许上传一张图片
     photo = models.ImageField(verbose_name="宣传图片",
                               upload_to=f"course/photo/%Y/",
@@ -1781,7 +1781,7 @@ class AcademicTag(models.Model):
 
     atype = models.SmallIntegerField('标签类型', choices=Type.choices)
     tag_content = models.CharField('标签内容', max_length=63)
-    
+
     def __str__(self) -> str:
         return self.get_atype_display() + ' - ' + self.tag_content
 
@@ -1804,7 +1804,7 @@ class AcademicEntry(models.Model):
 
     person = models.ForeignKey(NaturalPerson, on_delete=models.CASCADE)
     status = models.SmallIntegerField('记录状态', choices=EntryStatus.choices)
-    
+
     objects: AcademicEntryManager = AcademicEntryManager()
 
 
@@ -1812,7 +1812,7 @@ class AcademicTagEntry(AcademicEntry):
     class Meta:
         verbose_name = "P.学术地图标签项目"
         verbose_name_plural = verbose_name
-    
+
     tag = models.ForeignKey(AcademicTag, on_delete=models.CASCADE)
 
     @property
@@ -1882,12 +1882,11 @@ class AcademicQAManager(models.Manager):
 
 class AcademicQA(models.Model):
     class Meta:
-        # TODO
         verbose_name = "P.学术地图问答"
         verbose_name_plural = verbose_name
 
     chat = models.OneToOneField(to=Chat, on_delete=models.CASCADE)
-    keywords = models.JSONField('关键词')
+    keywords = models.JSONField('关键词', null=True, blank=True)
     directed = models.BooleanField('是否定向', default=False)
     rating = models.IntegerField('评价', default=0)
 
