@@ -81,4 +81,3 @@ MEDIA_URL: str = settings.MEDIA_URL
 
 # 全局设置变量
 UNDERGROUND_URL: str = ''
-WECHAT_URL: str = ''

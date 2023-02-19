@@ -17,7 +17,7 @@ from boot import (
     # settings相关常量
     MEDIA_URL,
     # 全局的其它常量
-    UNDERGROUND_URL, WECHAT_URL,
+    UNDERGROUND_URL,
 )
 from utils.global_messages import (
     WRONG, SUCCEED,
@@ -27,7 +27,7 @@ from generic.models import User
 __all__ = [
     # 全局设置的常量
     'MEDIA_URL',
-    'UNDERGROUND_URL', 'WECHAT_URL',
+    'UNDERGROUND_URL',
     # 全局消息的常量
     'WRONG', 'SUCCEED',
     # 本应用的常量

@@ -1,9 +1,7 @@
 from datetime import datetime
 
 from boot import base_get_setting
-from boot import DEBUG, UNDERGROUND_URL, WECHAT_URL
-from boot.config import GLOBAL_CONF
-from utils.hasher import MySHA256Hasher
+from boot import DEBUG
 import utils.global_messages as my_messages
 
 __all__ = [
@@ -15,7 +13,6 @@ __all__ = [
     # 全局消息
     'my_messages',
     # 本应用的常量
-    'hash_wechat_coder',
     'SYSTEM_LOG',
 ]
 
@@ -73,12 +70,9 @@ class LocalSetting():
         self.json = load_json
 
         if DEBUG: print('Loading necessary field...')
-        self.this_url = UNDERGROUND_URL         # 地下室的访问入口
-        self.wechat_url = WECHAT_URL            # 访问企业微信封装层的接口
         self.system_log = get_setting('system_log')
 
         if DEBUG: print('Loading token field...')
-        self.wechat_salt = base_get_setting('hash/wechat')
         self.display_token = get_setting('token/display')
 
         # 读取学期开始，用于过滤既往预约
@@ -126,5 +120,4 @@ class LocalSetting():
         # end
 
 GLOBAL_INFO = LocalSetting()
-hash_wechat_coder = MySHA256Hasher(secret=GLOBAL_INFO.wechat_salt)
 SYSTEM_LOG: str = GLOBAL_INFO.system_log

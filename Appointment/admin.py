@@ -1,15 +1,16 @@
-from datetime import datetime, timedelta
 import string
+import pypinyin
+from datetime import datetime, timedelta
 
 from django.contrib import admin, messages
 from django.utils.safestring import mark_safe
 from django.utils.html import format_html, format_html_join
 from django.db import transaction  # 原子化更改数据库
 from django.db.models import QuerySet
-import pypinyin
 
 from utils.admin_utils import *
 from Appointment import jobs
+from Appointment.extern.constants import MessageType
 from Appointment.utils.utils import operation_writer
 from Appointment.models import *
 
@@ -282,7 +283,7 @@ class AppointAdmin(admin.ModelAdmin):
                         have_success = 1
                         # send wechat message
                         jobs.set_appoint_wechat(
-                            appoint, 'confirm_admin_w2c', appoint.get_status(),
+                            appoint, MessageType.WAITING2CONFIRM.value, appoint.get_status(),
                             students_id=[appoint.get_major_id()], admin=True,
                             id=f'{appoint.Aid}_confirm_admin_wechat')
                         operation_writer(None, str(appoint.Aid)+"号预约被管理员从WAITING改为CONFIRMED" +
@@ -295,7 +296,7 @@ class AppointAdmin(admin.ModelAdmin):
                         have_success = 1
                         # send wechat message
                         jobs.set_appoint_wechat(
-                            appoint, 'confirm_admin_v2j', appoint.get_status(),
+                            appoint, MessageType.VIOLATED2JUDGED.value, appoint.get_status(),
                             students_id=[appoint.get_major_id()], admin=True,
                             id=f'{appoint.Aid}_confirm_admin_wechat')
                         operation_writer(None, str(appoint.Aid)+"号预约被管理员从VIOLATED改为JUDGED" +
@@ -336,7 +337,7 @@ class AppointAdmin(admin.ModelAdmin):
 
                 # send wechat message
                 jobs.set_appoint_wechat(
-                    appoint, 'violate_admin', f'原状态：{ori_status}',
+                    appoint, MessageType.VIOLATE_BY_ADMIN.value, f'原状态：{ori_status}',
                     students_id=[appoint.get_major_id()], admin=True,
                     id=f'{appoint.Aid}_violate_admin_wechat')
                 operation_writer(None, f"{appoint.Aid}号预约被管理员设为违约"
