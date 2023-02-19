@@ -25,13 +25,15 @@ from Appointment.models import (
     College_Announcement,
     LongTermAppoint,
 )
+from Appointment.extern.constants import MessageType
+from Appointment.extern.wechat import send_wechat_message
 # utils对接工具
 from Appointment.utils.utils import (
-    send_wechat_message, doortoroom, iptoroom,
-    operation_writer, cardcheckinfo_writer,
+    doortoroom, iptoroom,
     check_temp_appoint, set_appoint_reason, get_conflict_appoints,
     to_feedback_url,
 )
+from Appointment.utils.log import operation_writer, cardcheckinfo_writer
 import Appointment.utils.web_func as web_func
 from Appointment.utils.identity import (
     get_avatar, get_members, get_auditor_ids,
@@ -508,7 +510,7 @@ def door_check(request):
         cardcheckinfo_writer(student, room, False, False, f"学号{Sid}错误")
         send_wechat_message(
             [Sid], now_time.replace(second=0, microsecond=0), room,
-            'temp_appointment_fail', student, '临时预约', '', 1,
+            MessageType.TEMPORARY_FAILED.value, student, '临时预约', '', 1,
             f'您尚未注册地下室账号，无法开门，请先访问任意地下室页面创建账号！\n点击跳转地下室账户，快捷注册',
             url=reverse('Appointment:account'))
         return _fail()
@@ -532,13 +534,13 @@ def door_check(request):
                 stuid_list=[Sid],
                 start_time=datetime.now(),
                 room=room,
-                message_type="need_agree",
+                message_type=MessageType.NEED_AGREE.value,
                 major_student=student,
                 usage="刷卡开门",
                 announcement="",
                 num=1,
                 reason='',
-                url='/agreement',
+                url='agreement',
             )
             return _fail()
 
@@ -569,7 +571,7 @@ def door_check(request):
     # --- modify by lhw: 临时预约 --- #
 
     def _temp_failed(message: str, record_temp=True):
-        MSG_TYPE = "temp_appointment_fail"
+        MSG_TYPE = MessageType.TEMPORARY_FAILED.value
         record_msg = f"刷卡拒绝：临时预约失败（{message}）" if record_temp else f"刷卡拒绝：{message}"
         cardcheckinfo_writer(student, room, False, False, record_msg)
         send_wechat_message(
@@ -1283,7 +1285,7 @@ def review(request: HttpRequest):
                     longterm_appoint.status = LongTermAppoint.Status.APPROVED
                     longterm_appoint.save()
                     jobs.set_appoint_wechat(
-                        longterm_appoint.appoint, 'longterm_approved',
+                        longterm_appoint.appoint, MessageType.LONGTERM_APPROVED.value,
                         students_id=[longterm_appoint.get_applicant_id()],
                         id=f'{longterm_appoint.pk}_longterm_approved')
                 succeed(
@@ -1300,7 +1302,7 @@ def review(request: HttpRequest):
                     longterm_appoint.review_comment = reason
                     longterm_appoint.save()
                     jobs.set_appoint_wechat(
-                        longterm_appoint.appoint, 'longterm_rejected', reason,
+                        longterm_appoint.appoint, MessageType.LONGTERM_REJECTED.value, reason,
                         students_id=[longterm_appoint.get_applicant_id()],
                         id=f'{longterm_appoint.pk}_longterm_rejected')
             except:
