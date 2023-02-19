@@ -44,6 +44,8 @@ __all__ = [
     'outputSelectInfo',
 ]
 
+APP_CONFIG = CONFIG.course
+
 
 @login_required(redirect_field_name="origin")
 @utils.check_user_access(redirect_url="/logout/")
@@ -145,9 +147,9 @@ def addSingleCourseActivity(request: HttpRequest):
     # 检查用户身份
     valid, user_type, html_display = utils.check_user_type(request.user)
     me = utils.get_person_or_org(request.user, user_type)  # 这里的me应该为小组账户
-    if user_type != UTYPE_ORG or me.otype.otype_name != COURSE_TYPENAME:
+    if user_type != UTYPE_ORG or me.otype.otype_name != APP_CONFIG.type_name:
         return redirect(message_url(wrong('书院课程小组账号才能开设课程活动!')))
-    if me.oname == YQP_ONAME:
+    if me.oname == CONFIG.yqp_oname:
         return redirect("/showActivity/")  # TODO: 可以重定向到书院课程聚合页面
 
     # 检查是否已经开课
@@ -202,7 +204,7 @@ def showCourseActivity(request: HttpRequest):
     _, user_type, html_display = utils.check_user_type(request.user)
     me = get_person_or_org(request.user, user_type)  # 获取自身
 
-    if user_type != UTYPE_ORG or me.otype.otype_name != COURSE_TYPENAME:
+    if user_type != UTYPE_ORG or me.otype.otype_name != APP_CONFIG.type_name:
         return redirect(message_url(wrong('只有书院课程组织才能查看此页面!')))
     my_messages.transfer_message_context(request.GET, html_display)
 
@@ -305,13 +307,13 @@ def showCourseRecord(request: HttpRequest) -> HttpResponse:
     me = utils.get_person_or_org(request.user)  # 获取自身
     if user_type == UTYPE_PER:
         return redirect(message_url(wrong('学生账号不能访问此界面！')))
-    if me.otype.otype_name != COURSE_TYPENAME:
+    if me.otype.otype_name != APP_CONFIG.type_name:
         return redirect(message_url(wrong('非书院课程组织账号不能访问此界面！')))
 
     # 提取课程，后端保证每个组织只有一个Course字段
 
     # 获取课程开设筛选信息
-    year = CURRENT_ACADEMIC_YEAR
+    year = GLOBAL_CONF.acadamic_year
     semester = Semester.now()
 
     course = Course.objects.activated(noncurrent=None).filter(
@@ -496,14 +498,14 @@ def selectCourse(request: HttpRequest):
             wrong("选课过程出现错误！请联系管理员。", html_display)
 
     html_display["is_myself"] = True
-    html_display["current_year"] = CURRENT_ACADEMIC_YEAR
+    html_display["current_year"] = GLOBAL_CONF.acadamic_year
     html_display["semester"] = ("春" if Semester.now() == Semester.SPRING else "秋")
 
-    html_display["yx_election_start"] = get_setting("course/yx_election_start")
-    html_display["yx_election_end"] = get_setting("course/yx_election_end")
-    html_display["btx_election_start"] = get_setting("course/btx_election_start")
-    html_display["btx_election_end"] = get_setting("course/btx_election_end")
-    html_display["publish_time"] = get_setting("course/publish_time")
+    html_display["yx_election_start"] = APP_CONFIG.yx_election_start
+    html_display["yx_election_end"] = APP_CONFIG.yx_election_end
+    html_display["btx_election_start"] = APP_CONFIG.btx_election_start
+    html_display["btx_election_end"] = APP_CONFIG.btx_election_end
+    html_display["publish_time"] = APP_CONFIG.publish_time
     html_display["status"] = None
     is_drawing = False  # 是否正在进行抽签
 
@@ -594,7 +596,7 @@ def addCourse(request: HttpRequest, cid=None):
     # assert valid  已经在check_user_access检查过了
     me = utils.get_person_or_org(request.user, user_type) # 这里的me应该为小组账户
     if cid is None:
-        if user_type != UTYPE_ORG or me.otype.otype_name != COURSE_TYPENAME:
+        if user_type != UTYPE_ORG or me.otype.otype_name != APP_CONFIG.type_name:
             return redirect(message_url(wrong('书院课程账号才能发起课程!')))
         #暂时仅支持一个课程账号一学期只能开一门课
         courses = Course.objects.activated().filter(organization=me)
@@ -631,7 +633,7 @@ def addCourse(request: HttpRequest, cid=None):
     if request.method == "POST" and request.POST:
         if not edit:
             # 发起选课
-            course_DDL = str_to_time(get_setting("course/btx_election_end"))
+            course_DDL = str_to_time(APP_CONFIG.btx_election_end)
 
 
             if datetime.now() > course_DDL:
@@ -709,8 +711,7 @@ def outputRecord(request: HttpRequest):
     valid, user_type, html_display = utils.check_user_type(request.user)
     me = utils.get_person_or_org(request.user, user_type)
     # 获取默认审核老师，不应该出错
-    examine_teacher = NaturalPerson.objects.get_teacher(
-        get_setting("course/audit_teacher"))
+    examine_teacher = NaturalPerson.objects.get_teacher(APP_CONFIG.audit_teacher)
 
     if examine_teacher != me:
         return redirect(message_url(wrong("只有书院课审核老师账号可以访问该链接！")))
@@ -729,7 +730,7 @@ def outputSelectInfo(request: HttpRequest):
     me = utils.get_person_or_org(request.user, user_type)
     try:
         assert (user_type == UTYPE_ORG
-                and me.otype.otype_name == COURSE_TYPENAME), '只有书院课程账号才能下载选课名单!'
+                and me.otype.otype_name == APP_CONFIG.type_name), '只有书院课程账号才能下载选课名单!'
         # 暂时仅支持一个课程账号一学期只能开一门课
         courses = Course.objects.activated().filter(organization=me)
         assert courses.exists(), '只有在开课以后才能下载选课名单！'

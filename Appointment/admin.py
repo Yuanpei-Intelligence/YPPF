@@ -5,13 +5,12 @@ from datetime import datetime, timedelta
 from django.contrib import admin, messages
 from django.utils.safestring import mark_safe
 from django.utils.html import format_html, format_html_join
-
 from django.db import transaction  # 原子化更改数据库
-from django.db.models import F, QuerySet
+from django.db.models import QuerySet
 
-from boottest.admin_utils import *
-from Appointment import *
-from Appointment.utils import scheduler_func, utils
+from utils.admin_utils import *
+from Appointment import jobs
+from Appointment.extern.constants import MessageType
 from Appointment.utils.utils import operation_writer
 from Appointment.models import *
 
@@ -283,11 +282,11 @@ class AppointAdmin(admin.ModelAdmin):
                         appoint.save()
                         have_success = 1
                         # send wechat message
-                        scheduler_func.set_appoint_wechat(
-                            appoint, 'confirm_admin_w2c', appoint.get_status(),
+                        jobs.set_appoint_wechat(
+                            appoint, MessageType.WAITING2CONFIRM.value, appoint.get_status(),
                             students_id=[appoint.get_major_id()], admin=True,
                             id=f'{appoint.Aid}_confirm_admin_wechat')
-                        operation_writer(SYSTEM_LOG, str(appoint.Aid)+"号预约被管理员从WAITING改为CONFIRMED" +
+                        operation_writer(None, str(appoint.Aid)+"号预约被管理员从WAITING改为CONFIRMED" +
                                  "发起人："+str(appoint.major_student), "admin.confirm", "OK")
                     elif appoint.Astatus == Appoint.Status.VIOLATED:
                         appoint.Astatus = Appoint.Status.JUDGED
@@ -296,11 +295,11 @@ class AppointAdmin(admin.ModelAdmin):
                         appoint.save()
                         have_success = 1
                         # send wechat message
-                        scheduler_func.set_appoint_wechat(
-                            appoint, 'confirm_admin_v2j', appoint.get_status(),
+                        jobs.set_appoint_wechat(
+                            appoint, MessageType.VIOLATED2JUDGED.value, appoint.get_status(),
                             students_id=[appoint.get_major_id()], admin=True,
                             id=f'{appoint.Aid}_confirm_admin_wechat')
-                        operation_writer(SYSTEM_LOG, str(appoint.Aid)+"号预约被管理员从VIOLATED改为JUDGED" +
+                        operation_writer(None, str(appoint.Aid)+"号预约被管理员从VIOLATED改为JUDGED" +
                                  "发起人："+str(appoint.major_student), "admin.confirm", "OK")
 
                     else:  # 不允许更改
@@ -337,11 +336,11 @@ class AppointAdmin(admin.ModelAdmin):
                 appoint.save()
 
                 # send wechat message
-                scheduler_func.set_appoint_wechat(
-                    appoint, 'violate_admin', f'原状态：{ori_status}',
+                jobs.set_appoint_wechat(
+                    appoint, MessageType.VIOLATE_BY_ADMIN.value, f'原状态：{ori_status}',
                     students_id=[appoint.get_major_id()], admin=True,
                     id=f'{appoint.Aid}_violate_admin_wechat')
-                operation_writer(SYSTEM_LOG, f"{appoint.Aid}号预约被管理员设为违约"
+                operation_writer(None, f"{appoint.Aid}号预约被管理员设为违约"
                     + f"发起人：{appoint.major_student}", "admin.violate")
         except:
             return self.message_user(request, '操作失败!只允许对未审核的条目操作!', messages.WARNING)
@@ -363,12 +362,12 @@ class AppointAdmin(admin.ModelAdmin):
                 if start > finish:
                     return self.message_user(request, 
                         f'操作失败,预约{aid}开始和结束时间冲突!请勿篡改数据!', messages.WARNING)
-                scheduler_func.cancel_scheduler(aid)    # 注销原有定时任务 无异常
-                scheduler_func.set_scheduler(appoint)   # 开始时进入进行中 结束后判定
+                jobs.cancel_scheduler(aid)    # 注销原有定时任务 无异常
+                jobs.set_scheduler(appoint)   # 开始时进入进行中 结束后判定
                 if datetime.now() < start:              # 如果未开始，修改开始提醒
-                    scheduler_func.set_start_wechat(appoint, notify_create=False)
+                    jobs.set_start_wechat(appoint, notify_create=False)
             except Exception as e:
-                operation_writer(SYSTEM_LOG,
+                operation_writer(None,
                                  "出现更新定时任务失败的问题: " + str(e),
                                  "admin.longterm", "Error")
                 return self.message_user(request, str(e), messages.WARNING)
@@ -383,7 +382,7 @@ class AppointAdmin(admin.ModelAdmin):
                     stuid_list = [stu.get_id() for stu in appoint.students.all()]
                     for i in range(1, times + 1):
                         # 调用函数完成预约
-                        feedback = scheduler_func.addAppoint({
+                        feedback = jobs.addAppoint({
                             'Rid': appoint.Room.Rid,
                             'students': stuid_list,
                             'non_yp_num': appoint.Anon_yp_num,
@@ -399,12 +398,12 @@ class AppointAdmin(admin.ModelAdmin):
                             print(warning)
                             raise Exception(warning)
             except Exception as e:
-                operation_writer(SYSTEM_LOG, "学生" + str(appoint.major_student) +
+                operation_writer(None, "学生" + str(appoint.major_student) +
                                  "出现添加长线化预约失败的问题:"+str(e), "admin.longterm", "Problem")
                 return self.message_user(request, str(e), messages.WARNING)
 
             # 到这里, 长线化预约发起成功
-            scheduler_func.set_longterm_wechat(
+            jobs.set_longterm_wechat(
                 appoint, infos=f'新增了{times}周同时段预约', admin=True)
             operation_writer(appoint.get_major_id(),
                 f"后台发起{times}周的长线化预约, 原始预约号{appoint.Aid}", "admin.longterm")
@@ -416,15 +415,15 @@ class AppointAdmin(admin.ModelAdmin):
         for appoint in queryset:
             try:
                 conflict_week, appoints = (
-                    scheduler_func.add_longterm_appoint(
+                    jobs.add_longterm_appoint(
                         appoint.pk, times, interval_week, admin=True))
                 if conflict_week is not None:
                     return self.message_user(
                         request,
                         f'第{conflict_week}周存在冲突的预约: {appoints[0].Aid}!',
                         level=messages.WARNING)
-                longterm_info = scheduler_func.get_longterm_display(times, interval_week)
-                scheduler_func.set_longterm_wechat(
+                longterm_info = jobs.get_longterm_display(times, interval_week)
+                jobs.set_longterm_wechat(
                     appoint, infos=f'新增了{longterm_info}同时段预约', admin=True)
                 new_appoints[appoint.pk] = list(appoints.values_list('pk', flat=True))
             except Exception as e:

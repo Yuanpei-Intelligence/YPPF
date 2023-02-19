@@ -36,15 +36,16 @@ models.py
 
 @Date 2022-03-11
 '''
+from random import choice
+
 from django.db import models, transaction
+from django.db.models import Q, Sum, QuerySet
 from django_mysql.models import ListCharField
+
 from generic.models import User
 from generic.models import invalid_for_frontend, necessary_for_frontend
-from django.db.models import Q, Sum, QuerySet
-from django.db.models.signals import post_save
 from datetime import datetime, timedelta
-from app.constants import *
-from random import choice
+from app.config import *
 
 
 __all__ = [
@@ -74,8 +75,6 @@ __all__ = [
     'CourseTime',
     'CourseParticipant',
     'CourseRecord',
-    'PageLog',
-    'ModuleLog',
     'FeedbackType',
     'Feedback',
     'AcademicTag',
@@ -89,14 +88,10 @@ __all__ = [
     'PoolRecord',
 ]
 
-# 兼容Django3.0及以下版本
-if not hasattr(QuerySet, '__class_getitem__'):
-    QuerySet.__class_getitem__ = classmethod(lambda cls, *args, **kwargs: cls)
-
 
 def current_year() -> int:
     '''不导出的函数，用于实时获取学年设置'''
-    return CURRENT_ACADEMIC_YEAR
+    return GLOBAL_CONF.acadamic_year
 
 
 def select_current(queryset,
@@ -194,10 +189,7 @@ class ClassifiedUser(models.Model):
         :return: 主页的网址
         :rtype: str
         '''
-        url = '/'
-        if absolute:
-            url = LOGIN_URL.rstrip('/') + url
-        return url
+        return '/'
     
     def get_user_ava(self=None) -> str:
         '''
@@ -209,7 +201,7 @@ class ClassifiedUser(models.Model):
         return image_url('avatar/person_default.jpg')
 
 
-class ClassifiedUserManager(models.Manager):
+class ClassifiedUserManager(models.Manager[ClassifiedUser]):
     '''
     已分类的用户模型管理器，定义了与User具有一对一关系的模型管理器的通用接口
 
@@ -254,7 +246,7 @@ class ClassifiedUserManager(models.Manager):
         return self.all()
 
 
-class NaturalPersonManager(models.Manager):
+class NaturalPersonManager(models.Manager['NaturalPerson']):
     def get_by_user(self, user: User, *,
                     update=False, activate=False):
         '''User一对一模型管理器的必要方法, 通过关联的User获取实例'''
@@ -315,7 +307,6 @@ class NaturalPerson(models.Model):
     biography = models.TextField("自我介绍", max_length=1024, default="还没有填写哦～")
     avatar = models.ImageField(upload_to=f"avatar/", blank=True)
     wallpaper = models.ImageField(upload_to=f"wallpaper/", blank=True)
-    first_time_login = models.BooleanField("首次登录", default=True)
     inform_share = models.BooleanField(default=True) # 是否第一次展示有关分享的帮助
     last_time_login = models.DateTimeField("上次登录时间", blank=True, null=True)
     objects: NaturalPersonManager = NaturalPersonManager()
@@ -392,8 +383,6 @@ class NaturalPerson(models.Model):
         '''User一对一模型的建议方法'''
         url = f'/stuinfo/?name={self.name}'
         url += f'+{self.person_id_id}'
-        if absolute:
-            url = LOGIN_URL.rstrip('/') + url
         return url
 
     def get_user_ava(self=None):
@@ -516,7 +505,7 @@ class OrganizationType(models.Model):
 
     def default_semester(self):
         '''供生成时方便调用的函数，职位的默认持续时间'''
-        return Semester.now() if self.otype_name == COURSE_TYPENAME else Semester.ANNUAL
+        return Semester.now() if self.otype_name == CONFIG.course.type_name else Semester.ANNUAL
 
     def default_is_admin(self, position):
         '''供生成时方便调用的函数，是否成为负责人的默认值'''
@@ -541,7 +530,7 @@ class Semester(models.TextChoices):
 
     def now():
         '''返回本地设置中当前学期对应的Semester状态'''
-        return get_setting("semester_data/semester", trans_func=Semester.get)
+        return Semester.get(GLOBAL_CONF.semester)
 
     def match(sem1, sem2):
         try:
@@ -577,7 +566,7 @@ class OrganizationTag(models.Model):
         return self.name
 
 
-class OrganizationManager(models.Manager):
+class OrganizationManager(models.Manager['Organization']):
     def get_by_user(self, user: User, *,
                     update=False, activate=False):
         '''User一对一模型管理器的必要方法, 通过关联的User获取实例'''
@@ -610,7 +599,6 @@ class Organization(models.Model):
     wallpaper = models.ImageField(upload_to=f"wallpaper/", blank=True)
     visit_times = models.IntegerField("浏览次数",default=0) # 浏览主页的次数
 
-    first_time_login = models.BooleanField(default=True)  # 是否第一次登录
     inform_share = models.BooleanField(default=True) # 是否第一次展示有关分享的帮助
 
     # 组织类型标签，一个组织可能同时有多个标签
@@ -634,8 +622,6 @@ class Organization(models.Model):
     def get_absolute_url(self, absolute=False):
         '''User一对一模型的建议方法'''
         url = f'/orginfo/?name={self.oname}'
-        if absolute:
-            url = LOGIN_URL.rstrip('/') + url
         return url
 
     def get_user_ava(self=None):
@@ -653,7 +639,7 @@ class Organization(models.Model):
         return NaturalPerson.objects.all().count() - self.unsubscribers.count()
 
 
-class PositionManager(models.Manager):
+class PositionManager(models.Manager['Position']):
     def current(self):
         return select_current(self, 'year', 'semester')
 
@@ -788,7 +774,7 @@ class Position(models.Model):
         return min(len(self.org.otype.job_name_list), self.pos)
 
 
-class ActivityManager(models.Manager):
+class ActivityManager(models.Manager['Activity']):
     def activated(self, only_displayable=True, noncurrent=False):
         # 选择学年相同，并且学期相同或者覆盖的
         # 请保证query_range是一个queryset，将manager的行为包装在query_range计算完之前
@@ -1105,7 +1091,7 @@ class ActivityPhoto(models.Model):
         return image_url(self.image, enable_abs=True)
 
 
-class ParticipantManager(models.Manager):
+class ParticipantManager(models.Manager['Participant']):
     def activated(self, no_unattend=False):
         '''返回成功报名的参与信息'''
         exclude_status = [
@@ -1142,7 +1128,7 @@ class Participant(models.Model):
     objects: ParticipantManager = ParticipantManager()
 
 
-class NotificationManager(models.Manager):
+class NotificationManager(models.Manager['Notification']):
     def activated(self):
         return self.exclude(status=Notification.Status.DELETE)
 
@@ -1452,7 +1438,7 @@ class ModifyRecord(models.Model):
     time = models.DateTimeField('修改时间', auto_now_add=True)
 
 
-class CourseManager(models.Manager):
+class CourseManager(models.Manager['Course']):
     def activated(self, noncurrent=False):
         # 选择当前学期的开设课程
         # 不显示已撤销的课程信息
@@ -1620,7 +1606,7 @@ class CourseParticipant(models.Model):
     )
 
 
-class CourseRecordManager(models.Manager):
+class CourseRecordManager(models.Manager['CourseRecord']):
     def current(self):
         # 选择当前学期的学时
         return select_current(self)
@@ -1673,47 +1659,6 @@ class CourseRecord(models.Model):
             return self.course.name
         return self.extra_name
     get_course_name.short_description = "课程名"
-
-
-class PageLog(models.Model):
-    # 统计Page类埋点数据(PV/PD)
-    class Meta:
-        verbose_name = "~R.Page类埋点记录"
-        verbose_name_plural = verbose_name
-
-    class CountType(models.IntegerChoices):
-        PV = 0, "Page View"
-        PD = 1, "Page Disappear"
-
-    user: User = models.ForeignKey(User, on_delete=models.CASCADE)
-    type = models.IntegerField('事件类型', choices=CountType.choices)
-
-    page = models.URLField('页面url', max_length=256, blank=True)
-    time = models.DateTimeField('发生时间', default=datetime.now)
-    platform = models.CharField('设备类型', max_length=32, null=True, blank=True)
-    explore_name = models.CharField('浏览器类型', max_length=32, null=True, blank=True)
-    explore_version = models.CharField('浏览器版本', max_length=32, null=True, blank=True)
-
-
-class ModuleLog(models.Model):
-    # 统计Module类埋点数据(MV/MC)
-    class Meta:
-        verbose_name = "~R.Module类埋点记录"
-        verbose_name_plural = verbose_name
-
-    class CountType(models.IntegerChoices):
-        MV = 2, "Module View"
-        MC = 3, "Module Click"
-
-    user: User = models.ForeignKey(User, on_delete=models.CASCADE)
-    type = models.IntegerField('事件类型', choices=CountType.choices)
-
-    page = models.URLField('页面url', max_length=256, blank=True)
-    module_name = models.CharField('模块名称', max_length=64, blank=True)
-    time = models.DateTimeField('发生时间', default=datetime.now)
-    platform = models.CharField('设备类型', max_length=32, null=True, blank=True)
-    explore_name = models.CharField('浏览器类型', max_length=32, null=True, blank=True)
-    explore_version = models.CharField('浏览器版本', max_length=32, null=True, blank=True)
 
 
 class FeedbackType(models.Model):
@@ -1818,8 +1763,6 @@ class Feedback(CommentBase):
             url = f'/modifyFeedback/?feedback_id={self.id}'
         else:
             url = f'/viewFeedback/{self.id}'
-        if absolute:
-            url = LOGIN_URL.rstrip('/') + url
         return url
 
 
@@ -1842,7 +1785,7 @@ class AcademicTag(models.Model):
         return self.get_atype_display() + ' - ' + self.tag_content
 
 
-class AcademicEntryManager(models.Manager):
+class AcademicEntryManager(models.Manager['AcademicEntry']):
     def activated(self):
         # 筛选未被删除的entry
         return self.exclude(status=AcademicEntry.EntryStatus.OUTDATE)
@@ -1892,7 +1835,7 @@ class AcademicTextEntry(AcademicEntry):
     content = models.CharField('内容', max_length=4095)
 
 
-class ChatManager(models.Manager):
+class ChatManager(models.Manager['Chat']):
     def activated(self):
         # 筛选进行中的对话
         return self.filter(status=Chat.Status.PROGRESSING)

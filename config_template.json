@@ -1,0 +1,81 @@
+{
+    "global": {
+        "base_url": "http://localhost:8000",
+        "hash_salt": "default_hash_salt",
+        "acadamic_year": 2023,
+        "semester": "Spring",
+        "debug_stuids": []
+    },
+    "django": {
+        "db": {
+            "NAME": "$DATABASE$",
+            "USER": "$USER$",
+            "PASSWORD": "$PASSWORD$",
+            "HOST": "$HOST$"
+        }
+    },
+    "log": {
+        "dir": "/var/log",
+        "format": "%(asctime)s [%(levelname)s] %(message)s",
+        "level": "INFO",
+        "stack_level": 8
+    },
+    "weather": {
+        "api_key": "$API_KEY$"
+    },
+    "scheduler": {
+        "rpc_port": "$SCHEDULER_RPC_PORT$",
+        "use_scheduler": false
+    },
+    "wechat": {
+        "api_url": "",
+        "salt": "debug_hasher_salt",
+        "batch": 500,
+        "receivers": [],
+        "blacklist": [],
+        "use_scheduler": true,
+        "app2url": {
+            "default": "",
+            "message": "",
+            "promote": ""
+        },
+        "unblock_apps": [
+            "promote"
+        ]
+    },
+    "email": {
+        "url": "",
+        "salt": "debug_hasher_salt" 
+    },
+    "underground": {
+        "token": {
+            "display": ""
+        },
+        "base_url": "http://localhost:8000/underground",
+        "semester_data": {
+            "semester_start": "2023-02-20"
+        }
+    },
+    "course": {
+        "type_name": "课程",
+        "auditors": ["admin"],
+        "valid_hours": 8,
+        "yx_election_start": "2022-02-16 10:00:00",
+        "yx_election_end": "2022-02-16 12:00:00",
+        "btx_election_start": "2022-02-16 12:00:00",
+        "btx_election_end": "2022-02-16 14:00:00",
+        "publish_time": "2022-02-20 20:35:00"
+    },
+    "YQPoint": {
+
+    },
+    "library": {
+        "organization_name": "图书室",
+        "open_time_start": "07:00",
+        "open_time_end": "23:00"
+    },
+    "max_inform_rank": {},
+    "help_messages": {
+
+    }
+}

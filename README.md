@@ -1,6 +1,23 @@
 # YPPF
-启动前请向组长私下要`local_json.json`放在根目录，里面存储了运行的配置文件。如果本文件修改，我们会及时update。
 
-完成后在`mysql`中运行`create database YPPF charset='utf8mb4'`，然后makemigrations+migrate。
+## How to run it
+It is recommend to run it with [docker](https://www.docker.com/).
 
-静态文件的存储目前存在冗余，更新后会保留唯一一份静态文件，请目前需要操作前端的同学注意。
+With `bash`, `docker` and `docker compose` available,
+you can easily run the project with `bash env/dev_ini.sh`.
+If nothing goes wrong, the service will be open on
+[http://127.0.0.1:8000/](http://127.0.0.1:8000/). 
+
+For windows users, here is a more detailed
+[tutorial](https://epu4t4i0lr.feishu.cn/docx/EJCod674HoghaoxB8NacRtvlnjc).
+
+## Project Structure
+TODO
+
+## Contribute
+Fork the repo, modify on develop branch of your replica.
+
+Reference 
+
+Before open a pull request, run `python3 manage.py test` to check whether your
+modification affects other functionality.

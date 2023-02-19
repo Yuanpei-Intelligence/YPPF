@@ -1,11 +1,13 @@
-from Appointment import *
+from datetime import datetime, timedelta, time
+from typing import Dict, Any
+
+from django.db.models import Q, QuerySet
+
+from Appointment.config import CONFIG
 from Appointment.models import Participant, Room, Appoint
 from Appointment.utils.identity import get_participant
-from django.db.models import Q, QuerySet
-from datetime import datetime, timedelta, time
-from typing import Dict, Any, Optional
-import Appointment.utils.utils as utils
-
+from Appointment.utils.utils import appoint_violate
+from Appointment.utils.log import operation_writer
 
 '''
 YWolfeee:
@@ -56,23 +58,23 @@ def startAppoint(Aid):  # 开始预约时的定时程序
     try:
         appoint = Appoint.objects.get(Aid=Aid)
     except:
-        utils.operation_writer(
-            SYSTEM_LOG, f"预约{str(Aid)}意外消失", "web_func.startAppoint", "Error")
+        operation_writer(
+            None, f"预约{str(Aid)}意外消失", "web_func.startAppoint", "Error")
         return
 
     if appoint.Astatus == Appoint.Status.APPOINTED:     # 顺利开始
         appoint.Astatus = Appoint.Status.PROCESSING
         appoint.save()
-        utils.operation_writer(
-            SYSTEM_LOG, f"预约{str(Aid)}成功开始: 状态变为进行中", "web_func.startAppoint")
+        operation_writer(
+            None, f"预约{str(Aid)}成功开始: 状态变为进行中", "web_func.startAppoint")
 
     elif appoint.Astatus == Appoint.Status.PROCESSING:  # 已经开始
-        utils.operation_writer(
-            SYSTEM_LOG, f"预约{str(Aid)}在检查时已经开始", "web_func.startAppoint")
+        operation_writer(
+            None, f"预约{str(Aid)}在检查时已经开始", "web_func.startAppoint")
 
     elif appoint.Astatus != Appoint.Status.CANCELED:    # 状态异常，本该不存在这个任务
-        utils.operation_writer(
-            SYSTEM_LOG, f"预约{str(Aid)}的状态异常: {appoint.get_status()}", "web_func.startAppoint", "Error")
+        operation_writer(
+            None, f"预约{str(Aid)}的状态异常: {appoint.get_status()}", "web_func.startAppoint", "Error")
 
 
 def finishAppoint(Aid):  # 结束预约时的定时程序
@@ -88,8 +90,8 @@ def finishAppoint(Aid):  # 结束预约时的定时程序
         Aid = int(Aid)
         appoint: Appoint = Appoint.objects.get(Aid=Aid)
     except:
-        utils.operation_writer(
-            SYSTEM_LOG, f"预约{Aid}意外消失", "web_func.finishAppoint", "Error")
+        operation_writer(
+            None, f"预约{Aid}意外消失", "web_func.finishAppoint", "Error")
         return
 
 
@@ -97,7 +99,7 @@ def finishAppoint(Aid):  # 结束预约时的定时程序
     if appoint.Astatus not in Appoint.Status.Terminals():
         # 希望接受的非终止状态只有进行中，但其他状态也同样判定是否合格
         if appoint.Astatus != Appoint.Status.PROCESSING:
-            utils.operation_writer(appoint.get_major_id(),
+            operation_writer(appoint.get_major_id(),
                 f"预约{Aid}结束时状态为{appoint.get_status()}：照常检查是否合格",
                 "web_func.finishAppoint", "Error")
 
@@ -105,13 +107,13 @@ def finishAppoint(Aid):  # 结束预约时的定时程序
         if datetime.now() - appoint.Room.Rlatest_time > timedelta(minutes=15):
             appoint.Astatus = Appoint.Status.CONFIRMED  # waiting
             appoint.save()
-            utils.operation_writer(appoint.get_major_id(),
+            operation_writer(appoint.get_major_id(),
                 f"预约{Aid}的状态变为{Appoint.Status.CONFIRMED}: 顺利完成",
                 "web_func.finishAppoint", "OK")
         else:
             # 检查人数是否足够
             adjusted_rate = adjust_qualifiy_rate(
-                original_rate=GLOBAL_INFO.camera_qualify_rate,
+                original_rate=CONFIG.camera_qualify_rate,
                 appoint=appoint
             )
             need_num = appoint.Acamera_check_num * adjusted_rate - 0.01
@@ -120,36 +122,36 @@ def finishAppoint(Aid):  # 结束预约时的定时程序
             if check_failed:  # 人数不足
                 # add by lhw ： 迟到的预约通知在这里处理。如果迟到不扣分，删掉这个if的内容即可，让下面那个camera check的if判断是否违规。
                 if appoint.Areason == Appoint.Reason.R_LATE:
-                    status, tempmessage = utils.appoint_violate(
+                    status, tempmessage = appoint_violate(
                         appoint, Appoint.Reason.R_LATE)
                     if not status:
-                        utils.operation_writer(SYSTEM_LOG, 
+                        operation_writer(None, 
                             f"预约{str(Aid)}因迟到而违约时出现异常: {tempmessage}",
                             "web_func.finishAppoint", "Error")
                 else:
-                    status, tempmessage = utils.appoint_violate(
+                    status, tempmessage = appoint_violate(
                         appoint, Appoint.Reason.R_TOOLITTLE)
                     if not status:
-                        utils.operation_writer(SYSTEM_LOG, 
+                        operation_writer(None, 
                             f"预约{str(Aid)}因人数不够而违约时出现异常: {tempmessage}",
                             "web_func.finishAppoint", "Error")
 
             else:   # 通过
                 appoint.Astatus = Appoint.Status.CONFIRMED
                 appoint.save()
-                utils.operation_writer(
-                    SYSTEM_LOG, f"预约{str(Aid)}人数合格，已通过", "web_func.finishAppoint", "OK")
+                operation_writer(
+                    None, f"预约{str(Aid)}人数合格，已通过", "web_func.finishAppoint", "OK")
 
     else:
         if appoint.Astatus == Appoint.Status.CONFIRMED:   # 可能已经判定通过，如公共区域和俄文楼
             rid = appoint.Room.Rid
             if rid[:1] != 'R' and rid not in {'B109A', 'B207'}:
-                utils.operation_writer(
-                    SYSTEM_LOG, f"预约{str(Aid)}提前合格: {rid}房间", "web_func.finishAppoint", "Problem")
+                operation_writer(
+                    None, f"预约{str(Aid)}提前合格: {rid}房间", "web_func.finishAppoint", "Problem")
 
         elif appoint.Astatus != Appoint.Status.CANCELED:    # 状态异常，多半是已经判定过了
-            utils.operation_writer(
-                SYSTEM_LOG, f"预约{str(Aid)}提前终止: {appoint.get_status()}", "web_func.finishAppoint", "Problem")
+            operation_writer(
+                None, f"预约{str(Aid)}提前终止: {appoint.get_status()}", "web_func.finishAppoint", "Problem")
             # appoint.Astatus = Appoint.Status.WAITING
             # appoint.save()
 
@@ -226,9 +228,9 @@ def get_appoints(Pid, kind: str, major=False):
         appoints = appoints.filter(Astart__gte=present_day - timedelta(1),
                                    Astart__lte=present_day + timedelta(1))
     elif kind == 'violate':
-        # 只考虑本学期的内容，因此用GLOBAL_INFO过滤掉以前的预约
+        # 只考虑本学期的内容，因此用CONFIG过滤掉以前的预约
         appoints = appoints.filter(Astatus=Appoint.Status.VIOLATED,
-                                   Astart__gte=GLOBAL_INFO.semester_start)
+                                   Astart__gte=CONFIG.semester_start)
     else:
         return None
 

@@ -1,11 +1,13 @@
-from app.models import *
-from boottest.admin_utils import *
-from generic.http.dependency import HttpRequest
-
 from datetime import datetime
 from django.contrib import admin
-from django.db import transaction
 from django.utils.safestring import mark_safe
+
+from utils.http.dependency import HttpRequest
+from app.models import *
+from utils.admin_utils import *
+from scheduler.scheduler import scheduler
+
+
 
 
 # 通用内联模型
@@ -69,20 +71,19 @@ class NaturalPersonAdmin(admin.ModelAdmin):
         "person_id",
         "name",
         "identity",
-        "first_time_login",
     ]
     search_fields = ("person_id__username", "name")
     readonly_fields = ("stu_id_dbonly",)
     list_filter = (
         "status", "identity",
-        "first_time_login", "wechat_receive_level",
+        "wechat_receive_level",
         "stu_grade", "stu_class",
         )
 
     inlines = [PositionInline, ParticipantInline, CourseParticipantInline]
 
     def view_on_site(self, obj: NaturalPerson):
-        return obj.get_absolute_url(absolute=True)
+        return obj.get_absolute_url()
 
     actions = [
         'set_student', 'set_teacher',
@@ -177,7 +178,7 @@ class OrganizationAdmin(admin.ModelAdmin):
     inlines = [PositionInline]
 
     def view_on_site(self, obj: Organization):
-        return obj.get_absolute_url(absolute=True)
+        return obj.get_absolute_url()
 
     actions = ['all_subscribe', 'all_unsubscribe']
 
@@ -270,14 +271,14 @@ class PositionAdmin(admin.ModelAdmin):
 
     @as_action("延长职务年限", actions, atomic=True)
     def refresh(self, request, queryset):
-        from app.constants import CURRENT_ACADEMIC_YEAR
+        from boot.config import GLOBAL_CONF
         new = []
         for position in queryset:
             position: Position
-            if position.year != CURRENT_ACADEMIC_YEAR and not Position.objects.filter(
+            if position.year != GLOBAL_CONF.acadamic_year and not Position.objects.filter(
                     person=position.person, org=position.org,
-                    year=CURRENT_ACADEMIC_YEAR).exists():
-                position.year = CURRENT_ACADEMIC_YEAR
+                    year=GLOBAL_CONF.acadamic_year).exists():
+                position.year = GLOBAL_CONF.acadamic_year
                 position.pk = None
                 position.save(force_insert=True)
                 new.append([position.pk, position.person.get_display_name()])
@@ -397,7 +398,6 @@ class ActivityAdmin(admin.ModelAdmin):
         from app.activity_utils import changeActivityStatus
         changeActivityStatus(activity.id, Activity.Status.APPLYING, Activity.Status.WAITING)
         try:
-            from app.scheduler_func import scheduler
             scheduler.remove_job(f'activity_{activity.id}_{Activity.Status.WAITING}')
             return self.message_user(request=request,
                                     message='修改成功, 并移除了定时任务!')
@@ -414,7 +414,6 @@ class ActivityAdmin(admin.ModelAdmin):
         from app.activity_utils import changeActivityStatus
         changeActivityStatus(activity.id, Activity.Status.WAITING, Activity.Status.PROGRESSING)
         try:
-            from app.scheduler_func import scheduler
             scheduler.remove_job(f'activity_{activity.id}_{Activity.Status.PROGRESSING}')
             return self.message_user(request=request,
                                     message='修改成功, 并移除了定时任务!')
@@ -430,7 +429,6 @@ class ActivityAdmin(admin.ModelAdmin):
         from app.activity_utils import changeActivityStatus
         changeActivityStatus(activity.id, Activity.Status.PROGRESSING, Activity.Status.END)
         try:
-            from app.scheduler_func import scheduler
             scheduler.remove_job(f'activity_{activity.id}_{Activity.Status.END}')
             return self.message_user(request=request,
                                     message='修改成功, 并移除了定时任务!')
@@ -441,7 +439,6 @@ class ActivityAdmin(admin.ModelAdmin):
     def cancel_scheduler(self, request, queryset):
         success_list = []
         failed_list = []
-        from app.scheduler_func import scheduler
         CANCEL_STATUSES = [
             'remind',
             Activity.Status.END,
@@ -503,7 +500,7 @@ class NotificationAdmin(admin.ModelAdmin):
                                      message='一次只能重发一个通知!',
                                      level='error')
         notification = queryset[0]
-        from app.wechat_send import publish_notification, WechatApp
+        from app.extern.wechat import publish_notification, WechatApp
         if not publish_notification(
             notification,
             app=WechatApp.NORMAL,
@@ -529,7 +526,7 @@ class NotificationAdmin(admin.ModelAdmin):
                                      message='该通知不存在批次标识!',
                                      level='error')
         try:
-            from app.wechat_send import publish_notifications
+            from app.extern.wechat import publish_notifications
         except Exception as e:
             return self.message_user(request=request,
                                      message=f'导入失败, 原因: {e}',
@@ -548,7 +545,7 @@ class NotificationAdmin(admin.ModelAdmin):
     @as_action("重发 所在批次 于 订阅窗口")
     def republish_bulk_at_promote(self, request, queryset):
         try:
-            from app.wechat_send import WechatApp
+            from app.extern.wechat import WechatApp
             app = WechatApp._PROMOTE
         except Exception as e:
             return self.message_user(request=request,
@@ -559,7 +556,7 @@ class NotificationAdmin(admin.ModelAdmin):
     @as_action("重发 所在批次 于 消息窗口")
     def republish_bulk_at_message(self, request, queryset):
         try:
-            from app.wechat_send import WechatApp
+            from app.extern.wechat import WechatApp
             app = WechatApp._MESSAGE
         except Exception as e:
             return self.message_user(request=request,
@@ -758,22 +755,6 @@ class FeedbackAdmin(admin.ModelAdmin):
 class FeedbackTypeAdmin(admin.ModelAdmin):
     list_display = ["name","org_type","org",]
     search_fields =  ("name","org_type","org",)
-
-
-@admin.register(PageLog)
-class PageLogAdmin(admin.ModelAdmin):
-    list_display = ["user", "type", "page", "time"]
-    list_filter = ["type", "time", "platform"]
-    search_fields =  ["user__username", "page"]
-    date_hierarchy = "time"
-
-
-@admin.register(ModuleLog)
-class ModuleLogAdmin(admin.ModelAdmin):
-    list_display = ["user", "type", "page", "module_name", "time"]
-    list_filter = ["type", "module_name", "time", "platform", "page"]
-    search_fields = ["user__username", "page", "module_name"]
-    date_hierarchy = "time"
 
 
 @admin.register(AcademicTag)

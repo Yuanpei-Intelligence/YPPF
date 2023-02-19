@@ -15,7 +15,7 @@ from app.utils import (
     get_classified_user as __get_obj,
     get_user_wallpaper as __get_wallpaper,
 )
-from app.constants import UTYPE_ORG, UTYPE_PER
+from app.config import UTYPE_ORG, UTYPE_PER
 from typing import List
 
 __all__ = [

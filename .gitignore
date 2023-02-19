@@ -41,11 +41,13 @@ Thumbs.db
 .vscode/
 .idea/
 local_json*.json
+config*.json
 weather*.json
 migrations/
 test_data/
 # Media #
 media/
+static/admin
 # comment/
 # course/
 # avatar/
@@ -66,4 +68,3 @@ __pycache__/
 
 # OPS Files *
 *.ini
-*.sh

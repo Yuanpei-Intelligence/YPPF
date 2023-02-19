@@ -6,17 +6,19 @@
 
 依赖于app.API
 '''
-from Appointment import *
-from Appointment.models import User, Participant
-from app import API
 from typing import Union, Callable
+from functools import wraps
+
 from django.http import HttpRequest
 from django.db.models import QuerySet
-
-from functools import wraps
 from django.shortcuts import redirect
 from django.urls import reverse
 from django.contrib.auth.decorators import login_required
+
+from Appointment.models import User, Participant
+from Appointment.config import CONFIG
+import utils.global_messages as my_messages
+from app import API
 
 __all__ = [
     'get_participant',
@@ -29,10 +31,6 @@ __all__ = [
     'identity_check',
 ]
 
-
-# 兼容Django3.0及以下版本
-if not hasattr(QuerySet, '__class_getitem__'):
-    QuerySet.__class_getitem__ = classmethod(lambda cls, *args, **kwargs: cls)
 
 
 def get_participant(user: Union[User, str], update=False, raise_except=False):
@@ -131,7 +129,7 @@ def _create_account(request: HttpRequest, **values) -> Union[Participant, None]:
             except:
                 if values.get('given_name') is None:
                     from Appointment.utils.utils import operation_writer
-                    operation_writer(SYSTEM_LOG,
+                    operation_writer(None,
                                      f'找不到用户{request.user.username}的姓名',
                                      'identity._create_account', 'Error')
 
@@ -194,7 +192,7 @@ def identity_check(
         @wraps(view_function)
         def _wrapped_view(request: HttpRequest, *args, **kwargs):
 
-            _allow_create = allow_create and GLOBAL_INFO.allow_newstu_appoint
+            _allow_create = allow_create and CONFIG.allow_newstu_appoint
             context = {}
 
             if not is_valid(request.user):

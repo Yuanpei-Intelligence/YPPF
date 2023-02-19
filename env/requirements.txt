@@ -1,5 +1,5 @@
 # If new package is introduced, list them in this file. Like
 # - django
 
-# 连接sql server
-pymssql
+# 连接sql server，书房需要，暂时省略加快测试速度
+# pymssql

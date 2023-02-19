@@ -1,15 +1,15 @@
+from random import random
+from typing import Union, List
+from datetime import datetime, timedelta
+
 from app.utils_dependency import *
 from app.models import Notification
-from app.wechat_send import (
+from app.extern.wechat import (
     publish_notification,
     publish_notifications,
     WechatApp,
     WechatMessageLevel,
 )
-
-from random import random
-from typing import Union, List
-from datetime import datetime, timedelta
 
 hasher = MySHA256Hasher("")
 
@@ -235,7 +235,7 @@ def bulk_notification_create(
                 cur_status = '重复处理'
                 if duplicate_behavior in ['report', 'log']:
                     status_code = log.STATE_ERROR if duplicate_behavior == 'report' else log.STATE_WARNING
-                    log.operation_writer(SYSTEM_LOG,
+                    log.operation_writer(CONFIG.system_log,
                                     f'批量创建通知时通知已存在, 识别码为{bulk_identifier}'
                                     + f'：尝试创建{len(receiver_ids)}个，已有{received_ids[:3]}等{len(received_ids)}个，共存在{len(exist_userids)}个',
                                     'notification_utils[bulk_notification_create]', status_code)
@@ -244,7 +244,7 @@ def bulk_notification_create(
                     received_id_set = set(received_ids)
                     receivers = [receiver for receiver in receivers
                                     if receiver.id not in received_id_set]
-                    log.operation_writer(SYSTEM_LOG,
+                    log.operation_writer(CONFIG.system_log,
                                     f'批量创建通知时通知已存在, 识别码为{bulk_identifier}'
                                     + f'：已移除{received_ids[:3]}等{len(received_ids)}个已通知用户，剩余{len(receivers)}个',
                                     'notification_utils[bulk_notification_create]', log.STATE_WARNING)
@@ -305,7 +305,7 @@ def bulk_notification_create(
             success = publish_notifications(filter_kws=filter_kws, **publish_kws)
     except Exception as e:
         success = False
-        log.operation_writer(SYSTEM_LOG,
+        log.operation_writer(CONFIG.system_log,
                         f'在{cur_status}时发生错误：{e}, 识别码为{bulk_identifier}',
                         'notification_utils[bulk_notification_create]', log.STATE_ERROR)
     return success, bulk_identifier

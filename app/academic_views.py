@@ -1,14 +1,11 @@
 from app.views_dependency import *
 from app.models import (
     AcademicTag,
-    AcademicEntry,
-    AcademicTagEntry,
     AcademicTextEntry,
     Chat,
     NaturalPerson,
 )
 from app.academic_utils import (
-    get_search_results,
     chats2Display,
     comments2Display,
     get_js_tag_list,
@@ -20,104 +17,76 @@ from app.academic_utils import (
     audit_academic_map,
 )
 from app.utils import (
-    check_user_type, 
+    check_user_type,
     get_sidebar_and_navbar,
     get_person_or_org,
 )
-from app.constants import UTYPE_PER
+from app.config import UTYPE_PER
 
 __all__ = [
-    'searchAcademic', 
-    'showChats', 
-    'viewChat',
+    'ShowChatsView',
+    'ChatView',
     'modifyAcademic',
     'auditAcademic',
     'applyAuditAcademic',
 ]
 
 
-@login_required(redirect_field_name="origin")
-@utils.check_user_access(redirect_url="/logout/")
-@log.except_captured(EXCEPT_REDIRECT, source='academic_views[searchAcademic]', record_user=True)
-def searchAcademic(request: HttpRequest) -> HttpResponse:
-    """
-    学术地图的搜索结果界面
+class ShowChatsView(ProfileTemplateView):
 
-    :param request: http请求
-    :type request: HttpRequest
-    :return: http响应
-    :rtype: HttpResponse
-    """
-    frontend_dict = {}
-    
-    # POST表明搜索框发起检索
-    if request.method == "POST" and request.POST:  
-        query = request.POST["query"]   # 获取用户输入的关键词
-        frontend_dict["query"] = query  # 前端可借此将字体设置为高亮
-        frontend_dict["academic_map_list"] = get_search_results(query)
-        
-    frontend_dict["bar_display"] = get_sidebar_and_navbar(request.user, "学术地图搜索结果")
-    return render(request, "search_academic.html", frontend_dict)
+    http_method_names = ['get']
+    template_name = 'showChats.html'
+    page_name = '学术地图问答'
 
+    def prepare_get(self):
+        user = self.request.user
+        if not user.is_person():
+            # 后续或许可以开放任意的聊天
+            return self.wrong('请使用个人账号访问问答中心页面!')
+        return self.get
 
-@login_required(redirect_field_name="origin")
-@utils.check_user_access(redirect_url="/logout/")
-@log.except_captured(EXCEPT_REDIRECT, source='academic_views[showChats]', record_user=True)
-def showChats(request: HttpRequest) -> HttpResponse:
-    """
-    （学术地图）问答中心页面
-    展示我发出的和发给我的所有chat；可以关闭进行中的问答
-
-    :param request: 进入问答中心页面的request
-    :type request: HttpRequest
-    :return: 问答中心页面
-    :rtype: HttpResponse
-    """
-    valid, user_type, _ = check_user_type(request.user)
-    if user_type != UTYPE_PER:
-        return redirect(message_url(wrong('请使用个人账号访问问答中心页面!')))
-    
-    frontend_dict = {}
-    frontend_dict["bar_display"] = get_sidebar_and_navbar(request.user, "学术地图问答")
-
-    # 获取我发出的和发给我的所有chat
-    sent_chats = Chat.objects.filter(
-        questioner=request.user).order_by("-modify_time", "-time")
-    received_chats = Chat.objects.filter(
-        respondent=request.user).order_by("-modify_time", "-time")
-    frontend_dict["sent_chats"] = chats2Display(sent_chats, sent=True)
-    frontend_dict["received_chats"] = chats2Display(received_chats, sent=False) # chats2Display返回两个列表，分别是进行中的和其他
-    
-    return render(request, "showChats.html", frontend_dict)
+    def get(self) -> HttpResponse:
+        user = self.request.user
+        sent_chats = Chat.objects.filter(
+            questioner=user).order_by("-modify_time", "-time")
+        received_chats = Chat.objects.filter(
+            respondent=user).order_by("-modify_time", "-time")
+        self.extra_context.update({
+            'sent_chats': chats2Display(sent_chats, sent=True),
+            'received_chats': chats2Display(received_chats, sent=False)
+        })
+        return self.render()
 
 
-@login_required(redirect_field_name="origin")
-@utils.check_user_access(redirect_url="/logout/")
-@log.except_captured(EXCEPT_REDIRECT, source='academic_views[viewChat]', record_user=True)
-def viewChat(request: HttpRequest, chat_id: str) -> HttpResponse:
-    """
-    （学术地图）问答详情页面
+class ChatView(ProfileTemplateView):
 
-    :param request: 进入问答详情页面的request
-    :type request: HttpRequest
-    :param chat_id: 当前问答的id
-    :type chat_id: str
-    :return: 问答详情页面
-    :rtype: HttpResponse
-    """
-    try:
-        chat_id = int(chat_id)
-        chat = Chat.objects.get(id=chat_id)
-    except:
-        return redirect(message_url(wrong('问答不存在!')))
-    if chat.questioner != request.user and chat.respondent != request.user:
-        return redirect(message_url(wrong('您只能访问自己参与的问答!')))
-    
-    frontend_dict = {}
-    frontend_dict["bar_display"] = get_sidebar_and_navbar(request.user, "学术地图问答")
-    comments2Display(chat, frontend_dict, request.user) # 把包括chat中的所有comments在内的前端所需的各种信息填入frontend_dict
-    
-    return render(request, "viewChat.html", frontend_dict)
+    http_method_names = ['get']
+    template_name = 'viewChat.html'
+    page_name = '学术地图问答'
+
+    def setup(self, request: HttpRequest, chat_id: int):
+        self.chat_id = chat_id
+        return super().setup(request, chat_id=chat_id)
+
+    def prepare_get(self):
+        possible_chat = Chat.objects.filter(id=self.chat_id).first()
+        if possible_chat is None:
+            return self.wrong('问答不存在')
+        chat: Chat = possible_chat
+        if self.request.user not in [chat.questioner, chat.respondent]:
+            return self.wrong('您只能访问自己参与的问答!')
+        self.chat = chat
+        return self.get
+
+    def get(self) -> HttpResponse:
+        user = self.request.user
+        comments2Display(self.chat, self.extra_context, user)
+        return self.render()
+
+
+class ModifyAcademicView(SecureTemplateView):
+    """Draft"""
+    template_name = 'modify_academic.html'
 
 
 @login_required(redirect_field_name="origin")
@@ -133,7 +102,7 @@ def modifyAcademic(request: HttpRequest) -> HttpResponse:
     :rtype: HttpResponse
     """
     frontend_dict = {}
-    
+
     _, user_type, _ = check_user_type(request.user)
     if user_type != UTYPE_PER:  # 只允许个人账户修改学术地图
         return redirect(message_url(wrong("只有个人才可以修改自己的学术地图！")))
@@ -148,25 +117,31 @@ def modifyAcademic(request: HttpRequest) -> HttpResponse:
                 return redirect(message_url(context, "/stuinfo/#tab=academic_map"))
         except:
             return redirect(message_url(wrong("修改过程中出现意料之外的错误，请联系工作人员处理！")))
-    
+
     # 不是POST，说明用户希望编辑学术地图，下面准备前端展示量
     # 获取所有专业/项目的列表，左右前端select框的下拉选项
     me = get_person_or_org(request.user, UTYPE_PER)
     frontend_dict.update(
         major_list=get_js_tag_list(me, AcademicTag.Type.MAJOR, selected=False),
         minor_list=get_js_tag_list(me, AcademicTag.Type.MINOR, selected=False),
-        double_degree_list=get_js_tag_list(me, AcademicTag.Type.DOUBLE_DEGREE, selected=False),
-        project_list=get_js_tag_list(me, AcademicTag.Type.PROJECT, selected=False),
+        double_degree_list=get_js_tag_list(
+            me, AcademicTag.Type.DOUBLE_DEGREE, selected=False),
+        project_list=get_js_tag_list(
+            me, AcademicTag.Type.PROJECT, selected=False),
     )
-    
+
     # 获取用户已有的专业/项目的列表，用于select的默认选中项
     frontend_dict.update(
-        selected_major_list=get_js_tag_list(me, AcademicTag.Type.MAJOR, selected=True),
-        selected_minor_list=get_js_tag_list(me, AcademicTag.Type.MINOR, selected=True),
-        selected_double_degree_list=get_js_tag_list(me, AcademicTag.Type.DOUBLE_DEGREE, selected=True),
-        selected_project_list=get_js_tag_list(me, AcademicTag.Type.PROJECT, selected=True),
+        selected_major_list=get_js_tag_list(
+            me, AcademicTag.Type.MAJOR, selected=True),
+        selected_minor_list=get_js_tag_list(
+            me, AcademicTag.Type.MINOR, selected=True),
+        selected_double_degree_list=get_js_tag_list(
+            me, AcademicTag.Type.DOUBLE_DEGREE, selected=True),
+        selected_project_list=get_js_tag_list(
+            me, AcademicTag.Type.PROJECT, selected=True),
     )
-    
+
     # 获取用户已有的TextEntry的contents，用于TextEntry填写栏的前端预填写
     scientific_research_list = get_text_list(
         me, AcademicTextEntry.Type.SCIENTIFIC_RESEARCH
@@ -195,7 +170,7 @@ def modifyAcademic(request: HttpRequest) -> HttpResponse:
         scientific_direction_num=len(scientific_direction_list),
         graduation_num=len(graduation_list),
     )
-    
+
     # 最后获取每一种atype对应的entry的公开状态，如果没有则默认为公开
     major_status = get_tag_status(me, AcademicTag.Type.MAJOR)
     minor_status = get_tag_status(me, AcademicTag.Type.MINOR)
@@ -216,7 +191,7 @@ def modifyAcademic(request: HttpRequest) -> HttpResponse:
     graduation_status = get_text_status(
         me, AcademicTextEntry.Type.GRADUATION
     )
-    
+
     status_dict = dict(
         major_status=major_status,
         minor_status=minor_status,
@@ -229,17 +204,18 @@ def modifyAcademic(request: HttpRequest) -> HttpResponse:
         graduation_status=graduation_status,
     )
     frontend_dict.update(status_dict)
-    
+
     # 获取“全部公开”checkbox的选中状态与公开的type数量/总type数
     frontend_dict["all_status"] = "私密" if "私密" in status_dict.values() else "公开"
     frontend_dict["public_num"] = list(status_dict.values()).count("公开")
     frontend_dict["total_num"] = len(status_dict)
-    
+
     # 获取用户是否允许他人提问
     frontend_dict["accept_chat"] = request.user.accept_chat
-    
+
     # 最后获取侧边栏信息
-    frontend_dict["bar_display"] = get_sidebar_and_navbar(request.user, "修改学术地图")
+    frontend_dict["bar_display"] = get_sidebar_and_navbar(
+        request.user, "修改学术地图")
     frontend_dict["warn_code"] = request.GET.get('warn_code', 0)
     frontend_dict["warn_message"] = request.GET.get('warn_message', "")
     return render(request, "modify_academic.html", frontend_dict)
@@ -263,9 +239,10 @@ def auditAcademic(request: HttpRequest) -> HttpResponse:
         return redirect(message_url(wrong('只有教师账号可进入学术地图审核页面!')))
 
     frontend_dict = {}
-    frontend_dict["bar_display"] = get_sidebar_and_navbar(request.user, "审核学术地图")
+    frontend_dict["bar_display"] = get_sidebar_and_navbar(
+        request.user, "审核学术地图")
     frontend_dict["student_list"] = get_wait_audit_student()
-    
+
     return render(request, "audit_academic.html", frontend_dict)
 
 
@@ -276,10 +253,10 @@ def applyAuditAcademic(request: HttpRequest):
     if not NaturalPerson.objects.get_by_user(request.user).is_teacher():
         return JsonResponse(wrong("只有老师才能执行审核操作！"))
     try:
-        author = NaturalPerson.objects.get(person_id_id=request.POST.get("author_id"))
+        author = NaturalPerson.objects.get(
+            person_id_id=request.POST.get("author_id"))
         # 需要回传作者的person_id.id
         audit_academic_map(author)
         return JsonResponse(succeed("审核成功！"))
     except:
         return JsonResponse(wrong("审核发布时发生未知错误，请联系管理员！"))
-
