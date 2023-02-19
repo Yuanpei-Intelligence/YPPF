@@ -27,6 +27,14 @@ __all__ = [
 ]
 
 
+def app2path(app: str) -> str:
+    '''将应用名转换为路径，可能是绝对路径'''
+    url = CONFIG.app2url.get(app)
+    if url is None:
+        url = CONFIG.app2url.get('default', '')
+    return url
+
+
 def _get_default_level(typename, instance=None) -> int:
     if typename == 'notification':
         if (instance is not None and
@@ -162,7 +170,7 @@ def publish_notification(notification_or_id,
     if not wechat_receivers:    # 没有人接收
         return True
 
-    send_wechat(wechat_receivers, message, app, **kws)
+    send_wechat(wechat_receivers, message, app2path(app), **kws)
     return True
 
 
@@ -304,7 +312,7 @@ def publish_notifications(
     if not wechat_receivers:    # 可能都不接收此等级的消息
         return True
 
-    send_wechat(wechat_receivers, message, app, **kws)
+    send_wechat(wechat_receivers, message, app2path(app), **kws)
     return True
 
 

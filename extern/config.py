@@ -18,10 +18,6 @@ class WechatConfig(Config):
     salt = LazySetting('salt', type=str)
     hasher = LazySetting(salt, MySHA256Hasher, type=MySHA256Hasher)
 
-    # 发送应用设置
-    # 应用名到域名的转换，可以是相对地址，也可以是绝对地址
-    app2url = LazySetting('app2url', default=dict(), type=dict[str, str])
-
     # 接收范围设置
     # 可接收范围，None表示无限制
     receivers = LazySetting('receivers', _to_opt_set_str, None)
@@ -29,8 +25,6 @@ class WechatConfig(Config):
     blacklist = LazySetting('blacklist', _to_set_str, set())
 
     # 发送数量设置
-    # 单次发送的上限，超出时截断
-    send_limit = LazySetting('limit', lambda x: min(1000, x), 500)
     # 批量发送大小
     send_batch = LazySetting('batch', lambda x: min(1000, x), 500)
 

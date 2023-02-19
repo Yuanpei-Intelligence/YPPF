@@ -54,6 +54,9 @@ class Apps:
 
 
 class NotificationConfig(Config):
+    # 发送应用设置
+    # 应用名到域名的转换，可以是相对地址，也可以是绝对地址
+    app2url = LazySetting('app2url', default=dict(), type=dict[str, str])
     # 不要求接收等级的应用
     unblock_apps = LazySetting('unblock_apps', _to_set_str, set())
 
