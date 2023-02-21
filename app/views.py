@@ -11,7 +11,7 @@ from django.core.exceptions import ValidationError
 import requests  # 发送验证码
 
 from utils.views import SecureTemplateView
-from app.course_utils import str_to_time
+from utils.config.cast import str_to_time
 from app.views_dependency import *
 from app.models import (
     Feedback,

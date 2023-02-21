@@ -1,12 +1,9 @@
 from boot.config import Config, LazySetting
+from utils.config.cast import mapping, optional
 from utils.hasher import MySHA256Hasher
 
 
 __all__ = ['wechat_config']
-
-
-_to_set_str = lambda x: set(map(str, x))
-_to_opt_set_str = lambda x: set(map(str, x)) if x is not None else None
 
 
 class WechatConfig(Config):
@@ -20,9 +17,9 @@ class WechatConfig(Config):
 
     # 接收范围设置
     # 可接收范围，None表示无限制
-    receivers = LazySetting('receivers', _to_opt_set_str, None)
+    receivers = LazySetting('receivers', optional(mapping(set, str)), None)
     # 黑名单
-    blacklist = LazySetting('blacklist', _to_set_str, set())
+    blacklist = LazySetting('blacklist', mapping(set, str), set())
 
     # 发送数量设置
     # 批量发送大小

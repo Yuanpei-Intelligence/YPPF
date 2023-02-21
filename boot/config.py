@@ -23,6 +23,8 @@ from typing import (
 
 from django.core.exceptions import ImproperlyConfigured
 
+from utils.config.cast import mapping
+
 
 DEBUG = True  # WARNING! TODO: Set to False in main branch
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -320,11 +322,6 @@ class LazySetting(Generic[T]):
         return current_dir  # type: ignore
 
 
-def _to_list_str(raw: str | list) -> list[str]:
-    if isinstance(raw, str):
-        raw = raw.replace(' ', '').split(',')
-    return list(map(str, raw))
-
 
 class GlobalConfig(Config):
 
@@ -335,6 +332,6 @@ class GlobalConfig(Config):
     hash_salt = LazySetting('hash_salt', default='salt')
     acadamic_year = LazySetting('acadamic_year', type=int)
     semester = LazySetting('semester', type=str)
-    debug_stuids = LazySetting('debug_stuids', _to_list_str, [])
+    debug_stuids = LazySetting('debug_stuids', mapping(list, str), [])
 
 GLOBAL_CONF = GlobalConfig()

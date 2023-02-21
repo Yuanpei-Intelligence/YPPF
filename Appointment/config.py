@@ -2,24 +2,12 @@ from datetime import datetime
 
 from Appointment.apps import AppointmentConfig as APP
 from boot.config import Config, LazySetting
+from utils.config.cast import str_to_time
 from utils.log import get_logger
 
 
 # 暂不允许*导入
 __all__ = []
-
-
-def str_to_time(str_time: str):
-    """字符串转换成时间"""
-    try: return datetime.strptime(str_time,'%Y-%m-%d %H:%M:%S')
-    except: pass
-    try: return datetime.strptime(str_time,'%Y-%m-%d %H:%M')
-    except: pass
-    try: return datetime.strptime(str_time,'%Y-%m-%d %H')
-    except: pass
-    try: return datetime.strptime(str_time,'%Y-%m-%d')
-    except: pass
-    raise ValueError(str_time)
 
 
 class AppointmentConfig(Config):

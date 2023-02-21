@@ -1,4 +1,5 @@
 from boot.config import Config, LazySetting
+from utils.config.cast import mapping
 
 
 __all__ = [
@@ -6,9 +7,6 @@ __all__ = [
     'Levels',
     'Apps',
 ]
-
-
-_to_set_str = lambda x: set(map(str, x))
 
 
 class Levels:
@@ -58,7 +56,7 @@ class NotificationConfig(Config):
     # 应用名到域名的转换，可以是相对地址，也可以是绝对地址
     app2url = LazySetting('app2url', default=dict(), type=dict[str, str])
     # 不要求接收等级的应用
-    unblock_apps = LazySetting('unblock_apps', _to_set_str, set())
+    unblock_apps = LazySetting('unblock_apps', mapping(set, str), set())
 
 
 notification_wechat_config = NotificationConfig('wechat')
