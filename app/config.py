@@ -11,7 +11,7 @@ config.py
 # 本文件是最基础的依赖文件，应当只加入跨架构的必要常量，而不导入其他文件
 # 与使用环境有关的内容应在对应文件中定义
 
-from boot.config import Config, LazySetting, GLOBAL_CONF
+from boot.config import ROOT_CONFIG, GLOBAL_CONF
 from boot import (
     # TODO: Change these
     # settings相关常量
@@ -19,6 +19,7 @@ from boot import (
     # 全局的其它常量
     UNDERGROUND_URL,
 )
+from utils.config import Config, LazySetting
 from utils.global_messages import (
     WRONG, SUCCEED,
 )
@@ -44,9 +45,9 @@ UTYPE_ORG: str = User.Type.ORG.value    # type: ignore
 
 
 class ProfileConfig(Config):
-    def __init__(self, dict_prefix: str = ''):
-        super().__init__(dict_prefix)
-        self.course = CourseConfig()
+    def __init__(self, source, dict_prefix = ''):
+        super().__init__(source, dict_prefix)
+        self.course = CourseConfig(self, 'course')
 
     # email
     email_salt = LazySetting('email/salt', type=str)
@@ -68,9 +69,6 @@ class ProfileConfig(Config):
 
 
 class CourseConfig(Config):
-    def __init__(self, dict_prefix: str = 'course'):
-        super().__init__(dict_prefix)
-
     # str format: %Y-%m-%d %H:%M:%S
     yx_election_start = LazySetting('yx_election_start', type=str)
     yx_election_end = LazySetting('yx_election_end', type=str)
@@ -84,4 +82,4 @@ class CourseConfig(Config):
     audit_teacher = LazySetting('audit_teachers', lambda x: x[0], type=str)
 
 
-CONFIG = ProfileConfig()
+CONFIG = ProfileConfig(ROOT_CONFIG, '')

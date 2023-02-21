@@ -143,9 +143,7 @@ def send_wechat_message(
         message = title + '\n'.join(appoint_info + extra_info)
 
     except Exception as e:
-        operation_writer(None,
-                         f"尝试整合信息时出错，原因：{e}", "extern.send_wechat_message",
-                         "Problem")
+        operation_writer(f"尝试整合信息时出错，原因：{e}", "Problem")
         return
 
     url = url if url is not None else 'admin-index.html'

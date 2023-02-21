@@ -57,7 +57,7 @@
         }
     },
     "course": {
-        "type_name": "课程",
+        "type_name": "书院课程",
         "auditors": ["admin"],
         "valid_hours": 8,
         "yx_election_start": "2022-02-16 10:00:00",

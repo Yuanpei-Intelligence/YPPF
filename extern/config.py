@@ -1,18 +1,13 @@
-from boot.config import Config, LazySetting
+from utils.config import Config, LazySetting
+from utils.config.cast import mapping, optional
 from utils.hasher import MySHA256Hasher
+from boot.config import ROOT_CONFIG
 
 
 __all__ = ['wechat_config']
 
 
-_to_set_str = lambda x: set(map(str, x))
-_to_opt_set_str = lambda x: set(map(str, x)) if x is not None else None
-
-
 class WechatConfig(Config):
-    def __init__(self, dict_prefix: str = 'wechat'):
-        super().__init__(dict_prefix)
-
     # 基础设置
     api_url = LazySetting('api_url', type=str)
     salt = LazySetting('salt', type=str)
@@ -20,9 +15,9 @@ class WechatConfig(Config):
 
     # 接收范围设置
     # 可接收范围，None表示无限制
-    receivers = LazySetting('receivers', _to_opt_set_str, None)
+    receivers = LazySetting('receivers', optional(mapping(set, str)), None)
     # 黑名单
-    blacklist = LazySetting('blacklist', _to_set_str, set())
+    blacklist = LazySetting('blacklist', mapping(set, str), set())
 
     # 发送数量设置
     # 批量发送大小
@@ -39,4 +34,4 @@ class WechatConfig(Config):
     timeout = LazySetting(multithread, lambda x: 15 if x else 5, type=(int, float))
 
 
-wechat_config = WechatConfig()
+wechat_config = WechatConfig(ROOT_CONFIG, 'wechat')

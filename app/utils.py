@@ -437,7 +437,7 @@ def get_captcha(request, username, valid_seconds=None, more_info=False):
         expired = True
     elif valid_seconds is not None:
         try:
-            valid_from = datetime.strptime(valid_from, "%Y-%m-%d %H:%M")
+            valid_from = datetime.strptime(valid_from, "%Y-%m-%d %H:%M:%S")
             assert datetime.utcnow() <= valid_from + timedelta(seconds=valid_seconds)
         except:
             expired = True

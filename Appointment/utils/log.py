@@ -13,6 +13,7 @@ from Appointment.models import (
 )
 from Appointment.config import CONFIG, logger
 from boot.config import BASE_DIR
+from utils.inspect import find_caller
 
 
 __all__ = [
@@ -81,21 +82,22 @@ def _original_writer(user: str | User | Participant, message: str, source: str,
         journal.write(message)
 
 
-def operation_writer(user: str | User | Participant | None, message: str, source: str,
-                     status_code="OK") -> None:
+def operation_writer(message: str,
+                     status_code: str = "OK",
+                     user: str | User | Participant | None = None) -> None:
     """
     通用日志写入程序 错误时发送微信提示
 
-    :param user: Sid，决定文件名, `None`使用新日志方法
-    :type user: str | User | Participant | None
     :param message: 消息
     :type message: str
-    :param source: 来源的函数名，格式通常为 文件名.函数名
-    :type source: str
     :param status_code: 状态, defaults to "OK", 可用值为OK Problem Error
     :type status_code: str, optional
+    :param user: Sid，决定文件名, `None`使用新日志方法
+    :type user: str | User | Participant | None
     """
     lock.acquire()
+    file, caller, _ = find_caller(depth=2)
+    source = f"{file}.{caller}"
     if user is None:
         func_map = dict(
             # 原先的状态名
@@ -107,7 +109,7 @@ def operation_writer(user: str | User | Participant | None, message: str, source
         assert status_code in func_map.keys(), "非法的状态名"
         func_name = func_map[status_code]
         log_func = getattr(logger, func_name, logger.exception)
-        log_func(message, source)
+        log_func(source.ljust(30) + message)
     else:
         _original_writer(user, message, source, status_code)
     # 发送微信

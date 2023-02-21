@@ -294,9 +294,9 @@ class SecureTemplateView(SecureView):
         return self.render()
 
     def error_response(self, exception: Exception) -> HttpResponse:
-        from utils.log import _format_request, get_logger
-        _message = _format_request(self.request)
-        get_logger('err').exception(_message)
+        from utils.log import get_logger
+        logger = get_logger('error')
+        logger.exception(logger.format_request(self.request))
         return super().error_response(exception)
 
 
@@ -320,7 +320,7 @@ class SecureJsonView(SecureView):
             raise TypeError
 
     def error_response(self, exception: Exception) -> HttpResponse:
-        from utils.log import _format_request, get_logger
-        _message = _format_request(self.request)
-        get_logger('err').exception(_message)
+        from utils.log import get_logger
+        logger = get_logger('APIerror')
+        logger.exception(logger.format_request(self.request))
         return super().error_response(exception)

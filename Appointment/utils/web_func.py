@@ -58,23 +58,18 @@ def startAppoint(Aid):  # 开始预约时的定时程序
     try:
         appoint = Appoint.objects.get(Aid=Aid)
     except:
-        operation_writer(
-            None, f"预约{str(Aid)}意外消失", "web_func.startAppoint", "Error")
-        return
+        return operation_writer(f"预约{str(Aid)}意外消失", "Error")
 
     if appoint.Astatus == Appoint.Status.APPOINTED:     # 顺利开始
         appoint.Astatus = Appoint.Status.PROCESSING
         appoint.save()
-        operation_writer(
-            None, f"预约{str(Aid)}成功开始: 状态变为进行中", "web_func.startAppoint")
+        operation_writer(f"预约{str(Aid)}成功开始: 状态变为进行中")
 
     elif appoint.Astatus == Appoint.Status.PROCESSING:  # 已经开始
-        operation_writer(
-            None, f"预约{str(Aid)}在检查时已经开始", "web_func.startAppoint")
+        operation_writer(f"预约{str(Aid)}在检查时已经开始")
 
     elif appoint.Astatus != Appoint.Status.CANCELED:    # 状态异常，本该不存在这个任务
-        operation_writer(
-            None, f"预约{str(Aid)}的状态异常: {appoint.get_status()}", "web_func.startAppoint", "Error")
+        operation_writer(f"预约{str(Aid)}的状态异常: {appoint.get_status()}", "Error")
 
 
 def finishAppoint(Aid):  # 结束预约时的定时程序
@@ -90,26 +85,24 @@ def finishAppoint(Aid):  # 结束预约时的定时程序
         Aid = int(Aid)
         appoint: Appoint = Appoint.objects.get(Aid=Aid)
     except:
-        operation_writer(
-            None, f"预约{Aid}意外消失", "web_func.finishAppoint", "Error")
-        return
+        return operation_writer(f"预约{Aid}意外消失", "Error")
 
 
     # 如果处于非终止状态，只需检查人数判断是否合格
     if appoint.Astatus not in Appoint.Status.Terminals():
         # 希望接受的非终止状态只有进行中，但其他状态也同样判定是否合格
         if appoint.Astatus != Appoint.Status.PROCESSING:
-            operation_writer(appoint.get_major_id(),
+            operation_writer(
                 f"预约{Aid}结束时状态为{appoint.get_status()}：照常检查是否合格",
-                "web_func.finishAppoint", "Error")
+                "Error", user=appoint.get_major_id())
 
         # 摄像头出现超时问题，直接通过
         if datetime.now() - appoint.Room.Rlatest_time > timedelta(minutes=15):
             appoint.Astatus = Appoint.Status.CONFIRMED  # waiting
             appoint.save()
-            operation_writer(appoint.get_major_id(),
+            operation_writer(
                 f"预约{Aid}的状态变为{Appoint.Status.CONFIRMED}: 顺利完成",
-                "web_func.finishAppoint", "OK")
+                user=appoint.get_major_id())
         else:
             # 检查人数是否足够
             adjusted_rate = adjust_qualifiy_rate(
@@ -125,33 +118,26 @@ def finishAppoint(Aid):  # 结束预约时的定时程序
                     status, tempmessage = appoint_violate(
                         appoint, Appoint.Reason.R_LATE)
                     if not status:
-                        operation_writer(None, 
-                            f"预约{str(Aid)}因迟到而违约时出现异常: {tempmessage}",
-                            "web_func.finishAppoint", "Error")
+                        operation_writer(f"预约{Aid}因迟到而违约时出现异常: {tempmessage}", "Error")
                 else:
                     status, tempmessage = appoint_violate(
                         appoint, Appoint.Reason.R_TOOLITTLE)
                     if not status:
-                        operation_writer(None, 
-                            f"预约{str(Aid)}因人数不够而违约时出现异常: {tempmessage}",
-                            "web_func.finishAppoint", "Error")
+                        operation_writer(f"预约{Aid}因人数不够而违约时出现异常: {tempmessage}", "Error")
 
             else:   # 通过
                 appoint.Astatus = Appoint.Status.CONFIRMED
                 appoint.save()
-                operation_writer(
-                    None, f"预约{str(Aid)}人数合格，已通过", "web_func.finishAppoint", "OK")
+                operation_writer(f"预约{Aid}人数合格，已通过")
 
     else:
         if appoint.Astatus == Appoint.Status.CONFIRMED:   # 可能已经判定通过，如公共区域和俄文楼
             rid = appoint.Room.Rid
             if rid[:1] != 'R' and rid not in {'B109A', 'B207'}:
-                operation_writer(
-                    None, f"预约{str(Aid)}提前合格: {rid}房间", "web_func.finishAppoint", "Problem")
+                operation_writer(f"预约{Aid}提前合格: {rid}房间", "Problem")
 
         elif appoint.Astatus != Appoint.Status.CANCELED:    # 状态异常，多半是已经判定过了
-            operation_writer(
-                None, f"预约{str(Aid)}提前终止: {appoint.get_status()}", "web_func.finishAppoint", "Problem")
+            operation_writer(f"预约{str(Aid)}提前终止: {appoint.get_status()}", "Problem")
             # appoint.Astatus = Appoint.Status.WAITING
             # appoint.save()
 

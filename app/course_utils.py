@@ -54,6 +54,7 @@ from django.db import transaction
 from django.db.models import F, Q, Sum, Prefetch
 
 from scheduler.scheduler import scheduler
+from utils.config.cast import str_to_time
 
 __all__ = [
     'check_ac_time_course',
@@ -970,19 +971,6 @@ def change_course_status(cur_status: Course.Status, to_status: Course.Status) ->
                         Position.objects.bulk_create(positions)
         #更新目标状态
         courses.select_for_update().update(status=to_status)
-
-
-def str_to_time(stage: str):
-    """字符串转换成时间"""
-    try: return datetime.strptime(stage,'%Y-%m-%d %H:%M:%S')
-    except: pass
-    try: return datetime.strptime(stage,'%Y-%m-%d %H:%M')
-    except: pass
-    try: return datetime.strptime(stage,'%Y-%m-%d %H')
-    except: pass
-    try: return datetime.strptime(stage,'%Y-%m-%d')
-    except: pass
-    raise ValueError(stage)
 
 
 @log.except_captured(return_value=True,

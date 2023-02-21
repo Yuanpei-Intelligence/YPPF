@@ -6,7 +6,7 @@ import rpyc
 from rpyc.utils.server import ThreadedServer
 
 from utils.log import get_logger
-from scheduler.config import scheduler_conf
+from scheduler.config import scheduler_config as CONFIG
 
 
 TZ = settings.TIME_ZONE
@@ -37,7 +37,7 @@ class Command(BaseCommand):
             'logger': logger,
         }
         server = ThreadedServer(SchedulerService(scheduler),
-                                port=scheduler_conf.rpc_port,
+                                port=CONFIG.rpc_port,
                                 protocol_config=protocol_config)
         try:
             logger.info('Starting scheduler with executor')

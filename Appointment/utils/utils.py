@@ -128,9 +128,8 @@ def set_appoint_reason(input_appoint: Appoint, reason: Appoint.Reason):
             appoint.Areason = reason
             appoint.save()
 
-        operation_writer(appoint.get_major_id(),
-                        f"预约{appoint.Aid}出现违约:{appoint.get_Areason_display()}",
-                        f"utils.set_appoint_reason{os.getpid()}", "OK")
+        operation_writer(f"预约{appoint.Aid}出现违约:{appoint.get_Areason_display()}",
+                         user=appoint.get_major_id())
         return True, ""
     except Exception as e:
         return False, "in utils.set_appoint_reason: " + str(e)
@@ -138,8 +137,8 @@ def set_appoint_reason(input_appoint: Appoint, reason: Appoint.Reason):
 
 def appoint_violate(input_appoint: Appoint, reason: Appoint.Reason):
     '''将一个预约设为违约'''
+    _succeed = True, ""
     try:
-        operation_succeed = False
         with transaction.atomic():
             appoint: Appoint = Appoint.objects.select_related(
                 'major_student').select_for_update().get(Aid=input_appoint.Aid)
@@ -148,44 +147,34 @@ def appoint_violate(input_appoint: Appoint, reason: Appoint.Reason):
             # 按照假设，这里的访问应该是原子的，所以第二个程序到这里会卡住
             really_deduct = False
 
-            if real_credit_point and appoint.Astatus != Appoint.Status.VIOLATED:
-                # 不出现负分；如果已经是violated了就不重复扣分了
-                if User.objects.modify_credit(major_student.Sid, -1, '地下室：违规') < 0:
-                    # 成功扣分
-                    really_deduct = True
-                appoint.Astatus = Appoint.Status.VIOLATED
-                appoint.Areason = reason
-                appoint.save()
-                operation_succeed = True
+            if not (real_credit_point and appoint.Astatus != Appoint.Status.VIOLATED):
+                return _succeed
+            # 不出现负分；如果已经是violated了就不重复扣分了
+            if User.objects.modify_credit(major_student.Sid, -1, '地下室：违规') < 0:
+                # 成功扣分
+                really_deduct = True
+            appoint.Astatus = Appoint.Status.VIOLATED
+            appoint.Areason = reason
+            appoint.save()
 
-                major_sid = major_student.get_id()
-                astart = appoint.Astart
-                aroom = str(appoint.Room)
-                major_name = str(major_student.name)
-                usage = str(appoint.Ausage)
-                announce = str(appoint.Aannouncement)
-                number = str(appoint.Ayp_num + appoint.Anon_yp_num)
-                status = str(appoint.get_status())
-                aid = str(appoint.Aid)
-                areason = str(appoint.get_Areason_display())
-                credit = str(major_student.credit)
-
-        if operation_succeed:  # 本任务执行成功
-            send_wechat_message([major_sid],
-                                astart,
-                                aroom,
-                                "violated",
-                                major_name,
-                                usage,
-                                announce,
-                                number,
-                                status,
-                                )
-            operation_writer(major_sid, f"预约{aid}出现违约:{areason}" +
-                             f";扣除信用分:{really_deduct}" +
-                             f";剩余信用分:{credit}",
-                             f"utils.appoint_violate{os.getpid()}", "OK")
-        return True, ""
+        from Appointment.extern.wechat import send_wechat_message
+        from Appointment.extern.constants import MessageType
+        send_wechat_message(
+            [major_student.get_id()],
+            appoint.Astart,
+            appoint.Room,
+            MessageType.VIOLATED.value,
+            major_student.name,
+            appoint.Ausage,
+            appoint.Aannouncement,
+            appoint.Ayp_num + appoint.Anon_yp_num,
+            appoint.get_status(),
+        )
+        operation_writer(
+            f"预约{appoint.Aid}出现违约:{appoint.get_Areason_display()};" +
+            f"扣除信用分:{really_deduct};剩余信用分:{major_student.credit}",
+            user=major_student.get_id())
+        return _succeed
     except Exception as e:
         return False, "in utils.appoint_violate: " + str(e)
 

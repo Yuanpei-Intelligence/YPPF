@@ -17,14 +17,14 @@ from apscheduler.schedulers.background import BackgroundScheduler
 from django_apscheduler.jobstores import DjangoJobStore
 
 from utils.log import get_logger
-from scheduler.config import scheduler_conf
+from scheduler.config import scheduler_config as CONFIG
 
 
 # Custom handler
 logger = get_logger('apscheduler')
 
 
-class Scheduler():
+class Scheduler:
     """
     A wrapper around `BackgroundScheduler`
 
@@ -45,7 +45,7 @@ class Scheduler():
             if self.remote_scheduler is None and self.remain_times > 0:
                 self.remain_times -= 1
                 self.remote_scheduler = rpyc.connect(
-                    "localhost", scheduler_conf.rpc_port,
+                    "localhost", CONFIG.rpc_port,
                     config={"allow_all_attrs": True}).root
             if self.remote_scheduler is not None:
                 self.remote_scheduler.wakeup()
@@ -98,9 +98,8 @@ def start_scheduler() -> BackgroundScheduler:
     return scheduler
 
 
-if scheduler_conf.use_scheduler:
-    scheduler: BackgroundScheduler = Scheduler(
-        start_scheduler())  # type: ignore
+if CONFIG.use_scheduler:
+    scheduler: BackgroundScheduler = Scheduler(start_scheduler())  # type: ignore
 else:
     # Not start, no real_add_job
     scheduler = BackgroundScheduler(timezone=settings.TIME_ZONE)

@@ -1,17 +1,15 @@
 import os
 
+from utils.config import Config, LazySetting
 from boot import config
-from boot.config import LazySetting
 
 
-class __Config(config.Config):
+# 只有全大写的变量才会被django读取，其它名称放心使用即可
+class SettingConfig(Config):
     """Configurables in django framework w.r.t the project.
 
     For example, login url is not configurable and should be hard-coded.
     """
-    def __init__(self, dict_prefix: str = ''):
-        super().__init__(dict_prefix)
-
     db_host = os.getenv('DB_HOST') or LazySetting('db/HOST', default='localhost')
     db_user = os.getenv('DB_USER') or LazySetting('db/USER', default='root')
     db_password = os.getenv('DB_PASSWORD') or LazySetting('db/PASSWORD', default='secret')
@@ -23,13 +21,13 @@ class __Config(config.Config):
     static_dir = os.getenv('STATIC_DIR') or config.BASE_DIR
 
 
-__configurables = __Config('django')
+_configurables = SettingConfig(config.ROOT_CONFIG, 'django')
 
 
 # SECURITY
 # WARNING: don't run with debug turned on in production!
 DEBUG = config.DEBUG
-SECRET_KEY = __configurables.secret_key
+SECRET_KEY = _configurables.secret_key
 ALLOWED_HOSTS = ["*"]
 AUTH_USER_MODEL = 'generic.User'
 AUTHENTICATION_BACKENDS = [
@@ -105,11 +103,11 @@ DATABASES = {
     # create database db_dev charset='utf8mb4';
     "default": {
         "ENGINE": "django.db.backends.mysql",
-        "NAME": __configurables.db_name,
-        "HOST": __configurables.db_host,
-        "PORT": __configurables.db_port,
-        "USER": __configurables.db_user,
-        "PASSWORD": __configurables.db_password,
+        "NAME": _configurables.db_name,
+        "HOST": _configurables.db_host,
+        "PORT": _configurables.db_port,
+        "USER": _configurables.db_user,
+        "PASSWORD": _configurables.db_password,
         'OPTIONS': {
             'charset': 'utf8mb4',
             #     "init_command": "SET sql_mode='STRICT_TRANS_TABLES'",
@@ -128,11 +126,11 @@ DATABASES = {
 # staticfiles应用默认只搜寻STATICFILES_DIRS和%APP%/static目录，不符合项目需求
 # 由于使用统一static，无需支持collectstatic，废弃STATIC_ROOT
 STATIC_URL = "/static/"
-STATICFILES_DIRS = (os.path.join(__configurables.static_dir, "static/"),)
+STATICFILES_DIRS = (os.path.join(_configurables.static_dir, "static/"),)
 
 # Media files (user uploaded imgs)
 MEDIA_URL = "/media/"
-MEDIA_ROOT = os.path.join(__configurables.static_dir, "media/")
+MEDIA_ROOT = os.path.join(_configurables.static_dir, "media/")
 
 
 # Disordered settings

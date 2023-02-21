@@ -1,7 +1,7 @@
-from datetime import datetime
-
 from Appointment.apps import AppointmentConfig as APP
-from boot.config import Config, LazySetting
+from boot.config import ROOT_CONFIG
+from utils.config import Config, LazySetting
+from utils.config.cast import str_to_time
 from utils.log import get_logger
 
 
@@ -9,24 +9,7 @@ from utils.log import get_logger
 __all__ = []
 
 
-def str_to_time(str_time: str):
-    """字符串转换成时间"""
-    try: return datetime.strptime(str_time,'%Y-%m-%d %H:%M:%S')
-    except: pass
-    try: return datetime.strptime(str_time,'%Y-%m-%d %H:%M')
-    except: pass
-    try: return datetime.strptime(str_time,'%Y-%m-%d %H')
-    except: pass
-    try: return datetime.strptime(str_time,'%Y-%m-%d')
-    except: pass
-    raise ValueError(str_time)
-
-
 class AppointmentConfig(Config):
-
-    def __init__(self, dict_prefix: str = 'underground'):
-        super().__init__(dict_prefix)
-
     # 地下室的访问入口和硬件对接密钥
     this_url = LazySetting('base_url')
     display_token = LazySetting('token/display')
@@ -64,5 +47,5 @@ class AppointmentConfig(Config):
     restrict_cancel_time = False
 
 
-CONFIG = AppointmentConfig()
+CONFIG = AppointmentConfig(ROOT_CONFIG, 'underground')
 logger = get_logger(APP.name)

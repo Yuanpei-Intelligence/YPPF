@@ -22,7 +22,6 @@ from app.course_utils import (
     cal_participate_num,
     check_post_and_modify,
     finish_course,
-    str_to_time,
     download_course_record,
     download_select_info,
 )
@@ -31,6 +30,8 @@ from app.utils import get_person_or_org
 from datetime import datetime
 
 from django.db import transaction
+
+from utils.config.cast import str_to_time
 
 
 __all__ = [
