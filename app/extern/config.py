@@ -1,4 +1,5 @@
-from boot.config import Config, LazySetting
+from extern.config import wechat_config
+from utils.config import Config, LazySetting
 from utils.config.cast import mapping
 
 
@@ -59,4 +60,4 @@ class NotificationConfig(Config):
     unblock_apps = LazySetting('unblock_apps', mapping(set, str), set())
 
 
-notification_wechat_config = NotificationConfig('wechat')
+notification_wechat_config = NotificationConfig(wechat_config)

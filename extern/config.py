@@ -1,15 +1,13 @@
-from boot.config import Config, LazySetting
+from utils.config import Config, LazySetting
 from utils.config.cast import mapping, optional
 from utils.hasher import MySHA256Hasher
+from boot.config import ROOT_CONFIG
 
 
 __all__ = ['wechat_config']
 
 
 class WechatConfig(Config):
-    def __init__(self, dict_prefix: str = 'wechat'):
-        super().__init__(dict_prefix)
-
     # 基础设置
     api_url = LazySetting('api_url', type=str)
     salt = LazySetting('salt', type=str)
@@ -36,4 +34,4 @@ class WechatConfig(Config):
     timeout = LazySetting(multithread, lambda x: 15 if x else 5, type=(int, float))
 
 
-wechat_config = WechatConfig()
+wechat_config = WechatConfig(ROOT_CONFIG, 'wechat')
