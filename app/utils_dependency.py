@@ -46,7 +46,6 @@ from utils.hasher import MySHA256Hasher, base_hasher
 from django.db import transaction
 
 # 一些类型信息提示
-from typing import Union, Iterable
 from django.db.models import QuerySet
 ClassifiedUser = None
 try:
@@ -54,6 +53,7 @@ try:
     # 引发错误，但IDE不会发现，这使得ClassifiedUser被认为是一个有效值
     # 以下代码并不会实际执行，也就并不会实际导入
     from app.models import NaturalPerson, Organization
-    ClassifiedUser = Union[NaturalPerson, Organization]
+    from typing import TypeAlias
+    ClassifiedUser: TypeAlias = NaturalPerson | Organization
 except:
     pass

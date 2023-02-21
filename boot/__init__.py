@@ -15,6 +15,3 @@ pymysql.version_info = (1, 4, 6, "final", 0)
 # 全局设置
 # 加载settings.xxx时会加载文件
 MEDIA_URL: str = settings.MEDIA_URL
-
-# 全局设置变量
-UNDERGROUND_URL: str = ''

@@ -16,8 +16,6 @@ from boot import (
     # TODO: Change these
     # settings相关常量
     MEDIA_URL,
-    # 全局的其它常量
-    UNDERGROUND_URL,
 )
 from utils.config import Config, LazySetting
 from utils.global_messages import (
@@ -28,7 +26,6 @@ from generic.models import User
 __all__ = [
     # 全局设置的常量
     'MEDIA_URL',
-    'UNDERGROUND_URL',
     # 全局消息的常量
     'WRONG', 'SUCCEED',
     # 本应用的常量
