@@ -131,9 +131,7 @@ def _create_account(request: UserRequest, **values) -> Participant | None:
             except:
                 if values.get('given_name') is None:
                     from Appointment.utils.utils import operation_writer
-                    operation_writer(None,
-                                     f'找不到用户{request.user.username}的姓名',
-                                     'identity._create_account', 'Error')
+                    operation_writer(f'找不到用户{request.user.username}的姓名', 'Error')
 
             # 设置首字母
             pinyin_list = pypinyin.pinyin(given_name, style=pypinyin.NORMAL)

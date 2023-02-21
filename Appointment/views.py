@@ -151,8 +151,7 @@ def cameracheck(request):
             room.Rlatest_time = now_time
             room.save()
     except Exception as e:
-        operation_writer(None,
-                         f"更新房间{rid}人数失败: {e}", "views.cameracheck", "Error")
+        operation_writer(f"更新房间{rid}人数失败: {e}", "Error")
         return JsonResponse({'statusInfo': {'message': '更新摄像头人数失败!'}}, status=400)
 
     # 检查时间问题，可能修改预约状态；
@@ -178,12 +177,9 @@ def cameracheck(request):
                     # status, message = appoint_violate(
                     #     appoint, Appoint.Reason.R_LATE)
                     if not status:
-                        operation_writer(None,
-                                         f"预约{appoint.Aid}设置迟到失败: {message}",
-                                         "views.cameracheck", "Error")
+                        operation_writer(f"预约{appoint.Aid}设置迟到失败: {message}", "Error")
     except Exception as e:
-        operation_writer(None,
-                         f"更新预约检查人数失败: {e}", "views.cameracheck", "Error")
+        operation_writer(f"更新预约检查人数失败: {e}", "Error")
         return JsonResponse({'statusInfo': {'message': '更新预约状态失败!'}}, status=400)
     return JsonResponse({}, status=200)
 
@@ -215,14 +211,12 @@ def cancelAppoint(request: HttpRequest):
                     LongTermAppoint.objects.select_for_update().get(pk=pk))
                 count = longterm_appoint.cancel()
         except:
-            operation_writer(None, f"取消长期预约{pk}意外失败",
-                             "scheduler_func.cancelAppoint", "Error")
+            operation_writer(f"取消长期预约{pk}意外失败", "Error")
             wrong(f"未能取消长期预约!", context)
             return redirect(message_url(context, reverse("Appointment:account")))
 
-        operation_writer(longterm_appoint.get_applicant_id(),
-                         f"成功取消长期预约{pk}及{count}条未开始的预约",
-                         "scheduler_func.cancelAppoint")
+        operation_writer(f"成功取消长期预约{pk}及{count}条未开始的预约",
+                         user=longterm_appoint.get_applicant_id())
         appoint_room_name = str(longterm_appoint.appoint.Room)
         succeed(f"成功取消对{appoint_room_name}的长期预约!", context)
         return redirect(message_url(context, reverse("Appointment:account")))
@@ -255,8 +249,7 @@ def cancelAppoint(request: HttpRequest):
         appoint.cancel()
         jobs.cancel_scheduler(appoint.Aid, "Problem")
 
-        operation_writer(appoint.get_major_id(), f"取消了预约{pk}",
-                         "scheduler_func.cancelAppoint", "OK")
+        operation_writer(f"取消了预约{pk}", user=appoint.get_major_id())
         succeed("成功取消对" + appoint_room_name + "的预约!", context)
         jobs.set_cancel_wechat(appoint)
 
@@ -290,9 +283,8 @@ def renewLongtermAppoint(request):
 
     conflict, conflict_appoints = longterm_appoint.renew(times)
     if conflict is None:
-        operation_writer(longterm_appoint.get_applicant_id(),
-                         f"对长期预约{pk}发起{times}周续约",
-                         "scheduler_func.renewLongtermAppoint", "OK")
+        operation_writer(f"对长期预约{pk}发起{times}周续约",
+                         user=longterm_appoint.get_applicant_id())
         succeed(
             f"成功对{longterm_appoint.appoint.Room}的长期预约进行了{times}周的续约!", context)
     else:
@@ -648,18 +640,11 @@ def door_check(request):
     #                 now_appoint.Astatus = Appoint.Status.PROCESSING
     #                 now_appoint.save()
     # except Exception as e:
-    #     operation_writer(None,
-    #                      "可以开门却不开门的致命错误，房间号为" +
+    #     operation_writer("可以开门却不开门的致命错误，房间号为" +
     #                      str(Rid) + ",学生为"+str(Sid)+",错误为:"+str(e),
-    #                      "views.doorcheck",
     #                      "Error")
     #     cardcheckinfo_writer(student, room, False, True)
-    #     return JsonResponse(  # 未知错误
-    #         {
-    #             "code": 1,
-    #             "openDoor": "false",
-    #         },
-    #         status=400)
+    #     return _fail()
 
 
 @csrf_exempt

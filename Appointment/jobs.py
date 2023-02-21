@@ -35,12 +35,11 @@ def clear_appointments():
             write_before_delete(appoints_to_delete)  # 删除之前写在记录内
             appoints_to_delete.delete()
         except Exception as e:
-            operation_writer(None, "定时删除任务出现错误: "+str(e),
-                                   "scheduler_func.clear_appointments", "Problem")
+            operation_writer(f"定时删除任务出现错误: {e}", "Problem")
+            return
 
         # 写入日志
-        operation_writer(None, "定时删除任务成功",
-                               "scheduler_func.clear_appointments")
+        operation_writer("定时删除任务成功")
 
 
 def set_scheduler(appoint):
@@ -51,17 +50,13 @@ def set_scheduler(appoint):
     current_time = datetime.now() + timedelta(seconds=5)
     if finish < start:          # 开始晚于结束，预约不合规
         operation_writer(
-            None,
             f'预约{appoint.Aid}时间为{start}<->{finish}，未能设置定时任务',
-            'scheduler_func.set_scheduler',
             'Error'
         )
         return False            # 直接返回，预约不需要设置
     if finish < current_time:   # 预约已经结束
         operation_writer(
-            None,
             f'预约{appoint.Aid}在设置定时任务时已经结束',
-            'scheduler_func.set_scheduler',
             'Error'
         )
         return False            # 直接返回，预约不需要设置
@@ -148,9 +143,7 @@ def set_start_wechat(appoint: Appoint, students_id=None, notify_create=True):
                 appoint, MessageType.TEMPORARY.value,
                 students_id=students_id, id=f'{appoint.Aid}_new_wechat')
         else:
-            operation_writer(None,
-                                   f'预约{appoint.Aid}尝试发送给微信时已经开始，且并非临时预约',
-                                   'scheduler_func.set_start_wechat', 'Problem')
+            operation_writer(f'预约{appoint.Aid}尝试发送给微信时已经开始，且并非临时预约', 'Problem')
             return False
     elif datetime.now() <= appoint.Astart - timedelta(minutes=15):
         # 距离预约开始还有15分钟以上，提醒有新预约&定时任务
@@ -208,27 +201,16 @@ def cancel_scheduler(appoint_or_aid, status_code=None):  # models.py中使用
             scheduler.remove_job(f'{aid}_start')
         except:
             if status_code:
-                operation_writer(
-                    None,
-                    f"预约{aid}取消时未发现开始计时器",
-                    'scheduler_func.cancel_scheduler',
-                    status_code)
+                operation_writer(f"预约{aid}取消时未发现开始计时器", status_code)
         try:
             scheduler.remove_job(f'{aid}_start_wechat')
         except:
             if status_code:
-                operation_writer(
-                    None,
-                    f"预约{aid}取消时未发现wechat计时器，但也可能本来就没有",
-                    'scheduler_func.cancel_scheduler')  # 微信消息发送大概率不存在
+                operation_writer(f"预约{aid}取消时未发现wechat计时器")  # 微信消息发送大概率不存在
         return True
     except:
         if status_code:
-            operation_writer(
-                None,
-                f"预约{aid}取消时未发现计时器",
-                'scheduler_func.cancel_scheduler',
-                status_code)
+            operation_writer(f"预约{aid}取消时未发现计时器", status_code)
         return False
 
 
@@ -392,12 +374,11 @@ def addAppoint(contents: dict,
             set_scheduler(appoint)
             set_start_wechat(appoint, students_id, notify_create=notify_create)
 
-            operation_writer(major_student.get_id(), "发起预约，预约号" +
-                                   str(appoint.Aid), "scheduler_func.addAppoint", "OK")
+            operation_writer(f"发起预约，预约号{appoint.Aid}", user=major_student.get_id())
 
     except Exception as e:
-        operation_writer(None, "学生" + str(major_student) +
-                               "出现添加预约失败的问题:"+str(e), "scheduler_func.addAppoint", "Error")
+        major_display = major_student.__str__()
+        operation_writer(f"学生{major_display}出现添加预约失败的问题: {e}", "Error")
         return _error('添加预约失败!请与管理员联系!')
 
     return _success(appoint.toJson())
@@ -490,7 +471,6 @@ def add_longterm_appoint(appoint: 'Appoint | int',
 
     # 长线化预约发起成功，准备消息提示即可
     longterm_info = get_longterm_display(times, interval)
-    operation_writer(appoint.get_major_id(),
-                           f"发起{longterm_info}长线化预约, 原预约号为{origin_pk}",
-                           "scheduler_func.add_longterm_appoint", "OK")
+    operation_writer(f"发起{longterm_info}长线化预约, 原预约号为{origin_pk}",
+                     user=appoint.get_major_id())
     return None, new_appoints
