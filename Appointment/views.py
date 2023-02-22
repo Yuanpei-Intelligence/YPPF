@@ -40,7 +40,7 @@ from Appointment.utils.identity import (
     get_participant, identity_check,
 )
 from Appointment import jobs
-from Appointment.config import CONFIG
+from Appointment.config import appointment_config as CONFIG
 
 # 日志操作相关
 # 返回数据的接口规范如下：(相当于不返回，调用函数写入日志)

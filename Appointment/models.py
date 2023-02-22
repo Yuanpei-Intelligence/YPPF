@@ -8,7 +8,7 @@ from django.db.models import Q
 from django.db import transaction
 
 from generic.models import User
-from Appointment.config import CONFIG
+from Appointment.config import appointment_config as CONFIG
 
 __all__ = [
     'User',

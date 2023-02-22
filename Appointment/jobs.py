@@ -6,7 +6,7 @@ from django.http import JsonResponse
 from django.db import transaction
 
 from scheduler.scheduler import scheduler, periodical
-from Appointment.config import CONFIG
+from Appointment.config import appointment_config as CONFIG
 from Appointment.models import Participant, Room, Appoint, LongTermAppoint
 from Appointment.extern.constants import MessageType
 import Appointment.utils.utils as utils

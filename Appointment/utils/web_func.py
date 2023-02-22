@@ -3,7 +3,7 @@ from typing import Dict, Any
 
 from django.db.models import Q, QuerySet
 
-from Appointment.config import CONFIG
+from Appointment.config import appointment_config as CONFIG
 from Appointment.models import Participant, Room, Appoint
 from Appointment.utils.identity import get_participant
 from Appointment.utils.utils import appoint_violate

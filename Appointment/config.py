@@ -47,5 +47,5 @@ class AppointmentConfig(Config):
     restrict_cancel_time = False
 
 
-CONFIG = AppointmentConfig(ROOT_CONFIG, 'underground')
+appointment_config = AppointmentConfig(ROOT_CONFIG, 'underground')
 logger = get_logger(APP.name)

@@ -32,7 +32,6 @@ from utils.log.config import log_config as CONFIG
 
 __all__ = [
     'Logger',
-    'get_logger',
 ]
 
 
@@ -41,7 +40,7 @@ P = ParamSpec('P')
 
 class Logger(logging.Logger):
     @classmethod
-    def getLogger(cls, name: str, setup: bool = True):
+    def getLogger(cls, name: str, setup: bool = True, root: bool = False):
         if name in _loggers:
             return cast(cls, _loggers[name])
         _logger_class  = logging.getLoggerClass()
@@ -49,11 +48,11 @@ class Logger(logging.Logger):
         logger = cast(cls, logging.getLogger(name))
         logging.setLoggerClass(_logger_class)
         if setup:
-            logger.setup(name)
+            logger.setup(name, root=root)
         _loggers[name] = logger
         return logger
 
-    def setup(self, name: str) -> None:
+    def setup(self, name: str, root: bool = False) -> None:
         self.set_debug_mode(settings.DEBUG)
         self.setLevel()
         self.add_default_handler(name)

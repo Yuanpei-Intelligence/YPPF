@@ -16,7 +16,7 @@ from django.urls import reverse
 from django.contrib.auth.decorators import login_required
 
 from Appointment.models import User, Participant
-from Appointment.config import CONFIG
+from Appointment.config import appointment_config as CONFIG
 import utils.global_messages as my_messages
 from utils.http import HttpRequest, UserRequest
 from app import API

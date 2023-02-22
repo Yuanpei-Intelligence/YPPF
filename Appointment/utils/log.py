@@ -11,8 +11,8 @@ from Appointment.models import (
     Appoint,
     CardCheckInfo,
 )
-from Appointment.config import CONFIG, logger
-from boot.config import BASE_DIR
+from Appointment.config import logger
+from boot.config import BASE_DIR, GLOBAL_CONF
 from utils.inspect import find_caller
 
 
@@ -114,22 +114,10 @@ def operation_writer(message: str,
         _original_writer(user, message, source, status_code)
     # 发送微信
     try:
-        if isinstance(user, Participant):
-            user = user.Sid_id
-        if isinstance(user, User):
-            user = user.username
-        timestamp = str(datetime.now())
-        source = str(source).ljust(30)
-        status = status_code.ljust(10)
-        message = f"{timestamp} {source}{status}: {message}\n"
-
-        with open(os.path.join(log_user_path, f"{str(user)}.log"), mode="a") as journal:
-            journal.write(message)
-
-        if status_code == "Error" and CONFIG.debug_stuids:
+        if status_code == "Error" and GLOBAL_CONF.debug_stuids:
             from Appointment.extern.wechat import send_wechat_message
             send_wechat_message(
-                stuid_list=CONFIG.debug_stuids,
+                stuid_list=GLOBAL_CONF.debug_stuids,
                 start_time=datetime.now(),
                 room='地下室后台',
                 message_type="admin",
