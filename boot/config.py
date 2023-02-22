@@ -19,6 +19,16 @@ from typing import Any
 
 from utils.config import Config, LazySetting
 from utils.config.cast import mapping
+from utils.hasher import MySHA256Hasher
+
+
+__all__ = [
+    'absolute_path',
+    'DEBUG',
+    'BASE_DIR',
+    'ROOT_CONFIG',
+    'GLOBAL_CONF',
+]
 
 
 DEBUG = True  # WARNING! TODO: Set to False in main branch
@@ -48,7 +58,8 @@ ROOT_CONFIG = _init_config()
 
 class GlobalConfig(Config):
     base_url = LazySetting('base_url', default='http://localhost:8000')
-    hash_salt = LazySetting('hash_salt', default='salt')
+    salt = LazySetting('hash_salt', default='salt')
+    hasher = LazySetting(salt, MySHA256Hasher, type=MySHA256Hasher)
     acadamic_year = LazySetting('acadamic_year', type=int)
     semester = LazySetting('semester', type=str)
     debug_stuids = LazySetting('debug_stuids', mapping(list, str), [])

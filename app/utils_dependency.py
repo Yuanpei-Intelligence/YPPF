@@ -40,7 +40,7 @@ from utils.global_messages import (
 import utils.global_messages as my_messages
 
 # 内部加密用，不同utils文件不共享，可能被对应的views依赖
-from utils.hasher import MySHA256Hasher, base_hasher
+from utils.hasher import MySHA256Hasher
 
 # 针对模型的工具函数常常需要原子化操作
 from django.db import transaction

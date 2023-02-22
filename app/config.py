@@ -18,6 +18,7 @@ from boot import (
     MEDIA_URL,
 )
 from utils.config import Config, LazySetting
+from utils.hasher import MySHA256Hasher
 from utils.global_messages import (
     WRONG, SUCCEED,
 )
@@ -44,11 +45,8 @@ UTYPE_ORG: str = User.Type.ORG.value    # type: ignore
 class ProfileConfig(Config):
     def __init__(self, source, dict_prefix = ''):
         super().__init__(source, dict_prefix)
+        self.email = EmailConfig(self, 'email')
         self.course = CourseConfig(self, 'course')
-
-    # email
-    email_salt = LazySetting('email/salt', type=str)
-    email_url = LazySetting('email/url', type=str)
 
     # Informations
     max_inform_rank = LazySetting('max_inform_rank', default={}, type=dict[str, int])
@@ -63,6 +61,12 @@ class ProfileConfig(Config):
     yqp_per_feedback = LazySetting('YQPoint/feedback/per_accept', default=10)
     yqp_signin_points = LazySetting(
         'YQPoint/signin_points', default=[1, 2, 2, (2, 4), 2, 2, (5, 7)])
+
+
+class EmailConfig(Config):
+    salt = LazySetting('salt', type=str)
+    hasher = LazySetting(salt, MySHA256Hasher, type=MySHA256Hasher)
+    url = LazySetting('url', type=str)
 
 
 class CourseConfig(Config):

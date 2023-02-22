@@ -21,7 +21,6 @@ from app.models import (
 )
 from app.activity_utils import (
     ActivityException,
-    base_hasher,
     create_activity,
     modify_activity,
     accept_activity,
@@ -450,7 +449,7 @@ def checkinActivity(request: HttpRequest, aid=None):
         varifier = request.GET["auth"]
     except:
         return redirect(message_url(wrong('签到失败!')))
-    if varifier != base_hasher.encode(str(aid)):
+    if varifier != GLOBAL_CONF.hasher.encode(str(aid)):
         return redirect(message_url(wrong('签到失败：活动校验码不匹配')))
 
     # context = wrong('发生意外错误')   # 理应在任何情况都生成context, 如果没有就让包装器捕获吧

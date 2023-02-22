@@ -1,17 +1,18 @@
 import json
 import random
-from datetime import datetime, timedelta
+import requests
 from typing import Optional, cast
+from datetime import datetime, timedelta
 
 from django.contrib import auth
 from django.db import transaction
 from django.db.models import Q, F, Sum, QuerySet
 from django.contrib.auth.password_validation import CommonPasswordValidator, NumericPasswordValidator
 from django.core.exceptions import ValidationError
-import requests  # 发送验证码
 
 from utils.views import SecureTemplateView
 from utils.config.cast import str_to_time
+from utils.hasher import MyMD5Hasher
 from app.views_dependency import *
 from app.models import (
     Feedback,
@@ -57,9 +58,6 @@ from app.academic_utils import (
     get_search_results,
 )
 
-email_url = CONFIG.email_url
-hash_coder = base_hasher
-email_coder = MySHA256Hasher(CONFIG.email_salt)
 
 
 class IndexView(SecureTemplateView):
@@ -198,7 +196,7 @@ def miniLogin(request: HttpRequest):
             auth.login(request, userinfo)
 
             # request.session["username"] = username 已废弃
-            en_pw = hash_coder.encode(username)
+            en_pw = GLOBAL_CONF.hasher.encode(username)
             user_account = NaturalPerson.objects.get(person_id=username)
             return JsonResponse({"Sname": user_account.name, "Succeed": 1}, status=200)
         else:
@@ -1282,7 +1280,7 @@ def _create_freshman_account(sid: str, email: str = None):
                     "1") else "stu.pku.edu.cn"
                 email = f"{sid}@{domain}"
             current = "随机生成密码"
-            password = hash_coder.encode(name + str(random.random()))
+            password = GLOBAL_CONF.hasher.encode(name + str(random.random()))
             current = "创建用户"
             user = User.objects.create_user(
                 username=sid, name=name,
@@ -1375,7 +1373,7 @@ def freshman(request: HttpRequest):
             need_create = True
         elif send_to == "wechat":
             from extern.wechat import send_wechat
-            auth = hash_coder.encode(sid + "_freshman_register")
+            auth = GLOBAL_CONF.hasher.encode(sid + "_freshman_register")
             send_wechat(
                 [sid], "新生注册邀请\n点击按钮即可注册账号",
                 url=f"/freshman/?sid={sid}&auth={auth}"
@@ -1386,7 +1384,7 @@ def freshman(request: HttpRequest):
     if request.GET.get("sid") is not None and request.GET.get("auth") is not None:
         sid = request.GET["sid"]
         auth = request.GET["auth"]
-        if auth != hash_coder.encode(sid + "_freshman_register"):
+        if auth != GLOBAL_CONF.hasher.encode(sid + "_freshman_register"):
             err_msg = "密钥错误，验证失败"
             return render(request, html_path, locals())
         need_create = True
@@ -1759,7 +1757,7 @@ def forgetPassword(request: HttpRequest):
                         "private_level": 0,  # 可选 应在0-2之间
                         # 影响显示的收件人信息
                         # 0级全部显示, 1级只显示第一个收件人, 2级只显示发件人
-                        "secret": email_coder.encode(msg),  # content加密后的密文
+                        "secret": CONFIG.email.hasher.encode(msg),  # content加密后的密文
                     }
                     post_data = json.dumps(post_data)
                     pre, suf = email.rsplit("@", 1)
@@ -1767,7 +1765,7 @@ def forgetPassword(request: HttpRequest):
                         pre = pre[:2] + "*" * len(pre[2:-3]) + pre[-3:]
                     try:
                         response = requests.post(
-                            email_url, post_data, timeout=6)
+                            CONFIG.email.url, post_data, timeout=6)
                         response = response.json()
                         if response["status"] != 200:
                             display = wrong(f"未能向{pre}@{suf}发送邮件")
