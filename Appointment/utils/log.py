@@ -1,5 +1,3 @@
-import os
-import threading
 import logging
 from datetime import datetime, timedelta
 
@@ -94,7 +92,7 @@ class AppointmentLogger(Logger):
     def _log(self, level, msg, args, exc_info = None, extra = None, stack_info = False, stacklevel = 1) -> None:
         file, caller, _ = find_caller(depth=3)
         source = f"{file}.{caller}"
-        msg = source.ljust(30) + str(msg)
+        msg = source.ljust(40) + str(msg)
         super()._log(level, msg, args, exc_info, extra, stack_info, stacklevel)
         if level >= logging.ERROR:
             self._send_wechat(msg, level)
@@ -103,11 +101,12 @@ class AppointmentLogger(Logger):
         if not GLOBAL_CONF.debug_stuids:
             return
         from Appointment.extern.wechat import send_wechat_message
+        from Appointment.extern.constants import MessageType
         send_wechat_message(
             stuid_list=GLOBAL_CONF.debug_stuids,
             start_time=datetime.now(),
             room='地下室后台',
-            message_type="admin",
+            message_type=MessageType.ADMIN.value,
             major_student="地下室系统",
             usage="发生Error错误",
             announcement="",

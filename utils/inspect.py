@@ -18,7 +18,11 @@ def find_caller(depth: int = 1) -> tuple[str, str, int]:
             break
         frame = next_frame
     code = frame.f_code
-    return code.co_filename, code.co_name, frame.f_lineno
+    try:
+        file_name = frame.f_globals['__name__']
+    except:
+        file_name = code.co_filename.replace('\\', '.').removesuffix('.py')
+    return file_name, code.co_name, frame.f_lineno
 
 
 def wrapped_info(source: Callable | type):
