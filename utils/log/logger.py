@@ -52,17 +52,21 @@ class Logger(logging.Logger):
         _loggers[name] = logger
         return logger
 
-    def setup(self, name: str, root: bool = False) -> None:
+    def setup(self, name: str, handle: bool = True, root: bool = False) -> None:
         self.set_debug_mode(settings.DEBUG)
         self.setLevel()
-        self.add_default_handler(name)
+        if handle: self.add_default_handler(name)
 
     def setLevel(self, level: int | str | None = None) -> None:
         super().setLevel(CONFIG.level if level is None else level)
 
     def add_default_handler(self, name: str, *paths: str, format: str = '') -> None:
         base_dir = absolute_path(CONFIG.log_dir)
-        file_path = os.path.join(base_dir, *paths, name + '.log')
+        for path in paths:
+            base_dir = os.path.join(base_dir, path)
+            if not os.path.exists(base_dir):
+                os.mkdir(base_dir)
+        file_path = os.path.join(base_dir, name + '.log')
         handler = logging.FileHandler(file_path, encoding='utf8', mode='a')
         handler.setFormatter(logging.Formatter(format or CONFIG.format))
         self.addHandler(handler)

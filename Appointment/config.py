@@ -1,12 +1,11 @@
-from Appointment.apps import AppointmentConfig as APP
 from boot.config import ROOT_CONFIG
 from utils.config import Config, LazySetting
 from utils.config.cast import str_to_time
-from utils.log import get_logger
 
 
-# 暂不允许*导入
-__all__ = []
+__all__ = [
+    'appointment_config',
+]
 
 
 class AppointmentConfig(Config):
@@ -48,4 +47,3 @@ class AppointmentConfig(Config):
 
 
 appointment_config = AppointmentConfig(ROOT_CONFIG, 'underground')
-logger = get_logger(APP.name)
