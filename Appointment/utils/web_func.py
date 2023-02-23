@@ -7,7 +7,7 @@ from Appointment.config import appointment_config as CONFIG
 from Appointment.models import Participant, Room, Appoint
 from Appointment.utils.identity import get_participant
 from Appointment.utils.utils import appoint_violate
-from Appointment.utils.log import operation_writer
+from Appointment.utils.log import logger, operation_writer
 
 '''
 YWolfeee:
@@ -54,25 +54,26 @@ def adjust_qualifiy_rate(original_rate: float, appoint: Appoint) -> float:
     return rate
 
 
-def startAppoint(Aid):  # 开始预约时的定时程序
+def startAppoint(Aid: int):
+    '''开始预约时的定时程序'''
     try:
         appoint = Appoint.objects.get(Aid=Aid)
     except:
-        return operation_writer(f"预约{str(Aid)}意外消失", "Error")
+        return logger.error(f"预约{Aid}意外消失")
 
     if appoint.Astatus == Appoint.Status.APPOINTED:     # 顺利开始
         appoint.Astatus = Appoint.Status.PROCESSING
         appoint.save()
-        operation_writer(f"预约{str(Aid)}成功开始: 状态变为进行中")
+        logger.info(f"预约{Aid}成功开始: 状态变为进行中")
 
     elif appoint.Astatus == Appoint.Status.PROCESSING:  # 已经开始
-        operation_writer(f"预约{str(Aid)}在检查时已经开始")
+        logger.info(f"预约{Aid}在检查时已经开始")
 
     elif appoint.Astatus != Appoint.Status.CANCELED:    # 状态异常，本该不存在这个任务
-        operation_writer(f"预约{str(Aid)}的状态异常: {appoint.get_status()}", "Error")
+        logger.error(f"预约{Aid}的状态异常: {appoint.get_status()}")
 
 
-def finishAppoint(Aid):  # 结束预约时的定时程序
+def finishAppoint(Aid: int):  # 结束预约时的定时程序
     '''
     结束预约时的定时程序
     - 接受单个预约id
@@ -85,7 +86,7 @@ def finishAppoint(Aid):  # 结束预约时的定时程序
         Aid = int(Aid)
         appoint: Appoint = Appoint.objects.get(Aid=Aid)
     except:
-        return operation_writer(f"预约{Aid}意外消失", "Error")
+        return logger.error(f"预约{Aid}意外消失")
 
 
     # 如果处于非终止状态，只需检查人数判断是否合格
@@ -115,29 +116,27 @@ def finishAppoint(Aid):  # 结束预约时的定时程序
             if check_failed:  # 人数不足
                 # add by lhw ： 迟到的预约通知在这里处理。如果迟到不扣分，删掉这个if的内容即可，让下面那个camera check的if判断是否违规。
                 if appoint.Areason == Appoint.Reason.R_LATE:
-                    status, tempmessage = appoint_violate(
-                        appoint, Appoint.Reason.R_LATE)
+                    status, err_msg = appoint_violate(appoint, Appoint.Reason.R_LATE)
                     if not status:
-                        operation_writer(f"预约{Aid}因迟到而违约时出现异常: {tempmessage}", "Error")
+                        logger.error(f"预约{Aid}因迟到而违约时出现异常: {err_msg}")
                 else:
-                    status, tempmessage = appoint_violate(
-                        appoint, Appoint.Reason.R_TOOLITTLE)
+                    status, err_msg = appoint_violate(appoint, Appoint.Reason.R_TOOLITTLE)
                     if not status:
-                        operation_writer(f"预约{Aid}因人数不够而违约时出现异常: {tempmessage}", "Error")
+                        logger.error(f"预约{Aid}因人数不够而违约时出现异常: {err_msg}")
 
             else:   # 通过
                 appoint.Astatus = Appoint.Status.CONFIRMED
                 appoint.save()
-                operation_writer(f"预约{Aid}人数合格，已通过")
+                logger.info(f"预约{Aid}人数合格，已通过")
 
     else:
         if appoint.Astatus == Appoint.Status.CONFIRMED:   # 可能已经判定通过，如公共区域和俄文楼
             rid = appoint.Room.Rid
             if rid[:1] != 'R' and rid not in {'B109A', 'B207'}:
-                operation_writer(f"预约{Aid}提前合格: {rid}房间", "Problem")
+                logger.warning(f"预约{Aid}提前合格: {rid}房间")
 
         elif appoint.Astatus != Appoint.Status.CANCELED:    # 状态异常，多半是已经判定过了
-            operation_writer(f"预约{str(Aid)}提前终止: {appoint.get_status()}", "Problem")
+            logger.warning(f"预约{Aid}提前终止: {appoint.get_status()}")
             # appoint.Astatus = Appoint.Status.WAITING
             # appoint.save()
 

@@ -1,6 +1,3 @@
-# store some funcitons
-
-import os
 import threading
 from datetime import timedelta
 

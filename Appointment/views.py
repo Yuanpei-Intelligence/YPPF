@@ -33,7 +33,7 @@ from Appointment.utils.utils import (
     check_temp_appoint, set_appoint_reason, get_conflict_appoints,
     to_feedback_url,
 )
-from Appointment.utils.log import operation_writer, cardcheckinfo_writer
+from Appointment.utils.log import operation_writer, cardcheckinfo_writer, logger
 import Appointment.utils.web_func as web_func
 from Appointment.utils.identity import (
     get_avatar, get_members, get_auditor_ids,
@@ -42,18 +42,6 @@ from Appointment.utils.identity import (
 from Appointment import jobs
 from Appointment.config import appointment_config as CONFIG
 
-# 日志操作相关
-# 返回数据的接口规范如下：(相当于不返回，调用函数写入日志)
-# operation_writer(
-#   user,
-#   message,
-#   source,
-#   status_code
-# )
-# user表示这条数据对应的log记录对象，为Sid或者是None
-# message记录这条log的主体信息
-# source表示写入这个log的位置，表示为"文件名.函数名"
-# status_code为"OK","Problem","Error",其中Error表示需要紧急处理的问题，会发送到管理员的手机上
 
 # 一些固定值
 wklist = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
@@ -151,7 +139,7 @@ def cameracheck(request):
             room.Rlatest_time = now_time
             room.save()
     except Exception as e:
-        operation_writer(f"更新房间{rid}人数失败: {e}", "Error")
+        logger.exception(f"更新房间{rid}人数失败: {e}")
         return JsonResponse({'statusInfo': {'message': '更新摄像头人数失败!'}}, status=400)
 
     # 检查时间问题，可能修改预约状态；
@@ -177,9 +165,9 @@ def cameracheck(request):
                     # status, message = appoint_violate(
                     #     appoint, Appoint.Reason.R_LATE)
                     if not status:
-                        operation_writer(f"预约{appoint.Aid}设置迟到失败: {message}", "Error")
+                        logger.error(f"预约{appoint.Aid}设置迟到失败: {message}")
     except Exception as e:
-        operation_writer(f"更新预约检查人数失败: {e}", "Error")
+        logger.exception(f"更新预约检查人数失败: {e}")
         return JsonResponse({'statusInfo': {'message': '更新预约状态失败!'}}, status=400)
     return JsonResponse({}, status=200)
 
@@ -211,7 +199,7 @@ def cancelAppoint(request: HttpRequest):
                     LongTermAppoint.objects.select_for_update().get(pk=pk))
                 count = longterm_appoint.cancel()
         except:
-            operation_writer(f"取消长期预约{pk}意外失败", "Error")
+            logger.exception(f"取消长期预约{pk}意外失败")
             wrong(f"未能取消长期预约!", context)
             return redirect(message_url(context, reverse("Appointment:account")))
 
@@ -247,7 +235,7 @@ def cancelAppoint(request: HttpRequest):
     with transaction.atomic():
         appoint_room_name = appoint.Room.Rtitle
         appoint.cancel()
-        jobs.cancel_scheduler(appoint.Aid, "Problem")
+        jobs.cancel_scheduler(appoint.Aid, record_miss=True)
 
         operation_writer(f"取消了预约{pk}", user=appoint.get_major_id())
         succeed("成功取消对" + appoint_room_name + "的预约!", context)

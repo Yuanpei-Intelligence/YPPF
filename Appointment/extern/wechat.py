@@ -4,7 +4,7 @@ from datetime import datetime
 from Appointment.extern.constants import MessageType
 from extern.wechat import send_wechat
 from Appointment.models import Room, Participant
-from Appointment.utils.utils import operation_writer
+from Appointment.utils.log import logger
 from utils.http.utils import build_full_url
 
 
@@ -143,8 +143,7 @@ def send_wechat_message(
         message = title + '\n'.join(appoint_info + extra_info)
 
     except Exception as e:
-        operation_writer(f"尝试整合信息时出错，原因：{e}", "Problem")
-        return
+        return logger.warning(f"尝试整合信息时出错，原因：{e}")
 
     url = url if url is not None else 'admin-index.html'
     url = build_full_url(url, build_full_url('/underground/'))
