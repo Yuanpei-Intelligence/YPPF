@@ -148,7 +148,7 @@ def create_position():
     person = NaturalPerson.objects.get_by_user(user)
 
     org_user = User.objects.get(username=ORGANIZATION_USER_NAME[0])
-    org = NaturalPerson.objects.get_by_user(org_user)
+    org = Organization.objects.get_by_user(org_user)
     pos = 0
     is_admin = 1
 
