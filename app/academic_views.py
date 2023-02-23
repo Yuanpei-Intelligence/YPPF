@@ -6,7 +6,6 @@ from app.models import (
     NaturalPerson,
 )
 from app.academic_utils import (
-    get_search_results,
     chats2Display,
     comments2Display,
     get_js_tag_list,
@@ -25,7 +24,6 @@ from app.utils import (
 from app.config import UTYPE_PER
 
 __all__ = [
-    'SearchAcademicView',
     'ShowChatsView',
     'ChatView',
     'modifyAcademic',
@@ -34,96 +32,61 @@ __all__ = [
 ]
 
 
-class SearchAcademicView(SecureTemplateView):
+class ShowChatsView(ProfileTemplateView):
 
-    template_name = 'search_academic.html'
-    # perms_required = ['app.view_naturalperson']
-
-    def check_post(self, request: HttpRequest,
-                   *args, **kwargs) -> HttpResponse | None:
-        user: User = request.user  # type: ignore
-        if not user.has_perm('', None):
-            return self.permission_denied(request)
-        if 'query' not in request.POST:
-            wrong('未输入查询关键词', self.extra_context)
-            return self.render(request)
-
-    def post(self, request: HttpRequest):
-        query = request.POST['query']
-
-        self.extra_context.update({
-            'query': query,
-            'academic_map_list': get_search_results(query),
-            'bar_display': get_sidebar_and_navbar(request.user, "学术地图搜索结果")
-        })
-
-
-class ShowChatsView(SecureTemplateView):
-
+    http_method_names = ['get']
     template_name = 'showChats.html'
+    page_name = '学术地图问答'
 
-    def check_get(self, request: HttpRequest) -> HttpResponse | None:
-        # 后续或许可以开放任意的聊天
-        user: User = request.user  # type: ignore
+    def prepare_get(self):
+        user = self.request.user
         if not user.is_person():
-            wrong('请使用个人账号访问问答中心页面!')
-            return self.render(request)
+            # 后续或许可以开放任意的聊天
+            return self.wrong('请使用个人账号访问问答中心页面!')
+        return self.get
 
-    def get(self, request: HttpRequest):
-        user: User = request.user  # type: ignore
+    def get(self) -> HttpResponse:
+        user = self.request.user
         sent_chats = Chat.objects.filter(
             questioner=user).order_by("-modify_time", "-time")
         received_chats = Chat.objects.filter(
             respondent=user).order_by("-modify_time", "-time")
         self.extra_context.update({
-            'bar_display': get_sidebar_and_navbar(request.user, "学术地图问答"),
             'sent_chats': chats2Display(sent_chats, sent=True),
             'received_chats': chats2Display(received_chats, sent=False)
         })
+        return self.render()
 
 
-class ChatView(SecureTemplateView):
-    """Draft
-    """
+class ChatView(ProfileTemplateView):
 
+    http_method_names = ['get']
     template_name = 'viewChat.html'
+    page_name = '学术地图问答'
 
-    def check_get(self, request: HttpRequest, chat_id: str):  # type: ignore
-        possible_chat = Chat.objects.filter(id=int(chat_id)).first()
+    def setup(self, request: HttpRequest, chat_id: int):
+        self.chat_id = chat_id
+        return super().setup(request, chat_id=chat_id)
+
+    def prepare_get(self):
+        possible_chat = Chat.objects.filter(id=self.chat_id).first()
         if possible_chat is None:
-            wrong('问答不存在', self.extra_context)
-            return self.render(request)
+            return self.wrong('问答不存在')
         chat: Chat = possible_chat
-        if request.user not in [chat.questioner, chat.respondent]:
-            wrong('您只能访问自己参与的问答!', self.extra_context)
-            return self.render(request)
+        if self.request.user not in [chat.questioner, chat.respondent]:
+            return self.wrong('您只能访问自己参与的问答!')
         self.chat = chat
+        return self.get
 
-    def get(self, request: HttpRequest, chat_id: str):
-        user: User = request.user  # type: ignore
+    def get(self) -> HttpResponse:
+        user = self.request.user
         comments2Display(self.chat, self.extra_context, user)
-        self.extra_context['bar_display'] = get_sidebar_and_navbar(
-            user, '学术地图问答')
+        return self.render()
 
 
 class ModifyAcademicView(SecureTemplateView):
-
+    """Draft"""
     template_name = 'modify_academic.html'
-
-    def check_get(self, request: HttpRequest, *args, **kwargs) -> HttpResponse | None:
-        return super().check_get(request, *args, **kwargs)
-
-    def check_post(self, request: HttpRequest, *args, **kwargs) -> HttpResponse | None:
-        return super().check_post(request, *args, **kwargs)
-
-    def get(self, request: HttpRequest) -> HttpResponse:
-        pass
-
-    def post(self, request: HttpRequest) -> HttpResponse:
-        pass
-
-    def get_context_data(self, request: HttpRequest, **kwargs) -> dict[str] | None:
-        return super().get_context_data(request, **kwargs)
 
 
 @login_required(redirect_field_name="origin")

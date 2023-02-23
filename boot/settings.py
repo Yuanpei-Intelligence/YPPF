@@ -1,36 +1,33 @@
 import os
 
+from utils.config import Config, LazySetting
 from boot import config
-from boot.config import LazySetting
 
 
-class __Config(config.Config):
+# 只有全大写的变量才会被django读取，其它名称放心使用即可
+class SettingConfig(Config):
     """Configurables in django framework w.r.t the project.
 
     For example, login url is not configurable and should be hard-coded.
     """
-    db_host = os.getenv('DB_HOST') or LazySetting('db/NAME', default='localhost')
+    db_host = os.getenv('DB_HOST') or LazySetting('db/HOST', default='localhost')
     db_user = os.getenv('DB_USER') or LazySetting('db/USER', default='root')
     db_password = os.getenv('DB_PASSWORD') or LazySetting('db/PASSWORD', default='secret')
-    db_name = os.getenv('DB_DATABASE') or LazySetting('db/DATABASE', default='yppf')
+    db_name = os.getenv('DB_DATABASE') or LazySetting('db/NAME', default='yppf')
+    db_port = os.getenv('DB_PORT') or LazySetting('db/PORT', default='3306')
 
-    def __init__(self, dict_prefix: str = ''):
-        super().__init__(dict_prefix)
-        self.secret_key = 'k+8az5x&aq_!*@%v17(ptpeo@gp2$u-uc30^fze3u_+rqhb#@9'
-        if not config.DEBUG:
-            self.secret_key = os.environ['SESSION_KEY']
-        self.db_port = os.getenv('DB_PORT')
-        self.static_dir = os.getenv('DB_PORT') or config.BASE_DIR
-        # self.installed_apps = []      # Maybe useful in the future
+    secret_key = ('k+8az5x&aq_!*@%v17(ptpeo@gp2$u-uc30^fze3u_+rqhb#@9'
+                  if config.DEBUG else os.environ['SESSION_KEY'])
+    static_dir = os.getenv('STATIC_DIR') or config.BASE_DIR
 
 
-__configurables = __Config('django')
+_configurables = SettingConfig(config.ROOT_CONFIG, 'django')
 
 
 # SECURITY
 # WARNING: don't run with debug turned on in production!
 DEBUG = config.DEBUG
-SECRET_KEY = __configurables.secret_key
+SECRET_KEY = _configurables.secret_key
 ALLOWED_HOSTS = ["*"]
 AUTH_USER_MODEL = 'generic.User'
 AUTHENTICATION_BACKENDS = [
@@ -106,11 +103,11 @@ DATABASES = {
     # create database db_dev charset='utf8mb4';
     "default": {
         "ENGINE": "django.db.backends.mysql",
-        "NAME": __configurables.db_name,
-        "HOST": __configurables.db_host,
-        "PORT": __configurables.db_port,
-        "USER": __configurables.db_user,
-        "PASSWORD": __configurables.db_password,
+        "NAME": _configurables.db_name,
+        "HOST": _configurables.db_host,
+        "PORT": _configurables.db_port,
+        "USER": _configurables.db_user,
+        "PASSWORD": _configurables.db_password,
         'OPTIONS': {
             'charset': 'utf8mb4',
             #     "init_command": "SET sql_mode='STRICT_TRANS_TABLES'",
@@ -123,13 +120,17 @@ DATABASES = {
 }
 
 
-# 两类文件的URL配置并不会自动生成，在urls.py查看开发环境如何配置
+# 两类文件URL配置在生产环境失效，在urls.py查看开发环境如何配置
+
 # Static files (CSS, JavaScript, Images)
+# staticfiles应用默认只搜寻STATICFILES_DIRS和%APP%/static目录，不符合项目需求
+# 由于使用统一static，无需支持collectstatic，废弃STATIC_ROOT
 STATIC_URL = "/static/"
-STATIC_ROOT = os.path.join(__configurables.static_dir, "static")
+STATICFILES_DIRS = (os.path.join(_configurables.static_dir, "static/"),)
+
 # Media files (user uploaded imgs)
 MEDIA_URL = "/media/"
-MEDIA_ROOT = os.path.join(__configurables.static_dir, "media/")
+MEDIA_ROOT = os.path.join(_configurables.static_dir, "media/")
 
 
 # Disordered settings

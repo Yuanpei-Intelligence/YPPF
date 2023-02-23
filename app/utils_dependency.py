@@ -40,23 +40,20 @@ from utils.global_messages import (
 import utils.global_messages as my_messages
 
 # 内部加密用，不同utils文件不共享，可能被对应的views依赖
-from utils.hasher import MySHA256Hasher, base_hasher
+from utils.hasher import MySHA256Hasher
 
 # 针对模型的工具函数常常需要原子化操作
 from django.db import transaction
 
 # 一些类型信息提示
-from typing import Union, Iterable
 from django.db.models import QuerySet
-# 兼容Django3.0及以下版本
-if not hasattr(QuerySet, '__class_getitem__'):
-    QuerySet.__class_getitem__ = classmethod(lambda cls, *args, **kwargs: cls)
 ClassifiedUser = None
 try:
     0 / 0
     # 引发错误，但IDE不会发现，这使得ClassifiedUser被认为是一个有效值
     # 以下代码并不会实际执行，也就并不会实际导入
     from app.models import NaturalPerson, Organization
-    ClassifiedUser = Union[NaturalPerson, Organization]
+    from typing import TypeAlias
+    ClassifiedUser: TypeAlias = NaturalPerson | Organization
 except:
     pass

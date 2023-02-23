@@ -1,17 +1,18 @@
 import json
 import random
-from datetime import datetime, timedelta
+import requests
 from typing import Optional, cast
+from datetime import datetime, timedelta
 
 from django.contrib import auth
 from django.db import transaction
 from django.db.models import Q, F, Sum, QuerySet
 from django.contrib.auth.password_validation import CommonPasswordValidator, NumericPasswordValidator
 from django.core.exceptions import ValidationError
-import requests  # 发送验证码
 
 from utils.views import SecureTemplateView
-from app.course_utils import str_to_time
+from utils.config.cast import str_to_time
+from utils.hasher import MyMD5Hasher
 from app.views_dependency import *
 from app.models import (
     Feedback,
@@ -38,9 +39,9 @@ from app.utils import (
     record_modify_with_session,
     update_related_account_in_session,
 )
-from app.wechat_send import (
-    send_wechat_captcha,
-    invite,
+from extern.wechat import (
+    send_verify_code,
+    invite_to_wechat,
 )
 from app.notification_utils import (
     notification_status_change,
@@ -57,9 +58,6 @@ from app.academic_utils import (
     get_search_results,
 )
 
-email_url = CONFIG.email_url
-hash_coder = base_hasher
-email_coder = MySHA256Hasher(CONFIG.email_salt)
 
 
 class IndexView(SecureTemplateView):
@@ -67,12 +65,12 @@ class IndexView(SecureTemplateView):
     login_required = False
     template_name = 'index.html'
 
-    def dispatch_prepare(self, method: str) -> str:
+    def dispatch_prepare(self, method: str) -> SecureView.HandlerType:
         match method:
             case 'get':
-                return (self.user_get.__name__
+                return (self.user_get
                         if self.request.user.is_authenticated else
-                        self.visitor_get.__name__)
+                        self.visitor_get)
             case 'post':
                 return self.prepare_login()
             case _:
@@ -88,8 +86,7 @@ class IndexView(SecureTemplateView):
     def user_get(self) -> HttpResponse:
         self.request = cast(UserRequest, self.request)
         # Special user
-        if not self.request.user.is_valid():
-            return self.wrong(f'当前用户“{self.request.user}”无权访问成长档案')
+        self.valid_user_check(self.request.user)
 
         # Logout
         if self.request.GET.get('is_logout') is not None:
@@ -98,10 +95,18 @@ class IndexView(SecureTemplateView):
 
         return self.redirect('welcome')
 
-    def prepare_login(self) -> str:
+    def valid_user_check(self, user: User):
+        # Special user
+        if not user.is_valid():
+            self.permission_denied(
+                f'“{user.get_full_name()}”不存在成长档案，您可以登录其他账号'
+            )
+
+    def prepare_login(self) -> SecureView.HandlerType:
         assert 'username' in self.request.POST
         assert 'password' in self.request.POST
-        assert not self.request.user.is_authenticated
+        _user = self.request.user
+        assert not _user.is_authenticated or not cast(User, _user).is_valid()
         username = self.request.POST['username']
         # Check weather username exists
         if not User.objects.filter(username=username).exists():
@@ -112,7 +117,7 @@ class IndexView(SecureTemplateView):
             username = org.get_user().username
         self.username = username
         self.password = self.request.POST['password']
-        return self.login.__name__
+        return self.login
 
     def login(self) -> HttpResponse:
         # Try login
@@ -123,8 +128,7 @@ class IndexView(SecureTemplateView):
         # special user
         auth.login(self.request, userinfo)
         self.request = cast(UserRequest, self.request)
-        if not self.request.user.is_valid():
-            return self.wrong(f'当前用户“{self.request.user}”无权访问成长档案')
+        self.valid_user_check(self.request.user)
 
         # first time login
         if self.request.user.first_time_login:
@@ -192,7 +196,7 @@ def miniLogin(request: HttpRequest):
             auth.login(request, userinfo)
 
             # request.session["username"] = username 已废弃
-            en_pw = hash_coder.encode(username)
+            en_pw = GLOBAL_CONF.hasher.encode(username)
             user_account = NaturalPerson.objects.get(person_id=username)
             return JsonResponse({"Sname": user_account.name, "Succeed": 1}, status=200)
         else:
@@ -769,8 +773,8 @@ def orginfo(request: HttpRequest, name=None):
     # org的属性 information 不在此赘述，直接在前端调用
 
     # 给前端传递选课的参数
-    yx_election_start = APP_CONFIG.course.yx_election_start
-    yx_election_end = APP_CONFIG.course.yx_election_end
+    yx_election_start = CONFIG.course.yx_election_start
+    yx_election_end = CONFIG.course.yx_election_end
     if (str_to_time(yx_election_start) <= datetime.now() < (
             str_to_time(yx_election_end))):
         html_display["select_ing"] = True
@@ -1276,7 +1280,7 @@ def _create_freshman_account(sid: str, email: str = None):
                     "1") else "stu.pku.edu.cn"
                 email = f"{sid}@{domain}"
             current = "随机生成密码"
-            password = hash_coder.encode(name + str(random.random()))
+            password = GLOBAL_CONF.hasher.encode(name + str(random.random()))
             current = "创建用户"
             user = User.objects.create_user(
                 username=sid, name=name,
@@ -1368,8 +1372,8 @@ def freshman(request: HttpRequest):
         if check_more:
             need_create = True
         elif send_to == "wechat":
-            from app.wechat_send import send_wechat
-            auth = hash_coder.encode(sid + "_freshman_register")
+            from extern.wechat import send_wechat
+            auth = GLOBAL_CONF.hasher.encode(sid + "_freshman_register")
             send_wechat(
                 [sid], "新生注册邀请\n点击按钮即可注册账号",
                 url=f"/freshman/?sid={sid}&auth={auth}"
@@ -1380,7 +1384,7 @@ def freshman(request: HttpRequest):
     if request.GET.get("sid") is not None and request.GET.get("auth") is not None:
         sid = request.GET["sid"]
         auth = request.GET["auth"]
-        if auth != hash_coder.encode(sid + "_freshman_register"):
+        if auth != GLOBAL_CONF.hasher.encode(sid + "_freshman_register"):
             err_msg = "密钥错误，验证失败"
             return render(request, html_path, locals())
         need_create = True
@@ -1414,7 +1418,7 @@ def freshman(request: HttpRequest):
             return render(request, html_path, locals())
 
         # 发送企业微信邀请，不会报错
-        invite(sid, multithread=True)
+        invite_to_wechat(sid, multithread=True)
 
         err_msg = "您的账号已成功注册，请尽快加入企业微信以接受后续通知！"
         return redirect("/freshman/?success=1&alert=" + err_msg)
@@ -1753,7 +1757,7 @@ def forgetPassword(request: HttpRequest):
                         "private_level": 0,  # 可选 应在0-2之间
                         # 影响显示的收件人信息
                         # 0级全部显示, 1级只显示第一个收件人, 2级只显示发件人
-                        "secret": email_coder.encode(msg),  # content加密后的密文
+                        "secret": CONFIG.email.hasher.encode(msg),  # content加密后的密文
                     }
                     post_data = json.dumps(post_data)
                     pre, suf = email.rsplit("@", 1)
@@ -1761,7 +1765,7 @@ def forgetPassword(request: HttpRequest):
                         pre = pre[:2] + "*" * len(pre[2:-3]) + pre[-3:]
                     try:
                         response = requests.post(
-                            email_url, post_data, timeout=6)
+                            CONFIG.email.url, post_data, timeout=6)
                         response = response.json()
                         if response["status"] != 200:
                             display = wrong(f"未能向{pre}@{suf}发送邮件")
@@ -1780,7 +1784,7 @@ def forgetPassword(request: HttpRequest):
             elif send_captcha in ["wechat"]:    # 发送企业微信消息
                 username = person.person_id.username
                 captcha = utils.get_captcha(request, username)
-                send_wechat_captcha(username, captcha)
+                send_verify_code(username, captcha)
                 display = succeed(f"验证码已发送至企业微信")
                 display["noshow"] = True
                 display["alert"] = True

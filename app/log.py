@@ -6,6 +6,8 @@ from functools import wraps
 
 from django.conf import settings
 
+from boot.config import BASE_DIR
+
 
 __all__ = [
     'STATE_DEBUG', 'STATE_INFO', 'STATE_WARNING', 'STATE_ERROR',
@@ -28,7 +30,7 @@ __log_level = STATE_INFO
 __log_root = "logstore"
 if not os.path.exists(__log_root):
     os.mkdir(__log_root)
-__log_root_path = os.path.join(os.getcwd(), __log_root)
+__log_root_path = os.path.join(BASE_DIR, __log_root)
 if os.getenv("YPPF_ENV") in ["PRODUCT", "TEST"]:
     __log_root_path = os.environ["YPPF_LOG_DIR"]
 __log_user = "user_detail"
@@ -73,7 +75,7 @@ def operation_writer(user: str, message: str, source: str = '', status_code: str
             journal.write(file_message)
 
         if status_code == STATE_ERROR and DEBUG_IDS:
-            from app.wechat_send import send_wechat
+            from extern.wechat import send_wechat
             send_message = f'{source} {timestamp}: {message}'
             if len(send_message) > 400:
                 send_message = '\n'.join([

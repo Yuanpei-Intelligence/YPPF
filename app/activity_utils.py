@@ -38,7 +38,7 @@ from app.notification_utils import(
     bulk_notification_create,
     notification_status_change,
 )
-from app.wechat_send import WechatApp, WechatMessageLevel
+from app.extern.wechat import WechatApp, WechatMessageLevel
 
 
 
@@ -403,7 +403,7 @@ def notifyActivity(aid: int, msg_type: str, msg=""):
 
 
 def get_activity_QRcode(activity):
-    auth_code = base_hasher.encode(str(activity.id))
+    auth_code = GLOBAL_CONF.hasher.encode(str(activity.id))
     url = build_full_url(f'checkinActivity/{activity.id}?auth={auth_code}')
     qr = qrcode.QRCode(
         version=2,

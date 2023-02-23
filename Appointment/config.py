@@ -1,20 +1,14 @@
-from . import str_to_time
-from .apps import AppointmentConfig as APP
-from boot.config import Config, LazySetting
-from app.config import CONFIG as PROFILE_CONFIG
-from utils.log import get_logger
-from utils.hasher import MySHA256Hasher
+from boot.config import ROOT_CONFIG
+from utils.config import Config, LazySetting
+from utils.config.cast import str_to_time
 
 
-# 暂不允许*导入
-__all__ = []
+__all__ = [
+    'appointment_config',
+]
 
 
 class AppointmentConfig(Config):
-
-    def __init__(self, dict_prefix: str = 'underground'):
-        super().__init__(dict_prefix)
-
     # 地下室的访问入口和硬件对接密钥
     this_url = LazySetting('base_url')
     display_token = LazySetting('token/display')
@@ -52,6 +46,4 @@ class AppointmentConfig(Config):
     restrict_cancel_time = False
 
 
-CONFIG = AppointmentConfig()
-hash_wechat_coder = MySHA256Hasher(secret=PROFILE_CONFIG.hash_wechat)
-logger = get_logger(APP.name)
+appointment_config = AppointmentConfig(ROOT_CONFIG, 'underground')

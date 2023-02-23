@@ -34,7 +34,7 @@ from django.http import HttpResponseRedirect
 from django.shortcuts import render
 from django.views.decorators.http import require_POST, require_GET
 
-from utils.hasher import MyMD5Hasher, MySHA256Hasher, base_hasher
+from utils.hasher import MySHA256Hasher
 import utils.global_messages as my_messages
 from utils.global_messages import (
     wrong,
@@ -50,10 +50,30 @@ from app import utils, log
 
 
 # 用于重定向的视图专用常量
-EXCEPT_REDIRECT = HttpResponseRedirect(message_url(wrong('出现意料之外的错误, 请联系管理员!')))
+EXCEPT_REDIRECT = HttpResponseRedirect(
+    message_url(wrong('出现意料之外的错误, 请联系管理员!')))
 
 # Used for exception capture
 from functools import partial as __partial
 from utils.log import err_capture as __err_capture
 err_capture = __partial(__err_capture, ret=EXCEPT_REDIRECT)
 
+
+# 不应导出，接口内部使用
+from django.core.exceptions import ImproperlyConfigured as _ImproperlyConfigured
+class ProfileTemplateView(SecureTemplateView):
+    request: UserRequest
+    PrepareType = SecureView.PrepareType | SecureTemplateView.SkippablePrepareType
+
+    need_prepare: bool = True
+    page_name: str
+
+    def dispatch_prepare(self, method: str):
+        return self.default_prepare(method, prepare_needed=self.need_prepare)
+
+    def render(self, **kwargs):
+        if not hasattr(self, 'page_name'):
+            raise _ImproperlyConfigured('page_name is not defined!')
+        self.extra_context['bar_display'] = utils.get_sidebar_and_navbar(
+            self.request.user, self.page_name)
+        return super().render(**kwargs)

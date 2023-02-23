@@ -18,7 +18,7 @@ from app.notification_utils import (
     bulk_notification_create,
     notification_status_change,
 )
-from app.wechat_send import (
+from app.extern.wechat import (
     publish_notifications,
     WechatApp,
     WechatMessageLevel,

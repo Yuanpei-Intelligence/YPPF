@@ -40,7 +40,7 @@ from app.activity_utils import (
     changeActivityStatus,
     notifyActivity,
 )
-from app.wechat_send import WechatApp, WechatMessageLevel
+from app.extern.wechat import WechatApp, WechatMessageLevel
 
 import openpyxl
 from random import sample
@@ -54,7 +54,7 @@ from django.db import transaction
 from django.db.models import F, Q, Sum, Prefetch
 
 from scheduler.scheduler import scheduler
-
+from utils.config.cast import str_to_time
 
 __all__ = [
     'check_ac_time_course',
@@ -73,6 +73,8 @@ __all__ = [
     'download_course_record',
     'download_select_info',
 ]
+
+APP_CONFIG = CONFIG.course
 
 
 def check_ac_time_course(start_time: datetime, end_time: datetime) -> bool:
@@ -178,8 +180,7 @@ def create_single_course_activity(request: HttpRequest) -> Tuple[int, bool]:
         return old_ones[0].id, False
 
     # 获取默认审核老师
-    examine_teacher = NaturalPerson.objects.get_teacher(
-        APP_CONFIG.course.audit_teacher)
+    examine_teacher = NaturalPerson.objects.get_teacher(APP_CONFIG.audit_teacher)
 
     # 获取活动所属课程的图片，用于viewActivity, examineActivity等页面展示
     image = str(course.photo)
@@ -972,19 +973,6 @@ def change_course_status(cur_status: Course.Status, to_status: Course.Status) ->
         courses.select_for_update().update(status=to_status)
 
 
-def str_to_time(stage: str):
-    """字符串转换成时间"""
-    try: return datetime.strptime(stage,'%Y-%m-%d %H:%M:%S')
-    except: pass
-    try: return datetime.strptime(stage,'%Y-%m-%d %H:%M')
-    except: pass
-    try: return datetime.strptime(stage,'%Y-%m-%d %H')
-    except: pass
-    try: return datetime.strptime(stage,'%Y-%m-%d')
-    except: pass
-    raise ValueError(stage)
-
-
 @log.except_captured(return_value=True,
                      record_args=True,
                      status_code=log.STATE_WARNING,
@@ -995,20 +983,20 @@ def register_selection(wait_for: timedelta=None):
     """
 
     # 预选和补退选的开始和结束时间
-    year = str(CURRENT_ACADEMIC_YEAR)
+    year = str(GLOBAL_CONF.acadamic_year)
     semster = str(Semester.now())
     now = datetime.now()
     if wait_for is not None:
         now = wait_for + wait_for
-    stage1_start = str_to_time(APP_CONFIG.course.yx_election_start)
+    stage1_start = str_to_time(APP_CONFIG.yx_election_start)
     stage1_start = max(stage1_start, now + timedelta(seconds=5))
-    stage1_end = str_to_time(APP_CONFIG.course.yx_election_end)
+    stage1_end = str_to_time(APP_CONFIG.yx_election_end)
     stage1_end = max(stage1_end, now + timedelta(seconds=10))
-    publish_time = str_to_time(APP_CONFIG.course.publish_time)
+    publish_time = str_to_time(APP_CONFIG.publish_time)
     publish_time = max(publish_time, now + timedelta(seconds=15))
-    stage2_start = str_to_time(APP_CONFIG.course.btx_election_start)
+    stage2_start = str_to_time(APP_CONFIG.btx_election_start)
     stage2_start = max(stage2_start, now + timedelta(seconds=20))
-    stage2_end = str_to_time(APP_CONFIG.course.btx_election_end)
+    stage2_end = str_to_time(APP_CONFIG.btx_election_end)
     stage2_end = max(stage2_end, now + timedelta(seconds=25))
     # 定时任务：修改课程状态
     scheduler.add_job(change_course_status, "date", id=f"course_selection_{year+semster}_stage1_start",
@@ -1272,7 +1260,7 @@ def check_post_and_modify(records: list, post_data: dict) -> MESSAGECONTEXT:
             assert float(hours) >= 0, "学时数据为负数，请检查输入数据！"
             record.total_hours = float(hours)
             # 更新是否有效
-            record.invalid = (record.total_hours < CONFIG.least_record_hours)
+            record.invalid = (record.total_hours < APP_CONFIG.least_record_hours)
 
         CourseRecord.objects.bulk_update(records, ["total_hours", "invalid"])
         return succeed("修改学时信息成功！")

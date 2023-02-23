@@ -181,36 +181,6 @@ def get_user_wallpaper(person: ClassifiedUser, user_type):
         return MEDIA_URL + (str(person.wallpaper) or "wallpaper/org_wall_default.jpg")
 
 
-def get_user_left_navbar(person, is_myself, html_display):
-    '''已废弃；获取左边栏的内容，is_myself表示是否是自己, person表示看的人'''
-    # assert (
-    #        "is_myself" in html_display.keys()
-    # ), "Forget to tell the website whether this is the user itself!"
-    raise NotImplementedError(
-        "old left_navbar function has been abandoned, please use `get_sidebar_and_navbar` instead!"
-    )
-    html_display["underground_url"] = UNDERGROUND_URL
-
-    my_org_id_list = Position.objects.activated().filter(person=person).filter(is_admin=True)
-    html_display["my_org_list"] = [w.org for w in my_org_id_list]  # 我管理的小组
-    html_display["my_org_len"] = len(html_display["my_org_list"])
-    return html_display
-
-
-def get_org_left_navbar(org, is_myself, html_display):
-    '''已废弃'''
-    # assert (
-    #        "is_myself" in html_display.keys()
-    # ), "Forget to tell the website whether this is the user itself!"
-    raise NotImplementedError(
-        "old left_navbar function has been abandoned, please use `get_sidebar_and_navbar` instead!"
-    )
-    html_display["switch_org_name"] = org.oname
-    html_display["underground_url"] = UNDERGROUND_URL
-    html_display["org"] = org
-    return html_display
-
-
 # 检验是否要展示如何分享信息的帮助，预期只在stuinfo, orginfo, viewActivity使用
 def get_inform_share(me: ClassifiedUser, is_myself=True):
     alert_message = ""
@@ -262,23 +232,20 @@ def get_sidebar_and_navbar(user, navbar_name="", title_name="", bar_display=None
         bar_display["name"] = me.name
         bar_display["person_type"] = me.identity
 
-        # 个人需要地下室跳转
-        bar_display["underground_url"] = UNDERGROUND_URL
-
         # 个人所管理的小组列表
         # my_org_id_list = Position.objects.activated().filter(person=me, is_admin=True).select_related("org")
         # bar_display["my_org_list"] = [w.org for w in my_org_id_list]  # 我管理的小组
         # bar_display["my_org_len"] = len(bar_display["my_org_list"])
-
 
         bar_display['is_auditor'] = me.is_teacher()
 
     else:
         bar_display["profile_name"] = "小组主页"
         bar_display["profile_url"] = "/orginfo/"
-        bar_display["is_course"] = me.otype.otype_name == COURSE_TYPENAME
-        # 组织也可以预约
-        bar_display["underground_url"] = UNDERGROUND_URL
+        bar_display["is_course"] = me.otype.otype_name == CONFIG.course.type_name
+
+    # 个人组织都可以预约
+    bar_display["underground_url"] = get_underground_site_url()
 
     bar_display["navbar_name"] = navbar_name
     # title_name默认与navbar_name相同
@@ -286,7 +253,7 @@ def get_sidebar_and_navbar(user, navbar_name="", title_name="", bar_display=None
     bar_display["title_name"] = title_name if title_name else navbar_name
 
     if navbar_name == "我的元气值":
-        bar_display["help_message"] = APP_CONFIG.help_message.get(
+        bar_display["help_message"] = CONFIG.help_message.get(
             (navbar_name + user_type.lower()),  ""
         )
         try:
@@ -295,7 +262,7 @@ def get_sidebar_and_navbar(user, navbar_name="", title_name="", bar_display=None
             bar_display["help_paragraphs"] = ""
     elif navbar_name != "":
         try:
-            bar_display["help_message"] = APP_CONFIG.help_message.get(
+            bar_display["help_message"] = CONFIG.help_message.get(
                 navbar_name, ""
             )
         except:
@@ -373,11 +340,17 @@ def get_std_url(arg_url: str, site_url: str, path_dir=None, match_func=None):
     return False, arg_url
 
 
+def get_underground_site_url():
+    from django.urls import reverse
+    return reverse('Appointment:root')
+
+
 def get_std_underground_url(underground_url):
     '''检查是否是地下室网址，返回(is_underground, standard_url)
     - 如果是，规范化网址，否则返回原URL
     - 如果参数为None，返回URL为地下室网址'''
-    site_url = UNDERGROUND_URL
+    # TODO: raise DeprecationWarning('不再兼容多网址')
+    site_url = get_underground_site_url()
     return get_std_url(underground_url, site_url)
     if underground_url is None:
         underground_url = site_url
@@ -437,7 +410,7 @@ def get_captcha(request, username, valid_seconds=None, more_info=False):
         expired = True
     elif valid_seconds is not None:
         try:
-            valid_from = datetime.strptime(valid_from, "%Y-%m-%d %H:%M")
+            valid_from = datetime.strptime(valid_from, "%Y-%m-%d %H:%M:%S")
             assert datetime.utcnow() <= valid_from + timedelta(seconds=valid_seconds)
         except:
             expired = True
@@ -652,7 +625,7 @@ def record_modify_with_session(request, info=""):
         if recorded == True:
             rank = get_modify_rank(request.user)
             is_person = usertype == UTYPE_PER
-            info_rank = APP_CONFIG.max_inform_rank.get(usertype, -1)
+            info_rank = CONFIG.max_inform_rank.get(usertype, -1)
             if rank > -1 and rank <= info_rank:
                 msg = (
                     f'您是第{rank}名修改账号信息的'+

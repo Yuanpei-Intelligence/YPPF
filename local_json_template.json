@@ -1,38 +1,9 @@
 {
-    "hash": {
-        "base_hasher": "debug_hasher_salt",
-        "wechat": "debug_hasher_salt",
-        "email": "debug_hasher_salt"
-    },
-    "database": {
-        "NAME": "$DATABASE$",
-        "USER": "$USER$",
-        "PASSWORD": "$PASSWORD$",
-        "HOST": "$HOST$"
-    },
-    "url": {
-        "base_url": "http://$BASEMENT_IP$/",
-        "login_url": "http://$THIS_IP$",
-        "email_url": "http://$OUTER_IP$/email/",
-        "wechat_url": "http://$OUTER_IP$"
-    },
     "msg": {
         "user_not_exist": "用户不存在，请在元培学院官方公众号后台留言注册！",
         "wrong_pw": "密码错误！请重新输入!"
     },
-    "use_scheduler": false,
     "system_log": "$LOG_NAME$",
-    "debug_stuids": [
-        "$STUID1$",
-        "$STUID2$"
-    ],
-    "underground": {
-        "system_log":   "Appoint_Sys",
-        "token":{
-            "display":      "$DISPLAY_TOKEN$"
-        }
-    },
-    "weather_api_key": "$API_KEY$",
     "default_weather": {
         "modify_time": "2021-09-01 10:59:07.389086",
         "description": "\u6674",
@@ -41,7 +12,6 @@
         "icon": "01d"
     },
     "thresholds": {
-        "注释": "下面这些都可以不写",
         "point": {
             "signin_points": [1, 2, 2, [2, 4], 2, 2, [5, 7]],
             "per_feedback": 10,
@@ -52,39 +22,7 @@
                 "选课",
                 "补选"
             ]
-        },
-        "wechat_send_number": "500",
-        "wechat_send_batch": "500"
-    },
-    "config": {
-        "注释": "每个文件的设置以文件名命名即可",
-        "wechat_send": {
-            "注释": "这些也可以不写，receivers是接收范围，一个str构成的列表或者null",
-            "注释2": "可以防止给开发组之外的同学发，null是不限制接受范围而不是全限制",
-            "receivers": [
-                "$STUID1$",
-                "$STUID2$"
-            ],
-            "blacklist": [],
-            "use_scheduler": true,
-            "unblock_apps": [
-                "promote"
-            ],
-            "app2url": {
-                "default": "",
-                "message": "",
-                "promote": ""
-            }
         }
-    },
-    "max_inform_rank": {
-        "Person": 100,
-        "Organization": 10
-    },
-    "semester_data": {
-        "year": "2021",
-        "semester": "Spring",
-        "semester_start": "2022-02-21 00:00:00"
     },
     "help_message": {
         "个人主页": "将其在微信中打开，就可以在聊天/朋友圈中分享你自己啦",
@@ -99,16 +37,6 @@
         "信息发送中心": "信息发送中心为团体提供了向订阅用户或者团体成员发送消息到通知信箱和企业微信的功能",
         "活动信息": "将其在微信中打开，就可以在聊天/朋友圈中分享你自己啦"
     },
-    "course": {
-        "type_name": "书院课程",
-        "audit_teacher": "YPadmin",
-        "valid_hours": 8,
-        "yx_election_start":"2022-02-16 10:00:00",
-        "yx_election_end":"2022-02-16 12:00:00",
-        "btx_election_start":"2022-02-16 12:00:00",
-        "btx_election_end":"2022-02-16 14:00:00",
-        "publish_time":"2022-02-20 20:35:00"
-    },
     "audit_teacher": {
         "Funds": "YPadmin"
     },
@@ -116,11 +44,5 @@
         "stu_name": "YPadmin"
     },
     "YQPoint_source_oname": "元培元气值中心",
-    "library": {
-        "organization_name": "何善衡图书室",
-        "open_time_start": "07:00",
-        "open_time_end": "23:00"
-    },
-    "rpc_port": 6666,
-    "inner_port": 80    
+    "inner_port": 80
 }

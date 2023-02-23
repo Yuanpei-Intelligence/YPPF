@@ -6,10 +6,12 @@ from django.http import JsonResponse
 from django.db import transaction
 
 from scheduler.scheduler import scheduler, periodical
-from Appointment.config import CONFIG
+from Appointment.config import appointment_config as CONFIG
 from Appointment.models import Participant, Room, Appoint, LongTermAppoint
+from Appointment.extern.constants import MessageType
 import Appointment.utils.utils as utils
 import Appointment.utils.web_func as web_func
+from Appointment.utils.log import write_before_delete, operation_writer
 from Appointment.utils.identity import get_participant, get_auditor_ids
 
 
@@ -30,15 +32,14 @@ def clear_appointments():
             Afinish__lte=datetime.now()-timedelta(days=7))
         try:
             # with transaction.atomic(): //不采取原子操作
-            utils.write_before_delete(appoints_to_delete)  # 删除之前写在记录内
+            write_before_delete(appoints_to_delete)  # 删除之前写在记录内
             appoints_to_delete.delete()
         except Exception as e:
-            utils.operation_writer(None, "定时删除任务出现错误: "+str(e),
-                                   "scheduler_func.clear_appointments", "Problem")
+            operation_writer(f"定时删除任务出现错误: {e}", "Problem")
+            return
 
         # 写入日志
-        utils.operation_writer(None, "定时删除任务成功",
-                               "scheduler_func.clear_appointments")
+        operation_writer("定时删除任务成功")
 
 
 def set_scheduler(appoint):
@@ -48,18 +49,14 @@ def set_scheduler(appoint):
     finish = appoint.Afinish
     current_time = datetime.now() + timedelta(seconds=5)
     if finish < start:          # 开始晚于结束，预约不合规
-        utils.operation_writer(
-            None,
+        operation_writer(
             f'预约{appoint.Aid}时间为{start}<->{finish}，未能设置定时任务',
-            'scheduler_func.set_scheduler',
             'Error'
         )
         return False            # 直接返回，预约不需要设置
     if finish < current_time:   # 预约已经结束
-        utils.operation_writer(
-            None,
+        operation_writer(
             f'预约{appoint.Aid}在设置定时任务时已经结束',
-            'scheduler_func.set_scheduler',
             'Error'
         )
         return False            # 直接返回，预约不需要设置
@@ -128,7 +125,7 @@ def set_appoint_wechat(appoint: Appoint, message_type: str, *extra_infos,
 def set_cancel_wechat(appoint: Appoint, students_id=None):
     '''取消预约的微信提醒，默认发给所有参与者'''
     set_appoint_wechat(
-        appoint, 'cancel',
+        appoint, MessageType.CANCELED.value,
         students_id=students_id, id=f'{appoint.Aid}_cancel_wechat')
 
 
@@ -143,34 +140,32 @@ def set_start_wechat(appoint: Appoint, students_id=None, notify_create=True):
         # add by lhw : 临时预约 #
         if appoint.Atype == Appoint.Type.TEMPORARY:
             set_appoint_wechat(
-                appoint, 'temp_appointment',
+                appoint, MessageType.TEMPORARY.value,
                 students_id=students_id, id=f'{appoint.Aid}_new_wechat')
         else:
-            utils.operation_writer(None,
-                                   f'预约{appoint.Aid}尝试发送给微信时已经开始，且并非临时预约',
-                                   'scheduler_func.set_start_wechat', 'Problem')
+            operation_writer(f'预约{appoint.Aid}尝试发送给微信时已经开始，且并非临时预约', 'Problem')
             return False
     elif datetime.now() <= appoint.Astart - timedelta(minutes=15):
         # 距离预约开始还有15分钟以上，提醒有新预约&定时任务
         if notify_create:  # 只有在非长线预约中才添加这个job
             set_appoint_wechat(
-                appoint, 'new',
+                appoint, MessageType.NEW.value,
                 students_id=students_id, id=f'{appoint.Aid}_new_wechat')
         set_appoint_wechat(
-            appoint, 'start',
+            appoint, MessageType.START.value,
             students_id=students_id, id=f'{appoint.Aid}_start_wechat',
             job_time=appoint.Astart - timedelta(minutes=15))
     else:
         # 距离预约开始还有不到15分钟，提醒有新预约并且马上开始
         set_appoint_wechat(
-            appoint, 'new&start',
+            appoint, MessageType.NEW_AND_START.value,
             students_id=students_id, id=f'{appoint.Aid}_new_wechat')
     return True
 
 
 def set_longterm_wechat(appoint: Appoint, students_id=None, infos='', admin=False):
     '''长期预约的微信提醒，默认发给所有参与者'''
-    set_appoint_wechat(appoint, 'longterm_created', infos,
+    set_appoint_wechat(appoint, MessageType.LONGTERM_CREATED.value, infos,
                        students_id=students_id, admin=admin,
                        id=f'{appoint.Aid}_longterm_created_wechat')
 
@@ -184,7 +179,7 @@ def set_longterm_reviewing_wechat(longterm_appoint: LongTermAppoint, auditor_ids
     infos = []
     if longterm_appoint.applicant != longterm_appoint.appoint.major_student:
         infos.append(f'申请者：{longterm_appoint.applicant.name}')
-    set_appoint_wechat(longterm_appoint.appoint, 'longterm_reviewing', *infos,
+    set_appoint_wechat(longterm_appoint.appoint, MessageType.LONGTERM_REVIEWING.value, *infos,
                        students_id=auditor_ids,
                        url=f'/review?Lid={longterm_appoint.pk}',
                        id=f'{longterm_appoint.pk}_longterm_review_wechat')
@@ -206,27 +201,16 @@ def cancel_scheduler(appoint_or_aid, status_code=None):  # models.py中使用
             scheduler.remove_job(f'{aid}_start')
         except:
             if status_code:
-                utils.operation_writer(
-                    None,
-                    f"预约{aid}取消时未发现开始计时器",
-                    'scheduler_func.cancel_scheduler',
-                    status_code)
+                operation_writer(f"预约{aid}取消时未发现开始计时器", status_code)
         try:
             scheduler.remove_job(f'{aid}_start_wechat')
         except:
             if status_code:
-                utils.operation_writer(
-                    None,
-                    f"预约{aid}取消时未发现wechat计时器，但也可能本来就没有",
-                    'scheduler_func.cancel_scheduler')  # 微信消息发送大概率不存在
+                operation_writer(f"预约{aid}取消时未发现wechat计时器")  # 微信消息发送大概率不存在
         return True
     except:
         if status_code:
-            utils.operation_writer(
-                None,
-                f"预约{aid}取消时未发现计时器",
-                'scheduler_func.cancel_scheduler',
-                status_code)
+            operation_writer(f"预约{aid}取消时未发现计时器", status_code)
         return False
 
 
@@ -390,12 +374,11 @@ def addAppoint(contents: dict,
             set_scheduler(appoint)
             set_start_wechat(appoint, students_id, notify_create=notify_create)
 
-            utils.operation_writer(major_student.get_id(), "发起预约，预约号" +
-                                   str(appoint.Aid), "scheduler_func.addAppoint", "OK")
+            operation_writer(f"发起预约，预约号{appoint.Aid}", user=major_student.get_id())
 
     except Exception as e:
-        utils.operation_writer(None, "学生" + str(major_student) +
-                               "出现添加预约失败的问题:"+str(e), "scheduler_func.addAppoint", "Error")
+        major_display = major_student.__str__()
+        operation_writer(f"学生{major_display}出现添加预约失败的问题: {e}", "Error")
         return _error('添加预约失败!请与管理员联系!')
 
     return _success(appoint.toJson())
@@ -488,7 +471,6 @@ def add_longterm_appoint(appoint: 'Appoint | int',
 
     # 长线化预约发起成功，准备消息提示即可
     longterm_info = get_longterm_display(times, interval)
-    utils.operation_writer(appoint.get_major_id(),
-                           f"发起{longterm_info}长线化预约, 原预约号为{origin_pk}",
-                           "scheduler_func.add_longterm_appoint", "OK")
+    operation_writer(f"发起{longterm_info}长线化预约, 原预约号为{origin_pk}",
+                     user=appoint.get_major_id())
     return None, new_appoints

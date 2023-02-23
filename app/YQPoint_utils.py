@@ -15,7 +15,7 @@ from app.models import (
     Notification,
     Organization,
 )
-from app.wechat_send import WechatApp, WechatMessageLevel
+from app.extern.wechat import WechatApp, WechatMessageLevel
 from app.notification_utils import bulk_notification_create, notification_create
 
 

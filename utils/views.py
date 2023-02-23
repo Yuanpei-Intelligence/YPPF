@@ -2,7 +2,7 @@ from typing import Any, final, overload, TypedDict, NoReturn, Callable
 from abc import ABC, abstractmethod
 
 from django.views.generic import View
-from django.http import HttpResponse, HttpResponseRedirect, JsonResponse
+from django.http import HttpResponse, HttpResponseRedirect, HttpResponseForbidden, JsonResponse
 from django.core.exceptions import ImproperlyConfigured
 from django.template.response import TemplateResponse
 
@@ -22,6 +22,8 @@ class ResponseCreated(Exception):
         self.response = response
 
 
+_HandlerFuncType = Callable[[], HttpResponse]
+_PrepareFuncType = Callable[[], _HandlerFuncType]
 
 class SecureView(View, ABC):
     """
@@ -29,25 +31,33 @@ class SecureView(View, ABC):
 
     主要功能：权限检查、方法分发、参数检查
 
+    约定：
+    - 以_开头的属性为私有属性，默认只对当前类有效，其它属性对子类有效
+    - 以_开头的方法为类方法，子类可用，不建议覆盖
+
     权限检查：
     - 可以根据需要设置perms_required，访问者需要同时具有所有权限才能访问
 
     方法分发 + 参数检查：
     - 通过`get_method_name`获取`dispatch_prepare`参数名，被`method_names`检查
-    - 通过`dispatch_prepare`执行该参数的准备过程，并获取处理函数名
-    - `dispatch_prepare`调用`_PrepareFuncType`类型的函数，返回值为方法名
-    - 检查存在性后，通过处理函数名调用对应方法处理最终请求，实现业务逻辑
+    - 通过`dispatch_prepare`执行该参数的准备过程，并获取处理函数
+    - 准备函数和处理函数分别对应`class.PrepareType`类型和`class.HandlerType`类型
+    - 调用处理函数处理最终请求，实现业务逻辑
     - 子类可以重载`_dispatch`以强化分发的功能，不建议重载`dispatch`
     """
     # 由View.setup自动设置，在子类修改以提供更多类型提示信息
     request: HttpRequest
     _ArgType = tuple
     args: _ArgType
-    _KWType = TypedDict('kwargs', {})
+    # 子类可用KWBaseType重写_KWType以提供更多类型提示信息
+    # 写法：_KWType = SecureView.KWBaseType('_KWType', {参数名: 类型, ...})
+    KWBaseType = TypedDict
+    _KWType = KWBaseType('_KWType', {})
     kwargs: _KWType
-    # TODO: 兼容以下新接口，减少函数参数使用
-    _PrepareFuncType = Callable[[], str]
-    _HandlerFuncType = Callable[[], HttpResponse]
+    # 类的PrepareType和HandlerType定义准备函数和处理函数的类型与必要性
+    # 子类可以重写PrepareType和HandlerType，但必须符合对应类型，其他名称无效
+    PrepareType = _PrepareFuncType
+    HandlerType = _HandlerFuncType
 
     # 视图设置
     login_required: bool = True
@@ -69,11 +79,11 @@ class SecureView(View, ABC):
             return self.response
         except Exception as e:
             err = e
+            try:
+                return self.error_response(err)
+            except ResponseCreated:
+                return self.response
         # 出错时理应不再抛出异常，但以防万一仍然捕获ResponseCreated信号
-        try:
-            return self.error_response(err)
-        except ResponseCreated:
-            return self.response
 
     def _dispatch(self) -> HttpResponse:
         '''
@@ -90,15 +100,10 @@ class SecureView(View, ABC):
         # Decide prepare handler
         method_name = self.get_method_name(self.request)
         if method_name not in self.method_names:
-            return self._check_http_method()
+            return self._check_http_methods()
 
         # Prepare and decide final handler
-        method_name = self.dispatch_prepare(method_name)
-        if not hasattr(self, method_name):
-            raise ImproperlyConfigured(
-                f'SecureView requires an implementation of `{method_name}`'
-            )
-        handler: SecureView._HandlerFuncType = getattr(self, method_name)
+        handler = self.dispatch_prepare(method_name)
 
         # Handle
         return handler()
@@ -122,14 +127,14 @@ class SecureView(View, ABC):
         '''
         检查请求是否合法，拦截攻击行为，只使用request
         '''
-        self._check_http_method(*self.http_method_names)
+        self._check_http_methods(*self.http_method_names)
 
     @overload
-    def _check_http_method(self) -> NoReturn: ...
+    def _check_http_methods(self) -> NoReturn: ...
     @overload
-    def _check_http_method(self, *allowed_methods: str) -> None: ...
+    def _check_http_methods(self, *allowed_methods: str) -> None: ...
     @final
-    def _check_http_method(self, *allowed_methods: str) -> None:
+    def _check_http_methods(self, *allowed_methods: str) -> None:
         '''检查请求类型，准备和处理函数应做好相应的检查'''
         if self.request.method.lower() not in allowed_methods:
             response = self.http_method_not_allowed(self.request, *self.args, **self.kwargs)
@@ -143,7 +148,7 @@ class SecureView(View, ABC):
             return self.response_created(self.redirect_to_login(self.request))
         for perm in self.perms_required:
             if not self.request.user.has_perm(perm):
-                return self.response_created(self.permission_denied(self.request))
+                return self.permission_denied()
 
     @final
     def redirect_to_login(self, request: HttpRequest,
@@ -163,41 +168,74 @@ class SecureView(View, ABC):
         from django.contrib.auth.views import redirect_to_login
         return redirect_to_login(path, login_url, 'origin')
 
-    @abstractmethod
-    def permission_denied(self, request: HttpRequest) -> HttpResponse:
-        raise NotImplementedError
+    def permission_denied(self, user_info: str | None = None) -> NoReturn:
+        '''
+        抛出用户提示，无权访问该页面，必须抛出异常
+
+        :param user_info: 直接呈现给用户的附加信息, defaults to None
+        :type user_info: str | None, optional
+        '''
+        user_message = f'无权访问该页面'
+        if user_info is not None:
+            user_message += f'：{user_info}'
+        return self.response_created(self.http_forbidden(user_message))
+
+    def http_forbidden(self, user_message: str = '') -> HttpResponse:
+        return HttpResponseForbidden(user_message)
 
     def get_method_name(self, request: HttpRequest) -> str:
         return request.method.lower()
 
-    def dispatch_prepare(self, method: str) -> str:
+    def dispatch_prepare(self, method: str) -> _HandlerFuncType:
         '''
-        每个方法执行前的准备工作，返回重定向的方法名
-        
-        被信任的方法，返回的函数名可以不在method_names中
-        子类建议使用match语句
-        不存在对应方法时，调用`default_prepare`
-        '''
-        default_name = f'check_{method}'
-        if not hasattr(self, default_name):
-            return self.default_prepare(method, default_name)
-        prepare_func: SecureView._PrepareFuncType = getattr(self, default_name)
-        # prepare_func返回str，重设method
-        method = prepare_func()
-        return method
+        每个方法执行前的准备工作，返回重定向的方法
 
-    def default_prepare(self, method: str, default_name: str | None = None) -> str:
-        '''不存在准备方法时，提供默认准备函数，SecureView抛出异常'''
+        准备方法的约定以当前类PrepareType为准，PrepareType包含None的可只实现处理方法
+        SecureView要求必须实现准备方法，子类如果准备方法命名错误未调用则无法提供错误信息
+        子类建议使用match语句，不存在时可调用`default_prepare`
+        '''
+        return self.default_prepare(method, prepare_needed=True)
+
+    @final
+    def default_prepare(self, method: str, default_name: str | None = None, 
+                        prepare_needed: bool = True) -> _HandlerFuncType:
+        '''
+        默认准备函数，查找并调用特定方法的默认准备函数，不存在时尝试返回处理函数
+
+        :param method: 处理函数名
+        :type method: str
+        :param default_name: 方法准备函数名，默认是prepare_{方法}, defaults to None
+        :type default_name: str | None, optional
+        :param prepare_needed: 是否必须执行准备函数, defaults to True
+        :type prepare_needed: bool, optional
+        :raises ImproperlyConfigured: 必须执行准备函数时，准备函数不存在
+        :raises ImproperlyConfigured: 允许且准备函数不存在时，处理函数不存在
+        :return: 处理函数
+        :rtype: _HandlerFuncType
+        '''
         if default_name is None:
-            default_name = f'check_{method}'
+            default_name = f'prepare_{method}'
+        if getattr(self, default_name, None) is not None:
+            prepare_func: _PrepareFuncType = getattr(self, default_name)
+            handler_func = prepare_func()
+            if handler_func is not None:
+                return handler_func
+            if prepare_needed:
+                raise ImproperlyConfigured(
+                    f'SecureView requires an implementation of `{default_name}`'
+                )
+        if getattr(self, method, None) is not None:
+            handler_func: _HandlerFuncType = getattr(self, method)
+            return handler_func
         raise ImproperlyConfigured(
-            f'SecureView requires an implementation of `{default_name}`'
+            f'SecureView requires an implementation of `{method}`'
         )
 
     def error_response(self, exception: Exception) -> HttpResponse:
-        '''错误处理，子类可重写，不应产生异常'''
-        # TODO: 错误处理和http_method_not_allowed不同
-        return self._check_http_method()
+        '''错误处理，子类可重写，生产环境不应产生异常'''
+        from boot.config import DEBUG
+        if DEBUG: raise
+        return self.http_forbidden('出现错误，请联系管理员')
 
     def redirect(self, to: str, *args, permanent=False, **kwargs):
         '''重定向，由于类的重定向对象无需提前确定，使用redirect动态加载即可'''
@@ -214,6 +252,10 @@ class SecureTemplateView(SecureView):
     - get_context_data()用于获取模板所需的context
     - extra_context作为get_context_data()的补充，在处理请求的过程中可以随时向其中添加内容
     """
+    # 模板视图允许子类准备函数不存在或不返回
+    # 允许时应该声明PrepareType = SecureTemplateView.SkippablePrepareType
+    SkippablePrepareType = Callable[[], _HandlerFuncType | None] | None
+
     template_name: str
     extra_context: dict[str, Any]
     response_class = TemplateResponse
@@ -222,12 +264,11 @@ class SecureTemplateView(SecureView):
         super().setup(request, *args, **kwargs)
         self.extra_context = {}
 
-    def permission_denied(self, request: HttpRequest,
-                          context: dict[str, Any] | None = None) -> HttpResponse:
-        wrong(f'当前用户{request.user}无权访问该页面')
-        if context is not None:
-            self.extra_context.update(context)
-        return self.render()
+    def permission_denied(self, user_info: str | None = None) -> NoReturn:
+        user_message = f'当前用户无权访问该页面'
+        if user_info is not None:
+            user_message += f'：{user_info}'
+        return self.response_created(self.wrong(user_message))
 
     def get_template_names(self):
         if getattr(self, 'template_name', None) is None:
@@ -238,9 +279,7 @@ class SecureTemplateView(SecureView):
         return [self.template_name]
 
     def get_context_data(self, **kwargs) -> dict[str, Any]:
-        if self.extra_context is not None:
-            kwargs.update(self.extra_context)
-        return kwargs
+        return self.extra_context | kwargs
 
     def render(self, **kwargs):
         response = self.response_class(
@@ -255,9 +294,9 @@ class SecureTemplateView(SecureView):
         return self.render()
 
     def error_response(self, exception: Exception) -> HttpResponse:
-        from utils.log import _format_request, get_logger
-        _message = _format_request(self.request)
-        get_logger('err').exception(_message)
+        from utils.log import get_logger
+        logger = get_logger('error')
+        logger.exception(logger.format_request(self.request))
         return super().error_response(exception)
 
 
@@ -281,7 +320,7 @@ class SecureJsonView(SecureView):
             raise TypeError
 
     def error_response(self, exception: Exception) -> HttpResponse:
-        from utils.log import _format_request, get_logger
-        _message = _format_request(self.request)
-        get_logger('err').exception(_message)
+        from utils.log import get_logger
+        logger = get_logger('APIerror')
+        logger.exception(logger.format_request(self.request))
         return super().error_response(exception)

@@ -1,13 +1,10 @@
-from boot.config import Config, LazySetting
+from utils.config import Config, LazySetting
+from boot.config import ROOT_CONFIG
 
 
-class __Config(Config):
-
-    def __init__(self, dict_prefix: str = 'scheduler'):
-        super().__init__(dict_prefix)
-
-    rpc_port = LazySetting('rpc_port', int)
+class SchedulerConfig(Config):
+    rpc_port = LazySetting('rpc_port', type=int)
     use_scheduler = LazySetting('use_scheduler', default=False)
 
 
-scheduler_conf = __Config()
+scheduler_config = SchedulerConfig(ROOT_CONFIG, 'scheduler')

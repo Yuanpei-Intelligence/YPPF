@@ -14,6 +14,12 @@
             "HOST": "$HOST$"
         }
     },
+    "log": {
+        "dir": "/var/log",
+        "format": "%(asctime)s [%(levelname)s] %(message)s",
+        "level": "INFO",
+        "stack_level": 8
+    },
     "weather": {
         "api_key": "$API_KEY$"
     },
@@ -21,15 +27,21 @@
         "rpc_port": "$SCHEDULER_RPC_PORT$",
         "use_scheduler": false
     },
-    "notification": {
-        "max_inform_rank": null
-    },
     "wechat": {
+        "api_url": "",
         "salt": "debug_hasher_salt",
-        "send_batch": 500,
-        "send_number": 500,
+        "batch": 500,
+        "receivers": [],
         "blacklist": [],
-        "api_url": ""
+        "use_scheduler": true,
+        "app2url": {
+            "default": "",
+            "message": "",
+            "promote": ""
+        },
+        "unblock_apps": [
+            "promote"
+        ]
     },
     "email": {
         "url": "",
@@ -45,7 +57,7 @@
         }
     },
     "course": {
-        "type_name": "课程",
+        "type_name": "书院课程",
         "auditors": ["admin"],
         "valid_hours": 8,
         "yx_election_start": "2022-02-16 10:00:00",
@@ -62,6 +74,7 @@
         "open_time_start": "07:00",
         "open_time_end": "23:00"
     },
+    "max_inform_rank": {},
     "help_messages": {
 
     }
