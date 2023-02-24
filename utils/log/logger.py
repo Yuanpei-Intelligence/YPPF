@@ -48,11 +48,11 @@ class Logger(logging.Logger):
         logger = cast(cls, logging.getLogger(name))
         logging.setLoggerClass(_logger_class)
         if setup:
-            logger.setup(name, root=root)
+            logger.setup(name)
         _loggers[name] = logger
         return logger
 
-    def setup(self, name: str, handle: bool = True, root: bool = False) -> None:
+    def setup(self, name: str, handle: bool = True) -> None:
         self.set_debug_mode(settings.DEBUG)
         self.setLevel()
         if handle: self.add_default_handler(name)
@@ -67,8 +67,8 @@ class Logger(logging.Logger):
             if not os.path.exists(base_dir):
                 os.mkdir(base_dir)
         file_path = os.path.join(base_dir, name + '.log')
-        handler = logging.FileHandler(file_path, encoding='utf8', mode='a')
-        handler.setFormatter(logging.Formatter(format or CONFIG.format))
+        handler = logging.FileHandler(file_path, encoding='UTF8', mode='a')
+        handler.setFormatter(logging.Formatter(format or CONFIG.format, style='{'))
         self.addHandler(handler)
 
     def set_debug_mode(self, debug: bool) -> None:

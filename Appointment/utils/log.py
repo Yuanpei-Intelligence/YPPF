@@ -81,7 +81,7 @@ class UserLogger(AppointmentLogger):
         return super().add_default_handler(name, 'user_detail', *paths)
 
 
-logger = AppointmentLogger.getLogger(AppConfig.name, root=True)
+logger = AppointmentLogger.getLogger(AppConfig.name)
 
 def get_user_logger(source: User | Participant | Appoint | LongTermAppoint | str):
     '''获取用户日志记录器'''

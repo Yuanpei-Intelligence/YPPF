@@ -16,7 +16,7 @@
     },
     "log": {
         "dir": "/var/log",
-        "format": "%(asctime)s [%(levelname)s] %(message)s",
+        "format": "{asctime} [{levelname}] {message}",
         "level": "INFO",
         "stack_level": 8
     },
