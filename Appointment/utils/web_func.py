@@ -7,7 +7,7 @@ from Appointment.config import appointment_config as CONFIG
 from Appointment.models import Participant, Room, Appoint
 from Appointment.utils.identity import get_participant
 from Appointment.utils.utils import appoint_violate
-from Appointment.utils.log import logger, operation_writer
+from Appointment.utils.log import logger, get_user_logger
 
 '''
 YWolfeee:
@@ -93,17 +93,14 @@ def finishAppoint(Aid: int):  # 结束预约时的定时程序
     if appoint.Astatus not in Appoint.Status.Terminals():
         # 希望接受的非终止状态只有进行中，但其他状态也同样判定是否合格
         if appoint.Astatus != Appoint.Status.PROCESSING:
-            operation_writer(
-                f"预约{Aid}结束时状态为{appoint.get_status()}：照常检查是否合格",
-                "Error", user=appoint.get_major_id())
+            get_user_logger(appoint).error(
+                f"预约{Aid}结束时状态为{appoint.get_status()}：照常检查是否合格")
 
         # 摄像头出现超时问题，直接通过
         if datetime.now() - appoint.Room.Rlatest_time > timedelta(minutes=15):
             appoint.Astatus = Appoint.Status.CONFIRMED  # waiting
             appoint.save()
-            operation_writer(
-                f"预约{Aid}的状态变为{Appoint.Status.CONFIRMED}: 顺利完成",
-                user=appoint.get_major_id())
+            get_user_logger(appoint).info(f"预约{Aid}的状态已确认: 顺利完成")
         else:
             # 检查人数是否足够
             adjusted_rate = adjust_qualifiy_rate(

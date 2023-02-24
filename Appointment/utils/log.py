@@ -8,19 +8,20 @@ from Appointment.models import (
     Participant,
     Room,
     Appoint,
+    LongTermAppoint,
     CardCheckInfo,
 )
 from Appointment.apps import AppointmentConfig as AppConfig
-from utils.log.logger import Logger
 from boot.config import GLOBAL_CONF
+from utils.log.logger import Logger
 from utils.inspect import find_caller
 
 
 __all__ = [
     "cardcheckinfo_writer",
     "write_before_delete",
-    "operation_writer",
     "logger",
+    "get_user_logger",
 ]
 
 
@@ -48,47 +49,7 @@ def write_before_delete(appoint_list: QuerySet[Appoint]):
     logger.info("end of file")
 
 
-def operation_writer(message: str,
-                     status_code: str = "OK",
-                     user: str | User | Participant | None = None) -> None:
-    """
-    通用日志写入程序 错误时发送微信提示
-
-    :param message: 消息
-    :type message: str
-    :param status_code: 状态, defaults to "OK", 可用值为OK Problem Error
-    :type status_code: str, optional
-    :param user: Sid，决定文件名, `None`使用新日志方法
-    :type user: str | User | Participant | None
-    """
-    # 发送微信
-    try:
-        if user is None:
-            _logger = logger
-        else:
-            _logger = AppointmentLogger.getLogger(str(user))
-        match status_code:
-            case "OK":
-                _logger.info(message)
-            case "Problem":
-                _logger.warning(message)
-            case "Error":
-                _logger.error(message)
-    except Exception as e:
-        logger.exception('opration_writer failed')
-
-
 class AppointmentLogger(Logger):
-    def setup(self, name: str, handle: bool = True, root: bool = False) -> None:
-        super().setup(name, handle=False, root=root)
-        if not handle:
-            return
-        if root:
-            self.add_default_handler(name)
-        else:
-            self.add_default_handler(name, 'user_detail')
-
-
     def _log(self, level, msg, args, exc_info = None, extra = None, stack_info = False, stacklevel = 1) -> None:
         file, caller, _ = find_caller(depth=3)
         source = f"{file}.{caller}"
@@ -114,4 +75,27 @@ class AppointmentLogger(Logger):
             reason=message,
         )
 
+
+class UserLogger(AppointmentLogger):
+    def add_default_handler(self, name: str, *paths: str) -> None:
+        return super().add_default_handler(name, 'user_detail', *paths)
+
+
 logger = AppointmentLogger.getLogger(AppConfig.name, root=True)
+
+def get_user_logger(source: User | Participant | Appoint | LongTermAppoint | str):
+    '''获取用户日志记录器'''
+    match source:
+        case User():
+            name = source.get_username()
+        case Participant():
+            name = source.get_id()
+        case Appoint():
+            name = source.get_major_id()
+        case LongTermAppoint():
+            name = source.get_applicant_id()
+        case str():
+            name = source
+        case _:
+            name = 'unknown'
+    return UserLogger.getLogger(name)

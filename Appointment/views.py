@@ -33,7 +33,7 @@ from Appointment.utils.utils import (
     check_temp_appoint, set_appoint_reason, get_conflict_appoints,
     to_feedback_url,
 )
-from Appointment.utils.log import operation_writer, cardcheckinfo_writer, logger
+from Appointment.utils.log import cardcheckinfo_writer, logger, get_user_logger
 import Appointment.utils.web_func as web_func
 from Appointment.utils.identity import (
     get_avatar, get_members, get_auditor_ids,
@@ -203,8 +203,8 @@ def cancelAppoint(request: HttpRequest):
             wrong(f"未能取消长期预约!", context)
             return redirect(message_url(context, reverse("Appointment:account")))
 
-        operation_writer(f"成功取消长期预约{pk}及{count}条未开始的预约",
-                         user=longterm_appoint.get_applicant_id())
+        get_user_logger(longterm_appoint).info(
+            f"成功取消长期预约{pk}及{count}条未开始的预约")
         appoint_room_name = str(longterm_appoint.appoint.Room)
         succeed(f"成功取消对{appoint_room_name}的长期预约!", context)
         return redirect(message_url(context, reverse("Appointment:account")))
@@ -237,7 +237,7 @@ def cancelAppoint(request: HttpRequest):
         appoint.cancel()
         jobs.cancel_scheduler(appoint.Aid, record_miss=True)
 
-        operation_writer(f"取消了预约{pk}", user=appoint.get_major_id())
+        get_user_logger(appoint).info(f"取消了预约{pk}")
         succeed("成功取消对" + appoint_room_name + "的预约!", context)
         jobs.set_cancel_wechat(appoint)
 
@@ -271,8 +271,7 @@ def renewLongtermAppoint(request):
 
     conflict, conflict_appoints = longterm_appoint.renew(times)
     if conflict is None:
-        operation_writer(f"对长期预约{pk}发起{times}周续约",
-                         user=longterm_appoint.get_applicant_id())
+        get_user_logger(longterm_appoint).info(f"对长期预约{pk}发起{times}周续约")
         succeed(
             f"成功对{longterm_appoint.appoint.Room}的长期预约进行了{times}周的续约!", context)
     else:

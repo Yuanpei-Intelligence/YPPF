@@ -11,7 +11,7 @@ from django.db.models import QuerySet
 from utils.admin_utils import *
 from Appointment import jobs
 from Appointment.extern.constants import MessageType
-from Appointment.utils.log import logger, operation_writer
+from Appointment.utils.log import logger, get_user_logger
 from Appointment.models import *
 
 
@@ -404,8 +404,8 @@ class AppointAdmin(admin.ModelAdmin):
             # 到这里, 长线化预约发起成功
             jobs.set_longterm_wechat(
                 appoint, infos=f'新增了{times}周同时段预约', admin=True)
-            operation_writer(f"后台发起{times}周的长线化预约, 原始预约号{appoint.Aid}", 
-                             user=appoint.get_major_id())
+            get_user_logger(appoint).info(
+                f"后台发起{times}周的长线化预约, 原始预约号{appoint.Aid}")
         return self.message_user(request, '长线化成功!')
 
 

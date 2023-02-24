@@ -12,7 +12,7 @@ from Appointment.extern.constants import MessageType
 from Appointment.extern.wechat import send_wechat_message
 import Appointment.utils.utils as utils
 import Appointment.utils.web_func as web_func
-from Appointment.utils.log import write_before_delete, operation_writer, logger
+from Appointment.utils.log import write_before_delete, logger, get_user_logger
 from Appointment.utils.identity import get_participant, get_auditor_ids
 
 
@@ -363,7 +363,7 @@ def addAppoint(contents: dict,
             set_scheduler(appoint)
             set_start_wechat(appoint, students_id, notify_create=notify_create)
 
-            operation_writer(f"发起预约，预约号{appoint.Aid}", user=major_student.get_id())
+            get_user_logger(major_student).info(f"发起预约，预约号{appoint.Aid}")
 
     except Exception as e:
         major_display = major_student.__str__()
@@ -460,6 +460,5 @@ def add_longterm_appoint(appoint: 'Appoint | int',
 
     # 长线化预约发起成功，准备消息提示即可
     longterm_info = get_longterm_display(times, interval)
-    operation_writer(f"发起{longterm_info}长线化预约, 原预约号为{origin_pk}",
-                     user=appoint.get_major_id())
+    get_user_logger(appoint).info(f"发起{longterm_info}长线化预约, 原预约号为{origin_pk}")
     return None, new_appoints
