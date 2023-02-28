@@ -11,8 +11,10 @@ import requests
 import json
 from typing import Iterable, Callable, ParamSpec, TypeVar, Any
 from datetime import datetime, timedelta
+from functools import wraps
 
 from extern.config import wechat_config as CONFIG
+from extern.log import ExternLogger
 from utils.http.utils import build_full_url
 from scheduler.scheduler import scheduler
 
@@ -26,6 +28,7 @@ __all__ = [
 
 # 全局变量 用来发送和确认默认的导航网址
 DEFAULT_URL = build_full_url('/')
+logger = ExternLogger.getLogger('wechat')
 
 
 _P = ParamSpec('_P')
@@ -36,6 +39,7 @@ def _get_caller(func: Callable[_P, _T], multithread: bool = True,
     multithread = multithread and CONFIG.multithread
     if not multithread:
         return func
+    @wraps(func)
     def _func(*args: _P.args, **kwargs: _P.kwargs):
         if isinstance(next_run_time, datetime):
             _next_run = next_run_time
@@ -86,7 +90,7 @@ def _post_and_parse(
     try: _post_data = json.dumps(post_data)
     except: return "JSON编码失败", None
     try: raw_response = requests.post(post_url, _post_data, timeout=timeout)
-    except: return "连接api失败", None
+    except: return "连接API失败", None
     try: response: dict[str, Any] = raw_response.json()
     except: return "JSON解析失败", None
     try:
@@ -100,6 +104,13 @@ def _post_and_parse(
         return errmsg, None
     except:
         return "回应解析失败", None
+
+
+def _log_users(users: list[str]) -> str:
+    if len(users) <= 10:
+        return ', '.join(users)
+    user_display = users[:3] + ['...'] + users[-3:]
+    return ', '.join(user_display) + f'等{len(users)}用户'
 
 
 def _send_wechat(
@@ -127,17 +138,20 @@ def _send_wechat(
             post_data["btntxt"] = btntxt
 
     def _parser(detail: list[tuple[str, str]]) -> ParseResult:
-        failed = [x[0] for x in detail]
+        retrys = [x[0] for x in detail]
         errmsg = detail[0][1]             # 失败原因基本相同，取一个即可
-        return errmsg, failed
+        return errmsg, retrys
 
     for i in range(retry_times):
-        errmsg, failed = _post_and_parse(api_url, post_data, CONFIG.timeout, _parser)
-        if errmsg is None: break
-        # 全部发送失败且不可重发
-        if failed is None: break
-        post_data["touser"] = failed
-        print(f"部分发送失败：{failed[:3]}等{len(failed)}人，原因：{errmsg}")
+        errmsg, retrys = _post_and_parse(api_url, post_data, CONFIG.timeout, _parser)
+        if errmsg is None:
+            logger.info(f"成功向{_log_users(users)}发送消息")
+            break
+        if retrys is None:
+            logger.warning(f"向{_log_users(users)}发送消息失败：{errmsg}")
+            break
+        post_data["touser"] = retrys
+        logger.warning(f"向{_log_users(users)}发送时，{_log_users(retrys)}失败：{errmsg}")
 
 
 def send_wechat(
@@ -169,7 +183,7 @@ def send_wechat(
     """
     users = _get_available_users(users)
     if not users:
-        return
+        return logger.warning('没有可用用户')
     if card:
         if url is not None:
             url = build_full_url(url)
@@ -183,7 +197,7 @@ def send_wechat(
     total_ct = len(users)
     caller = _get_caller(_send_wechat, multithread=multithread)
     for i in range(0, total_ct, CONFIG.send_batch):
-        userids = users[i : i + CONFIG.send_batch]  # 一次最多接受1000个
+        userids = users[i : i + CONFIG.send_batch]
         caller(
             userids, message, build_full_url(api_path, CONFIG.api_url),
             card=card, url=url, btntxt=btntxt,
@@ -217,11 +231,12 @@ def _invite_to_wechat(stu_id: str, retry_times: int = 1):
         return detail, [stu_id]
 
     for i in range(retry_times):
-        errmsg, failed = _post_and_parse(INVITE_URL, post_data, CONFIG.timeout, _parser)
-        if errmsg is None: break
-        # 全部发送失败且不可重发
-        if failed is None: break
-        print(f"第{i+1}次向企业微信发送邀请失败：用户：{stu_id}，原因：{errmsg}")
+        errmsg, retrys = _post_and_parse(INVITE_URL, post_data, CONFIG.timeout, _parser)
+        if errmsg is None:
+            logger.info(f"成功向{stu_id}发送邀请")
+            break
+        logger.warning(f"向{stu_id}发送邀请失败：{errmsg}")
+        if retrys is None: break
 
 
 def invite_to_wechat(stu_id: str | int, retry_times: int = 3, *, multithread: bool = True):
