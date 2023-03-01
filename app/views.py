@@ -1375,7 +1375,7 @@ def freshman(request: HttpRequest):
             from extern.wechat import send_wechat
             auth = GLOBAL_CONF.hasher.encode(sid + "_freshman_register")
             send_wechat(
-                [sid], "新生注册邀请\n点击按钮即可注册账号",
+                [sid], "新生注册邀请", "点击按钮即可注册账号",
                 url=f"/freshman/?sid={sid}&auth={auth}"
             )
             err_msg = "已向企业微信发送注册邀请，点击邀请信息即可注册！"
