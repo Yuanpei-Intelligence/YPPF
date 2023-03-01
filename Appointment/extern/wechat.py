@@ -122,9 +122,7 @@ def send_wechat_message(
 
     try:
         if is_admin:
-            title = f'【管理员操作】\n{title}<title>'
-        else:
-            title = title + '\n'
+            title = f'【管理员操作】\n{title}'
 
         if show_time_and_place:
             time = start_time.strftime("%Y-%m-%d %H:%M")
@@ -147,4 +145,4 @@ def send_wechat_message(
 
     url = url if url is not None else 'admin-index.html'
     url = build_full_url(url, build_full_url('/underground/'))
-    send_wechat(stuid_list, message, card=True, url=url, btntxt='预约详情', multithread=False)
+    send_wechat(stuid_list, title, message, card=True, url=url, btntxt='预约详情', multithread=False)
