@@ -131,11 +131,11 @@ def send_wechat(
     users: Iterable[str | int],
     title: str,
     message: str,
-    api_path: str = '',
     card: bool = True,
     url: str | None = None,
     btntxt: str | None = None,
     *,
+    api_path: str = '',
     default: bool = True,
     retry_times: int = 1,
     multithread: bool = True,
@@ -150,11 +150,11 @@ def send_wechat(
     - users(Iterable[str | int]): 用户列表
     - title(str): 标题
     - message(str): 内容，可为空字符串
-    - api_path(str, optional): API路径，相对路径会被转换为绝对路径
     - card(bool): 发送文本卡片，建议message长度小于120时开启
     - url(str, optional): 文本卡片的链接，相对路径会被转换为绝对路径
     - btntxt(str, optional): 文本卡片的提示短语，不超过4个字
     - 仅关键字参数
+        - api_path(str, optional): API路径，相对路径会被转换为绝对路径
         - default(bool, optional): 填充默认值
         - retry_times(int, optional): 重试次数
         - multithread(bool, optional): 使用多线程（需要启用多线程），不堵塞当前线程

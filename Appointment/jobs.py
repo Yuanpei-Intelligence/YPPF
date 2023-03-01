@@ -9,7 +9,7 @@ from scheduler.scheduler import scheduler, periodical
 from Appointment.config import appointment_config as CONFIG
 from Appointment.models import Participant, Room, Appoint, LongTermAppoint
 from Appointment.extern.constants import MessageType
-from Appointment.extern.wechat import send_wechat_message
+from Appointment.extern.wechat import notify_appoint as set_appoint_wechat
 import Appointment.utils.utils as utils
 import Appointment.utils.web_func as web_func
 from Appointment.utils.log import write_before_delete, logger, get_user_logger
@@ -73,46 +73,6 @@ def set_scheduler(appoint: Appoint):
                       replace_existing=True,
                       next_run_time=finish)
     return True
-
-
-def set_appoint_wechat(appoint: Appoint, message_type: str, *extra_infos,
-                       students_id=None, url=None, admin=None,
-                       id=None, job_time=None):
-    '''设置预约的微信提醒，默认发给所有参与者'''
-    if students_id is None:
-        # 先准备发送人
-        students_id = list(appoint.students.values_list('Sid', flat=True))
-
-    # 发送微信的参数
-    wechat_kws = {}
-    if url is not None:
-        wechat_kws.update(url=url)
-    if admin is not None:
-        wechat_kws.update(is_admin=admin)
-
-    # 默认立刻发送
-    if job_time is None:
-        job_time = datetime.now() + timedelta(seconds=5)
-    # 添加定时任务的关键字参数
-    add_job_kws = dict(replace_existing=True, next_run_time=job_time)
-    if id is None:
-        id = f'{appoint.pk}_{message_type}'
-    if id is not None:
-        add_job_kws.update(id=id)
-    scheduler.add_job(send_wechat_message,
-                      args=[
-                          students_id,
-                          appoint.Astart,
-                          appoint.Room,
-                          message_type,
-                          appoint.major_student.name,
-                          appoint.Ausage,
-                          appoint.Aannouncement,
-                          appoint.Anon_yp_num + appoint.Ayp_num,
-                          *extra_infos[:1],
-                      ],
-                      kwargs=wechat_kws,
-                      **add_job_kws)
 
 
 def set_cancel_wechat(appoint: Appoint, students_id=None):
