@@ -53,11 +53,6 @@ from app import utils, log
 EXCEPT_REDIRECT = HttpResponseRedirect(
     message_url(wrong('出现意料之外的错误, 请联系管理员!')))
 
-# Used for exception capture
-from functools import partial as __partial
-from utils.log import err_capture as __err_capture
-err_capture = __partial(__err_capture, ret=EXCEPT_REDIRECT)
-
 
 # 不应导出，接口内部使用
 from django.core.exceptions import ImproperlyConfigured as _ImproperlyConfigured

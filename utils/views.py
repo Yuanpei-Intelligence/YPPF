@@ -1,14 +1,12 @@
 from typing import Any, final, overload, TypedDict, NoReturn, Callable
-from abc import ABC, abstractmethod
 
 from django.views.generic import View
 from django.http import HttpResponse, HttpResponseRedirect, HttpResponseForbidden, JsonResponse
 from django.core.exceptions import ImproperlyConfigured
 from django.template.response import TemplateResponse
 
-from .log import err_capture
-from .http import HttpRequest
-from .global_messages import wrong
+from utils.http import HttpRequest
+from utils.global_messages import wrong
 
 
 __all__ = [
@@ -25,7 +23,7 @@ class ResponseCreated(Exception):
 _HandlerFuncType = Callable[[], HttpResponse]
 _PrepareFuncType = Callable[[], _HandlerFuncType]
 
-class SecureView(View, ABC):
+class SecureView(View):
     """
     通用的视图类基类
 
@@ -232,9 +230,7 @@ class SecureView(View, ABC):
         )
 
     def error_response(self, exception: Exception) -> HttpResponse:
-        '''错误处理，子类可重写，生产环境不应产生异常'''
-        from boot.config import DEBUG
-        if DEBUG: raise
+        '''错误处理，异常栈可追溯，生产环境不应产生异常'''
         return self.http_forbidden('出现错误，请联系管理员')
 
     def redirect(self, to: str, *args, permanent=False, **kwargs):
@@ -295,8 +291,7 @@ class SecureTemplateView(SecureView):
 
     def error_response(self, exception: Exception) -> HttpResponse:
         from utils.log import get_logger
-        logger = get_logger('error')
-        logger.exception(logger.format_request(self.request))
+        get_logger('error').on_exception()
         return super().error_response(exception)
 
 
@@ -321,6 +316,5 @@ class SecureJsonView(SecureView):
 
     def error_response(self, exception: Exception) -> HttpResponse:
         from utils.log import get_logger
-        logger = get_logger('APIerror')
-        logger.exception(logger.format_request(self.request))
+        get_logger('APIerror').on_exception()
         return super().error_response(exception)
