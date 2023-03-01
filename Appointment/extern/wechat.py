@@ -171,6 +171,18 @@ def send_wechat_message(
                 card=True, url=url, btntxt='预约详情', multithread=False)
 
 
+def _build_appoint_message(appoint: Appoint, message_type: str,
+                           *extra_infos: str, admin: bool | None):
+    usage = '' if appoint.Ausage is None else appoint.Ausage
+    announce = '' if appoint.Aannouncement is None else appoint.Aannouncement
+    title, message = _build_message(message_type,
+        appoint.Astart, appoint.Room, appoint.major_student.name, usage,
+        announce, appoint.Anon_yp_num + appoint.Ayp_num, *extra_infos[:1],
+        is_admin=admin,
+    )
+    return title, message
+
+
 def notify_appoint(
     appoint: Appoint, message_type: str, *extra_infos: str,
     students_id: list[str] | None = None,
@@ -181,37 +193,14 @@ def notify_appoint(
 ):
     '''设置预约的微信提醒，默认发给所有参与者'''
     if students_id is None:
-        # 先准备发送人
         students_id = list(appoint.students.values_list('Sid', flat=True))
 
-    # 发送微信的参数
-    wechat_kws = {}
-    if url is not None:
-        wechat_kws.update(url=url)
-    if admin is not None:
-        wechat_kws.update(is_admin=admin)
-
-    # 默认立刻发送
-    if job_time is None:
-        job_time = datetime.now() + timedelta(seconds=5)
-    # 添加定时任务的关键字参数
-    add_job_kws = dict(replace_existing=True, next_run_time=job_time)
+    title, message = _build_appoint_message(
+        appoint, message_type, *extra_infos, admin=admin)
     if id is None:
         id = f'{appoint.pk}_{message_type}'
-    if id is not None:
-        add_job_kws.update(id=id)
-    from scheduler.scheduler import scheduler
-    scheduler.add_job(send_wechat_message,
-                      args=[
-                          students_id,
-                          appoint.Astart,
-                          appoint.Room,
-                          message_type,
-                          appoint.major_student.name,
-                          appoint.Ausage,
-                          appoint.Aannouncement,
-                          appoint.Anon_yp_num + appoint.Ayp_num,
-                          *extra_infos[:1],
-                      ],
-                      kwargs=wechat_kws,
-                      **add_job_kws)
+    send_wechat(
+        students_id, title, message,
+        card=True, url=_build_url(url), btntxt='预约详情',
+        task_id=id, run_time=job_time, multithread=True,
+    )
