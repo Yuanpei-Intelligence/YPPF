@@ -10,7 +10,7 @@ from django.db.models import QuerySet
 
 from utils.admin_utils import *
 from Appointment import jobs
-from Appointment.extern.constants import MessageType
+from Appointment.extern.wechat import MessageType, notify_appoint
 from Appointment.utils.log import logger, get_user_logger
 from Appointment.models import *
 
@@ -287,7 +287,7 @@ class AppointAdmin(admin.ModelAdmin):
                         appoint.save()
                         have_success = 1
                         # send wechat message
-                        jobs.set_appoint_wechat(
+                        notify_appoint(
                             appoint, MessageType.WAITING2CONFIRM.value, appoint.get_status(),
                             students_id=[appoint.get_major_id()], admin=True,
                             id=f'{appoint.Aid}_confirm_admin_wechat')
@@ -299,7 +299,7 @@ class AppointAdmin(admin.ModelAdmin):
                         appoint.save()
                         have_success = 1
                         # send wechat message
-                        jobs.set_appoint_wechat(
+                        notify_appoint(
                             appoint, MessageType.VIOLATED2JUDGED.value, appoint.get_status(),
                             students_id=[appoint.get_major_id()], admin=True,
                             id=f'{appoint.Aid}_confirm_admin_wechat')
@@ -339,7 +339,7 @@ class AppointAdmin(admin.ModelAdmin):
                 appoint.save()
 
                 # send wechat message
-                jobs.set_appoint_wechat(
+                notify_appoint(
                     appoint, MessageType.VIOLATE_BY_ADMIN.value, f'原状态：{ori_status}',
                     students_id=[appoint.get_major_id()], admin=True,
                     id=f'{appoint.Aid}_violate_admin_wechat')

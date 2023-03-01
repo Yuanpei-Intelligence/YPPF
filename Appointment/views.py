@@ -25,8 +25,7 @@ from Appointment.models import (
     College_Announcement,
     LongTermAppoint,
 )
-from Appointment.extern.constants import MessageType
-from Appointment.extern.wechat import send_wechat_message
+from Appointment.extern.wechat import MessageType, send_wechat_message, notify_appoint
 # utils对接工具
 from Appointment.utils.utils import (
     doortoroom, iptoroom,
@@ -1256,7 +1255,7 @@ def review(request: HttpRequest):
                 with transaction.atomic():
                     longterm_appoint.status = LongTermAppoint.Status.APPROVED
                     longterm_appoint.save()
-                    jobs.set_appoint_wechat(
+                    notify_appoint(
                         longterm_appoint.appoint, MessageType.LONGTERM_APPROVED.value,
                         students_id=[longterm_appoint.get_applicant_id()],
                         id=f'{longterm_appoint.pk}_longterm_approved')
@@ -1273,7 +1272,7 @@ def review(request: HttpRequest):
                     longterm_appoint.status = LongTermAppoint.Status.REJECTED
                     longterm_appoint.review_comment = reason
                     longterm_appoint.save()
-                    jobs.set_appoint_wechat(
+                    notify_appoint(
                         longterm_appoint.appoint, MessageType.LONGTERM_REJECTED.value, reason,
                         students_id=[longterm_appoint.get_applicant_id()],
                         id=f'{longterm_appoint.pk}_longterm_rejected')
