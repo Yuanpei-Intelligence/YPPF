@@ -41,6 +41,7 @@ from app.activity_utils import (
     notifyActivity,
 )
 from app.extern.wechat import WechatApp, WechatMessageLevel
+from app.log import logger
 
 import openpyxl
 from random import sample
@@ -588,10 +589,7 @@ def check_course_time_conflict(current_course: Course,
     '''
 
 
-@log.except_captured(return_value=True,
-                     record_args=True,
-                     status_code=log.STATE_WARNING,
-                     source='course_utils[registration_status_change]')
+@logger.secure_func(fail_value=True)
 def registration_status_change(course_id: int, user: NaturalPerson,
                                action: str) -> MESSAGECONTEXT:
     """
@@ -802,9 +800,7 @@ def course_to_display(courses: QuerySet[Course],
     return display
 
 
-@log.except_captured(return_value=True,
-                     record_args=True,
-                     source='course_utils[draw_lots]')
+@logger.secure_func(fail_value=True)
 def draw_lots():
     """
     等额抽签选出成功选课的学生，并修改学生的选课状态
@@ -897,10 +893,7 @@ def draw_lots():
                 )
 
 
-@log.except_captured(return_value=True,
-                     record_args=True,
-                     status_code=log.STATE_WARNING,
-                     source='course_utils[change_course_status]')
+@logger.secure_func(fail_value=True)
 def change_course_status(cur_status: Course.Status, to_status: Course.Status) -> None:
     """
     作为定时任务，在课程设定的时间改变课程的选课阶段
@@ -973,10 +966,7 @@ def change_course_status(cur_status: Course.Status, to_status: Course.Status) ->
         courses.select_for_update().update(status=to_status)
 
 
-@log.except_captured(return_value=True,
-                     record_args=True,
-                     status_code=log.STATE_WARNING,
-                     source='course_utils[register_selection]')
+@logger.secure_func(fail_value=True)
 def register_selection(wait_for: timedelta=None):
     """
     添加定时任务，实现课程状态转变，每次发起课程时调用

@@ -39,6 +39,7 @@ from app.notification_utils import(
     notification_status_change,
 )
 from app.extern.wechat import WechatApp, WechatMessageLevel
+from app.log import logger
 
 
 
@@ -56,10 +57,7 @@ scheduler.add_job(changeActivityStatus, "date",
 活动变更为进行中时，更新报名成功人员状态
 """
 
-@log.except_captured(True, record_args=True, source='activity_utils[changeActivityStatus]修改活动状态')
-@log.except_captured(True, AssertionError, record_args=True, status_code=log.STATE_WARNING,
-                 record_user=False, record_request_args=False,
-                 source='activity_utils[changeActivityStatus]检查活动状态')
+@logger.secure_func(fail_value=True, message='活动状态更新异常')
 def changeActivityStatus(aid, cur_status, to_status):
     '''
     幂等；可能发生异常；包装器负责处理异常
@@ -216,7 +214,7 @@ scheduler.add_job(notifyActivityStart, "date",
 """
 
 
-@log.except_captured(True, source='activity_utils[notifyActivity]发送微信消息')
+@logger.secure_func(message='活动消息发送异常', fail_value=True)
 def notifyActivity(aid: int, msg_type: str, msg=""):
     try:
         activity = Activity.objects.get(id=aid)

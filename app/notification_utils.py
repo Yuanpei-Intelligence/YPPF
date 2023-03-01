@@ -10,6 +10,7 @@ from app.extern.wechat import (
     WechatApp,
     WechatMessageLevel,
 )
+from app.log import logger
 
 hasher = MySHA256Hasher("")
 
@@ -314,7 +315,7 @@ def bulk_notification_create(
 # 对一个已经完成的申请, 构建相关的通知和对应的微信消息, 将有关的事务设为已完成
 # 如果有错误，则不应该是用户的问题，需要发送到管理员处解决
 #用于报销的通知
-@log.except_captured(source='notification_utils[make_notification]')
+@logger.secure_func()
 def make_notification(application, request, content, receiver):
     # 考虑不同post_type的信息发送行为
     post_type = request.POST.get("post_type")
@@ -359,7 +360,7 @@ def make_notification(application, request, content, receiver):
         )
 
 
-@log.except_captured(source='notification_utils[notification2Display]')
+@logger.secure_func()
 def notification2Display(notifications: QuerySet[Notification]) -> List[dict]:
     """
     将通知转化为方便前端显示的形式
