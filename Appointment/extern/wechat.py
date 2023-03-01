@@ -92,10 +92,56 @@ def get_display_info(
             show_appoint_info = False
             extra_info = ['原因：' + reason]
         case _:
+            logger.error(f'未知消息类型：{message_type}')
             raise ValueError(f'未知消息类型：{message_type}')
     show_options = (show_time_and_place, show_main_student,
                     show_appoint_info, show_announcement,)
     return title, show_options, extra_info
+
+
+def _build_message(
+    message_type: str,
+    time: datetime,
+    room: Room | str,
+    appointer: Participant | str,
+    usage: str,
+    announcement: str,
+    total_count: int,
+    reason: str = '',
+    is_admin: bool | None = None,
+):
+    '''
+    room: 将被调用str方法，所以可以不是实际的房间
+    appointer: str, 人名 不是学号！
+    '''
+    title, show_options, extra_info = get_display_info(message_type, reason)
+    show_time_and_place, show_main_student, show_appoint_info, show_announcement = show_options
+
+    if is_admin is None:
+        is_admin = MessageType.ADMIN.value in message_type
+    if is_admin:
+        title = f'【管理员操作】\n{title}'
+
+    appoint_info = []
+    if show_time_and_place:
+        time_display = time.strftime("%Y-%m-%d %H:%M")
+        if isinstance(room, Room):
+            room = room.__str__()
+        appoint_info += [f'时间：{time_display}', f'地点：{room}']
+    if show_main_student:
+        appoint_info += [f'发起者：{appointer}']
+    if show_appoint_info:
+        appoint_info += ['用途：' + usage, f'人数：{total_count}']
+    if show_announcement and announcement:
+        appoint_info += ['预约通知：' + announcement]
+
+    return title, '\n'.join(appoint_info + extra_info)
+
+
+def _build_url(url: str | None = None):
+    if url is None:
+        url = 'admin-index.html'
+    return build_full_url(url, build_full_url('/underground/'))
 
 
 def send_wechat_message(
@@ -117,40 +163,12 @@ def send_wechat_message(
     room: 将被调用str方法，所以可以不是实际的房间
     major_student: str, 人名 不是学号！
     '''
-    # 之后会呈现的信息只由以下的标题和两个列表拼接而成
-    if is_admin is None:
-        is_admin = 'admin' in message_type  # 决定标题呈现方式
-    appoint_info = []
-
-    title, show_options, extra_info = get_display_info(message_type, reason)
-    show_time_and_place, show_main_student, show_appoint_info, show_announcement = show_options
-
-    try:
-        if is_admin:
-            title = f'【管理员操作】\n{title}'
-
-        if show_time_and_place:
-            time = start_time.strftime("%Y-%m-%d %H:%M")
-            room = str(room)
-            appoint_info += [f'时间：{time}', f'地点：{room}']
-
-        if show_main_student:
-            appoint_info += [f'发起者：{major_student}']
-
-        if show_appoint_info:
-            appoint_info += ['用途：' + usage, f'人数：{num}']
-
-        if show_announcement and announcement:
-            appoint_info += ['预约通知：' + announcement]
-
-        message = title + '\n'.join(appoint_info + extra_info)
-
-    except Exception as e:
-        return logger.warning(f"尝试整合信息时出错，原因：{e}")
-
-    url = url if url is not None else 'admin-index.html'
-    url = build_full_url(url, build_full_url('/underground/'))
-    send_wechat(stuid_list, title, message, card=True, url=url, btntxt='预约详情', multithread=False)
+    title, message = _build_message(
+        message_type, start_time, room, major_student, usage,
+        announcement, num, reason, is_admin)
+    url = _build_url(url)
+    send_wechat(stuid_list, title, message,
+                card=True, url=url, btntxt='预约详情', multithread=False)
 
 
 def notify_appoint(
