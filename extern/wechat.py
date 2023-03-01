@@ -88,7 +88,7 @@ def _log_users(users: list[str]) -> str:
 
 def _send_wechat(
     users: list[str],
-    message: str,
+    content: str,
     api_url: str,
     card: bool = True,
     url: str | None = None,
@@ -99,9 +99,9 @@ def _send_wechat(
     """底层实现发送到微信，是为了方便设置定时任务"""
     post_data = {
         "touser": users,
-        "content": message,
+        "content": content,
         "toall": True,
-        "secret": CONFIG.hasher.encode(message),
+        "secret": CONFIG.hasher.encode(content),
     }
     if card:
         post_data["card"] = True
@@ -129,6 +129,7 @@ def _send_wechat(
 
 def send_wechat(
     users: Iterable[str | int],
+    title: str,
     message: str,
     api_path: str = '',
     card: bool = True,
@@ -147,7 +148,8 @@ def send_wechat(
     参数
     --------
     - users(Iterable[str | int]): 用户列表
-    - message(str): 发送的文字，第一个`\\n`被视为标题和内容的分隔符
+    - title(str): 标题
+    - message(str): 内容，可为空字符串
     - api_path(str, optional): API路径，相对路径会被转换为绝对路径
     - card(bool): 发送文本卡片，建议message长度小于120时开启
     - url(str, optional): 文本卡片的链接，相对路径会被转换为绝对路径
@@ -166,6 +168,7 @@ def send_wechat(
     users = _get_available_users(users)
     if not users:
         return logger.warning('没有可用用户')
+    content = f'{title}<title>{message}'
     if card:
         if url is not None:
             url = build_full_url(url)
@@ -191,7 +194,7 @@ def send_wechat(
     for i in range(0, total_ct, CONFIG.send_batch):
         userids = users[i : i + CONFIG.send_batch]
         caller(
-            userids, message, build_full_url(api_path, CONFIG.api_url),
+            userids, content, build_full_url(api_path, CONFIG.api_url),
             card=card, url=url, btntxt=btntxt,
             retry_times=retry_times,
         )
@@ -200,14 +203,14 @@ def send_wechat(
 def send_verify_code(stu_id: str | int, captcha: str, url: str | None = '/forgetpw/'):
     time = datetime.now().strftime('%m月%d日 %H:%M:%S')
     message = (
-        "YPPF登录验证\n"
         "您的账号正在进行企业微信验证\n本次请求的验证码为："
         f"<div class=\"highlight\">{captcha}</div>"
         f"发送时间：{time}"
     )
     url = build_full_url(url) if url is not None else None
     btntxt = "登录" if url is not None else None
-    send_wechat([stu_id], message, card=True, url=url, btntxt=btntxt,
+    send_wechat([stu_id], 'YPPF登录验证', message,
+                card=True, url=url, btntxt=btntxt,
                 task_id=f'wechat_verify: {stu_id}')
 
 

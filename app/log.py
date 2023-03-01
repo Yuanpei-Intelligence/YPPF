@@ -85,7 +85,7 @@ def operation_writer(user: str, message: str, source: str = '', status_code: str
                     '详情请查看log'
                 ])
             send_wechat(
-                DEBUG_IDS, f'YPPF {settings.MY_ENV}发生异常\n' + send_message, card=len(message) < 200)
+                DEBUG_IDS, f'YPPF {settings.MY_ENV}发生异常', send_message, card=len(message) < 200)
     except Exception as e:
         # 最好是发送邮件通知存在问题
         # TODO:
