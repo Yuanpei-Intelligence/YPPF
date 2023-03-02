@@ -61,18 +61,10 @@ class AppointmentLogger(Logger):
     def _send_wechat(self, message: str, level: int = logging.ERROR):
         if not GLOBAL_CONF.debug_stuids:
             return
-        from Appointment.extern.wechat import send_wechat_message
-        from Appointment.extern.constants import MessageType
-        send_wechat_message(
-            stuid_list=GLOBAL_CONF.debug_stuids,
-            start_time=datetime.now(),
-            room='地下室后台',
-            message_type=MessageType.ADMIN.value,
-            major_student="地下室系统",
-            usage="发生Error错误",
-            announcement="",
-            num=1,
-            reason=message,
+        from extern.wechat import send_wechat
+        send_wechat(
+            GLOBAL_CONF.debug_stuids,
+            '地下室发生错误', message,
         )
 
 

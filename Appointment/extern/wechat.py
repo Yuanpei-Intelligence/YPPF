@@ -10,7 +10,6 @@ from utils.http.utils import build_full_url
 
 __all__ = [
     'MessageType',
-    'send_wechat_message',
     'notify_appoint',
 ]
 
@@ -79,18 +78,8 @@ def get_display_info(
                 ]
             if reason:
                 extra_info = [reason] + extra_info
-        case MessageType.NEED_AGREE.value:
-            title = '您刷卡的房间需要签署协议'
-            show_main_student = False
-            show_appoint_info = False
-            extra_info = ['点击本消息即可快捷跳转到用户协议页面']
         case MessageType.TEMPORARY.value:
             title = '您发起了一条临时预约'
-        case MessageType.TEMPORARY_FAILED.value:
-            title = '您发起的临时预约失败'
-            show_main_student = False
-            show_appoint_info = False
-            extra_info = ['原因：' + reason]
         case _:
             logger.error(f'未知消息类型：{message_type}')
             raise ValueError(f'未知消息类型：{message_type}')
@@ -163,6 +152,7 @@ def send_wechat_message(
     room: 将被调用str方法，所以可以不是实际的房间
     major_student: str, 人名 不是学号！
     '''
+    # TODO: 生产环境下，utils.utils需要包含这个函数，随后删除
     title, message = _build_message(
         message_type, start_time, room, major_student, usage,
         announcement, num, reason, is_admin)
@@ -204,3 +194,15 @@ def notify_appoint(
         card=True, url=_build_url(url), btntxt='预约详情',
         task_id=id, run_time=job_time, multithread=True,
     )
+
+
+def notify_user(student_id: str, title: str, *messages: str,
+                place: str = '', time: datetime | None = None,
+                url: str | None = None, btntxt: str = '详情'):
+    '''微信通知单个用户'''
+    if time is None:
+        time = datetime.now()
+    time_display = time.strftime("%Y-%m-%d %H:%M")
+    appoint_info = [f'时间：{time_display}', f'地点：{place}']
+    message = '\n'.join(tuple(appoint_info) + messages)
+    send_wechat([student_id], title, message, card=True, url=_build_url(url), btntxt=btntxt)
