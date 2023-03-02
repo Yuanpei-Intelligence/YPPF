@@ -31,7 +31,6 @@ utils
 @Date 2022-01-17
 '''
 from app.config import *
-from app import log
 from utils.global_messages import (
     MESSAGECONTEXT,
     wrong,

@@ -39,6 +39,7 @@ from app.notification_utils import(
     notification_status_change,
 )
 from app.extern.wechat import WechatApp, WechatMessageLevel
+from app.log import logger
 
 
 
@@ -56,10 +57,8 @@ scheduler.add_job(changeActivityStatus, "date",
 活动变更为进行中时，更新报名成功人员状态
 """
 
-@log.except_captured(True, record_args=True, source='activity_utils[changeActivityStatus]修改活动状态')
-@log.except_captured(True, AssertionError, record_args=True, status_code=log.STATE_WARNING,
-                 record_user=False, record_request_args=False,
-                 source='activity_utils[changeActivityStatus]检查活动状态')
+@logger.secure_func('活动状态更新异常')
+@logger.secure_func('检查活动状态', exc_type=AssertionError)
 def changeActivityStatus(aid, cur_status, to_status):
     '''
     幂等；可能发生异常；包装器负责处理异常
@@ -216,190 +215,162 @@ scheduler.add_job(notifyActivityStart, "date",
 """
 
 
-@log.except_captured(True, source='activity_utils[notifyActivity]发送微信消息')
+@logger.secure_func('活动消息发送异常')
 def notifyActivity(aid: int, msg_type: str, msg=""):
-    try:
-        activity = Activity.objects.get(id=aid)
-        inner = activity.inner
-        title = Notification.Title.ACTIVITY_INFORM
-        if msg_type == "newActivity":
-            title = activity.title
-            msg = f"您关注的小组{activity.organization_id.oname}发布了新的活动。"
+    activity = Activity.objects.get(id=aid)
+    inner = activity.inner
+    title = Notification.Title.ACTIVITY_INFORM
+    if msg_type == "newActivity":
+        title = activity.title
+        msg = f"您关注的小组{activity.organization_id.oname}发布了新的活动。"
+        msg += f"\n开始时间: {activity.start.strftime('%Y-%m-%d %H:%M')}"
+        msg += f"\n活动地点: {activity.location}"
+        subscribers = NaturalPerson.objects.activated().exclude(
+            id__in=activity.organization_id.unsubscribers.all()
+        ).values_list('person_id', flat=True)
+        receivers = User.objects.filter(id__in=subscribers)
+        publish_kws = {"app": WechatApp.TO_SUBSCRIBER}  
+    elif msg_type == "remind":
+        with transaction.atomic():
+            activity = Activity.objects.select_for_update().get(id=aid)
+            nowtime = datetime.now()
+            notifications = Notification.objects.filter(
+                relate_instance=activity,
+                start_time__gt=nowtime + timedelta(seconds=60),
+                title=Notification.Title.PENDING_INFORM,
+            )
+            if len(notifications) > 0:
+                return
+            msg = f"您参与的活动 <{activity.title}> 即将开始。"
             msg += f"\n开始时间: {activity.start.strftime('%Y-%m-%d %H:%M')}"
             msg += f"\n活动地点: {activity.location}"
-            subscribers = NaturalPerson.objects.activated().exclude(
-                id__in=activity.organization_id.unsubscribers.all()
-            ).values_list('person_id', flat=True)
-            receivers = User.objects.filter(id__in=subscribers)
-            publish_kws = {"app": WechatApp.TO_SUBSCRIBER}  
-        elif msg_type == "remind":
-
-            with transaction.atomic():
-                activity = Activity.objects.select_for_update().get(id=aid)
-                nowtime = datetime.now()
-                notifications = Notification.objects.filter(
-                    relate_instance=activity,
-                    start_time__gt=nowtime + timedelta(seconds=60),
-                    title=Notification.Title.PENDING_INFORM,
-                )
-                if len(notifications) > 0:
-                    return False
-                else:
-                    msg = f"您参与的活动 <{activity.title}> 即将开始。"
-                    msg += f"\n开始时间: {activity.start.strftime('%Y-%m-%d %H:%M')}"
-                    msg += f"\n活动地点: {activity.location}"
-                    participants = Participant.objects.filter(activity_id=aid, status=Participant.AttendStatus.APLLYSUCCESS)
-                    receivers = participants.values_list('person_id__person_id', flat=True)
-                    receivers = User.objects.filter(id__in=receivers)
-                    # receivers = [participant.person_id.person_id for participant in participants]
-                    publish_kws = {"app": WechatApp.TO_PARTICIPANT}
-
-                    if inner and publish_kws.get('app') == WechatApp.TO_SUBSCRIBER:
-                        member_id_list = Position.objects.activated().filter(
-                            org=activity.organization_id).values_list(
-                                'person__person_id', flat=True)
-                        receivers = receivers.filter(id__in=member_id_list)
-
-                    success, _ = bulk_notification_create(
-                        receivers=list(receivers),
-                        sender=activity.organization_id.get_user(),
-                        typename=Notification.Type.NEEDREAD,
-                        title=title,
-                        content=msg,
-                        URL=f"/viewActivity/{aid}",
-                        relate_instance=activity,
-                        publish_to_wechat=True,
-                        publish_kws=publish_kws,
-                    )
-
-                    return success
-
-        elif msg_type == 'modification_sub':
-            subscribers = NaturalPerson.objects.activated().exclude(
-                id__in=activity.organization_id.unsubscribers.all()
-            ).values_list('person_id', flat=True)
-            receivers = User.objects.filter(id__in=subscribers)
-            publish_kws = {"app": WechatApp.TO_SUBSCRIBER} 
-        elif msg_type == 'modification_par':
-            participants = Participant.objects.filter(
-                activity_id=aid,
-                status__in=[Participant.AttendStatus.APLLYSUCCESS, Participant.AttendStatus.APPLYING]
-            )
+            participants = Participant.objects.filter(activity_id=aid, status=Participant.AttendStatus.APLLYSUCCESS)
             receivers = participants.values_list('person_id__person_id', flat=True)
             receivers = User.objects.filter(id__in=receivers)
             # receivers = [participant.person_id.person_id for participant in participants]
-            publish_kws = {
-                "app": WechatApp.TO_PARTICIPANT,
-                "level": WechatMessageLevel.IMPORTANT,
-            }
-        elif msg_type == "modification_sub_ex_par":
-            '''
-                YWolfeee: 查询策略为，拿到NP list
-                拿到NP list中的person_id_id字段，作为一个list来操作
-                直接访问一次user表得到user list，而不是通过for循环每一个进行一次
-                要知道 [NP.user for NP in NP_list]的查询速度是O(xy),其中x是NP_list长度，y是User表长度
-                而 User.objects.filter(id__in = [NP_person_id_id_list])则是O(y)
-            '''
-            # ———————————————— 拿参与者的user_id ————————————————
-            participant_person_id = Participant.objects.filter(
-                activity_id=aid,
-                status__in=[Participant.AttendStatus.APLLYSUCCESS, Participant.AttendStatus.APPLYING]
-            ).prefetch_related("person_id_id").values_list("person_id_id", flat=True) # 拿的是person_id
-            participant_user_id = NaturalPerson.objects.activated().filter(id__in = participant_person_id).values_list(
-                "person_id_id",flat=True)   # 这回拿到的是user_id
+            publish_kws = {"app": WechatApp.TO_PARTICIPANT}
 
-            #  ———————————————— 拿订阅者的user_id ————————————————
-            subscribers_user_id = NaturalPerson.objects.activated().exclude(
-                id__in=activity.organization_id.unsubscribers.all()
-            ).values_list("person_id_id", flat=True )  # 拿的是user_id
-
-            # ———————————————— 获取对应的User QuerySet ————————————————
-            receiver_id_list = list(set(subscribers_user_id) - set(participant_user_id))
-            receivers = User.objects.filter(id__in = receiver_id_list)
-
-            # ↓这么写特别慢！
-            #receivers = list(set(subscribers) - set([participant.person_id for participant in participants]))
-            #receivers = [receiver.person_id for receiver in receivers]
-            publish_kws = {"app": WechatApp.TO_SUBSCRIBER} 
-
-        # 应该用不到了，调用的时候分别发给 par 和 sub
-        # 主要发给两类用户的信息往往是不一样的
-        elif msg_type == 'modification_all':
-            # ———————————————— 拿参与者的user_id ————————————————
-            participant_person_id = Participant.objects.filter(
-                activity_id=aid,
-                status__in=[Participant.AttendStatus.APLLYSUCCESS, Participant.AttendStatus.APPLYING]
-            ).values_list("person_id_id", flat=True) # 拿的是person_id
-            participant_user_id = NaturalPerson.objects.activated().filter(
-                id__in=participant_person_id).values_list(
-                    "person_id_id", flat=True)   # 这回拿到的是user_id
-
-            #  ———————————————— 拿订阅者的user_id ————————————————
-            subscribers_user_id = NaturalPerson.objects.activated().exclude(
-                id__in=activity.organization_id.unsubscribers.all()
-            ).values_list("person_id_id", flat=True )  # 拿的是user_id
-
-            # ———————————————— 获取对应的User QuerySet ————————————————
-            receiver_id_list = list(set(subscribers_user_id) | set(participant_user_id))
-            receivers = User.objects.filter(id__in = receiver_id_list)
-
-            # ↓这么写特别慢！
-            # receivers = set([participant.person_id for participant in participants]) | set(subscribers)
-            # receivers = [receiver.person_id for receiver in receivers]
-            publish_kws = {"app": WechatApp.TO_SUBSCRIBER} 
-        elif msg_type == 'newCourseActivity':
-            title = activity.title
-            msg = f"课程{activity.organization_id.oname}发布了新的课程活动。"
-            msg += f"\n开始时间: {activity.start.strftime('%Y-%m-%d %H:%M')}"
-            msg += f"\n活动地点: {activity.location}"
-            # ———————————————— 拿参与者的user_id ————————————————
-            participant_person_id = Participant.objects.filter(
-                activity_id=aid,
-                status__in=[Participant.AttendStatus.APLLYSUCCESS, Participant.AttendStatus.APPLYING]
-            ).values_list("person_id_id", flat=True) # 拿的是person_id
-            participant_user_id = NaturalPerson.objects.activated().filter(
-                id__in=participant_person_id).values_list(
-                    "person_id_id", flat=True)   # 这回拿到的是user_id
-
-            #  ———————————————— 拿订阅者的user_id ————————————————
-            subscribers_user_id = NaturalPerson.objects.activated().exclude(
-                id__in=activity.organization_id.unsubscribers.all()
-            ).values_list("person_id_id", flat=True )  # 拿的是user_id
-
-            # ———————————————— 获取对应的User QuerySet ————————————————
-            receiver_id_list = list(set(subscribers_user_id) | set(participant_user_id))
-            receivers = User.objects.filter(id__in = receiver_id_list)
-
-            # ↓这么写特别慢！
-            # receivers = set([participant.person_id for participant in participants]) | set(subscribers)
-            # receivers = [receiver.person_id for receiver in receivers]
-            publish_kws = {"app": WechatApp.TO_SUBSCRIBER} 
-        else:
-            raise ValueError(f"msg_type参数错误: {msg_type}")
-        
-        # 现在必须保证到此处时receivers是一个queryset, 不过也有好处就是更统一了
-        # 参与者总是收到消息, 但订阅者消息只会发给内部
-        if inner and publish_kws.get('app') == WechatApp.TO_SUBSCRIBER:
-            member_id_list = Position.objects.activated().filter(
-                org=activity.organization_id).values_list(
-                    'person__person_id', flat=True)
-            receivers = receivers.filter(id__in=member_id_list)
-
-        success, _ = bulk_notification_create(
-            receivers=list(receivers),
-            sender=activity.organization_id.get_user(),
-            typename=Notification.Type.NEEDREAD,
-            title=title,
-            content=msg,
-            URL=f"/viewActivity/{aid}",
-            relate_instance=activity,
-            publish_to_wechat=True,
-            publish_kws=publish_kws,
+    elif msg_type == 'modification_sub':
+        subscribers = NaturalPerson.objects.activated().exclude(
+            id__in=activity.organization_id.unsubscribers.all()
+        ).values_list('person_id', flat=True)
+        receivers = User.objects.filter(id__in=subscribers)
+        publish_kws = {"app": WechatApp.TO_SUBSCRIBER} 
+    elif msg_type == 'modification_par':
+        participants = Participant.objects.filter(
+            activity_id=aid,
+            status__in=[Participant.AttendStatus.APLLYSUCCESS, Participant.AttendStatus.APPLYING]
         )
-        assert success, "批量创建通知并发送时失败"
+        receivers = participants.values_list('person_id__person_id', flat=True)
+        receivers = User.objects.filter(id__in=receivers)
+        # receivers = [participant.person_id.person_id for participant in participants]
+        publish_kws = {
+            "app": WechatApp.TO_PARTICIPANT,
+            "level": WechatMessageLevel.IMPORTANT,
+        }
+    elif msg_type == "modification_sub_ex_par":
+        '''
+        YWolfeee: 查询策略为，拿到NP list
+        拿到NP list中的person_id_id字段，作为一个list来操作
+        直接访问一次user表得到user list，而不是通过for循环每一个进行一次
+        要知道 [NP.user for NP in NP_list]的查询速度是O(xy),其中x是NP_list长度，y是User表长度
+        而 User.objects.filter(id__in = [NP_person_id_id_list])则是O(y)
+        '''
+        # ———————————————— 拿参与者的user_id ————————————————
+        participant_person_id = Participant.objects.filter(
+            activity_id=aid,
+            status__in=[Participant.AttendStatus.APLLYSUCCESS, Participant.AttendStatus.APPLYING]
+        ).prefetch_related("person_id_id").values_list("person_id_id", flat=True) # 拿的是person_id
+        participant_user_id = NaturalPerson.objects.activated().filter(id__in = participant_person_id).values_list(
+            "person_id_id",flat=True)   # 这回拿到的是user_id
 
-    except Exception as e:
-        raise
+        #  ———————————————— 拿订阅者的user_id ————————————————
+        subscribers_user_id = NaturalPerson.objects.activated().exclude(
+            id__in=activity.organization_id.unsubscribers.all()
+        ).values_list("person_id_id", flat=True )  # 拿的是user_id
+
+        # ———————————————— 获取对应的User QuerySet ————————————————
+        receiver_id_list = list(set(subscribers_user_id) - set(participant_user_id))
+        receivers = User.objects.filter(id__in = receiver_id_list)
+
+        # ↓这么写特别慢！
+        #receivers = list(set(subscribers) - set([participant.person_id for participant in participants]))
+        #receivers = [receiver.person_id for receiver in receivers]
+        publish_kws = {"app": WechatApp.TO_SUBSCRIBER} 
+
+    # 应该用不到了，调用的时候分别发给 par 和 sub
+    # 主要发给两类用户的信息往往是不一样的
+    elif msg_type == 'modification_all':
+        # ———————————————— 拿参与者的user_id ————————————————
+        participant_person_id = Participant.objects.filter(
+            activity_id=aid,
+            status__in=[Participant.AttendStatus.APLLYSUCCESS, Participant.AttendStatus.APPLYING]
+        ).values_list("person_id_id", flat=True) # 拿的是person_id
+        participant_user_id = NaturalPerson.objects.activated().filter(
+            id__in=participant_person_id).values_list(
+                "person_id_id", flat=True)   # 这回拿到的是user_id
+
+        #  ———————————————— 拿订阅者的user_id ————————————————
+        subscribers_user_id = NaturalPerson.objects.activated().exclude(
+            id__in=activity.organization_id.unsubscribers.all()
+        ).values_list("person_id_id", flat=True )  # 拿的是user_id
+
+        # ———————————————— 获取对应的User QuerySet ————————————————
+        receiver_id_list = list(set(subscribers_user_id) | set(participant_user_id))
+        receivers = User.objects.filter(id__in = receiver_id_list)
+
+        # ↓这么写特别慢！
+        # receivers = set([participant.person_id for participant in participants]) | set(subscribers)
+        # receivers = [receiver.person_id for receiver in receivers]
+        publish_kws = {"app": WechatApp.TO_SUBSCRIBER} 
+    elif msg_type == 'newCourseActivity':
+        title = activity.title
+        msg = f"课程{activity.organization_id.oname}发布了新的课程活动。"
+        msg += f"\n开始时间: {activity.start.strftime('%Y-%m-%d %H:%M')}"
+        msg += f"\n活动地点: {activity.location}"
+        # ———————————————— 拿参与者的user_id ————————————————
+        participant_person_id = Participant.objects.filter(
+            activity_id=aid,
+            status__in=[Participant.AttendStatus.APLLYSUCCESS, Participant.AttendStatus.APPLYING]
+        ).values_list("person_id_id", flat=True) # 拿的是person_id
+        participant_user_id = NaturalPerson.objects.activated().filter(
+            id__in=participant_person_id).values_list(
+                "person_id_id", flat=True)   # 这回拿到的是user_id
+
+        #  ———————————————— 拿订阅者的user_id ————————————————
+        subscribers_user_id = NaturalPerson.objects.activated().exclude(
+            id__in=activity.organization_id.unsubscribers.all()
+        ).values_list("person_id_id", flat=True )  # 拿的是user_id
+
+        # ———————————————— 获取对应的User QuerySet ————————————————
+        receiver_id_list = list(set(subscribers_user_id) | set(participant_user_id))
+        receivers = User.objects.filter(id__in = receiver_id_list)
+
+        # ↓这么写特别慢！
+        # receivers = set([participant.person_id for participant in participants]) | set(subscribers)
+        # receivers = [receiver.person_id for receiver in receivers]
+        publish_kws = {"app": WechatApp.TO_SUBSCRIBER} 
+    else:
+        raise ValueError(f"msg_type参数错误: {msg_type}")
+
+    if inner and publish_kws.get('app') == WechatApp.TO_SUBSCRIBER:
+        member_id_list = Position.objects.activated().filter(
+            org=activity.organization_id).values_list(
+                'person__person_id', flat=True)
+        receivers = receivers.filter(id__in=member_id_list)
+
+    success, _ = bulk_notification_create(
+        receivers=list(receivers),
+        sender=activity.organization_id.get_user(),
+        typename=Notification.Type.NEEDREAD,
+        title=title,
+        content=msg,
+        URL=f"/viewActivity/{aid}",
+        relate_instance=activity,
+        publish_to_wechat=True,
+        publish_kws=publish_kws,
+    )
+    assert success, "批量创建通知并发送时失败"
 
 
 def get_activity_QRcode(activity):

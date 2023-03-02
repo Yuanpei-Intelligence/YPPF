@@ -50,7 +50,7 @@ APP_CONFIG = CONFIG.course
 
 @login_required(redirect_field_name="origin")
 @utils.check_user_access(redirect_url="/logout/")
-@log.except_captured(EXCEPT_REDIRECT, source='course_views[editCourseActivity]', record_user=True)
+@logger.secure_view()
 def editCourseActivity(request: HttpRequest, aid: int):
     """
     编辑单次书院课程活动，addActivity的简化版
@@ -135,7 +135,7 @@ def editCourseActivity(request: HttpRequest, aid: int):
 
 @login_required(redirect_field_name="origin")
 @utils.check_user_access(redirect_url="/logout/")
-@log.except_captured(EXCEPT_REDIRECT, source='course_views[addSingleCourseActivity]', record_user=True)
+@logger.secure_view()
 def addSingleCourseActivity(request: HttpRequest):
     """
     创建单次书院课程活动，addActivity的简化版
@@ -195,7 +195,7 @@ def addSingleCourseActivity(request: HttpRequest):
 
 @login_required(redirect_field_name='origin')
 @utils.check_user_access(redirect_url="/logout/")
-@log.except_captured(source='course_views[showCourseActivity]', record_user=True)
+@logger.secure_view()
 def showCourseActivity(request: HttpRequest):
     """
     筛选本学期已结束的课程活动、未开始的课程活动，在课程活动聚合页面进行显示。
@@ -292,7 +292,7 @@ def showCourseActivity(request: HttpRequest):
 
 @login_required(redirect_field_name="origin")
 @utils.check_user_access(redirect_url="/logout/")
-@log.except_captured(EXCEPT_REDIRECT, source='course_views[showCourseRecord]', record_user=True)
+@logger.secure_view()
 def showCourseRecord(request: HttpRequest) -> HttpResponse:
     """    
     展示及修改学时数据
@@ -443,9 +443,7 @@ def showCourseRecord(request: HttpRequest) -> HttpResponse:
 
 @login_required(redirect_field_name="origin")
 @utils.check_user_access(redirect_url="/logout/")
-@log.except_captured(record_user=True,
-                     record_request_args=True,
-                     source='course_views[selectCourse]')
+@logger.secure_view()
 def selectCourse(request: HttpRequest):
     """
     学生选课的聚合页面，包括: 
@@ -547,9 +545,7 @@ def selectCourse(request: HttpRequest):
 
 @login_required(redirect_field_name="origin")
 @utils.check_user_access(redirect_url="/logout/")
-@log.except_captured(record_user=True,
-                     record_request_args=True,
-                     source='course_views[viewCourse]')
+@logger.secure_view()
 def viewCourse(request: HttpRequest):
     """
     展示一门课程的详细信息，所有用户类型均可访问
@@ -578,7 +574,7 @@ def viewCourse(request: HttpRequest):
 
 @login_required(redirect_field_name="origin")
 @utils.check_user_access(redirect_url="/logout/")
-@log.except_captured(EXCEPT_REDIRECT, source='course_views[addCourse]', record_user=True)
+@logger.secure_view()
 def addCourse(request: HttpRequest, cid=None):
     """
     发起课程页
@@ -699,7 +695,7 @@ def addCourse(request: HttpRequest, cid=None):
 
 @login_required(redirect_field_name="origin")
 @utils.check_user_access(redirect_url="/logout/")
-@log.except_captured(EXCEPT_REDIRECT, source='course_views[outputRecord]', record_user=True)
+@logger.secure_view()
 def outputRecord(request: HttpRequest):
     """
     导出所有学时信息
@@ -721,7 +717,7 @@ def outputRecord(request: HttpRequest):
 
 @login_required(redirect_field_name="origin")
 @utils.check_user_access(redirect_url="/logout/")
-@log.except_captured(EXCEPT_REDIRECT, source='course_views[outputSelectInfo]', record_user=True)
+@logger.secure_view()
 def outputSelectInfo(request: HttpRequest):
     """
     导出该课程的选课名单

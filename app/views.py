@@ -152,7 +152,7 @@ class IndexView(SecureTemplateView):
 
 
 @login_required(redirect_field_name="origin")
-@log.except_captured(source='views[shiftAccount]', record_user=True)
+@logger.secure_view()
 def shiftAccount(request: HttpRequest):
 
     username = request.session.get("NP")
@@ -179,7 +179,7 @@ def shiftAccount(request: HttpRequest):
 wechat_login_coder = MyMD5Hasher("wechat_login")
 
 
-@log.except_captured(source='views[miniLogin]', record_user=True)
+@logger.secure_view()
 def miniLogin(request: HttpRequest):
     try:
         assert request.method == "POST"
@@ -207,7 +207,7 @@ def miniLogin(request: HttpRequest):
 
 @login_required(redirect_field_name="origin")
 @utils.check_user_access(redirect_url="/logout/")
-@log.except_captured(source='views[stuinfo]', record_user=True)
+@logger.secure_view()
 def stuinfo(request: HttpRequest, name=None):
     """
         进入到这里的逻辑:
@@ -670,7 +670,7 @@ def stuinfo(request: HttpRequest, name=None):
 
 @login_required(redirect_field_name="origin")
 @utils.check_user_access(redirect_url="/logout/")
-@log.except_captured(source='views[requestLoginOrg]', record_user=True)
+@logger.secure_view()
 def requestLoginOrg(request: HttpRequest, name=None):  # 特指个人希望通过个人账户登入小组账户的逻辑
     """
         这个函数的逻辑是，个人账户点击左侧的管理小组直接跳转登录到小组账户
@@ -716,7 +716,7 @@ def requestLoginOrg(request: HttpRequest, name=None):  # 特指个人希望通�
 
 @login_required(redirect_field_name="origin")
 @utils.check_user_access(redirect_url="/logout/")
-@log.except_captured(source='views[orginfo]', record_user=True)
+@logger.secure_view()
 def orginfo(request: HttpRequest, name=None):
     """
         orginfo负责呈现小组主页，逻辑和stuinfo是一样的，可以参考
@@ -957,7 +957,7 @@ def orginfo(request: HttpRequest, name=None):
 
 @login_required(redirect_field_name="origin")
 @utils.check_user_access(redirect_url="/logout/")
-@log.except_captured(source='views[homepage]', record_user=True)
+@logger.secure_view()
 def homepage(request: HttpRequest):
     valid, user_type, html_display = utils.check_user_type(request.user)
     is_person = user_type == UTYPE_PER
@@ -1112,7 +1112,7 @@ def homepage(request: HttpRequest):
 
 @login_required(redirect_field_name="origin")
 @utils.check_user_access(redirect_url="/logout/")
-@log.except_captured(source='views[accountSetting]', record_user=True)
+@logger.secure_view()
 def accountSetting(request: HttpRequest):
     valid, user_type, html_display = utils.check_user_type(request.user)
 
@@ -1305,8 +1305,7 @@ def _create_freshman_account(sid: str, email: str = None):
         return current
 
 
-@log.except_captured(source='views[freshman]', record_user=True,
-                     record_request_args=True, show_traceback=True)
+@logger.secure_view()
 def freshman(request: HttpRequest):
     if request.user.is_authenticated:
         return redirect(message_url(wrong('你已经登录，无需进行注册!')))
@@ -1427,7 +1426,7 @@ def freshman(request: HttpRequest):
 
 
 @login_required(redirect_field_name="origin")
-@log.except_captured(source='views[userAgreement]', record_user=True)
+@logger.secure_view()
 def userAgreement(request: HttpRequest):
     # 不要加check_user_access，因为本页面就是该包装器首次登录时的跳转页面之一
     valid, user_type, html_display = utils.check_user_type(request.user)
@@ -1446,7 +1445,7 @@ def userAgreement(request: HttpRequest):
     return render(request, 'user_agreement.html', locals())
 
 
-@log.except_captured(source='views[authRegister]', record_user=True)
+@logger.secure_view()
 def authRegister(request: HttpRequest):
     if request.user.is_superuser:
         if request.method == "POST" and request.POST:
@@ -1500,13 +1499,13 @@ def authRegister(request: HttpRequest):
         return HttpResponseRedirect("/index/")
 
 
-@log.except_captured(source='views[logout]', record_user=True)
+@logger.secure_view()
 def logout(request: HttpRequest):
     auth.logout(request)
     return HttpResponseRedirect("/index/")
 
 
-@log.except_captured(source='views[get_stu_img]', record_user=True)
+@logger.secure_view()
 def get_stu_img(request: HttpRequest):
     stuId = request.GET.get("stuId")
     if stuId is not None:
@@ -1521,7 +1520,7 @@ def get_stu_img(request: HttpRequest):
 
 @login_required(redirect_field_name="origin")
 @utils.check_user_access(redirect_url="/logout/")
-@log.except_captured(source='views[search]', record_user=True)
+@logger.secure_view()
 def search(request: HttpRequest):
     """
         搜索界面的呈现逻辑
@@ -1664,8 +1663,7 @@ def search(request: HttpRequest):
     return render(request, "search.html", locals())
 
 
-@log.except_captured(source='views[forgetPassword]', record_user=True,
-                     record_request_args=True, show_traceback=True)
+@logger.secure_view()
 @utils.record_attack(Exception, as_attack=True)
 def forgetPassword(request: HttpRequest):
     """
@@ -1834,7 +1832,7 @@ class ModpwView(SecureTemplateView):
 
 @login_required(redirect_field_name="origin")
 @utils.check_user_access(redirect_url="/logout/", is_modpw=True)
-@log.except_captured(source='views[modpw]', record_user=True)
+@logger.secure_view()
 def modpw(request: HttpRequest):
     """
         可能在三种情况进入这个页面：首次登陆；忘记密码；或者常规的修改密码。
@@ -1927,7 +1925,7 @@ def modpw(request: HttpRequest):
 
 @login_required(redirect_field_name="origin")
 @utils.check_user_access(redirect_url="/logout/")
-@log.except_captured(source='views[subscribeOrganization]', record_user=True)
+@logger.secure_view()
 def subscribeOrganization(request: HttpRequest):
     valid, user_type, html_display = utils.check_user_type(request.user)
     if user_type != UTYPE_PER:
@@ -1961,7 +1959,7 @@ def subscribeOrganization(request: HttpRequest):
 
 @login_required(redirect_field_name="origin")
 @utils.check_user_access(redirect_url="/logout/")
-@log.except_captured(source='views[saveSubscribeStatus]', record_user=True)
+@logger.secure_view()
 def saveSubscribeStatus(request: HttpRequest):
     valid, user_type, html_display = utils.check_user_type(request.user)
     if user_type != UTYPE_PER:
@@ -2023,7 +2021,7 @@ def saveSubscribeStatus(request: HttpRequest):
 
 @login_required(redirect_field_name="origin")
 @utils.check_user_access(redirect_url="/logout/")
-@log.except_captured(source='views[notifications]', record_user=True)
+@logger.secure_view()
 def notifications(request: HttpRequest):
     valid, user_type, html_display = utils.check_user_type(request.user)
 

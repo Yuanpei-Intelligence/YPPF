@@ -14,7 +14,7 @@ __all__ = [
 
 @login_required(redirect_field_name="origin")
 @utils.check_user_access(redirect_url="/logout/")
-@log.except_captured(EXCEPT_REDIRECT, source='academic_views[startChat]', record_user=True)
+@logger.secure_view()
 def startChat(request: HttpRequest) -> JsonResponse:
     """
     创建新chat
@@ -44,7 +44,7 @@ def startChat(request: HttpRequest) -> JsonResponse:
 
 @login_required(redirect_field_name="origin")
 @utils.check_user_access(redirect_url="/logout/")
-@log.except_captured(EXCEPT_REDIRECT, source='academic_views[addChatComment]', record_user=True)
+@logger.secure_view()
 def addChatComment(request: HttpRequest) -> JsonResponse:
     """
     给chat发送comment
@@ -71,7 +71,7 @@ def addChatComment(request: HttpRequest) -> JsonResponse:
 
 @login_required(redirect_field_name="origin")
 @utils.check_user_access(redirect_url="/logout/")
-@log.except_captured(EXCEPT_REDIRECT, source='academic_views[closeChat]', record_user=True)
+@logger.secure_view()
 def closeChat(request: HttpRequest) -> JsonResponse:
     """
     关闭chat

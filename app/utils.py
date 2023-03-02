@@ -13,6 +13,7 @@ import xlwt
 
 from utils.http.utils import get_ip
 from app.utils_dependency import *
+from app.log import logger
 from app.models import (
     User,
     NaturalPerson,
@@ -60,8 +61,6 @@ def block_attack(view_function):
     def _wrapped_view(request: HttpRequest, *args, **kwargs):
         ip = get_ip(request)
         if ip in _block_ips:
-            # log.operation_writer(CONFIG.system_log, f'已拦截{ip}在{request.path}的请求',
-            #                         view_function.__name__, log.STATE_WARNING)
             return HttpResponse(status=403)
         return view_function(request, *args, **kwargs)
     return _wrapped_view
@@ -89,14 +88,6 @@ def record_attack(except_type=None, as_attack=False):
                     if not is_attack:
                         raise err
                     _block_ips.add(ip)
-                    # log.operation_writer(
-                    #     CONFIG.system_log,
-                    #     '\n'.join([
-                    #         '记录到恶意行为: ', f'发生{type(err)}错误: {err}', f'IP: {ip}',
-                    #     ]),
-                    #     view_function.__name__,
-                    #     log.STATE_ERROR,
-                    # )
                     return HttpResponse(status=403)
         return _wrapped_view
     return actual_decorator
@@ -670,7 +661,7 @@ def update_related_account_in_session(request, username, shift=False, oname=""):
     return True
 
 
-@log.except_captured(source='utils[user_login_org]', record_user=True)
+@logger.secure_func(raise_exc=True)
 def user_login_org(request, org: Organization) -> MESSAGECONTEXT:
     '''
     令人疑惑的函数，需要整改

@@ -44,7 +44,7 @@ __all__ = [
 
 @login_required(redirect_field_name="origin")
 @utils.check_user_access(redirect_url="/logout/")
-@log.except_captured(EXCEPT_REDIRECT, source='activity_views[viewActivity]', record_user=True)
+@logger.secure_view()
 def viewActivity(request: HttpRequest, aid=None):
     """
     页面逻辑：
@@ -95,8 +95,7 @@ def viewActivity(request: HttpRequest, aid=None):
             return redirect(message_url(wrong('该活动暂不可见!')))
 
     except Exception as e:
-        log.record_traceback(request, e)
-        return EXCEPT_REDIRECT
+        raise
 
     html_display = dict()
     inform_share, alert_message = utils.get_inform_share(me)
@@ -121,8 +120,7 @@ def viewActivity(request: HttpRequest, aid=None):
             except ActivityException as e:
                 wrong(str(e), html_display)
             except Exception as e:
-                log.record_traceback(request, e)
-                return EXCEPT_REDIRECT
+                raise
 
         elif option == "edit":
             if (
@@ -151,8 +149,7 @@ def viewActivity(request: HttpRequest, aid=None):
             except ActivityException as e:
                 wrong(str(e), html_display)
             except Exception as e:
-                log.record_traceback(request, e)
-                return EXCEPT_REDIRECT
+                raise
 
         elif option == "quit":
             try:
@@ -174,8 +171,7 @@ def viewActivity(request: HttpRequest, aid=None):
                 html_display["warn_code"] = 1
                 html_display["warn_message"] = str(e)
             except Exception as e:
-                log.record_traceback(request, e)
-                return EXCEPT_REDIRECT
+                raise
 
         elif option == "checkinoffline":
             # 进入调整签到界面
@@ -310,7 +306,7 @@ def viewActivity(request: HttpRequest, aid=None):
 
 @login_required(redirect_field_name="origin")
 @utils.check_user_access(redirect_url="/logout/")
-@log.except_captured(source='activity_views[getActivityInfo]', record_user=True)
+@logger.secure_view()
 def getActivityInfo(request: HttpRequest):
     '''
     通过GET获得活动信息表下载链接
@@ -437,7 +433,7 @@ def getActivityInfo(request: HttpRequest):
 
 @login_required(redirect_field_name="origin")
 @utils.check_user_access(redirect_url="/logout/")
-@log.except_captured(source='activity_views[checkinActivity]', record_user=True)
+@logger.secure_view()
 def checkinActivity(request: HttpRequest, aid=None):
     valid, user_type, html_display = utils.check_user_type(request.user)
     if user_type != UTYPE_PER:
@@ -494,7 +490,7 @@ def checkinActivity(request: HttpRequest, aid=None):
 """
 @login_required(redirect_field_name="origin")
 @utils.check_user_access(redirect_url="/logout/")
-@log.except_captured(source='activity_views[checkinActivity]', record_user=True)
+@logger.secure_view()
 def checkinActivity(request):
     valid, user_type, html_display = utils.check_user_type(request.user)
 
@@ -556,7 +552,7 @@ def checkinActivity(request):
 
 @login_required(redirect_field_name="origin")
 @utils.check_user_access(redirect_url="/logout/")
-@log.except_captured(EXCEPT_REDIRECT, source='activity_views[addActivity]', record_user=True)
+@logger.secure_view()
 def addActivity(request: HttpRequest, aid=None):
     """
     发起活动与修改活动页
@@ -600,8 +596,7 @@ def addActivity(request: HttpRequest, aid=None):
             edit = True
         html_display["is_myself"] = True
     except Exception as e:
-        log.record_traceback(request, e)
-        return EXCEPT_REDIRECT
+        raise
 
     # 处理 POST 请求
     # 在这个界面，不会返回render，而是直接跳转到viewactivity，可以不设计bar_display
@@ -617,8 +612,7 @@ def addActivity(request: HttpRequest, aid=None):
                             f'/viewActivity/{aid}'))
                     return redirect(f"/editActivity/{aid}")
             except Exception as e:
-                log.record_traceback(request, e)
-                return EXCEPT_REDIRECT
+                raise
 
         # 仅这几个阶段可以修改
         if (
@@ -655,9 +649,6 @@ def addActivity(request: HttpRequest, aid=None):
                 html_display["warn_message"] = str(e)
                 html_display["warn_code"] = 1
                 # return redirect(f"/viewActivity/{activity.id}")
-            except Exception as e:
-                log.record_traceback(request, e)
-                return EXCEPT_REDIRECT
 
     # 下面的操作基本如无特殊说明，都是准备前端使用量
     defaultpics = [{"src": f"/static/assets/img/announcepics/{i+1}.JPG",
@@ -699,8 +690,7 @@ def addActivity(request: HttpRequest, aid=None):
                 # 不是三个可以评论的状态
                 commentable = front_check = False
         except Exception as e:
-            log.record_traceback(request, e)
-            return EXCEPT_REDIRECT
+            raise
 
         # 决定状态的变量
         # None/edit/examine ( 小组申请活动/小组编辑/老师审查 )
@@ -756,7 +746,7 @@ def addActivity(request: HttpRequest, aid=None):
 
 @login_required(redirect_field_name="origin")
 @utils.check_user_access(redirect_url="/logout/")
-@log.except_captured(source='activity_views[showActivity]', record_user=True)
+@logger.secure_view()
 def showActivity(request: HttpRequest):
     """
     活动信息的聚合界面
@@ -805,7 +795,7 @@ def showActivity(request: HttpRequest):
 
 
 @login_required(redirect_field_name="origin")
-@log.except_captured(source='activity_views[examineActivity]', record_user=True)
+@logger.secure_view()
 def examineActivity(request: HttpRequest, aid):
     valid, user_type, html_display = utils.check_user_type(request.user)
     try:
@@ -839,7 +829,7 @@ def examineActivity(request: HttpRequest, aid):
                 html_display["warn_message"] = "评论成功。"
                 html_display["warn_code"] = 2
             except Exception as e:
-                return EXCEPT_REDIRECT
+                raise
 
         elif request.POST.get("review_accepted"):
             try:
@@ -851,7 +841,7 @@ def examineActivity(request: HttpRequest, aid):
                 html_display["warn_message"] = "活动已通过审核。"
                 html_display["warn_code"] = 2
             except Exception as e:
-                return EXCEPT_REDIRECT
+                raise
         else:
             try:
                 with transaction.atomic():
@@ -862,7 +852,7 @@ def examineActivity(request: HttpRequest, aid):
                 html_display["warn_message"] = "活动已被拒绝。"
                 html_display["warn_code"] = 2
             except Exception as e:
-                return EXCEPT_REDIRECT
+                raise
 
     # 状态量，无可编辑量
     examine = True
@@ -916,7 +906,7 @@ def examineActivity(request: HttpRequest, aid):
 
 @login_required(redirect_field_name="origin")
 @utils.check_user_access(redirect_url="/logout/")
-@log.except_captured(source='activity_views[offlineCheckinActivity]', record_user=True)
+@logger.secure_view()
 def offlineCheckinActivity(request: HttpRequest, aid):
     '''
     修改签到记录，只有举办活动的组织账号可查看和修改
@@ -987,7 +977,7 @@ login_required(redirect_field_name="origin")
 
 
 @utils.check_user_access(redirect_url="/logout/")
-@log.except_captured(source='activity_views[endActivity]', record_user=True)
+@logger.secure_view()
 def endActivity(request: HttpRequest):
     """
     之前被用为报销信息的聚合界面，现已将报销删去，留下总结图片的功能
@@ -1032,7 +1022,7 @@ def endActivity(request: HttpRequest):
 # 新建+修改+取消+审核 报销信息
 @login_required(redirect_field_name="origin")
 @utils.check_user_access(redirect_url="/logout/")
-@log.except_captured(source='activity_views[modifyEndActivity]', record_user=True)
+@logger.secure_view()
 def modifyEndActivity(request: HttpRequest):
     # return
     valid, user_type, html_display = utils.check_user_type(request.user)

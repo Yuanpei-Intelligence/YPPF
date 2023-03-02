@@ -44,7 +44,7 @@ ExceptType = type[BaseException] | tuple[type[BaseException], ...]
 
 class Logger(logging.Logger):
     @classmethod
-    def getLogger(cls, name: str, setup: bool = True, root: bool = False):
+    def getLogger(cls, name: str, setup: bool = True):
         if name in _loggers:
             return cast(cls, _loggers[name])
         _logger_class  = logging.getLoggerClass()
@@ -136,7 +136,7 @@ class Logger(logging.Logger):
         return decorator
 
     def secure_func(self, message: str = '', *,
-                    raise_exc: bool | None = None,
+                    raise_exc: bool | None = False,
                     fail_value: ReturnType[Any] = None,
                     exc_type: ExceptType = Exception):
         def decorator(func: Callable[P, T]):
