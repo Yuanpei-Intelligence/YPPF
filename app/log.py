@@ -1,7 +1,6 @@
 import os
 import logging
 from datetime import datetime
-from functools import wraps
 
 from django.conf import settings
 
@@ -9,7 +8,6 @@ from utils.log.logger import Logger
 from utils.inspect import find_caller
 from boot.config import BASE_DIR, GLOBAL_CONF
 from extern.wechat import send_wechat
-from app.apps import AppConfig
 
 
 __all__ = [
@@ -40,20 +38,8 @@ if not os.path.exists(os.path.join(__log_root_path, __log_user)):
 __log_user_path = os.path.join(__log_root_path, __log_user)
 
 
-# 记录相关的常量
-SYSTEM_LOG = 'deprecated'
 
-
-class AppLogger(Logger):
-    def setup(self, name: str, handle: bool = True) -> None:
-        super().setup(name, handle=False, root=root)
-        if not handle:
-            return
-        if root:
-            self.add_default_handler(name)
-        else:
-            self.add_default_handler(name, 'user_detail')
-
+class ProfileLogger(Logger):
     def _log(self, level, msg, args, exc_info=None, extra=None, stack_info=False, stacklevel=1) -> None:
         file, caller, _ = find_caller(depth=3)
         source = f"{file}.{caller}"
@@ -64,11 +50,11 @@ class AppLogger(Logger):
 
     def _send_wechat(self, message: str, level: int = logging.ERROR):
         send_wechat(
-            users=GLOBAL_CONF.debug_stuids,
-            message=f'Message from Profile Logger\n' + message,
+            GLOBAL_CONF.debug_stuids,
+            '成长档案发生错误', message,
         )
 
-logger = AppLogger.getLogger(AppConfig.name, root=True)
+logger = ProfileLogger.getLogger('profile')
 
 def status_enabled(status_code: str):
     # 待完善，半成品
@@ -97,7 +83,7 @@ def operation_writer(user: str, message: str, source: str = '', status_code: str
         with open(os.path.join(__log_user_path, f"{str(user)}.log"), mode="a") as journal:
             journal.write(file_message)
 
-        if status_code == STATE_ERROR and DEBUG_IDS:
+        if status_code == STATE_ERROR and GLOBAL_CONF.debug_stuids:
             send_message = f'{source} {timestamp}: {message}'
             if len(send_message) > 400:
                 send_message = '\n'.join([
@@ -106,8 +92,9 @@ def operation_writer(user: str, message: str, source: str = '', status_code: str
                     send_message[-100:],
                     '详情请查看log'
                 ])
-            send_wechat(
-                DEBUG_IDS, f'YPPF {settings.MY_ENV}发生异常', send_message, card=len(message) < 200)
+            send_wechat(GLOBAL_CONF.debug_stuids,
+                        f'YPPF {settings.MY_ENV}发生异常', send_message,
+                        card=len(message) < 200)
     except Exception as e:
         # 最好是发送邮件通知存在问题
         # TODO:
