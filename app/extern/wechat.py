@@ -18,7 +18,7 @@ from app.extern.config import (
 from app.models import NaturalPerson, Organization, Notification, Position
 from app.utils import get_person_or_org
 from utils.http.utils import build_full_url
-from app import log
+from app.log import logger
 
 
 __all__ = [
@@ -100,7 +100,7 @@ def get_person_receivers(all_receiver_ids, level=None):
     return receivers
 
 
-@log.except_captured(False, record_args=True, source='wechat_send[publish_notification]')
+@logger.secure_func(fail_value=False)
 def publish_notification(notification_or_id,
                         show_source=True,
                         app=None, level=None):
@@ -175,13 +175,13 @@ def publish_notification(notification_or_id,
     return True
 
 
-@log.except_captured(False, record_args=True, source='wechat_send[publish_notifications]')
+@logger.secure_func(fail_value=False)
 def publish_notifications(
     notifications_or_ids=None, filter_kws=None, exclude_kws=None,
     show_source=True,
     app=None, level=None,
     *, check=True
-):
+) -> bool:
     """
     批量发送通知，选取筛选后范围内所有与最新通知发送者等相同、且内容结尾一致的通知
     如果能保证这些通知全都一致，可以要求不检查

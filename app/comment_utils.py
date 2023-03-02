@@ -1,5 +1,3 @@
-from typing import List
-
 from app.utils_dependency import *
 from app.models import (
     User,
@@ -21,7 +19,7 @@ from app.extern.wechat import (
 from app.log import logger
 
 
-@log.except_captured(source='comment_utils[addComment]', record_user=True)
+@logger.secure_func(raise_exc=True)
 def addComment(request, comment_base, receiver=None, *,
                anonymous=False, notification_title=None) -> MESSAGECONTEXT:
     """添加评论
@@ -125,8 +123,8 @@ def addComment(request, comment_base, receiver=None, *,
         return wrong(f"找不到信息, 请重试!")
 
 
-@logger.secure_func()
-def showComment(commentbase, anonymous_users=None) -> List[dict]:
+@logger.secure_func(raise_exc=True)
+def showComment(commentbase, anonymous_users=None) -> list[dict]:
     '''
     获取可展示的对象相关评论，返回以时间顺序展示的评论列表，应赋值为`comments`
     '''

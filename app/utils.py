@@ -13,6 +13,7 @@ import xlwt
 
 from utils.http.utils import get_ip
 from app.utils_dependency import *
+from app.log import logger
 from app.models import (
     User,
     NaturalPerson,
@@ -670,7 +671,7 @@ def update_related_account_in_session(request, username, shift=False, oname=""):
     return True
 
 
-@log.except_captured(source='utils[user_login_org]', record_user=True)
+@logger.secure_func(raise_exc=True)
 def user_login_org(request, org: Organization) -> MESSAGECONTEXT:
     '''
     令人疑惑的函数，需要整改
