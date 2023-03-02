@@ -526,6 +526,30 @@ def activity_base_check(request, edit=False):
     return context
 
 
+def _set_change_status(activity: Activity, current, next, time, replace):
+    scheduler.add_job(changeActivityStatus, "date", id=f"activity_{activity.id}_{next}",
+                      run_date=time, args=[activity.id, current, next], replace_existing=replace)
+
+def _set_jobs_to_status(activity: Activity, replace: bool) -> Activity.Status:
+    now_time = datetime.now()
+    status = Activity.Status.END
+    if now_time < activity.end:
+        status, next = Activity.Status.PROGRESSING, Activity.Status.END
+        _set_change_status(activity, status, next, activity.end, replace)
+    if now_time < activity.start:
+        status, next = Activity.Status.WAITING, Activity.Status.PROGRESSING
+        _set_change_status(activity, status, next, activity.start, replace)
+    if now_time < activity.apply_end:
+        status, next = Activity.Status.APPLYING, Activity.Status.WAITING
+        _set_change_status(activity, status, next, activity.apply_end, replace)
+    if now_time < activity.start - timedelta(minutes=15):
+        scheduler.add_job(
+            notifyActivity, "date", id=f"activity_{activity.id}_remind",
+            run_date=activity.start - timedelta(minutes=15),
+            args=[activity.id, "remind"], replace_existing=replace)
+    return status
+
+
 def create_activity(request):
     '''
     检查活动，合法时寻找该活动，不存在时创建
@@ -585,16 +609,7 @@ def create_activity(request):
         activity.recorded = True
         activity.status = Activity.Status.APPLYING
         notifyActivity(activity.id, "newActivity")
-
-        scheduler.add_job(notifyActivity, "date", id=f"activity_{activity.id}_remind",
-                          run_date=activity.start - timedelta(minutes=15), args=[activity.id, "remind"], replace_existing=True)
-        # 活动状态修改
-        scheduler.add_job(changeActivityStatus, "date", id=f"activity_{activity.id}_{Activity.Status.WAITING}",
-                          run_date=activity.apply_end, args=[activity.id, Activity.Status.APPLYING, Activity.Status.WAITING])
-        scheduler.add_job(changeActivityStatus, "date", id=f"activity_{activity.id}_{Activity.Status.PROGRESSING}",
-                          run_date=activity.start, args=[activity.id, Activity.Status.WAITING, Activity.Status.PROGRESSING])
-        scheduler.add_job(changeActivityStatus, "date", id=f"activity_{activity.id}_{Activity.Status.END}",
-                          run_date=activity.end, args=[activity.id, Activity.Status.PROGRESSING, Activity.Status.END])
+        _set_jobs_to_status(activity, replace=False)
 
     activity.save()
 
@@ -757,15 +772,7 @@ def modify_accepted_activity(request, activity):
     activity.introduction = request.POST["introduction"]
     activity.save()
 
-    if activity.status == Activity.Status.APPLYING:
-        scheduler.add_job(changeActivityStatus, "date", id=f"activity_{activity.id}_{Activity.Status.WAITING}",
-                          run_date=activity.apply_end, args=[activity.id, Activity.Status.APPLYING, Activity.Status.WAITING], replace_existing=True)
-    scheduler.add_job(notifyActivity, "date", id=f"activity_{activity.id}_remind",
-                      run_date=activity.start - timedelta(minutes=15), args=[activity.id, "remind"], replace_existing=True)
-    scheduler.add_job(changeActivityStatus, "date", id=f"activity_{activity.id}_{Activity.Status.PROGRESSING}",
-                      run_date=activity.start, args=[activity.id, Activity.Status.WAITING, Activity.Status.PROGRESSING], replace_existing=True)
-    scheduler.add_job(changeActivityStatus, "date", id=f"activity_{activity.id}_{Activity.Status.END}",
-                      run_date=activity.end, args=[activity.id, Activity.Status.PROGRESSING, Activity.Status.END], replace_existing=True)
+    _set_jobs_to_status(activity, replace=True)
 
     # if len(to_subscribers) > 1:
     #     notifyActivity(activity.id, "modification_sub_ex_par", "\n".join(to_subscribers))
@@ -800,33 +807,21 @@ def accept_activity(request, activity):
     )
 
     if activity.status == Activity.Status.REVIEWING:
-
-        now_time = datetime.now()
-        if activity.end <= now_time:
-            activity.status = Activity.Status.END
-        elif activity.start <= now_time:
-            activity.status = Activity.Status.PROGRESSING
-            scheduler.add_job(changeActivityStatus, "date", id=f"activity_{activity.id}_{Activity.Status.END}",
-                              run_date=activity.end, args=[activity.id, Activity.Status.PROGRESSING, Activity.Status.END])
-        elif activity.apply_end <= now_time:
-            activity.status = Activity.Status.WAITING
-            scheduler.add_job(changeActivityStatus, "date", id=f"activity_{activity.id}_{Activity.Status.END}",
-                              run_date=activity.end, args=[activity.id, Activity.Status.PROGRESSING, Activity.Status.END])
-            scheduler.add_job(changeActivityStatus, "date", id=f"activity_{activity.id}_{Activity.Status.PROGRESSING}",
-                              run_date=activity.start, args=[activity.id, Activity.Status.WAITING, Activity.Status.PROGRESSING])
-        else:
-            activity.status = Activity.Status.APPLYING
-            notifyActivity(activity.id, "newActivity")
-            scheduler.add_job(changeActivityStatus, "date", id=f"activity_{activity.id}_{Activity.Status.END}",
-                              run_date=activity.end, args=[activity.id, Activity.Status.PROGRESSING, Activity.Status.END])
-            scheduler.add_job(changeActivityStatus, "date", id=f"activity_{activity.id}_{Activity.Status.PROGRESSING}",
-                              run_date=activity.start, args=[activity.id, Activity.Status.WAITING, Activity.Status.PROGRESSING])
-            scheduler.add_job(changeActivityStatus, "date", id=f"activity_{activity.id}_{Activity.Status.WAITING}",
-                              run_date=activity.apply_end, args=[activity.id, Activity.Status.APPLYING, Activity.Status.WAITING])
-            scheduler.add_job(notifyActivity, "date", id=f"activity_{activity.id}_remind",
-                              run_date=activity.start - timedelta(minutes=15), args=[activity.id, "remind"], replace_existing=True)
+        activity.status = _set_jobs_to_status(activity, replace=False)
 
     activity.save()
+
+
+def _remove_jobs(activity: Activity, *jobs):
+    for job in jobs:
+        try:
+            scheduler.remove_job(f"activity_{activity.id}_{job}")
+        except:
+            pass
+
+def _remove_activity_jobs(activity: Activity):
+    _remove_jobs(activity, 'remind', Activity.Status.WAITING,
+                 Activity.Status.PROGRESSING, Activity.Status.END)
 
 
 def reject_activity(request, activity):
@@ -853,13 +848,7 @@ def reject_activity(request, activity):
         notifyActivity(activity.id, "modification_par",
                        f"您报名的活动{activity.title}已取消。")
         activity.status = Activity.Status.CANCELED
-        scheduler.remove_job(f"activity_{activity.id}_remind")
-        scheduler.remove_job(
-            f"activity_{activity.id}_{Activity.Status.WAITING}")
-        scheduler.remove_job(
-            f"activity_{activity.id}_{Activity.Status.PROGRESSING}")
-        scheduler.remove_job(
-            f"activity_{activity.id}_{Activity.Status.END}")
+        _remove_activity_jobs(activity)
 
     notification = notification_create(
         receiver=activity.organization_id.get_user(),
@@ -972,12 +961,7 @@ def cancel_activity(request, activity):
     #         activity_id=activity
     #     ).update(status=Participant.AttendStatus.APLLYFAILED)
 
-    scheduler.remove_job(f"activity_{activity.id}_remind")
-    scheduler.remove_job(
-        f"activity_{activity.id}_{Activity.Status.WAITING}")
-    scheduler.remove_job(
-        f"activity_{activity.id}_{Activity.Status.PROGRESSING}")
-    scheduler.remove_job(f"activity_{activity.id}_{Activity.Status.END}")
+    _remove_activity_jobs(activity)
     activity.save()
 
 

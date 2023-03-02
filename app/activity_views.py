@@ -438,74 +438,6 @@ def checkinActivity(request: HttpRequest, aid=None):
     return redirect(message_url(context, f"/viewActivity/{aid}"))
 
 
-# participant checkin activity
-# GET参数?activityid=id
-#   activity_id : 活动id
-# example: http://127.0.0.1:8000/checkinActivity?activityid=1
-# TODO: 前端页面待对接
-"""
-@login_required(redirect_field_name="origin")
-@utils.check_user_access(redirect_url="/logout/")
-@logger.secure_view()
-def checkinActivity(request):
-    valid, user_type, html_display = utils.check_user_type(request.user)
-
-    # check activity existence
-    activity_id = request.GET.get("activityid", None)
-    try:
-        activity = Activity.objects.get(id=activity_id)
-        if (
-                activity.status != Activity.Status.WAITING
-                and activity.status != Activity.Status.PROGRESSING
-        ):
-            html_display["warn_code"] = 1
-            html_display["warn_message"] = f"签到失败：活动{activity.status}"
-            return redirect("/viewActivities/")  # context incomplete
-    except:
-        msg = "活动不存在"
-        origin = "/welcome/"
-        return render(request, "msg.html", locals())
-
-    # check person existance and registration to activity
-    person = utils.get_person_or_org(request.user, "naturalperson")
-    try:
-        participant = Participant.objects.get(
-            activity_id=activity_id, person_id=person.id
-        )
-        if participant.status == Participant.AttendStatus.APLLYFAILED:
-            html_display["warn_code"] = 1
-            html_display["warn_message"] = "您没有参与这项活动：申请失败"
-        elif participant.status == Participant.AttendStatus.APLLYSUCCESS:
-            #  其实我觉得这里可以增加一个让发起者设定签到区间的功能
-            #    或是有一个管理界面，管理一个“签到开关”的值
-            if datetime.now().date() < activity.end.date():
-                html_display["warn_code"] = 1
-                html_display["warn_message"] = "签到失败：签到未开始"
-            elif datetime.now() >= activity.end:
-                html_display["warn_code"] = 1
-                html_display["warn_message"] = "签到失败：签到已结束"
-            else:
-                participant.status = Participant.AttendStatus.ATTENDED
-                html_display["warn_code"] = 2
-                html_display["warn_message"] = "签到成功"
-        elif participant.status == Participant.AttendStatus.ATTENDED:
-            html_display["warn_code"] = 1
-            html_display["warn_message"] = "重复签到"
-        elif participant.status == Participant.AttendStatus.CANCELED:
-            html_display["warn_code"] = 1
-            html_display["warn_message"] = "您没有参与这项活动：已取消"
-        else:
-            msg = f"不合理的参与状态：{participant.status}"
-            origin = "/welcome/"
-            return render(request, "msg.html", locals())
-    except:
-        html_display["warn_code"] = 1
-        html_display["warn_message"] = "您没有参与这项活动：未报名"
-
-    return redirect("/viewActivities/")  # context incomplete
-"""
-
-
 @login_required(redirect_field_name="origin")
 @utils.check_user_access(redirect_url="/logout/")
 @logger.secure_view()
@@ -739,11 +671,14 @@ def showActivity(request: HttpRequest):
 @logger.secure_view()
 def examineActivity(request: HttpRequest, aid):
     valid, user_type, html_display = utils.check_user_type(request.user)
-    assert valid
-    assert user_type == UTYPE_PER
-    me = utils.get_person_or_org(request.user)
-    activity = Activity.objects.get(id=int(aid))
-    assert activity.examine_teacher == me
+    try:
+        assert valid
+        assert user_type == UTYPE_PER
+        me = utils.get_person_or_org(request.user)
+        activity = Activity.objects.get(id=int(aid))
+        assert activity.examine_teacher == me
+    except:
+        return redirect(message_url(wrong('没有审核权限!')))
 
     html_display["is_myself"] = True
 
@@ -848,11 +783,14 @@ def offlineCheckinActivity(request: HttpRequest, aid):
     :rtype: HttpResponse
     '''
     _, user_type, _ = utils.check_user_type(request.user)
-    me = get_person_or_org(request.user, user_type)
-    aid = int(aid)
-    src = request.GET.get('src')
-    activity = Activity.objects.get(id=aid)
-    assert me == activity.organization_id and user_type == UTYPE_ORG
+    try:
+        me = get_person_or_org(request.user, user_type)
+        aid = int(aid)
+        src = request.GET.get('src')
+        activity = Activity.objects.get(id=aid)
+        assert me == activity.organization_id and user_type == UTYPE_ORG
+    except:
+        return redirect(message_url(wrong('请不要随意访问其他网页！')))
 
     member_list = Participant.objects.filter(
         activity_id=aid,
