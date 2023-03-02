@@ -98,18 +98,30 @@ class Logger(logging.Logger):
                     ret.append('Failed to jsonify post data.')
         return '\n'.join(ret)
 
-    def on_exception(self, message: str = '', request: HttpRequest | None = None) -> None:
-        '''Log exception and raise if debug mode is on.'''
+    def on_exception(self, message: str = '', *,
+                     request: HttpRequest | None = None,
+                     raise_exc: bool | None = None) -> None:
+        '''
+        Log exception and raise it if needed.
+
+        Args:
+            message (str, optional): 基础日志信息. Defaults to ''.
+            request (HttpRequest, optional): 记录请求信息. Defaults to None.
+            raise_exc (bool, optional): 是否抛出异常，不提供则根据debug模式决定
+        '''
         if request is not None:
             message = self.format_request(request) + message
         self.exception(message)
-        if self.debug_mode:
+        if raise_exc is None:
+            raise_exc = self.debug_mode
+        if raise_exc:
             raise
 
     def _return_value(self, value: ReturnType[T]) -> T:
         return value() if callable(value) else value
 
     def secure_view(self, message: str = '', *,
+                    raise_exc: bool | None = None,
                     fail_value: ReturnType[Any] = None,
                     exc_type: ExceptType = Exception):
         def decorator(view: Callable[Concatenate[HttpRequest, P], T]):
@@ -118,12 +130,13 @@ class Logger(logging.Logger):
                 try:
                     return view(request, *args, **kwargs)
                 except exc_type:
-                    self.on_exception(message, request=request)
+                    self.on_exception(message, request=request, raise_exc=raise_exc)
                     return self._return_value(fail_value)
             return wrapper
         return decorator
 
     def secure_func(self, message: str = '', *,
+                    raise_exc: bool | None = None,
                     fail_value: ReturnType[Any] = None,
                     exc_type: ExceptType = Exception):
         def decorator(func: Callable[P, T]):
@@ -132,7 +145,7 @@ class Logger(logging.Logger):
                 try:
                     return func(*args, **kwargs)
                 except exc_type:
-                    self.on_exception(message)
+                    self.on_exception(message, raise_exc=raise_exc)
                     return self._return_value(fail_value)
             return wrapper
         return decorator
