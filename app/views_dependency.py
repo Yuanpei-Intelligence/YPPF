@@ -46,12 +46,8 @@ from utils.http.dependency import *
 from utils.views import *
 from generic.models import User
 from app.config import *
-from app import utils, log
-
-
-# 用于重定向的视图专用常量
-EXCEPT_REDIRECT = HttpResponseRedirect(
-    message_url(wrong('出现意料之外的错误, 请联系管理员!')))
+from app import utils
+from app.log import logger
 
 
 # 不应导出，接口内部使用

@@ -91,7 +91,7 @@ class ModifyAcademicView(SecureTemplateView):
 
 @login_required(redirect_field_name="origin")
 @utils.check_user_access(redirect_url="/logout/")
-@log.except_captured(EXCEPT_REDIRECT)
+@logger.secure_view()
 def modifyAcademic(request: HttpRequest) -> HttpResponse:
     """
     学术地图编辑界面
@@ -223,7 +223,7 @@ def modifyAcademic(request: HttpRequest) -> HttpResponse:
 
 @login_required(redirect_field_name="origin")
 @utils.check_user_access(redirect_url="/logout/")
-@log.except_captured(EXCEPT_REDIRECT)
+@logger.secure_view()
 def auditAcademic(request: HttpRequest) -> HttpResponse:
     """
     供教师使用的页面，展示所有待审核的学术地图
@@ -248,7 +248,7 @@ def auditAcademic(request: HttpRequest) -> HttpResponse:
 
 @login_required(redirect_field_name="origin")
 @utils.check_user_access(redirect_url="/logout/")
-@log.except_captured(EXCEPT_REDIRECT)
+@logger.secure_view()
 def applyAuditAcademic(request: HttpRequest):
     if not NaturalPerson.objects.get_by_user(request.user).is_teacher():
         return JsonResponse(wrong("只有老师才能执行审核操作！"))

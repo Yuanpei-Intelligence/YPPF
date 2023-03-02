@@ -30,7 +30,7 @@ __all__ = [
 
 @login_required(redirect_field_name="origin")
 @utils.check_user_access(redirect_url="/logout/")
-@log.except_captured(EXCEPT_REDIRECT)
+@logger.secure_view()
 def viewFeedback(request: HttpRequest, fid):
     try:
         # 查找fid对应的反馈条目
@@ -371,7 +371,7 @@ def viewFeedback(request: HttpRequest, fid):
 
 @login_required(redirect_field_name='origin')
 @utils.check_user_access(redirect_url="/logout/")
-@log.except_captured()
+@logger.secure_view()
 def feedbackWelcome(request: HttpRequest):
     valid, user_type, html_display = utils.check_user_type(request.user)
     is_person = user_type == UTYPE_PER
@@ -536,7 +536,7 @@ def feedbackWelcome(request: HttpRequest):
 
 @login_required(redirect_field_name='origin')
 @utils.check_user_access(redirect_url="/logout/")
-@log.except_captured()
+@logger.secure_view()
 def modifyFeedback(request: HttpRequest):
     '''
     反馈表单填写、修改与提交的视图函数

@@ -8,7 +8,6 @@ from extern.wechat import send_wechat
 
 __all__ = [
     'logger',
-    'except_captured',
 ]
 
 
@@ -27,13 +26,12 @@ class ProfileLogger(Logger):
             '成长档案发生错误', message,
         )
 
+    def secure_view(self, message: str = '出现意料之外的错误, 请联系管理员!',
+                    url: str ='/welcome/'):
+        from django.shortcuts import HttpResponseRedirect
+        from utils.global_messages import wrong, message_url
+        EXCEPT_REDIRECT = HttpResponseRedirect(message_url(wrong(message), url))
+        return super().secure_view(message, fail_value=EXCEPT_REDIRECT)
+
 
 logger = ProfileLogger.getLogger('profile')
-
-def except_captured(return_value=None, except_type=Exception):
-    """
-    Decorator that captures exception and log, raise or 
-    return specific value if `return_value` is assigned.
-    """
-
-    return logger.secure_view(fail_value=return_value, exc_type=except_type)
