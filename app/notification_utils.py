@@ -11,7 +11,6 @@ from app.extern.wechat import (
     WechatMessageLevel,
 )
 from app.log import logger
-from app.log import operation_writer, STATE_ERROR, STATE_WARNING
 
 
 hasher = MySHA256Hasher("")
@@ -236,21 +235,21 @@ def bulk_notification_create(
                     receiver_id__in=receiver_ids).values_list('receiver_id', flat=True).distinct()
                 
                 cur_status = '重复处理'
+                def _short(values):
+                    return f'{values[:3]}等{len(values)}个'
+
                 if duplicate_behavior in ['report', 'log']:
-                    status_code = STATE_ERROR if duplicate_behavior == 'report' else STATE_WARNING
-                    operation_writer(CONFIG.system_log,
-                                    f'批量创建通知时通知已存在, 识别码为{bulk_identifier}'
-                                    + f'：尝试创建{len(receiver_ids)}个，已有{received_ids[:3]}等{len(received_ids)}个，共存在{len(exist_userids)}个',
-                                    'notification_utils[bulk_notification_create]', status_code)
+                    log_msg = f'批量创建通知时通知已存在, 识别码为{bulk_identifier}'
+                    log_msg += f'：尝试创建{len(receiver_ids)}个，已有{_short(received_ids)}，共存在{len(exist_userids)}个'
+                    logger.error(log_msg) if duplicate_behavior == 'report' else logger.warning(log_msg)
                 if duplicate_behavior == 'remove':
                     cur_status = '移除已有接收者'
                     received_id_set = set(received_ids)
                     receivers = [receiver for receiver in receivers
                                     if receiver.id not in received_id_set]
-                    operation_writer(CONFIG.system_log,
-                                    f'批量创建通知时通知已存在, 识别码为{bulk_identifier}'
-                                    + f'：已移除{received_ids[:3]}等{len(received_ids)}个已通知用户，剩余{len(receivers)}个',
-                                    'notification_utils[bulk_notification_create]', STATE_WARNING)
+                    log_msg = f'批量创建通知时通知已存在, 识别码为{bulk_identifier}'
+                    log_msg += f'：已移除{_short(received_ids)}已通知用户，剩余{len(receivers)}个'
+                    logger.warning(log_msg)
                     if not receivers:
                         return True, bulk_identifier
             
@@ -283,9 +282,7 @@ def bulk_notification_create(
         #         start_time__gt=start_time,
         #         ).update(start_time=start_time)
         # except:
-        #     operation_writer(SYSTEM_LOG,
-        #                     f'更新通知创建时间时失败, 识别码为{bulk_identifier}, 创建时间为{start_time}',
-        #                     'notification_utils[bulk_notification_create]', STATE_ERROR)
+        #     logger.exception(f'更新通知创建时间时失败, 识别码为{bulk_identifier}, 创建时间为{start_time}')
         success = True
         if publish_to_wechat:
             cur_status = '发送微信'
@@ -308,9 +305,7 @@ def bulk_notification_create(
             success = publish_notifications(filter_kws=filter_kws, **publish_kws)
     except Exception as e:
         success = False
-        operation_writer(CONFIG.system_log,
-                        f'在{cur_status}时发生错误：{e}, 识别码为{bulk_identifier}',
-                        'notification_utils[bulk_notification_create]', STATE_ERROR)
+        logger.exception(f'在{cur_status}时发生错误：识别码为{bulk_identifier}')
     return success, bulk_identifier
 
 
