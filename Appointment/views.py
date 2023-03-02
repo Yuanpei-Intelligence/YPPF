@@ -25,7 +25,7 @@ from Appointment.models import (
     College_Announcement,
     LongTermAppoint,
 )
-from Appointment.extern.wechat import MessageType, send_wechat_message, notify_appoint
+from Appointment.extern.wechat import MessageType, notify_appoint, notify_user
 # utils对接工具
 from Appointment.utils.utils import (
     doortoroom, iptoroom,
@@ -486,11 +486,12 @@ def door_check(request):
         return _fail()
     if student is None:
         cardcheckinfo_writer(student, room, False, False, f"学号{Sid}错误")
-        send_wechat_message(
-            [Sid], now_time.replace(second=0, microsecond=0), room,
-            MessageType.TEMPORARY_FAILED.value, student, '临时预约', '', 1,
-            f'您尚未注册地下室账号，无法开门，请先访问任意地下室页面创建账号！\n点击跳转地下室账户，快捷注册',
-            url=reverse('Appointment:account'))
+        notify_user(
+            Sid, '无法开启该房间',
+            '原因：您尚未注册地下室账号，请先访问任意地下室页面创建账号！',
+            '点击跳转地下室账户，快捷注册',
+            place=room.__str__()
+        )
         return _fail()
 
     # --------- 直接进入 --------- #
@@ -508,18 +509,9 @@ def door_check(request):
     if room.RneedAgree:
         if student.agree_time is None:
             cardcheckinfo_writer(student, room, False, False, f"刷卡拒绝：未签署协议")
-            send_wechat_message(
-                stuid_list=[Sid],
-                start_time=datetime.now(),
-                room=room,
-                message_type=MessageType.NEED_AGREE.value,
-                major_student=student,
-                usage="刷卡开门",
-                announcement="",
-                num=1,
-                reason='',
-                url='agreement',
-            )
+            notify_user(Sid, '您刷卡的房间需要签署协议',
+                        '点击本消息即可快捷跳转到用户协议页面',
+                        place=room.__str__(), url='agreement', btntxt='签署协议')
             return _fail()
 
     if room.Rstatus == Room.Status.UNLIMITED:   # 自习室
@@ -549,13 +541,10 @@ def door_check(request):
     # --- modify by lhw: 临时预约 --- #
 
     def _temp_failed(message: str, record_temp=True):
-        MSG_TYPE = MessageType.TEMPORARY_FAILED.value
         record_msg = f"刷卡拒绝：临时预约失败（{message}）" if record_temp else f"刷卡拒绝：{message}"
         cardcheckinfo_writer(student, room, False, False, record_msg)
-        send_wechat_message(
-            [student.get_id()], now_time.replace(
-                second=0, microsecond=0), room,
-            MSG_TYPE, student, "临时预约", "", 1, message)
+        notify_user(student.get_id(), '您发起的临时预约失败',
+                    '原因：' + message, place=room.__str__())
         return _fail()
 
     if len(room_appoint) != 0:  # 当前有预约
