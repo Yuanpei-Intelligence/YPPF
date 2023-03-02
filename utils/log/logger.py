@@ -20,7 +20,7 @@ Have to restrict backtrace level.
 import os
 import json
 import logging
-from typing import Callable, Any, cast, ParamSpec, Concatenate
+from typing import Callable, Any, cast, ParamSpec, Concatenate, TypeVar
 from functools import wraps
 
 from django.conf import settings
@@ -37,6 +37,10 @@ __all__ = [
 
 _loggers: dict[str, 'Logger'] = dict()
 P = ParamSpec('P')
+T = TypeVar('T')
+ReturnType = T | Callable[[], T]
+ExceptType = type[BaseException] | tuple[type[BaseException], ...]
+
 
 class Logger(logging.Logger):
     @classmethod
@@ -48,11 +52,11 @@ class Logger(logging.Logger):
         logger = cast(cls, logging.getLogger(name))
         logging.setLoggerClass(_logger_class)
         if setup:
-            logger.setup(name, root=root)
+            logger.setup(name)
         _loggers[name] = logger
         return logger
 
-    def setup(self, name: str, handle: bool = True, root: bool = False) -> None:
+    def setup(self, name: str, handle: bool = True) -> None:
         self.set_debug_mode(settings.DEBUG)
         self.setLevel()
         if handle: self.add_default_handler(name)
@@ -67,8 +71,8 @@ class Logger(logging.Logger):
             if not os.path.exists(base_dir):
                 os.mkdir(base_dir)
         file_path = os.path.join(base_dir, name + '.log')
-        handler = logging.FileHandler(file_path, encoding='utf8', mode='a')
-        handler.setFormatter(logging.Formatter(format or CONFIG.format))
+        handler = logging.FileHandler(file_path, encoding='UTF8', mode='a')
+        handler.setFormatter(logging.Formatter(format or CONFIG.format, style='{'))
         self.addHandler(handler)
 
     def set_debug_mode(self, debug: bool) -> None:
@@ -84,8 +88,7 @@ class Logger(logging.Logger):
         ret = []
         ret.append('URL: ' + request.get_full_path())
         if request.user.is_authenticated:
-            # Implicit Call: generic.models.User.__str__
-            ret.append('User: ' + str(request.user))
+            ret.append('User: ' + request.user.__str__())  # Traceable Call
         if request.method is not None:
             ret.append('Method: ' + request.method)
             if request.method.lower() == 'POST':
@@ -95,15 +98,41 @@ class Logger(logging.Logger):
                     ret.append('Failed to jsonify post data.')
         return '\n'.join(ret)
 
-    def secure_view(self, message: str = '', ret = None):
-        def decorator(view: Callable[Concatenate[HttpRequest, P], Any]):
+    def on_exception(self, message: str = '', request: HttpRequest | None = None) -> None:
+        '''Log exception and raise if debug mode is on.'''
+        if request is not None:
+            message = self.format_request(request) + message
+        self.exception(message)
+        if self.debug_mode:
+            raise
+
+    def _return_value(self, value: ReturnType[T]) -> T:
+        return value() if callable(value) else value
+
+    def secure_view(self, message: str = '', *,
+                    fail_value: ReturnType[Any] = None,
+                    exc_type: ExceptType = Exception):
+        def decorator(view: Callable[Concatenate[HttpRequest, P], T]):
             @wraps(view)
-            def wrapper(request: HttpRequest, *args: P.args, **kwargs: P.kwargs):
+            def wrapper(request: HttpRequest, *args: P.args, **kwargs: P.kwargs) -> T:
                 try:
                     return view(request, *args, **kwargs)
-                except Exception:
-                    if self.debug_mode: raise
-                    self.exception(self.format_request(request) + message)
-                    return ret
+                except exc_type:
+                    self.on_exception(message, request=request)
+                    return self._return_value(fail_value)
+            return wrapper
+        return decorator
+
+    def secure_func(self, message: str = '', *,
+                    fail_value: ReturnType[Any] = None,
+                    exc_type: ExceptType = Exception):
+        def decorator(func: Callable[P, T]):
+            @wraps(func)
+            def wrapper(*args: P.args, **kwargs: P.kwargs) -> T:
+                try:
+                    return func(*args, **kwargs)
+                except exc_type:
+                    self.on_exception(message)
+                    return self._return_value(fail_value)
             return wrapper
         return decorator

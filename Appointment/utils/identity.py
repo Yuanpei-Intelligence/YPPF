@@ -126,12 +126,7 @@ def _create_account(request: UserRequest, **values) -> Participant | None:
     try:
         assert request.user.is_authenticated
         with transaction.atomic():
-            try:
-                given_name = get_name(request.user)
-            except:
-                if values.get('given_name') is None:
-                    from Appointment.utils.utils import operation_writer
-                    operation_writer(f'找不到用户{request.user.username}的姓名', 'Error')
+            given_name = get_name(request.user)
 
             # 设置首字母
             pinyin_list = pypinyin.pinyin(given_name, style=pypinyin.NORMAL)
@@ -175,6 +170,7 @@ def _update_name(user: Participant | User | str):
     # 更新数据库和session
     with transaction.atomic():
         participant = get_participant(participant.Sid, update=True, raise_except=True)
+        assert participant is not None, '本来就存在的用户理应存在'
         participant.name = given_name
         participant.pinyin = pinyin_init
         participant.save()

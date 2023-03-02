@@ -9,12 +9,13 @@ wechat.py
 '''
 import requests
 import json
-from typing import Iterable, Callable, ParamSpec, TypeVar, Any
+from typing import Iterable, Callable, Any
 from datetime import datetime, timedelta
 
 from extern.config import wechat_config as CONFIG
+from extern.multithread import get_caller, scheduler_enabled
+from extern.log import ExternLogger
 from utils.http.utils import build_full_url
-from scheduler.scheduler import scheduler
 
 
 __all__ = [
@@ -26,31 +27,7 @@ __all__ = [
 
 # 全局变量 用来发送和确认默认的导航网址
 DEFAULT_URL = build_full_url('/')
-
-
-_P = ParamSpec('_P')
-_T = TypeVar('_T')
-def _get_caller(func: Callable[_P, _T], multithread: bool = True,
-                next_run_time: datetime | timedelta | None = None):
-    '''获取函数的调用者'''
-    multithread = multithread and CONFIG.multithread
-    if not multithread:
-        return func
-    def _func(*args: _P.args, **kwargs: _P.kwargs):
-        if isinstance(next_run_time, datetime):
-            _next_run = next_run_time
-        elif isinstance(next_run_time, timedelta):
-            _next_run = datetime.now() + next_run_time
-        else:
-            _next_run = datetime.now() + timedelta(seconds=5)
-        scheduler.add_job(
-            func,
-            "date",
-            args=args,
-            kwargs=kwargs,
-            next_run_time=_next_run,
-        )
-    return _func
+logger = ExternLogger.getLogger('wechat')
 
 
 def _get_available_users(users: Iterable[str | int]) -> list[str]:
@@ -86,7 +63,7 @@ def _post_and_parse(
     try: _post_data = json.dumps(post_data)
     except: return "JSON编码失败", None
     try: raw_response = requests.post(post_url, _post_data, timeout=timeout)
-    except: return "连接api失败", None
+    except: return "连接API失败", None
     try: response: dict[str, Any] = raw_response.json()
     except: return "JSON解析失败", None
     try:
@@ -102,9 +79,16 @@ def _post_and_parse(
         return "回应解析失败", None
 
 
+def _log_users(users: list[str]) -> str:
+    if len(users) <= 10:
+        return ', '.join(users)
+    user_display = users[:3] + ['...'] + users[-3:]
+    return ', '.join(user_display) + f'等{len(users)}用户'
+
+
 def _send_wechat(
     users: list[str],
-    message: str,
+    content: str,
     api_url: str,
     card: bool = True,
     url: str | None = None,
@@ -115,9 +99,9 @@ def _send_wechat(
     """底层实现发送到微信，是为了方便设置定时任务"""
     post_data = {
         "touser": users,
-        "content": message,
+        "content": content,
         "toall": True,
-        "secret": CONFIG.hasher.encode(message),
+        "secret": CONFIG.hasher.encode(content),
     }
     if card:
         post_data["card"] = True
@@ -127,21 +111,25 @@ def _send_wechat(
             post_data["btntxt"] = btntxt
 
     def _parser(detail: list[tuple[str, str]]) -> ParseResult:
-        failed = [x[0] for x in detail]
+        retrys = [x[0] for x in detail]
         errmsg = detail[0][1]             # 失败原因基本相同，取一个即可
-        return errmsg, failed
+        return errmsg, retrys
 
     for i in range(retry_times):
-        errmsg, failed = _post_and_parse(api_url, post_data, CONFIG.timeout, _parser)
-        if errmsg is None: break
-        # 全部发送失败且不可重发
-        if failed is None: break
-        post_data["touser"] = failed
-        print(f"部分发送失败：{failed[:3]}等{len(failed)}人，原因：{errmsg}")
+        errmsg, retrys = _post_and_parse(api_url, post_data, CONFIG.timeout, _parser)
+        if errmsg is None:
+            logger.info(f"成功向{_log_users(users)}发送消息")
+            break
+        if retrys is None:
+            logger.warning(f"向{_log_users(users)}发送消息失败：{errmsg}")
+            break
+        post_data["touser"] = retrys
+        logger.warning(f"向{_log_users(users)}发送时，{_log_users(retrys)}失败：{errmsg}")
 
 
 def send_wechat(
     users: Iterable[str | int],
+    title: str,
     message: str,
     api_path: str = '',
     card: bool = True,
@@ -149,27 +137,38 @@ def send_wechat(
     btntxt: str | None = None,
     *,
     default: bool = True,
-    multithread: bool = True,
     retry_times: int = 1,
+    multithread: bool = True,
+    run_time: datetime | timedelta | None = None,
+    task_id: str | None = None,
 ):
     """
-    附带了去重、多线程和batch的发送；注意这个函数不应被直接调用
+    附带了去重、多线程和batch的发送；不应被服务直接调用
 
     参数
     --------
     - users(Iterable[str | int]): 用户列表
-    - message(str): 发送的文字，第一个`\\n`被视为标题和内容的分隔符
+    - title(str): 标题
+    - message(str): 内容，可为空字符串
     - api_path(str, optional): API路径，相对路径会被转换为绝对路径
     - card(bool): 发送文本卡片，建议message长度小于120时开启
     - url(str, optional): 文本卡片的链接，相对路径会被转换为绝对路径
     - btntxt(str, optional): 文本卡片的提示短语，不超过4个字
     - 仅关键字参数
         - default(bool, optional): 填充默认值
+        - retry_times(int, optional): 重试次数
         - multithread(bool, optional): 使用多线程（需要启用多线程），不堵塞当前线程
+        - run_time(datetime | timedelta, optional): 执行时间，时间或延迟
+        - task_id(str, optional): 任务标识符，与定时任务标识符一致
+    
+    异常
+    --------
+    - RuntimeError: 定时任务未启用时，设置定时发送时间
     """
     users = _get_available_users(users)
     if not users:
-        return
+        return logger.warning('没有可用用户')
+    content = f'{title}<title>{message}'
     if card:
         if url is not None:
             url = build_full_url(url)
@@ -180,30 +179,39 @@ def send_wechat(
     if not CONFIG.retry:
         retry_times = 1
 
+    if run_time is not None and not scheduler_enabled(multithread):
+        if isinstance(run_time, datetime):
+            _schedule_time = run_time.strftime('%Y-%m-%d %H:%M:%S')
+            _schedule_time = f'计划于{_schedule_time}执行'
+        else:
+            _schedule_time = f'延迟{run_time}执行'
+        logger.error(f'无法设置{_schedule_time}的任务{task_id}：定时任务未启用')
+        raise RuntimeError('定时任务未启用')
+
     total_ct = len(users)
-    caller = _get_caller(_send_wechat, multithread=multithread)
+    caller = get_caller(_send_wechat, multithread=multithread,
+                        job_id=task_id, run_time=run_time)
     for i in range(0, total_ct, CONFIG.send_batch):
-        userids = users[i : i + CONFIG.send_batch]  # 一次最多接受1000个
+        userids = users[i : i + CONFIG.send_batch]
         caller(
-            userids, message, build_full_url(api_path, CONFIG.api_url),
+            userids, content, build_full_url(api_path, CONFIG.api_url),
             card=card, url=url, btntxt=btntxt,
             retry_times=retry_times,
         )
 
 
-def send_verify_code(stu_id: str | int, captcha: str, url: str = '/forgetpw/'):
+def send_verify_code(stu_id: str | int, captcha: str, url: str | None = '/forgetpw/'):
     time = datetime.now().strftime('%m月%d日 %H:%M:%S')
     message = (
-        "YPPF登录验证\n"
         "您的账号正在进行企业微信验证\n本次请求的验证码为："
         f"<div class=\"highlight\">{captcha}</div>"
         f"发送时间：{time}"
     )
-    if not url:
-        send_wechat([stu_id], message, card=True)
-    else:
-        send_wechat([stu_id], message, card=True,
-                    url=build_full_url(url), btntxt="登录")
+    url = build_full_url(url) if url is not None else None
+    btntxt = "登录" if url is not None else None
+    send_wechat([stu_id], 'YPPF登录验证', message,
+                card=True, url=url, btntxt=btntxt,
+                task_id=f'wechat_verify: {stu_id}')
 
 
 def _invite_to_wechat(stu_id: str, retry_times: int = 1):
@@ -217,13 +225,14 @@ def _invite_to_wechat(stu_id: str, retry_times: int = 1):
         return detail, [stu_id]
 
     for i in range(retry_times):
-        errmsg, failed = _post_and_parse(INVITE_URL, post_data, CONFIG.timeout, _parser)
-        if errmsg is None: break
-        # 全部发送失败且不可重发
-        if failed is None: break
-        print(f"第{i+1}次向企业微信发送邀请失败：用户：{stu_id}，原因：{errmsg}")
+        errmsg, retrys = _post_and_parse(INVITE_URL, post_data, CONFIG.timeout, _parser)
+        if errmsg is None:
+            logger.info(f"成功向{stu_id}发送邀请")
+            break
+        logger.warning(f"向{stu_id}发送邀请失败：{errmsg}")
+        if retrys is None: break
 
 
 def invite_to_wechat(stu_id: str | int, retry_times: int = 3, *, multithread: bool = True):
-    caller = _get_caller(_invite_to_wechat, multithread=multithread)
+    caller = get_caller(_invite_to_wechat, multithread=multithread)
     caller(str(stu_id), retry_times=retry_times)

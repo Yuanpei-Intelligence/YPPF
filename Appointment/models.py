@@ -451,7 +451,7 @@ class LongTermAppoint(models.Model):
             count = len(appoints)
             for appoint in appoints:
                 appoint.cancel()
-                cancel_scheduler(appoint, 'Problem')
+                cancel_scheduler(appoint, record_miss=True)
             self.status = LongTermAppoint.Status.CANCELED
             self.save()
             return count

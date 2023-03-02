@@ -11,7 +11,7 @@ from django.db.models import QuerySet
 from utils.admin_utils import *
 from Appointment import jobs
 from Appointment.extern.constants import MessageType
-from Appointment.utils.utils import operation_writer
+from Appointment.utils.log import logger, get_user_logger
 from Appointment.models import *
 
 
@@ -291,7 +291,7 @@ class AppointAdmin(admin.ModelAdmin):
                             appoint, MessageType.WAITING2CONFIRM.value, appoint.get_status(),
                             students_id=[appoint.get_major_id()], admin=True,
                             id=f'{appoint.Aid}_confirm_admin_wechat')
-                        operation_writer(f"{appoint.Aid}号预约被管理员通过，发起人：{_appointor(appoint)}")
+                        logger.info(f"{appoint.Aid}号预约被管理员通过，发起人：{_appointor(appoint)}")
                     elif appoint.Astatus == Appoint.Status.VIOLATED:
                         appoint.Astatus = Appoint.Status.JUDGED
                         # for stu in appoint.students.all():
@@ -303,7 +303,7 @@ class AppointAdmin(admin.ModelAdmin):
                             appoint, MessageType.VIOLATED2JUDGED.value, appoint.get_status(),
                             students_id=[appoint.get_major_id()], admin=True,
                             id=f'{appoint.Aid}_confirm_admin_wechat')
-                        operation_writer(f"{appoint.Aid}号预约被管理员审核通过，发起人：{_appointor(appoint)}")
+                        logger.info(f"{appoint.Aid}号预约被管理员审核通过，发起人：{_appointor(appoint)}")
 
                     else:  # 不允许更改
                         some_invalid = 1
@@ -343,7 +343,7 @@ class AppointAdmin(admin.ModelAdmin):
                     appoint, MessageType.VIOLATE_BY_ADMIN.value, f'原状态：{ori_status}',
                     students_id=[appoint.get_major_id()], admin=True,
                     id=f'{appoint.Aid}_violate_admin_wechat')
-                operation_writer(f"{appoint.Aid}号预约被管理员设为违约，发起人：{_appointor(appoint)}")
+                logger.info(f"{appoint.Aid}号预约被管理员设为违约，发起人：{_appointor(appoint)}")
         except:
             return self.message_user(request, '操作失败!只允许对未审核的条目操作!', messages.WARNING)
 
@@ -369,7 +369,7 @@ class AppointAdmin(admin.ModelAdmin):
                 if datetime.now() < start:              # 如果未开始，修改开始提醒
                     jobs.set_start_wechat(appoint, notify_create=False)
             except Exception as e:
-                operation_writer(f"定时任务失败更新: {e}", "Error")
+                logger.error(f"定时任务失败更新: {e}")
                 return self.message_user(request, str(e), messages.WARNING)
         return self.message_user(request, '定时任务更新成功!')
     
@@ -398,14 +398,14 @@ class AppointAdmin(admin.ModelAdmin):
                             print(warning)
                             raise Exception(warning)
             except Exception as e:
-                operation_writer(f"学生{_appointor(appoint)}添加长线化预约失败: {e}", "Problem")
+                logger.warning(f"学生{_appointor(appoint)}添加长线化预约失败: {e}")
                 return self.message_user(request, str(e), messages.WARNING)
 
             # 到这里, 长线化预约发起成功
             jobs.set_longterm_wechat(
                 appoint, infos=f'新增了{times}周同时段预约', admin=True)
-            operation_writer(f"后台发起{times}周的长线化预约, 原始预约号{appoint.Aid}", 
-                             user=appoint.get_major_id())
+            get_user_logger(appoint).info(
+                f"后台发起{times}周的长线化预约, 原始预约号{appoint.Aid}")
         return self.message_user(request, '长线化成功!')
 
 

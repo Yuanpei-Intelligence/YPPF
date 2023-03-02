@@ -1,6 +1,3 @@
-# store some funcitons
-
-import os
 import threading
 from datetime import timedelta
 
@@ -14,7 +11,7 @@ from Appointment.models import (
     Room,
     Appoint,
 )
-from Appointment.utils.log import operation_writer
+from Appointment.utils.log import get_user_logger
 
 '''
 YWolfeee:
@@ -128,8 +125,8 @@ def set_appoint_reason(input_appoint: Appoint, reason: Appoint.Reason):
             appoint.Areason = reason
             appoint.save()
 
-        operation_writer(f"预约{appoint.Aid}出现违约:{appoint.get_Areason_display()}",
-                         user=appoint.get_major_id())
+        log_msg = f"预约{appoint.Aid}出现违约:{appoint.get_Areason_display()}"
+        get_user_logger(appoint).info(log_msg)
         return True, ""
     except Exception as e:
         return False, "in utils.set_appoint_reason: " + str(e)
@@ -170,10 +167,9 @@ def appoint_violate(input_appoint: Appoint, reason: Appoint.Reason):
             appoint.Ayp_num + appoint.Anon_yp_num,
             appoint.get_status(),
         )
-        operation_writer(
-            f"预约{appoint.Aid}出现违约:{appoint.get_Areason_display()};" +
-            f"扣除信用分:{really_deduct};剩余信用分:{major_student.credit}",
-            user=major_student.get_id())
+        log_msg = f"预约{appoint.Aid}出现违约:{appoint.get_Areason_display()};"
+        log_msg += f"扣除信用分:{really_deduct};剩余信用分:{major_student.credit}"
+        get_user_logger(major_student).info(log_msg)
         return _succeed
     except Exception as e:
         return False, "in utils.appoint_violate: " + str(e)
