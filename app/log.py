@@ -30,10 +30,7 @@ class ProfileLogger(Logger):
 
 logger = ProfileLogger.getLogger('profile')
 
-def except_captured(return_value=None, except_type=Exception,
-                    log=True, show_traceback=False, record_args=False,
-                    record_user=False, record_request_args=False,
-                    source='utils[except_captured]'):
+def except_captured(return_value=None, except_type=Exception):
     """
     Decorator that captures exception and log, raise or 
     return specific value if `return_value` is assigned.
