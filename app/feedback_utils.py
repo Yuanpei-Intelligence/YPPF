@@ -186,7 +186,7 @@ def update_feedback(feedback, me, request: HttpRequest):
             return context
 
 
-@logger.secure_func()
+@logger.secure_func(raise_exc=True)
 def make_relevant_notification(feedback, info, me):
     '''
     在用户提交反馈后，向对应组织发送通知
@@ -225,7 +225,7 @@ def make_relevant_notification(feedback, info, me):
     )
 
 
-@logger.secure_func()
+@logger.secure_func(raise_exc=True)
 def examine_notification(feedback):
     examin_teacher = feedback.org.otype.incharge.person_id
     notification_create(
@@ -239,7 +239,7 @@ def examine_notification(feedback):
         publish_kws={'app': WechatApp.AUDIT, 'level': WechatMessageLevel.INFO},
     )
 
-@logger.secure_func()
+@logger.secure_func(raise_exc=True)
 def inform_notification(sender: ClassifiedUser, receiver: ClassifiedUser,
                         content, feedback, anonymous=None, important=False):
     '''

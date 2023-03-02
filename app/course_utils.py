@@ -589,7 +589,7 @@ def check_course_time_conflict(current_course: Course,
     '''
 
 
-@logger.secure_func(fail_value=True)
+@logger.secure_func()
 def registration_status_change(course_id: int, user: NaturalPerson,
                                action: str) -> MESSAGECONTEXT:
     """
@@ -800,7 +800,7 @@ def course_to_display(courses: QuerySet[Course],
     return display
 
 
-@logger.secure_func(fail_value=True)
+@logger.secure_func()
 def draw_lots():
     """
     等额抽签选出成功选课的学生，并修改学生的选课状态
@@ -893,7 +893,7 @@ def draw_lots():
                 )
 
 
-@logger.secure_func(fail_value=True)
+@logger.secure_func()
 def change_course_status(cur_status: Course.Status, to_status: Course.Status) -> None:
     """
     作为定时任务，在课程设定的时间改变课程的选课阶段
@@ -966,7 +966,7 @@ def change_course_status(cur_status: Course.Status, to_status: Course.Status) ->
         courses.select_for_update().update(status=to_status)
 
 
-@logger.secure_func(fail_value=True)
+@logger.secure_func()
 def register_selection(wait_for: timedelta=None):
     """
     添加定时任务，实现课程状态转变，每次发起课程时调用

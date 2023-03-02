@@ -446,7 +446,7 @@ def update_pos_application(application, me, user_type, applied_org, info):
                     return wrong("出现系统意料之外的行为，请联系管理员处理!")
 
 
-@logger.secure_func()
+@logger.secure_func(raise_exc=True)
 def make_relevant_notification(application, info):
     '''
     对一个已经完成的申请, 构建相关的通知和对应的微信消息, 将有关的事务设为已完成
@@ -555,7 +555,7 @@ def make_relevant_notification(application, info):
         )
 
 
-@logger.secure_func()
+@logger.secure_func(raise_exc=True)
 def send_message_check(me: Organization, request):
     # 已经检查了我的类型合法，并且确认是post
     # 设置默认量
