@@ -1245,7 +1245,7 @@ def review(request: HttpRequest):
                     longterm_appoint.status = LongTermAppoint.Status.APPROVED
                     longterm_appoint.save()
                     notify_appoint(
-                        longterm_appoint.appoint, MessageType.LONGTERM_APPROVED.value,
+                        longterm_appoint.appoint, MessageType.LONGTERM_APPROVED,
                         students_id=[longterm_appoint.get_applicant_id()],
                         id=f'{longterm_appoint.pk}_longterm_approved')
                 succeed(
@@ -1262,7 +1262,7 @@ def review(request: HttpRequest):
                     longterm_appoint.review_comment = reason
                     longterm_appoint.save()
                     notify_appoint(
-                        longterm_appoint.appoint, MessageType.LONGTERM_REJECTED.value, reason,
+                        longterm_appoint.appoint, MessageType.LONGTERM_REJECTED, reason,
                         students_id=[longterm_appoint.get_applicant_id()],
                         id=f'{longterm_appoint.pk}_longterm_rejected')
             except:
