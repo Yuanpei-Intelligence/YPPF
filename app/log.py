@@ -21,6 +21,8 @@ class ProfileLogger(Logger):
             self._send_wechat(msg, level)
 
     def _send_wechat(self, message: str, level: int = logging.ERROR):
+        if not GLOBAL_CONF.debug_stuids:
+            return
         send_wechat(
             GLOBAL_CONF.debug_stuids,
             '成长档案发生错误', message,

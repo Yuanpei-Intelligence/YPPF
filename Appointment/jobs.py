@@ -78,7 +78,7 @@ def set_scheduler(appoint: Appoint):
 def set_cancel_wechat(appoint: Appoint, students_id=None):
     '''取消预约的微信提醒，默认发给所有参与者'''
     set_appoint_wechat(
-        appoint, MessageType.CANCELED.value,
+        appoint, MessageType.CANCELED,
         students_id=students_id, id=f'{appoint.Aid}_cancel_wechat')
 
 
@@ -93,7 +93,7 @@ def set_start_wechat(appoint: Appoint, students_id=None, notify_create=True):
         # add by lhw : 临时预约 #
         if appoint.Atype == Appoint.Type.TEMPORARY:
             set_appoint_wechat(
-                appoint, MessageType.TEMPORARY.value,
+                appoint, MessageType.TEMPORARY,
                 students_id=students_id, id=f'{appoint.Aid}_new_wechat')
         else:
             logger.warning(f'预约{appoint.Aid}尝试发送给微信时已经开始，且并非临时预约')
@@ -102,23 +102,23 @@ def set_start_wechat(appoint: Appoint, students_id=None, notify_create=True):
         # 距离预约开始还有15分钟以上，提醒有新预约&定时任务
         if notify_create:  # 只有在非长线预约中才添加这个job
             set_appoint_wechat(
-                appoint, MessageType.NEW.value,
+                appoint, MessageType.NEW,
                 students_id=students_id, id=f'{appoint.Aid}_new_wechat')
         set_appoint_wechat(
-            appoint, MessageType.START.value,
+            appoint, MessageType.START,
             students_id=students_id, id=f'{appoint.Aid}_start_wechat',
             job_time=appoint.Astart - timedelta(minutes=15))
     else:
         # 距离预约开始还有不到15分钟，提醒有新预约并且马上开始
         set_appoint_wechat(
-            appoint, MessageType.NEW_AND_START.value,
+            appoint, MessageType.NEW_AND_START,
             students_id=students_id, id=f'{appoint.Aid}_new_wechat')
     return True
 
 
 def set_longterm_wechat(appoint: Appoint, students_id=None, infos='', admin=False):
     '''长期预约的微信提醒，默认发给所有参与者'''
-    set_appoint_wechat(appoint, MessageType.LONGTERM_CREATED.value, infos,
+    set_appoint_wechat(appoint, MessageType.LONGTERM_CREATED, infos,
                        students_id=students_id, admin=admin,
                        id=f'{appoint.Aid}_longterm_created_wechat')
 
@@ -132,7 +132,7 @@ def set_longterm_reviewing_wechat(longterm_appoint: LongTermAppoint, auditor_ids
     infos = []
     if longterm_appoint.applicant != longterm_appoint.appoint.major_student:
         infos.append(f'申请者：{longterm_appoint.applicant.name}')
-    set_appoint_wechat(longterm_appoint.appoint, MessageType.LONGTERM_REVIEWING.value, *infos,
+    set_appoint_wechat(longterm_appoint.appoint, MessageType.LONGTERM_REVIEWING, *infos,
                        students_id=auditor_ids,
                        url=f'/review?Lid={longterm_appoint.pk}',
                        id=f'{longterm_appoint.pk}_longterm_review_wechat')

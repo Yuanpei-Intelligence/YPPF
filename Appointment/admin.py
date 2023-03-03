@@ -288,7 +288,7 @@ class AppointAdmin(admin.ModelAdmin):
                         have_success = 1
                         # send wechat message
                         notify_appoint(
-                            appoint, MessageType.WAITING2CONFIRM.value, appoint.get_status(),
+                            appoint, MessageType.WAITING2CONFIRM, appoint.get_status(),
                             students_id=[appoint.get_major_id()], admin=True,
                             id=f'{appoint.Aid}_confirm_admin_wechat')
                         logger.info(f"{appoint.Aid}号预约被管理员通过，发起人：{_appointor(appoint)}")
@@ -300,7 +300,7 @@ class AppointAdmin(admin.ModelAdmin):
                         have_success = 1
                         # send wechat message
                         notify_appoint(
-                            appoint, MessageType.VIOLATED2JUDGED.value, appoint.get_status(),
+                            appoint, MessageType.VIOLATED2JUDGED, appoint.get_status(),
                             students_id=[appoint.get_major_id()], admin=True,
                             id=f'{appoint.Aid}_confirm_admin_wechat')
                         logger.info(f"{appoint.Aid}号预约被管理员审核通过，发起人：{_appointor(appoint)}")
@@ -340,7 +340,7 @@ class AppointAdmin(admin.ModelAdmin):
 
                 # send wechat message
                 notify_appoint(
-                    appoint, MessageType.VIOLATE_BY_ADMIN.value, f'原状态：{ori_status}',
+                    appoint, MessageType.VIOLATE_BY_ADMIN, f'原状态：{ori_status}',
                     students_id=[appoint.get_major_id()], admin=True,
                     id=f'{appoint.Aid}_violate_admin_wechat')
                 logger.info(f"{appoint.Aid}号预约被管理员设为违约，发起人：{_appointor(appoint)}")

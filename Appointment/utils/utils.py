@@ -155,7 +155,7 @@ def appoint_violate(input_appoint: Appoint, reason: Appoint.Reason):
             appoint.save()
 
         from Appointment.extern.wechat import MessageType, notify_appoint
-        notify_appoint(appoint, MessageType.VIOLATED.value, appoint.get_status(),
+        notify_appoint(appoint, MessageType.VIOLATED, appoint.get_status(),
                        students_id=[major_student.get_id()])
         log_msg = f"预约{appoint.Aid}出现违约:{appoint.get_Areason_display()};"
         log_msg += f"扣除信用分:{really_deduct};剩余信用分:{major_student.credit}"

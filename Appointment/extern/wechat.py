@@ -174,7 +174,7 @@ def _build_appoint_message(appoint: Appoint, message_type: str,
 
 
 def notify_appoint(
-    appoint: Appoint, message_type: str, *extra_infos: str,
+    appoint: Appoint, message_type: MessageType, *extra_infos: str,
     students_id: list[str] | None = None,
     url: str | None = None,
     admin: bool | None = None,
@@ -186,9 +186,9 @@ def notify_appoint(
         students_id = list(appoint.students.values_list('Sid', flat=True))
 
     title, message = _build_appoint_message(
-        appoint, message_type, *extra_infos, admin=admin)
+        appoint, message_type.value, *extra_infos, admin=admin)
     if id is None:
-        id = f'{appoint.pk}_{message_type}'
+        id = f'{appoint.pk}_{message_type.value}'
     send_wechat(
         students_id, title, message,
         card=True, url=_build_url(url), btntxt='预约详情',
