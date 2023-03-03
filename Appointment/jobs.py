@@ -144,23 +144,9 @@ def cancel_scheduler(appoint_or_aid: Appoint | int, record_miss: bool = False) -
         aid = appoint_or_aid.Aid
     else:
         aid = appoint_or_aid
-    try:
-        scheduler.remove_job(f'{aid}_finish')
-        try:
-            scheduler.remove_job(f'{aid}_start')
-        except:
-            if record_miss:
-                logger.warning(f"预约{aid}取消时未发现开始计时器")
-        try:
-            scheduler.remove_job(f'{aid}_start_wechat')
-        except:
-            if record_miss:
-                logger.info(f"预约{aid}取消时未发现wechat计时器")
-        return True
-    except:
-        if record_miss:
-            logger.warning(f"预约{aid}取消时未发现计时器")
-        return False
+    scheduler.remove_job(f'{aid}_finish')
+    scheduler.remove_job(f'{aid}_start')
+    scheduler.remove_job(f'{aid}_start_wechat')
 
 
 # 过渡，待废弃
