@@ -43,6 +43,12 @@ class Scheduler:
         self.remote_scheduler = None
         self.remain_times = 3
 
+    def remove_job(self, job_id: str):
+        try:
+            self.wrapped_schedule.remove_job(job_id)
+        except Exception:
+            logger.exception('Failed to remove job %s', job_id)
+
     def __getattr__(self, name: str):
         target_method = getattr(self.wrapped_schedule, name)
 
