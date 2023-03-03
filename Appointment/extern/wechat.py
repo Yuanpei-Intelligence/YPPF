@@ -17,7 +17,7 @@ __all__ = [
 ShowOptions = tuple[bool, bool, bool, bool]
 
 def get_display_info(
-    message_type: MessageType | str,
+    message_type: MessageType,
     reason: str,
 ) -> tuple[str, ShowOptions, list[str]]:
     title = '地下室预约提醒'
@@ -27,48 +27,43 @@ def get_display_info(
     show_announcement = False   # 显示提供给其他参与者的预约信息
     extra_info = []
     match message_type:
-        case MessageType.ADMIN.value:
-            title = '管理员通知'
-            show_time_and_place = False
-            show_appoint_info = False
-            extra_info = ['内容：' + reason]
-        case MessageType.NEW.value:
+        case MessageType.NEW:
             title = '您有一条新的预约'
             show_announcement = True
-        case MessageType.START.value:
+        case MessageType.START:
             title = '您有一条预约即将在15分钟后开始'
             show_announcement = True
-        case MessageType.NEW_AND_START.value:
+        case MessageType.NEW_AND_START:
             title = '您有一条新的预约并即将在15分钟内开始'
             show_announcement = True
-        case MessageType.VIOLATED.value:
+        case MessageType.VIOLATED:
             title = '您有一条新增的违约记录'
             show_main_student = False
             show_appoint_info = False
             extra_info = ['原因：' + reason]
-        case MessageType.CANCELED.value:
+        case MessageType.CANCELED:
             title = '您有一条预约被取消'
-        case MessageType.LONGTERM_CREATED.value:
+        case MessageType.LONGTERM_CREATED:
             # 发起一条长线预约
             title = f'您有一条新的长期预约'
             show_announcement = True
             if reason:
                 extra_info = ['详情：' + reason]
-        case MessageType.LONGTERM_REVIEWING.value:
+        case MessageType.LONGTERM_REVIEWING:
             # 发送给审核老师
             title = f'您有一条待处理的长期预约'
             extra_info = ['去审核']
-        case MessageType.LONGTERM_APPROVED.value:
+        case MessageType.LONGTERM_APPROVED:
             title = f'您的长期预约已通过审核'
-        case MessageType.LONGTERM_REJECTED.value:
+        case MessageType.LONGTERM_REJECTED:
             title = f'您的长期预约未通过审核'
-        case MessageType.WAITING2CONFIRM.value:
+        case MessageType.WAITING2CONFIRM:
             title = '您有一条预约已确认完成'
             show_main_student = False
-        case MessageType.VIOLATED2JUDGED.value:
+        case MessageType.VIOLATED2JUDGED:
             title = '您有一条违约的预约申诉成功'
             show_main_student = False
-        case MessageType.VIOLATE_BY_ADMIN.value:
+        case MessageType.VIOLATE_BY_ADMIN:
             title = '您有一条预约被判定违约'
             show_main_student = False
             extra_info = [
@@ -78,7 +73,7 @@ def get_display_info(
                 ]
             if reason:
                 extra_info = [reason] + extra_info
-        case MessageType.TEMPORARY.value:
+        case MessageType.TEMPORARY:
             title = '您发起了一条临时预约'
         case _:
             logger.error(f'未知消息类型：{message_type}')
@@ -103,7 +98,7 @@ def _build_message(
     room: 将被调用str方法，所以可以不是实际的房间
     appointer: str, 人名 不是学号！
     '''
-    title, show_options, extra_info = get_display_info(message_type, reason)
+    title, show_options, extra_info = get_display_info(MessageType(message_type), reason)
     show_time_and_place, show_main_student, show_appoint_info, show_announcement = show_options
 
     if is_admin is None:
@@ -161,11 +156,11 @@ def send_wechat_message(
                 card=True, url=url, btntxt='预约详情', multithread=False)
 
 
-def _build_appoint_message(appoint: Appoint, message_type: str,
+def _build_appoint_message(appoint: Appoint, message_type: MessageType,
                            *extra_infos: str, admin: bool | None):
     usage = '' if appoint.Ausage is None else appoint.Ausage
     announce = '' if appoint.Aannouncement is None else appoint.Aannouncement
-    title, message = _build_message(message_type,
+    title, message = _build_message(message_type.value,
         appoint.Astart, appoint.Room, appoint.major_student.name, usage,
         announce, appoint.Anon_yp_num + appoint.Ayp_num, *extra_infos[:1],
         is_admin=admin,
@@ -186,7 +181,7 @@ def notify_appoint(
         students_id = list(appoint.students.values_list('Sid', flat=True))
 
     title, message = _build_appoint_message(
-        appoint, message_type.value, *extra_infos, admin=admin)
+        appoint, message_type, *extra_infos, admin=admin)
     if id is None:
         id = f'{appoint.pk}_{message_type.value}'
     send_wechat(
