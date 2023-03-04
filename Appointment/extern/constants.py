@@ -3,7 +3,6 @@ from enum import Enum
 __all__ = ['MessageType']
 
 class MessageType(Enum):
-    ADMIN = 'admin'  # TODO: deprecated，使用notify_wechat的参数
     NEW = 'new'
     START = 'start'
     NEW_AND_START = f'{NEW}&{START}'
@@ -13,7 +12,7 @@ class MessageType(Enum):
     LONGTERM_REVIEWING = 'longterm_reviewing'
     LONGTERM_APPROVED = 'longterm_approved'
     LONGTERM_REJECTED = 'longterm_rejected'
-    WAITING2CONFIRM = f'confirm_{ADMIN}_w2c'
-    VIOLATED2JUDGED = f'confirm_{ADMIN}_v2j'
-    VIOLATE_BY_ADMIN = f'{VIOLATED}_{ADMIN}'
-    TEMPORARY = 'temp_appointment'
+    PRE_CONFIRMED = 'pre_confirmed'
+    APPEAL_APPROVED = 'appeal_approved'
+    REVIEWD_VIOLATE = 'review_violate'
+    TEMPORARY = 'temp_new'

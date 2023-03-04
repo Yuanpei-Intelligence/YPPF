@@ -279,7 +279,7 @@ class AppointAdmin(admin.ModelAdmin):
     def _waiting2confirm(self, appoint: Appoint):
         appoint.Astatus = Appoint.Status.CONFIRMED
         appoint.save()
-        notify_appoint(appoint, MessageType.WAITING2CONFIRM, appoint.get_status(),
+        notify_appoint(appoint, MessageType.PRE_CONFIRMED, appoint.get_status(),
                        students_id=[appoint.get_major_id()], admin=True)
         logger.info(f"{appoint.Aid}号预约被管理员通过，发起人：{_appointor(appoint)}")
 
@@ -288,7 +288,7 @@ class AppointAdmin(admin.ModelAdmin):
         appoint.Astatus = Appoint.Status.JUDGED
         appoint.save()
         User.objects.modify_credit(appoint.get_major_id(), 1, '地下室：申诉')
-        notify_appoint(appoint, MessageType.VIOLATED2JUDGED, appoint.get_status(),
+        notify_appoint(appoint, MessageType.APPEAL_APPROVED, appoint.get_status(),
                        students_id=[appoint.get_major_id()], admin=True)
         logger.info(f"{appoint.Aid}号预约被管理员通过，发起人：{_appointor(appoint)}")
 
@@ -328,7 +328,7 @@ class AppointAdmin(admin.ModelAdmin):
 
             # send wechat message
             notify_appoint(
-                appoint, MessageType.VIOLATE_BY_ADMIN, f'原状态：{ori_status}',
+                appoint, MessageType.REVIEWD_VIOLATE, f'原状态：{ori_status}',
                 students_id=[appoint.get_major_id()], admin=True)
             logger.info(f"{appoint.Aid}号预约被管理员设为违约，发起人：{_appointor(appoint)}")
 
