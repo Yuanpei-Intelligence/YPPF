@@ -57,13 +57,13 @@ def get_display_info(
             title = f'您的长期预约已通过审核'
         case MessageType.LONGTERM_REJECTED:
             title = f'您的长期预约未通过审核'
-        case MessageType.WAITING2CONFIRM:
+        case MessageType.PRE_CONFIRMED:
             title = '您有一条预约已确认完成'
             show_main_student = False
-        case MessageType.VIOLATED2JUDGED:
+        case MessageType.APPEAL_APPROVED:
             title = '您有一条违约的预约申诉成功'
             show_main_student = False
-        case MessageType.VIOLATE_BY_ADMIN:
+        case MessageType.REVIEWD_VIOLATE:
             title = '您有一条预约被判定违约'
             show_main_student = False
             extra_info = [
@@ -92,7 +92,7 @@ def _build_message(
     announcement: str,
     total_count: int,
     reason: str = '',
-    is_admin: bool | None = None,
+    is_admin: bool = False,
 ):
     '''
     room: 将被调用str方法，所以可以不是实际的房间
@@ -101,8 +101,6 @@ def _build_message(
     title, show_options, extra_info = get_display_info(MessageType(message_type), reason)
     show_time_and_place, show_main_student, show_appoint_info, show_announcement = show_options
 
-    if is_admin is None:
-        is_admin = MessageType.ADMIN.value in message_type
     if is_admin:
         title = f'【管理员操作】\n{title}'
 
@@ -139,7 +137,7 @@ def send_wechat_message(
     num: int,
     reason: str = '',
     url: str | None = None,
-    is_admin: bool | None = None,
+    is_admin: bool = False,
 ):
     '''
     stuid_list: Iter[sid] 学号列表，不是学生!
@@ -157,7 +155,7 @@ def send_wechat_message(
 
 
 def _build_appoint_message(appoint: Appoint, message_type: MessageType,
-                           *extra_infos: str, admin: bool | None):
+                           *extra_infos: str, admin: bool):
     usage = '' if appoint.Ausage is None else appoint.Ausage
     announce = '' if appoint.Aannouncement is None else appoint.Aannouncement
     title, message = _build_message(message_type.value,
@@ -172,7 +170,7 @@ def notify_appoint(
     appoint: Appoint | LongTermAppoint, message_type: MessageType, *extra_infos: str,
     students_id: list[str] | None = None,
     url: str | None = None,
-    admin: bool | None = None,
+    admin: bool = False,
     id: str | None = None,
     job_time: datetime | timedelta | None = None,
 ):
@@ -185,7 +183,7 @@ def notify_appoint(
         extra_infos(str): 附加信息
         students_id(list[str], optional): 学号列表，默认为预约的所有参与者
         url(str, optional): 跳转链接，默认为账号主页
-        admin(bool, optional): 是否为管理员操作，默认为None，自动判断
+        admin(bool, optional): 是否为管理员操作，默认为否
         id(str, optional): 标识id，若为空则根据appoint参数主键生成任务id
         job_time(datetime | timedelta, optional): 任务执行时间或延迟，默认立即执行
     '''
