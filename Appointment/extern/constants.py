@@ -4,8 +4,8 @@ __all__ = ['MessageType']
 
 class MessageType(Enum):
     NEW = 'new'
-    START = 'start'
-    NEW_AND_START = f'{NEW}&{START}'
+    NEW_INCOMING = 'new_incoming'
+    REMIND = 'remind'
     VIOLATED = 'violated'
     CANCELED = 'canceled'
     LONGTERM_CREATED = 'longterm_created'

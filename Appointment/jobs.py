@@ -13,8 +13,9 @@ import Appointment.utils.web_func as web_func
 from Appointment.utils.log import write_before_delete, logger, get_user_logger
 from Appointment.utils.identity import get_participant
 from Appointment.extern.job_shortcuts import (
-    remind_job_id,
-    set_start_wechat,
+    set_appoint_reminder,
+    remove_appoint_reminder,
+    notify_create as _notify_create_appoint,
 )
 
 
@@ -99,7 +100,7 @@ def cancel_scheduler(appoint_or_aid: Appoint | int, record_miss: bool = False) -
             if record_miss:
                 logger.warning(f"预约{aid}取消时未发现开始计时器")
         try:
-            scheduler.remove_job(remind_job_id(aid))
+            remove_appoint_reminder(aid)
         except:
             if record_miss:
                 logger.info(f"预约{aid}取消时未发现wechat计时器")
@@ -268,7 +269,9 @@ def addAppoint(contents: dict,
 
             # 设置状态变更和微信提醒定时任务
             set_scheduler(appoint)
-            set_start_wechat(appoint, students_id, notify_create=notify_create)
+            if notify_create:
+                _notify_create_appoint(appoint, students_id)
+            set_appoint_reminder(appoint, students_id)
 
             get_user_logger(major_student).info(f"发起预约，预约号{appoint.Aid}")
 
@@ -363,7 +366,7 @@ def add_longterm_appoint(appoint: 'Appoint | int',
         # 至此，预约都已成功创建，可以放心设置定时任务了，但设置定时任务出错也需要回滚
         for new_appoint in new_appoints:
             set_scheduler(new_appoint)
-            set_start_wechat(new_appoint, notify_create=False)
+            set_appoint_reminder(new_appoint)
 
     # 长线化预约发起成功，准备消息提示即可
     longterm_info = get_longterm_display(times, interval)

@@ -5,13 +5,12 @@ from datetime import datetime, timedelta
 from django.contrib import admin, messages
 from django.utils.safestring import mark_safe
 from django.utils.html import format_html, format_html_join
-from django.db import transaction  # 原子化更改数据库
 from django.db.models import QuerySet
 
 from utils.admin_utils import *
 from Appointment import jobs
 from Appointment.extern.wechat import MessageType, notify_appoint
-from Appointment.extern.job_shortcuts import set_start_wechat
+from Appointment.extern.job_shortcuts import set_appoint_reminder
 from Appointment.utils.log import logger
 from Appointment.models import *
 
@@ -351,8 +350,7 @@ class AppointAdmin(admin.ModelAdmin):
                         f'操作失败,预约{aid}开始和结束时间冲突!请勿篡改数据!', messages.WARNING)
                 jobs.cancel_scheduler(aid)    # 注销原有定时任务 无异常
                 jobs.set_scheduler(appoint)   # 开始时进入进行中 结束后判定
-                if datetime.now() < start:              # 如果未开始，修改开始提醒
-                    set_start_wechat(appoint, notify_create=False)
+                set_appoint_reminder(appoint)
             except Exception as e:
                 logger.error(f"定时任务失败更新: {e}")
                 return self.message_user(request, str(e), messages.WARNING)

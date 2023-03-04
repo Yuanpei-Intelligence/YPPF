@@ -1,4 +1,4 @@
-from typing import Iterable, cast
+from typing import Iterable
 from datetime import datetime, timedelta
 
 from Appointment.extern.constants import MessageType
@@ -30,10 +30,10 @@ def get_display_info(
         case MessageType.NEW:
             title = '您有一条新的预约'
             show_announcement = True
-        case MessageType.START:
-            title = '您有一条预约即将在15分钟后开始'
+        case MessageType.REMIND:
+            title = '您有一条预约即将在15分钟内开始'
             show_announcement = True
-        case MessageType.NEW_AND_START:
+        case MessageType.NEW_INCOMING:
             title = '您有一条新的预约并即将在15分钟内开始'
             show_announcement = True
         case MessageType.VIOLATED:
