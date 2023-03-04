@@ -1246,10 +1246,8 @@ def review(request: HttpRequest):
                 with transaction.atomic():
                     longterm_appoint.status = LongTermAppoint.Status.APPROVED
                     longterm_appoint.save()
-                    notify_appoint(
-                        longterm_appoint.appoint, MessageType.LONGTERM_APPROVED,
-                        students_id=[longterm_appoint.get_applicant_id()],
-                        id=f'{longterm_appoint.pk}_longterm_approved')
+                    notify_appoint(longterm_appoint, MessageType.LONGTERM_APPROVED,
+                                   students_id=[longterm_appoint.get_applicant_id()])
                 succeed(
                     f"已通过对{longterm_appoint.appoint.Room}的长期预约!", render_context)
             except:
@@ -1264,9 +1262,8 @@ def review(request: HttpRequest):
                     longterm_appoint.review_comment = reason
                     longterm_appoint.save()
                     notify_appoint(
-                        longterm_appoint.appoint, MessageType.LONGTERM_REJECTED, reason,
-                        students_id=[longterm_appoint.get_applicant_id()],
-                        id=f'{longterm_appoint.pk}_longterm_rejected')
+                        longterm_appoint, MessageType.LONGTERM_REJECTED, reason,
+                        students_id=[longterm_appoint.get_applicant_id()])
             except:
                 wrong(f"对于该条长期预约的拒绝操作失败!", render_context)
 

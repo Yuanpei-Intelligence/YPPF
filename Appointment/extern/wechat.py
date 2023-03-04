@@ -1,9 +1,9 @@
-from typing import Iterable
+from typing import Iterable, cast
 from datetime import datetime, timedelta
 
 from Appointment.extern.constants import MessageType
 from extern.wechat import send_wechat
-from Appointment.models import Room, Participant, Appoint
+from Appointment.models import Room, Participant, Appoint, LongTermAppoint
 from Appointment.utils.log import logger
 from utils.http.utils import build_full_url
 
@@ -169,21 +169,37 @@ def _build_appoint_message(appoint: Appoint, message_type: MessageType,
 
 
 def notify_appoint(
-    appoint: Appoint, message_type: MessageType, *extra_infos: str,
+    appoint: Appoint | LongTermAppoint, message_type: MessageType, *extra_infos: str,
     students_id: list[str] | None = None,
     url: str | None = None,
     admin: bool | None = None,
     id: str | None = None,
     job_time: datetime | timedelta | None = None,
 ):
-    '''设置预约的微信提醒，默认发给所有参与者'''
+    '''
+    设置预约的微信提醒，默认发给所有参与者
+
+    Args:
+        appoint(Appoint | LongtermAppoint): 预约或长期预约
+        message_type(MessageType): 消息类型
+        extra_infos(str): 附加信息
+        students_id(list[str], optional): 学号列表，默认为预约的所有参与者
+        url(str, optional): 跳转链接，默认为账号主页
+        admin(bool, optional): 是否为管理员操作，默认为None，自动判断
+        id(str, optional): 标识id，若为空则根据appoint参数主键生成任务id
+        job_time(datetime | timedelta, optional): 任务执行时间或延迟，默认立即执行
+    '''
+    if isinstance(appoint, LongTermAppoint):
+        _appoint = appoint.appoint
+    else:
+        _appoint = appoint
     if students_id is None:
-        students_id = list(appoint.students.values_list('Sid', flat=True))
+        students_id = list(_appoint.students.values_list('Sid', flat=True))
 
     title, message = _build_appoint_message(
-        appoint, message_type, *extra_infos, admin=admin)
+        _appoint, message_type, *extra_infos, admin=admin)
     if id is None:
-        id = f'{appoint.pk}_{message_type.value}'
+        id = f'{appoint.pk}_{message_type.value}_notify'
     send_wechat(
         students_id, title, message,
         card=True, url=_build_url(url), btntxt='预约详情',

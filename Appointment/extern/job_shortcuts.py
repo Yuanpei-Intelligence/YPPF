@@ -22,39 +22,30 @@ def set_start_wechat(appoint: Appoint, students_id=None, notify_create=True):
     if students_id is None:
         students_id = list(appoint.students.values_list('Sid', flat=True))
     if datetime.now() >= appoint.Astart:
-        if appoint.Atype == Appoint.Type.TEMPORARY:
-            notify_appoint(appoint, MessageType.TEMPORARY,
-                students_id=students_id, id=f'{appoint.Aid}_new_wechat')
-        else:
+        if appoint.Atype != Appoint.Type.TEMPORARY:
             logger.warning(f'预约{appoint.Aid}尝试发送给微信时已经开始，且并非临时预约')
             return False
+        notify_appoint(appoint, MessageType.TEMPORARY, students_id=students_id)
     elif datetime.now() <= appoint.Astart - timedelta(minutes=15):
         # 距离预约开始还有15分钟以上，提醒有新预约&定时任务
         if notify_create:  # 只有在非长线预约中才添加这个job
-            notify_appoint(
-                appoint, MessageType.NEW,
-                students_id=students_id, id=f'{appoint.Aid}_new_wechat')
+            notify_appoint(appoint, MessageType.NEW, students_id=students_id)
         notify_appoint(
             appoint, MessageType.START,
             students_id=students_id, id=remind_job_id(appoint.Aid),
             job_time=appoint.Astart - timedelta(minutes=15))
     else:
         # 距离预约开始还有不到15分钟，提醒有新预约并且马上开始
-        notify_appoint(
-            appoint, MessageType.NEW_AND_START,
-            students_id=students_id, id=f'{appoint.Aid}_new_wechat')
+        notify_appoint(appoint, MessageType.NEW_AND_START, students_id=students_id)
     return True
 
 
-def notify_longterm_review(longterm_appoint: LongTermAppoint, auditor_ids: list[str]):
+def notify_longterm_review(longterm: LongTermAppoint, auditor_ids: list[str]):
     '''长期预约的审核老师通知提醒，发送给对应的审核老师'''
     if not auditor_ids:
         return
     infos = []
-    if longterm_appoint.applicant != longterm_appoint.appoint.major_student:
-        infos.append(f'申请者：{longterm_appoint.applicant.name}')
-    notify_appoint(
-        longterm_appoint.appoint, MessageType.LONGTERM_REVIEWING, *infos,
-        students_id=auditor_ids,
-        url=f'review?Lid={longterm_appoint.pk}',
-        id=f'{longterm_appoint.pk}_longterm_review_wechat')
+    if longterm.get_applicant_id() != longterm.appoint.get_major_id():
+        infos.append(f'申请者：{longterm.applicant.name}')
+    notify_appoint(longterm, MessageType.LONGTERM_REVIEWING, *infos,
+                   students_id=auditor_ids, url=f'review?Lid={longterm.pk}')
