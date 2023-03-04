@@ -49,7 +49,7 @@ def change_chat_status(chat_id: int, to_status: Chat.Status) -> MESSAGECONTEXT:
         if to_status == Chat.Status.CLOSED:
             chat.status = Chat.Status.CLOSED
             chat.save()
-            succeed("您已成功关闭一个问答！", context)
+            succeed("您已成功关闭当前提问！", context)
         elif to_status == Chat.Status.PROGRESSING:  # 这个目前没有用到
             raise NotImplementedError
             chat.status = Chat.Status.PROGRESSING

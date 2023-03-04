@@ -99,13 +99,13 @@
                                                                 class="form-control"
                                                                 aria-label="Default" rows="1"
                                                                 placeholder="50字以内，可以为空"></textarea>
-                                                            <br \>
+                                                            <br>
                                                             <label>问题描述</label>
                                                             <textarea type="text" id="comment" name="comment" 
                                                                     class="form-control"
                                                                     aria-label="Default" rows="5"
                                                                     placeholder="具体内容不能为空"></textarea> <!-- 因为创建问答要复用comment_utils.py，这里必须叫“comment”  -->
-                                                            <br \>
+                                                            <br>
                                                             <label>
                                                                 提问对象
                                                             </label>
@@ -117,7 +117,7 @@
                                                                     向指定同学发送
                                                                 </option>
                                                             </select>
-                                                            <br/>
+                                                            <br>
                                                             <div id="select_keywords_tab">
                                                                 <label>关键词
                                                                     <a data-toggle="tooltip" data-placement="bottom" title="选择或输入目标回答者的年级、专业方向、选修双学位、参与学业活动等信息">
@@ -180,7 +180,7 @@
                                                     <div>
                                                         <h5>
                                                             <a href='{{chat.chat_url}}'><u>{{chat.title}}</u></a>
-                                                            <span class="badge badge-primary">{{chat.status}}</span><br />
+                                                            <span class="badge badge-primary">{{chat.status}}</span><br>
                                                         </h5>
                                                     </div>
 
@@ -207,13 +207,16 @@
                                                 <p style="color: rgb(66, 67, 68);">
                                                     <i class="fa fa-address-book" style="width: 10px;"></i>
                                                     <span class="ml-1">
-                                                        {% if chat.anonymously_sent %}
-                                                        <b>[匿名]</b>
+                                                        {% if not chat.respondent_anonymous %}
+                                                          {% if chat.questioner_anonymous %}
+                                                          <b>[匿名]</b>
+                                                          {% endif %}
+                                                           发给&nbsp;<b>
+                                                            <a href='{{chat.academic_url}}#tab=academic_map'><u>{{chat.respondent_name}}</u></a>
+                                                            </b>
+                                                        {% else %}
+                                                        <b> 非定向提问 </b>
                                                         {% endif %}
-                                                        发给&nbsp;<b>
-                                                            {% if chat.receiver_name and chat.academic_url %}<a href='{{chat.academic_url}}#tab=academic_map'><u>{{chat.receiver_name}}</u></a>
-                                                            {% else %}[未知]
-                                                            {% endif %}</b>
                                                     </span>
                                                 </p>
 
@@ -271,17 +274,16 @@
                                                 <p style="color: rgb(66, 67, 68);">
                                                     <i class="fa fa-address-book" style="width: 10px;"></i>
                                                     <span class="ml-1">
-                                                        {% if chat.anonymously_sent %}
-                                                        <b>[匿名]</b>
+                                                        {% if not chat.respondent_anonymous %}
+                                                          {% if chat.questioner_anonymous %}
+                                                          <b>[匿名]</b>
+                                                          {% endif %}
+                                                           发给&nbsp;<b>
+                                                            <a href='{{chat.academic_url}}#tab=academic_map'><u>{{chat.respondent_name}}</u></a>
+                                                            </b>
+                                                        {% else %}
+                                                        <b> 非定向提问 </b>
                                                         {% endif %}
-                                                            {% if chat.receiver_name and chat.academic_url %}
-                                                                发给&nbsp;
-                                                                <b>
-                                                                    <a href='{{chat.academic_url}}#tab=academic_map'><u>{{chat.receiver_name}}</u></a>
-                                                            {% else %}
-                                                                    [非定向提问]
-                                                            {% endif %}
-                                                                </b>
                                                     </span>
                                                 </p>
 
@@ -352,9 +354,9 @@
                                                     <span class="ml-1">
                                                         来自&nbsp;
                                                         {% if chat.academic_url != "" %}
-                                                        <b><a href='{{chat.academic_url}}#tab=academic_map'><u>{{chat.sender_name}}</u></a></b>
+                                                        <b><a href='{{chat.academic_url}}#tab=academic_map'><u>{{chat.questioner_name}}</u></a></b>
                                                         {% else %}
-                                                        <b>{{chat.sender_name}}</b>
+                                                        <b>{{chat.questioner_name}}</b>
                                                         {% endif %}
                                                     </span>
                                                 </p>
@@ -415,9 +417,9 @@
                                                     <span class="ml-1">
                                                         来自&nbsp;
                                                         {% if chat.academic_url != "" %}
-                                                        <b><a href='{{chat.academic_url}}#tab=academic_map'><u>{{chat.sender_name}}</u></a></b>
+                                                        <b><a href='{{chat.academic_url}}#tab=academic_map'><u>{{chat.questioner_name}}</u></a></b>
                                                         {% else %}
-                                                        <b>{{chat.sender_name}}</b>
+                                                        <b>{{chat.questioner_name}}</b>
                                                         {% endif %}
                                                     </span>
                                                 </p>

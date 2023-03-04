@@ -63,15 +63,11 @@
                             <!--  BEGIN CHAT TITLE  -->
                             <div class="d-flex justify-content-between">
                                 <h3 class="noafter">
-                                    {% if my_name == questioner_name %}
-                                        {% if my_name == "匿名用户" %}
-                                        [匿名]
-                                        {% endif %}
-
-                                        {% if academic_url != "" and respondent_name != "匿名用户" %}
-                                        发给<a href='{{academic_url}}#tab=academic_map'><u>{{respondent_name}}</u></a>的问答：{{title}}&emsp;
+                                    {% if is_questioner %}
+                                        {% if not respondent_anonymous %}
+                                        发给<a href='{{academic_url}}#tab=academic_map'><u>{{respondent_name}}</u></a>的提问：{{title}}&emsp;
                                         {% else %}
-                                        {{title}}&emsp; 
+                                        非定向提问：{{title}}&emsp; 
                                             {% for tag in respondent_tags %}
                                             {% if forloop.counter == 1 %}
                                             <span class="badge badge-pill badge-primary" 
@@ -92,10 +88,10 @@
                                             {% endfor %}
                                         {% endif %}
                                     {% else %}
-                                        {% if academic_url != "" and questioner_name != "匿名用户" %}
-                                        来自<a href='{{academic_url}}#tab=academica_map'><u>{{questioner_name}}</u></a>的问答：{{title}}&emsp;
+                                        {% if not questioner_anonymous %}
+                                        来自<a href='{{academic_url}}#tab=academica_map'><u>{{questioner_name}}</u></a>的提问：{{title}}&emsp;
                                         {% else %}
-                                        来自{{questioner_tags|join:" "}}的问答：{{title}}&emsp;
+                                        匿名提问：{{title}}&emsp;
                                         {% endif %}
                                     {% endif %}
                                     
@@ -222,7 +218,7 @@
                                                         <div>
                                                         </div>
                                                         <div class="" style="text-align: right;">
-                                                                {% if not anonymous_chat or accept_anonymous %}
+                                                                {% if is_questioner and questioner_anonymous or not is_questioner and respondent_anonymous %}
                                                                 <div class="form-check form-check-inline">
                                                                     <input class="form-check-input" type="checkbox" name="anonymous" id="anonymous" checked>
                                                                     <label class="form-check-label" for="anonymous">匿名回复</label>
@@ -255,7 +251,7 @@
                             <!--  END REPLY AREA  -->
 
                             <!--  BEGIN RATE AREA  -->
-                            {% if my_name == questioner_name and answered %}
+                            {% if is_questioner and answered %}
                                 <div class="row">
                                     <div class="col-md-12 mb-4">
                                         <div class="statbox widget box box-shadow">
@@ -263,8 +259,8 @@
                                                 <p>这个回答对您有帮助吗？</p>
                                                 <div class="form-check form-check-inline">
                                                     <input type="radio" name="rate_answer" value="1" id="rate1" 
-                                                        {% if rate == 1 %} checked {% endif %}  
-                                                        {% if rate != 0 %} disabled {% endif %}  
+                                                        {% if rating == 1 %} checked {% endif %}  
+                                                        {% if rating != 0 %} disabled {% endif %}  
                                                         style="display:none"/>
                                                     <label for="rate1">
                                                         <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" 
@@ -277,8 +273,8 @@
                                                 </div>
                                                 <div class="form-check form-check-inline">
                                                     <input type="radio" name="rate_answer" value="2" id="rate2" 
-                                                        {% if rate == 2 %} checked {% endif %}  
-                                                        {% if rate != 0 %} disabled {% endif %}  
+                                                        {% if rating == 2 %} checked {% endif %}  
+                                                        {% if rating != 0 %} disabled {% endif %}  
                                                         style="display:none"/>
                                                     <label for="rate2">
                                                         <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" 
@@ -296,8 +292,8 @@
                                                 </div>    
                                                 <div class="form-check form-check-inline">
                                                     <input type="radio" name="rate_answer" value="3" id="rate3" 
-                                                            {% if rate == 3 %} checked {% endif %} 
-                                                            {% if rate != 0 %} disabled {% endif %}  
+                                                            {% if rating == 3 %} checked {% endif %} 
+                                                            {% if rating != 0 %} disabled {% endif %}  
                                                             style="display:none"/>
                                                     <label for="rate3">
                                                         <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" 
@@ -319,7 +315,7 @@
                                                     </label>
                                                 </div>
                                                 <div class="form-check pl-0 mt-2">
-                                                    {% if rate == 0 %}
+                                                    {% if rating == 0 %}
                                                         <button class="btn btn-sm btn-primary"
                                                                 value="{{chat_id}}"
                                                                 onclick="rate_answer(this)">
@@ -413,7 +409,7 @@
             success: function(context){
                 // console.log(context)
                 if (context.warn_code){
-                    if (context.warn_message != "发送成功。") { // 发送信息成功效果比较明显，没必要专门给出warn_message了
+                    if (context.warn_code == 1) { // 发送信息成功效果比较明显，没必要专门给出warn_message了
                         sessionStorage.setItem("reloading", "chatRelatedReloading");
                         sessionStorage.setItem("warn_code", context.warn_code);
                         sessionStorage.setItem("warn_message", context.warn_message);
@@ -449,9 +445,9 @@
 
     function rate_answer(a) {
         console.log()
-        let rate = Number($("input[name='rate_answer']:checked").val())
+        let rating = Number($("input[name='rate_answer']:checked").val())
         // console.log(rate)
-        if(![1,2,3].includes(rate)){
+        if(![1,2,3].includes(rating)){
             return;
         }
         $.ajax({
@@ -459,14 +455,16 @@
             type: "post",
             data:{
                 chat_id: Number(a.value),
-                rate: rate, // 对答复的评价，1表示一般，2表示有帮助，3表示很有帮助
+                rating: rating, // 对答复的评价，1表示一般，2表示有帮助，3表示很有帮助
             },
             success: function(context){
                 //console.log(context)
                 if (context.warn_code){
-                    sessionStorage.setItem("reloading", "chatRelatedReloading");
-                    sessionStorage.setItem("warn_code", context.warn_code);
-                    sessionStorage.setItem("warn_message", context.warn_message);
+                    if (context.warn_code == 1) {
+                        sessionStorage.setItem("reloading", "chatRelatedReloading");
+                        sessionStorage.setItem("warn_code", context.warn_code);
+                        sessionStorage.setItem("warn_message", context.warn_message);
+                    }
                 }
                 document.location.reload(); //刷新页面
             }

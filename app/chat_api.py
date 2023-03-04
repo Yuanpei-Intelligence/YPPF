@@ -19,12 +19,11 @@ class StartChat(SecureJsonView):
         创建一条新的chat
         """
         try:
-            print(self.request.POST.dict())
-            respondent = User.objects.get(id=self.request.POST['receiver_id'])
+            respondent = User.objects.get(
+                name=self.request.POST['receiver_id'])
         except:
             return self.message_response(wrong("出现了意料之外的错误！"))
-        questioner_anonymous = (
-            self.request.POST['comment_anonymous'] == 'true')
+        questioner_anonymous = self.request.POST['comment_anonymous'] == 'true'
 
         return self.message_response(
             create_QA(self.request,

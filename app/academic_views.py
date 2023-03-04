@@ -48,14 +48,9 @@ class ShowChats(ProfileTemplateView):
         return self.get
 
     def get(self) -> HttpResponse:
-        user = self.request.user
-        sent_chats = Chat.objects.filter(
-            questioner=user).order_by("-modify_time", "-time")
-        received_chats = Chat.objects.filter(
-            respondent=user).order_by("-modify_time", "-time")
         self.extra_context.update({
-            'sent_chats': chats2Display(sent_chats, sent=True),
-            'received_chats': chats2Display(received_chats, sent=False),
+            'sent_chats': chats2Display(self.request.user, sent=True),
+            'received_chats': chats2Display(self.request.user, sent=False),
             'stu_list': get_students_for_search(self.request),
             'tag_list': get_tags_for_search(),
         })
