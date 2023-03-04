@@ -11,7 +11,8 @@ from django.db.models import QuerySet
 from utils.admin_utils import *
 from Appointment import jobs
 from Appointment.extern.wechat import MessageType, notify_appoint
-from Appointment.utils.log import logger, get_user_logger
+from Appointment.extern.job_shortcuts import set_start_wechat
+from Appointment.utils.log import logger
 from Appointment.models import *
 
 
@@ -367,49 +368,14 @@ class AppointAdmin(admin.ModelAdmin):
                 jobs.cancel_scheduler(aid)    # 注销原有定时任务 无异常
                 jobs.set_scheduler(appoint)   # 开始时进入进行中 结束后判定
                 if datetime.now() < start:              # 如果未开始，修改开始提醒
-                    jobs.set_start_wechat(appoint, notify_create=False)
+                    set_start_wechat(appoint, notify_create=False)
             except Exception as e:
                 logger.error(f"定时任务失败更新: {e}")
                 return self.message_user(request, str(e), messages.WARNING)
         return self.message_user(request, '定时任务更新成功!')
-    
+
 
     def longterm_wk(self, request, queryset, times, interval_week=1):
-        for appoint in queryset:
-            appoint: Appoint
-            try:
-                with transaction.atomic():
-                    stuid_list = [stu.get_id() for stu in appoint.students.all()]
-                    for i in range(1, times + 1):
-                        # 调用函数完成预约
-                        feedback = jobs.addAppoint({
-                            'Rid': appoint.Room.Rid,
-                            'students': stuid_list,
-                            'non_yp_num': appoint.Anon_yp_num,
-                            'Astart': appoint.Astart + i * timedelta(weeks=interval_week),
-                            'Afinish': appoint.Afinish + i * timedelta(weeks=interval_week),
-                            'Sid': appoint.get_major_id(),
-                            'Ausage': appoint.Ausage,
-                            'announcement': appoint.Aannouncement,
-                        }, type=Appoint.Type.LONGTERM, notify_create=False)
-                        if feedback.status_code != 200:  # 成功预约
-                            import json
-                            warning = json.loads(feedback.content)['statusInfo']['message']
-                            print(warning)
-                            raise Exception(warning)
-            except Exception as e:
-                logger.warning(f"学生{_appointor(appoint)}添加长线化预约失败: {e}")
-                return self.message_user(request, str(e), messages.WARNING)
-
-            # 到这里, 长线化预约发起成功
-            jobs.set_longterm_wechat(
-                appoint, infos=f'新增了{times}周同时段预约', admin=True)
-            get_user_logger(appoint).info(
-                f"后台发起{times}周的长线化预约, 原始预约号{appoint.Aid}")
-        return self.message_user(request, '长线化成功!')
-
-
-    def new_longterm_wk(self, request, queryset, times, interval_week=1):
         new_appoints = {}
         for appoint in queryset:
             try:
@@ -422,8 +388,8 @@ class AppointAdmin(admin.ModelAdmin):
                         f'第{conflict_week}周存在冲突的预约: {appoints[0].Aid}!',
                         level=messages.WARNING)
                 longterm_info = jobs.get_longterm_display(times, interval_week)
-                jobs.set_longterm_wechat(
-                    appoint, infos=f'新增了{longterm_info}同时段预约', admin=True)
+                notify_appoint(appoint, MessageType.LONGTERM_CREATED,
+                               f'新增了{longterm_info}同时段预约', admin=True)
                 new_appoints[appoint.pk] = list(appoints.values_list('pk', flat=True))
             except Exception as e:
                 return self.message_user(request, f'长线化失败!', messages.WARNING)
