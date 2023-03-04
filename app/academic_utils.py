@@ -153,7 +153,7 @@ def comments2Display(chat: Chat, context: dict, user: User):
     """
     questioner_anonymous = chat.questioner_anonymous
     respondent_anonymous = chat.respondent_anonymous
-    anonymous_display = "匿名用户"
+    is_questioner = user == chat.questioner
 
     anonymous_users = []
     if questioner_anonymous:
@@ -168,59 +168,41 @@ def comments2Display(chat: Chat, context: dict, user: User):
         context['not_found_messages'] = "当前问答没有信息."
 
     context['status'] = chat.get_status_display()
-    context['commentable'] = (chat.status == Chat.Status.PROGRESSING
-                              )  #若为True，则前端会给出评论区和“关闭当前问答”的按钮
+    context['commentable'] = chat.status == Chat.Status.PROGRESSING  # 若为True，则前端会给出评论区和“关闭当前问答”的按钮
     context['anonymous_chat'] = chat.questioner_anonymous
     context['accept_anonymous'] = chat.respondent.accept_anonymous_chat
     context['answered'] = chat.comments.filter(
         commentator=chat.respondent).exists()
 
-    if user == chat.questioner:  # 当前用户是提问方
-        if questioner_anonymous:
-            context['my_name'] = anonymous_display
-            context['questioner_name'] = anonymous_display
-        else:
-            context['my_name'] = get_person_or_org(user).get_display_name()
-            context['questioner_name'] = context['my_name']
-        if respondent_anonymous:
-            context['respondent_name'] = anonymous_display
-            context['academic_url'] = ""
-        else:
-            context['respondent_name'] = get_person_or_org(
-                chat.respondent).get_display_name()
-            context['academic_url'] = get_person_or_org(
-                chat.respondent).get_absolute_url()
+    context['is_questioner'] = is_questioner
+    context['is_anonymous'] = questioner_anonymous if is_questioner else respondent_anonymous
+    context['questioner_anonymous'] = questioner_anonymous
+    context['respondent_anonymous'] = respondent_anonymous
+
+    context['my_name'] = get_person_or_org(user).get_display_name()
+    context['questioner_name'] = get_person_or_org(chat.questioner).get_display_name()
+    context['respondent_name'] = get_person_or_org(chat.respondent).get_display_name()
+    context['academic_url'] = get_person_or_org(
+        chat.respondent).get_absolute_url(
+        ) if is_questioner else get_person_or_org(
+            chat.questioner).get_absolute_url()
+
+    # 在对方匿名时，提供一些简单的信息
+    if is_questioner:
         try:
             qa: AcademicQA = AcademicQA.objects.get(chat_id=chat.id)
             context['rating'] = qa.rating
             context['respondent_tags'] = list(qa.keywords)
         except:
-            # TODO: 统一模型之后可以去掉，目前还存在出错的风险
             context['rating'] = 0
             context['respondent_tags'] = []
-    else:  # 当前用户是回答方
-        if questioner_anonymous:
-            context['questioner_name'] = anonymous_display
-            context['academic_url'] = ""
-        else:
-            context['questioner_name'] = get_person_or_org(
-                chat.questioner).get_display_name()
-            context['academic_url'] = get_person_or_org(
-                chat.questioner).get_absolute_url()
-        if respondent_anonymous:
-            context['my_name'] = anonymous_display
-            context['respondent_name'] = anonymous_display
-        else:
-            context['my_name'] = get_person_or_org(user).get_display_name()
-            context['respondent_name'] = context['my_name']
+    else: 
         try:
             major = AcademicTagEntry.objects.get(person=chat.questioner,
                                                 tag__atype=AcademicTag.Type.MAJOR)
             major_display = major.content
         except:
             major_display = ""
-
-        # 提供提问方的年级和专业
         context['questioner_tags'] = [
             chat.questioner.username[:2] + "级", major_display
         ]

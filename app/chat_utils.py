@@ -5,13 +5,15 @@ from django.http import HttpRequest
 
 from app.utils_dependency import *
 from app.models import (
+    AcademicEntry,
+    AcademicTagEntry,
+    AcademicTextEntry,
     User,
     Chat,
     AcademicQA,
 )
 from app.comment_utils import addComment
 from app.utils import check_user_type
-from app.academic_utils import get_search_results
 
 __all__ = [
     'change_chat_status',
@@ -142,21 +144,47 @@ def create_chat(
     return chat.id, comment_context
 
 
+def get_matched_users(query: str, anonymous: bool):
+    """
+    根据提供的关键词获取搜索结果
+    比academic_utils中的类似函数更加精简
+    """
+    # 搜索所有含有关键词的公开的学术地图项目，忽略大小写
+    match_with_tags = AcademicTagEntry.objects.filter(
+        tag__tag_content__icontains=query,
+        status=AcademicEntry.EntryStatus.PUBLIC,
+    ).values_list("person__person_id", flat=True)
+    match_with_tags = User.objects.filter(id__in=list(match_with_tags))
+
+    match_with_texts = AcademicTextEntry.objects.filter(
+        content__icontains=query,
+        status=AcademicEntry.EntryStatus.PUBLIC,
+    ).values_list("person__person_id", flat=True)
+    match_with_texts = User.objects.filter(id__in=list(match_with_texts))
+
+    matched_users = match_with_tags | match_with_texts
+    if anonymous:
+        return matched_users.filter(accept_anonymous_chat=True)
+    else:
+        return matched_users
+
+
 def select_by_keywords(
-        user: User, keywords: list[str]) -> Tuple[User | None, MESSAGECONTEXT]:
+        user: User, anonymous: bool,
+        keywords: list[str]) -> Tuple[User | None, MESSAGECONTEXT]:
     """
     根据关键词从学生中抽取一个回答者
     """
-    # TODO: 可能允许用户之间存在多个进行的聊天
-    matched_users = set()
+    matched_users = User.objects.none()
     for k in keywords:
-        matched_users.update(set(get_search_results(k).keys()))
-    matched_users.discard(user.username)
-    if not matched_users:
+        matched_users |= get_matched_users(k, anonymous)
+    matched_users.exclude(id=user.id)
+    matched_users.distinct()
+    if not matched_users.exists():
         return None, wrong("没有和标签匹配的对象！")
-    chosen_username = sample(sorted(matched_users), k=1)[0]
-    chosen_user = User.objects.get(username=chosen_username)
-    return chosen_user, succeed("成功找到回答者")
+    idx = range(0, matched_users.count())
+    chosen_idx = sample(idx, k=1)[0]
+    return matched_users[chosen_idx], succeed("成功找到回答者")
 
 
 def create_QA(request: HttpRequest,

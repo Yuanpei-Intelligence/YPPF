@@ -9,8 +9,7 @@ from app.chat_utils import (
 )
 
 __all__ = [
-    'StartChat', 'AddComment', 'CloseChat', 'StartUndirectedChat',
-    'RateAnswer'
+    'StartChat', 'AddComment', 'CloseChat', 'StartUndirectedChat', 'RateAnswer'
 ]
 
 
@@ -19,7 +18,11 @@ class StartChat(SecureJsonView):
         """
         创建一条新的chat
         """
-        respondent = User.objects.get(id=self.request.POST['receiver_id'])
+        try:
+            print(self.request.POST.dict())
+            respondent = User.objects.get(id=self.request.POST['receiver_id'])
+        except:
+            return self.message_response(wrong("出现了意料之外的错误！"))
         questioner_anonymous = (
             self.request.POST['comment_anonymous'] == 'true')
 
@@ -53,13 +56,13 @@ class StartUndirectedChat(SecureJsonView):
         """
         开始非定向问答
         """
-        keywords = self.request.POST.get('keywords').split(sep=',')
-        respondent, message_context = select_by_keywords(
-            self.request.user, keywords)
-        if respondent is None:
-            return self.message_response(message_context)
         questioner_anonymous = (
             self.request.POST['comment_anonymous'] == 'true')
+        keywords = self.request.POST.get('keywords').split(sep=',')
+        respondent, message_context = select_by_keywords(
+            self.request.user, questioner_anonymous, keywords)
+        if respondent is None:
+            return self.message_response(message_context)
 
         return self.message_response(
             create_QA(self.request,
