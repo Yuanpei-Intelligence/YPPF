@@ -276,74 +276,61 @@ class AppointAdmin(admin.ModelAdmin):
 
     actions = []
 
-    @as_action('所选条目 通过', actions, 'change')
+    def _waiting2confirm(self, appoint: Appoint):
+        appoint.Astatus = Appoint.Status.CONFIRMED
+        appoint.save()
+        notify_appoint(appoint, MessageType.WAITING2CONFIRM, appoint.get_status(),
+                       students_id=[appoint.get_major_id()], admin=True)
+        logger.info(f"{appoint.Aid}号预约被管理员通过，发起人：{_appointor(appoint)}")
+
+
+    def _violated2judged(self, appoint: Appoint):
+        appoint.Astatus = Appoint.Status.JUDGED
+        appoint.save()
+        User.objects.modify_credit(appoint.get_major_id(), 1, '地下室：申诉')
+        notify_appoint(appoint, MessageType.VIOLATED2JUDGED, appoint.get_status(),
+                       students_id=[appoint.get_major_id()], admin=True)
+        logger.info(f"{appoint.Aid}号预约被管理员通过，发起人：{_appointor(appoint)}")
+
+
+    @as_action('所选条目 通过', actions, 'change', update=True)
     def confirm(self, request, queryset: QuerySet[Appoint]):  # 确认通过
-        some_invalid = 0
-        have_success = 0
-        try:
-            with transaction.atomic():
-                for appoint in queryset:
-                    if appoint.Astatus == Appoint.Status.WAITING:
-                        appoint.Astatus = Appoint.Status.CONFIRMED
-                        appoint.save()
-                        have_success = 1
-                        # send wechat message
-                        notify_appoint(
-                            appoint, MessageType.WAITING2CONFIRM, appoint.get_status(),
-                            students_id=[appoint.get_major_id()], admin=True)
-                        logger.info(f"{appoint.Aid}号预约被管理员通过，发起人：{_appointor(appoint)}")
-                    elif appoint.Astatus == Appoint.Status.VIOLATED:
-                        appoint.Astatus = Appoint.Status.JUDGED
-                        # for stu in appoint.students.all():
-                        User.objects.modify_credit(appoint.get_major_id(), 1, '地下室：申诉')
-                        appoint.save()
-                        have_success = 1
-                        # send wechat message
-                        notify_appoint(
-                            appoint, MessageType.VIOLATED2JUDGED, appoint.get_status(),
-                            students_id=[appoint.get_major_id()], admin=True)
-                        logger.info(f"{appoint.Aid}号预约被管理员审核通过，发起人：{_appointor(appoint)}")
-
-                    else:  # 不允许更改
-                        some_invalid = 1
-
-        except:
-            return self.message_user(request, '操作失败!请与开发者联系!', messages.WARNING)
-        if not some_invalid:
-            return self.message_user(request, "更改状态成功!")
-        else:
-            if have_success:
-                return self.message_user(request, 
-                    '部分修改成功!但遭遇状态不为等待、违约的预约，这部分预约不允许更改!', messages.WARNING)
-            else:
-                return self.message_user(request,
-                '修改失败!不允许修改状态不为等待、违约的预约!', messages.WARNING)
+        invalid = []
+        for appoint in queryset:
+            match appoint.Astatus:
+                case Appoint.Status.WAITING:
+                    self._waiting2confirm(appoint)
+                case Appoint.Status.VIOLATED:
+                    self._violated2judged(appoint)
+                case _:
+                    invalid.append(appoint)
+        if not invalid:
+            return self.message_user(request, '更改状态成功!')
+        if len(invalid) == len(queryset):
+            return self.message_user(request, '只可通过等待、违约中的预约!', messages.WARNING)
+        message = f'部分成功!但{invalid}状态不为等待、违约，不允许更改!'
+        return self.message_user(request, message, messages.WARNING)
 
 
-    @as_action('所选条目 违约', actions, 'change')
+    @as_action('所选条目 违约', actions, 'change', update=True)
     def violate(self, request, queryset: QuerySet[Appoint]):  # 确认违约
-        try:
-            for appoint in queryset:
-                assert not (
-                    appoint.Astatus == Appoint.Status.VIOLATED
-                    and appoint.Areason == Appoint.Reason.R_ELSE
-                )
-                ori_status = appoint.get_status()
-                # if appoint.Astatus == Appoint.Status.WAITING:
-                # 已违规时不扣除信用分，仅提示用户
-                if appoint.Astatus != Appoint.Status.VIOLATED:
-                    appoint.Astatus = Appoint.Status.VIOLATED
-                    User.objects.modify_credit(appoint.get_major_id(), -1, '地下室：后台')
-                appoint.Areason = Appoint.Reason.R_ELSE
-                appoint.save()
+        for appoint in queryset:
+            if (appoint.Astatus == Appoint.Status.VIOLATED
+                and appoint.Areason == Appoint.Reason.R_ELSE):
+                return self.message_user(
+                    request, '操作失败!只允许对未审核的条目操作!', messages.WARNING)
+            ori_status = appoint.get_status()
+            if appoint.Astatus != Appoint.Status.VIOLATED:
+                appoint.Astatus = Appoint.Status.VIOLATED
+                User.objects.modify_credit(appoint.get_major_id(), -1, '地下室：后台')
+            appoint.Areason = Appoint.Reason.R_ELSE
+            appoint.save()
 
-                # send wechat message
-                notify_appoint(
-                    appoint, MessageType.VIOLATE_BY_ADMIN, f'原状态：{ori_status}',
-                    students_id=[appoint.get_major_id()], admin=True)
-                logger.info(f"{appoint.Aid}号预约被管理员设为违约，发起人：{_appointor(appoint)}")
-        except:
-            return self.message_user(request, '操作失败!只允许对未审核的条目操作!', messages.WARNING)
+            # send wechat message
+            notify_appoint(
+                appoint, MessageType.VIOLATE_BY_ADMIN, f'原状态：{ori_status}',
+                students_id=[appoint.get_major_id()], admin=True)
+            logger.info(f"{appoint.Aid}号预约被管理员设为违约，发起人：{_appointor(appoint)}")
 
         return self.message_user(request, "设为违约成功!")
 
