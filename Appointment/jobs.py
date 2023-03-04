@@ -12,10 +12,11 @@ import Appointment.utils.utils as utils
 import Appointment.utils.web_func as web_func
 from Appointment.utils.log import write_before_delete, logger, get_user_logger
 from Appointment.utils.identity import get_participant
-from Appointment.extern.job_shortcuts import (
+# TODO: notify_create和addAppoint不应在utils.jobs中定义，可能应统一到appoint_utils
+from Appointment.extern.shortcuts import notify_create as _notify_create_appoint
+from Appointment.extern.jobs import (
     set_appoint_reminder,
     remove_appoint_reminder,
-    notify_create as _notify_create_appoint,
 )
 
 
