@@ -7,13 +7,15 @@ from django.db import transaction
 
 from scheduler.scheduler import scheduler, periodical
 from Appointment.config import appointment_config as CONFIG
-from Appointment.models import Participant, Room, Appoint, LongTermAppoint
-from Appointment.extern.constants import MessageType
-from Appointment.extern.wechat import notify_appoint as set_appoint_wechat
+from Appointment.models import Participant, Room, Appoint
 import Appointment.utils.utils as utils
 import Appointment.utils.web_func as web_func
 from Appointment.utils.log import write_before_delete, logger, get_user_logger
-from Appointment.utils.identity import get_participant, get_auditor_ids
+from Appointment.utils.identity import get_participant
+from Appointment.extern.job_shortcuts import (
+    remind_job_id,
+    set_start_wechat,
+)
 
 
 '''
@@ -22,6 +24,14 @@ YWolfeee:
 这些函数大多对应预约的开始、结束，微信的定时发送等。
 如果需要实现新的函数，建议先详细阅读本py中其他函数的实现方式。
 '''
+
+__all__ = [
+    'set_scheduler',
+    'cancel_scheduler',
+    'addAppoint',
+    'get_longterm_display',
+    'add_longterm_appoint',
+]
 
 
 # 每周清除预约的程序，会写入logstore中
@@ -75,69 +85,6 @@ def set_scheduler(appoint: Appoint):
     return True
 
 
-def set_cancel_wechat(appoint: Appoint, students_id=None):
-    '''取消预约的微信提醒，默认发给所有参与者'''
-    set_appoint_wechat(
-        appoint, MessageType.CANCELED,
-        students_id=students_id, id=f'{appoint.Aid}_cancel_wechat')
-
-
-# added by pht: 8.31
-def set_start_wechat(appoint: Appoint, students_id=None, notify_create=True):
-    '''将预约成功和开始前的提醒定时发送给微信'''
-    if students_id is None:
-        students_id = list(appoint.students.values_list('Sid', flat=True))
-    # write by cdf end2
-    # modify by pht: 如果已经开始，非临时预约记录log
-    if datetime.now() >= appoint.Astart:
-        # add by lhw : 临时预约 #
-        if appoint.Atype == Appoint.Type.TEMPORARY:
-            set_appoint_wechat(
-                appoint, MessageType.TEMPORARY,
-                students_id=students_id, id=f'{appoint.Aid}_new_wechat')
-        else:
-            logger.warning(f'预约{appoint.Aid}尝试发送给微信时已经开始，且并非临时预约')
-            return False
-    elif datetime.now() <= appoint.Astart - timedelta(minutes=15):
-        # 距离预约开始还有15分钟以上，提醒有新预约&定时任务
-        if notify_create:  # 只有在非长线预约中才添加这个job
-            set_appoint_wechat(
-                appoint, MessageType.NEW,
-                students_id=students_id, id=f'{appoint.Aid}_new_wechat')
-        set_appoint_wechat(
-            appoint, MessageType.START,
-            students_id=students_id, id=f'{appoint.Aid}_start_wechat',
-            job_time=appoint.Astart - timedelta(minutes=15))
-    else:
-        # 距离预约开始还有不到15分钟，提醒有新预约并且马上开始
-        set_appoint_wechat(
-            appoint, MessageType.NEW_AND_START,
-            students_id=students_id, id=f'{appoint.Aid}_new_wechat')
-    return True
-
-
-def set_longterm_wechat(appoint: Appoint, students_id=None, infos='', admin=False):
-    '''长期预约的微信提醒，默认发给所有参与者'''
-    set_appoint_wechat(appoint, MessageType.LONGTERM_CREATED, infos,
-                       students_id=students_id, admin=admin,
-                       id=f'{appoint.Aid}_longterm_created_wechat')
-
-
-def set_longterm_reviewing_wechat(longterm_appoint: LongTermAppoint, auditor_ids=None):
-    '''长期预约的审核老师通知提醒，发送给对应的审核老师'''
-    if auditor_ids is None:
-        auditor_ids = get_auditor_ids(longterm_appoint.applicant.Sid)
-    if not auditor_ids:
-        return
-    infos = []
-    if longterm_appoint.applicant != longterm_appoint.appoint.major_student:
-        infos.append(f'申请者：{longterm_appoint.applicant.name}')
-    set_appoint_wechat(longterm_appoint.appoint, MessageType.LONGTERM_REVIEWING, *infos,
-                       students_id=auditor_ids,
-                       url=f'/review?Lid={longterm_appoint.pk}',
-                       id=f'{longterm_appoint.pk}_longterm_review_wechat')
-
-
 def cancel_scheduler(appoint_or_aid: Appoint | int, record_miss: bool = False) -> bool:
     '''以结束定时任务标识预约是否终止，未终止时取消所有定时任务，返回是否删除'''
     if isinstance(appoint_or_aid, Appoint):
@@ -152,7 +99,7 @@ def cancel_scheduler(appoint_or_aid: Appoint | int, record_miss: bool = False) -
             if record_miss:
                 logger.warning(f"预约{aid}取消时未发现开始计时器")
         try:
-            scheduler.remove_job(f'{aid}_start_wechat')
+            scheduler.remove_job(remind_job_id(aid))
         except:
             if record_miss:
                 logger.info(f"预约{aid}取消时未发现wechat计时器")
@@ -381,7 +328,7 @@ def add_longterm_appoint(appoint: 'Appoint | int',
         # 获取模板
         if not isinstance(appoint, Appoint):
             origin_pk = appoint
-            appoint: Appoint = Appoint.objects.get(pk=origin_pk)
+            appoint = Appoint.objects.get(pk=origin_pk)
         else:
             origin_pk = appoint.pk
 

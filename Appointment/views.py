@@ -26,6 +26,7 @@ from Appointment.models import (
     LongTermAppoint,
 )
 from Appointment.extern.wechat import MessageType, notify_appoint, notify_user
+from Appointment.extern.job_shortcuts import notify_longterm_review
 # utils对接工具
 from Appointment.utils.utils import (
     doortoroom, iptoroom,
@@ -238,7 +239,7 @@ def cancelAppoint(request: HttpRequest):
 
         get_user_logger(appoint).info(f"取消了预约{pk}")
         succeed("成功取消对" + appoint_room_name + "的预约!", context)
-        jobs.set_cancel_wechat(appoint)
+        notify_appoint(appoint, MessageType.CANCELED)
 
     return redirect(message_url(context, reverse("Appointment:account")))
 
@@ -1176,7 +1177,8 @@ def checkout_appoint(request: HttpRequest):
                         conflict, conflict_appoints = longterm.create()
                         assert conflict is None, f"创建长期预约意外失败"
                         # 向审核老师发送微信通知
-                        jobs.set_longterm_reviewing_wechat(longterm)
+                        auditor_ids = get_auditor_ids(longterm.applicant)
+                        notify_longterm_review(longterm, auditor_ids)
                         return redirect(
                             message_url(succeed(f"申请长期预约成功，请等待审核。"),
                                         reverse("Appointment:account")))
