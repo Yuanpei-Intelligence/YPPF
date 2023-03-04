@@ -290,8 +290,7 @@ class AppointAdmin(admin.ModelAdmin):
                         # send wechat message
                         notify_appoint(
                             appoint, MessageType.WAITING2CONFIRM, appoint.get_status(),
-                            students_id=[appoint.get_major_id()], admin=True,
-                            id=f'{appoint.Aid}_confirm_admin_wechat')
+                            students_id=[appoint.get_major_id()], admin=True)
                         logger.info(f"{appoint.Aid}号预约被管理员通过，发起人：{_appointor(appoint)}")
                     elif appoint.Astatus == Appoint.Status.VIOLATED:
                         appoint.Astatus = Appoint.Status.JUDGED
@@ -302,8 +301,7 @@ class AppointAdmin(admin.ModelAdmin):
                         # send wechat message
                         notify_appoint(
                             appoint, MessageType.VIOLATED2JUDGED, appoint.get_status(),
-                            students_id=[appoint.get_major_id()], admin=True,
-                            id=f'{appoint.Aid}_confirm_admin_wechat')
+                            students_id=[appoint.get_major_id()], admin=True)
                         logger.info(f"{appoint.Aid}号预约被管理员审核通过，发起人：{_appointor(appoint)}")
 
                     else:  # 不允许更改
@@ -342,8 +340,7 @@ class AppointAdmin(admin.ModelAdmin):
                 # send wechat message
                 notify_appoint(
                     appoint, MessageType.VIOLATE_BY_ADMIN, f'原状态：{ori_status}',
-                    students_id=[appoint.get_major_id()], admin=True,
-                    id=f'{appoint.Aid}_violate_admin_wechat')
+                    students_id=[appoint.get_major_id()], admin=True)
                 logger.info(f"{appoint.Aid}号预约被管理员设为违约，发起人：{_appointor(appoint)}")
         except:
             return self.message_user(request, '操作失败!只允许对未审核的条目操作!', messages.WARNING)
