@@ -10,7 +10,7 @@ from django.db.models import QuerySet
 from utils.admin_utils import *
 from Appointment import jobs
 from Appointment.extern.wechat import MessageType, notify_appoint
-from Appointment.extern.job_shortcuts import set_appoint_reminder
+from Appointment.extern.jobs import set_appoint_reminder
 from Appointment.utils.log import logger
 from Appointment.models import *
 

@@ -26,7 +26,6 @@ from Appointment.models import (
     LongTermAppoint,
 )
 from Appointment.extern.wechat import MessageType, notify_appoint, notify_user
-from Appointment.extern.job_shortcuts import notify_longterm_review
 # utils对接工具
 from Appointment.utils.utils import (
     doortoroom, iptoroom,
@@ -988,6 +987,17 @@ def arrange_talk_room(request):
     return render(request, 'Appointment/booking-talk.html', locals())
 
 
+def _notify_longterm_review(longterm: LongTermAppoint, auditor_ids: list[str]):
+    '''长期预约的审核老师通知提醒，发送给对应的审核老师'''
+    if not auditor_ids:
+        return
+    infos = []
+    if longterm.get_applicant_id() != longterm.appoint.get_major_id():
+        infos.append(f'申请者：{longterm.applicant.name}')
+    notify_appoint(longterm, MessageType.LONGTERM_REVIEWING, *infos,
+                   students_id=auditor_ids, url=f'review?Lid={longterm.pk}')
+
+
 @identity_check(redirect_field_name='origin')
 def checkout_appoint(request: HttpRequest):
     """
@@ -1178,7 +1188,7 @@ def checkout_appoint(request: HttpRequest):
                         assert conflict is None, f"创建长期预约意外失败"
                         # 向审核老师发送微信通知
                         auditor_ids = get_auditor_ids(longterm.applicant)
-                        notify_longterm_review(longterm, auditor_ids)
+                        _notify_longterm_review(longterm, auditor_ids)
                         return redirect(
                             message_url(succeed(f"申请长期预约成功，请等待审核。"),
                                         reverse("Appointment:account")))
