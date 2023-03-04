@@ -157,7 +157,8 @@
                                                 <button type="/button"
                                                         class="btn btn-primary"
                                                         name="comment_submit"
-                                                         onclick="start_chat()">
+                                                        id="comment_submit"
+                                                        onclick="start_chat()">
                                                         发送问题
                                                 </button>
                                                 </div>
@@ -273,10 +274,14 @@
                                                         {% if chat.anonymously_sent %}
                                                         <b>[匿名]</b>
                                                         {% endif %}
-                                                        发给&nbsp;<b>
-                                                            {% if chat.receiver_name and chat.academic_url %}<a href='{{chat.academic_url}}#tab=academic_map'><u>{{chat.receiver_name}}</u></a>
-                                                            {% else %}[未知]
-                                                            {% endif %}</b>
+                                                            {% if chat.receiver_name and chat.academic_url %}
+                                                                发给&nbsp;
+                                                                <b>
+                                                                    <a href='{{chat.academic_url}}#tab=academic_map'><u>{{chat.receiver_name}}</u></a>
+                                                            {% else %}
+                                                                    [非定向提问]
+                                                            {% endif %}
+                                                                </b>
                                                     </span>
                                                 </p>
 
@@ -454,7 +459,7 @@
 <script src={% static "assets/js/select2/select2.min.js" %}></script>
 
 
-<script>
+<script type="text/javascript">
     // 用于选择标签的组件初始化
     function matchCustom(params, data) {
         // If there are no search terms, return all of the data
@@ -482,8 +487,8 @@
         return null;
     }
     
-    let stu_data = {{ stu_list| safe }};
-    let tag_data = {{ tag_list |safe }}
+    let stu_data = {{ stu_list | safe }};
+    let tag_data = {{ tag_list | safe }};
 
     $(document).ready(function () {
         $('.select_keywords').select2({
@@ -530,7 +535,7 @@
     })
 </script>
 
-<script>
+<script type="text/javascript">
     $('.nav-tabs').on('shown.bs.tab', 'a', function (e) {
         if (e.relatedTarget) {
             $(e.relatedTarget).removeClass('active');
@@ -551,7 +556,7 @@
     
 </script>
 
-<script  type="text/javascript">
+<script type="text/javascript">
     // post请求后会reload，reload之后需要在顶部显示warn_message，
     // 而通常情况下history.scrollRestoration="auto"会导致reload后页面滚动到刷新前浏览的位置，有可能看不见顶部的warn_message
     // 需要用下面这两个函数手工处理一下
@@ -637,7 +642,7 @@
         }
         else if (target_type === "personal"){
             target_url = "/startChat/";
-            data.receiver_id = $(".select_receiver").val();
+            data.receiver_id = $(".select_receiver").val()[0];
         }
 
         $.ajax({
