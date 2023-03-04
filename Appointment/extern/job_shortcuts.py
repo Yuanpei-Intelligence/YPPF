@@ -4,40 +4,55 @@ from Appointment.models import Appoint, LongTermAppoint
 from Appointment.extern.constants import MessageType
 from Appointment.extern.wechat import notify_appoint
 from Appointment.utils.log import logger
+from scheduler.scheduler import scheduler
 
 
 __all__ = [
-    'remind_job_id',
-    'set_start_wechat',
+    'notify_create',
+    'set_appoint_reminder',
+    'remove_appoint_reminder',
     'notify_longterm_review',
 ]
 
 
-def remind_job_id(appoint_id: int) -> str:
-    return f'{appoint_id}_start_wechat'
-
-
-def set_start_wechat(appoint: Appoint, students_id=None, notify_create=True):
-    '''将预约成功和开始前的提醒定时发送给微信'''
-    if students_id is None:
-        students_id = list(appoint.students.values_list('Sid', flat=True))
-    if datetime.now() >= appoint.Astart:
-        if appoint.Atype != Appoint.Type.TEMPORARY:
-            logger.warning(f'预约{appoint.Aid}尝试发送给微信时已经开始，且并非临时预约')
-            return False
+def notify_create(appoint: Appoint, students_id: list[str] | None = None) -> bool:
+    '''提醒有新预约，根据时间和预约类型决定如何发送'''
+    if appoint.Atype == Appoint.Type.TEMPORARY:
         notify_appoint(appoint, MessageType.TEMPORARY, students_id=students_id)
-    elif datetime.now() <= appoint.Astart - timedelta(minutes=15):
-        # 距离预约开始还有15分钟以上，提醒有新预约&定时任务
-        if notify_create:  # 只有在非长线预约中才添加这个job
-            notify_appoint(appoint, MessageType.NEW, students_id=students_id)
-        notify_appoint(
-            appoint, MessageType.START,
-            students_id=students_id, id=remind_job_id(appoint.Aid),
-            job_time=appoint.Astart - timedelta(minutes=15))
+        return True
+    if datetime.now() >= appoint.Astart:
+        logger.warning(f'预约{appoint.Aid}尝试发送给微信时已经开始，且并非临时预约')
+        return False
+    if datetime.now() <= appoint.Astart - timedelta(minutes=15):
+        notify_appoint(appoint, MessageType.NEW, students_id=students_id)
     else:
-        # 距离预约开始还有不到15分钟，提醒有新预约并且马上开始
-        notify_appoint(appoint, MessageType.NEW_AND_START, students_id=students_id)
+        notify_appoint(appoint, MessageType.NEW_INCOMING, students_id=students_id)
     return True
+
+
+def _remind_job_id(appoint_id: int) -> str:
+    return f'{appoint_id}_appoint_remind'
+
+
+def set_appoint_reminder(appoint: Appoint, students_id: list[str] | None = None, *,
+                         scheduled_only: bool = True) -> bool:
+    '''设置预约开始前的提醒，根据时间决定如何发送，任何时刻均可调用，开始后不提醒'''
+    if datetime.now() >= appoint.Astart:
+        return False
+    if datetime.now() > appoint.Astart - timedelta(minutes=15):
+        if scheduled_only:
+            return False
+        job_time = None
+    else:
+        job_time = appoint.Astart - timedelta(minutes=15)
+    notify_appoint(appoint, MessageType.REMIND, students_id=students_id,
+                   id=_remind_job_id(appoint.Aid), job_time=job_time)
+    return True
+
+
+def remove_appoint_reminder(appoint_id: int):
+    '''取消预约开始前的提醒，不进行任何错误处理或日志记录'''
+    return scheduler.remove_job(_remind_job_id(appoint_id))
 
 
 def notify_longterm_review(longterm: LongTermAppoint, auditor_ids: list[str]):
