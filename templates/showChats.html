@@ -460,7 +460,6 @@
 {% block add_js_file %}
 <script src={% static "assets/js/select2/select2.min.js" %}></script>
 
-
 <script type="text/javascript">
     // 用于选择标签的组件初始化
     function matchCustom(params, data) {
@@ -500,20 +499,6 @@
             data: tag_data,
             matcher: matchCustom,
             maximumSelectionLength: 3,
-			tags: true,
-    		tokenSeparators: [' '],
-            createTag: function (params) {
-                var term = $.trim(params.term);
-            
-                if (term === '') {
-                  return null;
-                }
-            
-                return {
-                  id: term,
-                  text: term,
-                }
-              }
         });
         $('.select_receiver').select2({
             theme: "classic",

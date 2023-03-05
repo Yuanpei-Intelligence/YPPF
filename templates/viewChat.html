@@ -94,14 +94,26 @@
                                         匿名提问：{{title}}&emsp;
                                         {% endif %}
                                     {% endif %}
-                                    
-                                    {% if status == "进行中" %}
-                                    <span class="badge badge-primary followh3noafter">{{status}}</span><br />
-                                    {% elif status == "已关闭" %}
-                                    <span class="badge badge-success followh3noafter">{{status}}</span><br />
-                                    {% else %}
-                                    <span class="badge badge-danger followh3noafter">{{status}}</span><br />
-                                    {% endif %}
+                                </h3>
+                                <h3 class="noafter">
+                                    {% for tag in tags %}
+                                        {% if forloop.counter == 1 %}
+                                        <span class="badge badge-pill badge-info" 
+                                                style="border-radius:4px; color:#FFFFFF; margin:2px; margin-top:0px; margin-bottom:4px;">
+                                                {{tag}}
+                                        </span>
+                                        {% elif forloop.counter == 2 %}
+                                        <span class="badge badge-pill badge-warning"
+                                                style="border-radius:4px; color:#FFFFFF; margin:2px; margin-top:0px; margin-bottom:4px;">
+                                                {{tag}}
+                                        </span>
+                                        {% elif forloop.counter == 3 %}
+                                        <span class="badge badge-pill badge-danger"
+                                                style="border-radius:4px; color:#FFFFFF; margin:2px; margin-top:0px; margin-bottom:4px;">
+                                                {{tag}}
+                                        </span>
+                                        {% endif %}
+                                    {% endfor %}
                                 </h3>
                             </div>
                             <!--  END CHAT TITLE  -->
