@@ -3,6 +3,7 @@ from random import sample
 
 from django.http import HttpRequest
 
+from generic.models import YQPointRecord
 from app.utils_dependency import *
 from app.models import (
     AcademicEntry,
@@ -11,6 +12,7 @@ from app.models import (
     User,
     Chat,
     AcademicQA,
+    AcademicQAAwards,
 )
 from app.comment_utils import addComment
 from app.utils import check_user_type
@@ -178,8 +180,7 @@ def select_by_keywords(
     matched_users = User.objects.none()
     for k in keywords:
         matched_users |= get_matched_users(k, anonymous)
-    matched_users.exclude(id=user.id)
-    matched_users.distinct()
+    matched_users = matched_users.exclude(username=user.username).distinct()
     if not matched_users.exists():
         return None, wrong("没有和标签匹配的对象！")
     idx = range(0, matched_users.count())
@@ -215,27 +216,40 @@ def create_QA(request: HttpRequest,
     if chat_id is None:
         return message_context
 
-    try:
-        with transaction.atomic():
-            AcademicQA.objects.create(
-                chat_id=chat_id,
-                keywords=keywords,
-                directed=directed,
-            )
+    with transaction.atomic():
+        AcademicQA.objects.create(
+            chat_id=chat_id,
+            keywords=keywords,
+            directed=directed,
+        )
+
+    # 奖励仅限第一次发起非定向提问
+    if directed:
         return succeed("提问成功")
-    except:
-        return wrong("出现了意料之外的错误")
+
+    award_points = 5
+    award, created = AcademicQAAwards.objects.get_or_create(user=request.user)
+    if created or not award.created_undirected_qa:
+        User.objects.modify_YQPoint(request.user, award_points, "学术地图: 首次发起非定向提问", source_type=YQPointRecord.SourceType.ACHIEVE)
+        award.created_undirected_qa = True
+        award.save()
+        return succeed(f"首次发起非定向提问，奖励{award_points}元气值～")
+
+    return succeed("提问成功")
 
 
 def modify_rating(chat_id: int, rating: int) -> MESSAGECONTEXT:
-    try:
-        with transaction.atomic():
-            qa: AcademicQA = AcademicQA.objects.get(chat_id=chat_id)
-            qa.rating = rating
-            qa.save()
-        return succeed("成功修改评价")
-    except:
-        return wrong("对话不存在")
+    assert rating >= 0 and rating <= 3
+    award_points = [0, 5, 8, 12]  # 评价对应的奖励值
+    with transaction.atomic():
+        qa: AcademicQA = AcademicQA.objects.get(chat_id=chat_id)
+        qa.rating = rating
+        User.objects.modify_YQPoint(qa.chat.respondent, award_points[rating],
+                                "学术问答: 回答得到好评",
+                                YQPointRecord.SourceType.ACHIEVE)
+        qa.save()
+
+    return succeed("成功修改评价")
 
 
 def add_comment_to_QA(request: HttpRequest) -> MESSAGECONTEXT:

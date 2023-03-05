@@ -73,6 +73,6 @@ class RateAnswer(ProfileJsonView):
         提问方对回答质量给出评价
         """
         chat_id = self.request.POST.get('chat_id')
-        rating = self.request.POST.get('rating')
+        rating = int(self.request.POST.get('rating'))
 
         return self.message_response(modify_rating(chat_id, rating))

@@ -82,6 +82,7 @@ __all__ = [
     'AcademicTagEntry',
     'AcademicTextEntry',
     'AcademicQA',
+    'AcademicQAAwards',
     'Chat',
     'Prize',
     'Pool',
@@ -1880,7 +1881,7 @@ class AcademicQAManager(models.Manager):
 
 class AcademicQA(models.Model):
     class Meta:
-        verbose_name = "P.学术地图问答"
+        verbose_name = "P.学术问答"
         verbose_name_plural = verbose_name
 
     chat = models.OneToOneField(to=Chat, on_delete=models.CASCADE)
@@ -1889,6 +1890,15 @@ class AcademicQA(models.Model):
     rating = models.IntegerField('评价', default=0)
 
     objects: AcademicQAManager = AcademicQAManager()
+
+
+class AcademicQAAwards(models.Model):
+    class Meta:
+        verbose_name = "P.学术问答相关奖励"
+        verbose_name_plural = verbose_name   
+
+    user: User = models.OneToOneField(User, on_delete=models.CASCADE)
+    created_undirected_qa = models.BooleanField("是否发起过非定向提问", default=False)
 
 
 class Prize(models.Model):
