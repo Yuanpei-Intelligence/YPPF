@@ -32,7 +32,7 @@ from app.models import (
     Course,
     CourseRecord,
     Semester,
-    Chat,
+    AcademicQA,
 )
 from app.utils import (
     get_person_or_org,
@@ -527,11 +527,13 @@ def stuinfo(request: HttpRequest, name=None):
 
         # ----------------------------------- 学术地图 ----------------------------------- #
         # ------------------ 提问区 or 进行中的问答------------------ #
-        progressing_chat = Chat.objects.activated().filter(
-            questioner=request.user,
-            respondent=person.get_user())
-        if progressing_chat.exists():  # 有进行中的问答
-            comments2Display(progressing_chat[0], html_display, request.user)
+        progressing_chat = AcademicQA.objects.activated().filter(
+            directed=True,
+            chat__questioner=request.user,
+            chat__respondent=person.get_user()
+        )
+        if progressing_chat.exists():
+            comments2Display(progressing_chat.first().chat, html_display, request.user)  # TODO: 字典的key有冲突风险
             html_display["have_progressing_chat"] = True
         else:  # 没有进行中的问答，显示提问区
             html_display["have_progressing_chat"] = False

@@ -810,10 +810,10 @@
                             <!--  BEGIN CHAT TITLE  -->
                             <div class="d-flex justify-content-between">
                                 <h3 class="noafter">
-                                    {% if html_display.my_name == "匿名用户" %}
-                                    我[匿名]发给{{html_display.respondent_name}}的问答：{{html_display.title}}&emsp;
+                                    {% if html_display.questioner_anonymous %}
+                                    我[匿名]发给{{html_display.respondent_name}}的提问：{{html_display.title}}&emsp;
                                     {% else %}
-                                    我发给{{html_display.respondent_name}}的问答：{{html_display.title}}&emsp;
+                                    我发给{{html_display.respondent_name}}的提问：{{html_display.title}}&emsp;
                                     {% endif %}
                                     
                                     <span class="badge badge-primary followh3noafter">进行中</span><br />

@@ -1874,11 +1874,9 @@ class Chat(CommentBase):
 
 
 class AcademicQAManager(models.Manager):
-    def directed(self):
-        return self.filter(directed=True)
+    def activated(self):
+        return self.filter(chat__status=Chat.Status.PROGRESSING)
 
-    def undirected(self):
-        return self.filter(directed=False)
 
 class AcademicQA(models.Model):
     class Meta:
