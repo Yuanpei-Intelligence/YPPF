@@ -69,43 +69,37 @@
                                         {% endif %}
 
                                         {% if academic_url != "" and respondent_name != "匿名用户" %}
-                                        发给<a href='{{academic_url}}#tab=academic_map'><u>{{respondent_name}}</u></a>的问答：{{title}}&emsp;
+                                            发给<a href='{{academic_url}}#tab=academic_map'><u>{{respondent_name}}</u></a>的问答：{{title}}&emsp;
                                         {% else %}
-                                        {{title}}&emsp; 
-                                            {% for tag in respondent_tags %}
-                                            {% if forloop.counter == 1 %}
-                                            <span class="badge badge-pill badge-primary" 
-                                                  style="border-radius:4px; color:#FFFFFF; margin:2px; margin-top:0px; margin-bottom:4px;">
-                                                  {{tag}}
-                                            </span>
-                                            {% elif forloop.counter == 2 %}
-                                            <span class="badge badge-pill badge-success" 
-                                                  style="border-radius:4px; color:#FFFFFF; margin:2px; margin-top:0px; margin-bottom:4px;">
-                                                  {{tag}}
-                                            </span>
-                                            {% elif forloop.counter == 3 %}
-                                            <span class="badge badge-pill badge-warning" 
-                                                  style="border-radius:4px; color:#FFFFFF; margin:2px; margin-top:0px; margin-bottom:4px;">
-                                                  {{tag}}
-                                            </span>
-                                            {% endif %}
-                                            {% endfor %}
+                                            {{title}}
                                         {% endif %}
                                     {% else %}
                                         {% if academic_url != "" and questioner_name != "匿名用户" %}
-                                        来自<a href='{{academic_url}}#tab=academica_map'><u>{{questioner_name}}</u></a>的问答：{{title}}&emsp;
+                                            来自<a href='{{academic_url}}#tab=academica_map'><u>{{questioner_name}}</u></a>的问答：{{title}}&emsp;
                                         {% else %}
-                                        来自{{questioner_tags|join:" "}}的问答：{{title}}&emsp;
+                                            {{title}}
                                         {% endif %}
                                     {% endif %}
-                                    
-                                    {% if status == "进行中" %}
-                                    <span class="badge badge-primary followh3noafter">{{status}}</span><br />
-                                    {% elif status == "已关闭" %}
-                                    <span class="badge badge-success followh3noafter">{{status}}</span><br />
-                                    {% else %}
-                                    <span class="badge badge-danger followh3noafter">{{status}}</span><br />
-                                    {% endif %}
+                                </h3>
+                                <h3 class="noafter">
+                                    {% for tag in tags %}
+                                        {% if forloop.counter == 1 %}
+                                        <span class="badge badge-pill badge-info" 
+                                                style="border-radius:4px; color:#FFFFFF; margin:2px; margin-top:0px; margin-bottom:4px;">
+                                                {{tag}}
+                                        </span>
+                                        {% elif forloop.counter == 2 %}
+                                        <span class="badge badge-pill badge-warning"
+                                                style="border-radius:4px; color:#FFFFFF; margin:2px; margin-top:0px; margin-bottom:4px;">
+                                                {{tag}}
+                                        </span>
+                                        {% elif forloop.counter == 3 %}
+                                        <span class="badge badge-pill badge-danger"
+                                                style="border-radius:4px; color:#FFFFFF; margin:2px; margin-top:0px; margin-bottom:4px;">
+                                                {{tag}}
+                                        </span>
+                                        {% endif %}
+                                    {% endfor %}
                                 </h3>
                             </div>
                             <!--  END CHAT TITLE  -->
