@@ -1007,7 +1007,7 @@
                                                                 </label>
                                                                 <button type="submit"
                                                                         class="btn btn-primary"
-                                                                        name="comment_submit" value="{{person.person_id.id}}"
+                                                                        name="comment_submit" value="{{person.person_id.username}}"
                                                                         onclick="start_chat(this)"> <!-- 因为创建问答要复用comment_utils.py，这里必须叫“comment_submit”  -->
                                                                     提问
                                                                 </button>
@@ -1728,7 +1728,7 @@
             data:{
                 comment: document.getElementById("comment").value,
                 comment_submit: 1,
-                receiver_id: Number(a.value),
+                receiver_id: a.value,
                 comment_title: document.getElementById("comment_title").value,
                 comment_anonymous: document.getElementById("comment_anonymous").checked, // 这里转换为Boolean的话是false/true，而后端需要False/True，所以在后端转为bool()
             },

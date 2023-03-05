@@ -587,7 +587,7 @@ def get_students_for_search(request: HttpRequest):
     for s in students:
         user = s.person_id
         students_for_search.append({
-            'id': user.name,
+            'id': user.username,
             'text': user.name + user.username[:2],
             'pinyin': user.acronym,
         })
