@@ -1858,7 +1858,7 @@ class Chat(CommentBase):
     respondent: User = models.ForeignKey(User, on_delete=models.CASCADE,
                              related_name="receive_chat_set")
     title = models.CharField("主题", default="", max_length=50)
-    questioner_anonymous = models.BooleanField("提问方是否匿名", default=False)
+    questioner_anonymous = models.BooleanField("提问方是否匿名", default=True)
     respondent_anonymous = models.BooleanField("回答方是否匿名", default=False)
 
     class Status(models.IntegerChoices):
