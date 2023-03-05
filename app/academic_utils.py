@@ -11,6 +11,7 @@ from app.models import (
     AcademicEntry,
     AcademicTagEntry,
     AcademicTextEntry,
+    AcademicQA,
     User,
     Chat,
 )
@@ -20,7 +21,7 @@ from app.comment_utils import showComment
 
 __all__ = [
     'get_search_results',
-    'chats2Display', 
+    'chats2Display',
     'comments2Display',
     'get_js_tag_list',
     'get_text_list',
@@ -32,22 +33,19 @@ __all__ = [
     'get_wait_audit_student',
     'audit_academic_map',
     'have_entries_of_type',
+    'get_students_for_search',
+    'get_tags_for_search',
 ]
 
 
 def get_search_results(query: str):
+    # TODO: 更新文档
     """
     根据提供的关键词获取搜索结果。
-
-    :param keyword: 关键词
-    :type keyword: str
-    :return: 搜索结果list，元素为dict，包含key：姓名、年级、条目内容中包含关键词的条目名。
-             一个条目名可能对应一个或多个内容（如参与多个科研项目等），因此条目名对应的value统一用list打包。
-    :rtype: List[dict]
     """
-    # TODO: 更新文档
-    # 首先搜索所有含有关键词的公开的学术地图项目，忽略大小写，同时转换成QuerySet[dict]
-    academic_tags = AcademicTagEntry.objects.filter( 
+
+    # 搜索所有含有关键词的公开的学术地图项目，忽略大小写
+    academic_tags = AcademicTagEntry.objects.filter(
         tag__tag_content__icontains=query,
         status=AcademicEntry.EntryStatus.PUBLIC,
     ).values_list(
@@ -58,12 +56,11 @@ def get_search_results(query: str):
         content__icontains=query,
         status=AcademicEntry.EntryStatus.PUBLIC,
     ).values_list(
-        "person__person_id__username", 
+        "person__person_id__username",
          "atype", "content",
     )
 
-
-    # 然后根据tag/text对应的人，整合学术地图项目
+    # 根据tag/text对应的人，整合学术地图项目
     # 使用defaultdict会导致前端items不可用，原因未知
     academic_map_dict: 'dict[str, dict[str, list]]' = dict()
     type2display = {ty: label for ty, label in AcademicTag.Type.choices}
@@ -73,18 +70,19 @@ def get_search_results(query: str):
         academic_map_dict.setdefault(sid, {})
         academic_map_dict[sid].setdefault(tag_type, [])
         academic_map_dict[sid][tag_type].append(content)
-    
+
+    # TODO: 写法有点怪
     type2display = {ty: label for ty, label in AcademicTextEntry.Type.choices}
     for sid, ty, content in academic_texts:
         text_type = type2display[ty]
         academic_map_dict.setdefault(sid, {})
         academic_map_dict[sid].setdefault(text_type, [])
         academic_map_dict[sid][text_type].append(content)
-    
+
     return academic_map_dict
 
 
-def chats2Display(chats: QuerySet[Chat], sent: bool) -> Dict[str, List[dict]]:
+def chats2Display(user: User, sent: bool) -> Dict[str, List[dict]]:
     """
     把我收到/我发出的所有chat转化为供前端展示的两个列表，分别是进行中chat的信息、和其他chat的信息
 
@@ -98,106 +96,123 @@ def chats2Display(chats: QuerySet[Chat], sent: bool) -> Dict[str, List[dict]]:
     not_progressing_chats = []
     progressing_chats = []
 
+    if sent:
+        chats = Chat.objects.filter(questioner=user).order_by(
+            "-modify_time", "-time")
+    else:
+        chats = Chat.objects.filter(respondent=user).order_by(
+            "-modify_time", "-time")
+
     for chat in chats:
         chat_dict = {}
         chat_dict['id'] = chat.id
 
-        if sent:
-            chat_dict['anonymously_sent'] = chat.anonymous # 我以匿名方式发给别人，“问答中心”页面的卡片上会显示[匿名]
-            valid, receiver_type, _ = check_user_type(chat.respondent) # 学术地图应该只能是个人，不过以后或许可能复用Chat模型？
-            chat_dict['receiver_type'] = receiver_type
-            receiver = get_person_or_org(chat.respondent, receiver_type)
-            chat_dict['receiver_name'] = receiver.get_display_name()
-            chat_dict['academic_url'] = receiver.get_absolute_url() # 为了在“问答中心”页面的卡片上加入学术地图的url，超链接放在receiver_name上
+        chat_dict['questioner_anonymous'] = chat.questioner_anonymous
+        # 目前根据回答者是否匿名，来区分定向和非定向提问
+        chat_dict['respondent_anonymous'] = chat.respondent_anonymous
+
+        is_questioner = user == chat.questioner
+        chat_dict['is_questioner'] = is_questioner
+
+        chat_dict['questioner_name'] = get_person_or_org(
+            chat.questioner).get_display_name()
+        chat_dict['respondent_name'] = get_person_or_org(
+            chat.respondent).get_display_name()
+
+        if is_questioner:
+            chat_dict['academic_url'] = get_person_or_org(
+                chat.respondent).get_absolute_url()
         else:
-            if chat.anonymous: # 他人匿名发给我
-                chat_dict['sender_type'] = 'anonymous'
-                chat_dict['sender_name'] = '匿名用户'
-                chat_dict['academic_url'] = ''
-            else:
-                valid, sender_type, _ = check_user_type(chat.questioner) # 学术地图应该只能是个人，不过以后或许可能复用Chat模型？
-                chat_dict['sender_type'] = sender_type
-                sender = get_person_or_org(chat.questioner, sender_type)
-                chat_dict['sender_name'] = sender.get_display_name()
-                chat_dict['academic_url'] = sender.get_absolute_url() # 为了在“问答中心”页面的卡片上加入学术地图的url，超链接放在sender_name上（若sender匿名发送则无超链接）
-        
+            chat_dict['academic_url'] = get_person_or_org(
+                chat.questioner).get_absolute_url()
+
         if len(chat.title) >= 12:
             chat_dict['title'] = chat.title[:12] + "……"
         else:
             chat_dict['title'] = chat.title or "无主题"
-        
+
         chat_dict['status'] = chat.get_status_display()
         chat_dict['start_time'] = chat.time
         chat_dict['last_modification_time'] = chat.modify_time
-        chat_dict['chat_url'] = f"/viewQA/{chat.id}" # 问答详情的url，超链接放在title上
+        chat_dict['chat_url'] = f"/viewQA/{chat.id}"  # 问答详情的url，超链接放在title上
         chat_dict['message_count'] = chat.comments.count()
-        # chat_dict["messages"] = showComment(
-        #     chat, anonymous_users=[chat.questioner] if chat.anonymous else None) # "问答中心"页面不再显示每个chat的comment
-        
+
         if chat.status == Chat.Status.PROGRESSING:
             progressing_chats.append(chat_dict)
         else:
             not_progressing_chats.append(chat_dict)
-        
-    return {"progressing": progressing_chats, "not_progressing": not_progressing_chats}
+
+    return {
+        "progressing": progressing_chats,
+        "not_progressing": not_progressing_chats
+    }
 
 
-def comments2Display(chat: Chat, frontend_dict: dict, user: User):
+def comments2Display(chat: Chat, context: dict, user: User):
     """
     获取一个chat中的所有comment并转化为前端展示所需的形式（复用了comment_utils.py/showComment）
-
-    :param chat: 
-    :type chat: Chat
-    :param frontend_dict: 前端词典
-    :type frontend_dict: dict
-    :param user: 当前用户
-    :type user: User
     """
-    frontend_dict['title'] = chat.title or "无主题"
-    frontend_dict["chat_id"] = chat.id
+    questioner_anonymous = chat.questioner_anonymous
+    respondent_anonymous = chat.respondent_anonymous
+    is_questioner = user == chat.questioner
 
-    # 获取当前chat的所有comment
-    frontend_dict["messages"] = showComment(
-        chat, anonymous_users=[chat.questioner] if chat.anonymous else None)
-    if len(frontend_dict["messages"]) == 0:
-        # Chat一定有Comment，正常情况下不会到这里
-        frontend_dict["not_found_messages"] = "当前问答没有信息." 
-    
-    frontend_dict['status'] = chat.get_status_display()
-    frontend_dict["commentable"] = (chat.status == Chat.Status.PROGRESSING) # 若为True，则前端会给出评论区和“关闭当前问答”的按钮
-    frontend_dict["anonymous_chat"] = chat.anonymous
-    frontend_dict["accept_anonymous"] = chat.respondent.accept_anonymous_chat
+    anonymous_users = []
+    if questioner_anonymous:
+        anonymous_users.append(chat.questioner)
+    if respondent_anonymous:
+        anonymous_users.append(chat.respondent)
 
-    # 问答详情页面需要展示“发给xxx的问答”或“来自xxx的问答”，且xxx附有指向学术地图页面的超链接
-    # 因而需要判断我是提问者还是回答者，并记录对方的名字
-    # 问答详情页面对于我的信息和对方的信息以不同的格式显示
-    # 因而还需要记录我的名字，通过和frontend_dict["messages"]中每条记录的commentator.name对比来判断是不是我发的
-    # 事实上这些操作如果放到showComment里能减少一些get_display_name、get_person_or_org、get_absolute_url的调用，但需要对showComment做较大修改，就暂时没有整合进去
-    if chat.anonymous == False:
-        frontend_dict['my_name'] = get_person_or_org(user).get_display_name()
-        if user == chat.questioner:
-            frontend_dict["questioner_name"] = frontend_dict['my_name']
-            the_other = get_person_or_org(chat.respondent)
-            frontend_dict["respondent_name"] = the_other.get_display_name()
-            frontend_dict["academic_url"] = the_other.get_absolute_url()
-        else:
-            the_other = get_person_or_org(chat.questioner)
-            frontend_dict["questioner_name"] = the_other.get_display_name()
-            frontend_dict["respondent_name"] = frontend_dict['my_name']
-            frontend_dict["academic_url"] = the_other.get_absolute_url()
-    else: # 如果存在匿名情况，要注意删去指向学术地图页面的超链接
-        if user == chat.questioner: # 我匿名向他人提问
-            frontend_dict['my_name'] = "匿名用户"
-            frontend_dict["questioner_name"] = "匿名用户"
-            you = get_person_or_org(chat.respondent)
-            frontend_dict["respondent_name"] = you.get_display_name()
-            frontend_dict["academic_url"] = you.get_absolute_url()
-        else: # 他人匿名向我提问
-            me = get_person_or_org(user)
-            frontend_dict['my_name'] = me.get_display_name()
-            frontend_dict["questioner_name"] = "匿名用户"
-            frontend_dict["respondent_name"] = frontend_dict['my_name']
-            frontend_dict["academic_url"] = ""
+    context['title'] = chat.title or "无主题"
+    context[
+        'chat_id'] = chat.id  # TODO: 统一用AcademicQA模型后，不建议再用chat.id，而应该使用AcademicQA的id
+    context['messages'] = showComment(chat, anonymous_users)
+    if not context['messages']:
+        context['not_found_messages'] = "当前问答没有信息."
+
+    context['status'] = chat.get_status_display()
+    context[
+        'commentable'] = chat.status == Chat.Status.PROGRESSING  # 若为True，则前端会给出评论区和“关闭当前问答”的按钮
+    context['anonymous_chat'] = chat.questioner_anonymous
+    context['accept_anonymous'] = chat.respondent.accept_anonymous_chat
+    context['answered'] = chat.comments.filter(
+        commentator=chat.respondent).exists()
+
+    context['is_questioner'] = is_questioner
+    context[
+        'is_anonymous'] = questioner_anonymous if is_questioner else respondent_anonymous
+    context['questioner_anonymous'] = questioner_anonymous
+    context['respondent_anonymous'] = respondent_anonymous
+
+    context['my_name'] = get_person_or_org(user).get_display_name()
+    context['questioner_name'] = get_person_or_org(
+        chat.questioner).get_display_name()
+    context['respondent_name'] = get_person_or_org(
+        chat.respondent).get_display_name()
+    context['academic_url'] = get_person_or_org(
+        chat.respondent).get_absolute_url(
+        ) if is_questioner else get_person_or_org(
+            chat.questioner).get_absolute_url()
+
+    # 在对方匿名时，提供一些简单的信息
+    if is_questioner:
+        try:
+            qa: AcademicQA = AcademicQA.objects.get(chat_id=chat.id)
+            context['rating'] = qa.rating
+            context['respondent_tags'] = list(qa.keywords)
+        except:
+            context['rating'] = 0
+            context['respondent_tags'] = []
+    else:
+        try:
+            major = AcademicTagEntry.objects.get(
+                person=chat.questioner, tag__atype=AcademicTag.Type.MAJOR)
+            major_display = major.content
+        except:
+            major_display = ""
+        # TODO: 暂时没用上，但是可能有用，先留着
+        context['questioner_tags'] = [
+            chat.questioner.username[:2] + "级", major_display
+        ]
 
 
 def get_js_tag_list(author: NaturalPerson, type: AcademicTag.Type,
@@ -284,7 +299,7 @@ def get_tag_status(person: NaturalPerson, type: AcademicTag.Type) -> str:
     """
     # 首先获取person所有的TagEntry
     all_tag_entries = AcademicTagEntry.objects.activated().filter(person=person, tag__atype=type)
-    
+
     if all_tag_entries.exists():
         # 因为所有类型为type的TagEntry的公开状态都一样，所以直接返回第一个entry的公开状态
         entry = all_tag_entries[0]
@@ -307,7 +322,7 @@ def get_text_status(person: NaturalPerson, type: AcademicTextEntry.Type) -> str:
     """
     # 首先获取person所有的类型为type的TextEntry
     all_text_entries = AcademicTextEntry.objects.activated().filter(person=person, atype=type)
-    
+
     if all_text_entries.exists():
         # 因为所有类型为type的TextEntry的公开状态都一样，所以直接返回第一个entry的公开状态
         entry = all_text_entries[0]
@@ -316,8 +331,8 @@ def get_text_status(person: NaturalPerson, type: AcademicTextEntry.Type) -> str:
         return "公开"
 
 
-def update_tag_entry(person: NaturalPerson, 
-                     tag_ids: List[str], 
+def update_tag_entry(person: NaturalPerson,
+                     tag_ids: List[str],
                      status: bool,
                      type: AcademicTag.Type) -> None:
     """
@@ -338,7 +353,7 @@ def update_tag_entry(person: NaturalPerson,
     updated_status = (AcademicEntry.EntryStatus.PUBLIC
                       if status == "公开" else
                       AcademicEntry.EntryStatus.PRIVATE)
-    
+
     for entry in all_tag_entries:
         if not str(entry.tag.id) in tag_ids:
             # 如果用户原有的TagEntry的id在tag_ids中未出现，则将其状态设置为“已弃用”
@@ -349,7 +364,7 @@ def update_tag_entry(person: NaturalPerson,
             entry.status = updated_status
             entry.save()
             tag_ids.remove(str(entry.tag.id))
-    
+
     # 接下来遍历的tag_id都是要新建的tag
     for tag_id in tag_ids:
         AcademicTagEntry.objects.create(
@@ -358,9 +373,9 @@ def update_tag_entry(person: NaturalPerson,
         )
 
 
-def update_text_entry(person: NaturalPerson, 
-                      contents: List[str], 
-                      status: bool, 
+def update_text_entry(person: NaturalPerson,
+                      contents: List[str],
+                      status: bool,
                       type: AcademicTextEntry.Type) -> None:
     """
     更新TextEntry的工具函数。
@@ -380,23 +395,23 @@ def update_text_entry(person: NaturalPerson,
                       if status == "公开" else
                       AcademicEntry.EntryStatus.PRIVATE)
     previous_num = len(all_text_entries)
-    
+
     # 即将修改/创建的entry总数一定不小于原有的，因此先遍历原有的entry，判断是否更改/删除
     for i, entry in enumerate(all_text_entries):
-        if entry.content != contents[i]: 
+        if entry.content != contents[i]:
             # 内容发生修改，需要先将原有的content设置为“已弃用”
             entry.status = AcademicEntry.EntryStatus.OUTDATE
             entry.save()
             if contents[i] != "":  # 只有新的entry的内容不为空才创建
                 AcademicTextEntry.objects.create(
-                    person=person, atype=type, content=contents[i], 
+                    person=person, atype=type, content=contents[i],
                     status=updated_status,
                 )
         elif entry.status != updated_status:
             # 内容未修改但status修改，只更新entry的状态，不删除
             entry.status = updated_status
             entry.save()
-    
+
     # 接下来遍历的entry均为需要新建的
     for content in contents[previous_num:]:
         if content != "":
@@ -421,7 +436,7 @@ def update_academic_map(request: HttpRequest) -> dict:
     minors = request.POST.getlist('minors')
     double_degrees = request.POST.getlist('double_degrees')
     projects = request.POST.getlist('projects')
-    
+
     # 然后从其余栏目获取即将更新的TextEntry
     scientific_research_num = int(request.POST['scientific_research_num'])
     challenge_cup_num = int(request.POST['challenge_cup_num'])
@@ -436,7 +451,7 @@ def update_academic_map(request: HttpRequest) -> dict:
     scientific_direction = [request.POST[f'scientific_direction_{i}'] \
                             for i in range(scientific_direction_num+1)]
     graduation = [request.POST[f'graduation_{i}'] for i in range(graduation_num+1)]
-    
+
     # 对上述五个列表中的所有填写项目，检查是否超过数据库要求的字数上限
     max_length_of = lambda items: max([len(item) for item in items]) if len(items) > 0 else 0
     MAX_LENGTH = 4095
@@ -450,7 +465,7 @@ def update_academic_map(request: HttpRequest) -> dict:
         return wrong("您设置的科研方向太长啦！请修改~")
     elif max_length_of(graduation) > MAX_LENGTH:
         return wrong("您设置的毕业去向太长啦！请修改~")
-    
+
     # 从checkbox获取所有栏目的公开状态
     major_status = request.POST['major_status']
     minor_status = request.POST['minor_status']
@@ -461,45 +476,45 @@ def update_academic_map(request: HttpRequest) -> dict:
     internship_status = request.POST['internship_status']
     scientific_direction_status = request.POST['scientific_direction_status']
     graduation_status = request.POST['graduation_status']
-    
+
     # 获取前端信息后对数据库进行更新
     with transaction.atomic():
         me = get_person_or_org(request.user, UTYPE_PER)
-        
+
         # 首先更新自己的TagEntry
         update_tag_entry(me, majors, major_status, AcademicTag.Type.MAJOR)
         update_tag_entry(me, minors, minor_status, AcademicTag.Type.MINOR)
-        update_tag_entry(me, double_degrees, double_degree_status, 
+        update_tag_entry(me, double_degrees, double_degree_status,
                          AcademicTag.Type.DOUBLE_DEGREE)
         update_tag_entry(me, projects, project_status, AcademicTag.Type.PROJECT)
-        
+
         # 然后更新自己的TextEntry
         update_text_entry(
-            me, scientific_research, scientific_research_status, 
+            me, scientific_research, scientific_research_status,
             AcademicTextEntry.Type.SCIENTIFIC_RESEARCH
         )
         update_text_entry(
-            me, challenge_cup, challenge_cup_status, 
+            me, challenge_cup, challenge_cup_status,
             AcademicTextEntry.Type.CHALLENGE_CUP
         )
         update_text_entry(
-            me, internship, internship_status, 
+            me, internship, internship_status,
             AcademicTextEntry.Type.INTERNSHIP
         )
         update_text_entry(
-            me, scientific_direction, scientific_direction_status, 
+            me, scientific_direction, scientific_direction_status,
             AcademicTextEntry.Type.SCIENTIFIC_DIRECTION
         )
         update_text_entry(
-            me, graduation, graduation_status, 
+            me, graduation, graduation_status,
             AcademicTextEntry.Type.GRADUATION
         )
-        
+
         # 最后更新是否允许他人提问
         accept_chat = request.POST["accept_chat"]
         request.user.accept_chat = True if accept_chat == "True" else False
         request.user.save()
-    
+
     return succeed("学术地图修改成功！")
 
 
@@ -514,13 +529,13 @@ def get_wait_audit_student() -> Set[NaturalPerson]:
         status=AcademicEntry.EntryStatus.WAIT_AUDIT)
     wait_audit_text_entries = AcademicTextEntry.objects.filter(
         status=AcademicEntry.EntryStatus.WAIT_AUDIT)
-    
+
     wait_audit_students = set()
     for entry in wait_audit_tag_entries:
         wait_audit_students.add(entry.person)
     for entry in wait_audit_text_entries:
         wait_audit_students.add(entry.person)
-    
+
     return wait_audit_students
 
 
@@ -562,3 +577,27 @@ def have_entries_of_type(author: NaturalPerson, status_in: list) -> bool:
     all_text_entries = (AcademicTextEntry.objects.activated().filter(
         person=author, status__in=stats))
     return bool(all_tag_entries) or bool(all_text_entries)
+
+
+def get_students_for_search(request: HttpRequest):
+    students = NaturalPerson.objects.activated().exclude(
+        person_id=request.user).select_related('person_id')
+
+    students_for_search = []
+    for s in students:
+        user = s.person_id
+        students_for_search.append({
+            'id': user.name,
+            'text': user.name + user.username[:2],
+            'pinyin': user.acronym,
+        })
+
+    return students_for_search
+
+
+def get_tags_for_search():
+    tags = AcademicTag.objects.all()
+    tags_for_search = []
+    for t in tags:
+        tags_for_search.append({'id': t.id, 'text': t.tag_content})
+    return tags_for_search

@@ -2,90 +2,81 @@ from app.views_dependency import *
 from app.models import Chat
 from app.chat_utils import (
     change_chat_status,
-    add_chat_message,
-    create_chat,
+    select_by_keywords,
+    modify_rating,
+    create_QA,
+    add_comment_to_QA,
 )
-from utils.global_messages import MSG_FIELD, CODE_FIELD
 
 __all__ = [
-    'startChat', 'addChatComment', 'closeChat'
+    'StartChat', 'AddComment', 'CloseChat', 'StartUndirectedChat', 'RateAnswer'
 ]
 
 
-@login_required(redirect_field_name="origin")
-@utils.check_user_access(redirect_url="/logout/")
-@logger.secure_view()
-def startChat(request: HttpRequest) -> JsonResponse:
-    """
-    创建新chat
+class StartChat(SecureJsonView):
+    def post(self):
+        """
+        创建一条新的chat
+        """
+        try:
+            respondent = User.objects.get(
+                name=self.request.POST['receiver_id'])
+        except:
+            return self.message_response(wrong("出现了意料之外的错误！"))
+        questioner_anonymous = self.request.POST['comment_anonymous'] == 'true'
 
-    :param request: 通过ajax发来的POST请求
-    :type request: HttpRequest
-    :return: warn_code和warn_message
-    :rtype: JsonResponse
-    """
-    receiver = User.objects.get(id=request.POST['receiver_id'])
-    anonymous = (request.POST["comment_anonymous"]=="true")
-    
-    new_chat_id, create_chat_context = create_chat(
-        request, 
-        receiver, 
-        request.POST['comment_title'],
-        anonymous=anonymous,
-    )
-    result_context = { 
-        # 只保留warn_code和warn_message，用于前端展示；
-        # 除了这两个以外还可能有create_chat_context["new_comment"]=新创建的comment对象，但它无法json化且前端应该不需要
-        key: value for key, value in create_chat_context.items() 
-        if key in [MSG_FIELD, CODE_FIELD]
-    }
-    return JsonResponse(result_context)
+        return self.message_response(
+            create_QA(self.request,
+                      respondent,
+                      directed=True,
+                      questioner_anonymous=questioner_anonymous))
 
 
-@login_required(redirect_field_name="origin")
-@utils.check_user_access(redirect_url="/logout/")
-@logger.secure_view()
-def addChatComment(request: HttpRequest) -> JsonResponse:
-    """
-    给chat发送comment
-
-    :param request: 通过ajax发来的POST请求
-    :type request: HttpRequest
-    :return: warn_code和warn_message
-    :rtype: JsonResponse
-    """
-    try:
-        chat = Chat.objects.get(id=request.POST.get("chat_id"))
-    except:
-        return JsonResponse(wrong("问答不存在!"))
-    
-    comment_context = add_chat_message(request, chat)
-    result_context = {
-        # 只保留warn_code和warn_message，用于前端展示；
-        # 除了这两个以外还可能有create_chat_context["new_comment"]=新创建的comment对象，但它无法json化且前端应该不需要
-        key: value for key, value in comment_context.items() 
-        if key in [MSG_FIELD, CODE_FIELD]
-    }
-    return JsonResponse(result_context)
+class AddComment(SecureJsonView):
+    def post(self):
+        """
+        向聊天中添加对话
+        """
+        return self.message_response(add_comment_to_QA(self.request))
 
 
-@login_required(redirect_field_name="origin")
-@utils.check_user_access(redirect_url="/logout/")
-@logger.secure_view()
-def closeChat(request: HttpRequest) -> JsonResponse:
-    """
-    关闭chat
+class CloseChat(SecureJsonView):
+    def post(self):
+        """
+        终止聊天
+        """
+        message_context = change_chat_status(self.request.POST.get("chat_id"),
+                                             Chat.Status.CLOSED)
+        return self.message_response(message_context)
 
-    :param request: 通过ajax发来的POST请求
-    :type request: HttpRequest
-    :return: warn_code和warn_message
-    :rtype: JsonResponse
-    """
-    status_change_context = change_chat_status(request.POST.get("chat_id"), Chat.Status.CLOSED)
-    result_context = {
-        # 只保留warn_code和warn_message，用于前端展示；
-        # 除了这两个以外应该也不会有别的了
-        key: value for key, value in status_change_context.items() 
-        if key in [MSG_FIELD, CODE_FIELD]
-    }
-    return JsonResponse(result_context)
+
+class StartUndirectedChat(SecureJsonView):
+    def post(self):
+        """
+        开始非定向问答
+        """
+        questioner_anonymous = (
+            self.request.POST['comment_anonymous'] == 'true')
+        keywords = self.request.POST.get('keywords').split(sep=',')
+        respondent, message_context = select_by_keywords(
+            self.request.user, questioner_anonymous, keywords)
+        if respondent is None:
+            return self.message_response(message_context)
+
+        return self.message_response(
+            create_QA(self.request,
+                      respondent,
+                      directed=False,
+                      questioner_anonymous=questioner_anonymous,
+                      keywords=keywords))
+
+
+class RateAnswer(SecureJsonView):
+    def post(self):
+        """
+        提问方对回答质量给出评价
+        """
+        chat_id = self.request.POST.get('chat_id')
+        rating = self.request.POST.get('rating')
+
+        return self.message_response(modify_rating(chat_id, rating))
