@@ -235,7 +235,7 @@ class SecureView(View):
             f'SecureView requires an implementation of `{method}`'
         )
 
-    def get_logger(self) -> 'Logger' | None:
+    def get_logger(self) -> 'Logger | None':
         '''获取日志记录器'''
         return None
 
@@ -302,7 +302,7 @@ class SecureTemplateView(SecureView):
         wrong(message, self.extra_context)
         return self.render()
 
-    def get_logger(self) -> 'Logger' | None:
+    def get_logger(self) -> 'Logger | None':
         from utils.log import get_logger
         return get_logger('error')
 
@@ -330,6 +330,6 @@ class SecureJsonView(SecureView):
         self.data[CODE_FIELD] = message[CODE_FIELD]
         return self.json_response()
 
-    def get_logger(self) -> 'Logger' | None:
+    def get_logger(self) -> 'Logger | None':
         from utils.log import get_logger
         return get_logger('APIerror')

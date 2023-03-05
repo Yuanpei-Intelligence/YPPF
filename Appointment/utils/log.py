@@ -53,10 +53,11 @@ class AppointmentLogger(Logger):
     def _log(self, level, msg, args, exc_info = None, extra = None, stack_info = False, stacklevel = 1) -> None:
         file, caller, _ = find_caller(depth=3)
         source = f"{file}.{caller}"
-        msg = source.ljust(40) + str(msg)
-        super()._log(level, msg, args, exc_info, extra, stack_info, stacklevel)
+        msg = str(msg)
+        log_msg = source.ljust(40) + msg
+        super()._log(level, log_msg, args, exc_info, extra, stack_info, stacklevel)
         if level >= logging.ERROR:
-            self._send_wechat(msg, level)
+            self._send_wechat(f'错误位置：{source}\n' + msg, level)
 
     def _send_wechat(self, message: str, level: int = logging.ERROR):
         if not GLOBAL_CONF.debug_stuids:
