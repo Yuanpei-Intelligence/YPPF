@@ -8,6 +8,12 @@ from django.template.response import TemplateResponse
 from .http import HttpRequest
 from .global_messages import wrong, MESSAGECONTEXT, MSG_FIELD, CODE_FIELD
 
+try:
+    # TODO: 获取类型提示，但Logger不是可靠工具包，部分依赖于设置
+    from utils.log.logger import Logger
+except:
+    pass
+
 
 __all__ = [
     'SecureView', 'SecureJsonView', 'SecureTemplateView',
@@ -229,8 +235,15 @@ class SecureView(View):
             f'SecureView requires an implementation of `{method}`'
         )
 
+    def get_logger(self) -> 'Logger' | None:
+        '''获取日志记录器'''
+        return None
+
     def error_response(self, exception: Exception) -> HttpResponse:
         '''错误处理，异常栈可追溯，生产环境不应产生异常'''
+        logger = self.get_logger()
+        if logger is not None:
+            logger.on_exception()
         return self.http_forbidden('出现错误，请联系管理员')
 
     def redirect(self, to: str, *args, permanent=False, **kwargs):
@@ -289,40 +302,34 @@ class SecureTemplateView(SecureView):
         wrong(message, self.extra_context)
         return self.render()
 
-    def error_response(self, exception: Exception) -> HttpResponse:
+    def get_logger(self) -> 'Logger' | None:
         from utils.log import get_logger
-        get_logger('error').on_exception()
-        return super().error_response(exception)
+        return get_logger('error')
 
 
 class SecureJsonView(SecureView):
-    response_class = JsonResponse
-    data = None
-    need_prepare = False
+    response_class: type[JsonResponse] = JsonResponse
+    data: dict[str, Any]
     http_method_names = ['post']
 
-    ExtraDataType = dict[Any, Any] | None
+    ExtraDataType = dict[str, Any] | None
 
-    def dispatch_prepare(self, method: str):
-        return self.default_prepare(method, prepare_needed=self.need_prepare)
+    def setup(self, request: HttpRequest, *args: Any, **kwargs: Any) -> None:
+        '''初始化请求参数和返回数据'''
+        self.data = {}
+        return super().setup(request, *args, **kwargs)
 
-    def json_response(self, extra_data: ExtraDataType = None, **kwargs):
-        from utils.log import get_logger
-        get_logger('recording').info("json_response")
-        if self.data is None:
-            self.data = {}
+    def json_response(self, extra_data: ExtraDataType = None, **kwargs: Any) -> JsonResponse:
+        data = self.data
         if extra_data is not None:
-            self.data |= extra_data
-        return self.response_class(self.data, **kwargs)
+            data |= extra_data
+        return self.response_class(data, **kwargs)
 
     def message_response(self, message: MESSAGECONTEXT):
-        if self.data is None:
-            self.data = {}
         self.data[MSG_FIELD] = message[MSG_FIELD]
         self.data[CODE_FIELD] = message[CODE_FIELD]
         return self.json_response()
 
-    def error_response(self, exception: Exception) -> HttpResponse:
+    def get_logger(self) -> 'Logger' | None:
         from utils.log import get_logger
-        get_logger('APIerror').on_exception()
-        return super().error_response(exception)
+        return get_logger('APIerror')

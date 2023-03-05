@@ -13,7 +13,7 @@ __all__ = [
 ]
 
 
-class StartChat(SecureJsonView):
+class StartChat(ProfileJsonView):
     def post(self):
         """
         创建一条新的chat
@@ -28,7 +28,7 @@ class StartChat(SecureJsonView):
                       questioner_anonymous=questioner_anonymous))
 
 
-class AddComment(SecureJsonView):
+class AddComment(ProfileJsonView):
     def post(self):
         """
         向聊天中添加对话
@@ -36,7 +36,7 @@ class AddComment(SecureJsonView):
         return self.message_response(add_comment_to_QA(self.request))
 
 
-class CloseChat(SecureJsonView):
+class CloseChat(ProfileJsonView):
     def post(self):
         """
         终止聊天
@@ -46,7 +46,7 @@ class CloseChat(SecureJsonView):
         return self.message_response(message_context)
 
 
-class StartUndirectedChat(SecureJsonView):
+class StartUndirectedChat(ProfileJsonView):
     def post(self):
         """
         开始非定向问答
@@ -67,7 +67,7 @@ class StartUndirectedChat(SecureJsonView):
                       keywords=keywords))
 
 
-class RateAnswer(SecureJsonView):
+class RateAnswer(ProfileJsonView):
     def post(self):
         """
         提问方对回答质量给出评价

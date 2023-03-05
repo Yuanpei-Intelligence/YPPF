@@ -10,7 +10,6 @@ from django.db.models import Q, F, Sum, QuerySet
 from django.contrib.auth.password_validation import CommonPasswordValidator, NumericPasswordValidator
 from django.core.exceptions import ValidationError
 
-from utils.views import SecureTemplateView
 from utils.config.cast import str_to_time
 from utils.hasher import MyMD5Hasher
 from app.views_dependency import *

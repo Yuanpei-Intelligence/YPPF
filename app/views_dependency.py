@@ -52,11 +52,13 @@ from app.log import logger
 
 # 不应导出，接口内部使用
 from django.core.exceptions import ImproperlyConfigured as _ImproperlyConfigured
+from app.log import ProfileLogger as _ProfileLogger
 class ProfileTemplateView(SecureTemplateView):
     request: UserRequest
     PrepareType = SecureView.PrepareType | SecureTemplateView.SkippablePrepareType
 
     need_prepare: bool = True
+    logger_name: str = 'ProfileError'
     page_name: str
 
     def dispatch_prepare(self, method: str):
@@ -68,3 +70,21 @@ class ProfileTemplateView(SecureTemplateView):
         self.extra_context['bar_display'] = utils.get_sidebar_and_navbar(
             self.request.user, self.page_name)
         return super().render(**kwargs)
+
+    def get_logger(self):
+        return _ProfileLogger.getLogger(self.logger_name)
+
+
+class ProfileJsonView(SecureJsonView):
+    need_prepare: bool = False
+    logger_name: str = 'ProfileAPIerror'
+
+    def dispatch_prepare(self, method: str):
+        return self.default_prepare(method, prepare_needed=self.need_prepare)
+
+    def json_response(self, extra_data = None, **kwargs):
+        _ProfileLogger.getLogger('recording').info('json_response')
+        return super().json_response(extra_data, **kwargs)
+
+    def get_logger(self):
+        return _ProfileLogger.getLogger(self.logger_name)
