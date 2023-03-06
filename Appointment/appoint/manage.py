@@ -27,6 +27,16 @@ def _notify_create(appoint: Appoint, students_id: list[str] | None = None) -> bo
     return True
 
 
+def _create_require_num(room: Room, type: Appoint.Type) -> int:
+    create_min: int = room.Rmin
+    if type == Appoint.Type.TODAY:
+        create_min = min(create_min, CONFIG.today_min)
+    if type == Appoint.Type.TEMPORARY:
+        create_min = min(create_min, CONFIG.temporary_min)
+    if type == Appoint.Type.INTERVIEW:
+        create_min = min(create_min, 1)
+
+
 def _success(appoint: Appoint):
     return appoint, ''
 
@@ -84,25 +94,7 @@ def addAppoint(contents: dict,
         type = Appoint.Type.TODAY
 
     # 创建预约时要求的人数
-    create_min: int = room.Rmin
-    if type == Appoint.Type.TODAY:
-        create_min = min(create_min, CONFIG.today_min)
-    if type == Appoint.Type.TEMPORARY:
-        create_min = min(create_min, CONFIG.temporary_min)
-    if type == Appoint.Type.INTERVIEW:
-        create_min = min(create_min, 1)
-
-    # 实际监控检查要求的人数
-    check_need_num = create_min
-    if check_need_num > CONFIG.today_min:
-        if room.Rid == "B107B":
-            # 107b的监控不太靠谱，正下方看不到
-            check_need_num -= 2
-        elif room.Rid == "B217":
-            # 地下室关灯导致判定不清晰，晚上更严重
-            check_need_num -= 2 if Astart.hour >= 20 else 1
-        # 最多减到当日人数要求
-        check_need_num = max(check_need_num, CONFIG.today_min)
+    create_min = _create_require_num(room, type)
 
     # 检查人员信息
     try:
@@ -150,11 +142,25 @@ def addAppoint(contents: dict,
         students_id=students_id,
         room=room, start=Astart, finish=Afinish,
         usage=usage, announce=announcement,
-        inner_count=yp_num, outer_count=non_yp_num,
-        require_attend=check_need_num,
+        inner_num=yp_num, outer_num=non_yp_num,
         type=type,
         notify=notify_create,
     )
+
+
+def _attend_require_num(room: Room, type: Appoint.Type, start: datetime, finish: datetime) -> int:
+    '''实际监控检查要求的人数'''
+    require_num = _create_require_num(room, type)
+    if require_num <= CONFIG.today_min:
+        return require_num
+    # 107b的监控不太靠谱，正下方看不到
+    if room.Rid == "B107B":
+        require_num -= 2
+    # 地下室关灯导致判定不清晰，晚上更严重
+    elif room.Rid == "B217":
+        require_num -= 2 if start.hour >= 20 else 1
+    # 最多减到当日人数要求
+    return max(require_num, CONFIG.today_min)
 
 
 @logger.secure_func('创建预约失败', fail_value=_error('添加预约失败!请与管理员联系!'))
@@ -165,36 +171,35 @@ def create_appoint(
     room: Room,
     start: datetime, finish: datetime,
     usage: str, announce: str,
-    inner_count: int, outer_count: int,
-    require_attend: int, *,
+    inner_num: int, outer_num: int,
+    *,
     type: Appoint.Type = Appoint.Type.NORMAL,
     notify: bool = True,
 ) -> tuple[Appoint | None, str]:
 
-    students = Participant.objects.filter(Sid__in=students_id)
     appointer = Participant.objects.select_for_update().get(pk=appointer.pk)
-
-    # 确认信用分符合要求
     if appointer.credit <= 0:
         return _error('信用分不足，本月无法发起预约！')
+
+    students = Participant.objects.filter(Sid__in=students_id)
+    if len(students) != len(students_id):
+        return _error('预约人信息有误，请检查后重新发起预约！')
 
     appoint = Appoint(
         major_student=appointer, Room=room,
         Astart=start, Afinish=finish,
         Ausage=usage, Aannouncement=announce,
-        Anon_yp_num=outer_count, Ayp_num=inner_count,
-        Aneed_num=require_attend,
+        Anon_yp_num=outer_num, Ayp_num=inner_num,
+        Aneed_num=_attend_require_num(room, type, start, finish),
         Atype=type,
     )
     conflict_appoints = get_conflict_appoints(appoint, lock=True)
     if conflict_appoints:
         return _error('预约时间与已有预约冲突，请重选时间段！')
 
-    # 成功创建
     appoint.save()
     appoint.students.set(students)
 
-    # 设置状态变更和微信提醒定时任务
     set_scheduler(appoint)
     if notify:
         _notify_create(appoint, students_id)
