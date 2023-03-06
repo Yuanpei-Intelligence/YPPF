@@ -28,6 +28,7 @@ from django.conf import settings
 from boot.config import absolute_path
 from utils.http.dependency import HttpRequest
 from utils.log.config import log_config as CONFIG
+from utils.inspect import module_filepath
 
 
 __all__ = [
@@ -78,10 +79,25 @@ class Logger(logging.Logger):
     def set_debug_mode(self, debug: bool) -> None:
         self.debug_mode = debug
 
-    def exception(self, msg: str, *args, stacklevel: int | None = None, **kwargs) -> None:
-        if stacklevel is None:
-            stacklevel = CONFIG.stack_level
-        super().exception(msg, *args, stacklevel=stacklevel, **kwargs)
+    def findCaller(self, stack_info: bool = False, stacklevel: int = 1):
+        filepath, lineno, funcname, sinfo = super().findCaller(stack_info, stacklevel + 1)
+        filepath = module_filepath(filepath)
+        return filepath, lineno, funcname, sinfo
+
+    def makeRecord(self, *args, **kwargs):
+        record = super().makeRecord(*args, **kwargs)
+        try:
+            record.module, record.filename = record.pathname.rsplit('.', 1)
+        except:
+            record.module, record.filename = record.pathname, record.pathname
+        return record
+
+    def _log(self, level, msg, args, exc_info = None, extra = None,
+             stack_info = False, stacklevel = 1) -> None:
+        if stack_info:
+            stacklevel += CONFIG.stack_level
+        stacklevel += 1
+        return super()._log(level, msg, args, exc_info, extra, stack_info, stacklevel)
 
     @staticmethod
     def format_request(request: HttpRequest) -> str:
@@ -110,8 +126,8 @@ class Logger(logging.Logger):
             raise_exc (bool, optional): 是否抛出异常，不提供则根据debug模式决定
         '''
         if request is not None:
-            message = self.format_request(request) + message
-        self.exception(message)
+            message = self.format_request(request) + '\n' + message
+        self.exception(message, stacklevel=2)
         if raise_exc is None:
             raise_exc = self.debug_mode
         if raise_exc:
