@@ -1,6 +1,5 @@
 from datetime import datetime, timedelta
 
-from django.http import JsonResponse
 from django.db import transaction
 
 from Appointment.config import appointment_config as CONFIG
@@ -28,22 +27,16 @@ def _notify_create(appoint: Appoint, students_id: list[str] | None = None) -> bo
     return True
 
 
-# 过渡，待废弃
-def _success(data):
-    return JsonResponse({'data': data}, status=200)
-
+def _success(appoint: Appoint):
+    return appoint, ''
 
 def _error(msg: str, detail=None):
-    content = dict(message=msg)
-    if detail is not None:
-        content.update(detail=str(detail))
-    return JsonResponse({'statusInfo': content}, status=400)
-
+    return None, msg
 
 def addAppoint(contents: dict,
                type: Appoint.Type = Appoint.Type.NORMAL,
                check_contents: bool = True,
-               notify_create: bool = True) -> JsonResponse:
+               notify_create: bool = True) -> tuple[Appoint | None, str]:
     '''
     创建一个预约，检查各种条件，屎山函数
 
@@ -55,8 +48,8 @@ def addAppoint(contents: dict,
     :type check_contents: bool, optional
     :param notify_create: 是否通知参与者创建了新预约, defaults to True
     :type notify_create: bool, optional
-    :return: 屎山
-    :rtype: JsonResponse
+    :return: (预约, 错误信息)
+    :rtype: tuple[Appoint | None, str]
     '''
 
     # 首先检查房间是否存在
@@ -193,4 +186,4 @@ def addAppoint(contents: dict,
         logger.exception(f"学生{major_display}出现添加预约失败的问题: {e}")
         return _error('添加预约失败!请与管理员联系!')
 
-    return _success(appoint.toJson())
+    return _success(appoint)

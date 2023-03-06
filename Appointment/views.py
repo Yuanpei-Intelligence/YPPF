@@ -587,36 +587,15 @@ def door_check(request):
                     'Ausage': "临时预约",
                     'announcement': "",
                 }
-                response = addAppoint(
-                    contents, type=Appoint.Type.TEMPORARY)
+                appoint, err_msg = addAppoint(contents, type=Appoint.Type.TEMPORARY)
 
-                if response.status_code == 200:  # 临时预约成功
+                if appoint is not None:
                     return _check_succeed(f"刷卡开门：临时预约")
-
-                else:   # 无法预约（比如没信用分了）
-                    message = json.loads(response.content)[
-                        "statusInfo"]["message"]
-                    return _temp_failed(message)
+                else:
+                    return _temp_failed(err_msg)
 
             else:   # 预约时间不合法
                 return _temp_failed(f"预约时间不合法，请不要恶意篡改数据！")
-
-    # --- modify end (2021.7.10) --- #
-    # --- modify end (2021.8.16) --- #
-
-    # try:
-    #     with transaction.atomic():
-    #         for now_appoint in stu_appoint:
-    #             if (now_appoint.Astatus == Appoint.Status.APPOINTED and datetime.now() <=
-    #                     now_appoint.Astart + timedelta(minutes=15)):
-    #                 now_appoint.Astatus = Appoint.Status.PROCESSING
-    #                 now_appoint.save()
-    # except Exception as e:
-    #     operation_writer("可以开门却不开门的致命错误，房间号为" +
-    #                      str(Rid) + ",学生为"+str(Sid)+",错误为:"+str(e),
-    #                      "Error")
-    #     cardcheckinfo_writer(student, room, False, True)
-    #     return _fail()
 
 
 @csrf_exempt
@@ -1153,21 +1132,20 @@ def checkout_appoint(request: HttpRequest):
                 response = addAppoint(contents, type=Appoint.Type.INTERVIEW)
             else:
                 response = addAppoint(contents)
-            if response.status_code == 200 and not is_longterm:
+            appoint, err_msg = response
+            if appoint is not None and not is_longterm:
                 # 成功预约且非长期
                 return redirect(
                     message_url(succeed(f"预约{room.Rtitle}成功!"),
                                 reverse("Appointment:account")))
-            elif response.status_code != 200:
-                add_dict = json.loads(response.content)['statusInfo']
-                wrong(add_dict['message'], render_context)
+            elif appoint is None:
+                wrong(err_msg, render_context)
             else:
                 # 长期预约
                 try:
                     conflict_appoints = []
                     with transaction.atomic():
-                        Aid = json.loads(response.content)['data']['Aid']
-                        appoint: Appoint = Appoint.objects.get(Aid=Aid)
+                        appoint.refresh_from_db()
                         conflict_appoints = get_conflict_appoints(
                             appoint, times - 1, interval,
                             week_offset=interval, exclude_this=True, lock=True)
