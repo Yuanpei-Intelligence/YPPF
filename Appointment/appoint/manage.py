@@ -157,6 +157,8 @@ def addAppoint(contents: dict,
     )
 
 
+@logger.secure_func('创建预约失败', fail_value=_error('添加预约失败!请与管理员联系!'))
+@transaction.atomic
 def create_appoint(
     appointer: Participant,
     students_id: list[str],
@@ -168,46 +170,35 @@ def create_appoint(
     type: Appoint.Type = Appoint.Type.NORMAL,
     notify: bool = True,
 ) -> tuple[Appoint | None, str]:
-    try:
-        with transaction.atomic():
-            students = Participant.objects.filter(Sid__in=students_id)
-            appointer = Participant.objects.select_for_update().get(pk=appointer.pk)
 
-            # 确认信用分符合要求
-            if appointer.credit <= 0:
-                return _error('信用分不足，本月无法发起预约！')
+    students = Participant.objects.filter(Sid__in=students_id)
+    appointer = Participant.objects.select_for_update().get(pk=appointer.pk)
 
-            appoint: Appoint = Appoint(
-                Room=room,
-                Astart=start,
-                Afinish=finish,
-                Ausage=usage,
-                Aannouncement=announce,
-                major_student=appointer,
-                Anon_yp_num=outer_count,
-                Ayp_num=inner_count,
-                Aneed_num=require_attend,
-                Atype=type,
-            )
-            conflict_appoints = get_conflict_appoints(appoint, lock=True)
-            if conflict_appoints:
-                return _error('预约时间与已有预约冲突，请重选时间段！')
+    # 确认信用分符合要求
+    if appointer.credit <= 0:
+        return _error('信用分不足，本月无法发起预约！')
 
-            # 成功创建
-            appoint.save()
-            appoint.students.set(students)
+    appoint = Appoint(
+        major_student=appointer, Room=room,
+        Astart=start, Afinish=finish,
+        Ausage=usage, Aannouncement=announce,
+        Anon_yp_num=outer_count, Ayp_num=inner_count,
+        Aneed_num=require_attend,
+        Atype=type,
+    )
+    conflict_appoints = get_conflict_appoints(appoint, lock=True)
+    if conflict_appoints:
+        return _error('预约时间与已有预约冲突，请重选时间段！')
 
-            # 设置状态变更和微信提醒定时任务
-            set_scheduler(appoint)
-            if notify:
-                _notify_create(appoint, students_id)
-            set_appoint_reminder(appoint, students_id)
+    # 成功创建
+    appoint.save()
+    appoint.students.set(students)
 
-            get_user_logger(appointer).info(f"发起预约，预约号{appoint.Aid}")
+    # 设置状态变更和微信提醒定时任务
+    set_scheduler(appoint)
+    if notify:
+        _notify_create(appoint, students_id)
+    set_appoint_reminder(appoint, students_id)
 
-    except Exception as e:
-        appointer_display = appointer.__str__()
-        logger.exception(f"{appointer_display}创建预约失败: {e}")
-        return _error('添加预约失败!请与管理员联系!')
-
+    get_user_logger(appointer).info(f"发起预约，预约号{appoint.pk}")
     return _success(appoint)
