@@ -287,10 +287,6 @@ class Appoint(models.Model):
         self.Afinish += delta
         return self
 
-    def cancel(self):
-        self.Astatus = Appoint.Status.CANCELED
-        self.save()
-
     def get_major_id(self) -> str:
         '''获取预约发起者id'''
         return self.major_student.Sid_id
@@ -440,7 +436,7 @@ class LongTermAppoint(models.Model):
         :return: 取消的子预约数量
         :rtype: int
         '''
-        from Appointment.appoint.jobs import cancel_scheduler
+        from Appointment.appoint.manage import cancel_appoint
         with transaction.atomic():
             # 取消子预约
             appoints = self.sub_appoints(lock=True)
@@ -450,8 +446,7 @@ class LongTermAppoint(models.Model):
                 return appoints.delete()[0]
             count = len(appoints)
             for appoint in appoints:
-                appoint.cancel()
-                cancel_scheduler(appoint, record_miss=True)
+                cancel_appoint(appoint, record=True, lock=False)
             self.status = LongTermAppoint.Status.CANCELED
             self.save()
             return count

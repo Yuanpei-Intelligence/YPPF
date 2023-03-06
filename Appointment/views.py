@@ -33,8 +33,7 @@ from Appointment.utils.identity import (
     get_avatar, get_members, get_auditor_ids,
     get_participant, identity_check,
 )
-from Appointment.appoint.manage import addAppoint
-from Appointment.appoint.jobs import cancel_scheduler
+from Appointment.appoint.manage import addAppoint, cancel_appoint
 from Appointment.appoint.judge import set_appoint_reason
 from Appointment import jobs
 from Appointment.config import appointment_config as CONFIG
@@ -181,15 +180,9 @@ def cancelAppoint(request: HttpRequest):
             wrong("不能取消开始时间在30分钟之内的预约!"),
             reverse("Appointment:account")))
 
-    with transaction.atomic():
-        appoint_room_name = appoint.Room.Rtitle
-        appoint.cancel()
-        cancel_scheduler(appoint.Aid, record_miss=True)
-
-        get_user_logger(appoint).info(f"取消了预约{pk}")
-        succeed("成功取消对" + appoint_room_name + "的预约!", context)
-        notify_appoint(appoint, MessageType.CANCELED)
-
+    cancel_appoint(appoint, record=True, lock=True)
+    succeed(f"成功取消对{appoint.Room.Rtitle}的预约!", context)
+    notify_appoint(appoint, MessageType.CANCELED)
     return redirect(message_url(context, reverse("Appointment:account")))
 
 

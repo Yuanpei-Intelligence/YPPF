@@ -7,7 +7,7 @@ from Appointment.models import Participant, Room, Appoint
 from Appointment.utils.identity import get_participant
 from Appointment.utils.utils import get_conflict_appoints
 from Appointment.utils.log import logger, get_user_logger
-from Appointment.appoint.jobs import set_scheduler
+from Appointment.appoint.jobs import set_scheduler, cancel_scheduler
 from Appointment.extern.wechat import MessageType, notify_appoint
 from Appointment.extern.jobs import set_appoint_reminder
 
@@ -207,3 +207,14 @@ def create_appoint(
 
     get_user_logger(appointer).info(f"发起预约，预约号{appoint.pk}")
     return _success(appoint)
+
+
+@transaction.atomic
+def cancel_appoint(appoint: Appoint, record: bool = True, lock: bool = True):
+    '''原子化取消预约，不加锁时使用原对象'''
+    if lock:
+        appoint = Appoint.objects.select_for_update().get(pk=appoint.pk)
+    appoint.Astatus = Appoint.Status.CANCELED
+    appoint.save()
+    cancel_scheduler(appoint, record_miss=record)
+    get_user_logger(appoint).info(f"预约{appoint.pk}已取消")
