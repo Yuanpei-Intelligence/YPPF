@@ -38,6 +38,7 @@ from Appointment.utils.identity import (
     get_avatar, get_members, get_auditor_ids,
     get_participant, identity_check,
 )
+from Appointment.appoint.manage import addAppoint
 from Appointment.appoint.judge import set_appoint_reason
 from Appointment import jobs
 from Appointment.config import appointment_config as CONFIG
@@ -586,7 +587,7 @@ def door_check(request):
                     'Ausage': "临时预约",
                     'announcement': "",
                 }
-                response = jobs.addAppoint(
+                response = addAppoint(
                     contents, type=Appoint.Type.TEMPORARY)
 
                 if response.status_code == 200:  # 临时预约成功
@@ -1147,13 +1148,11 @@ def checkout_appoint(request: HttpRequest):
         if my_messages.get_warning(render_context)[0] is None:
             # 参数检查全部通过，下面开始创建预约
             if is_longterm:
-                response = jobs.addAppoint(contents,
-                                           type=Appoint.Type.LONGTERM, notify_create=False)
+                response = addAppoint(contents, type=Appoint.Type.LONGTERM, notify_create=False)
             elif is_interview:
-                response = jobs.addAppoint(
-                    contents, type=Appoint.Type.INTERVIEW)
+                response = addAppoint(contents, type=Appoint.Type.INTERVIEW)
             else:
-                response = jobs.addAppoint(contents)
+                response = addAppoint(contents)
             if response.status_code == 200 and not is_longterm:
                 # 成功预约且非长期
                 return redirect(
