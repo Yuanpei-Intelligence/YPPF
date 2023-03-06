@@ -14,65 +14,61 @@ __all__ = [
 
 
 class StartChat(ProfileJsonView):
-    def post(self):
-        """
-        创建一条新的chat
-        """
-        respondent = User.objects.get(username=self.request.POST['receiver_id'])
-        questioner_anonymous = self.request.POST['comment_anonymous'] == 'true'
+    def prepare_post(self):
+        self.receiver_id = int(self.request.POST['receiver_id'])
+        self.questioner_anonymous = self.request.POST['comment_anonymous'] == 'true'
 
-        return self.message_response(
-            create_QA(self.request,
-                      respondent,
-                      directed=True,
-                      questioner_anonymous=questioner_anonymous))
+    def post(self):
+        '''创建一条新的chat'''
+        respondent = User.objects.get(username=self.receiver_id)
+
+        context = create_QA(self.request, respondent, directed=True,
+                            questioner_anonymous=self.questioner_anonymous)
+        return self.message_response(context)
 
 
 class AddComment(ProfileJsonView):
+    need_prepare = False
     def post(self):
-        """
-        向聊天中添加对话
-        """
+        '''向聊天中添加对话'''
         return self.message_response(add_comment_to_QA(self.request))
 
 
 class CloseChat(ProfileJsonView):
+    def prepare_post(self):
+        self.chat_id = int(self.request.POST['chat_id'])
+
     def post(self):
-        """
-        终止聊天
-        """
-        message_context = change_chat_status(self.request.POST.get("chat_id"),
-                                             Chat.Status.CLOSED)
+        '''终止聊天'''
+        message_context = change_chat_status(self.chat_id, Chat.Status.CLOSED)
         return self.message_response(message_context)
 
 
 class StartUndirectedChat(ProfileJsonView):
+    def prepare_post(self):
+        self.questioner_anonymous = self.request.POST['comment_anonymous'] == 'true'
+        self.keywords = self.request.POST['keywords'].split(sep=',')
+
     def post(self):
         """
         开始非定向问答
         """
-        questioner_anonymous = (
-            self.request.POST['comment_anonymous'] == 'true')
-        keywords = self.request.POST.get('keywords').split(sep=',')
         respondent, message_context = select_by_keywords(
-            self.request.user, questioner_anonymous, keywords)
+            self.request.user, self.questioner_anonymous, self.keywords)
         if respondent is None:
             return self.message_response(message_context)
 
-        return self.message_response(
-            create_QA(self.request,
-                      respondent,
-                      directed=False,
-                      questioner_anonymous=questioner_anonymous,
-                      keywords=keywords))
+        context = create_QA(self.request, respondent, directed=False,
+                            questioner_anonymous=self.questioner_anonymous,
+                            keywords=self.keywords)
+        return self.message_response(context)
 
 
 class RateAnswer(ProfileJsonView):
-    def post(self):
-        """
-        提问方对回答质量给出评价
-        """
-        chat_id = self.request.POST.get('chat_id')
-        rating = int(self.request.POST.get('rating'))
+    def prepare_post(self):
+        self.chat_id = int(self.request.POST['chat_id'])
+        self.rating = int(self.request.POST['rating'])
 
-        return self.message_response(modify_rating(chat_id, rating))
+    def post(self):
+        '''提问方对回答质量给出评价'''
+        return self.message_response(modify_rating(self.chat_id, self.rating))

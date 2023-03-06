@@ -311,6 +311,7 @@ class SecureJsonView(SecureView):
     response_class: type[JsonResponse] = JsonResponse
     data: dict[str, Any]
     http_method_names = ['post']
+    method_names = http_method_names
 
     ExtraDataType = dict[str, Any] | None
 

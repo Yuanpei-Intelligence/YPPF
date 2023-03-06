@@ -76,7 +76,9 @@ class ProfileTemplateView(SecureTemplateView):
 
 
 class ProfileJsonView(SecureJsonView):
-    need_prepare: bool = False
+    request: UserRequest
+
+    need_prepare: bool = True
     logger_name: str = 'ProfileAPIerror'
 
     def dispatch_prepare(self, method: str):
