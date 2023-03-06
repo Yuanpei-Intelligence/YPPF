@@ -140,34 +140,58 @@ def addAppoint(contents: dict,
     except:
         return _error('非法的预约信息！')
 
-    # 学号对了，人对了，房间是真实存在的，那就开始预约了
-    major_student = None    # 避免下面未声明出错
+    # 获取预约发起者,确认预约状态
+    major_student = get_participant(contents['Sid'])
+    if major_student is None:
+        return _error('发起人信息不存在！')
+
+    return create_appoint(
+        appointer=major_student,
+        students_id=students_id,
+        room=room, start=Astart, finish=Afinish,
+        usage=usage, announce=announcement,
+        inner_count=yp_num, outer_count=non_yp_num,
+        require_attend=check_need_num,
+        type=type,
+        notify=notify_create,
+    )
+
+
+def create_appoint(
+    appointer: Participant,
+    students_id: list[str],
+    room: Room,
+    start: datetime, finish: datetime,
+    usage: str, announce: str,
+    inner_count: int, outer_count: int,
+    require_attend: int, *,
+    type: Appoint.Type = Appoint.Type.NORMAL,
+    notify: bool = True,
+) -> tuple[Appoint | None, str]:
     try:
         with transaction.atomic():
-            # 获取预约发起者,确认预约状态
-            major_student = get_participant(contents['Sid'])
-            if major_student is None:
-                return _error('发起人信息不存在！')
+            students = Participant.objects.filter(Sid__in=students_id)
+            appointer = Participant.objects.select_for_update().get(pk=appointer.pk)
+
+            # 确认信用分符合要求
+            if appointer.credit <= 0:
+                return _error('信用分不足，本月无法发起预约！')
 
             appoint: Appoint = Appoint(
                 Room=room,
-                Astart=Astart,
-                Afinish=Afinish,
+                Astart=start,
+                Afinish=finish,
                 Ausage=usage,
-                Aannouncement=announcement,
-                major_student=major_student,
-                Anon_yp_num=non_yp_num,
-                Ayp_num=yp_num,
-                Aneed_num=check_need_num,
+                Aannouncement=announce,
+                major_student=appointer,
+                Anon_yp_num=outer_count,
+                Ayp_num=inner_count,
+                Aneed_num=require_attend,
                 Atype=type,
             )
             conflict_appoints = get_conflict_appoints(appoint, lock=True)
-            for conflict_appoint in conflict_appoints:
-                return _error('预约时间与已有预约冲突，请重选时间段！', conflict_appoint.toJson())
-
-            # 确认信用分符合要求
-            if major_student.credit <= 0:
-                return _error('信用分不足，本月无法发起预约！')
+            if conflict_appoints:
+                return _error('预约时间与已有预约冲突，请重选时间段！')
 
             # 成功创建
             appoint.save()
@@ -175,15 +199,15 @@ def addAppoint(contents: dict,
 
             # 设置状态变更和微信提醒定时任务
             set_scheduler(appoint)
-            if notify_create:
+            if notify:
                 _notify_create(appoint, students_id)
             set_appoint_reminder(appoint, students_id)
 
-            get_user_logger(major_student).info(f"发起预约，预约号{appoint.Aid}")
+            get_user_logger(appointer).info(f"发起预约，预约号{appoint.Aid}")
 
     except Exception as e:
-        major_display = major_student.__str__()
-        logger.exception(f"学生{major_display}出现添加预约失败的问题: {e}")
+        appointer_display = appointer.__str__()
+        logger.exception(f"{appointer_display}创建预约失败: {e}")
         return _error('添加预约失败!请与管理员联系!')
 
     return _success(appoint)
