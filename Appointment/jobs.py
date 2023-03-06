@@ -4,16 +4,13 @@ from datetime import datetime, timedelta
 
 from django.db import transaction
 
-from scheduler.scheduler import scheduler, periodical
+from scheduler.scheduler import periodical
 from Appointment.config import appointment_config as CONFIG
 from Appointment.models import Appoint
-import Appointment.utils.utils as utils
+from Appointment.utils.utils import get_conflict_appoints
 from Appointment.utils.log import write_before_delete, logger, get_user_logger
-from Appointment.appoint.status_control import start_appoint, finish_appoint
-from Appointment.extern.jobs import (
-    set_appoint_reminder,
-    remove_appoint_reminder,
-)
+from Appointment.appoint.jobs import set_scheduler
+from Appointment.extern.jobs import set_appoint_reminder
 
 
 '''
@@ -24,8 +21,6 @@ YWolfeee:
 '''
 
 __all__ = [
-    'set_scheduler',
-    'cancel_scheduler',
     'get_longterm_display',
     'add_longterm_appoint',
 ]
@@ -46,65 +41,6 @@ def clear_appointments():
 
         # 写入日志
         logger.info("定时删除任务成功")
-
-
-def set_scheduler(appoint: Appoint):
-    '''不负责发送微信,不处理已经结束的预约,不处理始末逆序的预约,可以任何时间点调用,应该不报错'''
-    # --- written by pht: 统一设置预约定时任务 --- #
-    start = appoint.Astart
-    finish = appoint.Afinish
-    current_time = datetime.now() + timedelta(seconds=5)
-    if finish < start:          # 开始晚于结束，预约不合规
-        logger.error(f'预约{appoint.Aid}时间为{start}<->{finish}，未能设置定时任务')
-        return False            # 直接返回，预约不需要设置
-    if finish < current_time:   # 预约已经结束
-        logger.error(f'预约{appoint.Aid}在设置定时任务时已经结束')
-        return False            # 直接返回，预约不需要设置
-    has_started = start < current_time
-    if has_started:             # 临时预约或特殊情况下设置任务时预约可能已经开始
-        start = current_time    # 改为立刻执行
-    # --- written end (2021.8.31) --- #
-
-    # written by dyh: 在Astart将状态变为PROCESSING
-    if not (has_started and appoint.Astatus == Appoint.Status.PROCESSING):
-        scheduler.add_job(start_appoint,
-                          args=[appoint.Aid],
-                          id=f'{appoint.Aid}_start',
-                          replace_existing=True,
-                          next_run_time=start)
-
-    # write by cdf start2  # 添加定时任务：finish
-    scheduler.add_job(finish_appoint,
-                      args=[appoint.Aid],
-                      id=f'{appoint.Aid}_finish',
-                      replace_existing=True,
-                      next_run_time=finish)
-    return True
-
-
-def cancel_scheduler(appoint_or_aid: Appoint | int, record_miss: bool = False) -> bool:
-    '''以结束定时任务标识预约是否终止，未终止时取消所有定时任务，返回是否删除'''
-    if isinstance(appoint_or_aid, Appoint):
-        aid = appoint_or_aid.Aid
-    else:
-        aid = appoint_or_aid
-    try:
-        scheduler.remove_job(f'{aid}_finish')
-        try:
-            scheduler.remove_job(f'{aid}_start')
-        except:
-            if record_miss:
-                logger.warning(f"预约{aid}取消时未发现开始计时器")
-        try:
-            remove_appoint_reminder(aid)
-        except:
-            if record_miss:
-                logger.info(f"预约{aid}取消时未发现wechat计时器")
-        return True
-    except:
-        if record_miss:
-            logger.warning(f"预约{aid}取消时未发现计时器")
-        return False
 
 
 def get_longterm_display(times: int, interval_week: int, type: str = 'adj'):
@@ -160,7 +96,7 @@ def add_longterm_appoint(appoint: 'Appoint | int',
             origin_pk = appoint.pk
 
         # 检查冲突
-        conflict_appoints = utils.get_conflict_appoints(
+        conflict_appoints = get_conflict_appoints(
             appoint, times, interval, week_offset, lock=True)
         if conflict_appoints:
             first_conflict = conflict_appoints[0]

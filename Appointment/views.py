@@ -34,6 +34,7 @@ from Appointment.utils.identity import (
     get_participant, identity_check,
 )
 from Appointment.appoint.manage import addAppoint
+from Appointment.appoint.jobs import cancel_scheduler
 from Appointment.appoint.judge import set_appoint_reason
 from Appointment import jobs
 from Appointment.config import appointment_config as CONFIG
@@ -183,7 +184,7 @@ def cancelAppoint(request: HttpRequest):
     with transaction.atomic():
         appoint_room_name = appoint.Room.Rtitle
         appoint.cancel()
-        jobs.cancel_scheduler(appoint.Aid, record_miss=True)
+        cancel_scheduler(appoint.Aid, record_miss=True)
 
         get_user_logger(appoint).info(f"取消了预约{pk}")
         succeed("成功取消对" + appoint_room_name + "的预约!", context)

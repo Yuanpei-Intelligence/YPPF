@@ -9,6 +9,7 @@ from django.db.models import QuerySet
 
 from utils.admin_utils import *
 from Appointment import jobs
+from Appointment.appoint.jobs import set_scheduler, cancel_scheduler
 from Appointment.extern.wechat import MessageType, notify_appoint
 from Appointment.extern.jobs import set_appoint_reminder
 from Appointment.utils.log import logger
@@ -348,8 +349,8 @@ class AppointAdmin(admin.ModelAdmin):
                 if start > finish:
                     return self.message_user(request, 
                         f'操作失败,预约{aid}开始和结束时间冲突!请勿篡改数据!', messages.WARNING)
-                jobs.cancel_scheduler(aid)    # 注销原有定时任务 无异常
-                jobs.set_scheduler(appoint)   # 开始时进入进行中 结束后判定
+                cancel_scheduler(aid)    # 注销原有定时任务 无异常
+                set_scheduler(appoint)   # 开始时进入进行中 结束后判定
                 set_appoint_reminder(appoint)
             except Exception as e:
                 logger.error(f"定时任务失败更新: {e}")

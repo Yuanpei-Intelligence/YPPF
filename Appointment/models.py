@@ -440,7 +440,7 @@ class LongTermAppoint(models.Model):
         :return: 取消的子预约数量
         :rtype: int
         '''
-        from Appointment.jobs import cancel_scheduler
+        from Appointment.appoint.jobs import cancel_scheduler
         with transaction.atomic():
             # 取消子预约
             appoints = self.sub_appoints(lock=True)
@@ -495,5 +495,5 @@ class LongTermAppoint(models.Model):
 
 @receiver(pre_delete, sender=Appoint)
 def before_delete_Appoint(sender, instance, **kwargs):
-    from Appointment.jobs import cancel_scheduler
+    from Appointment.appoint.jobs import cancel_scheduler
     cancel_scheduler(instance.Aid)

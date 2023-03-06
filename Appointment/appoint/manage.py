@@ -7,7 +7,7 @@ from Appointment.models import Participant, Room, Appoint
 from Appointment.utils.identity import get_participant
 from Appointment.utils.utils import get_conflict_appoints
 from Appointment.utils.log import logger, get_user_logger
-from Appointment.jobs import set_scheduler
+from Appointment.appoint.jobs import set_scheduler
 from Appointment.extern.wechat import MessageType, notify_appoint
 from Appointment.extern.jobs import set_appoint_reminder
 
