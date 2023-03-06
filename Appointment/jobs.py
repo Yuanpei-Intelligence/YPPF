@@ -13,6 +13,7 @@ import Appointment.utils.web_func as web_func
 from Appointment.utils.log import write_before_delete, logger, get_user_logger
 from Appointment.utils.identity import get_participant
 # TODO: notify_create和addAppoint不应在utils.jobs中定义，可能应统一到appoint_utils
+from Appointment.appoint.status_control import start_appoint, finish_appoint
 from Appointment.extern.shortcuts import notify_create as _notify_create_appoint
 from Appointment.extern.jobs import (
     set_appoint_reminder,
@@ -72,14 +73,14 @@ def set_scheduler(appoint: Appoint):
 
     # written by dyh: 在Astart将状态变为PROCESSING
     if not (has_started and appoint.Astatus == Appoint.Status.PROCESSING):
-        scheduler.add_job(web_func.startAppoint,
+        scheduler.add_job(start_appoint,
                           args=[appoint.Aid],
                           id=f'{appoint.Aid}_start',
                           replace_existing=True,
                           next_run_time=start)
 
     # write by cdf start2  # 添加定时任务：finish
-    scheduler.add_job(web_func.finishAppoint,
+    scheduler.add_job(finish_appoint,
                       args=[appoint.Aid],
                       id=f'{appoint.Aid}_finish',
                       replace_existing=True,
