@@ -227,7 +227,7 @@ class Appoint(models.Model):
     # 这里Room使用外键的话只能设置DO_NOTHING，否则删除房间就会丢失预约信息
     # 所以房间信息不能删除，只能逻辑删除
     # 调用时使用appoint_obj.Room和room_obj.appoint_list
-    Room: Room = models.ForeignKey(Room,
+    Room: 'Room' = models.ForeignKey(Room,
                                    related_name='appoint_list',
                                    null=True,
                                    on_delete=models.SET_NULL,

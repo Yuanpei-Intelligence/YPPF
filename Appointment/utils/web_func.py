@@ -6,8 +6,9 @@ from django.db.models import Q, QuerySet
 from Appointment.config import appointment_config as CONFIG
 from Appointment.models import Participant, Room, Appoint
 from Appointment.utils.identity import get_participant
-from Appointment.utils.utils import appoint_violate
+from Appointment.appoint.judge import appoint_violate
 from Appointment.utils.log import logger, get_user_logger
+from Appointment.extern.wechat import MessageType, notify_appoint
 
 '''
 YWolfeee:
@@ -113,13 +114,13 @@ def finishAppoint(Aid: int):  # 结束预约时的定时程序
             if check_failed:  # 人数不足
                 # add by lhw ： 迟到的预约通知在这里处理。如果迟到不扣分，删掉这个if的内容即可，让下面那个camera check的if判断是否违规。
                 if appoint.Areason == Appoint.Reason.R_LATE:
-                    status, err_msg = appoint_violate(appoint, Appoint.Reason.R_LATE)
-                    if not status:
-                        logger.error(f"预约{Aid}因迟到而违约时出现异常: {err_msg}")
+                    reason = Appoint.Reason.R_LATE
                 else:
-                    status, err_msg = appoint_violate(appoint, Appoint.Reason.R_TOOLITTLE)
-                    if not status:
-                        logger.error(f"预约{Aid}因人数不够而违约时出现异常: {err_msg}")
+                    reason = Appoint.Reason.R_TOOLITTLE
+                if appoint_violate(appoint, reason):
+                    appoint.refresh_from_db()
+                    notify_appoint(appoint, MessageType.VIOLATED, appoint.get_status(),
+                                    students_id=[appoint.get_major_id()])
 
             else:   # 通过
                 appoint.Astatus = Appoint.Status.CONFIRMED

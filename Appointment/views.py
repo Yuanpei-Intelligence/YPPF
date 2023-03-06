@@ -29,7 +29,7 @@ from Appointment.extern.wechat import MessageType, notify_appoint, notify_user
 # utils对接工具
 from Appointment.utils.utils import (
     doortoroom, iptoroom,
-    check_temp_appoint, set_appoint_reason, get_conflict_appoints,
+    check_temp_appoint, get_conflict_appoints,
     to_feedback_url,
 )
 from Appointment.utils.log import cardcheckinfo_writer, logger, get_user_logger
@@ -38,6 +38,7 @@ from Appointment.utils.identity import (
     get_avatar, get_members, get_auditor_ids,
     get_participant, identity_check,
 )
+from Appointment.appoint.judge import set_appoint_reason
 from Appointment import jobs
 from Appointment.config import appointment_config as CONFIG
 
@@ -159,12 +160,7 @@ def cameracheck(request):
                 if (now_time > appoint.Astart + timedelta(minutes=15)
                         and appoint.Astatus == Appoint.Status.APPOINTED):
                     # 该函数只是把appoint标记为迟到并修改状态为进行中，不发送微信提醒
-                    status, message = set_appoint_reason(
-                        appoint, Appoint.Reason.R_LATE)
-                    # status, message = appoint_violate(
-                    #     appoint, Appoint.Reason.R_LATE)
-                    if not status:
-                        logger.error(f"预约{appoint.Aid}设置迟到失败: {message}")
+                    set_appoint_reason(appoint, Appoint.Reason.R_LATE)
     except Exception as e:
         logger.exception(f"更新预约检查人数失败: {e}")
         return JsonResponse({'statusInfo': {'message': '更新预约状态失败!'}}, status=400)
