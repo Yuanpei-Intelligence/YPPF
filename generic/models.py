@@ -383,7 +383,7 @@ class PageLog(models.Model):
     统计Page类埋点数据(PV/PD)
     '''
     class Meta:
-        verbose_name = "~R.Page类埋点记录"
+        verbose_name = "埋点记录-页面"
         verbose_name_plural = verbose_name
 
     class CountType(models.IntegerChoices):
@@ -405,7 +405,7 @@ class ModuleLog(models.Model):
     统计Module类埋点数据(MV/MC)
     '''
     class Meta:
-        verbose_name = "~R.Module类埋点记录"
+        verbose_name = "埋点记录-模块"
         verbose_name_plural = verbose_name
 
     class CountType(models.IntegerChoices):
