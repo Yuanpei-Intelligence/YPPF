@@ -161,7 +161,10 @@ class Logger(logging.Logger):
                 try:
                     return func(*args, **kwargs)
                 except exc_type:
-                    self.on_exception(message, raise_exc=raise_exc)
+                    arg_msg = ''
+                    if args: arg_msg += f'Args: {args}\n'
+                    if kwargs: arg_msg += f'Keywords: {kwargs}\n'
+                    self.on_exception(arg_msg + message, raise_exc=raise_exc)
                     return self._return_value(fail_value)
             return wrapper
         return decorator
