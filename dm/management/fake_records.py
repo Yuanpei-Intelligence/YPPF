@@ -71,7 +71,7 @@ def create_np():
 
     sid = username = USER_NAME_2
     password = username
-    name = "1号学生"
+    name = "2号学生"
     gender = NaturalPerson.Gender.FEMALE
     stu_major = "元培计划（待定）"
     stu_grade = "2020"
