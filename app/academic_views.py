@@ -15,6 +15,8 @@ from app.academic_utils import (
     update_academic_map,
     get_wait_audit_student,
     audit_academic_map,
+    get_students_for_search,
+    get_tags_for_search,
 )
 from app.utils import (
     check_user_type,
@@ -32,7 +34,7 @@ __all__ = [
 ]
 
 
-class ShowChatsView(ProfileTemplateView):
+class ShowChats(ProfileTemplateView):
 
     http_method_names = ['get']
     template_name = 'showChats.html'
@@ -42,23 +44,21 @@ class ShowChatsView(ProfileTemplateView):
         user = self.request.user
         if not user.is_person():
             # 后续或许可以开放任意的聊天
-            return self.wrong('请使用个人账号访问问答中心页面!')
+            return self.wrong('请使用个人账号访问问答中心页面！')
         return self.get
 
     def get(self) -> HttpResponse:
-        user = self.request.user
-        sent_chats = Chat.objects.filter(
-            questioner=user).order_by("-modify_time", "-time")
-        received_chats = Chat.objects.filter(
-            respondent=user).order_by("-modify_time", "-time")
         self.extra_context.update({
-            'sent_chats': chats2Display(sent_chats, sent=True),
-            'received_chats': chats2Display(received_chats, sent=False)
+            'sent_chats': chats2Display(self.request.user, sent=True),
+            'received_chats': chats2Display(self.request.user, sent=False),
+            'stu_list': get_students_for_search(self.request),
+            'tag_list': get_tags_for_search(),
         })
+        
         return self.render()
 
 
-class ChatView(ProfileTemplateView):
+class ViewChat(ProfileTemplateView):
 
     http_method_names = ['get']
     template_name = 'viewChat.html'
@@ -91,7 +91,7 @@ class ModifyAcademicView(SecureTemplateView):
 
 @login_required(redirect_field_name="origin")
 @utils.check_user_access(redirect_url="/logout/")
-@log.except_captured(EXCEPT_REDIRECT, source='academic_views[modifyAcademic]', record_user=True)
+@logger.secure_view()
 def modifyAcademic(request: HttpRequest) -> HttpResponse:
     """
     学术地图编辑界面
@@ -223,7 +223,7 @@ def modifyAcademic(request: HttpRequest) -> HttpResponse:
 
 @login_required(redirect_field_name="origin")
 @utils.check_user_access(redirect_url="/logout/")
-@log.except_captured(EXCEPT_REDIRECT, source='academic_views[auditAcademic]', record_user=True)
+@logger.secure_view()
 def auditAcademic(request: HttpRequest) -> HttpResponse:
     """
     供教师使用的页面，展示所有待审核的学术地图
@@ -248,7 +248,7 @@ def auditAcademic(request: HttpRequest) -> HttpResponse:
 
 @login_required(redirect_field_name="origin")
 @utils.check_user_access(redirect_url="/logout/")
-@log.except_captured(EXCEPT_REDIRECT, source='academic_views[applyAuditAcademic]', record_user=True)
+@logger.secure_view()
 def applyAuditAcademic(request: HttpRequest):
     if not NaturalPerson.objects.get_by_user(request.user).is_teacher():
         return JsonResponse(wrong("只有老师才能执行审核操作！"))

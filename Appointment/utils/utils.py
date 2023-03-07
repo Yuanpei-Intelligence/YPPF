@@ -1,17 +1,9 @@
-import threading
 from datetime import timedelta
 
 from django.http import HttpRequest
-from django.db import transaction  # 原子化更改数据库
 from django.db.models import Q, QuerySet
 
-from Appointment.models import (
-    User,
-    Participant,
-    Room,
-    Appoint,
-)
-from Appointment.utils.log import get_user_logger
+from Appointment.models import Room, Appoint
 
 '''
 YWolfeee:
@@ -106,73 +98,6 @@ def iptoroom(ip):
 # 给定房间门牌号id，返回对应的Rid
 def doortoroom(door):
     return door_room_dict[door]
-
-
-# 线程锁，用于对数据库扣分操作时的排他性
-lock = threading.RLock()
-# 信用分扣除体系
-real_credit_point = True  # 如果为false 那么不把扣除信用分纳入范畴
-
-
-def set_appoint_reason(input_appoint: Appoint, reason: Appoint.Reason):
-    '''预约的过程中检查迟到，先记录原因，并且进入到进行中状态，不一定扣分'''
-    try:
-        with transaction.atomic():
-            appoint: Appoint = Appoint.objects.select_for_update().get(
-                Aid=input_appoint.Aid)
-            if appoint.Astatus == Appoint.Status.APPOINTED:
-                appoint.Astatus = Appoint.Status.PROCESSING # 避免重复调用本函数
-            appoint.Areason = reason
-            appoint.save()
-
-        log_msg = f"预约{appoint.Aid}出现违约:{appoint.get_Areason_display()}"
-        get_user_logger(appoint).info(log_msg)
-        return True, ""
-    except Exception as e:
-        return False, "in utils.set_appoint_reason: " + str(e)
-
-
-def appoint_violate(input_appoint: Appoint, reason: Appoint.Reason):
-    '''将一个预约设为违约'''
-    _succeed = True, ""
-    try:
-        with transaction.atomic():
-            appoint: Appoint = Appoint.objects.select_related(
-                'major_student').select_for_update().get(Aid=input_appoint.Aid)
-            major_student: Participant = Participant.objects.select_for_update().get(
-                pk=appoint.major_student.pk)
-            # 按照假设，这里的访问应该是原子的，所以第二个程序到这里会卡住
-            really_deduct = False
-
-            if not (real_credit_point and appoint.Astatus != Appoint.Status.VIOLATED):
-                return _succeed
-            # 不出现负分；如果已经是violated了就不重复扣分了
-            if User.objects.modify_credit(major_student.Sid, -1, '地下室：违规') < 0:
-                # 成功扣分
-                really_deduct = True
-            appoint.Astatus = Appoint.Status.VIOLATED
-            appoint.Areason = reason
-            appoint.save()
-
-        from Appointment.extern.wechat import send_wechat_message
-        from Appointment.extern.constants import MessageType
-        send_wechat_message(
-            [major_student.get_id()],
-            appoint.Astart,
-            appoint.Room,
-            MessageType.VIOLATED.value,
-            major_student.name,
-            appoint.Ausage,
-            appoint.Aannouncement,
-            appoint.Ayp_num + appoint.Anon_yp_num,
-            appoint.get_status(),
-        )
-        log_msg = f"预约{appoint.Aid}出现违约:{appoint.get_Areason_display()};"
-        log_msg += f"扣除信用分:{really_deduct};剩余信用分:{major_student.credit}"
-        get_user_logger(major_student).info(log_msg)
-        return _succeed
-    except Exception as e:
-        return False, "in utils.appoint_violate: " + str(e)
 
 
 def check_temp_appoint(room: Room) -> bool:

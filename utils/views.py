@@ -5,8 +5,14 @@ from django.http import HttpResponse, HttpResponseRedirect, HttpResponseForbidde
 from django.core.exceptions import ImproperlyConfigured
 from django.template.response import TemplateResponse
 
-from utils.http import HttpRequest
-from utils.global_messages import wrong
+from .http import HttpRequest
+from .global_messages import wrong, MESSAGECONTEXT, MSG_FIELD, CODE_FIELD
+
+try:
+    # TODO: 获取类型提示，但Logger不是可靠工具包，部分依赖于设置
+    from utils.log.logger import Logger
+except:
+    pass
 
 
 __all__ = [
@@ -229,8 +235,15 @@ class SecureView(View):
             f'SecureView requires an implementation of `{method}`'
         )
 
+    def get_logger(self) -> 'Logger | None':
+        '''获取日志记录器'''
+        return None
+
     def error_response(self, exception: Exception) -> HttpResponse:
         '''错误处理，异常栈可追溯，生产环境不应产生异常'''
+        logger = self.get_logger()
+        if logger is not None:
+            logger.on_exception()
         return self.http_forbidden('出现错误，请联系管理员')
 
     def redirect(self, to: str, *args, permanent=False, **kwargs):
@@ -289,32 +302,35 @@ class SecureTemplateView(SecureView):
         wrong(message, self.extra_context)
         return self.render()
 
-    def error_response(self, exception: Exception) -> HttpResponse:
+    def get_logger(self) -> 'Logger | None':
         from utils.log import get_logger
-        get_logger('error').on_exception()
-        return super().error_response(exception)
+        return get_logger('error')
 
 
 class SecureJsonView(SecureView):
-    response_class = JsonResponse
+    response_class: type[JsonResponse] = JsonResponse
+    data: dict[str, Any]
+    http_method_names = ['post']
+    method_names = http_method_names
 
-    def get_default_data(self) -> dict[str, Any]:
-        # TODO: 默认的返回数据
-        raise NotImplementedError
+    ExtraDataType = dict[str, Any] | None
 
-    def dispatch(self, request: HttpRequest, *args, **kwargs):
-        # TODO: 重写dispatch是不推荐的，super().dispatch之后的部分不捕获异常
-        response = super().dispatch(request, *args, **kwargs)
-        if isinstance(response, HttpResponseRedirect):
-            return response
-        if isinstance(response, dict):
-            return self.response_class(data=response)
-        if response is None:
-            return self.response_class(data=self.get_default_data())
-        else:
-            raise TypeError
+    def setup(self, request: HttpRequest, *args: Any, **kwargs: Any) -> None:
+        '''初始化请求参数和返回数据'''
+        self.data = {}
+        return super().setup(request, *args, **kwargs)
 
-    def error_response(self, exception: Exception) -> HttpResponse:
+    def json_response(self, extra_data: ExtraDataType = None, **kwargs: Any) -> JsonResponse:
+        data = self.data
+        if extra_data is not None:
+            data |= extra_data
+        return self.response_class(data, **kwargs)
+
+    def message_response(self, message: MESSAGECONTEXT):
+        self.data[MSG_FIELD] = message[MSG_FIELD]
+        self.data[CODE_FIELD] = message[CODE_FIELD]
+        return self.json_response()
+
+    def get_logger(self) -> 'Logger | None':
         from utils.log import get_logger
-        get_logger('APIerror').on_exception()
-        return super().error_response(exception)
+        return get_logger('APIerror')

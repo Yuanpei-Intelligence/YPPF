@@ -20,6 +20,12 @@ from utils.log import get_logger
 from scheduler.config import scheduler_config as CONFIG
 
 
+__all__ = [
+    'scheduler',
+    'periodical',
+]
+
+
 # Custom handler
 logger = get_logger('apscheduler')
 

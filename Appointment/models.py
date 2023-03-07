@@ -227,7 +227,7 @@ class Appoint(models.Model):
     # 这里Room使用外键的话只能设置DO_NOTHING，否则删除房间就会丢失预约信息
     # 所以房间信息不能删除，只能逻辑删除
     # 调用时使用appoint_obj.Room和room_obj.appoint_list
-    Room: Room = models.ForeignKey(Room,
+    Room: 'Room' = models.ForeignKey(Room,
                                    related_name='appoint_list',
                                    null=True,
                                    on_delete=models.SET_NULL,
@@ -286,10 +286,6 @@ class Appoint(models.Model):
         self.Astart += delta
         self.Afinish += delta
         return self
-
-    def cancel(self):
-        self.Astatus = Appoint.Status.CANCELED
-        self.save()
 
     def get_major_id(self) -> str:
         '''获取预约发起者id'''
@@ -440,7 +436,7 @@ class LongTermAppoint(models.Model):
         :return: 取消的子预约数量
         :rtype: int
         '''
-        from Appointment.jobs import cancel_scheduler
+        from Appointment.appoint.manage import cancel_appoint
         with transaction.atomic():
             # 取消子预约
             appoints = self.sub_appoints(lock=True)
@@ -450,8 +446,7 @@ class LongTermAppoint(models.Model):
                 return appoints.delete()[0]
             count = len(appoints)
             for appoint in appoints:
-                appoint.cancel()
-                cancel_scheduler(appoint, record_miss=True)
+                cancel_appoint(appoint, record=True, lock=False)
             self.status = LongTermAppoint.Status.CANCELED
             self.save()
             return count
@@ -495,5 +490,5 @@ class LongTermAppoint(models.Model):
 
 @receiver(pre_delete, sender=Appoint)
 def before_delete_Appoint(sender, instance, **kwargs):
-    from Appointment.jobs import cancel_scheduler
+    from Appointment.appoint.jobs import cancel_scheduler
     cancel_scheduler(instance.Aid)

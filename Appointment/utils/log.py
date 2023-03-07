@@ -51,28 +51,22 @@ def write_before_delete(appoint_list: QuerySet[Appoint]):
 
 class AppointmentLogger(Logger):
     def _log(self, level, msg, args, exc_info = None, extra = None, stack_info = False, stacklevel = 1) -> None:
-        file, caller, _ = find_caller(depth=3)
-        source = f"{file}.{caller}"
-        msg = source.ljust(40) + str(msg)
-        super()._log(level, msg, args, exc_info, extra, stack_info, stacklevel)
+        stacklevel = stacklevel + 1
+        file, caller, lineno = find_caller(stacklevel)
+        source = f'{file}.{caller}'
+        msg = str(msg)
+        log_msg = source.ljust(40) + msg
+        super()._log(level, log_msg, args, exc_info, extra, stack_info, stacklevel)
         if level >= logging.ERROR:
-            self._send_wechat(msg, level)
+            self._send_wechat(f'错误位置：{source} {lineno}行\n' + msg, level)
 
     def _send_wechat(self, message: str, level: int = logging.ERROR):
         if not GLOBAL_CONF.debug_stuids:
             return
-        from Appointment.extern.wechat import send_wechat_message
-        from Appointment.extern.constants import MessageType
-        send_wechat_message(
-            stuid_list=GLOBAL_CONF.debug_stuids,
-            start_time=datetime.now(),
-            room='地下室后台',
-            message_type=MessageType.ADMIN.value,
-            major_student="地下室系统",
-            usage="发生Error错误",
-            announcement="",
-            num=1,
-            reason=message,
+        from extern.wechat import send_wechat
+        send_wechat(
+            GLOBAL_CONF.debug_stuids,
+            '地下室发生错误', message,
         )
 
 

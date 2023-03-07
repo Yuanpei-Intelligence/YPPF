@@ -5,13 +5,14 @@ from datetime import datetime, timedelta
 from django.contrib import admin, messages
 from django.utils.safestring import mark_safe
 from django.utils.html import format_html, format_html_join
-from django.db import transaction  # 原子化更改数据库
 from django.db.models import QuerySet
 
 from utils.admin_utils import *
 from Appointment import jobs
-from Appointment.extern.constants import MessageType
-from Appointment.utils.log import logger, get_user_logger
+from Appointment.appoint.jobs import set_scheduler, cancel_scheduler
+from Appointment.extern.wechat import MessageType, notify_appoint
+from Appointment.extern.jobs import set_appoint_reminder
+from Appointment.utils.log import logger
 from Appointment.models import *
 
 
@@ -275,77 +276,61 @@ class AppointAdmin(admin.ModelAdmin):
 
     actions = []
 
-    @as_action('所选条目 通过', actions, 'change')
+    def _waiting2confirm(self, appoint: Appoint):
+        appoint.Astatus = Appoint.Status.CONFIRMED
+        appoint.save()
+        notify_appoint(appoint, MessageType.PRE_CONFIRMED, appoint.get_status(),
+                       students_id=[appoint.get_major_id()], admin=True)
+        logger.info(f"{appoint.Aid}号预约被管理员通过，发起人：{_appointor(appoint)}")
+
+
+    def _violated2judged(self, appoint: Appoint):
+        appoint.Astatus = Appoint.Status.JUDGED
+        appoint.save()
+        User.objects.modify_credit(appoint.get_major_id(), 1, '地下室：申诉')
+        notify_appoint(appoint, MessageType.APPEAL_APPROVED, appoint.get_status(),
+                       students_id=[appoint.get_major_id()], admin=True)
+        logger.info(f"{appoint.Aid}号预约被管理员通过，发起人：{_appointor(appoint)}")
+
+
+    @as_action('所选条目 通过', actions, 'change', update=True)
     def confirm(self, request, queryset: QuerySet[Appoint]):  # 确认通过
-        some_invalid = 0
-        have_success = 0
-        try:
-            with transaction.atomic():
-                for appoint in queryset:
-                    if appoint.Astatus == Appoint.Status.WAITING:
-                        appoint.Astatus = Appoint.Status.CONFIRMED
-                        appoint.save()
-                        have_success = 1
-                        # send wechat message
-                        jobs.set_appoint_wechat(
-                            appoint, MessageType.WAITING2CONFIRM.value, appoint.get_status(),
-                            students_id=[appoint.get_major_id()], admin=True,
-                            id=f'{appoint.Aid}_confirm_admin_wechat')
-                        logger.info(f"{appoint.Aid}号预约被管理员通过，发起人：{_appointor(appoint)}")
-                    elif appoint.Astatus == Appoint.Status.VIOLATED:
-                        appoint.Astatus = Appoint.Status.JUDGED
-                        # for stu in appoint.students.all():
-                        User.objects.modify_credit(appoint.get_major_id(), 1, '地下室：申诉')
-                        appoint.save()
-                        have_success = 1
-                        # send wechat message
-                        jobs.set_appoint_wechat(
-                            appoint, MessageType.VIOLATED2JUDGED.value, appoint.get_status(),
-                            students_id=[appoint.get_major_id()], admin=True,
-                            id=f'{appoint.Aid}_confirm_admin_wechat')
-                        logger.info(f"{appoint.Aid}号预约被管理员审核通过，发起人：{_appointor(appoint)}")
-
-                    else:  # 不允许更改
-                        some_invalid = 1
-
-        except:
-            return self.message_user(request, '操作失败!请与开发者联系!', messages.WARNING)
-        if not some_invalid:
-            return self.message_user(request, "更改状态成功!")
-        else:
-            if have_success:
-                return self.message_user(request, 
-                    '部分修改成功!但遭遇状态不为等待、违约的预约，这部分预约不允许更改!', messages.WARNING)
-            else:
-                return self.message_user(request,
-                '修改失败!不允许修改状态不为等待、违约的预约!', messages.WARNING)
+        invalid = []
+        for appoint in queryset:
+            match appoint.Astatus:
+                case Appoint.Status.WAITING:
+                    self._waiting2confirm(appoint)
+                case Appoint.Status.VIOLATED:
+                    self._violated2judged(appoint)
+                case _:
+                    invalid.append(appoint)
+        if not invalid:
+            return self.message_user(request, '更改状态成功!')
+        if len(invalid) == len(queryset):
+            return self.message_user(request, '只可通过等待、违约中的预约!', messages.WARNING)
+        message = f'部分成功!但{invalid}状态不为等待、违约，不允许更改!'
+        return self.message_user(request, message, messages.WARNING)
 
 
-    @as_action('所选条目 违约', actions, 'change')
+    @as_action('所选条目 违约', actions, 'change', update=True)
     def violate(self, request, queryset: QuerySet[Appoint]):  # 确认违约
-        try:
-            for appoint in queryset:
-                assert not (
-                    appoint.Astatus == Appoint.Status.VIOLATED
-                    and appoint.Areason == Appoint.Reason.R_ELSE
-                )
-                ori_status = appoint.get_status()
-                # if appoint.Astatus == Appoint.Status.WAITING:
-                # 已违规时不扣除信用分，仅提示用户
-                if appoint.Astatus != Appoint.Status.VIOLATED:
-                    appoint.Astatus = Appoint.Status.VIOLATED
-                    User.objects.modify_credit(appoint.get_major_id(), -1, '地下室：后台')
-                appoint.Areason = Appoint.Reason.R_ELSE
-                appoint.save()
+        for appoint in queryset:
+            if (appoint.Astatus == Appoint.Status.VIOLATED
+                and appoint.Areason == Appoint.Reason.R_ELSE):
+                return self.message_user(
+                    request, '操作失败!只允许对未审核的条目操作!', messages.WARNING)
+            ori_status = appoint.get_status()
+            if appoint.Astatus != Appoint.Status.VIOLATED:
+                appoint.Astatus = Appoint.Status.VIOLATED
+                User.objects.modify_credit(appoint.get_major_id(), -1, '地下室：后台')
+            appoint.Areason = Appoint.Reason.R_ELSE
+            appoint.save()
 
-                # send wechat message
-                jobs.set_appoint_wechat(
-                    appoint, MessageType.VIOLATE_BY_ADMIN.value, f'原状态：{ori_status}',
-                    students_id=[appoint.get_major_id()], admin=True,
-                    id=f'{appoint.Aid}_violate_admin_wechat')
-                logger.info(f"{appoint.Aid}号预约被管理员设为违约，发起人：{_appointor(appoint)}")
-        except:
-            return self.message_user(request, '操作失败!只允许对未审核的条目操作!', messages.WARNING)
+            # send wechat message
+            notify_appoint(
+                appoint, MessageType.REVIEWD_VIOLATE, f'原状态：{ori_status}',
+                students_id=[appoint.get_major_id()], admin=True)
+            logger.info(f"{appoint.Aid}号预约被管理员设为违约，发起人：{_appointor(appoint)}")
 
         return self.message_user(request, "设为违约成功!")
 
@@ -364,52 +349,16 @@ class AppointAdmin(admin.ModelAdmin):
                 if start > finish:
                     return self.message_user(request, 
                         f'操作失败,预约{aid}开始和结束时间冲突!请勿篡改数据!', messages.WARNING)
-                jobs.cancel_scheduler(aid)    # 注销原有定时任务 无异常
-                jobs.set_scheduler(appoint)   # 开始时进入进行中 结束后判定
-                if datetime.now() < start:              # 如果未开始，修改开始提醒
-                    jobs.set_start_wechat(appoint, notify_create=False)
+                cancel_scheduler(aid)    # 注销原有定时任务 无异常
+                set_scheduler(appoint)   # 开始时进入进行中 结束后判定
+                set_appoint_reminder(appoint)
             except Exception as e:
                 logger.error(f"定时任务失败更新: {e}")
                 return self.message_user(request, str(e), messages.WARNING)
         return self.message_user(request, '定时任务更新成功!')
-    
+
 
     def longterm_wk(self, request, queryset, times, interval_week=1):
-        for appoint in queryset:
-            appoint: Appoint
-            try:
-                with transaction.atomic():
-                    stuid_list = [stu.get_id() for stu in appoint.students.all()]
-                    for i in range(1, times + 1):
-                        # 调用函数完成预约
-                        feedback = jobs.addAppoint({
-                            'Rid': appoint.Room.Rid,
-                            'students': stuid_list,
-                            'non_yp_num': appoint.Anon_yp_num,
-                            'Astart': appoint.Astart + i * timedelta(weeks=interval_week),
-                            'Afinish': appoint.Afinish + i * timedelta(weeks=interval_week),
-                            'Sid': appoint.get_major_id(),
-                            'Ausage': appoint.Ausage,
-                            'announcement': appoint.Aannouncement,
-                        }, type=Appoint.Type.LONGTERM, notify_create=False)
-                        if feedback.status_code != 200:  # 成功预约
-                            import json
-                            warning = json.loads(feedback.content)['statusInfo']['message']
-                            print(warning)
-                            raise Exception(warning)
-            except Exception as e:
-                logger.warning(f"学生{_appointor(appoint)}添加长线化预约失败: {e}")
-                return self.message_user(request, str(e), messages.WARNING)
-
-            # 到这里, 长线化预约发起成功
-            jobs.set_longterm_wechat(
-                appoint, infos=f'新增了{times}周同时段预约', admin=True)
-            get_user_logger(appoint).info(
-                f"后台发起{times}周的长线化预约, 原始预约号{appoint.Aid}")
-        return self.message_user(request, '长线化成功!')
-
-
-    def new_longterm_wk(self, request, queryset, times, interval_week=1):
         new_appoints = {}
         for appoint in queryset:
             try:
@@ -422,8 +371,8 @@ class AppointAdmin(admin.ModelAdmin):
                         f'第{conflict_week}周存在冲突的预约: {appoints[0].Aid}!',
                         level=messages.WARNING)
                 longterm_info = jobs.get_longterm_display(times, interval_week)
-                jobs.set_longterm_wechat(
-                    appoint, infos=f'新增了{longterm_info}同时段预约', admin=True)
+                notify_appoint(appoint, MessageType.LONGTERM_CREATED,
+                               f'新增了{longterm_info}同时段预约', admin=True)
                 new_appoints[appoint.pk] = list(appoints.values_list('pk', flat=True))
             except Exception as e:
                 return self.message_user(request, f'长线化失败!', messages.WARNING)
