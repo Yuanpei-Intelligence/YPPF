@@ -1,8 +1,6 @@
 from typing import List, Dict, Set
-from collections import defaultdict
 
 from django.http import HttpRequest
-from django.db.models import QuerySet
 
 from app.utils_dependency import *
 from app.models import (
@@ -16,7 +14,7 @@ from app.models import (
     Chat,
 )
 from app.config import UTYPE_PER
-from app.utils import get_person_or_org, check_user_type
+from app.utils import get_person_or_org
 from app.comment_utils import showComment
 
 __all__ = [
@@ -597,7 +595,14 @@ def get_students_for_search(request: HttpRequest):
 
 def get_tags_for_search():
     tags = AcademicTag.objects.all()
-    tags_for_search = []
+    tag_contents = set()
     for t in tags:
-        tags_for_search.append({'id': t.id, 'text': t.tag_content})
+        tag_contents.add(t.tag_content)
+
+    id = 0
+    tags_for_search = []
+    for t in tag_contents:
+        tags_for_search.append({'id': id, 'text': t})
+        id += 1
+
     return tags_for_search
