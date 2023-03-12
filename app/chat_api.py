@@ -17,6 +17,7 @@ class StartChat(ProfileJsonView):
     def prepare_post(self):
         self.receiver_id = int(self.request.POST['receiver_id'])
         self.questioner_anonymous = self.request.POST['comment_anonymous'] == 'true'
+        return self.post
 
     def post(self):
         '''创建一条新的chat'''
@@ -37,6 +38,7 @@ class AddComment(ProfileJsonView):
 class CloseChat(ProfileJsonView):
     def prepare_post(self):
         self.chat_id = int(self.request.POST['chat_id'])
+        return self.post
 
     def post(self):
         '''终止聊天'''
@@ -48,6 +50,7 @@ class StartUndirectedChat(ProfileJsonView):
     def prepare_post(self):
         self.questioner_anonymous = self.request.POST['comment_anonymous'] == 'true'
         self.keywords = self.request.POST['keywords'].split(sep=',')
+        return self.post
 
     def post(self):
         """
@@ -68,6 +71,7 @@ class RateAnswer(ProfileJsonView):
     def prepare_post(self):
         self.chat_id = int(self.request.POST['chat_id'])
         self.rating = int(self.request.POST['rating'])
+        return self.post
 
     def post(self):
         '''提问方对回答质量给出评价'''
