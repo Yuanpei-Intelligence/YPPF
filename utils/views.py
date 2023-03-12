@@ -14,6 +14,7 @@ try:
 except:
     pass
 
+
 __all__ = [
     'SecureView',
     'SecureJsonView',
@@ -136,19 +137,15 @@ class SecureView(View):
         self._check_http_methods(*self.http_method_names)
 
     @overload
-    def _check_http_methods(self) -> NoReturn:
-        ...
-
+    def _check_http_methods(self) -> NoReturn: ...
     @overload
-    def _check_http_methods(self, *allowed_methods: str) -> None:
-        ...
-
+    def _check_http_methods(self, *allowed_methods: str) -> None: ...
     @final
     def _check_http_methods(self, *allowed_methods: str) -> None:
         '''检查请求类型，准备和处理函数应做好相应的检查'''
         if self.request.method.lower() not in allowed_methods:
-            response = self.http_method_not_allowed(self.request, *self.args,
-                                                    **self.kwargs)
+            response = self.http_method_not_allowed(self.request,
+                                                    *self.args, **self.kwargs)
             return self.response_created(response)
 
     def check_perm(self) -> None:
@@ -162,10 +159,8 @@ class SecureView(View):
                 return self.permission_denied()
 
     @final
-    def redirect_to_login(
-            self,
-            request: HttpRequest,
-            login_url: str | None = None) -> HttpResponseRedirect:
+    def redirect_to_login(self, request: HttpRequest,
+                          login_url: str | None = None) -> HttpResponseRedirect:
         '''
         重定向用户至登录页，登录后跳转回当前页面
 
@@ -210,10 +205,9 @@ class SecureView(View):
         return self.default_prepare(method, prepare_needed=True)
 
     @final
-    def default_prepare(self,
-                        method: str,
-                        default_name: str | None = None,
-                        prepare_needed: bool = True) -> _HandlerFuncType:
+    def default_prepare(self, method: str, default_name: str | None = None, 
+                        prepare_needed: bool = True,
+                        return_needed: bool = True) -> _HandlerFuncType:
         '''
         默认准备函数，查找并调用特定方法的默认准备函数，不存在时尝试返回处理函数
 
@@ -235,18 +229,19 @@ class SecureView(View):
                 raise ImproperlyConfigured(
                     f'SecureView requires an implementation of `{default_name}`'
                 )
-            if getattr(self, method, None) is not None:
-                handler_func: _HandlerFuncType = getattr(self, method)
+        else:
+            prepare_func: _PrepareFuncType = getattr(self, default_name)
+            handler_func = prepare_func()
+            if handler_func is not None:
                 return handler_func
-            raise ImproperlyConfigured(
-                f'SecureView requires an implementation of `{method}`')
-
-        prepare_func: _PrepareFuncType = getattr(self, default_name)
-        handler_func = prepare_func()
-        if handler_func is not None:
+            if return_needed:
+                raise ImproperlyConfigured(
+                    f'`{default_name}` is required to return a function')
+        if getattr(self, method, None) is not None:
+            handler_func: _HandlerFuncType = getattr(self, method)
             return handler_func
         raise ImproperlyConfigured(
-            f'`{default_name}` is required to return a function or callable')
+            f'SecureView requires an implementation of `{method}`')
 
     def get_logger(self) -> 'Logger | None':
         '''获取日志记录器'''
@@ -262,8 +257,7 @@ class SecureView(View):
     def redirect(self, to: str, *args, permanent=False, **kwargs):
         '''重定向，由于类的重定向对象无需提前确定，使用redirect动态加载即可'''
         from django.shortcuts import redirect
-        return self.response_created(
-            redirect(to, *args, permanent=permanent, **kwargs))
+        return self.response_created(redirect(to, *args, permanent=permanent, **kwargs))
 
 
 class SecureTemplateView(SecureView):
@@ -334,9 +328,7 @@ class SecureJsonView(SecureView):
         self.data = {}
         return super().setup(request, *args, **kwargs)
 
-    def json_response(self,
-                      extra_data: ExtraDataType = None,
-                      **kwargs: Any) -> JsonResponse:
+    def json_response(self, extra_data: ExtraDataType = None, **kwargs: Any) -> JsonResponse:
         data = self.data
         if extra_data is not None:
             data |= extra_data

@@ -62,7 +62,8 @@ class ProfileTemplateView(SecureTemplateView):
     page_name: str
 
     def dispatch_prepare(self, method: str):
-        return self.default_prepare(method, prepare_needed=self.need_prepare)
+        return self.default_prepare(method, return_needed=False,
+                                    prepare_needed=self.need_prepare)
 
     def render(self, **kwargs):
         if not hasattr(self, 'page_name'):
@@ -82,7 +83,8 @@ class ProfileJsonView(SecureJsonView):
     logger_name: str = 'ProfileAPIerror'
 
     def dispatch_prepare(self, method: str):
-        return self.default_prepare(method, prepare_needed=self.need_prepare)
+        return self.default_prepare(method, return_needed=False,
+                                    prepare_needed=self.need_prepare)
 
     def json_response(self, extra_data = None, **kwargs):
         _ProfileLogger.getLogger('recording').info('json_response')
