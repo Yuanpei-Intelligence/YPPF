@@ -578,8 +578,9 @@ def have_entries_of_type(author: NaturalPerson, status_in: list) -> bool:
 
 
 def get_students_for_search(request: HttpRequest):
-    students = NaturalPerson.objects.activated().exclude(
-        person_id=request.user).select_related('person_id')
+    students = NaturalPerson.objects.activated().filter(
+        identity=NaturalPerson.Identity.STUDENT).exclude(
+            person_id=request.user).select_related('person_id')
 
     students_for_search = []
     for s in students:
