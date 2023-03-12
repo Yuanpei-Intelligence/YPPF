@@ -55,7 +55,7 @@ from django.core.exceptions import ImproperlyConfigured as _ImproperlyConfigured
 from app.log import ProfileLogger as _ProfileLogger
 class ProfileTemplateView(SecureTemplateView):
     request: UserRequest
-    PrepareType = SecureView.PrepareType | SecureTemplateView.SkippablePrepareType
+    PrepareType = SecureView.PrepareType | SecureView.NoReturnPrepareType | None
 
     need_prepare: bool = True
     logger_name: str = 'ProfileError'
@@ -78,6 +78,7 @@ class ProfileTemplateView(SecureTemplateView):
 
 class ProfileJsonView(SecureJsonView):
     request: UserRequest
+    PrepareType = SecureView.PrepareType | SecureView.NoReturnPrepareType | None
 
     need_prepare: bool = True
     logger_name: str = 'ProfileAPIerror'

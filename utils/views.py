@@ -65,6 +65,9 @@ class SecureView(View):
     # 子类可以重写PrepareType和HandlerType，但必须符合对应类型，其他名称无效
     PrepareType = _PrepareFuncType
     HandlerType = _HandlerFuncType
+    # 子类可能允许准备函数不存在或不返回
+    # 允许时应该声明PrepareType = SecureView.NoReturnPrepareType等
+    NoReturnPrepareType = Callable[[], _HandlerFuncType | None]
 
     # 视图设置
     login_required: bool = True
@@ -269,10 +272,6 @@ class SecureTemplateView(SecureView):
     - get_context_data()用于获取模板所需的context
     - extra_context作为get_context_data()的补充，在处理请求的过程中可以随时向其中添加内容
     """
-    # 模板视图允许子类准备函数不存在或不返回
-    # 允许时应该声明PrepareType = SecureTemplateView.SkippablePrepareType
-    SkippablePrepareType = Callable[[], _HandlerFuncType | None] | None
-
     template_name: str
     extra_context: dict[str, Any]
     response_class = TemplateResponse
