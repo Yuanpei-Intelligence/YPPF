@@ -37,9 +37,8 @@ __all__ = [
 
 
 # 本应用的常量
-# 实际为value[0]，django的提示bug
-UTYPE_PER: str = User.Type.PERSON.value # type: ignore
-UTYPE_ORG: str = User.Type.ORG.value    # type: ignore
+UTYPE_PER: str = User.Type.PERSON.value
+UTYPE_ORG: str = User.Type.ORG.value
 
 
 class ProfileConfig(Config):

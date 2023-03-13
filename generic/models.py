@@ -13,8 +13,9 @@ models.py
 @Author pht
 @Date 2022-08-19
 '''
-from typing import Type, NoReturn
+import pypinyin
 from datetime import datetime
+from typing import Type, NoReturn
 
 from django.db import models
 from django.contrib.auth import get_permission_codename
@@ -22,7 +23,8 @@ from django.contrib.auth.models import AbstractUser, AnonymousUser
 from django.contrib.auth.models import UserManager as _UserManager
 from django.db import transaction
 from django.db.models import QuerySet, F
-import pypinyin
+
+from utils.models.choice import choice
 
 __all__ = [
     'User',
@@ -267,12 +269,12 @@ class User(AbstractUser, PointMixin):
     accept_anonymous_chat = models.BooleanField('允许匿名提问', default=True)
 
     class Type(models.TextChoices):
-        PERSON = 'Person', '自然人' # Deprecated
-        STUDENT = 'Student', '学生'
-        TEACHER = 'Teacher', '老师'
-        ORG = 'Organization', '组织'
-        UNAUTHORIZED = 'Unauthorized', '未授权'
-        SPECIAL = '', '特殊用户'
+        PERSON = choice('Person', '自然人')
+        STUDENT = choice('Student', '学生')
+        TEACHER = choice('Teacher', '老师')
+        ORG = choice('Organization', '组织')
+        UNAUTHORIZED = choice('Unauthorized', '未授权')
+        SPECIAL = choice('', '特殊用户')
 
     name = models.CharField('名称', max_length=32)
 
