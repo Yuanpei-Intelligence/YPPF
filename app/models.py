@@ -43,7 +43,7 @@ from django.db.models import Q, Sum, QuerySet
 from django_mysql.models import ListCharField
 
 from generic.models import User
-from generic.models import invalid_for_frontend, necessary_for_frontend
+from utils.models.descriptor import invalid_for_frontend, necessary_for_frontend
 from datetime import datetime, timedelta
 from app.config import *
 

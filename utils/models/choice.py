@@ -1,4 +1,5 @@
 from typing import Any, Callable, TypeVar, Annotated
+from typing_extensions import Never
 
 
 __all__ = [
@@ -39,3 +40,5 @@ DefaultDisplay.__doc__ = '''
 默认的展示内容是常量名的标题形式，如`APPOINTED`会被展示为`Appointed`。
 暴露给用户可能存在常量名攻击的风险，因此不建议使用。
 '''
+
+DeletedDisplay = Callable[[Never], str]
