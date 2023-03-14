@@ -40,10 +40,11 @@ from random import choice
 
 from django.db import models, transaction
 from django.db.models import Q, Sum, QuerySet
-from django_mysql.models import ListCharField
+from django_mysql.models.fields import ListCharField
 
 from generic.models import User
 from utils.models.descriptor import invalid_for_frontend, necessary_for_frontend
+from utils.models.semester import Semester, current_year, select_current
 from datetime import datetime, timedelta
 from app.config import *
 
@@ -89,28 +90,6 @@ __all__ = [
     'PoolItem',
     'PoolRecord',
 ]
-
-
-def current_year() -> int:
-    '''不导出的函数，用于实时获取学年设置'''
-    return GLOBAL_CONF.acadamic_year
-
-
-def select_current(queryset,
-                   _year_field='year', _semester_field='semester', *,
-                   noncurrent=False, exact=False):
-    '''
-    获取学期的对应筛选结果
-        exact: 学期必须完全匹配(全年和单一学期将不再匹配)
-        noncurrent: 取反结果, 如果为None则直接返回queryset.all()
-    '''
-    if noncurrent is None:
-        return queryset.all()
-    kwargs = {_year_field: current_year()}
-    if not exact:
-        _semester_field += '__contains'
-    kwargs[_semester_field] = Semester.now().value
-    return queryset.exclude(**kwargs) if noncurrent else queryset.filter(**kwargs)
 
 
 def image_url(image, enable_abs=False) -> str:
@@ -512,37 +491,6 @@ class OrganizationType(models.Model):
     def default_is_admin(self, position):
         '''供生成时方便调用的函数，是否成为负责人的默认值'''
         return position <= self.control_pos_threshold
-
-
-class Semester(models.TextChoices):
-    FALL = "Fall", "秋"
-    SPRING = "Spring", "春"
-    ANNUAL = "Fall+Spring", "春秋"
-
-    def get(semester: str):
-        '''read a string indicating the semester, return the correspoding status'''
-        if semester in ["Fall", "秋", "秋季"]:
-            return Semester.FALL
-        elif semester in ["Spring", "春", "春季"]:
-            return Semester.SPRING
-        elif semester in ["Annual", "Fall+Spring", "全年", "春秋"]:
-            return Semester.ANNUAL
-        else:
-            raise NotImplementedError("出现未设计的学期状态")
-
-    def now():
-        '''返回本地设置中当前学期对应的Semester状态'''
-        return Semester.get(GLOBAL_CONF.semester)
-
-    def match(sem1, sem2):
-        try:
-            if not isinstance(sem1, Semester):
-                sem1 = Semester.get(sem1)
-            if not isinstance(sem2, Semester):
-                sem2 = Semester.get(sem2)
-            return sem1 == sem2
-        except:
-            return False
 
 
 class OrganizationTag(models.Model):
