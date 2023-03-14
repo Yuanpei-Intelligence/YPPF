@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from generic.models import (
+from record.models import (
     PageLog,
     ModuleLog,
 )

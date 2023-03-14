@@ -56,6 +56,7 @@ INSTALLED_APPS = [
     "django.contrib.staticfiles",
     "django_apscheduler",
     "generic",
+    "record",
     "app",
     "Appointment",
     'dm',

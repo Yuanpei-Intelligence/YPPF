@@ -12,7 +12,7 @@ from django.db.models import F
 
 from record.log.utils import get_logger
 from scheduler.scheduler import scheduler, periodical
-from generic.models import PageLog
+from record.models import PageLog
 from app.models import (
     User,
     NaturalPerson,
