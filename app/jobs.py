@@ -10,7 +10,7 @@ from django.db.models import F
 # for background)
 # from django_apscheduler.util import close_old_connections
 
-from utils.log import get_logger
+from record.log.utils import get_logger
 from scheduler.scheduler import scheduler, periodical
 from generic.models import PageLog
 from app.models import (

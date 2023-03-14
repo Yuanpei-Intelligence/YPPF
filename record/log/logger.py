@@ -27,7 +27,7 @@ from django.conf import settings
 
 from boot.config import absolute_path
 from utils.http.dependency import HttpRequest
-from utils.log.config import log_config as CONFIG
+from record.log.config import log_config as CONFIG
 from utils.inspect import module_filepath
 
 

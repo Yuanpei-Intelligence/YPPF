@@ -5,14 +5,9 @@ from django.http import HttpResponse, HttpResponseRedirect, HttpResponseForbidde
 from django.core.exceptions import ImproperlyConfigured
 from django.template.response import TemplateResponse
 
-from .http import HttpRequest
-from .global_messages import wrong, MESSAGECONTEXT, MSG_FIELD, CODE_FIELD
-
-try:
-    # TODO: 获取类型提示，但Logger不是可靠工具包，部分依赖于设置
-    from utils.log.logger import Logger
-except:
-    pass
+from utils.http import HttpRequest
+from utils.global_messages import wrong, MESSAGECONTEXT, MSG_FIELD, CODE_FIELD
+from record.log.forward import Logger
 
 
 __all__ = [
@@ -310,7 +305,7 @@ class SecureTemplateView(SecureView):
         return self.render()
 
     def get_logger(self) -> 'Logger | None':
-        from utils.log import get_logger
+        from record.log.utils import get_logger
         return get_logger('error')
 
 
@@ -339,5 +334,5 @@ class SecureJsonView(SecureView):
         return self.json_response()
 
     def get_logger(self) -> 'Logger | None':
-        from utils.log import get_logger
+        from record.log.utils import get_logger
         return get_logger('APIerror')

@@ -1,6 +1,6 @@
 import logging
 
-from utils.log.logger import Logger
+from record.log.logger import Logger
 from utils.inspect import find_caller
 from boot.config import GLOBAL_CONF
 from extern.wechat import send_wechat

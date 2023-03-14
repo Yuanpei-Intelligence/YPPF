@@ -13,7 +13,7 @@ from Appointment.models import (
 )
 from Appointment.apps import AppointmentConfig as AppConfig
 from boot.config import GLOBAL_CONF
-from utils.log.logger import Logger
+from record.log.logger import Logger
 from utils.inspect import find_caller
 
 

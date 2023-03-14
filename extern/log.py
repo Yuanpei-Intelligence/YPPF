@@ -1,4 +1,4 @@
-from utils.log.logger import Logger
+from record.log.logger import Logger
 
 class ExternLogger(Logger):
     def add_default_handler(self, name: str, *paths: str, format: str = '') -> None:
