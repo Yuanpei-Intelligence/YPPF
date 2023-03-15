@@ -141,18 +141,19 @@ def showComment(commentbase, anonymous_users=None) -> list[dict]:
             text=comment.text,
             time=comment.time,
         )
+        commentator = get_person_or_org(comment.commentator)
         if anonymous_users and comment.commentator in anonymous_users:
             commentator_display = dict(
                 name='匿名用户',
                 avatar=NaturalPerson.get_user_ava(),
             )
         else:
-            commentator = get_person_or_org(comment.commentator)
             commentator_display = dict(
                 name=commentator.get_display_name(),
                 avatar=commentator.get_user_ava(),
                 URL=commentator.get_absolute_url(),
             )
+        commentator_display.update(real_name=commentator.get_display_name())
         display.update(commentator=commentator_display)
         photos = list(comment.comment_photos.all())
         display.update(photos=photos)

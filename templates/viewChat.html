@@ -129,7 +129,7 @@
                                                 <div class="form-group">
                                                     <div class="d-flex justify-content-between">
                                                         <!--  BEGIN MY MESSAGE HEAD -->
-                                                        {% if my_name == comment.commentator.name %}
+                                                        {% if my_name == comment.commentator.real_name %}
                                                         <div>
                                                             <p style="color: rgb(66, 67, 68);">
                                                                 <i class="fa fa-calendar-o"></i>{{ comment.time }}</p>
@@ -230,27 +230,27 @@
                                                         <div>
                                                         </div>
                                                         <div class="" style="text-align: right;">
-                                                                {% if is_questioner and questioner_anonymous or not is_questioner and respondent_anonymous %}
-                                                                <div class="form-check form-check-inline">
-                                                                    <input class="form-check-input" type="checkbox" name="anonymous" id="anonymous" checked>
-                                                                    <label class="form-check-label" for="anonymous">匿名回复</label>
-                                                                </div>
-                                                                {% endif %}
-                                                                <button type="submit"
-                                                                        class="btn btn-primary"
-                                                                        name="comment_submit" 
-                                                                        id="comment_submit"
-                                                                        value="{{chat_id}}"
-                                                                        onclick="add_chat_comment(this);">
-                                                                    回复
-                                                                </button>
-                                                                <button type="submit"
-                                                                        class="btn btn-danger"
-                                                                        name="close" id="close"
-                                                                        value="{{chat_id}}"
-                                                                        onclick="close_chat(this);">
-                                                                    关闭当前问答
-                                                                </button>
+                                                            {% if is_questioner and questioner_anonymous or not is_questioner and respondent_anonymous %}
+                                                            <div class="form-check form-check-inline">
+                                                                <input class="form-check-input" type="checkbox" name="anonymous" id="anonymous" checked>
+                                                                <label class="form-check-label" for="anonymous">匿名回复</label>
+                                                            </div>
+                                                            {% endif %}
+                                                            <button type="submit"
+                                                                    class="btn btn-primary"
+                                                                    name="comment_submit" 
+                                                                    id="comment_submit"
+                                                                    value="{{chat_id}}"
+                                                                    onclick="add_chat_comment(this);">
+                                                                回复
+                                                            </button>
+                                                            <button type="submit"
+                                                                    class="btn btn-danger"
+                                                                    name="close" id="close"
+                                                                    value="{{chat_id}}"
+                                                                    onclick="close_chat(this);">
+                                                                关闭当前问答
+                                                            </button>
                                                         </div>
                                                     </div>
                                                 </div>
@@ -419,13 +419,10 @@
                 anonymous: document.getElementById("anonymous").checked
             },
             success: function(context){
-                // console.log(context)
-                if (context.warn_code){
-                    if (context.warn_code == 1) { // 发送信息成功效果比较明显，没必要专门给出warn_message了
-                        sessionStorage.setItem("reloading", "chatRelatedReloading");
-                        sessionStorage.setItem("warn_code", context.warn_code);
-                        sessionStorage.setItem("warn_message", context.warn_message);
-                    }
+                if (context.warn_code == 1) {  // 发送信息成功效果比较明显，没必要专门给出warn_message了
+                    sessionStorage.setItem("reloading", "chatRelatedReloading");
+                    sessionStorage.setItem("warn_code", context.warn_code);
+                    sessionStorage.setItem("warn_message", context.warn_message);
                 }
                 document.location.reload(); // 刷新页面
             }

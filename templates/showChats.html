@@ -352,12 +352,13 @@
                                                 <p style="color: rgb(66, 67, 68);">
                                                     <i class="fa fa-address-book" style="width: 10px;"></i>
                                                     <span class="ml-1">
-                                                        来自&nbsp;
-                                                        {% if chat.academic_url != "" %}
-                                                        <b><a href='{{chat.academic_url}}#tab=academic_map'><u>{{chat.questioner_name}}</u></a></b>
+                                                        <b>
+                                                        {% if chat.questioner_anonymous %}
+                                                        来自&nbsp;匿名用户
                                                         {% else %}
-                                                        <b>{{chat.questioner_name}}</b>
+                                                        来自&nbsp;<a href='{{chat.academic_url}}#tab=academic_map'><u>{{chat.questioner_name}}</u></a>
                                                         {% endif %}
+                                                        </b>
                                                     </span>
                                                 </p>
 
