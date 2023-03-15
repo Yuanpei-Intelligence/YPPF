@@ -213,18 +213,10 @@
                                             <table class="table table-bordered mb-4">
                                                 <div>
                                                     <div class="form-group">
-                                                        {% if anonymous_chat and not accept_anonymous %}
-                                                        <textarea type="text" id="comment" name="comment"
+                                                        <textarea type="text" id="newcomment" name="comment"
                                                                 class="form-control"
                                                                 aria-label="Default" rows="3"
-                                                                placeholder="回答者目前不接收匿名提问哦" disabled></textarea>
-                                                        {% else %}
-                                                        <textarea type="text" id="comment" name="comment"
-                                                                class="form-control"
-                                                                aria-label="Default" rows="3"
-                                                                placeholder="添加回复或追问追答"></textarea>
-                                                        {% endif %}
-                                                        
+                                                                placeholder="添加回复或追问追答"></textarea>       
                                                     </div>
                                                     <div class="d-flex justify-content-between">
                                                         <div>
@@ -406,17 +398,23 @@
     }
 
     function add_chat_comment(a) { // 回复问答
-        if (document.getElementById("comment").value == ""){
+        if (document.getElementById("newcomment").value == ""){
             return;
         }
+
+        let anonymous = false;
+        if (document.getElementById("anonymous")) {
+            anonymous = document.getElementById("anonymous").checked;
+        }
+
         $.ajax({
             url: "/addChatComment/",
             type: "post",
             data:{
-                comment: document.getElementById("comment").value,
+                comment: document.getElementById("newcomment").value,
                 chat_id: Number(a.value),
                 comment_submit: 1,
-                anonymous: document.getElementById("anonymous").checked
+                anonymous: anonymous,
             },
             success: function(context){
                 if (context.warn_code == 1) {  // 发送信息成功效果比较明显，没必要专门给出warn_message了
