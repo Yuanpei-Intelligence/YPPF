@@ -35,6 +35,7 @@ def _create_require_num(room: Room, type: Appoint.Type) -> int:
         create_min = min(create_min, CONFIG.temporary_min)
     if type == Appoint.Type.INTERVIEW:
         create_min = min(create_min, 1)
+    return create_min
 
 
 def _success(appoint: Appoint):
