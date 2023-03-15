@@ -1,10 +1,11 @@
 from datetime import datetime, timedelta
+from functools import wraps
+from typing import Iterable
 
 from django.db import transaction
 
 from Appointment.config import appointment_config as CONFIG
 from Appointment.models import Participant, Room, Appoint
-from Appointment.utils.identity import get_participant
 from Appointment.utils.utils import get_conflict_appoints
 from Appointment.utils.log import logger, get_user_logger
 from Appointment.appoint.jobs import set_scheduler, cancel_scheduler
@@ -44,109 +45,50 @@ def _success(appoint: Appoint):
 def _error(msg: str, detail=None):
     return None, msg
 
-def addAppoint(contents: dict,
-               type: Appoint.Type = Appoint.Type.NORMAL,
-               check_contents: bool = True,
-               notify_create: bool = True) -> tuple[Appoint | None, str]:
-    '''
-    创建一个预约，检查各种条件，屎山函数
 
-    :param contents: 屎山，只知道Sid: arg for `get_participant`
-    :type contents: dict
-    :param type: 预约类型, defaults to Appoint.Type.NORMAL
-    :type type: Appoint.Type, optional
-    :param check_contents: 是否检查参数，暂未启用, defaults to True
-    :type check_contents: bool, optional
-    :param notify_create: 是否通知参与者创建了新预约, defaults to True
-    :type notify_create: bool, optional
-    :return: (预约, 错误信息)
-    :rtype: tuple[Appoint | None, str]
-    '''
+def _error_on_check_fail(func):
+    @wraps(func)
+    def _f(*args, **kwargs):
+        try:
+            return func(*args, **kwargs)
+        except AssertionError as e:
+            return _error(str(e))
+    return _f
 
-    # 首先检查房间是否存在
-    try:
-        room: Room = Room.objects.get(Rid=contents['Rid'])
-        assert room.Rstatus == Room.Status.PERMITTED, 'room service suspended!'
-    except Exception as e:
-        return _error('房间不可预约，请更换房间！', e)
-    # 再检查学号对不对
-    students_id = contents['students']  # 存下学号列表
-    students = Participant.objects.filter(Sid__in=students_id)  # 获取学生
-    try:
-        assert students.count() == len(students_id), "students repeat or don't exists"
-    except Exception as e:
-        return _error('预约人信息有误，请检查后重新发起预约！', e)
 
-    # 检查预约时间是否正确
-    try:
-        Astart: datetime = contents['Astart']
-        Afinish: datetime = contents['Afinish']
-        assert isinstance(Astart, datetime), 'Appoint time format error'
-        assert isinstance(Afinish, datetime), 'Appoint time format error'
-        assert Astart <= Afinish, 'Appoint time error'
+def _check_credit(appointer: Participant):
+    appointer = Participant.objects.select_for_update().get(pk=appointer.pk)
+    assert appointer.credit > 0, '信用分不足，本月无法发起预约！'
 
-        assert Afinish > datetime.now(), 'Appoint time error'
-    except Exception as e:
-        return _error('非法预约时间段，请不要擅自修改url！', e)
 
-    # 检查预约类型
-    if datetime.now().date() == Astart.date() and type == Appoint.Type.NORMAL:
-        # 长期预约必须保证预约时达到正常人数要求
-        type = Appoint.Type.TODAY
+def _check_appoint_time(start: datetime, finish: datetime):
+    assert start <= finish, '开始时间不能晚于结束时间！'
+    assert finish > datetime.now(), '预约时间不能早于当前时间！'
 
-    # 创建预约时要求的人数
+
+def _check_room_valid(room: Room | None):
+    assert room is not None, '预约的房间不存在！'
+    assert room.Rstatus == Room.Status.PERMITTED, '预约的房间不可用！'
+
+
+def _check_create_num(room: Room, type: Appoint.Type, inner: int, outer: int):
     create_min = _create_require_num(room, type)
+    assert inner + outer >= create_min, f'预约人数不足{create_min}人！'
+    assert 2 * inner >= create_min, '院内使用人数需要达到房间最小人数的一半！'
 
-    # 检查人员信息
-    try:
-        yp_num = len(students)
-        non_yp_num: int = contents['non_yp_num']
-        assert isinstance(non_yp_num, int)
-        assert yp_num + \
-            non_yp_num >= create_min, f'at least {create_min} students'
-    except Exception as e:
-        return _error('使用总人数需达到房间最小人数！', e)
 
-    if 2 * yp_num < create_min:
-        return _error('院内使用人数需要达到房间最小人数的一半！')
-
-    # 检查如果是俄文楼，是否只有一个人使用
+def _check_num_constraint(room: Room, type: Appoint.Type, inner: int, outer: int):
     if room.Rid.startswith('R'):
-        if yp_num != 1 or non_yp_num != 0:
-            return _error('俄文楼元创空间仅支持单人预约！')
-
-    # 检查如果是面试，是否只有一个人使用
+        assert inner == 1 and outer == 0, '俄文楼元创空间仅支持单人预约！'
+    if type == Appoint.Type.TEMPORARY:
+        assert inner == 1 and outer == 0, '临时预约仅支持单人预约！'
     if type == Appoint.Type.INTERVIEW:
-        if yp_num != 1 or non_yp_num != 0:
-            return _error('面试仅支持单人预约！')
+        assert inner == 1 and outer == 0, '面试仅支持单人预约！'
 
-    # 预约是否超过3小时
-    try:
-        assert Afinish <= Astart + timedelta(hours=3)
-    except:
-        return _error('预约时长不能超过3小时！')
 
-    try:
-        usage: str = contents['Ausage']
-        announcement: str = contents['announcement']
-        assert isinstance(usage, str) and isinstance(announcement, str)
-    except:
-        return _error('非法的预约信息！')
-
-    # 获取预约发起者,确认预约状态
-    major_student = get_participant(contents['Sid'])
-    if major_student is None:
-        return _error('发起人信息不存在！')
-
-    return create_appoint(
-        appointer=major_student,
-        students_id=students_id,
-        room=room, start=Astart, finish=Afinish,
-        usage=usage, announce=announcement,
-        inner_num=yp_num, outer_num=non_yp_num,
-        type=type,
-        notify=notify_create,
-    )
+def _check_conflict(appoint: Appoint):
+    conflict_appoints = get_conflict_appoints(appoint, lock=True)
+    assert len(conflict_appoints) == 0, '预约时间段与已有预约冲突！'
 
 
 def _attend_require_num(room: Room, type: Appoint.Type, start: datetime, finish: datetime) -> int:
@@ -166,26 +108,34 @@ def _attend_require_num(room: Room, type: Appoint.Type, start: datetime, finish:
 
 @logger.secure_func('创建预约失败', fail_value=_error('添加预约失败!请与管理员联系!'))
 @transaction.atomic
+@_error_on_check_fail
 def create_appoint(
     appointer: Participant,
-    students_id: list[str],
     room: Room,
     start: datetime, finish: datetime,
-    usage: str, announce: str,
-    inner_num: int, outer_num: int,
+    usage: str,
+    students: Iterable[Participant] | None = None,
+    announce: str = '',
+    outer_num: int = 0,
     *,
     type: Appoint.Type = Appoint.Type.NORMAL,
     notify: bool = True,
 ) -> tuple[Appoint | None, str]:
 
-    appointer = Participant.objects.select_for_update().get(pk=appointer.pk)
-    if appointer.credit <= 0:
-        return _error('信用分不足，本月无法发起预约！')
+    _check_room_valid(room)
+    _check_appoint_time(start, finish)
 
-    students = Participant.objects.filter(Sid__in=students_id)
-    if len(students) != len(students_id):
-        return _error('预约人信息有误，请检查后重新发起预约！')
+    if students is None:
+        students = []
+    students = list(students)
+    if appointer not in students:
+        students.append(appointer)
+    inner_num = len(students)
 
+    _check_create_num(room, type, inner_num, outer_num)
+    _check_num_constraint(room, type, inner_num, outer_num)
+
+    _check_credit(appointer)
     appoint = Appoint(
         major_student=appointer, Room=room,
         Astart=start, Afinish=finish,
@@ -194,17 +144,15 @@ def create_appoint(
         Aneed_num=_attend_require_num(room, type, start, finish),
         Atype=type,
     )
-    conflict_appoints = get_conflict_appoints(appoint, lock=True)
-    if conflict_appoints:
-        return _error('预约时间与已有预约冲突，请重选时间段！')
+    _check_conflict(appoint)
 
     appoint.save()
     appoint.students.set(students)
 
     set_scheduler(appoint)
     if notify:
-        _notify_create(appoint, students_id)
-    set_appoint_reminder(appoint, students_id)
+        _notify_create(appoint)
+    set_appoint_reminder(appoint)
 
     get_user_logger(appointer).info(f"发起预约，预约号{appoint.pk}")
     return _success(appoint)

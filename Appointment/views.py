@@ -33,7 +33,7 @@ from Appointment.utils.identity import (
     get_avatar, get_members, get_auditor_ids,
     get_participant, identity_check,
 )
-from Appointment.appoint.manage import addAppoint, cancel_appoint
+from Appointment.appoint.manage import create_appoint, cancel_appoint
 from Appointment.appoint.judge import set_appoint_reason
 from Appointment import jobs
 from Appointment.config import appointment_config as CONFIG
@@ -495,49 +495,39 @@ def door_check(request):
         else:   # 自己的预约
             return _check_succeed(f"刷卡开门：预约进入")
 
-    else:   # 当前无预约
+    # 当前无预约
 
-        if not check_temp_appoint(room):   # 房间不可以临时预约
-            return _temp_failed(f"该房间不可临时预约", False)
+    if not check_temp_appoint(room):   # 房间不可以临时预约
+        return _temp_failed(f"该房间不可临时预约", False)
 
-        else:   # 该房间可以用于临时预约
+    # 该房间可以用于临时预约
 
-            # 注意，由于制度上不允许跨天预约，这里的逻辑也不支持跨日预约（比如从晚上23:00约到明天1:00）。
-            # 需要剥离秒级以下的数据，否则admin-index无法正确渲染
-            start = now_time.replace(second=0, microsecond=0)
-            timeid = web_func.get_time_id(room, start.time())
+    # 注意，由于制度上不允许跨天预约，这里的逻辑也不支持跨日预约（比如从晚上23:00约到明天1:00）。
+    # 需要剥离秒级以下的数据，否则admin-index无法正确渲染
+    now_time = now_time.replace(second=0, microsecond=0)
+    start = now_time
+    timeid = web_func.get_time_id(room, start.time())
 
-            finish, valid = web_func.get_hour_time(room, timeid + 1)
-            finish = datetime(now_time.year, now_time.month, now_time.day, int(
-                finish.split(':')[0]), int(finish.split(':')[1]), 0)
+    finish, valid = web_func.get_hour_time(room, timeid + 1)
+    hour, minute = finish.split(':')
+    finish = now_time.replace(hour=int(hour), minute=int(minute))
 
-            # 房间未开放
-            if timeid < 0 or not valid:
-                return _temp_failed(f"该时段房间未开放！别熬夜了，回去睡觉！")
+    # 房间未开放
+    if timeid < 0 or not valid:
+        return _temp_failed(f"该时段房间未开放！别熬夜了，回去睡觉！")
 
-            # 检查时间是否合法
-            # 合法条件：为避免冲突，临时预约时长必须超过15分钟；预约时在房间可用时段
-            # OBSELETE: 时间合法（暂时将间隔定为5min）
-            if valid:
-                contents = {
-                    'Rid': Rid,
-                    'students': [Sid],
-                    'Sid': Sid,
-                    'Astart': start,
-                    'Afinish': finish,
-                    'non_yp_num': 0,
-                    'Ausage': "临时预约",
-                    'announcement': "",
-                }
-                appoint, err_msg = addAppoint(contents, type=Appoint.Type.TEMPORARY)
+    # 检查时间是否合法
+    # 合法条件：为避免冲突，临时预约时长必须超过15分钟；预约时在房间可用时段
+    # OBSELETE: 时间合法（暂时将间隔定为5min）
+    if not valid:
+        return _temp_failed(f"预约时间不合法，请不要恶意篡改数据！")
 
-                if appoint is not None:
-                    return _check_succeed(f"刷卡开门：临时预约")
-                else:
-                    return _temp_failed(err_msg)
+    appoint, err_msg = create_appoint(student, room, start, finish, '临时预约',
+                                      type=Appoint.Type.TEMPORARY)
 
-            else:   # 预约时间不合法
-                return _temp_failed(f"预约时间不合法，请不要恶意篡改数据！")
+    if appoint is None:
+        return _temp_failed(err_msg)
+    return _check_succeed(f"刷卡开门：临时预约")
 
 
 @identity_check(redirect_field_name='origin', auth_func=lambda x: True)
@@ -914,6 +904,113 @@ def _notify_longterm_review(longterm: LongTermAppoint, auditor_ids: list[str]):
                    students_id=auditor_ids, url=f'review?Lid={longterm.pk}')
 
 
+
+def _add_appoint(contents: dict,
+               type: Appoint.Type = Appoint.Type.NORMAL,
+               check_contents: bool = True,
+               notify_create: bool = True) -> tuple[Appoint | None, str]:
+    '''
+    创建一个预约，检查各种条件，屎山函数
+
+    :param contents: 屎山，只知道Sid: arg for `get_participant`
+    :type contents: dict
+    :param type: 预约类型, defaults to Appoint.Type.NORMAL
+    :type type: Appoint.Type, optional
+    :param check_contents: 是否检查参数，暂未启用, defaults to True
+    :type check_contents: bool, optional
+    :param notify_create: 是否通知参与者创建了新预约, defaults to True
+    :type notify_create: bool, optional
+    :return: (预约, 错误信息)
+    :rtype: tuple[Appoint | None, str]
+    '''
+    from Appointment.appoint.manage import _error, _create_require_num
+
+    # 首先检查房间是否存在
+    try:
+        room: Room = Room.objects.get(Rid=contents['Rid'])
+        assert room.Rstatus == Room.Status.PERMITTED, 'room service suspended!'
+    except Exception as e:
+        return _error('房间不可预约，请更换房间！', e)
+    # 再检查学号对不对
+    students_id: list[str] = contents['students']  # 存下学号列表
+    students = Participant.objects.filter(Sid__in=students_id)  # 获取学生
+    try:
+        assert students.count() == len(students_id), "students repeat or don't exists"
+    except Exception as e:
+        return _error('预约人信息有误，请检查后重新发起预约！', e)
+
+    # 检查预约时间是否正确
+    try:
+        Astart: datetime = contents['Astart']
+        Afinish: datetime = contents['Afinish']
+        assert isinstance(Astart, datetime), 'Appoint time format error'
+        assert isinstance(Afinish, datetime), 'Appoint time format error'
+        assert Astart <= Afinish, 'Appoint time error'
+
+        assert Afinish > datetime.now(), 'Appoint time error'
+    except Exception as e:
+        return _error('非法预约时间段，请不要擅自修改url！', e)
+
+    # 检查预约类型
+    if datetime.now().date() == Astart.date() and type == Appoint.Type.NORMAL:
+        # 长期预约必须保证预约时达到正常人数要求
+        type = Appoint.Type.TODAY
+
+    # 创建预约时要求的人数
+    create_min = _create_require_num(room, type)
+
+    # 检查人员信息
+    try:
+        yp_num = len(students)
+        non_yp_num: int = contents['non_yp_num']
+        assert isinstance(non_yp_num, int)
+        assert yp_num + \
+            non_yp_num >= create_min, f'at least {create_min} students'
+    except Exception as e:
+        return _error('使用总人数需达到房间最小人数！', e)
+
+    if 2 * yp_num < create_min:
+        return _error('院内使用人数需要达到房间最小人数的一半！')
+
+    # 检查如果是俄文楼，是否只有一个人使用
+    if room.Rid.startswith('R'):
+        if yp_num != 1 or non_yp_num != 0:
+            return _error('俄文楼元创空间仅支持单人预约！')
+
+    # 检查如果是面试，是否只有一个人使用
+    if type == Appoint.Type.INTERVIEW:
+        if yp_num != 1 or non_yp_num != 0:
+            return _error('面试仅支持单人预约！')
+
+    # 预约是否超过3小时
+    try:
+        assert Afinish <= Astart + timedelta(hours=3)
+    except:
+        return _error('预约时长不能超过3小时！')
+
+    try:
+        usage: str = contents['Ausage']
+        announcement: str = contents['announcement']
+        assert isinstance(usage, str) and isinstance(announcement, str)
+    except:
+        return _error('非法的预约信息！')
+
+    # 获取预约发起者,确认预约状态
+    major_student = get_participant(contents['Sid'])
+    if major_student is None:
+        return _error('发起人信息不存在！')
+
+    return create_appoint(
+        appointer=major_student,
+        students=students,
+        room=room, start=Astart, finish=Afinish,
+        usage=usage, announce=announcement,
+        outer_num=non_yp_num,
+        type=type,
+        notify=notify_create,
+    )
+
+
 @identity_check(redirect_field_name='origin')
 def checkout_appoint(request: HttpRequest):
     """
@@ -1067,11 +1164,11 @@ def checkout_appoint(request: HttpRequest):
         if my_messages.get_warning(render_context)[0] is None:
             # 参数检查全部通过，下面开始创建预约
             if is_longterm:
-                response = addAppoint(contents, type=Appoint.Type.LONGTERM, notify_create=False)
+                response = _add_appoint(contents, type=Appoint.Type.LONGTERM, notify_create=False)
             elif is_interview:
-                response = addAppoint(contents, type=Appoint.Type.INTERVIEW)
+                response = _add_appoint(contents, type=Appoint.Type.INTERVIEW)
             else:
-                response = addAppoint(contents)
+                response = _add_appoint(contents)
             appoint, err_msg = response
             if appoint is not None and not is_longterm:
                 # 成功预约且非长期
