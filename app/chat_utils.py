@@ -1,5 +1,6 @@
-from typing import Tuple
+from collections import Counter
 from random import sample
+from typing import Tuple
 
 from django.http import HttpRequest
 
@@ -146,25 +147,28 @@ def create_chat(
     return chat.id, comment_context
 
 
-def get_matched_users(query: str, anonymous: bool):
+def get_matched_users(query: str, current_user: User, anonymous: bool):
     """
     根据提供的关键词获取搜索结果
     比academic_utils中的类似函数更加精简
     """
     # 搜索所有含有关键词的公开的学术地图项目，忽略大小写
-    match_with_tags = AcademicTagEntry.objects.filter(
-        tag__tag_content__icontains=query,
-        status=AcademicEntry.EntryStatus.PUBLIC,
-    ).values_list("person__person_id", flat=True)
-    match_with_tags = User.objects.filter(id__in=list(match_with_tags))
+    match_with_tags = list(
+        AcademicTagEntry.objects.filter(
+            tag__tag_content__icontains=query,
+            status=AcademicEntry.EntryStatus.PUBLIC,
+        ).values_list("person__person_id", flat=True))
 
-    match_with_texts = AcademicTextEntry.objects.filter(
-        content__icontains=query,
-        status=AcademicEntry.EntryStatus.PUBLIC,
-    ).values_list("person__person_id", flat=True)
-    match_with_texts = User.objects.filter(id__in=list(match_with_texts))
+    match_with_texts = list(
+        AcademicTextEntry.objects.filter(
+            content__icontains=query,
+            status=AcademicEntry.EntryStatus.PUBLIC,
+        ).values_list("person__person_id", flat=True))
 
-    matched_users = match_with_tags | match_with_texts
+    matched_ids = match_with_tags + match_with_texts
+    matched_users = User.objects.exclude(
+        username=current_user.username).filter(id__in=matched_ids)
+
     if anonymous:
         return matched_users.filter(accept_anonymous_chat=True)
     else:
@@ -177,15 +181,23 @@ def select_by_keywords(
     """
     根据关键词从学生中抽取一个回答者
     """
-    matched_users = User.objects.none()
+    matched_users = []
     for k in keywords:
-        matched_users |= get_matched_users(k, anonymous)
-    matched_users = matched_users.exclude(username=user.username).distinct()
-    if not matched_users.exists():
+        matched_users.extend(list(get_matched_users(k, user, anonymous)))
+
+    counted_users = Counter()
+    counted_users.update(matched_users)
+    greatest_occurrence = counted_users.most_common(1)[0][1]
+    most_matched_users = [
+        user[0] for user in counted_users.items()
+        if user[1] == greatest_occurrence
+    ]
+
+    if not most_matched_users:
         return None, wrong("没有和标签匹配的对象！")
-    idx = range(0, matched_users.count())
-    chosen_idx = sample(idx, k=1)[0]
-    return matched_users[chosen_idx], succeed("成功找到回答者")
+
+    chosen_users = sample(most_matched_users, k=1)[0]
+    return chosen_users, succeed("成功找到回答者")
 
 
 def create_QA(request: HttpRequest,
