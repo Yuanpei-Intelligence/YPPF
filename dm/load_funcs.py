@@ -327,55 +327,6 @@ def load_activity(filepath: str, output_func: Callable=None, html=False):
     return try_output("导入活动信息成功！", output_func, html)
 
 
-
-# def load_notification(filepath: str, output_func: Callable=None, html=False):
-#     not_df = load_file(filepath)
-#     not_list = []
-#     for _, not_dict in not_df.iterrows():
-#         id = not_dict["id"]
-#         if str(not_dict["receiver_id"]) == str(1266):
-#             not_dict["receiver_id"] = NaturalPerson.objects.get(
-#                 name=local_dict["test_info"]["stu_name"]
-#             ).person_id.id
-#         if str(not_dict["sender_id"]) == str(1266):
-#             not_dict["sender_id"] = NaturalPerson.objects.get(
-#                 name=local_dict["test_info"]["stu_name"]
-#             ).person_id.id
-#         try:
-#             receiver = User.objects.get(id=not_dict["receiver_id"])
-#             sender = User.objects.get(id=not_dict["sender_id"])
-#         except:
-#             return try_output(f"请先导入用户信息！{receiver} & {sender}", output_func, html)
-#         status = not_dict["status"]
-#         title = not_dict["title"]
-#         start_time = str(not_dict["start_time"])
-#         finish_time = str(not_dict["finish_time"])
-#         start_time = datetime.strptime(start_time, "%d/%m/%Y %H:%M:%S.%f")
-#         try:
-#             finish_time = datetime.strptime(finish_time, "%d/%m/%Y %H:%M:%S.%f")
-#         except:
-#             finish_time = None
-#         content = not_dict["content"]
-#         typename = not_dict["typename"]
-#         URL = not_dict["URL"]
-#         not_list.append(
-#             Notification(
-#                 id=id,
-#                 receiver=receiver,
-#                 sender=sender,
-#                 status=status,
-#                 title=title,
-#                 start_time=start_time,
-#                 finish_time=finish_time,
-#                 content=content,
-#                 URL=URL,
-#                 typename=typename,
-#             )
-#         )
-#     Notification.objects.bulk_create(not_list)
-#     return try_output("导入通知信息成功！", output_func, html)
-
-
 def load_stu(filepath: str, output_func: Callable=None, html=False):
     stu_df = load_file(filepath)
     total = 0
