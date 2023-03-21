@@ -40,10 +40,11 @@ from random import choice
 
 from django.db import models, transaction
 from django.db.models import Q, Sum, QuerySet
-from django_mysql.models import ListCharField
+from django_mysql.models.fields import ListCharField
 
 from generic.models import User
-from generic.models import invalid_for_frontend, necessary_for_frontend
+from utils.models.descriptor import invalid_for_frontend, necessary_for_frontend
+from utils.models.semester import Semester, current_year, select_current
 from datetime import datetime, timedelta
 from app.config import *
 
@@ -81,34 +82,14 @@ __all__ = [
     'AcademicEntry',
     'AcademicTagEntry',
     'AcademicTextEntry',
+    'AcademicQA',
+    'AcademicQAAwards',
     'Chat',
     'Prize',
     'Pool',
     'PoolItem',
     'PoolRecord',
 ]
-
-
-def current_year() -> int:
-    '''不导出的函数，用于实时获取学年设置'''
-    return GLOBAL_CONF.acadamic_year
-
-
-def select_current(queryset,
-                   _year_field='year', _semester_field='semester', *,
-                   noncurrent=False, exact=False):
-    '''
-    获取学期的对应筛选结果
-        exact: 学期必须完全匹配(全年和单一学期将不再匹配)
-        noncurrent: 取反结果, 如果为None则直接返回queryset.all()
-    '''
-    if noncurrent is None:
-        return queryset.all()
-    kwargs = {_year_field: current_year()}
-    if not exact:
-        _semester_field += '__contains'
-    kwargs[_semester_field] = Semester.now().value
-    return queryset.exclude(**kwargs) if noncurrent else queryset.filter(**kwargs)
 
 
 def image_url(image, enable_abs=False) -> str:
@@ -137,7 +118,7 @@ class ClassifiedUser(models.Model):
 
     _USER_FIELD: str = NotImplemented
     _DISPLAY_FIELD: str = NotImplemented
-    
+
     def __str__(self):
         return str(self.get_display_name())
 
@@ -150,7 +131,7 @@ class ClassifiedUser(models.Model):
         :rtype: str
         '''
         return ''
-    
+
     def is_type(self, utype: str) -> bool:
         '''
         判断用户类型
@@ -190,7 +171,7 @@ class ClassifiedUser(models.Model):
         :rtype: str
         '''
         return '/'
-    
+
     def get_user_ava(self=None) -> str:
         '''
         获取头像路径
@@ -512,37 +493,6 @@ class OrganizationType(models.Model):
         return position <= self.control_pos_threshold
 
 
-class Semester(models.TextChoices):
-    FALL = "Fall", "秋"
-    SPRING = "Spring", "春"
-    ANNUAL = "Fall+Spring", "春秋"
-
-    def get(semester: str):
-        '''read a string indicating the semester, return the correspoding status'''
-        if semester in ["Fall", "秋", "秋季"]:
-            return Semester.FALL
-        elif semester in ["Spring", "春", "春季"]:
-            return Semester.SPRING
-        elif semester in ["Annual", "Fall+Spring", "全年", "春秋"]:
-            return Semester.ANNUAL
-        else:
-            raise NotImplementedError("出现未设计的学期状态")
-
-    def now():
-        '''返回本地设置中当前学期对应的Semester状态'''
-        return Semester.get(GLOBAL_CONF.semester)
-
-    def match(sem1, sem2):
-        try:
-            if not isinstance(sem1, Semester):
-                sem1 = Semester.get(sem1)
-            if not isinstance(sem2, Semester):
-                sem2 = Semester.get(sem2)
-            return sem1 == sem2
-        except:
-            return False
-
-
 class OrganizationTag(models.Model):
     class Meta:
         verbose_name = "1.组织类型标签"
@@ -816,7 +766,7 @@ class ActivityManager(models.Manager['Activity']):
                 Activity.Status.END
             ],
         )).order_by("category", "-start")
-    
+
     def get_newlyreleased_activity(self):
         nowtime = datetime.now()
         return select_current(self.filter(
@@ -949,7 +899,7 @@ class Activity(CommentBase):
 
     publish_day = models.SmallIntegerField("信息发布提前时间", default=PublishDay.threeday)  # 默认为提前三天时间
     publish_time = models.DateTimeField("信息发布时间", default=datetime.now)  # 默认为当前时间，可以被覆盖
-    need_apply = models.BooleanField("是否需要报名", default=False) 
+    need_apply = models.BooleanField("是否需要报名", default=False)
 
     # 删除显示报名时间, 保留一个字段表示报名截止于活动开始前多久：1h / 1d / 3d / 7d
     class EndBefore(models.IntegerChoices):
@@ -1530,7 +1480,7 @@ class Course(models.Model):
         threeday = (3, "提前三天")
 
     publish_day = models.SmallIntegerField("信息发布时间", default=PublishDay.threeday)  # 默认为提前三天时间
-    need_apply = models.BooleanField("是否需要报名", default=False)  
+    need_apply = models.BooleanField("是否需要报名", default=False)
     # 暂时只允许上传一张图片
     photo = models.ImageField(verbose_name="宣传图片",
                               upload_to=f"course/photo/%Y/",
@@ -1780,7 +1730,7 @@ class AcademicTag(models.Model):
 
     atype = models.SmallIntegerField('标签类型', choices=Type.choices)
     tag_content = models.CharField('标签内容', max_length=63)
-    
+
     def __str__(self) -> str:
         return self.get_atype_display() + ' - ' + self.tag_content
 
@@ -1803,7 +1753,7 @@ class AcademicEntry(models.Model):
 
     person = models.ForeignKey(NaturalPerson, on_delete=models.CASCADE)
     status = models.SmallIntegerField('记录状态', choices=EntryStatus.choices)
-    
+
     objects: AcademicEntryManager = AcademicEntryManager()
 
 
@@ -1811,7 +1761,7 @@ class AcademicTagEntry(AcademicEntry):
     class Meta:
         verbose_name = "P.学术地图标签项目"
         verbose_name_plural = verbose_name
-    
+
     tag = models.ForeignKey(AcademicTag, on_delete=models.CASCADE)
 
     @property
@@ -1851,13 +1801,14 @@ class Chat(CommentBase):
     class Meta:
         verbose_name = "2.对话"
         verbose_name_plural = verbose_name
-    
+
     questioner: User = models.ForeignKey(User, on_delete=models.CASCADE,
                              related_name="send_chat_set")
     respondent: User = models.ForeignKey(User, on_delete=models.CASCADE,
                              related_name="receive_chat_set")
     title = models.CharField("主题", default="", max_length=50)
-    anonymous = models.BooleanField("是否匿名", default=False) # 指发送方
+    questioner_anonymous = models.BooleanField("提问方是否匿名", default=True)
+    respondent_anonymous = models.BooleanField("回答方是否匿名", default=False)
 
     class Status(models.IntegerChoices):
         PROGRESSING = (0, "进行中")
@@ -1865,10 +1816,37 @@ class Chat(CommentBase):
     status = models.SmallIntegerField(choices=Status.choices, default=0)
 
     objects: ChatManager = ChatManager()
-    
+
     def save(self, *args, **kwargs):
         self.typename = "Chat"
-        super().save(*args, **kwargs)   
+        super().save(*args, **kwargs)
+
+
+class AcademicQAManager(models.Manager):
+    def activated(self):
+        return self.filter(chat__status=Chat.Status.PROGRESSING)
+
+
+class AcademicQA(models.Model):
+    class Meta:
+        verbose_name = "P.学术问答"
+        verbose_name_plural = verbose_name
+
+    chat = models.OneToOneField(to=Chat, on_delete=models.CASCADE)
+    keywords = models.JSONField('关键词', null=True, blank=True)
+    directed = models.BooleanField('是否定向', default=False)
+    rating = models.IntegerField('评价', default=0)
+
+    objects: AcademicQAManager = AcademicQAManager()
+
+
+class AcademicQAAwards(models.Model):
+    class Meta:
+        verbose_name = "P.学术问答相关奖励"
+        verbose_name_plural = verbose_name   
+
+    user: User = models.OneToOneField(User, on_delete=models.CASCADE)
+    created_undirected_qa = models.BooleanField("是否发起过非定向提问", default=False)
 
 
 class Prize(models.Model):

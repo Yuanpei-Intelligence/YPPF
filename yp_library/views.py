@@ -8,7 +8,7 @@ from yp_library.utils import (
     get_library_activity, 
     get_recommended_or_newest_books, 
 )
-from yp_library.config import library_conf
+from yp_library.config import library_config as CONFIG
 
 DISPLAY_ACTIVITY_NUM = 3 # 首页展示的书房活动数量
 DISPLAY_RECOMMENDATION_NUM = 5 # 首页展示的推荐书目数量
@@ -39,8 +39,8 @@ class WelcomeView(ProfileTemplateView):
                                  normalize=True)
         self.extra_context.update({
             "activities": get_library_activity(num=DISPLAY_ACTIVITY_NUM),
-            "opening_time_start": library_conf.start_time,
-            "opening_time_end": library_conf.end_time,
+            "opening_time_start": CONFIG.start_time,
+            "opening_time_end": CONFIG.end_time,
             "records_list": records_list,
             "recommendation": get_recommended_or_newest_books(
                         num=DISPLAY_RECOMMENDATION_NUM, newest=False),

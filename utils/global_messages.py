@@ -168,7 +168,7 @@ def append_query(url, *, _query: str = '', **querys):
     return url + concat + '&'.join(new_querys)
 
 
-def message_url(context: Union[dict, list], url: str = '/welcome/') -> str:
+def message_url(context: dict | MESSAGECONTEXT | list, url: str = '/welcome/') -> str:
     '''
     提供要发送的信息体和原始URL，返回带提示信息的URL
     - context: 包含`warn_code`和`warn_message`的字典或者二元数组

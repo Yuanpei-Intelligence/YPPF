@@ -13,8 +13,8 @@ models.py
 @Author pht
 @Date 2022-08-19
 '''
-from typing import Type, NoReturn
-from datetime import datetime
+import pypinyin
+from typing import Type, NoReturn, Final
 
 from django.db import models
 from django.contrib.auth import get_permission_codename
@@ -22,32 +22,15 @@ from django.contrib.auth.models import AbstractUser, AnonymousUser
 from django.contrib.auth.models import UserManager as _UserManager
 from django.db import transaction
 from django.db.models import QuerySet, F
-import pypinyin
+
+from utils.models.choice import choice
+from utils.models.descriptor import necessary_for_frontend, invalid_for_frontend, debug_only
 
 __all__ = [
     'User',
     'CreditRecord',
     'YQPointRecord',
-    'PageLog',
-    'ModuleLog',
 ]
-
-
-def necessary_for_frontend(method, *fields):
-    '''前端必须使用此方法代替直接访问相关属性，如限制choice的属性，可以在参数中标记相关字段'''
-    if isinstance(method, (str, models.Field)):
-        return necessary_for_frontend
-    return method
-
-
-def invalid_for_frontend(method):
-    '''前端不能使用这个方法'''
-    return method
-
-
-def debug_only(method):
-    '''仅用于提供调试信息，如报错、后台、日志记录等，必须对用户不可见'''
-    return method
 
 
 def to_acronym(name: str) -> str:
@@ -259,20 +242,20 @@ class User(AbstractUser, PointMixin):
         verbose_name_plural = verbose_name
         # db_table = 'auth_user'
 
-    MIN_CREDIT = 0
-    MAX_CREDIT = 3
+    MIN_CREDIT: Final = 0
+    MAX_CREDIT: Final = 3
     credit = models.IntegerField('信用分', default=MAX_CREDIT)
 
     accept_chat = models.BooleanField('允许提问', default=True)
     accept_anonymous_chat = models.BooleanField('允许匿名提问', default=True)
 
     class Type(models.TextChoices):
-        PERSON = 'Person', '自然人' # Deprecated
-        STUDENT = 'Student', '学生'
-        TEACHER = 'Teacher', '老师'
-        ORG = 'Organization', '组织'
-        UNAUTHORIZED = 'Unauthorized', '未授权'
-        SPECIAL = '', '特殊用户'
+        PERSON = choice('Person', '自然人')
+        STUDENT = choice('Student', '学生')
+        TEACHER = choice('Teacher', '老师')
+        ORG = choice('Organization', '组织')
+        UNAUTHORIZED = choice('Unauthorized', '未授权')
+        SPECIAL = choice('', '特殊用户')
 
     name = models.CharField('名称', max_length=32)
 
@@ -376,48 +359,3 @@ class YQPointRecord(models.Model):
     source_type: 'SourceType|int' = models.SmallIntegerField(
         '来源类型', choices=SourceType.choices, default=SourceType.SYSTEM)
     time = models.DateTimeField("时间", auto_now_add=True)
-
-
-class PageLog(models.Model):
-    '''
-    统计Page类埋点数据(PV/PD)
-    '''
-    class Meta:
-        verbose_name = "~R.Page类埋点记录"
-        verbose_name_plural = verbose_name
-
-    class CountType(models.IntegerChoices):
-        PV = 0, "Page View"
-        PD = 1, "Page Disappear"
-
-    user: User = models.ForeignKey(User, on_delete=models.CASCADE)
-    type = models.IntegerField('事件类型', choices=CountType.choices)
-
-    page = models.URLField('页面url', max_length=256, blank=True)
-    time = models.DateTimeField('发生时间', default=datetime.now)
-    platform = models.CharField('设备类型', max_length=32, null=True, blank=True)
-    explore_name = models.CharField('浏览器类型', max_length=32, null=True, blank=True)
-    explore_version = models.CharField('浏览器版本', max_length=32, null=True, blank=True)
-
-
-class ModuleLog(models.Model):
-    '''
-    统计Module类埋点数据(MV/MC)
-    '''
-    class Meta:
-        verbose_name = "~R.Module类埋点记录"
-        verbose_name_plural = verbose_name
-
-    class CountType(models.IntegerChoices):
-        MV = 2, "Module View"
-        MC = 3, "Module Click"
-
-    user: User = models.ForeignKey(User, on_delete=models.CASCADE)
-    type = models.IntegerField('事件类型', choices=CountType.choices)
-
-    page = models.URLField('页面url', max_length=256, blank=True)
-    module_name = models.CharField('模块名称', max_length=64, blank=True)
-    time = models.DateTimeField('发生时间', default=datetime.now)
-    platform = models.CharField('设备类型', max_length=32, null=True, blank=True)
-    explore_name = models.CharField('浏览器类型', max_length=32, null=True, blank=True)
-    explore_version = models.CharField('浏览器版本', max_length=32, null=True, blank=True)

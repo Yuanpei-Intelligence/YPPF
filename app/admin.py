@@ -43,30 +43,6 @@ class CourseParticipantInline(admin.TabularInline):
 # 后台模型
 @admin.register(NaturalPerson)
 class NaturalPersonAdmin(admin.ModelAdmin):
-    fieldsets = (
-        [
-            "Common Attributes",
-            {
-                "fields": (
-                    "person_id", "name", "nickname", "gender", "identity", "status",
-                    "wechat_receive_level",
-                    "accept_promote", "active_score",
-                    "stu_id_dbonly",
-                    ),
-            }
-        ],
-        [
-            "Student Attributes",
-            {
-                "classes": ("collapse",),
-                "fields": (
-                    "stu_grade", "stu_class", "stu_dorm", "stu_major",
-                    "show_gender", "show_email", "show_tel", "show_major", "show_dorm",
-                    "show_nickname", "show_birthday",
-                    ),
-            },
-        ],
-    )
     list_display = [
         "person_id",
         "name",
@@ -81,6 +57,49 @@ class NaturalPersonAdmin(admin.ModelAdmin):
         )
 
     inlines = [PositionInline, ParticipantInline, CourseParticipantInline]
+
+    def _show_by_option(self, obj: NaturalPerson | None, option: str, detail: str):
+        if obj is None or getattr(obj, option):
+            return option, detail
+        return option
+
+    def get_normal_fields(self, request, obj: NaturalPerson = None):
+        fields = []
+        fields.append(("person_id", "stu_id_dbonly"))
+        fields.append("name")
+        fields.append(self._show_by_option(obj, "show_nickname", "nickname"))
+        fields.append(self._show_by_option(obj, "show_gender", "gender"))
+        fields.extend([
+            "identity", "status",
+            "wechat_receive_level",
+            "accept_promote", "active_score",
+        ])
+        return fields
+
+    def get_student_fields(self, request, obj: NaturalPerson = None):
+        fields = []
+        fields.append("stu_grade")
+        fields.append("stu_class")
+        fields.append(self._show_by_option(obj, "show_major", "stu_major"))
+        fields.append(self._show_by_option(obj, "show_email", "email"))
+        fields.append(self._show_by_option(obj, "show_tel", "telephone"))
+        fields.append(self._show_by_option(obj, "show_dorm", "stu_dorm"))
+        fields.append(self._show_by_option(obj, "show_birthday", "birthday"))
+        return fields
+
+    # 无论如何都不显示的字段
+    exclude = [
+        'avatar', 'wallpaper', 'QRcode', 'biography',
+        'unsubscribe_list',
+    ]
+
+    def get_fieldsets(self, request, obj=None):
+        fieldsets = [
+            (None, {'fields': self.get_normal_fields(request, obj)}),
+            ('学生信息', {'classes': ('collapse',), 
+                      'fields': self.get_student_fields(request, obj)}),
+        ]
+        return fieldsets
 
     def view_on_site(self, obj: NaturalPerson):
         return obj.get_absolute_url()
@@ -271,14 +290,14 @@ class PositionAdmin(admin.ModelAdmin):
 
     @as_action("延长职务年限", actions, atomic=True)
     def refresh(self, request, queryset):
-        from boot.config import GLOBAL_CONF
+        from boot.config import GLOBAL_CONFIG
         new = []
         for position in queryset:
             position: Position
-            if position.year != GLOBAL_CONF.acadamic_year and not Position.objects.filter(
+            if position.year != GLOBAL_CONFIG.acadamic_year and not Position.objects.filter(
                     person=position.person, org=position.org,
-                    year=GLOBAL_CONF.acadamic_year).exists():
-                position.year = GLOBAL_CONF.acadamic_year
+                    year=GLOBAL_CONFIG.acadamic_year).exists():
+                position.year = GLOBAL_CONFIG.acadamic_year
                 position.pk = None
                 position.save(force_insert=True)
                 new.append([position.pk, position.person.get_display_name()])

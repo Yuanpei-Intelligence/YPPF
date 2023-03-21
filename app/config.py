@@ -11,15 +11,14 @@ config.py
 # 本文件是最基础的依赖文件，应当只加入跨架构的必要常量，而不导入其他文件
 # 与使用环境有关的内容应在对应文件中定义
 
-from boot.config import ROOT_CONFIG, GLOBAL_CONF
+from boot.config import ROOT_CONFIG, GLOBAL_CONFIG
 from boot import (
     # TODO: Change these
     # settings相关常量
     MEDIA_URL,
-    # 全局的其它常量
-    UNDERGROUND_URL,
 )
 from utils.config import Config, LazySetting
+from utils.hasher import MySHA256Hasher
 from utils.global_messages import (
     WRONG, SUCCEED,
 )
@@ -28,44 +27,48 @@ from generic.models import User
 __all__ = [
     # 全局设置的常量
     'MEDIA_URL',
-    'UNDERGROUND_URL',
     # 全局消息的常量
     'WRONG', 'SUCCEED',
     # 本应用的常量
     'UTYPE_PER', 'UTYPE_ORG',
     # 本应用的CONFIG
-    'CONFIG', 'GLOBAL_CONF'
+    'CONFIG', 'GLOBAL_CONFIG'
 ]
 
 
 # 本应用的常量
-# 实际为value[0]，django的提示bug
-UTYPE_PER: str = User.Type.PERSON.value # type: ignore
-UTYPE_ORG: str = User.Type.ORG.value    # type: ignore
+UTYPE_PER: str = User.Type.PERSON.value
+UTYPE_ORG: str = User.Type.ORG.value
 
 
 class ProfileConfig(Config):
     def __init__(self, source, dict_prefix = ''):
         super().__init__(source, dict_prefix)
+        self.email = EmailConfig(self, 'email')
         self.course = CourseConfig(self, 'course')
-
-    # email
-    email_salt = LazySetting('email/salt', type=str)
-    email_url = LazySetting('email/url', type=str)
+        self.yqpoint = YQPointConfig(self, 'YQPoint')
 
     # Informations
     max_inform_rank = LazySetting('max_inform_rank', default={}, type=dict[str, int])
     help_message = LazySetting('help_message', type=dict[str, str])
 
-    # YQPoint
-    # TODO: Change it
-    yqp_oname = ''
-    yqp_activity_max = LazySetting('YQPoint/activity/max', default=30)
-    yqp_activity_per_hour = LazySetting(
-        'YQPoint/activity/per_hour', float, default=10)
-    yqp_per_feedback = LazySetting('YQPoint/feedback/per_accept', default=10)
-    yqp_signin_points = LazySetting(
-        'YQPoint/signin_points', default=[1, 2, 2, (2, 4), 2, 2, (5, 7)])
+
+class YQPointConfig(Config):
+    org_name = LazySetting('org_name', type=str)
+    activity_invalid_hour = LazySetting('activity/invalid_hour', float, default=6)
+    activity_max = LazySetting('activity/max', default=30)
+    per_activity_hour = LazySetting(
+        'activity/per_hour', float, default=10)
+    per_feedback = LazySetting('feedback/accept', default=10)
+    signin_points = LazySetting(
+        'signin_points', default=[1, 2, 2, (2, 4), 2, 2, (5, 7)])
+
+
+
+class EmailConfig(Config):
+    salt = LazySetting('salt', type=str)
+    hasher = LazySetting(salt, MySHA256Hasher, type=MySHA256Hasher)
+    url = LazySetting('url', type=str)
 
 
 class CourseConfig(Config):

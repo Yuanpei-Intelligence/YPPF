@@ -15,10 +15,10 @@ from app.extern.config import (
     Levels as WechatMessageLevel,
     Apps as WechatApp,
 )
-from app.models import NaturalPerson, Organization, Activity, Notification, Position
+from app.models import NaturalPerson, Organization, Notification, Position
 from app.utils import get_person_or_org
 from utils.http.utils import build_full_url
-from app import log
+from app.log import logger
 
 
 __all__ = [
@@ -100,7 +100,7 @@ def get_person_receivers(all_receiver_ids, level=None):
     return receivers
 
 
-@log.except_captured(False, record_args=True, source='wechat_send[publish_notification]')
+@logger.secure_func(fail_value=False)
 def publish_notification(notification_or_id,
                         show_source=True,
                         app=None, level=None):
@@ -125,7 +125,8 @@ def publish_notification(notification_or_id,
     if url and url[0] == "/":  # 相对路径变为绝对路径
         url = build_full_url(url)
 
-    messages = [notification.get_title_display()]
+    title = notification.get_title_display()
+    messages = []
     if len(notification.content) < 120:
         # 卡片类型消息最多显示256字节
         # 因留白等原因，内容120字左右就超出了
@@ -170,17 +171,17 @@ def publish_notification(notification_or_id,
     if not wechat_receivers:    # 没有人接收
         return True
 
-    send_wechat(wechat_receivers, message, app2path(app), **kws)
+    send_wechat(wechat_receivers, title, message, api_path=app2path(app), **kws)
     return True
 
 
-@log.except_captured(False, record_args=True, source='wechat_send[publish_notifications]')
+@logger.secure_func(fail_value=False)
 def publish_notifications(
     notifications_or_ids=None, filter_kws=None, exclude_kws=None,
     show_source=True,
     app=None, level=None,
     *, check=True
-):
+) -> bool:
     """
     批量发送通知，选取筛选后范围内所有与最新通知发送者等相同、且内容结尾一致的通知
     如果能保证这些通知全都一致，可以要求不检查
@@ -254,7 +255,8 @@ def publish_notifications(
     if url and url[0] == "/":  # 相对路径变为绝对路径
         url = build_full_url(url)
 
-    messages = [latest_notification.get_title_display()]
+    title = latest_notification.get_title_display()
+    messages = []
     if len(latest_notification.content) < 120:
         # 卡片类型消息最多显示256字节
         # 因留白等原因，内容120字左右就超出了
@@ -312,71 +314,5 @@ def publish_notifications(
     if not wechat_receivers:    # 可能都不接收此等级的消息
         return True
 
-    send_wechat(wechat_receivers, message, app2path(app), **kws)
-    return True
-
-
-def publish_activity(activity_or_id):
-    """根据活动或id（实际是主键）向所有订阅该小组信息的在校学生发送"""
-    raise NotImplementedError('该函数已废弃')
-    try:
-        if isinstance(activity_or_id, Activity):
-            activity = activity_or_id
-        else:
-            activity = Activity.objects.get(pk=activity_or_id)
-    except:
-        print(f"未找到id为{activity_or_id}的活动")
-        return False
-
-    org = activity.organization_id
-    subscribers = NaturalPerson.objects.activated().exclude(
-        id__in=org.unsubscribers.all()
-    )  # flat=True时必须只有一个键
-    subscribers = list(subscribers.values_list("person_id__username", flat=True))
-    num = len(subscribers)
-    start, finish = activity.start, activity.finish
-    timeformat = "%Y-%m-%d %H:%M"  # 显示具体年份
-    start = start.strftime(timeformat)
-    finish = finish.strftime(timeformat)
-    content = (
-        activity.introduction if not hasattr(activity, "content") else activity.content
-    )  # 模型发生了改变
-    url = activity.URL
-    if url and url[0] == "/":  # 相对路径变为绝对路径
-        url = build_full_url(url)
-
-    if len(content) < 120:  # 卡片类型消息最多显示256字节
-        kws = {"card": True}  # 因留白等原因，内容120字左右就超出了
-        message = "\n".join(
-            (
-                activity.title,
-                f"组织者：{activity.organization_id.oname}",
-                f"活动时间：{start}-{finish}",
-                "活动内容：",
-                content,
-                "查看详情",
-            )
-        )
-        if url:
-            kws["url"] = url
-            kws["btntxt"] = "阅读原文"
-    else:  # 超出卡片字数范围的消息使用文本格式发送
-        kws = {"card": False}
-        message = "\n".join(
-            (
-                activity.title,
-                "",
-                "组织者：",
-                f"{activity.organization_id.oname}",
-                "活动时间：",
-                f"{start}-{finish}",
-                "活动简介：",
-                content,
-            )
-        )
-        if url:
-            message += f'\n\n<a href="{url}">阅读原文</a>'
-        else:
-            message += f'\n\n<a href="{DEFAULT_URL}">查看详情</a>'
-    send_wechat(subscribers, message, **kws)
+    send_wechat(wechat_receivers, title, message, api_path=app2path(app), **kws)
     return True

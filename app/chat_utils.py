@@ -1,16 +1,29 @@
+from collections import Counter
+from random import sample
+from typing import Tuple
+
+from django.http import HttpRequest
+
+from generic.models import YQPointRecord
 from app.utils_dependency import *
 from app.models import (
+    AcademicEntry,
+    AcademicTagEntry,
+    AcademicTextEntry,
     User,
     Chat,
+    AcademicQA,
+    AcademicQAAwards,
 )
 from app.comment_utils import addComment
 from app.utils import check_user_type
 
-from django.http import HttpRequest
-from typing import Tuple
-
 __all__ = [
-    'change_chat_status', 'add_chat_message', 'create_chat',
+    'change_chat_status',
+    'select_from_keywords',
+    'create_QA',
+    'add_comment_to_QA',
+    'modify_rating',
 ]
 
 
@@ -32,15 +45,15 @@ def change_chat_status(chat_id: int, to_status: Chat.Status) -> MESSAGECONTEXT:
             chat: Chat = Chat.objects.select_for_update().get(id=chat_id)
         except:
             return wrong("该问答不存在！", context)
-        
+
         if chat.status == to_status:
             return succeed("问答状态无需改变！", context)
-        
+
         if to_status == Chat.Status.CLOSED:
             chat.status = Chat.Status.CLOSED
             chat.save()
-            succeed("您已成功关闭一个问答！", context)
-        elif to_status == Chat.Status.PROGRESSING: # 这个目前没有用到
+            succeed("您已成功关闭当前提问！", context)
+        elif to_status == Chat.Status.PROGRESSING:  # 这个目前没有用到
             raise NotImplementedError
             chat.status = Chat.Status.PROGRESSING
             chat.save()
@@ -62,25 +75,36 @@ def add_chat_message(request: HttpRequest, chat: Chat) -> MESSAGECONTEXT:
     # 只能发给PROGRESSING的chat
     if chat.status == Chat.Status.CLOSED:
         return wrong("当前问答已关闭，无法发送新信息!")
-    if (not chat.respondent.accept_anonymous_chat) and chat.anonymous:
+    if (not chat.respondent.accept_anonymous_chat
+        ) and chat.questioner_anonymous:
         if request.user == chat.respondent:
             return wrong("您目前处于禁用匿名提问状态!")
         else:
             return wrong("对方目前不允许匿名提问!")
-    
+
     if request.user == chat.questioner:
-        receiver = chat.respondent # 我是这个chat的提问方，则我发送新comment时chat的接收方会收到通知
-        anonymous = chat.anonymous # 如果chat是匿名提问的，则我作为提问方发送新comment时需要匿名
+        receiver = chat.respondent  # 我是这个chat的提问方，则我发送新comment时chat的接收方会收到通知
+        anonymous = chat.questioner_anonymous  # 如果chat是匿名提问的，则我作为提问方发送新comment时需要匿名
     else:
-        receiver = chat.questioner # 我是这个chat的接收方，则我发送新comment时chat的提问方会收到通知
-        anonymous = False # 接收方发送的comment一定是实名的
-    
-    comment_context = addComment( # 复用comment_utils.py，这个函数包含了通知发送功能
-        request, chat, receiver, anonymous=anonymous, notification_title='学术地图问答信息')
+        receiver = chat.questioner  # 我是这个chat的接收方，则我发送新comment时chat的提问方会收到通知
+        anonymous = False  # 接收方发送的comment一定是实名的
+
+    comment_context = addComment(  # 复用comment_utils.py，这个函数包含了通知发送功能
+        request,
+        chat,
+        receiver,
+        anonymous=anonymous,
+        notification_title='学术地图问答信息')
     return comment_context
 
 
-def create_chat(request: HttpRequest, respondent: User, title: str, anonymous: bool=False) -> Tuple[int, MESSAGECONTEXT]:
+def create_chat(
+        request: HttpRequest,
+        respondent: User,
+        title: str,
+        questioner_anonymous: bool = False,
+        respondent_anonymous: bool = False
+) -> Tuple[int | None, MESSAGECONTEXT]:
     """
     创建新chat并调用add_chat_message发送首条提问
 
@@ -92,40 +116,174 @@ def create_chat(request: HttpRequest, respondent: User, title: str, anonymous: b
     :type title: str
     :param anonymous: chat是否匿名, defaults to False
     :type anonymous: bool, optional
-    :return: 新chat的id（创建失败为-1）和表明创建chat/发送提问结果的MESSAGECONTEXT
-    :rtype: Tuple[int, MESSAGECONTEXT]
+    :return: 新chat的id（创建失败为None）和表明创建chat/发送提问结果的MESSAGECONTEXT
+    :rtype: Tuple[int | None, MESSAGECONTEXT]
     """
-    if (not respondent.accept_anonymous_chat) and anonymous:
-        return -1, wrong("对方目前不允许匿名提问!")
-    
+    if (not respondent.accept_anonymous_chat) and questioner_anonymous:
+        return None, wrong("对方不允许匿名提问！")
+
     # 目前提问方回答方都需要是自然人
     valid, questioner_type, _ = check_user_type(request.user)
     valid, respondent_type, _ = check_user_type(respondent)
     if questioner_type != UTYPE_PER or respondent_type != UTYPE_PER:
-        return -1, wrong("目前只允许个人用户之间发起问答!")
-    
-    # 目前不允许一个用户向另一个用户发起超过一个“进行中”的问答
-    cur_chat = Chat.objects.filter(
-        questioner=request.user,
-        respondent=respondent,
-        status=Chat.Status.PROGRESSING,
-    )
-    if cur_chat.exists():
-        return -1, wrong("您已经像该用户发起过进行中的问答，请先关闭之前的问答再创建新提问!")
+        return None, wrong("目前只允许个人用户进行问答！")
 
-    if len(title) > 50: # Chat.title的max_length为50
-        return -1, wrong("主题长度超过50字!")
+    if len(title) > 50:  # Chat.title的max_length为50
+        return None, wrong("主题过长！请勿超过50字")
     if len(request.POST["comment"]) == 0:
-        return -1, wrong("提问内容不能为空!")
-    
+        return None, wrong("提问内容不能为空！")
+
     with transaction.atomic():
         chat = Chat.objects.create(
             questioner=request.user,
             respondent=respondent,
             title=title,
-            anonymous=anonymous
+            questioner_anonymous=questioner_anonymous,
+            respondent_anonymous=respondent_anonymous,
         )
         # 创建chat后没有发送通知，随后创建chat的第一条comment时会发送通知
         comment_context = add_chat_message(request, chat)
-    
+
     return chat.id, comment_context
+
+
+def get_matched_users(query: str, current_user: User, anonymous: bool):
+    """
+    根据提供的关键词获取搜索结果
+    比academic_utils中的类似函数更加精简
+    """
+    # 搜索所有含有关键词的公开的学术地图项目，忽略大小写
+    match_with_tags = list(
+        AcademicTagEntry.objects.filter(
+            tag__tag_content__icontains=query,
+            status=AcademicEntry.EntryStatus.PUBLIC,
+        ).values_list("person__person_id", flat=True))
+
+    match_with_texts = list(
+        AcademicTextEntry.objects.filter(
+            content__icontains=query,
+            status=AcademicEntry.EntryStatus.PUBLIC,
+        ).values_list("person__person_id", flat=True))
+
+    matched_ids = match_with_tags + match_with_texts
+    matched_users = User.objects.exclude(
+        username=current_user.username).filter(id__in=matched_ids)
+
+    if anonymous:
+        return matched_users.filter(accept_anonymous_chat=True)
+    else:
+        return matched_users
+
+
+def select_by_keywords(
+        user: User, anonymous: bool,
+        keywords: list[str]) -> Tuple[User | None, MESSAGECONTEXT]:
+    """
+    根据关键词从学生中抽取一个回答者
+    """
+    matched_users = []
+    for k in keywords:
+        matched_users.extend(list(get_matched_users(k, user, anonymous)))
+
+    counted_users = Counter()
+    counted_users.update(matched_users)
+    greatest_occurrence = counted_users.most_common(1)[0][1]
+    most_matched_users = [
+        user[0] for user in counted_users.items()
+        if user[1] == greatest_occurrence
+    ]
+
+    if not most_matched_users:
+        return None, wrong("没有和标签匹配的对象！")
+
+    chosen_users = sample(most_matched_users, k=1)[0]
+    return chosen_users, succeed("成功找到回答者")
+
+
+def create_QA(request: HttpRequest,
+              respondent: User,
+              directed: bool,
+              questioner_anonymous: bool,
+              keywords: None | list[str] = None) -> MESSAGECONTEXT:
+    """
+    创建学术地图问答，包括定向和非定向
+
+    :param respondent: 回答者
+    :type respondent: User
+    :param directed: 是否为定向问答
+    :type directed: bool
+    :param questioner_anonymous: 提问者是否匿名
+    :type questioner_anonymous: bool
+    :param keywords: 关键词，暂时只在非定向问答中使用，用来定位回答者。
+    :type keywords: None | list[str]
+    """
+    respondent_anonymous = not directed
+    chat_id, message_context = create_chat(
+        request,
+        respondent=respondent,
+        title=request.POST.get('comment_title'),
+        questioner_anonymous=questioner_anonymous,
+        respondent_anonymous=respondent_anonymous,
+    )
+    if chat_id is None:
+        return message_context
+
+    with transaction.atomic():
+        AcademicQA.objects.create(
+            chat_id=chat_id,
+            keywords=keywords,
+            directed=directed,
+        )
+
+    # 奖励仅限第一次发起非定向提问
+    if directed:
+        return succeed("提问成功")
+
+    award_points = 5
+    award, created = AcademicQAAwards.objects.get_or_create(user=request.user)
+    if created or not award.created_undirected_qa:
+        User.objects.modify_YQPoint(request.user, award_points, "学术地图: 首次发起非定向提问", source_type=YQPointRecord.SourceType.ACHIEVE)
+        award.created_undirected_qa = True
+        award.save()
+        return succeed(f"首次发起非定向提问，奖励{award_points}元气值～")
+
+    return succeed("提问成功")
+
+
+def modify_rating(chat_id: int, rating: int) -> MESSAGECONTEXT:
+    assert rating >= 0 and rating <= 3
+    award_points = [0, 5, 8, 12]  # 评价对应的奖励值
+    with transaction.atomic():
+        qa: AcademicQA = AcademicQA.objects.get(chat_id=chat_id)
+        qa.rating = rating
+        User.objects.modify_YQPoint(qa.chat.respondent, award_points[rating],
+                                "学术问答: 回答得到好评",
+                                YQPointRecord.SourceType.ACHIEVE)
+        qa.save()
+
+    return succeed("成功修改评价")
+
+
+def add_comment_to_QA(request: HttpRequest) -> MESSAGECONTEXT:
+    try:
+        # TODO: 以后换成AcademicQA的id
+        chat = Chat.objects.get(id=request.POST.get('chat_id'))
+    except:
+        return wrong('问答不存在!')
+
+    message_context = add_chat_message(request, chat)
+    if message_context[my_messages.CODE_FIELD] == my_messages.WRONG:
+        return message_context
+
+    anonymous = request.POST.get('anonymous')
+    if anonymous == 'true':
+        return message_context
+
+    with transaction.atomic():
+        if request.user == chat.respondent:
+            Chat.objects.select_for_update().filter(id=chat.id).update(
+                respondent_anonymous=False)
+        else:
+            Chat.objects.select_for_update().filter(id=chat.id).update(
+                questioner_anonymous=False)
+    return message_context

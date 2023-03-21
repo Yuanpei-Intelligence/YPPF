@@ -1,14 +1,16 @@
-from datetime import datetime, time, timedelta
+from datetime import timedelta
+from typing import cast
 
 from django.db import models
 from django.db.models.signals import pre_delete
-from django.db.models import QuerySet
+from django.db.models import QuerySet, Q
 from django.dispatch import receiver
-from django.db.models import Q
 from django.db import transaction
 
+from utils.models.choice import choice, CustomizedDisplay, DefaultDisplay
+from utils.models.manager import ManyRelatedManager
 from generic.models import User
-from Appointment.config import CONFIG
+from Appointment.config import appointment_config as CONFIG
 
 __all__ = [
     'User',
@@ -43,7 +45,7 @@ class Participant(models.Model):
         verbose_name_plural = verbose_name
         ordering = ['Sid']
 
-    Sid: User = models.OneToOneField(
+    Sid = models.OneToOneField(
         User,
         related_name='+',
         on_delete=models.CASCADE,
@@ -65,6 +67,8 @@ class Participant(models.Model):
     # 用户许可的字段，需要许可的房间刷卡时检查是否通过了许可
     agree_time = models.DateField('上次许可时间', null=True, blank=True)
 
+    appoint_list: 'ManyRelatedManager[Appoint] | AppointManager'
+
     def get_id(self) -> str:
         '''获取id(学号/组织账号)'''
         return self.Sid_id
@@ -74,7 +78,7 @@ class Participant(models.Model):
         return self.name + ('' if self.pinyin is None else '_' + self.pinyin)
 
 
-class RoomQuerySet(models.QuerySet):
+class RoomQuerySet(models.QuerySet['Room']):
     def permitted(self):
         '''只保留所有可预约的房间'''
         return self.filter(Rstatus=Room.Status.PERMITTED)
@@ -97,11 +101,11 @@ class RoomQuerySet(models.QuerySet):
 
 
 class RoomManager(models.Manager['Room']):
-    def get_queryset(self) -> RoomQuerySet['Room']:
+    def get_queryset(self) -> RoomQuerySet:
         return RoomQuerySet(self.model, using=self._db, hints=self._hints)
 
-    def all(self) -> RoomQuerySet['Room']:
-        return super().all()
+    def all(self) -> RoomQuerySet:
+        return super().all()  # type: ignore
 
     def permitted(self):
         return self.get_queryset().permitted()
@@ -139,13 +143,13 @@ class Room(models.Model):
 
     # 房间编号我不确定是否需要。如果地下室有门牌的话（例如B101）保留房间编号比较好
     # 如果删除Rid记得把Rtitle设置成主键
-    Rid: str = models.CharField('房间编号', max_length=8, primary_key=True)
+    Rid = models.CharField('房间编号', max_length=8, primary_key=True)
     Rtitle = models.CharField('房间名称', max_length=32)
     Rmin = models.IntegerField('房间预约人数下限', default=0)
     Rmax = models.IntegerField('房间使用人数上限', default=20)
-    Rstart: time = models.TimeField('最早预约时间')
-    Rfinish: time = models.TimeField('最迟预约时间')
-    Rlatest_time: datetime = models.DateTimeField("摄像头心跳", auto_now_add=True)
+    Rstart = models.TimeField('最早预约时间')
+    Rfinish = models.TimeField('最迟预约时间')
+    Rlatest_time = models.DateTimeField("摄像头心跳", auto_now_add=True)
     Rpresent = models.IntegerField('目前人数', default=0)
 
     # Rstatus 标记当前房间是否允许预约，可由管理员修改
@@ -154,14 +158,14 @@ class Room(models.Model):
         UNLIMITED = 1, '无需预约'  # 允许使用
         FORBIDDEN = 2, '禁止使用'  # 禁止使用
 
-    Rstatus: 'int|Status' = models.SmallIntegerField('房间状态',
-                                                     choices=Status.choices,
-                                                     default=0)
+    Rstatus = models.SmallIntegerField('房间状态', choices=Status.choices, default=0)
 
     # 标记当前房间是否可以通宵使用，可由管理员修改（主要针对自习室）
     RIsAllNight = models.BooleanField('可通宵使用', default=False)
     # 是否需要许可，目前通过要求阅读固定须知实现，未来可拓展为许可模型（关联房间和个人）
     RneedAgree = models.BooleanField('需要许可', default=False)
+
+    appoint_list: 'ManyRelatedManager[Appoint] | AppointManager'
 
     objects: RoomManager = RoomManager()
 
@@ -169,7 +173,7 @@ class Room(models.Model):
         return self.Rid + ' ' + self.Rtitle
 
 
-class AppointQuerySet(models.QuerySet):
+class AppointQuerySet(models.QuerySet['Appoint']):
     def not_canceled(self):
         return self.exclude(Astatus=Appoint.Status.CANCELED)
 
@@ -181,11 +185,11 @@ class AppointQuerySet(models.QuerySet):
 
 
 class AppointManager(models.Manager['Appoint']):
-    def get_queryset(self) -> AppointQuerySet['Appoint']:
+    def get_queryset(self) -> AppointQuerySet:
         return AppointQuerySet(self.model, using=self._db, hints=self._hints)
 
-    def all(self) -> AppointQuerySet['Appoint']:
-        return super().all()
+    def all(self) -> AppointQuerySet:
+        return super().all()  # type: ignore
 
     def not_canceled(self):
         return self.get_queryset().not_canceled()
@@ -207,9 +211,9 @@ class Appoint(models.Model):
 
     Aid = models.AutoField('预约编号', primary_key=True)
     # 申请时间为插入数据库的时间
-    Atime: datetime = models.DateTimeField('申请时间', auto_now_add=True)
-    Astart: datetime = models.DateTimeField('开始时间')
-    Afinish: datetime = models.DateTimeField('结束时间')
+    Atime = models.DateTimeField('申请时间', auto_now_add=True)
+    Astart = models.DateTimeField('开始时间')
+    Afinish = models.DateTimeField('结束时间')
     Ausage = models.CharField('用途', max_length=256, null=True)
     Aannouncement = models.CharField(
         '预约通知', max_length=256, null=True, blank=True)
@@ -221,38 +225,37 @@ class Appoint(models.Model):
         FAILED = 0  # 预约在此分钟的检查尚未通过
         PASSED = 1  # 预约在特定分钟内的检查是通过的
         UNSAVED = 2  # 预约在此分钟内尚未记录检测状态
-    Acheck_status: 'int|CheckStatus' = models.SmallIntegerField(
-        '检测状态', choices=CheckStatus.choices, default=2)
+    Acheck_status = models.SmallIntegerField('检测状态',
+        choices=CheckStatus.choices, default=2)
 
     # 这里Room使用外键的话只能设置DO_NOTHING，否则删除房间就会丢失预约信息
     # 所以房间信息不能删除，只能逻辑删除
     # 调用时使用appoint_obj.Room和room_obj.appoint_list
-    Room: Room = models.ForeignKey(Room,
-                                   related_name='appoint_list',
-                                   null=True,
-                                   on_delete=models.SET_NULL,
-                                   verbose_name='房间号')
-    students: QuerySet[Participant] = models.ManyToManyField(
-        Participant, related_name='appoint_list', db_index=True)
-    major_student: Participant = models.ForeignKey(
-        Participant, on_delete=models.CASCADE, verbose_name='Appointer', null=True)
+    Room: 'models.ForeignKey[Room]' = models.ForeignKey(
+        Room, verbose_name='房间号',
+        related_name='appoint_list',
+        null=True, on_delete=models.SET_NULL)  # type: ignore
+    students: 'ManyRelatedManager[Participant]' = models.ManyToManyField(
+        Participant, related_name='appoint_list', db_index=True)  # type: ignore
+    major_student: 'models.ForeignKey[Participant]' = models.ForeignKey(
+        Participant, verbose_name='Appointer',
+        null=True, on_delete=models.CASCADE)  # type: ignore
 
     class Status(models.IntegerChoices):
-        CANCELED = 0, '已取消'
-        APPOINTED = 1, '已预约'
-        PROCESSING = 2, '进行中'
-        WAITING = 3, '等待确认'
-        CONFIRMED = 4, '已确认'
-        VIOLATED = 5, '违约'
-        JUDGED = 6, '申诉成功'
+        CANCELED = choice(0, '已取消')
+        APPOINTED = choice(1, '已预约')
+        PROCESSING = choice(2, '进行中')
+        WAITING = choice(3, '等待确认')
+        CONFIRMED = choice(4, '已确认')
+        VIOLATED = choice(5, '违约')
+        JUDGED = choice(6, '申诉成功')
 
         @classmethod
         def Terminals(cls) -> 'list[Appoint.Status]':
             return [cls.CANCELED, cls.CONFIRMED, cls.VIOLATED, cls.JUDGED]
 
-    Astatus: 'int|Status' = models.IntegerField('预约状态',
-                                                choices=Status.choices,
-                                                default=1)
+    Astatus = models.IntegerField('预约状态', choices=Status.choices, default=1)
+    get_Astatus_display: CustomizedDisplay
 
     Aneed_num = models.IntegerField('检查人数要求')
     Acamera_check_num = models.IntegerField('检查次数', default=0)
@@ -264,20 +267,20 @@ class Appoint(models.Model):
         R_TOOLITTLE = 2  # 人数不足
         R_ELSE = 3  # 其它原因
 
-    Areason: Reason = models.IntegerField('违约原因',
-                                          choices=Reason.choices,
-                                          default=0)
+    Areason = models.IntegerField('违约原因', choices=Reason.choices, default=0)
+    get_Areason_display: DefaultDisplay
 
     class Type(models.IntegerChoices):
         '''预约类型'''
-        NORMAL = 0, '常规预约'
-        TODAY = 1, '当天预约'
-        TEMPORARY = 2, '临时预约'
-        LONGTERM = 3, '长期预约'
-        INTERVIEW = 4, '面试预约'
+        NORMAL = choice(0, '常规预约')
+        TODAY = choice(1, '当天预约')
+        TEMPORARY = choice(2, '临时预约')
+        LONGTERM = choice(3, '长期预约')
+        INTERVIEW = choice(4, '面试预约')
 
-    Atype: 'int|Type' = models.SmallIntegerField(
-        '预约类型', choices=Type.choices, default=Type.NORMAL)
+    Atype = models.SmallIntegerField('预约类型',
+        choices=Type.choices, default=Type.NORMAL)
+    get_Atype_display: CustomizedDisplay
 
     objects: AppointManager = AppointManager()
 
@@ -286,10 +289,6 @@ class Appoint(models.Model):
         self.Astart += delta
         self.Afinish += delta
         return self
-
-    def cancel(self):
-        self.Astatus = Appoint.Status.CANCELED
-        self.save()
 
     def get_major_id(self) -> str:
         '''获取预约发起者id'''
@@ -300,15 +299,16 @@ class Appoint(models.Model):
         return f'/admin/Appointment/appoint/?q={self.pk}'
 
     def get_status(self):
-        if self.Astatus == Appoint.Status.VIOLATED:
-            if self.Areason == Appoint.Reason.R_NOVIOLATED:
-                status = "未知错误，请联系管理员"
-            elif self.Areason == Appoint.Reason.R_LATE:
-                status = "使用迟到"
-            elif self.Areason == Appoint.Reason.R_TOOLITTLE:
-                status = "人数不足"
-            elif self.Areason == Appoint.Reason.R_ELSE:
-                status = "管理员操作"
+        if self.Astatus != Appoint.Status.VIOLATED:
+            match cast(Appoint.Reason, self.Areason):
+                case Appoint.Reason.R_NOVIOLATED:
+                    status = "未知错误，请联系管理员"
+                case Appoint.Reason.R_LATE:
+                    status = "使用迟到"
+                case Appoint.Reason.R_TOOLITTLE:
+                    status = "人数不足"
+                case Appoint.Reason.R_ELSE:
+                    status = "管理员操作"
         else:
             status = self.get_Astatus_display()
         return status
@@ -345,7 +345,7 @@ class CardCheckInfo(models.Model):
     # 所以房间信息不能删除，只能逻辑删除
     # 调用时使用appoint_obj.Room和room_obj.appoint_list
     Cardroom: Room = models.ForeignKey(Room,
-                                       related_name='CardCheckInfo_list',
+                                       related_name='+',
                                        null=True,
                                        blank=True,
                                        on_delete=models.SET_NULL,
@@ -440,7 +440,7 @@ class LongTermAppoint(models.Model):
         :return: 取消的子预约数量
         :rtype: int
         '''
-        from Appointment.jobs import cancel_scheduler
+        from Appointment.appoint.manage import cancel_appoint
         with transaction.atomic():
             # 取消子预约
             appoints = self.sub_appoints(lock=True)
@@ -450,8 +450,7 @@ class LongTermAppoint(models.Model):
                 return appoints.delete()[0]
             count = len(appoints)
             for appoint in appoints:
-                appoint.cancel()
-                cancel_scheduler(appoint, 'Problem')
+                cancel_appoint(appoint, record=True, lock=False)
             self.status = LongTermAppoint.Status.CANCELED
             self.save()
             return count
@@ -495,5 +494,5 @@ class LongTermAppoint(models.Model):
 
 @receiver(pre_delete, sender=Appoint)
 def before_delete_Appoint(sender, instance, **kwargs):
-    from Appointment.jobs import cancel_scheduler
+    from Appointment.appoint.jobs import cancel_scheduler
     cancel_scheduler(instance.Aid)

@@ -16,8 +16,14 @@ from django.conf import settings
 from apscheduler.schedulers.background import BackgroundScheduler
 from django_apscheduler.jobstores import DjangoJobStore
 
-from utils.log import get_logger
+from record.log.utils import get_logger
 from scheduler.config import scheduler_config as CONFIG
+
+
+__all__ = [
+    'scheduler',
+    'periodical',
+]
 
 
 # Custom handler

@@ -10,10 +10,9 @@
 - 同一类页面风格相同
 """
 from django.urls import path
-from generic import api
+from record import API
 
 # 尽量不使用<type:arg>, 不支持
 urlpatterns = [
-    # 埋点
-    path('eventTrackingFunc/', api.eventTrackingFunc, name='eventTracking'),
+    path('eventTrackingFunc/', API.eventTrackingFunc, name='eventTracking'),
 ]

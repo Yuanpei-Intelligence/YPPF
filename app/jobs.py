@@ -1,8 +1,9 @@
-from typing import Dict, Any
+import os
 import json
 import urllib.request
-
+from typing import Dict, Any
 from datetime import datetime, timedelta
+
 from django.db import transaction  # 原子化更改数据库
 from django.db.models import F
 
@@ -10,9 +11,10 @@ from django.db.models import F
 # for background)
 # from django_apscheduler.util import close_old_connections
 
-from utils.log import get_logger
+from boot.config import GLOBAL_CONFIG
+from record.log.utils import get_logger
 from scheduler.scheduler import scheduler, periodical
-from generic.models import PageLog
+from record.models import PageLog
 from app.models import (
     User,
     NaturalPerson,
@@ -134,14 +136,19 @@ def get_weather_async():
             "temp_feel": str(round(float(load_json["main"]["feels_like"]) - 273.15)),
             "icon": load_json["weather"][0]["icon"]
         }
-        # TODO: Save dict to somewhere
+        os.makedirs(GLOBAL_CONFIG.temporary_dir, exist_ok=True)
+        with open(os.path.join(GLOBAL_CONFIG.temporary_dir, "weather.json"), "w") as f:
+            json.dump(weather_dict, f)
     except:
         logger.exception('天气更新异常')
 
 
 def get_weather() -> Dict[str, Any]:
-    # TODO: Get dict from somewhere
-    return dict()
+    weather_file = os.path.join(GLOBAL_CONFIG.temporary_dir, "weather.json")
+    if not os.path.exists(weather_file):
+        return dict()
+    with open(weather_file, "r") as f:
+        return json.load(f)
 
 
 def add_week_course_activity(course_id: int, weektime_id: int, cur_week: int, course_stage2: bool):

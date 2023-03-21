@@ -29,7 +29,7 @@ __all__ = [
 ]
 
 
-DAY2POINT = CONFIG.yqp_signin_points
+DAY2POINT = CONFIG.yqpoint.signin_points
 MAX_CHECK_DAYS = len(DAY2POINT)
 
 
@@ -558,7 +558,7 @@ def run_lottery(pool_id: int):
             record.save()
 
         # 给中奖的同学发送通知
-        sender = Organization.objects.get(oname=CONFIG.yqp_oname).get_user()
+        sender = Organization.objects.get(oname=CONFIG.yqpoint.org_name).get_user()
         for user_id in user2prize_names.keys():
             receiver = User.objects.get(id=user_id)
             typename = Notification.Type.NEEDREAD

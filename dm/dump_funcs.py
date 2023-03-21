@@ -9,6 +9,7 @@ from django.db.models import (
 )
 
 from generic.models import *
+from record.models import *
 from app.models import *
 from Appointment.models import Appoint
 

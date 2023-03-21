@@ -1,18 +1,19 @@
 from typing import Any, final, overload, TypedDict, NoReturn, Callable
-from abc import ABC, abstractmethod
 
 from django.views.generic import View
 from django.http import HttpResponse, HttpResponseRedirect, HttpResponseForbidden, JsonResponse
 from django.core.exceptions import ImproperlyConfigured
 from django.template.response import TemplateResponse
 
-from .log import err_capture
-from .http import HttpRequest
-from .global_messages import wrong
+from utils.http import HttpRequest
+from utils.global_messages import wrong, MESSAGECONTEXT, MSG_FIELD, CODE_FIELD
+from record.log.forward import Logger
 
 
 __all__ = [
-    'SecureView', 'SecureJsonView', 'SecureTemplateView',
+    'SecureView',
+    'SecureJsonView',
+    'SecureTemplateView',
 ]
 
 
@@ -25,7 +26,8 @@ class ResponseCreated(Exception):
 _HandlerFuncType = Callable[[], HttpResponse]
 _PrepareFuncType = Callable[[], _HandlerFuncType]
 
-class SecureView(View, ABC):
+
+class SecureView(View):
     """
     通用的视图类基类
 
@@ -58,6 +60,9 @@ class SecureView(View, ABC):
     # 子类可以重写PrepareType和HandlerType，但必须符合对应类型，其他名称无效
     PrepareType = _PrepareFuncType
     HandlerType = _HandlerFuncType
+    # 子类可能允许准备函数不存在或不返回
+    # 允许时应该声明PrepareType = SecureView.NoReturnPrepareType等
+    NoReturnPrepareType = Callable[[], _HandlerFuncType | None]
 
     # 视图设置
     login_required: bool = True
@@ -137,7 +142,8 @@ class SecureView(View, ABC):
     def _check_http_methods(self, *allowed_methods: str) -> None:
         '''检查请求类型，准备和处理函数应做好相应的检查'''
         if self.request.method.lower() not in allowed_methods:
-            response = self.http_method_not_allowed(self.request, *self.args, **self.kwargs)
+            response = self.http_method_not_allowed(self.request,
+                                                    *self.args, **self.kwargs)
             return self.response_created(response)
 
     def check_perm(self) -> None:
@@ -198,7 +204,8 @@ class SecureView(View, ABC):
 
     @final
     def default_prepare(self, method: str, default_name: str | None = None, 
-                        prepare_needed: bool = True) -> _HandlerFuncType:
+                        prepare_needed: bool = True,
+                        return_needed: bool = True) -> _HandlerFuncType:
         '''
         默认准备函数，查找并调用特定方法的默认准备函数，不存在时尝试返回处理函数
 
@@ -215,26 +222,34 @@ class SecureView(View, ABC):
         '''
         if default_name is None:
             default_name = f'prepare_{method}'
-        if getattr(self, default_name, None) is not None:
-            prepare_func: _PrepareFuncType = getattr(self, default_name)
-            handler_func = prepare_func()
-            if handler_func is not None:
-                return handler_func
+        if getattr(self, default_name, None) is None:
             if prepare_needed:
                 raise ImproperlyConfigured(
                     f'SecureView requires an implementation of `{default_name}`'
                 )
+        else:
+            prepare_func: _PrepareFuncType = getattr(self, default_name)
+            handler_func = prepare_func()
+            if handler_func is not None:
+                return handler_func
+            if return_needed:
+                raise ImproperlyConfigured(
+                    f'`{default_name}` is required to return a function')
         if getattr(self, method, None) is not None:
             handler_func: _HandlerFuncType = getattr(self, method)
             return handler_func
         raise ImproperlyConfigured(
-            f'SecureView requires an implementation of `{method}`'
-        )
+            f'SecureView requires an implementation of `{method}`')
+
+    def get_logger(self) -> 'Logger | None':
+        '''获取日志记录器'''
+        return None
 
     def error_response(self, exception: Exception) -> HttpResponse:
-        '''错误处理，子类可重写，生产环境不应产生异常'''
-        from boot.config import DEBUG
-        if DEBUG: raise
+        '''错误处理，异常栈可追溯，生产环境不应产生异常'''
+        logger = self.get_logger()
+        if logger is not None:
+            logger.on_exception()
         return self.http_forbidden('出现错误，请联系管理员')
 
     def redirect(self, to: str, *args, permanent=False, **kwargs):
@@ -252,10 +267,6 @@ class SecureTemplateView(SecureView):
     - get_context_data()用于获取模板所需的context
     - extra_context作为get_context_data()的补充，在处理请求的过程中可以随时向其中添加内容
     """
-    # 模板视图允许子类准备函数不存在或不返回
-    # 允许时应该声明PrepareType = SecureTemplateView.SkippablePrepareType
-    SkippablePrepareType = Callable[[], _HandlerFuncType | None] | None
-
     template_name: str
     extra_context: dict[str, Any]
     response_class = TemplateResponse
@@ -293,34 +304,35 @@ class SecureTemplateView(SecureView):
         wrong(message, self.extra_context)
         return self.render()
 
-    def error_response(self, exception: Exception) -> HttpResponse:
-        from utils.log import get_logger
-        logger = get_logger('error')
-        logger.exception(logger.format_request(self.request))
-        return super().error_response(exception)
+    def get_logger(self) -> 'Logger | None':
+        from record.log.utils import get_logger
+        return get_logger('error')
 
 
 class SecureJsonView(SecureView):
-    response_class = JsonResponse
+    response_class: type[JsonResponse] = JsonResponse
+    data: dict[str, Any]
+    http_method_names = ['post']
+    method_names = http_method_names
 
-    def get_default_data(self) -> dict[str, Any]:
-        # TODO: 默认的返回数据
-        raise NotImplementedError
+    ExtraDataType = dict[str, Any] | None
 
-    def dispatch(self, request: HttpRequest, *args, **kwargs):
-        # TODO: 重写dispatch是不推荐的，super().dispatch之后的部分不捕获异常
-        response = super().dispatch(request, *args, **kwargs)
-        if isinstance(response, HttpResponseRedirect):
-            return response
-        if isinstance(response, dict):
-            return self.response_class(data=response)
-        if response is None:
-            return self.response_class(data=self.get_default_data())
-        else:
-            raise TypeError
+    def setup(self, request: HttpRequest, *args: Any, **kwargs: Any) -> None:
+        '''初始化请求参数和返回数据'''
+        self.data = {}
+        return super().setup(request, *args, **kwargs)
 
-    def error_response(self, exception: Exception) -> HttpResponse:
-        from utils.log import get_logger
-        logger = get_logger('APIerror')
-        logger.exception(logger.format_request(self.request))
-        return super().error_response(exception)
+    def json_response(self, extra_data: ExtraDataType = None, **kwargs: Any) -> JsonResponse:
+        data = self.data
+        if extra_data is not None:
+            data |= extra_data
+        return self.response_class(data, **kwargs)
+
+    def message_response(self, message: MESSAGECONTEXT):
+        self.data[MSG_FIELD] = message[MSG_FIELD]
+        self.data[CODE_FIELD] = message[CODE_FIELD]
+        return self.json_response()
+
+    def get_logger(self) -> 'Logger | None':
+        from record.log.utils import get_logger
+        return get_logger('APIerror')

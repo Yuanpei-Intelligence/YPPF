@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from generic.models import (
+from record.models import (
     PageLog,
     ModuleLog,
 )
@@ -10,7 +10,6 @@ from utils.http.dependency import *
 def eventTrackingFunc(request: HttpRequest):
     """
     用于处理埋点的视图函数。监测用户的访问情况并更新相关数据库表。
-    TODO: 当前的函数还未对齐前端的请求。
 
     :param request: HTTP请求
     :type request: HttpRequest

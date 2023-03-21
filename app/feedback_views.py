@@ -30,7 +30,7 @@ __all__ = [
 
 @login_required(redirect_field_name="origin")
 @utils.check_user_access(redirect_url="/logout/")
-@log.except_captured(EXCEPT_REDIRECT, source='feedback_views[viewFeedback]', record_user=True)
+@logger.secure_view()
 def viewFeedback(request: HttpRequest, fid):
     try:
         # 查找fid对应的反馈条目
@@ -203,7 +203,8 @@ def viewFeedback(request: HttpRequest, fid):
                     feedback.public_status = Feedback.PublicStatus.PUBLIC
                     feedback.save()
                     # 为提出者增加元气值
-                    User.objects.modify_YQPoint(feedback.person.get_user(), CONFIG.yqp_per_feedback,
+                    User.objects.modify_YQPoint(feedback.person.get_user(),
+                                                CONFIG.yqpoint.per_feedback,
                                                 "问题反馈", YQPointRecord.SourceType.FEEDBACK)
                     succeed_message.append("成功修改反馈公开状态为【公开】！所有学生都有访问权限。")
                     inform_notification(me, feedback.person, f"已公开您的反馈[{feedback.title}]。", feedback, anonymous=False)
@@ -371,7 +372,7 @@ def viewFeedback(request: HttpRequest, fid):
 
 @login_required(redirect_field_name='origin')
 @utils.check_user_access(redirect_url="/logout/")
-@log.except_captured(source='feedback_views[feedbackWelcome]', record_user=True)
+@logger.secure_view()
 def feedbackWelcome(request: HttpRequest):
     valid, user_type, html_display = utils.check_user_type(request.user)
     is_person = user_type == UTYPE_PER
@@ -536,7 +537,7 @@ def feedbackWelcome(request: HttpRequest):
 
 @login_required(redirect_field_name='origin')
 @utils.check_user_access(redirect_url="/logout/")
-@log.except_captured(source='feedback_views[modifyFeedback]', record_user=True)
+@logger.secure_view()
 def modifyFeedback(request: HttpRequest):
     '''
     反馈表单填写、修改与提交的视图函数

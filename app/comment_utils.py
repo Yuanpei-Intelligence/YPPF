@@ -16,10 +16,10 @@ from app.extern.wechat import (
     WechatApp,
     WechatMessageLevel,
 )
-from typing import List
+from app.log import logger
 
 
-@log.except_captured(source='comment_utils[addComment]', record_user=True)
+@logger.secure_func(raise_exc=True)
 def addComment(request, comment_base, receiver=None, *,
                anonymous=False, notification_title=None) -> MESSAGECONTEXT:
     """添加评论
@@ -123,8 +123,8 @@ def addComment(request, comment_base, receiver=None, *,
         return wrong(f"找不到信息, 请重试!")
 
 
-@log.except_captured(source='comment_utils[showComment]')
-def showComment(commentbase, anonymous_users=None) -> List[dict]:
+@logger.secure_func(raise_exc=True)
+def showComment(commentbase, anonymous_users=None) -> list[dict]:
     '''
     获取可展示的对象相关评论，返回以时间顺序展示的评论列表，应赋值为`comments`
     '''
@@ -141,18 +141,19 @@ def showComment(commentbase, anonymous_users=None) -> List[dict]:
             text=comment.text,
             time=comment.time,
         )
+        commentator = get_person_or_org(comment.commentator)
         if anonymous_users and comment.commentator in anonymous_users:
             commentator_display = dict(
                 name='匿名用户',
                 avatar=NaturalPerson.get_user_ava(),
             )
         else:
-            commentator = get_person_or_org(comment.commentator)
             commentator_display = dict(
                 name=commentator.get_display_name(),
                 avatar=commentator.get_user_ava(),
                 URL=commentator.get_absolute_url(),
             )
+        commentator_display.update(real_name=commentator.get_display_name())
         display.update(commentator=commentator_display)
         photos = list(comment.comment_photos.all())
         display.update(photos=photos)

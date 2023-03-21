@@ -1,17 +1,17 @@
 import json
 import random
-from datetime import datetime, timedelta
+import requests
 from typing import Optional, cast
+from datetime import datetime, timedelta
 
 from django.contrib import auth
 from django.db import transaction
 from django.db.models import Q, F, Sum, QuerySet
 from django.contrib.auth.password_validation import CommonPasswordValidator, NumericPasswordValidator
 from django.core.exceptions import ValidationError
-import requests  # 发送验证码
 
-from utils.views import SecureTemplateView
 from utils.config.cast import str_to_time
+from utils.hasher import MyMD5Hasher
 from app.views_dependency import *
 from app.models import (
     Feedback,
@@ -31,7 +31,7 @@ from app.models import (
     Course,
     CourseRecord,
     Semester,
-    Chat,
+    AcademicQA,
 )
 from app.utils import (
     get_person_or_org,
@@ -57,9 +57,6 @@ from app.academic_utils import (
     get_search_results,
 )
 
-email_url = CONFIG.email_url
-hash_coder = base_hasher
-email_coder = MySHA256Hasher(CONFIG.email_salt)
 
 
 class IndexView(SecureTemplateView):
@@ -154,7 +151,7 @@ class IndexView(SecureTemplateView):
 
 
 @login_required(redirect_field_name="origin")
-@log.except_captured(source='views[shiftAccount]', record_user=True)
+@logger.secure_view()
 def shiftAccount(request: HttpRequest):
 
     username = request.session.get("NP")
@@ -181,7 +178,7 @@ def shiftAccount(request: HttpRequest):
 wechat_login_coder = MyMD5Hasher("wechat_login")
 
 
-@log.except_captured(source='views[miniLogin]', record_user=True)
+@logger.secure_view()
 def miniLogin(request: HttpRequest):
     try:
         assert request.method == "POST"
@@ -198,7 +195,7 @@ def miniLogin(request: HttpRequest):
             auth.login(request, userinfo)
 
             # request.session["username"] = username 已废弃
-            en_pw = hash_coder.encode(username)
+            en_pw = GLOBAL_CONFIG.hasher.encode(username)
             user_account = NaturalPerson.objects.get(person_id=username)
             return JsonResponse({"Sname": user_account.name, "Succeed": 1}, status=200)
         else:
@@ -209,7 +206,7 @@ def miniLogin(request: HttpRequest):
 
 @login_required(redirect_field_name="origin")
 @utils.check_user_access(redirect_url="/logout/")
-@log.except_captured(source='views[stuinfo]', record_user=True)
+@logger.secure_view()
 def stuinfo(request: HttpRequest, name=None):
     """
         进入到这里的逻辑:
@@ -529,11 +526,13 @@ def stuinfo(request: HttpRequest, name=None):
 
         # ----------------------------------- 学术地图 ----------------------------------- #
         # ------------------ 提问区 or 进行中的问答------------------ #
-        progressing_chat = Chat.objects.activated().filter(
-            questioner=request.user,
-            respondent=person.get_user())
-        if progressing_chat.exists():  # 有进行中的问答
-            comments2Display(progressing_chat[0], html_display, request.user)
+        progressing_chat = AcademicQA.objects.activated().filter(
+            directed=True,
+            chat__questioner=request.user,
+            chat__respondent=person.get_user()
+        )
+        if progressing_chat.exists():
+            comments2Display(progressing_chat.first().chat, html_display, request.user)  # TODO: 字典的key有冲突风险
             html_display["have_progressing_chat"] = True
         else:  # 没有进行中的问答，显示提问区
             html_display["have_progressing_chat"] = False
@@ -672,7 +671,7 @@ def stuinfo(request: HttpRequest, name=None):
 
 @login_required(redirect_field_name="origin")
 @utils.check_user_access(redirect_url="/logout/")
-@log.except_captured(source='views[requestLoginOrg]', record_user=True)
+@logger.secure_view()
 def requestLoginOrg(request: HttpRequest, name=None):  # 特指个人希望通过个人账户登入小组账户的逻辑
     """
         这个函数的逻辑是，个人账户点击左侧的管理小组直接跳转登录到小组账户
@@ -718,7 +717,7 @@ def requestLoginOrg(request: HttpRequest, name=None):  # 特指个人希望通�
 
 @login_required(redirect_field_name="origin")
 @utils.check_user_access(redirect_url="/logout/")
-@log.except_captured(source='views[orginfo]', record_user=True)
+@logger.secure_view()
 def orginfo(request: HttpRequest, name=None):
     """
         orginfo负责呈现小组主页，逻辑和stuinfo是一样的，可以参考
@@ -959,7 +958,7 @@ def orginfo(request: HttpRequest, name=None):
 
 @login_required(redirect_field_name="origin")
 @utils.check_user_access(redirect_url="/logout/")
-@log.except_captured(source='views[homepage]', record_user=True)
+@logger.secure_view()
 def homepage(request: HttpRequest):
     valid, user_type, html_display = utils.check_user_type(request.user)
     is_person = user_type == UTYPE_PER
@@ -1114,7 +1113,7 @@ def homepage(request: HttpRequest):
 
 @login_required(redirect_field_name="origin")
 @utils.check_user_access(redirect_url="/logout/")
-@log.except_captured(source='views[accountSetting]', record_user=True)
+@logger.secure_view()
 def accountSetting(request: HttpRequest):
     valid, user_type, html_display = utils.check_user_type(request.user)
 
@@ -1282,7 +1281,7 @@ def _create_freshman_account(sid: str, email: str = None):
                     "1") else "stu.pku.edu.cn"
                 email = f"{sid}@{domain}"
             current = "随机生成密码"
-            password = hash_coder.encode(name + str(random.random()))
+            password = GLOBAL_CONFIG.hasher.encode(name + str(random.random()))
             current = "创建用户"
             user = User.objects.create_user(
                 username=sid, name=name,
@@ -1307,8 +1306,7 @@ def _create_freshman_account(sid: str, email: str = None):
         return current
 
 
-@log.except_captured(source='views[freshman]', record_user=True,
-                     record_request_args=True, show_traceback=True)
+@logger.secure_view()
 def freshman(request: HttpRequest):
     if request.user.is_authenticated:
         return redirect(message_url(wrong('你已经登录，无需进行注册!')))
@@ -1375,9 +1373,9 @@ def freshman(request: HttpRequest):
             need_create = True
         elif send_to == "wechat":
             from extern.wechat import send_wechat
-            auth = hash_coder.encode(sid + "_freshman_register")
+            auth = GLOBAL_CONFIG.hasher.encode(sid + "_freshman_register")
             send_wechat(
-                [sid], "新生注册邀请\n点击按钮即可注册账号",
+                [sid], "新生注册邀请", "点击按钮即可注册账号",
                 url=f"/freshman/?sid={sid}&auth={auth}"
             )
             err_msg = "已向企业微信发送注册邀请，点击邀请信息即可注册！"
@@ -1386,7 +1384,7 @@ def freshman(request: HttpRequest):
     if request.GET.get("sid") is not None and request.GET.get("auth") is not None:
         sid = request.GET["sid"]
         auth = request.GET["auth"]
-        if auth != hash_coder.encode(sid + "_freshman_register"):
+        if auth != GLOBAL_CONFIG.hasher.encode(sid + "_freshman_register"):
             err_msg = "密钥错误，验证失败"
             return render(request, html_path, locals())
         need_create = True
@@ -1429,7 +1427,7 @@ def freshman(request: HttpRequest):
 
 
 @login_required(redirect_field_name="origin")
-@log.except_captured(source='views[userAgreement]', record_user=True)
+@logger.secure_view()
 def userAgreement(request: HttpRequest):
     # 不要加check_user_access，因为本页面就是该包装器首次登录时的跳转页面之一
     valid, user_type, html_display = utils.check_user_type(request.user)
@@ -1448,7 +1446,7 @@ def userAgreement(request: HttpRequest):
     return render(request, 'user_agreement.html', locals())
 
 
-@log.except_captured(source='views[authRegister]', record_user=True)
+@logger.secure_view()
 def authRegister(request: HttpRequest):
     if request.user.is_superuser:
         if request.method == "POST" and request.POST:
@@ -1502,13 +1500,13 @@ def authRegister(request: HttpRequest):
         return HttpResponseRedirect("/index/")
 
 
-@log.except_captured(source='views[logout]', record_user=True)
+@logger.secure_view()
 def logout(request: HttpRequest):
     auth.logout(request)
     return HttpResponseRedirect("/index/")
 
 
-@log.except_captured(source='views[get_stu_img]', record_user=True)
+@logger.secure_view()
 def get_stu_img(request: HttpRequest):
     stuId = request.GET.get("stuId")
     if stuId is not None:
@@ -1523,7 +1521,7 @@ def get_stu_img(request: HttpRequest):
 
 @login_required(redirect_field_name="origin")
 @utils.check_user_access(redirect_url="/logout/")
-@log.except_captured(source='views[search]', record_user=True)
+@logger.secure_view()
 def search(request: HttpRequest):
     """
         搜索界面的呈现逻辑
@@ -1666,8 +1664,7 @@ def search(request: HttpRequest):
     return render(request, "search.html", locals())
 
 
-@log.except_captured(source='views[forgetPassword]', record_user=True,
-                     record_request_args=True, show_traceback=True)
+@logger.secure_view()
 @utils.record_attack(Exception, as_attack=True)
 def forgetPassword(request: HttpRequest):
     """
@@ -1759,7 +1756,7 @@ def forgetPassword(request: HttpRequest):
                         "private_level": 0,  # 可选 应在0-2之间
                         # 影响显示的收件人信息
                         # 0级全部显示, 1级只显示第一个收件人, 2级只显示发件人
-                        "secret": email_coder.encode(msg),  # content加密后的密文
+                        "secret": CONFIG.email.hasher.encode(msg),  # content加密后的密文
                     }
                     post_data = json.dumps(post_data)
                     pre, suf = email.rsplit("@", 1)
@@ -1767,7 +1764,7 @@ def forgetPassword(request: HttpRequest):
                         pre = pre[:2] + "*" * len(pre[2:-3]) + pre[-3:]
                     try:
                         response = requests.post(
-                            email_url, post_data, timeout=6)
+                            CONFIG.email.url, post_data, timeout=6)
                         response = response.json()
                         if response["status"] != 200:
                             display = wrong(f"未能向{pre}@{suf}发送邮件")
@@ -1836,7 +1833,7 @@ class ModpwView(SecureTemplateView):
 
 @login_required(redirect_field_name="origin")
 @utils.check_user_access(redirect_url="/logout/", is_modpw=True)
-@log.except_captured(source='views[modpw]', record_user=True)
+@logger.secure_view()
 def modpw(request: HttpRequest):
     """
         可能在三种情况进入这个页面：首次登陆；忘记密码；或者常规的修改密码。
@@ -1929,7 +1926,7 @@ def modpw(request: HttpRequest):
 
 @login_required(redirect_field_name="origin")
 @utils.check_user_access(redirect_url="/logout/")
-@log.except_captured(source='views[subscribeOrganization]', record_user=True)
+@logger.secure_view()
 def subscribeOrganization(request: HttpRequest):
     valid, user_type, html_display = utils.check_user_type(request.user)
     if user_type != UTYPE_PER:
@@ -1963,7 +1960,7 @@ def subscribeOrganization(request: HttpRequest):
 
 @login_required(redirect_field_name="origin")
 @utils.check_user_access(redirect_url="/logout/")
-@log.except_captured(source='views[saveSubscribeStatus]', record_user=True)
+@logger.secure_view()
 def saveSubscribeStatus(request: HttpRequest):
     valid, user_type, html_display = utils.check_user_type(request.user)
     if user_type != UTYPE_PER:
@@ -2025,7 +2022,7 @@ def saveSubscribeStatus(request: HttpRequest):
 
 @login_required(redirect_field_name="origin")
 @utils.check_user_access(redirect_url="/logout/")
-@log.except_captured(source='views[notifications]', record_user=True)
+@logger.secure_view()
 def notifications(request: HttpRequest):
     valid, user_type, html_display = utils.check_user_type(request.user)
 

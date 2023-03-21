@@ -265,7 +265,7 @@ def load_org(filepath: str, output_func: Callable=None, html=False):
                     msg += f'<br/>&emsp;&emsp;成功增加{pos_display}：{person}'
         except Exception as e:
             msg += '<br/>未能创建组织'+oname+',原因：'+str(e)
-    if YQP_ONAME:
+    if CONFIG.yqpoint.org_name:
         username = 'zz00001'
         user, created = User.objects.get_or_create(username=username)
         if created:
@@ -276,9 +276,9 @@ def load_org(filepath: str, output_func: Callable=None, html=False):
             org, mid = Organization.objects.get_or_create(
                 organization_id=user, otype=orgtype
             )
-            org.oname = YQP_ONAME
+            org.oname = CONFIG.yqpoint.org_name
             org.save()
-            msg += '<br/>成功创建元气值发放组织：'+YQP_ONAME
+            msg += '<br/>成功创建元气值发放组织：'+CONFIG.yqpoint.org_name
     return try_output(msg, output_func, html)
 
 
@@ -325,55 +325,6 @@ def load_activity(filepath: str, output_func: Callable=None, html=False):
     for act in act_list:
         act.save()
     return try_output("导入活动信息成功！", output_func, html)
-
-
-
-# def load_notification(filepath: str, output_func: Callable=None, html=False):
-#     not_df = load_file(filepath)
-#     not_list = []
-#     for _, not_dict in not_df.iterrows():
-#         id = not_dict["id"]
-#         if str(not_dict["receiver_id"]) == str(1266):
-#             not_dict["receiver_id"] = NaturalPerson.objects.get(
-#                 name=local_dict["test_info"]["stu_name"]
-#             ).person_id.id
-#         if str(not_dict["sender_id"]) == str(1266):
-#             not_dict["sender_id"] = NaturalPerson.objects.get(
-#                 name=local_dict["test_info"]["stu_name"]
-#             ).person_id.id
-#         try:
-#             receiver = User.objects.get(id=not_dict["receiver_id"])
-#             sender = User.objects.get(id=not_dict["sender_id"])
-#         except:
-#             return try_output(f"请先导入用户信息！{receiver} & {sender}", output_func, html)
-#         status = not_dict["status"]
-#         title = not_dict["title"]
-#         start_time = str(not_dict["start_time"])
-#         finish_time = str(not_dict["finish_time"])
-#         start_time = datetime.strptime(start_time, "%d/%m/%Y %H:%M:%S.%f")
-#         try:
-#             finish_time = datetime.strptime(finish_time, "%d/%m/%Y %H:%M:%S.%f")
-#         except:
-#             finish_time = None
-#         content = not_dict["content"]
-#         typename = not_dict["typename"]
-#         URL = not_dict["URL"]
-#         not_list.append(
-#             Notification(
-#                 id=id,
-#                 receiver=receiver,
-#                 sender=sender,
-#                 status=status,
-#                 title=title,
-#                 start_time=start_time,
-#                 finish_time=finish_time,
-#                 content=content,
-#                 URL=URL,
-#                 typename=typename,
-#             )
-#         )
-#     Notification.objects.bulk_create(not_list)
-#     return try_output("导入通知信息成功！", output_func, html)
 
 
 def load_stu(filepath: str, output_func: Callable=None, html=False):

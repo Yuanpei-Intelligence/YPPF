@@ -27,7 +27,7 @@ __all__ = [
 
 @login_required(redirect_field_name="origin")
 @utils.check_user_access(redirect_url="/logout/")
-@log.except_captured(source='views[myYQPoint]', record_user=True)
+@logger.secure_view()
 def myYQPoint(request: HttpRequest):
     valid, user_type, html_display = utils.check_user_type(request.user)
     # 获取可能的提示信息
@@ -53,7 +53,7 @@ def myYQPoint(request: HttpRequest):
 
 @login_required(redirect_field_name="origin")
 @utils.check_user_access(redirect_url="/logout/")
-@log.except_captured(source='views[myPrize]', record_user=True)
+@logger.secure_view()
 def myPrize(request: HttpRequest):
     valid, user_type, html_display = utils.check_user_type(request.user)
     # 获取可能的提示信息
@@ -83,7 +83,7 @@ def myPrize(request: HttpRequest):
 
 @login_required(redirect_field_name="origin")
 @utils.check_user_access(redirect_url="/logout/")
-@log.except_captured(EXCEPT_REDIRECT, source='YQPoint_views[showPrize]', record_user=True)
+@logger.secure_view()
 def showPools(request: HttpRequest) -> HttpResponse:
     """
     展示各种奖池的页面，可以通过POST请求发起兑换/抽奖/买盲盒

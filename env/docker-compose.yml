@@ -42,7 +42,7 @@ services:
       - DB_PASSWORD=secret
       - DB_DATABASE=yppf
     command: bash -c "pip install -r env/requirements.txt &&
-                      python3 manage.py makemigrations generic app Appointment &&
+                      python3 manage.py makemigrations generic record app Appointment &&
                       python3 manage.py migrate &&
                       python3 manage.py runserver 0.0.0.0:8000"
 

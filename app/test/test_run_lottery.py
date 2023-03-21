@@ -37,7 +37,7 @@ class RunLotteryTestCase(TestCase):
         otype = OrganizationType.objects.create(
             otype_id=1, otype_name="xxx", incharge=n1)
         Organization.objects.create(
-            organization_id=u_YQP, oname=CONFIG.yqp_oname, otype=otype)
+            organization_id=u_YQP, oname=CONFIG.yqpoint.org_name, otype=otype)
 
         prize1 = Prize.objects.create(
             name="明信片", stock=50, reference_price=10)
@@ -113,7 +113,7 @@ class RunLotteryTestCase(TestCase):
 
     def test_models(self):
         self.assertEqual(len(User.objects.all().values()), 11)
-        Organization.objects.get(oname=CONFIG.yqp_oname)
+        Organization.objects.get(oname=CONFIG.yqpoint.org_name)
         self.assertEqual(len(Prize.objects.all().values()), 6)
         self.assertEqual(len(Pool.objects.all().values()), 2)
         self.assertEqual(len(PoolItem.objects.all().values()), 6)
