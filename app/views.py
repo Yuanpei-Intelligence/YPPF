@@ -1087,20 +1087,21 @@ def homepage(request: HttpRequest):
     """
 
     # -----------------------------天气---------------------------------
-    # html_display['weather'] = get_weather()
-    # update_time_delta = datetime.now() - datetime.strptime(html_display["weather"]["modify_time"],'%Y-%m-%d %H:%M:%S.%f')
-    # # 根据更新时间长短，展示不同的更新天气时间状态
-    # def days_hours_minutes_seconds(td):
-    #     return td.days, td.seconds // 3600, (td.seconds // 60) % 60, td.seconds % 60
-    # days, hours, minutes, seconds = days_hours_minutes_seconds(update_time_delta)
-    # if days > 0:
-    #     last_update = f"{days}天前"
-    # elif hours > 0:
-    #     last_update = f"{hours}小时前"
-    # elif minutes > 0:
-    #     last_update = f"{minutes}分钟前"
-    # else:
-    #     last_update = f"{seconds}秒前"
+    from app.jobs import get_weather
+    html_display['weather'] = get_weather()
+    update_time_delta = datetime.now() - datetime.strptime(html_display["weather"]["modify_time"],'%Y-%m-%d %H:%M:%S.%f')
+    # 根据更新时间长短，展示不同的更新天气时间状态
+    def days_hours_minutes_seconds(td):
+        return td.days, td.seconds // 3600, (td.seconds // 60) % 60, td.seconds % 60
+    days, hours, minutes, seconds = days_hours_minutes_seconds(update_time_delta)
+    if days > 0:
+        last_update = f"{days}天前"
+    elif hours > 0:
+        last_update = f"{hours}小时前"
+    elif minutes > 0:
+        last_update = f"{minutes}分钟前"
+    else:
+        last_update = f"{seconds}秒前"
     # -------------------------------天气结束-------------------------
 
     # 新版侧边栏, 顶栏等的呈现，采用 bar_display, 必须放在render前最后一步
