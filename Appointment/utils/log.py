@@ -25,10 +25,10 @@ __all__ = [
 ]
 
 
-def cardcheckinfo_writer(user: Participant, room: Room, real_status, should_status, message=None):
+def cardcheckinfo_writer(user: Participant | None, room: Room, real_status, message=None):
     CardCheckInfo.objects.create(
         Cardroom=room, Cardstudent=user,
-        CardStatus=real_status, ShouldOpenStatus=should_status, Message=message
+        CardStatus=real_status, Message=message
     )
 
 
