@@ -11,7 +11,7 @@ config.py
 # 本文件是最基础的依赖文件，应当只加入跨架构的必要常量，而不导入其他文件
 # 与使用环境有关的内容应在对应文件中定义
 
-from boot.config import ROOT_CONFIG, GLOBAL_CONF
+from boot.config import ROOT_CONFIG, GLOBAL_CONFIG
 from boot import (
     # TODO: Change these
     # settings相关常量
@@ -32,7 +32,7 @@ __all__ = [
     # 本应用的常量
     'UTYPE_PER', 'UTYPE_ORG',
     # 本应用的CONFIG
-    'CONFIG', 'GLOBAL_CONF'
+    'CONFIG', 'GLOBAL_CONFIG'
 ]
 
 

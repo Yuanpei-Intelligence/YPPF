@@ -290,14 +290,14 @@ class PositionAdmin(admin.ModelAdmin):
 
     @as_action("延长职务年限", actions, atomic=True)
     def refresh(self, request, queryset):
-        from boot.config import GLOBAL_CONF
+        from boot.config import GLOBAL_CONFIG
         new = []
         for position in queryset:
             position: Position
-            if position.year != GLOBAL_CONF.acadamic_year and not Position.objects.filter(
+            if position.year != GLOBAL_CONFIG.acadamic_year and not Position.objects.filter(
                     person=position.person, org=position.org,
-                    year=GLOBAL_CONF.acadamic_year).exists():
-                position.year = GLOBAL_CONF.acadamic_year
+                    year=GLOBAL_CONFIG.acadamic_year).exists():
+                position.year = GLOBAL_CONFIG.acadamic_year
                 position.pk = None
                 position.save(force_insert=True)
                 new.append([position.pk, position.person.get_display_name()])

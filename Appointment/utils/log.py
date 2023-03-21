@@ -12,7 +12,7 @@ from Appointment.models import (
     CardCheckInfo,
 )
 from Appointment.apps import AppointmentConfig as AppConfig
-from boot.config import GLOBAL_CONF
+from boot.config import GLOBAL_CONFIG
 from record.log.logger import Logger
 from utils.inspect import find_caller
 
@@ -61,11 +61,11 @@ class AppointmentLogger(Logger):
             self._send_wechat(f'错误位置：{source} {lineno}行\n' + msg, level)
 
     def _send_wechat(self, message: str, level: int = logging.ERROR):
-        if not GLOBAL_CONF.debug_stuids:
+        if not GLOBAL_CONFIG.debug_stuids:
             return
         from extern.wechat import send_wechat
         send_wechat(
-            GLOBAL_CONF.debug_stuids,
+            GLOBAL_CONFIG.debug_stuids,
             '地下室发生错误', message,
         )
 

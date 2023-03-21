@@ -195,7 +195,7 @@ def miniLogin(request: HttpRequest):
             auth.login(request, userinfo)
 
             # request.session["username"] = username 已废弃
-            en_pw = GLOBAL_CONF.hasher.encode(username)
+            en_pw = GLOBAL_CONFIG.hasher.encode(username)
             user_account = NaturalPerson.objects.get(person_id=username)
             return JsonResponse({"Sname": user_account.name, "Succeed": 1}, status=200)
         else:
@@ -1281,7 +1281,7 @@ def _create_freshman_account(sid: str, email: str = None):
                     "1") else "stu.pku.edu.cn"
                 email = f"{sid}@{domain}"
             current = "随机生成密码"
-            password = GLOBAL_CONF.hasher.encode(name + str(random.random()))
+            password = GLOBAL_CONFIG.hasher.encode(name + str(random.random()))
             current = "创建用户"
             user = User.objects.create_user(
                 username=sid, name=name,
@@ -1373,7 +1373,7 @@ def freshman(request: HttpRequest):
             need_create = True
         elif send_to == "wechat":
             from extern.wechat import send_wechat
-            auth = GLOBAL_CONF.hasher.encode(sid + "_freshman_register")
+            auth = GLOBAL_CONFIG.hasher.encode(sid + "_freshman_register")
             send_wechat(
                 [sid], "新生注册邀请", "点击按钮即可注册账号",
                 url=f"/freshman/?sid={sid}&auth={auth}"
@@ -1384,7 +1384,7 @@ def freshman(request: HttpRequest):
     if request.GET.get("sid") is not None and request.GET.get("auth") is not None:
         sid = request.GET["sid"]
         auth = request.GET["auth"]
-        if auth != GLOBAL_CONF.hasher.encode(sid + "_freshman_register"):
+        if auth != GLOBAL_CONFIG.hasher.encode(sid + "_freshman_register"):
             err_msg = "密钥错误，验证失败"
             return render(request, html_path, locals())
         need_create = True

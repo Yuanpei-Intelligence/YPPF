@@ -16,7 +16,7 @@ from yp_library.models import (
     Book,
     LendRecord,
 )
-from yp_library.config import library_conf
+from yp_library.config import library_config as CONFIG
 
 __all__ = [
     'get_readers_by_user', 'search_books',
@@ -281,7 +281,7 @@ def get_library_activity(num: int) -> QuerySet[Activity]:
     :rtype: QuerySet[Activity]
     """
     all_valid_library_activities = Activity.objects.activated().filter(
-        organization_id__oname=library_conf.organization_name,
+        organization_id__oname=CONFIG.organization_name,
         status__in=[
             Activity.Status.APPLYING,
             Activity.Status.WAITING,

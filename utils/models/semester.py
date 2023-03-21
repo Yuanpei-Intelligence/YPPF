@@ -37,15 +37,15 @@ class Semester(TextChoices):
     @classmethod
     def now(cls):
         '''返回本地设置中当前学期对应的Semester状态'''
-        from boot.config import GLOBAL_CONF
-        return Semester.get(GLOBAL_CONF.semester)
+        from boot.config import GLOBAL_CONFIG
+        return Semester.get(GLOBAL_CONFIG.semester)
 
 
 
 def current_year() -> int:
     '''获取学年设置'''
-    from boot.config import GLOBAL_CONF
-    return GLOBAL_CONF.acadamic_year
+    from boot.config import GLOBAL_CONFIG
+    return GLOBAL_CONFIG.acadamic_year
 
 
 def select_current(queryset: QuerySet, /,

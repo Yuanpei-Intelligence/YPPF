@@ -27,7 +27,7 @@ __all__ = [
     'DEBUG',
     'BASE_DIR',
     'ROOT_CONFIG',
-    'GLOBAL_CONF',
+    'GLOBAL_CONFIG',
 ]
 
 
@@ -63,5 +63,6 @@ class GlobalConfig(Config):
     acadamic_year = LazySetting('acadamic_year', type=int)
     semester = LazySetting('semester', type=str)
     debug_stuids = LazySetting('debug_stuids', mapping(list, str), [])
+    temporary_dir = LazySetting('tmp_dir', default='tmp')
 
-GLOBAL_CONF = GlobalConfig(ROOT_CONFIG, 'global')
+GLOBAL_CONFIG = GlobalConfig(ROOT_CONFIG, 'global')

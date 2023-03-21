@@ -973,7 +973,7 @@ def register_selection(wait_for: timedelta=None):
     """
 
     # 预选和补退选的开始和结束时间
-    year = str(GLOBAL_CONF.acadamic_year)
+    year = str(GLOBAL_CONFIG.acadamic_year)
     semster = str(Semester.now())
     now = datetime.now()
     if wait_for is not None:
