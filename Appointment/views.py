@@ -421,10 +421,10 @@ def door_check(request):
             Rid = Rid[:4]
         room: Room = Room.objects.get(Rid=Rid)
     except:
-        cardcheckinfo_writer(student, room, False, False, f"房间号{Rid}错误")
+        cardcheckinfo_writer(student, room, False, f"房间号{Rid}错误")
         return _fail()
     if student is None:
-        cardcheckinfo_writer(student, room, False, False, f"学号{Sid}错误")
+        cardcheckinfo_writer(student, room, False, f"学号{Sid}错误")
         notify_user(
             Sid, '无法开启该房间',
             '原因：您尚未注册地下室账号，请先访问任意地下室页面创建账号！',
@@ -435,11 +435,11 @@ def door_check(request):
 
     # --------- 直接进入 --------- #
     def _check_succeed(message: str):
-        cardcheckinfo_writer(student, room, True, True, message)
+        cardcheckinfo_writer(student, room, True, message)
         return _open()
 
     def _check_failed(message: str):
-        cardcheckinfo_writer(student, room, False, False, message)
+        cardcheckinfo_writer(student, room, False, message)
         return _fail()
 
     if room.Rstatus == Room.Status.FORBIDDEN:   # 禁止使用的房间
@@ -447,7 +447,7 @@ def door_check(request):
 
     if room.RneedAgree:
         if student.agree_time is None:
-            cardcheckinfo_writer(student, room, False, False, f"刷卡拒绝：未签署协议")
+            cardcheckinfo_writer(student, room, False, f"刷卡拒绝：未签署协议")
             notify_user(Sid, '您刷卡的房间需要签署协议',
                         '点击本消息即可快捷跳转到用户协议页面',
                         place=room.__str__(), url='agreement', btntxt='签署协议')
@@ -481,7 +481,7 @@ def door_check(request):
 
     def _temp_failed(message: str, record_temp=True):
         record_msg = f"刷卡拒绝：临时预约失败（{message}）" if record_temp else f"刷卡拒绝：{message}"
-        cardcheckinfo_writer(student, room, False, False, record_msg)
+        cardcheckinfo_writer(student, room, False, record_msg)
         notify_user(student.get_id(), '您发起的临时预约失败',
                     '原因：' + message, place=room.__str__())
         return _fail()

@@ -418,11 +418,11 @@ class AppointAdmin(admin.ModelAdmin):
 @admin.register(CardCheckInfo)
 class CardCheckInfoAdmin(admin.ModelAdmin):
     list_display = ('id', 'Cardroom', 'student_display', 'Cardtime',
-                    'CardStatus', 'ShouldOpenStatus', 'Message')
+                    'CardStatus', 'Message')
     search_fields = ('Cardroom__Rtitle',
                      'Cardstudent__name', 'Cardroom__Rid', "id")
     list_filter = [
-        'Cardtime', 'CardStatus', 'ShouldOpenStatus',
+        'Cardtime', 'CardStatus',
         ('Cardroom', admin.EmptyFieldListFilter),
     ]
     

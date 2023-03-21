@@ -362,9 +362,6 @@ class CardCheckInfo(models.Model):
     CardStatus = models.SmallIntegerField(
         '刷卡状态', choices=Status.choices, default=0)
 
-    ShouldOpenStatus = models.SmallIntegerField(
-        '应该开门', choices=Status.choices, default=0)
-
     Message = models.CharField(
         '记录信息', max_length=256, null=True, blank=True)
 
