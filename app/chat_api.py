@@ -15,7 +15,7 @@ __all__ = [
 
 class StartChat(ProfileJsonView):
     def prepare_post(self):
-        self.receiver_id = int(self.request.POST['receiver_id'])
+        self.receiver_id = self.request.POST['receiver_id']
         self.questioner_anonymous = self.request.POST['comment_anonymous'] == 'true'
         return self.post
 

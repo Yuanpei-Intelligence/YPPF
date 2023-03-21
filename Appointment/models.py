@@ -299,7 +299,7 @@ class Appoint(models.Model):
         return f'/admin/Appointment/appoint/?q={self.pk}'
 
     def get_status(self):
-        if self.Astatus != Appoint.Status.VIOLATED:
+        if self.Astatus == Appoint.Status.VIOLATED:
             match cast(Appoint.Reason, self.Areason):
                 case Appoint.Reason.R_NOVIOLATED:
                     status = "未知错误，请联系管理员"

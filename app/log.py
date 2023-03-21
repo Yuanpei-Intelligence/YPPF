@@ -13,6 +13,7 @@ __all__ = [
 
 class ProfileLogger(Logger):
     def _log(self, level, msg, args, exc_info=None, extra=None, stack_info=False, stacklevel=1) -> None:
+        stacklevel += 1
         file, caller, lineno = find_caller(stacklevel)
         source = f'{file}.{caller}'
         msg = str(msg)

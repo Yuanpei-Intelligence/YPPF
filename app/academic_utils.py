@@ -193,24 +193,24 @@ def comments2Display(chat: Chat, context: dict, user: User):
 
     # 在对方匿名时，提供一些简单的信息
     if is_questioner:
-        try:
-            qa: AcademicQA = AcademicQA.objects.get(chat_id=chat.id)
-            context['rating'] = qa.rating
+        qa: AcademicQA = AcademicQA.objects.get(chat_id=chat.id)
+        context['rating'] = qa.rating
+        if not qa.directed:
             context['respondent_tags'] = list(qa.keywords)
-        except:
-            context['rating'] = 0
+        else:
             context['respondent_tags'] = []
-    else:
-        try:
-            major = AcademicTagEntry.objects.get(
-                person=chat.questioner, tag__atype=AcademicTag.Type.MAJOR)
-            major_display = major.content
-        except:
-            major_display = ""
-        # TODO: 暂时没用上，但是可能有用，先留着
-        context['questioner_tags'] = [
-            chat.questioner.username[:2] + "级", major_display
-        ]
+        return
+
+    try:
+        major = AcademicTagEntry.objects.get(
+            person=chat.questioner, tag__atype=AcademicTag.Type.MAJOR)
+        major_display = major.content
+    except:
+        major_display = ""
+    # TODO: 暂时没用上，但是可能有用，先留着
+    context['questioner_tags'] = [
+        chat.questioner.username[:2] + "级", major_display
+    ]
 
 
 def get_js_tag_list(author: NaturalPerson, type: AcademicTag.Type,
@@ -578,9 +578,9 @@ def have_entries_of_type(author: NaturalPerson, status_in: list) -> bool:
 
 
 def get_students_for_search(request: HttpRequest):
-    students = NaturalPerson.objects.activated().filter(
-        identity=NaturalPerson.Identity.STUDENT).exclude(
-            person_id=request.user).select_related('person_id')
+    students = NaturalPerson.objects.activated(
+    ).filter(identity=NaturalPerson.Identity.STUDENT).exclude(
+        person_id=request.user).select_related('person_id').order_by("-name")
 
     students_for_search = []
     for s in students:

@@ -50,7 +50,7 @@ class ProfileConfig(Config):
 
     # Informations
     max_inform_rank = LazySetting('max_inform_rank', default={}, type=dict[str, int])
-    help_message = LazySetting('help_message', type=dict[str, str])
+    help_message = LazySetting('help_messages', type=dict[str, str])
 
 
 class YQPointConfig(Config):
