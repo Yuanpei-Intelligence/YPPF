@@ -451,9 +451,7 @@
     }
 
     function rate_answer(a) {
-        console.log()
         let rating = Number($("input[name='rate_answer']:checked").val())
-        // console.log(rate)
         if(![1,2,3].includes(rating)){
             return;
         }
@@ -465,13 +463,10 @@
                 rating: rating, // 对答复的评价，1表示一般，2表示有帮助，3表示很有帮助
             },
             success: function(context){
-                //console.log(context)
-                if (context.warn_code){
-                    if (context.warn_code == 1) {
-                        sessionStorage.setItem("reloading", "chatRelatedReloading");
-                        sessionStorage.setItem("warn_code", context.warn_code);
-                        sessionStorage.setItem("warn_message", context.warn_message);
-                    }
+                if (context.warn_code == 1){
+                    sessionStorage.setItem("reloading", "chatRelatedReloading");
+                    sessionStorage.setItem("warn_code", context.warn_code);
+                    sessionStorage.setItem("warn_message", context.warn_message);
                 }
                 document.location.reload(); //刷新页面
             }

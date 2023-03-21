@@ -809,6 +809,7 @@ class AcademicTagEntryAdmin(AcademicEntryAdmin):
 @admin.register(AcademicTextEntry)
 class AcademicTextEntryAdmin(AcademicEntryAdmin):
     list_display = ["person", "status", "atype", "content"]
+    # todo: django.core.exceptions.FieldError: Related Field got invalid lookup: icontains
     search_fields =  ("person", "status", "atype", "content")
     list_filter = ["atype", "status"]
 
