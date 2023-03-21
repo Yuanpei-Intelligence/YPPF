@@ -46,20 +46,23 @@ class ProfileConfig(Config):
         super().__init__(source, dict_prefix)
         self.email = EmailConfig(self, 'email')
         self.course = CourseConfig(self, 'course')
+        self.yqpoint = YQPointConfig(self, 'YQPoint')
 
     # Informations
     max_inform_rank = LazySetting('max_inform_rank', default={}, type=dict[str, int])
     help_message = LazySetting('help_message', type=dict[str, str])
 
-    # YQPoint
-    # TODO: Change it
-    yqp_oname = ''
-    yqp_activity_max = LazySetting('YQPoint/activity/max', default=30)
-    yqp_activity_per_hour = LazySetting(
-        'YQPoint/activity/per_hour', float, default=10)
-    yqp_per_feedback = LazySetting('YQPoint/feedback/per_accept', default=10)
-    yqp_signin_points = LazySetting(
-        'YQPoint/signin_points', default=[1, 2, 2, (2, 4), 2, 2, (5, 7)])
+
+class YQPointConfig(Config):
+    org_name = LazySetting('org_name', type=str)
+    activity_invalid_hour = LazySetting('activity/invalid_hour', float, default=6)
+    activity_max = LazySetting('activity/max', default=30)
+    per_activity_hour = LazySetting(
+        'activity/per_hour', float, default=10)
+    per_feedback = LazySetting('feedback/accept', default=10)
+    signin_points = LazySetting(
+        'signin_points', default=[1, 2, 2, (2, 4), 2, 2, (5, 7)])
+
 
 
 class EmailConfig(Config):

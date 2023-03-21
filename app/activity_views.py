@@ -462,7 +462,7 @@ def addActivity(request: HttpRequest, aid=None):
     if aid is None:
         if user_type != UTYPE_ORG:
             return redirect(message_url(wrong('小组账号才能添加活动!')))
-        if me.oname == CONFIG.yqp_oname:
+        if me.oname == CONFIG.yqpoint.org_name:
             return redirect("/showActivity")
         edit = False
     else:
@@ -661,7 +661,7 @@ def showActivity(request: HttpRequest):
     bar_display = utils.get_sidebar_and_navbar(request.user, "活动立项")
 
     # 前端不允许元气值中心创建活动
-    if user_type == UTYPE_ORG and me.oname == CONFIG.yqp_oname:
+    if user_type == UTYPE_ORG and me.oname == CONFIG.yqpoint.org_name:
         YQPoint_Source_Org = True
 
     return render(request, "activity_show.html", locals())

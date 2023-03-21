@@ -705,8 +705,7 @@ def modify_reviewing_activity(request, activity):
 
 def modify_accepted_activity(request, activity):
 
-    # TODO
-    # 删除任务，注册新任务
+    # TODO 删除任务，注册新任务
 
     to_participants = [f"您参与的活动{activity.title}发生变化"]
     # to_subscribers = [f"您关注的活动{activity.title}发生变化"]
@@ -996,15 +995,11 @@ def calcu_activity_YQP(activity: Activity) -> int:
     """
 
     hours = (activity.end - activity.start).seconds / 3600
-    if hours > CONFIG.yqp_invalid_hour:
+    if hours > CONFIG.yqpoint.invalid_hour:
         return 0
-    # 以标题筛选不记录元气值的活动，包含筛选词时不记录积分
-    for invalid_letter in CONFIG.yqp_invalid_title:
-        if invalid_letter in activity.title:
-            return 0
 
-    point = ceil(CONFIG.yqp_per_hour * hours)
+    point = ceil(CONFIG.yqpoint.per_activity_hour * hours)
     # 单次活动记录的积分上限，默认无上限
-    if CONFIG.yqp_activity_max is not None:
-        point = min(CONFIG.yqp_activity_max, point)
+    if CONFIG.yqpoint.activity_max is not None:
+        point = min(CONFIG.yqpoint.activity_max, point)
     return point

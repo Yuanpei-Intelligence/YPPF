@@ -3,26 +3,12 @@
         "user_not_exist": "用户不存在，请在元培学院官方公众号后台留言注册！",
         "wrong_pw": "密码错误！请重新输入!"
     },
-    "system_log": "$LOG_NAME$",
     "default_weather": {
         "modify_time": "2021-09-01 10:59:07.389086",
         "description": "\u6674",
         "temp": "26",
         "temp_feel": "26",
         "icon": "01d"
-    },
-    "thresholds": {
-        "point": {
-            "signin_points": [1, 2, 2, [2, 4], 2, 2, [5, 7]],
-            "per_feedback": 10,
-            "per_hour": 10,
-            "limit": 30,
-            "invalid_hour": 12,
-            "invalid_titles": [
-                "选课",
-                "补选"
-            ]
-        }
     },
     "help_message": {
         "个人主页": "将其在微信中打开，就可以在聊天/朋友圈中分享你自己啦",
@@ -43,6 +29,5 @@
     "test_info": {
         "stu_name": "YPadmin"
     },
-    "YQPoint_source_oname": "元培元气值中心",
     "inner_port": 80
 }

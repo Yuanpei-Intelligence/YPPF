@@ -67,7 +67,16 @@
         "publish_time": "2022-02-20 20:35:00"
     },
     "YQPoint": {
-
+        "signin_points": [1, 2, 2, [2, 4], 2, 2, [5, 7]],
+        "activity": {
+            "invalid_hour": 12,
+            "per_hour": 1,
+            "max": 10
+        },
+        "feedback": {
+            "accept": 10
+        },
+        "org_name": "元培元气值中心"
     },
     "library": {
         "organization_name": "图书室",

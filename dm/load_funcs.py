@@ -265,7 +265,7 @@ def load_org(filepath: str, output_func: Callable=None, html=False):
                     msg += f'<br/>&emsp;&emsp;成功增加{pos_display}：{person}'
         except Exception as e:
             msg += '<br/>未能创建组织'+oname+',原因：'+str(e)
-    if YQP_ONAME:
+    if CONFIG.yqpoint.org_name:
         username = 'zz00001'
         user, created = User.objects.get_or_create(username=username)
         if created:
@@ -276,9 +276,9 @@ def load_org(filepath: str, output_func: Callable=None, html=False):
             org, mid = Organization.objects.get_or_create(
                 organization_id=user, otype=orgtype
             )
-            org.oname = YQP_ONAME
+            org.oname = CONFIG.yqpoint.org_name
             org.save()
-            msg += '<br/>成功创建元气值发放组织：'+YQP_ONAME
+            msg += '<br/>成功创建元气值发放组织：'+CONFIG.yqpoint.org_name
     return try_output(msg, output_func, html)
 
 
