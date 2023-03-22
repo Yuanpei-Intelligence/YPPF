@@ -905,7 +905,7 @@ def _notify_longterm_review(longterm: LongTermAppoint, auditor_ids: list[str]):
 
 
 
-def _add_appoint(contents: dict, start: datetime, finish: datetime,
+def _add_appoint(contents: dict, start: datetime, finish: datetime, non_yp_num: int,
                type: Appoint.Type = Appoint.Type.NORMAL,
                check_contents: bool = True,
                notify_create: bool = True) -> tuple[Appoint | None, str]:
@@ -950,8 +950,6 @@ def _add_appoint(contents: dict, start: datetime, finish: datetime,
     # 检查人员信息
     try:
         yp_num = len(students)
-        non_yp_num: int = contents['non_yp_num']
-        assert isinstance(non_yp_num, int)
         assert yp_num + \
             non_yp_num >= create_min, f'at least {create_min} students'
     except Exception as e:
@@ -1111,12 +1109,11 @@ def checkout_appoint(request: HttpRequest):
         # 处理外院人数
         if contents['non_yp_num'] == "":
             contents['non_yp_num'] = 0
-        else:
-            try:
-                contents['non_yp_num'] = int(contents['non_yp_num'])
-                assert contents['non_yp_num'] >= 0
-            except:
-                wrong("外院人数有误,请按要求输入!", render_context)
+        try:
+            non_yp_num = int(contents['non_yp_num'])
+            assert non_yp_num >= 0
+        except:
+            wrong("外院人数有误,请按要求输入!", render_context)
         # 检查是否未填写房间用途
         if not contents['Ausage']:
             wrong("请输入房间用途!", render_context)
@@ -1151,12 +1148,15 @@ def checkout_appoint(request: HttpRequest):
         end_time += timedelta(weeks=start_week)
         if my_messages.get_warning(render_context)[0] is None:
             # 参数检查全部通过，下面开始创建预约
+            appoint_type = Appoint.Type.NORMAL
+            _notify = True
             if is_longterm:
-                response = _add_appoint(contents, type=Appoint.Type.LONGTERM, notify_create=False)
+                appoint_type = Appoint.Type.LONGTERM
+                _notify = False
             elif is_interview:
-                response = _add_appoint(contents, type=Appoint.Type.INTERVIEW)
-            else:
-                response = _add_appoint(contents)
+                appoint_type = Appoint.Type.INTERVIEW
+            response = _add_appoint(contents, start_time, end_time, non_yp_num=non_yp_num,
+                                    type=appoint_type, notify_create=_notify)
             appoint, err_msg = response
             if appoint is not None and not is_longterm:
                 # 成功预约且非长期

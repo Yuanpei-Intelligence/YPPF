@@ -15,6 +15,7 @@ class ProfileLogger(Logger):
     def _log(self, level, msg, args, exc_info=None, extra=None, stack_info=False, stacklevel=1) -> None:
         stacklevel += 1
         file, caller, lineno = find_caller(stacklevel)
+        file = file.removeprefix('app.')
         source = f'{file}.{caller}'
         msg = str(msg)
         log_msg = source.ljust(30) + msg

@@ -50,7 +50,7 @@ class ProfileConfig(Config):
 
     # Informations
     max_inform_rank = LazySetting('max_inform_rank', default={}, type=dict[str, int])
-    help_message = LazySetting('help_messages', type=dict[str, str])
+    help_message = LazySetting('help_messages', default={}, type=dict[str, str])
     weather_api_key = LazySetting('weather/api_key', type=str)
 
 
