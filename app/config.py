@@ -83,7 +83,7 @@ class CourseConfig(Config):
     # Course Info
     type_name = LazySetting('type_name', default='书院课程')
     least_record_hours = LazySetting('valid_hours', float, default=8.0)
-    audit_teacher = LazySetting('audit_teachers', lambda x: x[0], type=str)
+    audit_teacher = LazySetting('auditors', lambda x: x[0], type=str)
 
 
 CONFIG = ProfileConfig(ROOT_CONFIG, '')
