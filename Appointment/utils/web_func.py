@@ -7,11 +7,6 @@ from Appointment.config import appointment_config as CONFIG
 from Appointment.models import Participant, Room, Appoint
 from Appointment.utils.identity import get_participant
 
-# TODO: 定时任务引入startAppoint和finishAppoint，逐渐删除
-from Appointment.appoint.status_control import (
-    start_appoint as startAppoint,
-    finish_appoint as finishAppoint,
-)
 
 '''
 YWolfeee:
