@@ -107,7 +107,8 @@ def changeActivityStatus(aid, cur_status, to_status):
             #     notification_status_change(notification, Notification.Status.DONE)
 
         # 结束，计算元气值
-        elif to_status == Activity.Status.END:
+        elif (to_status == Activity.Status.END
+              and activity.category != Activity.ActivityCategory.COURSE):
             point = calcu_activity_YQP(activity)
             participants = Participant.objects.filter(
                 activity_id=aid,
