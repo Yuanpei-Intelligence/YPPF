@@ -1087,9 +1087,11 @@ def homepage(request: HttpRequest):
     """
 
     # -----------------------------天气---------------------------------
+    # TODO: Put get_weather somewhere else
     from app.jobs import get_weather
     html_display['weather'] = get_weather()
-    update_time_delta = datetime.now() - datetime.strptime(html_display["weather"]["modify_time"],'%Y-%m-%d %H:%M:%S.%f')
+    update_time_delta = datetime.now() - datetime.strptime(
+        html_display["weather"]["modify_time"],'%Y-%m-%d %H:%M:%S.%f')
     # 根据更新时间长短，展示不同的更新天气时间状态
     def days_hours_minutes_seconds(td):
         return td.days, td.seconds // 3600, (td.seconds // 60) % 60, td.seconds % 60
