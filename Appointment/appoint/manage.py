@@ -13,6 +13,13 @@ from Appointment.extern.wechat import MessageType, notify_appoint
 from Appointment.extern.jobs import set_appoint_reminder
 
 
+__all__ = [
+    'create_require_num',
+    'create_appoint',
+    'cancel_appoint',
+]
+
+
 def _notify_create(appoint: Appoint, students_id: list[str] | None = None) -> bool:
     '''提醒有新预约，根据时间和预约类型决定如何发送'''
     if appoint.Atype == Appoint.Type.TEMPORARY:
@@ -28,7 +35,8 @@ def _notify_create(appoint: Appoint, students_id: list[str] | None = None) -> bo
     return True
 
 
-def _create_require_num(room: Room, type: Appoint.Type) -> int:
+def create_require_num(room: Room, type: Appoint.Type) -> int:
+    '''创建预约的最小人数要求'''
     create_min: int = room.Rmin
     if type == Appoint.Type.TODAY:
         create_min = min(create_min, CONFIG.today_min)
@@ -42,7 +50,7 @@ def _create_require_num(room: Room, type: Appoint.Type) -> int:
 def _success(appoint: Appoint):
     return appoint, ''
 
-def _error(msg: str, detail=None):
+def _error(msg: str):
     return None, msg
 
 
@@ -72,13 +80,15 @@ def _check_room_valid(room: Room | None):
 
 
 def _check_create_num(room: Room, type: Appoint.Type, inner: int, outer: int):
-    create_min = _create_require_num(room, type)
+    create_min = create_require_num(room, type)
     assert inner + outer >= create_min, f'预约人数不足{create_min}人！'
+    # TODO: 内部人数可能不是通用检查条件
     assert 2 * inner >= create_min, '院内使用人数需要达到房间最小人数的一半！'
 
 
 def _check_num_constraint(room: Room, type: Appoint.Type, inner: int, outer: int):
-    if room.Rid.startswith('R'):
+    # TODO: 移除硬编码
+    if room.Rid.startswith('R3'):
         assert inner == 1 and outer == 0, '俄文楼元创空间仅支持单人预约！'
     if type == Appoint.Type.TEMPORARY:
         assert inner == 1 and outer == 0, '临时预约仅支持单人预约！'
@@ -93,7 +103,7 @@ def _check_conflict(appoint: Appoint):
 
 def _attend_require_num(room: Room, type: Appoint.Type, start: datetime, finish: datetime) -> int:
     '''实际监控检查要求的人数'''
-    require_num = _create_require_num(room, type)
+    require_num = create_require_num(room, type)
     if require_num <= CONFIG.today_min:
         return require_num
     # 107b的监控不太靠谱，正下方看不到
@@ -121,6 +131,30 @@ def create_appoint(
     type: Appoint.Type = Appoint.Type.NORMAL,
     notify: bool = True,
 ) -> tuple[Appoint | None, str]:
+    '''创建预约
+
+    创建预约并设置所有可以独立执行的功能，如状态切换等，无需额外调用。
+    预约信息必须逻辑上正确，且满足预约的通用条件，如房间可用、时间有序、人数合法等。
+    发起者必须有足够的信用分，否则无法创建预约。
+
+    Args:
+        appointer(Participant): 发起人
+        room(Room): 预约房间
+        start(datetime): 预约开始时间
+        finish(datetime): 预约结束时间
+        usage(str): 预约用途
+        students(Iterable[Participant], optional): 预约参与人，发起人默认参与
+        announce(str, optional): 预约内部公告
+        outer_num(int, optional): 预约外部人数
+
+    Keyword Args
+        type(Appoint.Type): 预约类型，默认为普通预约
+        notify(bool): 是否发送通知，默认为发送
+
+    Returns:
+        tuple[Appoint, Literal['']]: 预约对象和空错误信息
+        tuple[None, str]: 错误信息
+    '''
 
     _check_room_valid(room)
     _check_appoint_time(start, finish)

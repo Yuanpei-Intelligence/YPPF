@@ -126,34 +126,6 @@ def _build_url(url: str | None = None):
     return build_full_url(url, build_full_url('/underground/'))
 
 
-def send_wechat_message(
-    stuid_list: Iterable[str],
-    start_time: datetime,
-    room: Room | str,
-    message_type: str,
-    major_student: Participant | str,
-    usage: str,
-    announcement: str,
-    num: int,
-    reason: str = '',
-    url: str | None = None,
-    is_admin: bool = False,
-):
-    '''
-    stuid_list: Iter[sid] 学号列表，不是学生!
-    start_time: datetime | Any, 后者调用str方法
-    room: 将被调用str方法，所以可以不是实际的房间
-    major_student: str, 人名 不是学号！
-    '''
-    # TODO: 生产环境下，utils.utils需要包含这个函数，随后删除
-    title, message = _build_message(
-        message_type, start_time, room, major_student, usage,
-        announcement, num, reason, is_admin)
-    url = _build_url(url)
-    send_wechat(stuid_list, title, message,
-                card=True, url=url, btntxt='预约详情', multithread=False)
-
-
 def _build_appoint_message(appoint: Appoint, message_type: MessageType,
                            *extra_infos: str, admin: bool):
     usage = '' if appoint.Ausage is None else appoint.Ausage
