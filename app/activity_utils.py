@@ -995,7 +995,7 @@ def calcu_activity_YQP(activity: Activity) -> int:
     """
 
     hours = (activity.end - activity.start).seconds / 3600
-    if hours > CONFIG.yqpoint.invalid_hour:
+    if hours > CONFIG.yqpoint.activity_invalid_hour:
         return 0
 
     point = ceil(CONFIG.yqpoint.per_activity_hour * hours)
