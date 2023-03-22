@@ -929,15 +929,15 @@ def _add_appoint(contents: dict, start: datetime, finish: datetime, non_yp_num: 
     try:
         room: Room = Room.objects.get(Rid=contents['Rid'])
         assert room.Rstatus == Room.Status.PERMITTED, 'room service suspended!'
-    except Exception as e:
-        return _error('房间不可预约，请更换房间！', e)
+    except:
+        return _error('房间不存在，请检查预约信息！')
     # 再检查学号对不对
     students_id: list[str] = contents['students']  # 存下学号列表
     students = Participant.objects.filter(Sid__in=students_id)  # 获取学生
     try:
-        assert students.count() == len(students_id), "students repeat or don't exists"
-    except Exception as e:
-        return _error('预约人信息有误，请检查后重新发起预约！', e)
+        assert len(students) == len(students_id)
+    except:
+        return _error('预约人信息有误，请检查后重新发起预约！')
 
     # 检查预约类型
     if datetime.now().date() == start.date() and type == Appoint.Type.NORMAL:
@@ -948,14 +948,7 @@ def _add_appoint(contents: dict, start: datetime, finish: datetime, non_yp_num: 
     create_min = _create_require_num(room, type)
 
     # 检查人员信息
-    try:
-        yp_num = len(students)
-        assert yp_num + \
-            non_yp_num >= create_min, f'at least {create_min} students'
-    except Exception as e:
-        return _error('使用总人数需达到房间最小人数！', e)
-
-    if 2 * yp_num < create_min:
+    if 2 * len(students) < create_min:
         return _error('院内使用人数需要达到房间最小人数的一半！')
 
     # 预约是否超过3小时

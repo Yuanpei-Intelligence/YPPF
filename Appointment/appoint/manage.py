@@ -42,7 +42,7 @@ def _create_require_num(room: Room, type: Appoint.Type) -> int:
 def _success(appoint: Appoint):
     return appoint, ''
 
-def _error(msg: str, detail=None):
+def _error(msg: str):
     return None, msg
 
 
