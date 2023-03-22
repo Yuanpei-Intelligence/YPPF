@@ -162,6 +162,7 @@ class Logger(logging.Logger):
                     return func(*args, **kwargs)
                 except exc_type:
                     arg_msg = ''
+                    arg_msg += f'Function: {func.__module__}.{func.__qualname__}\n'
                     if args: arg_msg += f'Args: {args}\n'
                     if kwargs: arg_msg += f'Keywords: {kwargs}\n'
                     self.on_exception(arg_msg + message, raise_exc=raise_exc)
