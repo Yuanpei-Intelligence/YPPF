@@ -12,8 +12,9 @@ from django.db.models import F
 # from django_apscheduler.util import close_old_connections
 
 from boot.config import GLOBAL_CONFIG
-from record.log.utils import get_logger
+from app.log import logger
 from scheduler.scheduler import scheduler, periodical
+from generic.models import YQPointRecord
 from record.models import PageLog
 from app.models import (
     User,
@@ -37,11 +38,10 @@ from app.notification_utils import (
     bulk_notification_create,
     notification_create,
 )
+from app.feedback_utils import inform_notification
 from app.extern.wechat import WechatMessageLevel, WechatApp
 from app.config import *
 
-
-logger = get_logger('app')
 
 __all__ = [
     'send_to_persons',
@@ -283,7 +283,6 @@ def longterm_launch_course():
                     add_week_course_activity(
                         course.id, week_time.id, cur_week, course_stage2)
 
-
 @periodical('cron', 'active_score_updater', hour=1)
 def update_active_score_per_day(days=14):
     '''每天计算用户活跃度， 计算前days天（不含今天）内的平均活跃度'''
@@ -300,45 +299,29 @@ def update_active_score_per_day(days=14):
 
 
 @periodical('cron', 'feedback_public_updater', minute=5)
+@transaction.atomic
 def public_feedback_per_hour():
     '''查找距离组织公开反馈24h内没被审核的反馈，将其公开'''
     time = datetime.now() - timedelta(days=1)
-    with transaction.atomic():
-        feedbacks = Feedback.objects.filter(
-            issue_status=Feedback.IssueStatus.ISSUED,
-            public_status=Feedback.PublicStatus.PRIVATE,
-            publisher_public=True,
-            org_public=True,
-            public_time__lte=time,
-        )
-        feedbacks.select_for_update().update(
-            public_status=Feedback.PublicStatus.PUBLIC)
-        for feedback in feedbacks:
-            feedback: Feedback
-            notification_create(
-                receiver=feedback.person.get_user(),
-                sender=feedback.org.otype.incharge.get_user(),
-                typename=Notification.Type.NEEDREAD,
-                title="反馈状态更新",
-                content=f"您的反馈[{feedback.title}]已被公开",
-                URL=f"/viewFeedback/{feedback.id}",
-                anonymous_flag=False,
-                publish_to_wechat=True,
-                publish_kws={'app': WechatApp.AUDIT,
-                             'level': WechatMessageLevel.INFO},
-            )
-            notification_create(
-                receiver=feedback.org.get_user(),
-                sender=feedback.org.otype.incharge.get_user(),
-                typename=Notification.Type.NEEDREAD,
-                title="反馈状态更新",
-                content=f"您处理的反馈[{feedback.title}]已被公开",
-                URL=f"/viewFeedback/{feedback.id}",
-                anonymous_flag=False,
-                publish_to_wechat=True,
-                publish_kws={'app': WechatApp.AUDIT,
-                             'level': WechatMessageLevel.INFO},
-            )
+    feedbacks = Feedback.objects.filter(
+        issue_status=Feedback.IssueStatus.ISSUED,
+        public_status=Feedback.PublicStatus.PRIVATE,
+        publisher_public=True,
+        org_public=True,
+        public_time__lte=time,
+    )
+    feedbacks.select_for_update().update(
+        public_status=Feedback.PublicStatus.PUBLIC)
+    for feedback in feedbacks:
+        User.objects.modify_YQPoint(feedback.person.get_user(),
+                                    CONFIG.yqpoint.per_feedback,
+                                    "问题反馈", YQPointRecord.SourceType.FEEDBACK)
+        inform_notification(feedback.org.otype.incharge, feedback.person,
+                            f"您的反馈[{feedback.title}]已被公开",
+                            feedback, anonymous=False)
+        inform_notification(feedback.org.otype.incharge, feedback.org,
+                            f"您处理的反馈[{feedback.title}]已自动公开",
+                            feedback, anonymous=False)
 
 
 # TODO: Move these to schedueler app
