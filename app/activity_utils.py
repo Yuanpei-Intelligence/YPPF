@@ -995,11 +995,11 @@ def calcu_activity_YQP(activity: Activity) -> int:
     """
 
     hours = (activity.end - activity.start).seconds / 3600
-    if hours > CONFIG.yqpoint.activity_invalid_hour:
+    if hours > CONFIG.yqpoint.activity.invalid_hour:
         return 0
 
-    point = ceil(CONFIG.yqpoint.per_activity_hour * hours)
+    point = ceil(CONFIG.yqpoint.activity.per_hour * hours)
     # 单次活动记录的积分上限，默认无上限
-    if CONFIG.yqpoint.activity_max is not None:
-        point = min(CONFIG.yqpoint.activity_max, point)
+    if CONFIG.yqpoint.activity.max is not None:
+        point = min(CONFIG.yqpoint.activity.max, point)
     return point
