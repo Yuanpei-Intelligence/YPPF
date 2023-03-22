@@ -17,7 +17,8 @@ class Command(BaseCommand):
             except:
                 continue
             print('Looking for periodical jobs in', job_module_path)
-            for pjob in filter(lambda obj: isinstance(obj, PeriodicalJob), jobs.__dict__.values()):
+            for pjob in filter(lambda obj: hasattr(obj, '__periodical__'), jobs.__dict__.values()):
+                pjob: PeriodicalJob = pjob.__periodical__  # type: ignore
                 job_id, fn, trigger = pjob.job_id, pjob.function, pjob.trigger
                 print(f'\t{job_id} (fn: {fn.__name__}, trigger: {trigger})')
                 scheduler.add_job(fn, trigger, id=job_id, replace_existing=True, **pjob.tg_args)
