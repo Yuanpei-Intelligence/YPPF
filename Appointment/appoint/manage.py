@@ -78,7 +78,8 @@ def _check_create_num(room: Room, type: Appoint.Type, inner: int, outer: int):
 
 
 def _check_num_constraint(room: Room, type: Appoint.Type, inner: int, outer: int):
-    if room.Rid.startswith('R'):
+    # TODO: 移除硬编码
+    if room.Rid.startswith('R3'):
         assert inner == 1 and outer == 0, '俄文楼元创空间仅支持单人预约！'
     if type == Appoint.Type.TEMPORARY:
         assert inner == 1 and outer == 0, '临时预约仅支持单人预约！'

@@ -958,17 +958,6 @@ def _add_appoint(contents: dict, start: datetime, finish: datetime, non_yp_num: 
     if 2 * yp_num < create_min:
         return _error('院内使用人数需要达到房间最小人数的一半！')
 
-    # 检查如果是俄文楼，是否只有一个人使用
-    # TODO: 移除硬编码
-    if room.Rid.startswith('R3'):
-        if yp_num != 1 or non_yp_num != 0:
-            return _error('俄文楼元创空间仅支持单人预约！')
-
-    # 检查如果是面试，是否只有一个人使用
-    if type == Appoint.Type.INTERVIEW:
-        if yp_num != 1 or non_yp_num != 0:
-            return _error('面试仅支持单人预约！')
-
     # 预约是否超过3小时
     # 检查预约时间合法性由create_appoint完成
     try:
