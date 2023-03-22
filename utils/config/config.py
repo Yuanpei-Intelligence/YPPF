@@ -8,9 +8,7 @@ from django.core.exceptions import ImproperlyConfigured
 
 
 class Config:
-    """
-    为各个 app 提供的 Config 基类
-    """
+    '''配置类'''
     def __init__(self, source: 'Config | dict[str, Any]', dict_prefix: str = ''):
         if isinstance(source, Config):
             self._root_conf = source._root_conf
@@ -18,6 +16,15 @@ class Config:
             self._root_conf = source
         if dict_prefix:
             self._root_conf: dict[str, Any] = self._root_conf[dict_prefix]
+
+    def activate_all(self, sub_config: bool = True):
+        '''激活所有设置，检查配置是否正常'''
+        for name in dir(self):
+            if name.startswith('_'):
+                continue
+            attr = getattr(self, name)
+            if sub_config and isinstance(attr, Config):
+                attr.activate_all()
 
 
 T = TypeVar('T')
