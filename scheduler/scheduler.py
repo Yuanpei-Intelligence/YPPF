@@ -6,7 +6,7 @@ scheduler.py: provide
 """
 
 import six
-from typing import Callable, Dict, Any
+from typing import Callable
 from threading import Event
 from functools import update_wrapper
 from dataclasses import dataclass
@@ -71,10 +71,7 @@ class PeriodicalJob():
     function: Callable[[], None]
     job_id: str
     trigger: str
-    tg_args: Dict[str, int]
-
-    def run(self, *args: Any, **kwds: Any):
-        self.function(*args, **kwds)
+    tg_args: dict[str, int]
 
 
 def periodical(trigger: str, job_id: str = '', **trigger_args):
@@ -85,8 +82,9 @@ def periodical(trigger: str, job_id: str = '', **trigger_args):
     :param trigger: 'cron' or 'interval'
     :type trigger: str
     """
-    def wrapper(fn: Callable[[], None]) -> PeriodicalJob:
-        return PeriodicalJob(fn, job_id or fn.__name__, trigger, trigger_args)
+    def wrapper(fn: Callable[[], None]):
+        fn.__periodical__ = PeriodicalJob(fn, job_id or fn.__name__, trigger, trigger_args)
+        return fn
     return wrapper
 
 

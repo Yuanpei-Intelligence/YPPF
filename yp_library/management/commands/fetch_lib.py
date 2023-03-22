@@ -8,4 +8,4 @@ class Command(BaseCommand):
     help = '同步书房信息'
 
     def handle(self, *args, **options):
-        update_lib_data.run()
+        update_lib_data()
