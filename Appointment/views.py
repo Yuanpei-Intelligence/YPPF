@@ -33,7 +33,11 @@ from Appointment.utils.identity import (
     get_avatar, get_members, get_auditor_ids,
     get_participant, identity_check,
 )
-from Appointment.appoint.manage import create_appoint, cancel_appoint
+from Appointment.appoint.manage import (
+    create_require_num,
+    create_appoint,
+    cancel_appoint,
+)
 from Appointment.appoint.judge import set_appoint_reason
 from Appointment import jobs
 from Appointment.config import appointment_config as CONFIG
@@ -923,12 +927,11 @@ def _add_appoint(contents: dict, start: datetime, finish: datetime, non_yp_num: 
     :return: (预约, 错误信息)
     :rtype: tuple[Appoint | None, str]
     '''
-    from Appointment.appoint.manage import _error, _create_require_num
+    from Appointment.appoint.manage import _error
 
     # 首先检查房间是否存在
     try:
         room: Room = Room.objects.get(Rid=contents['Rid'])
-        assert room.Rstatus == Room.Status.PERMITTED, 'room service suspended!'
     except:
         return _error('房间不存在，请检查预约信息！')
     # 再检查学号对不对
@@ -945,7 +948,7 @@ def _add_appoint(contents: dict, start: datetime, finish: datetime, non_yp_num: 
         type = Appoint.Type.TODAY
 
     # 创建预约时要求的人数
-    create_min = _create_require_num(room, type)
+    create_min = create_require_num(room, type)
 
     # 检查人员信息
     if 2 * len(students) < create_min:
