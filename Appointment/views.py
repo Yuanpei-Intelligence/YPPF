@@ -905,7 +905,7 @@ def _notify_longterm_review(longterm: LongTermAppoint, auditor_ids: list[str]):
 
 
 
-def _add_appoint(contents: dict,
+def _add_appoint(contents: dict, start: datetime, finish: datetime,
                type: Appoint.Type = Appoint.Type.NORMAL,
                check_contents: bool = True,
                notify_create: bool = True) -> tuple[Appoint | None, str]:
@@ -939,20 +939,8 @@ def _add_appoint(contents: dict,
     except Exception as e:
         return _error('预约人信息有误，请检查后重新发起预约！', e)
 
-    # 检查预约时间是否正确
-    try:
-        Astart: datetime = contents['Astart']
-        Afinish: datetime = contents['Afinish']
-        assert isinstance(Astart, datetime), 'Appoint time format error'
-        assert isinstance(Afinish, datetime), 'Appoint time format error'
-        assert Astart <= Afinish, 'Appoint time error'
-
-        assert Afinish > datetime.now(), 'Appoint time error'
-    except Exception as e:
-        return _error('非法预约时间段，请不要擅自修改url！', e)
-
     # 检查预约类型
-    if datetime.now().date() == Astart.date() and type == Appoint.Type.NORMAL:
+    if datetime.now().date() == start.date() and type == Appoint.Type.NORMAL:
         # 长期预约必须保证预约时达到正常人数要求
         type = Appoint.Type.TODAY
 
@@ -973,7 +961,8 @@ def _add_appoint(contents: dict,
         return _error('院内使用人数需要达到房间最小人数的一半！')
 
     # 检查如果是俄文楼，是否只有一个人使用
-    if room.Rid.startswith('R'):
+    # TODO: 移除硬编码
+    if room.Rid.startswith('R3'):
         if yp_num != 1 or non_yp_num != 0:
             return _error('俄文楼元创空间仅支持单人预约！')
 
@@ -983,8 +972,9 @@ def _add_appoint(contents: dict,
             return _error('面试仅支持单人预约！')
 
     # 预约是否超过3小时
+    # 检查预约时间合法性由create_appoint完成
     try:
-        assert Afinish <= Astart + timedelta(hours=3)
+        assert finish <= start + timedelta(hours=3)
     except:
         return _error('预约时长不能超过3小时！')
 
@@ -1003,7 +993,7 @@ def _add_appoint(contents: dict,
     return create_appoint(
         appointer=major_student,
         students=students,
-        room=room, start=Astart, finish=Afinish,
+        room=room, start=start, finish=finish,
         usage=usage, announce=announcement,
         outer_num=non_yp_num,
         type=type,
@@ -1152,15 +1142,13 @@ def checkout_appoint(request: HttpRequest):
         ).count() >= CONFIG.interview_max_num:
             wrong('您预约的面试次数已达到上限，结束后方可继续预约', render_context)
 
-        contents['Astart'] = datetime(contents['year'], contents['month'],
-                                      contents['day'],
-                                      *map(int, contents['starttime'].split(":")))
-        contents['Afinish'] = datetime(contents['year'], contents['month'],
-                                       contents['day'],
-                                       *map(int, contents['endtime'].split(":")))
+        start_time = datetime(contents['year'], contents['month'], contents['day'],
+                              *map(int, contents['starttime'].split(":")))
+        end_time = datetime(contents['year'], contents['month'], contents['day'],
+                            *map(int, contents['endtime'].split(":")))
         # TODO: 隔周预约的处理可优化，根据start_week调整实际预约时间
-        contents['Astart'] += timedelta(weeks=start_week)
-        contents['Afinish'] += timedelta(weeks=start_week)
+        start_time += timedelta(weeks=start_week)
+        end_time += timedelta(weeks=start_week)
         if my_messages.get_warning(render_context)[0] is None:
             # 参数检查全部通过，下面开始创建预约
             if is_longterm:
