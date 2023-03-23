@@ -3,7 +3,8 @@ from importlib import import_module
 from django.apps import apps
 from django.core.management.base import BaseCommand
 
-from scheduler.scheduler import scheduler, PeriodicalJob
+from scheduler.scheduler import scheduler
+from scheduler.periodic import PeriodicalJob
 
 
 class Command(BaseCommand):

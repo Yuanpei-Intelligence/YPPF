@@ -1,15 +1,22 @@
-"""
-scheduler.py: provide 
+"""Scheduler for executing jobs in background
 
-1. `scheduler` as a "client", 
-2. `periodical` as a way to register periodical jobs
+The scheduler is unique and should not export to other modules.
+This module is no longer a exposed interface, use other modules instead.
+
+Attributes:
+    scheduler (BackgroundScheduler): The scheduler instance,
+        treat it as a BackgroundScheduler
+    logger (Logger): Logger for scheduler
+
+See Also:
+    - :module:`scheduler.adder`
+    - :module:`scheduler.periodic`
+    - :module:`scheduler.cancel`
 """
 
 import six
-from typing import Callable
 from threading import Event
 from functools import update_wrapper
-from dataclasses import dataclass
 
 import rpyc
 from django.conf import settings
@@ -19,11 +26,8 @@ from django_apscheduler.jobstores import DjangoJobStore
 from record.log.utils import get_logger
 from scheduler.config import scheduler_config as CONFIG
 
-
-__all__ = [
-    'scheduler',
-    'periodical',
-]
+# TODO: 移除从此处的引入
+from scheduler.periodic import periodical
 
 
 # Custom handler
@@ -60,32 +64,6 @@ class Scheduler:
                     'Remote scheduler not found, job may not be executed.')
         update_wrapper(wrapper, target_method)
         return wrapper
-
-
-@dataclass
-class PeriodicalJob():
-    """
-    Wrap a function as a periodical job.
-    Notice that it is not a callable.
-    """
-    function: Callable[[], None]
-    job_id: str
-    trigger: str
-    tg_args: dict[str, int]
-
-
-def periodical(trigger: str, job_id: str = '', **trigger_args):
-    """Wrap a function into a periodical job.
-
-    If `job_id` is not provided, use function name.
-
-    :param trigger: 'cron' or 'interval'
-    :type trigger: str
-    """
-    def wrapper(fn: Callable[[], None]):
-        fn.__periodical__ = PeriodicalJob(fn, job_id or fn.__name__, trigger, trigger_args)
-        return fn
-    return wrapper
 
 
 def start_scheduler() -> BackgroundScheduler:
