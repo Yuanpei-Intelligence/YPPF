@@ -908,6 +908,21 @@ def _notify_longterm_review(longterm: LongTermAppoint, auditor_ids: list[str]):
                    students_id=auditor_ids, url=f'review?Lid={longterm.pk}')
 
 
+def _get_content_room(contents: dict) -> Room:
+    room_id = contents.get('Rid')
+    # TODO: 目前调用时一定存在，后续看情况是处理后调用本函数与否，修改检查方式
+    assert isinstance(room_id, str), '房间号格式不合法！'
+    room = Room.objects.filter(Rid=room_id).first()
+    assert room is not None, f'房间{room_id}不存在！'
+    return room
+
+def _get_content_students(contents: dict):
+    students_id = contents.get('students')
+    # TODO: 目前调用时一定存在，后续看情况是处理后调用本函数与否，修改检查方式
+    assert isinstance(students_id, list), '预约人信息有误，请检查后重新发起预约！'
+    students = Participant.objects.filter(Sid__in=students_id)
+    assert len(students) == len(students_id), '预约人信息有误，请检查后重新发起预约！'
+    return students
 
 def _add_appoint(contents: dict, start: datetime, finish: datetime, non_yp_num: int,
                type: Appoint.Type = Appoint.Type.NORMAL,
@@ -929,18 +944,11 @@ def _add_appoint(contents: dict, start: datetime, finish: datetime, non_yp_num: 
     '''
     from Appointment.appoint.manage import _error
 
-    # 首先检查房间是否存在
     try:
-        room: Room = Room.objects.get(Rid=contents['Rid'])
-    except:
-        return _error('房间不存在，请检查预约信息！')
-    # 再检查学号对不对
-    students_id: list[str] = contents['students']  # 存下学号列表
-    students = Participant.objects.filter(Sid__in=students_id)  # 获取学生
-    try:
-        assert len(students) == len(students_id)
-    except:
-        return _error('预约人信息有误，请检查后重新发起预约！')
+        room = _get_content_room(contents)
+        students = _get_content_students(contents)
+    except AssertionError as e:
+        return _error(str(e))
 
     # 检查预约类型
     if datetime.now().date() == start.date() and type == Appoint.Type.NORMAL:
