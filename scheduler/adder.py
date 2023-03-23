@@ -68,11 +68,39 @@ class ScheduleAdder(Generic[P]):
         ).id
 
 
+class MultipleAdder(Generic[P]):
+    '''多个定时任务添加器
+
+    Attributes:
+        func(Callable): 被绑定的函数
+
+    Methods:
+        schedule: 获取单次定时任务添加器
+    '''
+    def __init__(self, func: Callable[P, None]):
+        self.func = func
+
+    def schedule(self, id: str | None = None, name: str | None = None, *,
+                 run_time: datetime | timedelta | None = None,
+                 replace: bool = True) -> ScheduleAdder[P]:
+        '''规划单次定时任务
+
+        Returns:
+            ScheduleAdder: 单次定时任务添加器
+
+        References:
+            :class:`ScheduleAdder`
+            :method:`ScheduleAdder.__init__`
+            :func:`schedule_adder`
+        '''
+        return ScheduleAdder(self.func, id=id, name=name, run_time=run_time, replace=replace)
+
+
 def schedule_adder(
     func: Callable[P, None], *,
-    id: SeqOrVal[str | None] = None,
-    name: SeqOrVal[str | None] = None,
-    run_time: SeqOrVal[datetime | timedelta | None] = None,
+    id: str | None = None,
+    name: str | None = None,
+    run_time: datetime | timedelta | None = None,
     replace: bool = True,
 ) -> Callable[P, str]:
     '''获取定时任务添加函数
@@ -110,7 +138,7 @@ def schedule_adder(
             adder(1, 2, 3)
 
     Warning:
-        Deprecation: 该函数的多任务功能将被废弃
+        Deprecation: 该函数的多任务功能将被废弃，请使用 :class:`MultipleAdder` 代替
 
     Todo:
         * Raises部分应该移动到返回值的类中
