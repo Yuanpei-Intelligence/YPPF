@@ -126,29 +126,3 @@ class MultipleAdder(Generic[P]):
             :method:`ScheduleAdder.__init__`
         '''
         return ScheduleAdder(self.func, id=id, name=name, run_time=run_time, replace=replace)
-
-
-def schedule_adder(
-    func: Callable[P, None], *,
-    id: str | None = None,
-    name: str | None = None,
-    run_time: datetime | timedelta | None = None,
-    replace: bool = True,
-) -> Callable[P, str]:
-    '''获取定时任务添加函数
-
-    使用原始函数来生成一个定时任务添加器，该函数接受与原始函数相同的参数，返回任务ID。
-    添加的任务参数在调用本函数时传递，以免和原始函数的参数混淆。
-
-    Returns:
-        ScheduleAdder: 定时任务添加器，接受与原始函数相同的参数，返回任务ID
-
-    References:
-        :class:`ScheduleAdder`
-        :module:`scheduler.adder`
-
-    Warning:
-        Deprecated: 多任务功能已废弃，请使用 :class:`MultipleAdder` 代替
-        DeprecationWarning: 该函数即将废弃，请使用 :class:`ScheduleAdder` 代替
-    '''
-    return ScheduleAdder(func, id=id, name=name, run_time=run_time, replace=replace)
