@@ -1,4 +1,4 @@
-from typing import Callable, ParamSpec, TypeVar, cast
+from typing import Callable, ParamSpec, TypeVar, Generic, cast
 from datetime import datetime, timedelta
 
 from scheduler.scheduler import scheduler
@@ -20,6 +20,54 @@ def _generator(source: SeqOrVal[T]):
         yield from cast(Seq[T], source)
 
 
+class ScheduleAdder(Generic[P]):
+    '''定时任务添加器
+
+    绑定调用的函数，调用时添加对应的定时任务
+
+    Attributes:
+        func(Callable): 被绑定的函数
+        id(str | None): 任务ID，唯一值
+        name(str | None): 用于呈现的任务名称，往往无用，请勿和ID混淆
+        run_time(datetime | timedelta | None): 运行的时间
+            运行时间，指定时间、时间差或即刻发送
+        replace(bool): 替换已存在的任务，默认为True
+    '''
+    def __init__(
+        self, func: Callable[P, None], *,
+        id: str | None = None,
+        name: str | None = None,
+        run_time: datetime | timedelta | None = None,
+        replace: bool = True
+    ):
+        self.func = func
+        self.id = id
+        self.name = name
+        self.run_time = run_time
+        self.replace = replace
+
+    def __call__(self, *args: P.args, **kwargs: P.kwargs) -> str:
+        '''添加定时任务
+
+        Args:
+            *args: 与原始函数相同的参数
+            **kwargs: 与原始函数相同的参数
+
+        Returns:
+            str: 任务ID
+        '''
+        return scheduler.add_job(
+            self.func,
+            "date",
+            args=args,
+            kwargs=kwargs,
+            next_run_time=as_schedule_time(self.run_time),
+            id=self.id,
+            name=self.name,
+            replace_existing=self.replace,
+        ).id
+
+
 def schedule_adder(
     func: Callable[P, None], *,
     id: SeqOrVal[str | None] = None,
@@ -33,14 +81,15 @@ def schedule_adder(
     添加的任务参数在调用本函数时传递，以免和原始函数的参数混淆。
     序列参数被用于重复调用时添加不同的任务，如果不是序列，则每次调用时都使用相同的值。
     序列参数不会被复制，不会循环，请避免中途修改导致的问题。
-    
+
     Args:
         func(Callable): 原始函数
 
     Keyword Args:
         id(str | None, optional): 任务ID，唯一值，序列或单值
         name(str | None, optional): 用于呈现的任务名称，往往无用，请勿和ID混淆
-        run_time(datetime | timedelta | None, optional): 运行的时间运行时间，指定时间、时间差或即刻发送
+        run_time(datetime | timedelta | None, optional): 运行的时间
+            运行时间，指定时间、时间差或即刻发送
         replace(bool, optional): 替换已存在的任务，默认为True
 
     Returns:
@@ -60,22 +109,17 @@ def schedule_adder(
             adder = schedule_adder(func)
             adder(1, 2, 3)
 
+    Warning:
+        Deprecation: 该函数的多任务功能将被废弃
+
     Todo:
-        * 返回值类型应该是一个类，而不是函数，以便于添加更多的功能并提供类型提示
         * Raises部分应该移动到返回值的类中
     '''
     _ids = _generator(id)
     _names = _generator(name)
     _run_times = _generator(run_time)
     def _adder(*args: P.args, **kwargs: P.kwargs):
-        return scheduler.add_job(
-            func,
-            "date",
-            args=args,
-            kwargs=kwargs,
-            next_run_time=as_schedule_time(next(_run_times)),
-            id=next(_ids),
-            name=next(_names),
-            replace_existing=replace,
-        ).id
+        adder =  ScheduleAdder(func, id=next(_ids), name=next(_names),
+                               run_time=next(_run_times), replace=replace)
+        return adder(*args, **kwargs)
     return _adder
