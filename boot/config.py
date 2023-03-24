@@ -20,6 +20,7 @@ from typing import Any
 from utils.config import Config, LazySetting
 from utils.config.cast import mapping
 from utils.hasher import MySHA256Hasher
+from utils.models.semester import Semester
 
 
 __all__ = [
@@ -61,7 +62,7 @@ class GlobalConfig(Config):
     salt = LazySetting('hash_salt', default='salt')
     hasher = LazySetting(salt, MySHA256Hasher, type=MySHA256Hasher)
     acadamic_year = LazySetting('acadamic_year', type=int)
-    semester = LazySetting('semester', type=str)
+    semester = LazySetting('semester', Semester.get, type=Semester)
     debug_stuids = LazySetting('debug_stuids', mapping(list, str), [])
     temporary_dir = LazySetting('tmp_dir', default='tmp')
 
