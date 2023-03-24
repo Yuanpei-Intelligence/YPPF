@@ -26,9 +26,6 @@ from django_apscheduler.jobstores import DjangoJobStore
 from record.log.utils import get_logger
 from scheduler.config import scheduler_config as CONFIG
 
-# TODO: 移除从此处的引入
-from scheduler.periodic import periodical
-
 
 # Custom handler
 logger = get_logger('apscheduler')
