@@ -4,7 +4,7 @@ from Appointment.models import Appoint
 from Appointment.utils.log import logger
 from Appointment.appoint.status_control import start_appoint, finish_appoint
 from Appointment.extern.jobs import remove_appoint_reminder
-from scheduler.scheduler import scheduler
+from scheduler.adder import ScheduleAdder
 from scheduler.cancel import remove_job
 
 
@@ -33,17 +33,11 @@ def set_scheduler(appoint: Appoint) -> bool:
         start = current_time    # 改为立刻执行
 
     if not (has_started and appoint.Astatus == Appoint.Status.PROCESSING):
-        scheduler.add_job(start_appoint,
-                          args=[appoint.pk],
-                          id=f'{appoint.pk}_start',
-                          replace_existing=True,
-                          next_run_time=start)
+        ScheduleAdder(start_appoint, id=f'{appoint.pk}_start',
+                      run_time=start)(appoint.pk)
 
-    scheduler.add_job(finish_appoint,
-                      args=[appoint.pk],
-                      id=f'{appoint.pk}_finish',
-                      replace_existing=True,
-                      next_run_time=finish)
+    ScheduleAdder(finish_appoint, id=f'{appoint.pk}_finish',
+                  run_time=finish)(appoint.pk)
     return True
 
 

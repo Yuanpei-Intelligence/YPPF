@@ -19,7 +19,7 @@ import qrcode
 
 from utils.http.utils import build_full_url
 from generic.models import User, YQPointRecord
-from scheduler.scheduler import scheduler
+from scheduler.adder import ScheduleAdder
 from scheduler.cancel import remove_job
 from app.utils_dependency import *
 from app.models import (
@@ -529,8 +529,8 @@ def activity_base_check(request, edit=False):
 
 
 def _set_change_status(activity: Activity, current, next, time, replace):
-    scheduler.add_job(changeActivityStatus, "date", id=f"activity_{activity.id}_{next}",
-                      run_date=time, args=[activity.id, current, next], replace_existing=replace)
+    ScheduleAdder(changeActivityStatus, id=f'activity_{activity.id}_{next}',
+        run_time=time, replace=replace)(activity.id, current, next)
 
 def _set_jobs_to_status(activity: Activity, replace: bool) -> Activity.Status:
     now_time = datetime.now()
@@ -545,10 +545,9 @@ def _set_jobs_to_status(activity: Activity, replace: bool) -> Activity.Status:
         status, next = Activity.Status.APPLYING, Activity.Status.WAITING
         _set_change_status(activity, status, next, activity.apply_end, replace)
     if now_time < activity.start - timedelta(minutes=15):
-        scheduler.add_job(
-            notifyActivity, "date", id=f"activity_{activity.id}_remind",
-            run_date=activity.start - timedelta(minutes=15),
-            args=[activity.id, "remind"], replace_existing=replace)
+        reminder = ScheduleAdder(notifyActivity, id=f'activity_{activity.id}_remind',
+            run_time=activity.start - timedelta(minutes=15), replace=replace)
+        reminder(activity.id, 'remind')
     return status
 
 

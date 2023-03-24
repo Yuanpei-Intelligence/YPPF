@@ -89,12 +89,15 @@ class ScheduleAdder(Generic[P]):
         Returns:
             str: 任务ID
         '''
+        # next_run_time用于强制指定下次运行时间，run_date传递给date触发器
+        # 基本相同，对于date触发器，后者可能更准确
+        # See https://apscheduler.readthedocs.io/en/3.x/modules/triggers/date.html
         return scheduler.add_job(
             self.func,
             "date",
             args=args,
             kwargs=kwargs,
-            next_run_time=as_schedule_time(self.run_time),
+            run_date=as_schedule_time(self.run_time),
             id=self.id,
             name=self.name,
             replace_existing=self.replace,
