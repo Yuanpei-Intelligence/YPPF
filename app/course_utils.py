@@ -55,6 +55,7 @@ from django.db import transaction
 from django.db.models import F, Q, Sum, Prefetch
 
 from scheduler.scheduler import scheduler
+from scheduler.cancel import remove_job
 from utils.config.cast import str_to_time
 
 __all__ = [
@@ -364,9 +365,7 @@ def modify_course_activity(request: HttpRequest, activity: Activity):
     # 更新定时任务
     if old_need_apply: 
         # 删除报名中的状态阶段
-        try: 
-            scheduler.remove_job(job_id=f"activity_{activity.id}_{Activity.Status.APPLYING}")
-        except: pass
+        remove_job(job_id=f"activity_{activity.id}_{Activity.Status.APPLYING}")
     
     if activity.need_apply:
         scheduler.add_job(changeActivityStatus, "date", id=f"activity_{activity.id}_{Activity.Status.APPLYING}",
@@ -437,18 +436,11 @@ def cancel_course_activity(request: HttpRequest, activity: Activity, cancel_all:
 
     # 取消定时任务（需要先判断一下是否已经被执行了）
     if activity.start - timedelta(minutes=15) > datetime.now():
-        try:
-            scheduler.remove_job(f"activity_{activity.id}_remind")
-        except: pass
+        remove_job(f"activity_{activity.id}_remind")
     if activity.start > datetime.now():
-        try:
-            scheduler.remove_job(
-                f"activity_{activity.id}_{Activity.Status.PROGRESSING}")
-        except: pass
+        remove_job(f"activity_{activity.id}_{Activity.Status.PROGRESSING}")
     if activity.end > datetime.now():
-        try:
-            scheduler.remove_job(f"activity_{activity.id}_{Activity.Status.END}")
-        except: pass
+        remove_job(f"activity_{activity.id}_{Activity.Status.END}")
 
     activity.save()
 

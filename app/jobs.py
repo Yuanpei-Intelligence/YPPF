@@ -14,6 +14,7 @@ from django.db.models import F
 from boot.config import GLOBAL_CONFIG
 from app.log import logger
 from scheduler.scheduler import scheduler
+from scheduler.cancel import remove_job
 from scheduler.periodic import periodical
 from generic.models import YQPointRecord
 from record.models import PageLog
@@ -333,16 +334,10 @@ def cancel_related_jobs(instance, extra_ids=None):
         if callable(job_ids):
             job_ids = job_ids()
         for job_id in job_ids:
-            try:
-                scheduler.remove_job(job_id)
-            except:
-                continue
+            remove_job(job_id)
     if extra_ids is not None:
         for job_id in extra_ids:
-            try:
-                scheduler.remove_job(job_id)
-            except:
-                continue
+            remove_job(job_id)
 
 
 def _cancel_jobs(sender, instance, **kwargs):

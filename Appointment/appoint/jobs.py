@@ -5,6 +5,7 @@ from Appointment.utils.log import logger
 from Appointment.appoint.status_control import start_appoint, finish_appoint
 from Appointment.extern.jobs import remove_appoint_reminder
 from scheduler.scheduler import scheduler
+from scheduler.cancel import remove_job
 
 
 @logger.secure_func('设置预约定时任务出错', fail_value=False)
@@ -53,25 +54,14 @@ def cancel_scheduler(appoint: Appoint | int, record_miss: bool = False) -> bool:
     Hint:
         如果结束任务不存在，则不会处理其它任务
     '''
-    if isinstance(appoint, Appoint):
-        aid = appoint.pk
-    else:
-        aid = appoint
-    try:
-        scheduler.remove_job(f'{aid}_finish')
-        try:
-            scheduler.remove_job(f'{aid}_start')
-        except:
-            if record_miss:
-                logger.warning(f"预约{aid}取消时未发现开始计时器")
-        try:
-            remove_appoint_reminder(aid)
-        except:
-            if record_miss:
-                logger.info(f"预约{aid}取消时未发现微信提醒")
-        return True
-    except:
+    aid = appoint.pk if isinstance(appoint, Appoint) else appoint
+    if not remove_job(f'{aid}_finish'):
         if record_miss:
             logger.warning(f"预约{aid}取消时未发现计时器")
         return False
 
+    if not remove_job(f'{aid}_start') and record_miss:
+        logger.warning(f"预约{aid}取消时未发现开始计时器")
+    if not remove_appoint_reminder(aid) and record_miss:
+        logger.info(f"预约{aid}取消时未发现微信提醒")
+    return True

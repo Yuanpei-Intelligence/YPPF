@@ -20,6 +20,7 @@ import qrcode
 from utils.http.utils import build_full_url
 from generic.models import User, YQPointRecord
 from scheduler.scheduler import scheduler
+from scheduler.cancel import remove_job
 from app.utils_dependency import *
 from app.models import (
     User,
@@ -814,10 +815,7 @@ def accept_activity(request, activity):
 
 def _remove_jobs(activity: Activity, *jobs):
     for job in jobs:
-        try:
-            scheduler.remove_job(f"activity_{activity.id}_{job}")
-        except:
-            pass
+        remove_job(f"activity_{activity.id}_{job}")
 
 def _remove_activity_jobs(activity: Activity):
     _remove_jobs(activity, 'remind', Activity.Status.WAITING,
