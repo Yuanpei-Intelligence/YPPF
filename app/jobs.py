@@ -13,7 +13,8 @@ from django.db.models import F
 
 from boot.config import GLOBAL_CONFIG
 from app.log import logger
-from scheduler.scheduler import scheduler, periodical
+from scheduler.scheduler import scheduler
+from scheduler.periodic import periodical
 from generic.models import YQPointRecord
 from record.models import PageLog
 from app.models import (

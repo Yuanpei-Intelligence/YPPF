@@ -4,7 +4,7 @@ from datetime import datetime, timedelta
 
 from django.db import transaction
 
-from scheduler.scheduler import periodical
+from scheduler.periodic import periodical
 from Appointment.config import appointment_config as CONFIG
 from Appointment.models import Appoint
 from Appointment.utils.utils import get_conflict_appoints

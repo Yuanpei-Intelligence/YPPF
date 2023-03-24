@@ -6,7 +6,7 @@ __all__ = ['periodical']
 
 
 @dataclass
-class PeriodicalJob():
+class PeriodicalJob:
     """
     Wrap a function as a periodical job.
     Notice that it is not a callable.
