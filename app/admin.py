@@ -1,13 +1,12 @@
 from datetime import datetime
+
 from django.contrib import admin
 from django.utils.safestring import mark_safe
 
 from utils.http.dependency import HttpRequest
-from app.models import *
 from utils.admin_utils import *
+from app.models import *
 from scheduler.cancel import remove_job
-
-
 
 
 # 通用内联模型
@@ -859,7 +858,7 @@ class PoolRecordAdmin(admin.ModelAdmin):
         if record.prize.name.startswith('信用分'):
             User.objects.modify_credit(record.user, 1, '元气值：兑换')
         record.status = PoolRecord.Status.REDEEMED
-        # record.time = datetime.now()
+        record.redeem_time = datetime.now()
         record.save()
         return self.message_user(request, '兑换成功!')
 
