@@ -69,6 +69,24 @@ def return_on_except(
 
     Returns:
         Callable[[Callable[P, R]], Callable[P, R]]: 处理指定异常的包装器
+
+    Examples:
+        返回常量是最常用的方法，用于检查是否失败::
+
+            @return_on_except(False, Exception)
+            def func():
+                return True
+
+        可以使用工厂函数生成对象::
+
+            @return_on_except(list[str], KeyError)
+            def get_args(content: dict) -> list[str]:
+                return content['args']
+
+            >>> get_args({'args': ['a', 'b']})
+            ['a', 'b']
+            >>> get_args({})
+            []
     '''
     def wrapper(func: Callable[P, RR]):
         @wraps(func)
