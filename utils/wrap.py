@@ -87,6 +87,26 @@ def return_on_except(
             ['a', 'b']
             >>> get_args({})
             []
+
+        也可使用异常处理函数，在提供的错误信息时格外有效
+        返回值如果和原函数有所区分，可以使用merge_type::
+
+            @return_on_except(str, AssertionError, merge_type=True)
+            def api() -> None:
+                ...
+
+        错误函数通常接受字符串而不是异常，可以使用``stringify_to``转化为异常处理函数::
+
+            from utils.global_messages import wrong, succeed
+            @return_on_except(stringify_to(wrong), AssertionError)
+            def msg_api():
+                return succeed('ok')
+
+        监听器可以用于记录日志::
+
+            @return_on_except(None, AssertionError, logger.listener())
+            def may_fail():
+                pass
     '''
     def wrapper(func: Callable[P, RR]):
         @wraps(func)
