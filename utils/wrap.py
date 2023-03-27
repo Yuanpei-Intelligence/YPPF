@@ -1,4 +1,4 @@
-from typing import Callable, TypeVar, ParamSpec, cast, Any
+from typing import Callable, TypeVar, ParamSpec, cast, Any, overload, Literal
 from functools import wraps
 
 __all__ = [
@@ -32,6 +32,22 @@ def value_on_except(value: ExceptValue[R, E],
             return cast(Callable[[], R], value)()
     return value
 
+
+@overload
+def return_on_except(
+    value: R | Callable[[], R] | Callable[[E], R],
+    exc_type: type[E] | tuple[type[E], ...],
+    *listeners: Callable[[E, tuple[Any, ...], dict[str, Any]], None],
+    merge_type: Literal[False] = False,
+) -> Callable[[Callable[P, R]], Callable[P, R]]: ...
+
+@overload
+def return_on_except(
+    value: R | Callable[[], R] | Callable[[E], R],
+    exc_type: type[E] | tuple[type[E], ...],
+    *listeners: Callable[[E, tuple[Any, ...], dict[str, Any]], None],
+    merge_type: Literal[True] = ...,
+) -> Callable[[Callable[P, RR]], Callable[P, RR | R]]: ...
 
 def return_on_except(
     value: ExceptValue[R, E],
