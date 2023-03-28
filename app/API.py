@@ -8,7 +8,7 @@
 @Date 2022-08-17
 '''
 from generic.models import User
-from app.models import Position, NaturalPerson
+from app.models import Position
 from app.utils import (
     check_user_type as __check_type,
     get_user_ava as __get_ava,
@@ -16,7 +16,6 @@ from app.utils import (
     get_user_wallpaper as __get_wallpaper,
 )
 from app.config import UTYPE_ORG, UTYPE_PER
-from typing import List
 
 __all__ = [
     'is_valid', 'is_org', 'is_person',
@@ -59,7 +58,7 @@ def get_wallpaper_url(valid_user: User) -> str:
     return __get_wallpaper(obj, user_type)
 
 
-def get_members(valid_user: User, noncurrent=False) -> List[str]:
+def get_members(valid_user: User, noncurrent: bool = False) -> list[str]:
     '''返回合法用户的成员学号列表'''
     user_type = __check_type(valid_user)[1]
     if user_type != UTYPE_ORG:
@@ -70,14 +69,14 @@ def get_members(valid_user: User, noncurrent=False) -> List[str]:
     return list(members)
 
 
-def get_auditors(valid_user: User) -> List[str]:
+def get_auditors(valid_user: User) -> list[str]:
     '''返回合法用户的需要审核时的审核者学号列表'''
     user_type = __check_type(valid_user)[1]
     if user_type != UTYPE_ORG:
         return []
     obj = __get_obj(valid_user, user_type)
     auditors = []
-    auditor: NaturalPerson = obj.otype.incharge
+    auditor = obj.otype.incharge
     if auditor is not None:
         auditors.append(auditor.get_user().get_username())
     return auditors

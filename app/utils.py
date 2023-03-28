@@ -4,6 +4,7 @@ import urllib.parse
 from io import BytesIO
 from datetime import datetime, timedelta
 from functools import wraps
+from typing import overload, Literal
 
 import imghdr
 from django.contrib import auth
@@ -93,7 +94,23 @@ def record_attack(except_type=None, as_attack=False):
     return actual_decorator
 
 
-def get_classified_user(user: User, user_type=None, *,
+@overload
+def get_classified_user(
+    user: User, user_type: Literal[User.Type.PERSON], *,
+    update: bool = False, activate: bool = False
+) -> NaturalPerson: ...
+@overload
+def get_classified_user(
+    user: User, user_type: Literal[User.Type.ORG], *,
+    update: bool = False, activate: bool = False
+) -> Organization: ...
+@overload
+def get_classified_user(
+    user: User, user_type: str | None = ..., *,
+    update: bool = False, activate: bool = False
+) -> ClassifiedUser: ...
+
+def get_classified_user(user: User, user_type: str | User.Type | None = None, *,
                         update=False, activate=False) -> ClassifiedUser:
     '''
     通过User对象获取对应的实例

@@ -6,7 +6,7 @@
 
 依赖于app.API
 '''
-from typing import Callable, cast
+from typing import Callable, ParamSpec, Concatenate, cast, overload, Literal, TypeGuard
 from functools import wraps
 
 from django.db.models import QuerySet
@@ -17,8 +17,8 @@ from django.contrib.auth.decorators import login_required
 
 from Appointment.models import User, Participant
 from Appointment.config import appointment_config as CONFIG
-import utils.global_messages as my_messages
-from utils.http import HttpRequest, UserRequest
+from utils.global_messages import wrong, succeed, message_url
+from utils.http.dependency import HttpRequest, UserRequest, HttpResponse
 from app import API
 
 __all__ = [
@@ -33,8 +33,15 @@ __all__ = [
 ]
 
 
+@overload
+def get_participant(user: User | str, update: bool = ...,
+                    raise_except: Literal[False] = ...) -> Participant | None: ...
+@overload
+def get_participant(user: User | str, update: bool = ...,
+                    raise_except: Literal[True] = ...) -> Participant: ...
 
-def get_participant(user: User | str, update=False, raise_except=False):
+def get_participant(user: User | str, update: bool = False,
+                    raise_except: bool = False) -> Participant | None:
     '''通过User对象或学号获取对应的参与人对象
 
     Args:
@@ -43,6 +50,9 @@ def get_participant(user: User | str, update=False, raise_except=False):
 
     Returns:
     - participant: 满足participant.Sid=user, 不存在时返回`None`
+
+    Raises:
+    - DoesNotExist: 当`raise_except`为`True`时，如果不存在对应的参与人对象则抛出异常
     '''
     try:
         par_all: QuerySet[Participant] = Participant.objects.all()
@@ -97,14 +107,14 @@ def get_avatar(participant: Participant | User):
     return API.get_avatar_url(user)
 
 
-def get_member_ids(participant: Participant | User, noncurrent=False):
+def get_member_ids(participant: Participant | User, noncurrent: bool = False):
     '''返回participant的成员id列表，个人返回空列表'''
     user = _arg2user(participant)
     return API.get_members(user, noncurrent=noncurrent)
 
 
 def get_members(participant: Participant | User,
-                noncurrent=False) -> QuerySet[Participant]:
+                noncurrent: bool = False) -> QuerySet[Participant]:
     '''返回participant的成员集合，Participant的QuerySet'''
     member_ids = get_member_ids(participant, noncurrent=noncurrent)
     return Participant.objects.filter(Sid__in=member_ids)
@@ -147,7 +157,7 @@ def _create_account(request: UserRequest, **values) -> Participant | None:
         return None
 
 
-def _update_name(user: Participant | User | str):
+def _update_name(user: Participant | User | str) -> bool:
     import pypinyin
     from django.db import transaction
 
@@ -177,17 +187,23 @@ def _update_name(user: Participant | User | str):
     return True
 
 
-def identity_check(
-    auth_func: Callable[[Participant | None], bool] = lambda x: x is not None,
-    redirect_field_name='origin',
-    allow_create=True,
-    update_name=True,
-    ):
+P = ParamSpec('P')
+AuthFunction = Callable[[Participant | None], bool]
+ViewFunction = Callable[Concatenate[HttpRequest, P], HttpResponse]
 
-    def decorator(view_function: Callable):
+def _authenticate(participant: Participant | None) -> TypeGuard[Participant]:
+    return participant is not None
+
+def identity_check(
+    auth_func: AuthFunction = _authenticate,
+    redirect_field_name: str = 'origin',
+    allow_create: bool = True,
+    update_name: bool = True,
+) -> Callable[[ViewFunction[P]], ViewFunction[P]]:
+    def decorator(view_function: ViewFunction[P]) -> ViewFunction[P]:
         @login_required(redirect_field_name=redirect_field_name)
         @wraps(view_function)
-        def _wrapped_view(request: HttpRequest, *args, **kwargs):
+        def _wrapped_view(request: HttpRequest, *args: P.args, **kwargs: P.kwargs):
 
             _allow_create = allow_create and CONFIG.allow_newstu_appoint
             context = {}
@@ -204,25 +220,23 @@ def identity_check(
             if cur_part is None and _allow_create:
                 cur_part = _create_account(request)
                 if cur_part is not None:
-                    my_messages.succeed('账号不存在，已为您自动创建账号！', context)
+                    succeed('账号不存在，已为您自动创建账号！', context)
                 else:
                     warn_message = ('创建地下室账户失败，请联系管理员为您解决。'
                                     '在此之前，您可以查看实时人数。')
-                    my_messages.wrong(warn_message, context)
+                    wrong(warn_message, context)
 
             if auth_func is not None and not auth_func(cur_part):
                 # TODO: task 0 lzp, log it and notify admin
                 if cur_part is not None:
                     warn_message = ('您访问了未授权的页面，如需访问请先登录。')
-                    my_messages.wrong(warn_message, context)
+                    wrong(warn_message, context)
                 elif not _allow_create:
                     warn_message = ('本页面暂不支持地下室账户创建，您可以先查看实时人数。')
-                    my_messages.wrong(warn_message, context)
+                    wrong(warn_message, context)
 
             if context:
-                return redirect(my_messages.message_url(
-                                    context,
-                                    reverse('Appointment:index')))
+                return redirect(message_url(context, reverse('Appointment:index')))
 
             return view_function(request, *args, **kwargs)
         return _wrapped_view

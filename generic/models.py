@@ -260,11 +260,11 @@ class User(AbstractUser, PointMixin):
     name = models.CharField('名称', max_length=32)
 
     acronym = models.CharField('缩写', max_length=32, default='', blank=True)
-    utype: 'str|Type' = models.CharField(
+    utype: Type | str = models.CharField(
         '用户类型', max_length=20,
         choices=Type.choices,
         default='', blank=True,
-    )
+    )  # type: ignore
     first_time_login = models.BooleanField(default=True)
 
     REQUIRED_FIELDS = ['name']
