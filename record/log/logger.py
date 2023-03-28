@@ -29,7 +29,7 @@ from boot.config import absolute_path
 from utils.http.dependency import HttpRequest
 from record.log.config import log_config as CONFIG
 from utils.inspect import module_filepath
-from utils.wrap import ExceptType
+from utils.wrap import Listener, ExceptType
 
 
 __all__ = [
@@ -101,18 +101,22 @@ class Logger(logging.Logger):
 
     @staticmethod
     def format_request(request: HttpRequest) -> str:
-        ret = []
-        ret.append('URL: ' + request.get_full_path())
+        return '\n'.join(Logger._request_msgs(request))
+
+    @classmethod
+    def _request_msgs(cls, request: HttpRequest) -> list[str]:
+        msgs = []
+        msgs.append('URL: ' + request.get_full_path())
         if request.user.is_authenticated:
-            ret.append('User: ' + request.user.__str__())  # Traceable Call
+            msgs.append('User: ' + request.user.__str__())  # Traceable Call
         if request.method is not None:
-            ret.append('Method: ' + request.method)
+            msgs.append('Method: ' + request.method)
             if request.method.lower() == 'POST':
                 try:
-                    ret.append('Data: ' + json.dumps(request.POST.dict()))
+                    msgs.append('Data: ' + json.dumps(request.POST.dict()))
                 except:
-                    ret.append('Failed to jsonify post data.')
-        return '\n'.join(ret)
+                    msgs.append('Failed to jsonify post data.')
+        return msgs
 
     def on_exception(self, message: str = '', *,
                      request: HttpRequest | None = None,
@@ -174,3 +178,34 @@ class Logger(logging.Logger):
                     return self._return_value(fail_value)
             return wrapper
         return decorator
+
+    def _get_request_arg(self, request: HttpRequest, *args, **kwargs) -> HttpRequest:
+        return request
+
+    def _traceback_msgs(self, exc_info: Exception, func: Callable) -> list[str]:
+        msgs = []
+        msgs.append(f'Except {exc_info.__class__.__name__}: {exc_info}')
+        msgs.append(f'Function: {func.__module__}.{func.__qualname__}')
+        return msgs
+
+    def _arg_msgs(self, args: tuple, kwargs: dict) -> list[str]:
+        msgs = []
+        if args: msgs.append(f'Args: {args}')
+        if kwargs: msgs.append(f'Keywords: {kwargs}')
+        return msgs
+
+    def listener(self, message: str = '', *,
+                 as_view: bool = False,
+                 raise_exc: bool | None = None) -> Listener[Exception]:
+        def _listener(exc: Exception, func: Callable, args: tuple, kwargs: dict):
+            msgs = []
+            if as_view:
+                request = self._get_request_arg(*args, **kwargs)
+                msgs.extend(self._request_msgs(request))
+            else:
+                msgs.extend(self._traceback_msgs(exc, func))
+                msgs.extend(self._arg_msgs(args, kwargs))
+            if message:
+                msgs.append(message)
+            self.on_exception('\n'.join(msgs), raise_exc=raise_exc)
+        return _listener
