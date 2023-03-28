@@ -6,19 +6,18 @@
 
 依赖于app.API
 '''
-from typing import Callable, ParamSpec, Concatenate, cast, overload, Literal, TypeGuard
+from typing import Callable, ParamSpec, Concatenate, TypeVar, overload, Literal, TypeGuard
 from functools import wraps
 
 from django.db.models import QuerySet
-from django.contrib.auth.models import AnonymousUser
 from django.shortcuts import redirect
 from django.urls import reverse
-from django.contrib.auth.decorators import login_required
+from utils.http.rewrite_auth import login_required
+from utils.http.dependency import HttpRequest, UserRequest, HttpResponse
 
 from Appointment.models import User, Participant
 from Appointment.config import appointment_config as CONFIG
 from utils.global_messages import wrong, succeed, message_url
-from utils.http.dependency import HttpRequest, UserRequest, HttpResponse
 from app import API
 
 __all__ = [
@@ -161,7 +160,6 @@ def _update_name(user: Participant | User | str) -> bool:
     # 更新数据库和session
     with transaction.atomic():
         participant = get_participant(participant.Sid, update=True, raise_except=True)
-        assert participant is not None, '本来就存在的用户理应存在'
         participant.name = given_name
         participant.pinyin = pinyin_init
         participant.save()
@@ -169,29 +167,30 @@ def _update_name(user: Participant | User | str) -> bool:
 
 
 P = ParamSpec('P')
+R = TypeVar('R', bound=HttpRequest)
 AuthFunction = Callable[[Participant | None], bool]
-ViewFunction = Callable[Concatenate[HttpRequest, P], HttpResponse]
+ViewFunction = Callable[Concatenate[R, P], HttpResponse]
 
 def _authenticate(participant: Participant | None) -> TypeGuard[Participant]:
     return participant is not None
+
 
 def identity_check(
     auth_func: AuthFunction = _authenticate,
     redirect_field_name: str = 'origin',
     allow_create: bool = True,
     update_name: bool = True,
-) -> Callable[[ViewFunction[P]], ViewFunction[P]]:
-    def decorator(view_function: ViewFunction[P]) -> ViewFunction[P]:
+) -> Callable[[ViewFunction[UserRequest, P]], ViewFunction[HttpRequest, P]]:
+    def decorator(view_function: ViewFunction[UserRequest, P]) -> ViewFunction[HttpRequest, P]:
         @login_required(redirect_field_name=redirect_field_name)
         @wraps(view_function)
-        def _wrapped_view(request: HttpRequest, *args: P.args, **kwargs: P.kwargs):
+        def _wrapped_view(request: UserRequest, *args: P.args, **kwargs: P.kwargs):
 
             _allow_create = allow_create and CONFIG.allow_newstu_appoint
             context = {}
 
             if not request.user.is_valid():
                 _allow_create = False
-            request = cast(UserRequest, request)
 
             cur_part = get_participant(request.user)
 
