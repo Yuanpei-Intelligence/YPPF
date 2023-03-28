@@ -36,7 +36,9 @@ models.py
 
 @Date 2022-03-11
 '''
-from random import choice
+import random
+from datetime import datetime, timedelta
+from typing_extensions import Self
 
 from django.db import models, transaction
 from django.db.models import Q, Sum, QuerySet
@@ -45,7 +47,6 @@ from django_mysql.models.fields import ListCharField
 from generic.models import User
 from utils.models.descriptor import invalid_for_frontend, necessary_for_frontend
 from utils.models.semester import Semester, current_year, select_current
-from datetime import datetime, timedelta
 from app.config import *
 
 
@@ -172,7 +173,7 @@ class ClassifiedUser(models.Model):
         '''
         return '/'
 
-    def get_user_ava(self=None) -> str:
+    def get_user_ava(self: Self | None = None) -> str:
         '''
         获取头像路径
 
@@ -366,7 +367,7 @@ class NaturalPerson(models.Model):
         url += f'+{self.person_id_id}'
         return url
 
-    def get_user_ava(self=None):
+    def get_user_ava(self: Self | None = None):
         '''User一对一模型的建议方法，不存在时返回默认头像'''
         avatar = self.avatar if self is not None else ""
         if not avatar:
@@ -574,7 +575,7 @@ class Organization(models.Model):
         url = f'/orginfo/?name={self.oname}'
         return url
 
-    def get_user_ava(self=None):
+    def get_user_ava(self: Self | None = None):
         '''User一对一模型的建议方法，不存在时返回默认头像'''
         avatar = self.avatar if self is not None else ""
         if not avatar:
@@ -1364,9 +1365,10 @@ class Wishes(models.Model):
         "#FDAFAB","#FFDAC1","#FAF1D6",
         "#B6E3E9","#B5EAD7","#E2F0CB",
     ]
-    # 不要随便删 admin.py也依赖本随机函数
-    def rand_color():
-        return choice(Wishes.COLORS)
+
+    # 不要随便删 admin.py也依赖本随机函数，3.10可以直接调用static方法
+    def rand_color():  # type: ignore
+        return random.choice(Wishes.COLORS)
 
     text = models.TextField("心愿内容", default="", blank=True)
     time = models.DateTimeField("发布时间", auto_now_add=True)

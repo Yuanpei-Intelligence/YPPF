@@ -23,8 +23,6 @@ from app import API
 
 __all__ = [
     'get_participant',
-    'is_org',
-    'is_person',
     'get_name',
     'get_avatar',
     'get_member_ids', 'get_members',
@@ -75,23 +73,6 @@ def _arg2user(participant: Participant | User) -> User:
     else:
         user = participant
     return user
-
-
-# 获取用户身份
-def is_valid(participant: Participant | User | AnonymousUser):
-    '''返回participant对象是否是一个有效的用户'''
-    user = _arg2user(participant)  # type: ignore
-    return API.is_valid(user)
-
-def is_org(participant: Participant | User):
-    '''返回participant对象是否是组织'''
-    user = _arg2user(participant)
-    return API.is_org(user)
-
-def is_person(participant: Participant | User):
-    '''返回participant是否是个人'''
-    user = _arg2user(participant)
-    return API.is_person(user)
 
 
 # 获取用户信息
@@ -147,9 +128,9 @@ def _create_account(request: UserRequest, **values) -> Participant | None:
                 name=given_name,
                 pinyin=pinyin_init,
             )
-            values.setdefault('hidden', is_org(request.user))
+            values.setdefault('hidden', request.user.is_org())
             values.setdefault('longterm',
-                is_org(request.user) and len(get_member_ids(request.user)) >= 10)
+                request.user.is_org() and len(get_member_ids(request.user)) >= 10)
 
             account = Participant.objects.create(**values)
             return account
@@ -208,7 +189,7 @@ def identity_check(
             _allow_create = allow_create and CONFIG.allow_newstu_appoint
             context = {}
 
-            if not is_valid(request.user):
+            if not request.user.is_valid():
                 _allow_create = False
             request = cast(UserRequest, request)
 

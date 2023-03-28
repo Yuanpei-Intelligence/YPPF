@@ -286,7 +286,9 @@ class User(AbstractUser, PointMixin):
 
     @invalid_for_frontend
     def is_valid(self) -> bool:
-        return self.utype != self.Type.SPECIAL
+        '''返回用户是否合法，存在对应的子类对象'''
+        # TODO: 需要接入访客时，重新设计
+        return self.utype not in [self.Type.SPECIAL, self.Type.UNAUTHORIZED]
 
     @necessary_for_frontend(utype)
     def is_person(self) -> bool:

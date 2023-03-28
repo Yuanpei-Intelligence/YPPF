@@ -170,16 +170,10 @@ def check_user_type(user: User):
 
 def get_user_ava(obj: ClassifiedUser, user_type):
     try:
-        ava = obj.avatar
+        return obj.get_user_ava()
     except:
-        ava = ""
-    if not ava:
-        if user_type == UTYPE_PER:
-            return NaturalPerson.get_user_ava()
-        else:
-            return Organization.get_user_ava()
-    else:
-        return MEDIA_URL + str(ava)
+        # TODO: get_user_ava不是必要方法，添加新类型时，如果未实现请修改
+        raise AssertionError('任何用户都应该有对应的头像！')
 
 
 def get_user_wallpaper(person: ClassifiedUser, user_type):
