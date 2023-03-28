@@ -14,7 +14,8 @@ E = TypeVar('E', bound=Exception)
 
 
 ExceptValue = R | Callable[[], R] | Callable[[E], R]
-Listener = Callable[[E, tuple[Any, ...], dict[str, Any]], None]
+ExceptType = type[E] | tuple[type[E], ...]
+Listener = Callable[[E, Callable, tuple[Any, ...], dict[str, Any]], None]
 
 
 def value_on_except(value: ExceptValue[R, E],
@@ -37,7 +38,7 @@ def value_on_except(value: ExceptValue[R, E],
 def return_on_except(
     value: R | Callable[[], R] | Callable[[E], R],
     exc_type: type[E] | tuple[type[E], ...],
-    *listeners: Callable[[E, tuple[Any, ...], dict[str, Any]], None],
+    *listeners: Callable[[E, Callable, tuple[Any, ...], dict[str, Any]], None],
     merge_type: Literal[False] = False,
 ) -> Callable[[Callable[P, R]], Callable[P, R]]: ...
 
@@ -45,13 +46,13 @@ def return_on_except(
 def return_on_except(
     value: R | Callable[[], R] | Callable[[E], R],
     exc_type: type[E] | tuple[type[E], ...],
-    *listeners: Callable[[E, tuple[Any, ...], dict[str, Any]], None],
+    *listeners: Callable[[E, Callable, tuple[Any, ...], dict[str, Any]], None],
     merge_type: Literal[True] = ...,
 ) -> Callable[[Callable[P, RR]], Callable[P, RR | R]]: ...
 
 def return_on_except(
     value: ExceptValue[R, E],
-    exc_type: type[E] | tuple[type[E], ...],
+    exc_type: ExceptType[E],
     *listeners: Listener[E],
     merge_type: bool = False,
 ) -> Callable[[Callable[P, RR]], Callable[P, RR | R]]:
@@ -115,7 +116,7 @@ def return_on_except(
                 return func(*args, **kwargs)
             except exc_type as exc:
                 for listener in listeners:
-                    listener(exc, args, kwargs)
+                    listener(exc, func, args, kwargs)
                 return value_on_except(value, exc)
         return inner
     return wrapper
