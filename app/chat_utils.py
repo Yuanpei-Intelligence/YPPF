@@ -123,8 +123,8 @@ def create_chat(
         return None, wrong("对方不允许匿名提问！")
 
     # 目前提问方回答方都需要是自然人
-    valid, questioner_type, _ = check_user_type(request.user)
-    valid, respondent_type, _ = check_user_type(respondent)
+    _, questioner_type, _ = check_user_type(request.user)
+    _, respondent_type, _ = check_user_type(respondent)
     if questioner_type != UTYPE_PER or respondent_type != UTYPE_PER:
         return None, wrong("目前只允许个人用户进行问答！")
 

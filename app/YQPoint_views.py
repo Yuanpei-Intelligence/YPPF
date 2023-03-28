@@ -27,7 +27,7 @@ __all__ = [
 @utils.check_user_access(redirect_url="/logout/")
 @logger.secure_view()
 def myYQPoint(request: HttpRequest):
-    valid, user_type, html_display = utils.check_user_type(request.user)
+    _, user_type, html_display = utils.check_user_type(request.user)
     # 获取可能的提示信息
     my_messages.transfer_message_context(request.GET, html_display)
 
@@ -53,7 +53,7 @@ def myYQPoint(request: HttpRequest):
 @utils.check_user_access(redirect_url="/logout/")
 @logger.secure_view()
 def myPrize(request: HttpRequest):
-    valid, user_type, html_display = utils.check_user_type(request.user)
+    _, user_type, html_display = utils.check_user_type(request.user)
     # 获取可能的提示信息
     my_messages.transfer_message_context(request.GET, html_display)
 
@@ -91,7 +91,7 @@ def showPools(request: HttpRequest) -> HttpResponse:
     :return
     :rtype: HttpResponse
     """
-    valid, user_type, _ = check_user_type(request.user)
+    _, user_type, _ = check_user_type(request.user)
     if user_type == UTYPE_ORG:
         return redirect(message_url(wrong("只有个人账号可以进入此页面！")))
 

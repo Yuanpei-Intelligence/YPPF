@@ -43,7 +43,7 @@ def addComment(request, comment_base, receiver=None, *,
     Returns:
         context<dict>: 继承自wrong/succeed, 成功时包含new_comment
     """
-    valid, user_type, html_display = check_user_type(request.user)
+    _, user_type, html_display = check_user_type(request.user)
     sender = get_person_or_org(request.user)
     sender_name = "匿名者" if anonymous else sender.get_display_name()
 

@@ -225,7 +225,7 @@ def stuinfo(request: HttpRequest, name=None):
     """
 
     user = request.user
-    valid, user_type, html_display = utils.check_user_type(request.user)
+    _, user_type, html_display = utils.check_user_type(request.user)
 
     oneself = get_person_or_org(user, user_type)
 
@@ -679,7 +679,7 @@ def requestLoginOrg(request: HttpRequest, name=None):  # 特指个人希望通�
         如果个人账户对应的是name对应的小组的最高权限人，那么允许登录，否则跳转回stuinfo并warning
     """
     user = request.user
-    valid, user_type, html_display = utils.check_user_type(request.user)
+    _, user_type, html_display = utils.check_user_type(request.user)
 
     if user_type == UTYPE_ORG:
         return redirect("/orginfo/")
@@ -960,7 +960,7 @@ def orginfo(request: HttpRequest, name=None):
 @utils.check_user_access(redirect_url="/logout/")
 @logger.secure_view()
 def homepage(request: HttpRequest):
-    valid, user_type, html_display = utils.check_user_type(request.user)
+    _, user_type, html_display = utils.check_user_type(request.user)
     is_person = user_type == UTYPE_PER
     me = get_person_or_org(request.user, user_type)
 
@@ -1118,7 +1118,7 @@ def homepage(request: HttpRequest):
 @utils.check_user_access(redirect_url="/logout/")
 @logger.secure_view()
 def accountSetting(request: HttpRequest):
-    valid, user_type, html_display = utils.check_user_type(request.user)
+    _, user_type, html_display = utils.check_user_type(request.user)
 
     # 在这个页面 默认回归为自己的左边栏
     html_display["is_myself"] = True
@@ -1545,7 +1545,7 @@ def search(request: HttpRequest):
             搜索结果的呈现见activity_field
     """
 
-    valid, user_type, html_display = utils.check_user_type(request.user)
+    _, user_type, html_display = utils.check_user_type(request.user)
 
     query = request.GET.get("Query", "")
     if query == "":
@@ -1931,7 +1931,7 @@ def modpw(request: HttpRequest):
 @utils.check_user_access(redirect_url="/logout/")
 @logger.secure_view()
 def subscribeOrganization(request: HttpRequest):
-    valid, user_type, html_display = utils.check_user_type(request.user)
+    _, user_type, html_display = utils.check_user_type(request.user)
     if user_type != UTYPE_PER:
         succeed('小组账号不支持订阅，您可以在此查看小组列表！', html_display)
         html_display.update(readonly=True)
@@ -1965,7 +1965,7 @@ def subscribeOrganization(request: HttpRequest):
 @utils.check_user_access(redirect_url="/logout/")
 @logger.secure_view()
 def saveSubscribeStatus(request: HttpRequest):
-    valid, user_type, html_display = utils.check_user_type(request.user)
+    _, user_type, html_display = utils.check_user_type(request.user)
     if user_type != UTYPE_PER:
         return JsonResponse({"success": False})
 
@@ -2027,7 +2027,7 @@ def saveSubscribeStatus(request: HttpRequest):
 @utils.check_user_access(redirect_url="/logout/")
 @logger.secure_view()
 def notifications(request: HttpRequest):
-    valid, user_type, html_display = utils.check_user_type(request.user)
+    _, user_type, html_display = utils.check_user_type(request.user)
 
     # 处理GET一键阅读或错误信息
     if request.method == "GET" and request.GET:
