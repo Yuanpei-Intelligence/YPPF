@@ -6,7 +6,7 @@ __all__ = ['periodical']
 
 
 @dataclass
-class PeriodicalJob():
+class PeriodicalJob:
     """
     Wrap a function as a periodical job.
     Notice that it is not a callable.
@@ -15,6 +15,9 @@ class PeriodicalJob():
     job_id: str
     trigger: str
     tg_args: dict[str, int]
+
+
+_periodical_jobs: list[PeriodicalJob] = []
 
 
 def periodical(trigger: str, job_id: str = '', **trigger_args):
@@ -26,6 +29,7 @@ def periodical(trigger: str, job_id: str = '', **trigger_args):
     :type trigger: str
     """
     def wrapper(fn: Callable[..., None]):
-        fn.__periodical__ = PeriodicalJob(fn, job_id or fn.__name__, trigger, trigger_args)
+        _job = PeriodicalJob(fn, job_id or fn.__name__, trigger, trigger_args)
+        _periodical_jobs.append(_job)
         return fn
     return wrapper

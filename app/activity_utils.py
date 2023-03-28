@@ -19,7 +19,8 @@ import qrcode
 
 from utils.http.utils import build_full_url
 from generic.models import User, YQPointRecord
-from scheduler.scheduler import scheduler
+from scheduler.adder import ScheduleAdder
+from scheduler.cancel import remove_job
 from app.utils_dependency import *
 from app.models import (
     User,
@@ -88,12 +89,12 @@ def changeActivityStatus(aid, cur_status, to_status):
             if activity.need_checkin:
                 Participant.objects.filter(
                     activity_id=aid,
-                    status=Participant.AttendStatus.APLLYSUCCESS
+                    status=Participant.AttendStatus.APPLYSUCCESS
                 ).update(status=Participant.AttendStatus.UNATTENDED)
             else:
                 Participant.objects.filter(
                     activity_id=aid,
-                    status=Participant.AttendStatus.APLLYSUCCESS
+                    status=Participant.AttendStatus.APPLYSUCCESS
                 ).update(status=Participant.AttendStatus.ATTENDED)
 
             # if not activity.valid:
@@ -135,7 +136,7 @@ def draw_lots(activity: Activity):
 
     participants_applySuccess = Participant.objects.filter(
         activity_id=activity.id,
-        status__in=[Participant.AttendStatus.APLLYSUCCESS,
+        status__in=[Participant.AttendStatus.APPLYSUCCESS,
                     Participant.AttendStatus.UNATTENDED, Participant.AttendStatus.ATTENDED]
     )
     engaged = len(participants_applySuccess)
@@ -146,8 +147,8 @@ def draw_lots(activity: Activity):
         Participant.objects.filter(
             activity_id=activity.id,
             status__in=[Participant.AttendStatus.APPLYING,
-                        Participant.AttendStatus.APLLYFAILED]
-        ).update(status=Participant.AttendStatus.APLLYSUCCESS)
+                        Participant.AttendStatus.APPLYFAILED]
+        ).update(status=Participant.AttendStatus.APPLYSUCCESS)
         activity.current_participants = engaged + l
     else:
         lucky_ones = sample(range(l), leftQuota)
@@ -155,17 +156,17 @@ def draw_lots(activity: Activity):
         for i, participant in enumerate(Participant.objects.select_for_update().filter(
                 activity_id=activity.id,
                 status__in=[Participant.AttendStatus.APPLYING,
-                            Participant.AttendStatus.APLLYFAILED]
+                            Participant.AttendStatus.APPLYFAILED]
         )):
             if i in lucky_ones:
-                participant.status = Participant.AttendStatus.APLLYSUCCESS
+                participant.status = Participant.AttendStatus.APPLYSUCCESS
             else:
-                participant.status = Participant.AttendStatus.APLLYFAILED
+                participant.status = Participant.AttendStatus.APPLYFAILED
             participant.save()
     # 签到成功的转发通知和微信通知
     receivers = Participant.objects.filter(
         activity_id=activity.id,
-        status=Participant.AttendStatus.APLLYSUCCESS
+        status=Participant.AttendStatus.APPLYSUCCESS
     ).values_list('person_id__person_id', flat=True)
     receivers = User.objects.filter(id__in=receivers)
     sender = activity.organization_id.get_user()
@@ -189,7 +190,7 @@ def draw_lots(activity: Activity):
     # 抽签失败的同学发送通知
     receivers = Participant.objects.filter(
         activity_id=activity.id,
-        status=Participant.AttendStatus.APLLYFAILED
+        status=Participant.AttendStatus.APPLYFAILED
     ).values_list('person_id__person_id', flat=True)
     receivers = User.objects.filter(id__in=receivers)
     content = f'很抱歉通知您，您参与抽签的活动“{activity.title}”报名失败！'
@@ -246,7 +247,7 @@ def notifyActivity(aid: int, msg_type: str, msg=""):
             msg += f"\n开始时间: {activity.start.strftime('%Y-%m-%d %H:%M')}"
             msg += f"\n活动地点: {activity.location}"
             participants = Participant.objects.filter(
-                activity_id=aid, status=Participant.AttendStatus.APLLYSUCCESS)
+                activity_id=aid, status=Participant.AttendStatus.APPLYSUCCESS)
             receivers = participants.values_list(
                 'person_id__person_id', flat=True)
             receivers = User.objects.filter(id__in=receivers)
@@ -262,7 +263,7 @@ def notifyActivity(aid: int, msg_type: str, msg=""):
     elif msg_type == 'modification_par':
         participants = Participant.objects.filter(
             activity_id=aid,
-            status__in=[Participant.AttendStatus.APLLYSUCCESS,
+            status__in=[Participant.AttendStatus.APPLYSUCCESS,
                         Participant.AttendStatus.APPLYING]
         )
         receivers = participants.values_list('person_id__person_id', flat=True)
@@ -283,7 +284,7 @@ def notifyActivity(aid: int, msg_type: str, msg=""):
         # ———————————————— 拿参与者的user_id ————————————————
         participant_person_id = Participant.objects.filter(
             activity_id=aid,
-            status__in=[Participant.AttendStatus.APLLYSUCCESS,
+            status__in=[Participant.AttendStatus.APPLYSUCCESS,
                         Participant.AttendStatus.APPLYING]
         ).prefetch_related("person_id_id").values_list("person_id_id", flat=True)  # 拿的是person_id
         participant_user_id = NaturalPerson.objects.activated().filter(id__in=participant_person_id).values_list(
@@ -310,7 +311,7 @@ def notifyActivity(aid: int, msg_type: str, msg=""):
         # ———————————————— 拿参与者的user_id ————————————————
         participant_person_id = Participant.objects.filter(
             activity_id=aid,
-            status__in=[Participant.AttendStatus.APLLYSUCCESS,
+            status__in=[Participant.AttendStatus.APPLYSUCCESS,
                         Participant.AttendStatus.APPLYING]
         ).values_list("person_id_id", flat=True)  # 拿的是person_id
         participant_user_id = NaturalPerson.objects.activated().filter(
@@ -339,7 +340,7 @@ def notifyActivity(aid: int, msg_type: str, msg=""):
         # ———————————————— 拿参与者的user_id ————————————————
         participant_person_id = Participant.objects.filter(
             activity_id=aid,
-            status__in=[Participant.AttendStatus.APLLYSUCCESS,
+            status__in=[Participant.AttendStatus.APPLYSUCCESS,
                         Participant.AttendStatus.APPLYING]
         ).values_list("person_id_id", flat=True)  # 拿的是person_id
         participant_user_id = NaturalPerson.objects.activated().filter(
@@ -528,8 +529,8 @@ def activity_base_check(request, edit=False):
 
 
 def _set_change_status(activity: Activity, current, next, time, replace):
-    scheduler.add_job(changeActivityStatus, "date", id=f"activity_{activity.id}_{next}",
-                      run_date=time, args=[activity.id, current, next], replace_existing=replace)
+    ScheduleAdder(changeActivityStatus, id=f'activity_{activity.id}_{next}',
+        run_time=time, replace=replace)(activity.id, current, next)
 
 def _set_jobs_to_status(activity: Activity, replace: bool) -> Activity.Status:
     now_time = datetime.now()
@@ -544,10 +545,9 @@ def _set_jobs_to_status(activity: Activity, replace: bool) -> Activity.Status:
         status, next = Activity.Status.APPLYING, Activity.Status.WAITING
         _set_change_status(activity, status, next, activity.apply_end, replace)
     if now_time < activity.start - timedelta(minutes=15):
-        scheduler.add_job(
-            notifyActivity, "date", id=f"activity_{activity.id}_remind",
-            run_date=activity.start - timedelta(minutes=15),
-            args=[activity.id, "remind"], replace_existing=replace)
+        reminder = ScheduleAdder(notifyActivity, id=f'activity_{activity.id}_remind',
+            run_time=activity.start - timedelta(minutes=15), replace=replace)
+        reminder(activity.id, 'remind')
     return status
 
 
@@ -750,7 +750,7 @@ def modify_accepted_activity(request, activity):
         assert capacity > 0
         if capacity < len(Participant.objects.filter(
             activity_id=activity.id,
-            status=Participant.AttendStatus.APLLYSUCCESS
+            status=Participant.AttendStatus.APPLYSUCCESS
         )):
             raise ActivityException(f"当前成功报名人数已超过{capacity}人!")
     activity.capacity = capacity
@@ -814,10 +814,7 @@ def accept_activity(request, activity):
 
 def _remove_jobs(activity: Activity, *jobs):
     for job in jobs:
-        try:
-            scheduler.remove_job(f"activity_{activity.id}_{job}")
-        except:
-            pass
+        remove_job(f"activity_{activity.id}_{job}")
 
 def _remove_activity_jobs(activity: Activity):
     _remove_jobs(activity, 'remind', Activity.Status.WAITING,
@@ -844,7 +841,7 @@ def reject_activity(request, activity):
         ).update(status=Notification.Status.DELETE)
         # Participant.objects.filter(
         #         activity_id=activity
-        #     ).update(status=Participant.AttendStatus.APLLYFAILED)
+        #     ).update(status=Participant.AttendStatus.APPLYFAILED)
         notifyActivity(activity.id, "modification_par",
                        f"您报名的活动{activity.title}已取消。")
         activity.status = Activity.Status.CANCELED
@@ -893,7 +890,7 @@ def apply_activity(request, activity):
         participated = False
     if participated:
         if (
-            participant.status == Participant.AttendStatus.APLLYSUCCESS or
+            participant.status == Participant.AttendStatus.APPLYSUCCESS or
             participant.status == Participant.AttendStatus.APPLYING
         ):
             raise ActivityException("您已报名该活动。")
@@ -913,7 +910,7 @@ def apply_activity(request, activity):
             activity_id=activity, person_id=payer
         )
     if not activity.bidding:
-        participant.status = Participant.AttendStatus.APLLYSUCCESS
+        participant.status = Participant.AttendStatus.APPLYSUCCESS
     else:
         participant.status = Participant.AttendStatus.APPLYING
 
@@ -959,7 +956,7 @@ def cancel_activity(request, activity):
     # 注意这里，活动取消后，状态变为申请失败了
     # participants = Participant.objects.filter(
     #         activity_id=activity
-    #     ).update(status=Participant.AttendStatus.APLLYFAILED)
+    #     ).update(status=Participant.AttendStatus.APPLYFAILED)
 
     _remove_activity_jobs(activity)
     activity.save()
@@ -974,7 +971,7 @@ def withdraw_activity(request, activity):
         status__in=[
             Activity.Status.WAITING,
             Participant.AttendStatus.APPLYING,
-            Participant.AttendStatus.APLLYSUCCESS,
+            Participant.AttendStatus.APPLYSUCCESS,
             Participant.AttendStatus.CANCELED,
         ],
     )

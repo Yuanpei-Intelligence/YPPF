@@ -54,7 +54,8 @@ from django.http import HttpRequest, HttpResponse
 from django.db import transaction
 from django.db.models import F, Q, Sum, Prefetch
 
-from scheduler.scheduler import scheduler
+from scheduler.adder import ScheduleAdder, MultipleAdder
+from scheduler.cancel import remove_job
 from utils.config.cast import str_to_time
 
 __all__ = [
@@ -232,7 +233,7 @@ def create_single_course_activity(request: HttpRequest) -> Tuple[int, bool]:
             participant = Participant.objects.create(
                 activity_id=activity,
                 person_id=member,
-                status=Participant.AttendStatus.APLLYSUCCESS)
+                status=Participant.AttendStatus.APPLYSUCCESS)
 
         activity.current_participants = len(person_pos)
         activity.capacity = len(person_pos)
@@ -240,24 +241,24 @@ def create_single_course_activity(request: HttpRequest) -> Tuple[int, bool]:
 
     # 在活动发布时通知参与成员,创建定时任务并修改活动状态
     if activity.need_apply:
-        scheduler.add_job(changeActivityStatus, "date", id=f"activity_{activity.id}_{Activity.Status.APPLYING}",
-                          run_date=activity.publish_time, args=[activity.id, Activity.Status.UNPUBLISHED, Activity.Status.APPLYING], replace_existing=True)
-        scheduler.add_job(changeActivityStatus, "date", id=f"activity_{activity.id}_{Activity.Status.WAITING}",
-                          run_date=activity.start - timedelta(hours=1), args=[activity.id, Activity.Status.APPLYING, Activity.Status.WAITING], replace_existing=True)
+        ScheduleAdder(changeActivityStatus, id=f"activity_{activity.id}_{Activity.Status.APPLYING}",
+                          run_time=activity.publish_time)(activity.id, Activity.Status.UNPUBLISHED, Activity.Status.APPLYING)#OK
+        ScheduleAdder(changeActivityStatus, id=f"activity_{activity.id}_{Activity.Status.WAITING}",
+                          run_time=activity.start - timedelta(hours=1))(activity.id, Activity.Status.APPLYING, Activity.Status.WAITING)#OK
     else:
-        scheduler.add_job(changeActivityStatus, "date", id=f"activity_{activity.id}_{Activity.Status.WAITING}",
-                          run_date=activity.publish_time, args=[activity.id, Activity.Status.UNPUBLISHED, Activity.Status.WAITING], replace_existing=True)
+        ScheduleAdder(changeActivityStatus, id=f"activity_{activity.id}_{Activity.Status.WAITING}",
+                          run_time=activity.publish_time)(activity.id, Activity.Status.UNPUBLISHED, Activity.Status.WAITING)#OK
     
-    scheduler.add_job(notifyActivity, "date", id=f"activity_{activity.id}_newCourseActivity",
-                      run_date=activity.publish_time, args=[activity.id,"newCourseActivity"], replace_existing=True)
+    ScheduleAdder(notifyActivity, id=f"activity_{activity.id}_newCourseActivity",
+                      run_time=activity.publish_time)(activity.id,"newCourseActivity")#OK
 
     # 引入定时任务：提前15min提醒、活动状态由WAITING变PROGRESSING再变END
-    scheduler.add_job(notifyActivity, "date", id=f"activity_{activity.id}_remind",
-                      run_date=activity.start - timedelta(minutes=15), args=[activity.id, "remind"], replace_existing=True)
-    scheduler.add_job(changeActivityStatus, "date", id=f"activity_{activity.id}_{Activity.Status.PROGRESSING}",
-                      run_date=activity.start, args=[activity.id, Activity.Status.WAITING, Activity.Status.PROGRESSING])
-    scheduler.add_job(changeActivityStatus, "date", id=f"activity_{activity.id}_{Activity.Status.END}",
-                      run_date=activity.end, args=[activity.id, Activity.Status.PROGRESSING, Activity.Status.END])
+    ScheduleAdder(notifyActivity, id=f"activity_{activity.id}_remind",
+                      run_time=activity.start - timedelta(minutes=15))(activity.id, "remind")#OK
+    ScheduleAdder(changeActivityStatus, id=f"activity_{activity.id}_{Activity.Status.PROGRESSING}",
+                      run_time=activity.start)(activity.id, Activity.Status.WAITING, Activity.Status.PROGRESSING)
+    ScheduleAdder(changeActivityStatus, id=f"activity_{activity.id}_{Activity.Status.END}",
+                      run_time=activity.end)(activity.id, Activity.Status.PROGRESSING, Activity.Status.END)
     activity.save()
 
     # 设置活动照片
@@ -364,27 +365,25 @@ def modify_course_activity(request: HttpRequest, activity: Activity):
     # 更新定时任务
     if old_need_apply: 
         # 删除报名中的状态阶段
-        try: 
-            scheduler.remove_job(job_id=f"activity_{activity.id}_{Activity.Status.APPLYING}")
-        except: pass
+        remove_job(job_id=f"activity_{activity.id}_{Activity.Status.APPLYING}")
     
     if activity.need_apply:
-        scheduler.add_job(changeActivityStatus, "date", id=f"activity_{activity.id}_{Activity.Status.APPLYING}",
-                          run_date=activity.publish_time, args=[activity.id, Activity.Status.UNPUBLISHED, Activity.Status.APPLYING], replace_existing=True)
-        scheduler.add_job(changeActivityStatus, "date", id=f"activity_{activity.id}_{Activity.Status.WAITING}",
-                          run_date=activity.start - timedelta(hours=1), args=[activity.id, Activity.Status.APPLYING, Activity.Status.WAITING], replace_existing=True)
+        ScheduleAdder(changeActivityStatus, id=f"activity_{activity.id}_{Activity.Status.APPLYING}",
+                          run_time=activity.publish_time)(activity.id, Activity.Status.UNPUBLISHED, Activity.Status.APPLYING)#OK
+        ScheduleAdder(changeActivityStatus, id=f"activity_{activity.id}_{Activity.Status.WAITING}",
+                          run_time=activity.start - timedelta(hours=1))(activity.id, Activity.Status.APPLYING, Activity.Status.WAITING)#OK
     else:
-        scheduler.add_job(changeActivityStatus, "date", id=f"activity_{activity.id}_{Activity.Status.WAITING}",
-                          run_date=activity.publish_time, args=[activity.id, Activity.Status.UNPUBLISHED, Activity.Status.WAITING], replace_existing=True)
+        ScheduleAdder(changeActivityStatus, id=f"activity_{activity.id}_{Activity.Status.WAITING}",
+                          run_time=activity.publish_time)(activity.id, Activity.Status.UNPUBLISHED, Activity.Status.WAITING)#OK
     
-    scheduler.add_job(notifyActivity, "date", id=f"activity_{activity.id}_newCourseActivity",
-                      run_date=activity.publish_time, args=[activity.id,"newCourseActivity"], replace_existing=True)
-    scheduler.add_job(notifyActivity, "date", id=f"activity_{activity.id}_remind",
-                      run_date=activity.start - timedelta(minutes=15), args=[activity.id, "remind"], replace_existing=True)
-    scheduler.add_job(changeActivityStatus, "date", id=f"activity_{activity.id}_{Activity.Status.PROGRESSING}",
-                      run_date=activity.start, args=[activity.id, Activity.Status.WAITING, Activity.Status.PROGRESSING], replace_existing=True)
-    scheduler.add_job(changeActivityStatus, "date", id=f"activity_{activity.id}_{Activity.Status.END}",
-                      run_date=activity.end, args=[activity.id, Activity.Status.PROGRESSING, Activity.Status.END], replace_existing=True)
+    ScheduleAdder(notifyActivity, id=f"activity_{activity.id}_newCourseActivity",
+                      run_time=activity.publish_time)(activity.id,"newCourseActivity")#OK
+    ScheduleAdder(notifyActivity, id=f"activity_{activity.id}_remind",
+                      run_time=activity.start - timedelta(minutes=15))(activity.id, "remind")#OK
+    ScheduleAdder(changeActivityStatus, id=f"activity_{activity.id}_{Activity.Status.PROGRESSING}",
+                      run_time=activity.start)(activity.id, Activity.Status.WAITING, Activity.Status.PROGRESSING)#OK
+    ScheduleAdder(changeActivityStatus, id=f"activity_{activity.id}_{Activity.Status.END}",
+                      run_time=activity.end)(activity.id, Activity.Status.PROGRESSING, Activity.Status.END)#OK
 
     # 发通知
     # notifyActivity(activity.id, "modification_par", "\n".join(to_participants))
@@ -437,18 +436,11 @@ def cancel_course_activity(request: HttpRequest, activity: Activity, cancel_all:
 
     # 取消定时任务（需要先判断一下是否已经被执行了）
     if activity.start - timedelta(minutes=15) > datetime.now():
-        try:
-            scheduler.remove_job(f"activity_{activity.id}_remind")
-        except: pass
+        remove_job(f"activity_{activity.id}_remind")
     if activity.start > datetime.now():
-        try:
-            scheduler.remove_job(
-                f"activity_{activity.id}_{Activity.Status.PROGRESSING}")
-        except: pass
+        remove_job(f"activity_{activity.id}_{Activity.Status.PROGRESSING}")
     if activity.end > datetime.now():
-        try:
-            scheduler.remove_job(f"activity_{activity.id}_{Activity.Status.END}")
-        except: pass
+        remove_job(f"activity_{activity.id}_{Activity.Status.END}")
 
     activity.save()
 
@@ -989,16 +981,17 @@ def register_selection(wait_for: timedelta=None):
     stage2_end = str_to_time(APP_CONFIG.btx_election_end)
     stage2_end = max(stage2_end, now + timedelta(seconds=25))
     # 定时任务：修改课程状态
-    scheduler.add_job(change_course_status, "date", id=f"course_selection_{year+semster}_stage1_start",
-                      run_date=stage1_start, args=[Course.Status.WAITING, Course.Status.STAGE1], replace_existing=True)
-    scheduler.add_job(change_course_status, "date", id=f"course_selection_{year+semster}_stage1_end",
-                      run_date=stage1_end, args=[Course.Status.STAGE1, Course.Status.DRAWING], replace_existing=True)
-    scheduler.add_job(
-        draw_lots, "date", id=f"course_selection_{year+semster}_publish", run_date=publish_time, replace_existing=True)
-    scheduler.add_job(change_course_status, "date", id=f"course_selection_{year+semster}_stage2_start",
-                      run_date=stage2_start, args=[Course.Status.DRAWING, Course.Status.STAGE2], replace_existing=True)
-    scheduler.add_job(change_course_status, "date", id=f"course_selection_{year+semster}_stage2_end",
-                      run_date=stage2_end, args=[Course.Status.STAGE2, Course.Status.SELECT_END], replace_existing=True)
+    adder = MultipleAdder(change_course_status)
+    adder.schedule(f'course_selection_{year+semster}_stage1_start',
+        run_time=stage1_start)(Course.Status.WAITING, Course.Status.STAGE1)
+    adder.schedule(f'course_selection_{year+semster}_stage1_end',
+        run_time=stage1_end)(Course.Status.STAGE1, Course.Status.DRAWING)
+    ScheduleAdder(draw_lots, id=f'course_selection_{year+semster}_publish',
+        run_time=publish_time)()
+    adder.schedule(f'course_selection_{year+semster}_stage2_start',
+        run_time=stage2_start)(Course.Status.DRAWING, Course.Status.STAGE2)
+    adder.schedule(f'course_selection_{year+semster}_stage2_end',
+        run_time=stage2_end)(Course.Status.STAGE2, Course.Status.SELECT_END)
     # 状态随时间的变化: WAITING-STAGE1-WAITING-STAGE2-END
 
 def course_base_check(request,if_new=None):

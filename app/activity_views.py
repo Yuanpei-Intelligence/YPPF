@@ -277,7 +277,7 @@ def viewActivity(request: HttpRequest, aid=None):
 
     # 参与者, 无论报名是否通过
     participants = Participant.objects.filter(Q(activity_id=activity),
-                                              Q(status=Participant.AttendStatus.APPLYING) | Q(status=Participant.AttendStatus.APLLYSUCCESS) | Q(status=Participant.AttendStatus.ATTENDED) | Q(status=Participant.AttendStatus.UNATTENDED))
+                                              Q(status=Participant.AttendStatus.APPLYING) | Q(status=Participant.AttendStatus.APPLYSUCCESS) | Q(status=Participant.AttendStatus.ATTENDED) | Q(status=Participant.AttendStatus.UNATTENDED))
     #participants_ava = [utils.get_user_ava(participant, UTYPE_PER) for participant in participants.values("person_id")] or None
     people_list = NaturalPerson.objects.activated().filter(
         id__in=participants.values("person_id"))
@@ -321,14 +321,14 @@ def getActivityInfo(request: HttpRequest):
     example: http://127.0.0.1:8000/getActivityInfo?activityid=1&infotype=qrcode
     TODO: 前端页面待对接
     '''
-    valid, user_type, html_display = utils.check_user_type(request.user)
+    _, user_type, html_display = utils.check_user_type(request.user)
 
     # check activity existence
     activity_id = request.GET.get("activityid", None)
     activity = Activity.objects.get(id=activity_id)
 
     # check organization existance and ownership to activity
-    organization = utils.get_person_or_org(request.user, "organization")
+    organization = utils.get_person_or_org(request.user, UTYPE_ORG)
     assert activity.organization_id == organization, f"{organization}不是活动的组织者"
 
     info_type = request.GET.get("infotype", None)
@@ -344,7 +344,7 @@ def getActivityInfo(request: HttpRequest):
         # are you sure it's 'Paticipant' not 'Participant' ??
         participants = Participant.objects.filter(activity_id=activity_id)
         participants = participants.filter(
-            status=Participant.AttendStatus.APLLYSUCCESS
+            status=Participant.AttendStatus.APPLYSUCCESS
         )
 
         # get required fields
@@ -391,7 +391,7 @@ def getActivityInfo(request: HttpRequest):
 @utils.check_user_access(redirect_url="/logout/")
 @logger.secure_view()
 def checkinActivity(request: HttpRequest, aid=None):
-    valid, user_type, html_display = utils.check_user_type(request.user)
+    _, user_type, html_display = utils.check_user_type(request.user)
     if user_type != UTYPE_PER:
         return redirect(message_url(wrong('签到失败：请使用个人账号签到')))
     try:
@@ -418,7 +418,7 @@ def checkinActivity(request: HttpRequest, aid=None):
                     activity_id=aid, person_id=np,
                     status__in=[
                         Participant.AttendStatus.UNATTENDED,
-                        Participant.AttendStatus.APLLYSUCCESS,
+                        Participant.AttendStatus.APPLYSUCCESS,
                         Participant.AttendStatus.ATTENDED,
                     ]
                 )
@@ -456,7 +456,7 @@ def addActivity(request: HttpRequest, aid=None):
     # TODO 定时任务
 
     # 检查：不是超级用户，必须是小组，修改是必须是自己
-    valid, user_type, html_display = utils.check_user_type(request.user)
+    _, user_type, html_display = utils.check_user_type(request.user)
     # assert valid  已经在check_user_access检查过了
     me = utils.get_person_or_org(request.user, user_type)  # 这里的me应该为小组账户
     if aid is None:
@@ -631,7 +631,7 @@ def showActivity(request: HttpRequest):
     活动信息的聚合界面
     只有老师和小组才能看到，老师看到检查者是自己的，小组看到发起方是自己的
     """
-    valid, user_type, html_display = utils.check_user_type(request.user)
+    _, user_type, html_display = utils.check_user_type(request.user)
     me = utils.get_person_or_org(request.user)  # 获取自身
     is_teacher = False  # 该变量同时用于前端
     if user_type == UTYPE_PER:
@@ -842,7 +842,7 @@ def endActivity(request: HttpRequest):
     之前被用为报销信息的聚合界面，现已将报销删去，留下总结图片的功能
     对审核老师进行了特判
     """
-    valid, user_type, html_display = utils.check_user_type(request.user)
+    _, user_type, html_display = utils.check_user_type(request.user)
     is_auditor = False
     if user_type == UTYPE_PER:
         try:
@@ -884,7 +884,7 @@ def endActivity(request: HttpRequest):
 @logger.secure_view()
 def modifyEndActivity(request: HttpRequest):
     # return
-    valid, user_type, html_display = utils.check_user_type(request.user)
+    _, user_type, html_display = utils.check_user_type(request.user)
     me = utils.get_person_or_org(request.user)  # 获取自身
 
     # 前端使用量user_type，表示观察者是小组还是个人

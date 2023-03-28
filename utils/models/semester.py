@@ -38,7 +38,7 @@ class Semester(TextChoices):
     def now(cls):
         '''返回本地设置中当前学期对应的Semester状态'''
         from boot.config import GLOBAL_CONFIG
-        return Semester.get(GLOBAL_CONFIG.semester)
+        return GLOBAL_CONFIG.semester
 
 
 
@@ -58,9 +58,10 @@ def select_current(queryset: QuerySet, /,
     '''
     if noncurrent is None:
         return queryset.all()
+    from boot.config import GLOBAL_CONFIG
     kwargs = {}
-    kwargs[_year_field] = current_year()
+    kwargs[_year_field] = GLOBAL_CONFIG.acadamic_year
     if not exact:
         _semester_field += '__contains'
-    kwargs[_semester_field] = Semester.now().value
+    kwargs[_semester_field] = GLOBAL_CONFIG.semester.value
     return queryset.exclude(**kwargs) if noncurrent else queryset.filter(**kwargs)

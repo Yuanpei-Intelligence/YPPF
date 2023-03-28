@@ -3,7 +3,7 @@ from datetime import datetime, timedelta
 from Appointment.models import Appoint
 from Appointment.extern.constants import MessageType
 from Appointment.extern.wechat import notify_appoint
-from scheduler.scheduler import scheduler
+from scheduler.cancel import remove_job
 
 
 __all__ = [
@@ -32,6 +32,6 @@ def set_appoint_reminder(appoint: Appoint, students_id: list[str] | None = None,
     return True
 
 
-def remove_appoint_reminder(appoint_id: int):
-    '''取消预约开始前的提醒，不进行任何错误处理或日志记录'''
-    return scheduler.remove_job(_remind_job_id(appoint_id))
+def remove_appoint_reminder(appoint_id: int, no_except: bool = True):
+    '''取消预约开始前的提醒，不进行任何日志记录，返回值同`remove_job`'''
+    return remove_job(_remind_job_id(appoint_id), no_except=no_except)

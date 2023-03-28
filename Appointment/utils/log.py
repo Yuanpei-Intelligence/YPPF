@@ -52,11 +52,13 @@ def write_before_delete(appoint_list: QuerySet[Appoint]):
 class AppointmentLogger(Logger):
     def _log(self, level, msg, args, exc_info = None, extra = None, stack_info = False, stacklevel = 1) -> None:
         stacklevel = stacklevel + 1
+        # TODO: 调用栈对包装器无法提供信息，使用类方法后重启本功能
         file, caller, lineno = find_caller(stacklevel)
         file = file.removeprefix('Appointment.')
         source = f'{file}.{caller}'
         msg = str(msg)
         log_msg = source.ljust(40) + msg
+        log_msg = msg
         super()._log(level, log_msg, args, exc_info, extra, stack_info, stacklevel)
         if level >= logging.ERROR:
             self._send_wechat(f'错误位置：{source} {lineno}行\n' + msg, level)

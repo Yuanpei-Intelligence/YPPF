@@ -106,7 +106,7 @@ def get_readers_by_user(user: User) -> QuerySet[Reader]:
     :return: 与user关联的所有reader
     :rtype: QuerySet[Reader]
     """
-    valid, user_type, _ = check_user_type(user)
+    _, user_type, _ = check_user_type(user)
     if user_type != UTYPE_PER:  # 只允许个人账户登录
         raise AssertionError('您目前使用非个人账号登录，如要查询借阅记录，请使用个人账号。')
     # 获取与当前user的学号对应的所有readers

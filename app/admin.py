@@ -1,13 +1,12 @@
 from datetime import datetime
+
 from django.contrib import admin
 from django.utils.safestring import mark_safe
 
 from utils.http.dependency import HttpRequest
-from app.models import *
 from utils.admin_utils import *
-from scheduler.scheduler import scheduler
-
-
+from app.models import *
+from scheduler.cancel import remove_job
 
 
 # 通用内联模型
@@ -393,7 +392,7 @@ class ActivityAdmin(admin.ModelAdmin):
                 activity_id=activity, status__in=[
                     Participant.AttendStatus.ATTENDED,
                     Participant.AttendStatus.UNATTENDED,
-                    Participant.AttendStatus.APLLYSUCCESS,
+                    Participant.AttendStatus.APPLYSUCCESS,
                     ]).count()
             activity.save()
         return self.message_user(request=request, message='修改成功!')
@@ -408,51 +407,31 @@ class ActivityAdmin(admin.ModelAdmin):
         queryset.update(category=Activity.ActivityCategory.COURSE)
         return self.message_user(request=request, message='修改成功!')
 
-    @as_action("进入 等待中 状态", actions)
+    def _change_status(self, activity, from_status, to_status):
+        from app.activity_utils import changeActivityStatus
+        changeActivityStatus(activity.id, from_status, to_status)
+        if remove_job(f'activity_{activity.id}_{to_status}'):
+            return '修改成功, 并移除了定时任务!'
+        else:
+            return '修改成功!'
+
+    @as_action("进入 等待中 状态", actions, single=True)
     def to_waiting(self, request, queryset):
-        if len(queryset) != 1:
-            return self.message_user(
-                request=request, message='一次只能修改一个活动状态!', level='error')
-        activity = queryset[0]
-        from app.activity_utils import changeActivityStatus
-        changeActivityStatus(activity.id, Activity.Status.APPLYING, Activity.Status.WAITING)
-        try:
-            scheduler.remove_job(f'activity_{activity.id}_{Activity.Status.WAITING}')
-            return self.message_user(request=request,
-                                    message='修改成功, 并移除了定时任务!')
-        except:
-            return self.message_user(request=request,
-                                    message='修改成功!')
+        _from, _to = Activity.Status.APPLYING, Activity.Status.WAITING
+        msg = self._change_status(queryset[0], _from, _to)
+        return self.message_user(request, msg)
     
-    @as_action("进入 进行中 状态", actions)
+    @as_action("进入 进行中 状态", actions, single=True)
     def to_processing(self, request, queryset):
-        if len(queryset) != 1:
-            return self.message_user(
-                request=request, message='一次只能修改一个活动状态!', level='error')
-        activity = queryset[0]
-        from app.activity_utils import changeActivityStatus
-        changeActivityStatus(activity.id, Activity.Status.WAITING, Activity.Status.PROGRESSING)
-        try:
-            scheduler.remove_job(f'activity_{activity.id}_{Activity.Status.PROGRESSING}')
-            return self.message_user(request=request,
-                                    message='修改成功, 并移除了定时任务!')
-        except:
-            return self.message_user(request=request, message='修改成功!')
+        _from, _to = Activity.Status.WAITING, Activity.Status.PROGRESSING
+        msg = self._change_status(queryset[0], _from, _to)
+        return self.message_user(request, msg)
     
-    @as_action("进入 已结束 状态", actions)
+    @as_action("进入 已结束 状态", actions, single=True)
     def to_end(self, request, queryset):
-        if len(queryset) != 1:
-            return self.message_user(
-                request=request, message='一次只能修改一个活动状态!', level='error')
-        activity = queryset[0]
-        from app.activity_utils import changeActivityStatus
-        changeActivityStatus(activity.id, Activity.Status.PROGRESSING, Activity.Status.END)
-        try:
-            scheduler.remove_job(f'activity_{activity.id}_{Activity.Status.END}')
-            return self.message_user(request=request,
-                                    message='修改成功, 并移除了定时任务!')
-        except:
-            return self.message_user(request=request, message='修改成功!')
+        _from, _to = Activity.Status.PROGRESSING, Activity.Status.END
+        msg = self._change_status(queryset[0], _from, _to)
+        return self.message_user(request, msg)
 
     @as_action("取消 定时任务", actions)
     def cancel_scheduler(self, request, queryset):
@@ -467,9 +446,7 @@ class ActivityAdmin(admin.ModelAdmin):
         for activity in queryset:
             failed_statuses = []
             for status in CANCEL_STATUSES:
-                try:
-                    scheduler.remove_job(f'activity_{activity.id}_{status}')
-                except:
+                if not remove_job(f'activity_{activity.id}_{status}'):
                     failed_statuses.append(status)
             if failed_statuses:
                 if len(failed_statuses) != len(CANCEL_STATUSES):
@@ -881,7 +858,7 @@ class PoolRecordAdmin(admin.ModelAdmin):
         if record.prize.name.startswith('信用分'):
             User.objects.modify_credit(record.user, 1, '元气值：兑换')
         record.status = PoolRecord.Status.REDEEMED
-        # record.time = datetime.now()
+        record.redeem_time = datetime.now()
         record.save()
         return self.message_user(request, '兑换成功!')
 

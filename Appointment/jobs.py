@@ -4,7 +4,7 @@ from datetime import datetime, timedelta
 
 from django.db import transaction
 
-from scheduler.scheduler import periodical
+from scheduler.periodic import periodical
 from Appointment.config import appointment_config as CONFIG
 from Appointment.models import Appoint
 from Appointment.utils.utils import get_conflict_appoints
@@ -117,7 +117,7 @@ def add_longterm_appoint(appoint: 'Appoint | int',
             # 删除主键会被视为新对象，save时向数据库添加对象并更新主键
             new_appoint.pk = None
             new_appoint.save()
-            new_appoint.students.set(students)
+            new_appoint.students_manager.set(students)
             new_appoints.append(new_appoint.pk)
             new_appoint.add_time(timedelta(weeks=interval))
 

@@ -26,9 +26,6 @@ from django_apscheduler.jobstores import DjangoJobStore
 from record.log.utils import get_logger
 from scheduler.config import scheduler_config as CONFIG
 
-# TODO: 移除从此处的引入
-from scheduler.periodic import periodical
-
 
 # Custom handler
 logger = get_logger('apscheduler')
@@ -44,26 +41,34 @@ class Scheduler:
 
     def __init__(self, wrapped_schedule: BackgroundScheduler):
         self.wrapped_schedule = wrapped_schedule
-        self.remote_scheduler = None
+        self.remote_scheduler: BackgroundScheduler | None = None
         self.remain_times = 3
 
     def __getattr__(self, name: str):
         target_method = getattr(self.wrapped_schedule, name)
-
         def wrapper(*args, **kwargs):
-            target_method(*args, **kwargs)
-            if self.remote_scheduler is None and self.remain_times > 0:
-                self.remain_times -= 1
-                self.remote_scheduler = rpyc.connect(
-                    "localhost", CONFIG.rpc_port,
-                    config={"allow_all_attrs": True}).root
-            if self.remote_scheduler is not None:
-                self.remote_scheduler.wakeup()
-            else:
-                logger.warning(
-                    'Remote scheduler not found, job may not be executed.')
+            val = target_method(*args, **kwargs)
+            self.wakeup_executor()
+            return val
         update_wrapper(wrapper, target_method)
         return wrapper
+
+    def wakeup_executor(self):
+        if self.remote_scheduler is None:
+            self.connect_remote()
+        if self.remote_scheduler is not None:
+            self.remote_scheduler.wakeup()
+        else:
+            logger.warning('Remote scheduler not found, job may not be executed.')
+
+    def connect_remote(self):
+        if self.remain_times <= 0:
+            return
+        self.remain_times -= 1
+        conn: rpyc.Connection = rpyc.connect(
+            "localhost", CONFIG.rpc_port,
+            config={"allow_all_attrs": True})
+        self.remote_scheduler = conn.root
 
 
 def start_scheduler() -> BackgroundScheduler:

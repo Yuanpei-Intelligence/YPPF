@@ -13,7 +13,9 @@ from django.db.models import F
 
 from boot.config import GLOBAL_CONFIG
 from app.log import logger
-from scheduler.scheduler import scheduler, periodical
+from scheduler.adder import MultipleAdder
+from scheduler.cancel import remove_job
+from scheduler.periodic import periodical
 from generic.models import YQPointRecord
 from record.models import PageLog
 from app.models import (
@@ -91,34 +93,36 @@ def changeAllActivities():
     频繁执行，添加更新其他活动的定时任务，主要是为了异步调度
     对于被多次落下的活动，每次更新一步状态
     """
+    def next_time_generator(first: timedelta | datetime, step: timedelta):
+        while True:
+            yield first
+            first += step
     now = datetime.now()
-    execute_time = now + timedelta(seconds=20)
+    times = next_time_generator(now + timedelta(seconds=20), timedelta(seconds=5))
+    adder = MultipleAdder(changeActivityStatus)
+
+    def _update_all(_cur, _next, activities):
+        for activity in activities:
+            adder.schedule(f'activity_{activity.id}_{_next}',
+                           run_time=next(times))(activity.id, _cur, _next)
+
     applying_activities = Activity.objects.filter(
         status=Activity.Status.APPLYING,
         apply_end__lte=now,
     )
-    for activity in applying_activities:
-        scheduler.add_job(changeActivityStatus, "date", id=f"activity_{activity.id}_{Activity.Status.WAITING}",
-                          run_date=execute_time, args=[activity.id, Activity.Status.APPLYING, Activity.Status.WAITING], replace_existing=True)
-        execute_time += timedelta(seconds=5)
+    _update_all(Activity.Status.APPLYING, Activity.Status.WAITING, applying_activities)
 
     waiting_activities = Activity.objects.filter(
         status=Activity.Status.WAITING,
         start__lte=now,
     )
-    for activity in waiting_activities:
-        scheduler.add_job(changeActivityStatus, "date", id=f"activity_{activity.id}_{Activity.Status.PROGRESSING}",
-                          run_date=execute_time, args=[activity.id, Activity.Status.WAITING, Activity.Status.PROGRESSING], replace_existing=True)
-        execute_time += timedelta(seconds=5)
+    _update_all(Activity.Status.WAITING, Activity.Status.PROGRESSING, waiting_activities)
 
     progressing_activities = Activity.objects.filter(
         status=Activity.Status.PROGRESSING,
         end__lte=now,
     )
-    for activity in progressing_activities:
-        scheduler.add_job(changeActivityStatus, "date", id=f"activity_{activity.id}_{Activity.Status.END}",
-                          run_date=execute_time, args=[activity.id, Activity.Status.PROGRESSING, Activity.Status.END], replace_existing=True)
-        execute_time += timedelta(seconds=5)
+    _update_all(Activity.Status.PROGRESSING, Activity.Status.END, progressing_activities)
 
 
 @periodical('interval', job_id="get weather per hour", hours=1)
@@ -220,7 +224,7 @@ def add_week_course_activity(course_id: int, weektime_id: int, cur_week: int, co
                 participant = Participant.objects.create(
                     activity_id=activity,
                     person_id=member,
-                    status=Participant.AttendStatus.APLLYSUCCESS)
+                    status=Participant.AttendStatus.APPLYSUCCESS)
 
             participate_num = len(person_pos)
             activity.capacity = participate_num
@@ -230,23 +234,31 @@ def add_week_course_activity(course_id: int, weektime_id: int, cur_week: int, co
         week_time.save()
         activity.save()
     # 在活动发布时通知参与成员,创建定时任务并修改活动状态
+    changer = MultipleAdder(changeActivityStatus)
+    notifier = MultipleAdder(notifyActivity)
+    # TODO: 修改UNPUBLISHED状态的诡异逻辑和状态切换
     if activity.need_apply:
-        scheduler.add_job(changeActivityStatus, "date", id=f"activity_{activity.id}_{Activity.Status.APPLYING}",
-                          run_date=activity.publish_time, args=[activity.id, Activity.Status.UNPUBLISHED, Activity.Status.APPLYING], replace_existing=True)
-        scheduler.add_job(changeActivityStatus, "date", id=f"activity_{activity.id}_{Activity.Status.WAITING}",
-                          run_date=activity.start - timedelta(hours=1), args=[activity.id, Activity.Status.APPLYING, Activity.Status.WAITING], replace_existing=True)
+        changer.schedule(f'activity_{activity.id}_{Activity.Status.APPLYING}',
+            run_time=activity.publish_time
+        )(activity.id, Activity.Status.UNPUBLISHED, Activity.Status.APPLYING)
+        changer.schedule(f'activity_{activity.id}_{Activity.Status.WAITING}',
+            run_time=activity.start - timedelta(hours=1)
+        )(activity.id, Activity.Status.APPLYING, Activity.Status.WAITING)
     else:
-        scheduler.add_job(changeActivityStatus, "date", id=f"activity_{activity.id}_{Activity.Status.WAITING}",
-                          run_date=activity.publish_time, args=[activity.id, Activity.Status.UNPUBLISHED, Activity.Status.WAITING], replace_existing=True)
+        changer.schedule(f'activity_{activity.id}_{Activity.Status.WAITING}',
+            run_time=activity.publish_time
+        )(activity.id, Activity.Status.UNPUBLISHED, Activity.Status.WAITING)
 
-    scheduler.add_job(notifyActivity, "date", id=f"activity_{activity.id}_newCourseActivity",
-                      run_date=activity.publish_time, args=[activity.id, "newCourseActivity"], replace_existing=True)
-    scheduler.add_job(notifyActivity, "date", id=f"activity_{activity.id}_remind",
-                      run_date=activity.start - timedelta(minutes=15), args=[activity.id, "remind"], replace_existing=True)
-    scheduler.add_job(changeActivityStatus, "date", id=f"activity_{activity.id}_{Activity.Status.PROGRESSING}",
-                      run_date=activity.start, args=[activity.id, Activity.Status.WAITING, Activity.Status.PROGRESSING], replace_existing=True)
-    scheduler.add_job(changeActivityStatus, "date", id=f"activity_{activity.id}_{Activity.Status.END}",
-                      run_date=activity.end, args=[activity.id, Activity.Status.PROGRESSING, Activity.Status.END], replace_existing=True)
+    notifier.schedule(f'activity_{activity.id}_newCourseActivity',
+        run_time=activity.publish_time)(activity.id, "newCourseActivity")
+    notifier.schedule(f'activity_{activity.id}_remind',
+        run_time=activity.start - timedelta(minutes=15))(activity.id, "remind")
+    changer.schedule(f'activity_{activity.id}_{Activity.Status.PROGRESSING}',
+        run_time=activity.start
+    )(activity.id, Activity.Status.WAITING, Activity.Status.PROGRESSING)
+    changer.schedule(f'activity_{activity.id}_{Activity.Status.END}',
+        run_time=activity.end
+    )(activity.id, Activity.Status.PROGRESSING, Activity.Status.END)
 
     notification_create(
         receiver=examine_teacher.person_id,
@@ -332,16 +344,10 @@ def cancel_related_jobs(instance, extra_ids=None):
         if callable(job_ids):
             job_ids = job_ids()
         for job_id in job_ids:
-            try:
-                scheduler.remove_job(job_id)
-            except:
-                continue
+            remove_job(job_id)
     if extra_ids is not None:
         for job_id in extra_ids:
-            try:
-                scheduler.remove_job(job_id)
-            except:
-                continue
+            remove_job(job_id)
 
 
 def _cancel_jobs(sender, instance, **kwargs):

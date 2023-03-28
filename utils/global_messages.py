@@ -10,7 +10,7 @@ global_messages.py
 @Date 2022-02-17
 '''
 # 类型信息提示
-from typing import Union, TypedDict, Mapping, Callable, Sequence, Any
+from typing import Union, TypedDict, Callable, Sequence, Any
 
 __all__ = [
     # 常量
@@ -46,7 +46,7 @@ MESSAGECONTEXT = TypedDict(
 
 
 # 生成全局消息
-def wrong(message, context: dict = None) -> MESSAGECONTEXT:
+def wrong(message: str, context: dict = None) -> MESSAGECONTEXT:
     '''
     在错误的情况下返回的字典, message为错误信息
     如果提供了context，则向其中添加信息
@@ -58,7 +58,7 @@ def wrong(message, context: dict = None) -> MESSAGECONTEXT:
     return context
 
 
-def succeed(message, context: dict = None) -> MESSAGECONTEXT:
+def succeed(message: str, context: dict = None) -> MESSAGECONTEXT:
     '''
     在成功的情况下返回的字典, message为提示信息
     如果提供了context，则向其中添加信息
@@ -70,7 +70,7 @@ def succeed(message, context: dict = None) -> MESSAGECONTEXT:
     return context
 
 
-def alert(message, context: dict = None) -> MESSAGECONTEXT:
+def alert(message: str, context: dict = None) -> MESSAGECONTEXT:
     if context is None:
         context = dict()
     context[ALERT_FIELD] = message
@@ -78,7 +78,7 @@ def alert(message, context: dict = None) -> MESSAGECONTEXT:
 
 
 # 读取全局消息
-def get_warning(source: Mapping, normalize=False):
+def get_warning(source: dict, normalize=False):
     '''尝试以字典格式读取，失败时返回全None的元组，不抛出异常'''
     try:
         warn_code, warn_message = source[CODE_FIELD], source[MSG_FIELD]
@@ -90,7 +90,7 @@ def get_warning(source: Mapping, normalize=False):
     return warn_code, warn_message
 
 
-def get_alert(source: Mapping, normalize=False):
+def get_alert(source: dict, normalize=False):
     '''尝试以字典格式读取，失败时返回全None的元组，不抛出异常'''
     try:
         alert_message = source[ALERT_FIELD]
@@ -101,7 +101,7 @@ def get_alert(source: Mapping, normalize=False):
     return alert_message
 
 
-def get_all_message(source: Mapping, with_alert=False, normalize=False):
+def get_all_message(source: dict, with_alert=False, normalize=False):
     '''尝试以字典格式读取，失败时返回全None的元组，不抛出异常'''
     warn_code, warn_message = get_warning(source, normalize)
     alert_message = get_alert(source, normalize) if with_alert else None
@@ -145,7 +145,7 @@ def transfer_message_context(source: dict, context=None,
 
 
 # 生成URL
-def append_query(url, *, _query: str = '', **querys):
+def append_query(url: str, *, _query: str = '', **querys):
     '''
     在URL末尾附加GET参数
 
@@ -168,25 +168,20 @@ def append_query(url, *, _query: str = '', **querys):
     return url + concat + '&'.join(new_querys)
 
 
-def message_url(context: dict | MESSAGECONTEXT | list, url: str = '/welcome/') -> str:
+def message_url(context: dict | MESSAGECONTEXT, url: str = '/welcome/') -> str:
     '''
     提供要发送的信息体和原始URL，返回带提示信息的URL
-    - context: 包含`warn_code`和`warn_message`的字典或者二元数组
+    - context: 包含`warn_code`和`warn_message`的字典
     - url: str, 可以包含GET参数
     '''
-    try:
-        warn_code, warn_message = context[CODE_FIELD], context[MSG_FIELD]
-    except:
-        # 即使报错，也可能是因为其中一项不存在，排除对len有影响的dict和str
-        if not isinstance(context, (str, dict)) and len(context) == 2:
-            warn_code, warn_message = context
-    # 如果不是以上的情况(即合法的字典或二元数组), 就报错吧, 别静默发生错误
+    warn_code, warn_message = context[CODE_FIELD], context[MSG_FIELD]
+    # 如果不是以上的情况(即合法的字典), 就报错吧, 别静默发生错误
     return append_query(url, warn_code=warn_code, warn_message=warn_message)
 
 
 # 读取其它目录类内容
 def read_key(
-    content: Mapping, key: str,
+    content: dict, key: str,
     trans_func: Callable = None, default=None, raise_exception=False,
 ):
     '''
@@ -207,7 +202,7 @@ def read_key(
 
 
 def read_content(
-    _content: Mapping,
+    _content: dict,
     *_keys: str,
     _default=None, _trans_func: Callable = None, _raise: bool = False,
     _flat: bool = False,

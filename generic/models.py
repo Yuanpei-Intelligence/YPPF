@@ -260,11 +260,11 @@ class User(AbstractUser, PointMixin):
     name = models.CharField('名称', max_length=32)
 
     acronym = models.CharField('缩写', max_length=32, default='', blank=True)
-    utype: 'str|Type' = models.CharField(
+    utype: Type | str = models.CharField(
         '用户类型', max_length=20,
         choices=Type.choices,
         default='', blank=True,
-    )
+    )  # type: ignore
     first_time_login = models.BooleanField(default=True)
 
     REQUIRED_FIELDS = ['name']
@@ -286,11 +286,14 @@ class User(AbstractUser, PointMixin):
 
     @invalid_for_frontend
     def is_valid(self) -> bool:
-        return self.utype != self.Type.SPECIAL
+        '''返回用户是否合法，存在对应的子类对象'''
+        # TODO: 需要接入访客时，重新设计
+        return self.utype not in [self.Type.SPECIAL, self.Type.UNAUTHORIZED]
 
     @necessary_for_frontend(utype)
     def is_person(self) -> bool:
         return self.utype == self.Type.PERSON
+        # TODO: 待后端都使用本接口判断后，修改类型判断
         return self.is_student() or self.is_teacher()
 
     @necessary_for_frontend(utype)

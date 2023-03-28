@@ -6,7 +6,7 @@ import pymssql
 from django.db.models import Max, Q
 from django.db import transaction
 
-from scheduler.scheduler import periodical
+from scheduler.periodic import periodical
 from yp_library.models import Reader, Book, LendRecord
 from yp_library.utils import days_reminder, violate_reminder
 
