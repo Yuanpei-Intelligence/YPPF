@@ -21,7 +21,6 @@ import os
 import json
 import logging
 from typing import Callable, Any, cast, ParamSpec, Concatenate, TypeVar
-from functools import wraps
 
 from django.conf import settings
 
@@ -29,7 +28,7 @@ from boot.config import absolute_path
 from utils.http.dependency import HttpRequest
 from record.log.config import log_config as CONFIG
 from utils.inspect import module_filepath
-from utils.wrap import Listener, ExceptType
+from utils.wrap import return_on_except, Listener, ExceptType
 
 
 __all__ = [
@@ -41,6 +40,7 @@ _loggers: dict[str, 'Logger'] = dict()
 P = ParamSpec('P')
 T = TypeVar('T')
 ReturnType = T | Callable[[], T]
+ViewFunction = Callable[Concatenate[HttpRequest, P], T]
 
 
 class Logger(logging.Logger):
@@ -130,33 +130,24 @@ class Logger(logging.Logger):
             raise_exc (bool, optional): 是否抛出异常，不提供则根据debug模式决定
         '''
         if request is not None:
-            message = self.format_request(request) + '\n' + message
+            msgs = self._request_msgs(request)
+            if message:
+                msgs.append(message)
+            message = '\n'.join(msgs)
         self.exception(message, stacklevel=2)
         if raise_exc is None:
             raise_exc = self.debug_mode
         if raise_exc:
             raise
 
-    def _return_value(self, value: ReturnType[T]) -> T:
-        return value() if callable(value) else value
-
     def secure_view(
         self, message: str = '', *,
         raise_exc: bool | None = False,
         fail_value: ReturnType[Any] = None,
         exc_type: ExceptType[Exception] = Exception
-    ) -> Callable[[Callable[Concatenate[HttpRequest, P], T]],
-                  Callable[Concatenate[HttpRequest, P], T]]:
-        def decorator(view: Callable[Concatenate[HttpRequest, P], T]):
-            @wraps(view)
-            def wrapper(request: HttpRequest, *args: P.args, **kwargs: P.kwargs) -> T:
-                try:
-                    return view(request, *args, **kwargs)
-                except exc_type:
-                    self.on_exception(message, request=request, raise_exc=raise_exc)
-                    return self._return_value(fail_value)
-            return wrapper
-        return decorator
+    ) -> Callable[[ViewFunction[P, T]], ViewFunction[P, T]]:
+        listener = self.listener(message, as_view=True, raise_exc=raise_exc)
+        return return_on_except(fail_value, exc_type, listener)
 
     def secure_func(
         self, message: str = '', *,
@@ -164,20 +155,8 @@ class Logger(logging.Logger):
         fail_value: ReturnType[Any] = None,
         exc_type: ExceptType[Exception] = Exception
     ) -> Callable[[Callable[P, T]], Callable[P, T]]:
-        def decorator(func: Callable[P, T]):
-            @wraps(func)
-            def wrapper(*args: P.args, **kwargs: P.kwargs) -> T:
-                try:
-                    return func(*args, **kwargs)
-                except exc_type:
-                    arg_msg = ''
-                    arg_msg += f'Function: {func.__module__}.{func.__qualname__}\n'
-                    if args: arg_msg += f'Args: {args}\n'
-                    if kwargs: arg_msg += f'Keywords: {kwargs}\n'
-                    self.on_exception(arg_msg + message, raise_exc=raise_exc)
-                    return self._return_value(fail_value)
-            return wrapper
-        return decorator
+        listener = self.listener(message, as_view=False, raise_exc=raise_exc)
+        return return_on_except(fail_value, exc_type, listener)
 
     def _get_request_arg(self, request: HttpRequest, *args, **kwargs) -> HttpRequest:
         return request
