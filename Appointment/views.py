@@ -926,7 +926,6 @@ def _get_content_students(contents: dict):
 
 def _add_appoint(contents: dict, start: datetime, finish: datetime, non_yp_num: int,
                type: Appoint.Type = Appoint.Type.NORMAL,
-               check_contents: bool = True,
                notify_create: bool = True) -> tuple[Appoint | None, str]:
     '''
     创建一个预约，检查各种条件，屎山函数

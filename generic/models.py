@@ -291,6 +291,7 @@ class User(AbstractUser, PointMixin):
     @necessary_for_frontend(utype)
     def is_person(self) -> bool:
         return self.utype == self.Type.PERSON
+        # TODO: 待后端都使用本接口判断后，修改类型判断
         return self.is_student() or self.is_teacher()
 
     @necessary_for_frontend(utype)

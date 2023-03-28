@@ -328,7 +328,7 @@ def getActivityInfo(request: HttpRequest):
     activity = Activity.objects.get(id=activity_id)
 
     # check organization existance and ownership to activity
-    organization = utils.get_person_or_org(request.user, "organization")
+    organization = utils.get_person_or_org(request.user, UTYPE_ORG)
     assert activity.organization_id == organization, f"{organization}不是活动的组织者"
 
     info_type = request.GET.get("infotype", None)

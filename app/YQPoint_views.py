@@ -3,7 +3,6 @@ from app.views_dependency import *
 from app.models import (
     Prize,
     Pool,
-    PoolItem,
     PoolRecord,
 )
 from app.YQPoint_utils import (
@@ -15,7 +14,6 @@ from app.YQPoint_utils import (
 from app.utils import (
     check_user_type,
     get_sidebar_and_navbar,
-    get_person_or_org,
 )
 
 __all__ = [
