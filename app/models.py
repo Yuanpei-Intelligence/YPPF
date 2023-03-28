@@ -1952,7 +1952,7 @@ class PoolRecord(models.Model):
     )
     status = models.CharField('状态', choices=Status.choices, max_length=15)
     time = models.DateTimeField('记录时间', auto_now_add=True)
-    redeem_time = models.DateTimeField('兑奖时间', null=True, blank=True, default=None)
+    redeem_time = models.DateTimeField('兑奖时间', null=True, blank=True)
 
 
 class ActivitySummary(models.Model):
