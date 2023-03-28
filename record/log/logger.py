@@ -29,6 +29,7 @@ from boot.config import absolute_path
 from utils.http.dependency import HttpRequest
 from record.log.config import log_config as CONFIG
 from utils.inspect import module_filepath
+from utils.wrap import ExceptType
 
 
 __all__ = [
@@ -40,7 +41,6 @@ _loggers: dict[str, 'Logger'] = dict()
 P = ParamSpec('P')
 T = TypeVar('T')
 ReturnType = T | Callable[[], T]
-ExceptType = type[BaseException] | tuple[type[BaseException], ...]
 
 
 class Logger(logging.Logger):
@@ -136,10 +136,13 @@ class Logger(logging.Logger):
     def _return_value(self, value: ReturnType[T]) -> T:
         return value() if callable(value) else value
 
-    def secure_view(self, message: str = '', *,
-                    raise_exc: bool | None = None,
-                    fail_value: ReturnType[Any] = None,
-                    exc_type: ExceptType = Exception):
+    def secure_view(
+        self, message: str = '', *,
+        raise_exc: bool | None = False,
+        fail_value: ReturnType[Any] = None,
+        exc_type: ExceptType[Exception] = Exception
+    ) -> Callable[[Callable[Concatenate[HttpRequest, P], T]],
+                  Callable[Concatenate[HttpRequest, P], T]]:
         def decorator(view: Callable[Concatenate[HttpRequest, P], T]):
             @wraps(view)
             def wrapper(request: HttpRequest, *args: P.args, **kwargs: P.kwargs) -> T:
@@ -151,10 +154,12 @@ class Logger(logging.Logger):
             return wrapper
         return decorator
 
-    def secure_func(self, message: str = '', *,
-                    raise_exc: bool | None = False,
-                    fail_value: ReturnType[Any] = None,
-                    exc_type: ExceptType = Exception):
+    def secure_func(
+        self, message: str = '', *,
+        raise_exc: bool | None = False,
+        fail_value: ReturnType[Any] = None,
+        exc_type: ExceptType[Exception] = Exception
+    ) -> Callable[[Callable[P, T]], Callable[P, T]]:
         def decorator(func: Callable[P, T]):
             @wraps(func)
             def wrapper(*args: P.args, **kwargs: P.kwargs) -> T:
