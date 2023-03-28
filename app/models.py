@@ -1047,7 +1047,7 @@ class ParticipantManager(models.Manager['Participant']):
         '''返回成功报名的参与信息'''
         exclude_status = [
             Participant.AttendStatus.CANCELED,
-            Participant.AttendStatus.APLLYFAILED,
+            Participant.AttendStatus.APPLYFAILED,
         ]
         if no_unattend:
             exclude_status.append(Participant.AttendStatus.UNATTENDED)
@@ -1064,8 +1064,8 @@ class Participant(models.Model):
 
     class AttendStatus(models.TextChoices):
         APPLYING = "申请中"
-        APLLYFAILED = "活动申请失败"
-        APLLYSUCCESS = "已报名"
+        APPLYFAILED = "活动申请失败"
+        APPLYSUCCESS = "已报名"
         ATTENDED = "已参与"
         UNATTENDED = "未签到"
         CANCELED = "放弃"

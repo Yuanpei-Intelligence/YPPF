@@ -224,7 +224,7 @@ def add_week_course_activity(course_id: int, weektime_id: int, cur_week: int, co
                 participant = Participant.objects.create(
                     activity_id=activity,
                     person_id=member,
-                    status=Participant.AttendStatus.APLLYSUCCESS)
+                    status=Participant.AttendStatus.APPLYSUCCESS)
 
             participate_num = len(person_pos)
             activity.capacity = participate_num

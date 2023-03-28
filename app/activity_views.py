@@ -277,7 +277,7 @@ def viewActivity(request: HttpRequest, aid=None):
 
     # 参与者, 无论报名是否通过
     participants = Participant.objects.filter(Q(activity_id=activity),
-                                              Q(status=Participant.AttendStatus.APPLYING) | Q(status=Participant.AttendStatus.APLLYSUCCESS) | Q(status=Participant.AttendStatus.ATTENDED) | Q(status=Participant.AttendStatus.UNATTENDED))
+                                              Q(status=Participant.AttendStatus.APPLYING) | Q(status=Participant.AttendStatus.APPLYSUCCESS) | Q(status=Participant.AttendStatus.ATTENDED) | Q(status=Participant.AttendStatus.UNATTENDED))
     #participants_ava = [utils.get_user_ava(participant, UTYPE_PER) for participant in participants.values("person_id")] or None
     people_list = NaturalPerson.objects.activated().filter(
         id__in=participants.values("person_id"))
@@ -344,7 +344,7 @@ def getActivityInfo(request: HttpRequest):
         # are you sure it's 'Paticipant' not 'Participant' ??
         participants = Participant.objects.filter(activity_id=activity_id)
         participants = participants.filter(
-            status=Participant.AttendStatus.APLLYSUCCESS
+            status=Participant.AttendStatus.APPLYSUCCESS
         )
 
         # get required fields
@@ -418,7 +418,7 @@ def checkinActivity(request: HttpRequest, aid=None):
                     activity_id=aid, person_id=np,
                     status__in=[
                         Participant.AttendStatus.UNATTENDED,
-                        Participant.AttendStatus.APLLYSUCCESS,
+                        Participant.AttendStatus.APPLYSUCCESS,
                         Participant.AttendStatus.ATTENDED,
                     ]
                 )

@@ -392,7 +392,7 @@ class ActivityAdmin(admin.ModelAdmin):
                 activity_id=activity, status__in=[
                     Participant.AttendStatus.ATTENDED,
                     Participant.AttendStatus.UNATTENDED,
-                    Participant.AttendStatus.APLLYSUCCESS,
+                    Participant.AttendStatus.APPLYSUCCESS,
                     ]).count()
             activity.save()
         return self.message_user(request=request, message='修改成功!')

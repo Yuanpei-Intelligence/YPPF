@@ -233,7 +233,7 @@ def create_single_course_activity(request: HttpRequest) -> Tuple[int, bool]:
             participant = Participant.objects.create(
                 activity_id=activity,
                 person_id=member,
-                status=Participant.AttendStatus.APLLYSUCCESS)
+                status=Participant.AttendStatus.APPLYSUCCESS)
 
         activity.current_participants = len(person_pos)
         activity.capacity = len(person_pos)
