@@ -1,6 +1,5 @@
 from datetime import datetime, timedelta
-from functools import wraps
-from typing import Iterable
+from typing import Iterable, Literal
 
 from django.db import transaction
 
@@ -11,6 +10,7 @@ from Appointment.utils.log import logger, get_user_logger
 from Appointment.appoint.jobs import set_scheduler, cancel_scheduler
 from Appointment.extern.wechat import MessageType, notify_appoint
 from Appointment.extern.jobs import set_appoint_reminder
+from utils.wrap import return_on_except, stringify_to
 
 
 __all__ = [
@@ -52,17 +52,6 @@ def _success(appoint: Appoint):
 
 def _error(msg: str):
     return None, msg
-
-
-def _error_on_check_fail(func):
-    @wraps(func)
-    def _f(*args, **kwargs):
-        try:
-            return func(*args, **kwargs)
-        except AssertionError as e:
-            return _error(str(e))
-    return _f
-
 
 def _check_credit(appointer: Participant):
     appointer = Participant.objects.select_for_update().get(pk=appointer.pk)
@@ -118,7 +107,7 @@ def _attend_require_num(room: Room, type: Appoint.Type, start: datetime, finish:
 
 @logger.secure_func('创建预约失败', fail_value=_error('添加预约失败!请与管理员联系!'))
 @transaction.atomic
-@_error_on_check_fail
+@return_on_except(stringify_to(_error), AssertionError, merge_type=True)
 def create_appoint(
     appointer: Participant,
     room: Room,
@@ -130,7 +119,7 @@ def create_appoint(
     *,
     type: Appoint.Type = Appoint.Type.NORMAL,
     notify: bool = True,
-) -> tuple[Appoint | None, str]:
+) -> tuple[Appoint, Literal['']]:
     '''创建预约
 
     创建预约并设置所有可以独立执行的功能，如状态切换等，无需额外调用。
@@ -181,7 +170,7 @@ def create_appoint(
     _check_conflict(appoint)
 
     appoint.save()
-    appoint.students.set(students)
+    appoint.students_manager.set(students)
 
     set_scheduler(appoint)
     if notify:

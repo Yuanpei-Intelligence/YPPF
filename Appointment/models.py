@@ -67,7 +67,12 @@ class Participant(models.Model):
     # 用户许可的字段，需要许可的房间刷卡时检查是否通过了许可
     agree_time = models.DateField('上次许可时间', null=True, blank=True)
 
-    appoint_list: 'ManyRelatedManager[Appoint] | AppointManager'
+    appoint_list: 'AppointManager'
+
+    @property
+    def appoints_manager(self) -> 'ManyRelatedManager[Appoint]':
+        '''获取所有预约，允许进行批量管理'''
+        return cast('ManyRelatedManager[Appoint]', self.appoint_list)
 
     def get_id(self) -> str:
         '''获取id(学号/组织账号)'''
@@ -165,7 +170,12 @@ class Room(models.Model):
     # 是否需要许可，目前通过要求阅读固定须知实现，未来可拓展为许可模型（关联房间和个人）
     RneedAgree = models.BooleanField('需要许可', default=False)
 
-    appoint_list: 'ManyRelatedManager[Appoint] | AppointManager'
+    appoint_list: 'AppointManager'
+
+    @property
+    def appoints_manager(self) -> 'ManyRelatedManager[Appoint]':
+        '''获取所有预约，允许进行批量管理'''
+        return cast('ManyRelatedManager[Appoint]', self.appoint_list)
 
     objects: RoomManager = RoomManager()
 
@@ -235,8 +245,15 @@ class Appoint(models.Model):
         Room, verbose_name='房间号',
         related_name='appoint_list',
         null=True, on_delete=models.SET_NULL)  # type: ignore
-    students: 'ManyRelatedManager[Participant]' = models.ManyToManyField(
+    # 通过类型提示限制操作类型，非只读操作应访问students_manager
+    students: 'models.Manager[Participant]' = models.ManyToManyField(
         Participant, related_name='appoint_list', db_index=True)  # type: ignore
+
+    @property
+    def students_manager(self) -> 'ManyRelatedManager[Participant]':
+        '''获取所有参与者，允许进行批量管理'''
+        return cast('ManyRelatedManager[Participant]', self.students)
+
     major_student: 'models.ForeignKey[Participant]' = models.ForeignKey(
         Participant, verbose_name='Appointer',
         null=True, on_delete=models.CASCADE)  # type: ignore
