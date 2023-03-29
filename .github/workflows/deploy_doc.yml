@@ -1,0 +1,48 @@
+name: Doc Deploy
+
+on:
+  push:
+    branches: ["develop"]
+  workflow_dispatch:
+
+# Sets permissions of the GITHUB_TOKEN to allow deployment to GitHub Pages
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: "pages"
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+      - name: Configure configs
+        run: bash env/config.sh
+      - name: Start containers
+        run: docker-compose -f env/docker-compose.yml up -d
+      - name: Install dependencies
+        run: docker-compose -f env/docker-compose.yml exec -T yppf pip3 install sphinx
+      - name: Build docs
+        run: |
+          docker-compose -f env/docker-compose.yml exec -T yppf sh -c "
+            cd docs && sphinx-apidoc -e -d 2 -o source/yppf ../ && make html"
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v1
+        with:
+          path: "./docs/build"
+
+  deploy:
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    needs: build
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v2
