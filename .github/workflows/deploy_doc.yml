@@ -25,12 +25,8 @@ jobs:
         run: bash env/config.sh
       - name: Start containers
         run: docker-compose -f env/docker-compose.yml up -d
-      - name: Install dependencies
-        run: docker-compose -f env/docker-compose.yml exec -T yppf pip3 install sphinx
       - name: Build docs
-        run: |
-          docker-compose -f env/docker-compose.yml exec -T yppf sh -c "
-            cd docs && sphinx-apidoc -e -d 2 -o source/yppf ../ && make html"
+        run: docker-compose -f env/docker-compose.yml exec -T yppf bash docs/build.sh
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v1
         with:
