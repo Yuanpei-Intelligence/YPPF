@@ -1,6 +1,6 @@
-from typing import TypeAlias
+from typing import TypeAlias, TypeVar
 
-from django.db.models import TextChoices, QuerySet
+from django.db.models import TextChoices, QuerySet, Model
 from utils.models.choice import choice
 
 
@@ -11,6 +11,7 @@ __all__ = [
 ]
 
 
+T = TypeVar('T', bound=Model)
 AnySemester: TypeAlias = 'Semester | str'
 
 
@@ -48,7 +49,7 @@ def current_year() -> int:
     return GLOBAL_CONFIG.acadamic_year
 
 
-def select_current(queryset: QuerySet, /,
+def select_current(queryset: QuerySet[T], /,
                    _year_field='year', _semester_field='semester', *,
                    noncurrent: bool = False, exact: bool = False):
     '''

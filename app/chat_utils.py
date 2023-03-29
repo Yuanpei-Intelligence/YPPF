@@ -20,7 +20,7 @@ from app.utils import check_user_type
 
 __all__ = [
     'change_chat_status',
-    'select_from_keywords',
+    'select_by_keywords',
     'create_QA',
     'add_comment_to_QA',
     'modify_rating',
