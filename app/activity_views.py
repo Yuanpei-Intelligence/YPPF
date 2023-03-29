@@ -669,10 +669,10 @@ def showActivity(request: HttpRequest):
 
 @login_required(redirect_field_name="origin")
 @logger.secure_view()
-def examineActivity(request: HttpRequest, aid):
-    valid, user_type, html_display = utils.check_user_type(request.user)
+def examineActivity(request: UserRequest, aid: int | str):
+    _, user_type, html_display = utils.check_user_type(request.user)
     try:
-        assert valid
+        assert request.user.is_valid()
         assert user_type == UTYPE_PER
         me = utils.get_person_or_org(request.user)
         activity = Activity.objects.get(id=int(aid))
@@ -698,8 +698,7 @@ def examineActivity(request: HttpRequest, aid):
                 request, activity, activity.organization_id.get_user())
             # 评论内容不为空，上传文件类型为图片会在前端检查，这里有错直接跳转
             assert context["warn_code"] == 2
-            html_display["warn_message"] = "评论成功。"
-            html_display["warn_code"] = 2
+            succeed("评论成功。", html_display)
 
         elif request.POST.get("review_accepted"):
             with transaction.atomic():
@@ -707,16 +706,14 @@ def examineActivity(request: HttpRequest, aid):
                     id=int(aid)
                 )
                 accept_activity(request, activity)
-            html_display["warn_message"] = "活动已通过审核。"
-            html_display["warn_code"] = 2
+            succeed("活动已通过审核。", html_display)
         else:
             with transaction.atomic():
                 activity = Activity.objects.select_for_update().get(
                     id=int(aid)
                 )
                 reject_activity(request, activity)
-            html_display["warn_message"] = "活动已被拒绝。"
-            html_display["warn_code"] = 2
+            succeed("活动已被拒绝。", html_display)
 
     # 状态量，无可编辑量
     examine = True

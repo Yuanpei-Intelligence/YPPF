@@ -6,11 +6,11 @@ from datetime import datetime, timedelta
 from functools import wraps
 from typing import overload, Literal
 
+import xlwt
 import imghdr
 from django.contrib import auth
 from django.shortcuts import redirect
-from django.http import HttpResponse, HttpRequest
-import xlwt
+from utils.http.dependency import HttpResponse, HttpRequest, UserRequest
 
 from utils.http.utils import get_ip
 from app.utils_dependency import *
@@ -36,9 +36,8 @@ def check_user_access(redirect_url="/logout/", is_modpw=False):
 
     def actual_decorator(view_function):
         @wraps(view_function)
-        def _wrapped_view(request, *args, **kwargs):
-            valid, user_type, html_display = check_user_type(request.user)
-            if not valid:
+        def _wrapped_view(request: UserRequest, *args, **kwargs):
+            if not request.user.is_valid():
                 return redirect(redirect_url)
 
             # 如果是首次登陆，会跳转到用户须知的页面
@@ -673,25 +672,24 @@ def update_related_account_in_session(request, username, shift=False, oname=""):
 
 
 @logger.secure_func(raise_exc=True)
-def user_login_org(request, org: Organization) -> MESSAGECONTEXT:
+def user_login_org(request: UserRequest, org: Organization) -> MESSAGECONTEXT:
     '''
     令人疑惑的函数，需要整改
     尝试从用户登录到org指定的组织，如果不满足权限，则会返回wrong
     返回wrong或succeed
     '''
     user = request.user
-    valid, user_type, html_display = check_user_type(request.user)
-
     try:
+        assert user.is_person()
         me = NaturalPerson.objects.activated().get(person_id=user)
-    except:  # 找不到合法的用户
+    except:
         return wrong("您没有权限访问该网址！请用对应小组账号登陆。")
     #是小组一把手
     try:
         position = Position.objects.activated().filter(org=org, person=me)
         assert len(position) == 1
         position = position[0]
-        assert position.is_admin == True
+        assert position.is_admin
     except:
         return wrong("没有登录到该小组账户的权限!")
     # 到这里, 是本人小组并且有权限登录

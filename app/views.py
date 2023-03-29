@@ -708,7 +708,7 @@ def requestLoginOrg(request: HttpRequest, name=None):  # 特指个人希望通�
         # 到这里,是本人小组并且有权限登录
         auth.logout(request)
         auth.login(request, org.get_user())  # 切换到小组账号
-        utils.update_related_account_in_session(
+        update_related_account_in_session(
             request, user.username, oname=org.oname)
         if user.first_time_login:
             return redirect("/modpw/")
@@ -718,16 +718,13 @@ def requestLoginOrg(request: HttpRequest, name=None):  # 特指个人希望通�
 @login_required(redirect_field_name="origin")
 @utils.check_user_access(redirect_url="/logout/")
 @logger.secure_view()
-def orginfo(request: HttpRequest, name=None):
+def orginfo(request: UserRequest, name=None):
     """
         orginfo负责呈现小组主页，逻辑和stuinfo是一样的，可以参考
         只区分自然人和法人，不区分自然人里的负责人和非负责人。任何自然人看这个小组界面都是【不可管理/编辑小组信息】
     """
     user = request.user
-    valid, user_type, html_display = utils.check_user_type(request.user)
-
-    if not valid:
-        return redirect("/logout/")
+    _, user_type, html_display = utils.check_user_type(request.user)
 
     me = get_person_or_org(user, user_type)
 
@@ -1431,10 +1428,9 @@ def freshman(request: HttpRequest):
 
 @login_required(redirect_field_name="origin")
 @logger.secure_view()
-def userAgreement(request: HttpRequest):
+def userAgreement(request: UserRequest):
     # 不要加check_user_access，因为本页面就是该包装器首次登录时的跳转页面之一
-    valid, user_type, html_display = utils.check_user_type(request.user)
-    if not valid:
+    if not request.user.is_valid():
         return redirect("/index/")
 
     if request.method == "POST":
@@ -1446,7 +1442,8 @@ def userAgreement(request: HttpRequest):
 
     # 新版侧边栏, 顶栏等的呈现，采用 bar_display, 必须放在render前最后一步
     bar_display = utils.get_sidebar_and_navbar(request.user, "用户须知")
-    return render(request, 'user_agreement.html', locals())
+    return render(request, 'user_agreement.html',
+                  dict(request=request, bar_display=bar_display))
 
 
 @logger.secure_view()
@@ -1801,7 +1798,7 @@ def forgetPassword(request: HttpRequest):
                     display = wrong("验证码已过期，请重新发送")
                 elif str(vertify_code).upper() == captcha.upper():
                     auth.login(request, user)
-                    utils.update_related_account_in_session(
+                    update_related_account_in_session(
                         request, user.username)
                     utils.clear_captcha_session(request)
                     # request.session["username"] = username 已废弃
@@ -1837,7 +1834,7 @@ class ModpwView(SecureTemplateView):
 @login_required(redirect_field_name="origin")
 @utils.check_user_access(redirect_url="/logout/", is_modpw=True)
 @logger.secure_view()
-def modpw(request: HttpRequest):
+def modpw(request: UserRequest):
     """
         可能在三种情况进入这个页面：首次登陆；忘记密码；或者常规的修改密码。
         在忘记密码时，可以允许不输入旧的密码
@@ -1845,10 +1842,8 @@ def modpw(request: HttpRequest):
             以上两种情况都可以直接进行密码修改
         常规修改要审核旧的密码
     """
-    user: User = request.user # type: ignore
-    valid, _, html_display = utils.check_user_type(user)
-    if not valid:
-        return redirect("/index/")
+    user = request.user
+    _, _, html_display = utils.check_user_type(user)
     isFirst = user.first_time_login
     # 在其他界面，如果isFirst为真，会跳转到这个页面
     # 现在，请使用@utils.check_user_access(redirect_url)包装器完成用户检查
