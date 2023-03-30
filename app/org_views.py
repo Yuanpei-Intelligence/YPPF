@@ -42,12 +42,8 @@ def showNewOrganization(request: UserRequest):
     新建小组的聚合界面
     """
     user_type, html_display = utils.check_user_type(request.user)
-    if user_type == UTYPE_ORG:
-        html_display["warn_code"] = 1
-        html_display["warn_message"] = "请不要使用小组账号申请新小组！"
-        return redirect("/welcome/" +
-                        "?warn_code=1&warn_message={warn_message}".format(
-                            warn_message=html_display["warn_message"]))
+    if request.user.is_org():
+        return redirect(message_url(wrong("请不要使用小组账号申请新小组！")))
 
     me = get_person_or_org(request.user, user_type)
 
@@ -70,16 +66,12 @@ def showNewOrganization(request: UserRequest):
 @login_required(redirect_field_name='origin')
 @utils.check_user_access(redirect_url="/logout/")
 @logger.secure_view()
-def modifyOrganization(request: HttpRequest):
+def modifyOrganization(request: UserRequest):
     # YWolfeee: 重构小组申请页面 Aug 24 12:30 UTC-8
     user_type, html_display = utils.check_user_type(request.user)
     me = get_person_or_org(request.user)  # 获取自身
-    if user_type == UTYPE_ORG:
-        html_display["warn_code"] = 1
-        html_display["warn_message"] = "请不要使用小组账号申请新小组！"
-        return redirect("/welcome/" +
-                        "?warn_code=1&warn_message={warn_message}".format(
-                            warn_message=html_display["warn_message"]))
+    if request.user.is_org():
+        return redirect(message_url(wrong("请不要使用小组账号申请新小组！")))
 
     # ———————————————— 读取可能存在的申请 为POST和GET做准备 ————————————————
 

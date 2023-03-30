@@ -391,9 +391,9 @@ def getActivityInfo(request: HttpRequest):
 @login_required(redirect_field_name="origin")
 @utils.check_user_access(redirect_url="/logout/")
 @logger.secure_view()
-def checkinActivity(request: HttpRequest, aid=None):
+def checkinActivity(request: UserRequest, aid=None):
     user_type, html_display = utils.check_user_type(request.user)
-    if user_type != UTYPE_PER:
+    if not request.user.is_person():
         return redirect(message_url(wrong('签到失败：请使用个人账号签到')))
     try:
         np = get_person_or_org(request.user, user_type)

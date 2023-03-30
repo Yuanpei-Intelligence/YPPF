@@ -1,3 +1,5 @@
+from utils.http import UserRequest
+
 from app.utils_dependency import *
 from app.models import (
     User,
@@ -20,7 +22,7 @@ from app.log import logger
 
 
 @logger.secure_func(raise_exc=True)
-def addComment(request, comment_base, receiver=None, *,
+def addComment(request: UserRequest, comment_base, receiver=None, *,
                anonymous=False, notification_title=None) -> MESSAGECONTEXT:
     """添加评论
 
@@ -43,7 +45,6 @@ def addComment(request, comment_base, receiver=None, *,
     Returns:
         context<dict>: 继承自wrong/succeed, 成功时包含new_comment
     """
-    user_type, _ = check_user_type(request.user)
     sender = get_person_or_org(request.user)
     sender_name = "匿名者" if anonymous else sender.get_display_name()
 
@@ -60,7 +61,7 @@ def addComment(request, comment_base, receiver=None, *,
         'neworganization': f'/modifyOrganization/?org_id={comment_base.id}',
         'activity': f"/examineActivity/{comment_base.id}"
                     # 发送者如果是组织，接收者就是老师
-                    if user_type == UTYPE_ORG else
+                    if request.user.is_org() else
                     f"/editActivity/{comment_base.id}",
         'feedback': f"/viewFeedback/{comment_base.id}",
         'Chat': f"/viewQA/{comment_base.id}"
