@@ -36,12 +36,12 @@ __all__ = [
 @login_required(redirect_field_name='origin')
 @utils.check_user_access(redirect_url="/logout/")
 @logger.secure_view()
-def showNewOrganization(request: HttpRequest):
+def showNewOrganization(request: UserRequest):
     """
     YWolfeee: modefied on Aug 24 1:33 a.m. UTC-8
     新建小组的聚合界面
     """
-    _, user_type, html_display = utils.check_user_type(request.user)
+    user_type, html_display = utils.check_user_type(request.user)
     if user_type == UTYPE_ORG:
         html_display["warn_code"] = 1
         html_display["warn_message"] = "请不要使用小组账号申请新小组！"
@@ -72,7 +72,7 @@ def showNewOrganization(request: HttpRequest):
 @logger.secure_view()
 def modifyOrganization(request: HttpRequest):
     # YWolfeee: 重构小组申请页面 Aug 24 12:30 UTC-8
-    _, user_type, html_display = utils.check_user_type(request.user)
+    user_type, html_display = utils.check_user_type(request.user)
     me = get_person_or_org(request.user)  # 获取自身
     if user_type == UTYPE_ORG:
         html_display["warn_code"] = 1
@@ -237,7 +237,7 @@ def showPosition(request: HttpRequest):
     '''
     成员的聚合界面
     '''
-    _, user_type, html_display = utils.check_user_type(request.user)
+    user_type, html_display = utils.check_user_type(request.user)
     me = get_person_or_org(request.user)
 
     # 查看成员聚合页面：拉取个人或小组相关的申请
@@ -263,7 +263,7 @@ def showPosition(request: HttpRequest):
 @utils.check_user_access(redirect_url="/logout/")
 @logger.secure_view()
 def saveShowPositionStatus(request: HttpRequest):
-    _, user_type, html_display = utils.check_user_type(request.user)
+    user_type, html_display = utils.check_user_type(request.user)
 
     me = get_person_or_org(request.user, user_type)
     params = json.loads(request.body.decode("utf-8"))
@@ -291,7 +291,7 @@ def saveShowPositionStatus(request: HttpRequest):
 @logger.secure_view()
 def modifyPosition(request: HttpRequest):
     # YWolfeee: 重构成员申请页面 Aug 24 12:30 UTC-8
-    _, user_type, html_display = utils.check_user_type(request.user)
+    user_type, html_display = utils.check_user_type(request.user)
     me = get_person_or_org(request.user)  # 获取自身
 
     # 前端使用量user_type，表示观察者是小组还是个人
@@ -483,7 +483,7 @@ def modifyPosition(request: HttpRequest):
 @utils.check_user_access(redirect_url="/logout/")
 @logger.secure_view()
 def sendMessage(request: HttpRequest):
-    _, user_type, html_display = utils.check_user_type(request.user)
+    user_type, html_display = utils.check_user_type(request.user)
     me = get_person_or_org(request.user)  # 获取自身
     if user_type == UTYPE_PER:
         html_display["warn_code"] = 1

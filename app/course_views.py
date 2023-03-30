@@ -63,7 +63,7 @@ def editCourseActivity(request: HttpRequest, aid: int):
     :rtype: HttpResponse
     """
     # 检查用户身份
-    _, user_type, html_display = utils.check_user_type(request.user)
+    user_type, html_display = utils.check_user_type(request.user)
     me = utils.get_person_or_org(request.user, user_type)  # 这里的me应该为小组账户
     try:
         aid = int(aid)
@@ -146,7 +146,7 @@ def addSingleCourseActivity(request: HttpRequest):
     :rtype: HttpResponse
     """
     # 检查用户身份
-    _, user_type, html_display = utils.check_user_type(request.user)
+    user_type, html_display = utils.check_user_type(request.user)
     me = utils.get_person_or_org(request.user, user_type)  # 这里的me应该为小组账户
     if user_type != UTYPE_ORG or me.otype.otype_name != APP_CONFIG.type_name:
         return redirect(message_url(wrong('书院课程小组账号才能开设课程活动!')))
@@ -202,7 +202,7 @@ def showCourseActivity(request: HttpRequest):
     """
 
     # Sanity check and start a html_display.
-    _, user_type, html_display = utils.check_user_type(request.user)
+    user_type, html_display = utils.check_user_type(request.user)
     me = get_person_or_org(request.user, user_type)  # 获取自身
 
     if user_type != UTYPE_ORG or me.otype.otype_name != APP_CONFIG.type_name:
@@ -304,7 +304,7 @@ def showCourseRecord(request: HttpRequest) -> HttpResponse:
     :rtype: HttpResponse
     """
     # ----身份检查----
-    _, user_type, _ = utils.check_user_type(request.user)
+    user_type, _ = utils.check_user_type(request.user)
     me = utils.get_person_or_org(request.user)  # 获取自身
     if user_type == UTYPE_PER:
         return redirect(message_url(wrong('学生账号不能访问此界面！')))
@@ -458,7 +458,7 @@ def selectCourse(request: HttpRequest):
     :type request: HttpRequest
     """
 
-    _, user_type, html_display = utils.check_user_type(request.user)
+    user_type, html_display = utils.check_user_type(request.user)
     me = get_person_or_org(request.user, user_type)
 
     if user_type == UTYPE_ORG:
@@ -553,7 +553,7 @@ def viewCourse(request: HttpRequest):
     :param request: GET courseid=<int>
     :type request: HttpRequest
     """
-    _, user_type, html_display = utils.check_user_type(request.user)
+    user_type, html_display = utils.check_user_type(request.user)
 
     try:
         course_id = int(request.GET.get("courseid", None))
@@ -589,7 +589,7 @@ def addCourse(request: HttpRequest, cid=None):
     """
 
     # 检查：不是超级用户，必须是小组，修改是必须是自己
-    _, user_type, html_display = utils.check_user_type(request.user)
+    user_type, html_display = utils.check_user_type(request.user)
     # assert valid  已经在check_user_access检查过了
     me = utils.get_person_or_org(request.user, user_type) # 这里的me应该为小组账户
     if cid is None:
@@ -705,7 +705,7 @@ def outputRecord(request: HttpRequest):
     """
 
     # 检查：要求必须为书院课程审核老师（local_json定义）
-    _, user_type, html_display = utils.check_user_type(request.user)
+    user_type, _ = utils.check_user_type(request.user)
     me = utils.get_person_or_org(request.user, user_type)
     # 获取默认审核老师，不应该出错
     examine_teacher = NaturalPerson.objects.get_teacher(APP_CONFIG.audit_teacher)
@@ -723,7 +723,7 @@ def outputSelectInfo(request: HttpRequest):
     导出该课程的选课名单
     """
     # 检查：不是超级用户，必须是小组，修改是必须是自己
-    _, user_type, html_display = utils.check_user_type(request.user)
+    user_type, _ = utils.check_user_type(request.user)
     me = utils.get_person_or_org(request.user, user_type)
     try:
         assert (user_type == UTYPE_ORG

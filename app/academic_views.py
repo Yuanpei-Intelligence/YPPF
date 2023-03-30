@@ -103,7 +103,7 @@ def modifyAcademic(request: HttpRequest) -> HttpResponse:
     """
     frontend_dict = {}
 
-    _, user_type, _ = check_user_type(request.user)
+    user_type, _ = check_user_type(request.user)
     if user_type != UTYPE_PER:  # 只允许个人账户修改学术地图
         return redirect(message_url(wrong("只有个人才可以修改自己的学术地图！")))
 

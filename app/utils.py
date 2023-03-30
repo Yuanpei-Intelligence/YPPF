@@ -161,10 +161,9 @@ def check_user_type(user: User):
     '''待废弃'''
     html_display = {}
     user_type = user.utype
-    valid = user.is_valid()
-    if valid:
+    if user.is_valid():
         html_display["user_type"] = user_type
-    return valid, user_type, html_display
+    return user_type, html_display
 
 
 def get_user_ava(obj: ClassifiedUser, user_type):
@@ -212,7 +211,7 @@ def get_sidebar_and_navbar(user, navbar_name="", title_name="", bar_display=None
     if bar_display is None:
         bar_display = {}  # 默认参数只会初始化一次，所以不应该设置为{}
     me = get_person_or_org(user)  # 获得对应的对象
-    _, user_type, _ = check_user_type(user)
+    user_type, _ = check_user_type(user)
     bar_display["user_type"] = user_type
     if user.is_staff:
         bar_display["is_staff"] = True
@@ -593,7 +592,7 @@ def escape_for_templates(text:str):
 
 def record_modification(user, info=""):
     try:
-        _, usertype, _ = check_user_type(user)
+        usertype, _ = check_user_type(user)
         obj = get_person_or_org(user, usertype)
         name = obj.get_display_name()
         firsttime = not user.modify_records.exists()
@@ -605,7 +604,7 @@ def record_modification(user, info=""):
 
 def get_modify_rank(user):
     try:
-        _, usertype, _ = check_user_type(user)
+        usertype, _ = check_user_type(user)
         records = user.modify_records.all()
         if not records:
             return -1
@@ -621,7 +620,7 @@ def get_modify_rank(user):
 
 def record_modify_with_session(request, info=""):
     try:
-        _, usertype, _ = check_user_type(request.user)
+        usertype, _ = check_user_type(request.user)
         recorded = record_modification(request.user, info)
         if recorded == True:
             rank = get_modify_rank(request.user)
