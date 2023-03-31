@@ -1,6 +1,3 @@
-{% comment %}
-# XXX: User {{ .is_org }}
-{% endcomment %}
 {% extends "base.html" %}
 
 {% block mainpage %}
@@ -23,21 +20,9 @@
                             <div class="card-body">
                                 <b class="d-flex">
                                     <span class="flex">当前元气值</span>
-                                    <span class="flex ml-auto">{{html_display.YQPoint}}</span>
+                                    <span class="flex ml-auto">{{YQPoint}}</span>
                                     <br/>
                                 </b>
-                                {% if user.is_org %}
-                                <b class="d-flex">
-                                    <span class="flex">待收入元气值</span>
-                                    <span class="flex ml-auto">{{amount.recv}}</span>
-                                    <br/>
-                                </b>
-                                <b class="d-flex">
-                                    <span class="flex">待支出元气值</span>
-                                    <span class="flex ml-auto">{{amount.send}}</span>
-                                    <br/>
-                                </b>
-                                {% endif %}
                             </div>
                         </div>
                      </div>

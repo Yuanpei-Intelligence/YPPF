@@ -127,5 +127,5 @@ urlpatterns = [
     # 元气值
     path("myYQPoint/", YQPoint_views.myYQPoint.as_view(), name="myYQPoint"),
     path("showPools/", YQPoint_views.showPools, name="showPools"),
-    path("myPrize/", YQPoint_views.myPrize, name="myPrize"),
+    path("myPrize/", YQPoint_views.myPrize.as_view(), name="myPrize"),
 ]

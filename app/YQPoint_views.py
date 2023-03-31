@@ -26,7 +26,6 @@ __all__ = [
 class myYQPoint(ProfileTemplateView):
     template_name = 'myYQPoint.html'
     page_name = '我的元气值'
-    need_prepare = False
     http_method_names = ['get']
 
     def prepare_get(self):
@@ -37,47 +36,49 @@ class myYQPoint(ProfileTemplateView):
         return self.get
 
     def get(self):
-        user = self.request.user
+        YQPoint = self.request.user.YQpoint
         received_set = YQPointRecord.objects.filter(
-            user=user,
+            user=self.request.user,
         ).exclude(source_type=YQPointRecord.SourceType.CONSUMPTION).order_by("-time")
 
         send_set = YQPointRecord.objects.filter(
-            user=user,
+            user=self.request.user,
             source_type=YQPointRecord.SourceType.CONSUMPTION,
         ).order_by("-time")
-        return self.render(user=user, received_set=received_set, send_set=send_set)
+        return self.render(YQPoint=YQPoint, received_set=received_set, send_set=send_set)
 
 
 
-@login_required(redirect_field_name="origin")
-@utils.check_user_access(redirect_url="/logout/")
-@logger.secure_view()
-def myPrize(request: HttpRequest):
-    user_type, html_display = utils.check_user_type(request.user)
-    # 获取可能的提示信息
-    my_messages.transfer_message_context(request.GET, html_display)
+class myPrize(ProfileTemplateView):
+    template_name = 'myPrize.html'
+    page_name = '我的奖品'
+    http_method_names = ['get']
 
-    lottery_set = PoolRecord.objects.filter(
-        user=request.user,
-        pool__type=Pool.Type.LOTTERY,
-        status__in=[
-            PoolRecord.Status.LOTTERING, 
-            PoolRecord.Status.NOT_LUCKY,
-            PoolRecord.Status.UN_REDEEM],
-    ).order_by("-time")
+    def prepare_get(self):
+        html_display = {}
+        my_messages.transfer_message_context(self.request.GET, html_display)
+        self.extra_context.update(html_display=html_display)
+        return self.get
 
-    exchange_set = PoolRecord.objects.filter(
-        user=request.user,
-        status__in=[
-            PoolRecord.Status.UN_REDEEM,
-            PoolRecord.Status.REDEEMED, 
-            PoolRecord.Status.OVERDUE],
-    ).order_by("-status", "-time")
+    def get(self):
+        lottery_set = PoolRecord.objects.filter(
+            user=self.request.user,
+            pool__type=Pool.Type.LOTTERY,
+            status__in=[
+                PoolRecord.Status.LOTTERING,
+                PoolRecord.Status.NOT_LUCKY,
+                PoolRecord.Status.UN_REDEEM],
+        ).order_by("-time")
 
-    # 新版侧边栏, 顶栏等的呈现，采用 bar_display, 必须放在render前最后一步
-    bar_display = utils.get_sidebar_and_navbar(request.user, "我的奖品")
-    return render(request, "myPrize.html", locals())
+        exchange_set = PoolRecord.objects.filter(
+            user=self.request.user,
+            status__in=[
+                PoolRecord.Status.UN_REDEEM,
+                PoolRecord.Status.REDEEMED,
+                PoolRecord.Status.OVERDUE],
+        ).order_by("-status", "-time")
+        return self.render(lottery_set=lottery_set, exchange_set=exchange_set)
+
 
 
 @login_required(redirect_field_name="origin")
