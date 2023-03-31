@@ -190,7 +190,7 @@ def get_inform_share(me: ClassifiedUser, is_myself=True):
     return False, alert_message
 
 
-def get_sidebar_and_navbar(user, navbar_name="", title_name="", bar_display=None):
+def get_sidebar_and_navbar(user: User, navbar_name="", title_name="", bar_display=None):
     '''
     YWolfeee Aug 16
     修改left siderbar的逻辑，统一所有个人和所有小组的左边栏，不随界面而改变
@@ -222,7 +222,7 @@ def get_sidebar_and_navbar(user, navbar_name="", title_name="", bar_display=None
         receiver=user, status=Notification.Status.UNDONE
     ).count()
 
-    if user_type == UTYPE_PER:
+    if user.is_person():
         bar_display["profile_name"] = "个人主页"
         bar_display["profile_url"] = "/stuinfo/"
         bar_display["name"] = me.name
@@ -614,18 +614,17 @@ def get_modify_rank(user):
         return -1
 
 
-def record_modify_with_session(request, info=""):
+def record_modify_with_session(request: UserRequest, info=""):
     try:
         usertype, _ = check_user_type(request.user)
         recorded = record_modification(request.user, info)
         if recorded == True:
             rank = get_modify_rank(request.user)
-            is_person = usertype == UTYPE_PER
             info_rank = CONFIG.max_inform_rank.get(usertype, -1)
             if rank > -1 and rank <= info_rank:
                 msg = (
                     f'您是第{rank}名修改账号信息的'+
-                    ('个人' if is_person else '小组')+
+                    ('个人' if request.user.is_person() else '小组')+
                     '用户！保留此截图可在游园会兑换奖励！'
                 )
                 request.session['alert_message'] = msg

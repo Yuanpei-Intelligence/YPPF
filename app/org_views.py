@@ -229,11 +229,10 @@ def showPosition(request: HttpRequest):
     '''
     成员的聚合界面
     '''
-    user_type, html_display = utils.check_user_type(request.user)
     me = get_person_or_org(request.user)
 
     # 查看成员聚合页面：拉取个人或小组相关的申请
-    if user_type == UTYPE_PER:
+    if request.user.is_person():
         #shown_instances = ModifyPosition.objects.filter(person=me)
         all_instances = {
             "undone": ModifyPosition.objects.filter(person=me, status=ModifyPosition.Status.PENDING).order_by('-modify_time', '-time'),
@@ -300,7 +299,7 @@ def modifyPosition(request: HttpRequest):
             application: ModifyPosition = ModifyPosition.objects.get(id = position_id)
             # 接下来检查是否有权限check这个条目
             # 至少应该是申请人或者被申请小组之一
-            if user_type == UTYPE_PER and application.person != me:
+            if request.user.is_person() and application.person != me:
                 # 尝试获取已经新建的Position
                 html_display = utils.user_login_org(request, application.org)
                 if html_display['warn_code'] == 1:
@@ -320,7 +319,7 @@ def modifyPosition(request: HttpRequest):
         org_name = request.GET.get("org_name", None)
         try:
             applied_org = Organization.objects.activated().get(oname=org_name)
-            assert user_type == UTYPE_PER # 只有个人能看到这个新建申请的界面
+            assert request.user.is_person() # 只有个人能看到这个新建申请的界面
 
         except:
             # 非法的名字, 出现恶意修改参数的情况
@@ -376,7 +375,7 @@ def modifyPosition(request: HttpRequest):
                 return redirect(message_url("存在不合法操作,请与管理员联系!"))
             context = addComment(request, application,
                                  application.org.get_user()
-                                 if user_type == UTYPE_PER else
+                                 if request.user.is_person() else
                                  application.person.get_user())
 
         # 准备用户提示量
@@ -417,11 +416,12 @@ def modifyPosition(request: HttpRequest):
 
     # (1) 是否允许修改&允许评论
     # 用户写表格?
-    allow_form_edit = True if (user_type == UTYPE_PER) and (
-                is_new_application or application.is_pending()) else False
+    allow_form_edit = (request.user.is_person() and
+                       (is_new_application or application.is_pending()))
     # 小组审核?
-    allow_audit_submit = True if (not user_type == UTYPE_PER) and (not is_new_application) and (
-                application.is_pending()) else False
+    allow_audit_submit = (not request.user.is_person()
+                          and not is_new_application
+                          and application.is_pending())
     # 评论区?
     allow_comment = True if (not is_new_application) and (application.is_pending()) \
                     else False
@@ -474,15 +474,11 @@ def modifyPosition(request: HttpRequest):
 @login_required(redirect_field_name='origin')
 @utils.check_user_access(redirect_url="/logout/")
 @logger.secure_view()
-def sendMessage(request: HttpRequest):
-    user_type, html_display = utils.check_user_type(request.user)
+def sendMessage(request: UserRequest):
+    html_display = {}
     me = get_person_or_org(request.user)  # 获取自身
-    if user_type == UTYPE_PER:
-        html_display["warn_code"] = 1
-        html_display["warn_message"] = "只有小组账号才能发送通知！"
-        return redirect("/welcome/" +
-                        "?warn_code=1&warn_message={warn_message}".format(
-                            warn_message=html_display["warn_message"]))
+    if request.user.is_person():
+        return redirect(message_url(wrong("只有小组账号才能发送通知！")))
 
     if request.method == "POST":
         # 合法性检查
@@ -492,22 +488,21 @@ def sendMessage(request: HttpRequest):
         html_display["warn_code"] = context["warn_code"]
         html_display["warn_message"] = context["warn_message"]
 
+    _selected_type = request.GET.get('receiver_type', None)
+    if request.POST.get('receiver_type', None) is not None:
+        _selected_type = request.POST['receiver_type']
 
     # 前端展示量
     receiver_type_list = {
         w:{
             'display' : w,  # 前端呈现的使用量
             'disabled' : False,  # 是否禁止选择这个量
-            'selected' : False   # 是否默认选中这个量
+            'selected' : w == _selected_type   # 是否默认选中这个量
         }
         for w in ['订阅用户','小组成员','推广消息']
     }
 
     # 设置默认量
-    if request.GET.get('receiver_type', None) is not None:
-        receiver_type_list[request.GET.get('receiver_type')]['selected'] = True
-    if request.POST.get('receiver_type', None) is not None:
-        receiver_type_list[request.POST.get('receiver_type')]['selected'] = True
     if request.POST.get('url', None) is not None:
         url = request.POST.get('url', None)
     if request.POST.get('content', None) is not None:

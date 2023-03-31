@@ -71,7 +71,7 @@ def editCourseActivity(request: HttpRequest, aid: int):
     except:
         return redirect(message_url(wrong("活动不存在!")))
 
-    if user_type == UTYPE_PER:
+    if request.user.is_person():
         my_messages.transfer_message_context(
             utils.user_login_org(request, activity.organization_id),
             html_display,
@@ -304,9 +304,8 @@ def showCourseRecord(request: HttpRequest) -> HttpResponse:
     :rtype: HttpResponse
     """
     # ----身份检查----
-    user_type, _ = utils.check_user_type(request.user)
     me = utils.get_person_or_org(request.user)  # 获取自身
-    if user_type == UTYPE_PER:
+    if request.user.is_person():
         return redirect(message_url(wrong('学生账号不能访问此界面！')))
     if me.otype.otype_name != APP_CONFIG.type_name:
         return redirect(message_url(wrong('非书院课程组织账号不能访问此界面！')))

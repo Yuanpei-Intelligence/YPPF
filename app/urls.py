@@ -45,8 +45,6 @@ urlpatterns = [
     # 用户画像和互动
     path("stuinfo/", views.stuinfo, name="stuinfo"),
     path("orginfo/", views.orginfo, name="orginfo"),
-    # path("stuinfo/<str:name>", views.stuinfo, name="stuinfo"),
-    # path("orginfo/<str:name>", views.orginfo, name="orginfo"),
     path("userAccountSetting/", views.accountSetting, name="userAccountSetting"),
     path("notifications/", views.notifications, name="notifications"),
     path("search/", views.search, name="search"),

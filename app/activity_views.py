@@ -83,7 +83,7 @@ def viewActivity(request: HttpRequest, aid=None):
     if user_type == UTYPE_ORG and org == me:
         ownership = True
     examine = False
-    if user_type == UTYPE_PER and activity.examine_teacher == me:
+    if request.user.is_person() and activity.examine_teacher == me:
         examine = True
     if not (ownership or examine) and activity.status in [
         Activity.Status.REVIEWING,
@@ -225,7 +225,7 @@ def viewActivity(request: HttpRequest, aid=None):
         apply_manner = "先到先得"
     # person 表示是否是个人而非小组
     person = False
-    if user_type == UTYPE_PER:
+    if request.user.is_person():
         """
         老师能否报名活动？
         if me.identity == NaturalPerson.Identity.STUDENT:
@@ -250,7 +250,7 @@ def viewActivity(request: HttpRequest, aid=None):
         Activity.Status.PROGRESSING
     ]
 
-    if activity.inner and user_type == UTYPE_PER:
+    if activity.inner and request.user.is_person():
         position = Position.objects.activated().filter(
             person=me, org=activity.organization_id)
         if len(position) == 0:
@@ -467,7 +467,7 @@ def addActivity(request: HttpRequest, aid=None):
     else:
         aid = int(aid)
         activity = Activity.objects.get(id=aid)
-        if user_type == UTYPE_PER:
+        if request.user.is_person():
             html_display = utils.user_login_org(
                 request, activity.organization_id)
             if html_display['warn_code'] == 1:
@@ -633,7 +633,7 @@ def showActivity(request: HttpRequest):
     user_type, html_display = utils.check_user_type(request.user)
     me = utils.get_person_or_org(request.user)  # 获取自身
     is_teacher = False  # 该变量同时用于前端
-    if user_type == UTYPE_PER:
+    if request.user.is_person():
         try:
             person = utils.get_person_or_org(request.user, user_type)
             is_teacher = person.is_teacher()
@@ -669,10 +669,10 @@ def showActivity(request: HttpRequest):
 @login_required(redirect_field_name="origin")
 @logger.secure_view()
 def examineActivity(request: UserRequest, aid: int | str):
-    user_type, html_display = utils.check_user_type(request.user)
+    _, html_display = utils.check_user_type(request.user)
     try:
         assert request.user.is_valid()
-        assert user_type == UTYPE_PER
+        assert request.user.is_person()
         me = utils.get_person_or_org(request.user)
         activity = Activity.objects.get(id=int(aid))
         assert activity.examine_teacher == me
@@ -840,7 +840,7 @@ def endActivity(request: HttpRequest):
     """
     user_type, html_display = utils.check_user_type(request.user)
     is_auditor = False
-    if user_type == UTYPE_PER:
+    if request.user.is_person():
         try:
             person = utils.get_person_or_org(request.user, user_type)
             is_auditor = person.is_teacher()
@@ -899,7 +899,7 @@ def modifyEndActivity(request: HttpRequest):
             application: ActivitySummary = ActivitySummary.objects.get(
                 id=apply_id)
             auditor = application.activity.examine_teacher.person_id  # 审核老师
-            if user_type == UTYPE_PER and auditor != request.user:
+            if request.user.is_person() and auditor != request.user:
                 html_display = utils.user_login_org(
                     request, application.get_org())
                 if html_display['warn_code'] == 1:
@@ -963,7 +963,7 @@ def modifyEndActivity(request: HttpRequest):
             return redirect(message_url(wrong('申请状态异常！')))
 
         # 接下来确定访问的个人/小组是不是在做分内的事情
-        if (user_type == UTYPE_PER and feasible_post.index(post_type) <= 2
+        if (request.user.is_person() and feasible_post.index(post_type) <= 2
             ) or (user_type == UTYPE_ORG
                   and feasible_post.index(post_type) >= 3):
             return redirect(message_url(wrong('您无权进行此操作，如有疑惑, 请联系管理员')))
@@ -1064,8 +1064,9 @@ def modifyEndActivity(request: HttpRequest):
         is_new_application or application.is_pending()) else False
 
     # 老师审核?
-    allow_audit_submit = True if (user_type == UTYPE_PER) and (
-        not is_new_application) and (application.is_pending()) else False
+    allow_audit_submit = (request.user.is_person()
+                          and not is_new_application
+                          and application.is_pending())
 
     # 用于前端展示：如果是新申请，申请人即“me”，否则从application获取。
     apply_person = me if is_new_application else application.get_org()

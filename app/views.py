@@ -207,7 +207,7 @@ def miniLogin(request: HttpRequest):
 @login_required(redirect_field_name="origin")
 @utils.check_user_access(redirect_url="/logout/")
 @logger.secure_view()
-def stuinfo(request: HttpRequest, name=None):
+def stuinfo(request: UserRequest):
     """
         进入到这里的逻辑:
         首先必须登录，并且不是超级账户
@@ -224,18 +224,16 @@ def stuinfo(request: HttpRequest, name=None):
                 那么期望有一个"+"在name中，如果搜不到就跳转到Search/?Query=name让他跳转去
     """
 
-    user = request.user
     user_type, html_display = utils.check_user_type(request.user)
 
-    oneself = get_person_or_org(user, user_type)
+    oneself = get_person_or_org(request.user, user_type)
 
-    if name is None:
-        name = request.GET.get('name', None)
+    name = request.GET.get('name', None)
     if name is None:
         if user_type == UTYPE_ORG:
             return redirect("/orginfo/")  # 小组只能指定学生姓名访问
         else:  # 跳轉到自己的頁面
-            assert user_type == UTYPE_PER
+            assert request.user.is_person()
             return redirect(append_query(oneself.get_absolute_url(), **request.GET.dict()))
     else:
         # 先对可能的加号做处理
@@ -248,7 +246,7 @@ def stuinfo(request: HttpRequest, name=None):
             person = person[0]
         else:  # 有很多人，这时候假设加号后面的是user的id
             if len(name_list) == 1:  # 没有任何后缀信息，那么如果是自己则跳转主页，否则跳转搜索
-                if user_type == UTYPE_PER and oneself.name == name:
+                if request.user.is_person() and oneself.name == name:
                     person = oneself
                 else:  # 不是自己，信息不全跳转搜索
                     return redirect("/search?Query=" + name)
@@ -261,7 +259,7 @@ def stuinfo(request: HttpRequest, name=None):
                 assert potential_person in person
                 person = potential_person
 
-        is_myself = user_type == UTYPE_PER and person.person_id == user  # 用一个字段储存是否是自己
+        is_myself = request.user.is_person() and person.get_user() == request.user
         html_display["is_myself"] = is_myself  # 存入显示
         inform_share, alert_message = utils.get_inform_share(
             me=person, is_myself=is_myself)
@@ -482,7 +480,7 @@ def stuinfo(request: HttpRequest, name=None):
             Q(id__in=participants.values("activity_id")),
             # ~Q(status=Activity.Status.CANCELED), # 暂时可以呈现已取消的活动
         )
-        if user_type == UTYPE_PER:
+        if request.user.is_person():
             # 因为上面筛选过活动，这里就不用筛选了
             # 之前那个写法是O(nm)的
             activities_me = Participant.objects.activated().filter(person_id=oneself)
@@ -573,7 +571,7 @@ def stuinfo(request: HttpRequest, name=None):
         status_in = None
         if is_myself:
             academic_params["user_type"] = "author"
-        elif user_type == UTYPE_PER and oneself.is_teacher():
+        elif request.user.is_person() and oneself.is_teacher():
             academic_params["user_type"] = "inspector"
             status_in = ['public', 'wait_audit']
         else:
@@ -718,24 +716,19 @@ def requestLoginOrg(request: HttpRequest, name=None):  # 特指个人希望通�
 @login_required(redirect_field_name="origin")
 @utils.check_user_access(redirect_url="/logout/")
 @logger.secure_view()
-def orginfo(request: UserRequest, name=None):
+def orginfo(request: UserRequest):
     """
         orginfo负责呈现小组主页，逻辑和stuinfo是一样的，可以参考
         只区分自然人和法人，不区分自然人里的负责人和非负责人。任何自然人看这个小组界面都是【不可管理/编辑小组信息】
     """
-    user = request.user
-    user_type, html_display = utils.check_user_type(request.user)
+    me = get_person_or_org(request.user)
 
-    me = get_person_or_org(user, user_type)
-
-    if name is None:
-        name = request.GET.get('name', None)
-
+    name = request.GET.get('name', None)
     if name is None:  # 此时登陆的必需是法人账号，如果是自然人，则跳转welcome
-        if user_type == UTYPE_PER:
+        if request.user.is_person():
             return redirect(message_url(wrong('个人账号不能登陆小组主页!')))
         try:
-            org = Organization.objects.activated().get(organization_id=user)
+            org = Organization.objects.activated().get(organization_id=request.user)
         except:
             return redirect(message_url(wrong('用户小组不存在或已经失效!')))
 
@@ -743,7 +736,7 @@ def orginfo(request: UserRequest, name=None):
         append_url = "" if ("?" not in full_path) else "&" + \
             full_path.split("?")[1]
 
-        return redirect("/orginfo/?name=" + org.oname + append_url)
+        return redirect(org.get_absolute_url() + append_url)
 
     try:  # 指定名字访问小组账号的，可以是自然人也可以是法人。在html里要注意区分！
 
@@ -756,8 +749,9 @@ def orginfo(request: UserRequest, name=None):
         return redirect(message_url(wrong('该小组不存在!')))
 
     # 判断是否为小组账户本身在登录
+    html_display = {}
     html_display["is_myself"] = me == org
-    html_display["is_person"] = user_type == UTYPE_PER
+    html_display["is_person"] = request.user.is_person()
     html_display["is_course"] = (
         Course.objects.activated().filter(organization=org).exists()
     )
@@ -829,7 +823,7 @@ def orginfo(request: UserRequest, name=None):
         dictmp["act"] = act
         dictmp["endbefore"] = act.start - \
             timedelta(hours=prepare_times[act.endbefore])
-        if user_type == UTYPE_PER:
+        if request.user.is_person():
 
             existlist = Participant.objects.filter(activity_id_id=act.id).filter(
                 person_id_id=me.id
@@ -847,7 +841,7 @@ def orginfo(request: UserRequest, name=None):
         dictmp["act"] = act
         dictmp["endbefore"] = act.start - \
             timedelta(hours=prepare_times[act.endbefore])
-        if user_type == UTYPE_PER:
+        if request.user.is_person():
             existlist = Participant.objects.filter(activity_id_id=act.id).filter(
                 person_id_id=me.id
             )
@@ -864,7 +858,7 @@ def orginfo(request: UserRequest, name=None):
         dictmp["act"] = act
         dictmp["endbefore"] = act.start - \
             timedelta(hours=prepare_times[act.endbefore])
-        if user_type == UTYPE_PER:
+        if request.user.is_person():
             existlist = Participant.objects.filter(activity_id_id=act.id).filter(
                 person_id_id=me.id
             )
@@ -881,7 +875,7 @@ def orginfo(request: UserRequest, name=None):
     positions = Position.objects.activated().filter(org=org).order_by("pos")  # 升序
     member_list = []
     for p in positions:
-        if p.person.person_id == user and p.pos == 0:
+        if p.person.person_id == request.user and p.pos == 0:
             html_display["isboss"] = True
         if p.show_post == True or p.pos == 0 or html_display["is_myself"]:
             member = {}
@@ -891,8 +885,7 @@ def orginfo(request: UserRequest, name=None):
             member["job"] = org.otype.get_name(p.pos)
             member["highest"] = True if p.pos == 0 else False
 
-            member["avatar_path"] = utils.get_user_ava(
-                member["person"], UTYPE_PER)
+            member["avatar_path"] = p.person.get_user_ava()
 
             member_list.append(member)
 
@@ -926,7 +919,7 @@ def orginfo(request: UserRequest, name=None):
 
     # 补充订阅该小组的按钮
     allow_unsubscribe = org.otype.allow_unsubscribe  # 是否允许取关
-    is_person = user_type == UTYPE_PER
+    is_person = request.user.is_person()
     if is_person:
         subscribe_flag = True if (
             organization_name not in me.unsubscribe_list.values_list("oname", flat=True)) \
@@ -934,7 +927,7 @@ def orginfo(request: UserRequest, name=None):
 
     # 补充作为小组成员，选择是否展示的按钮
     show_post_change_button = False     # 前端展示“是否不展示我自己”的按钮，若为True则渲染这个按钮
-    if user_type == UTYPE_PER:
+    if request.user.is_person():
         my_position = Position.objects.activated().filter(
             org=org, person=me).exclude(is_admin=True)
         if len(my_position):
@@ -958,7 +951,7 @@ def orginfo(request: UserRequest, name=None):
 @logger.secure_view()
 def homepage(request: HttpRequest):
     user_type, html_display = utils.check_user_type(request.user)
-    is_person = user_type == UTYPE_PER
+    is_person = request.user.is_person()
     me = get_person_or_org(request.user, user_type)
 
     html_display["is_myself"] = True
@@ -1129,7 +1122,7 @@ def accountSetting(request: HttpRequest):
     # bar_display["title_name"] = "Account Setting"
     # bar_display["navbar_name"] = "账户设置"
 
-    if user_type == UTYPE_PER:
+    if request.user.is_person():
         info = NaturalPerson.objects.filter(person_id=user)
         userinfo = info.values()[0]
 
@@ -1925,13 +1918,13 @@ def modpw(request: UserRequest):
 @login_required(redirect_field_name="origin")
 @utils.check_user_access(redirect_url="/logout/")
 @logger.secure_view()
-def subscribeOrganization(request: HttpRequest):
-    user_type, html_display = utils.check_user_type(request.user)
-    if user_type != UTYPE_PER:
+def subscribeOrganization(request: UserRequest):
+    html_display = {}
+    if not request.user.is_person():
         succeed('小组账号不支持订阅，您可以在此查看小组列表！', html_display)
         html_display.update(readonly=True)
 
-    me = get_person_or_org(request.user, user_type)
+    me = get_person_or_org(request.user)
     # orgava_list = [(org, utils.get_user_ava(org, UTYPE_ORG)) for org in org_list]
     otype_infos = [(
         otype,
@@ -1940,7 +1933,7 @@ def subscribeOrganization(request: HttpRequest):
     ) for otype in OrganizationType.objects.all().order_by('-otype_id')]
 
     # 获取不订阅列表（数据库里的是不订阅列表）
-    if user_type == UTYPE_PER:
+    if request.user.is_person():
         unsubscribe_set = set(me.unsubscribe_list.values_list(
             'organization_id__username', flat=True))
     else:
@@ -1950,7 +1943,7 @@ def subscribeOrganization(request: HttpRequest):
     # 新版侧边栏, 顶栏等的呈现，采用 bar_display, 必须放在render前最后一步
     # 小组暂且不使用订阅提示
     bar_display = utils.get_sidebar_and_navbar(
-        request.user, navbar_name='我的订阅' if user_type == UTYPE_PER else '小组一览')
+        request.user, navbar_name='我的订阅' if request.user.is_person() else '小组一览')
 
     # all_number = NaturalPerson.objects.activated().all().count()    # 人数全体 优化查询
     return render(request, "organization_subscribe.html", locals())
@@ -1959,12 +1952,11 @@ def subscribeOrganization(request: HttpRequest):
 @login_required(redirect_field_name="origin")
 @utils.check_user_access(redirect_url="/logout/")
 @logger.secure_view()
-def saveSubscribeStatus(request: HttpRequest):
-    user_type, html_display = utils.check_user_type(request.user)
-    if user_type != UTYPE_PER:
+def saveSubscribeStatus(request: UserRequest):
+    if not request.user.is_person():
         return JsonResponse({"success": False})
 
-    me = get_person_or_org(request.user, user_type)
+    me = get_person_or_org(request.user)
     params = json.loads(request.body.decode("utf-8"))
 
     with transaction.atomic():

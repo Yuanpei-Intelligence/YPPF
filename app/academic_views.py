@@ -92,7 +92,7 @@ class ModifyAcademicView(SecureTemplateView):
 @login_required(redirect_field_name="origin")
 @utils.check_user_access(redirect_url="/logout/")
 @logger.secure_view()
-def modifyAcademic(request: HttpRequest) -> HttpResponse:
+def modifyAcademic(request: UserRequest) -> HttpResponse:
     """
     学术地图编辑界面
 
@@ -103,8 +103,7 @@ def modifyAcademic(request: HttpRequest) -> HttpResponse:
     """
     frontend_dict = {}
 
-    user_type, _ = check_user_type(request.user)
-    if user_type != UTYPE_PER:  # 只允许个人账户修改学术地图
+    if not request.user.is_person():
         return redirect(message_url(wrong("只有个人才可以修改自己的学术地图！")))
 
     # POST表明编辑界面发起修改
@@ -224,7 +223,7 @@ def modifyAcademic(request: HttpRequest) -> HttpResponse:
 @login_required(redirect_field_name="origin")
 @utils.check_user_access(redirect_url="/logout/")
 @logger.secure_view()
-def auditAcademic(request: HttpRequest) -> HttpResponse:
+def auditAcademic(request: UserRequest) -> HttpResponse:
     """
     供教师使用的页面，展示所有待审核的学术地图
 
@@ -235,7 +234,7 @@ def auditAcademic(request: HttpRequest) -> HttpResponse:
     """
     # 身份检查
     person = get_person_or_org(request.user)
-    if not (person.get_type() == UTYPE_PER and person.is_teacher()):
+    if not (request.user.is_person() and person.is_teacher()):
         return redirect(message_url(wrong('只有教师账号可进入学术地图审核页面!')))
 
     frontend_dict = {}
