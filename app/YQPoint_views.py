@@ -23,30 +23,31 @@ __all__ = [
 ]
 
 
-@login_required(redirect_field_name="origin")
-@utils.check_user_access(redirect_url="/logout/")
-@logger.secure_view()
-def myYQPoint(request: HttpRequest):
-    user_type, html_display = utils.check_user_type(request.user)
-    # 获取可能的提示信息
-    my_messages.transfer_message_context(request.GET, html_display)
+class myYQPoint(ProfileTemplateView):
+    template_name = 'myYQPoint.html'
+    page_name = '我的元气值'
+    need_prepare = False
+    http_method_names = ['get']
 
-    html_display.update(
-        YQPoint=request.user.YQpoint,
-    )
- 
-    received_set = YQPointRecord.objects.filter(
-        user=request.user,
-    ).exclude(source_type=YQPointRecord.SourceType.CONSUMPTION).order_by("-time")
+    def prepare_get(self):
+        html_display = {}
+        my_messages.transfer_message_context(self.request.GET, html_display)
+        html_display.update(YQPoint=self.request.user.YQpoint)
+        self.extra_context.update(html_display=html_display)
+        return self.get
 
-    send_set = YQPointRecord.objects.filter(
-        user=request.user,
-        source_type=YQPointRecord.SourceType.CONSUMPTION,
-    ).order_by("-time")
+    def get(self):
+        user = self.request.user
+        received_set = YQPointRecord.objects.filter(
+            user=user,
+        ).exclude(source_type=YQPointRecord.SourceType.CONSUMPTION).order_by("-time")
 
-    # 新版侧边栏, 顶栏等的呈现，采用 bar_display, 必须放在render前最后一步
-    bar_display = utils.get_sidebar_and_navbar(request.user, "我的元气值")
-    return render(request, "myYQPoint.html", locals() | dict(user=request.user))
+        send_set = YQPointRecord.objects.filter(
+            user=user,
+            source_type=YQPointRecord.SourceType.CONSUMPTION,
+        ).order_by("-time")
+        return self.render(user=user, received_set=received_set, send_set=send_set)
+
 
 
 @login_required(redirect_field_name="origin")

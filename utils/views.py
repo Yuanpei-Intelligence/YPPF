@@ -292,7 +292,7 @@ class SecureTemplateView(SecureView):
     def get_context_data(self, **kwargs) -> dict[str, Any]:
         return self.extra_context | kwargs
 
-    def render(self, **kwargs):
+    def render(self, **kwargs: Any):
         response = self.response_class(
             request=self.request,
             template=self.get_template_names(),
