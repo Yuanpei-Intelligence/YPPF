@@ -159,11 +159,7 @@ def get_user_by_name(name):
 # 同步开启一个html_display，方便拓展前端逻辑的呈现
 def check_user_type(user: User):
     '''待废弃'''
-    html_display = {}
-    user_type = user.utype
-    if user.is_valid():
-        html_display["user_type"] = user_type
-    return user_type, html_display
+    return user.utype, {}
 
 
 def get_user_ava(obj: ClassifiedUser, user_type):
