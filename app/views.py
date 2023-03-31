@@ -666,7 +666,7 @@ def stuinfo(request: HttpRequest, name=None):
         )
         academic_params.update(status_dict)
 
-        return render(request, "stuinfo.html", locals())
+        return render(request, "stuinfo.html", locals() | dict(user=request.user))
 
 
 @login_required(redirect_field_name="origin")
@@ -950,7 +950,7 @@ def orginfo(request: UserRequest, name=None):
         visit_times=F('visit_times')+1)
     # org.visit_times += 1
     # org.save()
-    return render(request, "orginfo.html", locals())
+    return render(request, "orginfo.html", locals() | dict(user=request.user))
 
 
 @login_required(redirect_field_name="origin")

@@ -46,7 +46,7 @@ def myYQPoint(request: HttpRequest):
 
     # 新版侧边栏, 顶栏等的呈现，采用 bar_display, 必须放在render前最后一步
     bar_display = utils.get_sidebar_and_navbar(request.user, "我的元气值")
-    return render(request, "myYQPoint.html", locals())
+    return render(request, "myYQPoint.html", locals() | dict(user=request.user))
 
 
 @login_required(redirect_field_name="origin")

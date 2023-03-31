@@ -1,5 +1,5 @@
 {% comment %}
-# XXX: User {{ user_type }}
+# XXX: User {{ .is_person .is_org }}
 {% endcomment %}
 {% extends "base.html" %}
 
@@ -805,7 +805,7 @@
                     </div>
 
 
-                    {% if html_display.is_myself != True and user_type == "Person"%}
+                    {% if not html_display.is_myself and user.is_person %}
                     
                         {% if html_display.have_progressing_chat %}
                         <!--  BEGIN PROGRESSING CHAT  -->
@@ -1087,7 +1087,7 @@
 
                         <div class="row">
                             <h3 class="col mb-0">加入的小组</h3>
-                            {% if html_display.is_myself == False and user_type == 'Person' %}
+                            {% if html_display.is_myself == False and user.is_person %}
                             <div class="col-0 mr-4 custom-control custom-switch">
                                 <input type="checkbox" class="custom-control-input" id="org-show-same-button"
                                     onclick="toggle_same.call(this, `org`, `小组`, `inline-block`, '共同');this.blur();">
@@ -1176,7 +1176,7 @@
                     <!--  END HISTORY ORGANIZATIONS  -->
 
                     <!--  BEGIN HIDDEN ORGANIZATIONS  -->
-                    {% if html_display.is_myself == True %}
+                    {% if html_display.is_myself %}
                     <div class="widget-content widget-content-area my-3">
 
                         <div class="row">
@@ -1343,11 +1343,10 @@
                             <h3 class="col mb-0">参与的活动</h3>
                             {% if html_display.is_myself == False %}
                             <div class="col-0 mr-4 custom-control custom-switch">
-                                {% if user_type == 'Person' %}
+                                {% if user.is_person %}
                                 <input type="checkbox" class="custom-control-input" id="activity-show-same-button"
                                     onclick="toggle_same.call(this, `activity`, `活动`, `block`, `共同`);this.blur();">
-                                {% endif %}
-                                {% if user_type == 'Organization' %}
+                                {% elif user.is_org %}
                                 <input type="checkbox" class="custom-control-input" id="activity-show-same-button"
                                     onclick="toggle_same.call(this, `activity`, `活动`, `block`, `我的`);this.blur();">
                                 {% endif %}

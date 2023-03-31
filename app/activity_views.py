@@ -321,8 +321,6 @@ def getActivityInfo(request: HttpRequest):
     example: http://127.0.0.1:8000/getActivityInfo?activityid=1&infotype=qrcode
     TODO: 前端页面待对接
     '''
-    # TODO: 追溯前端是否使用
-    user_type, html_display = utils.check_user_type(request.user)
 
     # check activity existence
     activity_id = request.GET.get("activityid", None)
@@ -665,7 +663,7 @@ def showActivity(request: HttpRequest):
     if user_type == UTYPE_ORG and me.oname == CONFIG.yqpoint.org_name:
         YQPoint_Source_Org = True
 
-    return render(request, "activity_show.html", locals())
+    return render(request, "activity_show.html", locals() | dict(user=request.user))
 
 
 @login_required(redirect_field_name="origin")
@@ -873,7 +871,7 @@ def endActivity(request: HttpRequest):
     # 前端使用
     all_instances = all_instances
     bar_display = utils.get_sidebar_and_navbar(request.user, "活动结项")
-    return render(request, "activity_summary_show.html", locals())
+    return render(request, "activity_summary_show.html", locals() | dict(user=request.user))
 
 
 # 新建+修改+取消+审核 报销信息

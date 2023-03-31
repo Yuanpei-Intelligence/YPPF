@@ -1,5 +1,5 @@
 {% comment %}
-# XXX: User {{ user_type }}
+# XXX: User {{ .is_person }}
 {% endcomment %}
 {% extends "base.html" %}
 
@@ -442,12 +442,13 @@
 
                                                     </div>
 
-                                                    <!-- 加入/退出的按钮
-                                                        {% if html_display.is_myself == True %}
+                                                    {% comment %}
+                                                    <!-- 加入/退出的按钮 -->
+                                                        {% if html_display.is_myself %}
                                                             <div class="text-right">
                                                                 <a href="/welcome/" class="btn btn-primary btn-sm" role="button">管理</a>
                                                             </div>
-                                                        {% elif user_type == "Person" %}
+                                                        {% elif user.is_person %}
                                                             <div class="text-right">
                                                                 {% if rec.act.status == "报名中" %}
                                                                     {% if rec.status == "申请中" or rec.status == "已报名" or rec.status == "已参加" %}
@@ -462,7 +463,7 @@
                                                                 {% endif %}
                                                             </div>
                                                         {% endif %}
-                                                        -->
+                                                    {% endcomment %}
 
                                                 </div>
                                             </a>

@@ -248,7 +248,7 @@ def showPosition(request: HttpRequest):
         }
     #shown_instances = shown_instances.order_by('-modify_time', '-time')
     bar_display = utils.get_sidebar_and_navbar(request.user, navbar_name="成员申请")
-    return render(request, 'showPosition.html', locals())
+    return render(request, 'showPosition.html', locals() | dict(user=request.user))
 
 
 @login_required(redirect_field_name="origin")
