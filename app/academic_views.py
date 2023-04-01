@@ -19,15 +19,14 @@ from app.academic_utils import (
     get_tags_for_search,
 )
 from app.utils import (
-    check_user_type,
     get_sidebar_and_navbar,
     get_person_or_org,
 )
 from app.config import UTYPE_PER
 
 __all__ = [
-    'ShowChatsView',
-    'ChatView',
+    'ShowChats',
+    'ViewChat',
     'modifyAcademic',
     'auditAcademic',
     'applyAuditAcademic',

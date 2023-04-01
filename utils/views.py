@@ -252,7 +252,7 @@ class SecureView(View):
             logger.on_exception()
         return self.http_forbidden('出现错误，请联系管理员')
 
-    def redirect(self, to: str, *args, permanent=False, **kwargs):
+    def redirect(self, to: str, *args: Any, permanent: bool = False, **kwargs: Any):
         '''重定向，由于类的重定向对象无需提前确定，使用redirect动态加载即可'''
         from django.shortcuts import redirect
         return self.response_created(redirect(to, *args, permanent=permanent, **kwargs))
