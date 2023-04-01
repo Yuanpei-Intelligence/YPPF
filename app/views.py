@@ -1705,26 +1705,6 @@ def forgetPassword(request: HttpRequest):
     return render(request, "forget_password.html", locals())
 
 
-class ModpwView(SecureTemplateView):
-    """Draft
-    """
-
-    template_name = 'modpw.html'
-
-    def check_perm(self, request: HttpRequest) -> HttpResponse | None:
-        response = super().check_perm(request)
-        if response is not None:
-            return response
-
-        if not request.user.is_valid(): # type: ignore
-            return redirect(reverse('index'))
-
-    def check_post(self, request: HttpRequest) -> HttpResponse | None:
-        return super().check_post(request)
-    
-    def post(self, request: HttpRequest) -> HttpResponse | None:
-        pass
-
 
 @login_required(redirect_field_name="origin")
 @utils.check_user_access(redirect_url="/logout/", is_modpw=True)

@@ -83,11 +83,6 @@ class ViewChat(ProfileTemplateView):
         return self.render()
 
 
-class ModifyAcademicView(SecureTemplateView):
-    """Draft"""
-    template_name = 'modify_academic.html'
-
-
 @login_required(redirect_field_name="origin")
 @utils.check_user_access(redirect_url="/logout/")
 @logger.secure_view()
