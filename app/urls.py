@@ -24,17 +24,12 @@ from app import (
 
 # 尽量不使用<type:arg>, 不支持
 urlpatterns = [
-    # 登录和验证
-    path("", views.IndexView.as_view(), name=""),
-    path("index/", views.IndexView.as_view(), name="index"),
-    path("login/", views.IndexView.as_view(), name="login"),
     # path("requestLoginOrg/", views.requestLoginOrg, name="requestLoginOrg"), # 已废弃
     # path("requestLoginOrg/<str:name>", views.requestLoginOrg, name="requestLoginOrg"),
     path("welcome/", views.homepage, name="welcome"),
     path("freshman/", views.freshman, name="freshman"),
     path("register/", views.authRegister, name="register"),
     path("agreement/", views.userAgreement, name="userAgreement"),
-    path("logout/", views.logout, name="logout"),
     path("shiftAccount/", views.shiftAccount, name="shiftAccount"),
     # path("org/", views.org, name="org"),
     path("forgetpw/", views.forgetPassword, name="forgetpw"),
