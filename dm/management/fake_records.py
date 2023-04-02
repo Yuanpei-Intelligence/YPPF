@@ -48,7 +48,7 @@ def create_np():
 
     user, created = User.objects.get_or_create(username=username)
     user.set_password(password)
-    user.first_time_login = False
+    user.is_newuser = False
     user.utype = User.Type.PERSON
     user.save()
     if created:
@@ -83,7 +83,7 @@ def create_np():
 
     user, created = User.objects.get_or_create(username=username)
     user.set_password(password)
-    user.first_time_login = False
+    user.is_newuser = False
     user.utype = User.Type.PERSON
     user.save()
     if created:
@@ -115,7 +115,7 @@ def create_np():
 
     user, created = User.objects.get_or_create(username=username)
     user.set_password(password)
-    user.first_time_login = False
+    user.is_newuser = False
     user.utype = User.Type.PERSON
     user.save()
     if created:
@@ -144,7 +144,7 @@ def create_np():
 
     user, created = User.objects.get_or_create(username=username)
     user.set_password(password)
-    user.first_time_login = False
+    user.is_newuser = False
     user.utype = User.Type.PERSON
     user.save()
     if created:
@@ -201,7 +201,7 @@ def create_org_tag():
 def create_org():
     user, created = User.objects.get_or_create(username=ORGANIZATION_USER_NAME[0])
     user.utype = User.Type.ORG
-    user.first_time_login = False
+    user.is_newuser = False
     user.set_password(ORGANIZATION_USER_NAME[0])
     oname = '绘画班'
     otype = OrganizationType.objects.get(otype_id=1)
@@ -219,7 +219,7 @@ def create_org():
 
     user_2, created_2 = User.objects.get_or_create(username=ORGANIZATION_USER_NAME[1])
     user_2.utype = User.Type.ORG
-    user_2.first_time_login = False
+    user_2.is_newuser = False
     oname_2 = '舞蹈班'
     otype_2 = OrganizationType.objects.get(otype_id=1)
     tags_2 = OrganizationTag.objects.get(name='兴趣')

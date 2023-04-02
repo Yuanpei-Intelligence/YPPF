@@ -41,7 +41,7 @@ def check_user_access(redirect_url="/logout/", is_modpw=False):
                 return redirect(redirect_url)
 
             # 如果是首次登陆，会跳转到用户须知的页面
-            if request.user.first_time_login:
+            if request.user.is_newuser:
                 if request.session.get('confirmed') != 'yes':
                     return redirect("/agreement/")
                 if not is_modpw:

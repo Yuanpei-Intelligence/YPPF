@@ -616,7 +616,7 @@ def requestLoginOrg(request: HttpRequest, name=None):  # 特指个人希望通�
         auth.login(request, org.get_user())  # 切换到小组账号
         update_related_account_in_session(
             request, user.username, oname=org.oname)
-        if user.first_time_login:
+        if user.is_newuser:
             return redirect("/modpw/")
         return redirect("/orginfo/?warn_code=2&warn_message=成功切换到"+str(org)+"的账号!")
 
@@ -1723,7 +1723,7 @@ def modpw(request: UserRequest):
     """
     user = request.user
     _, html_display = utils.check_user_type(user)
-    isFirst = user.first_time_login
+    isFirst = user.is_newuser
     # 在其他界面，如果isFirst为真，会跳转到这个页面
     # 现在，请使用@utils.check_user_access(redirect_url)包装器完成用户检查
 
@@ -1777,7 +1777,7 @@ def modpw(request: UserRequest):
             if userauth:  # 可以修改
                 try:  # modified by pht: if检查是错误的，不存在时get会报错
                     user.set_password(newpw)
-                    user.first_time_login = False
+                    user.is_newuser = False
                     user.save()
 
                     if forgetpw:

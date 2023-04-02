@@ -80,7 +80,7 @@ class Index(SecureTemplateView):
         self.valid_user_check(self.request.user)
 
         # first time login
-        if self.request.user.first_time_login:
+        if self.request.user.is_newuser:
             return self.redirect('modpw')
 
         # Related account

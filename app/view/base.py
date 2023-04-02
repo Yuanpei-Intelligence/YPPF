@@ -22,7 +22,7 @@ class ProfileView(SecureView):
             return self.response_created(self.redirect(redirect_url))
 
     def _check_new_user(self, init_password: bool = True) -> None:
-        if not self.request.user.first_time_login:
+        if not self.request.user.is_newuser:
             return
         if self.request.session.get('confirmed') != 'yes':
             return self.response_created(self.redirect('/agreement/'))
