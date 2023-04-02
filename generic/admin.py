@@ -19,7 +19,7 @@ admin.site.site_header = '元培智慧书院 - 管理后台'
 class ContentTypeAdmin(admin.ModelAdmin):
     list_display = ['app_label', 'model', 'name']
     list_filter = ['app_label']
-    def _check_invalid(self, request, obj: ContentType = None):
+    def _check_invalid(self, request, obj: ContentType | None = None):
         if request.user.is_superuser and obj is not None:
             return obj.model_class() is None
         return False
@@ -39,7 +39,7 @@ class PermissionAdmin(admin.ModelAdmin):
 
     has_add_permission = _check_failed
     has_change_permission = _check_failed
-    def has_delete_permission(self, request, obj: Permission = None):
+    def has_delete_permission(self, request, obj: Permission | None = None):
         if request.user.is_superuser and obj is not None:
             return ContentTypeAdmin._check_invalid(None, request, obj.content_type)
         return False
@@ -77,7 +77,7 @@ class MyUserAdmin(UserAdmin):
     list_filter = ['utype', 'is_superuser', 'is_staff', 'groups', 'is_active']
     fieldsets = [
         (None, {'fields': ('username', 'name', 'acronym', 'password')}),
-        ('自定义信息', {'fields': ['credit', 'YQpoint', 'utype']}),
+        ('自定义信息', {'fields': ['credit', 'YQpoint', 'utype', 'first_time_login']}),
         # 内置部分
         ('权限', {
             'fields': ('is_active', 'is_staff', 'is_superuser', 'groups', 'user_permissions'),
