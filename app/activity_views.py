@@ -80,7 +80,7 @@ def viewActivity(request: HttpRequest, aid=None):
     org = activity.organization_id
     me = utils.get_person_or_org(request.user, user_type)
     ownership = False
-    if user_type == UTYPE_ORG and org == me:
+    if request.user.is_org() and org == me:
         ownership = True
     examine = False
     if request.user.is_person() and activity.examine_teacher == me:
@@ -459,7 +459,7 @@ def addActivity(request: HttpRequest, aid=None):
     # assert valid  已经在check_user_access检查过了
     me = utils.get_person_or_org(request.user, user_type)  # 这里的me应该为小组账户
     if aid is None:
-        if user_type != UTYPE_ORG:
+        if not request.user.is_org():
             return redirect(message_url(wrong('小组账号才能添加活动!')))
         if me.oname == CONFIG.yqpoint.org_name:
             return redirect("/showActivity")
@@ -660,7 +660,7 @@ def showActivity(request: HttpRequest):
     bar_display = utils.get_sidebar_and_navbar(request.user, "活动立项")
 
     # 前端不允许元气值中心创建活动
-    if user_type == UTYPE_ORG and me.oname == CONFIG.yqpoint.org_name:
+    if request.user.is_org() and me.oname == CONFIG.yqpoint.org_name:
         YQPoint_Source_Org = True
 
     return render(request, "activity_show.html", locals() | dict(user=request.user))
@@ -784,7 +784,7 @@ def offlineCheckinActivity(request: HttpRequest, aid):
         aid = int(aid)
         src = request.GET.get('src')
         activity = Activity.objects.get(id=aid)
-        assert me == activity.organization_id and user_type == UTYPE_ORG
+        assert me == activity.organization_id and request.user.is_org()
     except:
         return redirect(message_url(wrong('请不要随意访问其他网页！')))
 
@@ -920,7 +920,7 @@ def modifyEndActivity(request: HttpRequest):
 
     else:  # 如果不存在id, 默认应该传入活动信息
         # 只有小组才有可能申请
-        if user_type != UTYPE_ORG:
+        if not request.user.is_org():
             return redirect(message_url(wrong("您没有权限访问该网址！")))
 
         is_new_application = True  # 新的申请
@@ -932,7 +932,7 @@ def modifyEndActivity(request: HttpRequest):
         接下来POST
     '''
 
-    if user_type == UTYPE_ORG:
+    if request.user.is_org():
         # 未总结活动
         summary_act_ids = (
             ActivitySummary.objects.all().exclude(
@@ -964,7 +964,7 @@ def modifyEndActivity(request: HttpRequest):
 
         # 接下来确定访问的个人/小组是不是在做分内的事情
         if (request.user.is_person() and feasible_post.index(post_type) <= 2
-            ) or (user_type == UTYPE_ORG
+            ) or (request.user.is_org()
                   and feasible_post.index(post_type) >= 3):
             return redirect(message_url(wrong('您无权进行此操作，如有疑惑, 请联系管理员')))
 
@@ -1060,8 +1060,8 @@ def modifyEndActivity(request: HttpRequest):
 
     # (1) 是否允许修改表单
     # 小组写表格?
-    allow_form_edit = True if (user_type == UTYPE_ORG) and (
-        is_new_application or application.is_pending()) else False
+    allow_form_edit = (request.user.is_org()
+                       and (is_new_application or application.is_pending()))
 
     # 老师审核?
     allow_audit_submit = (request.user.is_person()

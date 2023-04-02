@@ -148,7 +148,7 @@ def addSingleCourseActivity(request: HttpRequest):
     # 检查用户身份
     user_type, html_display = utils.check_user_type(request.user)
     me = utils.get_person_or_org(request.user, user_type)  # 这里的me应该为小组账户
-    if user_type != UTYPE_ORG or me.otype.otype_name != APP_CONFIG.type_name:
+    if not request.user.is_org() or me.otype.otype_name != APP_CONFIG.type_name:
         return redirect(message_url(wrong('书院课程小组账号才能开设课程活动!')))
     if me.oname == CONFIG.yqpoint.org_name:
         return redirect("/showActivity/")  # TODO: 可以重定向到书院课程聚合页面
@@ -205,7 +205,7 @@ def showCourseActivity(request: HttpRequest):
     user_type, html_display = utils.check_user_type(request.user)
     me = get_person_or_org(request.user, user_type)  # 获取自身
 
-    if user_type != UTYPE_ORG or me.otype.otype_name != APP_CONFIG.type_name:
+    if not request.user.is_org() or me.otype.otype_name != APP_CONFIG.type_name:
         return redirect(message_url(wrong('只有书院课程组织才能查看此页面!')))
     my_messages.transfer_message_context(request.GET, html_display)
 
@@ -460,7 +460,7 @@ def selectCourse(request: HttpRequest):
     user_type, html_display = utils.check_user_type(request.user)
     me = get_person_or_org(request.user, user_type)
 
-    if user_type == UTYPE_ORG:
+    if request.user.is_org():
         return redirect(message_url(wrong("组织账号无法访问书院选课页面。如需选课，请切换至个人账号；如需查看您发起的书院课程，请点击【我的课程】。")))
 
     is_student = (me.identity == NaturalPerson.Identity.STUDENT)
@@ -592,7 +592,7 @@ def addCourse(request: HttpRequest, cid=None):
     # assert valid  已经在check_user_access检查过了
     me = utils.get_person_or_org(request.user, user_type) # 这里的me应该为小组账户
     if cid is None:
-        if user_type != UTYPE_ORG or me.otype.otype_name != APP_CONFIG.type_name:
+        if not request.user.is_org() or me.otype.otype_name != APP_CONFIG.type_name:
             return redirect(message_url(wrong('书院课程账号才能发起课程!')))
         #暂时仅支持一个课程账号一学期只能开一门课
         courses = Course.objects.activated().filter(organization=me)
@@ -725,7 +725,7 @@ def outputSelectInfo(request: HttpRequest):
     user_type, _ = utils.check_user_type(request.user)
     me = utils.get_person_or_org(request.user, user_type)
     try:
-        assert (user_type == UTYPE_ORG
+        assert (request.user.is_org()
                 and me.otype.otype_name == APP_CONFIG.type_name), '只有书院课程账号才能下载选课名单!'
         # 暂时仅支持一个课程账号一学期只能开一门课
         courses = Course.objects.activated().filter(organization=me)

@@ -138,7 +138,7 @@ def stuinfo(request: UserRequest):
 
     name = request.GET.get('name', None)
     if name is None:
-        if user_type == UTYPE_ORG:
+        if request.user.is_org():
             return redirect("/orginfo/")  # 小组只能指定学生姓名访问
         else:  # 跳轉到自己的頁面
             assert request.user.is_person()
@@ -193,13 +193,13 @@ def stuinfo(request: UserRequest):
         )  # ta属于的小组
         oneself_orgs = (
             [oneself]
-            if user_type == UTYPE_ORG
+            if request.user.is_org()
             else Position.objects.activated().filter(
                 Q(person=oneself) & Q(show_post=True)
             )
         )
         oneself_orgs_id = [
-            oneself.id] if user_type == UTYPE_ORG else oneself_orgs.values("org")  # 自己的小组
+            oneself.id] if request.user.is_org() else oneself_orgs.values("org")  # 自己的小组
 
         # 当前管理的小组
         person_owned_poss = person_poss.filter(
@@ -587,7 +587,7 @@ def requestLoginOrg(request: HttpRequest, name=None):  # 特指个人希望通�
     user = request.user
     user_type, html_display = utils.check_user_type(request.user)
 
-    if user_type == UTYPE_ORG:
+    if request.user.is_org():
         return redirect("/orginfo/")
     try:
         me = NaturalPerson.objects.activated().get(person_id=user)

@@ -94,7 +94,7 @@ def showPools(request: HttpRequest) -> HttpResponse:
     :rtype: HttpResponse
     """
     user_type, _ = check_user_type(request.user)
-    if user_type == UTYPE_ORG:
+    if request.user.is_org():
         return redirect(message_url(wrong("只有个人账号可以进入此页面！")))
 
     frontend_dict = {"exchange_pools_info": {},
