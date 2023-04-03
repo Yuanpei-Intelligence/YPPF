@@ -208,7 +208,7 @@ def get_sidebar_and_navbar(user: User, navbar_name="", title_name="", bar_displa
         bar_display = {}  # 默认参数只会初始化一次，所以不应该设置为{}
     me = get_person_or_org(user)  # 获得对应的对象
     user_type, _ = check_user_type(user)
-    bar_display["user_type"] = user_type
+    bar_display["user_type"] = "Person" if user.is_person() else "Organization"
     if user.is_staff:
         bar_display["is_staff"] = True
 

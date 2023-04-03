@@ -294,7 +294,7 @@ def update_org_application(application, me, request):
                     return wrong("出现系统意料之外的行为，请联系管理员处理!")
 
 
-def update_pos_application(application, me, user_type, applied_org, info):
+def update_pos_application(application, me: ClassifiedUser, applied_org, info):
     '''
     修改成员申请状态的操作函数, application为修改的对象，可以为None
     me为操作者
@@ -318,15 +318,14 @@ def update_pos_application(application, me, user_type, applied_org, info):
             return wrong("申请状态异常！")
 
         # 接下来确定访问的个人/小组是不是在做分内的事情
-        if (user_type == UTYPE_PER and feasible_post.index(post_type) >= 3) or (
-                user_type == UTYPE_ORG and feasible_post.index(post_type) <= 2):
+        if (me.get_user().is_person() and feasible_post.index(post_type) >= 3) or (
+                me.get_user().is_org() and feasible_post.index(post_type) <= 2):
             return wrong("您无权进行此操作. 如有疑惑, 请联系管理员")
 
         if feasible_post.index(post_type) <= 2:  # 是个人的操作, 新建\修改\删除
-
             # 访问者一定是个人
             try:
-                assert user_type == UTYPE_PER
+                assert me.get_user().is_person()
             except:
                 return wrong("访问者身份异常！")
 

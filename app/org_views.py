@@ -209,9 +209,9 @@ def modifyOrganization(request: UserRequest):
     # 用于前端展示
     apply_person = me if is_new_application else NaturalPerson.objects.get(person_id=application.pos)
     app_avatar_path = apply_person.get_user_ava()
-    org_avatar_path = utils.get_user_ava(application, UTYPE_ORG)
+    former_img = Organization.get_user_ava()
+    org_avatar_path = application.get_user_ava() if application else former_img
     org_types = OrganizationType.objects.order_by("-otype_id").all()  # 当前小组类型，前端展示需要
-    former_img = Organization().get_user_ava()
     all_tags = list(OrganizationTag.objects.all())
     org_tags = []
     if not is_new_application:
@@ -280,9 +280,9 @@ def saveShowPositionStatus(request: HttpRequest):
 @login_required(redirect_field_name='origin')
 @utils.check_user_access(redirect_url="/logout/")
 @logger.secure_view()
-def modifyPosition(request: HttpRequest):
+def modifyPosition(request: UserRequest):
     # YWolfeee: 重构成员申请页面 Aug 24 12:30 UTC-8
-    user_type, html_display = utils.check_user_type(request.user)
+    html_display = {}
     me = get_person_or_org(request.user)  # 获取自身
 
     # 前端使用量user_type，表示观察者是小组还是个人
@@ -306,7 +306,6 @@ def modifyPosition(request: HttpRequest):
                     return redirect(message_url(html_display))
                 else:
                     #防止后边有使用，因此需要赋值
-                    user_type = UTYPE_ORG
                     request.user = application.org.get_user()
                     me = application.org
             assert (application.org == me) or (application.person == me)
@@ -323,11 +322,8 @@ def modifyPosition(request: HttpRequest):
 
         except:
             # 非法的名字, 出现恶意修改参数的情况
-            html_display["warn_code"] = 1
-            html_display["warn_message"] = "网址遭到篡改，请检查网址的合法性或尝试重新进入成员申请页面"
-            return redirect("/welcome/" +
-                            "?warn_code=1&warn_message={warn_message}".format(
-                                warn_message=html_display["warn_message"]))
+            wrong("网址遭到篡改，请检查网址的合法性或尝试重新进入成员申请页面", html_display)
+            return redirect(message_url(html_display))
 
         # 查找已经存在的审核中的申请
         try:
@@ -351,8 +347,7 @@ def modifyPosition(request: HttpRequest):
         if request.POST.get("post_type", None) is not None:
 
             # 主要操作函数，更新申请状态
-            context = update_pos_application(application, me, user_type,
-                    applied_org, request.POST)
+            context = update_pos_application(application, me, applied_org, request.POST)
 
             if context["warn_code"] == 2:   # 成功修改申请
                 # 回传id 防止意外的锁操作
@@ -369,10 +364,9 @@ def modifyPosition(request: HttpRequest):
 
         else:   # 如果是新增评论
             # 权限检查
-            allow_comment = True if (not is_new_application) and (
-                application.is_pending()) else False
+            allow_comment = not is_new_application and application.is_pending()
             if not allow_comment:   # 存在不合法的操作
-                return redirect(message_url("存在不合法操作,请与管理员联系!"))
+                return redirect(message_url(wrong("存在不合法操作,请与管理员联系!")))
             context = addComment(request, application,
                                  application.org.get_user()
                                  if request.user.is_person() else
@@ -423,8 +417,7 @@ def modifyPosition(request: HttpRequest):
                           and not is_new_application
                           and application.is_pending())
     # 评论区?
-    allow_comment = True if (not is_new_application) and (application.is_pending()) \
-                    else False
+    allow_comment = not is_new_application and application.is_pending()
 
     # (2) 表单变量的默认值
 

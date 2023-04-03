@@ -390,7 +390,7 @@ def getActivityInfo(request: HttpRequest):
 @utils.check_user_access(redirect_url="/logout/")
 @logger.secure_view()
 def checkinActivity(request: UserRequest, aid=None):
-    user_type, html_display = utils.check_user_type(request.user)
+    user_type, _ = utils.check_user_type(request.user)
     if not request.user.is_person():
         return redirect(message_url(wrong('签到失败：请使用个人账号签到')))
     try:
@@ -440,7 +440,7 @@ def checkinActivity(request: UserRequest, aid=None):
 @login_required(redirect_field_name="origin")
 @utils.check_user_access(redirect_url="/logout/")
 @logger.secure_view()
-def addActivity(request: HttpRequest, aid=None):
+def addActivity(request: UserRequest, aid=None):
     """
     发起活动与修改活动页
     ---------------
@@ -455,9 +455,9 @@ def addActivity(request: HttpRequest, aid=None):
     # TODO 定时任务
 
     # 检查：不是超级用户，必须是小组，修改是必须是自己
-    user_type, html_display = utils.check_user_type(request.user)
+    html_display = {}
     # assert valid  已经在check_user_access检查过了
-    me = utils.get_person_or_org(request.user, user_type)  # 这里的me应该为小组账户
+    me = utils.get_person_or_org(request.user)  # 这里的me应该为小组账户
     if aid is None:
         if not request.user.is_org():
             return redirect(message_url(wrong('小组账号才能添加活动!')))
@@ -468,15 +468,12 @@ def addActivity(request: HttpRequest, aid=None):
         aid = int(aid)
         activity = Activity.objects.get(id=aid)
         if request.user.is_person():
-            html_display = utils.user_login_org(
-                request, activity.organization_id)
+            # 自动更新request.user
+            html_display = utils.user_login_org(request, activity.organization_id)
             if html_display['warn_code'] == 1:
-                return redirect(message_url(wrong(html_display["warn_message"])))
+                return redirect(message_url(html_display))
             else:  # 成功以小组账号登陆
-                # 防止后边有使用，因此需要赋值
-                user_type = UTYPE_ORG
-                request.user = activity.organization_id.get_user()  # 小组对应user
-                me = activity.organization_id  # 小组
+                me = activity.organization_id
         if activity.organization_id != me:
             return redirect(message_url(wrong("无法修改其他小组的活动!")))
         edit = True
@@ -513,23 +510,19 @@ def addActivity(request: HttpRequest, aid=None):
             # 评论内容不为空，上传文件类型为图片会在前端检查，这里有错直接跳转
             assert context["warn_code"] == 2, context["warn_message"]
             # 成功后重新加载界面
-            html_display["warn_message"] = "评论成功。"
-            html_display["warn_code"] = 2
+            succeed("评论成功。", html_display)
             # return redirect(f"/editActivity/{aid}")
         else:
             try:
                 # 只能修改自己的活动
                 with transaction.atomic():
                     activity = Activity.objects.select_for_update().get(id=aid)
-                    org = get_person_or_org(request.user, UTYPE_ORG)
+                    org = get_person_or_org(request.user)
                     assert activity.organization_id == org
                     modify_activity(request, activity)
-                html_display["warn_message"] = "修改成功。"
-                html_display["warn_code"] = 2
+                succeed("修改成功。", html_display)
             except ActivityException as e:
-                html_display["warn_message"] = str(e)
-                html_display["warn_code"] = 1
-                # return redirect(f"/viewActivity/{activity.id}")
+                wrong(str(e), html_display)
 
     # 下面的操作基本如无特殊说明，都是准备前端使用量
     defaultpics = [{"src": f"/static/assets/img/announcepics/{i+1}.JPG",
@@ -545,7 +538,7 @@ def addActivity(request: HttpRequest, aid=None):
     if not edit and not use_template:
         available_teachers = NaturalPerson.objects.teachers()
     else:
-        org = get_person_or_org(request.user, UTYPE_ORG)
+        org = get_person_or_org(request.user)
 
         # 没过审，可以编辑评论区
         if not activity.valid:
@@ -625,20 +618,16 @@ def addActivity(request: HttpRequest, aid=None):
 @login_required(redirect_field_name="origin")
 @utils.check_user_access(redirect_url="/logout/")
 @logger.secure_view()
-def showActivity(request: HttpRequest):
+def showActivity(request: UserRequest):
     """
     活动信息的聚合界面
     只有老师和小组才能看到，老师看到检查者是自己的，小组看到发起方是自己的
     """
-    user_type, html_display = utils.check_user_type(request.user)
     me = utils.get_person_or_org(request.user)  # 获取自身
     is_teacher = False  # 该变量同时用于前端
     if request.user.is_person():
-        try:
-            person = utils.get_person_or_org(request.user, user_type)
-            is_teacher = person.is_teacher()
-            assert is_teacher
-        except:
+        is_teacher = me.is_teacher()
+        if not is_teacher:
             return redirect(message_url(wrong('学生账号不能进入活动立项页面！')))
     if is_teacher:
         all_instances = {
@@ -880,7 +869,7 @@ def endActivity(request: HttpRequest):
 @logger.secure_view()
 def modifyEndActivity(request: HttpRequest):
     # return
-    user_type, html_display = utils.check_user_type(request.user)
+    html_display = {}
     me = utils.get_person_or_org(request.user)  # 获取自身
 
     # 前端使用量user_type，表示观察者是小组还是个人
@@ -905,7 +894,6 @@ def modifyEndActivity(request: HttpRequest):
                 if html_display['warn_code'] == 1:
                     return redirect(message_url(html_display))
                 else:  # 成功
-                    user_type = UTYPE_ORG
                     me = application.get_org()
                     request.user = me.get_user()
 
