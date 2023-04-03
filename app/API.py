@@ -28,16 +28,12 @@ def get_display_name(valid_user: User) -> str:
 
 def get_avatar_url(valid_user: User) -> str:
     '''返回合法用户头像的URL相对路径'''
-    user_type = valid_user.utype
-    obj = __get_obj(valid_user, user_type)
-    return __get_ava(obj, user_type)
+    return __get_ava(__get_obj(valid_user))
 
 
 def get_wallpaper_url(valid_user: User) -> str:
     '''返回合法用户壁纸的URL相对路径'''
-    user_type = valid_user.utype
-    obj = __get_obj(valid_user, user_type)
-    return __get_wallpaper(obj, user_type)
+    return __get_wallpaper(__get_obj(valid_user))
 
 
 def get_members(valid_user: User, noncurrent: bool = False) -> list[str]:

@@ -427,8 +427,7 @@ def stuinfo(request: UserRequest):
 
         modpw_status = request.GET.get("modinfo", None)
         if modpw_status is not None and modpw_status == "success":
-            html_display["warn_code"] = 2
-            html_display["warn_message"] = "修改个人信息成功!"
+            succeed("修改个人信息成功!", html_display)
 
         # ----------------------------------- 学术地图 ----------------------------------- #
         # ------------------ 提问区 or 进行中的问答------------------ #
@@ -443,8 +442,7 @@ def stuinfo(request: UserRequest):
         else:  # 没有进行中的问答，显示提问区
             html_display["have_progressing_chat"] = False
             html_display["accept_chat"] = person.get_user().accept_chat
-            html_display["accept_anonymous"] = person.get_user(
-            ).accept_anonymous_chat
+            html_display["accept_anonymous"] = person.get_user().accept_anonymous_chat
 
         # 存储被查询人的信息
         context = dict()
@@ -455,7 +453,7 @@ def stuinfo(request: UserRequest):
             {0: "他", 1: "她"}.get(person.gender, 'Ta') if person.show_gender else "Ta")
 
         context["avatar_path"] = person.get_user_ava()
-        context["wallpaper_path"] = utils.get_user_wallpaper(person, UTYPE_PER)
+        context["wallpaper_path"] = utils.get_user_wallpaper(person)
 
         # 新版侧边栏, 顶栏等的呈现，采用 bar_display
         bar_display = utils.get_sidebar_and_navbar(
@@ -669,7 +667,7 @@ def orginfo(request: UserRequest):
     organization_name = name
     organization_type_name = org.otype.otype_name
     org_avatar_path = org.get_user_ava()
-    wallpaper_path = utils.get_user_wallpaper(org, UTYPE_ORG)
+    wallpaper_path = utils.get_user_wallpaper(org)
     # org的属性 information 不在此赘述，直接在前端调用
 
     # 给前端传递选课的参数
@@ -1019,14 +1017,14 @@ def homepage(request: HttpRequest):
 @login_required(redirect_field_name="origin")
 @utils.check_user_access(redirect_url="/logout/")
 @logger.secure_view()
-def accountSetting(request: HttpRequest):
-    user_type, html_display = utils.check_user_type(request.user)
+def accountSetting(request: UserRequest):
+    html_display = {}
 
     # 在这个页面 默认回归为自己的左边栏
     html_display["is_myself"] = True
     user = request.user
-    me = get_person_or_org(user, user_type)
-    former_img = utils.get_user_ava(me, user_type)
+    me = get_person_or_org(request.user)
+    former_img = utils.get_user_ava(me)
 
     # 补充网页呈现所需信息
     # 新版侧边栏, 顶栏等的呈现，采用 bar_display, 必须放在render前最后一步
@@ -1035,19 +1033,18 @@ def accountSetting(request: HttpRequest):
     # bar_display["navbar_name"] = "账户设置"
 
     if request.user.is_person():
-        info = NaturalPerson.objects.filter(person_id=user)
+        info = NaturalPerson.objects.filter(person_id=request.user)
         userinfo = info.values()[0]
 
-        useroj = NaturalPerson.objects.get(person_id=user)
+        useroj = NaturalPerson.objects.get(person_id=request.user)
 
-        former_wallpaper = utils.get_user_wallpaper(me, UTYPE_PER)
+        former_wallpaper = utils.get_user_wallpaper(me)
 
         # print(json.loads(request.body.decode("utf-8")))
         if request.method == "POST" and request.POST:
 
             # 合法性检查
-            attr_dict, show_dict, html_display = utils.check_account_setting(
-                request, user_type)
+            attr_dict, show_dict, html_display = utils.check_account_setting(request)
             attr_check_list = [attr for attr in attr_dict.keys() if attr not in [
                 'gender', 'ava', 'wallpaper', 'accept_promote', 'wechat_receive_level']]
             if html_display['warn_code'] == 1:
@@ -1109,7 +1106,7 @@ def accountSetting(request: HttpRequest):
         userinfo = info.values()[0]
 
         useroj = Organization.objects.get(organization_id=user)
-        former_wallpaper = utils.get_user_wallpaper(me, UTYPE_ORG)
+        former_wallpaper = utils.get_user_wallpaper(me)
         org_tags = list(useroj.tags.all())
         all_tags = list(OrganizationTag.objects.all())
         if request.method == "POST" and request.POST:
@@ -1117,8 +1114,7 @@ def accountSetting(request: HttpRequest):
             ava = request.FILES.get("avatar")
             wallpaper = request.FILES.get("wallpaper")
             # 合法性检查
-            attr_dict, show_dict, html_display = utils.check_account_setting(
-                request, user_type)
+            attr_dict, show_dict, html_display = utils.check_account_setting(request)
             attr_check_list = [attr for attr in attr_dict.keys()]
             if html_display['warn_code'] == 1:
                 return render(request, "person_account_setting.html", locals())

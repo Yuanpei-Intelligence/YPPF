@@ -111,28 +111,36 @@ def get_classified_user(
 
 def get_classified_user(user: User, user_type: str | User.Type | None = None, *,
                         update=False, activate=False) -> ClassifiedUser:
-    '''
-    通过User对象获取对应的实例
+    '''获取基础用户对应的用户对象
 
-    check_user_type返回valid=True时，应能得到一个与user_type相符的实例
+    Args:
+        user(User): 用户对象
+        user_type(str, optional): 用来指定模型类型，非法值抛出`AssertionError`
 
-    Parameters
-    ----------
-    user_type : UTYPE, optional
-        用来加速访问，不提供时按顺序尝试，非法值抛出`AssertionError`
-    update : bool, optional
-        获取用来更新的对象，需要在事务中调用，否则会报错
-    activate : bool, optional
-        只获取活跃的用户，由对应的模型管理器检查，用户不活跃可能报错
+    Keyword Args:
+        update(bool, optional): 获取带锁的对象，需要在事务中调用
+        activate(bool, optional): 只获取活跃的用户，由对应的模型管理器检查
+
+    Returns:
+        ClassifiedUser: 用户实例
+
+    Raises:
+        AssertionError: 非法的用户类型
+        DoesNotExist: 用户不存在，当用户是合法用户且不筛选时，可假设不抛出此异常
     '''
+    model = None
     if user_type is None:
-        user_type = user.utype
-    if user_type == UTYPE_PER:
-        return NaturalPerson.objects.get_by_user(user, update=update, activate=activate)
+        if user.is_person():
+            model = NaturalPerson
+        elif user.is_org():
+            model = Organization
+    elif user_type == UTYPE_PER:
+        model = NaturalPerson
     elif user_type == UTYPE_ORG:
-        return Organization.objects.get_by_user(user, update=update, activate=activate)
-    else:
+        model = Organization
+    if model is None:
         raise AssertionError(f"非法的用户类型：“{user_type}”")
+    return model.objects.get_by_user(user, update=update, activate=activate)
 
 # 保持之前的函数名接口
 get_person_or_org = get_classified_user
@@ -162,7 +170,7 @@ def check_user_type(user: User):
     return user.utype, {}
 
 
-def get_user_ava(obj: ClassifiedUser, user_type):
+def get_user_ava(obj: ClassifiedUser):
     try:
         return obj.get_user_ava()
     except:
@@ -170,8 +178,8 @@ def get_user_ava(obj: ClassifiedUser, user_type):
         raise AssertionError('任何用户都应该有对应的头像！')
 
 
-def get_user_wallpaper(person: ClassifiedUser, user_type):
-    if user_type == UTYPE_PER:
+def get_user_wallpaper(person: ClassifiedUser):
+    if person.get_user().is_person():
         return MEDIA_URL + (str(person.wallpaper) or "wallpaper/person_wall_default.jpg")
     else:
         return MEDIA_URL + (str(person.wallpaper) or "wallpaper/org_wall_default.jpg")
@@ -190,7 +198,7 @@ def get_inform_share(me: ClassifiedUser, is_myself=True):
     return False, alert_message
 
 
-def get_sidebar_and_navbar(user: User, navbar_name="", title_name="", bar_display=None):
+def get_sidebar_and_navbar(user: User, navbar_name="", title_name=""):
     '''
     YWolfeee Aug 16
     修改left siderbar的逻辑，统一所有个人和所有小组的左边栏，不随界面而改变
@@ -204,18 +212,17 @@ def get_sidebar_and_navbar(user: User, navbar_name="", title_name="", bar_displa
     现在最推荐的调用方式是：在views的函数中，写
     bar_display = utils.get_sidebar_and_navbar(user, title_name, navbar_name)
     '''
-    if bar_display is None:
-        bar_display = {}  # 默认参数只会初始化一次，所以不应该设置为{}
+    bar_display = {}
     me = get_person_or_org(user)  # 获得对应的对象
-    user_type, _ = check_user_type(user)
-    bar_display["user_type"] = "Person" if user.is_person() else "Organization"
+    _utype = "Person" if user.is_person() else "Organization"
+    bar_display["user_type"] = _utype
     if user.is_staff:
         bar_display["is_staff"] = True
 
     # 接下来填补各种前端呈现信息
 
     # 头像
-    bar_display["avatar_path"] = get_user_ava(me, user_type)
+    bar_display["avatar_path"] = get_user_ava(me)
 
     # 信箱数量
     bar_display["mail_num"] = Notification.objects.filter(
@@ -248,23 +255,14 @@ def get_sidebar_and_navbar(user: User, navbar_name="", title_name="", bar_displa
 
     bar_display["title_name"] = title_name if title_name else navbar_name
 
+    help_title = navbar_name
     if navbar_name == "我的元气值":
-        bar_display["help_message"] = CONFIG.help_message.get(
-            (navbar_name + user_type.lower()),  ""
-        )
+        navbar_name = navbar_name + _utype.lower()
+    if navbar_name:
+        bar_display["help_message"] = CONFIG.help_message.get(navbar_name, "")
+    if help_title:
         try:
-            bar_display["help_paragraphs"] = Help.objects.get(title=navbar_name).content
-        except:
-            bar_display["help_paragraphs"] = ""
-    elif navbar_name != "":
-        try:
-            bar_display["help_message"] = CONFIG.help_message.get(
-                navbar_name, ""
-            )
-        except:
-            bar_display["help_message"] = ""
-        try:
-            bar_display["help_paragraphs"] = Help.objects.get(title=navbar_name).content
+            bar_display["help_paragraphs"] = Help.objects.get(title=help_title).content
         except:
             bar_display["help_paragraphs"] = ""
 
@@ -431,8 +429,8 @@ def clear_captcha_session(request):
     request.session.pop("received_user", None)        # 成功登录后不再保留
 
 
-def check_account_setting(request, user_type):
-    if user_type == UTYPE_PER:
+def check_account_setting(request: UserRequest):
+    if request.user.is_person():
         html_display = dict()
         attr_dict = dict()
 

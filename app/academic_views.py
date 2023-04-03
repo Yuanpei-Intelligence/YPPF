@@ -22,7 +22,6 @@ from app.utils import (
     get_sidebar_and_navbar,
     get_person_or_org,
 )
-from app.config import UTYPE_PER
 
 __all__ = [
     'ShowChats',
@@ -113,7 +112,7 @@ def modifyAcademic(request: UserRequest) -> HttpResponse:
 
     # 不是POST，说明用户希望编辑学术地图，下面准备前端展示量
     # 获取所有专业/项目的列表，左右前端select框的下拉选项
-    me = get_person_or_org(request.user, UTYPE_PER)
+    me = get_person_or_org(request.user)
     frontend_dict.update(
         major_list=get_js_tag_list(me, AcademicTag.Type.MAJOR, selected=False),
         minor_list=get_js_tag_list(me, AcademicTag.Type.MINOR, selected=False),

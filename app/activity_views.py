@@ -2,6 +2,7 @@ import os
 import io
 import urllib.parse
 from datetime import datetime, timedelta
+from typing import Literal
 
 from django.db import transaction
 from django.db.models import Q, F
@@ -333,6 +334,8 @@ def getActivityInfo(request: HttpRequest):
     info_type = request.GET.get("infotype", None)
     assert info_type in ["sign", "qrcode"], "不支持的infotype"
 
+    info_type: Literal["sign", "qrcode"]
+
     if info_type == "sign":  # get registration information
         # make sure registration is over
         assert activity.status != Activity.Status.REVIEWING, "活动正在审核"
@@ -363,6 +366,7 @@ def getActivityInfo(request: HttpRequest):
 
         format = request.GET.get("format", "csv")
         assert format in ["csv"], f"不支持的格式{format}"
+        format: Literal["csv"]
         if format == "csv":
             buffer = io.StringIO()
             csv.writer(buffer).writerows(content), buffer.seek(0)
