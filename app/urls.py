@@ -34,7 +34,6 @@ urlpatterns = [
     path("forgetpw/", views.forgetPassword, name="forgetpw"),
     path("modpw/", views.modpw, name="modpw"),
     path("minilogin", views.miniLogin, name="minilogin"),
-    path("getStuImg", views.get_stu_img, name="get_stu_img"),
 ] + [
     # 用户画像和互动
     path("stuinfo/", views.stuinfo, name="stuinfo"),

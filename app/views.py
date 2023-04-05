@@ -1394,19 +1394,6 @@ def authRegister(request: HttpRequest):
         return HttpResponseRedirect("/index/")
 
 
-@logger.secure_view()
-def get_stu_img(request: HttpRequest):
-    stuId = request.GET.get("stuId")
-    if stuId is not None:
-        try:
-            stu = NaturalPerson.objects.get(person_id__username=stuId)
-            img_path = stu.get_user_ava()
-            return JsonResponse({"path": img_path}, status=200)
-        except:
-            return JsonResponse({"message": "Image not found!"}, status=404)
-    return JsonResponse({"message": "User not found!"}, status=404)
-
-
 @login_required(redirect_field_name="origin")
 @utils.check_user_access(redirect_url="/logout/")
 @logger.secure_view()
