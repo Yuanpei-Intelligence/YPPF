@@ -294,7 +294,7 @@ def showCourseActivity(request: HttpRequest):
 @login_required(redirect_field_name="origin")
 @utils.check_user_access(redirect_url="/logout/")
 @logger.secure_view()
-def showCourseRecord(request: HttpRequest) -> HttpResponse:
+def showCourseRecord(request: UserRequest) -> HttpResponse:
     """    
     展示及修改学时数据
     在开启修改功能前，显示本学期已完成的所有课程活动的学生的参与次数
@@ -317,11 +317,7 @@ def showCourseRecord(request: HttpRequest) -> HttpResponse:
     year = GLOBAL_CONFIG.acadamic_year
     semester = GLOBAL_CONFIG.semester
 
-    course = Course.objects.activated(noncurrent=None).filter(
-        organization=me,
-        year=year,
-        semester=semester,
-    )
+    course = Course.objects.activated(noncurrent=False).filter(organization=me)
     if len(course) == 0: # 尚未开课的情况
         return redirect(message_url(wrong('没有检测到该组织本学期开设的课程。')))
     # TODO: 报错 这是代码不应该出现的bug
@@ -352,11 +348,7 @@ def showCourseRecord(request: HttpRequest) -> HttpResponse:
                 return redirect(message_url(
                     wrong('学时修改尚未开放。如有疑问，请联系管理员！'), request.path))
         # 获取记录的QuerySet
-        record_search = CourseRecord.objects.filter(
-            course=course,
-            year=year,
-            semester=semester,
-        )
+        record_search = CourseRecord.objects.current().filter(course=course)
         # 导出学时为表格
         if post_type == "download":
             if not record_search.exists():
@@ -398,10 +390,8 @@ def showCourseRecord(request: HttpRequest) -> HttpResponse:
         records_list = []
         with transaction.atomic():
             # 查找此课程本学期所有成员的学时表
-            record_search = CourseRecord.objects.filter(
+            record_search = CourseRecord.objects.current().filter(
                 course=course,
-                year=year,
-                semester=semester,
             ).select_for_update().select_related(
                 "person"
             )   # Prefetch person to use its name, stu_grade and avatar. Help speed up.

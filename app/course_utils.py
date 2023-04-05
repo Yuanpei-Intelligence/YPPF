@@ -959,17 +959,16 @@ def change_course_status(cur_status: Course.Status, to_status: Course.Status) ->
 
 
 @logger.secure_func()
-def register_selection(wait_for: timedelta=None):
+def register_selection(wait_for: timedelta | None = None):
     """
     添加定时任务，实现课程状态转变，每次发起课程时调用
     """
-
     # 预选和补退选的开始和结束时间
-    year = str(GLOBAL_CONFIG.acadamic_year)
-    semster = str(GLOBAL_CONFIG.semester)
+    year = GLOBAL_CONFIG.acadamic_year
+    semester = GLOBAL_CONFIG.semester.value
     now = datetime.now()
     if wait_for is not None:
-        now = wait_for + wait_for
+        now += wait_for
     stage1_start = str_to_time(APP_CONFIG.yx_election_start)
     stage1_start = max(stage1_start, now + timedelta(seconds=5))
     stage1_end = str_to_time(APP_CONFIG.yx_election_end)
@@ -982,15 +981,15 @@ def register_selection(wait_for: timedelta=None):
     stage2_end = max(stage2_end, now + timedelta(seconds=25))
     # 定时任务：修改课程状态
     adder = MultipleAdder(change_course_status)
-    adder.schedule(f'course_selection_{year+semster}_stage1_start',
+    adder.schedule(f'{year}_{semester}_选课_stage1_start',
         run_time=stage1_start)(Course.Status.WAITING, Course.Status.STAGE1)
-    adder.schedule(f'course_selection_{year+semster}_stage1_end',
+    adder.schedule(f'{year}_{semester}_选课_stage1_end',
         run_time=stage1_end)(Course.Status.STAGE1, Course.Status.DRAWING)
-    ScheduleAdder(draw_lots, id=f'course_selection_{year+semster}_publish',
+    ScheduleAdder(draw_lots, id=f'{year}_{semester}_选课_publish',
         run_time=publish_time)()
-    adder.schedule(f'course_selection_{year+semster}_stage2_start',
+    adder.schedule(f'{year}_{semester}_选课_stage2_start',
         run_time=stage2_start)(Course.Status.DRAWING, Course.Status.STAGE2)
-    adder.schedule(f'course_selection_{year+semster}_stage2_end',
+    adder.schedule(f'{year}_{semester}_选课_stage2_end',
         run_time=stage2_end)(Course.Status.STAGE2, Course.Status.SELECT_END)
     # 状态随时间的变化: WAITING-STAGE1-WAITING-STAGE2-END
 

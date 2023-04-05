@@ -1363,7 +1363,7 @@ class ModifyRecord(models.Model):
 
 
 class CourseManager(models.Manager['Course']):
-    def activated(self, noncurrent=False):
+    def activated(self, noncurrent: bool | None = False):
         # 选择当前学期的开设课程
         # 不显示已撤销的课程信息
         return select_current(
