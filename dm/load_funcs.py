@@ -1,6 +1,6 @@
+import math
 from datetime import datetime
 from typing import Callable
-import math
 
 import numpy
 import pandas as pd
@@ -17,7 +17,6 @@ from app.models import (
     OrganizationTag,
     OrganizationType,
     Activity,
-    Notification,
     Help,
     Course,
     CourseRecord,
@@ -27,7 +26,7 @@ from app.models import (
     Comment,
     AcademicTag,
 )
-from app.utils import random_code_init, get_user_by_name
+from app.utils import random_code_init
 
 
 
@@ -113,6 +112,22 @@ def create_org_account(name, oid, otype, rand_pw=False, reset_pw=None, **default
     user = create_user(oid, rand_pw=rand_pw, reset_pw=reset_pw)
     org = create_org(name, user, otype, **defaults)
     return org
+
+
+def get_user_by_name(name):
+    """通过 name/oname 获取 user 对象，用于导入评论者
+    Comment只接受User对象
+    Args:
+        name/oname
+    Returns:
+        user<object>: 用户对象
+        user_type: 用户类型
+    """
+    try: return NaturalPerson.objects.get(name=name).get_user()
+    except: pass
+    try: return Organization.objects.get(oname=name).get_user()
+    except: pass
+    print(f"{name} is neither natural person nor organization!")
 
 
 def try_output(msg: str, output_func: Callable=None, html=True):
@@ -838,7 +853,7 @@ def load_feedback_comments(filepath: str, output_func: Callable=None, html=False
         err = False
         try:
             feedback = Feedback.objects.get(id=comment_dict["fid"])
-            commentator, commentator_type = get_user_by_name(comment_dict["commentator"])
+            commentator = get_user_by_name(comment_dict["commentator"])
             comment_time = datetime.strptime(comment_dict["time"], "%m/%d/%Y %H:%M %p")
 
             comment = Comment.objects.create(

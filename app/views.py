@@ -1207,7 +1207,7 @@ def freshman(request: HttpRequest):
 
     if request.GET.get("success") is not None:
         alert = request.GET.get("alert")
-        return render(request, "registerSuccess.html", locals())
+        return render(request, "registerSuccess.html", dict(alert=alert))
 
     # 选择生源地列表，前端使用量
     address_set = set(Freshman.objects.all().values_list("place", flat=True))

@@ -146,30 +146,6 @@ def get_classified_user(user: User, user_type: str | User.Type | None = None, *,
 get_person_or_org = get_classified_user
 
 
-def get_user_by_name(name):
-    """通过 name/oname 获取 user 对象，用于导入评论者
-    Comment只接受User对象
-    Args:
-        name/oname
-    Returns:
-        user<object>: 用户对象
-        user_type: 用户类型
-    """
-    try: return NaturalPerson.objects.get(name=name).get_user(), UTYPE_PER
-    except: pass
-    try: return Organization.objects.get(oname=name).get_user(), UTYPE_ORG
-    except: pass
-    print(f"{name} is neither natural person nor organization!")
-
-
-# YWolfeee, Aug 16
-# check_user_type只是获得user的类型，其他用于呈现html_display的内容全部转移到get_siderbar_and_navbar中
-# 同步开启一个html_display，方便拓展前端逻辑的呈现
-def check_user_type(user: User):
-    '''待废弃'''
-    return user.utype, {}
-
-
 def get_user_ava(obj: ClassifiedUser):
     try:
         return obj.get_user_ava()
@@ -584,27 +560,25 @@ def escape_for_templates(text:str):
     return text.strip().replace("\r", "").replace("\\", "\\\\").replace("\n", "\\n").replace("\"", "\\\"")
 
 
-def record_modification(user, info=""):
+def record_modification(user: User, info=""):
     try:
-        usertype, _ = check_user_type(user)
-        obj = get_person_or_org(user, usertype)
+        obj = get_person_or_org(user)
         name = obj.get_display_name()
         firsttime = not user.modify_records.exists()
-        ModifyRecord.objects.create(user=user, usertype=usertype, name=name, info=info)
+        ModifyRecord.objects.create(user=user, usertype=user.utype, name=name, info=info)
         return firsttime
     except:
         return None
 
 
-def get_modify_rank(user):
+def get_modify_rank(user: User):
     try:
-        usertype, _ = check_user_type(user)
         records = user.modify_records.all()
         if not records:
             return -1
         first = records.order_by('time')[0]
         rank = ModifyRecord.objects.filter(
-            usertype=usertype,
+            usertype=user.utype,
             time__lte=first.time,
             ).values('user').distinct().count()
         return rank
@@ -614,11 +588,10 @@ def get_modify_rank(user):
 
 def record_modify_with_session(request: UserRequest, info=""):
     try:
-        usertype, _ = check_user_type(request.user)
         recorded = record_modification(request.user, info)
         if recorded == True:
             rank = get_modify_rank(request.user)
-            info_rank = CONFIG.max_inform_rank.get(usertype, -1)
+            info_rank = CONFIG.max_inform_rank.get(request.user.utype, -1)
             if rank > -1 and rank <= info_rank:
                 msg = (
                     f'您是第{rank}名修改账号信息的'+
