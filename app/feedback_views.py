@@ -39,8 +39,8 @@ def viewFeedback(request: HttpRequest, fid):
     except:
         return redirect(message_url(wrong("反馈不存在！"), '/feedback/'))
 
-    user_type, html_display = utils.check_user_type(request.user)
-    me = utils.get_person_or_org(request.user, user_type)
+    html_display = {}
+    me = utils.get_person_or_org(request.user)
 
     # 获取前端页面中可能存在的提示
     my_messages.transfer_message_context(request.GET, html_display)
@@ -374,9 +374,9 @@ def viewFeedback(request: HttpRequest, fid):
 @utils.check_user_access(redirect_url="/logout/")
 @logger.secure_view()
 def feedbackWelcome(request: HttpRequest):
-    user_type, html_display = utils.check_user_type(request.user)
+    html_display = {}
     is_person = request.user.is_person()
-    me = get_person_or_org(request.user, user_type)
+    me = get_person_or_org(request.user)
 
     if 'argue' in request.GET.keys() and request.session.has_key('feedback_type'):
         if not request.session.has_key('feedback_url'):
@@ -542,7 +542,7 @@ def modifyFeedback(request: HttpRequest):
     '''
     反馈表单填写、修改与提交的视图函数
     '''
-    user_type, html_display = utils.check_user_type(request.user)
+    html_display = {}
     me = get_person_or_org(request.user)
 
     # 设置feedback为None, 如果非None则自动覆盖

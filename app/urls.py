@@ -25,7 +25,6 @@ from app import (
 # 尽量不使用<type:arg>, 不支持
 urlpatterns = [
     # path("requestLoginOrg/", views.requestLoginOrg, name="requestLoginOrg"), # 已废弃
-    # path("requestLoginOrg/<str:name>", views.requestLoginOrg, name="requestLoginOrg"),
     path("welcome/", views.homepage, name="welcome"),
     path("freshman/", views.freshman, name="freshman"),
     path("register/", views.authRegister, name="register"),

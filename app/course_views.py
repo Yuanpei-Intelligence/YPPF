@@ -62,15 +62,14 @@ def editCourseActivity(request: HttpRequest, aid: int):
     :return: 返回"修改课程活动"页面
     :rtype: HttpResponse
     """
-    # 检查用户身份
-    user_type, html_display = utils.check_user_type(request.user)
-    me = utils.get_person_or_org(request.user, user_type)  # 这里的me应该为小组账户
     try:
         aid = int(aid)
         activity = Activity.objects.get(id=aid)
     except:
         return redirect(message_url(wrong("活动不存在!")))
 
+    # 检查用户身份
+    html_display = {}
     if request.user.is_person():
         my_messages.transfer_message_context(
             utils.user_login_org(request, activity.organization_id),
@@ -81,6 +80,8 @@ def editCourseActivity(request: HttpRequest, aid: int):
         else:
             # 登陆成功，重新加载
             return redirect(message_url(html_display, request.get_full_path()))
+
+    me = utils.get_person_or_org(request.user)
 
     if activity.organization_id != me:
         return redirect(message_url(wrong("无法修改其他课程小组的活动!")))
@@ -146,8 +147,8 @@ def addSingleCourseActivity(request: HttpRequest):
     :rtype: HttpResponse
     """
     # 检查用户身份
-    user_type, html_display = utils.check_user_type(request.user)
-    me = utils.get_person_or_org(request.user, user_type)  # 这里的me应该为小组账户
+    html_display = {}
+    me = utils.get_person_or_org(request.user)  # 这里的me应该为小组账户
     if not request.user.is_org() or me.otype.otype_name != APP_CONFIG.type_name:
         return redirect(message_url(wrong('书院课程小组账号才能开设课程活动!')))
     if me.oname == CONFIG.yqpoint.org_name:
@@ -202,8 +203,8 @@ def showCourseActivity(request: HttpRequest):
     """
 
     # Sanity check and start a html_display.
-    user_type, html_display = utils.check_user_type(request.user)
-    me = get_person_or_org(request.user, user_type)  # 获取自身
+    html_display = {}
+    me = get_person_or_org(request.user)  # 获取自身
 
     if not request.user.is_org() or me.otype.otype_name != APP_CONFIG.type_name:
         return redirect(message_url(wrong('只有书院课程组织才能查看此页面!')))
@@ -457,8 +458,8 @@ def selectCourse(request: HttpRequest):
     :type request: HttpRequest
     """
 
-    user_type, html_display = utils.check_user_type(request.user)
-    me = get_person_or_org(request.user, user_type)
+    html_display = {}
+    me = get_person_or_org(request.user)
 
     if request.user.is_org():
         return redirect(message_url(wrong("组织账号无法访问书院选课页面。如需选课，请切换至个人账号；如需查看您发起的书院课程，请点击【我的课程】。")))
@@ -552,8 +553,6 @@ def viewCourse(request: HttpRequest):
     :param request: GET courseid=<int>
     :type request: HttpRequest
     """
-    user_type, html_display = utils.check_user_type(request.user)
-
     try:
         course_id = int(request.GET.get("courseid", None))
         course = Course.objects.filter(id=course_id)
@@ -563,7 +562,7 @@ def viewCourse(request: HttpRequest):
     except:
         return redirect(message_url(wrong("该课程不存在！")))
 
-    me = utils.get_person_or_org(request.user, user_type)
+    me = utils.get_person_or_org(request.user)
     course_display = course_to_display(course, me, detail=True)
 
     bar_display = utils.get_sidebar_and_navbar(request.user, course_display[0]["name"])
@@ -588,9 +587,9 @@ def addCourse(request: HttpRequest, cid=None):
     """
 
     # 检查：不是超级用户，必须是小组，修改是必须是自己
-    user_type, html_display = utils.check_user_type(request.user)
+    html_display = {}
     # assert valid  已经在check_user_access检查过了
-    me = utils.get_person_or_org(request.user, user_type) # 这里的me应该为小组账户
+    me = utils.get_person_or_org(request.user) # 这里的me应该为小组账户
     if cid is None:
         if not request.user.is_org() or me.otype.otype_name != APP_CONFIG.type_name:
             return redirect(message_url(wrong('书院课程账号才能发起课程!')))
@@ -695,17 +694,14 @@ def addCourse(request: HttpRequest, cid=None):
 @login_required(redirect_field_name="origin")
 @utils.check_user_access(redirect_url="/logout/")
 @logger.secure_view()
-def outputRecord(request: HttpRequest):
+def outputRecord(request: UserRequest):
     """
     导出所有学时信息
     导出文件格式为excel，包括汇总和详情两个sheet。
     汇总包括每位同学的学号、姓名和总有效学时
     详情包括每位同学所有学时（有效或无效）的详细获得情况：课程、学年等
     """
-
-    # 检查：要求必须为书院课程审核老师（local_json定义）
-    user_type, _ = utils.check_user_type(request.user)
-    me = utils.get_person_or_org(request.user, user_type)
+    me = utils.get_person_or_org(request.user)
     # 获取默认审核老师，不应该出错
     examine_teacher = NaturalPerson.objects.get_teacher(APP_CONFIG.audit_teacher)
 
@@ -717,13 +713,12 @@ def outputRecord(request: HttpRequest):
 @login_required(redirect_field_name="origin")
 @utils.check_user_access(redirect_url="/logout/")
 @logger.secure_view()
-def outputSelectInfo(request: HttpRequest):
+def outputSelectInfo(request: UserRequest):
     """
     导出该课程的选课名单
     """
     # 检查：不是超级用户，必须是小组，修改是必须是自己
-    user_type, _ = utils.check_user_type(request.user)
-    me = utils.get_person_or_org(request.user, user_type)
+    me = utils.get_person_or_org(request.user)
     try:
         assert (request.user.is_org()
                 and me.otype.otype_name == APP_CONFIG.type_name), '只有书院课程账号才能下载选课名单!'

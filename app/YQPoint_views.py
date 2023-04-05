@@ -11,10 +11,7 @@ from app.YQPoint_utils import (
     buy_lottery_pool,
     buy_random_pool,
 )
-from app.utils import (
-    check_user_type,
-    get_sidebar_and_navbar,
-)
+from app.utils import get_sidebar_and_navbar
 
 __all__ = [
     'myYQPoint',
@@ -84,7 +81,7 @@ class myPrize(ProfileTemplateView):
 @login_required(redirect_field_name="origin")
 @utils.check_user_access(redirect_url="/logout/")
 @logger.secure_view()
-def showPools(request: HttpRequest) -> HttpResponse:
+def showPools(request: UserRequest) -> HttpResponse:
     """
     展示各种奖池的页面，可以通过POST请求发起兑换/抽奖/买盲盒
 
@@ -93,7 +90,6 @@ def showPools(request: HttpRequest) -> HttpResponse:
     :return
     :rtype: HttpResponse
     """
-    user_type, _ = check_user_type(request.user)
     if request.user.is_org():
         return redirect(message_url(wrong("只有个人账号可以进入此页面！")))
 

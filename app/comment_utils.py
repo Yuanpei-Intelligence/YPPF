@@ -10,7 +10,6 @@ from app.models import (
 )
 from app.utils import (
     get_person_or_org,
-    check_user_type,
     if_image,
 )
 from app.notification_utils import notification_create

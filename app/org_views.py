@@ -41,11 +41,10 @@ def showNewOrganization(request: UserRequest):
     YWolfeee: modefied on Aug 24 1:33 a.m. UTC-8
     新建小组的聚合界面
     """
-    user_type, html_display = utils.check_user_type(request.user)
     if request.user.is_org():
         return redirect(message_url(wrong("请不要使用小组账号申请新小组！")))
 
-    me = get_person_or_org(request.user, user_type)
+    me = get_person_or_org(request.user)
 
     # 拉取我负责管理申请的小组，这部分由我审核
     charge_org = ModifyOrganization.objects.filter(otype__in=me.incharge.all()).values_list("id",flat=True)
@@ -68,7 +67,7 @@ def showNewOrganization(request: UserRequest):
 @logger.secure_view()
 def modifyOrganization(request: UserRequest):
     # YWolfeee: 重构小组申请页面 Aug 24 12:30 UTC-8
-    user_type, html_display = utils.check_user_type(request.user)
+    html_display = {}
     me = get_person_or_org(request.user)  # 获取自身
     if request.user.is_org():
         return redirect(message_url(wrong("请不要使用小组账号申请新小组！")))
@@ -254,9 +253,6 @@ def showPosition(request: HttpRequest):
 @utils.check_user_access(redirect_url="/logout/")
 @logger.secure_view()
 def saveShowPositionStatus(request: HttpRequest):
-    user_type, html_display = utils.check_user_type(request.user)
-
-    me = get_person_or_org(request.user, user_type)
     params = json.loads(request.body.decode("utf-8"))
 
     with transaction.atomic():

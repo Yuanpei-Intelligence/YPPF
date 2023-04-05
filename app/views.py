@@ -132,9 +132,9 @@ def stuinfo(request: UserRequest):
                 那么期望有一个"+"在name中，如果搜不到就跳转到Search/?Query=name让他跳转去
     """
 
-    user_type, html_display = utils.check_user_type(request.user)
+    html_display = {}
 
-    oneself = get_person_or_org(request.user, user_type)
+    oneself = get_person_or_org(request.user)
 
     name = request.GET.get('name', None)
     if name is None:
@@ -576,47 +576,41 @@ def stuinfo(request: UserRequest):
 @login_required(redirect_field_name="origin")
 @utils.check_user_access(redirect_url="/logout/")
 @logger.secure_view()
-def requestLoginOrg(request: HttpRequest, name=None):  # 特指个人希望通过个人账户登入小组账户的逻辑
+def requestLoginOrg(request: UserRequest):
     """
         这个函数的逻辑是，个人账户点击左侧的管理小组直接跳转登录到小组账户
         首先检查登录的user是个人账户，否则直接跳转orginfo
         如果个人账户对应的是name对应的小组的最高权限人，那么允许登录，否则跳转回stuinfo并warning
     """
-    user = request.user
-    user_type, html_display = utils.check_user_type(request.user)
-
     if request.user.is_org():
         return redirect("/orginfo/")
     try:
-        me = NaturalPerson.objects.activated().get(person_id=user)
+        me = NaturalPerson.objects.activated().get(person_id=request.user)
     except:  # 找不到合法的用户
         return redirect(message_url(wrong('用户不存在!')))
-    if name is None:  # 个人登录未指定登入小组,属于不合法行为,弹回欢迎
-        name = request.GET.get('name', None)
+    name = request.GET.get('name')
     if name is None:  # 个人登录未指定登入小组,属于不合法行为,弹回欢迎
         return redirect(message_url(wrong('无效的小组信息!')))
-    else:  # 确认有无这个小组
-        try:
-            org: Organization = Organization.objects.get(oname=name)
-        except:  # 找不到对应小组
-            urls = "/stuinfo/?name=" + me.name + "&warn_code=1&warn_message=找不到对应小组,请联系管理员!"
-            return redirect(urls)
-        try:
-            position = Position.objects.activated().filter(org=org, person=me)
-            assert len(position) == 1
-            position = position[0]
-            assert position.is_admin == True
-        except:
-            urls = "/stuinfo/?name=" + me.name + "&warn_code=1&warn_message=没有登录到该小组账户的权限!"
-            return redirect(urls)
-        # 到这里,是本人小组并且有权限登录
-        auth.logout(request)
-        auth.login(request, org.get_user())  # 切换到小组账号
-        update_related_account_in_session(
-            request, user.username, oname=org.oname)
-        if user.is_newuser:
-            return redirect("/modpw/")
-        return redirect("/orginfo/?warn_code=2&warn_message=成功切换到"+str(org)+"的账号!")
+    # 确认有无这个小组
+    try:
+        org: Organization = Organization.objects.get(oname=name)
+    except:  # 找不到对应小组
+        return redirect(message_url(wrong('找不到对应小组,请联系管理员!'),
+                                    me.get_absolute_url()))
+    try:
+        position = Position.objects.activated().filter(org=org, person=me)
+        assert len(position) == 1
+        position = position[0]
+        assert position.is_admin == True
+    except:
+        return redirect(message_url(wrong('没有登录到该小组账户的权限!'),
+                                    me.get_absolute_url()))
+    # 到这里,是本人小组并且有权限登录
+    auth.logout(request)
+    auth.login(request, org.get_user())  # 切换到小组账号
+    update_related_account_in_session(
+        request, request.user.username, oname=org.oname)
+    return redirect(message_url(succeed(f'成功切换到{org}的账号!'), '/orginfo/'))
 
 
 @login_required(redirect_field_name="origin")
@@ -856,10 +850,9 @@ def orginfo(request: UserRequest):
 @utils.check_user_access(redirect_url="/logout/")
 @logger.secure_view()
 def homepage(request: HttpRequest):
-    user_type, html_display = utils.check_user_type(request.user)
     is_person = request.user.is_person()
-    me = get_person_or_org(request.user, user_type)
 
+    html_display = {}
     html_display["is_myself"] = True
 
     try:
@@ -1437,7 +1430,7 @@ def search(request: HttpRequest):
             搜索结果的呈现见activity_field
     """
 
-    user_type, html_display = utils.check_user_type(request.user)
+    html_display = {}
 
     query = request.GET.get("Query", "")
     if query == "":
@@ -1548,14 +1541,10 @@ def search(request: HttpRequest):
         info['sname'] = np.name
         academic_list.append((info, contents))
 
-    me = get_person_or_org(request.user, user_type)
     html_display["is_myself"] = True
 
     # 新版侧边栏, 顶栏等的呈现，采用 bar_display, 必须放在render前最后一步
     bar_display = utils.get_sidebar_and_navbar(request.user, "信息搜索")
-    # bar_display["title_name"] = "Search"
-    # bar_display["navbar_name"] = "信息搜索"  #
-
     return render(request, "search.html", locals())
 
 
@@ -1718,17 +1707,17 @@ def modpw(request: UserRequest):
         常规修改要审核旧的密码
     """
     user = request.user
-    _, html_display = utils.check_user_type(user)
-    isFirst = user.is_newuser
+    isFirst = request.user.is_newuser
     # 在其他界面，如果isFirst为真，会跳转到这个页面
     # 现在，请使用@utils.check_user_access(redirect_url)包装器完成用户检查
 
+    html_display = {}
     html_display["is_myself"] = True
 
     err_code = 0
     err_message = None
     forgetpw = request.session.get("forgetpw", "") == "yes"  # added by pht
-    username = user.username
+    username = request.user.username
 
     if request.method == "POST" and request.POST:
         oldpassword = request.POST["pw"]
@@ -1791,9 +1780,6 @@ def modpw(request: UserRequest):
                 err_message = "原始密码不正确"
     # 新版侧边栏, 顶栏等的呈现，采用 bar_display, 必须放在render前最后一步
     bar_display = utils.get_sidebar_and_navbar(request.user, "修改密码")
-    # 补充一些呈现信息
-    # bar_display["title_name"] = "Modify Password"
-    # bar_display["navbar_name"] = "修改密码"
     return render(request, "modpw.html", locals())
 
 
@@ -1896,7 +1882,7 @@ def saveSubscribeStatus(request: UserRequest):
 @utils.check_user_access(redirect_url="/logout/")
 @logger.secure_view()
 def notifications(request: HttpRequest):
-    user_type, html_display = utils.check_user_type(request.user)
+    html_display = {}
 
     # 处理GET一键阅读或错误信息
     if request.method == "GET" and request.GET:
@@ -1944,7 +1930,6 @@ def notifications(request: HttpRequest):
             wrong("删除通知的过程出现错误！请联系管理员。", html_display)
         return JsonResponse({"success": my_messages.get_warning(html_display)[0] == SUCCEED})
 
-    me = get_person_or_org(request.user, user_type)
     html_display["is_myself"] = True
 
     done_notifications = Notification.objects.activated().filter(

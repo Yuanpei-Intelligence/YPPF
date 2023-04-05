@@ -77,9 +77,8 @@ def viewActivity(request: HttpRequest, aid=None):
 
     aid = int(aid)
     activity: Activity = Activity.objects.get(id=aid)
-    user_type, html_display = utils.check_user_type(request.user)
     org = activity.organization_id
-    me = utils.get_person_or_org(request.user, user_type)
+    me = utils.get_person_or_org(request.user)
     ownership = False
     if request.user.is_org() and org == me:
         ownership = True
@@ -394,11 +393,10 @@ def getActivityInfo(request: HttpRequest):
 @utils.check_user_access(redirect_url="/logout/")
 @logger.secure_view()
 def checkinActivity(request: UserRequest, aid=None):
-    user_type, _ = utils.check_user_type(request.user)
     if not request.user.is_person():
         return redirect(message_url(wrong('签到失败：请使用个人账号签到')))
     try:
-        np = get_person_or_org(request.user, user_type)
+        np = get_person_or_org(request.user)
         aid = int(aid)
         activity = Activity.objects.get(id=aid)
         varifier = request.GET["auth"]
@@ -662,7 +660,6 @@ def showActivity(request: UserRequest):
 @login_required(redirect_field_name="origin")
 @logger.secure_view()
 def examineActivity(request: UserRequest, aid: int | str):
-    _, html_display = utils.check_user_type(request.user)
     try:
         assert request.user.is_valid()
         assert request.user.is_person()
@@ -672,6 +669,7 @@ def examineActivity(request: UserRequest, aid: int | str):
     except:
         return redirect(message_url(wrong('没有审核权限!')))
 
+    html_display = {}
     html_display["is_myself"] = True
 
     if request.method == "POST" and request.POST:
@@ -771,9 +769,8 @@ def offlineCheckinActivity(request: HttpRequest, aid):
     :return: 修改签到页面
     :rtype: HttpResponse
     '''
-    user_type, _ = utils.check_user_type(request.user)
     try:
-        me = get_person_or_org(request.user, user_type)
+        me = get_person_or_org(request.user)
         aid = int(aid)
         src = request.GET.get('src')
         activity = Activity.objects.get(id=aid)
@@ -831,11 +828,10 @@ def endActivity(request: HttpRequest):
     之前被用为报销信息的聚合界面，现已将报销删去，留下总结图片的功能
     对审核老师进行了特判
     """
-    user_type, html_display = utils.check_user_type(request.user)
     is_auditor = False
     if request.user.is_person():
         try:
-            person = utils.get_person_or_org(request.user, user_type)
+            person = utils.get_person_or_org(request.user)
             is_auditor = person.is_teacher()
             assert is_auditor
         except:
