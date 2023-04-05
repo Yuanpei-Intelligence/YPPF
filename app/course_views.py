@@ -315,7 +315,7 @@ def showCourseRecord(request: HttpRequest) -> HttpResponse:
 
     # 获取课程开设筛选信息
     year = GLOBAL_CONFIG.acadamic_year
-    semester = Semester.now()
+    semester = GLOBAL_CONFIG.semester
 
     course = Course.objects.activated(noncurrent=None).filter(
         organization=me,
@@ -498,7 +498,7 @@ def selectCourse(request: HttpRequest):
 
     html_display["is_myself"] = True
     html_display["current_year"] = GLOBAL_CONFIG.acadamic_year
-    html_display["semester"] = ("春" if Semester.now() == Semester.SPRING else "秋")
+    html_display["semester"] = ("春" if GLOBAL_CONFIG.semester == Semester.SPRING else "秋")
 
     html_display["yx_election_start"] = APP_CONFIG.yx_election_start
     html_display["yx_election_end"] = APP_CONFIG.yx_election_end

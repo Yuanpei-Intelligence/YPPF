@@ -46,7 +46,7 @@ from django_mysql.models.fields import ListCharField
 
 from generic.models import User
 from utils.models.descriptor import invalid_for_frontend, necessary_for_frontend
-from utils.models.semester import Semester, current_year, select_current
+from utils.models.semester import Semester, select_current
 from app.config import *
 
 
@@ -91,6 +91,14 @@ __all__ = [
     'PoolItem',
     'PoolRecord',
 ]
+
+
+
+def current_year():
+    return GLOBAL_CONFIG.acadamic_year
+
+def current_semester():
+    return GLOBAL_CONFIG.semester
 
 
 def image_url(image, enable_abs=False) -> str:
@@ -241,13 +249,6 @@ class NaturalPersonManager(models.Manager['NaturalPerson']):
 
     def activated(self):
         return self.exclude(status=NaturalPerson.GraduateStatus.GRADUATED)
-
-    def autoset_status_annually(self):  # 修改毕业状态，每年调用一次
-        year = current_year() - 4
-        self.activated().filter(stu_grade=str(year)).update(GraduateStatus=1)
-
-    def set_status(self, **kwargs):  # 延毕情况后续实现
-        pass
 
     def teachers(self, activate=True):
         if activate:
@@ -487,7 +488,9 @@ class OrganizationType(models.Model):
 
     def default_semester(self):
         '''供生成时方便调用的函数，职位的默认持续时间'''
-        return Semester.now() if self.otype_name == CONFIG.course.type_name else Semester.ANNUAL
+        return (GLOBAL_CONFIG.semester
+                if self.otype_name == CONFIG.course.type_name
+                else Semester.ANNUAL)
 
     def default_is_admin(self, position):
         '''供生成时方便调用的函数，是否成为负责人的默认值'''
@@ -868,7 +871,7 @@ class Activity(CommentBase):
         "活动学期",
         choices=Semester.choices,
         max_length=15,
-        default=Semester.now,
+        default=current_semester,
     )
 
     class PublishDay(models.IntegerChoices):
@@ -1403,7 +1406,7 @@ class Course(models.Model):
     semester = models.CharField("开课学期",
                                 choices=Semester.choices,
                                 max_length=15,
-                                default=Semester.now)
+                                default=current_semester)
 
     # 课程开设的周数
     times = models.SmallIntegerField("课程开设周数", default=16)
@@ -1560,7 +1563,7 @@ class CourseRecord(models.Model):
     semester = models.CharField(
         "课程所在学期",
         choices=Semester.choices,
-        default=Semester.now,
+        default=current_semester,
         max_length=15,
     )
     total_hours = models.FloatField("总计参加学时")

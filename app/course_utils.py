@@ -940,7 +940,7 @@ def change_course_status(cur_status: Course.Status, to_status: Course.Status) ->
                         status=Position.Status.DEPART,
                     ).update(pos=10,
                              is_admin=False,
-                             semester=Semester.now(),
+                             semester=GLOBAL_CONFIG.semester,
                              status=Position.Status.INSERVICE)
                     # 检查是否已经加入小组
                     if not Position.objects.activated().filter(
@@ -948,7 +948,7 @@ def change_course_status(cur_status: Course.Status, to_status: Course.Status) ->
                             org=organization).exists():
                         position = Position(person=participant.person,
                                             org=organization,
-                                            semester=Semester.now())
+                                            semester=GLOBAL_CONFIG.semester)
 
                         positions.append(position)
                 if positions:
@@ -966,7 +966,7 @@ def register_selection(wait_for: timedelta=None):
 
     # 预选和补退选的开始和结束时间
     year = str(GLOBAL_CONFIG.acadamic_year)
-    semster = str(Semester.now())
+    semster = str(GLOBAL_CONFIG.semester)
     now = datetime.now()
     if wait_for is not None:
         now = wait_for + wait_for
