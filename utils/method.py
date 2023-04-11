@@ -10,6 +10,11 @@ P = ParamSpec('P')
 T = TypeVar('T')
 
 class constructor(Generic[P, T]):
+    '''构造方法描述符
+
+    指示方法可用于构造对象。方法写法和正常方法相同。
+    被包装的方法可以作为方法正常访问，或者以类调用，构造默认对象后调用方法。
+    '''
     def __init__(self, func: Callable[Concatenate[T, P], T]):
         self.func = func
 
@@ -25,7 +30,13 @@ class constructor(Generic[P, T]):
             instance = owner()
         return self.func.__get__(instance, owner)
 
+
 class check_method(Generic[P, T]):
+    '''检查方法描述符
+
+    指示方法可用于检查对象的性质。方法的前两个参数为`cls`, `obj`。
+    被包装的方法可以作为方法正常访问，或者以类调用，构造默认对象后调用方法。
+    '''
     def __init__(self, func: Callable[Concatenate[T, T, P], bool]) -> None:
         self.func = classmethod(func)
 
