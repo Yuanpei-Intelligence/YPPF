@@ -20,6 +20,7 @@ from app import (
     academic_views,
     chat_api,
     YQPoint_views,
+    report_views,
 )
 
 # 尽量不使用<type:arg>, 不支持
@@ -119,4 +120,6 @@ urlpatterns = [
     path("myYQPoint/", YQPoint_views.myYQPoint.as_view(), name="myYQPoint"),
     path("showPools/", YQPoint_views.showPools, name="showPools"),
     path("myPrize/", YQPoint_views.myPrize.as_view(), name="myPrize"),
+] + [
+    path("report/", report_views.ReportView.as_view(), name="report")
 ]

@@ -1,0 +1,80 @@
+{% extends "base.html" %}
+{% load static %}
+{% block add_css_file %}
+<link href={% static "datetimepicker/css/bootstrap-datetimepicker-standalone.css" %} rel="stylesheet" type="text/css" />
+<link href={% static "datetimepicker/css/bootstrap-datetimepicker.css" %} rel="stylesheet" type="text/css" />
+<link href={% static "datetimepicker/css/bootstrap-datetimepicker.min.css" %} rel="stylesheet" type="text/css" />
+
+
+<style class="text/css">
+    h5{
+        font-family: 'Nunito', sans-serif;
+        font-size: 1rem;
+        font-weight: bold;
+    }
+</style>
+
+{% endblock %}
+
+{% block mainpage %}
+<div id="content" class="main-content">
+    <div class="widget-content widget-content-area">
+        <form role="form" method="POST" enctype="multipart/form-data" >
+            <div class="form-group">
+                <input type="text" class="form-control" id="datetimepicker0" name="yqp_start" placeholder="元气值查询开始时间"
+                    />
+
+                <input type="text" class="form-control" id="datetimepicker1" name="yqp_end" placeholder="元气值查询结束时间"
+                     />
+
+                <input type="text" class="form-control" id="datetimepicker2" name="course_start" placeholder="课程查询开始时间"
+                     />
+
+                <input type="text" class="form-control" id="datetimepicker3" name="course_end" placeholder="课程查询结束时间"
+                     />
+
+            </div>
+            <button type="submit" class="btn btn-primary btn-block mb-4 mr-2" value="">
+                查询
+            </button>
+        </form>
+
+        {% for type, amount in yqp_records %}
+        <p>{{type}} {{amount}}</p>
+        {% endfor %}
+
+        {% for type, amount in course_activities %}
+        <p>{{type}} {{amount}}</p>
+        {% endfor %}
+
+    </div>
+</div>
+
+
+{% endblock %}
+
+{% block add_js_file %}
+<script src={% static "datetimepicker/js/bootstrap-datetimepicker.min.js" %}>
+</script>
+<script type="text/javascript">
+    $(function () {
+        $("#datetimepicker1").datetimepicker({
+            format: "YYYY-MM-DD",
+            sideBySide: true,
+        });
+        $("#datetimepicker2").datetimepicker({
+            format: "YYYY-MM-DD",
+            sideBySide: true
+        });
+        $("#datetimepicker3").datetimepicker({
+            format: "YYYY-MM-DD",
+            sideBySide: true,
+        });
+        $("#datetimepicker0").datetimepicker({
+            format: "YYYY-MM-DD",
+            sideBySide: true,
+        });
+    });
+</script>
+{% endblock %}
+
