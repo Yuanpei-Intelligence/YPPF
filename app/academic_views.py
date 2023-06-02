@@ -19,15 +19,13 @@ from app.academic_utils import (
     get_tags_for_search,
 )
 from app.utils import (
-    check_user_type,
     get_sidebar_and_navbar,
     get_person_or_org,
 )
-from app.config import UTYPE_PER
 
 __all__ = [
-    'ShowChatsView',
-    'ChatView',
+    'ShowChats',
+    'ViewChat',
     'modifyAcademic',
     'auditAcademic',
     'applyAuditAcademic',
@@ -84,15 +82,10 @@ class ViewChat(ProfileTemplateView):
         return self.render()
 
 
-class ModifyAcademicView(SecureTemplateView):
-    """Draft"""
-    template_name = 'modify_academic.html'
-
-
 @login_required(redirect_field_name="origin")
 @utils.check_user_access(redirect_url="/logout/")
 @logger.secure_view()
-def modifyAcademic(request: HttpRequest) -> HttpResponse:
+def modifyAcademic(request: UserRequest) -> HttpResponse:
     """
     学术地图编辑界面
 
@@ -103,8 +96,7 @@ def modifyAcademic(request: HttpRequest) -> HttpResponse:
     """
     frontend_dict = {}
 
-    _, user_type, _ = check_user_type(request.user)
-    if user_type != UTYPE_PER:  # 只允许个人账户修改学术地图
+    if not request.user.is_person():
         return redirect(message_url(wrong("只有个人才可以修改自己的学术地图！")))
 
     # POST表明编辑界面发起修改
@@ -120,7 +112,7 @@ def modifyAcademic(request: HttpRequest) -> HttpResponse:
 
     # 不是POST，说明用户希望编辑学术地图，下面准备前端展示量
     # 获取所有专业/项目的列表，左右前端select框的下拉选项
-    me = get_person_or_org(request.user, UTYPE_PER)
+    me = get_person_or_org(request.user)
     frontend_dict.update(
         major_list=get_js_tag_list(me, AcademicTag.Type.MAJOR, selected=False),
         minor_list=get_js_tag_list(me, AcademicTag.Type.MINOR, selected=False),
@@ -224,7 +216,7 @@ def modifyAcademic(request: HttpRequest) -> HttpResponse:
 @login_required(redirect_field_name="origin")
 @utils.check_user_access(redirect_url="/logout/")
 @logger.secure_view()
-def auditAcademic(request: HttpRequest) -> HttpResponse:
+def auditAcademic(request: UserRequest) -> HttpResponse:
     """
     供教师使用的页面，展示所有待审核的学术地图
 
@@ -235,7 +227,7 @@ def auditAcademic(request: HttpRequest) -> HttpResponse:
     """
     # 身份检查
     person = get_person_or_org(request.user)
-    if not (person.get_type() == UTYPE_PER and person.is_teacher()):
+    if not (request.user.is_person() and person.is_teacher()):
         return redirect(message_url(wrong('只有教师账号可进入学术地图审核页面!')))
 
     frontend_dict = {}

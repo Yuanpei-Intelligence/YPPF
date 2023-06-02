@@ -6,11 +6,11 @@ from datetime import datetime, timedelta
 from functools import wraps
 from typing import overload, Literal
 
+import xlwt
 import imghdr
 from django.contrib import auth
 from django.shortcuts import redirect
-from django.http import HttpResponse, HttpRequest
-import xlwt
+from utils.http.dependency import HttpResponse, HttpRequest, UserRequest
 
 from utils.http.utils import get_ip
 from app.utils_dependency import *
@@ -36,13 +36,12 @@ def check_user_access(redirect_url="/logout/", is_modpw=False):
 
     def actual_decorator(view_function):
         @wraps(view_function)
-        def _wrapped_view(request, *args, **kwargs):
-            valid, user_type, html_display = check_user_type(request.user)
-            if not valid:
+        def _wrapped_view(request: UserRequest, *args, **kwargs):
+            if not request.user.is_valid():
                 return redirect(redirect_url)
 
             # 如果是首次登陆，会跳转到用户须知的页面
-            if request.user.first_time_login:
+            if request.user.is_newuser:
                 if request.session.get('confirmed') != 'yes':
                     return redirect("/agreement/")
                 if not is_modpw:
@@ -112,63 +111,42 @@ def get_classified_user(
 
 def get_classified_user(user: User, user_type: str | User.Type | None = None, *,
                         update=False, activate=False) -> ClassifiedUser:
-    '''
-    通过User对象获取对应的实例
+    '''获取基础用户对应的用户对象
 
-    check_user_type返回valid=True时，应能得到一个与user_type相符的实例
+    Args:
+        user(User): 用户对象
+        user_type(str, optional): 用来指定模型类型，非法值抛出`AssertionError`
 
-    Parameters
-    ----------
-    user_type : UTYPE, optional
-        用来加速访问，不提供时按顺序尝试，非法值抛出`AssertionError`
-    update : bool, optional
-        获取用来更新的对象，需要在事务中调用，否则会报错
-    activate : bool, optional
-        只获取活跃的用户，由对应的模型管理器检查，用户不活跃可能报错
+    Keyword Args:
+        update(bool, optional): 获取带锁的对象，需要在事务中调用
+        activate(bool, optional): 只获取活跃的用户，由对应的模型管理器检查
+
+    Returns:
+        ClassifiedUser: 用户实例
+
+    Raises:
+        AssertionError: 非法的用户类型
+        DoesNotExist: 用户不存在，当用户是合法用户且不筛选时，可假设不抛出此异常
     '''
+    model = None
     if user_type is None:
-        user_type = user.utype
-    if user_type == UTYPE_PER:
-        return NaturalPerson.objects.get_by_user(user, update=update, activate=activate)
+        if user.is_person():
+            model = NaturalPerson
+        elif user.is_org():
+            model = Organization
+    elif user_type == UTYPE_PER:
+        model = NaturalPerson
     elif user_type == UTYPE_ORG:
-        return Organization.objects.get_by_user(user, update=update, activate=activate)
-    else:
+        model = Organization
+    if model is None:
         raise AssertionError(f"非法的用户类型：“{user_type}”")
+    return model.objects.get_by_user(user, update=update, activate=activate)
 
 # 保持之前的函数名接口
 get_person_or_org = get_classified_user
 
 
-def get_user_by_name(name):
-    """通过 name/oname 获取 user 对象，用于导入评论者
-    Comment只接受User对象
-    Args:
-        name/oname
-    Returns:
-        user<object>: 用户对象
-        user_type: 用户类型
-    """
-    try: return NaturalPerson.objects.get(name=name).get_user(), UTYPE_PER
-    except: pass
-    try: return Organization.objects.get(oname=name).get_user(), UTYPE_ORG
-    except: pass
-    print(f"{name} is neither natural person nor organization!")
-
-
-# YWolfeee, Aug 16
-# check_user_type只是获得user的类型，其他用于呈现html_display的内容全部转移到get_siderbar_and_navbar中
-# 同步开启一个html_display，方便拓展前端逻辑的呈现
-def check_user_type(user: User):
-    '''待废弃'''
-    html_display = {}
-    user_type = user.utype
-    valid = user.is_valid()
-    if valid:
-        html_display["user_type"] = user_type
-    return valid, user_type, html_display
-
-
-def get_user_ava(obj: ClassifiedUser, user_type):
+def get_user_ava(obj: ClassifiedUser):
     try:
         return obj.get_user_ava()
     except:
@@ -176,8 +154,8 @@ def get_user_ava(obj: ClassifiedUser, user_type):
         raise AssertionError('任何用户都应该有对应的头像！')
 
 
-def get_user_wallpaper(person: ClassifiedUser, user_type):
-    if user_type == UTYPE_PER:
+def get_user_wallpaper(person: ClassifiedUser):
+    if person.get_user().is_person():
         return MEDIA_URL + (str(person.wallpaper) or "wallpaper/person_wall_default.jpg")
     else:
         return MEDIA_URL + (str(person.wallpaper) or "wallpaper/org_wall_default.jpg")
@@ -196,7 +174,7 @@ def get_inform_share(me: ClassifiedUser, is_myself=True):
     return False, alert_message
 
 
-def get_sidebar_and_navbar(user, navbar_name="", title_name="", bar_display=None):
+def get_sidebar_and_navbar(user: User, navbar_name="", title_name=""):
     '''
     YWolfeee Aug 16
     修改left siderbar的逻辑，统一所有个人和所有小组的左边栏，不随界面而改变
@@ -210,25 +188,24 @@ def get_sidebar_and_navbar(user, navbar_name="", title_name="", bar_display=None
     现在最推荐的调用方式是：在views的函数中，写
     bar_display = utils.get_sidebar_and_navbar(user, title_name, navbar_name)
     '''
-    if bar_display is None:
-        bar_display = {}  # 默认参数只会初始化一次，所以不应该设置为{}
+    bar_display = {}
     me = get_person_or_org(user)  # 获得对应的对象
-    _, user_type, _ = check_user_type(user)
-    bar_display["user_type"] = user_type
+    _utype = "Person" if user.is_person() else "Organization"
+    bar_display["user_type"] = _utype
     if user.is_staff:
         bar_display["is_staff"] = True
 
     # 接下来填补各种前端呈现信息
 
     # 头像
-    bar_display["avatar_path"] = get_user_ava(me, user_type)
+    bar_display["avatar_path"] = get_user_ava(me)
 
     # 信箱数量
     bar_display["mail_num"] = Notification.objects.filter(
         receiver=user, status=Notification.Status.UNDONE
     ).count()
 
-    if user_type == UTYPE_PER:
+    if user.is_person():
         bar_display["profile_name"] = "个人主页"
         bar_display["profile_url"] = "/stuinfo/"
         bar_display["name"] = me.name
@@ -254,23 +231,14 @@ def get_sidebar_and_navbar(user, navbar_name="", title_name="", bar_display=None
 
     bar_display["title_name"] = title_name if title_name else navbar_name
 
+    help_title = navbar_name
     if navbar_name == "我的元气值":
-        bar_display["help_message"] = CONFIG.help_message.get(
-            (navbar_name + user_type.lower()),  ""
-        )
+        navbar_name = navbar_name + _utype.lower()
+    if navbar_name:
+        bar_display["help_message"] = CONFIG.help_message.get(navbar_name, "")
+    if help_title:
         try:
-            bar_display["help_paragraphs"] = Help.objects.get(title=navbar_name).content
-        except:
-            bar_display["help_paragraphs"] = ""
-    elif navbar_name != "":
-        try:
-            bar_display["help_message"] = CONFIG.help_message.get(
-                navbar_name, ""
-            )
-        except:
-            bar_display["help_message"] = ""
-        try:
-            bar_display["help_paragraphs"] = Help.objects.get(title=navbar_name).content
+            bar_display["help_paragraphs"] = Help.objects.get(title=help_title).content
         except:
             bar_display["help_paragraphs"] = ""
 
@@ -437,8 +405,8 @@ def clear_captcha_session(request):
     request.session.pop("received_user", None)        # 成功登录后不再保留
 
 
-def check_account_setting(request, user_type):
-    if user_type == UTYPE_PER:
+def check_account_setting(request: UserRequest):
+    if request.user.is_person():
         html_display = dict()
         attr_dict = dict()
 
@@ -592,27 +560,25 @@ def escape_for_templates(text:str):
     return text.strip().replace("\r", "").replace("\\", "\\\\").replace("\n", "\\n").replace("\"", "\\\"")
 
 
-def record_modification(user, info=""):
+def record_modification(user: User, info=""):
     try:
-        _, usertype, _ = check_user_type(user)
-        obj = get_person_or_org(user, usertype)
+        obj = get_person_or_org(user)
         name = obj.get_display_name()
         firsttime = not user.modify_records.exists()
-        ModifyRecord.objects.create(user=user, usertype=usertype, name=name, info=info)
+        ModifyRecord.objects.create(user=user, usertype=user.utype, name=name, info=info)
         return firsttime
     except:
         return None
 
 
-def get_modify_rank(user):
+def get_modify_rank(user: User):
     try:
-        _, usertype, _ = check_user_type(user)
         records = user.modify_records.all()
         if not records:
             return -1
         first = records.order_by('time')[0]
         rank = ModifyRecord.objects.filter(
-            usertype=usertype,
+            usertype=user.utype,
             time__lte=first.time,
             ).values('user').distinct().count()
         return rank
@@ -620,18 +586,16 @@ def get_modify_rank(user):
         return -1
 
 
-def record_modify_with_session(request, info=""):
+def record_modify_with_session(request: UserRequest, info=""):
     try:
-        _, usertype, _ = check_user_type(request.user)
         recorded = record_modification(request.user, info)
         if recorded == True:
             rank = get_modify_rank(request.user)
-            is_person = usertype == UTYPE_PER
-            info_rank = CONFIG.max_inform_rank.get(usertype, -1)
+            info_rank = CONFIG.max_inform_rank.get(request.user.utype, -1)
             if rank > -1 and rank <= info_rank:
                 msg = (
                     f'您是第{rank}名修改账号信息的'+
-                    ('个人' if is_person else '小组')+
+                    ('个人' if request.user.is_person() else '小组')+
                     '用户！保留此截图可在游园会兑换奖励！'
                 )
                 request.session['alert_message'] = msg
@@ -673,25 +637,24 @@ def update_related_account_in_session(request, username, shift=False, oname=""):
 
 
 @logger.secure_func(raise_exc=True)
-def user_login_org(request, org: Organization) -> MESSAGECONTEXT:
+def user_login_org(request: UserRequest, org: Organization) -> MESSAGECONTEXT:
     '''
     令人疑惑的函数，需要整改
     尝试从用户登录到org指定的组织，如果不满足权限，则会返回wrong
     返回wrong或succeed
     '''
     user = request.user
-    valid, user_type, html_display = check_user_type(request.user)
-
     try:
+        assert user.is_person()
         me = NaturalPerson.objects.activated().get(person_id=user)
-    except:  # 找不到合法的用户
+    except:
         return wrong("您没有权限访问该网址！请用对应小组账号登陆。")
     #是小组一把手
     try:
         position = Position.objects.activated().filter(org=org, person=me)
         assert len(position) == 1
         position = position[0]
-        assert position.is_admin == True
+        assert position.is_admin
     except:
         return wrong("没有登录到该小组账户的权限!")
     # 到这里, 是本人小组并且有权限登录

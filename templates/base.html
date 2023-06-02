@@ -1,5 +1,14 @@
 <!DOCTYPE html>
 <html lang="zh">
+{% comment %}
+# XXX: Vars {{ bar_display load_alert_message }}
+# XXX: Request {{ I(session) }}
+# XXX: Depends {% user_left_navbar org_left_navbar %}
+    {% if bar_display.user_type == "Person" %}
+    {% include 'user_left_navbar.html' %}
+    {% elif bar_display.user_type == "Organization" %}
+    {% include 'org_left_navbar.html' %}
+{% endcomment %}
 {% load static %}
 
 <head>

@@ -39,8 +39,9 @@ __all__ = [
 _loggers: dict[str, 'Logger'] = dict()
 P = ParamSpec('P')
 T = TypeVar('T')
+R = TypeVar('R', bound=HttpRequest)
 ReturnType = T | Callable[[], T]
-ViewFunction = Callable[Concatenate[HttpRequest, P], T]
+ViewFunction = Callable[Concatenate[R, P], T]
 
 
 class Logger(logging.Logger):
@@ -145,7 +146,7 @@ class Logger(logging.Logger):
         raise_exc: bool | None = False,
         fail_value: ReturnType[Any] = None,
         exc_type: ExceptType[Exception] = Exception
-    ) -> Callable[[ViewFunction[P, T]], ViewFunction[P, T]]:
+    ) -> Callable[[ViewFunction[R, P, T]], ViewFunction[R, P, T]]:
         listener = self.listener(message, as_view=True, raise_exc=raise_exc)
         return return_on_except(fail_value, exc_type, listener)
 

@@ -11,10 +11,7 @@ from app.YQPoint_utils import (
     buy_lottery_pool,
     buy_random_pool,
 )
-from app.utils import (
-    check_user_type,
-    get_sidebar_and_navbar,
-)
+from app.utils import get_sidebar_and_navbar
 
 __all__ = [
     'myYQPoint',
@@ -23,66 +20,68 @@ __all__ = [
 ]
 
 
+class myYQPoint(ProfileTemplateView):
+    template_name = 'myYQPoint.html'
+    page_name = '我的元气值'
+    http_method_names = ['get']
+
+    def prepare_get(self):
+        html_display = {}
+        my_messages.transfer_message_context(self.request.GET, html_display)
+        html_display.update(YQPoint=self.request.user.YQpoint)
+        self.extra_context.update(html_display=html_display)
+        return self.get
+
+    def get(self):
+        YQPoint = self.request.user.YQpoint
+        received_set = YQPointRecord.objects.filter(
+            user=self.request.user,
+        ).exclude(source_type=YQPointRecord.SourceType.CONSUMPTION).order_by("-time")
+
+        send_set = YQPointRecord.objects.filter(
+            user=self.request.user,
+            source_type=YQPointRecord.SourceType.CONSUMPTION,
+        ).order_by("-time")
+        return self.render(YQPoint=YQPoint, received_set=received_set, send_set=send_set)
+
+
+
+class myPrize(ProfileTemplateView):
+    template_name = 'myPrize.html'
+    page_name = '我的奖品'
+    http_method_names = ['get']
+
+    def prepare_get(self):
+        html_display = {}
+        my_messages.transfer_message_context(self.request.GET, html_display)
+        self.extra_context.update(html_display=html_display)
+        return self.get
+
+    def get(self):
+        lottery_set = PoolRecord.objects.filter(
+            user=self.request.user,
+            pool__type=Pool.Type.LOTTERY,
+            status__in=[
+                PoolRecord.Status.LOTTERING,
+                PoolRecord.Status.NOT_LUCKY,
+                PoolRecord.Status.UN_REDEEM],
+        ).order_by("-time")
+
+        exchange_set = PoolRecord.objects.filter(
+            user=self.request.user,
+            status__in=[
+                PoolRecord.Status.UN_REDEEM,
+                PoolRecord.Status.REDEEMED,
+                PoolRecord.Status.OVERDUE],
+        ).order_by("-status", "-time")
+        return self.render(lottery_set=lottery_set, exchange_set=exchange_set)
+
+
+
 @login_required(redirect_field_name="origin")
 @utils.check_user_access(redirect_url="/logout/")
 @logger.secure_view()
-def myYQPoint(request: HttpRequest):
-    _, user_type, html_display = utils.check_user_type(request.user)
-    # 获取可能的提示信息
-    my_messages.transfer_message_context(request.GET, html_display)
-
-    html_display.update(
-        YQPoint=request.user.YQpoint,
-    )
- 
-    received_set = YQPointRecord.objects.filter(
-        user=request.user,
-    ).exclude(source_type=YQPointRecord.SourceType.CONSUMPTION).order_by("-time")
-
-    send_set = YQPointRecord.objects.filter(
-        user=request.user,
-        source_type=YQPointRecord.SourceType.CONSUMPTION,
-    ).order_by("-time")
-
-    # 新版侧边栏, 顶栏等的呈现，采用 bar_display, 必须放在render前最后一步
-    bar_display = utils.get_sidebar_and_navbar(request.user, "我的元气值")
-    return render(request, "myYQPoint.html", locals())
-
-
-@login_required(redirect_field_name="origin")
-@utils.check_user_access(redirect_url="/logout/")
-@logger.secure_view()
-def myPrize(request: HttpRequest):
-    _, user_type, html_display = utils.check_user_type(request.user)
-    # 获取可能的提示信息
-    my_messages.transfer_message_context(request.GET, html_display)
-
-    lottery_set = PoolRecord.objects.filter(
-        user=request.user,
-        pool__type=Pool.Type.LOTTERY,
-        status__in=[
-            PoolRecord.Status.LOTTERING, 
-            PoolRecord.Status.NOT_LUCKY,
-            PoolRecord.Status.UN_REDEEM],
-    ).order_by("-time")
-
-    exchange_set = PoolRecord.objects.filter(
-        user=request.user,
-        status__in=[
-            PoolRecord.Status.UN_REDEEM,
-            PoolRecord.Status.REDEEMED, 
-            PoolRecord.Status.OVERDUE],
-    ).order_by("-status", "-time")
-
-    # 新版侧边栏, 顶栏等的呈现，采用 bar_display, 必须放在render前最后一步
-    bar_display = utils.get_sidebar_and_navbar(request.user, "我的奖品")
-    return render(request, "myPrize.html", locals())
-
-
-@login_required(redirect_field_name="origin")
-@utils.check_user_access(redirect_url="/logout/")
-@logger.secure_view()
-def showPools(request: HttpRequest) -> HttpResponse:
+def showPools(request: UserRequest) -> HttpResponse:
     """
     展示各种奖池的页面，可以通过POST请求发起兑换/抽奖/买盲盒
 
@@ -91,8 +90,7 @@ def showPools(request: HttpRequest) -> HttpResponse:
     :return
     :rtype: HttpResponse
     """
-    _, user_type, _ = check_user_type(request.user)
-    if user_type == UTYPE_ORG:
+    if request.user.is_org():
         return redirect(message_url(wrong("只有个人账号可以进入此页面！")))
 
     frontend_dict = {"exchange_pools_info": {},

@@ -39,8 +39,8 @@ def viewFeedback(request: HttpRequest, fid):
     except:
         return redirect(message_url(wrong("反馈不存在！"), '/feedback/'))
 
-    _, user_type, html_display = utils.check_user_type(request.user)
-    me = utils.get_person_or_org(request.user, user_type)
+    html_display = {}
+    me = utils.get_person_or_org(request.user)
 
     # 获取前端页面中可能存在的提示
     my_messages.transfer_message_context(request.GET, html_display)
@@ -57,13 +57,13 @@ def viewFeedback(request: HttpRequest, fid):
                 return redirect(message_url(wrong("已结束的反馈不能评论！"), request.path))
             anonymous = False
             # 确定通知消息的发送人，互相发送给对方
-            if user_type == UTYPE_PER and feedback.person == me:
+            if request.user.is_person() and feedback.person == me:
                 receiver = feedback.org.get_user()
                 anonymous = True
-            elif user_type == UTYPE_ORG and feedback.org == me:
+            elif request.user.is_org() and feedback.org == me:
                 receiver = feedback.person.person_id
             # 老师可以评论，给双方发送通知消息
-            elif user_type == UTYPE_PER and me.is_teacher():
+            elif request.user.is_person() and me.is_teacher():
                 receiver = [
                     feedback.org.get_user(),
                     feedback.person.person_id,
@@ -87,7 +87,7 @@ def viewFeedback(request: HttpRequest, fid):
         # 只有已读条目才可以进行后续的修改
         if feedback.read_status == Feedback.ReadStatus.UNREAD:
             # 只有组织可以修改已读状态
-            if user_type == UTYPE_ORG and feedback.org == me:
+            if request.user.is_org() and feedback.org == me:
                 if read != "read":
                     return redirect(message_url(wrong("必须先设置为已读！"), request.path))
                 with transaction.atomic():
@@ -114,7 +114,7 @@ def viewFeedback(request: HttpRequest, fid):
         # 只有已读条目才可以修改解决状态；只有已解决/无法解决的条目才可以修改后续状态
         if feedback.solve_status == Feedback.SolveStatus.SOLVING:
             # 只有组织可以修改解决状态
-            if user_type == UTYPE_ORG and feedback.org == me:
+            if request.user.is_org() and feedback.org == me:
                 # 只有已读条目才可以修改解决状态：
                 if feedback.read_status != Feedback.ReadStatus.READ:
                     return redirect(message_url(wrong("只有已读反馈可以修改解决状态！"), request.path))
@@ -144,7 +144,7 @@ def viewFeedback(request: HttpRequest, fid):
         feedback = Feedback.objects.get(id=fid)
         if public == "public":
             # 组织选择公开反馈
-            if user_type == UTYPE_ORG and feedback.org == me:
+            if request.user.is_org() and feedback.org == me:
                 # 只有完成的反馈可以公开。另外组织已公开的反馈必然已完成
                 if feedback.solve_status in [
                     Feedback.SolveStatus.SOLVING,
@@ -176,7 +176,7 @@ def viewFeedback(request: HttpRequest, fid):
                     examine_notification(feedback)
 
             # 发布者（个人）选择公开反馈
-            elif user_type == UTYPE_PER and feedback.person == me:
+            elif request.user.is_person() and feedback.person == me:
                 # 若老师不予公开，则不允许修改
                 if feedback.public_status == Feedback.PublicStatus.FORCE_PRIVATE:
                     return redirect(message_url(wrong("审核教师已设置不予公开！"), request.path))
@@ -192,7 +192,7 @@ def viewFeedback(request: HttpRequest, fid):
 
             # 教师选择公开反馈
             elif (
-                user_type == UTYPE_PER and me.is_teacher()
+                request.user.is_person() and me.is_teacher()
             ):
                 # 若组织或发布者有不公开的意愿，则教师不能公开
                 if (feedback.publisher_public != True or feedback.org_public != True):
@@ -213,7 +213,7 @@ def viewFeedback(request: HttpRequest, fid):
             else:
                 return redirect(message_url(wrong("没有公开该反馈的权限！"), request.path))
         else:
-            if user_type == UTYPE_ORG and feedback.org == me:
+            if request.user.is_org() and feedback.org == me:
                 # 修改组织公开状态
                 with transaction.atomic():
                     feedback = Feedback.objects.select_for_update().get(id=fid)
@@ -230,7 +230,7 @@ def viewFeedback(request: HttpRequest, fid):
         if public == "private":
             # 小组和个人公开反馈后，暂不允许恢复隐藏状态
             # 组织选择隐藏反馈
-            if user_type == UTYPE_ORG and feedback.org == me:
+            if request.user.is_org() and feedback.org == me:
                 pass
                 """ # 小组已公开不允许恢复隐藏，因此不采取任何操作
                 with transaction.atomic():
@@ -242,7 +242,7 @@ def viewFeedback(request: HttpRequest, fid):
                     feedback.save()
                 """
             # 发布者（个人）选择隐藏反馈
-            elif user_type == UTYPE_PER and feedback.person == me:
+            elif request.user.is_person() and feedback.person == me:
                 pass
                 """ # 发布者已公开不允许恢复隐藏，因此不采取任何操作
                 with transaction.atomic():
@@ -255,7 +255,7 @@ def viewFeedback(request: HttpRequest, fid):
                 """
             # 教师选择隐藏反馈
             elif (
-                user_type == UTYPE_PER and me.is_teacher()
+                request.user.is_person() and me.is_teacher()
             ):
                 with transaction.atomic():
                     feedback = Feedback.objects.select_for_update().get(id=fid)
@@ -299,7 +299,7 @@ def viewFeedback(request: HttpRequest, fid):
     cancel_editable = False  # 不允许修改反馈标题和反馈内容
     form_editable = False
     # 一、当前登录用户为发布者
-    if user_type == UTYPE_PER and feedback.person == me:
+    if request.user.is_person() and feedback.person == me:
         login_identity = "publisher"
         # 未结束反馈发布者可评论，可撤销
         if feedback.solve_status in (Feedback.SolveStatus.SOLVING, Feedback.SolveStatus.UNMARKED) \
@@ -312,7 +312,7 @@ def viewFeedback(request: HttpRequest, fid):
             and feedback.issue_status != Feedback.IssueStatus.DELETED:
             public_editable = True
     # 二、当前登录用户为老师
-    elif user_type == UTYPE_PER and me.is_teacher():
+    elif request.user.is_person() and me.is_teacher():
         login_identity = "teacher"
         # 未结束反馈可评论
         if feedback.solve_status in (Feedback.SolveStatus.SOLVING, Feedback.SolveStatus.UNMARKED) \
@@ -329,7 +329,7 @@ def viewFeedback(request: HttpRequest, fid):
             and feedback.issue_status != Feedback.IssueStatus.DELETED:
             commentable = True
     # 三、当前登录用户为发布者和老师以外的个人
-    elif user_type == UTYPE_PER:
+    elif request.user.is_person():
         # 检查当前个人是否具有访问权限，只有公开反馈有访问权限
         if feedback.public_status == Feedback.PublicStatus.PUBLIC \
             and feedback.issue_status != Feedback.IssueStatus.DELETED:
@@ -341,7 +341,7 @@ def viewFeedback(request: HttpRequest, fid):
                 return redirect(message_url(login_context, request.path))
             return redirect(message_url(wrong("该反馈尚未公开，没有访问该反馈的权限！"), '/feedback/'))
     # 四、当前登录用户为受反馈小组
-    elif user_type == UTYPE_ORG and feedback.org == me:
+    elif request.user.is_org() and feedback.org == me:
         login_identity = "org"
         # 未读反馈可修改未为已读
         if feedback.read_status == Feedback.ReadStatus.UNREAD \
@@ -374,9 +374,9 @@ def viewFeedback(request: HttpRequest, fid):
 @utils.check_user_access(redirect_url="/logout/")
 @logger.secure_view()
 def feedbackWelcome(request: HttpRequest):
-    _, user_type, html_display = utils.check_user_type(request.user)
-    is_person = user_type == UTYPE_PER
-    me = get_person_or_org(request.user, user_type)
+    html_display = {}
+    is_person = request.user.is_person()
+    me = get_person_or_org(request.user)
 
     if 'argue' in request.GET.keys() and request.session.has_key('feedback_type'):
         if not request.session.has_key('feedback_url'):
@@ -411,7 +411,7 @@ def feedbackWelcome(request: HttpRequest):
 
     # 是否显示我的反馈
     show_feedback = True
-    if user_type == UTYPE_PER:
+    if request.user.is_person():
         # 教师页面不显示我的反馈
         if me.is_teacher():
             show_feedback = False
@@ -542,7 +542,7 @@ def modifyFeedback(request: HttpRequest):
     '''
     反馈表单填写、修改与提交的视图函数
     '''
-    _, user_type, html_display = utils.check_user_type(request.user)
+    html_display = {}
     me = get_person_or_org(request.user)
 
     # 设置feedback为None, 如果非None则自动覆盖

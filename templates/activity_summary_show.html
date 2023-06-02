@@ -1,3 +1,6 @@
+{% comment %}
+# XXX: User {{ .is_org }}
+{% endcomment %}
 {% extends "base.html" %}
 
 {% block add_css_file %}
@@ -37,7 +40,7 @@
                 <div class="col-lg-12 col-12 layout-top-spacing">
                     <div class="bio layout-spacing ">
                         <div class="widget-content widget-content-area">
-                            {% if user_type == "Organization" %}
+                            {% if user.is_org %}
                             <div class="d-flex justify-content-between">
                             <h3 class= "">{{title}}</h3>
                             <!-- <div class="col-12">

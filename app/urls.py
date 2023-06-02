@@ -24,29 +24,20 @@ from app import (
 
 # 尽量不使用<type:arg>, 不支持
 urlpatterns = [
-    # 登录和验证
-    path("", views.IndexView.as_view(), name=""),
-    path("index/", views.IndexView.as_view(), name="index"),
-    path("login/", views.IndexView.as_view(), name="login"),
     # path("requestLoginOrg/", views.requestLoginOrg, name="requestLoginOrg"), # 已废弃
-    # path("requestLoginOrg/<str:name>", views.requestLoginOrg, name="requestLoginOrg"),
     path("welcome/", views.homepage, name="welcome"),
     path("freshman/", views.freshman, name="freshman"),
     path("register/", views.authRegister, name="register"),
     path("agreement/", views.userAgreement, name="userAgreement"),
-    path("logout/", views.logout, name="logout"),
     path("shiftAccount/", views.shiftAccount, name="shiftAccount"),
     # path("org/", views.org, name="org"),
     path("forgetpw/", views.forgetPassword, name="forgetpw"),
     path("modpw/", views.modpw, name="modpw"),
     path("minilogin", views.miniLogin, name="minilogin"),
-    path("getStuImg", views.get_stu_img, name="get_stu_img"),
 ] + [
     # 用户画像和互动
     path("stuinfo/", views.stuinfo, name="stuinfo"),
     path("orginfo/", views.orginfo, name="orginfo"),
-    # path("stuinfo/<str:name>", views.stuinfo, name="stuinfo"),
-    # path("orginfo/<str:name>", views.orginfo, name="orginfo"),
     path("userAccountSetting/", views.accountSetting, name="userAccountSetting"),
     path("notifications/", views.notifications, name="notifications"),
     path("search/", views.search, name="search"),
@@ -125,7 +116,7 @@ urlpatterns = [
     path("rateAnswer/", chat_api.RateAnswer.as_view(), name="rateAnswer")
 ] + [
     # 元气值
-    path("myYQPoint/", YQPoint_views.myYQPoint, name="myYQPoint"),
+    path("myYQPoint/", YQPoint_views.myYQPoint.as_view(), name="myYQPoint"),
     path("showPools/", YQPoint_views.showPools, name="showPools"),
-    path("myPrize/", YQPoint_views.myPrize, name="myPrize"),
+    path("myPrize/", YQPoint_views.myPrize.as_view(), name="myPrize"),
 ]

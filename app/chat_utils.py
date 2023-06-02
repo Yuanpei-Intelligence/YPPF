@@ -16,11 +16,10 @@ from app.models import (
     AcademicQAAwards,
 )
 from app.comment_utils import addComment
-from app.utils import check_user_type
 
 __all__ = [
     'change_chat_status',
-    'select_from_keywords',
+    'select_by_keywords',
     'create_QA',
     'add_comment_to_QA',
     'modify_rating',
@@ -123,9 +122,7 @@ def create_chat(
         return None, wrong("对方不允许匿名提问！")
 
     # 目前提问方回答方都需要是自然人
-    _, questioner_type, _ = check_user_type(request.user)
-    _, respondent_type, _ = check_user_type(respondent)
-    if questioner_type != UTYPE_PER or respondent_type != UTYPE_PER:
+    if not request.user.is_person() or not respondent.is_person():
         return None, wrong("目前只允许个人用户进行问答！")
 
     if len(title) > 50:  # Chat.title的max_length为50

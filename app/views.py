@@ -1,7 +1,6 @@
 import json
 import random
 import requests
-from typing import Optional, cast
 from datetime import datetime, timedelta
 
 from django.contrib import auth
@@ -57,97 +56,6 @@ from app.academic_utils import (
     get_search_results,
 )
 
-
-
-class IndexView(SecureTemplateView):
-
-    login_required = False
-    template_name = 'index.html'
-
-    def dispatch_prepare(self, method: str) -> SecureView.HandlerType:
-        match method:
-            case 'get':
-                return (self.user_get
-                        if self.request.user.is_authenticated else
-                        self.visitor_get)
-            case 'post':
-                return self.prepare_login()
-            case _:
-                return self.default_prepare(method)
-
-    def visitor_get(self) -> HttpResponse:
-        # Modify password
-        # Seems that after modification, log out by default?
-        if self.request.GET.get('modinfo') is not None:
-            succeed("修改密码成功!", self.extra_context)
-        return self.render()
-
-    def user_get(self) -> HttpResponse:
-        self.request = cast(UserRequest, self.request)
-        # Special user
-        self.valid_user_check(self.request.user)
-
-        # Logout
-        if self.request.GET.get('is_logout') is not None:
-            auth.logout(self.request)
-            return self.render()
-
-        return self.redirect('welcome')
-
-    def valid_user_check(self, user: User):
-        # Special user
-        if not user.is_valid():
-            self.permission_denied(
-                f'“{user.get_full_name()}”不存在成长档案，您可以登录其他账号'
-            )
-
-    def prepare_login(self) -> SecureView.HandlerType:
-        assert 'username' in self.request.POST
-        assert 'password' in self.request.POST
-        _user = self.request.user
-        assert not _user.is_authenticated or not cast(User, _user).is_valid()
-        username = self.request.POST['username']
-        # Check weather username exists
-        if not User.objects.filter(username=username).exists():
-            # Allow org to login with orgname
-            org = Organization.objects.filter(oname=username).first()
-            if org is None:
-                return self.wrong('用户名不存在')
-            username = org.get_user().username
-        self.username = username
-        self.password = self.request.POST['password']
-        return self.login
-
-    def login(self) -> HttpResponse:
-        # Try login
-        userinfo = auth.authenticate(username=self.username, password=self.password)
-        if userinfo is None:
-            return self.wrong('密码错误')
-
-        # special user
-        auth.login(self.request, userinfo)
-        self.request = cast(UserRequest, self.request)
-        self.valid_user_check(self.request.user)
-
-        # first time login
-        if self.request.user.first_time_login:
-            return self.redirect('modpw')
-
-        # Related account
-        # When login as np, related org accout is also available
-        update_related_account_in_session(self.request, self.username)
-
-        # If origin is present and valid, redirect
-        # Otherwise, redirect to welcome page
-        origin = self.request.GET.get('origin')
-        if origin and self._is_origin_safe(self.request, origin):
-            return self.redirect(origin)
-        else:
-            return self.redirect('welcome')
-
-    def _is_origin_safe(self, request: HttpRequest,
-                         origin: Optional[str] = None) -> bool:
-        return origin is None or origin.startswith('/')
 
 
 @login_required(redirect_field_name="origin")
@@ -207,7 +115,7 @@ def miniLogin(request: HttpRequest):
 @login_required(redirect_field_name="origin")
 @utils.check_user_access(redirect_url="/logout/")
 @logger.secure_view()
-def stuinfo(request: HttpRequest, name=None):
+def stuinfo(request: UserRequest):
     """
         进入到这里的逻辑:
         首先必须登录，并且不是超级账户
@@ -224,18 +132,16 @@ def stuinfo(request: HttpRequest, name=None):
                 那么期望有一个"+"在name中，如果搜不到就跳转到Search/?Query=name让他跳转去
     """
 
-    user = request.user
-    _, user_type, html_display = utils.check_user_type(request.user)
+    html_display = {}
 
-    oneself = get_person_or_org(user, user_type)
+    oneself = get_person_or_org(request.user)
 
+    name = request.GET.get('name', None)
     if name is None:
-        name = request.GET.get('name', None)
-    if name is None:
-        if user_type == UTYPE_ORG:
+        if request.user.is_org():
             return redirect("/orginfo/")  # 小组只能指定学生姓名访问
         else:  # 跳轉到自己的頁面
-            assert user_type == UTYPE_PER
+            assert request.user.is_person()
             return redirect(append_query(oneself.get_absolute_url(), **request.GET.dict()))
     else:
         # 先对可能的加号做处理
@@ -248,7 +154,7 @@ def stuinfo(request: HttpRequest, name=None):
             person = person[0]
         else:  # 有很多人，这时候假设加号后面的是user的id
             if len(name_list) == 1:  # 没有任何后缀信息，那么如果是自己则跳转主页，否则跳转搜索
-                if user_type == UTYPE_PER and oneself.name == name:
+                if request.user.is_person() and oneself.name == name:
                     person = oneself
                 else:  # 不是自己，信息不全跳转搜索
                     return redirect("/search?Query=" + name)
@@ -261,7 +167,7 @@ def stuinfo(request: HttpRequest, name=None):
                 assert potential_person in person
                 person = potential_person
 
-        is_myself = user_type == UTYPE_PER and person.person_id == user  # 用一个字段储存是否是自己
+        is_myself = request.user.is_person() and person.get_user() == request.user
         html_display["is_myself"] = is_myself  # 存入显示
         inform_share, alert_message = utils.get_inform_share(
             me=person, is_myself=is_myself)
@@ -287,13 +193,13 @@ def stuinfo(request: HttpRequest, name=None):
         )  # ta属于的小组
         oneself_orgs = (
             [oneself]
-            if user_type == UTYPE_ORG
+            if request.user.is_org()
             else Position.objects.activated().filter(
                 Q(person=oneself) & Q(show_post=True)
             )
         )
         oneself_orgs_id = [
-            oneself.id] if user_type == UTYPE_ORG else oneself_orgs.values("org")  # 自己的小组
+            oneself.id] if request.user.is_org() else oneself_orgs.values("org")  # 自己的小组
 
         # 当前管理的小组
         person_owned_poss = person_poss.filter(
@@ -482,7 +388,7 @@ def stuinfo(request: HttpRequest, name=None):
             Q(id__in=participants.values("activity_id")),
             # ~Q(status=Activity.Status.CANCELED), # 暂时可以呈现已取消的活动
         )
-        if user_type == UTYPE_PER:
+        if request.user.is_person():
             # 因为上面筛选过活动，这里就不用筛选了
             # 之前那个写法是O(nm)的
             activities_me = Participant.objects.activated().filter(person_id=oneself)
@@ -521,8 +427,7 @@ def stuinfo(request: HttpRequest, name=None):
 
         modpw_status = request.GET.get("modinfo", None)
         if modpw_status is not None and modpw_status == "success":
-            html_display["warn_code"] = 2
-            html_display["warn_message"] = "修改个人信息成功!"
+            succeed("修改个人信息成功!", html_display)
 
         # ----------------------------------- 学术地图 ----------------------------------- #
         # ------------------ 提问区 or 进行中的问答------------------ #
@@ -537,8 +442,7 @@ def stuinfo(request: HttpRequest, name=None):
         else:  # 没有进行中的问答，显示提问区
             html_display["have_progressing_chat"] = False
             html_display["accept_chat"] = person.get_user().accept_chat
-            html_display["accept_anonymous"] = person.get_user(
-            ).accept_anonymous_chat
+            html_display["accept_anonymous"] = person.get_user().accept_anonymous_chat
 
         # 存储被查询人的信息
         context = dict()
@@ -549,7 +453,7 @@ def stuinfo(request: HttpRequest, name=None):
             {0: "他", 1: "她"}.get(person.gender, 'Ta') if person.show_gender else "Ta")
 
         context["avatar_path"] = person.get_user_ava()
-        context["wallpaper_path"] = utils.get_user_wallpaper(person, UTYPE_PER)
+        context["wallpaper_path"] = utils.get_user_wallpaper(person)
 
         # 新版侧边栏, 顶栏等的呈现，采用 bar_display
         bar_display = utils.get_sidebar_and_navbar(
@@ -573,7 +477,7 @@ def stuinfo(request: HttpRequest, name=None):
         status_in = None
         if is_myself:
             academic_params["user_type"] = "author"
-        elif user_type == UTYPE_PER and oneself.is_teacher():
+        elif request.user.is_person() and oneself.is_teacher():
             academic_params["user_type"] = "inspector"
             status_in = ['public', 'wait_audit']
         else:
@@ -666,79 +570,65 @@ def stuinfo(request: HttpRequest, name=None):
         )
         academic_params.update(status_dict)
 
-        return render(request, "stuinfo.html", locals())
+        return render(request, "stuinfo.html", locals() | dict(user=request.user))
 
 
 @login_required(redirect_field_name="origin")
 @utils.check_user_access(redirect_url="/logout/")
 @logger.secure_view()
-def requestLoginOrg(request: HttpRequest, name=None):  # 特指个人希望通过个人账户登入小组账户的逻辑
+def requestLoginOrg(request: UserRequest):
     """
         这个函数的逻辑是，个人账户点击左侧的管理小组直接跳转登录到小组账户
         首先检查登录的user是个人账户，否则直接跳转orginfo
         如果个人账户对应的是name对应的小组的最高权限人，那么允许登录，否则跳转回stuinfo并warning
     """
-    user = request.user
-    _, user_type, html_display = utils.check_user_type(request.user)
-
-    if user_type == UTYPE_ORG:
+    if request.user.is_org():
         return redirect("/orginfo/")
     try:
-        me = NaturalPerson.objects.activated().get(person_id=user)
+        me = NaturalPerson.objects.activated().get(person_id=request.user)
     except:  # 找不到合法的用户
         return redirect(message_url(wrong('用户不存在!')))
-    if name is None:  # 个人登录未指定登入小组,属于不合法行为,弹回欢迎
-        name = request.GET.get('name', None)
+    name = request.GET.get('name')
     if name is None:  # 个人登录未指定登入小组,属于不合法行为,弹回欢迎
         return redirect(message_url(wrong('无效的小组信息!')))
-    else:  # 确认有无这个小组
-        try:
-            org: Organization = Organization.objects.get(oname=name)
-        except:  # 找不到对应小组
-            urls = "/stuinfo/?name=" + me.name + "&warn_code=1&warn_message=找不到对应小组,请联系管理员!"
-            return redirect(urls)
-        try:
-            position = Position.objects.activated().filter(org=org, person=me)
-            assert len(position) == 1
-            position = position[0]
-            assert position.is_admin == True
-        except:
-            urls = "/stuinfo/?name=" + me.name + "&warn_code=1&warn_message=没有登录到该小组账户的权限!"
-            return redirect(urls)
-        # 到这里,是本人小组并且有权限登录
-        auth.logout(request)
-        auth.login(request, org.get_user())  # 切换到小组账号
-        utils.update_related_account_in_session(
-            request, user.username, oname=org.oname)
-        if user.first_time_login:
-            return redirect("/modpw/")
-        return redirect("/orginfo/?warn_code=2&warn_message=成功切换到"+str(org)+"的账号!")
+    # 确认有无这个小组
+    try:
+        org: Organization = Organization.objects.get(oname=name)
+    except:  # 找不到对应小组
+        return redirect(message_url(wrong('找不到对应小组,请联系管理员!'),
+                                    me.get_absolute_url()))
+    try:
+        position = Position.objects.activated().filter(org=org, person=me)
+        assert len(position) == 1
+        position = position[0]
+        assert position.is_admin == True
+    except:
+        return redirect(message_url(wrong('没有登录到该小组账户的权限!'),
+                                    me.get_absolute_url()))
+    # 到这里,是本人小组并且有权限登录
+    auth.logout(request)
+    auth.login(request, org.get_user())  # 切换到小组账号
+    update_related_account_in_session(
+        request, request.user.username, oname=org.oname)
+    return redirect(message_url(succeed(f'成功切换到{org}的账号!'), '/orginfo/'))
 
 
 @login_required(redirect_field_name="origin")
 @utils.check_user_access(redirect_url="/logout/")
 @logger.secure_view()
-def orginfo(request: HttpRequest, name=None):
+def orginfo(request: UserRequest):
     """
         orginfo负责呈现小组主页，逻辑和stuinfo是一样的，可以参考
         只区分自然人和法人，不区分自然人里的负责人和非负责人。任何自然人看这个小组界面都是【不可管理/编辑小组信息】
     """
-    user = request.user
-    valid, user_type, html_display = utils.check_user_type(request.user)
+    me = get_person_or_org(request.user)
 
-    if not valid:
-        return redirect("/logout/")
-
-    me = get_person_or_org(user, user_type)
-
-    if name is None:
-        name = request.GET.get('name', None)
-
+    name = request.GET.get('name', None)
     if name is None:  # 此时登陆的必需是法人账号，如果是自然人，则跳转welcome
-        if user_type == UTYPE_PER:
+        if request.user.is_person():
             return redirect(message_url(wrong('个人账号不能登陆小组主页!')))
         try:
-            org = Organization.objects.activated().get(organization_id=user)
+            org = Organization.objects.activated().get(organization_id=request.user)
         except:
             return redirect(message_url(wrong('用户小组不存在或已经失效!')))
 
@@ -746,7 +636,7 @@ def orginfo(request: HttpRequest, name=None):
         append_url = "" if ("?" not in full_path) else "&" + \
             full_path.split("?")[1]
 
-        return redirect("/orginfo/?name=" + org.oname + append_url)
+        return redirect(org.get_absolute_url() + append_url)
 
     try:  # 指定名字访问小组账号的，可以是自然人也可以是法人。在html里要注意区分！
 
@@ -759,8 +649,9 @@ def orginfo(request: HttpRequest, name=None):
         return redirect(message_url(wrong('该小组不存在!')))
 
     # 判断是否为小组账户本身在登录
+    html_display = {}
     html_display["is_myself"] = me == org
-    html_display["is_person"] = user_type == UTYPE_PER
+    html_display["is_person"] = request.user.is_person()
     html_display["is_course"] = (
         Course.objects.activated().filter(organization=org).exists()
     )
@@ -770,7 +661,7 @@ def orginfo(request: HttpRequest, name=None):
     organization_name = name
     organization_type_name = org.otype.otype_name
     org_avatar_path = org.get_user_ava()
-    wallpaper_path = utils.get_user_wallpaper(org, UTYPE_ORG)
+    wallpaper_path = utils.get_user_wallpaper(org)
     # org的属性 information 不在此赘述，直接在前端调用
 
     # 给前端传递选课的参数
@@ -832,7 +723,7 @@ def orginfo(request: HttpRequest, name=None):
         dictmp["act"] = act
         dictmp["endbefore"] = act.start - \
             timedelta(hours=prepare_times[act.endbefore])
-        if user_type == UTYPE_PER:
+        if request.user.is_person():
 
             existlist = Participant.objects.filter(activity_id_id=act.id).filter(
                 person_id_id=me.id
@@ -850,7 +741,7 @@ def orginfo(request: HttpRequest, name=None):
         dictmp["act"] = act
         dictmp["endbefore"] = act.start - \
             timedelta(hours=prepare_times[act.endbefore])
-        if user_type == UTYPE_PER:
+        if request.user.is_person():
             existlist = Participant.objects.filter(activity_id_id=act.id).filter(
                 person_id_id=me.id
             )
@@ -867,7 +758,7 @@ def orginfo(request: HttpRequest, name=None):
         dictmp["act"] = act
         dictmp["endbefore"] = act.start - \
             timedelta(hours=prepare_times[act.endbefore])
-        if user_type == UTYPE_PER:
+        if request.user.is_person():
             existlist = Participant.objects.filter(activity_id_id=act.id).filter(
                 person_id_id=me.id
             )
@@ -884,7 +775,7 @@ def orginfo(request: HttpRequest, name=None):
     positions = Position.objects.activated().filter(org=org).order_by("pos")  # 升序
     member_list = []
     for p in positions:
-        if p.person.person_id == user and p.pos == 0:
+        if p.person.person_id == request.user and p.pos == 0:
             html_display["isboss"] = True
         if p.show_post == True or p.pos == 0 or html_display["is_myself"]:
             member = {}
@@ -894,8 +785,7 @@ def orginfo(request: HttpRequest, name=None):
             member["job"] = org.otype.get_name(p.pos)
             member["highest"] = True if p.pos == 0 else False
 
-            member["avatar_path"] = utils.get_user_ava(
-                member["person"], UTYPE_PER)
+            member["avatar_path"] = p.person.get_user_ava()
 
             member_list.append(member)
 
@@ -929,7 +819,7 @@ def orginfo(request: HttpRequest, name=None):
 
     # 补充订阅该小组的按钮
     allow_unsubscribe = org.otype.allow_unsubscribe  # 是否允许取关
-    is_person = user_type == UTYPE_PER
+    is_person = request.user.is_person()
     if is_person:
         subscribe_flag = True if (
             organization_name not in me.unsubscribe_list.values_list("oname", flat=True)) \
@@ -937,7 +827,7 @@ def orginfo(request: HttpRequest, name=None):
 
     # 补充作为小组成员，选择是否展示的按钮
     show_post_change_button = False     # 前端展示“是否不展示我自己”的按钮，若为True则渲染这个按钮
-    if user_type == UTYPE_PER:
+    if request.user.is_person():
         my_position = Position.objects.activated().filter(
             org=org, person=me).exclude(is_admin=True)
         if len(my_position):
@@ -953,17 +843,16 @@ def orginfo(request: HttpRequest, name=None):
         visit_times=F('visit_times')+1)
     # org.visit_times += 1
     # org.save()
-    return render(request, "orginfo.html", locals())
+    return render(request, "orginfo.html", locals() | dict(user=request.user))
 
 
 @login_required(redirect_field_name="origin")
 @utils.check_user_access(redirect_url="/logout/")
 @logger.secure_view()
 def homepage(request: HttpRequest):
-    _, user_type, html_display = utils.check_user_type(request.user)
-    is_person = user_type == UTYPE_PER
-    me = get_person_or_org(request.user, user_type)
+    is_person = request.user.is_person()
 
+    html_display = {}
     html_display["is_myself"] = True
 
     try:
@@ -1089,9 +978,13 @@ def homepage(request: HttpRequest):
     # -----------------------------天气---------------------------------
     # TODO: Put get_weather somewhere else
     from app.jobs import get_weather
-    html_display['weather'] = get_weather()
-    update_time_delta = datetime.now() - datetime.strptime(
-        html_display["weather"]["modify_time"],'%Y-%m-%d %H:%M:%S.%f')
+    _weather = get_weather()
+    if _weather.get('modify_time') is None:
+        update_time_delta = timedelta(0)
+    else:
+        update_time_delta = datetime.now() - datetime.strptime(
+            _weather['modify_time'],'%Y-%m-%d %H:%M:%S.%f')
+    html_display['weather'] = _weather
     # 根据更新时间长短，展示不同的更新天气时间状态
     def days_hours_minutes_seconds(td):
         return td.days, td.seconds // 3600, (td.seconds // 60) % 60, td.seconds % 60
@@ -1117,14 +1010,14 @@ def homepage(request: HttpRequest):
 @login_required(redirect_field_name="origin")
 @utils.check_user_access(redirect_url="/logout/")
 @logger.secure_view()
-def accountSetting(request: HttpRequest):
-    _, user_type, html_display = utils.check_user_type(request.user)
+def accountSetting(request: UserRequest):
+    html_display = {}
 
     # 在这个页面 默认回归为自己的左边栏
     html_display["is_myself"] = True
     user = request.user
-    me = get_person_or_org(user, user_type)
-    former_img = utils.get_user_ava(me, user_type)
+    me = get_person_or_org(request.user)
+    former_img = utils.get_user_ava(me)
 
     # 补充网页呈现所需信息
     # 新版侧边栏, 顶栏等的呈现，采用 bar_display, 必须放在render前最后一步
@@ -1132,20 +1025,19 @@ def accountSetting(request: HttpRequest):
     # bar_display["title_name"] = "Account Setting"
     # bar_display["navbar_name"] = "账户设置"
 
-    if user_type == UTYPE_PER:
-        info = NaturalPerson.objects.filter(person_id=user)
+    if request.user.is_person():
+        info = NaturalPerson.objects.filter(person_id=request.user)
         userinfo = info.values()[0]
 
-        useroj = NaturalPerson.objects.get(person_id=user)
+        useroj = NaturalPerson.objects.get(person_id=request.user)
 
-        former_wallpaper = utils.get_user_wallpaper(me, UTYPE_PER)
+        former_wallpaper = utils.get_user_wallpaper(me)
 
         # print(json.loads(request.body.decode("utf-8")))
         if request.method == "POST" and request.POST:
 
             # 合法性检查
-            attr_dict, show_dict, html_display = utils.check_account_setting(
-                request, user_type)
+            attr_dict, show_dict, html_display = utils.check_account_setting(request)
             attr_check_list = [attr for attr in attr_dict.keys() if attr not in [
                 'gender', 'ava', 'wallpaper', 'accept_promote', 'wechat_receive_level']]
             if html_display['warn_code'] == 1:
@@ -1207,7 +1099,7 @@ def accountSetting(request: HttpRequest):
         userinfo = info.values()[0]
 
         useroj = Organization.objects.get(organization_id=user)
-        former_wallpaper = utils.get_user_wallpaper(me, UTYPE_ORG)
+        former_wallpaper = utils.get_user_wallpaper(me)
         org_tags = list(useroj.tags.all())
         all_tags = list(OrganizationTag.objects.all())
         if request.method == "POST" and request.POST:
@@ -1215,8 +1107,7 @@ def accountSetting(request: HttpRequest):
             ava = request.FILES.get("avatar")
             wallpaper = request.FILES.get("wallpaper")
             # 合法性检查
-            attr_dict, show_dict, html_display = utils.check_account_setting(
-                request, user_type)
+            attr_dict, show_dict, html_display = utils.check_account_setting(request)
             attr_check_list = [attr for attr in attr_dict.keys()]
             if html_display['warn_code'] == 1:
                 return render(request, "person_account_setting.html", locals())
@@ -1316,7 +1207,7 @@ def freshman(request: HttpRequest):
 
     if request.GET.get("success") is not None:
         alert = request.GET.get("alert")
-        return render(request, "registerSuccess.html", locals())
+        return render(request, "registerSuccess.html", dict(alert=alert))
 
     # 选择生源地列表，前端使用量
     address_set = set(Freshman.objects.all().values_list("place", flat=True))
@@ -1431,10 +1322,9 @@ def freshman(request: HttpRequest):
 
 @login_required(redirect_field_name="origin")
 @logger.secure_view()
-def userAgreement(request: HttpRequest):
+def userAgreement(request: UserRequest):
     # 不要加check_user_access，因为本页面就是该包装器首次登录时的跳转页面之一
-    valid, user_type, html_display = utils.check_user_type(request.user)
-    if not valid:
+    if not request.user.is_valid():
         return redirect("/index/")
 
     if request.method == "POST":
@@ -1446,7 +1336,8 @@ def userAgreement(request: HttpRequest):
 
     # 新版侧边栏, 顶栏等的呈现，采用 bar_display, 必须放在render前最后一步
     bar_display = utils.get_sidebar_and_navbar(request.user, "用户须知")
-    return render(request, 'user_agreement.html', locals())
+    return render(request, 'user_agreement.html',
+                  dict(request=request, bar_display=bar_display))
 
 
 @logger.secure_view()
@@ -1503,25 +1394,6 @@ def authRegister(request: HttpRequest):
         return HttpResponseRedirect("/index/")
 
 
-@logger.secure_view()
-def logout(request: HttpRequest):
-    auth.logout(request)
-    return HttpResponseRedirect("/index/")
-
-
-@logger.secure_view()
-def get_stu_img(request: HttpRequest):
-    stuId = request.GET.get("stuId")
-    if stuId is not None:
-        try:
-            stu = NaturalPerson.objects.get(person_id__username=stuId)
-            img_path = stu.get_user_ava()
-            return JsonResponse({"path": img_path}, status=200)
-        except:
-            return JsonResponse({"message": "Image not found!"}, status=404)
-    return JsonResponse({"message": "User not found!"}, status=404)
-
-
 @login_required(redirect_field_name="origin")
 @utils.check_user_access(redirect_url="/logout/")
 @logger.secure_view()
@@ -1545,7 +1417,7 @@ def search(request: HttpRequest):
             搜索结果的呈现见activity_field
     """
 
-    _, user_type, html_display = utils.check_user_type(request.user)
+    html_display = {}
 
     query = request.GET.get("Query", "")
     if query == "":
@@ -1656,14 +1528,10 @@ def search(request: HttpRequest):
         info['sname'] = np.name
         academic_list.append((info, contents))
 
-    me = get_person_or_org(request.user, user_type)
     html_display["is_myself"] = True
 
     # 新版侧边栏, 顶栏等的呈现，采用 bar_display, 必须放在render前最后一步
     bar_display = utils.get_sidebar_and_navbar(request.user, "信息搜索")
-    # bar_display["title_name"] = "Search"
-    # bar_display["navbar_name"] = "信息搜索"  #
-
     return render(request, "search.html", locals())
 
 
@@ -1801,7 +1669,7 @@ def forgetPassword(request: HttpRequest):
                     display = wrong("验证码已过期，请重新发送")
                 elif str(vertify_code).upper() == captcha.upper():
                     auth.login(request, user)
-                    utils.update_related_account_in_session(
+                    update_related_account_in_session(
                         request, user.username)
                     utils.clear_captcha_session(request)
                     # request.session["username"] = username 已废弃
@@ -1813,31 +1681,11 @@ def forgetPassword(request: HttpRequest):
     return render(request, "forget_password.html", locals())
 
 
-class ModpwView(SecureTemplateView):
-    """Draft
-    """
-
-    template_name = 'modpw.html'
-
-    def check_perm(self, request: HttpRequest) -> HttpResponse | None:
-        response = super().check_perm(request)
-        if response is not None:
-            return response
-
-        if not request.user.is_valid(): # type: ignore
-            return redirect(reverse('index'))
-
-    def check_post(self, request: HttpRequest) -> HttpResponse | None:
-        return super().check_post(request)
-    
-    def post(self, request: HttpRequest) -> HttpResponse | None:
-        pass
-
 
 @login_required(redirect_field_name="origin")
 @utils.check_user_access(redirect_url="/logout/", is_modpw=True)
 @logger.secure_view()
-def modpw(request: HttpRequest):
+def modpw(request: UserRequest):
     """
         可能在三种情况进入这个页面：首次登陆；忘记密码；或者常规的修改密码。
         在忘记密码时，可以允许不输入旧的密码
@@ -1845,20 +1693,18 @@ def modpw(request: HttpRequest):
             以上两种情况都可以直接进行密码修改
         常规修改要审核旧的密码
     """
-    user: User = request.user # type: ignore
-    valid, _, html_display = utils.check_user_type(user)
-    if not valid:
-        return redirect("/index/")
-    isFirst = user.first_time_login
+    user = request.user
+    isFirst = request.user.is_newuser
     # 在其他界面，如果isFirst为真，会跳转到这个页面
     # 现在，请使用@utils.check_user_access(redirect_url)包装器完成用户检查
 
+    html_display = {}
     html_display["is_myself"] = True
 
     err_code = 0
     err_message = None
     forgetpw = request.session.get("forgetpw", "") == "yes"  # added by pht
-    username = user.username
+    username = request.user.username
 
     if request.method == "POST" and request.POST:
         oldpassword = request.POST["pw"]
@@ -1903,7 +1749,7 @@ def modpw(request: HttpRequest):
             if userauth:  # 可以修改
                 try:  # modified by pht: if检查是错误的，不存在时get会报错
                     user.set_password(newpw)
-                    user.first_time_login = False
+                    user.is_newuser = False
                     user.save()
 
                     if forgetpw:
@@ -1921,22 +1767,19 @@ def modpw(request: HttpRequest):
                 err_message = "原始密码不正确"
     # 新版侧边栏, 顶栏等的呈现，采用 bar_display, 必须放在render前最后一步
     bar_display = utils.get_sidebar_and_navbar(request.user, "修改密码")
-    # 补充一些呈现信息
-    # bar_display["title_name"] = "Modify Password"
-    # bar_display["navbar_name"] = "修改密码"
     return render(request, "modpw.html", locals())
 
 
 @login_required(redirect_field_name="origin")
 @utils.check_user_access(redirect_url="/logout/")
 @logger.secure_view()
-def subscribeOrganization(request: HttpRequest):
-    _, user_type, html_display = utils.check_user_type(request.user)
-    if user_type != UTYPE_PER:
+def subscribeOrganization(request: UserRequest):
+    html_display = {}
+    if not request.user.is_person():
         succeed('小组账号不支持订阅，您可以在此查看小组列表！', html_display)
         html_display.update(readonly=True)
 
-    me = get_person_or_org(request.user, user_type)
+    me = get_person_or_org(request.user)
     # orgava_list = [(org, utils.get_user_ava(org, UTYPE_ORG)) for org in org_list]
     otype_infos = [(
         otype,
@@ -1945,7 +1788,7 @@ def subscribeOrganization(request: HttpRequest):
     ) for otype in OrganizationType.objects.all().order_by('-otype_id')]
 
     # 获取不订阅列表（数据库里的是不订阅列表）
-    if user_type == UTYPE_PER:
+    if request.user.is_person():
         unsubscribe_set = set(me.unsubscribe_list.values_list(
             'organization_id__username', flat=True))
     else:
@@ -1955,7 +1798,7 @@ def subscribeOrganization(request: HttpRequest):
     # 新版侧边栏, 顶栏等的呈现，采用 bar_display, 必须放在render前最后一步
     # 小组暂且不使用订阅提示
     bar_display = utils.get_sidebar_and_navbar(
-        request.user, navbar_name='我的订阅' if user_type == UTYPE_PER else '小组一览')
+        request.user, navbar_name='我的订阅' if request.user.is_person() else '小组一览')
 
     # all_number = NaturalPerson.objects.activated().all().count()    # 人数全体 优化查询
     return render(request, "organization_subscribe.html", locals())
@@ -1964,12 +1807,11 @@ def subscribeOrganization(request: HttpRequest):
 @login_required(redirect_field_name="origin")
 @utils.check_user_access(redirect_url="/logout/")
 @logger.secure_view()
-def saveSubscribeStatus(request: HttpRequest):
-    _, user_type, html_display = utils.check_user_type(request.user)
-    if user_type != UTYPE_PER:
+def saveSubscribeStatus(request: UserRequest):
+    if not request.user.is_person():
         return JsonResponse({"success": False})
 
-    me = get_person_or_org(request.user, user_type)
+    me = get_person_or_org(request.user)
     params = json.loads(request.body.decode("utf-8"))
 
     with transaction.atomic():
@@ -2027,7 +1869,7 @@ def saveSubscribeStatus(request: HttpRequest):
 @utils.check_user_access(redirect_url="/logout/")
 @logger.secure_view()
 def notifications(request: HttpRequest):
-    _, user_type, html_display = utils.check_user_type(request.user)
+    html_display = {}
 
     # 处理GET一键阅读或错误信息
     if request.method == "GET" and request.GET:
@@ -2075,7 +1917,6 @@ def notifications(request: HttpRequest):
             wrong("删除通知的过程出现错误！请联系管理员。", html_display)
         return JsonResponse({"success": my_messages.get_warning(html_display)[0] == SUCCEED})
 
-    me = get_person_or_org(request.user, user_type)
     html_display["is_myself"] = True
 
     done_notifications = Notification.objects.activated().filter(
@@ -2092,3 +1933,4 @@ def notifications(request: HttpRequest):
     bar_display = utils.get_sidebar_and_navbar(request.user,
                                                navbar_name="通知信箱")
     return render(request, "notifications.html", locals())
+

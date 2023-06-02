@@ -29,67 +29,12 @@ views
 
 @Date 2022-01-17
 '''
-from django.contrib.auth.decorators import login_required
 from django.http import HttpResponseRedirect
-from django.shortcuts import render
 from django.views.decorators.http import require_POST, require_GET
 
 from utils.hasher import MySHA256Hasher
 import utils.global_messages as my_messages
-from utils.global_messages import (
-    wrong,
-    succeed,
-    message_url,
-    append_query,
-)
-from utils.http.dependency import *
-from utils.views import *
-from generic.models import User
+from utils.global_messages import append_query
 from app.config import *
 from app import utils
-from app.log import logger
-
-
-# 不应导出，接口内部使用
-from django.core.exceptions import ImproperlyConfigured as _ImproperlyConfigured
-from app.log import ProfileLogger as _ProfileLogger
-class ProfileTemplateView(SecureTemplateView):
-    request: UserRequest
-    PrepareType = SecureView.PrepareType | SecureView.NoReturnPrepareType | None
-
-    need_prepare: bool = True
-    logger_name: str = 'ProfileError'
-    page_name: str
-
-    def dispatch_prepare(self, method: str):
-        return self.default_prepare(method, return_needed=False,
-                                    prepare_needed=self.need_prepare)
-
-    def render(self, **kwargs):
-        if not hasattr(self, 'page_name'):
-            raise _ImproperlyConfigured('page_name is not defined!')
-        self.extra_context['bar_display'] = utils.get_sidebar_and_navbar(
-            self.request.user, self.page_name)
-        return super().render(**kwargs)
-
-    def get_logger(self):
-        return _ProfileLogger.getLogger(self.logger_name)
-
-
-class ProfileJsonView(SecureJsonView):
-    request: UserRequest
-    PrepareType = SecureView.PrepareType | SecureView.NoReturnPrepareType | None
-
-    need_prepare: bool = True
-    logger_name: str = 'ProfileAPIerror'
-
-    def dispatch_prepare(self, method: str):
-        return self.default_prepare(method, return_needed=False,
-                                    prepare_needed=self.need_prepare)
-
-    def json_response(self, extra_data = None, **kwargs):
-        _ProfileLogger.getLogger('recording').info('json_response')
-        return super().json_response(extra_data, **kwargs)
-
-    def get_logger(self):
-        return _ProfileLogger.getLogger(self.logger_name)
+from app.view.dependency import *
