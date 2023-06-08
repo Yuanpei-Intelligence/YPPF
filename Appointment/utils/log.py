@@ -70,6 +70,7 @@ class AppointmentLogger(Logger):
         send_wechat(
             GLOBAL_CONFIG.debug_stuids,
             '地下室发生错误', message,
+            url=f'/logs/?file={self.name}.log',
         )
 
 

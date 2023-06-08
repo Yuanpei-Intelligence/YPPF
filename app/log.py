@@ -31,6 +31,7 @@ class ProfileLogger(Logger):
         send_wechat(
             GLOBAL_CONFIG.debug_stuids,
             '成长档案发生错误', message,
+            url=f'/logs/?file={self.name}.log',
         )
 
     def secure_view(self, message: str = '出现意料之外的错误, 请联系管理员!',
