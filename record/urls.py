@@ -11,8 +11,10 @@
 """
 from django.urls import path
 from record import API
+from record.log import shortcut_views as log_views
 
 # 尽量不使用<type:arg>, 不支持
 urlpatterns = [
     path('eventTrackingFunc/', API.eventTrackingFunc, name='eventTracking'),
+    path('logs/', log_views.LogShortcut.as_view(), name='logs'),
 ]
