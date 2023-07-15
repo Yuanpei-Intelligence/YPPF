@@ -68,14 +68,10 @@ def _update_check_state(appoint: Appoint, current_num, refresh=False):
 def cameracheck(request):
     '''摄像头post对接的后端函数'''
     # 获取摄像头信号，得到rid,最小人数
-    print(1)
     try:
         ip = request.META.get("REMOTE_ADDR")
-        print(ip)
         current_num = int(json.loads(request.body)['body']['people_num'])
-        print(current_num)
         rid = iptoroom(ip.split(".")[3])  # !!!!!
-        print(rid)
         room: Room = Room.objects.get(Rid=rid)
     except:
         return JsonResponse({'statusInfo': {'message': '缺少摄像头信息!'}}, status=400)
