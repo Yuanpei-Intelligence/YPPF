@@ -116,53 +116,40 @@ def cameracheck(request):
 
 
 def display_getappoint(request):    # 用于为班牌机提供展示预约的信息
-    if request.method == "GET":
-        try:
-            Rid = request.GET.get('Rid')
-            display_token = request.GET.get('token', None)
-            check = Room.objects.filter(Rid=Rid)
-            assert len(check) > 0
-            roomname = check[0].Rtitle
-
-            assert display_token is not None
-        except:
-            return JsonResponse(
-                {'statusInfo': {
-                    'message': 'invalid params',
-                }},
-                status=400)
-        if display_token != CONFIG.display_token:
-            return JsonResponse(
-                {'statusInfo': {
-                    'message': 'invalid token:'+str(display_token),
-                }},
-                status=400)
-
-        #appoint = Appoint.objects.get(Aid=3333)
-        # return JsonResponse({'data': appoint.toJson()}, status=200,json_dumps_params={'ensure_ascii': False})
-        nowtime = datetime.now()
-        nowdate = nowtime.date()
-        enddate = (nowtime + timedelta(days=3)).date()
-        appoints = Appoint.objects.not_canceled().filter(
-            Room_id=Rid
-        ).order_by("Astart")
-
-        data = [appoint.toJson() for appoint in appoints if
-                appoint.Astart.date() >= nowdate and appoint.Astart.date() < enddate
-                ]
-        comingsoon = appoints.filter(Astart__gt=nowtime,
-                                     Astart__lte=nowtime + timedelta(minutes=15))
-        comingsoon = 1 if len(comingsoon) else 0    # 有15分钟之内的未开始预约，不允许即时预约
-
-        return JsonResponse(
-            {'comingsoon': comingsoon, 'data': data, 'roomname': roomname},
-            status=200, json_dumps_params={'ensure_ascii': False})
-    else:
+    # ----- Check input
+    if request.method != 'GET':
+        return JsonResponse({'statusInfo': {'message': 'Method not allowed'}}, status=400)
+    Rid = request.GET.get('Rid')
+    room = Room.objects.filter(Rid=Rid).first()
+    display_token = request.GET.get('token')
+    if room is None:
         return JsonResponse(
             {'statusInfo': {
-                'message': 'method is not get',
+                'message': f'Room with {Rid} not found.',
             }},
             status=400)
+    if display_token != CONFIG.display_token:
+        return JsonResponse(
+            {'statusInfo': {
+                'message': 'Invalid token: '+str(display_token),
+            }},
+            status=400)
+
+    # ----- Do the real work
+    now = datetime.now()
+    today = now.date()
+    end_date = today + timedelta(days=3)
+    # TODO: Does Astart__date__gte work?
+    appoints = Appoint.objects.not_canceled().filter(Room_id=Rid).order_by("Astart")
+    data = [appoint.toJson() for appoint in appoints
+        if appoint.Astart.date() >= today and appoint.Astart.date() < end_date
+    ]
+    comingsoon = appoints.filter(
+        Astart__gt=now,
+        Astart__lte=now + timedelta(minutes=15)).exists()
+    return JsonResponse(
+        {'comingsoon': comingsoon, 'data': data, 'roomname': room.Rtitle},
+        status=200, json_dumps_params={'ensure_ascii': False})
 
 
 def door_check(request):
