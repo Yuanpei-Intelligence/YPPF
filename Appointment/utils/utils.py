@@ -91,12 +91,12 @@ door_room_dict = {
 # 给定摄像头ip后三位，返回摄像头对应的Rid
 
 
-def iptoroom(ip):
+def ip2room(ip):
     return ip_room_dict[ip]
 
 
 # 给定房间门牌号id，返回对应的Rid
-def doortoroom(door):
+def door2room(door):
     return door_room_dict[door]
 
 

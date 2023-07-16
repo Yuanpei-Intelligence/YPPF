@@ -1,10 +1,9 @@
 import json
 import html
 from datetime import datetime, timedelta, date
-import random
 
 from django.views.decorators.http import require_POST
-from django.http import JsonResponse, HttpRequest
+from django.http import HttpRequest
 from django.shortcuts import render, redirect
 from django.urls import reverse
 from django.contrib import auth
@@ -21,13 +20,11 @@ from Appointment.models import (
     College_Announcement,
     LongTermAppoint,
 )
-from Appointment.extern.wechat import MessageType, notify_appoint, notify_user
+from Appointment.extern.wechat import MessageType, notify_appoint
 from Appointment.utils.utils import (
-    doortoroom, iptoroom,
-    check_temp_appoint, get_conflict_appoints,
-    to_feedback_url,
+    get_conflict_appoints, to_feedback_url,
 )
-from Appointment.utils.log import cardcheckinfo_writer, logger, get_user_logger
+from Appointment.utils.log import logger, get_user_logger
 import Appointment.utils.web_func as web_func
 from Appointment.utils.identity import (
     get_avatar, get_members, get_auditor_ids,
@@ -38,7 +35,6 @@ from Appointment.appoint.manage import (
     create_appoint,
     cancel_appoint,
 )
-from Appointment.appoint.judge import set_appoint_reason
 from Appointment import jobs
 from Appointment.config import appointment_config as CONFIG
 
