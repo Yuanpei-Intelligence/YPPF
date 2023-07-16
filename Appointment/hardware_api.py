@@ -1,12 +1,11 @@
 import json
-from datetime import datetime, timedelta, date
 import random
+from datetime import datetime, timedelta
 
 from django.http import JsonResponse
 from django.db.models import QuerySet
 from django.db import transaction
 
-from utils.global_messages import wrong, succeed, message_url
 from Appointment.models import (
     User,
     Participant,
@@ -33,11 +32,10 @@ from Appointment.appoint.manage import (
     cancel_appoint,
 )
 from Appointment.appoint.judge import set_appoint_reason
-from Appointment import jobs
 from Appointment.config import appointment_config as CONFIG
 
 
-def _update_check_state(appoint: Appoint, current_num, refresh=False):
+def _update_check_state(appoint: Appoint, current_num: int, refresh=False):
     if appoint.Acheck_status == Appoint.CheckStatus.UNSAVED or refresh:
         # 说明是新的一分钟或者本分钟还没有记录
         # 如果随机成功，记录新的检查结果
@@ -56,25 +54,31 @@ def _update_check_state(appoint: Appoint, current_num, refresh=False):
             # 本分钟暂无记录
             appoint.Acheck_status = Appoint.CheckStatus.UNSAVED
     else:
+        # Appoint.CheckStatus可能是：PASSED，FAILED
         # 和上一次检测在同一分钟，此时：1.不增加检测次数 2.如果合规则增加ok次数
         if appoint.Acheck_status == Appoint.CheckStatus.FAILED:
-            # 当前不合规；如果这次检测合规，那么认为本分钟合规
+            # 当前（上一次检查）不合规；如果这次检测合规，那么认为本分钟合规
             if current_num >= appoint.Aneed_num:
                 appoint.Acamera_ok_num += 1
                 appoint.Acheck_status = Appoint.CheckStatus.PASSED
-        # else:当前已经合规，不需要额外操作
+        # else:当前已经合规，不需要额外操作，本分钟视为合规
+    appoint.save()
 
 
 def cameracheck(request):
     '''摄像头post对接的后端函数'''
     # 获取摄像头信号，得到rid,最小人数
-    try:
+    try: 
         ip = request.META.get("REMOTE_ADDR")
-        current_num = int(json.loads(request.body)['body']['people_num'])
         rid = iptoroom(ip.split(".")[3])  # !!!!!
-        room: Room = Room.objects.get(Rid=rid)
     except:
-        return JsonResponse({'statusInfo': {'message': '缺少摄像头信息!'}}, status=400)
+        return JsonResponse({'statusInfo': {'message': 'invalid or null remote address'}}, status=400)
+    room: Room = Room.objects.get(Rid=rid)
+
+    try:
+        current_num = int(json.loads(request.body)['body']['people_num'])
+    except: 
+        return JsonResponse({'statusInfo': {'message': '缺少摄像头人数信息!'}}, status=400)
 
     # 存储上一次的检测时间
     now_time = datetime.now()
@@ -82,6 +86,10 @@ def cameracheck(request):
 
     # 更新现在的人数、最近更新时间
     try:
+        # 使用transaction.atomic可以保证：若有一个数据更新失败，则所有数据都不会被更新
+        # 能不能使用update，类似于Room.objects.filter(Rid=rid).update(
+        #   Rpresent=current_num, Rlatest_time=nowtime
+        # )感觉会更简单一些
         with transaction.atomic():
             room.Rpresent = current_num
             room.Rlatest_time = now_time
@@ -97,22 +105,22 @@ def cameracheck(request):
         Room=room,
     )
 
-    try:
-        # 逻辑是尽量宽容，因为一分钟只记录两次，两次随机大概率只有一次成功
-        # 所以没必要必须随机成功才能修改错误结果
-        refresh = now_time.minute != previous_check_time.minute
-        with transaction.atomic():
-            for appoint in appointments.select_for_update():
+    # 逻辑是尽量宽容，因为一分钟只记录两次，两次随机大概率只有一次成功
+    # 所以没必要必须随机成功才能修改错误结果
+    refresh = (now_time.minute != previous_check_time.minute)
+    with transaction.atomic():
+        for appoint in appointments.select_for_update():
+            try:
                 _update_check_state(appoint, current_num, refresh)
-                appoint.save()
                 if (now_time > appoint.Astart + timedelta(minutes=15)
                         and appoint.Astatus == Appoint.Status.APPOINTED):
                     # 该函数只是把appoint标记为迟到并修改状态为进行中，不发送微信提醒
                     set_appoint_reason(appoint, Appoint.Reason.R_LATE)
-    except Exception as e:
-        logger.exception(f"更新预约检查人数失败: {e}")
-        return JsonResponse({'statusInfo': {'message': '更新预约状态失败!'}}, status=400)
-    return JsonResponse({}, status=200)
+            except Exception as e:
+                logger.exception(f"更新预约 {appoint.Aid} 检查人数失败: {e}")
+                return JsonResponse({'statusInfo': {'message': f'更新预约 {appoint.Aid} 状态失败!'}}, status=400)
+
+    return JsonResponse({'statusInfo': {'message': '更新成功！'}}, status=200)
 
 
 def display_getappoint(request):    # 用于为班牌机提供展示预约的信息
@@ -159,13 +167,16 @@ def door_check(request):
 
     def _fail():
         return JsonResponse({"code": 1, "openDoor": "false"}, status=400)
-    # --------- 基本信息 --------- #
 
-    # 先以Sid Rid作为参数，看之后怎么改
+    # --------- 基本信息 --------- #
+    now_time, min15 = datetime.now(), timedelta(minutes=15)
+    # 先以Sid Rid作为参数，看之后怎么改 
+    # 这里的Rid实际上应该是DoorId？
     Sid, Rid = request.GET.get("Sid", None), request.GET.get("Rid", None)
-    student, room, now_time, min15 = None, None, datetime.now(), timedelta(minutes=15)
+    student, room = None, None 
     # 如果失败会得到None
     student = get_participant(Sid)
+
     try:
         all_Rid = set(Room.objects.values_list('Rid', flat=True))
         Rid = doortoroom(Rid)
@@ -173,8 +184,9 @@ def door_check(request):
             Rid = Rid[:4]
         room: Room = Room.objects.get(Rid=Rid)
     except:
-        cardcheckinfo_writer(student, room, False, f"房间号{Rid}错误")
+        cardcheckinfo_writer(student, room, False, f"房间门牌号{Rid}错误")
         return _fail()
+
     if student is None:
         cardcheckinfo_writer(student, room, False, f"学号{Sid}错误")
         notify_user(
@@ -212,12 +224,10 @@ def door_check(request):
         else:
             # 考虑到次晨的情况，判断一天内的时段
             now = timedelta(hours=now_time.hour, minutes=now_time.minute)
-            start = timedelta(hours=room.Rstart.hour,
-                              minutes=room.Rstart.minute)
-            finish = timedelta(hours=room.Rfinish.hour,
-                               minutes=room.Rfinish.minute)
-
-            if (now >= min(start, finish) and now <= max(start, finish)) ^ (start > finish):
+            start = timedelta(hours=room.Rstart.hour, minutes=room.Rstart.minute)
+            finish = timedelta(hours=room.Rfinish.hour, minutes=room.Rfinish.minute)
+            # 前者是now在两者中间，后者是跨天开放，两个条件通过异或连接，无论开放、结束时间是否在同一天都能够处理
+            if (min(start, finish) <= now <= max(start, finish)) ^ (start > finish):
                 # 在开放时间内
                 return _check_succeed(f"刷卡开门：自习室")
             return _check_failed(f"刷卡拒绝：自习室不开放")
@@ -242,7 +252,7 @@ def door_check(request):
 
         # 不是自己的预约
         if not room_appoint.filter(students__in=[student]).exists():
-            return _temp_failed(f"该房间有别人的预约，或者距离别人的下一条预约开始不到15min！", False)
+            return _temp_failed(f"该房间有别人的预约，或者距离别人的下一条预约开始不到15min！")
 
         else:   # 自己的预约
             return _check_succeed(f"刷卡开门：预约进入")
@@ -265,7 +275,7 @@ def door_check(request):
     finish = now_time.replace(hour=int(hour), minute=int(minute))
 
     # 房间未开放
-    if timeid < 0 or not valid:
+    if timeid < 0:
         return _temp_failed(f"该时段房间未开放！别熬夜了，回去睡觉！")
 
     # 检查时间是否合法
