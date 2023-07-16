@@ -6,31 +6,16 @@ from django.http import JsonResponse
 from django.db.models import QuerySet
 from django.db import transaction
 
-from Appointment.models import (
-    User,
-    Participant,
-    Room,
-    Appoint,
-    College_Announcement,
-    LongTermAppoint,
-)
-from Appointment.extern.wechat import MessageType, notify_appoint, notify_user
+from Appointment.models import Room, Appoint
+from Appointment.extern.wechat import notify_user
 from Appointment.utils.utils import (
     doortoroom, iptoroom,
-    check_temp_appoint, get_conflict_appoints,
-    to_feedback_url,
+    check_temp_appoint,
 )
-from Appointment.utils.log import cardcheckinfo_writer, logger, get_user_logger
+from Appointment.utils.log import cardcheckinfo_writer, logger
 import Appointment.utils.web_func as web_func
-from Appointment.utils.identity import (
-    get_avatar, get_members, get_auditor_ids,
-    get_participant, identity_check,
-)
-from Appointment.appoint.manage import (
-    create_require_num,
-    create_appoint,
-    cancel_appoint,
-)
+from Appointment.utils.identity import get_participant
+from Appointment.appoint.manage import create_appoint
 from Appointment.appoint.judge import set_appoint_reason
 from Appointment.config import appointment_config as CONFIG
 
@@ -86,14 +71,8 @@ def cameracheck(request):
 
     # 更新现在的人数、最近更新时间
     try:
-        # 使用transaction.atomic可以保证：若有一个数据更新失败，则所有数据都不会被更新
-        # 能不能使用update，类似于Room.objects.filter(Rid=rid).update(
-        #   Rpresent=current_num, Rlatest_time=nowtime
-        # )感觉会更简单一些
-        with transaction.atomic():
-            room.Rpresent = current_num
-            room.Rlatest_time = now_time
-            room.save()
+        # 保证：若有一个数据更新失败，则所有数据都不会被更新
+        Room.objects.filter(Rid=rid).update(Rpresent=current_num, Rlatest_time=now_time)
     except Exception as e:
         logger.exception(f"更新房间{rid}人数失败: {e}")
         return JsonResponse({'statusInfo': {'message': '更新摄像头人数失败!'}}, status=400)
@@ -160,119 +139,124 @@ def display_getappoint(request):    # 用于为班牌机提供展示预约的信
         status=200, json_dumps_params={'ensure_ascii': False})
 
 
-def door_check(request):
-    # --------- 对接接口 --------- #
-    def _open():
-        return JsonResponse({"code": 0, "openDoor": "true"}, status=200)
+def in_opening_time(room: Room):
+    # 考虑到次晨的情况，判断一天内的时段
+    now = timedelta(hours=datetime.now().hour, minutes=datetime.now().minute)
+    start = timedelta(hours=room.Rstart.hour, minutes=room.Rstart.minute)
+    finish = timedelta(hours=room.Rfinish.hour, minutes=room.Rfinish.minute)
+    # 前者是now在两者中间，后者是跨天开放，两个条件通过异或连接，无论开放、结束时间是否在同一天都能够处理
+    if (min(start, finish) <= now <= max(start, finish)) ^ (start > finish):
+        # 在开放时间内
+        return True
+    else:
+        return False
 
-    def _fail():
-        return JsonResponse({"code": 1, "openDoor": "false"}, status=400)
 
-    # --------- 基本信息 --------- #
-    now_time, min15 = datetime.now(), timedelta(minutes=15)
-    # 先以Sid Rid作为参数，看之后怎么改 
-    # 这里的Rid实际上应该是DoorId？
-    Sid, Rid = request.GET.get("Sid", None), request.GET.get("Rid", None)
-    student, room = None, None 
-    # 如果失败会得到None
-    student = get_participant(Sid)
-
-    try:
-        all_Rid = set(Room.objects.values_list('Rid', flat=True))
-        Rid = doortoroom(Rid)
-        if Rid[:4] in all_Rid:  # 表示增加了一个未知的A\B号
-            Rid = Rid[:4]
-        room: Room = Room.objects.get(Rid=Rid)
-    except:
-        cardcheckinfo_writer(student, room, False, f"房间门牌号{Rid}错误")
-        return _fail()
-
-    if student is None:
-        cardcheckinfo_writer(student, room, False, f"学号{Sid}错误")
-        notify_user(
-            Sid, '无法开启该房间',
-            '原因：您尚未注册地下室账号，请先访问任意地下室页面创建账号！',
-            '点击跳转地下室账户，快捷注册',
-            place=room.__str__()
-        )
-        return _fail()
-
-    # --------- 直接进入 --------- #
-    def _check_succeed(message: str):
-        cardcheckinfo_writer(student, room, True, message)
-        return _open()
-
-    def _check_failed(message: str):
-        cardcheckinfo_writer(student, room, False, message)
-        return _fail()
-
-    if room.Rstatus == Room.Status.FORBIDDEN:   # 禁止使用的房间
-        return _check_failed(f"刷卡拒绝：禁止使用")
-
-    if room.RneedAgree:
-        if student.agree_time is None:
-            cardcheckinfo_writer(student, room, False, f"刷卡拒绝：未签署协议")
-            notify_user(Sid, '您刷卡的房间需要签署协议',
-                        '点击本消息即可快捷跳转到用户协议页面',
-                        place=room.__str__(), url='agreement', btntxt='签署协议')
-            return _fail()
-
-    if room.Rstatus == Room.Status.UNLIMITED:   # 自习室
-        if room.RIsAllNight:
-            # 通宵自习室
-            return _check_succeed(f"刷卡开门：通宵自习室")
-        else:
-            # 考虑到次晨的情况，判断一天内的时段
-            now = timedelta(hours=now_time.hour, minutes=now_time.minute)
-            start = timedelta(hours=room.Rstart.hour, minutes=room.Rstart.minute)
-            finish = timedelta(hours=room.Rfinish.hour, minutes=room.Rfinish.minute)
-            # 前者是now在两者中间，后者是跨天开放，两个条件通过异或连接，无论开放、结束时间是否在同一天都能够处理
-            if (min(start, finish) <= now <= max(start, finish)) ^ (start > finish):
-                # 在开放时间内
-                return _check_succeed(f"刷卡开门：自习室")
-            return _check_failed(f"刷卡拒绝：自习室不开放")
-
-    # --------- 预约进入 --------- #
-
-    # 获取房间的预约
-    room_appoint = Appoint.objects.not_canceled().filter(   # 只选取接下来15分钟进行的预约
-        Astart__lte=now_time + min15, Afinish__gte=now_time, Room_id=Rid)
-
-    # --- modify by dyh: 更改规则 --- #
-    # --- modify by lhw: 临时预约 --- #
-
-    def _temp_failed(message: str, record_temp=True):
-        record_msg = f"刷卡拒绝：临时预约失败（{message}）" if record_temp else f"刷卡拒绝：{message}"
-        cardcheckinfo_writer(student, room, False, record_msg)
-        notify_user(student.get_id(), '您发起的临时预约失败',
-                    '原因：' + message, place=room.__str__())
-        return _fail()
-
-    if len(room_appoint) != 0:  # 当前有预约
-
-        # 不是自己的预约
-        if not room_appoint.filter(students__in=[student]).exists():
-            return _temp_failed(f"该房间有别人的预约，或者距离别人的下一条预约开始不到15min！")
-
-        else:   # 自己的预约
-            return _check_succeed(f"刷卡开门：预约进入")
-
-    # 当前无预约
-
-    if not check_temp_appoint(room):   # 房间不可以临时预约
-        return _temp_failed(f"该房间不可临时预约", False)
-
-    # 该房间可以用于临时预约
-
+def temp_appoint_valid(room: Room):
     # 注意，由于制度上不允许跨天预约，这里的逻辑也不支持跨日预约（比如从晚上23:00约到明天1:00）。
     # 需要剥离秒级以下的数据，否则admin-index无法正确渲染
-    now_time = now_time.replace(second=0, microsecond=0)
+    now_time = datetime.now().replace(second=0, microsecond=0)
     start = now_time
     timeid = web_func.get_time_id(room, start.time())
 
     finish, valid = web_func.get_hour_time(room, timeid + 1)
     hour, minute = finish.split(':')
     finish = now_time.replace(hour=int(hour), minute=int(minute))
+
+    return start, finish, timeid, valid
+
+    
+def door_check(request):
+    # 预设两个变量：试着获得学生信息和房间信息
+    student, room = None, None
+
+    # --------- 对接接口 --------- #
+    def _open(message: str):
+        cardcheckinfo_writer(student, room, True, message)
+        return JsonResponse({"code": 0, "openDoor": "true"}, status=200)
+
+    def _fail(message: str):
+        cardcheckinfo_writer(student, room, False, message)
+        return JsonResponse({"code": 1, "openDoor": "false"}, status=400)
+    
+    # --------- 基本信息 --------- #
+
+    Sid, DoorId = request.GET.get("Sid", None), request.GET.get("Rid", None)
+    student = get_participant(Sid)
+    try:
+        all_Rid = set(Room.objects.values_list('Rid', flat=True))
+        Rid = doortoroom(DoorId)
+        if Rid[:4] in all_Rid:  # 表示增加了一个未知的A\B号
+            Rid = Rid[:4]
+        room: Room = Room.objects.get(Rid=Rid)
+    except:
+        return _fail(f"房间门牌号{DoorId}错误")
+
+    if student is None:
+        notify_user(
+            Sid, '无法开启该房间',
+            '原因：您尚未注册地下室账号，请先访问任意地下室页面创建账号！',
+            '点击跳转地下室账户，快捷注册',
+            place=room.__str__()
+        )
+        return _fail(f"学号{Sid}错误")
+
+    # --------- 直接进入 --------- #
+
+    # 检查该房间的状态
+    if room.Rstatus == Room.Status.FORBIDDEN:   # 禁止使用的房间
+        return _fail(f"刷卡拒绝：禁止使用")
+
+    if room.RneedAgree and student.agree_time is None:
+        notify_user(Sid, '您刷卡的房间需要签署协议',
+                    '点击本消息即可快捷跳转到用户协议页面',
+                    place=room.__str__(), url='agreement', btntxt='签署协议')
+        return _fail(f"刷卡拒绝：未签署协议")
+
+    if room.Rstatus == Room.Status.UNLIMITED:   # 自习室
+        if room.RIsAllNight:
+            # 通宵自习室
+            return _open(f"刷卡开门：通宵自习室")
+        else:
+            if in_opening_time(room):
+                return _open(f"刷卡开门：自习室")
+            else:
+                return _fail(f"刷卡拒绝：自习室不开放")
+
+    # --------- 预约进入 --------- #
+
+    # 用于临时预约失败的通知
+    def _temp_failed(message: str, record_temp=True):
+        record_msg = f"刷卡拒绝：临时预约失败（{message}）" if record_temp else f"刷卡拒绝：{message}"
+        notify_user(Sid, '您发起的临时预约失败',
+                    '原因：' + message, place=room.__str__())
+        return _fail(record_msg)
+    
+    # 获取房间的预约
+    room_appoint = Appoint.objects.not_canceled().filter(   # 只选取接下来15分钟进行的预约
+        Astart__lte=datetime.now() + timedelta(minutes=15), Afinish__gte=datetime.now(), Room_id=Rid)
+
+    # --- modify by dyh: 更改规则 --- #
+    # --- modify by lhw: 临时预约 --- #
+
+    # 当前有预约
+    if len(room_appoint) != 0:  
+
+        # 不是自己的预约
+        if not room_appoint.filter(students__in=[student]).exists():
+            return _temp_failed(f"该房间有别人的预约，或者距离别人的下一条预约开始不到15min！")
+
+        else:   # 自己的预约
+            return _open(f"刷卡开门：预约进入")
+
+    # 当前无预约
+
+    # 房间不可以临时预约
+    if not check_temp_appoint(room):   
+        return _temp_failed(f"该房间不可临时预约", False)
+
+    # 该房间可以用于临时预约
+    start, finish, timeid, valid = temp_appoint_valid(room)
 
     # 房间未开放
     if timeid < 0:
@@ -289,4 +273,4 @@ def door_check(request):
 
     if appoint is None:
         return _temp_failed(err_msg)
-    return _check_succeed(f"刷卡开门：临时预约")
+    return _open(f"刷卡开门：临时预约")
