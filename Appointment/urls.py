@@ -14,7 +14,7 @@ Including another URLconf
     2. Add a URL to urlpatterns:  path('blog/', include('blog.urls'))
 '''
 from django.urls import path
-from Appointment import views, summary
+from Appointment import views, summary, hardware_api
 app_name = 'Appointment'
 
 urlpatterns = [
@@ -37,9 +37,9 @@ urlpatterns = [
     path('review', views.review, name='review'),
 ] + [
     # 硬件对接
-    path('door_check', views.door_check, name='door_check'),
-    path('camera-check', views.cameracheck, name='cameracheck'),
-    path('display_getappoint', views.display_getappoint, name='display_getappoint'),
+    path('door_check', hardware_api.door_check, name='door_check'),
+    path('camera-check', hardware_api.cameracheck, name='cameracheck'),
+    path('display_getappoint', hardware_api.display_getappoint, name='display_getappoint'),
     path('summary', summary.summary, name='summary'),
     path('summary/2021', summary.summary2021, name='summary2021'),
 ]

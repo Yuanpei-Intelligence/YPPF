@@ -18,18 +18,13 @@ from utils.inspect import find_caller
 
 
 __all__ = [
-    "cardcheckinfo_writer",
     "write_before_delete",
     "logger",
     "get_user_logger",
 ]
 
 
-def cardcheckinfo_writer(user: Participant | None, room: Room, real_status, message=None):
-    CardCheckInfo.objects.create(
-        Cardroom=room, Cardstudent=user,
-        CardStatus=real_status, Message=message
-    )
+
 
 
 class AppointRecordLogger(Logger):
