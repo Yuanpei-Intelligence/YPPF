@@ -58,7 +58,7 @@ class Question(models.Model):
 
     survey = models.ForeignKey(Survey, on_delete=models.CASCADE, verbose_name="所属问卷")
     order = models.IntegerField(verbose_name="题目序号")
-    text = models.CharField(verbose_name="题干", max_length=50)
+    topic = models.CharField(verbose_name="题目简介", max_length=50)
     description = models.TextField(verbose_name="题目描述")
     type = models.CharField(verbose_name="问题类型", max_length=10, choices=QTYPE, default=SINGLE)
 

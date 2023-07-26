@@ -4,6 +4,7 @@ from django.urls import reverse
 
 from .models import Survey, AnswerSheet, Question, Choice, AnswerText
 
+# 试试rest的viewsets？
 
 # 首页
 def index(request):
