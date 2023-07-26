@@ -17,7 +17,7 @@ class Survey(models.Model):
     title = models.CharField(verbose_name="问卷标题", max_length=50)
     description = models.TextField(verbose_name="问卷描述")
     creator = models.ForeignKey(User, on_delete=models.CASCADE, verbose_name="创建人")
-    date = models.DateTimeField(verbose_name="创建时间", auto_now_add=True)
+    create_time = models.DateTimeField(verbose_name="创建时间", auto_now_add=True)
     is_published = models.BooleanField(verbose_name="发布中", default=False)
     start_time = models.DateTimeField(verbose_name="起始时间")
     end_time = models.DateTimeField(verbose_name="截止时间")
@@ -33,7 +33,7 @@ class Survey(models.Model):
 class AnswerSheet(models.Model):
     survey = models.ForeignKey(Survey, on_delete=models.CASCADE, verbose_name="对应问卷")
     creator = models.ForeignKey(User, on_delete=models.CASCADE, verbose_name="答卷人")
-    date = models.DateTimeField(verbose_name="填写时间", auto_now_add=True)
+    create_time = models.DateTimeField(verbose_name="填写时间", auto_now_add=True)
 
     # def __str__(self):
         # return f'[答卷] 标题:{self.survey.title};答卷人:{self.creator.username};填写时间:{self.date}'
@@ -94,3 +94,4 @@ class AnswerText(models.Model):
 # 补充事项
 # related_name名字起的有点怪，建议修改，但不要重复
 # survey与answersheet应该加上编号 用于url查询
+
