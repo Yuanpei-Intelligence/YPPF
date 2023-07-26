@@ -60,7 +60,7 @@ class Question(models.Model):
     order = models.IntegerField(verbose_name="题目序号")
     text = models.CharField(verbose_name="题干", max_length=50)
     description = models.TextField(verbose_name="题目描述")
-    type = models.CharField(verbose_name="问题类型", max_length=10, choices=QTYPE)
+    type = models.CharField(verbose_name="问题类型", max_length=10, choices=QTYPE, default=SINGLE)
 
     # def __str__(self):
         # return f'[问题] 题干:{self.text};序号:{self.id};类型:{self.type}'
@@ -84,7 +84,8 @@ class Choice(models.Model):
 # 回答，按字符串形式储存，与user&question建立连接
 class AnswerText(models.Model):
     question = models.ForeignKey(Question, on_delete=models.CASCADE, verbose_name="对应问题")
-    answer = models.TextField(verbose_name="答案内容")
+    answersheet = models.ForeignKey(AnswerSheet, on_delete=models.CASCADE, verbose_name="所属答卷")
+    body = models.TextField(verbose_name="答案内容")
 
     # class Meta:
         # ordering = ['question__id']
