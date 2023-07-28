@@ -3,3 +3,5 @@
 
 # 连接sql server，书房需要，暂时省略加快测试速度
 # pymssql
+
+djangorestframework

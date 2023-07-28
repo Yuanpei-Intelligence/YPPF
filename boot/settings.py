@@ -55,7 +55,6 @@ INSTALLED_APPS = [
     "django.contrib.messages",
     "django.contrib.staticfiles",
     "django_apscheduler",
-    "rest_framework", 
     "generic",
     "record",
     "app",
@@ -63,7 +62,8 @@ INSTALLED_APPS = [
     'dm',
     "scheduler",
     "yp_library",
-    "questionnaire", 
+    "rest_framework", 
+    # "questionnaire", 
 ]
 
 
@@ -154,10 +154,3 @@ USE_L10N = True
 # 从数据库取出的数据将是有时区信息的，几乎与datetime.now()不可比
 USE_TZ = False
 
-REST_FRAMEWORK = {
-    # Use Django's standard `django.contrib.auth` permissions,
-    # or allow read-only access for unauthenticated users.
-    'DEFAULT_PERMISSION_CLASSES': [
-        'rest_framework.permissions.DjangoModelPermissionsOrAnonReadOnly'
-    ]
-}
