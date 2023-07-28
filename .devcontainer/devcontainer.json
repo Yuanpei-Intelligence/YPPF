@@ -1,0 +1,15 @@
+{
+    "name": "YPPF DEV",
+    "dockerComposeFile": "docker-compose.yml",
+    "service": "yppf",
+    "workspaceFolder": "/workspace",
+    "remoteUser": "vscode",
+    "customizations": {
+        "vscode": {
+            "settings": {
+                "editor.formatOnSave": true
+            },
+            "extensions": []
+        }
+    }
+}
