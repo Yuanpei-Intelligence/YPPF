@@ -1,4 +1,4 @@
-name: unittest
+name: basetest
 
 on:
   push:
@@ -16,15 +16,19 @@ jobs:
 
     - name: Configure local json
       run: |
-        bash env/config.sh
+        bash scripts/default_config.sh
 
     - name: Start containers
       run: |
-        docker-compose -f env/docker-compose.yml up -d
+        docker compose -f .devcontainer/docker-compose.yml up -d
+
+    - name: Setup DB
+      run: |
+        docker compose -f .devcontainer/docker-compose.yml exec -u vscode -T yppf python3 manage.py migrate
 
     - name: Test 
       run: |
-        docker-compose -f env/docker-compose.yml exec -T yppf python3 manage.py test
+        docker compose -f .devcontainer/docker-compose.yml exec -u vscode -T yppf python3 manage.py test
 
     - name: Dump docker logs on failure
       if: failure()
