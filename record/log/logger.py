@@ -70,8 +70,7 @@ class Logger(logging.Logger):
         base_dir = absolute_path(CONFIG.log_dir)
         for path in paths:
             base_dir = os.path.join(base_dir, path)
-            if not os.path.exists(base_dir):
-                os.mkdir(base_dir)
+        os.makedirs(base_dir, exist_ok=True)
         file_path = os.path.join(base_dir, name + '.log')
         handler = logging.FileHandler(file_path, encoding='UTF8', mode='a')
         handler.setFormatter(logging.Formatter(format or CONFIG.format, style='{'))
