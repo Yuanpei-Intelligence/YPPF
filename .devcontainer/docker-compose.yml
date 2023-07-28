@@ -28,6 +28,7 @@ services:
     depends_on:
       mysql:
         condition: service_healthy
+    working_dir: /workspace
     environment:
       - DB_HOST=mysql
       - DB_USER=root
