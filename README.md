@@ -1,15 +1,33 @@
 # YPPF
 
 ## How to run it
-It is recommend to run it with [docker](https://www.docker.com/).
+It is recommended to run it with [docker](https://www.docker.com/),
+docker-compose and vscode devcontainer.
 
-With `bash`, `docker` and `docker compose` available,
-you can easily run the project with `bash env/dev_ini.sh`.
-If nothing goes wrong, the service will be open on
-[http://127.0.0.1:8000/](http://127.0.0.1:8000/). 
+Within the devcontainer, run the following code to start!
 
-For windows users, here is a more detailed
-[tutorial](https://epu4t4i0lr.feishu.cn/docx/EJCod674HoghaoxB8NacRtvlnjc).
+```bash
+bash scripts/default_config.sh
+python3 manage.py makemigrations # Add new app here if necessary
+python3 manage.py migrate
+python3 manage.py fill_devdb
+python3 manage.py runserver
+```
+
+Then, you can access the website from "http://localhost:8000".
+
+Inspect code in *dm/management/fake_records.py* for accounts info.
+
+If you want to test with scheduler job,
+edit the config file and change `use_scheduler` to `true`.
+Then, open a new terminal and start the scheduler:
+
+```bash
+python3 manage.py runscheduler
+```
+
+
+
 
 ## Project Structure
 TODO
