@@ -1,5 +1,7 @@
 from django.db import models
-from generic.models import User
+from boot.settings import AUTH_USER_MODEL
+from utils.models.choice import choice
+
 
 
 """
@@ -14,84 +16,53 @@ from generic.models import User
 
 # 调查问卷
 class Survey(models.Model):
-    title = models.CharField(verbose_name="问卷标题", max_length=50)
-    description = models.TextField(verbose_name="问卷描述")
-    creator = models.ForeignKey(User, on_delete=models.CASCADE, verbose_name="创建人")
-    create_time = models.DateTimeField(verbose_name="创建时间", auto_now_add=True)
-    is_published = models.BooleanField(verbose_name="发布中", default=False)
-    start_time = models.DateTimeField(verbose_name="起始时间")
-    end_time = models.DateTimeField(verbose_name="截止时间")
+    class SStaus(models.IntegerChoices):
+        PUBLISHED = (0, "发布中")
+        ENDED = (1, "已结束")
 
-    # def __str__(self):
-        # return f'[问卷] 标题:{self.title};创建人:{self.creator.username};创建时间:{self.date}'
-    
-    # class Meta:
-        # ordering = ['-date']
+    title = models.CharField("问卷标题", max_length=50)
+    description = models.TextField("问卷描述")
+    creator = models.ForeignKey(AUTH_USER_MODEL, on_delete=models.CASCADE, verbose_name="创建人")
+    status = models.SmallIntegerField("问卷状态", choices=SStaus.choices)
+    start_time = models.DateTimeField("起始时间", blank=True)
+    end_time = models.DateTimeField("截止时间", blank=True)
+    time = models.DateTimeField("创建时间", auto_now_add=True)
+
 
 
 # 答卷
 class AnswerSheet(models.Model):
     survey = models.ForeignKey(Survey, on_delete=models.CASCADE, verbose_name="对应问卷")
-    creator = models.ForeignKey(User, on_delete=models.CASCADE, verbose_name="答卷人")
-    create_time = models.DateTimeField(verbose_name="填写时间", auto_now_add=True)
-
-    # def __str__(self):
-        # return f'[答卷] 标题:{self.survey.title};答卷人:{self.creator.username};填写时间:{self.date}'
-
-    # class Meta:
-        # ordering = ['-date']
+    creator = models.ForeignKey(AUTH_USER_MODEL, on_delete=models.CASCADE, verbose_name="答卷人")
+    create_time = models.DateTimeField("填写时间", auto_now_add=True)
 
 
 # 问题
 class Question(models.Model):
-    TEXT = "Te"
-    SINGLE = "Si"
-    MULTI = "Mu"
-    RANKING = "Ra"
-
-    QTYPE = [
-        (TEXT, '填空'), 
-        (SINGLE, '单选'), 
-        (MULTI, '多选'), 
-        (RANKING, '排序'), 
-    ]
+    class QTYPE(models.TextChoices):
+        TEXT = choice("TEXT", "填空题")
+        SINGLE = choice("SINGLE", "单选题")
+        MULTI = choice("MULTI", "多选题")
+        RANKING = choice("RANKING", "排序题")
 
     survey = models.ForeignKey(Survey, on_delete=models.CASCADE, verbose_name="所属问卷")
-    order = models.IntegerField(verbose_name="题目序号")
-    topic = models.CharField(verbose_name="题目简介", max_length=50)
-    description = models.TextField(verbose_name="题目描述")
-    type = models.CharField(verbose_name="问题类型", max_length=10, choices=QTYPE, default=SINGLE)
+    order = models.IntegerField("题目序号")
+    topic = models.CharField("题目简介", max_length=50)
+    description = models.TextField("题目描述", blank=True)
+    type = models.CharField("问题类型", max_length=10, choices=QTYPE.choices, default=QTYPE.SINGLE)
 
-    # def __str__(self):
-        # return f'[问题] 题干:{self.text};序号:{self.id};类型:{self.type}'
-    
-    # class Meta:
-        # ordering = ['id']
 
 # 选项
 class Choice(models.Model):
     question = models.ForeignKey(Question, on_delete=models.CASCADE, related_name='choices', verbose_name="所属问题")
-    order = models.IntegerField(verbose_name="选项序号")
-    text = models.TextField(verbose_name="选项内容")
-
-    # def __str__(self):
-        # return f'[选项] 内容:{self.text};序号:{self.id}'
-    
-    # class Meta:
-        # ordering = ['id']
+    order = models.IntegerField("选项序号")
+    text = models.TextField("选项内容")
 
 
 # 回答，按字符串形式储存，与user&question建立连接
 class AnswerText(models.Model):
     question = models.ForeignKey(Question, on_delete=models.CASCADE, verbose_name="对应问题")
     answersheet = models.ForeignKey(AnswerSheet, on_delete=models.CASCADE, verbose_name="所属答卷")
-    body = models.TextField(verbose_name="答案内容")
+    body = models.TextField("答案内容")
 
-    # class Meta:
-        # ordering = ['question__id']
-
-
-# 补充事项
-# related_name名字起的有点怪，建议修改，但不要重复
-# survey与answersheet应该加上编号 用于url查询
 

@@ -1,11 +1,17 @@
 from django.urls import path
-from . import views
+from questionnaire import views
 
 
 urlpatterns = [
-    path('', views.index, name='index'),
-    path('survey/<int:survey_id>/', views.survey_detail, name='survey'),
-    # path('survey/<int:survey_id>/submit/', views.submit, name='submit'),
-    # path('survey/<int:survey_id>/statistics/', views.statistics, name='statistics'),
-    # 之后添加一些问卷修改、删除、创建的url
+    path('survey/',views.SurveyViewSet.as_view({'get':'list','post':'create'})),
+    path('survey/<int:pk>/',views.SurveyViewSet.as_view({'get':'retrieve','put':'update','delete':'destroy'})),
+    path('question/',views.QuestionViewSet.as_view({'get':'list','post':'create'})),
+    path('question/<int:pk>/',views.QuestionViewSet.as_view({'get':'retrieve','put':'update','delete':'destroy'})),
+    path('choice/',views.ChoiceViewSet.as_view({'get':'list','post':'create'})),
+    path('choice/<int:pk>/',views.ChoiceViewSet.as_view({'get':'retrieve','put':'update','delete':'destroy'})),
+    path('answersheet/',views.AnswerSheetViewSet.as_view({'get':'list','post':'create'})),
+    path('answersheet/<int:pk>/',views.AnswerSheetViewSet.as_view({'get':'retrieve','put':'update','delete':'destroy'})),
+    path('answertext/',views.AnswerTextViewSet.as_view({'get':'list','post':'create'})),
+    path('answertext/<int:pk>/',views.AnswerTextViewSet.as_view({'get':'retrieve','put':'update','delete':'destroy'})),
 ]
+
