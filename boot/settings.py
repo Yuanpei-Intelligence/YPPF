@@ -55,6 +55,7 @@ INSTALLED_APPS = [
     "django.contrib.messages",
     "django.contrib.staticfiles",
     "django_apscheduler",
+    "rest_framework", 
     "generic",
     "record",
     "app",
@@ -62,6 +63,7 @@ INSTALLED_APPS = [
     'dm',
     "scheduler",
     "yp_library",
+    "questionnaire", 
 ]
 
 
