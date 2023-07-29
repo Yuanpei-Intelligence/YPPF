@@ -2,27 +2,37 @@ from django.shortcuts import render, get_object_or_404, redirect
 from django.http import HttpResponse, HttpResponseRedirect
 from django.urls import reverse
 
-from .models import Survey, AnswerSheet, Question, Choice, AnswerText
+from rest_framework import viewsets
 
-# 试试rest的viewsets？
+from questionnaire.models import Survey, AnswerSheet, Question, Choice, AnswerText
+from questionnaire.serializers import SurveySerializer, AnswerSheetSerializer, QuestionSerializer, ChoiceSerializer, AnswerTextSerializer
 
-# 首页
+# Create your views here.
 def index(request):
-    # 获取所有问卷
-    surveys = Survey.objects.all()
-    # 渲染首页
-    return render(request, 'dormitory/index.html', {'surveys': surveys})
+    return HttpResponse("Hello, world. You're at the questionnaire index.")
 
+# 用viewsets
+class SurveyViewSet(viewsets.ModelViewSet):
+    queryset = Survey.objects.all()
+    serializer_class = SurveySerializer
 
-# 问卷
-def survey_detail(request, questionnaire_id):
-    # 获取问卷
-    survey = get_object_or_404(Survey, pk=questionnaire_id)
-    # 获取问卷所有问题
-    questions = survey.question_set.all()
-    # 获取问卷所有问题的选项
-    choices = []
-    for question in questions:
-        choices.append(question.choices.all())
-    # 渲染问卷
-    return render(request, 'dormitory/survey.html', {'survey': survey, 'questions': questions, 'choices': choices})
+class AnswerSheetViewSet(viewsets.ModelViewSet):
+    queryset = AnswerSheet.objects.all()
+    serializer_class = AnswerSheetSerializer
+
+class QuestionViewSet(viewsets.ModelViewSet):
+    queryset = Question.objects.all()
+    serializer_class = QuestionSerializer
+
+class ChoiceViewSet(viewsets.ModelViewSet):
+    queryset = Choice.objects.all()
+    serializer_class = ChoiceSerializer
+
+class AnswerTextViewSet(viewsets.ModelViewSet):
+    queryset = AnswerText.objects.all()
+    serializer_class = AnswerTextSerializer
+
+# class UserViewSet(viewsets.ModelViewSet):
+    # queryset = User.objects.all().order_by("-date_joined")
+    # serializer_class = UserSerializer
+

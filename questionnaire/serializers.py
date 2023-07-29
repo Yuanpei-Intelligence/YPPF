@@ -1,33 +1,40 @@
 from rest_framework import serializers
-from .models import Survey, Question, Choice, AnswerText, AnswerSheet
+from questionnaire.models import Survey, Question, Choice, AnswerText, AnswerSheet
 
 # 先全serialize了，之后再说
 
 class SurveySerializer(serializers.ModelSerializer):
     class Meta:
         model = Survey
-        fields = ['title', 'description', 'creator', 'create_time', 'is_published', 'start_time', 'end_time']
+        fields = 'all'
 
 
 class AnswerSheetSerializer(serializers.ModelSerializer):
     class Meta:
         model = AnswerSheet
-        fields = ['survey', 'creator', 'create_time']
+        fields = 'all'
 
 
 class QuestionSerializer(serializers.ModelSerializer):
     class Meta:
         model = Question
-        fields = ['survey', 'order', 'topic', 'description', 'type']
+        fields = 'all'
 
 
 class ChoiceSerializer(serializers.ModelSerializer):
     class Meta:
         model = Choice
-        fields = ['question', 'order', 'text']
+        fields = 'all'
 
 
 class AnswerTextSerializer(serializers.ModelSerializer):
     class Meta:
         model = AnswerText
-        fields = ['question', 'answersheet', 'body']
+        fields = 'all'
+
+
+# class UserSerializer(serializers.ModelSerializer):
+    # class Meta:
+        # model = User
+        # fields = ['username', 'email', 'password']
+
