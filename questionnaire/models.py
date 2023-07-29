@@ -3,6 +3,7 @@ from boot.settings import AUTH_USER_MODEL
 from utils.models.choice import choice
 
 
+
 """
 顶级模型:问卷和答卷 需要有创建人/答卷人、创建日期
 答案暂时都按照text形式储存(若干choice的序号) 并外键关联到题目和答卷。
@@ -26,6 +27,7 @@ class Survey(models.Model):
     start_time = models.DateTimeField("起始时间", blank=True)
     end_time = models.DateTimeField("截止时间", blank=True)
     time = models.DateTimeField("创建时间", auto_now_add=True)
+
 
 
 # 答卷

@@ -1,5 +1,6 @@
 from rest_framework import serializers
 from questionnaire.models import Survey, Question, Choice, AnswerText, AnswerSheet
+
 # 先全serialize了，之后再说
 
 class SurveySerializer(serializers.ModelSerializer):
@@ -36,3 +37,4 @@ class AnswerTextSerializer(serializers.ModelSerializer):
     # class Meta:
         # model = User
         # fields = ['username', 'email', 'password']
+

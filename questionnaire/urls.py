@@ -14,3 +14,4 @@ urlpatterns = [
     path('answertext/',views.AnswerTextViewSet.as_view({'get':'list','post':'create'})),
     path('answertext/<int:pk>/',views.AnswerTextViewSet.as_view({'get':'retrieve','put':'update','delete':'destroy'})),
 ]
+
