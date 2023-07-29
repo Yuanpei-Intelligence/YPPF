@@ -6,31 +6,31 @@ from questionnaire.models import Survey, Question, Choice, AnswerText, AnswerShe
 class SurveySerializer(serializers.ModelSerializer):
     class Meta:
         model = Survey
-        fields = 'all'
+        fields = '__all__'
 
 
 class AnswerSheetSerializer(serializers.ModelSerializer):
     class Meta:
         model = AnswerSheet
-        fields = 'all'
+        fields = '__all__'
 
 
 class QuestionSerializer(serializers.ModelSerializer):
     class Meta:
         model = Question
-        fields = 'all'
+        fields = '__all__'
 
 
 class ChoiceSerializer(serializers.ModelSerializer):
     class Meta:
         model = Choice
-        fields = 'all'
+        fields = '__all__'
 
 
 class AnswerTextSerializer(serializers.ModelSerializer):
     class Meta:
         model = AnswerText
-        fields = 'all'
+        fields = '__all__'
 
 
 # class UserSerializer(serializers.ModelSerializer):
