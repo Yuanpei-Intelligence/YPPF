@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+
+{% block add_css_file %}
+<style class="text/css">
+    [data-toggle="collapse"] .fa:before {
+        font-family: 'Font Awesome 5 Free';
+        content: "\f068";
+        float: right;
+    }
+
+    [data-toggle="collapse"].collapsed .fa:before {
+        content: "\f067";
+    }
+</style>
+{% endblock %}
+
+{% block mainpage %}
+<div id="content" class="main-content">
+    <head>
+        <title>Achievements</title>
+    </head>
+    <body>
+        <h1>Hello, {{ student.name}}! Here are your achievements:</h1>
+        <h2>Unlocked Achievements:</h2>
+        <ul>
+            {% for unlock in unlocked_achievements %}
+                <li>{{ unlock.achievement.name }} - {{ unlock.date_unlocked }}</li>
+            {% endfor %}
+        </ul>
+        <h2>Hidden Achievements:</h2>
+        <ul>
+            {% for unlock in hidden_achievements %}
+                <li>{{ unlock.achievement.name }} - {{ unlock.date_unlocked }}</li>
+            {% endfor %}
+        </ul>
+        <h2>Visible Achievements:</h2>
+        <ul>
+            {% for unlock in visible_achievements %}
+                <li>{{ unlock.achievement.name }} - {{ unlock.date_unlocked }}</li>
+            {% endfor %}
+        </ul>
+    </body>
+</div>
+{% endblock %}
