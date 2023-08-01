@@ -1,17 +1,14 @@
-from django.urls import path
-from questionnaire import views
+from django.urls import path, include
+from rest_framework.routers import DefaultRouter
+from questionnaire.views import *
 
+router = DefaultRouter()
+router.register(r'survey', SurveyViewSet, basename="survey")
+router.register(r'answersheet', AnswerSheetViewSet, basename="answersheet")
+router.register(r'answertext', AnswerTextViewSet, basename="answertext")
+router.register(r'question', QuestionViewSet, basename="question")
+router.register(r'choice', ChoiceViewSet, basename="choice")
 
 urlpatterns = [
-    path('survey/',views.SurveyViewSet.as_view({'get':'list','post':'create'})),
-    path('survey/<int:pk>/',views.SurveyViewSet.as_view({'get':'retrieve','put':'update','delete':'destroy'})),
-    path('question/',views.QuestionViewSet.as_view({'get':'list','post':'create'})),
-    path('question/<int:pk>/',views.QuestionViewSet.as_view({'get':'retrieve','put':'update','delete':'destroy'})),
-    path('choice/',views.ChoiceViewSet.as_view({'get':'list','post':'create'})),
-    path('choice/<int:pk>/',views.ChoiceViewSet.as_view({'get':'retrieve','put':'update','delete':'destroy'})),
-    path('answersheet/',views.AnswerSheetViewSet.as_view({'get':'list','post':'create'})),
-    path('answersheet/<int:pk>/',views.AnswerSheetViewSet.as_view({'get':'retrieve','put':'update','delete':'destroy'})),
-    path('answertext/',views.AnswerTextViewSet.as_view({'get':'list','post':'create'})),
-    path('answertext/<int:pk>/',views.AnswerTextViewSet.as_view({'get':'retrieve','put':'update','delete':'destroy'})),
+    path('', include(router.urls))
 ]
-
