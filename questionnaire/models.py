@@ -16,18 +16,18 @@ from utils.models.choice import choice
 
 # 调查问卷
 class Survey(models.Model):
-    class SStaus(models.IntegerChoices):
-        PUBLISHED = (0, "发布中")
-        ENDED = (1, "已结束")
+    class Status(models.IntegerChoices):
+        REVIEWING = (0, "审核中")
+        PUBLISHED = (1, "发布中")
+        ENDED = (2, "已结束")
 
     title = models.CharField("问卷标题", max_length=50)
     description = models.TextField("问卷描述")
-    creator = models.ForeignKey(AUTH_USER_MODEL, on_delete=models.CASCADE, verbose_name="创建人")
-    status = models.SmallIntegerField("问卷状态", choices=SStaus.choices)
+    creator = models.ForeignKey(AUTH_USER_MODEL, on_delete=models.CASCADE, related_name = 'surveys', verbose_name="创建人")
+    status = models.SmallIntegerField("问卷状态", choices=Status.choices, default=Status.REVIEWING)
     start_time = models.DateTimeField("起始时间", blank=True)
     end_time = models.DateTimeField("截止时间", blank=True)
     time = models.DateTimeField("创建时间", auto_now_add=True)
-
 
 
 # 答卷
@@ -39,7 +39,7 @@ class AnswerSheet(models.Model):
 
 # 问题
 class Question(models.Model):
-    class QTYPE(models.TextChoices):
+    class Type(models.TextChoices):
         TEXT = choice("TEXT", "填空题")
         SINGLE = choice("SINGLE", "单选题")
         MULTI = choice("MULTI", "多选题")
@@ -49,7 +49,10 @@ class Question(models.Model):
     order = models.IntegerField("题目序号")
     topic = models.CharField("题目简介", max_length=50)
     description = models.TextField("题目描述", blank=True)
-    type = models.CharField("问题类型", max_length=10, choices=QTYPE.choices, default=QTYPE.SINGLE)
+    type = models.CharField("问题类型", max_length=10, choices=Type.choices, default=Type.SINGLE)
+
+    def have_choice(self):
+        return self.type in ["SINGLE", "MULT", "RANKING"]
 
 
 # 选项
@@ -64,5 +67,4 @@ class AnswerText(models.Model):
     question = models.ForeignKey(Question, on_delete=models.CASCADE, verbose_name="对应问题")
     answersheet = models.ForeignKey(AnswerSheet, on_delete=models.CASCADE, verbose_name="所属答卷")
     body = models.TextField("答案内容")
-
 
