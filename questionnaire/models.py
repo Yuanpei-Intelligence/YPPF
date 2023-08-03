@@ -21,13 +21,16 @@ class Survey(models.Model):
         PUBLISHED = (1, "发布中")
         ENDED = (2, "已结束")
 
-    title = models.CharField("问卷标题", max_length=50)
-    description = models.TextField("问卷描述")
+    title = models.CharField("问卷标题", max_length=50, unique=True, blank=False, null=False)
+    description = models.TextField("问卷描述", blank=True)
     creator = models.ForeignKey(AUTH_USER_MODEL, on_delete=models.CASCADE, related_name = 'surveys', verbose_name="创建人")
     status = models.SmallIntegerField("问卷状态", choices=Status.choices, default=Status.REVIEWING)
     start_time = models.DateTimeField("起始时间", blank=True)
     end_time = models.DateTimeField("截止时间", blank=True)
     time = models.DateTimeField("创建时间", auto_now_add=True)
+
+    def __str__(self):
+        return self.title
 
 
 # 答卷
@@ -35,6 +38,9 @@ class AnswerSheet(models.Model):
     survey = models.ForeignKey(Survey, on_delete=models.CASCADE, verbose_name="对应问卷")
     creator = models.ForeignKey(AUTH_USER_MODEL, on_delete=models.CASCADE, verbose_name="答卷人")
     create_time = models.DateTimeField("填写时间", auto_now_add=True)
+
+    def __str__(self):
+        return self.survey.title + " - " + self.creator.username + "的答卷"
 
 
 # 问题
@@ -54,12 +60,18 @@ class Question(models.Model):
     def have_choice(self):
         return self.type in ["SINGLE", "MULT", "RANKING"]
 
+    def __str__(self):
+        return self.topic
+
 
 # 选项
 class Choice(models.Model):
     question = models.ForeignKey(Question, on_delete=models.CASCADE, related_name='choices', verbose_name="所属问题")
     order = models.IntegerField("选项序号")
     text = models.TextField("选项内容")
+
+    def __str__(self):
+        return self.text
 
 
 # 回答，按字符串形式储存，与user&question建立连接
