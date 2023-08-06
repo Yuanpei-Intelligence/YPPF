@@ -23,6 +23,7 @@ class Survey(models.Model):
         REVIEWING = choice(0, "审核中")
         PUBLISHED = choice(1, "发布中")
         ENDED = choice(2, "已结束")
+        DRAFT = choice(3, "草稿")
 
     title = models.CharField("问卷标题", max_length=50, blank=False, null=False)
     description = models.TextField("问卷描述", blank=True)
@@ -41,10 +42,14 @@ class AnswerSheet(models.Model):
     '''
     答卷
     '''
+    class Status(models.IntegerChoices):
+        DRAFT = choice(0, "存为草稿")
+        SUBMITTED = choice(1, "提交")
+
     survey = models.ForeignKey(Survey, on_delete=models.CASCADE, verbose_name="对应问卷")
     creator = models.ForeignKey(User, on_delete=models.CASCADE, verbose_name="答卷人")
     create_time = models.DateTimeField("填写时间", auto_now_add=True)
-    # submitted = models.BooleanField("已提交")
+    status = models.SmallIntegerField("问卷状态", choices=Status.choices, default=Status.DRAFT)
 
     @debug_only
     def __str__(self):

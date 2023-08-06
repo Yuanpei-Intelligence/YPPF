@@ -87,6 +87,7 @@ class AnswerTextViewSet(viewsets.ModelViewSet):
     permission_classes = [IsAuthenticated, IsTextOwnerOrAsker]
     serializer_class = AnswerTextSerializer
 
+    # debug时可以注释掉
     def list(self, request, *args, **kwargs):
         raise PermissionError("禁止直接查看所有答案！")
 
@@ -97,13 +98,24 @@ class AnswerTextViewSet(viewsets.ModelViewSet):
             raise PermissionError("只有答卷创始人才能添加答案！")
         elif AnswerText.objects.filter(answersheet=answersheet, question=question).exists():
             raise PermissionError("禁止重复提交答案！")
-        elif answersheet.survey.status != 1:
+        elif answersheet.survey.status != Survey.Status.PUBLISHED:
             raise PermissionError("只能创建已发布问卷的答案！")
         else:
             serializer.save()
     
     def perform_update(self, serializer):
-        raise PermissionError("禁止修改答案！")
+        answersheet = serializer.instance.answersheet
+        question = serializer.instance.question
+        if answersheet.status == AnswerSheet.Status.DRAFT:
+            if answersheet.creator != self.request.user:
+                raise PermissionError("只有答卷创始人才能修改答案！")
+            if answersheet != serializer.validated_data['answersheet']:
+                raise PermissionError("禁止修改答案所属答卷！")
+            if question != serializer.validated_data['question']:
+                raise PermissionError("禁止修改答案所属问题！")
+            serializer.save()
+        else:
+            raise PermissionError("禁止修改答案！")
     
     @action(detail=False, methods=['GET'])
     def answer_owner(self, request):
@@ -124,13 +136,14 @@ class AnswerSheetViewSet(viewsets.ModelViewSet):
     permission_classes = [IsAuthenticated, IsSheetOwnerOrAsker]
     serializer_class = AnswerSheetSerializer
 
+    # debug时可以注释掉
     def list(self, request, *args, **kwargs):
         raise PermissionError("禁止直接查看所有答卷！")
 
     def perform_create(self, serializer):
         creator = serializer.validated_data['creator']
         survey = serializer.validated_data['survey']
-        if survey.status != 1: # 问卷必须处于发布状态才能创建答卷
+        if survey.status != Survey.Status.PUBLISHED: # 问卷必须处于发布状态才能创建答卷
             raise PermissionError("只能创建已发布问卷的答案！")
         elif AnswerSheet.objects.filter(creator=creator, survey=survey).exists():
             raise PermissionError("禁止重复创建答卷！")
@@ -138,7 +151,14 @@ class AnswerSheetViewSet(viewsets.ModelViewSet):
             serializer.save()
     
     def perform_update(self, serializer):
-        raise PermissionError("禁止修改答卷！")
+        sheet_status = serializer.instance.status
+        if sheet_status == AnswerSheet.Status.DRAFT:
+            survey = serializer.instance.survey
+            if survey != serializer.validated_data['survey']:
+                raise PermissionError("禁止修改答卷所属问卷！")
+            serializer.save() # 此部分中只能修改提交状态
+        else:    
+            raise PermissionError("禁止修改答卷！")
 
     @action(detail=False, methods=['GET'])
     def answer_owner(self, request):
