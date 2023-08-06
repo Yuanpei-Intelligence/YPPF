@@ -1,6 +1,15 @@
 from rest_framework import permissions
 
-def CheckOwner(request, owner, asker):
+__all__ = [
+    'IsTextOwnerOrAsker', 
+    'IsSheetOwnerOrAsker', 
+    'IsSurveyOwnerOrReadOnly', 
+    'IsQuestionOwnerOrReadOnly', 
+    'IsChoiceOwnerOrReadOnly', 
+]
+
+
+def check_owner_or_asker(request, owner, asker):
     return request.user.is_staff or request.user == owner or request.user == asker
 
 
@@ -8,17 +17,17 @@ class IsTextOwnerOrAsker(permissions.BasePermission):
     def has_object_permission(self, request, view, obj):
         owner = obj.answersheet.creator
         asker = obj.question.survey.creator
-        return CheckOwner(request, owner, asker)
+        return check_owner_or_asker(request, owner, asker)
 
 
 class IsSheetOwnerOrAsker(permissions.BasePermission):
     def has_object_permission(self, request, view, obj):
         owner = obj.creator
         asker = obj.survey.creator
-        return CheckOwner(request, owner, asker)
+        return check_owner_or_asker(request, owner, asker)
 
 
-def CheckOwnerOrReadOnly(request, owner):
+def check_owner_or_read_only(request, owner):
     return (request.user.is_staff 
             or request.method in permissions.SAFE_METHODS
             or request.user == owner)
@@ -27,16 +36,16 @@ def CheckOwnerOrReadOnly(request, owner):
 class IsSurveyOwnerOrReadOnly(permissions.BasePermission):
     def has_object_permission(self, request, view, obj):
         owner = obj.creator
-        return CheckOwnerOrReadOnly(request, owner)
+        return check_owner_or_read_only(request, owner)
 
 
 class IsQuestionOwnerOrReadOnly(permissions.BasePermission):
     def has_object_permission(self, request, view, obj):
         owner = obj.survey.creator
-        return CheckOwnerOrReadOnly(request, owner)
+        return check_owner_or_read_only(request, owner)
 
 
 class IsChoiceOwnerOrReadOnly(permissions.BasePermission):
     def has_object_permission(self, request, view, obj):
         owner = obj.question.survey.creator
-        return CheckOwnerOrReadOnly(request, owner)
+        return check_owner_or_read_only(request, owner)
