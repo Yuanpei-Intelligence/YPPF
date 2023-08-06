@@ -4,13 +4,16 @@ from django.contrib.auth.decorators import login_required
 
 from app.models import NaturalPerson
 
+
 @login_required
 def view_achievements(request):
     user = request.user
     student = NaturalPerson.objects.get(person_id=user)
-    unlocked_achievements = AchievementUnlock.objects.filter(student=student)
-    hidden_achievements = AchievementUnlock.objects.filter(student=student, is_hidden=True)
-    visible_achievements = AchievementUnlock.objects.filter(student=student, is_hidden=False)
+    unlocked_achievements = AchievementUnlock.objects.filter(user=user)
+    hidden_achievements = AchievementUnlock.objects.filter(
+        student=student, is_hidden=True)
+    visible_achievements = AchievementUnlock.objects.filter(
+        student=student, is_hidden=False)
 
     return render(request, 'achievement/view_achievements.html', {
         'student': student,
