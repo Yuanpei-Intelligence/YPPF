@@ -14,15 +14,6 @@ __all__ = [
     'AnswerText'
 ]
 
-"""
-顶级模型:问卷和答卷 需要有创建人/答卷人、创建日期
-答案暂时都按照text形式储存(若干choice的序号) 并外键关联到题目和答卷。
-暂不考虑数据库级多选的统计 单选可以统计
-题目不分类,只需要有:题目类型、描述 不包含选项等额外信息 
-根据题目类型调取相应外键 选项choice等 做好反向关联(related_field关闭或显式写出) 矩阵题的各个题目(暂不做)也一样
-序号信息:question和choice都需要 从而在未来可支持调整选项顺序
-"""
-
 
 class Survey(models.Model):
     '''
@@ -32,6 +23,7 @@ class Survey(models.Model):
         REVIEWING = choice(0, "审核中")
         PUBLISHED = choice(1, "发布中")
         ENDED = choice(2, "已结束")
+        DRAFT = choice(3, "草稿")
 
     title = models.CharField("问卷标题", max_length=50, blank=False, null=False)
     description = models.TextField("问卷描述", blank=True)
@@ -50,14 +42,18 @@ class AnswerSheet(models.Model):
     '''
     答卷
     '''
+    class Status(models.IntegerChoices):
+        DRAFT = choice(0, "存为草稿")
+        SUBMITTED = choice(1, "提交")
+
     survey = models.ForeignKey(Survey, on_delete=models.CASCADE, verbose_name="对应问卷")
     creator = models.ForeignKey(User, on_delete=models.CASCADE, verbose_name="答卷人")
     create_time = models.DateTimeField("填写时间", auto_now_add=True)
-    # submitted = models.BooleanField("已提交")
+    status = models.SmallIntegerField("问卷状态", choices=Status.choices, default=Status.DRAFT)
 
     @debug_only
     def __str__(self):
-        return self.survey.title + " - " + self.creator.username + "的答卷"
+        return self.survey.title + " - " + self.creator.username + "的答卷" # 关联查询太多时会很慢
 
 
 class Question(models.Model):
@@ -102,4 +98,3 @@ class AnswerText(models.Model):
     question = models.ForeignKey(Question, on_delete=models.CASCADE, verbose_name="对应问题")
     answersheet = models.ForeignKey(AnswerSheet, on_delete=models.CASCADE, verbose_name="所属答卷")
     body = models.TextField("答案内容")
-

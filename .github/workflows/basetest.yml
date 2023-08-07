@@ -20,7 +20,11 @@ jobs:
 
     - name: Start containers
       run: |
-        docker-compose -f .devcontainer/docker-compose.yml up -d
+        docker compose -f .devcontainer/docker-compose.yml up -d
+
+    - name: Setup DB
+      run: |
+        docker compose -f .devcontainer/docker-compose.yml exec -u vscode -T yppf python3 manage.py migrate
 
     - name: Test 
       run: |
