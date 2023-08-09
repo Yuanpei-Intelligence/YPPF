@@ -1,5 +1,4 @@
 from django.db.models import Q
-
 from rest_framework import viewsets
 from rest_framework.authentication import SessionAuthentication
 from rest_framework.permissions import IsAuthenticated
@@ -10,7 +9,6 @@ from questionnaire.models import *
 from questionnaire.serializers import *
 from questionnaire.permissions import *
 
-from django.utils import timezone
 
 # 用viewsets
 class SurveyViewSet(viewsets.ModelViewSet):
@@ -19,8 +17,6 @@ class SurveyViewSet(viewsets.ModelViewSet):
     serializer_class = SurveySerializer
 
     def get_queryset(self):
-        # 每次访问时自动更新问卷状态, 问卷过期自动设置为FINISHED # TODO: 有没有更好的自动更改机制？
-        Survey.objects.filter(status=Survey.Status.PUBLISHED, end_time__lt=timezone.now()).update(status=Survey.Status.ENDED)
         if self.request.user.is_staff:
             return Survey.objects.all()
         else: # 根据发布状态和发布时间来筛选 
@@ -171,4 +167,4 @@ class AnswerSheetViewSet(viewsets.ModelViewSet):
         sheet = AnswerSheet.objects.filter(survey__creator=request.user)
         serializer = AnswerSheetSerializer(sheet, many=True)
         return Response(serializer.data)
-    
+ 

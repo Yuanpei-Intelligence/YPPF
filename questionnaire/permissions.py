@@ -49,4 +49,4 @@ class IsChoiceOwnerOrReadOnly(permissions.BasePermission):
     def has_object_permission(self, request, view, obj):
         owner = obj.question.survey.creator
         return check_owner_or_read_only(request, owner)
-    
+ 

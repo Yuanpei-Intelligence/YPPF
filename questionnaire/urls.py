@@ -1,6 +1,10 @@
 from django.urls import path, include
 from rest_framework.routers import DefaultRouter
-from questionnaire.views import QuestionViewSet, ChoiceViewSet, SurveyViewSet, AnswerSheetViewSet, AnswerTextViewSet
+
+from questionnaire.views import (
+    QuestionViewSet, ChoiceViewSet, SurveyViewSet,
+    AnswerSheetViewSet, AnswerTextViewSet
+)
 
 router = DefaultRouter()
 router.register('survey', SurveyViewSet, basename="survey")

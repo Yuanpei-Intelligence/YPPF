@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from generic.models import User
+
 from questionnaire.models import Survey, Question, Choice, AnswerText, AnswerSheet
 
 __all__ = [
