@@ -1,12 +1,8 @@
-from typing import List, Dict, Set
-
 from django.db import models
-from django.db import models
-from django.http import HttpRequest
 
+from utils.models.descriptor import debug_only
 from generic.models import User
 from app.utils_dependency import *
-from app.models import NaturalPerson
 
 __all__ = ['AchievementType', 'Achievement', 'AchievementUnlock']
 
@@ -34,13 +30,14 @@ class Achievement(models.Model):
     description = models.TextField()
     achievement_type = models.ForeignKey(
         AchievementType, on_delete=models.CASCADE)
-    # while is_hidden is True, the achievement's trigger is not visiable to user
-    is_hidden = models.BooleanField(default=False)
-    # while is_auto_trigger is True, the system will automatically check trigger conditions
+    hidden = models.BooleanField(default=False)
+    # Only used for filtering. Whether an achievement is auto-triggered is
+    # not stored in the database.
     auto_trigger = models.BooleanField(default=False)
 
     reward_points = models.PositiveIntegerField(default=0)
 
+    @debug_only
     def __str__(self):
         return self.name
 
@@ -51,5 +48,6 @@ class AchievementUnlock(models.Model):
     time = models.DateTimeField("解锁时间", auto_now_add=True)
     private = models.BooleanField(default=False)
 
+    @debug_only
     def __str__(self):
         return f"{self.user.username} unlocked {self.achievement.name}"
