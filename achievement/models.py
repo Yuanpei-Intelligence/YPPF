@@ -8,6 +8,8 @@ from generic.models import User
 from app.utils_dependency import *
 from app.models import NaturalPerson
 
+__all__ = ['AchievementType', 'Achievement', 'AchievementUnlock']
+
 
 class AchievementType(models.Model):
     title = models.CharField(max_length=100)
@@ -34,10 +36,8 @@ class Achievement(models.Model):
         AchievementType, on_delete=models.CASCADE)
     # while is_hidden is True, the achievement's trigger is not visiable to user
     is_hidden = models.BooleanField(default=False)
-
-    class triggerCondition(models.IntegerChoices):
-        AUTO = (0, "系统自动")
-        OUT = (1, "外部导入")   # import from .xlsx file or .csv file
+    # while is_auto_trigger is True, the system will automatically check trigger conditions
+    auto_trigger = models.BooleanField(default=False)
 
     reward_points = models.PositiveIntegerField(default=0)
 
@@ -48,7 +48,7 @@ class Achievement(models.Model):
 class AchievementUnlock(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE)
     achievement = models.ForeignKey(Achievement, on_delete=models.CASCADE)
-    date_unlocked = models.DateField("解锁时间", auto_now_add=True)
+    date_unlocked = models.DateTimeField("解锁时间", auto_now_add=True)
     # while is_visible_to_others is True, the achievement is visiable to other users
     is_visible_to_others = models.BooleanField(default=True)
 

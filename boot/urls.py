@@ -16,7 +16,6 @@ urlpatterns = [
     path("", include("generic.urls")),
     path("", include("record.urls")),
     path("", include("app.urls")),
-    path("", include("achievement.urls")),
 ]
 
 # 生产环境下自动返回空列表，请通过docker或服务器设置手动serve静态文件和媒体文件

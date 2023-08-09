@@ -21,22 +21,16 @@
     </head>
     <body>
         <h1>Hello, {{ student.name}}! Here are your achievements:</h1>
-        <h2>Unlocked Achievements:</h2>
+        <h2>Invisible Achievements:</h2>
         <ul>
-            {% for unlock in unlocked_achievements %}
-                <li>{{ unlock.achievement.name }} - {{ unlock.date_unlocked }}</li>
-            {% endfor %}
-        </ul>
-        <h2>Hidden Achievements:</h2>
-        <ul>
-            {% for unlock in hidden_achievements %}
-                <li>{{ unlock.achievement.name }} - {{ unlock.date_unlocked }}</li>
+            {% for unlock in invisible_achievements %}
+                <li>{{ unlock.achievement }} - {{ unlock.date_unlocked }}</li>
             {% endfor %}
         </ul>
         <h2>Visible Achievements:</h2>
         <ul>
             {% for unlock in visible_achievements %}
-                <li>{{ unlock.achievement.name }} - {{ unlock.date_unlocked }}</li>
+                <li>{{ unlock.achievement }} - {{ unlock.date_unlocked }}</li>
             {% endfor %}
         </ul>
     </body>
