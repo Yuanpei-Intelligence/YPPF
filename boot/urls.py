@@ -13,6 +13,7 @@ urlpatterns = [
     path("underground/", include("Appointment.urls")),
     path("yplibrary/", include("yp_library.urls")),
     path("questionnaire/", include("questionnaire.urls")), 
+    path("dormitory/", include("dormitory.urls")),
     path("", include("generic.urls")),
     path("", include("record.urls")),
     path("", include("app.urls")), 
