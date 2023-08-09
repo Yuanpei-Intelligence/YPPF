@@ -328,11 +328,3 @@ class Command(BaseCommand):
             type = Question.Type.TEXT,
         )
         question20.save()
-
-
-        
-
-
-
-
-
