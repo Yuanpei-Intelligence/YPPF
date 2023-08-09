@@ -1,30 +1,40 @@
+from datetime import datetime
+
+from django.db.models import Q
+from django.db import transaction
+
 from app.views_dependency import *
 from app.models import (
     Organization,
     OrganizationType,
     Notification,
-    Feedback,
-    FeedbackType,
+    Position,
+    Activity,
+    NaturalPerson,
 )
 from app.utils import (
     get_person_or_org,
 )
+from app.comment_utils import addComment, showComment
+from app.academic_utils import get_search_results
 from generic.models import YQPointRecord
-from django.db.models import Q
-from django.db import transaction
-from app.feedback_utils import (
+from feedback.feedback_utils import (
     examine_notification,
     update_feedback,
     make_relevant_notification,
     inform_notification,
 )
-from app.comment_utils import addComment, showComment
+from feedback.models import (
+    FeedbackType,
+    Feedback,
+)
 
 
 __all__ = [
     'feedbackWelcome',
     'viewFeedback',
     'modifyFeedback',
+    'search',
 ]
 
 
@@ -723,3 +733,144 @@ def modifyFeedback(request: HttpRequest):
         request.user, navbar_name="填写反馈" if is_new_feedback else "反馈详情"
     )
     return render(request, "modify_feedback.html", locals())
+
+
+@login_required(redirect_field_name="origin")
+@utils.check_user_access(redirect_url="/logout/")
+@logger.secure_view()
+def search(request: HttpRequest):
+    """
+        搜索界面的呈现逻辑
+        分成搜索个人和搜索小组两个模块，每个模块的呈现独立开，有内容才呈现，否则不显示
+        搜索个人：
+            支持使用姓名搜索，支持对未设为不可见的昵称和专业搜索
+            搜索结果的呈现采用内容/未公开表示，所有列表为people_filed
+        搜索小组
+            支持使用小组名、小组类型搜索、一级负责人姓名
+            小组的呈现内容由拓展表体现，不在这个界面呈现具体成员
+            add by syb:
+            支持通过小组名、小组类型来搜索小组
+            支持通过公开关系的个人搜索小组，即如果某自然人用户可以被上面的人员搜索检出，
+            而且该用户选择公开其与小组的关系，那么该小组将在搜索界面呈现。
+            搜索结果的呈现内容见organization_field
+        搜索活动
+            支持通过活动名、小组来搜索活动。只要可以搜索到小组，小组对应的活动就也可以被搜到
+            搜索结果的呈现见activity_field
+    """
+
+    html_display = {}
+
+    query = request.GET.get("Query", "")
+    if query == "":
+        return redirect(message_url(wrong('请填写有效的搜索信息!')))
+
+    not_found_message = "找不到符合搜索的信息或相关内容未公开！"
+    # 首先搜索个人, 允许搜索姓名或者公开的专业, 删去小名搜索
+    people_list = NaturalPerson.objects.filter(
+        Q(name__icontains=query)
+        | (  # (Q(nickname__icontains=query) & Q(show_nickname=True)) |
+            Q(stu_major__icontains=query) & Q(show_major=True)
+        )
+        | (
+            Q(nickname__icontains=query) & Q(show_nickname=True)
+        )
+    )
+
+    # 接下来准备呈现的内容
+    # 首先是准备搜索个人信息的部分
+    people_field = [
+        "姓名",
+        "昵称",
+        "年级",
+        "班级",
+        # "昵称",
+        # "性别",
+        "专业",
+        # "邮箱",
+        # "电话",
+        # "宿舍",
+        "状态",
+    ]  # 感觉将年级和班级分开呈现会简洁很多
+
+    # 搜索小组
+    # 先查找query作为姓名包含在字段中的职务信息, 选的是post为true或者职务等级为0
+    pos_list = Position.objects.activated().filter(person__name__icontains=query).filter(
+        Q(show_post=True) | Q(is_admin=True))
+    # 通过小组名、小组类名、和上述的职务信息对应的小组信息
+    organization_list = Organization.objects.filter(
+        Q(oname__icontains=query)
+        | Q(otype__otype_name__icontains=query)
+        | Q(id__in=pos_list.values("org"))
+    ).prefetch_related("position_set")
+
+    now = datetime.now()
+
+    def get_recent_activity(org):
+        activities = Activity.objects.activated().filter(Q(organization_id=org.id)
+                                                         & ~Q(status=Activity.Status.CANCELED)
+                                                         & ~Q(status=Activity.Status.REJECT))
+        activities = list(activities)
+        activities.sort(key=lambda activity: abs(now - activity.start))
+        return None if len(activities) == 0 else activities[0:3]
+
+    org_display_list = []
+    for org in organization_list:
+        org_display_list.append(
+            {
+                "oname": org.oname,
+                "otype": org.otype,
+                "pos0": NaturalPerson.objects.activated().filter(
+                    id__in=Position.objects.activated().filter(
+                        is_admin=True, org=org).values("person")
+                ),  # TODO:直接查到一个NaturalPerson的Query_set
+                # [
+                #     w["person__name"]
+                #     for w in list(
+                #         org.position_set.activated()
+                #             .filter(pos=0)
+                #             .values("person__name")
+                #     )
+                # ],
+                "activities": get_recent_activity(org),
+                "get_user_ava": org.get_user_ava()
+            }
+        )
+
+    # 小组要呈现的具体内容
+    organization_field = ["小组名称", "小组类型", "负责人", "近期活动"]
+
+    # 搜索活动
+    activity_list = Activity.objects.activated().filter(
+        Q(title__icontains=query) | Q(organization_id__oname__icontains=query) & ~Q(
+            status=Activity.Status.CANCELED)
+        & ~Q(status=Activity.Status.REJECT)
+        & ~Q(status=Activity.Status.REVIEWING) & ~Q(status=Activity.Status.ABORT)
+    )
+
+    # 活动要呈现的内容
+    activity_field = ["活动名称", "承办小组", "状态"]
+
+    feedback_field = ["标题", "状态", "负责小组", "内容"]
+    feedback_list = Feedback.objects.filter(
+        Q(public_status=Feedback.PublicStatus.PUBLIC)
+    ).filter(
+        Q(title__icontains=query)
+        | Q(org__oname__icontains=query)
+    )
+
+    # 学术地图内容
+    academic_map_dict = get_search_results(query)
+    academic_list = []
+    for username, contents in academic_map_dict.items():
+        info = dict()
+        np = NaturalPerson.objects.get(person_id__username=username)
+        info['ref'] = np.get_absolute_url() + '#tab=academic_map'
+        info['avatar'] = np.get_user_ava()
+        info['sname'] = np.name
+        academic_list.append((info, contents))
+
+    html_display["is_myself"] = True
+
+    # 新版侧边栏, 顶栏等的呈现，采用 bar_display, 必须放在render前最后一步
+    bar_display = utils.get_sidebar_and_navbar(request.user, "信息搜索")
+    return render(request, "search.html", locals())

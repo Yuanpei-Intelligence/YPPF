@@ -16,7 +16,6 @@ from app.log import logger
 from scheduler.adder import MultipleAdder
 from scheduler.cancel import remove_job
 from scheduler.periodic import periodical
-from generic.models import YQPointRecord
 from record.models import PageLog
 from app.models import (
     User,
@@ -29,8 +28,7 @@ from app.models import (
     Position,
     Course,
     CourseTime,
-    CourseParticipant,
-    Feedback,
+    CourseParticipant, 
 )
 from app.activity_utils import (
     changeActivityStatus,
@@ -40,7 +38,6 @@ from app.notification_utils import (
     bulk_notification_create,
     notification_create,
 )
-from app.feedback_utils import inform_notification
 from app.extern.wechat import WechatMessageLevel, WechatApp
 from app.config import *
 
@@ -53,7 +50,6 @@ __all__ = [
     'get_weather_async',
     'update_active_score_per_day',
     'longterm_launch_course',
-    'public_feedback_per_hour',
 ]
 
 
@@ -308,32 +304,6 @@ def update_active_score_per_day(days=14):
                 time__date=date).values_list('user', flat=True))
             persons.filter(person_id__in=userids).update(
                 active_score=F('active_score') + 1 / days)
-
-
-@periodical('cron', 'feedback_public_updater', minute=5)
-@transaction.atomic
-def public_feedback_per_hour():
-    '''查找距离组织公开反馈24h内没被审核的反馈，将其公开'''
-    time = datetime.now() - timedelta(days=1)
-    feedbacks = Feedback.objects.filter(
-        issue_status=Feedback.IssueStatus.ISSUED,
-        public_status=Feedback.PublicStatus.PRIVATE,
-        publisher_public=True,
-        org_public=True,
-        public_time__lte=time,
-    )
-    feedbacks.select_for_update().update(
-        public_status=Feedback.PublicStatus.PUBLIC)
-    for feedback in feedbacks:
-        User.objects.modify_YQPoint(feedback.person.get_user(),
-                                    CONFIG.yqpoint.per_feedback,
-                                    "问题反馈", YQPointRecord.SourceType.FEEDBACK)
-        inform_notification(feedback.org.otype.incharge, feedback.person,
-                            f"您的反馈[{feedback.title}]已被公开",
-                            feedback, anonymous=False)
-        inform_notification(feedback.org.otype.incharge, feedback.org,
-                            f"您处理的反馈[{feedback.title}]已自动公开",
-                            feedback, anonymous=False)
 
 
 # TODO: Move these to schedueler app

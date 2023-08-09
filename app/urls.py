@@ -16,7 +16,6 @@ from app import (
     org_views,
     activity_views,
     course_views,
-    feedback_views,
     academic_views,
     chat_api,
     YQPoint_views,
@@ -40,7 +39,6 @@ urlpatterns = [
     path("orginfo/", views.orginfo, name="orginfo"),
     path("userAccountSetting/", views.accountSetting, name="userAccountSetting"),
     path("notifications/", views.notifications, name="notifications"),
-    path("search/", views.search, name="search"),
     path("subscribeOrganization/", views.subscribeOrganization,
          name="subscribeOrganization"),
     path("saveSubscribeStatus", views.saveSubscribeStatus,
@@ -93,11 +91,6 @@ urlpatterns = [
     path("outputRecord/", course_views.outputRecord, name="outputRecord"),
     path("outputSelectInfo/", course_views.outputSelectInfo,
          name="outputSelectInfo"),
-] + [
-    # 反馈中心
-    path("feedback/", feedback_views.feedbackWelcome, name="feadbackWelcome"),
-    path("modifyFeedback/", feedback_views.modifyFeedback, name="modifyFeedback"),
-    path("viewFeedback/<str:fid>", feedback_views.viewFeedback, name="viewFeedback"),
 ] + [
     # 学术地图
     path("modifyAcademic/", academic_views.modifyAcademic, name="modifyAcademic"),
