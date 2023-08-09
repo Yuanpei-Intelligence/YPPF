@@ -1,8 +1,8 @@
 from django.shortcuts import render
-from .models import Achievement, AchievementUnlock
 from django.contrib.auth.decorators import login_required
 
 from app.models import NaturalPerson
+from .models import Achievement, AchievementUnlock
 
 
 @login_required

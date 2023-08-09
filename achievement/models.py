@@ -2,9 +2,9 @@ from typing import List, Dict, Set
 
 from django.db import models
 from django.db import models
-from django.contrib.auth.models import User
 from django.http import HttpRequest
 
+from generic.models import User
 from app.utils_dependency import *
 from app.models import NaturalPerson
 
@@ -36,11 +36,8 @@ class Achievement(models.Model):
     is_hidden = models.BooleanField(default=False)
 
     class triggerCondition(models.IntegerChoices):
-        UNDIFINED = (0, "未定义")
-        AUTO = (1, "系统自动")
-        QRCODE = (2, "二维码")
-        COURSE = (3, "书院课程")
-        DORM = (4, "楼宇管理")
+        AUTO = (0, "系统自动")
+        OUT = (1, "外部导入")   # import from .xlsx file or .csv file
 
     reward_points = models.PositiveIntegerField(default=0)
 
