@@ -23,8 +23,8 @@ services:
 
   yppf:
     image: yuanpei/profile:dev1.2
-    ports:
-      - 8000:8000
+    # ports:
+    #   - 8000:8000
     depends_on:
       mysql:
         condition: service_healthy
