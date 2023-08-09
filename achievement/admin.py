@@ -19,5 +19,5 @@ class AchievementAdmin(admin.ModelAdmin):
 @admin.register(AchievementUnlock)
 class AchievementUnlockAdmin(admin.ModelAdmin):
     list_display = ['user', 'achievement',
-                    'date_unlocked', 'is_visible_to_others']
+                    'time', 'private']
     search_fields = ['user', 'achievement']

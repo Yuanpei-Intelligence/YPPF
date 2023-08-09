@@ -10,9 +10,9 @@ def view_achievements(request):
     user = request.user
     student = NaturalPerson.objects.get(person_id=user)
     invisible_achievements = AchievementUnlock.objects.filter(
-        user=user, is_visible_to_others=False)
+        user=user, private=True)
     visible_achievements = AchievementUnlock.objects.filter(
-        user=user, is_visible_to_others=True)
+        user=user, private=False)
 
     return render(request, 'achievement/view_achievements.html', {
         'student': student,

@@ -48,9 +48,8 @@ class Achievement(models.Model):
 class AchievementUnlock(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE)
     achievement = models.ForeignKey(Achievement, on_delete=models.CASCADE)
-    date_unlocked = models.DateTimeField("解锁时间", auto_now_add=True)
-    # while is_visible_to_others is True, the achievement is visiable to other users
-    is_visible_to_others = models.BooleanField(default=True)
+    time = models.DateTimeField("解锁时间", auto_now_add=True)
+    private = models.BooleanField(default=False)
 
     def __str__(self):
         return f"{self.user.username} unlocked {self.achievement.name}"

@@ -24,13 +24,13 @@
         <h2>Invisible Achievements:</h2>
         <ul>
             {% for unlock in invisible_achievements %}
-                <li>{{ unlock.achievement }} - {{ unlock.date_unlocked }}</li>
+                <li>{{ unlock.achievement }} - {{ unlock.time }}</li>
             {% endfor %}
         </ul>
         <h2>Visible Achievements:</h2>
         <ul>
             {% for unlock in visible_achievements %}
-                <li>{{ unlock.achievement }} - {{ unlock.date_unlocked }}</li>
+                <li>{{ unlock.achievement }} - {{ unlock.time }}</li>
             {% endfor %}
         </ul>
     </body>
