@@ -63,6 +63,7 @@ INSTALLED_APPS = [
     'dm',
     "scheduler",
     "yp_library",
+    "feedback",
     "questionnaire", 
     "achievement",
 ]

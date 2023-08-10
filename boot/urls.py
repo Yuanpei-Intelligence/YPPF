@@ -11,13 +11,15 @@ urlpatterns = [
     path("admin/", admin.site.urls),
     path('api-auth/', include('rest_framework.urls')), 
     path("yppf/", include("app.urls")),
+    # path("yppf/", include("feedback.urls")),
     path("underground/", include("Appointment.urls")),
     path("yplibrary/", include("yp_library.urls")),
     path("questionnaire/", include("questionnaire.urls")), 
     path("achievement/", include("achievement.urls")),
     path("", include("generic.urls")),
     path("", include("record.urls")),
-    path("", include("app.urls")) 
+    path("", include("app.urls")),
+    path("", include("feedback.urls")),
 ]
 
 # 生产环境下自动返回空列表，请通过docker或服务器设置手动serve静态文件和媒体文件

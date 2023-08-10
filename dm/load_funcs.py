@@ -22,12 +22,14 @@ from app.models import (
     Course,
     CourseRecord,
     Semester,
-    FeedbackType,
-    Feedback,
     Comment,
     AcademicTag,
 )
 from app.utils import random_code_init
+from feedback.models import (
+    FeedbackType,
+    Feedback,
+)
 
 
 

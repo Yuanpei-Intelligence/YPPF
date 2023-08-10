@@ -741,18 +741,6 @@ class CourseRecordAdmin(admin.ModelAdmin):
         return self.message_user(request=request, message='修改成功!')
 
 
-@admin.register(Feedback)
-class FeedbackAdmin(admin.ModelAdmin):
-    list_display = ["type", "title", "person", "org", "feedback_time",]
-    search_fields = ("person__name", "org__oname",)
-
-
-@admin.register(FeedbackType)
-class FeedbackTypeAdmin(admin.ModelAdmin):
-    list_display = ["name","org_type","org",]
-    search_fields =  ("name","org_type","org",)
-
-
 @admin.register(AcademicTag)
 class AcademicTagAdmin(admin.ModelAdmin):
     list_display = ["atype", "tag_content"]
