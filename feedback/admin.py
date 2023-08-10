@@ -1,7 +1,7 @@
 from django.contrib import admin
 
 from feedback.models import (
-    Feedback, 
+    Feedback,
     FeedbackType,
 )
 
@@ -14,5 +14,5 @@ class FeedbackAdmin(admin.ModelAdmin):
 
 @admin.register(FeedbackType)
 class FeedbackTypeAdmin(admin.ModelAdmin):
-    list_display = ["name","org_type","org",]
-    search_fields =  ("name","org_type","org",)
+    list_display = ["name", "org_type", "org",]
+    search_fields = ("name", "org_type", "org",)

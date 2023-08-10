@@ -9,5 +9,4 @@ urlpatterns = [
     path("feedback/", views.feedbackWelcome, name="feadbackWelcome"),
     path("modifyFeedback/", views.modifyFeedback, name="modifyFeedback"),
     path("viewFeedback/<str:fid>", views.viewFeedback, name="viewFeedback"),
-    path("search/", views.search, name="search"),
 ]

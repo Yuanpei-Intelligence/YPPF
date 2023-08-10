@@ -39,6 +39,7 @@ urlpatterns = [
     path("orginfo/", views.orginfo, name="orginfo"),
     path("userAccountSetting/", views.accountSetting, name="userAccountSetting"),
     path("notifications/", views.notifications, name="notifications"),
+    path("search/", views.search, name="search"),
     path("subscribeOrganization/", views.subscribeOrganization,
          name="subscribeOrganization"),
     path("saveSubscribeStatus", views.saveSubscribeStatus,
