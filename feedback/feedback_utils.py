@@ -5,8 +5,6 @@ from app.models import (
     Organization,
     OrganizationType,
     Notification,
-    FeedbackType,
-    Feedback,
 )
 from app.notification_utils import (
     notification_create,
@@ -16,6 +14,10 @@ from app.extern.wechat import (
     WechatMessageLevel,
 )
 from app.log import logger
+from feedback.models import (
+    FeedbackType,
+    Feedback,
+)
 
 
 __all__ = [

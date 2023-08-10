@@ -65,6 +65,7 @@ INSTALLED_APPS = [
     "yp_library",
     "questionnaire",
     "dormitory",
+    "feedback",
     "achievement",
 ]
 

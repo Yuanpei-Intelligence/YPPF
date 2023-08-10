@@ -11,9 +11,9 @@ from django.core.exceptions import ValidationError
 
 from utils.config.cast import str_to_time
 from utils.hasher import MyMD5Hasher
+from app.academic_utils import get_search_results
 from app.views_dependency import *
 from app.models import (
-    Feedback,
     NaturalPerson,
     Freshman,
     Position,
@@ -53,7 +53,6 @@ from app.academic_utils import (
     have_entries_of_type,
     get_tag_status,
     get_text_status,
-    get_search_results,
 )
 
 
@@ -1509,13 +1508,15 @@ def search(request: HttpRequest):
     # 活动要呈现的内容
     activity_field = ["活动名称", "承办小组", "状态"]
 
-    feedback_field = ["标题", "状态", "负责小组", "内容"]
-    feedback_list = Feedback.objects.filter(
-        Q(public_status=Feedback.PublicStatus.PUBLIC)
-    ).filter(
-        Q(title__icontains=query)
-        | Q(org__oname__icontains=query)
-    )
+    #先赋空值保证search.html正常运行
+    feedback_field, feedback_list = [], []
+    # feedback_field = ["标题", "状态", "负责小组", "内容"]
+    # feedback_list = Feedback.objects.filter(
+    #     Q(public_status=Feedback.PublicStatus.PUBLIC)
+    # ).filter(
+    #     Q(title__icontains=query)
+    #     | Q(org__oname__icontains=query)
+    # )
 
     # 学术地图内容
     academic_map_dict = get_search_results(query)
