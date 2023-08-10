@@ -14,5 +14,5 @@ router.register('question', QuestionViewSet, basename="question")
 router.register('choice', ChoiceViewSet, basename="choice")
 
 urlpatterns = [
-    path('', include(router.urls)),
+    path('', include(router.urls)), 
 ]

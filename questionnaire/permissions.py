@@ -28,7 +28,7 @@ class IsSheetOwnerOrAsker(permissions.BasePermission):
 
 
 def check_owner_or_read_only(request, owner):
-    return (request.user.is_staff
+    return (request.user.is_staff 
             or request.method in permissions.SAFE_METHODS
             or request.user == owner)
 
