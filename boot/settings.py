@@ -55,6 +55,7 @@ INSTALLED_APPS = [
     "django.contrib.messages",
     "django.contrib.staticfiles",
     "django_apscheduler",
+    "rest_framework", 
     "generic",
     "record",
     "app",
@@ -63,6 +64,8 @@ INSTALLED_APPS = [
     "scheduler",
     "yp_library",
     "feedback",
+    "questionnaire", 
+    "achievement",
 ]
 
 
@@ -152,3 +155,11 @@ USE_L10N = True
 # 从而使数据库可读性差，存储前需要强制增加时区信息，且发送消息容易出错
 # 从数据库取出的数据将是有时区信息的，几乎与datetime.now()不可比
 USE_TZ = False
+
+REST_FRAMEWORK = {
+    # Use Django's standard `django.contrib.auth` permissions,
+    # or allow read-only access for unauthenticated users.
+    'DEFAULT_PERMISSION_CLASSES': [
+        'rest_framework.permissions.DjangoModelPermissionsOrAnonReadOnly'
+    ]
+}
