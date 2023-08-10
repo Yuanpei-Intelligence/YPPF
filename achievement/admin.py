@@ -12,7 +12,7 @@ class AchievementTypeAdmin(admin.ModelAdmin):
 @admin.register(Achievement)
 class AchievementAdmin(admin.ModelAdmin):
     list_display = ['name', 'description',
-                    'achievement_type', 'is_hidden', 'auto_trigger']
+                    'achievement_type', 'hidden', 'auto_trigger']
     search_fields = ['name']
 
 
