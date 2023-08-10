@@ -3,12 +3,13 @@ from rest_framework import serializers
 from questionnaire.models import Survey, Question, Choice, AnswerText, AnswerSheet
 
 __all__ = [
-    'ChoiceSerializer', 
-    'QuestionSerializer', 
-    'SurveySerializer', 
-    'AnswerSheetSerializer', 
-    'AnswerTextSerializer', 
+    'ChoiceSerializer',
+    'QuestionSerializer',
+    'SurveySerializer',
+    'AnswerSheetSerializer',
+    'AnswerTextSerializer',
 ]
+
 
 class ChoiceSerializer(serializers.ModelSerializer):
     class Meta:
