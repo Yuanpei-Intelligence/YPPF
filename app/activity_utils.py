@@ -64,13 +64,14 @@ def changeActivityStatus(aid, cur_status, to_status):
     幂等；可能发生异常；包装器负责处理异常
     必须提供cur_status，则会在转换状态前检查前后状态，每次只能变更一个阶段
     即：报名中->等待中->进行中->结束
-    状态不符合时，抛出AssertionError
+    状态不符合时，抛出AssertionError，若活动状态为“已取消”，则不会抛出异常
     '''
     # print(f"Change Activity Job works: aid: {aid}, cur_status: {cur_status}, to_status: {to_status}\n")
     with transaction.atomic():
         activity = Activity.objects.select_for_update().get(id=aid)
         if cur_status is not None:
-            assert cur_status == activity.status, f"希望的状态是{cur_status}，但实际状态为{activity.status}"
+            if cur_status != activity.status:
+                assert activity.status == "已取消", f"希望的状态是{cur_status}，但实际状态为{activity.status}"
             if cur_status == Activity.Status.APPLYING:
                 assert to_status == Activity.Status.WAITING, f"不能从{cur_status}变更到{to_status}"
             elif cur_status == Activity.Status.WAITING:
