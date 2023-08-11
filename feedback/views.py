@@ -1,24 +1,29 @@
+from datetime import datetime
+
+from django.db.models import Q
+from django.db import transaction
+
 from app.views_dependency import *
 from app.models import (
     Organization,
     OrganizationType,
     Notification,
-    Feedback,
-    FeedbackType,
 )
 from app.utils import (
     get_person_or_org,
 )
+from app.comment_utils import addComment, showComment
 from generic.models import YQPointRecord
-from django.db.models import Q
-from django.db import transaction
-from app.feedback_utils import (
+from feedback.feedback_utils import (
     examine_notification,
     update_feedback,
     make_relevant_notification,
     inform_notification,
 )
-from app.comment_utils import addComment, showComment
+from feedback.models import (
+    FeedbackType,
+    Feedback,
+)
 
 
 __all__ = [
