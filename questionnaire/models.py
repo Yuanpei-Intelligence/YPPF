@@ -87,8 +87,10 @@ class Question(models.Model):
         return self.topic
 
 
-# 选项
 class Choice(models.Model):
+    '''
+    选项
+    '''
     question = models.ForeignKey(
         Question, on_delete=models.CASCADE, related_name='choices', verbose_name="所属问题")
     order = models.IntegerField("选项序号")
