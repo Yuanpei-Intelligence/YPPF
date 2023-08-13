@@ -71,7 +71,7 @@ def changeActivityStatus(aid, cur_status, to_status):
         activity = Activity.objects.select_for_update().get(id=aid)
         if cur_status is not None:
             if cur_status != activity.status:
-                assert activity.status == "已取消", f"希望的状态是{cur_status}，但实际状态为{activity.status}"
+                assert activity.status == Activity.Status.CANCELED, f"希望的状态是{cur_status}，但实际状态为{activity.status}"
             if cur_status == Activity.Status.APPLYING:
                 assert to_status == Activity.Status.WAITING, f"不能从{cur_status}变更到{to_status}"
             elif cur_status == Activity.Status.WAITING:
