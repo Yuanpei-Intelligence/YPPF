@@ -38,34 +38,35 @@ class Dormitory:
 
         major_score = sum([s.data['major'] for s in self.stu])
         if major_score == 2:
-            score += 1000
+            score += 1200
         elif major_score == 0 or major_score == 4:
-            score += 700
+            score += 800
         
         origin = [s.data['origin'] for s in self.stu]
+        if len(set(origin)) == len(self.stu) - 1:
+            score -= 300
         beijing = [s for s in origin if s == "北京"]
         if len(beijing) >= 2:
-            score -= 600
+            score -= 700
         
         wake_score = np.var([s.data['wake'] for s in self.stu])
-        score -= 5 * wake_score
+        score -= 30 * wake_score
 
         sleep_score = np.var([s.data['sleep'] for s in self.stu])
-        score -= 5 * sleep_score
+        score -= 30 * sleep_score
 
-        ac_score = 10 * np.var([s.data['ac_temp'] for s in self.stu])
-        ac_score += (len(set([s.data['all_night_ac'] for s in self.stu])) - 1) * 300
+        ac_score = 20 * np.var([s.data['ac_temp'] for s in self.stu])
+        ac_score += (len(set([s.data['all_night_ac'] for s in self.stu])) - 1) * 400
         score -= ac_score
 
-        stu_cnt_map = {4: 100, 
-                       3: 50, 
-                       2: 10, 
+        stu_cnt_map = {4: 600, 
+                       3: 400, 
+                       2: 0, 
                        1: 0, 
                        0: 0, }
         score += stu_cnt_map.get(len(self.stu))
 
-        if len(self.stu) != 4:
-            score += np.prod([s.data['international'] for s in self.stu])
+        score += 8 * np.prod([s.data['international'] for s in self.stu])
 
         return score
 
@@ -150,50 +151,9 @@ def read_dorm():
             dorm[-1].remain += 1
     
     male_dorm = [d for d in dorm if (d.id < 400 or (d.id < 500 and d.id > 464)) and d.remain == 4]
-    female_dorm = [d for d in dorm if d.id > 500 and d.remain == 4]
+    female_dorm = [d for d in dorm if d.id > 500 and d.remain == 4][:24]
 
     return male_dorm, female_dorm
-
-
-def try_swap(room1: Dormitory, room2: Dormitory, bid1: int, bid2: int):
-    if bid1 >= len(room1.stu) and bid2 >= len(room2.stu):
-        return room1, room2
-    elif bid1 >= len(room1.stu) and bid2 < len(room2.stu):
-        if len(room1.stu) == 1:
-            if len(room2.stu) == 4:
-                return room1, room2
-            else:
-                room2.add(room1.stu[0])
-                if room2.check_must():
-                    room2.remain -= 1
-                    room1.stu.pop()
-                    room1.remain += 1
-                    return room1, room2
-                else:
-                    room2.stu.pop()
-                    return room1, room2
-        else:
-            student = room2.stu[bid2]
-            temp1 = copy.deepcopy(room1)
-            temp2 = copy.deepcopy(room2)
-            del temp2.stu[bid2]
-            temp1.add(student)
-            if temp1.check_must() and temp2.check_must() and (room1.check_better() + room2.check_better() < temp1.check_better() + temp2.check_better()):
-                return temp1, temp2
-            return room1, room2
-    elif bid1 < len(room1.stu) and bid2 >= len(room2.stu):
-        return try_swap(room2, room1, bid2, bid1)
-    elif bid1 < len(room1.stu) and bid2 < len(room2.stu):
-        student1, student2 = room1.stu[bid1], room2.stu[bid2]
-        temp1 = copy.deepcopy(room1)
-        temp2 = copy.deepcopy(room2)
-        del temp1.stu[bid1]
-        del temp2.stu[bid2]
-        temp1.add(student2)
-        temp2.add(student1)
-        if temp1.check_must() and temp2.check_must() and (room1.check_better() + room2.check_better() < temp1.check_better() + temp2.check_better()):
-            return temp1, temp2
-        return room1, room2
 
 
 def assign_dorm():
@@ -224,36 +184,103 @@ def assign_dorm():
                     dorm.stu.pop()
     
     # 随机交换
+    epsilon = 0.3
     for episode in range(250000):
         print(episode)
-        male_habitat = [d for d in male_dorm if d.remain != 4]
-        room1 = random.choice(male_habitat)
-        room2 = random.choice(male_habitat)
-        bid1 = random.randint(0, 3)
-        bid2 = random.randint(0, 3)
 
-        if (room1 == room2 and bid1 == bid2):
+        rid1 = random.randint(0, len(male_dorm) - 1)
+        rid2 = random.randint(0, len(male_dorm) - 1)
+        if rid1 == rid2:
             continue
-        else:
-            temp1, temp2 = try_swap(room1, room2, bid1, bid2)
-            room1 = copy.deepcopy(temp1)
-            room2 = copy.deepcopy(temp2)
-    
-    for episode in range(250000):
-        print(episode)
-        female_habitat = [d for d in female_dorm if d.remain != 4]
-        room1 = random.choice(female_habitat)
-        room2 = random.choice(female_habitat)
-        bid1 = random.randint(0, 3)
-        bid2 = random.randint(0, 3)
 
-        if (room1 == room2 and bid1 == bid2):
+        room1: Dormitory = copy.deepcopy(male_dorm[rid1])
+        room2: Dormitory = copy.deepcopy(male_dorm[rid2])
+        o_score = room1.check_better() + room2.check_better()
+        if len(room1.stu) == 0 or len(room2.stu) == 0:
             continue
-        else:
-            temp1, temp2 = try_swap(room1, room2, bid1, bid2)
-            room1 = copy.deepcopy(temp1)
-            room2 = copy.deepcopy(temp2)
+
+        temp1: Dormitory = copy.deepcopy(room1)
+        temp2: Dormitory = copy.deepcopy(room2)
         
+        del male_dorm[max(rid1, rid2)]
+        del male_dorm[min(rid1, rid2)]
+        
+        if random.random() < epsilon:
+            if len(room1.stu) != 4 and len(room2.stu) != 4:
+                temp2.add(temp1.stu.pop())
+                if temp1.check_must() and temp2.check_must() and (temp1.check_better() + temp2.check_better() > o_score):
+                    room1 = temp1
+                    room2 = temp2
+                    o_score = room1.check_better() + room2.check_better()
+        
+        if len(room1.stu) == 0 or len(room2.stu) == 0:
+            male_dorm.append(room1)
+            male_dorm.append(room2)
+            continue
+
+        temp1: Dormitory = copy.deepcopy(room1)
+        temp2: Dormitory = copy.deepcopy(room2)
+
+        bid1 = random.randint(0, len(room1.stu) - 1)
+        bid2 = random.randint(0, len(room2.stu) - 1)
+
+        temp1.stu[bid1], temp2.stu[bid2] = temp2.stu[bid2], temp1.stu[bid1]
+        if temp1.check_must() and temp2.check_must() and (temp1.check_better() + temp2.check_better() > o_score):
+            male_dorm.append(temp1)
+            male_dorm.append(temp2)
+        else:
+            male_dorm.append(room1)
+            male_dorm.append(room2)
+
+    for episode in range(250000):
+        print(episode)
+
+        rid1 = random.randint(0, len(female_dorm) - 1)
+        rid2 = random.randint(0, len(female_dorm) - 1)
+        if rid1 == rid2:
+            continue
+
+        room1: Dormitory = copy.deepcopy(female_dorm[rid1])
+        room2: Dormitory = copy.deepcopy(female_dorm[rid2])
+        o_score = room1.check_better() + room2.check_better()
+        if len(room1.stu) == 0 or len(room2.stu) == 0:
+            continue
+
+        temp1: Dormitory = copy.deepcopy(room1)
+        temp2: Dormitory = copy.deepcopy(room2)
+        
+        del female_dorm[max(rid1, rid2)]
+        del female_dorm[min(rid1, rid2)]
+        
+        if random.random() < epsilon:
+            if len(room1.stu) != 4 and len(room2.stu) != 4:
+                temp2.add(temp1.stu.pop())
+                if temp1.check_must() and temp2.check_must() and (temp1.check_better() + temp2.check_better() > o_score):
+                    room1 = temp1
+                    room2 = temp2
+                    o_score = room1.check_better() + room2.check_better()
+        
+        if len(room1.stu) == 0 or len(room2.stu) == 0:
+            female_dorm.append(room1)
+            female_dorm.append(room2)
+            continue
+
+        temp1: Dormitory = copy.deepcopy(room1)
+        temp2: Dormitory = copy.deepcopy(room2)
+
+        bid1 = random.randint(0, len(room1.stu) - 1)
+        bid2 = random.randint(0, len(room2.stu) - 1)
+
+        temp1.stu[bid1], temp2.stu[bid2] = temp2.stu[bid2], temp1.stu[bid1]
+        if temp1.check_must() and temp2.check_must() and (temp1.check_better() + temp2.check_better() > o_score):
+            female_dorm.append(temp1)
+            female_dorm.append(temp2)
+        else:
+            female_dorm.append(room1)
+            female_dorm.append(room2)
+
+    male_dorm.sort(key=lambda d: d.id)
+    female_dorm.sort(key=lambda d: d.id)
 
     dorm_result = male_dorm + female_dorm
     return dorm_result
