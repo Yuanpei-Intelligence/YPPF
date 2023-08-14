@@ -11,5 +11,10 @@
             },
             "extensions": []
         }
-    }
+	},
+	"portsAttributes": {
+		"37185": {
+			"label": ""
+		}
+	}
 }

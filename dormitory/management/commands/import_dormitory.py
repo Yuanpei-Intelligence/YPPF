@@ -1,6 +1,7 @@
 from django.core.management.base import BaseCommand
 from dormitory.models import Dormitory
 import pandas as pd
+from tqdm import tqdm
 
 # 导入宿舍信息，包括宿舍号、容量（4）、性别。
 class Command(BaseCommand):
@@ -19,18 +20,20 @@ class Command(BaseCommand):
             return
         
         df_dorms = df_raw.groupby('宿舍号')
-        for dorm_id, df in df_dorms:
+        for dorm_id, df in tqdm(df_dorms):
+            
             gender = pd.unique(df['性别'])
             assert len(gender) == 1, len(gender)
-            dorm, created = Dormitory.objects.get_or_create(
+            
+            _, created = Dormitory.objects.get_or_create(
                 id=dorm_id,
                 capacity=4,
-                gender=gender[0]
+                gender={"男":0, "女":1}[gender[0]]
             )
-            if created:
-                self.stdout.write(self.style.SUCCESS(f'Created dorm: {dorm_id}'))
-            else:
-                self.stdout.write(self.style.SUCCESS(f'Dorm already exist: {dorm_id}'))
+            if not created:
+                gender_dict = {'男':'male','女':'female'}
+                print(f"Dormitory {dorm_id} already exists. Its capacity is 4 and it's a {gender_dict[gender[0]]} dormitory")
+            
 
 
 
