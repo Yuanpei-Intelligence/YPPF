@@ -1,7 +1,9 @@
-from django.core.management.base import BaseCommand
-from dormitory.models import DormitoryAssignment, Dormitory
-from generic.models import User
 import pandas as pd
+from django.core.management.base import BaseCommand
+from dormitory.models import Dormitory, DormitoryAssignment
+from generic.models import User
+from tqdm import tqdm
+
 
 # 导入宿舍信息，包括宿舍号、容量（4）、性别。
 class Command(BaseCommand):
@@ -20,7 +22,7 @@ class Command(BaseCommand):
             return
         
         df_dorms = df_raw.groupby('宿舍号')
-        from tqdm import tqdm
+        
         for dorm_id, df in tqdm(df_dorms):
             dormitory = Dormitory.objects.get(id=dorm_id)
             for i in range(len(df)):

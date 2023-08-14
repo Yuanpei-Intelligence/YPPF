@@ -1,7 +1,8 @@
+import pandas as pd
 from django.core.management.base import BaseCommand
 from dormitory.models import Dormitory
-import pandas as pd
 from tqdm import tqdm
+
 
 # 导入宿舍信息，包括宿舍号、容量（4）、性别。
 class Command(BaseCommand):

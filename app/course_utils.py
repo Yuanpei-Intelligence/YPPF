@@ -423,7 +423,6 @@ def cancel_course_activity(request: HttpRequest, activity: Activity, cancel_all:
 
     # 取消活动
     activity.status = Activity.Status.CANCELED
-
     # 目前只要取消了活动信息，无论活动处于什么状态，都通知全体选课同学
     notifyActivity(activity.id, "modification_par",
                    f"您报名的书院课程活动{activity.title}已取消（活动原定开始于{activity.start.strftime('%Y-%m-%d %H:%M')}）。")
