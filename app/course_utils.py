@@ -135,19 +135,21 @@ def course_activity_base_check(request: HttpRequest) -> dict:
                 request.POST["publish_time"], "%Y-%m-%d %H:%M")  # 活动发布时间，指定的发布时间
     except:
         raise AssertionError("活动时间非法")
-    assert check_ac_time_course(act_start, act_end), "活动时间非法"
-
     context["start"] = act_start
     context["end"] = act_end
     context["publish_day"] = act_publish_day
     context["publish_time"] = act_publish_time
-    context["need_checkin"] = True # 默认需要签到
-    context["need_apply"] = request.POST["need_apply"] == "True" # 默认不需要报名
-    context["post_type"] = str(request.POST.get("post_type", ""))
 
-    if context["need_apply"]:
+    if request.POST["need_apply"] == "True":
         assert datetime.now() < context["start"] - timedelta(hours=1), "需要报名的活动必须提前至少一小时发起"
-    
+       
+    assert check_ac_time_course(act_start, act_end), "活动时间非法"
+
+    # 默认需要签到
+    context["need_checkin"] = True
+    # 默认不需要报名
+    context["need_apply"] = request.POST["need_apply"] == "True" 
+    context["post_type"] = str(request.POST.get("post_type", ""))
     return context
 
 
@@ -440,12 +442,6 @@ def cancel_course_activity(request: HttpRequest, activity: Activity, cancel_all:
         remove_job(f"activity_{activity.id}_{Activity.Status.PROGRESSING}")
     if activity.end > datetime.now():
         remove_job(f"activity_{activity.id}_{Activity.Status.END}")
-    elif activity.status in [
-        Activity.Status.UNPUBLISHED,
-        Activity.Status.WAITING,
-    ]:
-        remove_job(f"activity_{activity.id}_{activity.status}")
-    
 
     activity.save()
 

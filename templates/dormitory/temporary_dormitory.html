@@ -84,22 +84,19 @@
                                                 <caption style="font-size:20px;font-weight:bold;color:#eceef3;background-color:#669900;">
                                                 </caption>
                                                 <tr>
-                                                    <th bgcolor="#669900" style="color:white"> 姓名 </th>
-                                                    <th bgcolor="#669900" style="color:white"> 宿舍号 </th>
-                                                    <th bgcolor="#669900" style="color:white"> 床号 </th>
-                                                    <th bgcolor="#669900" style="color:white"> 你的室友 </th>  
+                                                    <th align="middle" bgcolor="#669900" style="color:white"> 姓名 </th>
+                                                    <th align="middle" bgcolor="#669900" style="color:white"> 宿舍号 </th>
+                                                    <th align="middle" bgcolor="#669900" style="color:white"> 床号 </th>
+                                                    <th align="middle" bgcolor="#669900" style="color:white"> 你的室友 </th>  
                                                 </tr>
-                                                <tr>
-                                                    <td rowspan="3" align="middle" valign="middle" bgcolor="#F5F5F5">{{name}}</td>
-                                                    <td rowspan="3" align="middle" valign="middle" bgcolor="#F5F5F5">{{dorm_id}}</td>
-                                                    <td rowspan="3" align="middle" valign="middle" bgcolor="#F5F5F5">{{bed_id}}</td>
-                                                    {% for roommate in roommates_first %}
-                                                        <td align="middle" valign="middle" bgcolor="#F5F5F5"> <img src={{roommate.avatar}} height="36px" width="36px"> <a href="../../stuinfo/?name={{roommate.name}}">&nbsp{{roommate.name}}</a> </td>  
-                                                    {% endfor %}
-                                                </tr>
-                                                {% for roommate in roommates_rest %}
+                                                {% for i, roommate in roommates %}
                                                     <tr>
-                                                        <td align="middle" valign="middle" bgcolor="#F5F5F5"> <img src={{roommate.avatar}} height="36px" width="36px"> <a href="../../stuinfo/?name={{roommate.name}}">&nbsp{{roommate.name}}</a> </td>  
+                                                        {% if i == 0 %}
+                                                            <td rowspan={{rommmates_total}} align="middle" valign="middle" bgcolor="#F5F5F5">{{name}}</td>
+                                                            <td rowspan={{rommmates_total}} align="middle" valign="middle" bgcolor="#F5F5F5">{{dorm_id}}</td>
+                                                            <td rowspan={{rommmates_total}} align="middle" valign="middle" bgcolor="#F5F5F5">{{bed_id}}</td>
+                                                        {% endif %}
+                                                        <td align="middle" valign="middle" bgcolor="#F5F5F5"> <img src={{roommate.avatar}} height="38px" width="38px"> <a href="../../stuinfo/?name={{roommate.name}}">&nbsp{{roommate.name}}</a> </td>
                                                     </tr>
                                                 {% endfor %}
                                             </table>
