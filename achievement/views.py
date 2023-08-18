@@ -25,7 +25,6 @@ def view_achievements(request):
         request.user, "成就展示")
     frontend_dict["warn_code"] = request.GET.get('warn_code', 0)
     frontend_dict["warn_message"] = request.GET.get('warn_message', "")
-    
-    print(frontend_dict)
+    bar_display = frontend_dict["bar_display"]
 
     return render(request, 'achievement/view_achievements.html', locals())

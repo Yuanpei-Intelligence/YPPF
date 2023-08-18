@@ -10,8 +10,8 @@ __all__ = ['AchievementType', 'Achievement', 'AchievementUnlock']
 class AchievementType(models.Model):
     title = models.CharField(max_length=100)
     description = models.TextField()
-    badge = models.ImageField(upload_to=f'achievement/images/badges')
-    avatar = models.ImageField(upload_to=f'achievement/images/avatars')
+    badge = models.ImageField(upload_to=f'achievement/badges/')
+    avatar = models.ImageField(upload_to=f'achievement/avatars/')
 
     # Actual types in use (remove later)
     # UNDEFINED = (0, "未定义")
