@@ -7,6 +7,7 @@ import pandas as pd
 from tqdm import tqdm
 from django.db import transaction
 
+from boot.config import DEBUG
 from app.config import *
 from app.models import (
     User,
@@ -21,12 +22,14 @@ from app.models import (
     Course,
     CourseRecord,
     Semester,
-    FeedbackType,
-    Feedback,
     Comment,
     AcademicTag,
 )
 from app.utils import random_code_init
+from feedback.models import (
+    FeedbackType,
+    Feedback,
+)
 
 
 
@@ -173,12 +176,12 @@ def load_file(filepath: str) -> 'pd.DataFrame':
 def load_orgtype(filepath: str, output_func: Callable=None, html=False, debug=True):
     if debug:
         username = "someone"
-        user, mid = User.objects.get_or_create(username=username)
+        user, _ = User.objects.get_or_create(username=username)
         password = random_code_init(username)
         user.set_password(password)
         user.save()
 
-        Nperson, mid = NaturalPerson.objects.get_or_create(person_id=user)
+        Nperson, _ = NaturalPerson.objects.get_or_create(person_id=user)
         Nperson.name = "待定"
         Nperson.save()
     org_type_df = load_file(filepath)
@@ -188,14 +191,14 @@ def load_orgtype(filepath: str, output_func: Callable=None, html=False, debug=Tr
         control_pos_threshold = int(otype_dict.get("control_pos_threshold", 0))
         # type_superior_id = int(otype_dict["otype_superior_id"])
         incharge = otype_dict.get("incharge", "待定")
-        orgtype, mid = OrganizationType.objects.get_or_create(otype_id=type_id)
+        orgtype, _ = OrganizationType.objects.get_or_create(otype_id=type_id)
         orgtype.otype_name = type_name
         # orgtype.otype_superior_id = type_superior_id
         try:
-            Nperson, mid = NaturalPerson.objects.get(name=incharge)
+            Nperson, _ = NaturalPerson.objects.get(name=incharge)
         except:
-            user, mid = User.objects.get_or_create(username=incharge)
-            Nperson, mid = NaturalPerson.objects.get_or_create(person_id=user)
+            user, _ = User.objects.get_or_create(username=incharge)
+            Nperson, _ = NaturalPerson.objects.get_or_create(person_id=user)
         orgtype.incharge = Nperson
         orgtype.job_name_list = otype_dict["job_name_list"]
         orgtype.control_pos_threshold = control_pos_threshold

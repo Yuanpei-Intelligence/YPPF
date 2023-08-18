@@ -13,7 +13,6 @@ models.py
 @Author pht
 @Date 2022-08-19
 '''
-import pypinyin
 from typing import Type, NoReturn, Final
 
 from django.db import models
@@ -22,6 +21,7 @@ from django.contrib.auth.models import AbstractUser, AnonymousUser
 from django.contrib.auth.models import UserManager as _UserManager
 from django.db import transaction
 from django.db.models import QuerySet, F
+import pypinyin
 
 from utils.models.choice import choice
 from utils.models.descriptor import necessary_for_frontend, invalid_for_frontend, debug_only

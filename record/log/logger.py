@@ -142,7 +142,7 @@ class Logger(logging.Logger):
 
     def secure_view(
         self, message: str = '', *,
-        raise_exc: bool | None = False,
+        raise_exc: bool | None = None,
         fail_value: ReturnType[Any] = None,
         exc_type: ExceptType[Exception] = Exception
     ) -> Callable[[ViewFunction[R, P, T]], ViewFunction[R, P, T]]:
