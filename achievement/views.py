@@ -19,6 +19,8 @@ def view_achievements(request):
     unlocked_achievements = AchievementUnlock.objects.filter(user=user)
     achievement_types = AchievementType.objects.filter(pk__in=unlocked_achievements)
     
+    for acs in achievement_types:
+        print(acs.title, acs.badge)
     
     frontend_dict = {}
     frontend_dict["bar_display"] = get_sidebar_and_navbar(
@@ -27,4 +29,4 @@ def view_achievements(request):
     frontend_dict["warn_message"] = request.GET.get('warn_message', "")
     bar_display = frontend_dict["bar_display"]
 
-    return render(request, 'achievement/view_achievements.html', locals())
+    return render(request, 'viewAchievements.html', locals())

@@ -20,7 +20,8 @@
         <title>Achievements</title>
     </head>
     <body>
-        <h1>Hello, {{ student.name}}! Here are your achievements:</h1>
+        <h1>Hello, {{ student.name}}! </h1>
+        <h1>Here are your achievements:</h1>
         <h2>Invisible Achievements:</h2>
         <ul>
             {% for unlock in invisible_achievements %}
@@ -47,11 +48,11 @@
       <!-- 轮播图片 -->
       <div class="carousel-inner">
         <div class="carousel-item active">
-          <img src="https://static.runoob.com/images/mix/img_fjords_wide.jpg">
+          <img src="/media/wallpaper/person_wall_default.jpg">
         </div>
         {% for acs in achievement_types %}
         <div class="carousel-item">
-          <img src={{ acs.badge }}>
+          <img src="/media/{{ acs.badge }}">
         </div>
         {% endfor %}
       </div>
