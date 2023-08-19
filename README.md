@@ -1,5 +1,13 @@
 # YPPF
 
+[![Commits](https://img.shields.io/github/commit-activity/t/Yuanpei-Intelligence/YPPF)](https://github.com/Yuanpei-Intelligence/YPPF/commits)
+![GitHub forks](https://img.shields.io/github/forks/Yuanpei-Intelligence/YPPF)
+![Stars](https://img.shields.io/github/stars/Yuanpei-Intelligence/YPPF)
+![Last commit](https://img.shields.io/github/last-commit/Yuanpei-Intelligence/YPPF)
+[![Workflow Status](https://img.shields.io/github/actions/workflow/status/Yuanpei-Intelligence/YPPF/basetest.yml)](https://github.com/Yuanpei-Intelligence/YPPF/actions)
+
+[简体中文](README.md) | [English](README_en.md)
+
 ## 环境要求
 
 - [Python 3.10+](https://www.python.org/downloads/)
