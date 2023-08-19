@@ -1,6 +1,14 @@
 # YPPF
 
-## How to run it
+## Environment Requirement
+
+- [Python 3.10+](https://www.python.org/downloads/)
+- [MySQL 8.0+](https://dev.mysql.com/downloads/mysql/)
+
+> We provide a [Docker development environment](#run-it-with-docker) and recommend using it for development.
+
+## Run it with Docker
+
 It is recommended to run it with [docker](https://www.docker.com/),
 docker-compose and vscode devcontainer.
 
