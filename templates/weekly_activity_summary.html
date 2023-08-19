@@ -1,0 +1,371 @@
+{% extends "base.html" %}
+
+{% load static %}
+
+{% block add_css_file %}
+<link href={% static "datetimepicker/css/bootstrap-datetimepicker-standalone.css" %} rel="stylesheet" type="text/css" />
+<link href={% static "datetimepicker/css/bootstrap-datetimepicker.css" %} rel="stylesheet" type="text/css" />
+<link href={% static "datetimepicker/css/bootstrap-datetimepicker.min.css" %} rel="stylesheet" type="text/css" />
+<link href="{% static 'Appointment/assets/select2/css/select2.min.css' %}" rel="stylesheet" />
+
+
+<style class="text/css">
+    h5{
+        font-family: 'Nunito', sans-serif;
+        font-size: 1rem;
+        font-weight: bold;
+    }
+</style>
+
+{% endblock %}
+
+{% block mainpage %}
+    <!--  BEGIN CONTENT AREA  -->
+    <div id="content" class="main-content">
+        <div class="container">
+            
+                {% if html_display.warn_code == 2 %}
+                <div class="alert alert-success  text-center" id="success_msg" >{{ html_display.warn_message }}</div>
+                {% else %}
+                <div class="alert alert-success  text-center" id="success_msg" style="display: none;"></div>
+                {% endif %}
+                {% if html_display.warn_code == 1 %}
+                <div class="alert alert-warning  text-center" id="warn_msg" >{{ html_display.warn_message }}</div>
+                {% else %}
+                <div class="alert alert-warning  text-center" id="warn_msg" style="display: none;">test</div>
+                {% endif %}
+
+
+                <div class="row layout-top-spacing">
+                    {% if bar_display.help_paragraphs %}
+                        {% include 'help_with_table.html' %}
+                    {% endif %}
+                    <div class="col-lg-12 col-sm-12 col-12 layout-spacing">
+                        <div class="row">
+                            <div class="col-md-12 mb-4">
+                                <div class="statbox widget box box-shadow">
+
+                                    <!--  BEGIN HEADER AREA  -->
+                                    <div class="widget-header">
+                                        <div class="d-flex justify-content-between">
+                                            <div>
+                                                <h4>每周活动总结</h4>
+                                            </div>
+                                            <div >
+                                                <h4>
+                                                <img src="{{ html_display.app_avatar_path }}" width="24" height="24" alt="avatar">                
+                                                <a href='/orginfo/?name={{html_display.applicant_name}}'>
+                                                    <u>{{html_display.applicant_name}}</u>
+                                                </a>
+                                                </h4>
+                                            </div>
+                                        </div>
+                                        
+                                    </div>
+
+                                    <!--  BEGIN CONTENT AREA  -->
+                                    <div class="widget-content widget-content-area">
+
+                                        <form role="form" method="POST" enctype="multipart/form-data" onsubmit="return check_inputs()">
+                                            <p>
+                                                活动信息
+                                                <a data-toggle="tooltip" data-placement="bottom" title="填写活动的基本信息">
+                                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor"
+                                                        class="bi bi-question-circle-fill" viewBox="0 0 22 22">
+                                                        <path
+                                                            d="M16 8A8 8 0 1 1 0 8a8 8 0 0 1 16 0zM5.496 6.033h.825c.138 0 .248-.113.266-.25.09-.656.54-1.134 1.342-1.134.686 0 1.314.343 1.314 1.168 0 .635-.374.927-.965 1.371-.673.489-1.206 1.06-1.168 1.987l.003.217a.25.25 0 0 0 .25.246h.811a.25.25 0 0 0 .25-.25v-.105c0-.718.273-.927 1.01-1.486.609-.463 1.244-.977 1.244-2.056 0-1.511-1.276-2.241-2.673-2.241-1.267 0-2.655.59-2.75 2.286a.237.237 0 0 0 .241.247zm2.325 6.443c.61 0 1.029-.394 1.029-.927 0-.552-.42-.94-1.029-.94-.584 0-1.009.388-1.009.94 0 .533.425.927 1.01.927z" />
+                                                    </svg>
+                                                </a>
+                                            </p>
+                                            <div class="form-group">
+                                                <label>活动名称</label>
+                                                <input type="text" id="title" name="title" class="form-control"
+                                                    aria-label="Default" placeholder="请填写活动名称" required="required" 
+                                                    maxlength=50 onclick="fill_value(this)">
+                                            </div>
+                                            <div class="form-group">
+                                                <label>活动地点</label>
+                                                <input type="text" id="location" name="location" class="form-control"
+                                                    aria-label="Default" placeholder="请填写活动举办的地点" required="required" maxlength=200 onclick="fill_value(this)">
+                                            </div>
+                                            <div class="form-group">
+                                                <label>活动时间</label>
+                                                <a data-toggle="tooltip" data-placement="bottom" title="请选择合理的活动时间，持续时间过长将导致参与者无法获取积分！">
+                                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor"
+                                                        class="bi bi-question-circle-fill" viewBox="0 0 22 22">
+                                                        <path
+                                                            d="M16 8A8 8 0 1 1 0 8a8 8 0 0 1 16 0zM5.496 6.033h.825c.138 0 .248-.113.266-.25.09-.656.54-1.134 1.342-1.134.686 0 1.314.343 1.314 1.168 0 .635-.374.927-.965 1.371-.673.489-1.206 1.06-1.168 1.987l.003.217a.25.25 0 0 0 .25.246h.811a.25.25 0 0 0 .25-.25v-.105c0-.718.273-.927 1.01-1.486.609-.463 1.244-.977 1.244-2.056 0-1.511-1.276-2.241-2.673-2.241-1.267 0-2.655.59-2.75 2.286a.237.237 0 0 0 .241.247zm2.325 6.443c.61 0 1.029-.394 1.029-.927 0-.552-.42-.94-1.029-.94-.584 0-1.009.388-1.009.94 0 .533.425.927 1.01.927z" />
+                                                    </svg>
+                                                </a>
+                                                <div class="row">
+                                                    <div class="col">
+                                                        <input type="text" class="form-control" id="datetimepicker5"
+                                                            name="actstart" placeholder="开始时间" required="required" onclick="fill_value(this)"/>
+                                                    </div>
+                                                    <div class="col">
+                                                        <input type="text" class="form-control" id="datetimepicker6"
+                                                            name="actend" placeholder="结束时间" required="required" onclick="fill_value(this)"/>
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            <div class="form-group card-label"> 
+                                                <select class="search-members" name="students" value="" id="multiselect" multiple="multiple" style="width: 100%; z-index: 200;">
+                                                </select>
+                                            </div>
+
+                                            <!-- <p>宣传信息</p> -->
+                                            <div class="form-group">
+                                                <label for="aintro">活动简介</label>
+                                                <textarea id="aintro" name="introduction" class="form-control" rows="3"
+                                                    placeholder="(必填)请简单介绍一下活动的情况吧～" onclick="fill_value(this)" 
+                                                    required="required" maxlength=225></textarea>
+                                            </div>
+
+                                            <!-- 设置默认值使得活动能够正常创建 -->
+                                            <!-- TODO: 设置默认值应当在后端完成 -->
+                                            <input type="hidden" id="examine_teacher" name="examine_teacher" 
+                                                value="{{ available_teachers.0 }}">
+                                            <input type="hidden" value="1" id="recorded" name="recorded">
+                                            <input type="hidden" id="signscheme" name="signscheme" value="0">
+                                            <input type="hidden" id="maxpeople" name="maxpeople" value="100000">
+                                            <input type="hidden" value="1" id="unlimited_capacity" name="unlimited_capacity">
+                                            <input type="hidden" value="" id="inner" name="inner">
+                                            <input type="hidden" id="inputState" name="prepare_scheme" value="1">
+                                            <input type="hidden" value="" id="need_checkin" name="need_checkin">
+                                            <input type="hidden" id="URL" name="URL" value="">
+                                            <!-- 默认使用第一张活动预告图片 -->
+                                            <input type="hidden" value={{defaultpics.0.src}} id={{defaultpics.0.id}} name={{defaultpics.0.id}}>
+
+
+                                            <div class="form-group">
+                                                <label>
+
+                                                    活动图片
+
+                                                    <a data-toggle="tooltip" data-placement="bottom" title="目前只支持上传一张活动总结的图片">
+                                                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor"
+                                                            class="bi bi-question-circle-fill" viewBox="0 0 22 22">
+                                                            <path
+                                                                d="M16 8A8 8 0 1 1 0 8a8 8 0 0 1 16 0zM5.496 6.033h.825c.138 0 .248-.113.266-.25.09-.656.54-1.134 1.342-1.134.686 0 1.314.343 1.314 1.168 0 .635-.374.927-.965 1.371-.673.489-1.206 1.06-1.168 1.987l.003.217a.25.25 0 0 0 .25.246h.811a.25.25 0 0 0 .25-.25v-.105c0-.718.273-.927 1.01-1.486.609-.463 1.244-.977 1.244-2.056 0-1.511-1.276-2.241-2.673-2.241-1.267 0-2.655.59-2.75 2.286a.237.237 0 0 0 .241.247zm2.325 6.443c.61 0 1.029-.394 1.029-.927 0-.552-.42-.94-1.029-.94-.584 0-1.009.388-1.009.94 0 .533.425.927 1.01.927z" />
+                                                        </svg>
+                                                    </a>
+                                                </label><br/>
+                                                <div class="form-group">
+                                                    <div class="custom-file" lang="zh">
+        
+                                                        <input onchange="showsummaryFilename(this.files)" type="file"
+                                                            class="custom-file-input" id="summary" name="summaryimages"
+                                                            accept="image/*" multiple>
+                                                        <label id="summaryfile" class="custom-file-label"
+                                                               for="customFile"
+                                                        >请上传一张活动总结图片</label>
+        
+                                                    </div>
+                                                </div>
+                                                
+                                            </div>
+
+                                            <button type="submit" class="btn btn-primary btn-block mb-4 mr-2" value="" onclick="return confirm('确认提交每周活动总结？点击提交后请耐心等待，不要重复点击！')">
+                                                提交总结
+                                            </button>
+
+                                        </form>
+                                        <div>
+                                            {% include 'comment.html' %}
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+            
+        </div>
+    </div>
+    <!--  END CONTENT AREA  -->
+
+
+
+{% endblock %}
+
+{% block add_js_file %}
+<script>
+    function showsummaryFilename(files){
+        var text = "";
+        for (i = 0; i < files.length; i++)
+        {
+            text += (" "+files[i].name);
+        }
+        if (text == "")
+            text = "上传一张活动总结图片";
+        $("#summaryfile").html(text);
+    }
+    function getLastMonday() {
+        const today = new Date();
+        // Sunday: 0, Monday: 1, ..., Saturday: 6
+        const dayOfWeek = today.getDay(); 
+        const daysSinceMonday = (dayOfWeek + 6) % 7;
+        let lastMonday = new Date(today);
+        lastMonday.setDate(today.getDate() - daysSinceMonday);
+        lastMonday.setHours(0, 0, 0, 0);
+        return lastMonday;
+    }
+    function getNextSunday() {
+        const today = new Date();
+        const dayOfWeek = today.getDay(); 
+        const daysUntilNextSunday = (7 - dayOfWeek) % 7;
+        let nextSunday = new Date(today);
+        nextSunday.setDate(today.getDate() + daysUntilNextSunday);
+        nextSunday.setHours(23, 59, 59, 999);
+        return nextSunday;
+    }
+     
+</script>
+
+<script src={% static "assets/js/select2/select2.min.js" %}></script>
+
+<script>
+    function matchCustom(params, data) {
+        // If there are no search terms, return all of the data
+        if ($.trim(params.term) === '') {
+            return data;
+        }
+        // Do not display the item if there is no 'text' property
+        if (typeof data.text === 'undefined') {
+            return null;
+        }
+        // `params.term` should be the term that is used for searching
+        // `data.text` is the text that is displayed for the data object
+        //if (data.text.indexOf(params.term) > -1 || String($(data.element).data('pinyin')).indexOf(params.term) > -1) {
+        if (data.text.indexOf(params.term) > -1 || data.pinyin.indexOf(params.term) > -1) {
+            //var modifiedData = $.extend({}, data, true);
+            //modifiedData.text += ' (matched)';
+            return data;
+            // You can return modified objects from here
+            // This includes matching the `children` how you want in nested data sets
+            //return modifiedData;
+        }
+        // Return `null` if the term should not be displayed
+        return null;
+    }
+    let stu_data = {{ js_stu_list| safe }};
+
+    $(document).ready(function () {
+        $('.search-members').select2({
+            theme: "classic",
+            placeholder: "成员(姓名/拼音首字母搜索)",
+            allowClear: true,
+            data: stu_data,
+            matcher: matchCustom,
+        });
+    });
+</script>
+
+
+<script src={% static "datetimepicker/js/bootstrap-datetimepicker.min.js" %}></script>
+
+
+<!-- 选择时间 -->
+<script type="text/javascript">
+    $(function () {
+        $("#datetimepicker5").datetimepicker({
+            format: "YYYY-MM-DD HH:mm",
+            sideBySide: true,
+            // maxDate: getNextSunday(),
+            maxDate: new Date(),
+        });
+        $("#datetimepicker6").datetimepicker({
+            format: "YYYY-MM-DD HH:mm",
+            sideBySide: true,
+            // minDate: getLastMonday(),
+            // maxDate: getNextSunday(),
+            maxDate: new Date(),
+        });
+    });
+</script>
+
+
+<script type="text/javascript">
+    // 没用，只是防止报错影响 js 执行
+    function fill_value(a) {
+        console.log(a.value);
+    }
+</script>
+
+<!-- 检查部分 input 参数 -->
+<script type="text/javascript">
+    function check_inputs() {
+        /*   检查开始与结束时间   */
+        var start = document.getElementById("datetimepicker5").value;
+        var end = document.getElementById("datetimepicker6").value;
+        const now = new Date();
+        var prepare_option = document.getElementById("inputState").value;
+        if (start == "")
+            start = document.getElementById("datetimepicker5").placeholder;
+        if (end == "")
+            end = document.getElementById("datetimepicker6").placeholder;
+        start = new Date(start);
+        end = new Date(end);
+        // 结束要比开始晚
+        if (start >= end) {
+            document.getElementById("success_msg").style.display = "none";
+            document.getElementById("warn_msg").style.display = "";
+            document.getElementById("warn_msg").innerHTML = "结束时间要晚于开始时间。";
+            document.body.scrollTop = document.documentElement.scrollTop = 0;
+            return false;
+        }
+        // 结束时间应当早于当前时间
+        if (end > now){
+            document.getElementById("success_msg").style.display = "none";
+            document.getElementById("warn_msg").style.display = "";
+            document.getElementById("warn_msg").innerHTML = "结束时间要早于当前时间";
+            document.body.scrollTop = document.documentElement.scrollTop = 0;
+            return false;
+        }
+        //（暂时删除）每周活动总结应当保证结束时间在这一周内（开始时间不作要求）
+        // const lastMonday = getLastMonday(), nextSunday = getNextSunday();
+        // if (end < lastMonday || end > nextSunday){
+        //     document.getElementById("success_msg").style.display = "none";
+        //     document.getElementById("warn_msg").style.display = "";
+        //     document.getElementById("warn_msg").innerHTML = "每周活动总结应当保证结束时间在这一周内";
+        //     document.body.scrollTop = document.documentElement.scrollTop = 0;
+        //     return false;
+        // }
+
+        /* 检查图片 */
+        if (!(
+            document.getElementById("summaryimages").files.length > 0)
+        ) {
+            document.getElementById("warn_msg").style.display = "";
+            document.getElementById("warn_msg").innerHTML = "请至少选择一张活动总结图片。";
+            document.body.scrollTop = document.documentElement.scrollTop = 0;
+            return false;
+        }
+        for (file of document.getElementById("summaryimages").files) {
+            var valid_list = ["jpg", "bmp", "png", "jpeg", "rgb", "tif"];
+            var type = file.name.split(".").pop().toLowerCase();
+            var flag = false;
+            for (t of valid_list) {
+                if (valid_list[t] == type) {
+                    flag = true;
+                    break;
+                }
+            }
+            if (!flag) {
+                {% if html_display.warn_code == 2 %}
+                document.getElementById("success_msg").style.display = "none";
+                {% endif %}
+                document.getElementById("warn_msg").style.display = "";
+                document.getElementById("warn_msg").innerHTML = "不支持的图片格式。";
+                document.body.scrollTop = document.documentElement.scrollTop = 0;
+                return false;
+            } 
+        }
+
+        return true;
+    }
+</script>
+
+{% endblock %}

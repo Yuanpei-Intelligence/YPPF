@@ -411,7 +411,7 @@ class ActivityException(Exception):
 
 
 # 时间合法性的检查，检查时间是否在当前时间的一个月以内，并且检查开始的时间是否早于结束的时间，
-def check_ac_time(start_time, end_time):
+def check_ac_time(start_time: datetime, end_time: datetime) -> bool:
     now_time = datetime.now()
     month_late = now_time + timedelta(days=30)
     if not start_time < end_time:
@@ -419,6 +419,15 @@ def check_ac_time(start_time, end_time):
     if now_time < start_time < month_late:
         return True  # 时间所处范围正确
 
+    return False
+
+
+#由每周活动总结新建的活动，检查开始时间早于结束时间；结束时间在这一周内
+def check_summary_time(start_time: datetime, end_time: datetime) -> bool:
+    now_time = datetime.now()
+    if start_time < end_time <= now_time:
+        return True
+    
     return False
 
 
@@ -524,6 +533,46 @@ def activity_base_check(request, edit=False):
             assert edit
     else:
         context["pic"] = pic
+
+    return context
+
+
+def weekly_summary_base_check(request):
+    '''正常情况下检查出错误会抛出不含错误信息的AssertionError，不抛出ActivityException'''
+
+    context = dict()
+
+    # title, introduction, location 创建时不能为空
+    context["title"] = request.POST["title"]
+    context["introduction"] = request.POST["introduction"]
+    context["location"] = request.POST["location"]
+    assert len(context["title"]) > 0
+    assert len(context["introduction"]) > 0
+    assert len(context["location"]) > 0
+
+    # 时间
+    act_start = datetime.strptime(
+        request.POST["actstart"], "%Y-%m-%d %H:%M")  # 活动报名时间
+    act_end = datetime.strptime(
+        request.POST["actend"], "%Y-%m-%d %H:%M")  # 活动报名结束时间
+    context["start"] = act_start
+    context["end"] = act_end
+    assert check_summary_time(act_start, act_end)
+    
+    #以下均为在weekly_activity_summary中设立的不可见、不可修改的默认值，仅为兼容活动详情的前端展示
+    context["url"] = request.POST["URL"]
+    context["bidding"] = False
+    context["examine_teacher"] = request.POST.get("examine_teacher")
+    context["recorded"] = True
+    context["capacity"] = request.POST.get("maxpeople")
+    context["inner"] = False
+    context["pic"] = request.POST.get("picture1")
+    prepare_scheme = int(request.POST["prepare_scheme"])
+    prepare_times = Activity.EndBeforeHours.prepare_times
+    prepare_time = prepare_times[prepare_scheme]
+    signup_end = act_start - timedelta(hours=prepare_time)
+    context["endbefore"] = prepare_scheme
+    context["signup_end"] = signup_end
 
     return context
 
@@ -637,6 +686,79 @@ def create_activity(request):
         publish_to_wechat=True,
         publish_kws={"app": WechatApp.AUDIT},
     )
+
+    return activity.id, True
+
+
+def create_weekly_summary(request):
+    '''
+    检查活动总结合法性及是否存在一致的活动，返回(activity.id, created)
+    若查询到一致的活动或检查不合格时抛出AssertionError
+    '''
+
+    context = weekly_summary_base_check(request)
+
+    # 查找是否有类似活动存在
+    old_ones = Activity.objects.activated().filter(
+        title=context["title"],
+        start=context["start"],
+        introduction=context["introduction"],
+        location=context["location"]
+    )
+    if len(old_ones) == 0:
+        old_ones = Activity.objects.filter(
+            title=context["title"],
+            start=context["start"],
+            introduction=context["introduction"],
+            location=context["location"],
+            status=Activity.Status.REVIEWING,
+        )
+    if len(old_ones):
+        assert len(old_ones) == 1, "创建活动时，已存在的相似活动不唯一"
+        return old_ones[0].id, False
+
+    # 审批老师存在
+    examine_teacher = NaturalPerson.objects.get_teacher(
+        context["examine_teacher"])
+
+    # 检查完毕，创建活动
+    org = get_person_or_org(request.user, UTYPE_ORG)
+    activity = Activity.objects.create(
+        title=context["title"],
+        organization_id=org,
+        examine_teacher=examine_teacher,
+        introduction=context["introduction"],
+        location=context["location"],
+        capacity=context["capacity"],
+        URL=context["url"],
+        start=context["start"],
+        end=context["end"],
+        bidding=context["bidding"],
+        apply_end=context["signup_end"],
+        inner=context["inner"],
+    )
+    activity.endbefore = context["endbefore"]
+    if context.get("need_checkin"):
+        activity.need_checkin = True
+    #每周活动总结新建的活动无需通知参与人
+    activity.recorded = True
+    activity.valid = True #默认已审核
+    activity.status = Activity.Status.END
+    participants_ids = request.POST.getlist("students")
+    for stu_id in participants_ids:
+        stu_usr = User.objects.get(username = stu_id) #这里User.username即为学号
+        stu: NaturalPerson = get_person_or_org(stu_usr)
+        Participant.objects.create(
+            activity_id=activity,
+            person_id=stu,
+            status=Participant.AttendStatus.ATTENDED,
+        )
+    activity.current_participants = len(participants_ids)
+
+    activity.save()
+
+    ActivityPhoto.objects.create(
+        image=context["pic"], type=ActivityPhoto.PhotoType.ANNOUNCE, activity=activity)
 
     return activity.id, True
 

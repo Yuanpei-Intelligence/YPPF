@@ -1,6 +1,7 @@
 import os
 import io
 import urllib.parse
+import pypinyin
 from datetime import datetime, timedelta
 from typing import Literal
 
@@ -9,6 +10,7 @@ from django.db.models import Q, F
 import csv
 import qrcode
 
+from generic.models import YQPointRecord
 from app.views_dependency import *
 from app.models import (
     NaturalPerson,
@@ -30,6 +32,8 @@ from app.activity_utils import (
     cancel_activity,
     withdraw_activity,
     get_activity_QRcode,
+    create_weekly_summary,
+    calcu_activity_YQP,
 )
 from app.comment_utils import addComment, showComment
 from app.utils import (
@@ -1073,3 +1077,77 @@ def modifyEndActivity(request: HttpRequest):
         request.user, navbar_name="活动总结详情")
 
     return render(request, "modify_activity_summary.html", locals())
+
+
+@login_required(redirect_field_name="origin")
+@utils.check_user_access(redirect_url="/logout/")
+@logger.secure_view()
+def weekly_activity_summary(request: HttpRequest):
+    html_display = {}
+    me = utils.get_person_or_org(request.user)
+    #检查是否为小组账号
+    if not request.user.is_org():
+        return redirect(message_url(wrong('小组账号才能发起每周活动总结')))
+
+    # 处理 POST 请求
+    if request.method == "POST" and request.POST:
+        with transaction.atomic():
+            aid, created = create_weekly_summary(request)
+            if not created:
+                return redirect(message_url(
+                    succeed('存在信息相同的活动，已为您自动跳转!'),
+                    f'/viewActivity/{aid}'))
+            # 新建activity summary
+            activity = Activity.objects.get(id=aid)
+            application: ActivitySummary = ActivitySummary.objects.create(
+                status=ActivitySummary.Status.CONFIRMED,
+                activity=activity,
+            )
+            # 活动总结图片
+            summary_photos = request.FILES.getlist('summaryimages')
+            photo_num = len(summary_photos)
+            if photo_num == 1:
+                # 合法性检查
+                for image in summary_photos:
+                    if utils.if_image(image) != 2:
+                        return redirect(
+                            message_url(wrong("上传的总结图片只支持图片格式！")))
+                application.image = summary_photos[0]
+                application.save()
+            else:
+                return redirect(message_url(wrong('图片内容为空或有多张图片！'), request.path))
+            point = calcu_activity_YQP(activity)
+            participants = Participant.objects.filter(
+                activity_id=aid,
+                status=Participant.AttendStatus.ATTENDED).values_list('person_id__person_id', flat=True)
+            participants = User.objects.filter(id__in=participants)
+            User.objects.bulk_increase_YQPoint(
+                participants, point, "参加活动", YQPointRecord.SourceType.ACTIVITY)
+            return redirect(f"/editActivity/{aid}")
+
+    # 下面的操作基本如无特殊说明，都是准备前端使用量
+    defaultpics = [{"src": f"/static/assets/img/announcepics/{i+1}.JPG",
+                    "id": f"picture{i+1}"} for i in range(5)]
+    html_display["applicant_name"] = me.oname
+    html_display["app_avatar_path"] = me.get_user_ava()
+    available_teachers = NaturalPerson.objects.teachers()
+    html_display["today"] = datetime.now().strftime("%Y-%m-%d")
+    bar_display = utils.get_sidebar_and_navbar(request.user, "活动发起")
+    
+    def get_student_chosen_list(students):
+        '''用于前端显示支持拼音搜索的人员列表, 形如[{id, text, pinyin}]'''
+        js_stu_list = []
+        for stu in students:
+            Sid = stu.person_id.username
+            pinyin = pypinyin.pinyin(stu.name, style=pypinyin.NORMAL)
+            pinyin = "".join([s[0] for s in pinyin]) 
+            js_stu_list.append({
+                "id": Sid,
+                "text": stu.name + "_" + Sid[:2],
+                "pinyin": pinyin,
+            })
+        return js_stu_list
+    
+    js_stu_list = get_student_chosen_list(NaturalPerson.objects.activated())
+
+    return render(request, "weekly_activity_summary.html", locals())
