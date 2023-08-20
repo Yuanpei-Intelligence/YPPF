@@ -20,7 +20,7 @@ from app import (
     chat_api,
     YQPoint_views,
 )
-from dormitory.views import DormitoryRoutineQAView, DormitoryAssignResultView
+
 
 # 尽量不使用<type:arg>, 不支持
 urlpatterns = [
@@ -114,9 +114,5 @@ urlpatterns = [
     path("myYQPoint/", YQPoint_views.myYQPoint.as_view(), name="myYQPoint"),
     path("showPools/", YQPoint_views.showPools, name="showPools"),
     path("myPrize/", YQPoint_views.myPrize.as_view(), name="myPrize"),
-]+ [
-    # 住宿生活
-    path("dormitoryRoutineQA/", DormitoryRoutineQAView.as_view(), name="dormitoryRoutineQA"),
-    path("dormitoryAssignResult/", DormitoryAssignResultView.as_view(), name="dormitoryAssignResult"),
 ]
 

@@ -77,14 +77,7 @@ class DormitoryAssignResultView(ProfileTemplateView):
     def prepare_get(self):
         return self.get
 
-    def prepare_post(self):
-        return self.post
-
     def get(self):
-        self.show_dorm_assign()
-        return self.render()
-
-    def post(self):
         self.show_dorm_assign()
         return self.render()
 
