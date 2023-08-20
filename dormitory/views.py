@@ -2,13 +2,14 @@ from rest_framework import viewsets
 from django.db import transaction
 
 # TODO: Leaky dependency
+from app.views import stuinfo
 from app.view.base import ProfileTemplateView
-from questionnaire.models import Survey, AnswerSheet, AnswerText
+from app.models import NaturalPerson
+from generic.models import User
 from dormitory.models import Dormitory, DormitoryAssignment
 from dormitory.serializers import DormitorySerializer, DormitoryAssignmentSerializer
-from generic.models import User
-from app.models import NaturalPerson
-from app.views import stuinfo
+from questionnaire.models import Survey, AnswerSheet, AnswerText
+
 
 class DormitoryViewSet(viewsets.ReadOnlyModelViewSet):
     queryset = Dormitory.objects.all()
@@ -32,7 +33,7 @@ class DormitoryRoutineQAView(ProfileTemplateView):
         return self.post
 
     def get(self):
-        
+
         survey = Survey.objects.get(title='宿舍调查问卷')
         if AnswerSheet.objects.filter(creator=self.request.user,
                                       survey=survey).exists():
@@ -85,17 +86,21 @@ class DormitoryAssignResultView(ProfileTemplateView):
         user = self.request.user
         np_student = NaturalPerson.objects.get(person_id=user)
         try:
-            user_assignment = DormitoryAssignmentViewSet.queryset.get(user=user)
-            dorm_assignment = DormitoryAssignmentViewSet.queryset.filter(dormitory=user_assignment.dormitory)
-            name, dorm_id, bed_id = np_student.name, user_assignment.dormitory.id, dorm_assignment.get(user=user).bed_id
-            roommates = [ NaturalPerson.objects.get(person_id=item.user) for item in dorm_assignment]
+            user_assignment = DormitoryAssignmentViewSet.queryset.get(
+                user=user)
+            dorm_assignment = DormitoryAssignmentViewSet.queryset.filter(
+                dormitory=user_assignment.dormitory)
+            name, dorm_id, bed_id = np_student.name, user_assignment.dormitory.id, dorm_assignment.get(
+                user=user).bed_id
+            roommates = [NaturalPerson.objects.get(
+                person_id=item.user) for item in dorm_assignment]
             roommates.remove(np_student)
             self.extra_context.update({
                 'dorm_assigned': True,
                 'name': name,
                 'dorm_id': dorm_id,
                 'bed_id': bed_id,
-                'roommates': [(i,item) for i, item in enumerate(roommates)],
+                'roommates': [(i, item) for i, item in enumerate(roommates)],
                 'rommmates_total': str(len(roommates))
             })
         except DormitoryAssignment.DoesNotExist:

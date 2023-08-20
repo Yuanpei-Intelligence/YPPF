@@ -21,7 +21,6 @@ from app import (
     YQPoint_views,
 )
 
-
 # 尽量不使用<type:arg>, 不支持
 urlpatterns = [
     # path("requestLoginOrg/", views.requestLoginOrg, name="requestLoginOrg"), # 已废弃
@@ -115,4 +114,3 @@ urlpatterns = [
     path("showPools/", YQPoint_views.showPools, name="showPools"),
     path("myPrize/", YQPoint_views.myPrize.as_view(), name="myPrize"),
 ]
-
