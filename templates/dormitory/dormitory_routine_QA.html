@@ -48,7 +48,6 @@
 
                             <!--  BEGIN CONTENT AREA  -->
                             <div class="widget-content widget-content-area">
-
                                 <form role="form" method="POST" enctype="multipart/form-data"
                                     onsubmit="return check_input()">
                                     {% for question, choices in survey_iter %}
@@ -76,44 +75,14 @@
                                     {% endfor %}
 
                                     {% if submitted %}
-                                        {% if dorm_assigned %}
-                                        <div class="alert alert-success  text-center" id="success_msg">
-                                            此处是你的宿舍分配结果</div>
-                                        <div style="text-align:center;">
-                                            <table style="white-space:nowrap;width:100%; font-size:13px; border:solid; border-width:0px;" class="table">
-                                                <caption style="font-size:20px;font-weight:bold;color:#eceef3;background-color:#669900;">
-                                                </caption>
-                                                <tr>
-                                                    <th align="middle" bgcolor="#669900" style="color:white"> 姓名 </th>
-                                                    <th align="middle" bgcolor="#669900" style="color:white"> 宿舍号 </th>
-                                                    <th align="middle" bgcolor="#669900" style="color:white"> 床号 </th>
-                                                    <th align="middle" bgcolor="#669900" style="color:white"> 你的室友 </th>  
-                                                </tr>
-                                                {% for i, roommate in roommates %}
-                                                    <tr>
-                                                        {% if i == 0 %}
-                                                            <td rowspan={{rommmates_total}} align="middle" valign="middle" bgcolor="#F5F5F5">{{name}}</td>
-                                                            <td rowspan={{rommmates_total}} align="middle" valign="middle" bgcolor="#F5F5F5">{{dorm_id}}</td>
-                                                            <td rowspan={{rommmates_total}} align="middle" valign="middle" bgcolor="#F5F5F5">{{bed_id}}</td>
-                                                        {% endif %}
-                                                        <td align="middle" valign="middle" bgcolor="#F5F5F5"> <img src={{roommate.avatar}} height="38px" width="38px"> <a href="../../stuinfo/?name={{roommate.name}}">&nbsp{{roommate.name}}</a> </td>
-                                                    </tr>
-                                                {% endfor %}
-                                            </table>
-                                        </div>
-                                        {% else %}   
-                                        <div class="alert alert-success  text-center" id="success_msg">
-                                            问卷已成功提交，系统中尚未查询到你的宿舍分配结果，待结果载入后将通知</div>
-                                        {% endif %}
+                                    <div class="alert alert-success  text-center" id="success_msg">
+                                        问卷已成功提交</div>
                                     {% else %}
                                     <button type="submit" class="btn btn-primary btn-block mb-4 mr-2" value="">
                                         提交
                                     </button>
                                     {% endif %}
-
                                 </form>
-
-
                             </div>
                         </div>
                     </div>

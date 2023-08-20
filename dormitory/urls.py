@@ -2,7 +2,7 @@ from django.urls import path, include
 from rest_framework.routers import DefaultRouter
 
 from dormitory.views import (
-    DormitoryViewSet, DormitoryAssignmentViewSet, TemporaryDormitoryView
+    DormitoryViewSet, DormitoryAssignmentViewSet, DormitoryRoutineQAView, DormitoryAssignResultView
 )
 
 
@@ -14,5 +14,7 @@ router.register('dormitoryassignment', DormitoryAssignmentViewSet,
 
 urlpatterns = [
     path('', include(router.urls)),
-    path('temporary_dormitory/', TemporaryDormitoryView.as_view())
+    # ('temporary_dormitory/', TemporaryDormitoryView.as_view()),
+    path("dormitoryRoutineQA/", DormitoryRoutineQAView.as_view(), name="dormitoryRoutineQA"),
+    path("dormitoryAssignResult/", DormitoryAssignResultView.as_view(), name="dormitoryAssignResult"),
 ]

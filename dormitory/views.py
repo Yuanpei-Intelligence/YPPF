@@ -20,9 +20,9 @@ class DormitoryAssignmentViewSet(viewsets.ReadOnlyModelViewSet):
     serializer_class = DormitoryAssignmentSerializer
 
 
-class TemporaryDormitoryView(ProfileTemplateView):
+class DormitoryRoutineQAView(ProfileTemplateView):
 
-    template_name = 'dormitory/temporary_dormitory.html'
+    template_name = 'dormitory/dormitory_routine_QA.html'
     page_name = '生活习惯调研'
 
     def prepare_get(self):
@@ -39,7 +39,6 @@ class TemporaryDormitoryView(ProfileTemplateView):
             self.extra_context.update({
                 'submitted': True
             })
-            self.show_dorm_assign()
             return self.render()
         questions = survey.question_set.order_by('order').all()
         choices = [
@@ -67,11 +66,26 @@ class TemporaryDormitoryView(ProfileTemplateView):
         self.extra_context.update({
             'submitted': True
         })
+        return self.render()
 
-        # 提交问卷后未立刻处理GET请求会导致dorm_assigned未及时从False变为True，宿舍分配结果未能及时显示
-        # 提交问卷后在此进行单独显示
+
+class DormitoryAssignResultView(ProfileTemplateView):
+
+    template_name = 'dormitory/dormitory_assign_result.html'
+    page_name = '宿舍分配结果'
+
+    def prepare_get(self):
+        return self.get
+
+    def prepare_post(self):
+        return self.post
+
+    def get(self):
         self.show_dorm_assign()
+        return self.render()
 
+    def post(self):
+        self.show_dorm_assign()
         return self.render()
 
     def show_dorm_assign(self):
