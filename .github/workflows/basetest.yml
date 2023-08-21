@@ -22,13 +22,14 @@ jobs:
       run: |
         docker compose -f .devcontainer/docker-compose.yml up -d
 
+    # 等待20秒，保证containers处于就绪状态
     - name: Sleep for 20 seconds
       run: sleep 20s
       shell: bash
 
     - name: Make migrations
       run: |
-        docker compose -f .devcontainer/docker-compose.yml exec -u vscode -T yppf python3 manage.py makemigrations app generic record Appointment dm scheduler yp_library questionnaire dormitory feedback achievement
+        docker compose -f .devcontainer/docker-compose.yml exec -u vscode -T yppf bash ./scripts/init_migrations.sh
 
     - name: Setup DB
       run: |

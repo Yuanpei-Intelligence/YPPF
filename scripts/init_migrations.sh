@@ -1,2 +1,1 @@
-python3 manage.py  makemigrations generic app Appointment questionnaire achievement
-python3 manage.py migrate
+python3 manage.py makemigrations app generic record Appointment scheduler yp_library questionnaire dormitory feedback achievement
