@@ -26,7 +26,7 @@ def delete_all():
 def create_superuser():
     try:
         User.objects.create_superuser(username='admin', password='admin',
-                                      email='admin@notexist.com')
+                                      email='admin@notexist.com', is_active=True)
     except:
         pass
 

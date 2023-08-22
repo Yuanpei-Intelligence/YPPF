@@ -662,3 +662,14 @@ def user_login_org(request: UserRequest, org: Organization) -> MESSAGECONTEXT:
     auth.login(request, org.get_user())  # 切换到小组账号
     update_related_account_in_session(request, user.username, oname=org.oname)
     return succeed("成功切换到小组账号处理该事务，建议事务处理完成后退出小组账号。")
+
+
+def get_org_members(org: User, is_active: bool = True) -> list[User]:
+    if not org.is_org():
+        return []
+    if is_active and not org.is_active:
+        return []
+    query_set = Position.objects.filter(org=org)
+    if is_active:
+        query_set = query_set.activated()
+    return [pos.person.get_user() for pos in query_set]

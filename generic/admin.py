@@ -69,14 +69,14 @@ class MyUserAdmin(UserAdmin):
         'credit', 'utype', 'is_staff', 'is_superuser',
     ]
     # list_editable = ['credit']
-    search_fields = ['id', 'username', 'name', 'acronym']
+    search_fields = ['id', 'username', 'name', 'pinyin', 'acronym']
     @classmethod
     def suggest_search_fields(cls, user_field: str = 'user'):
         return [f'{user_field}__{field}' for field in cls.search_fields[1:]]
 
     list_filter = ['utype', 'is_superuser', 'is_staff', 'groups', 'is_active']
     fieldsets = [
-        (None, {'fields': ('username', 'name', 'acronym', 'password')}),
+        (None, {'fields': ('username', 'name', 'acronym', 'pinyin', 'password')}),
         ('自定义信息', {'fields': ['credit', 'YQpoint', 'utype', 'is_newuser']}),
         # 内置部分
         ('权限', {

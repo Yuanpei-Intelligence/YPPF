@@ -31,7 +31,7 @@ class College_AnnouncementAdmin(admin.ModelAdmin):
 class ParticipantAdmin(admin.ModelAdmin):
     actions_on_top = True
     actions_on_bottom = True
-    search_fields = ('Sid__username', 'name', 'pinyin')
+    search_fields = ('Sid__username', 'Sid__name', 'Sid__pinyin', 'Sid__acronym')
     list_display = ('Sid', 'name', 'credit', 'longterm', 'hidden')
     list_display_links = ('Sid', 'name')
     # list_editable = ('credit', )
@@ -88,14 +88,6 @@ class ParticipantAdmin(admin.ModelAdmin):
         stu_all = User.objects.filter(id__in=stu_all.values_list('Sid__id'))
         User.objects.bulk_recover_credit(stu_all, 1, '地下室：全体学生恢复')
         return self.message_user(request, '操作成功!')
-
-    @as_action('更新姓名拼音', actions, update=True)
-    def renew_pinyin(self, request, queryset):
-        for stu in queryset:
-            pinyin_list = pypinyin.pinyin(stu.name, style=pypinyin.NORMAL)
-            stu.pinyin = ''.join([w[0][0] for w in pinyin_list])
-            stu.save()
-        return self.message_user(request, '修改学生拼音成功!')
 
     @as_action('赋予长期预约权限', actions, 'change', update=True)
     def add_longterm_perm(self, request, queryset: QuerySet[Participant]):

@@ -33,6 +33,12 @@ __all__ = [
 ]
 
 
+def to_pinyin(name: str) -> str:
+    '''生成拼音'''
+    pinyin_list = pypinyin.pinyin(name, style=pypinyin.NORMAL)
+    return ''.join([w[0] for w in pinyin_list]) 
+
+
 def to_acronym(name: str) -> str:
     '''生成缩写'''
     pinyin_list = pypinyin.pinyin(name, style=pypinyin.NORMAL)
@@ -63,6 +69,7 @@ class UserManager(_UserManager['User']):
         if usertype is not None:
             extra_fields['utype'] = usertype
         extra_fields['name'] = name
+        extra_fields.setdefault('pinyin', to_pinyin(name))
         extra_fields.setdefault('acronym', to_acronym(name))
         return super().create_user(username=username, password=password, **extra_fields)
 
@@ -246,6 +253,13 @@ class User(AbstractUser, PointMixin):
     MAX_CREDIT: Final = 3
     credit = models.IntegerField('信用分', default=MAX_CREDIT)
 
+    # For student, means not graduated
+    # For teacher, means not retired
+    # For organization, means not dissolved
+    # TODO, copy from NaturalPerson & Organization
+    # Then, change default to True
+    is_active = models.BooleanField('激活', default=False)
+
     accept_chat = models.BooleanField('允许提问', default=True)
     accept_anonymous_chat = models.BooleanField('允许匿名提问', default=True)
 
@@ -258,7 +272,7 @@ class User(AbstractUser, PointMixin):
         SPECIAL = choice('', '特殊用户')
 
     name = models.CharField('名称', max_length=32)
-
+    pinyin = models.CharField('拼音', max_length=64, default='', blank=True)
     acronym = models.CharField('缩写', max_length=32, default='', blank=True)
     utype: Type | str = models.CharField(
         '用户类型', max_length=20,

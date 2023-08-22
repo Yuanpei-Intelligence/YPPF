@@ -53,13 +53,15 @@ class Participant(models.Model):
         verbose_name='学号',
         primary_key=True,
     )
-    name = models.CharField('姓名', max_length=64)
+
+    @property
+    def name(self) -> str:
+        return self.Sid.name
 
     @property
     def credit(self) -> int:
-        '''通过此方法访问的信用分是只读的，修改应使用User.objects方法'''
         return self.Sid.credit
-    pinyin = models.CharField('拼音', max_length=20, null=True)
+
     hidden = models.BooleanField('不可搜索', default=False)
     longterm = models.BooleanField('可长期预约', default=False)
 

@@ -10,6 +10,8 @@ from django.contrib import auth
 from django.db.models import QuerySet
 from django.db import transaction
 
+from generic.utils import get_user_list_for_search
+from app.utils import get_org_members
 from utils.global_messages import wrong, succeed, message_url
 import utils.global_messages as my_messages
 from Appointment.models import (
@@ -929,10 +931,9 @@ def checkout_appoint(request: HttpRequest):
                               render_context)
 
     # 提供搜索功能的数据
-    js_stu_list = web_func.get_student_chosen_list(request,
-                                                   Participant.objects.all())
-    js_stu_group_list = web_func.get_student_chosen_list(
-        request, get_members(request.user))
+    js_stu_list = get_user_list_for_search('Person', True, request.user)
+    js_stu_group_list = get_org_members(request.user)
+
     render_context.update(js_stu_list=js_stu_list,
                           js_stu_group_list=js_stu_group_list)
 
