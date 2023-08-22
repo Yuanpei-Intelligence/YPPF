@@ -20,46 +20,39 @@
         <title>Achievements</title>
     </head>
     <body>
-        <h1>Hello, {{ student.name}}! </h1>
-        <h1>Here are your achievements:</h1>
-        <h2>Invisible Achievements:</h2>
+        <h1><center>您好，{{ student.name}}!欢迎来到智慧校园成就系统 </center></h1>
+        <h1><center>以下是您的成就:</center></h1>
+        <h2><center>未公开成就:（切换功能开发中）</center></h2>
         <ul>
             {% for unlock in invisible_achievements %}
-                <li>{{ unlock.achievement }} - {{ unlock.time }}</li>
+              <center><p>{{ unlock.achievement }} - {{ unlock.time }}</p></center>
             {% endfor %}
         </ul>
-        <h2>Visible Achievements:</h2>
+        <h2><center>公开成就:</center></h2>
         <ul>
             {% for unlock in visible_achievements %}
-                <li>{{ unlock.achievement }} - {{ unlock.time }}</li>
+              <center><p>{{ unlock.achievement }} - {{ unlock.time }}</p></center>
             {% endfor %}
         </ul>
     </body>
 
-    <div id="demo" class="carousel slide" data-ride="carousel">
+    <div id="badges" class="carousel slide" data-ride="carousel">
  
-      <!-- 指示符 -->
-      <ul class="carousel-indicators">
-        <li data-target="#demo" data-slide-to="0" class="active"></li>
-        <li data-target="#demo" data-slide-to="1"></li>
-        <li data-target="#demo" data-slide-to="2"></li>
-      </ul>
-     
       <!-- 轮播图片 -->
       <div class="carousel-inner">
         <div class="carousel-item active">
-          <img src="/media/wallpaper/person_wall_default.jpg">
+          <center><img src="/media/avatar/person_default.jpg" height=500, width=500></center>
         </div>
         {% for acs in achievement_types %}
         <div class="carousel-item">
-          <img src="/media/{{ acs.badge }}">
+          <center><img src="/media/{{ acs.badge }}" height=500, width=500></center>
         </div>
         {% endfor %}
       </div>
      
       <!-- 左右切换按钮 -->
       {% for acs in achievement_types %}
-        <a class="carousel-control-prev" href="#demo" data-slide="prev">
+        <a class="carousel-control-prev" href="#badges" data-slide="prev">
           <span class="carousel-control-prev-icon"></span>
         </a>
       {% endfor %}
