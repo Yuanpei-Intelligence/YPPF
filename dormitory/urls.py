@@ -14,8 +14,8 @@ router.register('dormitoryassignment', DormitoryAssignmentViewSet,
 
 urlpatterns = [
     path('', include(router.urls)),
-    path("dormitory_routine_QA/", DormitoryRoutineQAView.as_view(),
-         name="dormitory_routine_QA"),
-    path("dormitory_assign_result/", DormitoryAssignResultView.as_view(),
-         name="dormitory_assign_result"),
+    path("dormitory-routine-QA/", DormitoryRoutineQAView.as_view(),
+         name="dormitory-routine-QA"),
+    path("dormitory-assign-result/", DormitoryAssignResultView.as_view(),
+         name="dormitory-assign-result"),
 ]

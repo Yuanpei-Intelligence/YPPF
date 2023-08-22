@@ -16,6 +16,9 @@ Including another URLconf
 from django.urls import path
 from Appointment import views, summary, hardware_api
 
+# 不可删除
+# 使用 app_name 设置 namespace，避免 reverse url 时因 url 同名造成混淆
+app_name = 'Appointment'
 
 urlpatterns = [
     # 认证

@@ -12,6 +12,8 @@
 from django.urls import path
 from yp_library import views
 
+# reverse 函数中是否使用了该 app_name 设置的 namespace 仍需检查，如不必要可将该变量删去
+app_name = 'yp_library'
 
 urlpatterns = [
     path('', views.WelcomeView.as_view(), name="libWelcome"),
