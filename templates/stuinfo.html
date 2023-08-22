@@ -1536,6 +1536,8 @@
                               {% for acs in achievement_types %}
                               <div class="carousel-item">
                                 <center><img src="/media/{{ acs.badge }}" height=300, width=300></center>
+                                <p>{{acs.title}}成就总数: {{all_achievement_stat.acs.title}}</p>
+                                <p>{{acs.title}}成就收集数:{{unlocked_personal_stat.acs.title}}</p>
                                 <p
                                                 style="text-align: left; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
                                                 <i class="fa fa-info-circle" style="width: 20px;"></i>

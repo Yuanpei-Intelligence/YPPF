@@ -567,9 +567,19 @@ def stuinfo(request: UserRequest):
             user=user, private=False)
 
         unlocked_achievements = AchievementUnlock.objects.filter(user=user)
-        achievement_types = AchievementType.objects.filter(
-            pk__in=unlocked_achievements)
-        print(achievement_types)
+        achievement_types = AchievementType.objects.all()
+        # unlocked_personal_stat: 字典，从achievementType到该用户achievementUnlock的数量
+        # all_achievement_stat: 字典，从achievementType到该类型下Achievement的总数量
+        unlocked_personal_stat = {}
+        all_achievement_stat = {}
+        for a_t in achievement_types:
+            all_achievement_stat[a_t.title] = Achievement.objects.filter(
+                achievement_type=a_t).count()
+            achievement_a_t = Achievement.objects.filter(achievement_type=a_t)
+            unlocked_personal_stat[a_t.title] = unlocked_achievements.filter(
+                achievement__in=achievement_a_t).count()
+        print("unlocked_personal_stat", unlocked_personal_stat)
+        print("all_achievement_stat", all_achievement_stat)
 
         status_dict = dict(
             major_status=major_status,
