@@ -15,7 +15,7 @@ Including another URLconf
 '''
 from django.urls import path
 from Appointment import views, summary, hardware_api
-app_name = 'Appointment'
+
 
 urlpatterns = [
     # 认证
@@ -33,13 +33,15 @@ urlpatterns = [
     path('arrange_talk', views.arrange_talk_room, name='arrange_talk'),
     path('check_out', views.checkout_appoint, name='checkout_appoint'),
     path('cancelAppoint', views.cancelAppoint, name='cancelAppoint'),
-    path('renewLongtermAppoint', views.renewLongtermAppoint, name='renewLongtermAppoint'),
+    path('renewLongtermAppoint', views.renewLongtermAppoint,
+         name='renewLongtermAppoint'),
     path('review', views.review, name='review'),
 ] + [
     # 硬件对接
     path('door_check', hardware_api.door_check, name='door_check'),
     path('camera-check', hardware_api.cameracheck, name='cameracheck'),
-    path('display_getappoint', hardware_api.display_getappoint, name='display_getappoint'),
+    path('display_getappoint', hardware_api.display_getappoint,
+         name='display_getappoint'),
     path('summary', summary.summary, name='summary'),
     path('summary/2021', summary.summary2021, name='summary2021'),
 ]

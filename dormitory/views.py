@@ -1,14 +1,13 @@
-from rest_framework import viewsets
 from django.db import transaction
+from rest_framework import viewsets
 
 # TODO: Leaky dependency
-from app.views import stuinfo
-from app.view.base import ProfileTemplateView
 from app.models import NaturalPerson
-from generic.models import User
+from app.view.base import ProfileTemplateView
 from dormitory.models import Dormitory, DormitoryAssignment
-from dormitory.serializers import DormitorySerializer, DormitoryAssignmentSerializer
-from questionnaire.models import Survey, AnswerSheet, AnswerText
+from dormitory.serializers import (DormitoryAssignmentSerializer,
+                                   DormitorySerializer)
+from questionnaire.models import AnswerSheet, AnswerText, Survey
 
 
 class DormitoryViewSet(viewsets.ReadOnlyModelViewSet):
