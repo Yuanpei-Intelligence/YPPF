@@ -16,8 +16,11 @@ Including another URLconf
 from django.urls import path
 from Appointment import views, summary, hardware_api
 
-# 不可删除
-# 使用 app_name 设置 namespace，避免 reverse url 时因 url 同名造成混淆
+# 参考：https://stackoverflow.com/questions/61254816/what-is-the-purpose-of-app-name-in-urls-py-in-django
+# 一般情况下不需要使用 app_name
+# 当 view 的名称存在重复时，使用 app_name 设置 namespace，避免 reverse url 时因 url 同名造成混淆
+# 由于 Appointment 代码过于古老，命名不规范，故使用 app_name
+# 在 reverse 时，使用 `reverse('Appointment:view_name)`
 app_name = 'Appointment'
 
 urlpatterns = [
