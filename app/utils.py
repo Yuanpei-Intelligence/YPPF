@@ -1,11 +1,10 @@
-
 import string
 import random
 import urllib.parse
 from io import BytesIO
 from datetime import datetime, timedelta
 from functools import wraps
-from typing import overload, Literal
+from typing import overload, Literal, Iterator
 
 import xlwt
 import imghdr
@@ -58,6 +57,8 @@ def check_user_access(redirect_url="/logout/", is_modpw=False):
 
 # TODO: Handle ip blocking
 _block_ips = set()
+
+
 def block_attack(view_function):
     @wraps(view_function)
     def _wrapped_view(request: HttpRequest, *args, **kwargs):
@@ -73,6 +74,7 @@ def record_attack(except_type=None, as_attack=False):
     # TODO: 重构代码，调整本函数位置
     if except_type is None:
         except_type = ()
+
     def actual_decorator(view_function):
         @block_attack
         @wraps(view_function)
@@ -100,16 +102,21 @@ def get_classified_user(
     user: User, user_type: Literal[User.Type.PERSON], *,
     update: bool = False, activate: bool = False
 ) -> NaturalPerson: ...
+
+
 @overload
 def get_classified_user(
     user: User, user_type: Literal[User.Type.ORG], *,
     update: bool = False, activate: bool = False
 ) -> Organization: ...
+
+
 @overload
 def get_classified_user(
     user: User, user_type: str | None = ..., *,
     update: bool = False, activate: bool = False
 ) -> ClassifiedUser: ...
+
 
 def get_classified_user(user: User, user_type: str | User.Type | None = None, *,
                         update=False, activate=False) -> ClassifiedUser:
@@ -144,6 +151,7 @@ def get_classified_user(user: User, user_type: str | User.Type | None = None, *,
         raise AssertionError(f"非法的用户类型：“{user_type}”")
     return model.objects.get_by_user(user, update=update, activate=activate)
 
+
 # 保持之前的函数名接口
 get_person_or_org = get_classified_user
 
@@ -167,9 +175,9 @@ def get_user_wallpaper(person: ClassifiedUser):
 def get_inform_share(me: ClassifiedUser, is_myself=True):
     alert_message = ""
     if is_myself and me.inform_share:
-        alert_message = ("【关于分享】:如果你在使用手机浏览器，"+
-                        "可以使用浏览器自带的分享来分享你的主页或者活动主页，"+
-                        "或者可以选择将其在微信/朋友圈中打开并分享。")
+        alert_message = ("【关于分享】:如果你在使用手机浏览器，" +
+                         "可以使用浏览器自带的分享来分享你的主页或者活动主页，" +
+                         "或者可以选择将其在微信/朋友圈中打开并分享。")
         # me.inform_share = False
         # me.save()
         return True, alert_message
@@ -240,12 +248,12 @@ def get_sidebar_and_navbar(user: User, navbar_name="", title_name=""):
         bar_display["help_message"] = CONFIG.help_message.get(navbar_name, "")
     if help_title:
         try:
-            bar_display["help_paragraphs"] = Help.objects.get(title=help_title).content
+            bar_display["help_paragraphs"] = Help.objects.get(
+                title=help_title).content
         except:
             bar_display["help_paragraphs"] = ""
 
     return bar_display
-
 
 
 def site_match(site, url, path_check_level=0, scheme_check=False):
@@ -280,7 +288,7 @@ def get_std_url(arg_url: str, site_url: str, path_dir=None, match_func=None):
     - match_func: 检查匹配的函数，默认为site_match(site_url, arg_url)
     '''
     if match_func is None:
-        match_func = lambda x: site_match(site_url, x)
+        def match_func(x): return site_match(site_url, x)
 
     if arg_url is None:
         return False, site_url
@@ -392,11 +400,13 @@ def get_captcha(request, username, valid_seconds=None, more_info=False):
         captcha = f"{captcha:06}"
     return (captcha, expired, old) if more_info else captcha
 
+
 def set_captcha_session(request, username, captcha):
     '''noexcept'''
     utcnow = datetime.utcnow()
     request.session["received_user"] = username
-    request.session["captcha_create_time"] = utcnow.strftime("%Y-%m-%d %H:%M:%S")
+    request.session["captcha_create_time"] = utcnow.strftime(
+        "%Y-%m-%d %H:%M:%S")
     request.session["captcha"] = captcha
 
 
@@ -420,8 +430,8 @@ def check_account_setting(request: UserRequest):
         attr_dict['telephone'] = request.POST["tel"]
         attr_dict['email'] = request.POST["email"]
         attr_dict['stu_major'] = request.POST["major"]
-        #attr_dict['stu_grade'] = request.POST['grade'] 用户无法填写
-        #attr_dict['stu_class'] = request.POST['class'] 用户无法填写
+        # attr_dict['stu_grade'] = request.POST['grade'] 用户无法填写
+        # attr_dict['stu_class'] = request.POST['class'] 用户无法填写
         attr_dict['stu_dorm'] = request.POST['dorm']
         attr_dict['ava'] = request.FILES.get("avatar")
         attr_dict['gender'] = request.POST['gender']
@@ -468,6 +478,8 @@ def check_account_setting(request: UserRequest):
     return attr_dict, show_dict, html_display
 
 # 导出Excel文件
+
+
 def export_activity(activity, inf_type):
 
     # 设置HTTPResponse的类型
@@ -475,10 +487,10 @@ def export_activity(activity, inf_type):
     if activity is None:
         return response
     response['Content-Disposition'] = f'attachment;filename={activity.title}.xls'
-    if inf_type == "sign":#签到信息
+    if inf_type == "sign":  # 签到信息
         participants = Participant.objects.filter(activity_id=activity.id).filter(
             status=Participant.AttendStatus.ATTENDED)
-    elif inf_type == "enroll":#报名信息
+    elif inf_type == "enroll":  # 报名信息
         participants = Participant.objects.filter(activity_id=activity.id).exclude(
             status=Participant.AttendStatus.CANCELED)
     else:
@@ -502,7 +514,8 @@ def export_activity(activity, inf_type):
         for participant in participants:
             name = participant.person_id.name
             Sno = participant.person_id.person_id.username
-            grade = str(participant.person_id.stu_grade) + '级' + str(participant.person_id.stu_class) + '班'
+            grade = str(participant.person_id.stu_grade) + '级' + \
+                str(participant.person_id.stu_class) + '班'
             if inf_type == "enroll":
                 status = participant.status
                 w.write(excel_row, 3, status)
@@ -527,7 +540,8 @@ def export_orgpos_info(org):
     if org is None:
         return response
     response['Content-Disposition'] = f'attachment;filename=小组{org.oname}成员信息.xls'
-    participants = Position.objects.activated().filter(org=org).filter(status=Position.Status.INSERVICE)
+    participants = Position.objects.activated().filter(
+        org=org).filter(status=Position.Status.INSERVICE)
     """导出excel表"""
     if len(participants) > 0:
         # 创建工作簿
@@ -558,7 +572,7 @@ def export_orgpos_info(org):
     return response
 
 
-def escape_for_templates(text:str):
+def escape_for_templates(text: str):
     return text.strip().replace("\r", "").replace("\\", "\\\\").replace("\n", "\\n").replace("\"", "\\\"")
 
 
@@ -567,7 +581,8 @@ def record_modification(user: User, info=""):
         obj = get_person_or_org(user)
         name = obj.get_display_name()
         firsttime = not user.modify_records.exists()
-        ModifyRecord.objects.create(user=user, usertype=user.utype, name=name, info=info)
+        ModifyRecord.objects.create(
+            user=user, usertype=user.utype, name=name, info=info)
         return firsttime
     except:
         return None
@@ -582,7 +597,7 @@ def get_modify_rank(user: User):
         rank = ModifyRecord.objects.filter(
             usertype=user.utype,
             time__lte=first.time,
-            ).values('user').distinct().count()
+        ).values('user').distinct().count()
         return rank
     except:
         return -1
@@ -596,8 +611,8 @@ def record_modify_with_session(request: UserRequest, info=""):
             info_rank = CONFIG.max_inform_rank.get(request.user.utype, -1)
             if rank > -1 and rank <= info_rank:
                 msg = (
-                    f'您是第{rank}名修改账号信息的'+
-                    ('个人' if request.user.is_person() else '小组')+
+                    f'您是第{rank}名修改账号信息的' +
+                    ('个人' if request.user.is_person() else '小组') +
                     '用户！保留此截图可在游园会兑换奖励！'
                 )
                 request.session['alert_message'] = msg
@@ -651,7 +666,7 @@ def user_login_org(request: UserRequest, org: Organization) -> MESSAGECONTEXT:
         me = NaturalPerson.objects.activated().get(person_id=user)
     except:
         return wrong("您没有权限访问该网址！请用对应小组账号登陆。")
-    #是小组一把手
+    # 是小组一把手
     try:
         position = Position.objects.activated().filter(org=org, person=me)
         assert len(position) == 1
@@ -666,7 +681,7 @@ def user_login_org(request: UserRequest, org: Organization) -> MESSAGECONTEXT:
     return succeed("成功切换到小组账号处理该事务，建议事务处理完成后退出小组账号。")
 
 
-def get_org_members(org: User, is_active: bool = True) -> list[User]:
+def iter_org_members(org: User, is_active: bool = True) -> Iterator[User]:
     if not org.is_org():
         return []
     if is_active and not org.is_active:
@@ -676,4 +691,8 @@ def get_org_members(org: User, is_active: bool = True) -> list[User]:
     ).filter(org=org)
     if is_active:
         query_set = query_set.activated()
-    return [pos.person.get_user() for pos in query_set]
+    return (pos.person.get_user() for pos in query_set)
+
+
+def iter_org_members_username(org: User, is_active: bool = True) -> Iterator[str]:
+    return (user.username for user in iter_org_members(org, is_active))

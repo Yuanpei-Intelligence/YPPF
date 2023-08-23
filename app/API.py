@@ -16,8 +16,7 @@ from app.utils import (
 )
 
 __all__ = [
-    'get_display_name', 'get_avatar_url', 'get_wallpaper_url',
-    'get_members', 'get_auditors',
+    'get_display_name', 'get_avatar_url', 'get_wallpaper_url', 'get_auditors',
 ]
 
 
@@ -34,16 +33,6 @@ def get_avatar_url(valid_user: User) -> str:
 def get_wallpaper_url(valid_user: User) -> str:
     '''返回合法用户壁纸的URL相对路径'''
     return __get_wallpaper(__get_obj(valid_user))
-
-
-def get_members(valid_user: User, noncurrent: bool = False) -> list[str]:
-    '''返回合法用户的成员学号列表'''
-    if not valid_user.is_org():
-        return []
-    obj = __get_obj(valid_user, valid_user.utype)
-    positions = Position.objects.activated(noncurrent=noncurrent).filter(org=obj)
-    members = positions.values_list('person__person_id__username', flat=True)
-    return list(members)
 
 
 def get_auditors(valid_user: User) -> list[str]:
