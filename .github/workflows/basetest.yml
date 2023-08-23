@@ -29,11 +29,11 @@ jobs:
 
     - name: Make migrations & Setup DB
       run: |
-        docker compose -f .devcontainer/docker-compose.yml exec -u vscode -T yppf bash ./scripts/init_migrations.sh
+        docker compose -f .devcontainer/docker-compose.yml exec -T yppf bash ./scripts/init_migrations.sh
 
     - name: Test 
       run: |
-        docker compose -f .devcontainer/docker-compose.yml exec -u vscode -T yppf python3 manage.py test
+        docker compose -f .devcontainer/docker-compose.yml exec -T yppf python3 manage.py test
 
     - name: Dump docker logs on failure
       if: failure()
