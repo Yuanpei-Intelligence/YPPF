@@ -27,7 +27,7 @@ def to_search_indices(
         - acronym: 用户名称缩写
     '''
     if active is not None:
-        users = users.filter(is_active_user=active)
+        users = users.filter(active=active)
     index_values = users.values_list('username', 'name', 'pinyin', 'acronym')
     search_indices = []
     for user in index_values:

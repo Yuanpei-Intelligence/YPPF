@@ -272,7 +272,8 @@ class User(AbstractUser, PointMixin):
     # For teacher, means not retired
     # For organization, means not dissolved
     # TODO: copy from NaturalPerson & Organization
-    is_active_user = models.BooleanField('激活', default=True)
+    # 注意：不同于django的is_active
+    active = models.BooleanField('激活状态', default=True)
 
     accept_chat = models.BooleanField('允许提问', default=True)
     accept_anonymous_chat = models.BooleanField('允许匿名提问', default=True)

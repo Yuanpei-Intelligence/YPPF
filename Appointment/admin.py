@@ -34,7 +34,6 @@ class ParticipantAdmin(admin.ModelAdmin):
     search_fields = ('Sid__username', 'Sid__name', 'Sid__pinyin', 'Sid__acronym')
     list_display = ('Sid_id', 'name', 'credit', 'longterm', 'hidden')
     list_display_links = ('Sid_id', 'name')
-    exclude = ('Sid',)
 
     class AgreeFilter(admin.SimpleListFilter):
         title = '签署状态'
