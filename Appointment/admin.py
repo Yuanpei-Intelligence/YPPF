@@ -157,6 +157,7 @@ class AppointAdmin(admin.ModelAdmin):
         'Astatus_display',
         'Atype',
     )
+    list_select_related = ('Room', 'major_student__Sid')
     list_display_links = ('Aid', 'Room')
     list_per_page = 25
     list_editable = (
@@ -214,11 +215,11 @@ class AppointAdmin(admin.ModelAdmin):
         return super().get_search_results(request, queryset, search_term)
 
     @as_display('参与人')
-    def Participants(self, obj):
-        students = [(obj.major_student.name, )]
-        students += [(stu.name, ) for stu in obj.students.all()
-                                    if stu != obj.major_student]
-        return format_html_join('\n', '<li>{}</li>', students)
+    def Participants(self, obj: Appoint):
+        names = [(obj.major_student.name, )]
+        participants = obj.students.exclude(pk=obj.get_major_id())
+        names += list(participants.values_list('Sid__name', flat=False))
+        return format_html_join('\n', '<li>{}</li>', names)
 
     @as_display('用途')
     def usage_display(self, obj):
@@ -411,6 +412,7 @@ class AppointAdmin(admin.ModelAdmin):
 class CardCheckInfoAdmin(admin.ModelAdmin):
     list_display = ('id', 'Cardroom', 'student_display', 'Cardtime',
                     'CardStatus', 'Message')
+    list_select_related = ('Cardroom', 'Cardstudent__Sid')
     search_fields = ('Cardroom__Rtitle',
                      'Cardstudent__name', 'Cardroom__Rid', "id")
     list_filter = [
@@ -426,6 +428,7 @@ class CardCheckInfoAdmin(admin.ModelAdmin):
 @admin.register(LongTermAppoint)
 class LongTermAppointAdmin(admin.ModelAdmin):
     list_display = ['id', 'applicant', 'times', 'interval', 'status']
+    list_select_related = ['applicant__Sid']
     list_filter = ['status', 'times', 'interval']
     raw_id_fields = ['appoint']
 

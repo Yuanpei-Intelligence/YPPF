@@ -360,7 +360,7 @@ class Appoint(models.Model):
             'students': [{
                 'Sname': student.name,  # 参与人姓名
                 'Sid': student.get_id(),
-            } for student in self.students.all()],
+            } for student in self.students.all().select_related('Sid')],
         }
         return data
 
