@@ -1522,8 +1522,8 @@
                         </body>
 
                         <div id="badges" class="carousel slide" data-ride="carousel">
- 
-                            <!-- 轮播图片 -->
+                            
+                            <!-- 轮播图片 --><!--
                             <div class="carousel-inner">
                               <div class="carousel-item active">
                                 <center><img src="/media/avatar/person_default.jpg" height=300, width=300></center>
@@ -1545,17 +1545,61 @@
                                             </p>
                               </div>
                               {% endfor %}
-                            </div>
+                            </div>-->
                            
-                            <!-- 左右切换按钮 -->
+                            <!-- 左右切换按钮 --><!--
                             {% for acs in achievement_types %}
                               <a class="carousel-control-prev" href="#badges" data-slide="prev">
                                 <span class="carousel-control-prev-icon"></span>
                               </a>
-                            {% endfor %}
-                            
+                            {% endfor %} -->
                            
                           </div>
+                        <!--  勋章墙展示  -->
+                        <div><center>
+                            <table>
+                                <tr>
+                                {% for acs in achievement_types_0 %}
+                                <div>
+                                    <td><img src="/media/{{ acs.badge}}", height=200, width=200>
+                                    <p>{{acs.title}}成就总数: {{all_achievement_stat.acs.title}}</p>
+                                    <p>{{acs.title}}成就收集数:{{unlocked_personal_stat.acs.title}}</p>
+                                    <p
+                                                style="text-align: left; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+                                                <i class="fa fa-info-circle" style="width: 20px;"></i>
+                                                <span class="ml-1">{{ acs.description }}</span>
+                                            </p></td></div>
+                                {% endfor %}
+                                </tr>
+                                <tr>
+                                {% for acs in achievement_types_1 %}
+                                <div>
+                                    <td><img src="/media/{{ acs.badge}}", height=200, width=200>
+                                    <p>{{acs.title}}成就总数: {{all_achievement_stat.acs.title}}</p>
+                                    <p>{{acs.title}}成就收集数:{{unlocked_personal_stat.acs.title}}</p>
+                                    <p
+                                                style="text-align: left; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+                                                <i class="fa fa-info-circle" style="width: 20px;"></i>
+                                                <span class="ml-1">{{ acs.description }}</span>
+                                            </p></td></div>
+                                {% endfor %}
+                                </tr>
+                                <tr>
+                                {% for acs in achievement_types_2 %}
+                                <div>
+                                    <td><img src="/media/{{ acs.badge}}", height=200, width=200>
+                                    <p>{{acs.title}}成就总数: {{all_achievement_stat.acs.title}}</p>
+                                    <p>{{acs.title}}成就收集数:{{unlocked_personal_stat.acs.title}}</p>
+                                    <p
+                                                style="text-align: left; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+                                                <i class="fa fa-info-circle" style="width: 20px;"></i>
+                                                <span class="ml-1">{{ acs.description }}</span>
+                                            </p></td></div>
+                                {% endfor %}
+                                </tr>
+                            </table></center>
+                        </div>
+                    
                     </div>
                 </div>
             </div>
