@@ -7,6 +7,7 @@ from django.db.models import QuerySet, Q
 from django.dispatch import receiver
 from django.db import transaction
 
+from utils.models.descriptor import debug_only
 from utils.models.choice import choice, CustomizedDisplay, DefaultDisplay
 from utils.models.manager import ManyRelatedManager
 from generic.models import User
@@ -53,13 +54,16 @@ class Participant(models.Model):
         verbose_name='学号',
         primary_key=True,
     )
-    name = models.CharField('姓名', max_length=64)
+
+    @property
+    def name(self) -> str:
+        return self.Sid.name
 
     @property
     def credit(self) -> int:
         '''通过此方法访问的信用分是只读的，修改应使用User.objects方法'''
         return self.Sid.credit
-    pinyin = models.CharField('拼音', max_length=20, null=True)
+
     hidden = models.BooleanField('不可搜索', default=False)
     longterm = models.BooleanField('可长期预约', default=False)
 
@@ -78,9 +82,13 @@ class Participant(models.Model):
         '''获取id(学号/组织账号)'''
         return self.Sid_id
 
+    @debug_only
     def __str__(self):
         '''仅用于后台呈现和搜索方便，任何时候不应使用'''
-        return self.name + ('' if self.pinyin is None else '_' + self.pinyin)
+        acronym = self.Sid.acronym
+        if acronym is None:
+            return self.name
+        return self.name + '_' + acronym
 
 
 class RoomQuerySet(models.QuerySet['Room']):
@@ -352,7 +360,7 @@ class Appoint(models.Model):
             'students': [{
                 'Sname': student.name,  # 参与人姓名
                 'Sid': student.get_id(),
-            } for student in self.students.all()],
+            } for student in self.students.all().select_related('Sid')],
         }
         return data
 
