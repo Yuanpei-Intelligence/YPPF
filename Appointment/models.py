@@ -82,7 +82,7 @@ class Participant(models.Model):
 
     def __str__(self):
         '''仅用于后台呈现和搜索方便，任何时候不应使用'''
-        return self.name + ('' if self.pinyin is None else '_' + self.pinyin)
+        return self.Sid_id + ' ' + self.name
 
 
 class RoomQuerySet(models.QuerySet['Room']):

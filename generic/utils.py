@@ -16,12 +16,12 @@ def get_user_list_for_search(
         query_set = query_set.filter(utype__in=['Student', 'Teacher'])
     else:
         query_set = query_set.filter(utype=user_type)
+    ret = query_set.values('username', 'name', 'username', 'pinyin', 'acronym')
     return [
         {
-            'id': user.username,
-            # TODO: Modify "text", both varname and value
-            'text': user.name + user.username[:2],
-            'pinyin': user.pinyin,
-            'acronym': user.acronym
-        } for user in query_set
+            'id': user['username'],
+            'text': user['name'] + user['username'][:2],
+            'pinyin': user['pinyin'],
+            'acronym': user['acronym']
+        } for user in ret
     ]

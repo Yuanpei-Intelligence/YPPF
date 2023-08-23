@@ -1,3 +1,4 @@
+
 import string
 import random
 import urllib.parse
@@ -8,6 +9,7 @@ from typing import overload, Literal
 
 import xlwt
 import imghdr
+from django.db.models import Prefetch
 from django.contrib import auth
 from django.shortcuts import redirect
 from utils.http.dependency import HttpResponse, HttpRequest, UserRequest
@@ -669,7 +671,9 @@ def get_org_members(org: User, is_active: bool = True) -> list[User]:
         return []
     if is_active and not org.is_active:
         return []
-    query_set = Position.objects.filter(org=org)
+    query_set = Position.objects.prefetch_related(
+        Prefetch('person', queryset=NaturalPerson.objects.only('person_id'))
+    ).filter(org=org)
     if is_active:
         query_set = query_set.activated()
     return [pos.person.get_user() for pos in query_set]
