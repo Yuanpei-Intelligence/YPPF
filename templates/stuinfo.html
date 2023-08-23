@@ -1556,14 +1556,16 @@
                            
                           </div>
                         <!--  勋章墙展示  -->
-                        <div><center>
+                        <div class="container"><center>
+                        <!--  未添加自适应，此时手机屏幕显示存在问题  -->
                             <table>
                                 <tr>
                                 {% for acs in achievement_types_0 %}
                                 <div>
                                     <td><img src="/media/{{ acs.badge}}", height=200, width=200>
-                                    <p>{{acs.title}}成就总数: {{all_achievement_stat.acs.title}}</p>
-                                    <p>{{acs.title}}成就收集数:{{unlocked_personal_stat.acs.title}}</p>
+                                        <p>{{acs}}</p>
+                                    <p>{{acs.title}}成就总数: {{all_achievement_stat.acs}}</p>
+                                    <p>{{acs.title}}成就收集数:{{unlocked_personal_stat.acs}}</p>
                                     <p
                                                 style="text-align: left; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
                                                 <i class="fa fa-info-circle" style="width: 20px;"></i>
@@ -1575,8 +1577,8 @@
                                 {% for acs in achievement_types_1 %}
                                 <div>
                                     <td><img src="/media/{{ acs.badge}}", height=200, width=200>
-                                    <p>{{acs.title}}成就总数: {{all_achievement_stat.acs.title}}</p>
-                                    <p>{{acs.title}}成就收集数:{{unlocked_personal_stat.acs.title}}</p>
+                                    <p>{{acs.title}}成就总数: {{all_achievement_stat.acs}}</p>
+                                    <p>{{acs.title}}成就收集数:{{unlocked_personal_stat.acs}}</p>
                                     <p
                                                 style="text-align: left; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
                                                 <i class="fa fa-info-circle" style="width: 20px;"></i>
@@ -1588,8 +1590,8 @@
                                 {% for acs in achievement_types_2 %}
                                 <div>
                                     <td><img src="/media/{{ acs.badge}}", height=200, width=200>
-                                    <p>{{acs.title}}成就总数: {{all_achievement_stat.acs.title}}</p>
-                                    <p>{{acs.title}}成就收集数:{{unlocked_personal_stat.acs.title}}</p>
+                                    <p>{{acs.title}}成就总数: {{all_achievement_stat.acs}}</p>
+                                    <p>{{acs.title}}成就收集数:{{unlocked_personal_stat.acs}}</p>
                                     <p
                                                 style="text-align: left; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
                                                 <i class="fa fa-info-circle" style="width: 20px;"></i>
