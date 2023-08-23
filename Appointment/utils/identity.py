@@ -19,12 +19,12 @@ from Appointment.models import User, Participant
 from Appointment.config import appointment_config as CONFIG
 from utils.global_messages import wrong, succeed, message_url
 from app import API
-from app.utils import iter_org_members
 
 __all__ = [
     'get_participant',
     'get_name',
     'get_avatar',
+    'get_member_ids', 'get_members',
     'get_auditor_ids',
     'identity_check',
 ]
@@ -87,6 +87,19 @@ def get_avatar(participant: Participant | User):
     return API.get_avatar_url(user)
 
 
+def get_member_ids(participant: Participant | User, noncurrent: bool = False):
+    '''返回participant的成员id列表，个人返回空列表'''
+    user = _arg2user(participant)
+    return API.get_members(user, noncurrent=noncurrent)
+
+
+def get_members(participant: Participant | User,
+                noncurrent: bool = False) -> QuerySet[Participant]:
+    '''返回participant的成员集合，Participant的QuerySet'''
+    member_ids = get_member_ids(participant, noncurrent=noncurrent)
+    return Participant.objects.filter(Sid__in=member_ids)
+
+
 def get_auditor_ids(participant: Participant | User):
     '''返回participant的审核者id列表'''
     user = _arg2user(participant)
@@ -106,7 +119,7 @@ def _create_account(request: UserRequest, **values) -> Participant | None:
             values.update(Sid=request.user)
             values.setdefault('hidden', request.user.is_org())
             values.setdefault('longterm',
-                request.user.is_org() and len(iter_org_members(request.user)) >= 10)
+                request.user.is_org() and len(get_member_ids(request.user)) >= 10)
             account = Participant.objects.create(**values)
             return account
     except:

@@ -11,7 +11,7 @@ from django.db.models import QuerySet
 from django.db import transaction
 
 from generic.utils import get_user_list_for_search
-from app.utils import iter_org_members_username
+from app.utils import get_org_members
 from utils.global_messages import wrong, succeed, message_url
 import utils.global_messages as my_messages
 from Appointment.models import (
@@ -29,7 +29,7 @@ from Appointment.utils.utils import (
 from Appointment.utils.log import logger, get_user_logger
 import Appointment.utils.web_func as web_func
 from Appointment.utils.identity import (
-    get_avatar, get_auditor_ids,
+    get_avatar, get_members, get_auditor_ids,
     get_participant, identity_check,
 )
 from Appointment.appoint.manage import (
@@ -932,7 +932,7 @@ def checkout_appoint(request: HttpRequest):
 
     # 提供搜索功能的数据
     js_stu_list = get_user_list_for_search('Person', True, request.user)
-    js_stu_group_list = list(iter_org_members_username(request.user))
+    js_stu_group_list = get_org_members(request.user)
 
     render_context.update(js_stu_list=js_stu_list,
                           js_stu_group_list=js_stu_group_list)
