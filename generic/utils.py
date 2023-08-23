@@ -9,19 +9,21 @@ def get_user_list_for_search(
     """
     Allowed user_type: 'Student', 'Teacher', 'Organization', 'Person'
     """
-    query_set = User.objects.filter(is_active=is_active)
+    query_set = User.objects.filter(is_active_user=is_active)
     if exclude_user is not None:
         query_set = query_set.exclude(username=exclude_user.username)
     if user_type == 'Person':
-        query_set = query_set.filter(utype__in=['Student', 'Teacher'])
+        query_set = query_set.filter(utype__in=[User.Type.STUDENT, User.Type.TEACHER])
     else:
         query_set = query_set.filter(utype=user_type)
-    ret = query_set.values('username', 'name', 'username', 'pinyin', 'acronym')
-    return [
-        {
-            'id': user['username'],
-            'text': user['name'] + user['username'][:2],
-            'pinyin': user['pinyin'],
-            'acronym': user['acronym']
-        } for user in ret
-    ]
+    users = query_set.values_list('username', 'name', 'pinyin', 'acronym')
+    search_data = []
+    for user in users:
+        uid, name, pinyin, acronym = user
+        search_data.append({
+            'id': uid,
+            'text': name + uid[:2],
+            'pinyin': pinyin,
+            'acronym': acronym
+        })
+    return search_data

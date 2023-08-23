@@ -24,7 +24,7 @@ __all__ = [
     'get_participant',
     'get_name',
     'get_avatar',
-    'get_member_ids', 'get_members',
+    'get_member_ids',
     'get_auditor_ids',
     'identity_check',
 ]
@@ -93,13 +93,6 @@ def get_member_ids(participant: Participant | User, noncurrent: bool = False):
     return API.get_members(user, noncurrent=noncurrent)
 
 
-def get_members(participant: Participant | User,
-                noncurrent: bool = False) -> QuerySet[Participant]:
-    '''返回participant的成员集合，Participant的QuerySet'''
-    member_ids = get_member_ids(participant, noncurrent=noncurrent)
-    return Participant.objects.filter(Sid__in=member_ids)
-
-
 def get_auditor_ids(participant: Participant | User):
     '''返回participant的审核者id列表'''
     user = _arg2user(participant)
@@ -138,7 +131,7 @@ def _authenticate(participant: Participant | None) -> TypeGuard[Participant]:
 def identity_check(
     auth_func: AuthFunction = _authenticate,
     redirect_field_name: str = 'origin',
-    allow_create: bool = True
+    allow_create: bool = True,
 ) -> Callable[[ViewFunction[UserRequest, P]], ViewFunction[HttpRequest, P]]:
     def decorator(view_function: ViewFunction[UserRequest, P]) -> ViewFunction[HttpRequest, P]:
         @login_required(redirect_field_name=redirect_field_name)

@@ -3,17 +3,16 @@ import html
 from datetime import datetime, timedelta, date
 
 from django.views.decorators.http import require_POST
-from django.http import HttpRequest
 from django.shortcuts import render, redirect
 from django.urls import reverse
 from django.contrib import auth
 from django.db.models import QuerySet
 from django.db import transaction
 
-from generic.utils import get_user_list_for_search
-from app.utils import get_org_members
+from utils.http import UserRequest, HttpRequest
 from utils.global_messages import wrong, succeed, message_url
 import utils.global_messages as my_messages
+from generic.utils import get_user_list_for_search
 from Appointment.models import (
     User,
     Participant,
@@ -29,7 +28,7 @@ from Appointment.utils.utils import (
 from Appointment.utils.log import logger, get_user_logger
 import Appointment.utils.web_func as web_func
 from Appointment.utils.identity import (
-    get_avatar, get_members, get_auditor_ids,
+    get_avatar, get_member_ids, get_auditor_ids,
     get_participant, identity_check,
 )
 from Appointment.appoint.manage import (
@@ -733,7 +732,7 @@ def _add_appoint(contents: dict, start: datetime, finish: datetime, non_yp_num: 
 
 
 @identity_check(redirect_field_name='origin')
-def checkout_appoint(request: HttpRequest):
+def checkout_appoint(request: UserRequest):
     """
     提交预约表单，检查合法性，进行预约
     """
@@ -762,7 +761,7 @@ def checkout_appoint(request: HttpRequest):
         else:
             is_interview = request.POST.get('interview') == 'yes'
 
-    applicant = get_participant(request.user)
+    applicant = get_participant(request.user, raise_except=True)
     has_longterm_permission = applicant.longterm
     has_interview_permission = not (applicant.longterm or applicant.hidden)
     has_interview_permission &= Rid in Room.objects.interview_room_ids()
@@ -932,7 +931,7 @@ def checkout_appoint(request: HttpRequest):
 
     # 提供搜索功能的数据
     js_stu_list = get_user_list_for_search('Person', True, request.user)
-    js_stu_group_list = get_org_members(request.user)
+    js_stu_group_list = get_member_ids(request.user)
 
     render_context.update(js_stu_list=js_stu_list,
                           js_stu_group_list=js_stu_group_list)
