@@ -12,7 +12,7 @@ from django.db import transaction
 from utils.http import UserRequest, HttpRequest
 from utils.global_messages import wrong, succeed, message_url
 import utils.global_messages as my_messages
-from generic.utils import get_user_list_for_search
+from generic.utils import to_search_indices
 from Appointment.models import (
     User,
     Participant,
@@ -930,7 +930,9 @@ def checkout_appoint(request: UserRequest):
                               render_context)
 
     # 提供搜索功能的数据
-    js_stu_list = get_user_list_for_search('Person', True, request.user)
+    search_users = User.objects.filter_type(User.Type.PERSON)
+    search_users = search_users.exclude(pk=request.user.pk)
+    js_stu_list = to_search_indices(search_users, active=True)
     js_stu_group_list = get_member_ids(request.user)
 
     render_context.update(js_stu_list=js_stu_list,

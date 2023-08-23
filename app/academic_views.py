@@ -1,4 +1,4 @@
-from generic.utils import get_user_list_for_search
+from generic.utils import to_search_indices
 from app.views_dependency import *
 from app.models import (
     AcademicTag,
@@ -49,7 +49,7 @@ class ShowChats(ProfileTemplateView):
         self.extra_context.update({
             'sent_chats': chats2Display(self.request.user, sent=True),
             'received_chats': chats2Display(self.request.user, sent=False),
-            'stu_list': get_user_list_for_search(user_type='Person'),
+            'stu_list': to_search_indices(User.objects.filter_type(User.Type.PERSON)),
             'tag_list': get_tags_for_search(),
         })
         

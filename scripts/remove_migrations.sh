@@ -7,6 +7,6 @@ declare -a dirs=('generic' 'app' 'Appointment' 'yplibrary'
 
 # Loop over each directory and remove its migrations
 for dir in "${dirs[@]}"; do
-    rm -rf "${dir}/migrations"
-    echo "Remove migrations in ${dir}/migrations"
+    rm -rf "${dir}/migrations/*"
+    echo "Remove migrations in ${dir}/migrations/*"
 done

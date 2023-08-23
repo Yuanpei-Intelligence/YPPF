@@ -1,29 +1,41 @@
+from django.db.models import QuerySet
+
 from generic.models import User
 
 
-def get_user_list_for_search(
-    user_type: str,
-    is_active: bool = True,
-    exclude_user: User | None = None,
+__all__ = [
+    'to_search_indices',
+]
+
+
+def to_search_indices(
+    users: QuerySet[User],
+    active: bool | None = True,
 ) -> list[dict[str, str]]:
-    """
-    Allowed user_type: 'Student', 'Teacher', 'Organization', 'Person'
-    """
-    query_set = User.objects.filter(is_active_user=is_active)
-    if exclude_user is not None:
-        query_set = query_set.exclude(username=exclude_user.username)
-    if user_type == 'Person':
-        query_set = query_set.filter(utype__in=[User.Type.STUDENT, User.Type.TEACHER])
-    else:
-        query_set = query_set.filter(utype=user_type)
-    users = query_set.values_list('username', 'name', 'pinyin', 'acronym')
-    search_data = []
-    for user in users:
+    '''
+    把用户对象转化为搜索索引
+
+    Args:
+    - users: 用户对象列表
+    - active: 返回的用户是否为激活用户，为`None`时不筛选，默认为`True`
+
+    Returns:
+    - search_indices: 搜索索引列表，每个索引包含以下字段
+        - id: 用户id（学号）
+        - text: 用户名称
+        - pinyin: 用户名称拼音
+        - acronym: 用户名称缩写
+    '''
+    if active is not None:
+        users = users.filter(is_active_user=active)
+    index_values = users.values_list('username', 'name', 'pinyin', 'acronym')
+    search_indices = []
+    for user in index_values:
         uid, name, pinyin, acronym = user
-        search_data.append({
+        search_indices.append({
             'id': uid,
             'text': name + uid[:2],
             'pinyin': pinyin,
             'acronym': acronym
         })
-    return search_data
+    return search_indices
