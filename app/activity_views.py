@@ -10,8 +10,10 @@ from django.db.models import Q, F
 import csv
 import qrcode
 
-from generic.models import YQPointRecord
+from generic.models import YQPointRecord, User
+from generic.utils import to_search_indices
 from app.views_dependency import *
+from app.view.base import ProfileTemplateView
 from app.models import (
     NaturalPerson,
     Organization,
@@ -1079,32 +1081,73 @@ def modifyEndActivity(request: HttpRequest):
     return render(request, "modify_activity_summary.html", locals())
 
 
-@login_required(redirect_field_name="origin")
-@utils.check_user_access(redirect_url="/logout/")
-@logger.secure_view()
-def weekly_activity_summary(request: HttpRequest):
-    html_display = {}
-    me = utils.get_person_or_org(request.user)
-    #检查是否为小组账号
-    if not request.user.is_org():
-        return redirect(message_url(wrong('小组账号才能发起每周活动总结')))
+class WeeklyActivitySummaryView(ProfileTemplateView):
+    
+    template_name = "weekly_activity_summary.html"
+    page_name = "每周活动总结"
+    #For POST method ONLY
+    default_value = {
+        "bidding": False,
+        "inner": False,
+        "need_checkin": False,
+        "recorded": True,
+        "valid": True,
+        "signscheme": 0,
+        "maxpeople": 10000,
+        "unlimited_capacity": 1,
+        "prepare_scheme": 1,
+        "URL": "",
+        "announce_pic_src": "/static/assets/img/announcepics/1.JPG",
+    }
+    
+    def prepare_get(self):
+        return self.get
 
-    # 处理 POST 请求
-    if request.method == "POST" and request.POST:
+    def prepare_post(self):
+        available_teachers = NaturalPerson.objects.teachers()
+        self.default_value.update({
+            "examine_teacher": available_teachers.first(),
+        })
+        return self.post
+    
+    def get(self):
+        html_display = {}
+        me = utils.get_person_or_org(self.request.user)
+        if not self.request.user.is_org():
+            return redirect(message_url(wrong('小组账号才能发起每周活动总结')))
+        
+        #准备前端展示量
+        html_display["applicant_name"] = me.oname
+        html_display["app_avatar_path"] = me.get_user_ava()
+        html_display["today"] = datetime.now().strftime("%Y-%m-%d")
+        bar_display = utils.get_sidebar_and_navbar(self.request.user, "活动发起")
+        person_list = NaturalPerson.objects.activated()
+        user_id_list = [person.person_id.id for person in person_list]
+        user_queryset = User.objects.filter(id__in = user_id_list)
+        js_stu_list = to_search_indices(user_queryset)
+        
+        self.extra_context.update({
+            'html_display': html_display,
+            'bar_display': bar_display,
+            'js_stu_list': js_stu_list,
+        })
+        return self.render()
+    
+    def post(self):
         with transaction.atomic():
-            aid, created = create_weekly_summary(request)
+            aid, created = create_weekly_summary(self.request, self.default_value)
             if not created:
                 return redirect(message_url(
                     succeed('存在信息相同的活动，已为您自动跳转!'),
                     f'/viewActivity/{aid}'))
+                
             # 新建activity summary
             activity = Activity.objects.get(id=aid)
             application: ActivitySummary = ActivitySummary.objects.create(
                 status=ActivitySummary.Status.CONFIRMED,
                 activity=activity,
             )
-            # 活动总结图片
-            summary_photos = request.FILES.getlist('summaryimages')
+            summary_photos = self.request.FILES.getlist('summaryimages')
             photo_num = len(summary_photos)
             if photo_num == 1:
                 # 合法性检查
@@ -1115,7 +1158,9 @@ def weekly_activity_summary(request: HttpRequest):
                 application.image = summary_photos[0]
                 application.save()
             else:
-                return redirect(message_url(wrong('图片内容为空或有多张图片！'), request.path))
+                return redirect(message_url(wrong('图片内容为空或有多张图片！'), self.request.path))
+            
+            #发放元气值
             point = calcu_activity_YQP(activity)
             participants = Participant.objects.filter(
                 activity_id=aid,
@@ -1124,30 +1169,3 @@ def weekly_activity_summary(request: HttpRequest):
             User.objects.bulk_increase_YQPoint(
                 participants, point, "参加活动", YQPointRecord.SourceType.ACTIVITY)
             return redirect(f"/editActivity/{aid}")
-
-    # 下面的操作基本如无特殊说明，都是准备前端使用量
-    defaultpics = [{"src": f"/static/assets/img/announcepics/{i+1}.JPG",
-                    "id": f"picture{i+1}"} for i in range(5)]
-    html_display["applicant_name"] = me.oname
-    html_display["app_avatar_path"] = me.get_user_ava()
-    available_teachers = NaturalPerson.objects.teachers()
-    html_display["today"] = datetime.now().strftime("%Y-%m-%d")
-    bar_display = utils.get_sidebar_and_navbar(request.user, "活动发起")
-    
-    def get_student_chosen_list(students):
-        '''用于前端显示支持拼音搜索的人员列表, 形如[{id, text, pinyin}]'''
-        js_stu_list = []
-        for stu in students:
-            Sid = stu.person_id.username
-            pinyin = pypinyin.pinyin(stu.name, style=pypinyin.NORMAL)
-            pinyin = "".join([s[0] for s in pinyin]) 
-            js_stu_list.append({
-                "id": Sid,
-                "text": stu.name + "_" + Sid[:2],
-                "pinyin": pinyin,
-            })
-        return js_stu_list
-    
-    js_stu_list = get_student_chosen_list(NaturalPerson.objects.activated())
-
-    return render(request, "weekly_activity_summary.html", locals())

@@ -537,8 +537,12 @@ def activity_base_check(request, edit=False):
     return context
 
 
-def weekly_summary_base_check(request):
-    '''正常情况下检查出错误会抛出不含错误信息的AssertionError，不抛出ActivityException'''
+def weekly_summary_base_check(request, value_dict):
+    '''
+    value_dict：存储用于前端展示的默认值
+    
+    正常情况下检查出错误会抛出不含错误信息的AssertionError，不抛出ActivityException
+    '''
 
     context = dict()
 
@@ -559,15 +563,17 @@ def weekly_summary_base_check(request):
     context["end"] = act_end
     assert check_summary_time(act_start, act_end)
     
-    #以下均为在weekly_activity_summary中设立的不可见、不可修改的默认值，仅为兼容活动详情的前端展示
-    context["url"] = request.POST["URL"]
-    context["bidding"] = False
-    context["examine_teacher"] = request.POST.get("examine_teacher")
-    context["recorded"] = True
-    context["capacity"] = request.POST.get("maxpeople")
-    context["inner"] = False
-    context["pic"] = request.POST.get("picture1")
-    prepare_scheme = int(request.POST["prepare_scheme"])
+    #以下均为在value_dict中指立的默认值，仅为兼容活动详情的前端展示
+    context["url"] = value_dict["URL"]
+    context["bidding"] = value_dict["bidding"]
+    context["examine_teacher"] = value_dict["examine_teacher"]
+    context["recorded"] = value_dict["recorded"]
+    context["capacity"] = value_dict["maxpeople"]
+    context["inner"] = value_dict["inner"]
+    context["pic"] = value_dict["announce_pic_src"]
+    context["valid"] = value_dict["valid"]
+    context["need_checkin"] = value_dict["need_checkin"]
+    prepare_scheme = int(value_dict["prepare_scheme"])
     prepare_times = Activity.EndBeforeHours.prepare_times
     prepare_time = prepare_times[prepare_scheme]
     signup_end = act_start - timedelta(hours=prepare_time)
@@ -690,13 +696,15 @@ def create_activity(request):
     return activity.id, True
 
 
-def create_weekly_summary(request):
+def create_weekly_summary(request, value_dict):
     '''
+    value_dict：存储用于活动详情页前端展示的默认值
+    
     检查活动总结合法性及是否存在一致的活动，返回(activity.id, created)
     若查询到一致的活动或检查不合格时抛出AssertionError
     '''
 
-    context = weekly_summary_base_check(request)
+    context = weekly_summary_base_check(request, value_dict)
 
     # 查找是否有类似活动存在
     old_ones = Activity.objects.activated().filter(
@@ -738,11 +746,9 @@ def create_weekly_summary(request):
         inner=context["inner"],
     )
     activity.endbefore = context["endbefore"]
-    if context.get("need_checkin"):
-        activity.need_checkin = True
-    #每周活动总结新建的活动无需通知参与人
-    activity.recorded = True
-    activity.valid = True #默认已审核
+    activity.need_checkin = context["need_checkin"]
+    activity.recorded = context["recorded"]
+    activity.valid = context["valid"] #默认已审核
     activity.status = Activity.Status.END
     participants_ids = request.POST.getlist("students")
     for stu_id in participants_ids:

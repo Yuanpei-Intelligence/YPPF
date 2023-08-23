@@ -24,7 +24,7 @@ __all__ = [
     'get_participant',
     'get_name',
     'get_avatar',
-    'get_member_ids', 'get_members',
+    'get_member_ids',
     'get_auditor_ids',
     'identity_check',
 ]
@@ -93,13 +93,6 @@ def get_member_ids(participant: Participant | User, noncurrent: bool = False):
     return API.get_members(user, noncurrent=noncurrent)
 
 
-def get_members(participant: Participant | User,
-                noncurrent: bool = False) -> QuerySet[Participant]:
-    '''返回participant的成员集合，Participant的QuerySet'''
-    member_ids = get_member_ids(participant, noncurrent=noncurrent)
-    return Participant.objects.filter(Sid__in=member_ids)
-
-
 def get_auditor_ids(participant: Participant | User):
     '''返回participant的审核者id列表'''
     user = _arg2user(participant)
@@ -107,63 +100,23 @@ def get_auditor_ids(participant: Participant | User):
 
 
 # 用户验证、创建和更新
+# TODO: Create Account For all Person with Command
 def _create_account(request: UserRequest, **values) -> Participant | None:
     '''
     根据请求信息创建账户, 根据创建结果返回生成的对象或者`None`, noexcept
     '''
-    import pypinyin
     from django.db import transaction
     try:
         assert request.user.is_authenticated
         with transaction.atomic():
-            given_name = get_name(request.user)
-
-            # 设置首字母
-            pinyin_list = pypinyin.pinyin(given_name, style=pypinyin.NORMAL)
-            pinyin_init = ''.join([w[0][0] for w in pinyin_list])
-
-            values.update(
-                Sid=request.user,
-                name=given_name,
-                pinyin=pinyin_init,
-            )
+            values.update(Sid=request.user)
             values.setdefault('hidden', request.user.is_org())
             values.setdefault('longterm',
                 request.user.is_org() and len(get_member_ids(request.user)) >= 10)
-
             account = Participant.objects.create(**values)
             return account
     except:
         return None
-
-
-def _update_name(user: Participant | User | str) -> bool:
-    import pypinyin
-    from django.db import transaction
-
-    if not isinstance(user, Participant):
-        participant = get_participant(user)
-        if participant is None:
-            return False
-    else:
-        participant = user
-
-    # 获取姓名, 只更新不同的
-    given_name = get_name(participant)
-    if given_name == participant.name:
-        return False
-
-    # 获取首字母
-    pinyin_list = pypinyin.pinyin(given_name, style=pypinyin.NORMAL)
-    pinyin_init = ''.join([w[0][0] for w in pinyin_list])
-
-    # 更新数据库和session
-    with transaction.atomic():
-        participant = get_participant(participant.Sid, update=True, raise_except=True)
-        participant.name = given_name
-        participant.pinyin = pinyin_init
-        participant.save()
-    return True
 
 
 P = ParamSpec('P')
@@ -179,7 +132,6 @@ def identity_check(
     auth_func: AuthFunction = _authenticate,
     redirect_field_name: str = 'origin',
     allow_create: bool = True,
-    update_name: bool = True,
 ) -> Callable[[ViewFunction[UserRequest, P]], ViewFunction[HttpRequest, P]]:
     def decorator(view_function: ViewFunction[UserRequest, P]) -> ViewFunction[HttpRequest, P]:
         @login_required(redirect_field_name=redirect_field_name)
@@ -193,9 +145,6 @@ def identity_check(
                 _allow_create = False
 
             cur_part = get_participant(request.user)
-
-            if cur_part is not None and cur_part.name == '未命名' and update_name:
-                _update_name(cur_part)
 
             if cur_part is None and _allow_create:
                 cur_part = _create_account(request)

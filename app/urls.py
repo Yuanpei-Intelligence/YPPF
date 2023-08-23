@@ -60,7 +60,7 @@ urlpatterns = [
     path("endActivity/", activity_views.endActivity, name="endActivity"),
     path("modifyEndActivity/", activity_views.modifyEndActivity,
          name="modifyEndActivity"),
-    path("weekly-activity-summary/", activity_views.weekly_activity_summary, name="weekly_activity_summary"),
+    path("weekly-activity-summary/", activity_views.WeeklyActivitySummaryView.as_view(), name="weekly_activity_summary"),
 ] + [
     # 组织相关操作
     path("saveShowPositionStatus", org_views.saveShowPositionStatus,
