@@ -1,10 +1,10 @@
 # YPPF
 
 [![Commits](https://img.shields.io/github/commit-activity/t/Yuanpei-Intelligence/YPPF)](https://github.com/Yuanpei-Intelligence/YPPF/commits)
-![GitHub forks](https://img.shields.io/github/forks/Yuanpei-Intelligence/YPPF)
-![Stars](https://img.shields.io/github/stars/Yuanpei-Intelligence/YPPF)
 ![Last commit](https://img.shields.io/github/last-commit/Yuanpei-Intelligence/YPPF)
 [![Workflow Status](https://img.shields.io/github/actions/workflow/status/Yuanpei-Intelligence/YPPF/basetest.yml)](https://github.com/Yuanpei-Intelligence/YPPF/actions)
+![GitHub forks](https://img.shields.io/github/forks/Yuanpei-Intelligence/YPPF)
+![Stars](https://img.shields.io/github/stars/Yuanpei-Intelligence/YPPF?style=social)
 
 [简体中文](README.md) | [English](README_en.md)
 
@@ -61,6 +61,32 @@
     ```shell
     pip install --require-virtualenv -r requirements.txt
     ```
+
+### 初始化配置
+
+1. 创建数据库
+
+    ```mysql
+    CREATE DATABASE yppf CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci;
+    ```
+
+2. 创建配置文件
+
+    我们使用`config.json`管理配置项。[`config_template.json`](config_template.json)是其完整模板，包含所有可选配置。
+
+    复制模板并重命名为`config.json`，在`bash`终端中，你也可以运行`scripts/default_config.sh`。
+
+3. 更新数据库配置
+
+    | 配置项   | 含义       | 示例      |
+    | -------- | ---------- | --------- |
+    | NAME     | 数据库名称 | yppf      |
+    | USER     | 数据库用户 | root      |
+    | PASSWORD | 用户密码   | （空）    |
+    | HOST     | 数据库主机 | 127.0.0.1 |
+    | PORT     | 数据库端口 | 3306      |
+
+    更新配置文件中django的数据库部分，更多配置项请参考各应用的`config.py`文件。
 
 ## 加入我们
 

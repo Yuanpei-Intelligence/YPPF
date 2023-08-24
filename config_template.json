@@ -4,6 +4,7 @@
         "hash_salt": "default_hash_salt",
         "acadamic_year": 2023,
         "semester": "Spring",
+        "tmp_dir": "tmp",
         "official_user": "zz00000",
         "debug_stuids": []
     },
@@ -12,7 +13,8 @@
             "NAME": "$DATABASE$",
             "USER": "$USER$",
             "PASSWORD": "$PASSWORD$",
-            "HOST": "$HOST$"
+            "HOST": "$HOST$",
+            "PORT": "3306"
         }
     },
     "log": {
@@ -46,7 +48,7 @@
     },
     "email": {
         "url": "",
-        "salt": "debug_hasher_salt" 
+        "salt": "debug_hasher_salt"
     },
     "underground": {
         "token": {
