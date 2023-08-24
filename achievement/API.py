@@ -4,7 +4,6 @@
 '''
 from achievement.models import Achievement, AchievementUnlock
 from generic.models import User
-from utils.global_messages import wrong
 
 __all__ = [
     'trigger_achievement',
@@ -13,42 +12,51 @@ __all__ = [
 
 
 def trigger_achievement(user: User, achievement: Achievement):
+    """
+
+    Args:
+        user (User): 触发该成就的用户
+        achievement (Achievement): 该成就
+
+    Returns:
+        若单条记录添加成功返回 AchievementUnlock 对象，若未建立成功返回 None
+    """
 
     try:
         achievement_unlock = AchievementUnlock.objects.create(
             user=user, achievement=achievement)
     except Exception as e:
-        return wrong(str(e))
+        return None
 
     return achievement_unlock
 
 
 def bulk_add_achievement_record(record_list: list[dict]):
     """
-
     Args:
         record_list (list[dict]): 成就记录的列表，记录以字典形式传入
-        ( dict: {"user": [User], "achievement": [achievement], ……} )
+        ( dict: {"user": User, "achievement": Achievement, ……} )
 
     Returns:
         bool: 是否成功添加
-        list[AchievementUnlock]: 添加的解锁记录列表
+        list[AchievementUnlock]: 添加的解锁记录列表（若未成功添加返回空列表）
     """
-    success = True
+
     unlock_record_list = []
+
     for record in record_list:
         user = record["user"]
         achievement = record["achievement"]
-
         assert isinstance(user, User) and isinstance(
             achievement, Achievement), (type(user), type(achievement))
+        unlock_record_list.append(
+            AchievementUnlock(user=user, achievement=achievement))
 
-        try:
-            achievement_unlock = AchievementUnlock.objects.create(
-                user=user, achievement=achievement)
-            unlock_record_list.append(achievement_unlock)
-        except Exception as e:
-            success = False
-            return wrong(str(e))
+    try:
+        AchievementUnlock.objects.bulk_create(unlock_record_list)
+        success = True
+    except Exception as e:
+        success = False
+        return success, []
 
     return success, unlock_record_list
