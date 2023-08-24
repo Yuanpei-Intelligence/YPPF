@@ -4,6 +4,7 @@
 '''
 from achievement.models import Achievement, AchievementUnlock
 from generic.models import User
+from utils.wrap import return_on_except
 
 __all__ = [
     'trigger_achievement',
@@ -11,6 +12,7 @@ __all__ = [
 ]
 
 
+@return_on_except(None, Exception)
 def trigger_achievement(user: User, achievement: Achievement) -> AchievementUnlock | None:
     """处理用户触发成就，添加单个解锁记录
 
@@ -19,18 +21,16 @@ def trigger_achievement(user: User, achievement: Achievement) -> AchievementUnlo
     - achievement (Achievement): 该成就
 
     Returns:
-        若单条记录添加成功返回 AchievementUnlock 对象，若未建立成功返回 None
+    若单条记录添加成功返回 AchievementUnlock 对象，若未建立成功返回 None
     """
 
-    try:
-        achievement_unlock = AchievementUnlock.objects.create(
-            user=user, achievement=achievement)
-    except Exception as e:
-        return None
+    achievement_unlock = AchievementUnlock.objects.create(
+        user=user, achievement=achievement)
 
     return achievement_unlock
 
 
+@return_on_except(False, Exception)
 def bulk_add_achievement_record(user_list: list[User], achievement_list: list[Achievement]) -> bool:
     """批量添加成就解锁记录
 
@@ -43,15 +43,10 @@ def bulk_add_achievement_record(user_list: list[User], achievement_list: list[Ac
     """
 
     unlock_record_list = []
-
     for user, achievement in zip(user_list, achievement_list):
         unlock_record_list.append(
             AchievementUnlock(user=user, achievement=achievement))
 
-    try:
-        AchievementUnlock.objects.bulk_create(unlock_record_list)
-        success = True
-    except Exception as e:
-        success = False
+    AchievementUnlock.objects.bulk_create(unlock_record_list)
 
-    return success
+    return True
