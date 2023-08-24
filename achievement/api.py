@@ -11,12 +11,12 @@ __all__ = [
 ]
 
 
-def trigger_achievement(user: User, achievement: Achievement):
-    """
+def trigger_achievement(user: User, achievement: Achievement) -> AchievementUnlock | None:
+    """处理用户触发成就，添加单个解锁记录
 
     Args:
-        user (User): 触发该成就的用户
-        achievement (Achievement): 该成就
+    - user (User): 触发该成就的用户
+    - achievement (Achievement): 该成就
 
     Returns:
         若单条记录添加成功返回 AchievementUnlock 对象，若未建立成功返回 None
@@ -31,24 +31,20 @@ def trigger_achievement(user: User, achievement: Achievement):
     return achievement_unlock
 
 
-def bulk_add_achievement_record(record_list: list[dict]):
-    """
+def bulk_add_achievement_record(user_list: list[User], achievement_list: list[Achievement]) -> bool:
+    """批量添加成就解锁记录
+
     Args:
-        record_list (list[dict]): 成就记录的列表，记录以字典形式传入
-        ( dict: {"user": User, "achievement": Achievement, ……} )
+    - user_list (list[User]): 需批量添加的用户列表
+    - achievement_list (list[Achievement]): 需批量添加的成就列表
 
     Returns:
-        bool: 是否成功添加
-        list[AchievementUnlock]: 添加的解锁记录列表（若未成功添加返回空列表）
+    - bool: 是否成功添加
     """
 
     unlock_record_list = []
 
-    for record in record_list:
-        user = record["user"]
-        achievement = record["achievement"]
-        assert isinstance(user, User) and isinstance(
-            achievement, Achievement), (type(user), type(achievement))
+    for user, achievement in zip(user_list, achievement_list):
         unlock_record_list.append(
             AchievementUnlock(user=user, achievement=achievement))
 
@@ -57,6 +53,5 @@ def bulk_add_achievement_record(record_list: list[dict]):
         success = True
     except Exception as e:
         success = False
-        return success, []
 
-    return success, unlock_record_list
+    return success
