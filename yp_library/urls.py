@@ -11,7 +11,6 @@
 """
 from django.urls import path
 from yp_library import views
-app_name = 'yp_library'
 
 urlpatterns = [
     path('', views.WelcomeView.as_view(), name="libWelcome"),

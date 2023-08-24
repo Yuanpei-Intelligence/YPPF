@@ -1,3 +1,9 @@
+'''
+YWolfeee:
+web_func.py中保留所有在views.py中使用到了和web发生交互但不直接在urls.py中暴露的函数
+这些函数是views.py得以正常运行的工具函数。
+函数比较乱，建议实现新函数时先在这里面找找有没有能用的。
+'''
 from datetime import datetime, timedelta, time
 from typing import Dict, Any
 
@@ -8,29 +14,6 @@ from Appointment.models import Participant, Room, Appoint
 from Appointment.utils.identity import get_participant
 
 
-'''
-YWolfeee:
-web_func.py中保留所有在views.py中使用到了和web发生交互但不直接在urls.py中暴露的函数
-这些函数是views.py得以正常运行的工具函数。
-函数比较乱，建议实现新函数时先在这里面找找有没有能用的。
-'''
-
-
-def get_student_chosen_list(request, queryset, get_all=False):
-    '''用于前端显示支持拼音搜索的人员列表, 形如[{id, text, pinyin}]'''
-    js_stu_list = []
-    Stu_all = queryset
-    if not get_all:
-        Stu_all = Stu_all.exclude(hidden=True)
-    students = Stu_all.exclude(Sid_id=request.user.username)
-    for stu in students:
-        Sid = stu.Sid_id
-        js_stu_list.append({
-            "id": Sid,
-            "text": stu.name + "_" + Sid[:2],
-            "pinyin": stu.pinyin,
-        })
-    return js_stu_list
 
 
 def get_talkroom_timerange(talk_room_list):

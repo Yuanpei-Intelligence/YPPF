@@ -11,7 +11,6 @@ from django.core.exceptions import ValidationError
 
 from utils.config.cast import str_to_time
 from utils.hasher import MyMD5Hasher
-from app.academic_utils import get_search_results
 from app.views_dependency import *
 from app.models import (
     NaturalPerson,
@@ -47,6 +46,7 @@ from app.notification_utils import (
 )
 from app.YQPoint_utils import add_signin_point
 from app.academic_utils import (
+    get_search_results,
     comments2Display,
     get_js_tag_list,
     get_text_list,

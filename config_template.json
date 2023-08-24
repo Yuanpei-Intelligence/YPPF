@@ -45,7 +45,7 @@
     },
     "email": {
         "url": "",
-        "salt": "debug_hasher_salt" 
+        "salt": "debug_hasher_salt"
     },
     "underground": {
         "token": {
@@ -58,7 +58,9 @@
     },
     "course": {
         "type_name": "书院课程",
-        "auditors": ["admin"],
+        "auditors": [
+            "admin"
+        ],
         "valid_hours": 8,
         "yx_election_start": "2022-02-16 10:00:00",
         "yx_election_end": "2022-02-16 12:00:00",
@@ -67,7 +69,21 @@
         "publish_time": "2022-02-20 20:35:00"
     },
     "YQPoint": {
-        "signin_points": [1, 2, 2, [2, 4], 2, 2, [5, 7]],
+        "signin_points": [
+            1,
+            2,
+            2,
+            [
+                2,
+                4
+            ],
+            2,
+            2,
+            [
+                5,
+                7
+            ]
+        ],
         "activity": {
             "invalid_hour": 12,
             "per_hour": 1,

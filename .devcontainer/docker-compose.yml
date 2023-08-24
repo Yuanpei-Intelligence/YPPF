@@ -16,15 +16,23 @@ services:
       MYSQL_ROOT_PASSWORD: secret
       MYSQL_DATABASE: yppf
     healthcheck:
-      test: ["CMD", "mysqladmin" ,"ping", "-h", "localhost", "-uroot", "-psecret"]
+      test:
+        [
+          "CMD",
+          "mysqladmin",
+          "ping",
+          "-h",
+          "localhost",
+          "-uroot",
+          "-psecret"
+        ]
       interval: 5s
       timeout: 5s
       retries: 100
 
   yppf:
-    image: yuanpei/profile:dev1.2
-    # ports:
-    #   - 8000:8000
+    build: ./image_build
+    tty: true
     depends_on:
       mysql:
         condition: service_healthy
@@ -36,8 +44,6 @@ services:
       - DB_DATABASE=yppf
     volumes:
       - ../:/workspace
-
-
 
 volumes:
   yppf-mysql-data:
