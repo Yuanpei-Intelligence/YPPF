@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+
+{% block add_css_file %}
+<style class="text/css">
+    [data-toggle="collapse"] .fa:before {
+        font-family: 'Font Awesome 5 Free';
+        content: "\f068";
+        float: right;
+    }
+
+    [data-toggle="collapse"].collapsed .fa:before {
+        content: "\f067";
+    }
+</style>
+{% endblock %}
+
+{% block mainpage %}
+<div id="content" class="main-content">
+    <head>
+        <title>所选成就大类: {{achievementTypeName}}</title>
+    </head>
+    {% for ac in achievement_all %}
+    <p>成就名：{{ac.name}}</p>
+    <p>成就描述：{{ac.description}}</p>
+    <p>达成与否：{{achievement_dict.ac}}</p>
+    {% endfor %}
+
+    
+</div>
+
+{% endblock %}

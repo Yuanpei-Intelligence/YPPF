@@ -1575,7 +1575,7 @@
                         <div class="container mt-3 achievement-container">                  
                                 <box>
                                 {% for acs in achievement_types_0 %}
-                                    <td><img src="/media/{{ acs.badge}}" class="achievement-img">
+                                    <td><a href="/achievement/{{acs.title}}"><img src="/media/{{ acs.badge}}", class="achievement-img"></a>
                                         <p>{{acs}}</p>
                                     <p>{{acs.title}}成就总数:{{all_achievement_stat.acs}}</p>
                                     <p>{{acs.title}}成就收集数:{{unlocked_personal_stat.acs}}</p>
@@ -1588,7 +1588,7 @@
                                         </box>
                                 <box>
                                 {% for acs in achievement_types_1 %}
-                                    <td><img src="/media/{{ acs.badge}}", class="achievement-img">
+                                    <td><a href="/achievement/{{acs.title}}"><img src="/media/{{ acs.badge}}", class="achievement-img"></a>
                                         <p>{{acs}}</p>
                                     <p>{{acs.title}}成就总数: {{all_achievement_stat.acs}}</p>
                                     <p>{{acs.title}}成就收集数:{{unlocked_personal_stat.acs}}</p>
@@ -1601,7 +1601,7 @@
                                         </box>
                                 <box>
                                 {% for acs in achievement_types_2 %}
-                                    <td><img src="/media/{{ acs.badge}}", class="achievement-img">
+                                    <td><a href="/achievement/{{acs.title}}"><img src="/media/{{ acs.badge}}", class="achievement-img"></a>
                                         <p>{{acs}}</p>
                                     <p>{{acs.title}}成就总数: {{all_achievement_stat.acs}}</p>
                                     <p>{{acs.title}}成就收集数:{{unlocked_personal_stat.acs}}</p>
