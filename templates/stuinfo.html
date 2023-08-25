@@ -22,6 +22,21 @@
     .tooltip-inner {
         max-width: 500px;
     }
+
+    .achievement-img {
+        max-width: 100%;
+        height: auto;
+        overflow-x: auto;
+        flex-shrink: 1;
+        flex-basis: auto;
+    }
+
+    .achievement-container {
+        display: grid;
+        grid-template-columns: repeat(3, 33.33%);
+        grid-template-rows: repeat(3, 33.33%);
+    }
+
 </style>
 
 <div id="content" class="main-content pb-3" style="overflow: hidden;">
@@ -1555,14 +1570,25 @@
                             {% endfor %} -->
                            
                           </div>
+                        
                         <!--  勋章墙展示  -->
-                        <div class="container"><center>
-                        <!--  未添加自适应，此时手机屏幕显示存在问题  -->
-                            <table>
-                                <tr>
+                        <div class="container mt-3 achievement-container">                  
+                                <box>
                                 {% for acs in achievement_types_0 %}
-                                <div>
-                                    <td><img src="/media/{{ acs.badge}}", height=200, width=200>
+                                    <td><img src="/media/{{ acs.badge}}" class="achievement-img">
+                                        <p>{{acs}}</p>
+                                    <p>{{acs.title}}成就总数:{{all_achievement_stat.acs}}</p>
+                                    <p>{{acs.title}}成就收集数:{{unlocked_personal_stat.acs}}</p>
+                                    <p
+                                                style="text-align: left; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+                                                <i class="fa fa-info-circle" style="width: 20px;"></i>
+                                                <span class="ml-1">{{ acs.description }}</span>
+                                            </p></td>
+                                {% endfor %}
+                                        </box>
+                                <box>
+                                {% for acs in achievement_types_1 %}
+                                    <td><img src="/media/{{ acs.badge}}", class="achievement-img">
                                         <p>{{acs}}</p>
                                     <p>{{acs.title}}成就总数: {{all_achievement_stat.acs}}</p>
                                     <p>{{acs.title}}成就收集数:{{unlocked_personal_stat.acs}}</p>
@@ -1570,38 +1596,23 @@
                                                 style="text-align: left; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
                                                 <i class="fa fa-info-circle" style="width: 20px;"></i>
                                                 <span class="ml-1">{{ acs.description }}</span>
-                                            </p></td></div>
+                                            </p></td>
                                 {% endfor %}
-                                </tr>
-                                <tr>
-                                {% for acs in achievement_types_1 %}
-                                <div>
-                                    <td><img src="/media/{{ acs.badge}}", height=200, width=200>
-                                    <p>{{acs.title}}成就总数: {{all_achievement_stat.acs}}</p>
-                                    <p>{{acs.title}}成就收集数:{{unlocked_personal_stat.acs}}</p>
-                                    <p
-                                                style="text-align: left; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
-                                                <i class="fa fa-info-circle" style="width: 20px;"></i>
-                                                <span class="ml-1">{{ acs.description }}</span>
-                                            </p></td></div>
-                                {% endfor %}
-                                </tr>
-                                <tr>
+                                        </box>
+                                <box>
                                 {% for acs in achievement_types_2 %}
-                                <div>
-                                    <td><img src="/media/{{ acs.badge}}", height=200, width=200>
+                                    <td><img src="/media/{{ acs.badge}}", class="achievement-img">
+                                        <p>{{acs}}</p>
                                     <p>{{acs.title}}成就总数: {{all_achievement_stat.acs}}</p>
                                     <p>{{acs.title}}成就收集数:{{unlocked_personal_stat.acs}}</p>
                                     <p
                                                 style="text-align: left; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
                                                 <i class="fa fa-info-circle" style="width: 20px;"></i>
                                                 <span class="ml-1">{{ acs.description }}</span>
-                                            </p></td></div>
+                                            </p></td>
                                 {% endfor %}
-                                </tr>
-                            </table></center>
+                                        </box>
                         </div>
-                    
                     </div>
                 </div>
             </div>

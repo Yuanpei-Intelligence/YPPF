@@ -576,14 +576,16 @@ def stuinfo(request: UserRequest):
             all_achievement_stat[a_t] = Achievement.objects.filter(
                 achievement_type=a_t).count()
             achievement_a_t = Achievement.objects.filter(achievement_type=a_t)
-            unlocked_personal_stat[a_t.title] = unlocked_achievements.filter(
+            unlocked_personal_stat[a_t] = unlocked_achievements.filter(
                 achievement__in=achievement_a_t).count()
-        print("unlocked_personal_stat", unlocked_personal_stat)
-        print("all_achievement_stat", all_achievement_stat)
+        # print("unlocked_personal_stat", unlocked_personal_stat)
+        # print("all_achievement_stat", all_achievement_stat)
+        
         # works, but ugly, need to be improved in the future
         achievement_types_0 = achievement_types[:3]
         achievement_types_1 = achievement_types[3:6]
         achievement_types_2 = achievement_types[6:9]
+        print("achievement_types_0", achievement_types_0)
 
         status_dict = dict(
             major_status=major_status,
