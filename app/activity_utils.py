@@ -14,6 +14,7 @@ import base64
 from math import ceil
 from random import sample
 from datetime import datetime, timedelta
+from django.http import HttpRequest
 
 import qrcode
 
@@ -422,15 +423,6 @@ def check_ac_time(start_time: datetime, end_time: datetime) -> bool:
     return False
 
 
-#由每周活动总结新建的活动，检查开始时间早于结束时间；结束时间在这一周内
-def check_summary_time(start_time: datetime, end_time: datetime) -> bool:
-    now_time = datetime.now()
-    if start_time < end_time <= now_time:
-        return True
-    
-    return False
-
-
 def activity_base_check(request, edit=False):
     '''正常情况下检查出错误会抛出不含错误信息的AssertionError，不抛出ActivityException'''
 
@@ -533,52 +525,6 @@ def activity_base_check(request, edit=False):
             assert edit
     else:
         context["pic"] = pic
-
-    return context
-
-
-def weekly_summary_base_check(request, value_dict):
-    '''
-    value_dict：存储用于前端展示的默认值
-    
-    正常情况下检查出错误会抛出不含错误信息的AssertionError，不抛出ActivityException
-    '''
-
-    context = dict()
-
-    # title, introduction, location 创建时不能为空
-    context["title"] = request.POST["title"]
-    context["introduction"] = request.POST["introduction"]
-    context["location"] = request.POST["location"]
-    assert len(context["title"]) > 0
-    assert len(context["introduction"]) > 0
-    assert len(context["location"]) > 0
-
-    # 时间
-    act_start = datetime.strptime(
-        request.POST["actstart"], "%Y-%m-%d %H:%M")  # 活动报名时间
-    act_end = datetime.strptime(
-        request.POST["actend"], "%Y-%m-%d %H:%M")  # 活动报名结束时间
-    context["start"] = act_start
-    context["end"] = act_end
-    assert check_summary_time(act_start, act_end)
-    
-    #以下均为在value_dict中指立的默认值，仅为兼容活动详情的前端展示
-    context["url"] = value_dict["URL"]
-    context["bidding"] = value_dict["bidding"]
-    context["examine_teacher"] = value_dict["examine_teacher"]
-    context["recorded"] = value_dict["recorded"]
-    context["capacity"] = value_dict["maxpeople"]
-    context["inner"] = value_dict["inner"]
-    context["pic"] = value_dict["announce_pic_src"]
-    context["valid"] = value_dict["valid"]
-    context["need_checkin"] = value_dict["need_checkin"]
-    prepare_scheme = int(value_dict["prepare_scheme"])
-    prepare_times = Activity.EndBeforeHours.prepare_times
-    prepare_time = prepare_times[prepare_scheme]
-    signup_end = act_start - timedelta(hours=prepare_time)
-    context["endbefore"] = prepare_scheme
-    context["signup_end"] = signup_end
 
     return context
 
@@ -696,15 +642,13 @@ def create_activity(request):
     return activity.id, True
 
 
-def create_weekly_summary(request, value_dict):
+def create_weekly_summary(request, context):
     '''
     value_dict：存储用于活动详情页前端展示的默认值
     
     检查活动总结合法性及是否存在一致的活动，返回(activity.id, created)
     若查询到一致的活动或检查不合格时抛出AssertionError
     '''
-
-    context = weekly_summary_base_check(request, value_dict)
 
     # 查找是否有类似活动存在
     old_ones = Activity.objects.activated().filter(

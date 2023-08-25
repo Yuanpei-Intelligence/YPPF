@@ -1,7 +1,6 @@
 import os
 import io
 import urllib.parse
-import pypinyin
 from datetime import datetime, timedelta
 from typing import Literal
 
@@ -1135,7 +1134,8 @@ class WeeklyActivitySummaryView(ProfileTemplateView):
     
     def post(self):
         with transaction.atomic():
-            aid, created = create_weekly_summary(self.request, self.default_value)
+            context = self.weekly_summary_base_check()
+            aid, created = create_weekly_summary(self.request, context)
             if not created:
                 return redirect(message_url(
                     succeed('存在信息相同的活动，已为您自动跳转!'),
@@ -1169,3 +1169,56 @@ class WeeklyActivitySummaryView(ProfileTemplateView):
             User.objects.bulk_increase_YQPoint(
                 participants, point, "参加活动", YQPointRecord.SourceType.ACTIVITY)
             return redirect(f"/editActivity/{aid}")
+        
+    def check_summary_time(self, start_time: datetime, end_time: datetime) -> bool:
+        '''由每周活动总结新建的活动，检查开始时间早于结束时间'''
+        now_time = datetime.now()
+        if start_time < end_time <= now_time:
+            return True
+        return False
+        
+    def weekly_summary_base_check(self) -> dict:
+        '''
+        value_dict：存储用于前端展示的默认值;
+        
+        return：返回存储活动信息的字典context
+        
+        正常情况下检查出错误会抛出不含错误信息的AssertionError，不抛出ActivityException
+        '''
+        
+        context = dict()
+        # title, introduction, location 创建时不能为空
+        context["title"] = self.request.POST["title"]
+        context["introduction"] = self.request.POST["introduction"]
+        context["location"] = self.request.POST["location"]
+        assert len(context["title"]) > 0
+        assert len(context["introduction"]) > 0
+        assert len(context["location"]) > 0
+
+        # 时间
+        act_start = datetime.strptime(
+            self.request.POST["actstart"], "%Y-%m-%d %H:%M")  # 活动报名时间
+        act_end = datetime.strptime(
+            self.request.POST["actend"], "%Y-%m-%d %H:%M")  # 活动报名结束时间
+        context["start"] = act_start
+        context["end"] = act_end
+        assert self.check_summary_time(act_start, act_end)
+        
+        #以下均为在default_value中指立的默认值，仅为兼容活动详情的前端展示
+        context["url"] = self.default_value["URL"]
+        context["bidding"] = self.default_value["bidding"]
+        context["examine_teacher"] = self.default_value["examine_teacher"]
+        context["recorded"] = self.default_value["recorded"]
+        context["capacity"] = self.default_value["maxpeople"]
+        context["inner"] = self.default_value["inner"]
+        context["pic"] = self.default_value["announce_pic_src"]
+        context["valid"] = self.default_value["valid"]
+        context["need_checkin"] = self.default_value["need_checkin"]
+        prepare_scheme = int(self.default_value["prepare_scheme"])
+        prepare_times = Activity.EndBeforeHours.prepare_times
+        prepare_time = prepare_times[prepare_scheme]
+        signup_end = act_start - timedelta(hours=prepare_time)
+        context["endbefore"] = prepare_scheme
+        context["signup_end"] = signup_end
+
+        return context
