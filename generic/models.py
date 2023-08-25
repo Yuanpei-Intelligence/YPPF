@@ -258,6 +258,19 @@ class PointMixin(models.Model):
 
 
 class User(AbstractUser, PointMixin):
+    '''用户模型
+
+    Attributes:
+    - id: 用户主键
+    - username: 用户名，学号
+    - name: 用户名称
+    - utype: 用户类型，参考User.Type
+    - 其它继承字段参考AbstractUser
+
+    See Also:
+    - :class:`UserManager`
+    - :class:`django.contrib.auth.models.AbstractUser`
+    '''
 
     class Meta:
         verbose_name = '用户'

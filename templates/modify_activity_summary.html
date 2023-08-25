@@ -89,14 +89,13 @@
                                                     </svg>
                                                 </a>
                                             </label>
-                                             {%if activities.len > 0%}
+                                            {% if activities %}
                                                 <select name="activity_id" class="form-control">
-
-                                                        {% for activity in activities.all%}
+                                                    {% for activity in activities %}
                                                         <option value={{activity.id}}
                                                         >{{activity.title}} ({{activity.start.month}}月{{activity.start.day}}日
                                                             )</option>
-                                                        {%endfor%}
+                                                    {% endfor %}
                                                 </select>
                                             {%else%}
                                             <select  class="form-control">

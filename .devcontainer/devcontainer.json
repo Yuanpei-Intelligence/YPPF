@@ -11,6 +11,7 @@
     "customizations": {
         "vscode": {
             "settings": {
+                "json.format.enable": false,
                 "editor.formatOnSave": true
             },
             "extensions": [
