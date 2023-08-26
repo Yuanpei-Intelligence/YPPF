@@ -45,7 +45,7 @@
     },
     "email": {
         "url": "",
-        "salt": "debug_hasher_salt"
+        "salt": "debug_hasher_salt" 
     },
     "underground": {
         "token": {

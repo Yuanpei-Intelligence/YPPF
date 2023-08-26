@@ -1088,19 +1088,6 @@ class WeeklyActivitySummaryView(ProfileTemplateView):
     def prepare_get(self):
         return self.get
 
-    def get_summary_photo(self):
-        summary_photos = self.request.FILES.getlist('summaryimages')
-        photo_num = len(summary_photos)
-        if photo_num == 1:
-            # 合法性检查
-            for image in summary_photos:
-                if utils.if_image(image) != 2:
-                    return redirect(
-                        message_url(wrong("上传的总结图片只支持图片格式！")))
-        else:
-            return redirect(message_url(wrong('图片内容为空或有多张图片！'), self.request.path))
-        self.context['summary_pic'] = summary_photos[0]
-
     def prepare_post(self):
         self.context = {
             "bidding": False,
@@ -1117,7 +1104,18 @@ class WeeklyActivitySummaryView(ProfileTemplateView):
             # Summary do not need an auditor, so we set it to arbitrary value
             "examine_teacher": NaturalPerson.objects.teachers().first()
         }
-        self.get_summary_photo()
+        summary_photos = self.request.FILES.getlist('summaryimages')
+
+        # 检查总结图片合法性
+        photo_num = len(summary_photos)
+        if photo_num == 1:
+            for image in summary_photos:
+                if utils.if_image(image) != 2:
+                    return redirect(
+                        message_url(wrong("上传的总结图片只支持图片格式！")))
+        else:
+            return redirect(message_url(wrong('图片内容为空或有多张图片！'), self.request.path))
+        self.context['summary_pic'] = summary_photos[0]
         return self.post
 
     def get(self):
@@ -1150,16 +1148,6 @@ class WeeklyActivitySummaryView(ProfileTemplateView):
             return redirect(message_url(
                 succeed('存在信息相同的活动，已为您自动跳转!'),
                 f'/viewActivity/{aid}'))
-
-        # 发放元气值
-        activity = Activity.objects.get(id=aid)
-        point = calcu_activity_YQP(activity)
-        participants = Participant.objects.filter(
-            activity_id=aid,
-            status=Participant.AttendStatus.ATTENDED).values_list('person_id__person_id', flat=True)
-        participants = User.objects.filter(id__in=participants)
-        User.objects.bulk_increase_YQPoint(
-            participants, point, "参加活动", YQPointRecord.SourceType.ACTIVITY)
         return redirect(f"/editActivity/{aid}")
 
     def check_summary_time(self, start_time: datetime, end_time: datetime) -> bool:
@@ -1193,6 +1181,17 @@ class WeeklyActivitySummaryView(ProfileTemplateView):
         prepare_time = prepare_times[prepare_scheme]
         self.context["endbefore"] = prepare_scheme
         self.context["apply_end"] = act_start - timedelta(hours=prepare_time)
+        
+    def give_YQPoint(self, aid):
+        '''根据创立的活动总结发放元气值'''
+        activity = Activity.objects.get(id=aid)
+        point = calcu_activity_YQP(activity)
+        participants = Participant.objects.filter(
+            activity_id=aid,
+            status=Participant.AttendStatus.ATTENDED).values_list('person_id__person_id', flat=True)
+        participants = User.objects.filter(id__in=participants)
+        User.objects.bulk_increase_YQPoint(
+            participants, point, "参加活动", YQPointRecord.SourceType.ACTIVITY)
 
     def create_weekly_summary(self) -> tuple[int, bool]:
         '''
@@ -1240,7 +1239,8 @@ class WeeklyActivitySummaryView(ProfileTemplateView):
                 image=self.context["announce_pic_src"], type=ActivityPhoto.PhotoType.ANNOUNCE, activity=activity)
 
             # 创建参与人
-            nps = NaturalPerson.objects.filter(person_id__username__in=participants_ids)
+            nps = NaturalPerson.objects.filter(
+                person_id__username__in=participants_ids)
             participants = [
                 Participant(
                     activity_id=activity,
@@ -1259,5 +1259,6 @@ class WeeklyActivitySummaryView(ProfileTemplateView):
                 image=self.context["summary_pic"]
             )
             application.save()
+        self.give_YQPoint(activity.id)
 
         return activity.id, True
