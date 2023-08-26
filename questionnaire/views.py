@@ -21,7 +21,11 @@ class SurveyViewSet(viewsets.ModelViewSet):
             return Survey.objects.all()
         else:  # 根据发布状态和发布时间来筛选
             return Survey.objects.filter(Q(status=Survey.Status.PUBLISHED) | Q(creator=self.request.user))
-
+    
+    def perform_create(self, serializer):
+        
+        return super().perform_create(serializer)
+    
 
 class QuestionViewSet(viewsets.ModelViewSet):
     authentication_classes = [SessionAuthentication]

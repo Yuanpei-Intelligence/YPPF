@@ -485,6 +485,9 @@
         if (data.pinyin && data.pinyin.indexOf(params.term) > -1 ){
             return data;
         }
+        if (data.acronym && data.acronym.indexOf(params.term) > -1 ){
+            return data;
+        }
         // Return `null` if the term should not be displayed
         return null;
     }

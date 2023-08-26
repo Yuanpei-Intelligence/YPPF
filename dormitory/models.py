@@ -24,4 +24,4 @@ class DormitoryAssignment(models.Model):
 
     @debug_only
     def __str__(self):
-        return str(self.dormitory.number) + ' - ' + self.user.username
+        return str(self.dormitory.id) + ' - ' + self.user.username

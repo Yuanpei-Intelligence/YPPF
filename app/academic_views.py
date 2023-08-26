@@ -1,3 +1,4 @@
+from generic.utils import to_search_indices
 from app.views_dependency import *
 from app.models import (
     AcademicTag,
@@ -15,7 +16,6 @@ from app.academic_utils import (
     update_academic_map,
     get_wait_audit_student,
     audit_academic_map,
-    get_students_for_search,
     get_tags_for_search,
 )
 from app.utils import (
@@ -39,8 +39,7 @@ class ShowChats(ProfileTemplateView):
     page_name = '学术地图问答'
 
     def prepare_get(self):
-        user = self.request.user
-        if not user.is_person():
+        if not self.request.user.is_person():
             # 后续或许可以开放任意的聊天
             return self.wrong('请使用个人账号访问问答中心页面！')
         return self.get
@@ -49,7 +48,7 @@ class ShowChats(ProfileTemplateView):
         self.extra_context.update({
             'sent_chats': chats2Display(self.request.user, sent=True),
             'received_chats': chats2Display(self.request.user, sent=False),
-            'stu_list': get_students_for_search(self.request),
+            'stu_list': to_search_indices(User.objects.filter_type(User.Type.PERSON)),
             'tag_list': get_tags_for_search(),
         })
         
