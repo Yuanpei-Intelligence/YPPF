@@ -486,7 +486,6 @@ def selectCourse(request: HttpRequest):
         except:
             wrong("选课过程出现错误！请联系管理员。", html_display)
 
-    html_display["is_myself"] = True
     html_display["current_year"] = GLOBAL_CONFIG.acadamic_year
     html_display["semester"] = ("春" if GLOBAL_CONFIG.semester == Semester.SPRING else "秋")
 

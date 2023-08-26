@@ -70,7 +70,7 @@
                         <div class="d-flex justify-content-between">
                             <h3 class="">小组信息</h3>
                             <br /><br />
-                            {% if html_display.is_person and html_display.is_course and html_display.select_ing  %}
+                            {% if user.is_person and html_display.is_course and html_display.select_ing  %}
                             <button class="flex btn btn-success btn-primary mb-4 mr-2" id="select_course" 
                                 onclick="location.href='/selectCourse/'" type="button">
                                 跳转至选课界面
@@ -81,7 +81,7 @@
                         <div class="text-center user-info">
                             <img src={{ org_avatar_path }} height="90px" width="90px" alt="avatar">
                             <p style="color: #0e1726;">{{ organization_name }}</p>
-                            {% if is_person %}
+                            {% if user.is_person %}
                             <div class="custom-control custom-switch">
                                 {% if subscribe_flag %}
                                 <input type="checkbox" class="custom-control-input" id="switch button"
@@ -193,7 +193,7 @@
                                     {% endif %}
 
                                     {% if html_display.is_myself == False %}
-                                    {% if is_person %}
+                                    {% if user.is_person %}
                                     <li class="contacts-block__item">
                                         <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"
                                             fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"

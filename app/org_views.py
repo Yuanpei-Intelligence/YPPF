@@ -300,10 +300,8 @@ def modifyPosition(request: UserRequest):
                 html_display = utils.user_login_org(request, application.org)
                 if html_display['warn_code'] == 1:
                     return redirect(message_url(html_display))
-                else:
-                    #防止后边有使用，因此需要赋值
-                    request.user = application.org.get_user()
-                    me = application.org
+                # 防止后边使用
+                me = application.org
             assert (application.org == me) or (application.person == me)
         except: #恶意跳转
             return redirect(message_url(wrong("您没有权限访问该网址！")))

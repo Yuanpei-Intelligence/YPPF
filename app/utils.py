@@ -641,7 +641,7 @@ def user_login_org(request: UserRequest, org: Organization) -> MESSAGECONTEXT:
     '''
     令人疑惑的函数，需要整改
     尝试从用户登录到org指定的组织，如果不满足权限，则会返回wrong
-    返回wrong或succeed
+    返回wrong或succeed，并更新request.user
     '''
     user = request.user
     try:

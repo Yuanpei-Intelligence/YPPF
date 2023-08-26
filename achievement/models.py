@@ -51,6 +51,9 @@ class AchievementUnlock(models.Model):
     time = models.DateTimeField("解锁时间", auto_now_add=True)
     private = models.BooleanField(default=False)
 
+    class Meta:
+        unique_together = ['user', 'achievement']
+
     @debug_only
     def __str__(self):
         return f"{self.user.username} unlocked {self.achievement.name}"
