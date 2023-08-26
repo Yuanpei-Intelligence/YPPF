@@ -1,5 +1,9 @@
 {
     "name": "YPPF DEV",
+    // Mount ssh keys
+    // "mounts": [
+    //     "source=${localEnv:HOME}/.ssh,target=/home/vscode/.ssh,type=bind,consistency=cached"
+    // ],
     "dockerComposeFile": "docker-compose.yml",
     "service": "yppf",
     "workspaceFolder": "/workspace",
@@ -7,9 +11,17 @@
     "customizations": {
         "vscode": {
             "settings": {
+                "json.format.enable": false,
                 "editor.formatOnSave": true
             },
-            "extensions": []
+            "extensions": [
+                "ms-python.python",
+                "ms-python.isort",
+                "ms-python.autopep8",
+                "GitHub.copilot",
+                "eamodio.gitlens",
+                "GitHub.vscode-pull-request-github"
+            ]
         }
     }
 }

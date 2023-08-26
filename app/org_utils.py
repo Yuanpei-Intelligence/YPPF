@@ -324,9 +324,7 @@ def update_pos_application(application, me: ClassifiedUser, applied_org, info):
 
         if feasible_post.index(post_type) <= 2:  # 是个人的操作, 新建\修改\删除
             # 访问者一定是个人
-            try:
-                assert me.get_user().is_person()
-            except:
+            if not me.get_user().is_person():
                 return wrong("访问者身份异常！")
 
             # 如果是取消申请

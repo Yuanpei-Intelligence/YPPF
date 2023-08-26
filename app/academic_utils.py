@@ -31,7 +31,6 @@ __all__ = [
     'get_wait_audit_student',
     'audit_academic_map',
     'have_entries_of_type',
-    'get_students_for_search',
     'get_tags_for_search',
 ]
 
@@ -575,23 +574,6 @@ def have_entries_of_type(author: NaturalPerson, status_in: list) -> bool:
     all_text_entries = (AcademicTextEntry.objects.activated().filter(
         person=author, status__in=stats))
     return bool(all_tag_entries) or bool(all_text_entries)
-
-
-def get_students_for_search(request: HttpRequest):
-    students = NaturalPerson.objects.activated(
-    ).filter(identity=NaturalPerson.Identity.STUDENT).exclude(
-        person_id=request.user).select_related('person_id').order_by("-name")
-
-    students_for_search = []
-    for s in students:
-        user = s.person_id
-        students_for_search.append({
-            'id': user.username,
-            'text': user.name + user.username[:2],
-            'pinyin': user.acronym,
-        })
-
-    return students_for_search
 
 
 def get_tags_for_search():

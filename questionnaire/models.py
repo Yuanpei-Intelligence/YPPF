@@ -78,6 +78,7 @@ class Question(models.Model):
     description = models.TextField("题目描述", blank=True)
     type = models.CharField("问题类型", max_length=10,
                             choices=Type.choices, default=Type.SINGLE)
+    required = models.BooleanField("是否必填", default=True)
 
     def have_choice(self):
         return self.type in ["SINGLE", "MULTIPLE", "RANKING"]

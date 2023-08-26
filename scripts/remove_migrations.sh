@@ -1,5 +1,12 @@
-cd $( dirname -- "${BASH_SOURCE[0]}" )/..
-for i in 'app' 'Appointment' 'generic' 'yp_library' 'questionnaire' 'dormitory' 'feedback' 'achievement'
-do
-    rm -rf $i/migrations/*
+# Change the working directory
+cd "$(dirname -- "${BASH_SOURCE[0]}")/.."
+
+# Declare an array of directories
+declare -a dirs=('generic' 'app' 'Appointment' 'yplibrary' 
+                 'questionnaire' 'dormitory' 'record' 'feedback' 'achievement')
+
+# Loop over each directory and remove its migrations
+for dir in "${dirs[@]}"; do
+    rm -rf "${dir}/migrations/*"
+    echo "Remove migrations in ${dir}/migrations/*"
 done

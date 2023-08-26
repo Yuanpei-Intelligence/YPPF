@@ -31,10 +31,9 @@ class College_AnnouncementAdmin(admin.ModelAdmin):
 class ParticipantAdmin(admin.ModelAdmin):
     actions_on_top = True
     actions_on_bottom = True
-    search_fields = ('Sid__username', 'name', 'pinyin')
-    list_display = ('Sid', 'name', 'credit', 'longterm', 'hidden')
-    list_display_links = ('Sid', 'name')
-    # list_editable = ('credit', )
+    search_fields = ('Sid__username', 'Sid__name', 'Sid__pinyin', 'Sid__acronym')
+    list_display = ('Sid_id', 'name', 'credit', 'longterm', 'hidden')
+    list_display_links = ('Sid_id', 'name')
 
     class AgreeFilter(admin.SimpleListFilter):
         title = '签署状态'
@@ -88,14 +87,6 @@ class ParticipantAdmin(admin.ModelAdmin):
         stu_all = User.objects.filter(id__in=stu_all.values_list('Sid__id'))
         User.objects.bulk_recover_credit(stu_all, 1, '地下室：全体学生恢复')
         return self.message_user(request, '操作成功!')
-
-    @as_action('更新姓名拼音', actions, update=True)
-    def renew_pinyin(self, request, queryset):
-        for stu in queryset:
-            pinyin_list = pypinyin.pinyin(stu.name, style=pypinyin.NORMAL)
-            stu.pinyin = ''.join([w[0][0] for w in pinyin_list])
-            stu.save()
-        return self.message_user(request, '修改学生拼音成功!')
 
     @as_action('赋予长期预约权限', actions, 'change', update=True)
     def add_longterm_perm(self, request, queryset: QuerySet[Participant]):
@@ -165,6 +156,7 @@ class AppointAdmin(admin.ModelAdmin):
         'Astatus_display',
         'Atype',
     )
+    list_select_related = ('Room', 'major_student__Sid')
     list_display_links = ('Aid', 'Room')
     list_per_page = 25
     list_editable = (
@@ -222,11 +214,11 @@ class AppointAdmin(admin.ModelAdmin):
         return super().get_search_results(request, queryset, search_term)
 
     @as_display('参与人')
-    def Participants(self, obj):
-        students = [(obj.major_student.name, )]
-        students += [(stu.name, ) for stu in obj.students.all()
-                                    if stu != obj.major_student]
-        return format_html_join('\n', '<li>{}</li>', students)
+    def Participants(self, obj: Appoint):
+        names = [(obj.major_student.name, )]
+        participants = obj.students.exclude(pk=obj.get_major_id())
+        names += list(participants.values_list('Sid__name', flat=False))
+        return format_html_join('\n', '<li>{}</li>', names)
 
     @as_display('用途')
     def usage_display(self, obj):
@@ -419,6 +411,7 @@ class AppointAdmin(admin.ModelAdmin):
 class CardCheckInfoAdmin(admin.ModelAdmin):
     list_display = ('id', 'Cardroom', 'student_display', 'Cardtime',
                     'CardStatus', 'Message')
+    list_select_related = ('Cardroom', 'Cardstudent__Sid')
     search_fields = ('Cardroom__Rtitle',
                      'Cardstudent__name', 'Cardroom__Rid', "id")
     list_filter = [
@@ -434,6 +427,7 @@ class CardCheckInfoAdmin(admin.ModelAdmin):
 @admin.register(LongTermAppoint)
 class LongTermAppointAdmin(admin.ModelAdmin):
     list_display = ['id', 'applicant', 'times', 'interval', 'status']
+    list_select_related = ['applicant__Sid']
     list_filter = ['status', 'times', 'interval']
     raw_id_fields = ['appoint']
 

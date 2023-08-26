@@ -344,6 +344,9 @@
                     // This includes matching the `children` how you want in nested data sets
                     //return modifiedData;
                 }
+                if (data.acronym && data.acronym.indexOf(params.term) > -1 ){
+                    return data;
+                }
                 // Return `null` if the term should not be displayed
                 return null;
             }
@@ -386,7 +389,7 @@
                 })
                 $('#group-importer').on("click",function(){
                     // 导入小组成员
-                    $('.search-members').val(stu_group_data.map(s=>s.id)).trigger('change');
+                    $('.search-members').val(stu_group_data).trigger('change');
                     // 修复导入后搜索框重绘导致的闪烁
                     $(".select2-search__field").toggleClass("d-none");
                     setTimeout(()=>{$(".select2-search__field").toggleClass("d-none")})
