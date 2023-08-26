@@ -33,7 +33,6 @@ from app.activity_utils import (
     cancel_activity,
     withdraw_activity,
     get_activity_QRcode,
-    create_weekly_summary,
     calcu_activity_YQP,
 )
 from app.comment_utils import addComment, showComment
@@ -1133,7 +1132,7 @@ class WeeklyActivitySummaryView(ProfileTemplateView):
     def post(self):
         with transaction.atomic():
             context = self.weekly_summary_base_check()
-            aid, created = create_weekly_summary(self.request, context)
+            aid, created = self.create_weekly_summary(self.request, context)
             if not created:
                 return redirect(message_url(
                     succeed('存在信息相同的活动，已为您自动跳转!'),
