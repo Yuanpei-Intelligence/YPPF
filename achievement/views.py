@@ -36,25 +36,28 @@ def view_achievementType(request, achievementTypeName: str):
     user = request.user
     student = NaturalPerson.objects.get(person_id=user)
     achievement_type = AchievementType.objects.get(title=achievementTypeName)
-    invisible_achievements = AchievementUnlock.objects.filter(
-        user=user, private=True, achievement__achievement_type=achievement_type)
-    visible_achievements = AchievementUnlock.objects.filter(
-        user=user, private=False, achievement__achievement_type=achievement_type)
     
-    unlocked_achievements = AchievementUnlock.objects.filter(user=user)
-    achievement_types = AchievementType.objects.filter(pk__in=unlocked_achievements)
     achievement_all = Achievement.objects.filter(achievement_type=achievement_type)
-    achievement_dict = {}
+    achievement_all_num = achievement_all.count()
+    
+    achievement_unlocked = []
+    # achievement_unlocked is the list of unlocked achievements which are not hidden
+    achievement_locked = []
+    achievement_locked_hidden = []
     for achievement in achievement_all:
         # count achievementUnlocks attached to achievement
-        achievement_dict[achievement.name] = AchievementUnlock.objects.filter(achievement=achievement, user=user).count()
-        
-    print("achievement_dict", achievement_dict)
-    
+        if AchievementUnlock.objects.filter(achievement=achievement, user=user).count():
+            achievement_unlocked.append(achievement)
+        else:
+            if achievement.hidden:
+                achievement_locked_hidden.append(achievement)
+            else:
+                achievement_locked.append(achievement)
+    achievement_num = len(achievement_unlocked)
     
     frontend_dict = {}
     frontend_dict["bar_display"] = get_sidebar_and_navbar(
-        request.user, "成就展示")
+        request.user, "成就大类")
     frontend_dict["warn_code"] = request.GET.get('warn_code', 0)
     frontend_dict["warn_message"] = request.GET.get('warn_message', "")
     bar_display = frontend_dict["bar_display"]

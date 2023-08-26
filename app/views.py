@@ -575,7 +575,7 @@ def stuinfo(request: UserRequest):
         achievement_types_0 = achievement_types[:3]
         achievement_types_1 = achievement_types[3:6]
         achievement_types_2 = achievement_types[6:9]
-        print("achievement_types_0", achievement_types_0)
+        # print("achievement_types_0", achievement_types_0)
 
         status_dict = dict(
             major_status=major_status,

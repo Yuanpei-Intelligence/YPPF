@@ -11,21 +11,53 @@
     [data-toggle="collapse"].collapsed .fa:before {
         content: "\f067";
     }
+    .achievement-img {
+        max-width: 200px;
+        height: auto;
+        overflow-x: auto;
+        flex-shrink: 1;
+        flex-basis: auto;
+    }
+    p.solid {border-style:solid;}
+    p.double {border-style:double;}
 </style>
 {% endblock %}
 
 {% block mainpage %}
-<div id="content" class="main-content">
-    <head>
-        <title>所选成就大类: {{achievementTypeName}}</title>
-    </head>
-    {% for ac in achievement_all %}
-    <p>成就名：{{ac.name}}</p>
-    <p>成就描述：{{ac.description}}</p>
-    <p>达成与否：{{achievement_dict.ac}}</p>
-    {% endfor %}
 
-    
+<div id="content" class="main-content">
+    <div class="col-12">
+        <div class="bio layout-spacing mb-4">
+            <div class="widget-content widget-content-area">
+                <div class="row">
+                    <h3 class="col mb-0">成就大类</h3>
+                </div>
+            <center>
+                <h2>{{achievementTypeName}}</h2>
+                <img src="/media/{{ achievement_type.badge}}", class="achievement-img">
+                <p>{{achievement_type.description}}</p>
+            </center>
+            <div class="row">
+                <h3 class="col mb-0">成就列表</h3>
+            </div>
+            <center>
+                <h4>解锁成就：{{achievement_num}}/{{achievement_all_num}}</h4>
+                    {% for ac in achievement_unlocked %}
+                    <p class="solid">{{ac.name}}：{{ac.description}}</p>
+                    {% endfor %}
+                    <div style=" height:20px " ></div>
+                    <h4>未解锁成就</h4>
+                    {% for ac in achievement_locked %}
+                    <p class="solid">{{ac.name}}：{{ac.description}}</p>
+                    {% endfor %}
+                    {% for ac in achievement_locked_hidden %}
+                    <p class="solid">隐藏成就：???</p>
+                    {% endfor %}
+            </center>
+            <div style=" height:50px " ></div>
+            </div>
+        </div>
+    </div>
 </div>
 
 {% endblock %}
