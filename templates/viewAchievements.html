@@ -1,0 +1,63 @@
+{% extends "base.html" %}
+
+{% block add_css_file %}
+<style class="text/css">
+    [data-toggle="collapse"] .fa:before {
+        font-family: 'Font Awesome 5 Free';
+        content: "\f068";
+        float: right;
+    }
+
+    [data-toggle="collapse"].collapsed .fa:before {
+        content: "\f067";
+    }
+</style>
+{% endblock %}
+
+{% block mainpage %}
+<div id="content" class="main-content">
+    <head>
+        <title>Achievements</title>
+    </head>
+    <body>
+        <h1><center>您好，{{ student.name}}!欢迎来到智慧校园成就系统 </center></h1>
+        <h1><center>以下是您的成就:</center></h1>
+        <h2><center>未公开成就:（切换功能开发中）</center></h2>
+        <ul>
+            {% for unlock in invisible_achievements %}
+              <center><p>{{ unlock.achievement }} - {{ unlock.time }}</p></center>
+            {% endfor %}
+        </ul>
+        <h2><center>公开成就:</center></h2>
+        <ul>
+            {% for unlock in visible_achievements %}
+              <center><p>{{ unlock.achievement }} - {{ unlock.time }}</p></center>
+            {% endfor %}
+        </ul>
+    </body>
+
+    <div id="badges" class="carousel slide" data-ride="carousel">
+ 
+      <!-- 轮播图片 -->
+      <div class="carousel-inner">
+        <div class="carousel-item active">
+          <center><img src="/media/avatar/person_default.jpg" height=500, width=500></center>
+        </div>
+        {% for acs in achievement_types %}
+        <div class="carousel-item">
+          <center><img src="/media/{{ acs.badge }}" height=500, width=500></center>
+        </div>
+        {% endfor %}
+      </div>
+     
+      <!-- 左右切换按钮 -->
+      {% for acs in achievement_types %}
+        <a class="carousel-control-prev" href="#badges" data-slide="prev">
+          <span class="carousel-control-prev-icon"></span>
+        </a>
+      {% endfor %}
+     
+    </div>
+</div>
+
+{% endblock %}

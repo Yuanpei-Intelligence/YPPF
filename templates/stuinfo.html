@@ -22,6 +22,21 @@
     .tooltip-inner {
         max-width: 500px;
     }
+
+    .achievement-img {
+        max-width: 100%;
+        height: auto;
+        overflow-x: auto;
+        flex-shrink: 1;
+        flex-basis: auto;
+    }
+
+    .achievement-container {
+        display: grid;
+        grid-template-columns: repeat(3, 33.33%);
+        grid-template-rows: repeat(3, 33.33%);
+    }
+
 </style>
 
 <div id="content" class="main-content pb-3" style="overflow: hidden;">
@@ -77,6 +92,9 @@
         </li>
         <li class="nav-item">
             <b class="nav-link" data-toggle="tab" role="tab" href="#activity">{{ context.title }}的活动</b>
+        </li>
+        <li class="nav-item">
+            <b class="nav-link" data-toggle="tab" role="tab" href="#achievement">{{ context.title }}的成就</b>
         </li>
     </ul>
     <!--  END SWITCH TAB  -->
@@ -1492,6 +1510,114 @@
             </div>
         </div>
         <!--  END ACTIVITY TAB  -->
+
+        <!--  BEGIN ACHIEVEMENT TAB  -->
+        <div class="tab-pane fade" id="achievement" role="tabpanel">
+            <div class="container-fluid layout-px-spacing layout-top-spacing">
+                <div class="bio education layout-spacing ">
+                    <div class="widget-content widget-content-area">
+                        
+                            <div class="row">
+                                <h3 class="col mb-0">未公开成就:（切换功能开发中）</h3>
+                            </div>
+                            <ul>
+                                {% for unlock in invisible_achievements %}
+                                  <center><p>{{ unlock.achievement }} - {{ unlock.time }}</p></center>
+                                {% endfor %}
+                            </ul>
+
+                            <div class="row">
+                                <h3 class="col mb-0">公开成就</h3>
+                            </div>
+                            <ul>
+                                {% for unlock in visible_achievements %}
+                                  <center><p>{{ unlock.achievement }} - {{ unlock.time }}</p></center>
+                                {% endfor %}
+                            </ul>
+                        </body>
+
+                        <div id="badges" class="carousel slide" data-ride="carousel">
+                            
+                            <!-- 轮播图片 --><!--
+                            <div class="carousel-inner">
+                              <div class="carousel-item active">
+                                <center><img src="/media/avatar/person_default.jpg" height=300, width=300></center>
+                                <p
+                                                style="text-align: left; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+                                                <i class="fa fa-info-circle" style="width: 20px;"></i>
+                                                <span class="ml-1">勋章封面</span>
+                                            </p>
+                              </div>
+                              {% for acs in achievement_types %}
+                              <div class="carousel-item">
+                                <center><img src="/media/{{ acs.badge }}" height=300, width=300></center>
+                                <p>{{acs.title}}成就总数: {{all_achievement_stat.acs.title}}</p>
+                                <p>{{acs.title}}成就收集数:{{unlocked_personal_stat.acs.title}}</p>
+                                <p
+                                                style="text-align: left; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+                                                <i class="fa fa-info-circle" style="width: 20px;"></i>
+                                                <span class="ml-1">{{ acs.description }}</span>
+                                            </p>
+                              </div>
+                              {% endfor %}
+                            </div>-->
+                           
+                            <!-- 左右切换按钮 --><!--
+                            {% for acs in achievement_types %}
+                              <a class="carousel-control-prev" href="#badges" data-slide="prev">
+                                <span class="carousel-control-prev-icon"></span>
+                              </a>
+                            {% endfor %} -->
+                           
+                          </div>
+                        
+                        <!--  勋章墙展示  -->
+                        <div class="container mt-3 achievement-container">                  
+                                <box>
+                                {% for acs in achievement_types_0 %}
+                                    <td><a href="/achievement/{{acs.title}}"><img src="/media/{{ acs.badge}}", class="achievement-img"></a>
+                                        <p>{{acs}}</p>
+                                    <p>{{acs.title}}成就总数:{{all_achievement_stat.acs}}</p>
+                                    <p>{{acs.title}}成就收集数:{{unlocked_personal_stat.acs}}</p>
+                                    <p
+                                                style="text-align: left; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+                                                <i class="fa fa-info-circle" style="width: 20px;"></i>
+                                                <span class="ml-1">{{ acs.description }}</span>
+                                            </p></td>
+                                {% endfor %}
+                                        </box>
+                                <box>
+                                {% for acs in achievement_types_1 %}
+                                    <td><a href="/achievement/{{acs.title}}"><img src="/media/{{ acs.badge}}", class="achievement-img"></a>
+                                        <p>{{acs}}</p>
+                                    <p>{{acs.title}}成就总数: {{all_achievement_stat.acs}}</p>
+                                    <p>{{acs.title}}成就收集数:{{unlocked_personal_stat.acs}}</p>
+                                    <p
+                                                style="text-align: left; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+                                                <i class="fa fa-info-circle" style="width: 20px;"></i>
+                                                <span class="ml-1">{{ acs.description }}</span>
+                                            </p></td>
+                                {% endfor %}
+                                        </box>
+                                <box>
+                                {% for acs in achievement_types_2 %}
+                                    <td><a href="/achievement/{{acs.title}}"><img src="/media/{{ acs.badge}}", class="achievement-img"></a>
+                                        <p>{{acs}}</p>
+                                    <p>{{acs.title}}成就总数: {{all_achievement_stat.acs}}</p>
+                                    <p>{{acs.title}}成就收集数:{{unlocked_personal_stat.acs}}</p>
+                                    <p
+                                                style="text-align: left; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+                                                <i class="fa fa-info-circle" style="width: 20px;"></i>
+                                                <span class="ml-1">{{ acs.description }}</span>
+                                            </p></td>
+                                {% endfor %}
+                                        </box>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <!--  END ACHIEVEMENT TAB  -->
 
     </div>
     <!--  END CONTENT AREA  -->
