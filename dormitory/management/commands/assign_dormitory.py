@@ -1,9 +1,9 @@
-import pandas as pd
-import numpy as np
-import random
 import copy
+import random
 from collections import defaultdict
 
+import numpy as np
+import pandas as pd
 from django.core.management.base import BaseCommand
 
 '''
@@ -15,19 +15,21 @@ dorm.xlsx是学院提供的含有空余宿舍列表的表格；
 dorm_assigned.xlsx是保存宿舍分配结果的目标文件。
 '''
 
+
 class Freshman:
     def __init__(self, data):
         self.data = data
+
 
 class Dormitory:
     def __init__(self, id, remain):
         self.id = id
         self.remain = remain
         self.stu = []
-    
+
     def add(self, student: Freshman):
         self.stu.append(student)
-    
+
     def check_must(self):
         '''
         一个宿舍必须满足的条件：
@@ -46,7 +48,7 @@ class Dormitory:
             if hs[0] == hs[1]:
                 return False
         return True
-    
+
     def check_better(self):
         '''
         计算宿舍得分，应用于交换优化场景。
@@ -65,14 +67,14 @@ class Dormitory:
             score += 1200
         elif major_score == 0 or major_score == 4:
             score += 800
-        
+
         origin = [s.data['origin'] for s in self.stu]
         if len(set(origin)) == len(self.stu) - 1:
             score -= 300
         beijing = [s for s in origin if s == "北京"]
         if len(beijing) >= 2:
             score -= 700
-        
+
         wake_score = np.var([s.data['wake'] for s in self.stu])
         score -= 30 * wake_score
 
@@ -80,13 +82,14 @@ class Dormitory:
         score -= 30 * sleep_score
 
         ac_score = 20 * np.var([s.data['ac_temp'] for s in self.stu])
-        ac_score += (len(set([s.data['all_night_ac'] for s in self.stu])) - 1) * 400
+        ac_score += (len(set([s.data['all_night_ac']
+                     for s in self.stu])) - 1) * 400
         score -= ac_score
 
-        stu_cnt_map = {4: 600, 
-                       3: 400, 
-                       2: 0, 
-                       1: 0, 
+        stu_cnt_map = {4: 600,
+                       3: 400,
+                       2: 0,
+                       1: 0,
                        0: 0, }
         score += stu_cnt_map.get(len(self.stu))
 
@@ -103,18 +106,18 @@ def read_info():
     df2 = pd.read_excel("/workspace/dormitory/references/info.xlsx")
 
     for index, stu in df.iterrows():
-        data = defaultdict()        
+        data = defaultdict()
 
-        data['name'] = stu["姓名*"] 
+        data['name'] = stu["姓名*"]
         data['gender'] = stu["性别*"]
         data['sid'] = stu["学号*"]
-        data['origin'] = stu["生源地*"] 
+        data['origin'] = stu["生源地*"]
         data['high_school'] = stu["生源高中*"]
         data['major'] = stu["大学专业意向*"]
         data['weight'] = stu["体重*（单位：kg）"]
-        data['international'] = stu["是否愿意与留学生住在同一间宿舍? (都在元培35号宿舍楼居住，即你是否愿意舍友中有留学生同学? )*"]  
+        data['international'] = stu["是否愿意与留学生住在同一间宿舍? (都在元培35号宿舍楼居住，即你是否愿意舍友中有留学生同学? )*"]
         data['wake'] = stu["起床时间*"]
-        data['sleep'] = stu["入睡时间*"]  
+        data['sleep'] = stu["入睡时间*"]
         data['ac_temp'] = stu["夏天能接受的最低空调温度*"]
         data['all_night_ac'] = stu["是否接受夏天整夜开空调*"]
 
@@ -122,44 +125,44 @@ def read_info():
         info_row = df2.loc[df2["学号"] == data['sid']].iloc[0]
         data['origin'] = info_row["省市"]
         data['high_school'] = info_row["中学"]
-        
-        major_map = {"文科类": 0, 
+
+        major_map = {"文科类": 0,
                      "理工类": 1, }
         data['major'] = major_map.get(data['major'])
 
         data['weight'] = float(data['weight'].replace("kg", ""))
 
-        international_map = {"愿意": 5, 
-                             "都可以": 1, 
+        international_map = {"愿意": 5,
+                             "都可以": 1,
                              "不愿意": 0, }
         data['international'] = international_map.get(data['international'])
 
-        wake_map = {"上午6点之前": 0, 
-                    "6点-7点": 1, 
-                    "7点-8点": 2, 
-                    "8点-9点": 3, 
+        wake_map = {"上午6点之前": 0,
+                    "6点-7点": 1,
+                    "7点-8点": 2,
+                    "8点-9点": 3,
                     "9点-10点": 4,
                     "10点之后": 5, }
         data['wake'] = wake_map.get(data['wake'])
 
-        sleep_map = {"22点之前": 0, 
-                     "22点-23点": 1, 
-                     "23点-24点": 2, 
-                     "0点-1点": 3, 
-                     "1点-2点": 4, 
+        sleep_map = {"22点之前": 0,
+                     "22点-23点": 1,
+                     "23点-24点": 2,
+                     "0点-1点": 3,
+                     "1点-2点": 4,
                      "2点之后": 5, }
         data['sleep'] = sleep_map.get(data['sleep'])
-        
+
         data['ac_temp'] = int(data['ac_temp'][:2])
 
-        ac_map = {"是": 1, 
+        ac_map = {"是": 1,
                   "否": 0, }
         data['all_night_ac'] = ac_map.get(data['all_night_ac'])
-        
+
         freshman_data = dict(data)
         freshman = Freshman(freshman_data)
         freshmen.append(freshman)
-    
+
     return freshmen
 
 
@@ -175,9 +178,10 @@ def read_dorm():
             dorm.append(Dormitory(rid, 1))
         else:
             dorm[-1].remain += 1
-    
+
     # 注意，只选择了剩余床位为4的作为分配目标
-    male_dorm = [d for d in dorm if (d.id < 400 or (d.id < 500 and d.id > 464)) and d.remain == 4]
+    male_dorm = [d for d in dorm if (d.id < 400 or (
+        d.id < 500 and d.id > 464)) and d.remain == 4]
     female_dorm = [d for d in dorm if d.id > 500 and d.remain == 4][:24]
 
     return male_dorm, female_dorm
@@ -213,9 +217,9 @@ def assign_dorm():
                 if dorm.check_must():
                     dorm.remain -= 1
                     assigned = True
-                else: 
+                else:
                     dorm.stu.pop()
-    
+
     # 随机交换
     epsilon = 0.3
     for episode in range(250000):
@@ -234,10 +238,10 @@ def assign_dorm():
 
         temp1: Dormitory = copy.deepcopy(room1)
         temp2: Dormitory = copy.deepcopy(room2)
-        
+
         del male_dorm[max(rid1, rid2)]
         del male_dorm[min(rid1, rid2)]
-        
+
         if random.random() < epsilon:
             if len(room1.stu) != 4 and len(room2.stu) != 4:
                 temp2.add(temp1.stu.pop())
@@ -245,7 +249,7 @@ def assign_dorm():
                     room1 = temp1
                     room2 = temp2
                     o_score = room1.check_better() + room2.check_better()
-        
+
         if len(room1.stu) == 0 or len(room2.stu) == 0:
             male_dorm.append(room1)
             male_dorm.append(room2)
@@ -281,10 +285,10 @@ def assign_dorm():
 
         temp1: Dormitory = copy.deepcopy(room1)
         temp2: Dormitory = copy.deepcopy(room2)
-        
+
         del female_dorm[max(rid1, rid2)]
         del female_dorm[min(rid1, rid2)]
-        
+
         if random.random() < epsilon:
             if len(room1.stu) != 4 and len(room2.stu) != 4:
                 temp2.add(temp1.stu.pop())
@@ -292,7 +296,7 @@ def assign_dorm():
                     room1 = temp1
                     room2 = temp2
                     o_score = room1.check_better() + room2.check_better()
-        
+
         if len(room1.stu) == 0 or len(room2.stu) == 0:
             female_dorm.append(room1)
             female_dorm.append(room2)
@@ -324,7 +328,7 @@ def out_as_excel():
     dorm_result = assign_dorm()
 
     df = pd.DataFrame()
-    
+
     major_list = ["文科类", "理工类"]
     international_list = ["不愿意", "都可以", "愿意"]
     wake_list = ["上午6点之前", "6点-7点", "7点-8点", "8点-9点", "9点-10点", "10点之后"]
@@ -334,24 +338,25 @@ def out_as_excel():
     for dorm in dorm_result:
         for stu in dorm.stu:
             data = {
-                "宿舍号": dorm.id, 
-                "姓名": stu.data['name'], 
-                "性别": stu.data['gender'], 
-                "学号": stu.data['sid'], 
-                "生源地": stu.data['origin'], 
-                "生源高中": stu.data['high_school'], 
-                "意向专业": major_list[stu.data['major']], 
-                "体重": stu.data['weight'], 
-                "是否愿意与留学生住在同一间宿舍?": international_list[stu.data['international'] % 3], 
-                "起床时间": wake_list[stu.data['wake']],  
-                "入睡时间": sleep_list[stu.data['sleep']], 
-                "夏天能接受的最低空调温度": stu.data['ac_temp'], 
-                "是否接受夏天整夜开空调": ac_list[stu.data['all_night_ac']], 
+                "宿舍号": dorm.id,
+                "姓名": stu.data['name'],
+                "性别": stu.data['gender'],
+                "学号": stu.data['sid'],
+                "生源地": stu.data['origin'],
+                "生源高中": stu.data['high_school'],
+                "意向专业": major_list[stu.data['major']],
+                "体重": stu.data['weight'],
+                "是否愿意与留学生住在同一间宿舍?": international_list[stu.data['international'] % 3],
+                "起床时间": wake_list[stu.data['wake']],
+                "入睡时间": sleep_list[stu.data['sleep']],
+                "夏天能接受的最低空调温度": stu.data['ac_temp'],
+                "是否接受夏天整夜开空调": ac_list[stu.data['all_night_ac']],
             }
             temp_df = pd.DataFrame(data, index=[0])
             df = pd.concat([df, temp_df], ignore_index=True)
-    
-    df.to_excel('/workspace/dormitory/references/dorm_assigned.xlsx', index=False)
+
+    df.to_excel(
+        '/workspace/dormitory/references/dorm_assigned.xlsx', index=False)
 
 
 class Command(BaseCommand):
