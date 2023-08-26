@@ -14,7 +14,6 @@ import base64
 from math import ceil
 from random import sample
 from datetime import datetime, timedelta
-from django.http import HttpRequest
 
 import qrcode
 
@@ -302,8 +301,8 @@ def notifyActivity(aid: int, msg_type: str, msg=""):
         receivers = User.objects.filter(id__in=receiver_id_list)
 
         # ↓这么写特别慢！
-        #receivers = list(set(subscribers) - set([participant.person_id for participant in participants]))
-        #receivers = [receiver.person_id for receiver in receivers]
+        # receivers = list(set(subscribers) - set([participant.person_id for participant in participants]))
+        # receivers = [receiver.person_id for receiver in receivers]
         publish_kws = {"app": WechatApp.TO_SUBSCRIBER}
 
     # 应该用不到了，调用的时候分别发给 par 和 sub
@@ -531,7 +530,8 @@ def activity_base_check(request, edit=False):
 
 def _set_change_status(activity: Activity, current, next, time, replace):
     ScheduleAdder(changeActivityStatus, id=f'activity_{activity.id}_{next}',
-        run_time=time, replace=replace)(activity.id, current, next)
+                  run_time=time, replace=replace)(activity.id, current, next)
+
 
 def _set_jobs_to_status(activity: Activity, replace: bool) -> Activity.Status:
     now_time = datetime.now()
@@ -547,7 +547,7 @@ def _set_jobs_to_status(activity: Activity, replace: bool) -> Activity.Status:
         _set_change_status(activity, status, next, activity.apply_end, replace)
     if now_time < activity.start - timedelta(minutes=15):
         reminder = ScheduleAdder(notifyActivity, id=f'activity_{activity.id}_remind',
-            run_time=activity.start - timedelta(minutes=15), replace=replace)
+                                 run_time=activity.start - timedelta(minutes=15), replace=replace)
         reminder(activity.id, 'remind')
     return status
 
@@ -638,77 +638,6 @@ def create_activity(request):
         publish_to_wechat=True,
         publish_kws={"app": WechatApp.AUDIT},
     )
-
-    return activity.id, True
-
-
-def create_weekly_summary(request, context):
-    '''
-    value_dict：存储用于活动详情页前端展示的默认值
-    
-    检查活动总结合法性及是否存在一致的活动，返回(activity.id, created)
-    若查询到一致的活动或检查不合格时抛出AssertionError
-    '''
-
-    # 查找是否有类似活动存在
-    old_ones = Activity.objects.activated().filter(
-        title=context["title"],
-        start=context["start"],
-        introduction=context["introduction"],
-        location=context["location"]
-    )
-    if len(old_ones) == 0:
-        old_ones = Activity.objects.filter(
-            title=context["title"],
-            start=context["start"],
-            introduction=context["introduction"],
-            location=context["location"],
-            status=Activity.Status.REVIEWING,
-        )
-    if len(old_ones):
-        assert len(old_ones) == 1, "创建活动时，已存在的相似活动不唯一"
-        return old_ones[0].id, False
-
-    # 审批老师存在
-    examine_teacher = NaturalPerson.objects.get_teacher(
-        context["examine_teacher"])
-
-    # 检查完毕，创建活动
-    org = get_person_or_org(request.user, UTYPE_ORG)
-    activity = Activity.objects.create(
-        title=context["title"],
-        organization_id=org,
-        examine_teacher=examine_teacher,
-        introduction=context["introduction"],
-        location=context["location"],
-        capacity=context["capacity"],
-        URL=context["url"],
-        start=context["start"],
-        end=context["end"],
-        bidding=context["bidding"],
-        apply_end=context["signup_end"],
-        inner=context["inner"],
-    )
-    activity.endbefore = context["endbefore"]
-    activity.need_checkin = context["need_checkin"]
-    activity.recorded = context["recorded"]
-    activity.valid = context["valid"] #默认已审核
-    activity.status = Activity.Status.END
-    participants_ids = request.POST.getlist("students")
-    for stu_id in participants_ids:
-        stu_usr = User.objects.get(username = stu_id) #这里User.username即为学号
-        stu: NaturalPerson = get_person_or_org(stu_usr)
-        Participant.objects.create(
-            activity_id=activity,
-            person_id=stu,
-            status=Participant.AttendStatus.ATTENDED,
-        )
-    activity.current_participants = len(participants_ids)
-
-    activity.save()
-
-    ActivityPhoto.objects.create(
-        image=context["pic"], type=ActivityPhoto.PhotoType.ANNOUNCE, activity=activity)
 
     return activity.id, True
 
@@ -887,6 +816,7 @@ def accept_activity(request, activity):
 def _remove_jobs(activity: Activity, *jobs):
     for job in jobs:
         remove_job(f"activity_{activity.id}_{job}")
+
 
 def _remove_activity_jobs(activity: Activity):
     _remove_jobs(activity, 'remind', Activity.Status.WAITING,

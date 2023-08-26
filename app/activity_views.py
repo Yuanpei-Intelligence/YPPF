@@ -283,7 +283,7 @@ def viewActivity(request: HttpRequest, aid=None):
     # 参与者, 无论报名是否通过
     participants = Participant.objects.filter(Q(activity_id=activity),
                                               Q(status=Participant.AttendStatus.APPLYING) | Q(status=Participant.AttendStatus.APPLYSUCCESS) | Q(status=Participant.AttendStatus.ATTENDED) | Q(status=Participant.AttendStatus.UNATTENDED))
-    #participants_ava = [utils.get_user_ava(participant, UTYPE_PER) for participant in participants.values("person_id")] or None
+    # participants_ava = [utils.get_user_ava(participant, UTYPE_PER) for participant in participants.values("person_id")] or None
     people_list = NaturalPerson.objects.activated().filter(
         id__in=participants.values("person_id"))
 
@@ -476,7 +476,8 @@ def addActivity(request: UserRequest, aid=None):
         activity = Activity.objects.get(id=aid)
         if request.user.is_person():
             # 自动更新request.user
-            html_display = utils.user_login_org(request, activity.organization_id)
+            html_display = utils.user_login_org(
+                request, activity.organization_id)
             if html_display['warn_code'] == 1:
                 return redirect(message_url(html_display))
             else:  # 成功以小组账号登陆
@@ -1081,57 +1082,54 @@ def modifyEndActivity(request: HttpRequest):
 
 
 class WeeklyActivitySummaryView(ProfileTemplateView):
-    
+
     template_name = "weekly_activity_summary.html"
     page_name = "每周活动总结"
-    #For POST method ONLY
-    default_value = {
-        "bidding": False,
-        "inner": False,
-        "need_checkin": False,
-        "recorded": True,
-        "valid": True,
-        "signscheme": 0,
-        "maxpeople": 10000,
-        "unlimited_capacity": 1,
-        "prepare_scheme": 1,
-        "URL": "",
-        "announce_pic_src": "/static/assets/img/announcepics/1.JPG",
-    }
-    
+
     def prepare_get(self):
         return self.get
 
     def prepare_post(self):
-        available_teachers = NaturalPerson.objects.teachers()
-        self.default_value.update({
-            "examine_teacher": available_teachers.first(),
-        })
+        self.context = {
+            "bidding": False,
+            "inner": False,
+            "need_checkin": False,
+            "recorded": True,
+            "valid": True,
+            "signscheme": 0,
+            "maxpeople": 10000,
+            "unlimited_capacity": 1,
+            "prepare_scheme": 1,
+            "URL": "",
+            "announce_pic_src": "/static/assets/img/announcepics/1.JPG",
+            # Summary do not need an auditor, so we set it to arbitrary value
+            "examine_teacher": NaturalPerson.objects.teachers().first()
+        }
         return self.post
-    
+
     def get(self):
         html_display = {}
         me = utils.get_person_or_org(self.request.user)
         if not self.request.user.is_org():
             return redirect(message_url(wrong('小组账号才能发起每周活动总结')))
-        
-        #准备前端展示量
+
+        # 准备前端展示量
         html_display["applicant_name"] = me.oname
         html_display["app_avatar_path"] = me.get_user_ava()
         html_display["today"] = datetime.now().strftime("%Y-%m-%d")
         bar_display = utils.get_sidebar_and_navbar(self.request.user, "活动发起")
         person_list = NaturalPerson.objects.activated()
         user_id_list = [person.person_id.id for person in person_list]
-        user_queryset = User.objects.filter(id__in = user_id_list)
+        user_queryset = User.objects.filter(id__in=user_id_list)
         js_stu_list = to_search_indices(user_queryset)
-        
+
         self.extra_context.update({
             'html_display': html_display,
             'bar_display': bar_display,
             'js_stu_list': js_stu_list,
         })
         return self.render()
-    
+
     def post(self):
         with transaction.atomic():
             context = self.weekly_summary_base_check()
@@ -1140,7 +1138,7 @@ class WeeklyActivitySummaryView(ProfileTemplateView):
                 return redirect(message_url(
                     succeed('存在信息相同的活动，已为您自动跳转!'),
                     f'/viewActivity/{aid}'))
-                
+
             # 新建activity summary
             activity = Activity.objects.get(id=aid)
             application: ActivitySummary = ActivitySummary.objects.create(
@@ -1159,8 +1157,8 @@ class WeeklyActivitySummaryView(ProfileTemplateView):
                 application.save()
             else:
                 return redirect(message_url(wrong('图片内容为空或有多张图片！'), self.request.path))
-            
-            #发放元气值
+
+            # 发放元气值
             point = calcu_activity_YQP(activity)
             participants = Participant.objects.filter(
                 activity_id=aid,
@@ -1169,56 +1167,80 @@ class WeeklyActivitySummaryView(ProfileTemplateView):
             User.objects.bulk_increase_YQPoint(
                 participants, point, "参加活动", YQPointRecord.SourceType.ACTIVITY)
             return redirect(f"/editActivity/{aid}")
-        
+
     def check_summary_time(self, start_time: datetime, end_time: datetime) -> bool:
         '''由每周活动总结新建的活动，检查开始时间早于结束时间'''
         now_time = datetime.now()
         if start_time < end_time <= now_time:
             return True
         return False
-        
-    def weekly_summary_base_check(self) -> dict:
+
+    def weekly_summary_base_check(self):
         '''
         value_dict：存储用于前端展示的默认值;
-        
         return：返回存储活动信息的字典context
-        
         正常情况下检查出错误会抛出不含错误信息的AssertionError，不抛出ActivityException
         '''
-        
-        context = dict()
-        # title, introduction, location 创建时不能为空
-        context["title"] = self.request.POST["title"]
-        context["introduction"] = self.request.POST["introduction"]
-        context["location"] = self.request.POST["location"]
-        assert len(context["title"]) > 0
-        assert len(context["introduction"]) > 0
-        assert len(context["location"]) > 0
+        for k in ['title', 'introduction', 'location']:
+            v = self.request.POST.get(k)
+            assert v is not None and v != ""
+            self.context[k] = v
 
         # 时间
         act_start = datetime.strptime(
             self.request.POST["actstart"], "%Y-%m-%d %H:%M")  # 活动报名时间
         act_end = datetime.strptime(
             self.request.POST["actend"], "%Y-%m-%d %H:%M")  # 活动报名结束时间
-        context["start"] = act_start
-        context["end"] = act_end
+        self.context["start"] = act_start
+        self.context["end"] = act_end
         assert self.check_summary_time(act_start, act_end)
-        
-        #以下均为在default_value中指立的默认值，仅为兼容活动详情的前端展示
-        context["url"] = self.default_value["URL"]
-        context["bidding"] = self.default_value["bidding"]
-        context["examine_teacher"] = self.default_value["examine_teacher"]
-        context["recorded"] = self.default_value["recorded"]
-        context["capacity"] = self.default_value["maxpeople"]
-        context["inner"] = self.default_value["inner"]
-        context["pic"] = self.default_value["announce_pic_src"]
-        context["valid"] = self.default_value["valid"]
-        context["need_checkin"] = self.default_value["need_checkin"]
+
         prepare_scheme = int(self.default_value["prepare_scheme"])
         prepare_times = Activity.EndBeforeHours.prepare_times
         prepare_time = prepare_times[prepare_scheme]
-        signup_end = act_start - timedelta(hours=prepare_time)
-        context["endbefore"] = prepare_scheme
-        context["signup_end"] = signup_end
+        self.context["endbefore"] = prepare_scheme
+        self.context["apply_end"] = act_start - timedelta(hours=prepare_time)
 
-        return context
+    def create_weekly_summary(self, context: dict) -> tuple[int, bool]:
+        '''
+        value_dict：存储用于活动详情页前端展示的默认值
+
+        检查活动总结合法性及是否存在一致的活动，返回(activity.id, created)
+        若查询到一致的活动或检查不合格时抛出AssertionError
+        '''
+
+        # 查找是否有类似活动存在
+        old_ones = Activity.objects.activated().filter(
+            title=context["title"],
+            start=context["start"],
+            introduction=context["introduction"],
+            location=context["location"]
+        )
+        if len(old_ones):
+            assert len(old_ones) == 1, "创建活动时，已存在的相似活动不唯一"
+            return old_ones[0].id, False
+
+        # 检查完毕，创建活动
+        org = get_person_or_org(self.request.user, UTYPE_ORG)
+        activity = Activity.objects.create(
+            organization_id=org,
+            status=Activity.Status.END,
+            **context
+        )
+        participants_ids = self.request.POST.getlist("students")
+        with transaction.atomic():
+            nps = NaturalPerson.objects.filter(person_id__in=participants_ids)
+            participants = [
+                Participant(
+                    activity_id=activity,
+                    person_id=np,
+                    status=Participant.AttendStatus.ATTENDED,
+                ) for np in nps
+            ]
+            Participant.objects.bulk_create(participants)
+            activity.current_participants = len(participants_ids)
+            activity.save()
+            ActivityPhoto.objects.create(
+                image=context["pic"], type=ActivityPhoto.PhotoType.SUMMARY, activity=activity)
+
+        return activity.id, True
