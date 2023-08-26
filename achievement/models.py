@@ -50,7 +50,3 @@ class AchievementUnlock(models.Model):
 
     class Meta:
         unique_together = ['user', 'achievement']
-
-    @debug_only
-    def __str__(self):
-        return f"{self.user.username} unlocked {self.achievement.name}"

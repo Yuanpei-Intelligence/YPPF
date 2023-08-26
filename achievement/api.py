@@ -8,13 +8,13 @@ from utils.wrap import return_on_except
 
 __all__ = [
     'trigger_achievement',
-    'bulk_add_achievement_record'
+    'bulk_add_achievement_record',
 ]
 
 
-@return_on_except(None, Exception)
-def trigger_achievement(user: User, achievement: Achievement) -> AchievementUnlock | None:
-    """处理用户触发成就，添加单个解锁记录
+@return_on_except(None, Exception, merge_type=True)
+def trigger_achievement(user: User, achievement: Achievement) -> AchievementUnlock:
+    '''处理用户触发成就，添加单个解锁记录
 
     Args:
     - user (User): 触发该成就的用户
@@ -22,7 +22,7 @@ def trigger_achievement(user: User, achievement: Achievement) -> AchievementUnlo
 
     Returns:
     若单条记录添加成功返回 AchievementUnlock 对象，若未建立成功返回 None
-    """
+    '''
 
     achievement_unlock = AchievementUnlock.objects.create(
         user=user, achievement=achievement)
@@ -31,8 +31,8 @@ def trigger_achievement(user: User, achievement: Achievement) -> AchievementUnlo
 
 
 @return_on_except(False, Exception)
-def bulk_add_achievement_record(user_list: list[User], achievement: Achievement) -> bool:
-    """批量添加成就解锁记录
+def bulk_add_achievement_record(user_list: list[User], achievement: Achievement):
+    '''批量添加成就解锁记录
 
     Args:
     - user_list (list[User]): 需批量添加的用户列表
@@ -40,7 +40,7 @@ def bulk_add_achievement_record(user_list: list[User], achievement: Achievement)
 
     Returns:
     - bool: 是否成功添加
-    """
+    '''
 
     unlock_record_list = []
     users_with_achievement = AchievementUnlock.objects.filter(
