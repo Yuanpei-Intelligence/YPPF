@@ -1181,7 +1181,7 @@ class WeeklyActivitySummaryView(ProfileTemplateView):
         prepare_time = prepare_times[prepare_scheme]
         self.context["endbefore"] = prepare_scheme
         self.context["apply_end"] = act_start - timedelta(hours=prepare_time)
-        
+
     def give_YQPoint(self, aid):
         '''根据创立的活动总结发放元气值'''
         activity = Activity.objects.get(id=aid)
