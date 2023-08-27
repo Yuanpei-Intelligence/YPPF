@@ -5,9 +5,9 @@ excel 上传成就
 from django.core.management.base import BaseCommand
 import pandas as pd
 
-from achievement.models import AchievementType, Achievement, AchievementUnlock
+from achievement.models import Achievement
+from achievement.api import bulk_add_achievement_record
 from generic.models import User
-
 
 class Command(BaseCommand):
     help = "upload achievements from excel"
@@ -42,13 +42,11 @@ class Command(BaseCommand):
         if type(data) == dict:
             data = data[list(data.keys())[0]]
         
-        # 逐行创建AchievementUnlock 每行数据包括 学号 成就
-        for index, row in data.iterrows():
-            user_number = row['学号']
-            achievement_name = row['成就']
-            try:
-                user = User.objects.get(username=user_number) # username就是学号
-                achievement = Achievement.objects.get(name=achievement_name)
-                AchievementUnlock.objects.create(user=user, achievement=achievement)
-            except:
-                print(f'学号{user_number}或成就{achievement_name}不存在')
+        data['学号'] = data['学号'].astype(str)
+
+        # 应用api接口分类批量上传成就
+        grouped = data.groupby('成就')
+        for type_name, type_data in grouped:
+            user_number_list = list(set(type_data['学号'].values))
+            user_list = User.objects.filter(username__in=user_number_list)
+            bulk_add_achievement_record(user_list, Achievement.objects.get(name=type_name))
