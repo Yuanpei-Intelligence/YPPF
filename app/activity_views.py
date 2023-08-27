@@ -33,7 +33,6 @@ from app.activity_utils import (
     cancel_activity,
     withdraw_activity,
     get_activity_QRcode,
-    calcu_activity_YQP,
 )
 from app.comment_utils import addComment, showComment
 from app.utils import (
@@ -1181,17 +1180,6 @@ class WeeklyActivitySummaryView(ProfileTemplateView):
         prepare_time = prepare_times[prepare_scheme]
         self.context["endbefore"] = prepare_scheme
         self.context["apply_end"] = act_start - timedelta(hours=prepare_time)
-
-    def give_YQPoint(self, aid):
-        '''根据创立的活动总结发放元气值'''
-        activity = Activity.objects.get(id=aid)
-        point = calcu_activity_YQP(activity)
-        participants = Participant.objects.filter(
-            activity_id=aid,
-            status=Participant.AttendStatus.ATTENDED).values_list('person_id__person_id', flat=True)
-        participants = User.objects.filter(id__in=participants)
-        User.objects.bulk_increase_YQPoint(
-            participants, point, "参加活动", YQPointRecord.SourceType.ACTIVITY)
 
     def create_weekly_summary(self) -> tuple[int, bool]:
         '''

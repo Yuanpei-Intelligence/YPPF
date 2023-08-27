@@ -110,14 +110,7 @@ def changeActivityStatus(aid, cur_status, to_status):
         # 结束，计算元气值
         elif (to_status == Activity.Status.END
               and activity.category != Activity.ActivityCategory.COURSE):
-            point = calcu_activity_YQP(activity)
-            participants = Participant.objects.filter(
-                activity_id=aid,
-                status=Participant.AttendStatus.ATTENDED).values_list('person_id__person_id', flat=True)
-            participants = User.objects.filter(id__in=participants)
-            User.objects.bulk_increase_YQPoint(
-                participants, point, "参加活动", YQPointRecord.SourceType.ACTIVITY)
-
+            activity.yqp_settlement()
         # 过早进行这个修改，将被写到activity待执行的保存中，导致失败后调用activity.save仍会调整状态
         activity.status = to_status
         activity.save()
@@ -984,22 +977,3 @@ def withdraw_activity(request, activity):
 
     participant.save()
     activity.save()
-
-
-def calcu_activity_YQP(activity: Activity) -> int:
-    """计算参与活动所能获得的元气值，活动结束时调用
-    :param activity: 活动对象
-    :type activity: Activity
-    :return: 参与活动所获得的元气值
-    :return type: int
-    """
-
-    hours = (activity.end - activity.start).seconds / 3600
-    if hours > CONFIG.yqpoint.activity.invalid_hour:
-        return 0
-
-    point = ceil(CONFIG.yqpoint.activity.per_hour * hours)
-    # 单次活动记录的积分上限，默认无上限
-    if CONFIG.yqpoint.activity.max is not None:
-        point = min(CONFIG.yqpoint.activity.max, point)
-    return point
