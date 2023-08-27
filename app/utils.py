@@ -4,7 +4,7 @@ import urllib.parse
 from io import BytesIO
 from datetime import datetime, timedelta
 from functools import wraps
-from typing import overload, Literal
+from typing import cast, overload, Literal
 
 import xlwt
 import imghdr
@@ -189,8 +189,16 @@ def get_sidebar_and_navbar(user: User, navbar_name="", title_name=""):
     bar_display = utils.get_sidebar_and_navbar(user, title_name, navbar_name)
     '''
     bar_display = {}
+    _utype = ""
+    if user.is_person():
+        _utype = "Person"
+    elif user.is_org():
+        _utype = "Organization"
+    else:
+        # TODO: 支持未认证用户
+        raise AssertionError(f"非法的用户类型：“{_utype}”")
+
     me = get_person_or_org(user)  # 获得对应的对象
-    _utype = "Person" if user.is_person() else "Organization"
     bar_display["user_type"] = _utype
     if user.is_staff:
         bar_display["is_staff"] = True
@@ -206,41 +214,39 @@ def get_sidebar_and_navbar(user: User, navbar_name="", title_name=""):
     ).count()
 
     if user.is_person():
-        bar_display["profile_name"] = "个人主页"
-        bar_display["profile_url"] = "/stuinfo/"
-        bar_display["name"] = me.name
-        bar_display["person_type"] = me.identity
-
-        # 个人所管理的小组列表
-        # my_org_id_list = Position.objects.activated().filter(person=me, is_admin=True).select_related("org")
-        # bar_display["my_org_list"] = [w.org for w in my_org_id_list]  # 我管理的小组
-        # bar_display["my_org_len"] = len(bar_display["my_org_list"])
-
-        bar_display['is_auditor'] = me.is_teacher()
-
-    else:
-        bar_display["profile_name"] = "小组主页"
-        bar_display["profile_url"] = "/orginfo/"
-        bar_display["is_course"] = me.otype.otype_name == CONFIG.course.type_name
+        me = cast(NaturalPerson, me)
+        bar_display.update(
+            profile_name="个人主页",
+            profile_url="/stuinfo/",
+            name=me.get_display_name(),
+            person_type=me.identity,
+            is_auditor=me.is_teacher(),
+        )
+    elif user.is_org():
+        me = cast(Organization, me)
+        bar_display.update(
+            profile_name="小组主页",
+            profile_url="/orginfo/",
+            is_course=me.otype.otype_name == CONFIG.course.type_name,
+        )
 
     # 个人组织都可以预约
-    bar_display["underground_url"] = get_underground_site_url()
+    # 页面标题默认与侧边栏相同
+    bar_display.update(
+        underground_url=get_underground_site_url(),
+        navbar_name=navbar_name,
+        title_name=title_name if title_name else navbar_name,
+    )
 
-    bar_display["navbar_name"] = navbar_name
-    # title_name默认与navbar_name相同
-
-    bar_display["title_name"] = title_name if title_name else navbar_name
-
-    help_title = navbar_name
-    if navbar_name == "我的元气值":
-        navbar_name = navbar_name + _utype.lower()
     if navbar_name:
-        bar_display["help_message"] = CONFIG.help_message.get(navbar_name, "")
-    if help_title:
-        try:
-            bar_display["help_paragraphs"] = Help.objects.get(title=help_title).content
-        except:
-            bar_display["help_paragraphs"] = ""
+        help_key = navbar_name
+        if help_key == "我的元气值":
+            help_key += _utype.lower()
+        help_info = Help.objects.filter(title=navbar_name).first()
+        bar_display.update(
+            help_message=CONFIG.help_message.get(help_key, ""),
+            help_paragraphs=help_info.content if help_info is not None else "",
+        )
 
     return bar_display
 
