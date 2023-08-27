@@ -1238,6 +1238,7 @@ class WeeklyActivitySummaryView(ProfileTemplateView):
             ]
             Participant.objects.bulk_create(participants)
             activity.current_participants = len(participants_ids)
+            activity.yqp_settlement()
             activity.save()
 
             # 创建活动总结
@@ -1247,6 +1248,5 @@ class WeeklyActivitySummaryView(ProfileTemplateView):
                 image=self.context["summary_pic"]
             )
             application.save()
-        self.give_YQPoint(activity.id)
 
         return activity.id, True
