@@ -24,7 +24,7 @@ from django.db.models import QuerySet, F
 import pypinyin
 
 from utils.models.choice import choice
-from utils.models.descriptor import necessary_for_frontend, invalid_for_frontend, debug_only
+from utils.models.descriptor import necessary_for_frontend, invalid_for_frontend, admin_only
 
 __all__ = [
     'User',
@@ -317,7 +317,7 @@ class User(AbstractUser, PointMixin):
     REQUIRED_FIELDS = ['name']
     objects: UserManager = UserManager()
 
-    @debug_only
+    @admin_only
     def __str__(self) -> str:
         return f'{self.username} ({self.name})'
 
