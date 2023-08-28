@@ -10,13 +10,13 @@ from achievement.api import bulk_add_achievement_record
 from generic.models import User
 
 class Command(BaseCommand):
-    help = "upload achievements from excel"
-
     """
     从excel中导入成就 格式：学号 成就
 
     filepath: excel文件路径
     """
+
+    help = "upload achievements from excel"
 
     def add_arguments(self, parser):
         parser.add_argument('filepath', type=str)
@@ -46,7 +46,7 @@ class Command(BaseCommand):
 
         # 应用api接口分类批量上传成就
         grouped = data.groupby('成就')
-        for type_name, type_data in grouped:
-            user_number_list = list(set(type_data['学号'].values))
+        for achievement_name, achievement_data in grouped:
+            user_number_list = list(set(achievement_data['学号'].values))
             user_list = User.objects.filter(username__in=user_number_list)
-            bulk_add_achievement_record(user_list, Achievement.objects.get(name=type_name))
+            bulk_add_achievement_record(user_list, Achievement.objects.get(name=achievement_name))

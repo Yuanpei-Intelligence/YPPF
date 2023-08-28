@@ -1,8 +1,9 @@
 """
 初始化 AchievementType Achievement
 """
-from achievement.models import AchievementType, Achievement
+
 from django.core.management.base import BaseCommand
+from achievement.models import AchievementType, Achievement
 
 
 class Command(BaseCommand):
