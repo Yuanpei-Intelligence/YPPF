@@ -129,3 +129,4 @@ def healthcheck(request: HttpRequest):
         response = HttpResponse("unhealthy")
         response.status_code = 500
         return response
+    
