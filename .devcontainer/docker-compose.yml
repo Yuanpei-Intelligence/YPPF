@@ -31,7 +31,7 @@ services:
       retries: 100
 
   yppf:
-    build: ./image_build
+    image: yuanpei/profile:dev1.2
     tty: true
     depends_on:
       mysql:

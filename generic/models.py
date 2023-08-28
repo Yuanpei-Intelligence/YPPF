@@ -13,6 +13,7 @@ models.py
 @Author pht
 @Date 2022-08-19
 '''
+from datetime import datetime
 from typing import Type, NoReturn, Final
 
 from django.db import models
@@ -20,7 +21,7 @@ from django.contrib.auth import get_permission_codename
 from django.contrib.auth.models import AbstractUser, AnonymousUser
 from django.contrib.auth.models import UserManager as _UserManager
 from django.db import transaction
-from django.db.models import QuerySet, F
+from django.db.models import QuerySet, F, functions
 import pypinyin
 
 from utils.models.choice import choice
@@ -243,6 +244,14 @@ class UserManager(_UserManager['User']):
             source=source,
             source_type=source_type,
         )
+    
+    def get_enrollment_years(self):
+        current_year = datetime.now().year - 2000
+        
+        return self.annotate(
+            enrollment_years=current_year - functions.Cast(functions.Substr('username', 1, 2), models.IntegerField())
+        )
+        
 
 
 class PointMixin(models.Model):
