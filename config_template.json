@@ -4,7 +4,11 @@
         "hash_salt": "default_hash_salt",
         "acadamic_year": 2023,
         "semester": "Spring",
-        "debug_stuids": []
+        "debug_stuids": [], 
+        "semester_data": {
+            "fall_semester_start": "2023-09-11", 
+            "spring_semester_start": "2023-02-20"
+        }
     },
     "django": {
         "db": {
