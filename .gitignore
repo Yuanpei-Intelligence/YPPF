@@ -43,7 +43,8 @@ Thumbs.db
 local_json*.json
 config*.json
 weather*.json
-migrations/
+*/migrations/*
+!*/migrations/__init__.py
 test_data/
 # Media #
 media/
