@@ -7,7 +7,7 @@ from django.db.models import QuerySet, Q
 from django.dispatch import receiver
 from django.db import transaction
 
-from utils.models.descriptor import debug_only
+from utils.models.descriptor import admin_only
 from utils.models.choice import choice, CustomizedDisplay, DefaultDisplay
 from utils.models.manager import ManyRelatedManager
 from generic.models import User
@@ -82,7 +82,7 @@ class Participant(models.Model):
         '''获取id(学号/组织账号)'''
         return self.Sid_id
 
-    @debug_only
+    @admin_only
     def __str__(self):
         '''仅用于后台呈现和搜索方便，任何时候不应使用'''
         acronym = self.Sid.acronym
