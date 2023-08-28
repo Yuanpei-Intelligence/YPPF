@@ -88,6 +88,33 @@
 
     更新配置文件中django的数据库部分，更多配置项请参考各应用的`config.py`文件。
 
+### 更新和迁移
+
+在**每次**拉取项目代码后（包括初次下载），你都需要迁移数据库，使其与*模型*一致。
+
+1. 更新迁移文件
+
+    ```shell
+    python manage.py makemigrations
+    ```
+
+    这将在每个具有*模型*的应用的`migrations`文件夹生成一些迁移文件，请不要删除它们。
+
+    > 如果你怀疑某个应用（即文件夹）没有更新迁移文件，可以手动检查并更新它，直到不再变化：
+    > 
+    > ```shell
+    > $ python manage.py makemigrations xxx_app
+    > No change detected
+    > ```
+
+2. 执行迁移
+
+    ```shell
+    python manage.py migrate
+    ```
+
+    > 如果迁移失败，数据库将很可能难以恢复，此时最简单的办法是删库重建，执行`scripts/remove_migrations.sh`，并重新进行[更新和迁移](#更新和迁移)。
+
 ## 加入我们
 
 ### 启动 Docker 容器
