@@ -27,10 +27,6 @@ jobs:
       run: sleep 20s
       shell: bash
 
-    - name: Make migrations & Setup DB
-      run: |
-        docker compose -f .devcontainer/docker-compose.yml exec -T yppf bash ./scripts/init_migrations.sh
-
     - name: Test 
       run: |
         docker compose -f .devcontainer/docker-compose.yml exec -T yppf python3 manage.py test
