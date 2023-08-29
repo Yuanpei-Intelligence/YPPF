@@ -36,6 +36,8 @@ services:
     depends_on:
       mysql:
         condition: service_healthy
+      scheduler:
+        condition: service_healthy
     working_dir: /workspace
     environment:
       - DB_HOST=mysql
@@ -44,13 +46,13 @@ services:
       - DB_DATABASE=yppf
     volumes:
       - ../:/workspace
-    command: python3 manage.py runserver
+    # command: python3 manage.py runserver
 
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://127.0.0.1:8000/healthcheck/"]
-      interval: 5s
-      timeout: 5s
-      retries: 3
+    # healthcheck:
+    #   test: ["CMD", "curl", "-f", "http://127.0.0.1:8000/healthcheck/"]
+    #   interval: 5s
+    #   timeout: 5s
+    #   retries: 3
 
   scheduler:
     build: ./image_build
