@@ -83,7 +83,7 @@ services:
       mysql:
         condition: service_healthy
 
-    command: sleep 5 && bash ./scripts/init_migrations.sh
+    command: bash -c "sleep 20 && bash ./scripts/init_migrations.sh"
 
 
 volumes:
