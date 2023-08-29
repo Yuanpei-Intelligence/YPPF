@@ -22,7 +22,7 @@ class SchedulerService(rpyc.Service):
     def exposed_wakeup(self):
         return self.scheduler.wakeup()
 
-    def exposed_health_check(self):
+    def exposed_health_check(self) -> bool:
         db_conn = True
         try:
             self.scheduler.print_jobs()

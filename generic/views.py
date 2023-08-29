@@ -112,7 +112,7 @@ class Logout(SecureView):
         return self.redirect('index')
 
 
-def healthcheck(request: HttpRequest):
+def healthcheck(request: HttpRequest) -> HttpResponse:
     """
     django健康状态检查
     尝试执行数据库操作，若成功返回200，不成功返回500
