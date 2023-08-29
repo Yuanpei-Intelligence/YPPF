@@ -120,7 +120,7 @@ def healthcheck(request: HttpRequest):
     try:
         with connection.cursor() as cursor:
             cursor.execute("SELECT 1")
-            rows = cursor.fetchall()
+            _ = cursor.fetchall()
 
         response = HttpResponse("healthy")
         response.status_code = 200
