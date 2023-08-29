@@ -110,14 +110,7 @@ def changeActivityStatus(aid, cur_status, to_status):
         # 结束，计算元气值
         elif (to_status == Activity.Status.END
               and activity.category != Activity.ActivityCategory.COURSE):
-            point = calcu_activity_YQP(activity)
-            participants = Participant.objects.filter(
-                activity_id=aid,
-                status=Participant.AttendStatus.ATTENDED).values_list('person_id__person_id', flat=True)
-            participants = User.objects.filter(id__in=participants)
-            User.objects.bulk_increase_YQPoint(
-                participants, point, "参加活动", YQPointRecord.SourceType.ACTIVITY)
-
+            activity.yqp_settlement()
         # 过早进行这个修改，将被写到activity待执行的保存中，导致失败后调用activity.save仍会调整状态
         activity.status = to_status
         activity.save()
@@ -301,8 +294,8 @@ def notifyActivity(aid: int, msg_type: str, msg=""):
         receivers = User.objects.filter(id__in=receiver_id_list)
 
         # ↓这么写特别慢！
-        #receivers = list(set(subscribers) - set([participant.person_id for participant in participants]))
-        #receivers = [receiver.person_id for receiver in receivers]
+        # receivers = list(set(subscribers) - set([participant.person_id for participant in participants]))
+        # receivers = [receiver.person_id for receiver in receivers]
         publish_kws = {"app": WechatApp.TO_SUBSCRIBER}
 
     # 应该用不到了，调用的时候分别发给 par 和 sub
@@ -411,7 +404,7 @@ class ActivityException(Exception):
 
 
 # 时间合法性的检查，检查时间是否在当前时间的一个月以内，并且检查开始的时间是否早于结束的时间，
-def check_ac_time(start_time, end_time):
+def check_ac_time(start_time: datetime, end_time: datetime) -> bool:
     now_time = datetime.now()
     month_late = now_time + timedelta(days=30)
     if not start_time < end_time:
@@ -530,7 +523,8 @@ def activity_base_check(request, edit=False):
 
 def _set_change_status(activity: Activity, current, next, time, replace):
     ScheduleAdder(changeActivityStatus, id=f'activity_{activity.id}_{next}',
-        run_time=time, replace=replace)(activity.id, current, next)
+                  run_time=time, replace=replace)(activity.id, current, next)
+
 
 def _set_jobs_to_status(activity: Activity, replace: bool) -> Activity.Status:
     now_time = datetime.now()
@@ -546,7 +540,7 @@ def _set_jobs_to_status(activity: Activity, replace: bool) -> Activity.Status:
         _set_change_status(activity, status, next, activity.apply_end, replace)
     if now_time < activity.start - timedelta(minutes=15):
         reminder = ScheduleAdder(notifyActivity, id=f'activity_{activity.id}_remind',
-            run_time=activity.start - timedelta(minutes=15), replace=replace)
+                                 run_time=activity.start - timedelta(minutes=15), replace=replace)
         reminder(activity.id, 'remind')
     return status
 
@@ -816,6 +810,7 @@ def _remove_jobs(activity: Activity, *jobs):
     for job in jobs:
         remove_job(f"activity_{activity.id}_{job}")
 
+
 def _remove_activity_jobs(activity: Activity):
     _remove_jobs(activity, 'remind', Activity.Status.WAITING,
                  Activity.Status.PROGRESSING, Activity.Status.END)
@@ -982,22 +977,3 @@ def withdraw_activity(request, activity):
 
     participant.save()
     activity.save()
-
-
-def calcu_activity_YQP(activity: Activity) -> int:
-    """计算参与活动所能获得的元气值，活动结束时调用
-    :param activity: 活动对象
-    :type activity: Activity
-    :return: 参与活动所获得的元气值
-    :return type: int
-    """
-
-    hours = (activity.end - activity.start).seconds / 3600
-    if hours > CONFIG.yqpoint.activity.invalid_hour:
-        return 0
-
-    point = ceil(CONFIG.yqpoint.activity.per_hour * hours)
-    # 单次活动记录的积分上限，默认无上限
-    if CONFIG.yqpoint.activity.max is not None:
-        point = min(CONFIG.yqpoint.activity.max, point)
-    return point
