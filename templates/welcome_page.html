@@ -12,6 +12,11 @@
         {% if html_display.first_signin %}
         <div class="alert alert-success  text-center">{{html_display.signin_display|default:'今日首次签到，获得1元气值! '}}</div>
         {% endif %}
+        {% if html_display.YQMM %}
+            {% for info in html_display.YQMM %}
+                <div class="alert alert-success  text-center">{{info|default:'元气满满新成就解锁！'}}</div>
+            {% endfor %}
+        {% endif %}
         {% if html_display.warn_code == 2 %}
         <div class="alert alert-success  text-center">{{html_display.warn_message}}</div>
         {% elif html_display.warn_code == 1 %}

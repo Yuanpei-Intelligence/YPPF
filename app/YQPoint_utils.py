@@ -604,7 +604,7 @@ def run_lottery(pool_id: int):
             )
 
 
-def update_YQMM(user: User, start_time: datetime, end_time: datetime):
+def update_YQMM(user: User, start_time: datetime):
     """
     获取用户元气值收支记录, 根据标准点亮成就, 奖励元气值
 
@@ -615,21 +615,26 @@ def update_YQMM(user: User, start_time: datetime, end_time: datetime):
     :return: 用户看到的提示，为空则不提示
     :rtypr: list[str]
     """
-    # 筛选出用户已经点亮的成就
-    unlocked_achievements = AchievementUnlock.objects.filter(user=user,achievement__achievement_type__title='元气满满')
+    # 元气值奖励规则
+    reward_dict = {'first expenditure':1,
+                   '10 expenditure':1,
+                   '30 expenditure':2,
+                   '50 expenditure':5,
+                   '100 expenditure':10}
+
     # 根据user选出YQPointRecord
     records = YQPointRecord.objects.filter(user=user)
     user_display = []
     if records:
         # 首次获得元气值
-        if not unlocked_achievements.filter(achievement__name='首次获得元气值'):
-            AchievementUnlock.objects.create(
-                user=user,
-                achievement=Achievement.objects.get(name='首次获得元气值'),
-            )
+        _, created = AchievementUnlock.objects.get_or_create(
+            user=user,
+            achievement=Achievement.objects.get(name='首次获得元气值'),
+        )
+        if created:
             user_display.append('解锁成就，元气满满——首次获得元气值!')
         # 统计学期内收支情况
-        records = records.filter(time__gte=start_time, time__lte=end_time)
+        records = records.filter(time__gte=start_time)
         income = 0
         expenditure = 0
         for record in records:
@@ -638,96 +643,105 @@ def update_YQMM(user: User, start_time: datetime, end_time: datetime):
             else:
                 expenditure += abs(record.delta)
         # 学期内获得10元气值
-        if income >= 10 and not unlocked_achievements.filter(achievement__name='学期内获得10元气值'):
-            AchievementUnlock.objects.create(
+        if income >= 10:
+            _, created = AchievementUnlock.objects.get_or_create(
                 user=user,
                 achievement=Achievement.objects.get(name='学期内获得10元气值'),
             )
-            user_display.append('解锁成就，元气满满——学期内获得10元气值!')
+            if created:
+                user_display.append('解锁成就，元气满满——学期内获得10元气值!')
         # 学期内获得30元气值 隐藏成就
-        if income >= 30 and not unlocked_achievements.filter(achievement__name='学期内获得30元气值'):
-            AchievementUnlock.objects.create(
+        if income >= 30:
+            _, created = AchievementUnlock.objects.get_or_create(
                 user=user,
                 achievement=Achievement.objects.get(name='学期内获得30元气值'),
             )
-            user_display.append('解锁成就，元气满满——学期内获得30元气值!')
+            if created:
+                user_display.append('解锁成就，元气满满——学期内获得30元气值!')
         # 学期内获得50元气值 隐藏成就
-        if income >= 50 and not unlocked_achievements.filter(achievement__name='学期内获得50元气值'):
-            AchievementUnlock.objects.create(
+        if income >= 50:
+            _, created = AchievementUnlock.objects.get_or_create(
                 user=user,
                 achievement=Achievement.objects.get(name='学期内获得50元气值'),
             )
-            user_display.append('解锁成就，元气满满——学期内获得50元气值!')
+            if created:
+                user_display.append('解锁成就，元气满满——学期内获得50元气值!')
         # 学期内获得100元气值 隐藏成就
-        if income >= 100 and not unlocked_achievements.filter(achievement__name='学期内获得100元气值'):
-            AchievementUnlock.objects.create(
+        if income >= 100:
+            _, created = AchievementUnlock.objects.get_or_create(
                 user=user,
                 achievement=Achievement.objects.get(name='学期内获得100元气值'),
             )
-            user_display.append('解锁成就，元气满满——学期内获得100元气值!')
+            if created:
+                user_display.append('解锁成就，元气满满——学期内获得100元气值!')
         # 首次消费元气值 奖励1元气值
-        if expenditure >= 1 and not unlocked_achievements.filter(achievement__name='首次消费元气值'):
-            AchievementUnlock.objects.create(
+        if expenditure >= 1:
+            _, created = AchievementUnlock.objects.get_or_create(
                 user=user,
                 achievement=Achievement.objects.get(name='首次消费元气值'),
             )
-            User.objects.modify_YQPoint(
-                user,
-                1,
-                source=f'首次消费元气值',
-                source_type=YQPointRecord.SourceType.ACHIEVE
-            )
-            user_display.append('解锁成就，元气满满——首次消费元气值!奖励1元气值!')
+            if created:
+                User.objects.modify_YQPoint(
+                    user,
+                    reward_dict['first expenditure'],
+                    source=f'首次消费元气值',
+                    source_type=YQPointRecord.SourceType.ACHIEVE
+                )
+                user_display.append('解锁成就，元气满满——首次消费元气值!奖励1元气值!')
         # 学期内消费10元气值 奖励1元气值
-        if expenditure >= 10 and not unlocked_achievements.filter(achievement__name='学期内消费10元气值'):
-            AchievementUnlock.objects.create(
+        if expenditure >= 10:
+            _, created = AchievementUnlock.objects.get_or_create(
                 user=user,
                 achievement=Achievement.objects.get(name='学期内消费10元气值'),
             )
-            User.objects.modify_YQPoint(
-                user,
-                1,
-                source=f'学期内消费10元气值',
-                source_type=YQPointRecord.SourceType.ACHIEVE
-            )
-            user_display.append('解锁成就，元气满满——学期内消费10元气值!奖励1元气值!')
+            if created:
+                User.objects.modify_YQPoint(
+                    user,
+                    reward_dict['10 expenditure'],
+                    source=f'学期内消费10元气值',
+                    source_type=YQPointRecord.SourceType.ACHIEVE
+                )
+                user_display.append('解锁成就，元气满满——学期内消费10元气值!奖励1元气值!')
         # 学期内消费30元气值 隐藏成就 奖励2元气值
-        if expenditure >= 30 and not unlocked_achievements.filter(achievement__name='学期内消费30元气值'):
-            AchievementUnlock.objects.create(
+        if expenditure >= 30:
+            _, created = AchievementUnlock.objects.get_or_create(
                 user=user,
                 achievement=Achievement.objects.get(name='学期内消费30元气值'),
             )
-            User.objects.modify_YQPoint(
-                user,
-                2,
-                source=f'学期内消费30元气值',
-                source_type=YQPointRecord.SourceType.ACHIEVE
-            )
-            user_display.append('解锁成就，元气满满——学期内消费30元气值!奖励2元气值!')
+            if created:
+                User.objects.modify_YQPoint(
+                    user,
+                    reward_dict['30 expenditure'],
+                    source=f'学期内消费30元气值',
+                    source_type=YQPointRecord.SourceType.ACHIEVE
+                )
+                user_display.append('解锁成就，元气满满——学期内消费30元气值!奖励2元气值!')
         # 学期内消费50元气值 隐藏成就 奖励5元气值
-        if expenditure >= 50 and not unlocked_achievements.filter(achievement__name='学期内消费50元气值'):
-            AchievementUnlock.objects.create(
+        if expenditure >= 50:
+            _, created = AchievementUnlock.objects.get_or_create(
                 user=user,
                 achievement=Achievement.objects.get(name='学期内消费50元气值'),
             )
-            User.objects.modify_YQPoint(
-                user,
-                5,
-                source=f'学期内消费50元气值',
-                source_type=YQPointRecord.SourceType.ACHIEVE
-            )
-            user_display.append('解锁成就，元气满满——学期内消费50元气值!奖励5元气值!')
+            if created:
+                User.objects.modify_YQPoint(
+                    user,
+                    reward_dict['50 expenditure'],
+                    source=f'学期内消费50元气值',
+                    source_type=YQPointRecord.SourceType.ACHIEVE
+                )
+                user_display.append('解锁成就，元气满满——学期内消费50元气值!奖励5元气值!')
         # 学期内消费100元气值 隐藏成就 奖励10元气值
-        if expenditure >= 100 and not unlocked_achievements.filter(achievement__name='学期内消费100元气值'):
-            AchievementUnlock.objects.create(
+        if expenditure >= 100:
+            _, created = AchievementUnlock.objects.get_or_create(
                 user=user,
                 achievement=Achievement.objects.get(name='学期内消费100元气值'),
             )
-            User.objects.modify_YQPoint(
-                user,
-                10,
-                source=f'学期内消费100元气值',
-                source_type=YQPointRecord.SourceType.ACHIEVE
-            )
-            user_display.append('解锁成就，元气满满——学期内消费100元气值!奖励10元气值!')
+            if created:
+                User.objects.modify_YQPoint(
+                    user,
+                    reward_dict['100 expenditure'],
+                    source=f'学期内消费100元气值',
+                    source_type=YQPointRecord.SourceType.ACHIEVE
+                )
+                user_display.append('解锁成就，元气满满——学期内消费100元气值!奖励10元气值!')
     return user_display
