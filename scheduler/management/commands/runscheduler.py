@@ -22,6 +22,14 @@ class SchedulerService(rpyc.Service):
     def exposed_wakeup(self):
         return self.scheduler.wakeup()
 
+    def exposed_health_check(self) -> bool:
+        db_conn = True
+        try:
+            self.scheduler.print_jobs()
+        except:
+            db_conn = False
+        running = self.scheduler.running
+        return db_conn and running
 
 class Command(BaseCommand):
     help = "Runs apscheduler."
