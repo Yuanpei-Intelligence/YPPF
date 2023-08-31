@@ -20,6 +20,7 @@ from record.models import PageLog
 from app.models import (
     User,
     NaturalPerson,
+    OrganizationType,
     Organization,
     Activity,
     ActivityPhoto,
@@ -337,3 +338,25 @@ def register_pre_delete():
             # 不具有关联任务的模型无需设置
             continue
         models.signals.pre_delete.connect(_cancel_jobs, sender=model)
+        
+        
+@periodical('cron', 'weekly_activity_summary_reminder', hour=20, minute=0, day_of_week='sun')
+def weekly_activity_summary_reminder():
+    '''每周日晚上8点提醒未填写周报的组织负责人，目前仅限于团委，学学学委员会，学学学学会，学生会'''
+    to_notify = ['团委', '学学学委员会', '学学学学会', '学生会']
+    to_notify_incharge_np_id = OrganizationType.objects.filter(
+        otype_name__in=to_notify).values_list('incharge', flat=True)
+    to_notify_incharge_user_id = NaturalPerson.objects.filter(
+        id__in=to_notify_incharge_np_id).values_list('person_id', flat=True)
+    to_notify_incharge_user = User.objects.filter(
+        id__in=to_notify_incharge_user_id)
+    sender = User.objects.get(username='zz00000')
+    title = "每周活动总结提醒"
+    message = "请于今晚12点前完成每周活动总结填报，若已完成或无可总结活动请忽略"
+    bulk_notification_create(
+        to_notify_incharge_user, sender,
+        Notification.Type.NEEDREAD, title, message,
+        publish_to_wechat=True,
+        publish_kws={'level': WechatMessageLevel.IMPORTANT,
+                     'show_source': False},
+    )
