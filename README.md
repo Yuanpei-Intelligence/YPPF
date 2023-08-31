@@ -115,6 +115,21 @@
 
     > 如果迁移失败，数据库将很可能难以恢复，此时最简单的办法是删库重建，执行`scripts/remove_migrations.sh`，并重新进行[更新和迁移](#更新和迁移)。
 
+### 运行
+
+```shell
+# http://localhost:8000
+python manage.py runserver
+# http://localhost
+python manage.py runserver 80
+python manage.py runserver 0:80
+python manage.py runserver 127.0.0.1:80
+# http://ip:port
+python manage.py runserver ip:port
+```
+
+执行任意一种命令以启动，直到你以`Ctrl-C`退出或关闭终端。启动后，便能通过对应网址访问，访问http://localhost:8000试试吧~
+
 ## 加入我们
 
 ### 启动 Docker 容器
