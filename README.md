@@ -156,6 +156,35 @@ python manage.py runserver ip:port
     pip install ipython --require-virtualenv
     ```
 
+## 常见问题
+
+- 缺少模块，无法运行：`ModuleNotFoundError: 'module_name'`
+
+    可能因为缺少环境依赖，安装对应模块即可:
+
+    ```shell
+    pip install module_name --require-virtualenv
+    ```
+
+    如果使用`requirement.txt`安装后依然缺少，欢迎提出[issue](https://github.com/Yuanpei-Intelligence/YPPF/issues)。
+
+- 缺少环境变量，无法运行
+
+    通常提示`os.environ`找不到键，本项目的生产模式需要设置环境变量以保证安全，请切换到[调试模式](#高级功能)。
+
+- 无法连接数据库：`django.db.utils.OperationalError: (2003, "Can’t connect to MySQL server on ‘xxx’`
+
+    - 配置错误：检查已经[更新数据库配置](#初始化配置)并正确设置了`config.json`
+    - 若`MySQL`未启动，请先启动对应服务。
+
+- Django配置错误：`ImproperlyConfigured`
+
+    配置文件设置有误，请检查对应配置的config文件并修改。
+
+- 缺少字段：`Unknown column 'xx.xxx' in 'field list'`
+
+    未执行迁移或模型变动未检出，请参考[更新和迁移](#更新和迁移)。必要时可以删库重建。
+
 ## 加入我们
 
 ### 启动 Docker 容器
@@ -187,17 +216,15 @@ python3 manage.py runscheduler
 
 
 
-
-## Project Structure
-TODO
-
-## Contribute
+### Contribute
 Fork the repo, modify on develop branch of your replica.
 
 Reference 
 
 Before open a pull request, run `python3 manage.py test` to check whether your
 modification affects other functionality.
+
+## 致谢
 
 ### 贡献/参与者
 
