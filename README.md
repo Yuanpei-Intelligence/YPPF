@@ -128,7 +128,33 @@ python manage.py runserver 127.0.0.1:80
 python manage.py runserver ip:port
 ```
 
-执行任意一种命令以启动，直到你以`Ctrl-C`退出或关闭终端。启动后，便能通过对应网址访问，访问http://localhost:8000试试吧~
+执行任意一种命令以启动，直到你以`Ctrl-C`退出或关闭终端。启动后，便能通过对应网址访问，访问[http://localhost:8000](http://localhost:8000)试试吧~
+
+### 高级功能
+
+- 生产/调试模式
+
+    在`boot/config.py`中，将`DEBUG`常量设为`True`以启用调试模式。
+
+    调试模式便于使用，除非你打算在生产环境部署本项目，否则请设置为调试模式。
+
+- 管理员
+
+    运行`python manage.py createsuperuser`，根据指示创建管理员账号。
+
+    管理员账号可用于登录后台`/admin`，试着访问[http://localhost:8000/admin](http://localhost:8000/admin)吧。
+
+- 交互式执行（Django终端）
+
+    ```shell
+    python manage.py shell
+    ```
+
+    安装IPython后使用更便捷：
+
+    ```shell
+    pip install ipython --require-virtualenv
+    ```
 
 ## 加入我们
 
