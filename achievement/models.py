@@ -1,8 +1,7 @@
 from django.db import models
 
-from utils.models.descriptor import debug_only
+from utils.models.descriptor import admin_only
 from generic.models import User
-from app.utils_dependency import *
 
 __all__ = ['AchievementType', 'Achievement', 'AchievementUnlock']
 
@@ -37,7 +36,7 @@ class Achievement(models.Model):
 
     reward_points = models.PositiveIntegerField(default=0)
 
-    @debug_only
+    @admin_only
     def __str__(self):
         return self.name
 
@@ -48,6 +47,5 @@ class AchievementUnlock(models.Model):
     time = models.DateTimeField("解锁时间", auto_now_add=True)
     private = models.BooleanField(default=False)
 
-    @debug_only
-    def __str__(self):
-        return f"{self.user.username} unlocked {self.achievement.name}"
+    class Meta:
+        unique_together = ['user', 'achievement']

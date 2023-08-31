@@ -81,7 +81,7 @@ def viewActivity(request: HttpRequest, aid=None):
     aid = int(aid)
     activity: Activity = Activity.objects.get(id=aid)
     org = activity.organization_id
-    me = utils.get_person_or_org(request.user)
+    me = get_person_or_org(request.user)
     ownership = False
     if request.user.is_org() and org == me:
         ownership = True
@@ -330,7 +330,7 @@ def getActivityInfo(request: HttpRequest):
     activity = Activity.objects.get(id=activity_id)
 
     # check organization existance and ownership to activity
-    organization = utils.get_person_or_org(request.user, UTYPE_ORG)
+    organization = get_person_or_org(request.user, UTYPE_ORG)
     assert activity.organization_id == organization, f"{organization}不是活动的组织者"
 
     info_type = request.GET.get("infotype", None)
@@ -462,7 +462,7 @@ def addActivity(request: UserRequest, aid=None):
     # 检查：不是超级用户，必须是小组，修改是必须是自己
     html_display = {}
     # assert valid  已经在check_user_access检查过了
-    me = utils.get_person_or_org(request.user)  # 这里的me应该为小组账户
+    me = get_person_or_org(request.user)  # 这里的me应该为小组账户
     if aid is None:
         if not request.user.is_org():
             return redirect(message_url(wrong('小组账号才能添加活动!')))
@@ -483,7 +483,6 @@ def addActivity(request: UserRequest, aid=None):
         if activity.organization_id != me:
             return redirect(message_url(wrong("无法修改其他小组的活动!")))
         edit = True
-    html_display["is_myself"] = True
 
     # 处理 POST 请求
     # 在这个界面，不会返回render，而是直接跳转到viewactivity，可以不设计bar_display
@@ -629,7 +628,7 @@ def showActivity(request: UserRequest):
     活动信息的聚合界面
     只有老师和小组才能看到，老师看到检查者是自己的，小组看到发起方是自己的
     """
-    me = utils.get_person_or_org(request.user)  # 获取自身
+    me = get_person_or_org(request.user)  # 获取自身
     is_teacher = False  # 该变量同时用于前端
     if request.user.is_person():
         is_teacher = me.is_teacher()
@@ -667,14 +666,13 @@ def examineActivity(request: UserRequest, aid: int | str):
     try:
         assert request.user.is_valid()
         assert request.user.is_person()
-        me = utils.get_person_or_org(request.user)
+        me = get_person_or_org(request.user)
         activity = Activity.objects.get(id=int(aid))
         assert activity.examine_teacher == me
     except:
         return redirect(message_url(wrong('没有审核权限!')))
 
     html_display = {}
-    html_display["is_myself"] = True
 
     if request.method == "POST" and request.POST:
 
@@ -835,7 +833,7 @@ def endActivity(request: HttpRequest):
     is_auditor = False
     if request.user.is_person():
         try:
-            person = utils.get_person_or_org(request.user)
+            person = get_person_or_org(request.user)
             is_auditor = person.is_teacher()
             assert is_auditor
         except:
@@ -871,12 +869,8 @@ def endActivity(request: HttpRequest):
 @login_required(redirect_field_name="origin")
 @utils.check_user_access(redirect_url="/logout/")
 @logger.secure_view()
-def modifyEndActivity(request: HttpRequest):
-    # return
+def modifyEndActivity(request: UserRequest):
     html_display = {}
-    me = utils.get_person_or_org(request.user)  # 获取自身
-
-    # 前端使用量user_type，表示观察者是小组还是个人
 
     # ———————————————— 读取可能存在的申请 为POST和GET做准备 ————————————————
 
@@ -891,15 +885,12 @@ def modifyEndActivity(request: HttpRequest):
         try:  # 尝试获取已经新建的apply
             application: ActivitySummary = ActivitySummary.objects.get(
                 id=apply_id)
-            auditor = application.activity.examine_teacher.person_id  # 审核老师
+            auditor = application.activity.examine_teacher.get_user()  # 审核老师
             if request.user.is_person() and auditor != request.user:
                 html_display = utils.user_login_org(
                     request, application.get_org())
                 if html_display['warn_code'] == 1:
                     return redirect(message_url(html_display))
-                else:  # 成功
-                    me = application.get_org()
-                    request.user = me.get_user()
 
             # 接下来检查是否有权限check这个条目
             # 至少应该是申请人或者被审核老师之一
@@ -916,6 +907,8 @@ def modifyEndActivity(request: HttpRequest):
             return redirect(message_url(wrong("您没有权限访问该网址！")))
 
         is_new_application = True  # 新的申请
+
+    me = get_person_or_org(request.user)  # 获取自身，便于之后查询
 
     # 这种写法是为了方便随时取消某个条件
     '''
@@ -937,8 +930,6 @@ def modifyEndActivity(request: HttpRequest):
             .filter(organization_id=me)  # 本部门小组的
             .filter(status=Activity.Status.END)  # 已结束的
             .exclude(id__in=summary_act_ids))  # 还没有报销的
-
-        activities.len = len(activities)
     else:
         activities = None
 

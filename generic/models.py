@@ -24,7 +24,7 @@ from django.db.models import QuerySet, F
 import pypinyin
 
 from utils.models.choice import choice
-from utils.models.descriptor import necessary_for_frontend, invalid_for_frontend, debug_only
+from utils.models.descriptor import necessary_for_frontend, invalid_for_frontend, admin_only
 
 __all__ = [
     'User',
@@ -60,20 +60,20 @@ class UserManager(_UserManager['User']):
             return users.get(username=user)
         return users.get(pk=user)
 
-    def filter_type(self, usertype: 'User.Type|str'):
+    def filter_type(self, usertype: 'User.Type | str | list[User.Type]'):
         '''
         根据用户类型过滤用户
 
         Args:
-        - type: 用户类型，可选值为`User.Type`枚举值、其对应的字符串和`'Person'`
+        - type: 用户类型，可选值为`User.Type`枚举值、其对应的字符串和一组枚举值
         '''
         users = self.all()
-        match usertype:
-            # TODO: 与User.is_person()同步更新
-            # case User.Type.PERSON:
-            #     users = users.filter(utype__in=[User.Type.STUDENT, User.Type.TEACHER])
-            case utype:
-                users = users.filter(utype=utype)
+        if usertype == User.Type.PERSON:
+            usertype = User.Type.Persons()
+        if isinstance(usertype, str | User.Type):
+            users = users.filter(utype=usertype)
+        else:
+            users = users.filter(utype__in=usertype)
         return users
 
     def create_user(self, username: str, name: str,
@@ -258,6 +258,19 @@ class PointMixin(models.Model):
 
 
 class User(AbstractUser, PointMixin):
+    '''用户模型
+
+    Attributes:
+    - id: 用户主键
+    - username: 用户名，学号
+    - name: 用户名称
+    - utype: 用户类型，参考User.Type
+    - 其它继承字段参考AbstractUser
+
+    See Also:
+    - :class:`UserManager`
+    - :class:`django.contrib.auth.models.AbstractUser`
+    '''
 
     class Meta:
         verbose_name = '用户'
@@ -286,6 +299,11 @@ class User(AbstractUser, PointMixin):
         UNAUTHORIZED = choice('Unauthorized', '未授权')
         SPECIAL = choice('', '特殊用户')
 
+        @classmethod
+        def Persons(cls) -> list['User.Type']:
+            # TODO: 待后端都使用本接口判断后，修改类型判断
+            return [cls.PERSON, cls.STUDENT, cls.TEACHER]
+
     name = models.CharField('名称', max_length=32)
     pinyin = models.CharField('拼音', max_length=100, default='', blank=True)
     acronym = models.CharField('缩写', max_length=32, default='', blank=True)
@@ -299,7 +317,7 @@ class User(AbstractUser, PointMixin):
     REQUIRED_FIELDS = ['name']
     objects: UserManager = UserManager()
 
-    @debug_only
+    @admin_only
     def __str__(self) -> str:
         return f'{self.username} ({self.name})'
 
@@ -321,9 +339,7 @@ class User(AbstractUser, PointMixin):
 
     @necessary_for_frontend(utype)
     def is_person(self) -> bool:
-        return self.utype == self.Type.PERSON
-        # TODO: 待后端都使用本接口判断后，修改类型判断，同时修改UserManager.filter_type
-        return self.is_student() or self.is_teacher()
+        return self.utype in self.Type.Persons()
 
     @necessary_for_frontend(utype)
     def is_student(self) -> bool:

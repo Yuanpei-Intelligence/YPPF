@@ -166,15 +166,14 @@ def stuinfo(request: UserRequest):
                 assert potential_person in person
                 person = potential_person
 
-        is_myself = request.user.is_person() and person.get_user() == request.user
-        html_display["is_myself"] = is_myself  # 存入显示
+        is_myself = person.get_user() == request.user
         inform_share, alert_message = utils.get_inform_share(
             me=person, is_myself=is_myself)
 
         # 处理更改数据库中inform_share的post
         if request.method == "POST" and request.POST:
             option = request.POST.get("option", "")
-            assert option == "cancelInformShare" and html_display["is_myself"]
+            assert option == "cancelInformShare" and is_myself
             person.inform_share = False
             person.save()
             return redirect("/welcome/")
@@ -415,17 +414,8 @@ def stuinfo(request: UserRequest):
 
         # 警告呈现信息
 
-        try:
-            html_display["warn_code"] = int(
-                request.GET.get("warn_code", 0)
-            )  # 是否有来自外部的消息
-        except:
-            return redirect(message_url(wrong('非法的状态码，请勿篡改URL!')))
-        html_display["warn_message"] = request.GET.get(
-            "warn_message", "")  # 提醒的具体内容
-
-        modpw_status = request.GET.get("modinfo", None)
-        if modpw_status is not None and modpw_status == "success":
+        my_messages.transfer_message_context(request.GET, html_display)
+        if request.GET.get("modinfo", "") == "success":
             succeed("修改个人信息成功!", html_display)
 
         # ----------------------------------- 学术地图 ----------------------------------- #
@@ -569,6 +559,8 @@ def stuinfo(request: UserRequest):
         )
         academic_params.update(status_dict)
 
+        # is_myself是内部变量，不传给前端
+        html_display["is_myself"] = is_myself
         return render(request, "stuinfo.html", locals() | dict(user=request.user))
 
 
@@ -620,8 +612,6 @@ def orginfo(request: UserRequest):
         orginfo负责呈现小组主页，逻辑和stuinfo是一样的，可以参考
         只区分自然人和法人，不区分自然人里的负责人和非负责人。任何自然人看这个小组界面都是【不可管理/编辑小组信息】
     """
-    me = get_person_or_org(request.user)
-
     name = request.GET.get('name', None)
     if name is None:  # 此时登陆的必需是法人账号，如果是自然人，则跳转welcome
         if request.user.is_person():
@@ -637,25 +627,24 @@ def orginfo(request: UserRequest):
 
         return redirect(org.get_absolute_url() + append_url)
 
-    try:  # 指定名字访问小组账号的，可以是自然人也可以是法人。在html里要注意区分！
-
+    try:
         # 下面是小组信息
-
         org = Organization.objects.activated().get(oname=name)
         org_tags = org.tags.all()
-
     except:
         return redirect(message_url(wrong('该小组不存在!')))
 
+    # 指定名字访问小组账号的，可以是自然人也可以是法人。在html里要注意区分！
     # 判断是否为小组账户本身在登录
+    is_myself = org.get_user() == request.user
+    me = get_person_or_org(request.user)
+
     html_display = {}
-    html_display["is_myself"] = me == org
-    html_display["is_person"] = request.user.is_person()
+    html_display["is_myself"] = is_myself
     html_display["is_course"] = (
         Course.objects.activated().filter(organization=org).exists()
     )
-    inform_share, alert_message = utils.get_inform_share(
-        me=me, is_myself=html_display["is_myself"])
+    inform_share, alert_message = utils.get_inform_share(me, is_myself=is_myself)
 
     organization_name = name
     organization_type_name = org.otype.otype_name
@@ -673,11 +662,9 @@ def orginfo(request: UserRequest):
         html_display["select_ing"] = False
 
     if request.method == "POST":
-        if request.POST.get("export_excel") is not None and html_display["is_myself"]:
-            html_display["warn_code"] = 2
-            html_display["warn_message"] = "下载成功!"
+        if request.POST.get("export_excel") is not None and is_myself:
             return utils.export_orgpos_info(org)
-        elif request.POST.get("option", "") == "cancelInformShare" and html_display["is_myself"]:
+        elif request.POST.get("option", "") == "cancelInformShare" and is_myself:
             org.inform_share = False
             org.save()
             return redirect("/welcome/")
@@ -776,7 +763,7 @@ def orginfo(request: UserRequest):
     for p in positions:
         if p.person.person_id == request.user and p.pos == 0:
             html_display["isboss"] = True
-        if p.show_post == True or p.pos == 0 or html_display["is_myself"]:
+        if p.show_post == True or p.pos == 0 or is_myself:
             member = {}
             member['show_post'] = p.show_post
             member['id'] = p.id
@@ -788,24 +775,9 @@ def orginfo(request: UserRequest):
 
             member_list.append(member)
 
-    try:
-        html_display["warn_code"] = int(
-            request.GET.get("warn_code", 0))  # 是否有来自外部的消息
-    except:
-        return redirect(message_url(wrong('非法的状态码，请勿篡改URL!')))
-    html_display["warn_message"] = request.GET.get(
-        "warn_message", "")  # 提醒的具体内容
-
-    modpw_status = request.GET.get("modinfo", None)
-    if modpw_status is not None and modpw_status == "success":
-        html_display["warn_code"] = 2
-        html_display["warn_message"] = "修改小组信息成功!"
-
-    # 补充左边栏信息
-
-    # 再处理修改信息的回弹
-    modpw_status = request.GET.get("modinfo", None)
-    html_display["modpw_code"] = modpw_status is not None and modpw_status == "success"
+    my_messages.transfer_message_context(request.GET, html_display)
+    if request.GET.get("modinfo", "") == "success":
+        succeed("修改小组信息成功!", html_display)
 
     # 小组活动的信息
 
@@ -818,20 +790,16 @@ def orginfo(request: UserRequest):
 
     # 补充订阅该小组的按钮
     allow_unsubscribe = org.otype.allow_unsubscribe  # 是否允许取关
-    is_person = request.user.is_person()
-    if is_person:
-        subscribe_flag = True if (
-            organization_name not in me.unsubscribe_list.values_list("oname", flat=True)) \
-            else False
+    if request.user.is_person():
+        _unsubscribe_names = me.unsubscribe_list.values_list("oname", flat=True)
+        subscribe_flag = organization_name not in _unsubscribe_names
 
     # 补充作为小组成员，选择是否展示的按钮
     show_post_change_button = False     # 前端展示“是否不展示我自己”的按钮，若为True则渲染这个按钮
     if request.user.is_person():
         my_position = Position.objects.activated().filter(
-            org=org, person=me).exclude(is_admin=True)
-        if len(my_position):
-            show_post_change_button = True
-            my_position = my_position[0]
+            org=org, person=me).exclude(is_admin=True).first()
+        show_post_change_button = my_position is not None
 
     if request.session.get('alert_message'):
         load_alert_message = request.session.pop('alert_message')
@@ -840,31 +808,19 @@ def orginfo(request: UserRequest):
     # 为了防止发生错误的存储，让数据库直接更新浏览次数，并且不再显示包含本次浏览的数据
     Organization.objects.filter(id=org.id).update(
         visit_times=F('visit_times')+1)
-    # org.visit_times += 1
-    # org.save()
     return render(request, "orginfo.html", locals() | dict(user=request.user))
 
 
 @login_required(redirect_field_name="origin")
 @utils.check_user_access(redirect_url="/logout/")
 @logger.secure_view()
-def homepage(request: HttpRequest):
-    is_person = request.user.is_person()
-
+def homepage(request: UserRequest):
     html_display = {}
-    html_display["is_myself"] = True
-
-    try:
-        html_display["warn_code"] = int(
-            request.GET.get("warn_code", 0))  # 是否有来自外部的消息
-    except:
-        return redirect(message_url(wrong('非法的状态码，请勿篡改URL!')))
-    html_display["warn_message"] = request.GET.get(
-        "warn_message", "")  # 提醒的具体内容
+    my_messages.transfer_message_context(request.GET, html_display)
 
     nowtime = datetime.now()
     # 今天第一次访问 welcome 界面，积分增加
-    if is_person:
+    if request.user.is_person():
         with transaction.atomic():
             np: NaturalPerson = NaturalPerson.objects.select_for_update().get(
                 person_id=request.user)
@@ -1013,7 +969,6 @@ def accountSetting(request: UserRequest):
     html_display = {}
 
     # 在这个页面 默认回归为自己的左边栏
-    html_display["is_myself"] = True
     user = request.user
     me = get_person_or_org(request.user)
     former_img = utils.get_user_ava(me)
@@ -1529,8 +1484,6 @@ def search(request: HttpRequest):
         info['sname'] = np.name
         academic_list.append((info, contents))
 
-    html_display["is_myself"] = True
-
     # 新版侧边栏, 顶栏等的呈现，采用 bar_display, 必须放在render前最后一步
     bar_display = utils.get_sidebar_and_navbar(request.user, "信息搜索")
     return render(request, "search.html", locals())
@@ -1700,7 +1653,6 @@ def modpw(request: UserRequest):
     # 现在，请使用@utils.check_user_access(redirect_url)包装器完成用户检查
 
     html_display = {}
-    html_display["is_myself"] = True
 
     err_code = 0
     err_message = None
@@ -1917,8 +1869,6 @@ def notifications(request: HttpRequest):
         except:
             wrong("删除通知的过程出现错误！请联系管理员。", html_display)
         return JsonResponse({"success": my_messages.get_warning(html_display)[0] == SUCCEED})
-
-    html_display["is_myself"] = True
 
     done_notifications = Notification.objects.activated().filter(
         receiver=request.user,

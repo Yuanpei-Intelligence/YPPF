@@ -39,8 +39,7 @@ class ShowChats(ProfileTemplateView):
     page_name = '学术地图问答'
 
     def prepare_get(self):
-        user = self.request.user
-        if not user.is_person():
+        if not self.request.user.is_person():
             # 后续或许可以开放任意的聊天
             return self.wrong('请使用个人账号访问问答中心页面！')
         return self.get
