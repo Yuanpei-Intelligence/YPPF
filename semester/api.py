@@ -1,22 +1,32 @@
 from datetime import date
 
+from django.db.models import Q
+
 from semester.models import Semester
 
 
-def current_semester() -> Semester:
+def current_semester(allow_fallback: bool = True) -> Semester:
     """
     A wrapper for `semester_of`.
     """
     return semester_of(date.today())
 
 
-def semester_of(date) -> Semester:
+def next_semester() -> Semester:
     """
-    Get semester containing date, or semester just passed.
-    Otherwise, raise DoesNotExist.
+    Get next semester.
     """
-    try:
-        return Semester.objects.get(
-            start_date__lte=date, end_date__gte=date)
-    except Semester.DoesNotExist:
-        return Semester.objects.filter(end_date__lt=date).latest('end_date')
+    today = date.today()
+    return Semester.objects.filter(start_date__gt=today).earliest('start_date')
+
+
+def semester_of(date, allow_fallback: bool = True) -> Semester:
+    """
+    Get semester containing date.
+    If no semester contains date and `fallback` is `True`, return the semester just passed.
+    Otherwise, raise Exception.
+    """
+    q = Q(start_date__lte=date)
+    if not allow_fallback:
+        q = q & Q(end_date__gte=date)
+    return Semester.objects.filter(q).latest('end_date')
