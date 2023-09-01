@@ -1,4 +1,3 @@
-import json
 from datetime import datetime, time
 
 from achievement.api import bulk_add_achievement_record
@@ -7,6 +6,7 @@ from achievement.utils import calculate_enrollment_years
 from scheduler.adder import ScheduleAdder
 from scheduler.periodic import periodical
 from semester.api import current_semester
+
 
 @periodical('cron', 'start_fall_semester', month=9, day=1)
 def start_fall_semester():
