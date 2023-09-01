@@ -36,8 +36,8 @@ services:
     depends_on:
       mysql:
         condition: service_healthy
-      scheduler:
-        condition: service_healthy
+      # scheduler:
+      #   condition: service_healthy
       db_setup:
         condition: service_completed_successfully
     working_dir: /workspace
@@ -56,23 +56,23 @@ services:
     #   timeout: 5s
     #   retries: 3
 
-  scheduler:
-    build: ./image_build
-    volumes:
-      - ../:/workspace
-    working_dir: /workspace
-    depends_on:
-      mysql:
-        condition: service_healthy
-      db_setup:
-        condition: service_completed_successfully
+  # scheduler:
+  #   build: ./image_build
+  #   volumes:
+  #     - ../:/workspace
+  #   working_dir: /workspace
+  #   depends_on:
+  #     mysql:
+  #       condition: service_healthy
+  #     db_setup:
+  #       condition: service_completed_successfully
 
-    command: python3 manage.py runscheduler
-    healthcheck:
-      test: ["CMD", "python3", "manage.py", "scheduler_health"]
-      interval: 5s
-      timeout: 5s
-      retries: 3
+  #   command: python3 manage.py runscheduler
+  #   healthcheck:
+  #     test: ["CMD", "python3", "manage.py", "scheduler_health"]
+  #     interval: 5s
+  #     timeout: 5s
+  #     retries: 3
 
   db_setup:
     build: ./image_build

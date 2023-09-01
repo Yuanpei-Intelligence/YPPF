@@ -244,13 +244,6 @@ class UserManager(_UserManager['User']):
             source=source,
             source_type=source_type,
         )
-    
-    def get_enrollment_years(self):
-        current_year = datetime.now().year - 2000
-        
-        return self.annotate(
-            enrollment_years=current_year - functions.Cast(functions.Substr('username', 1, 2), models.IntegerField())
-        )
         
 
 
