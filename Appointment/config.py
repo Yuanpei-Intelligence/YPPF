@@ -14,7 +14,6 @@ class AppointmentConfig(Config):
     display_token = LazySetting('token/display')
 
     # 读取学期开始，用于过滤既往预约
-    # TODO: 不要使用underground里的semester_data，应当使用global下的semester_data
     semester_start = LazySetting('semester_data/semester_start', str_to_time)
 
     # 设置全局参数

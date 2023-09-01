@@ -5,14 +5,14 @@ from achievement.models import Achievement
 from achievement.utils import calculate_enrollment_years
 from scheduler.adder import ScheduleAdder
 from scheduler.periodic import periodical
-from semester.api import current_semester
+from semester.api import next_semester
 
 
 @periodical('cron', 'start_fall_semester', month=9, day=1)
 def start_fall_semester():
     '''在每年9月1日读取秋季开学日期'''
 
-    ScheduleAdder(init_new_year, run_time=datetime.combine(current_semester().start_date, time.min))()
+    ScheduleAdder(init_new_year, run_time=datetime.combine(next_semester().start_date, time.min))()
 
 
 def init_new_year():
