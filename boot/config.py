@@ -39,7 +39,7 @@ BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 def absolute_path(path: str) -> str:
     '''
     Sphinx生成文档时执行目录是错误的，所以要用这个函数
-    
+
     :param path: 相对于项目根目录的路径
     :type path: str
     :return: 绝对路径
@@ -50,9 +50,10 @@ def absolute_path(path: str) -> str:
     return os.path.join(BASE_DIR, path[2:])
 
 
-def _init_config(path = './config.json', encoding: str = 'utf8') -> dict[str, Any]:
+def _init_config(path='./config.json', encoding: str = 'utf8') -> dict[str, Any]:
     with open(absolute_path(path), encoding=encoding) as f:
         return json.load(f)
+
 
 ROOT_CONFIG = _init_config()
 
@@ -65,5 +66,6 @@ class GlobalConfig(Config):
     semester = LazySetting('semester', Semester.get, type=Semester)
     debug_stuids = LazySetting('debug_stuids', mapping(list, str), [])
     temporary_dir = LazySetting('tmp_dir', default='tmp')
+
 
 GLOBAL_CONFIG = GlobalConfig(ROOT_CONFIG, 'global')
