@@ -1,11 +1,11 @@
 import json
 import os
 import urllib.request
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, date
 from typing import Any, Dict
 
 from django.db import transaction  # 原子化更改数据库
-from django.db.models import F
+from django.db.models import F, Q
 
 from app.activity_utils import changeActivityStatus, notifyActivity
 from app.config import *
@@ -13,7 +13,7 @@ from app.extern.wechat import WechatApp, WechatMessageLevel
 from app.log import logger
 from app.models import (Activity, ActivityPhoto, Course, CourseParticipant,
                         CourseTime, NaturalPerson, Notification, Organization,
-                        OrganizationType, Participant, Position, User)
+                        OrganizationType, Participant, Position, User, ActivitySummary)
 from app.notification_utils import (bulk_notification_create,
                                     notification_create)
 from boot.config import GLOBAL_CONFIG
@@ -21,6 +21,7 @@ from record.models import PageLog
 from scheduler.adder import MultipleAdder
 from scheduler.cancel import remove_job
 from scheduler.periodic import periodical
+from semester.api import current_semester
 from utils.marker import script
 
 
@@ -331,20 +332,36 @@ def register_pre_delete():
 @periodical('cron', 'weekly_activity_summary_reminder', hour=20, minute=0, day_of_week='sun')
 def weekly_activity_summary_reminder():
     '''每周日晚上8点提醒未填写周报的组织负责人，目前仅限于团委，学学学委员会，学学学学会，学生会'''
-    to_notify = ['团委', '学学学委员会', '学学学学会', '学生会']
-    to_notify_incharge_np_id = OrganizationType.objects.filter(
-        otype_name__in=to_notify).values_list('incharge', flat=True)
-    to_notify_incharge_user_id = NaturalPerson.objects.filter(
-        id__in=to_notify_incharge_np_id).values_list('person_id', flat=True)
-    to_notify_incharge_user = User.objects.filter(
-        id__in=to_notify_incharge_user_id)
-    sender = User.objects.get(username='zz00000')
-    title = "每周活动总结提醒"
-    message = "请于今晚12点前完成每周活动总结填报，若已完成或无可总结活动请忽略"
-    bulk_notification_create(
-        to_notify_incharge_user, sender,
-        Notification.Type.NEEDREAD, title, message,
-        publish_to_wechat=True,
-        publish_kws={'level': WechatMessageLevel.IMPORTANT,
-                     'show_source': False},
-    )
+    cur_semester = current_semester()
+    if cur_semester.start_date <= date.today() <= cur_semester.end_date:
+        raw_to_notify = ['团委', '学学学委员会', '学学学学会', '学生会']
+        raw_to_notify_orgtype = OrganizationType.objects.filter(
+            otype_name__in=raw_to_notify)
+
+        #只通知有本周内结束且未填写活动总结的活动的组织
+        activity_end_ddl = datetime.now().replace(hour=23, minute=59, second=59, microsecond=999999)
+        raw_no_summary_activity = Activity.objects.filter(Q(organization_id__otype__in=raw_to_notify_orgtype) 
+                                                      & Q(end__lte=activity_end_ddl))
+        no_summary_activity = raw_no_summary_activity.exclude(
+            id__in=ActivitySummary.objects.all().values_list('activity__id', flat=True))
+        to_notify_org = Organization.objects.filter(
+            id__in=no_summary_activity.values_list("organization_id__id", flat=True))
+
+        #分组织依次提醒未填写活动总结的活动名称
+        sender = User.objects.get(username='zz00000')
+        title = "每周活动总结提醒"
+        for org in to_notify_org:
+            to_notify_activity = no_summary_activity.filter(organization_id=org)
+            to_notify_user = Position.objects.get(Q(org=org) 
+                                                & Q(pos=0)).person.person_id
+            message = "检测到以下活动已于本周结束，请及时填写每周活动总结：" + "\n" + " "*13
+            for activity in list(to_notify_activity)[:-1]:
+                message += f"{activity.title}, "
+            message += f"{list(to_notify_activity)[-1].title}"
+            notification_create(
+                to_notify_user, sender,
+                Notification.Type.NEEDREAD, title, message,
+                publish_to_wechat=True,
+                publish_kws={'level': WechatMessageLevel.IMPORTANT,
+                            'show_source': False},
+            )
