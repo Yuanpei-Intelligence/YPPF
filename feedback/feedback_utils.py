@@ -18,12 +18,20 @@ from feedback.models import (
     FeedbackType,
     Feedback,
 )
+from generic.models import User
+from achievement.models import (
+    Achievement,
+    AchievementUnlock,
+)
 
 
 __all__ = [
     'check_feedback',
     'update_feedback',
     'make_relevant_notification',
+    'examine_notification',
+    'inform_notification',
+    'unlock_ZHSH_feedback',
 ]
 
 
@@ -272,3 +280,20 @@ def inform_notification(sender: ClassifiedUser, receiver: ClassifiedUser,
         publish_to_wechat=True,
         publish_kws={'app': WechatApp.AUDIT, 'level': level},
     )
+
+
+def unlock_ZHSH_feedback(user: User) -> bool:
+    '''
+    解锁成就
+    智慧生活-使用一次反馈中心
+
+    :param user: 要解锁的用户
+    :type user: User
+    :return: 是否成功解锁
+    :rtype: bool
+    '''
+    _, created = AchievementUnlock.objects.get_or_create(
+        user=user,
+        achievement=Achievement.objects.get(name='使用一次反馈中心'),
+    )
+    return created

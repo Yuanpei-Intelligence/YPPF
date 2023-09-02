@@ -5,13 +5,14 @@ from yp_library.utils import (
     search_books,
     get_query_dict,
     get_lendinfo_by_readers,
-    get_library_activity, 
-    get_recommended_or_newest_books, 
+    get_library_activity,
+    get_recommended_or_newest_books,
+    unlock_ZHSH_library,
 )
 from yp_library.config import library_config as CONFIG
 
-DISPLAY_ACTIVITY_NUM = 3 # 首页展示的书房活动数量
-DISPLAY_RECOMMENDATION_NUM = 5 # 首页展示的推荐书目数量
+DISPLAY_ACTIVITY_NUM = 3  # 首页展示的书房活动数量
+DISPLAY_RECOMMENDATION_NUM = 5  # 首页展示的推荐书目数量
 # DISPLAY_NEW_BOOK_NUM = 5 # 首页展示的新入馆书目数量
 
 
@@ -32,7 +33,8 @@ class WelcomeView(ProfileTemplateView):
         except AssertionError as e:
             records_list = []
         else:
-            unreturned_records_list, returned_records_list = get_lendinfo_by_readers(readers)
+            unreturned_records_list, returned_records_list = get_lendinfo_by_readers(
+                readers)
             records_list = unreturned_records_list + returned_records_list
 
         transfer_message_context(self.request.GET, self.extra_context,
@@ -43,7 +45,7 @@ class WelcomeView(ProfileTemplateView):
             "opening_time_end": CONFIG.end_time,
             "records_list": records_list,
             "recommendation": get_recommended_or_newest_books(
-                        num=DISPLAY_RECOMMENDATION_NUM, newest=False),
+                num=DISPLAY_RECOMMENDATION_NUM, newest=False),
         })
         return self.render()
 
@@ -66,4 +68,5 @@ class SearchView(ProfileTemplateView):
         self.extra_context.update({
             "search_results_list": search_books(**get_query_dict(self.request.POST)),
         })
+        unlock_ZHSH_library(self.request.user)
         return self.render()

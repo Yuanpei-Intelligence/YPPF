@@ -15,10 +15,13 @@ from yp_library.models import (
     LendRecord,
 )
 from yp_library.config import library_config as CONFIG
+from achievement.models import AchievementUnlock, Achievement
 
 __all__ = [
     'get_readers_by_user', 'search_books',
-    'get_query_dict', 'get_my_records', 'get_lendinfo_by_readers'
+    'get_query_dict', 'get_my_records', 'get_lendinfo_by_readers',
+    'get_library_activity', 'get_recommended_or_newest_books',
+    'unlock_ZHSH_library', 'to_feedback_url'
 ]
 
 
@@ -361,3 +364,20 @@ def to_feedback_url(request: HttpRequest) -> str:
 
     # 最终返回填写feedback的url
     return '/feedback/?argue'
+
+
+def unlock_ZHSH_library(user: User) -> bool:
+    """
+    解锁成就
+    智慧生活-使用一次元培书房查询
+
+    :param user: 要解锁的用户
+    :type user: User
+    :return: 是否成功解锁
+    :rtype: bool
+    """
+    _, created = AchievementUnlock.objects.get_or_create(
+        user=user,
+        achievement=Achievement.objects.get(name='使用一次元培书房查询'),
+    )
+    return created
