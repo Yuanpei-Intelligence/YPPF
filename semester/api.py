@@ -9,7 +9,7 @@ def current_semester(allow_fallback: bool = True) -> Semester:
     """
     A wrapper for `semester_of`.
     """
-    return semester_of(date.today())
+    return semester_of(date.today(), allow_fallback)
 
 
 def next_semester() -> Semester:
@@ -29,4 +29,4 @@ def semester_of(date, allow_fallback: bool = True) -> Semester:
     q = Q(start_date__lte=date)
     if not allow_fallback:
         q = q & Q(end_date__gte=date)
-    return Semester.objects.filter(q).latest('end_date')
+    return Semester.objects.filter(q).latest('start_date')

@@ -55,6 +55,7 @@ from app.academic_utils import (
     get_text_status,
 )
 from achievement.unlock_api import unlock_achievement, unlock_YQMM_series
+from semester.api import current_semester
 
 
 @login_required(redirect_field_name="origin")
@@ -840,10 +841,8 @@ def homepage(request: UserRequest):
     unlock_achievement(request.user, '注册智慧书院')
 
     # 元气满满系列更新
-    # TODO: 与设置中学期开始的时间同步，暂时没找到接口
-    semester_start = datetime(2023, 8, 19, 0, 0, 0)
-    semester_end = datetime(2024, 2, 1, 0, 0)
-    unlock_YQMM_series(request.user, semester_start, semester_end)
+    semester = current_semester()
+    unlock_YQMM_series(request.user, semester.start_date, semester.end_date)
 
     # 开始时间在前后一周内，除了取消和审核中的活动。按时间逆序排序
     recentactivity_list = Activity.objects.get_recent_activity(
