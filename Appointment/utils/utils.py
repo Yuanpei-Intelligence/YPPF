@@ -214,20 +214,3 @@ def to_feedback_url(request: HttpRequest) -> str:
 
     # 最终返回填写feedback的url
     return '/feedback/?argue'
-
-
-def unlock_ZHSH_appointment(user: User) -> bool:
-    '''
-    解锁成就
-    智慧生活-完成地下室预约
-
-    :param user: 要解锁的用户
-    :type user: User
-    :return: 是否成功解锁
-    :rtype: bool
-    '''
-    _, created = AchievementUnlock.objects.get_or_create(
-        user=user,
-        achievement=Achievement.objects.get(name='完成地下室预约'),
-    )
-    return created

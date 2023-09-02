@@ -17,12 +17,12 @@ from app.academic_utils import (
     get_wait_audit_student,
     audit_academic_map,
     get_tags_for_search,
-    unlock_ZHSH_academic_first,
 )
 from app.utils import (
     get_sidebar_and_navbar,
     get_person_or_org,
 )
+from achievement.unlock_api import unlock_achievement
 
 __all__ = [
     'ShowChats',
@@ -106,7 +106,7 @@ def modifyAcademic(request: UserRequest) -> HttpResponse:
             if context["warn_code"] == 1:    # 填写的TextEntry太长导致填写失败
                 return redirect(message_url(context, "/modifyAcademic/"))
             else:                            # warn_code == 2，表明填写成功
-                unlock_ZHSH_academic_first(request.user)  # 解锁成就-编辑自己的学术地图
+                unlock_achievement(request.user, "编辑自己的学术地图")  # 解锁成就-编辑自己的学术地图
                 return redirect(message_url(context, "/stuinfo/#tab=academic_map"))
         except:
             return redirect(message_url(wrong("修改过程中出现意料之外的错误，请联系工作人员处理！")))

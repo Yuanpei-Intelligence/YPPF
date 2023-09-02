@@ -2,9 +2,15 @@
 - 处理用户触发成就
 - 后台批量添加成就
 '''
+from django.db.models import QuerySet
+
 from achievement.models import Achievement, AchievementUnlock
 from generic.models import User
 from utils.wrap import return_on_except
+from app.YQPoint_utils import YQPointRecord
+from app.notification_utils import Notification, notification_create, bulk_notification_create
+from app.config import CONFIG
+from app.models import Organization
 
 __all__ = [
     'trigger_achievement',
@@ -13,44 +19,97 @@ __all__ = [
 
 
 @return_on_except(None, Exception, merge_type=True)
-def trigger_achievement(user: User, achievement: Achievement) -> AchievementUnlock:
-    '''处理用户触发成就，添加单个解锁记录
+def trigger_achievement(user: User, achievement: Achievement) -> bool:
+    '''
+    处理用户触发成就，添加单个解锁记录
+    若已解锁则不添加
+    按需发布通知与发放元气值奖励
 
     Args:
     - user (User): 触发该成就的用户
     - achievement (Achievement): 该成就
 
     Returns:
-    若单条记录添加成功返回 AchievementUnlock 对象，若未建立成功返回 None
+    是否成功解锁
     '''
 
-    achievement_unlock = AchievementUnlock.objects.create(
-        user=user, achievement=achievement)
+    _, created = AchievementUnlock.objects.get_or_create(
+        user=user,
+        achievement=achievement
+    )
 
-    return achievement_unlock
+    # 是否成功解锁
+    if created:
+        # 如果有奖励元气值
+        if achievement.reward_points > 0:
+            User.objects.modify_YQPoint(
+                user,
+                achievement.reward_points,
+                source=achievement.name,
+                source_type=YQPointRecord.SourceType.ACHIEVE
+            )
+        # 发送通知 #TODO sender需要调一下
+        # sender = Organization.objects.get(
+        #     oname=CONFIG.yqpoint.org_name).get_user()
+        content = f'恭喜您解锁新成就：{achievement.name}！'
+        if achievement.reward_points > 0:
+            content += f'获得{achievement.reward_points}元气值奖励！'
+        notification_create(
+            receiver=user,
+            sender=user,  # 先用user代替
+            typename=Notification.Type.NEEDREAD,
+            title=Notification.Title.ACHIEVE_INFORM,
+            content=content
+        )
+
+    return created
 
 
 @return_on_except(False, Exception)
-def bulk_add_achievement_record(user_list: list[User], achievement: Achievement):
-    '''批量添加成就解锁记录
+def bulk_add_achievement_record(user_list: QuerySet[User], achievement: Achievement):
+    '''
+    批量添加成就解锁记录
+    若已解锁则不添加
+    按需发布通知与发放元气值奖励
 
     Args:
-    - user_list (list[User]): 需批量添加的用户列表
+    - user_list (QuerySet[User]): 待更改User的QuerySet
     - achievement (Achievement): 需添加的成就
 
     Returns:
     - bool: 是否成功添加
     '''
-
-    unlock_record_list = []
     users_with_achievement = AchievementUnlock.objects.filter(
         achievement=achievement).values_list('user', flat=True)
 
-    for user in user_list:
-        if user.pk not in users_with_achievement:  # 去除已获得过该成就的用户
-            unlock_record_list.append(AchievementUnlock(
-                user=user, achievement=achievement))
+    # 排除已经解锁的用户
+    users_to_add = user_list.exclude(pk__in=users_with_achievement)
 
-    AchievementUnlock.objects.bulk_create(unlock_record_list)
+    # 批量添加成就解锁记录
+    AchievementUnlock.objects.bulk_create([
+        AchievementUnlock(user=user, achievement=achievement)
+        for user in users_to_add
+    ])
+
+    # 批量添加元气值奖励
+    User.objects.bulk_increase_YQPoint(
+        users_to_add,
+        achievement.reward_points,
+        source=achievement.name,
+        source_type=YQPointRecord.SourceType.ACHIEVE
+    )
+
+    # 批量发送通知 #TODO sender需要调一下
+    # sender = Organization.objects.get(oname=CONFIG.yqpoint.org_name).get_user()
+    content = f'恭喜您解锁新成就：{achievement.name}！'
+    if achievement.reward_points > 0:
+        content += f'获得{achievement.reward_points}元气值奖励！'
+    bulk_notification_create(
+        receiver_list=users_to_add,
+        sender=users_to_add[0],  # 先进行代替
+        typename=Notification.Type.NEEDREAD,
+        title=Notification.Title.ACHIEVE_INFORM,
+        content=content
+    )
 
     return True

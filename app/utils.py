@@ -25,7 +25,6 @@ from app.models import (
     Participant,
     ModifyRecord,
 )
-from achievement.models import Achievement, AchievementUnlock
 
 
 def check_user_access(redirect_url="/logout/", is_modpw=False):
@@ -684,20 +683,3 @@ def user_login_org(request: UserRequest, org: Organization) -> MESSAGECONTEXT:
     auth.login(request, org.get_user())  # 切换到小组账号
     update_related_account_in_session(request, user.username, oname=org.oname)
     return succeed("成功切换到小组账号处理该事务，建议事务处理完成后退出小组账号。")
-
-
-def unlock_ZHSH_register(user: User) -> bool:
-    '''
-    解锁成就
-    智慧生活-注册智慧书院
-
-    :param user: 要解锁的用户
-    :type user: User
-    :return: 是否成功解锁
-    :rtype: bool
-    '''
-    _, created = AchievementUnlock.objects.get_or_create(
-        user=user,
-        achievement=Achievement.objects.get(name='注册智慧书院'),
-    )
-    return created

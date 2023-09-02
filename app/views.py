@@ -35,7 +35,6 @@ from app.utils import (
     get_person_or_org,
     record_modify_with_session,
     update_related_account_in_session,
-    unlock_ZHSH_register,
 )
 from extern.wechat import (
     send_verify_code,
@@ -45,7 +44,7 @@ from app.notification_utils import (
     notification_status_change,
     notification2Display,
 )
-from app.YQPoint_utils import add_signin_point, update_YQMM
+from app.YQPoint_utils import add_signin_point
 from app.academic_utils import (
     get_search_results,
     comments2Display,
@@ -55,6 +54,7 @@ from app.academic_utils import (
     get_tag_status,
     get_text_status,
 )
+from achievement.unlock_api import unlock_achievement, unlock_YQMM_series
 
 
 @login_required(redirect_field_name="origin")
@@ -835,10 +835,15 @@ def homepage(request: UserRequest):
                     request.user)
                 html_display['first_signin'] = True  # 前端显示
 
+    # 解锁成就-注册智慧书院
+    # 如果放在注册页面结束判定 则已经注册好的用户获取不到该成就
+    unlock_achievement(request.user, '注册智慧书院')
+
     # 元气满满系列更新
     # TODO: 与设置中学期开始的时间同步，暂时没找到接口
     semester_start = datetime(2023, 8, 19, 0, 0, 0)
-    html_display['YQMM'] = update_YQMM(request.user, semester_start)
+    semester_end = datetime(2024, 2, 1, 0, 0)
+    unlock_YQMM_series(request.user, semester_start, semester_end)
 
     # 开始时间在前后一周内，除了取消和审核中的活动。按时间逆序排序
     recentactivity_list = Activity.objects.get_recent_activity(
@@ -1055,6 +1060,8 @@ def accountSetting(request: UserRequest):
                 modify_msg = '\n'.join(modify_info)
                 record_modify_with_session(request,
                                            f"修改了{expr}项信息：\n{modify_msg}")
+                # 解锁成就-更新一次个人档案
+                unlock_achievement(request.user, '更新一次个人档案')
                 return redirect("/stuinfo/?modinfo=success")
             # else: 没有更新
 
@@ -1162,9 +1169,6 @@ def _create_freshman_account(sid: str, email: str = None):
             current = "更新注册状态"
             freshman.status = Freshman.Status.REGISTERED
             freshman.save()
-
-            # 解锁成就-注册智慧书院
-            unlock_ZHSH_register(user)
         return
     except:
         return current

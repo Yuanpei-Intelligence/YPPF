@@ -16,7 +16,8 @@ from app.models import (
 from app.config import UTYPE_PER
 from app.utils import get_person_or_org
 from app.comment_utils import showComment
-from achievement.models import Achievement, AchievementUnlock
+from achievement.models import Achievement
+from achievement.api import trigger_achievement
 
 __all__ = [
     'get_search_results',
@@ -33,8 +34,6 @@ __all__ = [
     'audit_academic_map',
     'have_entries_of_type',
     'get_tags_for_search',
-    'unlock_ZHSH_academic_chat',
-    'unlock_ZHSH_academic_first',
 ]
 
 
@@ -602,37 +601,3 @@ def get_tags_for_search():
         id += 1
 
     return tags_for_search
-
-
-def unlock_ZHSH_academic_chat(user: User) -> bool:
-    '''
-    解锁成就
-    智慧生活-参与学术问答
-
-    :param user: 要解锁的用户
-    :type user: User
-    :return: 是否成功解锁
-    :rtype: bool
-    '''
-    _, created = AchievementUnlock.objects.get_or_create(
-        user=user,
-        achievement=Achievement.objects.get(name='使用一次反馈中心'),
-    )
-    return created
-
-
-def unlock_ZHSH_academic_first(user: User) -> bool:
-    '''
-    解锁成就
-    智慧生活-第一次参与学术问答
-
-    :param user: 要解锁的用户
-    :type user: User
-    :return: 是否成功解锁
-    :rtype: bool
-    '''
-    _, created = AchievementUnlock.objects.get_or_create(
-        user=user,
-        achievement=Achievement.objects.get(name='第一次参与学术问答'),
-    )
-    return created

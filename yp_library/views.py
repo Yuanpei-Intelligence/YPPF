@@ -7,9 +7,9 @@ from yp_library.utils import (
     get_lendinfo_by_readers,
     get_library_activity,
     get_recommended_or_newest_books,
-    unlock_ZHSH_library,
 )
 from yp_library.config import library_config as CONFIG
+from achievement.unlock_api import unlock_achievement
 
 DISPLAY_ACTIVITY_NUM = 3  # 首页展示的书房活动数量
 DISPLAY_RECOMMENDATION_NUM = 5  # 首页展示的推荐书目数量
@@ -68,5 +68,5 @@ class SearchView(ProfileTemplateView):
         self.extra_context.update({
             "search_results_list": search_books(**get_query_dict(self.request.POST)),
         })
-        unlock_ZHSH_library(self.request.user)
+        unlock_achievement(self.request.user, "使用一次元培书房查询") # 解锁成就-使用一次元培书房查询
         return self.render()

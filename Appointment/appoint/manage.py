@@ -11,7 +11,8 @@ from Appointment.appoint.jobs import set_scheduler, cancel_scheduler
 from Appointment.extern.wechat import MessageType, notify_appoint
 from Appointment.extern.jobs import set_appoint_reminder
 from utils.wrap import return_on_except, stringify_to
-from utils.utils import unlock_ZHSH_appointment
+from achievement.unlock_api import unlock_achievement
+from generic.models import User
 
 
 __all__ = [
@@ -183,8 +184,10 @@ def create_appoint(
 
     get_user_logger(appointer).info(f"发起预约，预约号{appoint.pk}")
 
-    # 如果预约者是个人，解锁成就
-    # TODO:
+    # 如果预约者是个人，解锁成就-完成地下室预约 该部分尚未测试
+    user = User.objects.get(username=appointer.get_id())
+    if user.is_person():
+        unlock_achievement(user, '完成地下室预约')
 
     return _success(appoint)
 

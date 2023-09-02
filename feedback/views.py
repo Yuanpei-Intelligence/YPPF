@@ -19,12 +19,12 @@ from feedback.feedback_utils import (
     update_feedback,
     make_relevant_notification,
     inform_notification,
-    unlock_ZHSH_feedback,
 )
 from feedback.models import (
     FeedbackType,
     Feedback,
 )
+from achievement.unlock_api import unlock_achievement
 
 
 __all__ = [
@@ -586,7 +586,7 @@ def modifyFeedback(request: HttpRequest):
         if context["warn_code"] == 2:   # 成功修改
             feedback: Feedback = Feedback.objects.get(id=context["feedback_id"])
             is_new_application = False  # 状态变更
-            unlock_ZHSH_feedback(request.user) # 解锁成就
+            unlock_achievement(request.user, "使用一次反馈中心") # 解锁成就-使用一次反馈中心
             # 处理通知相关的操作
             try:
                 feasible_post = [

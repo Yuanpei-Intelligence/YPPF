@@ -16,7 +16,7 @@ from app.models import (
     AcademicQAAwards,
 )
 from app.comment_utils import addComment
-from app.academic_utils import unlock_ZHSH_academic_chat
+from achievement.unlock_api import unlock_achievement
 
 __all__ = [
     'change_chat_status',
@@ -234,7 +234,7 @@ def create_QA(request: HttpRequest,
         )
 
     # 解锁成就-参与学术问答
-    unlock_ZHSH_academic_chat(request.user)
+    unlock_achievement(request.user, "参与学术问答")
 
     # 奖励仅限第一次发起非定向提问
     if directed:
@@ -290,6 +290,6 @@ def add_comment_to_QA(request: HttpRequest) -> MESSAGECONTEXT:
                 questioner_anonymous=False)
 
     # 解锁成就-参与学术问答
-    unlock_ZHSH_academic_chat(request.user)
+    unlock_achievement(request.user, "参与学术问答")
 
     return message_context
