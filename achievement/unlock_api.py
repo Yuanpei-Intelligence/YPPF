@@ -113,8 +113,6 @@ def get_income_expenditure(user: User, start_time: datetime, end_time: datetime)
 """ 智慧生活 """
 
 # 连续登录系列
-
-
 def unlock_ZHSH_signin(user: User, continuous_days: int) -> bool:
     '''
     解锁成就
