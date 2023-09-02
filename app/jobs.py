@@ -354,7 +354,7 @@ def weekly_activity_summary_reminder():
             to_notify_activity = no_summary_activity.filter(organization_id=org)
             to_notify_user = Position.objects.get(Q(org=org) 
                                                 & Q(pos=0)).person.person_id
-            message = "检测到以下活动已于本周结束，请及时填写每周活动总结：" + "\n" + " "*13
+            message = "检测到以下活动已于本周日晚12点前结束，请及时填写每周活动总结：" + "\n" + " "*13
             for activity in list(to_notify_activity)[:-1]:
                 message += f"{activity.title}, "
             message += f"{list(to_notify_activity)[-1].title}"
