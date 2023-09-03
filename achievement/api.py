@@ -18,7 +18,7 @@ __all__ = [
 ]
 
 
-@return_on_except(None, Exception, merge_type=True)
+@return_on_except(False, Exception)
 def trigger_achievement(user: User, achievement: Achievement) -> bool:
     '''
     处理用户触发成就，添加单个解锁记录
@@ -30,9 +30,14 @@ def trigger_achievement(user: User, achievement: Achievement) -> bool:
     - achievement (Achievement): 该成就
 
     Returns:
-    是否成功解锁
+    - bool: 是否成功解锁
+
+    Warning:
+        本函数不保证原子化，仅保证并行安全性，但该实现存在风险
     '''
 
+    # XXX: 并行安全性依赖于AchievementUnlock在数据库中的唯一性约束unique_together
+    #     如果该约束被破坏，本函数将不再是原子化的，但不易发现
     _, created = AchievementUnlock.objects.get_or_create(
         user=user,
         achievement=achievement
@@ -78,13 +83,18 @@ def bulk_add_achievement_record(user_list: QuerySet[User], achievement: Achievem
 
     Returns:
     - bool: 是否成功添加
+
+    Warning:
+        本函数不保证原子性，仅保证并行安全性，但该实现存在风险
     '''
+
+    # XXX: 并行安全性依赖于AchievementUnlock在数据库中的唯一性约束unique_together
+    #     如果该约束被破坏，本函数将**重复解锁**成就。
     users_with_achievement = AchievementUnlock.objects.filter(
         achievement=achievement).values_list('user', flat=True)
 
     # 排除已经解锁的用户
     users_to_add = user_list.exclude(pk__in=users_with_achievement)
-
     # 批量添加成就解锁记录
     AchievementUnlock.objects.bulk_create([
         AchievementUnlock(user=user, achievement=achievement)

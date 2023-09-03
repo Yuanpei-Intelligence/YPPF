@@ -2,11 +2,17 @@
 本部分包含所有解锁成就相关的API
 """
 from datetime import datetime
-from typing import Tuple
 
-from generic.models import User, YQPointRecord
-from achievement.models import Achievement, AchievementUnlock
-from achievement.api import trigger_achievement, bulk_add_achievement_record
+from generic.models import User
+from achievement.models import Achievement
+from achievement.api import trigger_achievement
+
+
+__all__ = [
+    'unlock_achievement',
+    'unlock_YQPoint_achievements',
+    'unlock_signin_achievements',
+]
 
 
 # 一般情况直接调用此函数即可
@@ -37,7 +43,7 @@ def unlock_achievement(user: User, achievement_name: str) -> bool:
 """ 元气满满 """
 
 
-def unlock_YQMM_series(user: User, start_time: datetime, end_time: datetime) -> None:
+def unlock_YQPoint_achievements(user: User, start_time: datetime, end_time: datetime) -> None:
     """
     解锁成就 包含元气满满所有成就的判断
 
@@ -64,6 +70,8 @@ def unlock_YQMM_series(user: User, start_time: datetime, end_time: datetime) -> 
     }
 
     # 计算收支情况
+    # TODO: 存在循环引用，暂时放在这里，后续改为信号控制的方式后可改回
+    from app.YQPoint_utils import get_income_expenditure
     income, expenditure, has_records = get_income_expenditure(
         user, start_time, end_time)
 
@@ -78,42 +86,12 @@ def unlock_YQMM_series(user: User, start_time: datetime, end_time: datetime) -> 
                     user, Achievement.objects.get(name=achievement_name))
 
 
-# 为了避免循环引用 计算元气值收支的函数在此处再写一遍
-def get_income_expenditure(user: User, start_time: datetime, end_time: datetime) -> Tuple[int, int, bool]:
-    '''
-    获取用户一段时间内收支情况
-
-    :param user: 要查询的用户
-    :type user: User
-    :param start_time: 开始时间
-    :type start_time: datetime
-    :param end_time: 结束时间
-    :type end_time: datetime
-    :return: 收入, 支出, 是否有记录
-    :rtype: Tuple[int, int, bool]
-    '''
-    # 根据user选出YQPointRecord
-    records = YQPointRecord.objects.filter(user=user)
-    if records:
-        # 统计时期内收支情况
-        records = records.filter(time__gte=start_time, time__lte=end_time)
-        income = 0
-        expenditure = 0
-        for record in records:
-            if record.delta >= 0:
-                income += record.delta
-            else:
-                expenditure += abs(record.delta)
-        return income, expenditure, True
-    return 0, 0, False
-
-
 """ 三五成群 """
 
 """ 智慧生活 """
 
 # 连续登录系列
-def unlock_ZHSH_signin(user: User, continuous_days: int) -> bool:
+def unlock_signin_achievements(user: User, continuous_days: int) -> bool:
     '''
     解锁成就
     智慧生活-连续登录一周/一学期/一整年
