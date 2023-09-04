@@ -27,6 +27,7 @@ __all__ = [
     'buy_lottery_pool',
     'buy_random_pool',
     'run_lottery',
+    'get_income_expenditure',
 ]
 
 

@@ -16,8 +16,6 @@ from app.models import (
 from app.config import UTYPE_PER
 from app.utils import get_person_or_org
 from app.comment_utils import showComment
-from achievement.models import Achievement
-from achievement.api import trigger_achievement
 
 __all__ = [
     'get_search_results',

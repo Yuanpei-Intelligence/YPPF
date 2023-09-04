@@ -185,7 +185,7 @@ def create_appoint(
     get_user_logger(appointer).info(f"发起预约，预约号{appoint.pk}")
 
     # 如果预约者是个人，解锁成就-完成地下室预约 该部分尚未测试
-    user = User.objects.get(username=appointer.get_id())
+    user = appointer.Sid
     if user.is_person():
         unlock_achievement(user, '完成地下室预约')
 

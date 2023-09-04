@@ -4,8 +4,6 @@ from django.http import HttpRequest
 from django.db.models import Q, QuerySet
 
 from Appointment.models import Room, Appoint
-from generic.models import User
-from achievement.models import Achievement, AchievementUnlock
 
 '''
 YWolfeee:

@@ -18,11 +18,6 @@ from feedback.models import (
     FeedbackType,
     Feedback,
 )
-from generic.models import User
-from achievement.models import (
-    Achievement,
-    AchievementUnlock,
-)
 
 
 __all__ = [

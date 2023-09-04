@@ -9,8 +9,7 @@ from generic.models import User
 from utils.wrap import return_on_except
 from app.YQPoint_utils import YQPointRecord
 from app.notification_utils import Notification, notification_create, bulk_notification_create
-from app.config import CONFIG
-from app.models import Organization
+
 
 __all__ = [
     'trigger_achievement',
@@ -18,7 +17,7 @@ __all__ = [
 ]
 
 
-@return_on_except(None, Exception, merge_type=True)
+@return_on_except(False, Exception)
 def trigger_achievement(user: User, achievement: Achievement) -> bool:
     '''
     处理用户触发成就，添加单个解锁记录
@@ -48,7 +47,8 @@ def trigger_achievement(user: User, achievement: Achievement) -> bool:
                 source=achievement.name,
                 source_type=YQPointRecord.SourceType.ACHIEVE
             )
-        # 发送通知 #TODO sender需要调一下
+        # 发送通知 
+        # TODO: sender 需要调整为 元培学院 官方账号
         # sender = Organization.objects.get(
         #     oname=CONFIG.yqpoint.org_name).get_user()
         content = f'恭喜您解锁新成就：{achievement.name}！'
@@ -99,7 +99,8 @@ def bulk_add_achievement_record(user_list: QuerySet[User], achievement: Achievem
         source_type=YQPointRecord.SourceType.ACHIEVE
     )
 
-    # 批量发送通知 #TODO sender需要调一下
+    # 批量发送通知
+    # TODO: sender 需要调整为 元培学院 官方账号
     # sender = Organization.objects.get(oname=CONFIG.yqpoint.org_name).get_user()
     content = f'恭喜您解锁新成就：{achievement.name}！'
     if achievement.reward_points > 0:
