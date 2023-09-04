@@ -1529,11 +1529,7 @@
                             <div class="row">
                                 <h3 class="col mb-0">公开成就</h3>
                             </div>
-                            <ul>
-                                {% for unlock in visible_achievements %}
-                                  <center><p>{{ unlock.achievement }} - {{ unlock.time }}</p></center>
-                                {% endfor %}
-                            </ul>
+                            
                         </body>
 
                         <div id="badges" class="carousel slide" data-ride="carousel">
@@ -1574,11 +1570,11 @@
                         <!--  勋章墙展示  -->
                         <div class="container mt-3 achievement-container">                  
                                 <box>
-                                {% for acs in achievement_types_0 %}
+                                {% for acs, all_achievement_stat, unlocked_personal_stat in achievement_types_0 %}
                                     <td><a href="/achievement/{{acs.title}}"><img src="/media/{{ acs.badge}}", class="achievement-img"></a>
                                         <p>{{acs}}</p>
-                                    <p>{{acs.title}}成就总数:{{all_achievement_stat.acs}}</p>
-                                    <p>{{acs.title}}成就收集数:{{unlocked_personal_stat.acs}}</p>
+                                    <p>{{acs.title}}成就总数:{{all_achievement_stat}}</p>
+                                    <p>{{acs.title}}成就收集数:{{unlocked_personal_stat}}</p>
                                     <p
                                                 style="text-align: left; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
                                                 <i class="fa fa-info-circle" style="width: 20px;"></i>
@@ -1587,31 +1583,31 @@
                                 {% endfor %}
                                         </box>
                                 <box>
-                                {% for acs in achievement_types_1 %}
-                                    <td><a href="/achievement/{{acs.title}}"><img src="/media/{{ acs.badge}}", class="achievement-img"></a>
-                                        <p>{{acs}}</p>
-                                    <p>{{acs.title}}成就总数: {{all_achievement_stat.acs}}</p>
-                                    <p>{{acs.title}}成就收集数:{{unlocked_personal_stat.acs}}</p>
-                                    <p
-                                                style="text-align: left; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
-                                                <i class="fa fa-info-circle" style="width: 20px;"></i>
-                                                <span class="ml-1">{{ acs.description }}</span>
-                                            </p></td>
-                                {% endfor %}
+                                    {% for acs, all_achievement_stat, unlocked_personal_stat in achievement_types_1 %}
+                                        <td><a href="/achievement/{{acs.title}}"><img src="/media/{{ acs.badge}}", class="achievement-img"></a>
+                                            <p>{{acs}}</p>
+                                        <p>{{acs.title}}成就总数:{{all_achievement_stat}}</p>
+                                        <p>{{acs.title}}成就收集数:{{unlocked_personal_stat}}</p>
+                                        <p
+                                                    style="text-align: left; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+                                                    <i class="fa fa-info-circle" style="width: 20px;"></i>
+                                                    <span class="ml-1">{{ acs.description }}</span>
+                                                </p></td>
+                                    {% endfor %}
                                         </box>
-                                <box>
-                                {% for acs in achievement_types_2 %}
-                                    <td><a href="/achievement/{{acs.title}}"><img src="/media/{{ acs.badge}}", class="achievement-img"></a>
-                                        <p>{{acs}}</p>
-                                    <p>{{acs.title}}成就总数: {{all_achievement_stat.acs}}</p>
-                                    <p>{{acs.title}}成就收集数:{{unlocked_personal_stat.acs}}</p>
-                                    <p
-                                                style="text-align: left; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
-                                                <i class="fa fa-info-circle" style="width: 20px;"></i>
-                                                <span class="ml-1">{{ acs.description }}</span>
-                                            </p></td>
-                                {% endfor %}
-                                        </box>
+                                 <box>
+                                    {% for acs, all_achievement_stat, unlocked_personal_stat in achievement_types_2 %}
+                                        <td><a href="/achievement/{{acs.title}}"><img src="/media/{{ acs.badge}}", class="achievement-img"></a>
+                                            <p>{{acs}}</p>
+                                        <p>{{acs.title}}成就总数:{{all_achievement_stat}}</p>
+                                        <p>{{acs.title}}成就收集数:{{unlocked_personal_stat}}</p>
+                                        <p
+                                                    style="text-align: left; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+                                                    <i class="fa fa-info-circle" style="width: 20px;"></i>
+                                                    <span class="ml-1">{{ acs.description }}</span>
+                                                </p></td>
+                                    {% endfor %}
+                                            </box>
                         </div>
                     </div>
                 </div>
