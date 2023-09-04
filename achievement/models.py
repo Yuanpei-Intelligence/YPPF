@@ -52,4 +52,5 @@ class AchievementUnlock(models.Model):
     private = models.BooleanField(default=False)
 
     class Meta:
+        # XXX: 工具函数的并行安全性完全依赖于此约束
         unique_together = ['user', 'achievement']

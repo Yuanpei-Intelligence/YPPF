@@ -3,10 +3,16 @@
 """
 from datetime import datetime
 
-from generic.models import User, YQPointRecord, CreditRecord
+from generic.models import User
 from achievement.models import Achievement
 from achievement.api import trigger_achievement
-from app.models import Course, CourseRecord
+
+
+__all__ = [
+    'unlock_achievement',
+    'unlock_YQPoint_achievements',
+    'unlock_signin_achievements',
+]
 
 
 # 一般情况直接调用此函数即可
@@ -96,7 +102,7 @@ def unlock_WYBJ_series(user: User) -> None:
 """ 元气满满 """
 
 
-def unlock_YQMM_series(user: User, start_time: datetime, end_time: datetime) -> None:
+def unlock_YQPoint_achievements(user: User, start_time: datetime, end_time: datetime) -> None:
     """
     解锁成就 包含元气满满所有成就的判断
 
@@ -124,6 +130,8 @@ def unlock_YQMM_series(user: User, start_time: datetime, end_time: datetime) -> 
 
     from app.YQPoint_utils import get_income_expenditure
     # 计算收支情况
+    # TODO: 存在循环引用，暂时放在这里，后续改为信号控制的方式后可改回
+    from app.YQPoint_utils import get_income_expenditure
     income, expenditure, has_records = get_income_expenditure(
         user, start_time, end_time)
 
@@ -142,8 +150,8 @@ def unlock_YQMM_series(user: User, start_time: datetime, end_time: datetime) -> 
 
 """ 智慧生活 """
 
-
-def unlock_ZHSH_signin(user: User, continuous_days: int) -> bool:
+# 连续登录系列
+def unlock_signin_achievements(user: User, continuous_days: int) -> bool:
     '''
     解锁成就
     智慧生活-连续登录一周/一学期/一整年

@@ -54,7 +54,7 @@ from app.academic_utils import (
     get_tag_status,
     get_text_status,
 )
-from achievement.unlock_api import unlock_achievement, unlock_YQMM_series
+from achievement.unlock_api import unlock_achievement, unlock_YQPoint_achievements
 from semester.api import current_semester
 
 
@@ -842,7 +842,7 @@ def homepage(request: UserRequest):
 
     # 元气满满系列更新
     semester = current_semester()
-    unlock_YQMM_series(request.user, semester.start_date, semester.end_date)
+    unlock_YQPoint_achievements(request.user, semester.start_date, semester.end_date)
 
     # 开始时间在前后一周内，除了取消和审核中的活动。按时间逆序排序
     recentactivity_list = Activity.objects.get_recent_activity(

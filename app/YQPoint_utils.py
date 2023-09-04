@@ -17,7 +17,7 @@ from app.models import (
 )
 from app.extern.wechat import WechatApp, WechatMessageLevel
 from app.notification_utils import bulk_notification_create, notification_create
-from achievement.unlock_api import unlock_ZHSH_signin
+from achievement.unlock_api import unlock_signin_achievements
 
 
 __all__ = [
@@ -116,7 +116,7 @@ def add_signin_point(user: User):
         User.objects.modify_YQPoint(user, bonus_point, "登录额外奖励",
                                     YQPointRecord.SourceType.CHECK_IN)
     # 顺便进行解锁成就检验
-    unlock_ZHSH_signin(user, continuous_days)
+    unlock_signin_achievements(user, continuous_days)
     # 用户应看到的信息
     user_display = [
         f'今日首次签到，获得{add_point}元气值!',
@@ -608,18 +608,18 @@ def run_lottery(pool_id: int):
             )
 
 
-def get_income_expenditure(user: User, start_time: datetime, end_time: datetime) -> Tuple[int, int, bool]:
-    '''
-    获取用户一段时间内收支情况
+def get_income_expenditure(
+    user: User, start_time: datetime, end_time: datetime
+) -> tuple[int, int, bool]:
+    '''获取用户一段时间内收支情况
 
-    :param user: 要查询的用户
-    :type user: User
-    :param start_time: 开始时间
-    :type start_time: datetime
-    :param end_time: 结束时间
-    :type end_time: datetime
-    :return: 收入, 支出, 是否有记录
-    :rtype: Tuple[int, int, bool]
+    Args:
+        user(Usesr): 要查询的用户
+        start_time(datetime): 开始时间
+        end_time(datetime): 结束时间
+
+    Returns:
+        tuple[int, int, bool]: 收入, 支出, 是否有记录
     '''
     # 根据user选出YQPointRecord
     records = YQPointRecord.objects.filter(user=user)
