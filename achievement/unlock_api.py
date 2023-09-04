@@ -3,13 +3,16 @@
 """
 from datetime import datetime
 
-from generic.models import User
+from generic.models import User, CreditRecord
 from achievement.models import Achievement
 from achievement.api import trigger_achievement
+from app.models import CourseRecord, Course
 
 
 __all__ = [
     'unlock_achievement',
+    'unlock_Credit_achievements',
+    'unlock_Course_achievements',
     'unlock_YQPoint_achievements',
     'unlock_signin_achievements',
 ]
@@ -37,9 +40,10 @@ def unlock_achievement(user: User, achievement_name: str) -> bool:
 """ 严于律己 """
 
 
-def unlock_YYLJ_series(user: User, date: datetime) -> None:
+def unlock_Credit_achievements(user: User, date: datetime) -> None:
     """
     解锁成就 包含严于律己所有成就的判断
+    暂未完成
 
     :param user: 要查询的用户
     :type user: User
@@ -55,7 +59,7 @@ def unlock_YYLJ_series(user: User, date: datetime) -> None:
 """ 五育并举 """
 
 
-def unlock_WYBJ_series(user: User) -> None:
+def unlock_Course_achievements(user: User) -> None:
     """
     解锁成就 包含五育并举与学时相关的成就的判断
     这个不太清楚怎么调用合适 是专门写一个command(个人倾向) 还是写在view的homepage里面？
