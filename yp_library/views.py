@@ -9,7 +9,7 @@ from yp_library.utils import (
     get_recommended_or_newest_books,
 )
 from yp_library.config import library_config as CONFIG
-from achievement.unlock_api import unlock_achievement
+from achievement.api import unlock_achievement
 
 DISPLAY_ACTIVITY_NUM = 3  # 首页展示的书房活动数量
 DISPLAY_RECOMMENDATION_NUM = 5  # 首页展示的推荐书目数量

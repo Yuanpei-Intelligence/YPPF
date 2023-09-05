@@ -16,7 +16,7 @@ from app.models import (
     AcademicQAAwards,
 )
 from app.comment_utils import addComment
-from achievement.unlock_api import unlock_achievement
+from achievement.api import unlock_achievement
 
 __all__ = [
     'change_chat_status',

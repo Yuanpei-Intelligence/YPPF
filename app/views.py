@@ -54,7 +54,7 @@ from app.academic_utils import (
     get_tag_status,
     get_text_status,
 )
-from achievement.unlock_api import unlock_achievement, unlock_YQPoint_achievements
+from achievement.api import unlock_achievement, unlock_YQPoint_achievements
 from semester.api import current_semester
 
 

@@ -17,7 +17,7 @@ from app.models import (
 )
 from app.extern.wechat import WechatApp, WechatMessageLevel
 from app.notification_utils import bulk_notification_create, notification_create
-from achievement.unlock_api import unlock_signin_achievements
+from achievement.api import unlock_signin_achievements
 
 
 __all__ = [

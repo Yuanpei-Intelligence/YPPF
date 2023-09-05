@@ -22,7 +22,7 @@ from app.utils import (
     get_sidebar_and_navbar,
     get_person_or_org,
 )
-from achievement.unlock_api import unlock_achievement
+from achievement.api import unlock_achievement
 
 __all__ = [
     'ShowChats',

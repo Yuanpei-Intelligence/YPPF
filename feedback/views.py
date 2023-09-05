@@ -24,7 +24,7 @@ from feedback.models import (
     FeedbackType,
     Feedback,
 )
-from achievement.unlock_api import unlock_achievement
+from achievement.api import unlock_achievement
 
 
 __all__ = [

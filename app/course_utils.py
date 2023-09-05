@@ -57,7 +57,7 @@ from django.db.models import F, Q, Sum, Prefetch
 from scheduler.adder import ScheduleAdder, MultipleAdder
 from scheduler.cancel import remove_job
 from utils.config.cast import str_to_time
-from achievement.unlock_api import unlock_achievement
+from achievement.api import unlock_achievement
 
 __all__ = [
     'check_ac_time_course',
