@@ -257,7 +257,14 @@ class PointMixin(models.Model):
     YQpoint = models.IntegerField('元气值', default=0)
 
 
-class User(AbstractUser, PointMixin):
+class UserBase(models.base.ModelBase):
+    '''临时的类型提示助手'''
+    @property
+    def objects(cls) -> UserManager: ...
+    del objects
+
+
+class User(AbstractUser, PointMixin, metaclass=UserBase):
     '''用户模型
 
     Attributes:
