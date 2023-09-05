@@ -5,8 +5,8 @@ from datetime import datetime
 
 from generic.models import User, CreditRecord
 from achievement.models import Achievement
-from achievement.api import trigger_achievement
 from app.models import CourseRecord, Course
+from achievement.utils import trigger_achievement
 
 
 __all__ = [
