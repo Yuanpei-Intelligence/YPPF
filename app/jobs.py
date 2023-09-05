@@ -344,15 +344,15 @@ def weekly_activity_summary_reminder():
     for org in Organization.objects.filter(otype__in=notify_org_type):
 
         act_summary_map = {
-            act: summary for act, summary in
+            summary.activity: summary for summary in
             ActivitySummary.objects.filter(
-                activity__organization=org,
-                time__date__gte=monday,
+                activity__organization_id=org,
+                # time__date__gte=monday,
                 time__date__lte=today).prefetch_related('activity')
         }
         activities = Activity.objects.filter(
-            organization=org,
-            start__date__gte=monday,
+            organization_id=org,
+            # start__date__gte=monday,
             start__date__lte=today,
         )
         notify_act_list = [
