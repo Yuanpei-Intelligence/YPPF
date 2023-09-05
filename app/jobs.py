@@ -343,19 +343,31 @@ def weekly_activity_summary_reminder():
     title = "每周活动总结提醒"
     for org in Organization.objects.filter(otype__in=notify_org_type):
 
-        if ActivitySummary.objects.filter(
+        act_summary_map = {
+            act: summary for act, summary in
+            ActivitySummary.objects.filter(
                 activity__organization=org,
                 time__date__gte=monday,
-                time__date__lte=today).exists():
-            continue
-
+                time__date__lte=today).prefetch_related('activity')
+        }
+        activities = Activity.objects.filter(
+            organization=org,
+            start__date__gte=monday,
+            start__date__lte=today,
+        )
+        notify_act_list = [
+            act for act in activities if act not in act_summary_map]
         to_notify_user = Position.objects.filter(
             org=org, pos=0).first().person.get_user()
 
-        notification_create(
-            to_notify_user, sender,
-            Notification.Type.NEEDREAD, title, '请及时填写每周活动总结',
-            publish_to_wechat=True,
-            publish_kws={'level': WechatMessageLevel.IMPORTANT,
-                         'show_source': False},
-        )
+        if not act_summary_map or notify_act_list:
+            message = '请及时填写每周活动总结\n' + '\n'.join(
+                ['\t活动：' + act.title for act in notify_act_list]
+            )
+            notification_create(
+                to_notify_user, sender,
+                Notification.Type.NEEDREAD, title, message,
+                publish_to_wechat=True,
+                publish_kws={'level': WechatMessageLevel.IMPORTANT,
+                             'show_source': False},
+            )
