@@ -24,6 +24,8 @@ __all__ = [
     'check_feedback',
     'update_feedback',
     'make_relevant_notification',
+    'examine_notification',
+    'inform_notification',
 ]
 
 

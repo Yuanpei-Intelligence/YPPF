@@ -54,7 +54,8 @@ from app.academic_utils import (
     get_tag_status,
     get_text_status,
 )
-
+from achievement.api import unlock_achievement, unlock_YQPoint_achievements
+from semester.api import current_semester
 
 
 @login_required(redirect_field_name="origin")
@@ -426,12 +427,14 @@ def stuinfo(request: UserRequest):
             chat__respondent=person.get_user()
         )
         if progressing_chat.exists():
-            comments2Display(progressing_chat.first().chat, html_display, request.user)  # TODO: 字典的key有冲突风险
+            comments2Display(progressing_chat.first().chat,
+                             html_display, request.user)  # TODO: 字典的key有冲突风险
             html_display["have_progressing_chat"] = True
         else:  # 没有进行中的问答，显示提问区
             html_display["have_progressing_chat"] = False
             html_display["accept_chat"] = person.get_user().accept_chat
-            html_display["accept_anonymous"] = person.get_user().accept_anonymous_chat
+            html_display["accept_anonymous"] = person.get_user(
+            ).accept_anonymous_chat
 
         # 存储被查询人的信息
         context = dict()
@@ -644,7 +647,8 @@ def orginfo(request: UserRequest):
     html_display["is_course"] = (
         Course.objects.activated().filter(organization=org).exists()
     )
-    inform_share, alert_message = utils.get_inform_share(me, is_myself=is_myself)
+    inform_share, alert_message = utils.get_inform_share(
+        me, is_myself=is_myself)
 
     organization_name = name
     organization_type_name = org.otype.otype_name
@@ -791,7 +795,8 @@ def orginfo(request: UserRequest):
     # 补充订阅该小组的按钮
     allow_unsubscribe = org.otype.allow_unsubscribe  # 是否允许取关
     if request.user.is_person():
-        _unsubscribe_names = me.unsubscribe_list.values_list("oname", flat=True)
+        _unsubscribe_names = me.unsubscribe_list.values_list(
+            "oname", flat=True)
         subscribe_flag = organization_name not in _unsubscribe_names
 
     # 补充作为小组成员，选择是否展示的按钮
@@ -830,6 +835,14 @@ def homepage(request: UserRequest):
                 add_point, html_display['signin_display'] = add_signin_point(
                     request.user)
                 html_display['first_signin'] = True  # 前端显示
+
+    # 解锁成就-注册智慧书院
+    # 如果放在注册页面结束判定 则已经注册好的用户获取不到该成就
+    unlock_achievement(request.user, '注册智慧书院')
+
+    # 元气满满系列更新
+    semester = current_semester()
+    unlock_YQPoint_achievements(request.user, semester.start_date, semester.end_date)
 
     # 开始时间在前后一周内，除了取消和审核中的活动。按时间逆序排序
     recentactivity_list = Activity.objects.get_recent_activity(
@@ -938,12 +951,14 @@ def homepage(request: UserRequest):
         update_time_delta = timedelta(0)
     else:
         update_time_delta = datetime.now() - datetime.strptime(
-            _weather['modify_time'],'%Y-%m-%d %H:%M:%S.%f')
+            _weather['modify_time'], '%Y-%m-%d %H:%M:%S.%f')
     html_display['weather'] = _weather
     # 根据更新时间长短，展示不同的更新天气时间状态
+
     def days_hours_minutes_seconds(td):
         return td.days, td.seconds // 3600, (td.seconds // 60) % 60, td.seconds % 60
-    days, hours, minutes, seconds = days_hours_minutes_seconds(update_time_delta)
+    days, hours, minutes, seconds = days_hours_minutes_seconds(
+        update_time_delta)
     if days > 0:
         last_update = f"{days}天前"
     elif hours > 0:
@@ -991,7 +1006,8 @@ def accountSetting(request: UserRequest):
         if request.method == "POST" and request.POST:
 
             # 合法性检查
-            attr_dict, show_dict, html_display = utils.check_account_setting(request)
+            attr_dict, show_dict, html_display = utils.check_account_setting(
+                request)
             attr_check_list = [attr for attr in attr_dict.keys() if attr not in [
                 'gender', 'ava', 'wallpaper', 'accept_promote', 'wechat_receive_level']]
             if html_display['warn_code'] == 1:
@@ -1043,6 +1059,8 @@ def accountSetting(request: UserRequest):
                 modify_msg = '\n'.join(modify_info)
                 record_modify_with_session(request,
                                            f"修改了{expr}项信息：\n{modify_msg}")
+                # 解锁成就-更新一次个人档案
+                unlock_achievement(request.user, '更新一次个人档案')
                 return redirect("/stuinfo/?modinfo=success")
             # else: 没有更新
 
@@ -1061,7 +1079,8 @@ def accountSetting(request: UserRequest):
             ava = request.FILES.get("avatar")
             wallpaper = request.FILES.get("wallpaper")
             # 合法性检查
-            attr_dict, show_dict, html_display = utils.check_account_setting(request)
+            attr_dict, show_dict, html_display = utils.check_account_setting(
+                request)
             attr_check_list = [attr for attr in attr_dict.keys()]
             if html_display['warn_code'] == 1:
                 return render(request, "person_account_setting.html", locals())
@@ -1463,7 +1482,7 @@ def search(request: HttpRequest):
     # 活动要呈现的内容
     activity_field = ["活动名称", "承办小组", "状态"]
 
-    #先赋空值保证search.html正常运行
+    # 先赋空值保证search.html正常运行
     feedback_field, feedback_list = [], []
     # feedback_field = ["标题", "状态", "负责小组", "内容"]
     # feedback_list = Feedback.objects.filter(
@@ -1581,7 +1600,8 @@ def forgetPassword(request: HttpRequest):
                         "private_level": 0,  # 可选 应在0-2之间
                         # 影响显示的收件人信息
                         # 0级全部显示, 1级只显示第一个收件人, 2级只显示发件人
-                        "secret": CONFIG.email.hasher.encode(msg),  # content加密后的密文
+                        # content加密后的密文
+                        "secret": CONFIG.email.hasher.encode(msg),
                     }
                     post_data = json.dumps(post_data)
                     pre, suf = email.rsplit("@", 1)
@@ -1633,7 +1653,6 @@ def forgetPassword(request: HttpRequest):
                     display = wrong("验证码错误")
                 display.setdefault("colddown", 30)
     return render(request, "forget_password.html", locals())
-
 
 
 @login_required(redirect_field_name="origin")
@@ -1884,4 +1903,3 @@ def notifications(request: HttpRequest):
     bar_display = utils.get_sidebar_and_navbar(request.user,
                                                navbar_name="通知信箱")
     return render(request, "notifications.html", locals())
-

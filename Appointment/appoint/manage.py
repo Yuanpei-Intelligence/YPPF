@@ -11,6 +11,7 @@ from Appointment.appoint.jobs import set_scheduler, cancel_scheduler
 from Appointment.extern.wechat import MessageType, notify_appoint
 from Appointment.extern.jobs import set_appoint_reminder
 from utils.wrap import return_on_except, stringify_to
+from achievement.api import unlock_achievement
 
 
 __all__ = [
@@ -31,7 +32,8 @@ def _notify_create(appoint: Appoint, students_id: list[str] | None = None) -> bo
     if datetime.now() <= appoint.Astart - timedelta(minutes=15):
         notify_appoint(appoint, MessageType.NEW, students_id=students_id)
     else:
-        notify_appoint(appoint, MessageType.NEW_INCOMING, students_id=students_id)
+        notify_appoint(appoint, MessageType.NEW_INCOMING,
+                       students_id=students_id)
     return True
 
 
@@ -50,8 +52,10 @@ def create_require_num(room: Room, type: Appoint.Type) -> int:
 def _success(appoint: Appoint):
     return appoint, ''
 
+
 def _error(msg: str):
     return None, msg
+
 
 def _check_credit(appointer: Participant):
     appointer = Participant.objects.select_for_update().get(pk=appointer.pk)
@@ -178,6 +182,12 @@ def create_appoint(
     set_appoint_reminder(appoint)
 
     get_user_logger(appointer).info(f"发起预约，预约号{appoint.pk}")
+
+    # 如果预约者是个人，解锁成就-完成地下室预约 该部分尚未测试
+    user = appointer.Sid
+    if user.is_person():
+        unlock_achievement(user, '完成地下室预约')
+
     return _success(appoint)
 
 

@@ -12,6 +12,10 @@ class AchievementType(models.Model):
     badge = models.ImageField(upload_to='achievement/images/badges')
     avatar = models.ImageField(upload_to='achievement/images/avatars')
 
+    @admin_only
+    def __str__(self):
+        return self.title
+
     # Actual types in use (remove later)
     # UNDEFINED = (0, "未定义")
     # YUANQIRENSHENG = (1, "元气人生")
@@ -48,4 +52,5 @@ class AchievementUnlock(models.Model):
     private = models.BooleanField(default=False)
 
     class Meta:
+        # XXX: 工具函数的并行安全性完全依赖于此约束
         unique_together = ['user', 'achievement']

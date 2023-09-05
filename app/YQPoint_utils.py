@@ -17,6 +17,7 @@ from app.models import (
 )
 from app.extern.wechat import WechatApp, WechatMessageLevel
 from app.notification_utils import bulk_notification_create, notification_create
+from achievement.api import unlock_signin_achievements
 
 
 __all__ = [
@@ -26,6 +27,7 @@ __all__ = [
     'buy_lottery_pool',
     'buy_random_pool',
     'run_lottery',
+    'get_income_expenditure',
 ]
 
 
@@ -113,6 +115,8 @@ def add_signin_point(user: User):
     if bonus_point:
         User.objects.modify_YQPoint(user, bonus_point, "登录额外奖励",
                                     YQPointRecord.SourceType.CHECK_IN)
+    # 顺便进行解锁成就检验
+    unlock_signin_achievements(user, continuous_days)
     # 用户应看到的信息
     user_display = [
         f'今日首次签到，获得{add_point}元气值!',
@@ -558,7 +562,8 @@ def run_lottery(pool_id: int):
             record.save()
 
         # 给中奖的同学发送通知
-        sender = Organization.objects.get(oname=CONFIG.yqpoint.org_name).get_user()
+        sender = Organization.objects.get(
+            oname=CONFIG.yqpoint.org_name).get_user()
         for user_id in user2prize_names.keys():
             receiver = User.objects.get(id=user_id)
             typename = Notification.Type.NEEDREAD
@@ -601,3 +606,30 @@ def run_lottery(pool_id: int):
                     "level": WechatMessageLevel.IMPORTANT,
                 },
             )
+
+
+def get_income_expenditure(
+    user: User, start_time: datetime, end_time: datetime
+) -> tuple[int, int]:
+    '''获取用户一段时间内收支情况
+
+    Args:
+        user(Usesr): 要查询的用户
+        start_time(datetime): 开始时间
+        end_time(datetime): 结束时间
+
+    Returns:
+        tuple[int, int]: 收入, 支出
+    '''
+    # 根据user选出YQPointRecord
+    records = YQPointRecord.objects.filter(
+        user=user, time__gte=start_time, time__lte=end_time)
+    # 统计时期内收支情况
+    income = 0
+    expenditure = 0
+    for record in records:
+        if record.delta >= 0:
+            income += record.delta
+        else:
+            expenditure += abs(record.delta)
+    return income, expenditure

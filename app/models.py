@@ -1141,6 +1141,7 @@ class Notification(models.Model):
         FEEDBACK_INFORM = "反馈通知"
         YPLIB_INFORM = "元培书房通知"
         LOTTERY_INFORM = "抽奖结果通知"
+        ACHIEVE_INFORM = "解锁成就通知"
 
     status = models.SmallIntegerField(choices=Status.choices, default=1)
     title = models.CharField("通知标题", blank=True, null=True, max_length=50)

@@ -54,7 +54,7 @@ def get_search_results(query: str):
         status=AcademicEntry.EntryStatus.PUBLIC,
     ).values_list(
         "person__person_id__username",
-         "atype", "content",
+        "atype", "content",
     )
 
     # 根据tag/text对应的人，整合学术地图项目
@@ -187,7 +187,7 @@ def comments2Display(chat: Chat, context: dict, user: User):
         chat.respondent).get_display_name()
     context['academic_url'] = get_person_or_org(
         chat.respondent).get_absolute_url(
-        ) if is_questioner else get_person_or_org(
+    ) if is_questioner else get_person_or_org(
             chat.questioner).get_absolute_url()
 
     # 在对方匿名时，提供一些简单的信息
@@ -213,7 +213,7 @@ def comments2Display(chat: Chat, context: dict, user: User):
 
 
 def get_js_tag_list(author: NaturalPerson, type: AcademicTag.Type,
-                    selected: bool, status_in: list=None) -> List[dict]:
+                    selected: bool, status_in: list = None) -> List[dict]:
     """
     用于前端显示支持搜索的专业/项目列表，返回形如[{id, content}]的列表。
 
@@ -242,8 +242,10 @@ def get_js_tag_list(author: NaturalPerson, type: AcademicTag.Type,
         all_my_tags = AcademicTagEntry.objects.activated().filter(person=author)
         if status_in is not None:
             all_my_tags = all_my_tags.filter(status__in=stats)
-        tags = all_my_tags.filter(tag__atype=type).values('tag__id', 'tag__tag_content')
-        js_list = [{"id": tag['tag__id'], "text": tag['tag__tag_content']} for tag in tags]
+        tags = all_my_tags.filter(tag__atype=type).values(
+            'tag__id', 'tag__tag_content')
+        js_list = [{"id": tag['tag__id'], "text": tag['tag__tag_content']}
+                   for tag in tags]
     else:
         tags = AcademicTag.objects.filter(atype=type)
         js_list = [{"id": tag.id, "text": tag.tag_content} for tag in tags]
@@ -252,7 +254,7 @@ def get_js_tag_list(author: NaturalPerson, type: AcademicTag.Type,
 
 
 def get_text_list(author: NaturalPerson, type: AcademicTextEntry.Type,
-                  status_in: list=None) -> List[str]:
+                  status_in: list = None) -> List[str]:
     """
     获取自己的所有类型为type的TextEntry的内容列表。
 
@@ -295,7 +297,8 @@ def get_tag_status(person: NaturalPerson, type: AcademicTag.Type) -> str:
     :rtype: str
     """
     # 首先获取person所有的TagEntry
-    all_tag_entries = AcademicTagEntry.objects.activated().filter(person=person, tag__atype=type)
+    all_tag_entries = AcademicTagEntry.objects.activated().filter(
+        person=person, tag__atype=type)
 
     if all_tag_entries.exists():
         # 因为所有类型为type的TagEntry的公开状态都一样，所以直接返回第一个entry的公开状态
@@ -318,7 +321,8 @@ def get_text_status(person: NaturalPerson, type: AcademicTextEntry.Type) -> str:
     :rtype: str
     """
     # 首先获取person所有的类型为type的TextEntry
-    all_text_entries = AcademicTextEntry.objects.activated().filter(person=person, atype=type)
+    all_text_entries = AcademicTextEntry.objects.activated().filter(person=person,
+                                                                    atype=type)
 
     if all_text_entries.exists():
         # 因为所有类型为type的TextEntry的公开状态都一样，所以直接返回第一个entry的公开状态
@@ -345,7 +349,8 @@ def update_tag_entry(person: NaturalPerson,
     :type type: AcademicTag.Type
     """
     # 首先获取person所有的TagEntry
-    all_tag_entries = AcademicTagEntry.objects.activated().filter(person=person, tag__atype=type)
+    all_tag_entries = AcademicTagEntry.objects.activated().filter(
+        person=person, tag__atype=type)
     # 标签类型无需审核
     updated_status = (AcademicEntry.EntryStatus.PUBLIC
                       if status == "公开" else
@@ -387,7 +392,8 @@ def update_text_entry(person: NaturalPerson,
     :type type: AcademicTextEntry.Type
     """
     # 首先获取person所有的类型为type的TextEntry
-    all_text_entries = AcademicTextEntry.objects.activated().filter(person=person, atype=type)
+    all_text_entries = AcademicTextEntry.objects.activated().filter(person=person,
+                                                                    atype=type)
     updated_status = (AcademicEntry.EntryStatus.WAIT_AUDIT
                       if status == "公开" else
                       AcademicEntry.EntryStatus.PRIVATE)
@@ -414,8 +420,8 @@ def update_text_entry(person: NaturalPerson,
         if content != "":
             AcademicTextEntry.objects.create(
                 person=person, atype=type, content=content,
-                status=AcademicEntry.EntryStatus.WAIT_AUDIT if status == "公开" \
-                    else AcademicEntry.EntryStatus.PRIVATE
+                status=AcademicEntry.EntryStatus.WAIT_AUDIT if status == "公开"
+                else AcademicEntry.EntryStatus.PRIVATE
             )
 
 
@@ -440,17 +446,20 @@ def update_academic_map(request: HttpRequest) -> dict:
     internship_num = int(request.POST['internship_num'])
     scientific_direction_num = int(request.POST['scientific_direction_num'])
     graduation_num = int(request.POST['graduation_num'])
-    scientific_research = [request.POST[f'scientific_research_{i}'] \
-                            for i in range(scientific_research_num+1)]
-    challenge_cup = [request.POST[f'challenge_cup_{i}'] \
-                        for i in range(challenge_cup_num+1)]
-    internship = [request.POST[f'internship_{i}'] for i in range(internship_num+1)]
-    scientific_direction = [request.POST[f'scientific_direction_{i}'] \
+    scientific_research = [request.POST[f'scientific_research_{i}']
+                           for i in range(scientific_research_num+1)]
+    challenge_cup = [request.POST[f'challenge_cup_{i}']
+                     for i in range(challenge_cup_num+1)]
+    internship = [request.POST[f'internship_{i}']
+                  for i in range(internship_num+1)]
+    scientific_direction = [request.POST[f'scientific_direction_{i}']
                             for i in range(scientific_direction_num+1)]
-    graduation = [request.POST[f'graduation_{i}'] for i in range(graduation_num+1)]
+    graduation = [request.POST[f'graduation_{i}']
+                  for i in range(graduation_num+1)]
 
     # 对上述五个列表中的所有填写项目，检查是否超过数据库要求的字数上限
-    max_length_of = lambda items: max([len(item) for item in items]) if len(items) > 0 else 0
+    def max_length_of(items): return max(
+        [len(item) for item in items]) if len(items) > 0 else 0
     MAX_LENGTH = 4095
     if max_length_of(scientific_research) > MAX_LENGTH:
         return wrong("您设置的本科生科研经历太长啦！请修改~")
@@ -483,7 +492,8 @@ def update_academic_map(request: HttpRequest) -> dict:
         update_tag_entry(me, minors, minor_status, AcademicTag.Type.MINOR)
         update_tag_entry(me, double_degrees, double_degree_status,
                          AcademicTag.Type.DOUBLE_DEGREE)
-        update_tag_entry(me, projects, project_status, AcademicTag.Type.PROJECT)
+        update_tag_entry(me, projects, project_status,
+                         AcademicTag.Type.PROJECT)
 
         # 然后更新自己的TextEntry
         update_text_entry(
