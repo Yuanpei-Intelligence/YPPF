@@ -1036,6 +1036,7 @@ class Activity(CommentBase):
             point = min(CONFIG.yqpoint.activity.max, point)
         participants = self.attended_participants.values_list(
             'person_id__person_id', flat=True)
+        participants = User.objects.filter(id__in=participants)
         User.objects.bulk_increase_YQPoint(
             participants, point, "参加活动", YQPointRecord.SourceType.ACTIVITY)
 

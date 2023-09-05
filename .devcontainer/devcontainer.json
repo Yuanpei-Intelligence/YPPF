@@ -12,7 +12,8 @@
         "vscode": {
             "settings": {
                 "json.format.enable": false,
-                "editor.formatOnSave": true
+                "editor.formatOnSave": true,
+                "editor.formatOnSaveMode": "modificationsIfAvailable"
             },
             "extensions": [
                 "ms-python.python",
