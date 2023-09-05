@@ -1,45 +1,28 @@
-import os
 import json
+import os
 import urllib.request
-from typing import Dict, Any
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, date
+from typing import Any, Dict
 
 from django.db import transaction  # 原子化更改数据库
-from django.db.models import F
+from django.db.models import F, Q
 
-# (see: https://docs.djangoproject.com/en/dev/ref/databases/#general-notes
-# for background)
-# from django_apscheduler.util import close_old_connections
-
-from boot.config import GLOBAL_CONFIG
+from app.activity_utils import changeActivityStatus, notifyActivity
+from app.config import *
+from app.extern.wechat import WechatApp, WechatMessageLevel
 from app.log import logger
+from app.models import (Activity, ActivityPhoto, Course, CourseParticipant,
+                        CourseTime, NaturalPerson, Notification, Organization,
+                        OrganizationType, Participant, Position, User, ActivitySummary)
+from app.notification_utils import (bulk_notification_create,
+                                    notification_create)
+from boot.config import GLOBAL_CONFIG
+from record.models import PageLog
 from scheduler.adder import MultipleAdder
 from scheduler.cancel import remove_job
 from scheduler.periodic import periodical
-from record.models import PageLog
-from app.models import (
-    User,
-    NaturalPerson,
-    Organization,
-    Activity,
-    ActivityPhoto,
-    Participant,
-    Notification,
-    Position,
-    Course,
-    CourseTime,
-    CourseParticipant, 
-)
-from app.activity_utils import (
-    changeActivityStatus,
-    notifyActivity,
-)
-from app.notification_utils import (
-    bulk_notification_create,
-    notification_create,
-)
-from app.extern.wechat import WechatMessageLevel, WechatApp
-from app.config import *
+from semester.api import current_semester
+from utils.marker import script
 
 
 __all__ = [
@@ -94,7 +77,8 @@ def changeAllActivities():
             yield first
             first += step
     now = datetime.now()
-    times = next_time_generator(now + timedelta(seconds=20), timedelta(seconds=5))
+    times = next_time_generator(
+        now + timedelta(seconds=20), timedelta(seconds=5))
     adder = MultipleAdder(changeActivityStatus)
 
     def _update_all(_cur, _next, activities):
@@ -106,19 +90,22 @@ def changeAllActivities():
         status=Activity.Status.APPLYING,
         apply_end__lte=now,
     )
-    _update_all(Activity.Status.APPLYING, Activity.Status.WAITING, applying_activities)
+    _update_all(Activity.Status.APPLYING,
+                Activity.Status.WAITING, applying_activities)
 
     waiting_activities = Activity.objects.filter(
         status=Activity.Status.WAITING,
         start__lte=now,
     )
-    _update_all(Activity.Status.WAITING, Activity.Status.PROGRESSING, waiting_activities)
+    _update_all(Activity.Status.WAITING,
+                Activity.Status.PROGRESSING, waiting_activities)
 
     progressing_activities = Activity.objects.filter(
         status=Activity.Status.PROGRESSING,
         end__lte=now,
     )
-    _update_all(Activity.Status.PROGRESSING, Activity.Status.END, progressing_activities)
+    _update_all(Activity.Status.PROGRESSING,
+                Activity.Status.END, progressing_activities)
 
 
 @periodical('interval', job_id="get weather per hour", hours=1)
@@ -235,26 +222,26 @@ def add_week_course_activity(course_id: int, weektime_id: int, cur_week: int, co
     # TODO: 修改UNPUBLISHED状态的诡异逻辑和状态切换
     if activity.need_apply:
         changer.schedule(f'activity_{activity.id}_{Activity.Status.APPLYING}',
-            run_time=activity.publish_time
-        )(activity.id, Activity.Status.UNPUBLISHED, Activity.Status.APPLYING)
+                         run_time=activity.publish_time
+                         )(activity.id, Activity.Status.UNPUBLISHED, Activity.Status.APPLYING)
         changer.schedule(f'activity_{activity.id}_{Activity.Status.WAITING}',
-            run_time=activity.start - timedelta(hours=1)
-        )(activity.id, Activity.Status.APPLYING, Activity.Status.WAITING)
+                         run_time=activity.start - timedelta(hours=1)
+                         )(activity.id, Activity.Status.APPLYING, Activity.Status.WAITING)
     else:
         changer.schedule(f'activity_{activity.id}_{Activity.Status.WAITING}',
-            run_time=activity.publish_time
-        )(activity.id, Activity.Status.UNPUBLISHED, Activity.Status.WAITING)
+                         run_time=activity.publish_time
+                         )(activity.id, Activity.Status.UNPUBLISHED, Activity.Status.WAITING)
 
     notifier.schedule(f'activity_{activity.id}_newCourseActivity',
-        run_time=activity.publish_time)(activity.id, "newCourseActivity")
+                      run_time=activity.publish_time)(activity.id, "newCourseActivity")
     notifier.schedule(f'activity_{activity.id}_remind',
-        run_time=activity.start - timedelta(minutes=15))(activity.id, "remind")
+                      run_time=activity.start - timedelta(minutes=15))(activity.id, "remind")
     changer.schedule(f'activity_{activity.id}_{Activity.Status.PROGRESSING}',
-        run_time=activity.start
-    )(activity.id, Activity.Status.WAITING, Activity.Status.PROGRESSING)
+                     run_time=activity.start
+                     )(activity.id, Activity.Status.WAITING, Activity.Status.PROGRESSING)
     changer.schedule(f'activity_{activity.id}_{Activity.Status.END}',
-        run_time=activity.end
-    )(activity.id, Activity.Status.PROGRESSING, Activity.Status.END)
+                     run_time=activity.end
+                     )(activity.id, Activity.Status.PROGRESSING, Activity.Status.END)
 
     notification_create(
         receiver=examine_teacher.person_id,
@@ -291,6 +278,7 @@ def longterm_launch_course():
                     add_week_course_activity(
                         course.id, week_time.id, cur_week, course_stage2)
 
+
 @periodical('cron', 'active_score_updater', hour=1)
 def update_active_score_per_day(days=14):
     '''每天计算用户活跃度， 计算前days天（不含今天）内的平均活跃度'''
@@ -326,8 +314,9 @@ def _cancel_jobs(sender, instance, **kwargs):
 
 def register_pre_delete():
     '''注册删除前清除定时任务的函数'''
-    import app.models
     from django.db import models
+
+    import app.models
     for name in app.models.__all__:
         try:
             model = getattr(app.models, name)
@@ -337,3 +326,48 @@ def register_pre_delete():
             # 不具有关联任务的模型无需设置
             continue
         models.signals.pre_delete.connect(_cancel_jobs, sender=model)
+
+
+@script
+@periodical('cron', 'weekly_activity_summary_reminder', hour=20, minute=0, day_of_week='sun')
+def weekly_activity_summary_reminder():
+    '''每周日晚上8点提醒未填写周报的组织负责人，目前仅限于团委，学学学委员会，学学学学会，学生会'''
+    today = date.today()
+    monday = today - timedelta(days=today.weekday())
+    cur_semester = current_semester()
+    if not cur_semester.start_date <= today <= cur_semester.end_date:
+        return
+    notify_org_type = OrganizationType.objects.filter(
+        otype_name__in=['团委', '学学学委员会', '学学学学会', '学生会'])
+    sender = User.objects.get(username='zz00000')
+    title = "每周活动总结提醒"
+    for org in Organization.objects.filter(otype__in=notify_org_type):
+
+        act_summary_map = {
+            summary.activity: summary for summary in
+            ActivitySummary.objects.filter(
+                activity__organization_id=org,
+                # time__date__gte=monday,
+                time__date__lte=today).prefetch_related('activity')
+        }
+        activities = Activity.objects.filter(
+            organization_id=org,
+            # start__date__gte=monday,
+            start__date__lte=today,
+        )
+        notify_act_list = [
+            act for act in activities if act not in act_summary_map]
+        to_notify_user = Position.objects.filter(
+            org=org, pos=0).first().person.get_user()
+
+        if not act_summary_map or notify_act_list:
+            message = '请及时填写每周活动总结\n' + '\n'.join(
+                ['\t活动：' + act.title for act in notify_act_list]
+            )
+            notification_create(
+                to_notify_user, sender,
+                Notification.Type.NEEDREAD, title, message,
+                publish_to_wechat=True,
+                publish_kws={'level': WechatMessageLevel.IMPORTANT,
+                             'show_source': False},
+            )
