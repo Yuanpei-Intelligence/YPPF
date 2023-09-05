@@ -198,8 +198,20 @@ python manage.py runserver ip:port
 
 ## 加入我们
 
+您可以通过多种方式为本项目做出贡献，例如加入项目组、帮助改进代码或编写文档。即使您对编程一无所知，也能做出有意义的贡献，我们十分欢迎您向我们报告错误或提出改进建议。
+
+### 报告错误和改进建议
+
+若您在使用时遇到错误，或者有设计新功能的想法，请通过[issue](https://github.com/Yuanpei-Intelligence/YPPF/issues)告诉我们。
+
+若您在使用过程中遇到bug，可以详细描述触发错误的场景和操作，最好保证该错误可以复现。
+
+若在运行代码时发生异常，请在报告中包含错误的traceback上下文信息，并尽量添加该文件的链接，以便查找问题。如有可能，提供能复现错误的代码片段是最直观的方法。
+
+在提出任何建议前，我们希望您能查看是否已有类似提议，避免重复讨论。我们鼓励更具体明确的提案，这比泛泛而谈的交流更高效可行。
 
 ### Contribute
+
 Fork the repo, modify on develop branch of your replica.
 
 Reference 
