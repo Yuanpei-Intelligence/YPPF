@@ -9,7 +9,7 @@ from django.db.models import Q, F
 import csv
 import qrcode
 
-from generic.models import YQPointRecord, User
+from generic.models import User
 from generic.utils import to_search_indices
 from app.views_dependency import *
 from app.view.base import ProfileTemplateView
