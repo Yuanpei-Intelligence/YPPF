@@ -610,7 +610,7 @@ def run_lottery(pool_id: int):
 
 def get_income_expenditure(
     user: User, start_time: datetime, end_time: datetime
-) -> tuple[int, int, bool]:
+) -> tuple[int, int]:
     '''获取用户一段时间内收支情况
 
     Args:
@@ -619,19 +619,17 @@ def get_income_expenditure(
         end_time(datetime): 结束时间
 
     Returns:
-        tuple[int, int, bool]: 收入, 支出, 是否有记录
+        tuple[int, int]: 收入, 支出
     '''
     # 根据user选出YQPointRecord
-    records = YQPointRecord.objects.filter(user=user)
-    if records:
-        # 统计时期内收支情况
-        records = records.filter(time__gte=start_time, time__lte=end_time)
-        income = 0
-        expenditure = 0
-        for record in records:
-            if record.delta >= 0:
-                income += record.delta
-            else:
-                expenditure += abs(record.delta)
-        return income, expenditure, True
-    return 0, 0, False
+    records = YQPointRecord.objects.filter(
+        user=user, time__gte=start_time, time__lte=end_time)
+    # 统计时期内收支情况
+    income = 0
+    expenditure = 0
+    for record in records:
+        if record.delta >= 0:
+            income += record.delta
+        else:
+            expenditure += abs(record.delta)
+    return income, expenditure

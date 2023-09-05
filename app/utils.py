@@ -292,7 +292,7 @@ def get_std_url(arg_url: str, site_url: str, path_dir=None, match_func=None):
     - match_func: 检查匹配的函数，默认为site_match(site_url, arg_url)
     '''
     if match_func is None:
-        def match_func(x): return site_match(site_url, x)
+        match_func = lambda x: site_match(site_url, x)
 
     if arg_url is None:
         return False, site_url
