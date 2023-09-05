@@ -393,7 +393,7 @@ class YQPointRecord(models.Model):
     delta = models.IntegerField('变化量')
     source = models.CharField('来源', max_length=50, blank=True)
 
-    # TODO: Can we remove this? 
+    # TODO: Can we remove this?
     class SourceType(models.IntegerChoices):
         SYSTEM = (0, '系统操作')
         CHECK_IN = (1, '每日签到')
