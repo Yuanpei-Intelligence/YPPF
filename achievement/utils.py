@@ -2,13 +2,14 @@
 - 处理用户触发成就
 - 后台批量添加成就
 '''
+from django.db import transaction
 from django.db.models import QuerySet
 
+from generic.models import User, YQPointRecord
+from app.models import Notification
 from achievement.models import Achievement, AchievementUnlock
-from generic.models import User
 from utils.wrap import return_on_except
-from app.YQPoint_utils import YQPointRecord
-from app.notification_utils import Notification, notification_create, bulk_notification_create
+from app.notification_utils import notification_create, bulk_notification_create
 
 
 __all__ = [
@@ -18,6 +19,7 @@ __all__ = [
 
 
 @return_on_except(False, Exception)
+@transaction.atomic
 def trigger_achievement(user: User, achievement: Achievement) -> bool:
     '''
     处理用户触发成就，添加单个解锁记录
@@ -32,11 +34,11 @@ def trigger_achievement(user: User, achievement: Achievement) -> bool:
     - bool: 是否成功解锁
 
     Warning:
-        本函数不保证原子化，仅保证并行安全性，但该实现存在风险
+        本函数保证原子化，且保证并行安全性，但后者实现存在风险
     '''
 
     # XXX: 并行安全性依赖于AchievementUnlock在数据库中的唯一性约束unique_together
-    #     如果该约束被破坏，本函数将不再是原子化的，但不易发现
+    #     如果该约束被破坏，本函数将不再是安全的，但不易发现
     _, created = AchievementUnlock.objects.get_or_create(
         user=user,
         achievement=achievement
@@ -71,6 +73,7 @@ def trigger_achievement(user: User, achievement: Achievement) -> bool:
 
 
 @return_on_except(False, Exception)
+@transaction.atomic
 def bulk_add_achievement_record(user_list: QuerySet[User], achievement: Achievement):
     '''
     批量添加成就解锁记录
@@ -85,7 +88,7 @@ def bulk_add_achievement_record(user_list: QuerySet[User], achievement: Achievem
     - bool: 是否成功添加
 
     Warning:
-        本函数不保证原子性，仅保证并行安全性，但该实现存在风险
+        本函数保证原子化，且保证并行安全性，但后者实现存在风险
     '''
 
     # XXX: 并行安全性依赖于AchievementUnlock在数据库中的唯一性约束unique_together
@@ -116,7 +119,7 @@ def bulk_add_achievement_record(user_list: QuerySet[User], achievement: Achievem
     if achievement.reward_points > 0:
         content += f'获得{achievement.reward_points}元气值奖励！'
     bulk_notification_create(
-        receiver_list=users_to_add,
+        users_to_add,
         sender=users_to_add[0],  # 先进行代替
         typename=Notification.Type.NEEDREAD,
         title=Notification.Title.ACHIEVE_INFORM,

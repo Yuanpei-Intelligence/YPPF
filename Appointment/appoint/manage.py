@@ -12,7 +12,6 @@ from Appointment.extern.wechat import MessageType, notify_appoint
 from Appointment.extern.jobs import set_appoint_reminder
 from utils.wrap import return_on_except, stringify_to
 from achievement.api import unlock_achievement
-from generic.models import User
 
 
 __all__ = [
