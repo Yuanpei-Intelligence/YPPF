@@ -11,7 +11,9 @@ USER_NAME_2 = "2"
 TEACHER_NAME = "10"
 TEACHER_NAME_2 = "11"
 
-ORGANIZATION_USER_NAME = ['hhb', 'wdb']
+ORGANIZATION_USER_NAME = ['zz00001', 'zz00002', 'zz00000']
+ORGANIZATION_ONAME = ['绘画班', '舞蹈班', 'Official']
+
 
 # TODO: Change Settings
 assert config.DEBUG, 'Should not import fake_records in production env.'
@@ -199,41 +201,24 @@ def create_org_tag():
 
 
 def create_org():
-    user, created = User.objects.get_or_create(username=ORGANIZATION_USER_NAME[0])
-    user.utype = User.Type.ORG
-    user.is_newuser = False
-    user.set_password(ORGANIZATION_USER_NAME[0])
-    oname = '绘画班'
-    otype = OrganizationType.objects.get(otype_id=1)
-    tags = OrganizationTag.objects.get(name='兴趣')
-    user.save()
 
-    if created:
-        org = Organization.objects.create(
-            organization_id=user,
-            oname=oname,
-            otype=otype,
-        )
-        org.tags.set([tags])
-        org.save()
+    for uname, oname in zip(ORGANIZATION_USER_NAME, ORGANIZATION_ONAME):
+        user, created = User.objects.get_or_create(username=uname)
+        user.utype = User.Type.ORG
+        user.is_newuser = False
+        user.set_password(uname)
+        otype = OrganizationType.objects.get(otype_id=1)
+        tags = OrganizationTag.objects.get(name='兴趣')
+        user.save()
 
-    user_2, created_2 = User.objects.get_or_create(username=ORGANIZATION_USER_NAME[1])
-    user_2.utype = User.Type.ORG
-    user_2.is_newuser = False
-    oname_2 = '舞蹈班'
-    otype_2 = OrganizationType.objects.get(otype_id=1)
-    tags_2 = OrganizationTag.objects.get(name='兴趣')
-    tags_2_2 = OrganizationTag.objects.get(name='住宿生活')
-    user_2.save()
-
-    if created_2:
-        org_2 = Organization.objects.create(
-            organization_id=user_2,
-            oname=oname_2,
-            otype=otype_2,
-        )
-        org_2.tags.set([tags_2, tags_2_2])
-        org_2.save()
+        if created:
+            org = Organization.objects.create(
+                organization_id=user,
+                oname=oname,
+                otype=otype,
+            )
+            org.tags.set([tags])
+            org.save()
 
 
 def create_position():
@@ -324,7 +309,3 @@ def create_all():
     create_org_tag()
     create_org()
     create_position()
-
-
-
-

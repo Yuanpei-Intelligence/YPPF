@@ -5,7 +5,7 @@ from datetime import datetime
 
 from django.db.models import Sum
 
-from generic.models import User, CreditRecord
+from generic.models import User
 from app.models import CourseRecord, Course
 from achievement.models import Achievement
 from achievement.utils import trigger_achievement
@@ -34,7 +34,6 @@ def unlock_achievement(user: User, achievement_name: str) -> bool:
     return trigger_achievement(user, Achievement.objects.get(name=achievement_name))
 
 
-
 def _unlock_by_value(user: User, acquired_value: float,
                      sorted_achievements: list[tuple[float, str]]) -> bool:
     '''将所有超过了解锁阈值的成就解锁'''
@@ -52,24 +51,6 @@ def _unlock_by_value(user: User, acquired_value: float,
 
 ''' 严于律己 '''
 
-def unlock_credit_achievements(user: User, date: datetime):
-    '''
-    解锁成就 包含严于律己所有成就的判断
-    暂未完成
-
-    :param user: 要查询的用户
-    :type user: User
-    :param date: 当前日期
-    :type date: datetime
-    '''
-    # 当月没有扣除信用分
-    records = CreditRecord.objects.filter(user=user)
-    # 不知道怎么实现方便
-    # 其实可以直接写一个command 周期性运行检验
-    return NotImplemented
-
-
-''' 五育并举 '''
 
 def unlock_course_achievements(user: User) -> None:
     '''
@@ -79,12 +60,14 @@ def unlock_course_achievements(user: User) -> None:
     :param user: 要查询的用户
     :type user: User
     '''
-    records = CourseRecord.objects.filter(person__person_id=user, invalid=False)
+    records = CourseRecord.objects.filter(
+        person__person_id=user, invalid=False)
     if not records:
         return
 
     # 统计有效学时
-    total_hours = records.aggregate(total_hours=Sum('total_hours'))['total_hours']
+    total_hours = records.aggregate(
+        total_hours=Sum('total_hours'))['total_hours']
     # 解锁成就
     _unlock_by_value(user, total_hours, [
         (32, '完成一半书院学分要求'),
@@ -109,6 +92,7 @@ def unlock_course_achievements(user: User) -> None:
 ''' 志同道合 '''
 
 ''' 元气满满 '''
+
 
 def unlock_YQPoint_achievements(user: User, start_time: datetime, end_time: datetime) -> None:
     '''
@@ -146,6 +130,8 @@ def unlock_YQPoint_achievements(user: User, start_time: datetime, end_time: date
 ''' 智慧生活 '''
 
 # 连续登录系列
+
+
 def unlock_signin_achievements(user: User, continuous_days: int) -> bool:
     '''
     解锁成就

@@ -45,31 +45,27 @@ def trigger_achievement(user: User, achievement: Achievement) -> bool:
     )
 
     # 是否成功解锁
-    if created:
-        # 如果有奖励元气值
-        if achievement.reward_points > 0:
-            User.objects.modify_YQPoint(
-                user,
-                achievement.reward_points,
-                source=achievement.name,
-                source_type=YQPointRecord.SourceType.ACHIEVE
-            )
-        # 发送通知 
-        # TODO: sender 需要调整为 元培学院 官方账号
-        # sender = Organization.objects.get(
-        #     oname=CONFIG.yqpoint.org_name).get_user()
-        content = f'恭喜您解锁新成就：{achievement.name}！'
-        if achievement.reward_points > 0:
-            content += f'获得{achievement.reward_points}元气值奖励！'
-        notification_create(
-            receiver=user,
-            sender=user,  # 先用user代替
-            typename=Notification.Type.NEEDREAD,
-            title=Notification.Title.ACHIEVE_INFORM,
-            content=content
-        )
+    assert created, '成就已解锁'
 
-    return created
+    content = f'恭喜您解锁新成就：{achievement.name}！'
+    # 如果有奖励元气值
+    if achievement.reward_points > 0:
+        User.objects.modify_YQPoint(
+            user,
+            achievement.reward_points,
+            source=achievement.name,
+            source_type=YQPointRecord.SourceType.ACHIEVE
+        )
+        content += f'获得{achievement.reward_points}元气值奖励！'
+    notification_create(
+        receiver=user,
+        sender=None,
+        typename=Notification.Type.NEEDREAD,
+        title=Notification.Title.ACHIEVE_INFORM,
+        content=content
+    )
+
+    return True
 
 
 @return_on_except(False, Exception)
@@ -104,23 +100,19 @@ def bulk_add_achievement_record(user_list: QuerySet[User], achievement: Achievem
         for user in users_to_add
     ])
 
-    # 批量添加元气值奖励
-    User.objects.bulk_increase_YQPoint(
-        users_to_add,
-        achievement.reward_points,
-        source=achievement.name,
-        source_type=YQPointRecord.SourceType.ACHIEVE
-    )
-
-    # 批量发送通知
-    # TODO: sender 需要调整为 元培学院 官方账号
-    # sender = Organization.objects.get(oname=CONFIG.yqpoint.org_name).get_user()
     content = f'恭喜您解锁新成就：{achievement.name}！'
+
     if achievement.reward_points > 0:
+        User.objects.bulk_increase_YQPoint(
+            users_to_add,
+            achievement.reward_points,
+            source=achievement.name,
+            source_type=YQPointRecord.SourceType.ACHIEVE
+        )
         content += f'获得{achievement.reward_points}元气值奖励！'
     bulk_notification_create(
         users_to_add,
-        sender=users_to_add[0],  # 先进行代替
+        sender=None,
         typename=Notification.Type.NEEDREAD,
         title=Notification.Title.ACHIEVE_INFORM,
         content=content
