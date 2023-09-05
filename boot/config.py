@@ -63,7 +63,7 @@ class GlobalConfig(Config):
     salt = LazySetting('hash_salt', default='salt')
     hasher = LazySetting(salt, MySHA256Hasher, type=MySHA256Hasher)
     temporary_dir = LazySetting('tmp_dir', default='tmp')
-    official_user_username = LazySetting('official_user', default='zz00000')
+    official_uid = LazySetting('official_user', default='zz00000')
 
     # Deprecated Settings
     acadamic_year = LazySetting('acadamic_year', type=int)

@@ -4,6 +4,7 @@
         "hash_salt": "default_hash_salt",
         "acadamic_year": 2023,
         "semester": "Spring",
+        "official_user": "zz00000",
         "debug_stuids": []
     },
     "django": {

@@ -20,7 +20,7 @@ __all__ = [
 
 @return_on_except(False, Exception)
 @transaction.atomic
-def trigger_achievement(user: User, achievement: Achievement) -> bool:
+def trigger_achievement(user: User, achievement: Achievement):
     '''
     处理用户触发成就，添加单个解锁记录
     若已解锁则不添加

@@ -25,8 +25,8 @@ __all__ = [
 ]
 
 
-def get_defaulte_sender() -> User:
-    return User.objects.get(username=GLOBAL_CONFIG.official_user_username)
+def get_default_sender() -> User:
+    return User.objects.get(username=GLOBAL_CONFIG.official_uid)
 
 
 def notification_status_change(
@@ -131,7 +131,7 @@ def notification_create(
     现在，你应该在不急于等待的时候显式调用publish_notification(s)这两个函数，
         具体选择哪个取决于你创建的通知是一批类似通知还是单个通知
     """
-    sender = sender or get_defaulte_sender()
+    sender = sender or get_default_sender()
     notification = Notification.objects.create(
         receiver=receiver,
         sender=sender,
