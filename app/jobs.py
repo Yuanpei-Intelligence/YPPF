@@ -332,36 +332,30 @@ def register_pre_delete():
 @periodical('cron', 'weekly_activity_summary_reminder', hour=20, minute=0, day_of_week='sun')
 def weekly_activity_summary_reminder():
     '''每周日晚上8点提醒未填写周报的组织负责人，目前仅限于团委，学学学委员会，学学学学会，学生会'''
+    today = date.today()
+    monday = today - timedelta(days=today.weekday())
     cur_semester = current_semester()
-    if cur_semester.start_date <= date.today() <= cur_semester.end_date:
-        raw_to_notify = ['团委', '学学学委员会', '学学学学会', '学生会']
-        raw_to_notify_orgtype = OrganizationType.objects.filter(
-            otype_name__in=raw_to_notify)
+    if not cur_semester.start_date <= today <= cur_semester.end_date:
+        return
+    notify_org_type = OrganizationType.objects.filter(
+        otype_name__in=['团委', '学学学委员会', '学学学学会', '学生会'])
+    sender = User.objects.get(username='zz00000')
+    title = "每周活动总结提醒"
+    for org in Organization.objects.filter(otype__in=notify_org_type):
 
-        #只通知有本周内结束且未填写活动总结的活动的组织
-        activity_end_ddl = datetime.now().replace(hour=23, minute=59, second=59, microsecond=999999)
-        raw_no_summary_activity = Activity.objects.filter(Q(organization_id__otype__in=raw_to_notify_orgtype) 
-                                                      & Q(end__lte=activity_end_ddl))
-        no_summary_activity = raw_no_summary_activity.exclude(
-            id__in=ActivitySummary.objects.all().values_list('activity__id', flat=True))
-        to_notify_org = Organization.objects.filter(
-            id__in=no_summary_activity.values_list("organization_id__id", flat=True))
+        if ActivitySummary.objects.filter(
+                activity__organization=org,
+                time__date__gte=monday,
+                time__date__lte=today).exists():
+            continue
 
-        #分组织依次提醒未填写活动总结的活动名称
-        sender = User.objects.get(username='zz00000')
-        title = "每周活动总结提醒"
-        for org in to_notify_org:
-            to_notify_activity = no_summary_activity.filter(organization_id=org)
-            to_notify_user = Position.objects.get(Q(org=org) 
-                                                & Q(pos=0)).person.person_id
-            message = "检测到以下活动已于本周日晚12点前结束，请及时填写每周活动总结：" + "\n" + " "*13
-            for activity in list(to_notify_activity)[:-1]:
-                message += f"{activity.title}, "
-            message += f"{list(to_notify_activity)[-1].title}"
-            notification_create(
-                to_notify_user, sender,
-                Notification.Type.NEEDREAD, title, message,
-                publish_to_wechat=True,
-                publish_kws={'level': WechatMessageLevel.IMPORTANT,
-                            'show_source': False},
-            )
+        to_notify_user = Position.objects.filter(
+            org=org, pos=0).first().person.get_user()
+
+        notification_create(
+            to_notify_user, sender,
+            Notification.Type.NEEDREAD, title, '请及时填写每周活动总结',
+            publish_to_wechat=True,
+            publish_kws={'level': WechatMessageLevel.IMPORTANT,
+                         'show_source': False},
+        )
