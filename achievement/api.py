@@ -8,12 +8,11 @@ from django.db.models import Sum
 from generic.models import User
 from app.models import CourseRecord, Course
 from achievement.models import Achievement
-from achievement.utils import trigger_achievement, get_students_by_grade
+from achievement.utils import trigger_achievement
 
 
 __all__ = [
     'unlock_achievement',
-    'unlock_credit_achievements',
     'unlock_course_achievements',
     'unlock_YQPoint_achievements',
     'unlock_signin_achievements',
@@ -49,7 +48,9 @@ def _unlock_by_value(user: User, acquired_value: float,
 
 ''' 洁身自好 : 暂时不做 '''
 
-''' 严于律己 '''
+''' 严于律己 : 定时任务 '''
+
+''' 五育并举 '''
 
 
 def unlock_course_achievements(user: User) -> None:
@@ -148,12 +149,3 @@ def unlock_signin_achievements(user: User, continuous_days: int) -> bool:
         (365, '连续登录一整年'),
     ])
     return created
-
-
-def new_school_year_achievements():
-    '''触发 元气人生-开启大学第二、三、四年'''
-    for (i, j) in zip(range(2, 7), ['二', '三', '四', '五', '六']):
-        achievement = Achievement.objects.get(name=f'开启大学生活第{j}年')
-        user_list = get_students_by_grade(i)
-        bulk_add_achievement_record(
-            user_list=user_list, achievement=achievement)

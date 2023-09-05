@@ -73,14 +73,14 @@ def trigger_achievement(user: User, achievement: Achievement):
 
 @return_on_except(False, Exception)
 @transaction.atomic
-def bulk_add_achievement_record(user_list: QuerySet[User], achievement: Achievement):
+def bulk_add_achievement_record(users: QuerySet[User], achievement: Achievement):
     '''
     批量添加成就解锁记录
     若已解锁则不添加
     按需发布通知与发放元气值奖励
 
     Args:
-    - user_list (QuerySet[User]): 待更改User的QuerySet
+    - users (QuerySet[User]): 待更改User的QuerySet
     - achievement (Achievement): 需添加的成就
 
     Returns:
@@ -96,7 +96,7 @@ def bulk_add_achievement_record(user_list: QuerySet[User], achievement: Achievem
         achievement=achievement).values_list('user', flat=True)
 
     # 排除已经解锁的用户
-    users_to_add = user_list.exclude(pk__in=users_with_achievement)
+    users_to_add = users.exclude(pk__in=users_with_achievement)
     # 批量添加成就解锁记录
     AchievementUnlock.objects.bulk_create([
         AchievementUnlock(user=user, achievement=achievement)
@@ -125,15 +125,14 @@ def bulk_add_achievement_record(user_list: QuerySet[User], achievement: Achievem
 
 
 @need_refactor
-def get_students_by_grade(grade: int) -> list[User]:
+def get_students_by_grade(grade: int) -> QuerySet[User]:
     '''
     传入目标入学年份数，返回满足的、未毕业的学生User列表。
     示例：今年是2023年，我希望返回入学第二年的user，即查找username前两位为22的user
     仅限秋季学期开始后使用。
     '''
-
     semester_year = current_semester().year
     goal_year = semester_year - 2000 - grade + 1
-    user = User.objects.filter(
-        utype=User.Type.STUDENT, active=True, username__startswith=str(goal_year))
-    return list(user)
+    students = User.objects.filter_type(User.Type.STUDENT).filter(
+        active=True, username__startswith=str(goal_year))
+    return students

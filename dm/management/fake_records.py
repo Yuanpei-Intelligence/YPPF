@@ -345,7 +345,7 @@ def create_all():
     create_org()
     create_position()
 
-    #semester
+    # semester
     create_semester()
     
 
