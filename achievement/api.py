@@ -3,6 +3,7 @@
 - 后台批量添加成就
 '''
 from achievement.models import Achievement, AchievementUnlock
+from achievement.utils import get_students_by_grade
 from generic.models import User
 from utils.wrap import return_on_except
 
@@ -54,3 +55,12 @@ def bulk_add_achievement_record(user_list: list[User], achievement: Achievement)
     AchievementUnlock.objects.bulk_create(unlock_record_list)
 
     return True
+
+
+def new_school_year_achievements():
+    '''触发 元气人生-开启大学第二、三、四年'''
+    for (i, j) in zip(range(2, 7), ['二', '三', '四', '五', '六']):
+        achievement = Achievement.objects.get(name=f'开启大学生活第{j}年')
+        user_list = get_students_by_grade(i)
+        bulk_add_achievement_record(
+            user_list=user_list, achievement=achievement)

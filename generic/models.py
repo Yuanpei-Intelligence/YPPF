@@ -13,7 +13,6 @@ models.py
 @Author pht
 @Date 2022-08-19
 '''
-from datetime import datetime
 from typing import Type, NoReturn, Final
 
 from django.db import models
@@ -21,7 +20,7 @@ from django.contrib.auth import get_permission_codename
 from django.contrib.auth.models import AbstractUser, AnonymousUser
 from django.contrib.auth.models import UserManager as _UserManager
 from django.db import transaction
-from django.db.models import QuerySet, F, functions
+from django.db.models import QuerySet, F
 import pypinyin
 
 from utils.models.choice import choice
@@ -244,7 +243,6 @@ class UserManager(_UserManager['User']):
             source=source,
             source_type=source_type,
         )
-        
 
 
 class PointMixin(models.Model):
@@ -395,7 +393,7 @@ class YQPointRecord(models.Model):
     delta = models.IntegerField('变化量')
     source = models.CharField('来源', max_length=50, blank=True)
 
-    # TODO: Can we remove this? 
+    # TODO: Can we remove this?
     class SourceType(models.IntegerChoices):
         SYSTEM = (0, '系统操作')
         CHECK_IN = (1, '每日签到')
