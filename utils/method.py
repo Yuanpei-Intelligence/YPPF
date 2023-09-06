@@ -37,7 +37,7 @@ class check_method(Generic[P, T]):
     指示方法可用于检查对象的性质。方法的前两个参数为`cls`, `obj`。
     被包装的方法可以作为方法正常访问，或者以类调用，构造默认对象后调用方法。
     '''
-    def __init__(self, func: Callable[Concatenate[T, T, P], bool]) -> None:
+    def __init__(self, func: Callable[Concatenate[type[T], T, P], bool]) -> None:
         self.func = classmethod(func)
 
     def __get__(

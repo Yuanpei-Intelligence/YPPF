@@ -97,6 +97,7 @@ class MyUserAdmin(UserAdmin):
         User.objects.filter(id__in=Organization.objects.values_list('organization_id')
             ).select_for_update().update(utype=User.Type.ORG)
         User.objects.filter(id__in=NaturalPerson.objects.values_list('person_id')
+            ).exclude(utype__in=User.Type.Persons()
             ).select_for_update().update(utype=User.Type.PERSON)
         return self.message_user(request, '操作成功')
 

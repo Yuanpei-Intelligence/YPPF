@@ -8,6 +8,8 @@ from generic.models import User
 from app.models import *
 from semester.models import Semester, SemesterType
 from boot import config
+from utils.marker import fix_me
+
 
 USER_NAME = "1"
 USER_NAME_2 = "2"
@@ -36,6 +38,16 @@ def create_superuser():
         pass
 
 
+@fix_me
+def _create_old_user(username, password, usertype):
+    user, created = User.objects.get_or_create(username=username)
+    user.set_password(password)
+    user.is_newuser = False
+    user.utype = usertype
+    user.save()
+    return user, created
+
+
 def create_np():
     # TODO: Modify it
     sid = username = USER_NAME
@@ -51,11 +63,7 @@ def create_np():
     biography = '我是1号学生'
     identity = NaturalPerson.Identity.STUDENT
 
-    user, created = User.objects.get_or_create(username=username)
-    user.set_password(password)
-    user.is_newuser = False
-    user.utype = User.Type.PERSON
-    user.save()
+    user, created = _create_old_user(sid, password, User.Type.PERSON)
     if created:
         stu = NaturalPerson.objects.create(
             person_id=user,
@@ -86,11 +94,7 @@ def create_np():
     biography = '我是2号学生'
     identity = NaturalPerson.Identity.STUDENT
 
-    user, created = User.objects.get_or_create(username=username)
-    user.set_password(password)
-    user.is_newuser = False
-    user.utype = User.Type.PERSON
-    user.save()
+    user, created = _create_old_user(sid, password, User.Type.PERSON)
     if created:
         stu = NaturalPerson.objects.create(
             person_id=user,
@@ -118,11 +122,7 @@ def create_np():
     biography = '我是1号老师'
     identity = NaturalPerson.Identity.TEACHER
 
-    user, created = User.objects.get_or_create(username=username)
-    user.set_password(password)
-    user.is_newuser = False
-    user.utype = User.Type.PERSON
-    user.save()
+    user, created = _create_old_user(sid, password, User.Type.PERSON)
     if created:
         tea = NaturalPerson.objects.create(
             person_id=user,
@@ -147,11 +147,7 @@ def create_np():
     biography = '我是2号老师'
     identity = NaturalPerson.Identity.TEACHER
 
-    user, created = User.objects.get_or_create(username=username)
-    user.set_password(password)
-    user.is_newuser = False
-    user.utype = User.Type.PERSON
-    user.save()
+    user, created = _create_old_user(sid, password, User.Type.PERSON)
     if created:
         tea = NaturalPerson.objects.create(
             person_id=user,
@@ -206,13 +202,9 @@ def create_org_tag():
 def create_org():
 
     for uname, oname in zip(ORGANIZATION_USER_NAME, ORGANIZATION_ONAME):
-        user, created = User.objects.get_or_create(username=uname)
-        user.utype = User.Type.ORG
-        user.is_newuser = False
-        user.set_password(uname)
         otype = OrganizationType.objects.get(otype_id=1)
         tags = OrganizationTag.objects.get(name='兴趣')
-        user.save()
+        user, created = _create_old_user(uname, uname, User.Type.ORG)
 
         if created:
             org = Organization.objects.create(
