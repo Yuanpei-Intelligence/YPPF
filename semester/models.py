@@ -1,17 +1,25 @@
 from django.db import models
 
 
-class SemesterType(models.Model):
+__all__ = ['SemesterType', 'Semester']
 
-    ty_name = models.CharField(max_length=20)
+
+class SemesterType(models.Model):
+    name = models.CharField(max_length=20)
 
 
 class Semester(models.Model):
-    """
-    Semetsters should not overlap.
-    """
+    '''学期
 
-    year = models.IntegerField()
-    ty = models.ForeignKey(SemesterType, on_delete=models.CASCADE)
-    start_date = models.DateField()
-    end_date = models.DateField()
+    不同的学期时间不应重叠
+
+    Attributes:
+        year(int): 学年的起始年份，如2019-2020学年为2019
+        type(SemesterType): 学期类型
+        start_date(date): 开学日期
+        end_date(date): 放假日期
+    '''
+    year = models.IntegerField('学年', help_text='学年的起始年份，如2019-2020学年为2019')
+    type = models.ForeignKey(SemesterType, on_delete=models.CASCADE)
+    start_date = models.DateField('开学日期')
+    end_date = models.DateField('放假日期')

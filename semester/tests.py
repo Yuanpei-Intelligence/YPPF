@@ -8,13 +8,16 @@ from semester.api import semester_of
 
 class SemesterTestCase(TestCase):
 
-    def test_semester_api(self):
-        ty = SemesterType.objects.create(ty_name='test')
+    @classmethod
+    def setUpTestData(cls):
+        type = SemesterType.objects.create(name='test')
         s1 = Semester.objects.create(
-            year=2020, ty=ty, start_date=date(2020, 2, 1), end_date=date(2020, 6, 30))
+            year=2020, type=type, start_date=date(2020, 2, 1), end_date=date(2020, 6, 30))
         s2 = Semester.objects.create(
-            year=2020, ty=ty, start_date=date(2020, 9, 1), end_date=date(2021, 1, 1))
+            year=2020, type=type, start_date=date(2020, 9, 1), end_date=date(2021, 1, 1))
+        cls.type, cls.semesters = type, (s1, s2)
 
+    def test_semester_api(self):
         # Test Exception
         try:
             _ = semester_of(date(2020, 1, 1))
@@ -23,6 +26,7 @@ class SemesterTestCase(TestCase):
         except Semester.DoesNotExist:
             pass
 
+        s1, s2 = self.semesters
         # Test hit
         self.assertEqual(s1, semester_of(date(2020, 3, 1)))
 

@@ -299,8 +299,8 @@ def create_participant():
 
     
 def create_semester():
-    spring_type = SemesterType.objects.create(ty_name = "春季学期")
-    autumn_type = SemesterType.objects.create(ty_name = "秋季学期")
+    spring_type = SemesterType.objects.create(name = "春季学期")
+    autumn_type = SemesterType.objects.create(name = "秋季学期")
     
     #By default, spring semester is 2.1-6.30, autumn semester is 9.1-1.31
     #For summer vacation, the current semester object falls back to last semester, i.e. spring semester
@@ -310,9 +310,9 @@ def create_semester():
         #current semester is spring semester
         Semester.objects.bulk_create(
             [
-                Semester(year=today.year, ty=spring_type,
+                Semester(year=today.year, type=spring_type,
                          start_date=spring_start, end_date=date(today.year, 6, 30)),
-                Semester(year=today.year, ty=autumn_type,
+                Semester(year=today.year, type=autumn_type,
                          start_date=date(today.year, 9, 1), end_date=date(today.year+1, 1, 31))
             ]
         )
@@ -322,9 +322,9 @@ def create_semester():
         cur_year = today.year if today.month >= 9 else today.year - 1
         Semester.objects.bulk_create(
             [
-                Semester(year=cur_year, ty=autumn_type,
+                Semester(year=cur_year, type=autumn_type,
                          start_date=date(cur_year, 9, 1), end_date=date(cur_year+1, 1, 31)),
-                Semester(year=cur_year+1, ty=spring_type,
+                Semester(year=cur_year+1, type=spring_type,
                          start_date=date(cur_year+1, 2, 1), end_date=date(cur_year+1, 6, 30))
             ]
         )
