@@ -50,6 +50,8 @@ __all__ = [
     'get_weather_async',
     'update_active_score_per_day',
     'longterm_launch_course',
+    'public_feedback_per_hour',
+    'happy_birthday'
 ]
 
 
@@ -150,7 +152,10 @@ def get_weather_async():
 def get_weather() -> Dict[str, Any]:
     weather_file = os.path.join(GLOBAL_CONFIG.temporary_dir, "weather.json")
     if not os.path.exists(weather_file):
-        return dict()
+        try:
+            get_weather_async.run()
+        except:
+            return dict()
     with open(weather_file, "r") as f:
         return json.load(f)
 
@@ -161,7 +166,7 @@ def add_week_course_activity(course_id: int, weektime_id: int, cur_week: int, co
     """
     course: Course = Course.objects.get(id=course_id)
     examine_teacher = NaturalPerson.objects.get_teacher(
-        CONFIG.course.audit_teacher)
+        CONFIG.course.audit_teacher[0])
     # 当前课程在学期已举办的活动
     conducted_num = Activity.objects.activated().filter(
         organization_id=course.organization,
@@ -343,6 +348,38 @@ def register_pre_delete():
             # 不具有关联任务的模型无需设置
             continue
         models.signals.pre_delete.connect(_cancel_jobs, sender=model)
+
+
+@script
+@periodical('cron', 'happy_birthday', hour=6)
+def happy_birthday():
+    # get person
+    from django.db.models import QuerySet
+    month, day = date.today().month, date.today().day
+    np: QuerySet[NaturalPerson] = NaturalPerson.objects.activated().filter(
+        birthday__month=month, birthday__day=day
+    )
+    stus = np.filter(identity=NaturalPerson.Identity.STUDENT)
+    teachers = np.filter(identity=NaturalPerson.Identity.TEACHER)
+    # prepare send
+    crowds = [stus, teachers]
+    messages = [
+        "愿少年不惧岁月长，新的一岁光彩依旧，兴致盎然~",
+        "旦逢良辰，顺颂时宜。愿君常似少年时，永远二十赶朝暮~",
+    ]
+    title = "元培学院祝你生日快乐！"
+    url = None
+    sender = User.objects.get(username='zz00000')
+    for np, message in zip(crowds, messages):
+        receivers = User.objects.filter(
+            id__in=np.values_list('person_id', flat=True))
+        bulk_notification_create(
+            receivers, sender,
+            Notification.Type.NEEDREAD, title, message, url,
+            publish_to_wechat=True,
+            publish_kws={'level': WechatMessageLevel.IMPORTANT,
+                         'show_source': False},
+        )
 
 
 @script

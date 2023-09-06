@@ -66,7 +66,7 @@ class PermissionAdmin(admin.ModelAdmin):
 class MyUserAdmin(UserAdmin):
     list_display = [
         'id', 'username', 'name',
-        'credit', 'utype', 'is_staff', 'is_superuser',
+        'credit', 'YQpoint', 'utype', 'is_staff', 'is_superuser',
     ]
     # list_editable = ['credit']
     search_fields = ['id', 'username', 'name', 'pinyin', 'acronym']

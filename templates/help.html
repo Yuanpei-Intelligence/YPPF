@@ -38,4 +38,12 @@
             </div>
         </div>
     </div>                 
-</div>
+    </div>
+    <script>
+        function notCollapse() {
+            const help_content = document.getElementById("help-content");
+            help_content.classList.add("show");
+            const help_title = help_content.parentElement.firstElementChild;
+            help_title.classList.remove("collapsed");
+        }
+    </script>

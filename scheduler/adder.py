@@ -29,6 +29,7 @@ Examples:
 from typing import Callable, ParamSpec, Generic
 from datetime import datetime, timedelta
 
+from utils.marker import fix_me
 from scheduler.scheduler import scheduler
 from scheduler.utils import as_schedule_time
 
@@ -79,6 +80,8 @@ class ScheduleAdder(Generic[P]):
         self.run_time = run_time
         self.replace = replace
 
+    # TODO: 返回值是干嘛的？找一下 commit 记录，之前返回 id，现在 return Job，不确定作用
+    @fix_me
     def __call__(self, *args: P.args, **kwargs: P.kwargs) -> str:
         '''添加定时任务
 
@@ -101,7 +104,7 @@ class ScheduleAdder(Generic[P]):
             id=self.id,
             name=self.name,
             replace_existing=self.replace,
-        ).id
+        )
 
 
 class MultipleAdder(Generic[P]):

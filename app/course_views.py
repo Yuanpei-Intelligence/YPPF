@@ -692,9 +692,9 @@ def outputRecord(request: UserRequest):
     """
     me = utils.get_person_or_org(request.user)
     # 获取默认审核老师，不应该出错
-    examine_teacher = NaturalPerson.objects.get_teacher(APP_CONFIG.audit_teacher)
+    examine_teachers = NaturalPerson.objects.teachers().filter(name__in=APP_CONFIG.audit_teacher)
 
-    if examine_teacher != me:
+    if me not in examine_teachers:
         return redirect(message_url(wrong("只有书院课审核老师账号可以访问该链接！")))
     return download_course_record()
 

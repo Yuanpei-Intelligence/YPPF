@@ -12,7 +12,7 @@ class Command(BaseCommand):
     def handle(self, *args, **options):
         # 创建一个survey
         survey = Survey.objects.create(
-            title = "宿舍调查问卷",
+            title = "宿舍生活习惯调研",
             description = "根据问卷情况对宿舍进行分配",
             status = Survey.Status.PUBLISHED, # 传参
             creator_id = 1, # 传参

@@ -608,15 +608,13 @@ def send_message_check(me: Organization, request):
         if receiver_type == "订阅用户":
             receivers = NaturalPerson.objects.activated().exclude(
                 id__in=me.unsubscribers.all()).select_related('person_id')
-            receivers = [receiver.person_id for receiver in receivers]
         elif receiver_type == "小组成员":
             receivers = NaturalPerson.objects.activated().filter(
-                id__in=me.position_set.values_list('person_id', flat=True)
-                ).select_related('person_id')
-            receivers = [receiver.person_id for receiver in receivers]
+                id__in=Position.objects.activated().filter(org=me).values_list("person", flat=True)
+            ).select_related('person_id')
         else:  # 推广消息
             receivers = get_promote_receiver(me)
-            receivers = [receiver.person_id for receiver in receivers]
+        receivers = [receiver.person_id for receiver in receivers]
 
         # 创建通知
         success, bulk_identifier = bulk_notification_create(

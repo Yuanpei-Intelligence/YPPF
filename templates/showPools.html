@@ -153,6 +153,8 @@
 
         {% if bar_display.help_paragraphs %}
             {% include 'help.html' %}
+            {% comment %} 在这个页面需要自动展开 {% endcomment %}
+            <script>  notCollapse(); </script>
         {% endif %}
         <div class="container">
             <div class="layout-top-spacing">

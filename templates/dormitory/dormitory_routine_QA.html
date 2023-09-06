@@ -34,84 +34,102 @@
             {% endif %}
             <div class="col-lg-12 col-sm-12 col-12 layout-spacing">
                 <div class="row">
-                    <div class="col-md-12 mb-4">
+                    <div class="col-md-1"></div>
+                    <div class="col-md-10 mb-4">
                         <div class="statbox widget box box-shadow">
 
                             <!--  BEGIN HEADER AREA  -->
                             <div class="widget-header">
-                                <div class="d-flex justify-content-between">
+                                <div class="d-flex justify-content-center">
                                     <div>
-                                        <h4>生活习惯调研</h4>
+                                        <h3 class="mt-4 mb-3">宿舍生活习惯调研</h3>
                                     </div>
                                 </div>
                             </div>
 
                             <!--  BEGIN CONTENT AREA  -->
                             <div class="widget-content widget-content-area">
+                                <div id="sent-empty" class="col-md-12">
+                                    <p style="text-align: center;">标*的为必填问题，其他问题可填“空”。</p>
+                                </div>
+                                <div class="container mt-4">
+                                    <form role="form" method="POST" enctype="multipart/form-data"
+                                        onsubmit="return check_input()">
+                                        {% for question, choices in survey_iter %}
+                                        <div class="form-group mb-3 mx-5">
+                                            <h6>{{ question.topic }}</h6>
 
-                                <form role="form" method="POST" enctype="multipart/form-data"
-                                    onsubmit="return check_input()">
-                                    {% for question, choices in survey_iter %}
-                                    <div class="form-group">
-                                        <label>{{ question.topic }}</label>
-                                        {% if question.type == 'TEXT' %}
-                                        <input type="text" id="{{ question.order }}" name="{{question.order}}"
-                                            class="form-control" aria-label="Default" 
-                                            {% if question.required %}required{% endif %}
-                                            placeholder="{{question.description}}" maxlength=200>
-                                        {% endif %}
-                                        {% if question.type == 'SINGLE' %}
-                                        {% for choice in choices %}
-                                        <div class="form-check">
-                                            <input type="radio" class="form-check-input" 
-                                                {% if question.required%}required{% endif %}
-                                                id="{{question.order}}-{{choice.order}}"
-                                                name="{{question.order}}" value="{{choice.order}}">
-                                            <label class="form-check-label"
-                                                for="{{question.order}}-{{choice.order}}">{{choice.text}}</label>
+                                            {% if question.type == 'TEXT' %}
+                                            <input type="text" id="{{ question.order }}" name="{{question.order}}"
+                                                class="form-control" aria-label="Default" {% if question.required
+                                                %}required{% endif %} placeholder="{{question.description}}"
+                                                maxlength=200>
+                                            {% endif %}
+
+                                            {% if question.type == 'SINGLE' %}
+                                            {% for choice in choices %}
+                                            <div class="form-check mb-1">
+                                                <input type="radio" class="form-check-input" {% if
+                                                    question.required%}required{% endif %}
+                                                    id="{{question.order}}-{{choice.order}}" name="{{question.order}}"
+                                                    value="{{choice.order}}">
+                                                <label class="form-check-label"
+                                                    for="{{question.order}}-{{choice.order}}">{{choice.text}}</label>
+                                            </div>
+                                            {% endfor %}
+                                            {% endif %}
                                         </div>
                                         {% endfor %}
+
+                                        {% if submitted %}
+                                        <div class="alert alert-success text-center" id="success_msg">
+                                            问卷已成功提交，宿舍分配结果将稍后进行通知
+                                        </div>
+                                        {% else %}
+                                        <div class="mt-4 mx-5">
+                                            <button type="submit" class="btn btn-primary btn-block mb-3"
+                                                value="">提交</button>
+                                            {% endif %}
+                                        </div>
+                                        {% endfor %}
+
+                                        {% if submitted %}
+                                        <div class="alert alert-success  text-center" id="success_msg">
+                                            问卷已成功提交</div>
+                                        {% else %}
+                                        <button type="submit" class="btn btn-primary btn-block mb-4 mr-2" value="">
+                                            提交
+                                        </button>
                                         {% endif %}
-                                    </div>
-                                    {% endfor %}
 
-                                    {% if submitted %}
-                                    <div class="alert alert-success  text-center" id="success_msg">
-                                        问卷已成功提交</div>
-                                    {% else %}
-                                    <button type="submit" class="btn btn-primary btn-block mb-4 mr-2" value="">
-                                        提交
-                                    </button>
-                                    {% endif %}
-
-                                </form>
+                                    </form>
 
 
+                                </div>
                             </div>
                         </div>
                     </div>
                 </div>
             </div>
+
+
+
+
         </div>
 
-
-
-
     </div>
-
-</div>
-<!--  END CONTENT AREA  -->
+    <!--  END CONTENT AREA  -->
 
 
 
-{% endblock %}
+    {% endblock %}
 
-{% block add_js_file %}
-<script src={% static "datetimepicker/js/bootstrap-datetimepicker.min.js" %}></script>
-<script>
-    const check_input = () => {
-        return confirm('确认提交？提交后将不能修改，请确认信息无误后再提交。');
-    }
-</script>
+    {% block add_js_file %}
+    <script src={% static "datetimepicker/js/bootstrap-datetimepicker.min.js" %}></script>
+    <script>
+        const check_input = () => {
+            return confirm('确认提交？提交后将不能修改，请确认信息无误后再提交。');
+        }
+    </script>
 
-{% endblock %}
+    {% endblock %}
