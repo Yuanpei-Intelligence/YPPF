@@ -10,14 +10,11 @@ from semester.models import Semester, SemesterType
 from boot import config
 from utils.marker import fix_me
 
+UIDS = ["1", "2"]
+TEACHER_UIDS = ["10", "11"]
 
-USER_NAME = "1"
-USER_NAME_2 = "2"
-TEACHER_NAME = "10"
-TEACHER_NAME_2 = "11"
-
-ORGANIZATION_USER_NAME = ['zz00001', 'zz00002', 'zz00000']
-ORGANIZATION_ONAME = ['绘画班', '舞蹈班', 'Official']
+ORG_UIDS = ['zz00001', 'zz00002', 'zz00000']
+ORG_NAMES = ['绘画班', '舞蹈班', 'Official']
 
 
 # TODO: Change Settings
@@ -49,125 +46,78 @@ def _create_old_user(username, password, usertype):
 
 
 def create_np():
-    # TODO: Modify it
-    sid = username = USER_NAME
-    password = username
-    name = "1号学生"
-    gender = NaturalPerson.Gender.MALE
-    stu_major = "元培计划（待定）"
-    stu_grade = "2020"
-    stu_class = 5
-    email = sid + "@stu.pku.edu.cn"
-    visit_times = 100
-    tel = None
-    biography = '我是1号学生'
-    identity = NaturalPerson.Identity.STUDENT
-
-    user, created = _create_old_user(sid, password, User.Type.PERSON)
+    uid, name = UIDS[0], '1号学生'
+    user, created = _create_old_user(uid, uid, User.Type.PERSON)
     if created:
-        stu = NaturalPerson.objects.create(
+        NaturalPerson.objects.create(
             person_id=user,
-            stu_id_dbonly=sid,
+            stu_id_dbonly=uid,
             name=name,
-            gender=gender,
-            stu_major=stu_major,
-            stu_grade=stu_grade,
-            stu_class=stu_class,
-            email=email,
-            telephone=tel,
-            visit_times=visit_times,
-            biography=biography,
-            identity=identity,
+            gender=NaturalPerson.Gender.MALE,
+            stu_major='元培计划（待定）',
+            stu_grade='2020',
+            stu_class=5,
+            email=uid + '@stu.pku.edu.cn',
+            telephone=None,
+            visit_times=100,
+            biography='我是1号学生',
+            identity=NaturalPerson.Identity.STUDENT,
         )
-        stu.save()
 
-    sid = username = USER_NAME_2
-    password = username
-    name = "2号学生"
-    gender = NaturalPerson.Gender.FEMALE
-    stu_major = "元培计划（待定）"
-    stu_grade = "2020"
-    stu_class = 5
-    email = sid + "@stu.pku.edu.cn"
-    visit_times = 100
-    tel = None
-    biography = '我是2号学生'
-    identity = NaturalPerson.Identity.STUDENT
-
-    user, created = _create_old_user(sid, password, User.Type.PERSON)
+    uid, name = UIDS[1], '2号学生'
+    user, created = _create_old_user(uid, uid, User.Type.PERSON)
     if created:
-        stu = NaturalPerson.objects.create(
+        NaturalPerson.objects.create(
             person_id=user,
-            stu_id_dbonly=sid,
+            stu_id_dbonly=uid,
             name=name,
-            gender=gender,
-            stu_major=stu_major,
-            stu_grade=stu_grade,
-            stu_class=stu_class,
-            email=email,
-            telephone=tel,
-            visit_times=visit_times,
-            biography=biography,
-            identity=identity,
+            gender=NaturalPerson.Gender.FEMALE,
+            stu_major='元培计划（待定）',
+            stu_grade='2020',
+            stu_class=5,
+            email=uid + '@stu.pku.edu.cn',
+            tel=None,
+            visit_times=100,
+            biography='我是2号学生',
+            identity=NaturalPerson.Identity.STUDENT,
         )
-        stu.save()
 
-    sid = username = TEACHER_NAME
-    password = username
-    name = "1号老师"
-    gender = NaturalPerson.Gender.MALE
-    email = sid + "@pku.edu.cn"
-    visit_times = 100
-    tel = None
-    biography = '我是1号老师'
-    identity = NaturalPerson.Identity.TEACHER
-
-    user, created = _create_old_user(sid, password, User.Type.PERSON)
+    uid, name = TEACHER_UIDS[0], '1号老师'
+    user, created = _create_old_user(uid, uid, User.Type.PERSON)
     if created:
-        tea = NaturalPerson.objects.create(
+        NaturalPerson.objects.create(
             person_id=user,
-            stu_id_dbonly=sid,
+            stu_id_dbonly=uid,
             name=name,
-            gender=gender,
-            email=email,
-            telephone=tel,
-            visit_times=visit_times,
-            biography=biography,
-            identity=identity,
+            gender=NaturalPerson.Gender.MALE,
+            email=uid + '@pku.edu.cn',
+            telephone=None,
+            visit_times=100,
+            biography='我是1号老师',
+            identity=NaturalPerson.Identity.TEACHER,
         )
-        tea.save()
 
-    sid = username = TEACHER_NAME_2
-    password = username
-    name = "2号老师"
-    gender = NaturalPerson.Gender.MALE
-    email = sid + "@pku.edu.cn"
-    visit_times = 100
-    tel = None
-    biography = '我是2号老师'
-    identity = NaturalPerson.Identity.TEACHER
-
-    user, created = _create_old_user(sid, password, User.Type.PERSON)
+    uid, name = TEACHER_UIDS[1], '2号老师'
+    user, created = _create_old_user(uid, uid, User.Type.PERSON)
     if created:
-        tea = NaturalPerson.objects.create(
+        NaturalPerson.objects.create(
             person_id=user,
-            stu_id_dbonly=sid,
+            stu_id_dbonly=uid,
             name=name,
-            gender=gender,
-            email=email,
-            telephone=tel,
-            visit_times=visit_times,
-            biography=biography,
-            identity=identity,
+            gender=NaturalPerson.Gender.MALE,
+            email=uid + '@pku.edu.cn',
+            telephone=None,
+            visit_times=100,
+            biography='我是2号老师',
+            identity=NaturalPerson.Identity.TEACHER,
         )
-        tea.save()
 
 
 def create_org_type():
     otype_id = 1
     otype_name = '学生小组'
 
-    user = User.objects.get(username=USER_NAME)
+    user = User.objects.get(username=UIDS[0])
     incharge = NaturalPerson.objects.get_by_user(user)
 
     job_name_list = ['部长', '副部长', '部员']
@@ -178,30 +128,22 @@ def create_org_type():
         incharge=incharge,
         job_name_list=job_name_list,
     )
-    org_type.save()
 
 
 def create_org_tag():
-    name = '兴趣'
-    color = OrganizationTag.ColorChoice.red
-    org_tag = OrganizationTag.objects.create(
-        name=name,
-        color=color,
+    OrganizationTag.objects.create(
+        name='兴趣',
+        color=OrganizationTag.ColorChoice.red
     )
-    org_tag.save()
-
-    name_2 = '住宿生活'
-    color_2 = OrganizationTag.ColorChoice.blue
-    org_tag_2 = OrganizationTag.objects.create(
-        name=name_2,
-        color=color_2,
+    OrganizationTag.objects.create(
+        name='住宿生活',
+        color=OrganizationTag.ColorChoice.blue
     )
-    org_tag_2.save()
 
 
 def create_org():
 
-    for uname, oname in zip(ORGANIZATION_USER_NAME, ORGANIZATION_ONAME):
+    for uname, oname in zip(ORG_UIDS, ORG_NAMES):
         otype = OrganizationType.objects.get(otype_id=1)
         tags = OrganizationTag.objects.get(name='兴趣')
         user, created = _create_old_user(uname, uname, User.Type.ORG)
@@ -216,70 +158,33 @@ def create_org():
             org.save()
 
 
+def _create_position(person_uid, org_uid, pos, is_admin):
+    user = User.objects.get_user(person_uid)
+    person = NaturalPerson.objects.get_by_user(user)
+
+    org_user = User.objects.get_user(org_uid)
+    org = Organization.objects.get_by_user(org_user)
+
+    Position.objects.create(
+        person=person,
+        org=org,
+        pos=pos,
+        is_admin=is_admin,
+    )
+
+
 def create_position():
     # stu 1 is admin of hhb
-    user = User.objects.get(username=USER_NAME)
-    person = NaturalPerson.objects.get_by_user(user)
-
-    org_user = User.objects.get(username=ORGANIZATION_USER_NAME[0])
-    org = Organization.objects.get_by_user(org_user)
-    pos = 0
-    is_admin = 1
-
-    Position.objects.create(
-        person=person,
-        org=org,
-        pos=pos,
-        is_admin=is_admin,
-    )
+    _create_position(UIDS[0], ORG_UIDS[0], 0, True)
 
     # stu 1 is one of wdb
-    user = User.objects.get(username=USER_NAME)
-    person = NaturalPerson.objects.get_by_user(user)
-
-    org_user = User.objects.get(username=ORGANIZATION_USER_NAME[1])
-    org = Organization.objects.get_by_user(org_user)
-    pos = 1
-    is_admin = 0
-
-    Position.objects.create(
-        person=person,
-        org=org,
-        pos=pos,
-        is_admin=is_admin,
-    )
+    _create_position(UIDS[0], ORG_UIDS[1], 1, False)
 
     # tea 1 is admin of wdb
-    user = User.objects.get(username=TEACHER_NAME)
-    person = NaturalPerson.objects.get_by_user(user)
-
-    org_user = User.objects.get(username=ORGANIZATION_USER_NAME[1])
-    org = Organization.objects.get_by_user(org_user)
-    pos = 0
-    is_admin = 1
-
-    Position.objects.create(
-        person=person,
-        org=org,
-        pos=pos,
-        is_admin=is_admin,
-    )
+    _create_position(TEACHER_UIDS[0], ORG_UIDS[1], 0, True)
 
     # stu 2 is one of hhb
-    user = User.objects.get(username=USER_NAME_2)
-    person = NaturalPerson.objects.get_by_user(user)
-
-    org_user = User.objects.get(username=ORGANIZATION_USER_NAME[0])
-    org = Organization.objects.get_by_user(org_user)
-    pos = 1
-    is_admin = 0
-
-    Position.objects.create(
-        person=person,
-        org=org,
-        pos=pos,
-        is_admin=is_admin,
-    )
+    _create_position(UIDS[1], ORG_UIDS[0], 1, False)
 
 
 def create_activity():
@@ -339,7 +244,3 @@ def create_all():
 
     # semester
     create_semester()
-    
-
-
-
