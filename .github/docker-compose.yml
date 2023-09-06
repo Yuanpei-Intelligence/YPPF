@@ -83,7 +83,7 @@ services:
       mysql:
         condition: service_healthy
     # 等待20秒，保证containers处于就绪状态
-    command: bash -c "sleep 20 && bash ./scripts/init_migrations.sh"
+    command: bash -c "sleep 20 && bash ./scripts/migrate.sh"
 
 
 volumes:
