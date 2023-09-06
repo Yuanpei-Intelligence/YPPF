@@ -30,14 +30,13 @@ __all__ = [
     # 全局消息的常量
     'WRONG', 'SUCCEED',
     # 本应用的常量
-    'UTYPE_PER', 'UTYPE_ORG',
+    'UTYPE_ORG',
     # 本应用的CONFIG
     'CONFIG', 'GLOBAL_CONFIG'
 ]
 
 
 # 本应用的常量
-UTYPE_PER: str = User.Type.PERSON.value
 UTYPE_ORG: str = User.Type.ORG.value
 
 

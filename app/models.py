@@ -352,7 +352,7 @@ class NaturalPerson(models.Model):
 
     def get_type(self=None) -> str:
         '''User一对一模型的必要方法'''
-        return UTYPE_PER
+        return User.Type.PERSON.value
 
     def get_user(self) -> User:
         '''User一对一模型的必要方法'''

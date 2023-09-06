@@ -142,7 +142,7 @@ def get_classified_user(user: User, user_type: str | User.Type | None = None, *,
             model = NaturalPerson
         elif user.is_org():
             model = Organization
-    elif user_type == UTYPE_PER:
+    elif user_type in User.Type.Persons():
         model = NaturalPerson
     elif user_type == UTYPE_ORG:
         model = Organization

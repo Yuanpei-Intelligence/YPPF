@@ -1,4 +1,4 @@
-from typing import List, Dict, Set
+from typing import cast
 
 from django.http import HttpRequest
 
@@ -13,7 +13,6 @@ from app.models import (
     User,
     Chat,
 )
-from app.config import UTYPE_PER
 from app.utils import get_person_or_org
 from app.comment_utils import showComment
 
@@ -79,7 +78,7 @@ def get_search_results(query: str):
     return academic_map_dict
 
 
-def chats2Display(user: User, sent: bool) -> Dict[str, List[dict]]:
+def chats2Display(user: User, sent: bool) -> dict[str, list[dict]]:
     """
     把我收到/我发出的所有chat转化为供前端展示的两个列表，分别是进行中chat的信息、和其他chat的信息
 
@@ -88,7 +87,7 @@ def chats2Display(user: User, sent: bool) -> Dict[str, List[dict]]:
     :param sent: 若为True则表示我发出的，否则表示我收到的
     :type sent: bool
     :return: 一个词典，key为progressing和not_progressing，value分别是进行中chat的列表、和其他chat的列表
-    :rtype: Dict[str, List[dict]]
+    :rtype: dict[str, list[dict]]
     """
     not_progressing_chats = []
     progressing_chats = []
@@ -213,7 +212,7 @@ def comments2Display(chat: Chat, context: dict, user: User):
 
 
 def get_js_tag_list(author: NaturalPerson, type: AcademicTag.Type,
-                    selected: bool, status_in: list = None) -> List[dict]:
+                    selected: bool, status_in: list = None) -> list[dict]:
     """
     用于前端显示支持搜索的专业/项目列表，返回形如[{id, content}]的列表。
 
@@ -226,7 +225,7 @@ def get_js_tag_list(author: NaturalPerson, type: AcademicTag.Type,
     :param status_in: 所要检索的状态的字符串的列表，如["public","private"]，默认为None，表示搜索全部
     :type status_in: list
     :return: 所有专业/项目组成的List[dict]，key值如上所述
-    :rtype: List[dict]
+    :rtype: list[dict]
     """
     type_map = {
         "public": AcademicEntry.EntryStatus.PUBLIC,
@@ -238,7 +237,6 @@ def get_js_tag_list(author: NaturalPerson, type: AcademicTag.Type,
     if status_in is not None:
         stats = [type_map[s] for s in status_in]
     if selected:
-        # me = get_person_or_org(request.user, UTYPE_PER)
         all_my_tags = AcademicTagEntry.objects.activated().filter(person=author)
         if status_in is not None:
             all_my_tags = all_my_tags.filter(status__in=stats)
@@ -254,7 +252,7 @@ def get_js_tag_list(author: NaturalPerson, type: AcademicTag.Type,
 
 
 def get_text_list(author: NaturalPerson, type: AcademicTextEntry.Type,
-                  status_in: list = None) -> List[str]:
+                  status_in: list = None) -> list[str]:
     """
     获取自己的所有类型为type的TextEntry的内容列表。
 
@@ -265,9 +263,8 @@ def get_text_list(author: NaturalPerson, type: AcademicTextEntry.Type,
     :param status_in: 所要检索的状态的字符串的列表，如["public","private"]，默认为None，表示搜索全部
     :type status_in: list
     :return: 含有所有类型为type的TextEntry的content的list
-    :rtype: List[str]
+    :rtype: list[str]
     """
-    # me = get_person_or_org(request.user, UTYPE_PER)
     type_map = {
         "public": AcademicEntry.EntryStatus.PUBLIC,
         "wait_audit": AcademicEntry.EntryStatus.WAIT_AUDIT,
@@ -333,7 +330,7 @@ def get_text_status(person: NaturalPerson, type: AcademicTextEntry.Type) -> str:
 
 
 def update_tag_entry(person: NaturalPerson,
-                     tag_ids: List[str],
+                     tag_ids: list[str],
                      status: bool,
                      type: AcademicTag.Type) -> None:
     """
@@ -342,7 +339,7 @@ def update_tag_entry(person: NaturalPerson,
     :param person: 需要更新学术地图的人
     :type person: NaturalPerson
     :param tag_ids: 含有一系列tag_id(未经类型转换)的list
-    :type tag_ids: List[str]
+    :type tag_ids: list[str]
     :param status: tag_ids对应的所有tags的公开状态
     :type status: bool
     :param type: tag_ids对应的所有tags的类型
@@ -376,7 +373,7 @@ def update_tag_entry(person: NaturalPerson,
 
 
 def update_text_entry(person: NaturalPerson,
-                      contents: List[str],
+                      contents: list[str],
                       status: bool,
                       type: AcademicTextEntry.Type) -> None:
     """
@@ -385,7 +382,7 @@ def update_text_entry(person: NaturalPerson,
     :param person: 需要更新学术地图的人
     :type person: NaturalPerson
     :param tag_ids: 含有一系列TextEntry的内容的list
-    :type tag_ids: List[str]
+    :type tag_ids: list[str]
     :param status: 该用户所有类型为type的TextEntry的公开状态
     :type status: bool
     :param type: contents对应的TextEntry的类型
@@ -485,7 +482,9 @@ def update_academic_map(request: HttpRequest) -> dict:
 
     # 获取前端信息后对数据库进行更新
     with transaction.atomic():
-        me = get_person_or_org(request.user, UTYPE_PER)
+        assert request.user.is_authenticated
+        user = cast(User, request.user)
+        me = get_person_or_org(user, User.Type.PERSON)
 
         # 首先更新自己的TagEntry
         update_tag_entry(me, majors, major_status, AcademicTag.Type.MAJOR)
@@ -519,18 +518,18 @@ def update_academic_map(request: HttpRequest) -> dict:
 
         # 最后更新是否允许他人提问
         accept_chat = request.POST["accept_chat"]
-        request.user.accept_chat = True if accept_chat == "True" else False
-        request.user.save()
+        user.accept_chat = True if accept_chat == "True" else False
+        user.save()
 
     return succeed("学术地图修改成功！")
 
 
-def get_wait_audit_student() -> Set[NaturalPerson]:
+def get_wait_audit_student() -> set[NaturalPerson]:
     """
     获取当前审核中的AcademicEntry对应的学生，因为要去重，所以返回一个集合
 
     :return: 当前审核中的AcademicEntry对应的NaturalPerson组成的集合
-    :rtype: Set[NaturalPerson]
+    :rtype: set[NaturalPerson]
     """
     wait_audit_tag_entries = AcademicTagEntry.objects.filter(
         status=AcademicEntry.EntryStatus.WAIT_AUDIT)

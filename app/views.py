@@ -10,6 +10,7 @@ from django.contrib.auth.password_validation import CommonPasswordValidator, Num
 from django.core.exceptions import ValidationError
 
 from utils.config.cast import str_to_time
+from utils.marker import deprecated
 from utils.hasher import MyMD5Hasher
 from app.views_dependency import *
 from app.models import (
@@ -1152,7 +1153,7 @@ def _create_freshman_account(sid: str, email: str = None):
             current = "创建用户"
             user = User.objects.create_user(
                 username=sid, name=name,
-                usertype=UTYPE_PER,
+                usertype=User.Type.PERSON,
                 password=password
             )
             current = "创建个人账号"
@@ -1313,58 +1314,46 @@ def userAgreement(request: UserRequest):
                   dict(request=request, bar_display=bar_display))
 
 
+@deprecated
 @logger.secure_view()
 def authRegister(request: HttpRequest):
-    if request.user.is_superuser:
-        if request.method == "POST" and request.POST:
-            name = request.POST["name"]
-            password = request.POST["password"]
-            sno = request.POST["snum"]
-            email = request.POST["email"]
-            password2 = request.POST["password2"]
-            stu_grade = request.POST["syear"]
-            gender = request.POST['sgender']
-            if password != password2:
-                return render(request, "index.html")
-            else:
-                if gender not in ['男', '女']:
-                    return render(request, "auth_register_boxed.html")
-                # user with same sno
-                same_user = NaturalPerson.objects.filter(person_id=sno)
-                if same_user:
-                    return render(request, "auth_register_boxed.html")
-                same_email = NaturalPerson.objects.filter(email=email)
-                if same_email:
-                    return render(request, "auth_register_boxed.html")
-
-                # OK!
-                try:
-                    user = User.objects.create_user(
-                        username=sno, name=name,
-                        usertype=UTYPE_PER,
-                        password=password
-                    )
-                except:
-                    # 存在用户
-                    return HttpResponseRedirect("/admin/")
-
-                try:
-                    new_user = NaturalPerson.objects.create(
-                        person_id=user,
-                        stu_id_dbonly=sno,
-                        name=name,
-                        email=email,
-                        stu_grade=stu_grade,
-                        gender=NaturalPerson.Gender.MALE if gender == '男'
-                        else NaturalPerson.Gender.FEMALE,
-                    )
-                except:
-                    # 创建失败，把创建的用户删掉
-                    return HttpResponseRedirect("/admin/")
-                return HttpResponseRedirect("/index/")
-        return render(request, "auth_register_boxed.html")
-    else:
+    if not request.user.is_superuser:
         return HttpResponseRedirect("/index/")
+
+    if request.method == "POST" and request.POST:
+        keys = ["name", "password", "snum", "email", "password2", "syear", "sgender"]
+        values = [request.POST[key] for key in keys]
+        name, password, sno, email, password2, stu_grade, gender = values
+        if password != password2:
+            return render(request, "index.html")
+
+        failed = False
+        failed |= gender not in ['男', '女']
+        failed |= NaturalPerson.objects.filter(person_id=sno).exists()
+        failed |= NaturalPerson.objects.filter(email=email).exists()
+        if failed:
+            return render(request, "auth_register_boxed.html")
+
+        # OK!
+        try:
+            user = User.objects.create_user(
+                username=sno, name=name,
+                usertype=User.Type.PERSON,
+                password=password
+            )
+            person = NaturalPerson.objects.create(
+                person_id=user,
+                stu_id_dbonly=sno,
+                name=name,
+                email=email,
+                stu_grade=stu_grade,
+                gender=NaturalPerson.Gender.MALE if gender == '男'
+                else NaturalPerson.Gender.FEMALE,
+            )
+        except:
+            return HttpResponseRedirect("/admin/")
+        return HttpResponseRedirect("/index/")
+    return render(request, "auth_register_boxed.html")
 
 
 @login_required(redirect_field_name="origin")
