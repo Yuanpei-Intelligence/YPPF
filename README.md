@@ -6,7 +6,7 @@
 ![GitHub forks](https://img.shields.io/github/forks/Yuanpei-Intelligence/YPPF)
 ![Stars](https://img.shields.io/github/stars/Yuanpei-Intelligence/YPPF?style=social)
 
-[简体中文](README.md) | [English](README_en.md)
+[简体中文](README.md) | [English](docs/i18n/en/README.md)
 
 ## 如何运行
 
