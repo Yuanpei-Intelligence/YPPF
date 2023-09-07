@@ -76,7 +76,7 @@ def create_np():
             stu_grade='2020',
             stu_class=5,
             email=uid + '@stu.pku.edu.cn',
-            tel=None,
+            telephone=None,
             visit_times=100,
             biography='我是2号学生',
             identity=NaturalPerson.Identity.STUDENT,
