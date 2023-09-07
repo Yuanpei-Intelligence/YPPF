@@ -210,14 +210,32 @@ python manage.py runserver ip:port
 
 在提出任何建议前，我们希望您能查看是否已有类似提议，避免重复讨论。我们鼓励更具体明确的提案，这比泛泛而谈的交流更高效可行。
 
-### Contribute
+### 贡献代码
 
-Fork the repo, modify on develop branch of your replica.
+您应该使用`Git`管理代码。fork本仓库，并基于develop分支提交commit，最终提交拉取请求(PR, [pull request](https://github.com/Yuanpei-Intelligence/YPPF/pulls))。你的任何说明信息都应优先使用中文。
 
-Reference 
+你的 PR **必须**满足以下要求，否则将不予受理：
 
-Before open a pull request, run `python3 manage.py test` to check whether your
-modification affects other functionality.
+- 标题清晰
+- 查找并链接关联issue（如果存在）
+- 通过自动化测试：`python manage.py test`
+- 为每个新增接口编写文档
+
+若您的 PR [品质良好](#贡献优质的Pull-Request)，我们会保留您的详细提交信息，并欢迎您成为协作者。
+
+#### 贡献优质的Pull Request
+
+好的 PR 在提交历史、代码质量、PR信息三方面都表现优秀，具体来说有以下特征：
+
+- 线性历史：不含merge commit。若与最新的develop分支冲突，请使用`rebase`代替`merge`。
+- 原子化提交：每个commit在功能上不可拆分，而非将大量修改堆砌到同一个commit中。
+- 不含零碎修改：极小的修改应该被合并至相关commit中，而非单独提交。
+- commit信息有意义且易读
+- 符合代码规范，如[Google风格指南](https://zh-google-styleguide.readthedocs.io/en/latest/google-python-styleguide/contents/)
+- 代码可读性良好，注释和文档数量适宜
+- 为新增接口编写测试，并提供导出信息（`__all__`）
+- 同步更新环境说明文件和配置文件
+- 为影响他人的改动申请 PR [标签](https://github.com/Yuanpei-Intelligence/YPPF/labels)：如删除、模型修改、环境和配置文件修改等。
 
 ## 致谢
 
