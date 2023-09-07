@@ -6,7 +6,7 @@
 ![Last commit](https://img.shields.io/github/last-commit/Yuanpei-Intelligence/YPPF)
 [![Workflow Status](https://img.shields.io/github/actions/workflow/status/Yuanpei-Intelligence/YPPF/basetest.yml)](https://github.com/Yuanpei-Intelligence/YPPF/actions)
 
-[简体中文](README.md) | [English](README_en.md)
+[简体中文](/README.md) | [English](README.md)
 
 ## Environment Requirement
 
