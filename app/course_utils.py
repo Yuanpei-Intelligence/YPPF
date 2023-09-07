@@ -185,7 +185,7 @@ def create_single_course_activity(request: HttpRequest) -> Tuple[int, bool]:
 
     # 获取默认审核老师
     examine_teacher = NaturalPerson.objects.get_teacher(
-        APP_CONFIG.audit_teacher)
+        APP_CONFIG.audit_teacher[0])
 
     # 获取活动所属课程的图片，用于viewActivity, examineActivity等页面展示
     image = str(course.photo)
@@ -763,15 +763,19 @@ def course_to_display(courses: QuerySet[Course],
         for time in course.time_set.all():
             course_time.append(process_time(time.start, time.end))
         course_info["time_set"] = course_time
+        
+        def linebreak(str):
+            from re import sub
+            return sub("((\r|\\\)+n)|((\r|\\\)+\n)", "\n", str)
 
         if detail:
             # 在课程详情页才展示的信息
             course_info["times"] = course.times  # 课程周数
             course_info["classroom"] = course.classroom
             course_info["teacher"] = course.teacher
-            course_info["introduction"] = course.introduction
-            course_info["teaching_plan"] = course.teaching_plan
-            course_info["record_cal_method"] = course.record_cal_method
+            course_info["introduction"] = linebreak(course.introduction)
+            course_info["teaching_plan"] = linebreak(course.teaching_plan)
+            course_info["record_cal_method"] = linebreak(course.record_cal_method)
             course_info["organization_name"] = course.organization.oname
             course_info["have_QRcode"] = bool(course.QRcode)
             course_info["photo_path"] = course.get_photo_path()
@@ -1372,7 +1376,11 @@ def download_course_record(course: Course = None, year: int = None, semester: Se
     else:
         # 设置明细和汇总两个sheet的相关信息
         total_sheet = wb.create_sheet('汇总', 0)
-        total_sheet.append(['学号', '姓名', '总有效学时', '总无效学时'])
+        first_line = ['学号', '姓名', '总有效学时', '总无效学时']
+        course_types = list(Course.CourseType)
+        first_line.extend(map(lambda x: x.label, course_types))
+        first_line.append('其他')
+        total_sheet.append(first_line)
 
         # 下载所有学时信息，包括无效学时
         all_person = NaturalPerson.objects.activated().filter(
@@ -1393,13 +1401,32 @@ def download_course_record(course: Course = None, year: int = None, semester: Se
                                   **relate_filter_kws,
                               )),
         ).order_by('person_id__username')
-        for person in person_record.select_related('person_id'):
-            total_sheet.append([
-                person.person_id.username,
-                person.name,
-                person.record_hours or 0,
-                person.invalid_hours or 0,
-            ])
+        for person in all_person:
+            course_me_past = CourseRecord.objects.filter(person_id=person).exclude(invalid=True)
+            # 计算每个类别的学时
+            record = []
+            for course_type in list(Course.CourseType):  # CourseType.values亦可
+                record.append((
+                    course_me_past
+                    .filter(course__type=course_type, **relate_filter_kws)
+                    .aggregate(Sum('total_hours'))
+                )['total_hours__sum'] or 0)
+
+            # 计算没有对应Course的学时
+            record.append((
+                course_me_past
+                .filter(course__isnull=True, **relate_filter_kws)
+                .aggregate(Sum('total_hours'))
+            )['total_hours__sum'] or 0)
+
+            person_record.append(record)
+        for person, record in zip(all_person.select_related('person_id'), 
+                                  person_record):
+            line = [person.person_id.username, person.name,
+                    person.record_hours or 0, 
+                    person.invalid_hours or 0]
+            line.extend(record)
+            total_sheet.append(line)
         # 详细信息
         records = CourseRecord.objects.filter(
             person__in=all_person,

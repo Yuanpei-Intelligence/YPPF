@@ -84,6 +84,8 @@ MIDDLEWARE = [
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
 ]
 
+# TODO: Fix this
+CSRF_TRUSTED_ORIGINS = ['https://a.b.c.d']
 
 # Templates
 TEMPLATES = [
