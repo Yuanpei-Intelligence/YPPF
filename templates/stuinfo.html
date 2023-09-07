@@ -1571,12 +1571,8 @@
                         <div class="container mt-3 achievement-container">                  
                                 <box>
                                 {% for acs, unlocked_personal_stat, all_achievement_stat, achievement_unlocked, achievement_locked, achievement_locked_hidden in achievement_types_0 %}
-                                    <td><a href="/achievement/{{acs.title}}"><img src="/media/{{ acs.badge}}", class="achievement-img"></a>
+                                    <td><a href="/achievement/{{acs.title}}" data-toggle="modal" data-target="#myModal"><img src="/media/{{ acs.badge}}", class="achievement-img"></a>
                                         <p>{{acs}}</p>
-                                    <!-- 按钮触发模态框 -->
-                                    <button class="btn btn-primary btn-lg" data-toggle="modal" data-target="#myModal">
-                                        查看
-                                    </button>
                                     <!-- 模态框（Modal） -->
                                     <div class="modal fade" id="myModal">
                                         <div class="modal-dialog">
@@ -1642,12 +1638,8 @@
                                         </box>
                                         <box>
                                             {% for acs, unlocked_personal_stat, all_achievement_stat, achievement_unlocked, achievement_locked, achievement_locked_hidden in achievement_types_1 %}
-                                                <td><a href="/achievement/{{acs.title}}"><img src="/media/{{ acs.badge}}", class="achievement-img"></a>
+                                                <td><a href="/achievement/{{acs.title}}" data-toggle="modal" data-target="#myModal"><img src="/media/{{ acs.badge}}", class="achievement-img"></a>
                                                     <p>{{acs}}</p>
-                                                <!-- 按钮触发模态框 -->
-                                                <button class="btn btn-primary btn-lg" data-toggle="modal" data-target="#myModal">
-                                                    查看
-                                                </button>
                                                 <!-- 模态框（Modal） -->
                                                 <div class="modal fade" id="myModal">
                                                     <div class="modal-dialog">
@@ -1713,12 +1705,8 @@
                                                     </box>
                                                     <box>
                                                         {% for acs, unlocked_personal_stat, all_achievement_stat, achievement_unlocked, achievement_locked, achievement_locked_hidden in achievement_types_2 %}
-                                                            <td><a href="/achievement/{{acs.title}}"><img src="/media/{{ acs.badge}}", class="achievement-img"></a>
+                                                            <td><a href="/achievement/{{acs.title}}" data-toggle="modal" data-target="#myModal"><img src="/media/{{ acs.badge}}", class="achievement-img"></a>
                                                                 <p>{{acs}}</p>
-                                                            <!-- 按钮触发模态框 -->
-                                                            <button class="btn btn-primary btn-lg" data-toggle="modal" data-target="#myModal">
-                                                                查看
-                                                            </button>
                                                             <!-- 模态框（Modal） -->
                                                             <div class="modal fade" id="myModal">
                                                                 <div class="modal-dialog">
