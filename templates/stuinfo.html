@@ -1571,10 +1571,10 @@
                         <div class="container mt-3 achievement-container">                  
                                 <box>
                                 {% for acs, unlocked_personal_stat, all_achievement_stat, achievement_unlocked, achievement_locked, achievement_locked_hidden in achievement_types_0 %}
-                                    <td><a href="/achievement/{{acs.title}}" data-toggle="modal" data-target="#myModal"><img src="/media/{{ acs.badge}}", class="achievement-img"></a>
-                                        <p>{{acs}}</p>
+                                    <td><a href="/achievement/{{acs.title}}" data-toggle="modal" data-target="#myModal{{acs.title}}"><img src="/media/{{ acs.badge}}", class="achievement-img"></a>
+                                        <center><p>{{acs}}</p></center>
                                     <!-- 模态框（Modal） -->
-                                    <div class="modal fade" id="myModal">
+                                    <div class="modal fade" id="myModal{{acs.title}}">
                                         <div class="modal-dialog">
                                             <div class="modal-content">
                                                 <div class="modal-header">
@@ -1627,16 +1627,16 @@
                                             </div><!-- /.modal-content -->
                                         </div><!-- /.modal -->
                                     </div>
-                                    <p>{{unlocked_personal_stat}}/{{all_achievement_stat}}</p>
+                                    <center><p>{{unlocked_personal_stat}}/{{all_achievement_stat}}</p></center>
                                     </td>
                                 {% endfor %}
                                         </box>
                                         <box>
                                             {% for acs, unlocked_personal_stat, all_achievement_stat, achievement_unlocked, achievement_locked, achievement_locked_hidden in achievement_types_1 %}
-                                                <td><a href="/achievement/{{acs.title}}" data-toggle="modal" data-target="#myModal"><img src="/media/{{ acs.badge}}", class="achievement-img"></a>
-                                                    <p>{{acs}}</p>
+                                                <td><a href="/achievement/{{acs.title}}" data-toggle="modal" data-target="#myModal{{acs.title}}"><img src="/media/{{ acs.badge}}", class="achievement-img"></a>
+                                                    <center><p>{{acs}}</p></center>
                                                 <!-- 模态框（Modal） -->
-                                                <div class="modal fade" id="myModal">
+                                                <div class="modal fade" id="myModal{{acs.title}}">
                                                     <div class="modal-dialog">
                                                         <div class="modal-content">
                                                             <div class="modal-header">
@@ -1689,16 +1689,16 @@
                                                         </div><!-- /.modal-content -->
                                                     </div><!-- /.modal -->
                                                 </div>
-                                                <p>{{unlocked_personal_stat}}/{{all_achievement_stat}}</p>
+                                                <center><p>{{unlocked_personal_stat}}/{{all_achievement_stat}}</p></center>
                                                 </td>
                                             {% endfor %}
                                                     </box>
                                                     <box>
                                                         {% for acs, unlocked_personal_stat, all_achievement_stat, achievement_unlocked, achievement_locked, achievement_locked_hidden in achievement_types_2 %}
-                                                            <td><a href="/achievement/{{acs.title}}" data-toggle="modal" data-target="#myModal"><img src="/media/{{ acs.badge}}", class="achievement-img"></a>
-                                                                <p>{{acs}}</p>
+                                                            <td><a href="/achievement/{{acs.title}}" data-toggle="modal" data-target="#myModal{{acs.title}}"><img src="/media/{{ acs.badge}}", class="achievement-img"></a>
+                                                                <center><p>{{acs}}</p></center>
                                                             <!-- 模态框（Modal） -->
-                                                            <div class="modal fade" id="myModal">
+                                                            <div class="modal fade" id="myModal{{acs.title}}">
                                                                 <div class="modal-dialog">
                                                                     <div class="modal-content">
                                                                         <div class="modal-header">
@@ -1751,7 +1751,7 @@
                                                                     </div><!-- /.modal-content -->
                                                                 </div><!-- /.modal -->
                                                             </div>
-                                                            <p>{{unlocked_personal_stat}}/{{all_achievement_stat}}</p>
+                                                            <p><center>{{unlocked_personal_stat}}/{{all_achievement_stat}}</center></p>
                                                             </td>
                                                         {% endfor %}
                                                                 </box>
