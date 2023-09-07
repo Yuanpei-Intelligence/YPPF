@@ -31,7 +31,7 @@ services:
       retries: 100
 
   yppf:
-    build: ./image_build
+    build: ..
     tty: true
     depends_on:
       mysql:
