@@ -5,21 +5,32 @@
     //     "source=${localEnv:HOME}/.ssh,target=/home/vscode/.ssh,type=bind,consistency=cached"
     // ],
     "dockerComposeFile": "docker-compose.yml",
+    "postCreateCommand": "pip install -r .devcontainer/dev_requirements.txt",
     "service": "yppf",
     "workspaceFolder": "/workspace",
     "remoteUser": "vscode",
     "customizations": {
         "vscode": {
             "settings": {
+                "python.analysis.autoImportCompletions": false,
+                "autoDocstring.generateDocstringOnEnter": false,
                 "json.format.enable": false,
                 "editor.formatOnSave": true,
-                "editor.formatOnSaveMode": "modificationsIfAvailable"
+                "editor.formatOnSaveMode": "modificationsIfAvailable",
+                "files.associations": {
+                    "**/*.html": "html",
+                    "**/templates/**/*.html": "django-html",
+                    "**/templates/**/*": "django-txt"
+                }
             },
             "extensions": [
                 "ms-python.python",
                 "ms-python.isort",
                 "ms-python.autopep8",
+                "njpwerner.autodocstring",
+                "monosans.djlint",
                 "GitHub.copilot",
+                "Gruntfuggly.todo-tree",
                 "eamodio.gitlens",
                 "GitHub.vscode-pull-request-github"
             ]
