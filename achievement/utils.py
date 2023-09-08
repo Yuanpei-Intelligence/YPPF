@@ -2,7 +2,7 @@
 - 处理用户触发成就
 - 后台批量添加成就
 '''
-from datetime import datetime
+from datetime import date
 
 from django.db import transaction
 from django.db.models import QuerySet
@@ -141,20 +141,19 @@ def get_students_by_grade(grade: int) -> QuerySet[User]:
     return students
 
 
-def get_students_without_credit_record(start_date: datetime, end_date: datetime) -> QuerySet[User]:
+def get_students_without_credit_record(start_date: date, end_date: date) -> QuerySet[User]:
     '''
     获取一段时间内没有扣分记录的在读同学
 
     Args:
     - start_date: 查询起始时间
     - end_date: 查询结束时间
-    为了与CreditRecord的time字段类型一致, 这里使用datetime
 
     Returns:
     - QuerySet[User]: 没有扣分记录的在读同学
     '''
     records = CreditRecord.objects.filter(
-        time__gte=start_date, time__lte=end_date)
+        time__date__gte=start_date, time__date__lte=end_date)
     students = User.objects.filter_type(User.Type.STUDENT).filter(
         active=True).exclude(pk__in=records.values_list('user', flat=True))
     return students

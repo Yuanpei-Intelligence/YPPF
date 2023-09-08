@@ -163,9 +163,6 @@ def unlock_credit_achievements(start_date: date, end_date: date, achievement_nam
     :param achievement_name: 要解锁的成就名
     :type achievement_name: str
     '''
-    # 由于CreditRecord的时间是datetime类型，所以需要将date转换为datetime才能用于后续比较
-    start_date = datetime.combine(start_date, datetime.min.time())
-    end_date = datetime.combine(end_date, datetime.max.time())
     students = get_students_without_credit_record(start_date, end_date)
     achievement = Achievement.objects.get(name=achievement_name)
     bulk_add_achievement_record(students, achievement)
