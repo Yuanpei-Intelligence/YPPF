@@ -23,7 +23,7 @@ __all__ = [
 
 def get_display_name(valid_user: User) -> str:
     '''返回合法用户可展示的姓名'''
-    return __get_obj(valid_user, valid_user.utype).get_display_name()
+    return __get_obj(valid_user).get_display_name()
 
 
 def get_avatar_url(valid_user: User) -> str:
@@ -40,7 +40,7 @@ def get_members(valid_user: User, noncurrent: bool = False) -> list[str]:
     '''返回合法用户的成员学号列表'''
     if not valid_user.is_org():
         return []
-    obj = __get_obj(valid_user, valid_user.utype)
+    obj = __get_obj(valid_user)
     positions = Position.objects.activated(noncurrent=noncurrent).filter(org=obj)
     members = positions.values_list('person__person_id__username', flat=True)
     return list(members)
@@ -50,7 +50,7 @@ def get_auditors(valid_user: User) -> list[str]:
     '''返回合法用户的需要审核时的审核者学号列表'''
     if not valid_user.is_org():
         return []
-    obj = __get_obj(valid_user, valid_user.utype)
+    obj = __get_obj(valid_user)
     auditors = []
     auditor = obj.otype.incharge
     if auditor is not None:

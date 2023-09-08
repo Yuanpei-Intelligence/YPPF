@@ -10,8 +10,8 @@ from django.contrib.auth.password_validation import CommonPasswordValidator, Num
 from django.core.exceptions import ValidationError
 
 from utils.config.cast import str_to_time
+from utils.marker import deprecated
 from utils.hasher import MyMD5Hasher
-from app.academic_utils import get_search_results
 from app.views_dependency import *
 from app.models import (
     NaturalPerson,
@@ -47,6 +47,7 @@ from app.notification_utils import (
 )
 from app.YQPoint_utils import add_signin_point
 from app.academic_utils import (
+    get_search_results,
     comments2Display,
     get_js_tag_list,
     get_text_list,
@@ -54,6 +55,10 @@ from app.academic_utils import (
     get_tag_status,
     get_text_status,
 )
+
+from achievement.utils import stuinfo_set_achievement
+from achievement.api import unlock_achievement, unlock_YQPoint_achievements
+from semester.api import current_semester
 
 
 
@@ -166,15 +171,14 @@ def stuinfo(request: UserRequest):
                 assert potential_person in person
                 person = potential_person
 
-        is_myself = request.user.is_person() and person.get_user() == request.user
-        html_display["is_myself"] = is_myself  # 存入显示
+        is_myself = person.get_user() == request.user
         inform_share, alert_message = utils.get_inform_share(
             me=person, is_myself=is_myself)
 
         # 处理更改数据库中inform_share的post
         if request.method == "POST" and request.POST:
             option = request.POST.get("option", "")
-            assert option == "cancelInformShare" and html_display["is_myself"]
+            assert option == "cancelInformShare" and is_myself
             person.inform_share = False
             person.save()
             return redirect("/welcome/")
@@ -415,17 +419,8 @@ def stuinfo(request: UserRequest):
 
         # 警告呈现信息
 
-        try:
-            html_display["warn_code"] = int(
-                request.GET.get("warn_code", 0)
-            )  # 是否有来自外部的消息
-        except:
-            return redirect(message_url(wrong('非法的状态码，请勿篡改URL!')))
-        html_display["warn_message"] = request.GET.get(
-            "warn_message", "")  # 提醒的具体内容
-
-        modpw_status = request.GET.get("modinfo", None)
-        if modpw_status is not None and modpw_status == "success":
+        my_messages.transfer_message_context(request.GET, html_display)
+        if request.GET.get("modinfo", "") == "success":
             succeed("修改个人信息成功!", html_display)
 
         # ----------------------------------- 学术地图 ----------------------------------- #
@@ -436,12 +431,14 @@ def stuinfo(request: UserRequest):
             chat__respondent=person.get_user()
         )
         if progressing_chat.exists():
-            comments2Display(progressing_chat.first().chat, html_display, request.user)  # TODO: 字典的key有冲突风险
+            comments2Display(progressing_chat.first().chat,
+                             html_display, request.user)  # TODO: 字典的key有冲突风险
             html_display["have_progressing_chat"] = True
         else:  # 没有进行中的问答，显示提问区
             html_display["have_progressing_chat"] = False
             html_display["accept_chat"] = person.get_user().accept_chat
-            html_display["accept_anonymous"] = person.get_user().accept_anonymous_chat
+            html_display["accept_anonymous"] = person.get_user(
+            ).accept_anonymous_chat
 
         # 存储被查询人的信息
         context = dict()
@@ -556,6 +553,10 @@ def stuinfo(request: UserRequest):
             person, AcademicTextEntry.Type.GRADUATION
         )
 
+        # ------------------ 成就卡片 ------------------ #
+        user = request.user
+        invisible_achievements, visible_achievements, achievement_types_0, achievement_types_1, achievement_types_2 = stuinfo_set_achievement(user)
+
         status_dict = dict(
             major_status=major_status,
             minor_status=minor_status,
@@ -569,6 +570,8 @@ def stuinfo(request: UserRequest):
         )
         academic_params.update(status_dict)
 
+        # is_myself是内部变量，不传给前端
+        html_display["is_myself"] = is_myself
         return render(request, "stuinfo.html", locals() | dict(user=request.user))
 
 
@@ -620,8 +623,6 @@ def orginfo(request: UserRequest):
         orginfo负责呈现小组主页，逻辑和stuinfo是一样的，可以参考
         只区分自然人和法人，不区分自然人里的负责人和非负责人。任何自然人看这个小组界面都是【不可管理/编辑小组信息】
     """
-    me = get_person_or_org(request.user)
-
     name = request.GET.get('name', None)
     if name is None:  # 此时登陆的必需是法人账号，如果是自然人，则跳转welcome
         if request.user.is_person():
@@ -637,25 +638,25 @@ def orginfo(request: UserRequest):
 
         return redirect(org.get_absolute_url() + append_url)
 
-    try:  # 指定名字访问小组账号的，可以是自然人也可以是法人。在html里要注意区分！
-
+    try:
         # 下面是小组信息
-
         org = Organization.objects.activated().get(oname=name)
         org_tags = org.tags.all()
-
     except:
         return redirect(message_url(wrong('该小组不存在!')))
 
+    # 指定名字访问小组账号的，可以是自然人也可以是法人。在html里要注意区分！
     # 判断是否为小组账户本身在登录
+    is_myself = org.get_user() == request.user
+    me = get_person_or_org(request.user)
+
     html_display = {}
-    html_display["is_myself"] = me == org
-    html_display["is_person"] = request.user.is_person()
+    html_display["is_myself"] = is_myself
     html_display["is_course"] = (
         Course.objects.activated().filter(organization=org).exists()
     )
     inform_share, alert_message = utils.get_inform_share(
-        me=me, is_myself=html_display["is_myself"])
+        me, is_myself=is_myself)
 
     organization_name = name
     organization_type_name = org.otype.otype_name
@@ -673,11 +674,9 @@ def orginfo(request: UserRequest):
         html_display["select_ing"] = False
 
     if request.method == "POST":
-        if request.POST.get("export_excel") is not None and html_display["is_myself"]:
-            html_display["warn_code"] = 2
-            html_display["warn_message"] = "下载成功!"
+        if request.POST.get("export_excel") is not None and is_myself:
             return utils.export_orgpos_info(org)
-        elif request.POST.get("option", "") == "cancelInformShare" and html_display["is_myself"]:
+        elif request.POST.get("option", "") == "cancelInformShare" and is_myself:
             org.inform_share = False
             org.save()
             return redirect("/welcome/")
@@ -776,7 +775,7 @@ def orginfo(request: UserRequest):
     for p in positions:
         if p.person.person_id == request.user and p.pos == 0:
             html_display["isboss"] = True
-        if p.show_post == True or p.pos == 0 or html_display["is_myself"]:
+        if p.show_post == True or p.pos == 0 or is_myself:
             member = {}
             member['show_post'] = p.show_post
             member['id'] = p.id
@@ -788,24 +787,9 @@ def orginfo(request: UserRequest):
 
             member_list.append(member)
 
-    try:
-        html_display["warn_code"] = int(
-            request.GET.get("warn_code", 0))  # 是否有来自外部的消息
-    except:
-        return redirect(message_url(wrong('非法的状态码，请勿篡改URL!')))
-    html_display["warn_message"] = request.GET.get(
-        "warn_message", "")  # 提醒的具体内容
-
-    modpw_status = request.GET.get("modinfo", None)
-    if modpw_status is not None and modpw_status == "success":
-        html_display["warn_code"] = 2
-        html_display["warn_message"] = "修改小组信息成功!"
-
-    # 补充左边栏信息
-
-    # 再处理修改信息的回弹
-    modpw_status = request.GET.get("modinfo", None)
-    html_display["modpw_code"] = modpw_status is not None and modpw_status == "success"
+    my_messages.transfer_message_context(request.GET, html_display)
+    if request.GET.get("modinfo", "") == "success":
+        succeed("修改小组信息成功!", html_display)
 
     # 小组活动的信息
 
@@ -818,20 +802,17 @@ def orginfo(request: UserRequest):
 
     # 补充订阅该小组的按钮
     allow_unsubscribe = org.otype.allow_unsubscribe  # 是否允许取关
-    is_person = request.user.is_person()
-    if is_person:
-        subscribe_flag = True if (
-            organization_name not in me.unsubscribe_list.values_list("oname", flat=True)) \
-            else False
+    if request.user.is_person():
+        _unsubscribe_names = me.unsubscribe_list.values_list(
+            "oname", flat=True)
+        subscribe_flag = organization_name not in _unsubscribe_names
 
     # 补充作为小组成员，选择是否展示的按钮
     show_post_change_button = False     # 前端展示“是否不展示我自己”的按钮，若为True则渲染这个按钮
     if request.user.is_person():
         my_position = Position.objects.activated().filter(
-            org=org, person=me).exclude(is_admin=True)
-        if len(my_position):
-            show_post_change_button = True
-            my_position = my_position[0]
+            org=org, person=me).exclude(is_admin=True).first()
+        show_post_change_button = my_position is not None
 
     if request.session.get('alert_message'):
         load_alert_message = request.session.pop('alert_message')
@@ -840,31 +821,19 @@ def orginfo(request: UserRequest):
     # 为了防止发生错误的存储，让数据库直接更新浏览次数，并且不再显示包含本次浏览的数据
     Organization.objects.filter(id=org.id).update(
         visit_times=F('visit_times')+1)
-    # org.visit_times += 1
-    # org.save()
     return render(request, "orginfo.html", locals() | dict(user=request.user))
 
 
 @login_required(redirect_field_name="origin")
 @utils.check_user_access(redirect_url="/logout/")
 @logger.secure_view()
-def homepage(request: HttpRequest):
-    is_person = request.user.is_person()
-
+def homepage(request: UserRequest):
     html_display = {}
-    html_display["is_myself"] = True
-
-    try:
-        html_display["warn_code"] = int(
-            request.GET.get("warn_code", 0))  # 是否有来自外部的消息
-    except:
-        return redirect(message_url(wrong('非法的状态码，请勿篡改URL!')))
-    html_display["warn_message"] = request.GET.get(
-        "warn_message", "")  # 提醒的具体内容
+    my_messages.transfer_message_context(request.GET, html_display)
 
     nowtime = datetime.now()
     # 今天第一次访问 welcome 界面，积分增加
-    if is_person:
+    if request.user.is_person():
         with transaction.atomic():
             np: NaturalPerson = NaturalPerson.objects.select_for_update().get(
                 person_id=request.user)
@@ -874,6 +843,14 @@ def homepage(request: HttpRequest):
                 add_point, html_display['signin_display'] = add_signin_point(
                     request.user)
                 html_display['first_signin'] = True  # 前端显示
+
+    # 解锁成就-注册智慧书院
+    # 如果放在注册页面结束判定 则已经注册好的用户获取不到该成就
+    unlock_achievement(request.user, '注册智慧书院')
+
+    # 元气满满系列更新
+    semester = current_semester()
+    unlock_YQPoint_achievements(request.user, semester.start_date, semester.end_date)
 
     # 开始时间在前后一周内，除了取消和审核中的活动。按时间逆序排序
     recentactivity_list = Activity.objects.get_recent_activity(
@@ -982,12 +959,15 @@ def homepage(request: HttpRequest):
         update_time_delta = timedelta(0)
     else:
         update_time_delta = datetime.now() - datetime.strptime(
-            _weather['modify_time'],'%Y-%m-%d %H:%M:%S.%f')
+            _weather['modify_time'], '%Y-%m-%d %H:%M:%S.%f')
     html_display['weather'] = _weather
     # 根据更新时间长短，展示不同的更新天气时间状态
+
+
     def days_hours_minutes_seconds(td):
         return td.days, td.seconds // 3600, (td.seconds // 60) % 60, td.seconds % 60
-    days, hours, minutes, seconds = days_hours_minutes_seconds(update_time_delta)
+    days, hours, minutes, seconds = days_hours_minutes_seconds(
+        update_time_delta)
     if days > 0:
         last_update = f"{days}天前"
     elif hours > 0:
@@ -1013,7 +993,6 @@ def accountSetting(request: UserRequest):
     html_display = {}
 
     # 在这个页面 默认回归为自己的左边栏
-    html_display["is_myself"] = True
     user = request.user
     me = get_person_or_org(request.user)
     former_img = utils.get_user_ava(me)
@@ -1036,7 +1015,8 @@ def accountSetting(request: UserRequest):
         if request.method == "POST" and request.POST:
 
             # 合法性检查
-            attr_dict, show_dict, html_display = utils.check_account_setting(request)
+            attr_dict, show_dict, html_display = utils.check_account_setting(
+                request)
             attr_check_list = [attr for attr in attr_dict.keys() if attr not in [
                 'gender', 'ava', 'wallpaper', 'accept_promote', 'wechat_receive_level']]
             if html_display['warn_code'] == 1:
@@ -1088,6 +1068,8 @@ def accountSetting(request: UserRequest):
                 modify_msg = '\n'.join(modify_info)
                 record_modify_with_session(request,
                                            f"修改了{expr}项信息：\n{modify_msg}")
+                # 解锁成就-更新一次个人档案
+                unlock_achievement(request.user, '更新一次个人档案')
                 return redirect("/stuinfo/?modinfo=success")
             # else: 没有更新
 
@@ -1106,7 +1088,8 @@ def accountSetting(request: UserRequest):
             ava = request.FILES.get("avatar")
             wallpaper = request.FILES.get("wallpaper")
             # 合法性检查
-            attr_dict, show_dict, html_display = utils.check_account_setting(request)
+            attr_dict, show_dict, html_display = utils.check_account_setting(
+                request)
             attr_check_list = [attr for attr in attr_dict.keys()]
             if html_display['warn_code'] == 1:
                 return render(request, "person_account_setting.html", locals())
@@ -1178,7 +1161,7 @@ def _create_freshman_account(sid: str, email: str = None):
             current = "创建用户"
             user = User.objects.create_user(
                 username=sid, name=name,
-                usertype=UTYPE_PER,
+                usertype=User.Type.PERSON,
                 password=password
             )
             current = "创建个人账号"
@@ -1339,58 +1322,46 @@ def userAgreement(request: UserRequest):
                   dict(request=request, bar_display=bar_display))
 
 
+@deprecated
 @logger.secure_view()
 def authRegister(request: HttpRequest):
-    if request.user.is_superuser:
-        if request.method == "POST" and request.POST:
-            name = request.POST["name"]
-            password = request.POST["password"]
-            sno = request.POST["snum"]
-            email = request.POST["email"]
-            password2 = request.POST["password2"]
-            stu_grade = request.POST["syear"]
-            gender = request.POST['sgender']
-            if password != password2:
-                return render(request, "index.html")
-            else:
-                if gender not in ['男', '女']:
-                    return render(request, "auth_register_boxed.html")
-                # user with same sno
-                same_user = NaturalPerson.objects.filter(person_id=sno)
-                if same_user:
-                    return render(request, "auth_register_boxed.html")
-                same_email = NaturalPerson.objects.filter(email=email)
-                if same_email:
-                    return render(request, "auth_register_boxed.html")
-
-                # OK!
-                try:
-                    user = User.objects.create_user(
-                        username=sno, name=name,
-                        usertype=UTYPE_PER,
-                        password=password
-                    )
-                except:
-                    # 存在用户
-                    return HttpResponseRedirect("/admin/")
-
-                try:
-                    new_user = NaturalPerson.objects.create(
-                        person_id=user,
-                        stu_id_dbonly=sno,
-                        name=name,
-                        email=email,
-                        stu_grade=stu_grade,
-                        gender=NaturalPerson.Gender.MALE if gender == '男'
-                        else NaturalPerson.Gender.FEMALE,
-                    )
-                except:
-                    # 创建失败，把创建的用户删掉
-                    return HttpResponseRedirect("/admin/")
-                return HttpResponseRedirect("/index/")
-        return render(request, "auth_register_boxed.html")
-    else:
+    if not request.user.is_superuser:
         return HttpResponseRedirect("/index/")
+
+    if request.method == "POST" and request.POST:
+        keys = ["name", "password", "snum", "email", "password2", "syear", "sgender"]
+        values = [request.POST[key] for key in keys]
+        name, password, sno, email, password2, stu_grade, gender = values
+        if password != password2:
+            return render(request, "index.html")
+
+        failed = False
+        failed |= gender not in ['男', '女']
+        failed |= NaturalPerson.objects.filter(person_id=sno).exists()
+        failed |= NaturalPerson.objects.filter(email=email).exists()
+        if failed:
+            return render(request, "auth_register_boxed.html")
+
+        # OK!
+        try:
+            user = User.objects.create_user(
+                username=sno, name=name,
+                usertype=User.Type.PERSON,
+                password=password
+            )
+            person = NaturalPerson.objects.create(
+                person_id=user,
+                stu_id_dbonly=sno,
+                name=name,
+                email=email,
+                stu_grade=stu_grade,
+                gender=NaturalPerson.Gender.MALE if gender == '男'
+                else NaturalPerson.Gender.FEMALE,
+            )
+        except:
+            return HttpResponseRedirect("/admin/")
+        return HttpResponseRedirect("/index/")
+    return render(request, "auth_register_boxed.html")
 
 
 @login_required(redirect_field_name="origin")
@@ -1508,7 +1479,7 @@ def search(request: HttpRequest):
     # 活动要呈现的内容
     activity_field = ["活动名称", "承办小组", "状态"]
 
-    #先赋空值保证search.html正常运行
+    # 先赋空值保证search.html正常运行
     feedback_field, feedback_list = [], []
     # feedback_field = ["标题", "状态", "负责小组", "内容"]
     # feedback_list = Feedback.objects.filter(
@@ -1528,8 +1499,6 @@ def search(request: HttpRequest):
         info['avatar'] = np.get_user_ava()
         info['sname'] = np.name
         academic_list.append((info, contents))
-
-    html_display["is_myself"] = True
 
     # 新版侧边栏, 顶栏等的呈现，采用 bar_display, 必须放在render前最后一步
     bar_display = utils.get_sidebar_and_navbar(request.user, "信息搜索")
@@ -1628,7 +1597,8 @@ def forgetPassword(request: HttpRequest):
                         "private_level": 0,  # 可选 应在0-2之间
                         # 影响显示的收件人信息
                         # 0级全部显示, 1级只显示第一个收件人, 2级只显示发件人
-                        "secret": CONFIG.email.hasher.encode(msg),  # content加密后的密文
+                        # content加密后的密文
+                        "secret": CONFIG.email.hasher.encode(msg),
                     }
                     post_data = json.dumps(post_data)
                     pre, suf = email.rsplit("@", 1)
@@ -1682,7 +1652,6 @@ def forgetPassword(request: HttpRequest):
     return render(request, "forget_password.html", locals())
 
 
-
 @login_required(redirect_field_name="origin")
 @utils.check_user_access(redirect_url="/logout/", is_modpw=True)
 @logger.secure_view()
@@ -1700,7 +1669,6 @@ def modpw(request: UserRequest):
     # 现在，请使用@utils.check_user_access(redirect_url)包装器完成用户检查
 
     html_display = {}
-    html_display["is_myself"] = True
 
     err_code = 0
     err_message = None
@@ -1918,8 +1886,6 @@ def notifications(request: HttpRequest):
             wrong("删除通知的过程出现错误！请联系管理员。", html_display)
         return JsonResponse({"success": my_messages.get_warning(html_display)[0] == SUCCEED})
 
-    html_display["is_myself"] = True
-
     done_notifications = Notification.objects.activated().filter(
         receiver=request.user,
         status=Notification.Status.DONE).order_by("-finish_time")
@@ -1934,4 +1900,3 @@ def notifications(request: HttpRequest):
     bar_display = utils.get_sidebar_and_navbar(request.user,
                                                navbar_name="通知信箱")
     return render(request, "notifications.html", locals())
-

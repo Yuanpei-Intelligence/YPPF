@@ -4,14 +4,13 @@ from datetime import datetime, timedelta
 
 from django.db import transaction
 
-from scheduler.periodic import periodical
-from Appointment.config import appointment_config as CONFIG
-from Appointment.models import Appoint
-from Appointment.utils.utils import get_conflict_appoints
-from Appointment.utils.log import write_before_delete, logger, get_user_logger
 from Appointment.appoint.jobs import set_scheduler
+from Appointment.config import appointment_config as CONFIG
 from Appointment.extern.jobs import set_appoint_reminder
-
+from Appointment.models import Appoint
+from Appointment.utils.log import get_user_logger, logger, write_before_delete
+from Appointment.utils.utils import get_conflict_appoints
+from scheduler.periodic import periodical
 
 '''
 YWolfeee:

@@ -15,10 +15,12 @@ from yp_library.models import (
     LendRecord,
 )
 from yp_library.config import library_config as CONFIG
+from achievement.models import AchievementUnlock, Achievement
 
 __all__ = [
     'get_readers_by_user', 'search_books',
-    'get_query_dict', 'get_my_records', 'get_lendinfo_by_readers'
+    'get_query_dict', 'get_my_records', 'get_lendinfo_by_readers',
+    'get_library_activity', 'get_recommended_or_newest_books', 'to_feedback_url',
 ]
 
 

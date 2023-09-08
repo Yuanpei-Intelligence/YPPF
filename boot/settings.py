@@ -10,10 +10,13 @@ class SettingConfig(Config):
 
     For example, login url is not configurable and should be hard-coded.
     """
-    db_host = os.getenv('DB_HOST') or LazySetting('db/HOST', default='localhost')
+    db_host = os.getenv('DB_HOST') or LazySetting(
+        'db/HOST', default='localhost')
     db_user = os.getenv('DB_USER') or LazySetting('db/USER', default='root')
-    db_password = os.getenv('DB_PASSWORD') or LazySetting('db/PASSWORD', default='secret')
-    db_name = os.getenv('DB_DATABASE') or LazySetting('db/NAME', default='yppf')
+    db_password = os.getenv('DB_PASSWORD') or LazySetting(
+        'db/PASSWORD', default='secret')
+    db_name = os.getenv('DB_DATABASE') or LazySetting(
+        'db/NAME', default='yppf')
     db_port = os.getenv('DB_PORT') or LazySetting('db/PORT', default='3306')
 
     secret_key = ('k+8az5x&aq_!*@%v17(ptpeo@gp2$u-uc30^fze3u_+rqhb#@9'
@@ -55,8 +58,9 @@ INSTALLED_APPS = [
     "django.contrib.messages",
     "django.contrib.staticfiles",
     "django_apscheduler",
-    "rest_framework", 
+    "rest_framework",
     "generic",
+    "semester",
     "record",
     "app",
     "Appointment",
@@ -80,6 +84,8 @@ MIDDLEWARE = [
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
 ]
 
+# TODO: Fix this
+CSRF_TRUSTED_ORIGINS = ['https://a.b.c.d']
 
 # Templates
 TEMPLATES = [

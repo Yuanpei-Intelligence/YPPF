@@ -38,17 +38,17 @@ models.py
 '''
 import random
 from datetime import datetime, timedelta
-from typing_extensions import Self
 
 from django.db import models, transaction
-from django.db.models import Q, Sum, QuerySet
+from django.db.models import Q, QuerySet, Sum
 from django_mysql.models.fields import ListCharField
+from typing_extensions import Self
 
-from generic.models import User
-from utils.models.descriptor import invalid_for_frontend, necessary_for_frontend
-from utils.models.semester import Semester, select_current
 from app.config import *
-
+from generic.models import User, YQPointRecord
+from utils.models.descriptor import (invalid_for_frontend,
+                                     necessary_for_frontend)
+from utils.models.semester import Semester, select_current
 
 __all__ = [
     # 模型
@@ -91,9 +91,9 @@ __all__ = [
 ]
 
 
-
 def current_year():
     return GLOBAL_CONFIG.acadamic_year
+
 
 def current_semester():
     return GLOBAL_CONFIG.semester
@@ -195,6 +195,7 @@ class ClassifiedUserManager(models.Manager[ClassifiedUser]):
 
     支持通过关联用户获取对象，以及筛选满足条件的对象集合
     '''
+
     def to_queryset(self, *,
                     update=False, activate=False) -> QuerySet[ClassifiedUser]:
         '''
@@ -217,7 +218,7 @@ class ClassifiedUserManager(models.Manager[ClassifiedUser]):
                     update=False, activate=False) -> ClassifiedUser:
         '''
         通过关联的User获取实例，仅管理ClassifiedUser子类时正确
-        
+
         :param update: 加锁, defaults to False
         :type update: bool, optional
         :param activate: 只选择有效对象, defaults to False
@@ -269,7 +270,7 @@ class NaturalPerson(models.Model):
 
     # 不要在任何地方使用此字段，建议先删除unique进行迁移，然后循环调用save
     stu_id_dbonly = models.CharField("学号——仅数据库", max_length=150,
-                                    blank=True)
+                                     blank=True)
 
     name = models.CharField("姓名", max_length=10)
     nickname = models.CharField("昵称", max_length=20, null=True, blank=True)
@@ -288,11 +289,11 @@ class NaturalPerson(models.Model):
     biography = models.TextField("自我介绍", max_length=1024, default="还没有填写哦～")
     avatar = models.ImageField(upload_to=f"avatar/", blank=True)
     wallpaper = models.ImageField(upload_to=f"wallpaper/", blank=True)
-    inform_share = models.BooleanField(default=True) # 是否第一次展示有关分享的帮助
+    inform_share = models.BooleanField(default=True)  # 是否第一次展示有关分享的帮助
     last_time_login = models.DateTimeField("上次登录时间", blank=True, null=True)
     objects: NaturalPersonManager = NaturalPersonManager()
     QRcode = models.ImageField(upload_to=f"QRcode/", blank=True)
-    visit_times = models.IntegerField("浏览次数",default=0) # 浏览主页的次数
+    visit_times = models.IntegerField("浏览次数", default=0)  # 浏览主页的次数
 
     class Identity(models.IntegerChoices):
         TEACHER = (0, "教职工")
@@ -312,7 +313,8 @@ class NaturalPerson(models.Model):
         UNDERGRADUATED = (0, "未毕业")
         GRADUATED = (1, "已毕业")
 
-    status = models.SmallIntegerField("在校状态", choices=GraduateStatus.choices, default=0)
+    status = models.SmallIntegerField(
+        "在校状态", choices=GraduateStatus.choices, default=0)
 
     # 表示信息是否选择展示
     # '昵称','性别','邮箱','电话','专业','宿舍'
@@ -340,7 +342,7 @@ class NaturalPerson(models.Model):
         '微信接收等级',
         choices=ReceiveLevel.choices, default=0,
         help_text='允许微信接收的最低消息等级，更低等级的通知类消息将被屏蔽'
-        )
+    )
 
     accept_promote = models.BooleanField(default=True)    # 是否接受推广消息
     active_score = models.FloatField("活跃度", default=0)  # 用户活跃度
@@ -350,7 +352,7 @@ class NaturalPerson(models.Model):
 
     def get_type(self=None) -> str:
         '''User一对一模型的必要方法'''
-        return UTYPE_PER
+        return User.Type.PERSON.value
 
     def get_user(self) -> User:
         '''User一对一模型的必要方法'''
@@ -435,13 +437,15 @@ class Freshman(models.Model):
         REGISTERED = (1, "已注册")
 
     grade = models.CharField("年级", max_length=5, null=True, blank=True)
-    status = models.SmallIntegerField("注册状态", choices=Status.choices, default=0)
+    status = models.SmallIntegerField(
+        "注册状态", choices=Status.choices, default=0)
 
     def exists(self):
         user_exist = User.objects.filter(username=self.sid).exists()
-        person_exist = NaturalPerson.objects.filter(person_id__username=self.sid).exists()
-        return "person" if person_exist else(
-                "user" if user_exist else "")
+        person_exist = NaturalPerson.objects.filter(
+            person_id__username=self.sid).exists()
+        return "person" if person_exist else (
+            "user" if user_exist else "")
 
 
 class OrganizationType(models.Model):
@@ -450,7 +454,8 @@ class OrganizationType(models.Model):
         verbose_name_plural = verbose_name
         ordering = ["otype_name"]
 
-    otype_id = models.SmallIntegerField("小组类型编号", unique=True, primary_key=True)
+    otype_id = models.SmallIntegerField(
+        "小组类型编号", unique=True, primary_key=True)
     otype_name = models.CharField("小组类型名称", max_length=25)
     otype_superior_id = models.SmallIntegerField("上级小组类型编号", default=0)
     incharge: NaturalPerson = models.ForeignKey(
@@ -466,7 +471,7 @@ class OrganizationType(models.Model):
 
     allow_unsubscribe = models.BooleanField("允许取关?", default=True)
 
-    control_pos_threshold = models.SmallIntegerField("管理者权限等级上限",default = 0)
+    control_pos_threshold = models.SmallIntegerField("管理者权限等级上限", default=0)
 
     def __str__(self):
         return str(self.otype_name)
@@ -499,6 +504,7 @@ class OrganizationTag(models.Model):
     class Meta:
         verbose_name = "1.组织类型标签"
         verbose_name_plural = verbose_name
+
     class ColorChoice(models.TextChoices):
         grey = ("#C1C1C1", "灰色")
         red = ("#DC143C", "红色")
@@ -545,13 +551,14 @@ class Organization(models.Model):
 
     objects: OrganizationManager = OrganizationManager()
 
-    introduction = models.TextField("介绍", null=True, blank=True, default="这里暂时没有介绍哦~")
+    introduction = models.TextField(
+        "介绍", null=True, blank=True, default="这里暂时没有介绍哦~")
     avatar = models.ImageField(upload_to=f"avatar/", blank=True)
     QRcode = models.ImageField(upload_to=f"QRcode/", blank=True)  # 二维码字段
     wallpaper = models.ImageField(upload_to=f"wallpaper/", blank=True)
-    visit_times = models.IntegerField("浏览次数",default=0) # 浏览主页的次数
+    visit_times = models.IntegerField("浏览次数", default=0)  # 浏览主页的次数
 
-    inform_share = models.BooleanField(default=True) # 是否第一次展示有关分享的帮助
+    inform_share = models.BooleanField(default=True)  # 是否第一次展示有关分享的帮助
 
     # 组织类型标签，一个组织可能同时有多个标签
     tags = models.ManyToManyField(OrganizationTag)
@@ -610,7 +617,8 @@ class PositionManager(models.Manager['Position']):
         with transaction.atomic():
             if apply_type == "JOIN":
                 apply_type = Position.ApplyType.JOIN
-                assert len(self.activated().filter(person=person, org=org)) == 0
+                assert len(self.activated().filter(
+                    person=person, org=org)) == 0
                 application, created = self.current().get_or_create(
                     person=person, org=org, apply_type=apply_type, apply_pos=apply_pos
                 )
@@ -702,7 +710,7 @@ class Position(models.Model):
 
     objects: PositionManager = PositionManager()
 
-    def get_pos_number(self): #返回对应的pos number 并作超出处理
+    def get_pos_number(self):  # 返回对应的pos number 并作超出处理
         return min(len(self.org.otype.job_name_list), self.pos)
 
 
@@ -729,7 +737,7 @@ class ActivityManager(models.Manager['Activity']):
     def get_newlyended_activity(self):
         # 一周内结束的活动
         nowtime = datetime.now()
-        mintime = nowtime - timedelta(days = 7)
+        mintime = nowtime - timedelta(days=7)
         return select_current(
             self.filter(end__gt=mintime, status=Activity.Status.END))
 
@@ -770,7 +778,7 @@ class ActivityManager(models.Manager['Activity']):
                 Activity.Status.PROGRESSING,
             ]
         ).filter(start__date=nowtime.date(),
-        ).order_by("start")
+                 ).order_by("start")
 
 
 class CommentBase(models.Model):
@@ -828,9 +836,10 @@ class CommentBase(models.Model):
         verbose_name_plural = verbose_name
 
     id = models.AutoField(primary_key=True)  # 自增ID，标识唯一的基类信息
-    typename = models.CharField("模型类型", max_length=32, default="commentbase")   # 子类信息
+    typename = models.CharField(
+        "模型类型", max_length=32, default="commentbase")   # 子类信息
     time = models.DateTimeField("发起时间", auto_now_add=True)
-    modify_time = models.DateTimeField("上次修改时间", auto_now=True) # 每次评论自动更新
+    modify_time = models.DateTimeField("上次修改时间", auto_now=True)  # 每次评论自动更新
 
     def get_instance(self):
         if self.typename.lower() == 'commentbase':
@@ -878,8 +887,10 @@ class Activity(CommentBase):
         twoday = (2, "提前两天")
         threeday = (3, "提前三天")
 
-    publish_day = models.SmallIntegerField("信息发布提前时间", default=PublishDay.threeday)  # 默认为提前三天时间
-    publish_time = models.DateTimeField("信息发布时间", default=datetime.now)  # 默认为当前时间，可以被覆盖
+    publish_day = models.SmallIntegerField(
+        "信息发布提前时间", default=PublishDay.threeday)  # 默认为提前三天时间
+    publish_time = models.DateTimeField(
+        "信息发布时间", default=datetime.now)  # 默认为当前时间，可以被覆盖
     need_apply = models.BooleanField("是否需要报名", default=False)
 
     # 删除显示报名时间, 保留一个字段表示报名截止于活动开始前多久：1h / 1d / 3d / 7d
@@ -897,7 +908,8 @@ class Activity(CommentBase):
         "报名截止于", choices=EndBefore.choices, default=EndBefore.oneday
     )
 
-    apply_end = models.DateTimeField("报名截止时间", blank=True, default=datetime.now)
+    apply_end = models.DateTimeField(
+        "报名截止时间", blank=True, default=datetime.now)
     start = models.DateTimeField("活动开始时间", blank=True, default=datetime.now)
     end = models.DateTimeField("活动结束时间", blank=True, default=datetime.now)
     # prepare_time = models.FloatField("活动准备小时数", default=24.0)
@@ -914,7 +926,7 @@ class Activity(CommentBase):
 
     need_checkin = models.BooleanField("是否需要签到", default=False)
 
-    visit_times = models.IntegerField("浏览次数",default=0)
+    visit_times = models.IntegerField("浏览次数", default=0)
 
     examine_teacher = models.ForeignKey(
         NaturalPerson, on_delete=models.CASCADE, verbose_name="审核老师")
@@ -928,7 +940,8 @@ class Activity(CommentBase):
     capacity = models.IntegerField("活动最大参与人数", default=100)
     current_participants = models.IntegerField("活动当前报名人数", default=0)
 
-    URL = models.URLField("活动相关(推送)网址", max_length=1024, default="", blank=True)
+    URL = models.URLField("活动相关(推送)网址", max_length=1024,
+                          default="", blank=True)
 
     def __str__(self):
         return str(self.title)
@@ -961,6 +974,15 @@ class Activity(CommentBase):
     course_time = models.ForeignKey("CourseTime", on_delete=models.SET_NULL,
                                     null=True, blank=True,
                                     verbose_name="课程每周活动时间")
+
+    @property
+    def participants(self) -> QuerySet['Participant']:
+        return self.participant_set.all()
+
+    @property
+    def attended_participants(self) -> QuerySet['Participant']:
+        return self.participants.filter(
+            status=Participant.AttendStatus.ATTENDED)
 
     def save(self, *args, **kwargs):
         self.typename = "activity"
@@ -1002,6 +1024,23 @@ class Activity(CommentBase):
             return True
         return False
 
+    def yqp_settlement(self):
+        assert self.status == Activity.Status.END
+        hours = (self.end - self.start).seconds / 3600
+        if hours > CONFIG.yqpoint.activity.invalid_hour:
+            return 0
+        from math import ceil
+        point = ceil(CONFIG.yqpoint.activity.per_hour * hours)
+        # 单次活动记录的积分上限，默认无上限
+        if CONFIG.yqpoint.activity.max is not None:
+            point = min(CONFIG.yqpoint.activity.max, point)
+        participants = self.attended_participants.values_list(
+            'person_id__person_id', flat=True)
+        participants = User.objects.filter(id__in=participants)
+        User.objects.bulk_increase_YQPoint(
+            participants, point, "参加活动", YQPointRecord.SourceType.ACTIVITY)
+
+
 class ActivityPhoto(models.Model):
     class Meta:
         verbose_name = "3.活动图片"
@@ -1013,7 +1052,8 @@ class ActivityPhoto(models.Model):
         SUMMARY = (1, "总结图片")
 
     type = models.SmallIntegerField(choices=PhotoType.choices)
-    image = models.ImageField(upload_to=f"activity/photo/%Y/%m/", verbose_name=u'活动图片', null=True, blank=True)
+    image = models.ImageField(
+        upload_to=f"activity/photo/%Y/%m/", verbose_name=u'活动图片', null=True, blank=True)
     activity = models.ForeignKey(
         Activity, related_name="photos", on_delete=models.CASCADE)
     time = models.DateTimeField("上传时间", auto_now_add=True)
@@ -1032,6 +1072,7 @@ class ParticipantManager(models.Manager['Participant']):
         if no_unattend:
             exclude_status.append(Participant.AttendStatus.UNATTENDED)
         return self.exclude(status__in=exclude_status)
+
 
 class Participant(models.Model):
     class Meta:
@@ -1100,7 +1141,7 @@ class Notification(models.Model):
         FEEDBACK_INFORM = "反馈通知"
         YPLIB_INFORM = "元培书房通知"
         LOTTERY_INFORM = "抽奖结果通知"
-
+        ACHIEVE_INFORM = "解锁成就通知"
 
     status = models.SmallIntegerField(choices=Status.choices, default=1)
     title = models.CharField("通知标题", blank=True, null=True, max_length=50)
@@ -1110,7 +1151,7 @@ class Notification(models.Model):
     typename = models.SmallIntegerField(choices=Type.choices, default=0)
     URL = models.URLField("相关网址", null=True, blank=True, max_length=1024)
     bulk_identifier = models.CharField("批量信息标识", max_length=64, default="",
-                                        db_index=True)
+                                       db_index=True)
     anonymous_flag = models.BooleanField("是否匿名", default=False)
     relate_instance: CommentBase = models.ForeignKey(
         CommentBase,
@@ -1164,14 +1205,15 @@ class ModifyOrganization(CommentBase):
         verbose_name_plural = verbose_name
         ordering = ["-modify_time", "-time"]
 
-    oname = models.CharField(max_length=32) #这里不设置unique的原因是可能是已取消
+    oname = models.CharField(max_length=32)  # 这里不设置unique的原因是可能是已取消
     otype = models.ForeignKey(OrganizationType, on_delete=models.CASCADE)
-    introduction = models.TextField("介绍", null=True, blank=True, default="这里暂时没有介绍哦~")
+    introduction = models.TextField(
+        "介绍", null=True, blank=True, default="这里暂时没有介绍哦~")
     application = models.TextField(
         "申请理由", null=True, blank=True, default="这里暂时还没写申请理由哦~"
     )
     avatar = models.ImageField(
-        upload_to=f"avatar/", verbose_name="小组头像",default="avatar/org_default.png",null=True, blank=True
+        upload_to=f"avatar/", verbose_name="小组头像", default="avatar/org_default.png", null=True, blank=True
     )
     pos = models.ForeignKey(User, on_delete=models.CASCADE)
 
@@ -1212,7 +1254,7 @@ class ModifyOrganization(CommentBase):
             avatar = Organization.get_user_ava()
         return image_url(avatar)
 
-    def is_pending(self):   #表示是不是pending状态
+    def is_pending(self):  # 表示是不是pending状态
         return self.status == ModifyOrganization.Status.PENDING
 
 
@@ -1231,8 +1273,8 @@ class ModifyPosition(CommentBase):
                             related_name="position_application")
 
     # 申请职务等级
-    pos = models.SmallIntegerField(verbose_name="申请职务等级", blank=True, null=True)
-
+    pos = models.SmallIntegerField(
+        verbose_name="申请职务等级", blank=True, null=True)
 
     reason = models.TextField(
         "申请理由", null=True, blank=True, default="这里暂时还没写申请理由哦~"
@@ -1260,7 +1302,6 @@ class ModifyPosition(CommentBase):
         "申请类型", choices=ApplyType.choices, max_length=32
     )
 
-
     def get_poster_name(self):
         try:
             return self.person
@@ -1270,10 +1311,10 @@ class ModifyPosition(CommentBase):
     def extra_display(self):
         return self.reason
 
-    def is_pending(self):   #表示是不是pending状态
+    def is_pending(self):  # 表示是不是pending状态
         return self.status == ModifyPosition.Status.PENDING
 
-    def accept_submit(self): #同意申请，假设都是合法操作
+    def accept_submit(self):  # 同意申请，假设都是合法操作
         if self.apply_type == ModifyPosition.ApplyType.WITHDRAW:
             Position.objects.activated().filter(
                 org=self.org, person=self.person
@@ -1282,14 +1323,14 @@ class ModifyPosition(CommentBase):
             # 尝试获取已有的position
             current_positions = Position.objects.current().filter(
                 org=self.org, person=self.person)
-            if current_positions.exists(): # 如果已经存在这个量了
+            if current_positions.exists():  # 如果已经存在这个量了
                 current_positions.update(
                     pos=self.pos,
                     is_admin=self.org.otype.default_is_admin(self.pos),
                     semester=self.org.otype.default_semester(),
                     status=Position.Status.INSERVICE,
                 )
-            else: # 不存在 直接新建
+            else:  # 不存在 直接新建
                 Position.objects.create(
                     pos=self.pos,
                     person=self.person,
@@ -1332,8 +1373,8 @@ class Wishes(models.Model):
         ordering = ["-time"]
 
     COLORS = [
-        "#FDAFAB","#FFDAC1","#FAF1D6",
-        "#B6E3E9","#B5EAD7","#E2F0CB",
+        "#FDAFAB", "#FFDAC1", "#FAF1D6",
+        "#B6E3E9", "#B5EAD7", "#E2F0CB",
     ]
 
     # 不要随便删 admin.py也依赖本随机函数，3.10可以直接调用static方法
@@ -1352,8 +1393,8 @@ class ModifyRecord(models.Model):
         verbose_name_plural = verbose_name
         ordering = ["-time"]
     user: User = models.ForeignKey(User, on_delete=models.SET_NULL,
-                             related_name="modify_records",
-                             to_field='username', blank=True, null=True)
+                                   related_name="modify_records",
+                                   to_field='username', blank=True, null=True)
     usertype = models.CharField('用户类型', max_length=16, default='', blank=True)
     name = models.CharField('名称', max_length=32, default='', blank=True)
     info = models.TextField('相关信息', default='', blank=True)
@@ -1379,10 +1420,10 @@ class CourseManager(models.Manager['Course']):
         return self.activated().filter(participant_set__person=person,
                                        participant_set__status__in=all_status)
 
-
     def unselected(self, person: NaturalPerson):
         # 返回当前学生没选上的所有课程
-        my_course_list = self.selected(person, unfailed=True).values_list("id", flat=True)
+        my_course_list = self.selected(
+            person, unfailed=True).values_list("id", flat=True)
         return self.activated().exclude(id__in=my_course_list)
 
 
@@ -1444,13 +1485,15 @@ class Course(models.Model):
 
     capacity = models.IntegerField("课程容量", default=100)
     current_participants = models.IntegerField("当前选课人数", default=0)
+
     class PublishDay(models.IntegerChoices):
         instant = (0, "立即发布")
         oneday = (1, "提前一天")
         twoday = (2, "提前两天")
         threeday = (3, "提前三天")
 
-    publish_day = models.SmallIntegerField("信息发布时间", default=PublishDay.threeday)  # 默认为提前三天时间
+    publish_day = models.SmallIntegerField(
+        "信息发布时间", default=PublishDay.threeday)  # 默认为提前三天时间
     need_apply = models.BooleanField("是否需要报名", default=False)
     # 暂时只允许上传一张图片
     photo = models.ImageField(verbose_name="宣传图片",
@@ -1577,7 +1620,7 @@ class CourseRecord(models.Model):
     get_course_name.short_description = "课程名"
 
 
-####  学术地图相关模型
+# 学术地图相关模型
 class AcademicTag(models.Model):
     class Meta:
         verbose_name = "P.学术地图标签"
@@ -1664,16 +1707,16 @@ class Chat(CommentBase):
         verbose_name_plural = verbose_name
 
     questioner = models.ForeignKey(User, on_delete=models.CASCADE,
-                             related_name="send_chat_set")
+                                   related_name="send_chat_set")
     respondent = models.ForeignKey(User, on_delete=models.CASCADE,
-                             related_name="receive_chat_set")
+                                   related_name="receive_chat_set")
     title = models.CharField("主题", default="", max_length=50)
     questioner_anonymous = models.BooleanField("提问方是否匿名", default=True)
     respondent_anonymous = models.BooleanField("回答方是否匿名", default=False)
 
     class Status(models.IntegerChoices):
         PROGRESSING = (0, "进行中")
-        CLOSED = (1, "已关闭") # 发送方或接收方选择关闭时转入该状态，此后双方不能再向该Chat发消息
+        CLOSED = (1, "已关闭")  # 发送方或接收方选择关闭时转入该状态，此后双方不能再向该Chat发消息
     status = models.SmallIntegerField(choices=Status.choices, default=0)
 
     objects: ChatManager = ChatManager()
@@ -1704,7 +1747,7 @@ class AcademicQA(models.Model):
 class AcademicQAAwards(models.Model):
     class Meta:
         verbose_name = "P.学术问答相关奖励"
-        verbose_name_plural = verbose_name   
+        verbose_name_plural = verbose_name
 
     user: User = models.OneToOneField(User, on_delete=models.CASCADE)
     created_undirected_qa = models.BooleanField("是否发起过非定向提问", default=False)
@@ -1719,7 +1762,8 @@ class Prize(models.Model):
     more_info = models.CharField('详情', max_length=255, default='', blank=True)
     stock = models.IntegerField('参考库存', default=0)
     reference_price = models.IntegerField('参考价格')
-    image = models.ImageField('图片', upload_to=f'prize/%Y-%m/', null=True, blank=True)
+    image = models.ImageField(
+        '图片', upload_to=f'prize/%Y-%m/', null=True, blank=True)
     provider = models.ForeignKey(User, verbose_name='提供者', on_delete=models.CASCADE,
                                  null=True, blank=True)
 
@@ -1751,7 +1795,8 @@ class Pool(models.Model):
     ticket_price = models.IntegerField('抽奖费', default=0)
     start = models.DateTimeField('开始时间')
     end = models.DateTimeField('结束时间', null=True, blank=True)
-    redeem_start = models.DateTimeField('兑奖开始时间', null=True, blank=True) # 指线下获取奖品实物
+    redeem_start = models.DateTimeField(
+        '兑奖开始时间', null=True, blank=True)  # 指线下获取奖品实物
     redeem_end = models.DateTimeField('兑奖结束时间', null=True, blank=True)
 
     @invalid_for_frontend
@@ -1803,7 +1848,7 @@ class PoolRecord(models.Model):
         # 抽奖奖池时有效
         LOTTERING = '抽奖中', '抽奖中'
         NOT_LUCKY = '未中奖', '未中奖'
-        UN_REDEEM = '未兑奖', '未兑奖' # 指线下获取奖品实物
+        UN_REDEEM = '未兑奖', '未兑奖'  # 指线下获取奖品实物
         REDEEMED = '已兑奖', '已兑奖'
         OVERDUE = '已失效', '已失效'
 
@@ -1822,7 +1867,7 @@ class ActivitySummary(models.Model):
     class Meta:
         verbose_name = "3.活动总结"
         verbose_name_plural = verbose_name
-        ordering = [ "-time"]
+        ordering = ["-time"]
 
     class Status(models.IntegerChoices):
         WAITING = (0, "待审核")
@@ -1832,15 +1877,15 @@ class ActivitySummary(models.Model):
 
     activity = models.ForeignKey(Activity, on_delete=models.CASCADE)
 
-
     status = models.SmallIntegerField(choices=Status.choices, default=0)
-    image = models.ImageField(upload_to=f"ActivitySummary/photo/%Y/%m/", verbose_name='活动总结图片', null=True, blank=True)
+    image = models.ImageField(upload_to=f"ActivitySummary/photo/%Y/%m/",
+                              verbose_name='活动总结图片', null=True, blank=True)
     time = models.DateTimeField("申请时间", auto_now_add=True)
 
     def __str__(self):
         return f'{self.activity.title}活动总结'
 
-    def is_pending(self):   #表示是不是pending状态
+    def is_pending(self):  # 表示是不是pending状态
         return self.status == ActivitySummary.Status.WAITING
 
     @necessary_for_frontend('activity.organization_id')

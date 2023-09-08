@@ -50,11 +50,17 @@
                                 </br>
                             </div> -->
 
-                                
-                                <button type="button" class="btn btn-info mb-4 mr-2 "
-                                onclick="location.href = '{{link}}{{new_link}}';" 
-                                    >{{new_btn_name}}
-                                </button>
+                                <div class="d-flex justify-content-end">
+                                    <button type="button" class="btn btn-info mb-4 mr-2 "
+                                    onclick="location.href = '/weekly-activity-summary/';" 
+                                        >{{"每周活动总结"}}
+                                    </button>
+                                    
+                                    <button type="button" class="btn btn-info mb-4 mr-2 "
+                                    onclick="location.href = '{{link}}{{new_link}}';" 
+                                        >{{new_btn_name}}
+                                    </button>
+                                </div>
                                 
                             </div>
                             {% else %}

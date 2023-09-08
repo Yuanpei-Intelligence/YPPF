@@ -965,3 +965,42 @@ def load_project(filepath: str, output_func: Callable=None, html=False):
         )
     file.close()
     return try_output("导入项目信息成功！", output_func, html)
+
+def load_birthday(filepath: str, use_name: bool=False, slash: bool=False):
+    '''
+    用来从csv中导入用户生日的函数，调用频率很低
+    @params:
+        filepath: csv文件的路径，e.g. test_data/birthday.csv
+        use_name: 使用name来获取对应的NaturalPerson对象。建议在有学号信息且保证没有重名时使用
+        slash: 生日的格式。目前支持两种：yyyymmdd(8位数字)、yyyy/m/d(其中m和d位数不固定)，通过slash选择哪一种
+               e.g. slash=True时处理后一种
+    '''
+    from datetime import date
+    try:
+        csv = pd.read_csv(filepath)
+    except:
+        print(f"没有找到{filepath},请确认该文件已经在test_data中。")
+    csv = csv.iloc[:, [0, 1, 2]]
+    success = []
+    for i in range(len(csv)):
+        stuid, name, birthday = csv.iloc[i]
+        print(stuid, name, birthday)
+        if not slash:
+            birthday = str(birthday.item())
+        try:
+            if not slash:
+                year, month, day = map(int, (birthday[:4], birthday[4:6], birthday[6:]))
+            else:
+                year, month, day = map(int, birthday.split("/"))
+            if not use_name:
+                user = User.objects.get(username=str(stuid))
+                stu = NaturalPerson.objects.get(person_id=user)
+            else:
+                stu = NaturalPerson.objects.get(name=name)
+            stu.birthday = date(year, month, day)
+            stu.save()
+            success.append(name)
+        except Exception as e:
+            print(e)
+            pass
+    print(len(success))

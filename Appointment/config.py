@@ -10,7 +10,6 @@ __all__ = [
 
 class AppointmentConfig(Config):
     # 地下室的访问入口和硬件对接密钥
-    this_url = LazySetting('base_url')
     display_token = LazySetting('token/display')
 
     # 读取学期开始，用于过滤既往预约

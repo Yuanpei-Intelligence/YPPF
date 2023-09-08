@@ -2,6 +2,8 @@ from random import random
 from typing import Union, List
 from datetime import datetime, timedelta
 
+from generic.models import User
+from boot.config import GLOBAL_CONFIG
 from app.utils_dependency import *
 from app.models import Notification
 from app.extern.wechat import (
@@ -22,10 +24,15 @@ __all__ = [
     'notification2Display',
 ]
 
+
+def get_default_sender() -> User:
+    return User.objects.get(username=GLOBAL_CONFIG.official_uid)
+
+
 def notification_status_change(
     notification_or_id: Union[Notification, int],
     to_status: Notification.Status = None,
-    ) -> MESSAGECONTEXT:
+) -> MESSAGECONTEXT:
     """
     调用该函数以完成一项通知。对于知晓类通知，在接收到用户点击按钮后的post表单，该函数会被调用。
     对于需要完成的待处理通知，需要在对应的事务结束判断处，调用该函数。
@@ -93,12 +100,12 @@ def notification_status_change(
 
 
 def notification_create(
-        receiver,
-        sender,
+        receiver: User,
+        sender: User | None,
         typename,
-        title,
-        content,
-        URL=None,
+        title: str,
+        content: str,
+        URL: str | None = None,
         relate_instance=None,
         anonymous_flag=False,
         *,
@@ -124,6 +131,7 @@ def notification_create(
     现在，你应该在不急于等待的时候显式调用publish_notification(s)这两个函数，
         具体选择哪个取决于你创建的通知是一批类似通知还是单个通知
     """
+    sender = sender or get_default_sender()
     notification = Notification.objects.create(
         receiver=receiver,
         sender=sender,
@@ -137,10 +145,11 @@ def notification_create(
     if publish_to_wechat == True:
         if not publish_kws:
             publish_kws = {}
-        if anonymous_flag: 
+        if anonymous_flag:
             publish_kws['show_source'] = False
         publish_notification(notification, **publish_kws)
     return notification
+
 
 def get_bulk_identifier(
         sender,
@@ -149,7 +158,7 @@ def get_bulk_identifier(
         content,
         URL,
         extra_str=None,
-        ):
+):
     '''
     返回一个由内容确定的批量创建识别码
     encode效率约为1e9/s量级，可以全部加密
@@ -164,9 +173,10 @@ def get_bulk_identifier(
 
     if extra_str is not None:
         arg_list.append(extra_str)
-    
+
     bulk_identifier = hasher.encode(' || '.join(arg_list))
     return bulk_identifier
+
 
 def bulk_notification_create(
         receivers,
@@ -215,13 +225,13 @@ def bulk_notification_create(
             sender=sender, typename=typename, title=title,
             content=content, URL=URL,
             extra_str=str(start_time) + str(random()),
-            )
+        )
         if duplicate_behavior in ['fail', 'success', 'remove', 'report', 'log']:
             cur_status = '检查已存在通知'
             exist_note = Notification.objects.filter(
                 bulk_identifier=bulk_identifier,
                 start_time__gt=start_time - timedelta(minutes=5),
-                )
+            )
             if exist_note.exists():
                 if duplicate_behavior == 'fail':
                     return False, bulk_identifier
@@ -229,30 +239,33 @@ def bulk_notification_create(
                     return True, bulk_identifier
 
                 cur_status = '计算已接收名单'
-                exist_userids = exist_note.values_list('receiver_id', flat=True).distinct()
+                exist_userids = exist_note.values_list(
+                    'receiver_id', flat=True).distinct()
                 receiver_ids = [receiver.id for receiver in receivers]
                 received_ids = exist_note.filter(
                     receiver_id__in=receiver_ids).values_list('receiver_id', flat=True).distinct()
-                
+
                 cur_status = '重复处理'
+
                 def _short(values):
                     return f'{values[:3]}等{len(values)}个'
 
                 if duplicate_behavior in ['report', 'log']:
                     log_msg = f'批量创建通知时通知已存在, 识别码为{bulk_identifier}'
                     log_msg += f'：尝试创建{len(receiver_ids)}个，已有{_short(received_ids)}，共存在{len(exist_userids)}个'
-                    logger.error(log_msg) if duplicate_behavior == 'report' else logger.warning(log_msg)
+                    logger.error(
+                        log_msg) if duplicate_behavior == 'report' else logger.warning(log_msg)
                 if duplicate_behavior == 'remove':
                     cur_status = '移除已有接收者'
                     received_id_set = set(received_ids)
                     receivers = [receiver for receiver in receivers
-                                    if receiver.id not in received_id_set]
+                                 if receiver.id not in received_id_set]
                     log_msg = f'批量创建通知时通知已存在, 识别码为{bulk_identifier}'
                     log_msg += f'：已移除{_short(received_ids)}已通知用户，剩余{len(receivers)}个'
                     logger.warning(log_msg)
                     if not receivers:
                         return True, bulk_identifier
-            
+
         cur_status = '生成通知'
         notifications = [
             Notification(
@@ -299,10 +312,11 @@ def bulk_notification_create(
                 # "start_time": start_time,
                 # "start_time__gte": start_time,
                 # "receiver_id__in": [receiver.id for receiver in receivers],
-                }
+            }
             if not publish_kws:
                 publish_kws = {}
-            success = publish_notifications(filter_kws=filter_kws, **publish_kws)
+            success = publish_notifications(
+                filter_kws=filter_kws, **publish_kws)
     except Exception as e:
         success = False
         logger.exception(f'在{cur_status}时发生错误：识别码为{bulk_identifier}')
@@ -311,14 +325,14 @@ def bulk_notification_create(
 
 # 对一个已经完成的申请, 构建相关的通知和对应的微信消息, 将有关的事务设为已完成
 # 如果有错误，则不应该是用户的问题，需要发送到管理员处解决
-#用于报销的通知
+# 用于报销的通知
 # TODO: Reuse
 @logger.secure_func(raise_exc=True, exc_type=DeprecationWarning)
 def make_notification(application, request, content, receiver):
     # 考虑不同post_type的信息发送行为
     post_type = request.POST.get("post_type")
-    feasible_post = ["new_submit", "modify_submit", "cancel_submit", "accept_submit", "refuse_submit"]
-
+    feasible_post = ["new_submit", "modify_submit",
+                     "cancel_submit", "accept_submit", "refuse_submit"]
 
     # 准备创建notification需要的构件：发送方、接收方、发送内容、通知类型、通知标题、URL、关联外键
     URL = {
@@ -353,7 +367,8 @@ def make_notification(application, request, content, receiver):
     # 这里的逻辑保证：所有的处理类通知的生命周期必须从“成员发起”开始，从“取消”“通过”“拒绝”结束。
     if feasible_post.index(post_type) >= 2:
         notification_status_change(
-            application.relate_notifications.get(status=Notification.Status.UNDONE).id,
+            application.relate_notifications.get(
+                status=Notification.Status.UNDONE).id,
             Notification.Status.DONE
         )
 
@@ -369,7 +384,7 @@ def notification2Display(notifications: QuerySet[Notification]) -> List[dict]:
     :rtype: List[dict]
     """
     notifications.select_related("sender")
-    
+
     displays = []
     for notification in notifications:
         note_display = {}

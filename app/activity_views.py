@@ -9,7 +9,10 @@ from django.db.models import Q, F
 import csv
 import qrcode
 
+from generic.models import User
+from generic.utils import to_search_indices
 from app.views_dependency import *
+from app.view.base import ProfileTemplateView
 from app.models import (
     NaturalPerson,
     Organization,
@@ -78,7 +81,7 @@ def viewActivity(request: HttpRequest, aid=None):
     aid = int(aid)
     activity: Activity = Activity.objects.get(id=aid)
     org = activity.organization_id
-    me = utils.get_person_or_org(request.user)
+    me = get_person_or_org(request.user)
     ownership = False
     if request.user.is_org() and org == me:
         ownership = True
@@ -276,9 +279,14 @@ def viewActivity(request: HttpRequest, aid=None):
             pass
 
     # 参与者, 无论报名是否通过
-    participants = Participant.objects.filter(Q(activity_id=activity),
-                                              Q(status=Participant.AttendStatus.APPLYING) | Q(status=Participant.AttendStatus.APPLYSUCCESS) | Q(status=Participant.AttendStatus.ATTENDED) | Q(status=Participant.AttendStatus.UNATTENDED))
-    #participants_ava = [utils.get_user_ava(participant, UTYPE_PER) for participant in participants.values("person_id")] or None
+    participants = Participant.objects.filter(
+        activity_id=activity,
+        status__in=[
+            Participant.AttendStatus.APPLYING,
+            Participant.AttendStatus.APPLYSUCCESS,
+            Participant.AttendStatus.ATTENDED,
+            Participant.AttendStatus.UNATTENDED,
+        ])
     people_list = NaturalPerson.objects.activated().filter(
         id__in=participants.values("person_id"))
 
@@ -327,7 +335,7 @@ def getActivityInfo(request: HttpRequest):
     activity = Activity.objects.get(id=activity_id)
 
     # check organization existance and ownership to activity
-    organization = utils.get_person_or_org(request.user, UTYPE_ORG)
+    organization = get_person_or_org(request.user, UTYPE_ORG)
     assert activity.organization_id == organization, f"{organization}不是活动的组织者"
 
     info_type = request.GET.get("infotype", None)
@@ -459,7 +467,7 @@ def addActivity(request: UserRequest, aid=None):
     # 检查：不是超级用户，必须是小组，修改是必须是自己
     html_display = {}
     # assert valid  已经在check_user_access检查过了
-    me = utils.get_person_or_org(request.user)  # 这里的me应该为小组账户
+    me = get_person_or_org(request.user)  # 这里的me应该为小组账户
     if aid is None:
         if not request.user.is_org():
             return redirect(message_url(wrong('小组账号才能添加活动!')))
@@ -471,7 +479,8 @@ def addActivity(request: UserRequest, aid=None):
         activity = Activity.objects.get(id=aid)
         if request.user.is_person():
             # 自动更新request.user
-            html_display = utils.user_login_org(request, activity.organization_id)
+            html_display = utils.user_login_org(
+                request, activity.organization_id)
             if html_display['warn_code'] == 1:
                 return redirect(message_url(html_display))
             else:  # 成功以小组账号登陆
@@ -479,7 +488,6 @@ def addActivity(request: UserRequest, aid=None):
         if activity.organization_id != me:
             return redirect(message_url(wrong("无法修改其他小组的活动!")))
         edit = True
-    html_display["is_myself"] = True
 
     # 处理 POST 请求
     # 在这个界面，不会返回render，而是直接跳转到viewactivity，可以不设计bar_display
@@ -625,7 +633,7 @@ def showActivity(request: UserRequest):
     活动信息的聚合界面
     只有老师和小组才能看到，老师看到检查者是自己的，小组看到发起方是自己的
     """
-    me = utils.get_person_or_org(request.user)  # 获取自身
+    me = get_person_or_org(request.user)  # 获取自身
     is_teacher = False  # 该变量同时用于前端
     if request.user.is_person():
         is_teacher = me.is_teacher()
@@ -663,14 +671,13 @@ def examineActivity(request: UserRequest, aid: int | str):
     try:
         assert request.user.is_valid()
         assert request.user.is_person()
-        me = utils.get_person_or_org(request.user)
+        me = get_person_or_org(request.user)
         activity = Activity.objects.get(id=int(aid))
         assert activity.examine_teacher == me
     except:
         return redirect(message_url(wrong('没有审核权限!')))
 
     html_display = {}
-    html_display["is_myself"] = True
 
     if request.method == "POST" and request.POST:
 
@@ -831,7 +838,7 @@ def endActivity(request: HttpRequest):
     is_auditor = False
     if request.user.is_person():
         try:
-            person = utils.get_person_or_org(request.user)
+            person = get_person_or_org(request.user)
             is_auditor = person.is_teacher()
             assert is_auditor
         except:
@@ -867,12 +874,8 @@ def endActivity(request: HttpRequest):
 @login_required(redirect_field_name="origin")
 @utils.check_user_access(redirect_url="/logout/")
 @logger.secure_view()
-def modifyEndActivity(request: HttpRequest):
-    # return
+def modifyEndActivity(request: UserRequest):
     html_display = {}
-    me = utils.get_person_or_org(request.user)  # 获取自身
-
-    # 前端使用量user_type，表示观察者是小组还是个人
 
     # ———————————————— 读取可能存在的申请 为POST和GET做准备 ————————————————
 
@@ -887,15 +890,12 @@ def modifyEndActivity(request: HttpRequest):
         try:  # 尝试获取已经新建的apply
             application: ActivitySummary = ActivitySummary.objects.get(
                 id=apply_id)
-            auditor = application.activity.examine_teacher.person_id  # 审核老师
+            auditor = application.activity.examine_teacher.get_user()  # 审核老师
             if request.user.is_person() and auditor != request.user:
                 html_display = utils.user_login_org(
                     request, application.get_org())
                 if html_display['warn_code'] == 1:
                     return redirect(message_url(html_display))
-                else:  # 成功
-                    me = application.get_org()
-                    request.user = me.get_user()
 
             # 接下来检查是否有权限check这个条目
             # 至少应该是申请人或者被审核老师之一
@@ -912,6 +912,8 @@ def modifyEndActivity(request: HttpRequest):
             return redirect(message_url(wrong("您没有权限访问该网址！")))
 
         is_new_application = True  # 新的申请
+
+    me = get_person_or_org(request.user)  # 获取自身，便于之后查询
 
     # 这种写法是为了方便随时取消某个条件
     '''
@@ -933,8 +935,6 @@ def modifyEndActivity(request: HttpRequest):
             .filter(organization_id=me)  # 本部门小组的
             .filter(status=Activity.Status.END)  # 已结束的
             .exclude(id__in=summary_act_ids))  # 还没有报销的
-
-        activities.len = len(activities)
     else:
         activities = None
 
@@ -1073,3 +1073,176 @@ def modifyEndActivity(request: HttpRequest):
         request.user, navbar_name="活动总结详情")
 
     return render(request, "modify_activity_summary.html", locals())
+
+
+class WeeklyActivitySummaryView(ProfileTemplateView):
+
+    template_name = "weekly_activity_summary.html"
+    page_name = "每周活动总结"
+
+    def prepare_get(self):
+        return self.get
+
+    def prepare_post(self):
+        self.context = {
+            "bidding": False,
+            "inner": False,
+            "need_checkin": False,
+            "recorded": True,
+            "valid": True,
+            "unlimited_capacity": True,
+            "signscheme": 0,
+            "maxpeople": 10000,
+            "prepare_scheme": 1,
+            "URL": "",
+            "announce_pic_src": "/static/assets/img/announcepics/1.JPG",
+            # Summary do not need an auditor, so we set it to arbitrary value
+            "examine_teacher": NaturalPerson.objects.teachers().first()
+        }
+        summary_photos = self.request.FILES.getlist('summaryimages')
+
+        # 检查总结图片合法性
+        photo_num = len(summary_photos)
+        if photo_num == 1:
+            for image in summary_photos:
+                if utils.if_image(image) != 2:
+                    return redirect(
+                        message_url(wrong("上传的总结图片只支持图片格式！")))
+        else:
+            return redirect(message_url(wrong('图片内容为空或有多张图片！'), self.request.path))
+        self.context['summary_pic'] = summary_photos[0]
+        return self.post
+
+    def get(self):
+        html_display = {}
+        me = utils.get_person_or_org(self.request.user)
+        if not self.request.user.is_org():
+            return redirect(message_url(wrong('小组账号才能发起每周活动总结')))
+
+        # 准备前端展示量
+        html_display["applicant_name"] = me.oname
+        html_display["app_avatar_path"] = me.get_user_ava()
+        html_display["today"] = datetime.now().strftime("%Y-%m-%d")
+        bar_display = utils.get_sidebar_and_navbar(self.request.user, "活动发起")
+        person_list = NaturalPerson.objects.activated()
+        user_id_list = [person.person_id.id for person in person_list]
+        user_queryset = User.objects.filter(id__in=user_id_list)
+        js_stu_list = to_search_indices(user_queryset)
+
+        self.extra_context.update({
+            'html_display': html_display,
+            'bar_display': bar_display,
+            'js_stu_list': js_stu_list,
+        })
+        return self.render()
+
+    def post(self):
+        self.weekly_summary_base_check()
+        aid, created = self.create_weekly_summary()
+        if not created:
+            return redirect(message_url(
+                succeed('存在信息相同的活动，已为您自动跳转!'),
+                f'/viewActivity/{aid}'))
+        return redirect(f"/editActivity/{aid}")
+
+    def check_summary_time(self, start_time: datetime, end_time: datetime) -> bool:
+        '''由每周活动总结新建的活动，检查开始时间早于结束时间'''
+        now_time = datetime.now()
+        if start_time < end_time <= now_time:
+            return True
+        return False
+
+    def weekly_summary_base_check(self):
+        '''
+        从request.POST中获取活动信息并检查合法性
+        正常情况下检查出错误会抛出不含错误信息的AssertionError，不抛出ActivityException
+        '''
+        for k in ['title', 'introduction', 'location']:
+            v = self.request.POST.get(k)
+            assert v is not None and v != ""
+            self.context[k] = v
+
+        # 时间
+        act_start = datetime.strptime(
+            self.request.POST["actstart"], "%Y-%m-%d %H:%M")  # 活动报名时间
+        act_end = datetime.strptime(
+            self.request.POST["actend"], "%Y-%m-%d %H:%M")  # 活动报名结束时间
+        self.context["start"] = act_start
+        self.context["end"] = act_end
+        assert self.check_summary_time(act_start, act_end)
+
+        prepare_scheme = int(self.context["prepare_scheme"])
+        prepare_times = Activity.EndBeforeHours.prepare_times
+        prepare_time = prepare_times[prepare_scheme]
+        self.context["endbefore"] = prepare_scheme
+        self.context["apply_end"] = act_start - timedelta(hours=prepare_time)
+
+    def create_weekly_summary(self) -> tuple[int, bool]:
+        '''
+        检查是否存在一致的活动及活动合法性，若通过检查则创建活动及活动总结；
+        返回(activity.id, created)；
+        若查询到一致的活动或检查不合格时抛出AssertionError
+        '''
+
+        # 查找是否有类似活动存在
+        old_ones = Activity.objects.activated().filter(
+            title=self.context["title"],
+            start=self.context["start"],
+            introduction=self.context["introduction"],
+            location=self.context["location"]
+        )
+        if len(old_ones):
+            assert len(old_ones) == 1, "创建活动时，已存在的相似活动不唯一"
+            return old_ones[0].id, False
+
+        # 检查完毕，创建活动、活动总结
+        org = get_person_or_org(self.request.user, UTYPE_ORG)
+        participants_ids = self.request.POST.getlist("students")
+        with transaction.atomic():
+            # 创建活动、活动宣传图片
+            activity = Activity.objects.create(
+                title=self.context["title"],
+                organization_id=org,
+                examine_teacher=self.context["examine_teacher"],
+                introduction=self.context["introduction"],
+                location=self.context["location"],
+                capacity=self.context["maxpeople"],
+                URL=self.context["URL"],
+                start=self.context["start"],
+                end=self.context["end"],
+                bidding=self.context["bidding"],
+                apply_end=self.context["apply_end"],
+                inner=self.context["inner"],
+                endbefore=self.context["endbefore"],
+                need_checkin=self.context["need_checkin"],
+                recorded=self.context["recorded"],
+                valid=self.context["valid"],  # 默认已审核
+                status=Activity.Status.END,
+            )
+            ActivityPhoto.objects.create(
+                image=self.context["announce_pic_src"], type=ActivityPhoto.PhotoType.ANNOUNCE, activity=activity)
+
+            # 创建参与人
+            nps = NaturalPerson.objects.filter(
+                person_id__username__in=participants_ids)
+            participants = [
+                Participant(
+                    activity_id=activity,
+                    person_id=np,
+                    status=Participant.AttendStatus.ATTENDED,
+                ) for np in nps
+            ]
+            Participant.objects.bulk_create(participants)
+            activity.current_participants = len(participants_ids)
+            activity.yqp_settlement()
+            activity.save()
+
+            # 创建活动总结
+            application: ActivitySummary = ActivitySummary.objects.create(
+                activity=activity,
+                status=ActivitySummary.Status.CONFIRMED,
+                image=self.context["summary_pic"]
+            )
+            application.save()
+
+        return activity.id, True

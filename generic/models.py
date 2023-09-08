@@ -24,7 +24,7 @@ from django.db.models import QuerySet, F
 import pypinyin
 
 from utils.models.choice import choice
-from utils.models.descriptor import necessary_for_frontend, invalid_for_frontend, debug_only
+from utils.models.descriptor import necessary_for_frontend, invalid_for_frontend, admin_only
 
 __all__ = [
     'User',
@@ -33,15 +33,20 @@ __all__ = [
 ]
 
 
+def get_pinyin(name: str) -> list[str]:
+    '''转为拼音'''
+    pinyin_list = pypinyin.pinyin(name, style=pypinyin.NORMAL)
+    return [prons[0] for prons in pinyin_list]
+
+
 def to_acronym(name: str) -> str:
     '''生成缩写'''
-    pinyin_list = pypinyin.pinyin(name, style=pypinyin.NORMAL)
-    return ''.join([w[0][0] for w in pinyin_list])
+    return ''.join([pron[0] for pron in get_pinyin(name)])
 
 
 class UserManager(_UserManager['User']):
     '''
-    用户管理器，提供对信用分等通用
+    用户管理器，提供对信用分等通用字段的修改方法
     '''
 
     def get_user(self, user: 'User|int|str', update=False) -> 'User':
@@ -55,6 +60,22 @@ class UserManager(_UserManager['User']):
             return users.get(username=user)
         return users.get(pk=user)
 
+    def filter_type(self, usertype: 'User.Type | str | list[User.Type]'):
+        '''
+        根据用户类型过滤用户
+
+        Args:
+        - type: 用户类型，可选值为`User.Type`枚举值、其对应的字符串和一组枚举值
+        '''
+        users = self.all()
+        if usertype == User.Type.PERSON:
+            usertype = User.Type.Persons()
+        if isinstance(usertype, str | User.Type):
+            users = users.filter(utype=usertype)
+        else:
+            users = users.filter(utype__in=usertype)
+        return users
+
     def create_user(self, username: str, name: str,
                     usertype: 'User.Type' = None, *,
                     password: str = None,
@@ -63,6 +84,7 @@ class UserManager(_UserManager['User']):
         if usertype is not None:
             extra_fields['utype'] = usertype
         extra_fields['name'] = name
+        extra_fields.setdefault('pinyin', ''.join(get_pinyin(name)))
         extra_fields.setdefault('acronym', to_acronym(name))
         return super().create_user(username=username, password=password, **extra_fields)
 
@@ -235,7 +257,27 @@ class PointMixin(models.Model):
     YQpoint = models.IntegerField('元气值', default=0)
 
 
-class User(AbstractUser, PointMixin):
+class UserBase(models.base.ModelBase):
+    '''临时的类型提示助手'''
+    @property
+    def objects(cls) -> UserManager: ...
+    del objects
+
+
+class User(AbstractUser, PointMixin, metaclass=UserBase):
+    '''用户模型
+
+    Attributes:
+    - id: 用户主键
+    - username: 用户名，学号
+    - name: 用户名称
+    - utype: 用户类型，参考User.Type
+    - 其它继承字段参考AbstractUser
+
+    See Also:
+    - :class:`UserManager`
+    - :class:`django.contrib.auth.models.AbstractUser`
+    '''
 
     class Meta:
         verbose_name = '用户'
@@ -245,6 +287,13 @@ class User(AbstractUser, PointMixin):
     MIN_CREDIT: Final = 0
     MAX_CREDIT: Final = 3
     credit = models.IntegerField('信用分', default=MAX_CREDIT)
+
+    # For student, means not graduated
+    # For teacher, means not retired
+    # For organization, means not dissolved
+    # TODO: copy from NaturalPerson & Organization
+    # 注意：不同于django的is_active
+    active = models.BooleanField('激活状态', default=True)
 
     accept_chat = models.BooleanField('允许提问', default=True)
     accept_anonymous_chat = models.BooleanField('允许匿名提问', default=True)
@@ -257,8 +306,13 @@ class User(AbstractUser, PointMixin):
         UNAUTHORIZED = choice('Unauthorized', '未授权')
         SPECIAL = choice('', '特殊用户')
 
-    name = models.CharField('名称', max_length=32)
+        @classmethod
+        def Persons(cls) -> list['User.Type']:
+            # TODO: 待后端都使用本接口判断后，修改类型判断
+            return [cls.PERSON, cls.STUDENT, cls.TEACHER]
 
+    name = models.CharField('名称', max_length=32)
+    pinyin = models.CharField('拼音', max_length=100, default='', blank=True)
     acronym = models.CharField('缩写', max_length=32, default='', blank=True)
     utype: Type | str = models.CharField(
         '用户类型', max_length=20,
@@ -270,7 +324,7 @@ class User(AbstractUser, PointMixin):
     REQUIRED_FIELDS = ['name']
     objects: UserManager = UserManager()
 
-    @debug_only
+    @admin_only
     def __str__(self) -> str:
         return f'{self.username} ({self.name})'
 
@@ -292,9 +346,7 @@ class User(AbstractUser, PointMixin):
 
     @necessary_for_frontend(utype)
     def is_person(self) -> bool:
-        return self.utype == self.Type.PERSON
-        # TODO: 待后端都使用本接口判断后，修改类型判断
-        return self.is_student() or self.is_teacher()
+        return self.utype in self.Type.Persons()
 
     @necessary_for_frontend(utype)
     def is_student(self) -> bool:
@@ -348,7 +400,7 @@ class YQPointRecord(models.Model):
     delta = models.IntegerField('变化量')
     source = models.CharField('来源', max_length=50, blank=True)
 
-    # TODO: Can we remove this? 
+    # TODO: Can we remove this?
     class SourceType(models.IntegerChoices):
         SYSTEM = (0, '系统操作')
         CHECK_IN = (1, '每日签到')

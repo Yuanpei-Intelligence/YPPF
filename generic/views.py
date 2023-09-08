@@ -1,6 +1,7 @@
 from typing import cast
 
 from django.contrib import auth
+from django.db import connection
 from utils.http.dependency import HttpRequest, HttpResponse, UserRequest
 
 from generic.models import User
@@ -52,6 +53,11 @@ class Index(SecureTemplateView):
             )
 
     def prepare_login(self) -> SecureView.HandlerType:
+        # Prevent bug report
+        x_forwarded_for = self.request.META.get('HTTP_X_FORWARDED_FOR')
+        if x_forwarded_for and x_forwarded_for.split(',')[0] == '127.0.0.1':
+            return self.http_forbidden()
+
         assert 'username' in self.request.POST
         assert 'password' in self.request.POST
         _user = self.request.user
@@ -109,3 +115,22 @@ class Logout(SecureView):
     def get(self) -> HttpResponse:
         auth.logout(self.request)
         return self.redirect('index')
+
+
+def healthcheck(request: HttpRequest) -> HttpResponse:
+    """
+    django健康状态检查
+    尝试执行数据库操作，若成功返回200，不成功返回500
+    """
+    try:
+        with connection.cursor() as cursor:
+            cursor.execute("SELECT 1")
+            _ = cursor.fetchall()
+
+        response = HttpResponse("healthy")
+        response.status_code = 200
+        return response
+    except Exception:
+        response = HttpResponse("unhealthy")
+        response.status_code = 500
+        return response

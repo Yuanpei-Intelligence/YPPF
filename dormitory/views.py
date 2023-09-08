@@ -1,11 +1,13 @@
-from rest_framework import viewsets
 from django.db import transaction
+from rest_framework import viewsets
 
 # TODO: Leaky dependency
+from app.models import NaturalPerson
 from app.view.base import ProfileTemplateView
-from questionnaire.models import Survey, AnswerSheet, AnswerText
 from dormitory.models import Dormitory, DormitoryAssignment
-from dormitory.serializers import DormitorySerializer, DormitoryAssignmentSerializer
+from dormitory.serializers import (DormitoryAssignmentSerializer,
+                                   DormitorySerializer)
+from questionnaire.models import AnswerSheet, AnswerText, Survey
 
 
 class DormitoryViewSet(viewsets.ReadOnlyModelViewSet):
@@ -18,9 +20,9 @@ class DormitoryAssignmentViewSet(viewsets.ReadOnlyModelViewSet):
     serializer_class = DormitoryAssignmentSerializer
 
 
-class TemporaryDormitoryView(ProfileTemplateView):
+class DormitoryRoutineQAView(ProfileTemplateView):
 
-    template_name = 'dormitory/temporary_dormitory.html'
+    template_name = 'dormitory/dormitory_routine_QA.html'
     page_name = '生活习惯调研'
 
     def prepare_get(self):
@@ -31,7 +33,7 @@ class TemporaryDormitoryView(ProfileTemplateView):
 
     def get(self):
 
-        survey = Survey.objects.get(title='宿舍调查问卷')
+        survey = Survey.objects.get(title='宿舍生活习惯调研')
         if AnswerSheet.objects.filter(creator=self.request.user,
                                       survey=survey).exists():
             self.extra_context.update({
@@ -48,7 +50,7 @@ class TemporaryDormitoryView(ProfileTemplateView):
         return self.render()
 
     def post(self):
-        survey = Survey.objects.get(title='宿舍调查问卷')
+        survey = Survey.objects.get(title='宿舍生活习惯调研')
         assert not AnswerSheet.objects.filter(creator=self.request.user,
                                               survey=survey).exists()
         with transaction.atomic():
@@ -65,3 +67,42 @@ class TemporaryDormitoryView(ProfileTemplateView):
             'submitted': True
         })
         return self.render()
+
+
+class DormitoryAssignResultView(ProfileTemplateView):
+
+    template_name = 'dormitory/dormitory_assign_result.html'
+    page_name = '宿舍分配结果'
+
+    def prepare_get(self):
+        return self.get
+
+    def get(self):
+        self.show_dorm_assign()
+        return self.render()
+
+    def show_dorm_assign(self):
+        user = self.request.user
+        np_student = NaturalPerson.objects.get(person_id=user)
+        try:
+            user_assignment = DormitoryAssignmentViewSet.queryset.get(
+                user=user)
+            dorm_assignment = DormitoryAssignmentViewSet.queryset.filter(
+                dormitory=user_assignment.dormitory)
+            name, dorm_id, bed_id = np_student.name, user_assignment.dormitory.id, dorm_assignment.get(
+                user=user).bed_id
+            roommates = [NaturalPerson.objects.get(
+                person_id=item.user) for item in dorm_assignment]
+            roommates.remove(np_student)
+            self.extra_context.update({
+                'dorm_assigned': True,
+                'name': name,
+                'dorm_id': dorm_id,
+                'bed_id': bed_id,
+                'roommates': [(i, item) for i, item in enumerate(roommates)],
+                'rommmates_total': str(len(roommates))
+            })
+        except DormitoryAssignment.DoesNotExist:
+            self.extra_context.update({
+                'dorm_assigned': False,
+            })

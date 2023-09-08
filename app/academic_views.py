@@ -1,3 +1,4 @@
+from generic.utils import to_search_indices
 from app.views_dependency import *
 from app.models import (
     AcademicTag,
@@ -15,13 +16,13 @@ from app.academic_utils import (
     update_academic_map,
     get_wait_audit_student,
     audit_academic_map,
-    get_students_for_search,
     get_tags_for_search,
 )
 from app.utils import (
     get_sidebar_and_navbar,
     get_person_or_org,
 )
+from achievement.api import unlock_achievement
 
 __all__ = [
     'ShowChats',
@@ -39,8 +40,7 @@ class ShowChats(ProfileTemplateView):
     page_name = '学术地图问答'
 
     def prepare_get(self):
-        user = self.request.user
-        if not user.is_person():
+        if not self.request.user.is_person():
             # 后续或许可以开放任意的聊天
             return self.wrong('请使用个人账号访问问答中心页面！')
         return self.get
@@ -49,10 +49,10 @@ class ShowChats(ProfileTemplateView):
         self.extra_context.update({
             'sent_chats': chats2Display(self.request.user, sent=True),
             'received_chats': chats2Display(self.request.user, sent=False),
-            'stu_list': get_students_for_search(self.request),
+            'stu_list': to_search_indices(User.objects.filter_type(User.Type.PERSON)),
             'tag_list': get_tags_for_search(),
         })
-        
+
         return self.render()
 
 
@@ -106,6 +106,7 @@ def modifyAcademic(request: UserRequest) -> HttpResponse:
             if context["warn_code"] == 1:    # 填写的TextEntry太长导致填写失败
                 return redirect(message_url(context, "/modifyAcademic/"))
             else:                            # warn_code == 2，表明填写成功
+                unlock_achievement(request.user, "编辑自己的学术地图")  # 解锁成就-编辑自己的学术地图
                 return redirect(message_url(context, "/stuinfo/#tab=academic_map"))
         except:
             return redirect(message_url(wrong("修改过程中出现意料之外的错误，请联系工作人员处理！")))

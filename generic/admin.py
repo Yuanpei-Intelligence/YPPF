@@ -66,18 +66,21 @@ class PermissionAdmin(admin.ModelAdmin):
 class MyUserAdmin(UserAdmin):
     list_display = [
         'id', 'username', 'name',
-        'credit', 'utype', 'is_staff', 'is_superuser',
+        'credit', 'YQpoint', 'utype', 'is_staff', 'is_superuser',
     ]
     # list_editable = ['credit']
-    search_fields = ['id', 'username', 'name', 'acronym']
+    search_fields = ['id', 'username', 'name', 'pinyin', 'acronym']
     @classmethod
     def suggest_search_fields(cls, user_field: str = 'user'):
         return [f'{user_field}__{field}' for field in cls.search_fields[1:]]
 
-    list_filter = ['utype', 'is_superuser', 'is_staff', 'groups', 'is_active']
+    list_filter = [
+        'utype', 'is_superuser', 'is_staff', 'groups',
+        'active', 'is_active',
+    ]
     fieldsets = [
-        (None, {'fields': ('username', 'name', 'acronym', 'password')}),
-        ('自定义信息', {'fields': ['credit', 'YQpoint', 'utype', 'is_newuser']}),
+        (None, {'fields': ('username', 'name', 'acronym', 'pinyin', 'password')}),
+        ('自定义信息', {'fields': ['credit', 'YQpoint', 'utype', 'is_newuser', 'active']}),
         # 内置部分
         ('权限', {
             'fields': ('is_active', 'is_staff', 'is_superuser', 'groups', 'user_permissions'),
@@ -94,6 +97,7 @@ class MyUserAdmin(UserAdmin):
         User.objects.filter(id__in=Organization.objects.values_list('organization_id')
             ).select_for_update().update(utype=User.Type.ORG)
         User.objects.filter(id__in=NaturalPerson.objects.values_list('person_id')
+            ).exclude(utype__in=User.Type.Persons()
             ).select_for_update().update(utype=User.Type.PERSON)
         return self.message_user(request, '操作成功')
 

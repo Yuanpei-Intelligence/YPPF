@@ -30,14 +30,13 @@ __all__ = [
     # 全局消息的常量
     'WRONG', 'SUCCEED',
     # 本应用的常量
-    'UTYPE_PER', 'UTYPE_ORG',
+    'UTYPE_ORG',
     # 本应用的CONFIG
     'CONFIG', 'GLOBAL_CONFIG'
 ]
 
 
 # 本应用的常量
-UTYPE_PER: str = User.Type.PERSON.value
 UTYPE_ORG: str = User.Type.ORG.value
 
 
@@ -88,7 +87,7 @@ class CourseConfig(Config):
     # Course Info
     type_name = LazySetting('type_name', default='书院课程')
     least_record_hours = LazySetting('valid_hours', float, default=8.0)
-    audit_teacher = LazySetting('auditors', lambda x: x[0], type=str)
+    audit_teacher = LazySetting('auditors', list[str])
 
 
 CONFIG = ProfileConfig(ROOT_CONFIG, '')
