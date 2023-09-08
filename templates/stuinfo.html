@@ -1517,9 +1517,6 @@
                 <div class="bio education layout-spacing ">
                     <div class="widget-content widget-content-area">
                         
-                            <div class="row">
-                                <h3 class="col mb-0">未公开成就:（切换功能开发中）</h3>
-                            </div>
                             <ul>
                                 {% for unlock in invisible_achievements %}
                                   <center><p>{{ unlock.achievement }} - {{ unlock.time }}</p></center>
@@ -1588,17 +1585,11 @@
                                                 <div class="modal-body">
                                                     
                                                                 <div class="widget-content widget-content-area">
-                                                                    <div class="row">
-                                                                        <h3 class="col mb-0">成就大类</h3>
-                                                                    </div>
                                                                 <center>
                                                                     <h2>{{acs}}</h2>
                                                                     <img src="/media/{{ acs.badge}}", class="achievement-img">
                                                                     <p>{{acs.description}}</p>
                                                                 </center>
-                                                                <div class="row">
-                                                                    <h3 class="col mb-0">成就列表</h3>
-                                                                </div>
                                                                 <center>
                                                                     <h4>解锁成就：{{unlocked_personal_stat}}/{{all_achievement_stat}}</h4>
                                                                         {% for ac in achievement_unlocked %}
@@ -1650,17 +1641,11 @@
                                                             <div class="modal-body">
                                                                 
                                                                             <div class="widget-content widget-content-area">
-                                                                                <div class="row">
-                                                                                    <h3 class="col mb-0">成就大类</h3>
-                                                                                </div>
                                                                             <center>
                                                                                 <h2>{{acs}}</h2>
                                                                                 <img src="/media/{{ acs.badge}}", class="achievement-img">
                                                                                 <p>{{acs.description}}</p>
                                                                             </center>
-                                                                            <div class="row">
-                                                                                <h3 class="col mb-0">成就列表</h3>
-                                                                            </div>
                                                                             <center>
                                                                                 <h4>解锁成就：{{unlocked_personal_stat}}/{{all_achievement_stat}}</h4>
                                                                                     {% for ac in achievement_unlocked %}
@@ -1712,17 +1697,11 @@
                                                                         <div class="modal-body">
                                                                             
                                                                                         <div class="widget-content widget-content-area">
-                                                                                            <div class="row">
-                                                                                                <h3 class="col mb-0">成就大类</h3>
-                                                                                            </div>
                                                                                         <center>
                                                                                             <h2>{{acs}}</h2>
                                                                                             <img src="/media/{{ acs.badge}}", class="achievement-img">
                                                                                             <p>{{acs.description}}</p>
                                                                                         </center>
-                                                                                        <div class="row">
-                                                                                            <h3 class="col mb-0">成就列表</h3>
-                                                                                        </div>
                                                                                         <center>
                                                                                             <h4>解锁成就：{{unlocked_personal_stat}}/{{all_achievement_stat}}</h4>
                                                                                                 {% for ac in achievement_unlocked %}
