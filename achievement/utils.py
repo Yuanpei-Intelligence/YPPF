@@ -2,10 +2,12 @@
 - 处理用户触发成就
 - 后台批量添加成就
 '''
+from datetime import date
+
 from django.db import transaction
 from django.db.models import QuerySet
 
-from generic.models import User, YQPointRecord
+from generic.models import User, YQPointRecord, CreditRecord
 from app.models import Notification, NaturalPerson
 from achievement.models import Achievement, AchievementType, AchievementUnlock
 from utils.wrap import return_on_except
@@ -19,6 +21,7 @@ __all__ = [
     'trigger_achievement',
     'bulk_add_achievement_record',
     'get_students_by_grade',
+    'get_students_without_credit_record',
 ]
 
 
@@ -181,4 +184,22 @@ def get_students_by_grade(grade: int) -> QuerySet[User]:
     goal_year = semester_year - 2000 - grade + 1
     students = User.objects.filter_type(User.Type.STUDENT).filter(
         active=True, username__startswith=str(goal_year))
+    return students
+
+
+def get_students_without_credit_record(start_date: date, end_date: date) -> QuerySet[User]:
+    '''
+    获取一段时间内没有扣分记录的在读同学
+
+    Args:
+    - start_date: 查询起始时间
+    - end_date: 查询结束时间
+
+    Returns:
+    - QuerySet[User]: 没有扣分记录的在读同学
+    '''
+    records = CreditRecord.objects.filter(
+        time__date__gte=start_date, time__date__lte=end_date)
+    students = User.objects.filter_type(User.Type.STUDENT).filter(
+        active=True).exclude(pk__in=records.values_list('user', flat=True))
     return students
