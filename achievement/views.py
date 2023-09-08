@@ -6,6 +6,7 @@ from .models import AchievementUnlock, Achievement, AchievementType
 from app.utils import (
     get_sidebar_and_navbar,
 )
+'''
 
 @login_required
 def view_achievements(request):
@@ -63,3 +64,4 @@ def view_achievementType(request, achievementTypeName: str):
     bar_display = frontend_dict["bar_display"]
 
     return render(request, 'viewAchievementType.html', locals())
+'''
