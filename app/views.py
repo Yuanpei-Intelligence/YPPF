@@ -1341,8 +1341,6 @@ def authRegister(request: HttpRequest):
         failed |= NaturalPerson.objects.filter(email=email).exists()
         if failed:
             return render(request, "auth_register_boxed.html")
-    if not request.user.is_superuser:
-        return HttpResponseRedirect("/index/")
 
         # OK!
         try:
