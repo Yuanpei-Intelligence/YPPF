@@ -9,8 +9,8 @@ __all__ = ['AchievementType', 'Achievement', 'AchievementUnlock']
 class AchievementType(models.Model):
     title = models.CharField(max_length=100)
     description = models.TextField()
-    badge = models.ImageField(upload_to=f'achievement/badges/')
-    avatar = models.ImageField(upload_to=f'achievement/avatars/')
+    badge = models.ImageField(upload_to='achievement/badges/')
+    avatar = models.ImageField(upload_to='achievement/avatars/')
 
     @admin_only
     def __str__(self):
