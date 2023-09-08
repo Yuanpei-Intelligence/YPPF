@@ -11,13 +11,6 @@ class AchievementType(models.Model):
     description = models.TextField()
     badge = models.ImageField(upload_to=f'achievement/badges/')
     avatar = models.ImageField(upload_to=f'achievement/avatars/')
-    
-    def __str__(self):
-        return self.title
-
-    @admin_only
-    def __str__(self):
-        return self.title
 
     @admin_only
     def __str__(self):

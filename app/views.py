@@ -11,7 +11,6 @@ from django.core.exceptions import ValidationError
 
 from utils.config.cast import str_to_time
 from utils.marker import deprecated
-from utils.marker import deprecated
 from utils.hasher import MyMD5Hasher
 from app.views_dependency import *
 from app.models import (
@@ -970,8 +969,6 @@ def homepage(request: UserRequest):
         return td.days, td.seconds // 3600, (td.seconds // 60) % 60, td.seconds % 60
     days, hours, minutes, seconds = days_hours_minutes_seconds(
         update_time_delta)
-    days, hours, minutes, seconds = days_hours_minutes_seconds(
-        update_time_delta)
     if days > 0:
         last_update = f"{days}天前"
     elif hours > 0:
@@ -1348,20 +1345,6 @@ def authRegister(request: HttpRequest):
     if not request.user.is_superuser:
         return HttpResponseRedirect("/index/")
 
-    if request.method == "POST" and request.POST:
-        keys = ["name", "password", "snum", "email", "password2", "syear", "sgender"]
-        values = [request.POST[key] for key in keys]
-        name, password, sno, email, password2, stu_grade, gender = values
-        if password != password2:
-            return render(request, "index.html")
-
-        failed = False
-        failed |= gender not in ['男', '女']
-        failed |= NaturalPerson.objects.filter(person_id=sno).exists()
-        failed |= NaturalPerson.objects.filter(email=email).exists()
-        if failed:
-            return render(request, "auth_register_boxed.html")
-
         # OK!
         try:
             user = User.objects.create_user(
@@ -1500,7 +1483,6 @@ def search(request: HttpRequest):
     activity_field = ["活动名称", "承办小组", "状态"]
 
     # 先赋空值保证search.html正常运行
-    # 先赋空值保证search.html正常运行
     feedback_field, feedback_list = [], []
     # feedback_field = ["标题", "状态", "负责小组", "内容"]
     # feedback_list = Feedback.objects.filter(
@@ -1618,8 +1600,6 @@ def forgetPassword(request: HttpRequest):
                         "private_level": 0,  # 可选 应在0-2之间
                         # 影响显示的收件人信息
                         # 0级全部显示, 1级只显示第一个收件人, 2级只显示发件人
-                        # content加密后的密文
-                        "secret": CONFIG.email.hasher.encode(msg),
                         # content加密后的密文
                         "secret": CONFIG.email.hasher.encode(msg),
                     }
