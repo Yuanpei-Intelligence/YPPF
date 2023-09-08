@@ -19,6 +19,10 @@ class AchievementType(models.Model):
     def __str__(self):
         return self.title
 
+    @admin_only
+    def __str__(self):
+        return self.title
+
     # Actual types in use (remove later)
     # UNDEFINED = (0, "未定义")
     # YUANQIRENSHENG = (1, "元气人生")

@@ -11,6 +11,7 @@ from django.core.exceptions import ValidationError
 
 from utils.config.cast import str_to_time
 from utils.marker import deprecated
+from utils.marker import deprecated
 from utils.hasher import MyMD5Hasher
 from app.views_dependency import *
 from app.models import (
@@ -435,10 +436,14 @@ def stuinfo(request: UserRequest):
         if progressing_chat.exists():
             comments2Display(progressing_chat.first().chat,
                              html_display, request.user)  # TODO: 字典的key有冲突风险
+            comments2Display(progressing_chat.first().chat,
+                             html_display, request.user)  # TODO: 字典的key有冲突风险
             html_display["have_progressing_chat"] = True
         else:  # 没有进行中的问答，显示提问区
             html_display["have_progressing_chat"] = False
             html_display["accept_chat"] = person.get_user().accept_chat
+            html_display["accept_anonymous"] = person.get_user(
+            ).accept_anonymous_chat
             html_display["accept_anonymous"] = person.get_user(
             ).accept_anonymous_chat
 
@@ -659,6 +664,8 @@ def orginfo(request: UserRequest):
     )
     inform_share, alert_message = utils.get_inform_share(
         me, is_myself=is_myself)
+    inform_share, alert_message = utils.get_inform_share(
+        me, is_myself=is_myself)
 
     organization_name = name
     organization_type_name = org.otype.otype_name
@@ -807,6 +814,8 @@ def orginfo(request: UserRequest):
     if request.user.is_person():
         _unsubscribe_names = me.unsubscribe_list.values_list(
             "oname", flat=True)
+        _unsubscribe_names = me.unsubscribe_list.values_list(
+            "oname", flat=True)
         subscribe_flag = organization_name not in _unsubscribe_names
 
     # 补充作为小组成员，选择是否展示的按钮
@@ -845,6 +854,14 @@ def homepage(request: UserRequest):
                 add_point, html_display['signin_display'] = add_signin_point(
                     request.user)
                 html_display['first_signin'] = True  # 前端显示
+
+    # 解锁成就-注册智慧书院
+    # 如果放在注册页面结束判定 则已经注册好的用户获取不到该成就
+    unlock_achievement(request.user, '注册智慧书院')
+
+    # 元气满满系列更新
+    semester = current_semester()
+    unlock_YQPoint_achievements(request.user, semester.start_date, semester.end_date)
 
     # 解锁成就-注册智慧书院
     # 如果放在注册页面结束判定 则已经注册好的用户获取不到该成就
@@ -962,11 +979,15 @@ def homepage(request: UserRequest):
     else:
         update_time_delta = datetime.now() - datetime.strptime(
             _weather['modify_time'], '%Y-%m-%d %H:%M:%S.%f')
+            _weather['modify_time'], '%Y-%m-%d %H:%M:%S.%f')
     html_display['weather'] = _weather
     # 根据更新时间长短，展示不同的更新天气时间状态
 
+
     def days_hours_minutes_seconds(td):
         return td.days, td.seconds // 3600, (td.seconds // 60) % 60, td.seconds % 60
+    days, hours, minutes, seconds = days_hours_minutes_seconds(
+        update_time_delta)
     days, hours, minutes, seconds = days_hours_minutes_seconds(
         update_time_delta)
     if days > 0:
@@ -1016,6 +1037,8 @@ def accountSetting(request: UserRequest):
         if request.method == "POST" and request.POST:
 
             # 合法性检查
+            attr_dict, show_dict, html_display = utils.check_account_setting(
+                request)
             attr_dict, show_dict, html_display = utils.check_account_setting(
                 request)
             attr_check_list = [attr for attr in attr_dict.keys() if attr not in [
@@ -1071,6 +1094,8 @@ def accountSetting(request: UserRequest):
                                            f"修改了{expr}项信息：\n{modify_msg}")
                 # 解锁成就-更新一次个人档案
                 unlock_achievement(request.user, '更新一次个人档案')
+                # 解锁成就-更新一次个人档案
+                unlock_achievement(request.user, '更新一次个人档案')
                 return redirect("/stuinfo/?modinfo=success")
             # else: 没有更新
 
@@ -1089,6 +1114,8 @@ def accountSetting(request: UserRequest):
             ava = request.FILES.get("avatar")
             wallpaper = request.FILES.get("wallpaper")
             # 合法性检查
+            attr_dict, show_dict, html_display = utils.check_account_setting(
+                request)
             attr_dict, show_dict, html_display = utils.check_account_setting(
                 request)
             attr_check_list = [attr for attr in attr_dict.keys()]
@@ -1162,6 +1189,7 @@ def _create_freshman_account(sid: str, email: str = None):
             current = "创建用户"
             user = User.objects.create_user(
                 username=sid, name=name,
+                usertype=User.Type.PERSON,
                 usertype=User.Type.PERSON,
                 password=password
             )
@@ -1324,6 +1352,7 @@ def userAgreement(request: UserRequest):
 
 
 @deprecated
+@deprecated
 @logger.secure_view()
 def authRegister(request: HttpRequest):
     if not request.user.is_superuser:
@@ -1342,7 +1371,43 @@ def authRegister(request: HttpRequest):
         failed |= NaturalPerson.objects.filter(email=email).exists()
         if failed:
             return render(request, "auth_register_boxed.html")
+    if not request.user.is_superuser:
+        return HttpResponseRedirect("/index/")
 
+    if request.method == "POST" and request.POST:
+        keys = ["name", "password", "snum", "email", "password2", "syear", "sgender"]
+        values = [request.POST[key] for key in keys]
+        name, password, sno, email, password2, stu_grade, gender = values
+        if password != password2:
+            return render(request, "index.html")
+
+        failed = False
+        failed |= gender not in ['男', '女']
+        failed |= NaturalPerson.objects.filter(person_id=sno).exists()
+        failed |= NaturalPerson.objects.filter(email=email).exists()
+        if failed:
+            return render(request, "auth_register_boxed.html")
+
+        # OK!
+        try:
+            user = User.objects.create_user(
+                username=sno, name=name,
+                usertype=User.Type.PERSON,
+                password=password
+            )
+            person = NaturalPerson.objects.create(
+                person_id=user,
+                stu_id_dbonly=sno,
+                name=name,
+                email=email,
+                stu_grade=stu_grade,
+                gender=NaturalPerson.Gender.MALE if gender == '男'
+                else NaturalPerson.Gender.FEMALE,
+            )
+        except:
+            return HttpResponseRedirect("/admin/")
+        return HttpResponseRedirect("/index/")
+    return render(request, "auth_register_boxed.html")
         # OK!
         try:
             user = User.objects.create_user(
@@ -1481,6 +1546,7 @@ def search(request: HttpRequest):
     activity_field = ["活动名称", "承办小组", "状态"]
 
     # 先赋空值保证search.html正常运行
+    # 先赋空值保证search.html正常运行
     feedback_field, feedback_list = [], []
     # feedback_field = ["标题", "状态", "负责小组", "内容"]
     # feedback_list = Feedback.objects.filter(
@@ -1598,6 +1664,8 @@ def forgetPassword(request: HttpRequest):
                         "private_level": 0,  # 可选 应在0-2之间
                         # 影响显示的收件人信息
                         # 0级全部显示, 1级只显示第一个收件人, 2级只显示发件人
+                        # content加密后的密文
+                        "secret": CONFIG.email.hasher.encode(msg),
                         # content加密后的密文
                         "secret": CONFIG.email.hasher.encode(msg),
                     }

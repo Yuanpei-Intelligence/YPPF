@@ -1,11 +1,25 @@
-<<<<<<< HEAD
-from generic.models import User
+from django.db import transaction
+from django.db.models import QuerySet
 
+from generic.models import User, YQPointRecord
 from app.models import NaturalPerson
+from app.models import Notification
+from utils.wrap import return_on_except
+from app.notification_utils import notification_create, bulk_notification_create
+from semester.api import current_semester
+from utils.marker import need_refactor
 
 from .models import Achievement, AchievementType, AchievementUnlock
 
-__all__ = ['stuinfo_set_achievement']
+__all__ = ['stuinfo_set_achievement'
+           'trigger_achievement',
+            'bulk_add_achievement_record',
+            'get_students_by_grade',]
+
+'''成就系统 API
+- 处理用户触发成就
+- 后台批量添加成就
+'''
 
 def stuinfo_set_achievement(user):
     student = NaturalPerson.objects.get(person_id=user)
@@ -51,29 +65,6 @@ def stuinfo_set_achievement(user):
     achievement_types_1 = display_tuple[3:6]
     achievement_types_2 = display_tuple[6:9]
     return invisible_achievements, visible_achievements, achievement_types_0, achievement_types_1, achievement_types_2
-
-=======
-'''成就系统 API
-- 处理用户触发成就
-- 后台批量添加成就
-'''
-from django.db import transaction
-from django.db.models import QuerySet
-
-from generic.models import User, YQPointRecord
-from app.models import Notification
-from achievement.models import Achievement, AchievementUnlock
-from utils.wrap import return_on_except
-from app.notification_utils import notification_create, bulk_notification_create
-from semester.api import current_semester
-from utils.marker import need_refactor
-
-
-__all__ = [
-    'trigger_achievement',
-    'bulk_add_achievement_record',
-    'get_students_by_grade',
-]
 
 
 @return_on_except(False, Exception)
@@ -191,4 +182,3 @@ def get_students_by_grade(grade: int) -> QuerySet[User]:
     students = User.objects.filter_type(User.Type.STUDENT).filter(
         active=True, username__startswith=str(goal_year))
     return students
->>>>>>> 1ccf915b71ddfa518fd81885332041cc5c0acf1b
