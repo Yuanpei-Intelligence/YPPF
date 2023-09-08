@@ -9,7 +9,7 @@ from django.db.models import Q, F
 import csv
 import qrcode
 
-from generic.models import YQPointRecord, User
+from generic.models import User
 from generic.utils import to_search_indices
 from app.views_dependency import *
 from app.view.base import ProfileTemplateView
@@ -279,9 +279,14 @@ def viewActivity(request: HttpRequest, aid=None):
             pass
 
     # 参与者, 无论报名是否通过
-    participants = Participant.objects.filter(Q(activity_id=activity),
-                                              Q(status=Participant.AttendStatus.APPLYING) | Q(status=Participant.AttendStatus.APPLYSUCCESS) | Q(status=Participant.AttendStatus.ATTENDED) | Q(status=Participant.AttendStatus.UNATTENDED))
-    # participants_ava = [utils.get_user_ava(participant, UTYPE_PER) for participant in participants.values("person_id")] or None
+    participants = Participant.objects.filter(
+        activity_id=activity,
+        status__in=[
+            Participant.AttendStatus.APPLYING,
+            Participant.AttendStatus.APPLYSUCCESS,
+            Participant.AttendStatus.ATTENDED,
+            Participant.AttendStatus.UNATTENDED,
+        ])
     people_list = NaturalPerson.objects.activated().filter(
         id__in=participants.values("person_id"))
 

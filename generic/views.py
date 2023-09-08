@@ -53,6 +53,11 @@ class Index(SecureTemplateView):
             )
 
     def prepare_login(self) -> SecureView.HandlerType:
+        # Prevent bug report
+        x_forwarded_for = self.request.META.get('HTTP_X_FORWARDED_FOR')
+        if x_forwarded_for and x_forwarded_for.split(',')[0] == '127.0.0.1':
+            return self.http_forbidden()
+
         assert 'username' in self.request.POST
         assert 'password' in self.request.POST
         _user = self.request.user

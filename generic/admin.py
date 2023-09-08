@@ -66,7 +66,7 @@ class PermissionAdmin(admin.ModelAdmin):
 class MyUserAdmin(UserAdmin):
     list_display = [
         'id', 'username', 'name',
-        'credit', 'utype', 'is_staff', 'is_superuser',
+        'credit', 'YQpoint', 'utype', 'is_staff', 'is_superuser',
     ]
     # list_editable = ['credit']
     search_fields = ['id', 'username', 'name', 'pinyin', 'acronym']
@@ -97,6 +97,7 @@ class MyUserAdmin(UserAdmin):
         User.objects.filter(id__in=Organization.objects.values_list('organization_id')
             ).select_for_update().update(utype=User.Type.ORG)
         User.objects.filter(id__in=NaturalPerson.objects.values_list('person_id')
+            ).exclude(utype__in=User.Type.Persons()
             ).select_for_update().update(utype=User.Type.PERSON)
         return self.message_user(request, '操作成功')
 

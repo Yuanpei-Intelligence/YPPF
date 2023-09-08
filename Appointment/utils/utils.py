@@ -41,10 +41,10 @@ ip_room_dict = {
     "103": "B209",
     "108": "B209",
     "121": "B214",
-    "128": "B214", # 镜子 舞蹈室
+    "128": "B214",  # 镜子 舞蹈室
     "119": "B215",
     "117": "B216",
-    "124": "B216", # 镜子 跑步机房
+    "124": "B216",  # 镜子 跑步机房
     "122": "B217",
     "126": "B217",
     "113": "B218",
@@ -109,7 +109,7 @@ def get_conflict_appoints(appoint: Appoint, times: int = 1,
                           exclude_this: bool = False,
                           no_cross_day=False, lock=False) -> QuerySet[Appoint]:
     '''
-    
+
     获取以时间排序的冲突预约，可以加锁，但不负责开启事务，不应抛出异常
 
     :param appoint: 需要检测的第一个预约
@@ -145,7 +145,7 @@ def get_conflict_appoints(appoint: Appoint, times: int = 1,
         date_range = [
             appoint.Astart.date() + timedelta(weeks=week + week_offset)
             for week in range(0, times * interval, interval)
-            ]
+        ]
         conditions &= Q(
             Astart__date__in=date_range,
             Afinish__date__in=date_range,
@@ -154,9 +154,11 @@ def get_conflict_appoints(appoint: Appoint, times: int = 1,
         for week in range(0, times * interval, interval):
             conditions |= Q(
                 # 开始比当前的结束时间早
-                Astart__lt=appoint.Afinish + timedelta(weeks=week + week_offset),
+                Astart__lt=appoint.Afinish + \
+                timedelta(weeks=week + week_offset),
                 # 结束比当前的开始时间晚
-                Afinish__gt=appoint.Astart + timedelta(weeks=week + week_offset),
+                Afinish__gt=appoint.Astart + \
+                timedelta(weeks=week + week_offset),
             )
     # 检查时预约还不应创建，冲突预约可以包含自身
     if conditions == Q():
@@ -173,7 +175,7 @@ def to_feedback_url(request: HttpRequest) -> str:
     检查预约记录是否可以申诉。
     如果可以，向session添加传递到反馈填写界面的信息。
     最终函数返回跳转到的url。
-    
+
     :param request: http请求
     :type request: HttpRequest
     :return: 即将跳转到的url
@@ -185,19 +187,19 @@ def to_feedback_url(request: HttpRequest) -> str:
         appoint: Appoint = Appoint.objects.get(Aid=Aid)
     except:
         raise AssertionError("预约记录不存在！")
-    
+
     # 然后检查预约记录是否可申诉
     assert appoint.Astatus in (
         Appoint.Status.VIOLATED,
         Appoint.Status.JUDGED,
     ), "该预约记录不可申诉！"
-    
+
     appoint_student = appoint.major_student.name
     appoint_room = str(appoint.Room)
     appoint_start = appoint.Astart.strftime('%Y年%m月%d日 %H:%M')
     appoint_finish = appoint.Afinish.strftime('%H:%M')
     appoint_reason = appoint.get_status()
-    
+
     # 向session添加信息
     request.session['feedback_type'] = '地下室预约问题反馈'
     request.session['feedback_url'] = appoint.get_admin_url()
@@ -207,6 +209,6 @@ def to_feedback_url(request: HttpRequest) -> str:
         f'预约时间：{appoint_start} - {appoint_finish}',
         f'违规原因：{appoint_reason}',
     ))
-    
+
     # 最终返回填写feedback的url
     return '/feedback/?argue'

@@ -10,6 +10,7 @@ from django.contrib.auth.password_validation import CommonPasswordValidator, Num
 from django.core.exceptions import ValidationError
 
 from utils.config.cast import str_to_time
+from utils.marker import deprecated
 from utils.hasher import MyMD5Hasher
 from app.views_dependency import *
 from app.models import (
@@ -54,8 +55,13 @@ from app.academic_utils import (
     get_tag_status,
     get_text_status,
 )
+<<<<<<< HEAD
 from achievement.models import AchievementUnlock, Achievement, AchievementType
 from achievement.utils import stuinfo_set_achievement
+=======
+from achievement.api import unlock_achievement, unlock_YQPoint_achievements
+from semester.api import current_semester
+>>>>>>> 1ccf915b71ddfa518fd81885332041cc5c0acf1b
 
 
 @login_required(redirect_field_name="origin")
@@ -651,7 +657,8 @@ def orginfo(request: UserRequest):
     html_display["is_course"] = (
         Course.objects.activated().filter(organization=org).exists()
     )
-    inform_share, alert_message = utils.get_inform_share(me, is_myself=is_myself)
+    inform_share, alert_message = utils.get_inform_share(
+        me, is_myself=is_myself)
 
     organization_name = name
     organization_type_name = org.otype.otype_name
@@ -798,7 +805,8 @@ def orginfo(request: UserRequest):
     # 补充订阅该小组的按钮
     allow_unsubscribe = org.otype.allow_unsubscribe  # 是否允许取关
     if request.user.is_person():
-        _unsubscribe_names = me.unsubscribe_list.values_list("oname", flat=True)
+        _unsubscribe_names = me.unsubscribe_list.values_list(
+            "oname", flat=True)
         subscribe_flag = organization_name not in _unsubscribe_names
 
     # 补充作为小组成员，选择是否展示的按钮
@@ -837,6 +845,14 @@ def homepage(request: UserRequest):
                 add_point, html_display['signin_display'] = add_signin_point(
                     request.user)
                 html_display['first_signin'] = True  # 前端显示
+
+    # 解锁成就-注册智慧书院
+    # 如果放在注册页面结束判定 则已经注册好的用户获取不到该成就
+    unlock_achievement(request.user, '注册智慧书院')
+
+    # 元气满满系列更新
+    semester = current_semester()
+    unlock_YQPoint_achievements(request.user, semester.start_date, semester.end_date)
 
     # 开始时间在前后一周内，除了取消和审核中的活动。按时间逆序排序
     recentactivity_list = Activity.objects.get_recent_activity(
@@ -1053,6 +1069,8 @@ def accountSetting(request: UserRequest):
                 modify_msg = '\n'.join(modify_info)
                 record_modify_with_session(request,
                                            f"修改了{expr}项信息：\n{modify_msg}")
+                # 解锁成就-更新一次个人档案
+                unlock_achievement(request.user, '更新一次个人档案')
                 return redirect("/stuinfo/?modinfo=success")
             # else: 没有更新
 
@@ -1144,7 +1162,7 @@ def _create_freshman_account(sid: str, email: str = None):
             current = "创建用户"
             user = User.objects.create_user(
                 username=sid, name=name,
-                usertype=UTYPE_PER,
+                usertype=User.Type.PERSON,
                 password=password
             )
             current = "创建个人账号"
@@ -1305,58 +1323,46 @@ def userAgreement(request: UserRequest):
                   dict(request=request, bar_display=bar_display))
 
 
+@deprecated
 @logger.secure_view()
 def authRegister(request: HttpRequest):
-    if request.user.is_superuser:
-        if request.method == "POST" and request.POST:
-            name = request.POST["name"]
-            password = request.POST["password"]
-            sno = request.POST["snum"]
-            email = request.POST["email"]
-            password2 = request.POST["password2"]
-            stu_grade = request.POST["syear"]
-            gender = request.POST['sgender']
-            if password != password2:
-                return render(request, "index.html")
-            else:
-                if gender not in ['男', '女']:
-                    return render(request, "auth_register_boxed.html")
-                # user with same sno
-                same_user = NaturalPerson.objects.filter(person_id=sno)
-                if same_user:
-                    return render(request, "auth_register_boxed.html")
-                same_email = NaturalPerson.objects.filter(email=email)
-                if same_email:
-                    return render(request, "auth_register_boxed.html")
-
-                # OK!
-                try:
-                    user = User.objects.create_user(
-                        username=sno, name=name,
-                        usertype=UTYPE_PER,
-                        password=password
-                    )
-                except:
-                    # 存在用户
-                    return HttpResponseRedirect("/admin/")
-
-                try:
-                    new_user = NaturalPerson.objects.create(
-                        person_id=user,
-                        stu_id_dbonly=sno,
-                        name=name,
-                        email=email,
-                        stu_grade=stu_grade,
-                        gender=NaturalPerson.Gender.MALE if gender == '男'
-                        else NaturalPerson.Gender.FEMALE,
-                    )
-                except:
-                    # 创建失败，把创建的用户删掉
-                    return HttpResponseRedirect("/admin/")
-                return HttpResponseRedirect("/index/")
-        return render(request, "auth_register_boxed.html")
-    else:
+    if not request.user.is_superuser:
         return HttpResponseRedirect("/index/")
+
+    if request.method == "POST" and request.POST:
+        keys = ["name", "password", "snum", "email", "password2", "syear", "sgender"]
+        values = [request.POST[key] for key in keys]
+        name, password, sno, email, password2, stu_grade, gender = values
+        if password != password2:
+            return render(request, "index.html")
+
+        failed = False
+        failed |= gender not in ['男', '女']
+        failed |= NaturalPerson.objects.filter(person_id=sno).exists()
+        failed |= NaturalPerson.objects.filter(email=email).exists()
+        if failed:
+            return render(request, "auth_register_boxed.html")
+
+        # OK!
+        try:
+            user = User.objects.create_user(
+                username=sno, name=name,
+                usertype=User.Type.PERSON,
+                password=password
+            )
+            person = NaturalPerson.objects.create(
+                person_id=user,
+                stu_id_dbonly=sno,
+                name=name,
+                email=email,
+                stu_grade=stu_grade,
+                gender=NaturalPerson.Gender.MALE if gender == '男'
+                else NaturalPerson.Gender.FEMALE,
+            )
+        except:
+            return HttpResponseRedirect("/admin/")
+        return HttpResponseRedirect("/index/")
+    return render(request, "auth_register_boxed.html")
 
 
 @login_required(redirect_field_name="origin")

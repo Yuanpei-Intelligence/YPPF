@@ -6,7 +6,7 @@ from django.core.management.base import BaseCommand
 import pandas as pd
 
 from achievement.models import Achievement
-from achievement.api import bulk_add_achievement_record
+from achievement.utils import bulk_add_achievement_record
 from generic.models import User
 
 class Command(BaseCommand):

@@ -20,11 +20,11 @@ jobs:
 
     - name: Start containers
       run: |
-        docker compose -f .devcontainer/docker-compose.yml up -d
+        docker compose -f .github/docker-compose.yml up -d
 
     - name: Test 
       run: |
-        docker compose -f .devcontainer/docker-compose.yml exec -T yppf python3 manage.py test
+        docker compose -f .github/docker-compose.yml exec -T yppf python3 manage.py test
 
     - name: Dump docker logs on failure
       if: failure()

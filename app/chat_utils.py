@@ -16,6 +16,7 @@ from app.models import (
     AcademicQAAwards,
 )
 from app.comment_utils import addComment
+from achievement.api import unlock_achievement
 
 __all__ = [
     'change_chat_status',
@@ -75,7 +76,7 @@ def add_chat_message(request: HttpRequest, chat: Chat) -> MESSAGECONTEXT:
     if chat.status == Chat.Status.CLOSED:
         return wrong("当前问答已关闭，无法发送新信息!")
     if (not chat.respondent.accept_anonymous_chat
-        ) and chat.questioner_anonymous:
+            ) and chat.questioner_anonymous:
         if request.user == chat.respondent:
             return wrong("您目前处于禁用匿名提问状态!")
         else:
@@ -232,6 +233,9 @@ def create_QA(request: HttpRequest,
             directed=directed,
         )
 
+    # 解锁成就-参与学术问答
+    unlock_achievement(request.user, "参与学术问答")
+
     # 奖励仅限第一次发起非定向提问
     if directed:
         return succeed("提问成功")
@@ -239,7 +243,8 @@ def create_QA(request: HttpRequest,
     award_points = 5
     award, created = AcademicQAAwards.objects.get_or_create(user=request.user)
     if created or not award.created_undirected_qa:
-        User.objects.modify_YQPoint(request.user, award_points, "学术地图: 首次发起非定向提问", source_type=YQPointRecord.SourceType.ACHIEVE)
+        User.objects.modify_YQPoint(
+            request.user, award_points, "学术地图: 首次发起非定向提问", source_type=YQPointRecord.SourceType.ACHIEVE)
         award.created_undirected_qa = True
         award.save()
         return succeed(f"首次发起非定向提问，奖励{award_points}元气值～")
@@ -254,8 +259,8 @@ def modify_rating(chat_id: int, rating: int) -> MESSAGECONTEXT:
         qa: AcademicQA = AcademicQA.objects.get(chat_id=chat_id)
         qa.rating = rating
         User.objects.modify_YQPoint(qa.chat.respondent, award_points[rating],
-                                "学术问答: 回答得到好评",
-                                YQPointRecord.SourceType.ACHIEVE)
+                                    "学术问答: 回答得到好评",
+                                    YQPointRecord.SourceType.ACHIEVE)
         qa.save()
 
     return succeed("成功修改评价")
@@ -283,4 +288,8 @@ def add_comment_to_QA(request: HttpRequest) -> MESSAGECONTEXT:
         else:
             Chat.objects.select_for_update().filter(id=chat.id).update(
                 questioner_anonymous=False)
+
+    # 解锁成就-参与学术问答
+    unlock_achievement(request.user, "参与学术问答")
+
     return message_context

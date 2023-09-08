@@ -4,6 +4,8 @@
         "hash_salt": "default_hash_salt",
         "acadamic_year": 2023,
         "semester": "Spring",
+        "tmp_dir": "tmp",
+        "official_user": "zz00000",
         "debug_stuids": []
     },
     "django": {
@@ -11,7 +13,8 @@
             "NAME": "$DATABASE$",
             "USER": "$USER$",
             "PASSWORD": "$PASSWORD$",
-            "HOST": "$HOST$"
+            "HOST": "$HOST$",
+            "PORT": "3306"
         }
     },
     "log": {
@@ -51,7 +54,6 @@
         "token": {
             "display": "$TOKEN$"
         },
-        "base_url": "http://localhost:8000/underground",
         "semester_data": {
             "semester_start": "2023-02-20"
         }

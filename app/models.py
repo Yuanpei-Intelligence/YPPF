@@ -352,7 +352,7 @@ class NaturalPerson(models.Model):
 
     def get_type(self=None) -> str:
         '''User一对一模型的必要方法'''
-        return UTYPE_PER
+        return User.Type.PERSON.value
 
     def get_user(self) -> User:
         '''User一对一模型的必要方法'''
@@ -1036,6 +1036,7 @@ class Activity(CommentBase):
             point = min(CONFIG.yqpoint.activity.max, point)
         participants = self.attended_participants.values_list(
             'person_id__person_id', flat=True)
+        participants = User.objects.filter(id__in=participants)
         User.objects.bulk_increase_YQPoint(
             participants, point, "参加活动", YQPointRecord.SourceType.ACTIVITY)
 
@@ -1140,6 +1141,7 @@ class Notification(models.Model):
         FEEDBACK_INFORM = "反馈通知"
         YPLIB_INFORM = "元培书房通知"
         LOTTERY_INFORM = "抽奖结果通知"
+        ACHIEVE_INFORM = "解锁成就通知"
 
     status = models.SmallIntegerField(choices=Status.choices, default=1)
     title = models.CharField("通知标题", blank=True, null=True, max_length=50)

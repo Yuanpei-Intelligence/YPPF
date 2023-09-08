@@ -257,7 +257,14 @@ class PointMixin(models.Model):
     YQpoint = models.IntegerField('元气值', default=0)
 
 
-class User(AbstractUser, PointMixin):
+class UserBase(models.base.ModelBase):
+    '''临时的类型提示助手'''
+    @property
+    def objects(cls) -> UserManager: ...
+    del objects
+
+
+class User(AbstractUser, PointMixin, metaclass=UserBase):
     '''用户模型
 
     Attributes:
@@ -393,7 +400,7 @@ class YQPointRecord(models.Model):
     delta = models.IntegerField('变化量')
     source = models.CharField('来源', max_length=50, blank=True)
 
-    # TODO: Can we remove this? 
+    # TODO: Can we remove this?
     class SourceType(models.IntegerChoices):
         SYSTEM = (0, '系统操作')
         CHECK_IN = (1, '每日签到')

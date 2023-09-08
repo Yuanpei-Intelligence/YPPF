@@ -46,6 +46,7 @@ class Scheduler:
 
     def __getattr__(self, name: str):
         target_method = getattr(self.wrapped_schedule, name)
+
         def wrapper(*args, **kwargs):
             val = target_method(*args, **kwargs)
             self.wakeup_executor()
@@ -55,20 +56,30 @@ class Scheduler:
 
     def wakeup_executor(self):
         if self.remote_scheduler is None:
-            self.connect_remote()
-        if self.remote_scheduler is not None:
+            if not self.try_connect_remote():
+                return
+        try:
             self.remote_scheduler.wakeup()
-        else:
-            logger.warning('Remote scheduler not found, job may not be executed.')
+        except:
+            if self.try_connect_remote():
+                self.remote_scheduler.wakeup()
 
     def connect_remote(self):
-        if self.remain_times <= 0:
-            return
-        self.remain_times -= 1
         conn: rpyc.Connection = rpyc.connect(
             "localhost", CONFIG.rpc_port,
             config={"allow_all_attrs": True})
         self.remote_scheduler = conn.root
+
+    def try_connect_remote(self) -> bool:
+        try:
+            self.connect_remote()
+            return True
+        except Exception as e:
+            self.encounter_network_err(e)
+        return False
+
+    def encounter_network_err(self, e):
+        logger.exception(f'Remotely wakeup executor failed: {e}')
 
 
 def start_scheduler() -> BackgroundScheduler:

@@ -22,6 +22,7 @@ from app.utils import (
     get_sidebar_and_navbar,
     get_person_or_org,
 )
+from achievement.api import unlock_achievement
 
 __all__ = [
     'ShowChats',
@@ -51,7 +52,7 @@ class ShowChats(ProfileTemplateView):
             'stu_list': to_search_indices(User.objects.filter_type(User.Type.PERSON)),
             'tag_list': get_tags_for_search(),
         })
-        
+
         return self.render()
 
 
@@ -105,6 +106,7 @@ def modifyAcademic(request: UserRequest) -> HttpResponse:
             if context["warn_code"] == 1:    # 填写的TextEntry太长导致填写失败
                 return redirect(message_url(context, "/modifyAcademic/"))
             else:                            # warn_code == 2，表明填写成功
+                unlock_achievement(request.user, "编辑自己的学术地图")  # 解锁成就-编辑自己的学术地图
                 return redirect(message_url(context, "/stuinfo/#tab=academic_map"))
         except:
             return redirect(message_url(wrong("修改过程中出现意料之外的错误，请联系工作人员处理！")))
