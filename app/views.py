@@ -56,7 +56,6 @@ from app.academic_utils import (
     get_text_status,
 )
 
-from achievement.models import AchievementUnlock, Achievement, AchievementType
 from achievement.utils import stuinfo_set_achievement
 from achievement.api import unlock_achievement, unlock_YQPoint_achievements
 from semester.api import current_semester
