@@ -8,7 +8,7 @@ from django.db.models import Sum
 from generic.models import User
 from app.models import CourseRecord, Course
 from achievement.models import Achievement
-from achievement.utils import trigger_achievement
+from achievement.utils import trigger_achievement, bulk_add_achievement_record, get_students_without_credit_record
 
 
 __all__ = [
@@ -16,6 +16,7 @@ __all__ = [
     'unlock_course_achievements',
     'unlock_YQPoint_achievements',
     'unlock_signin_achievements',
+    'unlock_credit_achievements_by_name',
 ]
 
 
@@ -149,3 +150,19 @@ def unlock_signin_achievements(user: User, continuous_days: int) -> bool:
         (365, '连续登录一整年'),
     ])
     return created
+
+def unlock_credit_achievements_by_name(start_date: datetime, end_date: datetime, achievement_name: str) -> None:
+    '''
+    解锁成就
+    信用分相关成就激活判断
+
+    :param start_date: 开始日期
+    :type start_date: date
+    :param end_date: 结束日期
+    :type end_date: date
+    :param achievement_name: 要解锁的成就名
+    :type achievement_name: str
+    '''
+    students = get_students_without_credit_record(start_date, end_date)
+    achievement = Achievement.objects.get(name=achievement_name)
+    bulk_add_achievement_record(students, achievement)
