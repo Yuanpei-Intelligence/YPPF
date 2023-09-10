@@ -36,6 +36,32 @@
         grid-template-columns: repeat(3, 33.33%);
         grid-template-rows: repeat(3, 33.33%);
     }
+    .nav-tabs {
+        display: flex;
+        flex-wrap: nowrap;
+        overflow-x: auto;
+        white-space: nowrap;
+        -webkit-overflow-scrolling: touch;
+      }
+      
+      .nav-tabs::-webkit-scrollbar {
+        display: none;
+      }
+      
+      .nav-tabs .nav-item {
+        flex: 0 0 auto;
+        margin-right: 10px;
+        animation: slide-in 0.5s ease-in-out;
+      }
+      
+      @keyframes slide-in {
+        0% {
+          transform: translateX(-100%);
+        }
+        100% {
+          transform: translateX(0);
+        }
+      }
 
 </style>
 
@@ -80,21 +106,21 @@
     <!--  END WALLPAPER SECTION  -->
 
     <!--  BEGIN SWITCH TAB  -->
-    <ul class="nav nav-tabs nav-tabs-solid nav-justified" role="tablist">
+    <ul class="nav nav-tabs nav-pills-slide" role="tablist">
         <li class="nav-item">
-            <b class="nav-link active" data-toggle="tab" role="tab" href="#information">个人信息</b>
+            <b class="nav-link active" data-toggle="pill" role="tab" href="#information">个人信息</b>
         </li>
         <li class="nav-item">
-            <b class="nav-link" data-toggle="tab" role="tab" href="#academic_map">学术地图</b>
+            <b class="nav-link" data-toggle="pill" role="tab" href="#academic_map">学术地图</b>
         </li>
         <li class="nav-item">
-            <b class="nav-link" data-toggle="tab" role="tab" href="#organization">{{ context.title }}的小组</b>
+            <b class="nav-link" data-toggle="pill" role="tab" href="#organization">{{ context.title }}的小组</b>
         </li>
         <li class="nav-item">
-            <b class="nav-link" data-toggle="tab" role="tab" href="#activity">{{ context.title }}的活动</b>
+            <b class="nav-link" data-toggle="pill" role="tab" href="#activity">{{ context.title }}的活动</b>
         </li>
         <li class="nav-item">
-            <b class="nav-link" data-toggle="tab" role="tab" href="#achievement">{{ context.title }}的成就</b>
+            <b class="nav-link" data-toggle="pill" role="tab" href="#achievement">{{ context.title }}的成就</b>
         </li>
     </ul>
     <!--  END SWITCH TAB  -->
@@ -1523,9 +1549,6 @@
                                 {% endfor %}
                             </ul>
 
-                            <div class="row">
-                                <h3 class="col mb-0">公开成就</h3>
-                            </div>
                             
                         </body>
 
@@ -1593,12 +1616,12 @@
                                                                 <center>
                                                                     <h4>解锁成就：{{unlocked_personal_stat}}/{{all_achievement_stat}}</h4>
                                                                         {% for ac in achievement_unlocked %}
-                                                                        <p class="solid">{{ac.name}}：{{ac.description}}</p>
+                                                                        <p class="solid">{{ac.name}}</p>
                                                                         {% endfor %}
                                                                         <div style=" height:20px " ></div>
                                                                         <h4>未解锁成就</h4>
                                                                         {% for ac in achievement_locked %}
-                                                                        <p class="solid">{{ac.name}}：{{ac.description}}</p>
+                                                                        <p class="solid">{{ac.name}}</p>
                                                                         {% endfor %}
                                                                         {% for ac in achievement_locked_hidden %}
                                                                         <p class="solid">隐藏成就：???</p>
@@ -1649,12 +1672,12 @@
                                                                             <center>
                                                                                 <h4>解锁成就：{{unlocked_personal_stat}}/{{all_achievement_stat}}</h4>
                                                                                     {% for ac in achievement_unlocked %}
-                                                                                    <p class="solid">{{ac.name}}：{{ac.description}}</p>
+                                                                                    <p class="solid">{{ac.name}}</p>
                                                                                     {% endfor %}
                                                                                     <div style=" height:20px " ></div>
                                                                                     <h4>未解锁成就</h4>
                                                                                     {% for ac in achievement_locked %}
-                                                                                    <p class="solid">{{ac.name}}：{{ac.description}}</p>
+                                                                                    <p class="solid">{{ac.name}}</p>
                                                                                     {% endfor %}
                                                                                     {% for ac in achievement_locked_hidden %}
                                                                                     <p class="solid">隐藏成就：???</p>
@@ -1705,12 +1728,12 @@
                                                                                         <center>
                                                                                             <h4>解锁成就：{{unlocked_personal_stat}}/{{all_achievement_stat}}</h4>
                                                                                                 {% for ac in achievement_unlocked %}
-                                                                                                <p class="solid">{{ac.name}}：{{ac.description}}</p>
+                                                                                                <p class="solid">{{ac.name}}p>
                                                                                                 {% endfor %}
                                                                                                 <div style=" height:20px " ></div>
                                                                                                 <h4>未解锁成就</h4>
                                                                                                 {% for ac in achievement_locked %}
-                                                                                                <p class="solid">{{ac.name}}：{{ac.description}}</p>
+                                                                                                <p class="solid">{{ac.name}}</p>
                                                                                                 {% endfor %}
                                                                                                 {% for ac in achievement_locked_hidden %}
                                                                                                 <p class="solid">隐藏成就：???</p>
