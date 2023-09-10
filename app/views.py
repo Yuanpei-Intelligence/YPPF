@@ -843,7 +843,9 @@ def homepage(request: UserRequest):
 
     # 元气满满系列更新
     semester = current_semester()
-    unlock_YQPoint_achievements(request.user, semester.start_date, semester.end_date)
+    start_datetime = datetime.combine(semester.start_date, datetime.min.time())
+    end_datetime = datetime.combine(semester.end_date, datetime.max.time())
+    unlock_YQPoint_achievements(request.user, start_datetime, end_datetime)
 
     # 开始时间在前后一周内，除了取消和审核中的活动。按时间逆序排序
     recentactivity_list = Activity.objects.get_recent_activity(
