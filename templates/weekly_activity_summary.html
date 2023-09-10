@@ -90,7 +90,7 @@
                                             </div>
                                             <div class="form-group">
                                                 <label>活动时间</label>
-                                                <a data-toggle="tooltip" data-placement="bottom" title="请选择合理的活动时间，持续时间过长将导致参与者无法获取积分！">
+                                                <a data-toggle="tooltip" data-placement="bottom" title="请保证开始时间早于结束时间，且结束时间早于当前时间!">
                                                     <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor"
                                                         class="bi bi-question-circle-fill" viewBox="0 0 22 22">
                                                         <path
@@ -110,6 +110,7 @@
                                             </div>
 
                                             <div class="form-group card-label"> 
+                                                <label>参与成员</label>
                                                 <select class="search-members" name="students" value="" id="multiselect" multiple="multiple" style="width: 100%; z-index: 200;">
                                                 </select>
                                             </div>
@@ -139,10 +140,10 @@
                                                     <div class="custom-file" lang="zh">
         
                                                         <input onchange="showsummaryFilename(this.files)" type="file"
-                                                            class="custom-file-input" id="summary" name="summaryimages"
+                                                            class="custom-file-input" id="summaryimages" name="summaryimages"
                                                             accept="image/*" multiple>
                                                         <label id="summaryfile" class="custom-file-label"
-                                                               for="customFile"
+                                                               for="summaryimages"
                                                         >请上传一张活动总结图片</label>
         
                                                     </div>
@@ -282,7 +283,6 @@
         var start = document.getElementById("datetimepicker5").value;
         var end = document.getElementById("datetimepicker6").value;
         const now = new Date();
-        var prepare_option = document.getElementById("inputState").value;
         if (start == "")
             start = document.getElementById("datetimepicker5").placeholder;
         if (end == "")
@@ -324,12 +324,19 @@
             document.body.scrollTop = document.documentElement.scrollTop = 0;
             return false;
         }
+        // TODO: 支持多张图片
+        if (document.getElementById("summaryimages").files.length > 1) {
+            document.getElementById("warn_msg").style.display = "";
+            document.getElementById("warn_msg").innerHTML = "目前只支持上传一张图片";
+            document.body.scrollTop = document.documentElement.scrollTop = 0;
+            return false;
+        }
         for (file of document.getElementById("summaryimages").files) {
             var valid_list = ["jpg", "bmp", "png", "jpeg", "rgb", "tif"];
             var type = file.name.split(".").pop().toLowerCase();
             var flag = false;
             for (t of valid_list) {
-                if (valid_list[t] == type) {
+                if (t == type) {
                     flag = true;
                     break;
                 }

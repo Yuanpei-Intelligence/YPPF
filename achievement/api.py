@@ -31,7 +31,11 @@ def unlock_achievement(user: User, achievement_name: str) -> bool:
     :return: 是否成功解锁
     :rtype: bool
     '''
-    return trigger_achievement(user, Achievement.objects.get(name=achievement_name))
+    try:
+        achivement = Achievement.objects.get(name=achievement_name)
+    except:
+        return False
+    return trigger_achievement(user, achivement)
 
 
 def _unlock_by_value(user: User, acquired_value: float,
