@@ -30,8 +30,23 @@ services:
       timeout: 5s
       retries: 100
 
+  db_setup:
+    image: yppf_local
+    build: ..
+    volumes:
+      - ../:/workspace
+    working_dir: /workspace
+    depends_on:
+      mysql:
+        condition: service_healthy
+    # 等待20秒，保证containers处于就绪状态
+    command: >
+      bash -c "sleep 20 &&
+      python3 manage.py makemigrations &&
+      python3 manage.py migrate" 
+
   yppf:
-    build: ./image_build
+    image: yppf_local
     tty: true
     depends_on:
       mysql:
@@ -57,7 +72,7 @@ services:
       retries: 3
 
   scheduler:
-    build: ./image_build
+    image: yppf_local
     volumes:
       - ../:/workspace
     working_dir: /workspace
@@ -74,16 +89,6 @@ services:
       timeout: 5s
       retries: 3
 
-  db_setup:
-    build: ./image_build
-    volumes:
-      - ../:/workspace
-    working_dir: /workspace
-    depends_on:
-      mysql:
-        condition: service_healthy
-    # 等待20秒，保证containers处于就绪状态
-    command: bash -c "sleep 20 && bash ./scripts/init_migrations.sh"
 
 
 volumes:

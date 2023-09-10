@@ -33,7 +33,7 @@ class DormitoryRoutineQAView(ProfileTemplateView):
 
     def get(self):
 
-        survey = Survey.objects.get(title='宿舍调查问卷')
+        survey = Survey.objects.get(title='宿舍生活习惯调研')
         if AnswerSheet.objects.filter(creator=self.request.user,
                                       survey=survey).exists():
             self.extra_context.update({
@@ -50,7 +50,7 @@ class DormitoryRoutineQAView(ProfileTemplateView):
         return self.render()
 
     def post(self):
-        survey = Survey.objects.get(title='宿舍调查问卷')
+        survey = Survey.objects.get(title='宿舍生活习惯调研')
         assert not AnswerSheet.objects.filter(creator=self.request.user,
                                               survey=survey).exists()
         with transaction.atomic():

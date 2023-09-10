@@ -1,0 +1,33 @@
+# Django
+django>=4.2
+djangorestframework
+
+# 数据库
+django_mysql
+pymysql
+
+# 其它第三方包
+# 通用包
+openpyxl
+xlwt
+pandas
+numpy
+tqdm
+
+# 特殊功能
+qrcode
+pypinyin
+## ImageField 的依赖
+pillow
+
+# 通信
+requests
+rpyc
+
+# 定时任务
+apscheduler
+django_apscheduler
+
+# 可选应用依赖
+pymssql
+cryptography
