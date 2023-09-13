@@ -55,8 +55,11 @@ from app.academic_utils import (
     get_tag_status,
     get_text_status,
 )
+
+from achievement.utils import stuinfo_set_achievement
 from achievement.api import unlock_achievement, unlock_YQPoint_achievements
 from semester.api import current_semester
+
 
 
 @login_required(redirect_field_name="origin")
@@ -550,6 +553,10 @@ def stuinfo(request: UserRequest):
             person, AcademicTextEntry.Type.GRADUATION
         )
 
+        # ------------------ 成就卡片 ------------------ #
+        user = request.user
+        invisible_achievements, visible_achievements, achievement_types_0, achievement_types_1, achievement_types_2 = stuinfo_set_achievement(user)
+
         status_dict = dict(
             major_status=major_status,
             minor_status=minor_status,
@@ -843,7 +850,9 @@ def homepage(request: UserRequest):
 
     # 元气满满系列更新
     semester = current_semester()
-    unlock_YQPoint_achievements(request.user, semester.start_date, semester.end_date)
+    start_datetime = datetime.combine(semester.start_date, datetime.min.time())
+    end_datetime = datetime.combine(semester.end_date, datetime.max.time())
+    unlock_YQPoint_achievements(request.user, start_datetime, end_datetime)
 
     # 开始时间在前后一周内，除了取消和审核中的活动。按时间逆序排序
     recentactivity_list = Activity.objects.get_recent_activity(
@@ -955,6 +964,7 @@ def homepage(request: UserRequest):
             _weather['modify_time'], '%Y-%m-%d %H:%M:%S.%f')
     html_display['weather'] = _weather
     # 根据更新时间长短，展示不同的更新天气时间状态
+
 
     def days_hours_minutes_seconds(td):
         return td.days, td.seconds // 3600, (td.seconds // 60) % 60, td.seconds % 60
