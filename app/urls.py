@@ -93,6 +93,8 @@ urlpatterns = [
     path("outputRecord/", course_views.outputRecord, name="outputRecord"),
     path("outputSelectInfo/", course_views.outputSelectInfo,
          name="outputSelectInfo"),
+     path("output-all-select-info/", course_views.outputAllSelectInfo,
+         name="output-all-select-info"),
 ] + [
     # 学术地图
     path("modifyAcademic/", academic_views.modifyAcademic, name="modifyAcademic"),
