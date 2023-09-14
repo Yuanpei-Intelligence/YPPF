@@ -407,7 +407,8 @@ def weekly_activity_summary_reminder():
         activities = Activity.objects.filter(
             organization_id=org,
             # start__date__gte=monday,
-            start__date__lte=today,
+            end__date__lte=today,
+            status=Activity.Status.END,
         )
         notify_act_list = [
             act for act in activities if act not in act_summary_map]

@@ -1475,29 +1475,50 @@ def download_course_record(course: Course = None, year: int = None, semester: Se
     return response
 
 
-def download_select_info(course=None):
+def download_select_info(single_course: Course | None = None):
     """
     下载选课信息
+    single_course:
+        提供single_course时为单个课程服务，只导出该课程的相关人员的选课信息
+        不提供时下载所有选课信息，注意，此时只有相关负责老师可以访问！
+        不提供手动选课人员名单。
+    :return: 返回下载的文件数据
+    :rtype: HttpResponse
     """
     wb = openpyxl.Workbook()  # 生成一个工作簿（即一个Excel文件）
     wb.encoding = 'utf-8'
-    sheet1 = wb.active
-    sheet1_header = ['姓名', '年级']
-    sheet1.append(sheet1_header)
-    lucky_ones = CourseParticipant.objects.filter(
-        course=course, status=CourseParticipant.Status.SUCCESS)
-    for person in lucky_ones:
-        person_info = [
-            person.person.name,
-            person.person.stu_grade,  # 用这个字段表示年级好呢，还是用学号判断？
-        ]
-        sheet1.append(person_info)
-    # 设置文件名并保存
-    semester = "春" if course.semester == Semester.SPRING else "秋"
-    year = (course.year + 1) if semester == "春" else course.year
+    sheet_header = ['姓名', '学号']
+    if single_course is not None:
+        courses = [single_course]
+    else:
+        courses = Course.objects.activated()
+    # 为每一门课创建一个新的sheet
+    for course in courses:
+        # 生成新的sheet，并设置表头
+        sheet = wb.create_sheet(title=f'{course.name}')
+        sheet.append(sheet_header)
+        # 导出相关信息，不包括手动选课
+        lucky_ones = CourseParticipant.objects.filter(
+            course=course, status=CourseParticipant.Status.SUCCESS)
+        for info in lucky_ones.values_list(
+            'person__name', 'person__person_id__username'
+        ):
+            person_info = [
+                info[0],
+                info[1]
+            ]
+            sheet.append(person_info)
+    # 删除多余的第一个sheet
+    wb.remove_sheet(wb.active)
+    # 设置文件名
+    semester = "春" if courses[0].semester == Semester.SPRING else "秋"
+    year = (courses[0].year + 1) if semester == "春" else courses[0].year
     ctime = datetime.now().strftime('%Y-%m-%d %H:%M')
-    # 给文件名中添加日期时间
-    file_name = f'{year}{semester}{course.name}选课名单-{ctime}'
+    if single_course is not None:
+        file_name = f'{year}{semester}{course.name}选课名单-{ctime}'
+    else:
+        file_name = f'{year}{semester}选课名单汇总-{ctime}'
+    # 保存并返回
     response = HttpResponse(content_type='application/vnd.ms-excel')
     response['Content-Disposition'] = f'attachment;filename={quote(file_name)}.xlsx'
     wb.save(response)
