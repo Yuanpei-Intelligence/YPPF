@@ -2,14 +2,14 @@ import os
 import io
 import urllib.parse
 from datetime import datetime, timedelta
-from typing import Literal
+from typing import Literal, List
 
 from django.db import transaction
-from django.db.models import Q, F
+from django.db.models import Q, F, QuerySet
 import csv
 import qrcode
 
-from generic.models import User
+from generic.models import User, YQPointRecord
 from generic.utils import to_search_indices
 from app.views_dependency import *
 from app.view.base import ProfileTemplateView
@@ -974,13 +974,8 @@ def activitySummary(request: UserRequest):
                 except:
                     return redirect(message_url(wrong('找不到该活动，请检查活动总结的合法性！')))
 
+            # 与总结图片相关的原子操作
             with transaction.atomic():
-                if post_type == "new_submit":
-                    # 新建activity summary
-                    application: ActivitySummary = ActivitySummary.objects.create(
-                        status=ActivitySummary.Status.WAITING,
-                        activity=activity,
-                    )
                 # 活动总结图片
                 summary_photos = request.FILES.getlist('summaryimages')
                 photo_num = len(summary_photos)
@@ -990,21 +985,76 @@ def activitySummary(request: UserRequest):
                         if utils.if_image(image) != 2:
                             return redirect(
                                 message_url(wrong("上传的总结图片只支持图片格式！")))
-                    application.image = summary_photos[0]
-                    application.save()
-
                 else:
-                    return redirect(message_url(wrong('图片内容为空或有多张图片！'), request.path))
+                    # 注意：modify_submit时，如果不修改总结图片，photo_num将为0，需要单独排除这种情况
+                    if not (photo_num == 0 and post_type == "modify_submit"):
+                        return redirect(message_url(wrong('图片内容为空或有多张图片！'), request.path))
 
                 if post_type == "new_submit":
+                    # 新建activity summary
+                    application: ActivitySummary = ActivitySummary.objects.create(
+                        status=ActivitySummary.Status.WAITING,
+                        activity=activity,
+                        image=summary_photos[0]
+                    )
                     context = succeed(
                         f'活动“{application.activity.title}”的申请已成功发送，请耐心等待{application.activity.examine_teacher.name}老师审批！'
                     )
-                else:
+                elif post_type == "modify_submit":
+                    # 修改活动总结图片
+                    # modify_submit时，如果没有修改总结图片，summmary_photos为空，photo_num为0
+                    if photo_num > 0:
+                        assert photo_num == 1
+                        application.image = summary_photos[0]
+                        application.save()
                     context = succeed(
                         f'活动“{application.activity.title}”的申请已成功修改，请耐心等待{application.activity.examine_teacher.name}老师审批！'
                     )
-                context["application_id"] = application.id
+            context["application_id"] = application.id
+
+            # 与参与人员、元气值相关的原子操作，只有修改活动总结时使用
+            if post_type == "modify_submit":
+                with transaction.atomic():
+                    # 根据修改的参与人员列表获取需要添加/删除的Participant
+                    activity = application.activity
+                    past_participants: QuerySet['Participant'] = activity.attended_participants
+                    past_participant_usrnames = past_participants.values_list(
+                        "person_id__person_id__username", flat=True)
+                    now_participant_usrnames = request.POST.getlist("students")
+                    to_add_participant_usernames = [usrname for usrname in now_participant_usrnames if
+                                                        usrname not in past_participant_usrnames]
+                    # 检查参与人员是否为空
+                    if len(now_participant_usrnames) == 0:
+                        return redirect(message_url(wrong('参与人员不能为空'), request.path))
+                    # 获取需要添加的Participants
+                    to_add_participant_nps: QuerySet['NaturalPerson'] = NaturalPerson.objects.filter(
+                        person_id__username__in=to_add_participant_usernames)
+                    to_add_participant_usr_ids: List[str] = to_add_participant_nps.values_list(
+                        "person_id__id", flat=True)
+                    to_add_participant_usrs: QuerySet['User'] = User.objects.filter(
+                        id__in=to_add_participant_usr_ids)
+                    point = activity.calculate_yqp()
+                    # 为添加的Participants增加元气值
+                    User.objects.bulk_increase_YQPoint(
+                        to_add_participant_usrs, point, "参加活动", YQPointRecord.SourceType.ACTIVITY)
+                    for np in to_add_participant_nps:
+                        Participant.objects.create(
+                            activity_id=application.activity,
+                            person_id=np,
+                            status=Participant.AttendStatus.ATTENDED,
+                        )
+                    # 获取需要删除的Participants
+                    to_delete_participants: QuerySet['Participant'] = past_participants.exclude(
+                        person_id__person_id__username__in=now_participant_usrnames)
+                    to_delete_participant_usr_ids: List[str] = to_delete_participants.values_list(
+                        "person_id__person_id__id", flat=True)
+                    to_delete_participant_usrs: QuerySet['User'] = User.objects.filter(
+                        id__in=to_delete_participant_usr_ids)
+                    # 为删除的Participant撤销元气值发放
+                    for usr in to_delete_participant_usrs:
+                        User.objects.modify_YQPoint(
+                            usr, -point, "撤销参加活动", YQPointRecord.SourceType.CONSUMPTION)
+                    to_delete_participants.delete()
 
         elif post_type == "cancel_submit":
             if not application.is_pending():  # 如果不在pending状态, 可能是重复点击
@@ -1073,6 +1123,17 @@ def activitySummary(request: UserRequest):
     examine_teacher = application.activity.examine_teacher if application is not None else None
     bar_display = utils.get_sidebar_and_navbar(
         request.user, navbar_name="活动总结详情")
+    #所有人员和参与人员
+    person_list = NaturalPerson.objects.activated()
+    user_id_list = [person.person_id.id for person in person_list]
+    user_queryset = User.objects.filter(id__in=user_id_list)
+    js_stu_list = to_search_indices(user_queryset)
+    js_participant_list = []
+    if application is not None:
+        participant_usr_id_list = \
+            application.activity.attended_participants.values_list("person_id__person_id", flat=True)
+        participant_usr_list = User.objects.filter(id__in=participant_usr_id_list)
+        js_participant_list = to_search_indices(participant_usr_list)
 
     return render(request, "activity/summary_application.html", locals())
 
@@ -1242,7 +1303,7 @@ class WeeklyActivitySummary(ProfileTemplateView):
             # 创建活动总结
             application: ActivitySummary = ActivitySummary.objects.create(
                 activity=activity,
-                status=ActivitySummary.Status.CONFIRMED,
+                status=ActivitySummary.Status.WAITING,
                 image=self.context["summary_pic"]
             )
             application.save()
