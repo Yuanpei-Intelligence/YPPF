@@ -935,25 +935,25 @@ def _add_participants(activity: Activity, new_participant_uids):
 @transaction.atomic
 def _delete_outdate_participants(activity: Activity, now_participant_uids):
     # 获取需要删除的Participants
-    participants: QuerySet['Participant'] = activity.attended_participants
-    removed_participants: QuerySet['Participant'] = participants.exclude(
+    participation: QuerySet['Participant'] = activity.attended_participants
+    removed_participation: QuerySet['Participant'] = participation.exclude(
         person_id__person_id__username__in=now_participant_uids)
-    removed_participant_ids: list[int] = removed_participants.values_list(
+    removed_participant_ids: list[int] = removed_participation.values_list(
         "person_id__person_id__id", flat=True)
-    removed_participant_users: QuerySet['User'] = User.objects.filter(
+    removed_participants: QuerySet['User'] = User.objects.filter(
         id__in=removed_participant_ids)
     point = activity.calculate_yqp()
     # 为删除的Participant撤销元气值发放
-    for usr in removed_participant_users:
+    for usr in removed_participants:
         User.objects.modify_YQPoint(
             usr, -point, "撤销参加活动", YQPointRecord.SourceType.CONSUMPTION)
-    removed_participants.delete()
+    removed_participation.delete()
 
 
 @transaction.atomic
 def _modify_participants(activity: Activity, now_participant_uids):
-    participants: QuerySet['Participant'] = activity.attended_participants
-    participant_uids = participants.values_list(
+    participation: QuerySet['Participant'] = activity.attended_participants
+    participant_uids = participation.values_list(
         "person_id__person_id__username", flat=True)
     new_participant_uids = [usrname for usrname in now_participant_uids if
                                         usrname not in participant_uids]
