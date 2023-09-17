@@ -33,6 +33,7 @@ from app.activity_utils import (
     cancel_activity,
     withdraw_activity,
     get_activity_QRcode,
+    _modify_participants,
 )
 from app.comment_utils import addComment, showComment
 from app.utils import (
@@ -1014,49 +1015,11 @@ def activitySummary(request: UserRequest):
 
             # 与参与人员、元气值、活动相关的原子操作，只有修改活动总结时使用
             if post_type == "modify_submit":
-                with transaction.atomic():
-                    # 根据修改的参与人员列表获取需要添加/删除的Participant
-                    activity = application.activity
-                    past_participants: QuerySet['Participant'] = activity.attended_participants
-                    past_participant_usrnames = past_participants.values_list(
-                        "person_id__person_id__username", flat=True)
-                    now_participant_usrnames = request.POST.getlist("students")
-                    to_add_participant_usernames = [usrname for usrname in now_participant_usrnames if
-                                                        usrname not in past_participant_usrnames]
-                    # 检查参与人员是否为空
-                    if len(now_participant_usrnames) == 0:
-                        return redirect(message_url(wrong('参与人员不能为空'), request.path))
-                    # 获取需要添加的Participants
-                    to_add_participant_nps: QuerySet['NaturalPerson'] = NaturalPerson.objects.filter(
-                        person_id__username__in=to_add_participant_usernames)
-                    to_add_participant_usr_ids: List[int] = to_add_participant_nps.values_list(
-                        "person_id__id", flat=True)
-                    to_add_participant_usrs: QuerySet['User'] = User.objects.filter(
-                        id__in=to_add_participant_usr_ids)
-                    point = activity.calculate_yqp()
-                    # 为添加的Participants增加元气值
-                    User.objects.bulk_increase_YQPoint(
-                        to_add_participant_usrs, point, "参加活动", YQPointRecord.SourceType.ACTIVITY)
-                    for np in to_add_participant_nps:
-                        Participant.objects.create(
-                            activity_id=application.activity,
-                            person_id=np,
-                            status=Participant.AttendStatus.ATTENDED,
-                        )
-                    # 获取需要删除的Participants
-                    to_delete_participants: QuerySet['Participant'] = past_participants.exclude(
-                        person_id__person_id__username__in=now_participant_usrnames)
-                    to_delete_participant_usr_ids: List[int] = to_delete_participants.values_list(
-                        "person_id__person_id__id", flat=True)
-                    to_delete_participant_usrs: QuerySet['User'] = User.objects.filter(
-                        id__in=to_delete_participant_usr_ids)
-                    # 为删除的Participant撤销元气值发放
-                    for usr in to_delete_participant_usrs:
-                        User.objects.modify_YQPoint(
-                            usr, -point, "撤销参加活动", YQPointRecord.SourceType.CONSUMPTION)
-                    to_delete_participants.delete()
-                    activity.current_participants = len(now_participant_usrnames)
-                    activity.save()
+                now_participant_uids = request.POST.getlist("students")
+                # 检查参与人员是否为空
+                if len(now_participant_uids) == 0:
+                    return redirect(message_url(wrong('参与人员不能为空'), request.path))
+                _modify_participants(application.activity, now_participant_uids)
 
         elif post_type == "cancel_submit":
             if not application.is_pending():  # 如果不在pending状态, 可能是重复点击
