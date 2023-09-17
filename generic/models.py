@@ -49,7 +49,7 @@ class UserManager(_UserManager['User']):
     用户管理器，提供对信用分等通用字段的修改方法
     '''
 
-    def get_user(self, user: 'User|int|str', update=False) -> 'User':
+    def get_user(self, user: 'User | int | str', update=False) -> 'User':
         '''根据主键或用户名(学号)等唯一字段查询对应的用户'''
         users = self.all()
         if update:
@@ -77,8 +77,8 @@ class UserManager(_UserManager['User']):
         return users
 
     def create_user(self, username: str, name: str,
-                    usertype: 'User.Type' = None, *,
-                    password: str = None,
+                    usertype: 'User.Type | None' = None, *,
+                    password: str | None = None,
                     **extra_fields) -> 'User':
         '''创建用户，根据名称自动设置名称缩写'''
         if usertype is not None:
@@ -88,19 +88,29 @@ class UserManager(_UserManager['User']):
         extra_fields.setdefault('acronym', to_acronym(name))
         return super().create_user(username=username, password=password, **extra_fields)
 
+    def create_superuser(self, username: str, name: str,
+                         usertype: 'User.Type | None' = None, *,
+                         password: str | None = None,
+                         **extra_fields) -> 'User':
+        '''创建超级用户'''
+        if usertype is None:
+            usertype = extra_fields.pop('utype', User.Type.SPECIAL)
+        extra_fields.update(utype=usertype, name=name)
+        return super().create_superuser(username=username, password=password, **extra_fields)
+
     def create(self, **fields) -> 'NoReturn':
         '''User.objects.create已废弃'''
         raise NotImplementedError
 
-    def check_perm(self, user: 'User|AnonymousUser',
-                   model: 'Type[models.Model]|models.Model', perm: str) -> bool:
+    def check_perm(self, user: 'User | AnonymousUser',
+                   model: 'Type[models.Model] | models.Model', perm: str) -> bool:
         '''
         检查当前用户在对应模型中是否具有对应权限
 
         :param user: 未经验证的用户
-        :type user: User|AnonymousUser
+        :type user: User | AnonymousUser
         :param model: 待检查的模型或实例
-        :type model: Type[Model]|Model
+        :type model: Type[Model] | Model
         :param perm: 权限名称，如change, view
         :type perm: str
         :return: 是否具有权限
@@ -112,12 +122,12 @@ class UserManager(_UserManager['User']):
         return user.has_perm(perm_name)
 
     @transaction.atomic
-    def modify_credit(self, user: 'User|int|str', delta: int, source: str) -> int:
+    def modify_credit(self, user: 'User | int | str', delta: int, source: str) -> int:
         '''
         修改信用分并记录，至多扣到0分，原子化操作
 
         :param user: 修改的用户，可以是对象、主键或用户名
-        :type user: User|int|str
+        :type user: User | int | str
         :param delta: 希望的变化量，最终修改结果在MIN_CREDIT到MAX_CREDIT之间
         :type delta: int
         :param source: 修改来源，可以是“地下室”等应用名，尽量简单
@@ -177,7 +187,8 @@ class UserManager(_UserManager['User']):
         self.select_for_update().bulk_update(users, ['credit'])
 
     def _record_credit_modify(self, user: 'User', delta: int, source: str,
-                              old_value: int = None, new_value: int = None):
+                              old_value: int | None = None,
+                              new_value: int | None = None):
         if old_value is None:
             old_value = user.credit
         if new_value is None:
@@ -193,35 +204,30 @@ class UserManager(_UserManager['User']):
         )
 
     @transaction.atomic
-    def modify_YQPoint(self, user: 'User|int|str', delta: int,
+    def modify_YQPoint(self, user: 'User | int | str', delta: int,
                        source: str, source_type: 'YQPointRecord.SourceType'):
         '''
-        修改元气值并记录，不足时抛出AssertionError，原子化操作
+        修改元气值并记录，不足扣除时抛出AssertionError，原子化操作
         '''
         update_user = self.get_user(user, update=True)
         update_user.YQpoint += delta
-        assert update_user.YQpoint >= 0, '元气值不足'
+        assert not (update_user.YQpoint < 0 and delta < 0), '元气值不足'
         self._record_YQpoint_change(update_user, delta, source, source_type)
         update_user.save(update_fields=['YQpoint'])
         if isinstance(user, User):
             user.YQpoint = update_user.YQpoint
 
     @transaction.atomic
-    def bulk_increase_YQPoint(self, users: QuerySet['User'], delta: int,
-                              source: str, source_type: 'YQPointRecord.SourceType'):
+    def _bulk_change_YQPoint(self, users: QuerySet['User'], delta: int,
+                             source: str, source_type: 'YQPointRecord.SourceType'):
         '''
-        批量增加元气值
-        :param users: 待更改User的QuerySet，不修改内部对象
+        无条件批量修改元气值并记录，不论元气值**是否足够**，原子化操作
 
-        :type users: QuerySet['User']
-        :param delta: 增加多少元气值
-        :type delta: int
-        :param source: 元气值来源的简短说明
-        :type source: str
-        :param source_type: 元气值来源类型
-        :type source_type: YQPointRecord.SourceType
+        Warning:
+            请勿直接调用，应使用`bulk_increase_YQPoint`或`bulk_withdraw_YQPoint`
+            实验表明`users`不应该包含复杂的级联查询，如`id__in=xxx.values('id')`，
+            否则可能由未知原因导致`OperationalError`
         '''
-        assert delta >= 0, '元气值增量为负数'
         users = users.select_for_update()
         point_records = [
             YQPointRecord(
@@ -234,6 +240,43 @@ class UserManager(_UserManager['User']):
         YQPointRecord.objects.bulk_create(point_records)
         if delta != 0:
             users.update(YQpoint=F('YQpoint') + delta)
+
+    def bulk_increase_YQPoint(self, users: QuerySet['User'], delta: int,
+                              source: str, source_type: 'YQPointRecord.SourceType'):
+        '''
+        批量增加元气值
+
+        Args:
+        - users(QuerySet[User]): 待更改的用户集合，不修改内部对象
+        - delta(int): 增加的元气值数量，必须为非负数
+        - source(str): 元气值来源的简短说明
+        - source_type(YQPointRecord.SourceType): 元气值来源类型
+
+        Raises:
+            AssertionError: 元气值增量为负数
+        '''
+        assert delta >= 0, '元气值增量为负数'
+        return self._bulk_change_YQPoint(users, delta, source, source_type)
+
+    def bulk_withdraw_YQPoint(self, users: QuerySet['User'], value: int,
+                              source: str, source_type: 'YQPointRecord.SourceType'):
+        '''
+        强制批量收回元气值，可能导致元气值为负数
+
+        Args:
+        - users(QuerySet[User]): 待更改的用户集合，不修改内部对象
+        - value(int): 收回的元气值数量，必须为非负数
+        - source(str): 元气值来源的简短说明
+        - source_type(YQPointRecord.SourceType): 元气值来源类型
+
+        Raises:
+            AssertionError: 元气值收回量为负数
+
+        Warning:
+            只适合收回元气值，不适合用于扣除元气值，因为并不检查对象是否足够支付
+        '''
+        assert value >= 0, '元气值收回量为负数'
+        return self._bulk_change_YQPoint(users, -value, source, source_type)
 
     def _record_YQpoint_change(self, user: 'User', delta: int,
                                source: str, source_type: 'YQPointRecord.SourceType'):
@@ -380,7 +423,7 @@ class CreditRecord(models.Model):
     delta = models.IntegerField('变化量')
     overflow = models.BooleanField('溢出', default=False)
     source = models.CharField('来源', max_length=50, default='', blank=True)
-    time = models.DateTimeField("时间", auto_now_add=True)
+    time = models.DateTimeField('时间', auto_now_add=True)
 
 
 class YQPointRecord(models.Model):
@@ -411,6 +454,6 @@ class YQPointRecord(models.Model):
         QUESTIONNAIRE = (5, '填写问卷')
         CONSUMPTION = (6, '奖池花费')
 
-    source_type: 'SourceType|int' = models.SmallIntegerField(
+    source_type = models.SmallIntegerField(
         '来源类型', choices=SourceType.choices, default=SourceType.SYSTEM)
-    time = models.DateTimeField("时间", auto_now_add=True)
+    time = models.DateTimeField('时间', auto_now_add=True)

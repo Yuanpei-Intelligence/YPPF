@@ -32,6 +32,7 @@
                 "GitHub.copilot",
                 "Gruntfuggly.todo-tree",
                 "eamodio.gitlens",
+                "ms-vsliveshare.vsliveshare",
                 "GitHub.vscode-pull-request-github"
             ]
         }
