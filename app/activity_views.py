@@ -1012,7 +1012,7 @@ def activitySummary(request: UserRequest):
                     )
             context["application_id"] = application.id
 
-            # 与参与人员、元气值相关的原子操作，只有修改活动总结时使用
+            # 与参与人员、元气值、活动相关的原子操作，只有修改活动总结时使用
             if post_type == "modify_submit":
                 with transaction.atomic():
                     # 根据修改的参与人员列表获取需要添加/删除的Participant
@@ -1029,7 +1029,7 @@ def activitySummary(request: UserRequest):
                     # 获取需要添加的Participants
                     to_add_participant_nps: QuerySet['NaturalPerson'] = NaturalPerson.objects.filter(
                         person_id__username__in=to_add_participant_usernames)
-                    to_add_participant_usr_ids: List[str] = to_add_participant_nps.values_list(
+                    to_add_participant_usr_ids: List[int] = to_add_participant_nps.values_list(
                         "person_id__id", flat=True)
                     to_add_participant_usrs: QuerySet['User'] = User.objects.filter(
                         id__in=to_add_participant_usr_ids)
@@ -1046,7 +1046,7 @@ def activitySummary(request: UserRequest):
                     # 获取需要删除的Participants
                     to_delete_participants: QuerySet['Participant'] = past_participants.exclude(
                         person_id__person_id__username__in=now_participant_usrnames)
-                    to_delete_participant_usr_ids: List[str] = to_delete_participants.values_list(
+                    to_delete_participant_usr_ids: List[int] = to_delete_participants.values_list(
                         "person_id__person_id__id", flat=True)
                     to_delete_participant_usrs: QuerySet['User'] = User.objects.filter(
                         id__in=to_delete_participant_usr_ids)
@@ -1055,6 +1055,8 @@ def activitySummary(request: UserRequest):
                         User.objects.modify_YQPoint(
                             usr, -point, "撤销参加活动", YQPointRecord.SourceType.CONSUMPTION)
                     to_delete_participants.delete()
+                    activity.current_participants = len(now_participant_usrnames)
+                    activity.save()
 
         elif post_type == "cancel_submit":
             if not application.is_pending():  # 如果不在pending状态, 可能是重复点击
