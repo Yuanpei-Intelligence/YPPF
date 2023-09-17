@@ -4,6 +4,10 @@ from utils.models.descriptor import admin_only
 from utils.models.choice import choice
 from generic.models import User
 
+__all__ = [
+    'Dormitory',
+    'DormitoryAssignment',
+]
 
 class Dormitory(models.Model):
     class Meta:

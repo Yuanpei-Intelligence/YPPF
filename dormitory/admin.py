@@ -1,3 +1,12 @@
 from django.contrib import admin
 
-# Register your models here.
+from dormitory.models import *
+from generic.admin import UserAdmin
+
+admin.site.register(Dormitory)
+
+@admin.register(DormitoryAssignment)
+class DormitoryAssignmentAdmin(admin.ModelAdmin):
+    list_display = ['dormitory', 'user', 'bed_id', 'time']
+    list_filter = ['bed_id', 'time']
+    search_fields = ['dormitory', *UserAdmin.suggest_search_fields('user'), 'time']
