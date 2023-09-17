@@ -10,12 +10,13 @@ class SemesterTestCase(TestCase):
 
     @classmethod
     def setUpTestData(cls):
-        type = SemesterType.objects.create(name='test')
+        type1 = SemesterType.objects.create(name='test1')
         s1 = Semester.objects.create(
-            year=2020, type=type, start_date=date(2020, 2, 1), end_date=date(2020, 6, 30))
+            year=2020, type=type1, start_date=date(2020, 2, 1), end_date=date(2020, 6, 30))
+        type2 = SemesterType.objects.create(name='test2')
         s2 = Semester.objects.create(
-            year=2020, type=type, start_date=date(2020, 9, 1), end_date=date(2021, 1, 1))
-        cls.type, cls.semesters = type, (s1, s2)
+            year=2020, type=type2, start_date=date(2020, 9, 1), end_date=date(2021, 1, 1))
+        cls.semesters = [s1, s2]
 
     def test_semester_api(self):
         # Test Exception

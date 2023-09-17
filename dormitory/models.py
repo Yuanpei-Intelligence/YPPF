@@ -1,27 +1,36 @@
 from django.db import models
 
-from utils.models.descriptor import debug_only
+from utils.models.descriptor import admin_only
+from utils.models.choice import choice
 from generic.models import User
 
 
 class Dormitory(models.Model):
+    class Meta:
+        verbose_name = '宿舍'
+        verbose_name_plural = verbose_name
+
     id = models.BigAutoField('宿舍号', primary_key=True)
     capacity = models.IntegerField('容量', default=4)
-    gender = models.CharField(
-        '性别', max_length=1, choices=(('M', '男'), ('F', '女')))
 
-    @debug_only
+    class Gender(models.TextChoices):
+        MALE = choice('M', '男')
+        FEMALE = choice('F', '女')
+
+    gender = models.CharField('性别', max_length=1, choices=Gender.choices)
+
+    @admin_only
     def __str__(self):
         return str(self.id)
 
 
 class DormitoryAssignment(models.Model):
+    class Meta:
+        verbose_name = '宿舍分配信息'
+        verbose_name_plural = verbose_name
+
     dormitory = models.ForeignKey(
         Dormitory, on_delete=models.CASCADE, verbose_name='宿舍号')
     user = models.ForeignKey(User, on_delete=models.CASCADE, verbose_name='成员')
-    time = models.DateTimeField('创建时间', auto_now_add=True)
     bed_id = models.IntegerField('床位号')
-
-    @debug_only
-    def __str__(self):
-        return str(self.dormitory.id) + ' - ' + self.user.username
+    time = models.DateTimeField('创建时间', auto_now_add=True)

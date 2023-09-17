@@ -40,7 +40,7 @@ class DormitoryRoutineQAView(ProfileTemplateView):
                 'submitted': True
             })
             return self.render()
-        questions = survey.question_set.order_by('order').all()
+        questions = survey.questions.order_by('order').all()
         choices = [
             question.choices.order_by('order').all() for question in questions
         ]
@@ -56,7 +56,7 @@ class DormitoryRoutineQAView(ProfileTemplateView):
         with transaction.atomic():
             sheet = AnswerSheet.objects.create(creator=self.request.user,
                                                survey=survey)
-            for question in survey.question_set.order_by('order').all():
+            for question in survey.questions.order_by('order'):
                 answer = self.request.POST.get(str(question.order))
                 if answer is None:
                     continue
