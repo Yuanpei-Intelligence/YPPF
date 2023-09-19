@@ -554,7 +554,7 @@ def stuinfo(request: UserRequest):
         )
 
         # ------------------ 成就卡片 ------------------ #
-        user = request.user
+        user = person.get_user()
         invisible_achievements, visible_achievements, achievement_types_0, achievement_types_1, achievement_types_2 = stuinfo_set_achievement(user)
 
         status_dict = dict(
