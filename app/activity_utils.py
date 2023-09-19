@@ -11,14 +11,13 @@ scheduler_func 依赖于 wechat_send 依赖于 utils
 """
 import io
 import base64
-from math import ceil
 from random import sample
 from datetime import datetime, timedelta
 
 import qrcode
 
 from utils.http.utils import build_full_url
-from generic.models import User, YQPointRecord
+from generic.models import User
 from scheduler.adder import ScheduleAdder
 from scheduler.cancel import remove_job
 from app.utils_dependency import *

@@ -35,14 +35,14 @@ class QuestionViewSet(viewsets.ModelViewSet):
             return Question.objects.filter(Q(survey__status=Survey.Status.PUBLISHED) | Q(survey__creator=self.request.user))
 
     # 只有问卷创始人能创建问题
-    def perform_create(self, serializer):
+    def perform_create(self, serializer: QuestionSerializer):
         survey = serializer.validated_data['survey']
         if survey.creator == self.request.user:
             serializer.save()
         else:
             raise PermissionError("只有问卷创始人能添加问题！")
 
-    def perform_update(self, serializer):
+    def perform_update(self, serializer: QuestionSerializer):
         survey = serializer.instance.survey
         if survey != serializer.validated_data['survey']:
             raise PermissionError("禁止修改问题所属问卷！请通过删除后新建完成操作。")
@@ -61,8 +61,8 @@ class ChoiceViewSet(viewsets.ModelViewSet):
             return Choice.objects.filter(Q(question__survey__status=Survey.Status.PUBLISHED) | Q(question__survey__creator=self.request.user))
 
     # 只有问卷创始人能创建选项，而且只有选择题才能创建选项
-    def perform_create(self, serializer):
-        question = serializer.validated_data['question']
+    def perform_create(self, serializer: ChoiceSerializer):
+        question: Question = serializer.validated_data['question']
         if not question.have_choice():
             raise TypeError("当前问题不能设置选项！")
         elif question.survey.creator != self.request.user:
@@ -70,7 +70,7 @@ class ChoiceViewSet(viewsets.ModelViewSet):
         else:
             serializer.save()
 
-    def perform_update(self, serializer):
+    def perform_update(self, serializer: ChoiceSerializer):
         question = serializer.instance.question
         if question != serializer.validated_data['question']:
             raise PermissionError("禁止修改选项所属问题！请通过删除后新建完成操作。")
@@ -87,7 +87,7 @@ class AnswerTextViewSet(viewsets.ModelViewSet):
     def list(self, request, *args, **kwargs):
         raise PermissionError("禁止直接查看所有答案！")
 
-    def perform_create(self, serializer):
+    def perform_create(self, serializer: AnswerTextSerializer):
         answersheet = serializer.validated_data['answersheet']
         question = serializer.validated_data['question']
         if answersheet.creator != self.request.user:
@@ -99,7 +99,7 @@ class AnswerTextViewSet(viewsets.ModelViewSet):
         else:
             serializer.save()
 
-    def perform_update(self, serializer):
+    def perform_update(self, serializer: AnswerTextSerializer):
         answersheet = serializer.instance.answersheet
         question = serializer.instance.question
         if answersheet.status == AnswerSheet.Status.DRAFT:
@@ -137,7 +137,7 @@ class AnswerSheetViewSet(viewsets.ModelViewSet):
     def list(self, request, *args, **kwargs):
         raise PermissionError("禁止直接查看所有答卷！")
 
-    def perform_create(self, serializer):
+    def perform_create(self, serializer: AnswerSheetSerializer):
         creator = serializer.validated_data['creator']
         survey = serializer.validated_data['survey']
         if survey.status != Survey.Status.PUBLISHED:  # 问卷必须处于发布状态才能创建答卷
@@ -147,7 +147,7 @@ class AnswerSheetViewSet(viewsets.ModelViewSet):
         else:
             serializer.save()
 
-    def perform_update(self, serializer):
+    def perform_update(self, serializer: AnswerSheetSerializer):
         sheet_status = serializer.instance.status
         if sheet_status == AnswerSheet.Status.DRAFT:
             survey = serializer.instance.survey

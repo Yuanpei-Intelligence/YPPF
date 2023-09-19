@@ -1064,9 +1064,6 @@ def modifyEndActivity(request: UserRequest):
     # 活动总结图片
     summary_photo = application.image if application is not None else None
     summary_photo_exist = True if summary_photo is not None else False
-    # 元培学院
-    our_college = Organization.objects.get(
-        oname="元培学院") if allow_audit_submit else None
     # 审核老师
     examine_teacher = application.activity.examine_teacher if application is not None else None
     bar_display = utils.get_sidebar_and_navbar(

@@ -28,11 +28,7 @@ def delete_all():
 
 
 def create_superuser():
-    try:
-        User.objects.create_superuser(username='admin', password='admin',
-                                      email='admin@notexist.com')
-    except:
-        pass
+    User.objects.create_superuser('admin', '管理员', password='admin')
 
 
 @fix_me
@@ -215,7 +211,7 @@ def create_semester():
         )
     else:
         #current semester is autumn semester
-        #if today.date is before 2.1, then semester's year is today.year-1
+        #if 1.1 <= today.date < 2.1, then semester's year is today.year-1
         cur_year = today.year if today.month >= 9 else today.year - 1
         Semester.objects.bulk_create(
             [
