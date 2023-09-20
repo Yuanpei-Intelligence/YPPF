@@ -29,8 +29,17 @@ class Command(BaseCommand):
         for dorm_id, df in tqdm(df_dorms):
             dormitory = Dormitory.objects.get(id=dorm_id)
             for i in range(len(df)):
-                user = User.objects.get(username=df.iloc[i]["学号"])
-                bed_id = int(df.iloc[i]["床位"])
+                username=df.iloc[i]["学号"]
+                if username.startswith("L"):
+                    username = username[1:]
+                try:
+                    username = str(username)
+                    user = User.objects.get(username=username)
+                except Exception as e:
+                    print(e)
+                    print(f"User {username} in {dorm_id} is not imported. Reason: user not exist.")
+                    continue
+                bed_id = int(df.iloc[i]["床位"][:1])
                 _, created = DormitoryAssignment.objects.get_or_create(
                     dormitory=dormitory,
                     user=user,

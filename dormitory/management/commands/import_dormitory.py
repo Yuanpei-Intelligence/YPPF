@@ -29,7 +29,7 @@ class Command(BaseCommand):
             gender = pd.unique(df['性别'])
             assert len(gender) == 1, len(gender)
 
-            _, created = Dormitory.objects.get_or_create(
+            dorm, created = Dormitory.objects.get_or_create(
                 id=dorm_id,
                 capacity=4,
                 gender={"男": 0, "女": 1}[gender[0]]
@@ -38,3 +38,5 @@ class Command(BaseCommand):
                 gender_dict = {'男': 'male', '女': 'female'}
                 print(
                     f"Dormitory {dorm_id} already exists. Its capacity is 4 and it's a {gender_dict[gender[0]]} dormitory")
+            
+            print(df['学号'])
