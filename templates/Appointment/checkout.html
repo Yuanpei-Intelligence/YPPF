@@ -362,15 +362,15 @@
             }
 
             /**
-             * 学生列表
+             * 可预约人员列表
              * @type {Array<{id: string, text: string, pinyin?: string, acronym?: string}>}
              */
-            let stu_data = {{ js_stu_list | safe }};
+            let user_data = JSON.parse("{{ js_ctx.user_infos | escapejs }}");
             /**
              * 小组成员 ID 列表
              * @type {Array<string>}
              */
-            let group_member_ids = {{ js_stu_group_list | safe }};
+            let group_member_ids = JSON.parse("{{ js_ctx.member_ids | escapejs }}");
             let group_filter_active = false;
             
             function initSelect2(data) {
@@ -385,7 +385,7 @@
 
             // 添加小组相关功能
             $(document).ready(function () {
-                initSelect2(stu_data);
+                initSelect2(user_data);
                 // 筛选小组成员功能
                 $('#group-filter').on("click", function () {
                     group_filter_active = !group_filter_active
@@ -394,13 +394,13 @@
                     // 筛选小组成员
                     if (group_filter_active) {
                         let group_member_id_set = new Set(group_member_ids);
-                        let group_member_data = stu_data.filter((item) => {
+                        let group_member_data = user_data.filter((item) => {
                             return group_member_id_set.has(item.id);
                         });
                         initSelect2(group_member_data);
                     }
                     else {
-                        initSelect2(stu_data);
+                        initSelect2(user_data);
                     }
                 })
                 // 导入小组成员功能

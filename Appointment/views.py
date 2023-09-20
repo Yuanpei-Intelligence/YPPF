@@ -935,16 +935,17 @@ def checkout_appoint(request: UserRequest):
     # 保证都在预约人员列表中且不是隐藏用户
     search_users = search_users.filter(
         pk__in=Participant.objects.filter(hidden=False).values('Sid__pk'))
-    js_stu_list = to_search_indices(search_users, active=True)
-    js_stu_group_list = get_member_ids(request.user)
+    stu_list = to_search_indices(search_users, active=True)
+    member_ids = get_member_ids(request.user)
+    js_context = dict(user_infos=json.dumps(stu_list),
+                      member_ids=json.dumps(member_ids))
 
-    render_context.update(js_stu_list=js_stu_list,
-                          js_stu_group_list=js_stu_group_list)
+    render_context.update(js_ctx=js_context)
 
     if request.method == 'POST':
         # 预约失败。补充一些已有信息，以避免重复填写
         selected_stu_list = [
-            w for w in js_stu_list if w['id'] in contents['students']
+            w for w in stu_list if w['id'] in contents['students']
         ]
         no_clause = True
         render_context.update(selected_stu_list=selected_stu_list,
