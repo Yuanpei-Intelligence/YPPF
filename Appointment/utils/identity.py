@@ -19,6 +19,7 @@ from Appointment.models import User, Participant
 from Appointment.config import appointment_config as CONFIG
 from utils.global_messages import wrong, succeed, message_url
 from app import API
+from generic.models import User
 
 __all__ = [
     'get_participant',
@@ -90,7 +91,15 @@ def get_avatar(participant: Participant | User):
 def get_member_ids(participant: Participant | User, noncurrent: bool = False):
     '''返回participant的成员id列表，个人返回空列表'''
     user = _arg2user(participant)
-    return API.get_members(user, noncurrent=noncurrent)
+    uid_list = API.get_members(user, noncurrent=noncurrent)
+    # 为未创建地下室账户的User创建账户
+    member_list = User.objects.filter(username__in=uid_list)
+    participant_uid_list = Participant.objects.values_list("Sid__username", flat=True)
+    new_participant_list: QuerySet[User] = member_list.exclude(username__in=participant_uid_list)
+    if new_participant_list.exists():
+        for new_participant in new_participant_list:
+            Participant.objects.create(Sid=new_participant)
+    return uid_list
 
 
 def get_auditor_ids(participant: Participant | User):
