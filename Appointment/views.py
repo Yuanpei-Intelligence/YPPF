@@ -932,6 +932,9 @@ def checkout_appoint(request: UserRequest):
     # 提供搜索功能的数据
     search_users = User.objects.filter_type(User.Type.PERSON)
     search_users = search_users.exclude(pk=request.user.pk)
+    # 保证都在预约人员列表中且不是隐藏用户
+    search_users = search_users.filter(
+        pk__in=Participant.objects.filter(hidden=False).values('Sid__pk'))
     js_stu_list = to_search_indices(search_users, active=True)
     js_stu_group_list = get_member_ids(request.user)
 
