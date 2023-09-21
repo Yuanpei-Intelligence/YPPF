@@ -384,6 +384,17 @@ def stuinfo(request: UserRequest):
                     hour / actual_total_hours * 100 for hour in progress_list
                 ]
 
+        # 准备前端展示量，前移代码位置以保证后续功能不再使用locals()
+        html_display["is_myself"] = is_myself
+        render_context = locals()
+
+        # is_myself是内部变量，不传给前端
+        render_context.update(
+            html_display=html_display,
+            inform_share=inform_share,
+            alert_message=alert_message,
+        )
+
         # ------------------ 活动参与 ------------------ #
 
         participants = Participant.objects.activated().filter(person_id=person)
@@ -437,35 +448,7 @@ def stuinfo(request: UserRequest):
         else:  # 没有进行中的问答，显示提问区
             html_display["have_progressing_chat"] = False
             html_display["accept_chat"] = person.get_user().accept_chat
-            html_display["accept_anonymous"] = person.get_user(
-            ).accept_anonymous_chat
-
-        # 存储被查询人的信息
-        context = dict()
-
-        context["person"] = person
-
-        context["title"] = "我" if is_myself else (
-            {0: "他", 1: "她"}.get(person.gender, 'Ta') if person.show_gender else "Ta")
-
-        context["avatar_path"] = person.get_user_ava()
-        context["wallpaper_path"] = utils.get_user_wallpaper(person)
-
-        # 新版侧边栏, 顶栏等的呈现，采用 bar_display
-        bar_display = utils.get_sidebar_and_navbar(
-            request.user, navbar_name="个人主页", title_name=person.name
-        )
-        origin = request.get_full_path()
-
-        if request.session.get('alert_message'):
-            load_alert_message = request.session.pop('alert_message')
-
-        # 浏览次数，必须在render之前
-        # 为了防止发生错误的存储，让数据库直接更新浏览次数，并且不再显示包含本次浏览的数据
-        NaturalPerson.objects.filter(id=person.id).update(
-            visit_times=F('visit_times')+1)
-        # person.visit_times += 1
-        # person.save()
+            html_display["accept_anonymous"] = person.get_user().accept_anonymous_chat
 
         # ------------------ 查看学术地图 ------------------ #
         academic_params = {"author_id": person.person_id_id}
@@ -565,14 +548,40 @@ def stuinfo(request: UserRequest):
             graduation_status=graduation_status,
         )
         academic_params.update(status_dict)
+        render_context.update(academic_params=academic_params)
 
         # ------------------ 成就卡片 ------------------ #
         _, _, achievement_by_types = personal_achievements(person.get_user())
         achievement_params = dict(achievement_by_types=achievement_by_types)
+        render_context.update(achievement_params=achievement_params)
 
-        # is_myself是内部变量，不传给前端
-        html_display["is_myself"] = is_myself
-        return render(request, "stuinfo.html", locals() | dict(user=request.user) | achievement_params)
+        # ------------------ 前端准备 ------------------ #
+        # 存储被查询人的信息
+        _title = "我" if is_myself else (
+            {0: "他", 1: "她"}.get(person.gender, 'Ta') if person.show_gender else "Ta")
+        context = dict(
+            person=person,
+            title=_title,
+            avatar_path=person.get_user_ava(),
+            wallpaper_path=utils.get_user_wallpaper(person)
+        )
+
+        # 新版侧边栏, 顶栏等的呈现，采用 bar_display
+        bar_display = utils.get_sidebar_and_navbar(
+            request.user, navbar_name="个人主页", title_name=person.name
+        )
+        render_context.update(bar_display=bar_display, context=context)
+
+        if request.session.get('alert_message'):
+            render_context.update(load_alert_message=request.session.pop('alert_message'))
+
+        # 浏览次数，必须在render之前
+        # 为了防止发生错误的存储，让数据库直接更新浏览次数，并且不再显示包含本次浏览的数据
+        NaturalPerson.objects.filter(id=person.id).update(
+            visit_times=F('visit_times')+1)
+        
+        render_context.update(user=request.user)
+        return render(request, "stuinfo.html", render_context)
 
 
 @login_required(redirect_field_name="origin")
