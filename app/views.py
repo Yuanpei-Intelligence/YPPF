@@ -56,7 +56,7 @@ from app.academic_utils import (
     get_text_status,
 )
 
-from achievement.utils import stuinfo_set_achievement
+from achievement.utils import personal_achievements
 from achievement.api import unlock_achievement, unlock_YQPoint_achievements
 from semester.api import current_semester
 
@@ -553,10 +553,6 @@ def stuinfo(request: UserRequest):
             person, AcademicTextEntry.Type.GRADUATION
         )
 
-        # ------------------ 成就卡片 ------------------ #
-        user = request.user
-        invisible_achievements, visible_achievements, achievement_types_0, achievement_types_1, achievement_types_2 = stuinfo_set_achievement(user)
-
         status_dict = dict(
             major_status=major_status,
             minor_status=minor_status,
@@ -570,9 +566,18 @@ def stuinfo(request: UserRequest):
         )
         academic_params.update(status_dict)
 
+        # ------------------ 成就卡片 ------------------ #
+        achievement_params = dict(zip([
+            'invisible_achievements',
+            'visible_achievements',
+            'achievement_types_0',
+            'achievement_types_1',
+            'achievement_types_2',
+        ], personal_achievements(person.get_user())))
+
         # is_myself是内部变量，不传给前端
         html_display["is_myself"] = is_myself
-        return render(request, "stuinfo.html", locals() | dict(user=request.user))
+        return render(request, "stuinfo.html", locals() | dict(user=request.user) | achievement_params)
 
 
 @login_required(redirect_field_name="origin")
