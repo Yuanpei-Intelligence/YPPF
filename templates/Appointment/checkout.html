@@ -325,18 +325,41 @@
         <script src="{% static 'Appointment/assets/js/script.js' %}"></script>
         <!-- Select2 JS -->
         <script src="{% static 'Appointment/assets/select2/js/select2.min.js' %}"></script>
+        {{ json_context | json_script:'context-data' }}
+        <script>
+            /**
+             * @typedef {object} SearchData - 用于搜索的数据对象
+             * @property {string} text - 在下拉列表中显示的文本
+             * @property {string} [pinyin] - 文本的拼音。
+             * @property {string} [acronym] - 文本的首字母缩写
+             */
+
+            /**
+             * @typedef {object} UserInfo - 用户信息对象
+             * @property {number} id - 用户 ID
+             * @property {string} text - 文本表示，如姓名
+             * @property {string} [pinyin] - 文本的拼音
+             * @property {string} [acronym] - 文本的首字母缩写
+             * @extends SelectData
+             */
+
+            /**
+             * 上下文数据
+             * @type {Context}
+             * @typedef {object} Context
+             * @property {UserInfo[]} user_infos - 可预约人员列表
+             * @property {string[]} member_ids - 小组成员 ID 列表
+             */
+            const CONTEXT = JSON.parse(document.getElementById('context-data').textContent);
+        </script>
         <script>
             /**
              * 用于搜索用户的自定义搜索函数
              * @param {Params} params - 包含搜索参数的对象。
-             * @param {Data} data - 包含要过滤的数据的对象。
+             * @param {SearchData} data - 包含要过滤的数据的对象。
              * @returns {?object} - 返回过滤后的数据对象，如果不符合搜索条件，则返回 null。
              * @typedef {object} Params
              * @property {string} term - 用户输入的搜索词。
-             * @typedef {object} Data
-             * @property {string} text - 在下拉列表中显示的文本。
-             * @property {string} [pinyin] - 文本的拼音。
-             * @property {string} [acronym] - 文本的首字母缩写。
              */
             function matchCustom(params, data) {
                 // 如果没有搜索条件，则返回所有数据
@@ -361,18 +384,8 @@
                 return null;
             }
 
-            /**
-             * 可预约人员列表
-             * @type {Array<{id: string, text: string, pinyin?: string, acronym?: string}>}
-             */
-            let user_data = JSON.parse("{{ js_ctx.user_infos | escapejs }}");
-            /**
-             * 小组成员 ID 列表
-             * @type {Array<string>}
-             */
-            let group_member_ids = JSON.parse("{{ js_ctx.member_ids | escapejs }}");
             let group_filter_active = false;
-            
+
             function initSelect2(data) {
                 $('#select-participants').empty().select2({
                     theme: "classic",
@@ -385,7 +398,7 @@
 
             // 添加小组相关功能
             $(document).ready(function () {
-                initSelect2(user_data);
+                initSelect2(CONTEXT.user_infos);
                 // 筛选小组成员功能
                 $('#group-filter').on("click", function () {
                     group_filter_active = !group_filter_active
@@ -393,19 +406,19 @@
                     $('#group-filter>i').toggleClass("fa-check-square");
                     // 筛选小组成员
                     if (group_filter_active) {
-                        let group_member_id_set = new Set(group_member_ids);
-                        let group_member_data = user_data.filter((item) => {
+                        let group_member_id_set = new Set(CONTEXT.member_ids);
+                        let group_member_data = CONTEXT.user_infos.filter((item) => {
                             return group_member_id_set.has(item.id);
                         });
                         initSelect2(group_member_data);
                     }
                     else {
-                        initSelect2(user_data);
+                        initSelect2(CONTEXT.user_infos);
                     }
                 })
                 // 导入小组成员功能
                 $('#group-importer').on("click",function(){
-                    $('#select-participants').val(group_member_ids).trigger('change');
+                    $('#select-participants').val(CONTEXT.member_ids).trigger('change');
                     // 修复导入后搜索框重绘导致的闪烁
                     $(".select2-search__field").toggleClass("d-none");
                     setTimeout(()=>{$(".select2-search__field").toggleClass("d-none")})

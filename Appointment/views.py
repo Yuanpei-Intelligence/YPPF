@@ -937,10 +937,10 @@ def checkout_appoint(request: UserRequest):
         pk__in=Participant.objects.filter(hidden=False).values('Sid__pk'))
     stu_list = to_search_indices(search_users, active=True)
     member_ids = get_member_ids(request.user)
-    js_context = dict(user_infos=json.dumps(stu_list),
-                      member_ids=json.dumps(member_ids))
 
-    render_context.update(js_ctx=js_context)
+    # 用于前端的JSON数据，由Django标签在渲染时转化为JSON格式
+    json_context = dict(user_infos=stu_list, member_ids=member_ids)
+    render_context.update(json_context=json_context)
 
     if request.method == 'POST':
         # 预约失败。补充一些已有信息，以避免重复填写
