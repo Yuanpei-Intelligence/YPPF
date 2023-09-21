@@ -567,13 +567,8 @@ def stuinfo(request: UserRequest):
         academic_params.update(status_dict)
 
         # ------------------ 成就卡片 ------------------ #
-        achievement_params = dict(zip([
-            'invisible_achievements',
-            'visible_achievements',
-            'achievement_types_0',
-            'achievement_types_1',
-            'achievement_types_2',
-        ], personal_achievements(person.get_user())))
+        _, _, achievement_by_types = personal_achievements(person.get_user())
+        achievement_params = dict(achievement_by_types=achievement_by_types)
 
         # is_myself是内部变量，不传给前端
         html_display["is_myself"] = is_myself
