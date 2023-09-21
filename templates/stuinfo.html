@@ -1542,16 +1542,6 @@
             <div class="container-fluid layout-px-spacing layout-top-spacing">
                 <div class="bio education layout-spacing ">
                     <div class="widget-content widget-content-area">
-                        
-                            <ul>
-                                {% for unlock in invisible_achievements %}
-                                  <center><p>{{ unlock.achievement }} - {{ unlock.time }}</p></center>
-                                {% endfor %}
-                            </ul>
-
-                            
-                        </body>
-
                         <div id="badges" class="carousel slide" data-ride="carousel">
                             
                             <!-- 轮播图片 --><!--
@@ -1588,176 +1578,59 @@
                           </div>
                         
                         <!--  勋章墙展示  -->
-                        <div class="container mt-3 achievement-container">                  
-                                <box>
-                                {% for acs, unlocked_personal_stat, all_achievement_stat, achievement_unlocked, achievement_locked, achievement_locked_hidden in achievement_types_0 %}
-                                    <td><a href="/achievement/{{acs.title}}" data-toggle="modal" data-target="#myModal{{acs.title}}"><img src="/media/{{ acs.badge}}", class="achievement-img"></a>
-                                        <center><p>{{acs}}</p></center>
+                        <div class="container mt-3 achievement-container">
+                            {% for atype, unlocked_personal_stat, all_achievement_stat, achievement_unlocked, achievement_locked, achievement_hidden in achievement_params.achievement_by_types %}
+                            {% if forloop.counter0 % 3 == 0 %}<box>{% endif %}
+                                <td>
+                                    <a data-toggle="modal" data-target="#achievementModal-{{ atype.title }}">
+                                        <img src="{{ atype.badge.url }}" class="achievement-img">
+                                    </a>
+                                    <center>
+                                        <p>{{ atype.title }}</p>
+                                    </center>
                                     <!-- 模态框（Modal） -->
-                                    <div class="modal fade" id="myModal{{acs.title}}">
+                                    <div class="modal fade" id="achievementModal-{{ atype.title }}">
                                         <div class="modal-dialog">
                                             <div class="modal-content">
                                                 <div class="modal-header">
-                                                    <button type="button" class="close" data-dismiss="modal" aria-hidden="true">
-                                                        &times;
-                                                    </button>
-                                                    <h4 class="modal-title" id="myModalLabel">
-                                                        
-                                                    </h4>
+                                                    <button type="button" class="close" data-dismiss="modal" aria-hidden="true">&times;</button>
+                                                    <h4 class="modal-title" id="myModalLabel"></h4>
                                                 </div>
                                                 <div class="modal-body">
-                                                    
-                                                                <div class="widget-content widget-content-area">
-                                                                <center>
-                                                                    <h2>{{acs}}</h2>
-                                                                    <img src="/media/{{ acs.badge}}", class="achievement-img">
-                                                                    <p>{{acs.description}}</p>
-                                                                </center>
-                                                                <center>
-                                                                    <h4>解锁成就：{{unlocked_personal_stat}}/{{all_achievement_stat}}</h4>
-                                                                        {% for ac in achievement_unlocked %}
-                                                                        <p class="solid">{{ac.name}}</p>
-                                                                        {% endfor %}
-                                                                        <div style=" height:20px " ></div>
-                                                                        <h4>未解锁成就</h4>
-                                                                        {% for ac in achievement_locked %}
-                                                                        <p class="solid">{{ac.name}}</p>
-                                                                        {% endfor %}
-                                                                        {% for ac in achievement_locked_hidden %}
-                                                                        <p class="solid">隐藏成就：???</p>
-                                                                        {% endfor %}
-                                                                </center>
-                                                                <div style=" height:50px " ></div>
-                                                                </div>
-                                                 
-                                                    
+                                                    <div class="widget-content widget-content-area">
+                                                        <center>
+                                                            <h2>{{ atype.title }}</h2>
+                                                            <img src="{{ atype.badge.url }}" class="achievement-img">
+                                                            <p>{{ atype.description }}</p>
+                                                        </center>
+                                                        <center>
+                                                            <h4>解锁成就：{{ unlocked_personal_stat }} / {{ all_achievement_stat }}</h4>
+                                                            {% for ac in achievement_unlocked %}<p class="solid">{{ ac.name }}</p>{% endfor %}
+                                                            <div style=" height:20px "></div>
+                                                            <h4>未解锁成就</h4>
+                                                            {% for ac in achievement_locked %}<p class="solid">{{ ac.name }}</p>{% endfor %}
+                                                            {% for ac in achievement_hidden %}<p class="solid">隐藏成就：???</p>{% endfor %}
+                                                        </center>
+                                                        <div style=" height:50px "></div>
+                                                    </div>
                                                 </div>
                                                 <!-- Modal footer -->
                                                 <div class="modal-footer">
                                                     <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
                                                 </div>
-                                                
-                                                
-                                            </div><!-- /.modal-content -->
-                                        </div><!-- /.modal -->
+                                            </div>
+                                            <!-- /.modal-content -->
+                                        </div>
+                                        <!-- /.modal -->
                                     </div>
-                                    <center><p>{{unlocked_personal_stat}}/{{all_achievement_stat}}</p></center>
-                                    </td>
-                                {% endfor %}
-                                        </box>
-                                        <box>
-                                            {% for acs, unlocked_personal_stat, all_achievement_stat, achievement_unlocked, achievement_locked, achievement_locked_hidden in achievement_types_1 %}
-                                                <td><a href="/achievement/{{acs.title}}" data-toggle="modal" data-target="#myModal{{acs.title}}"><img src="/media/{{ acs.badge}}", class="achievement-img"></a>
-                                                    <center><p>{{acs}}</p></center>
-                                                <!-- 模态框（Modal） -->
-                                                <div class="modal fade" id="myModal{{acs.title}}">
-                                                    <div class="modal-dialog">
-                                                        <div class="modal-content">
-                                                            <div class="modal-header">
-                                                                <button type="button" class="close" data-dismiss="modal" aria-hidden="true">
-                                                                    &times;
-                                                                </button>
-                                                                <h4 class="modal-title" id="myModalLabel">
-                                                                    
-                                                                </h4>
-                                                            </div>
-                                                            <div class="modal-body">
-                                                                
-                                                                            <div class="widget-content widget-content-area">
-                                                                            <center>
-                                                                                <h2>{{acs}}</h2>
-                                                                                <img src="/media/{{ acs.badge}}", class="achievement-img">
-                                                                                <p>{{acs.description}}</p>
-                                                                            </center>
-                                                                            <center>
-                                                                                <h4>解锁成就：{{unlocked_personal_stat}}/{{all_achievement_stat}}</h4>
-                                                                                    {% for ac in achievement_unlocked %}
-                                                                                    <p class="solid">{{ac.name}}</p>
-                                                                                    {% endfor %}
-                                                                                    <div style=" height:20px " ></div>
-                                                                                    <h4>未解锁成就</h4>
-                                                                                    {% for ac in achievement_locked %}
-                                                                                    <p class="solid">{{ac.name}}</p>
-                                                                                    {% endfor %}
-                                                                                    {% for ac in achievement_locked_hidden %}
-                                                                                    <p class="solid">隐藏成就：???</p>
-                                                                                    {% endfor %}
-                                                                            </center>
-                                                                            <div style=" height:50px " ></div>
-                                                                            </div>
-                                                             
-                                                                
-                                                            </div>
-                                                            <!-- Modal footer -->
-                                                            <div class="modal-footer">
-                                                                <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
-                                                            </div>
-                                                            
-                                                            
-                                                        </div><!-- /.modal-content -->
-                                                    </div><!-- /.modal -->
-                                                </div>
-                                                <center><p>{{unlocked_personal_stat}}/{{all_achievement_stat}}</p></center>
-                                                </td>
-                                            {% endfor %}
-                                                    </box>
-                                                    <box>
-                                                        {% for acs, unlocked_personal_stat, all_achievement_stat, achievement_unlocked, achievement_locked, achievement_locked_hidden in achievement_types_2 %}
-                                                            <td><a href="/achievement/{{acs.title}}" data-toggle="modal" data-target="#myModal{{acs.title}}"><img src="/media/{{ acs.badge}}", class="achievement-img"></a>
-                                                                <center><p>{{acs}}</p></center>
-                                                            <!-- 模态框（Modal） -->
-                                                            <div class="modal fade" id="myModal{{acs.title}}">
-                                                                <div class="modal-dialog">
-                                                                    <div class="modal-content">
-                                                                        <div class="modal-header">
-                                                                            <button type="button" class="close" data-dismiss="modal" aria-hidden="true">
-                                                                                &times;
-                                                                            </button>
-                                                                            <h4 class="modal-title" id="myModalLabel">
-                                                                                
-                                                                            </h4>
-                                                                        </div>
-                                                                        <div class="modal-body">
-                                                                            
-                                                                                        <div class="widget-content widget-content-area">
-                                                                                        <center>
-                                                                                            <h2>{{acs}}</h2>
-                                                                                            <img src="/media/{{ acs.badge}}", class="achievement-img">
-                                                                                            <p>{{acs.description}}</p>
-                                                                                        </center>
-                                                                                        <center>
-                                                                                            <h4>解锁成就：{{unlocked_personal_stat}}/{{all_achievement_stat}}</h4>
-                                                                                                {% for ac in achievement_unlocked %}
-                                                                                                <p class="solid">{{ac.name}}</p>
-                                                                                                {% endfor %}
-                                                                                                <div style=" height:20px " ></div>
-                                                                                                <h4>未解锁成就</h4>
-                                                                                                {% for ac in achievement_locked %}
-                                                                                                <p class="solid">{{ac.name}}</p>
-                                                                                                {% endfor %}
-                                                                                                {% for ac in achievement_locked_hidden %}
-                                                                                                <p class="solid">隐藏成就：???</p>
-                                                                                                {% endfor %}
-                                                                                        </center>
-                                                                                        <div style=" height:50px " ></div>
-                                                                                        </div>
-                                                                         
-                                                                            
-                                                                        </div>
-                                                                        <!-- Modal footer -->
-                                                                        <div class="modal-footer">
-                                                                            <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
-                                                                        </div>
-                                                                        
-                                                                        
-                                                                    </div><!-- /.modal-content -->
-                                                                </div><!-- /.modal -->
-                                                            </div>
-                                                            <p><center>{{unlocked_personal_stat}}/{{all_achievement_stat}}</center></p>
-                                                            </td>
-                                                        {% endfor %}
-                                                                </box>
+                                    <center>
+                                        <p>{{ unlocked_personal_stat }} / {{ all_achievement_stat }}</p>
+                                    </center>
+                                </td>
+                            {% if forloop.counter % 3 == 0 or forloop.last %}</box>{% endif %}
+                            {% endfor %}
                         </div>
+                        <!--  END 勋章墙展示  -->
                     </div>
                 </div>
             </div>
