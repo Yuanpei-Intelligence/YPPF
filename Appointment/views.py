@@ -944,13 +944,10 @@ def checkout_appoint(request: UserRequest):
 
     if request.method == 'POST':
         # 预约失败。补充一些已有信息，以避免重复填写
-        selected_stu_list = [
-            w for w in stu_list if w['id'] in contents['students']
-        ]
-        no_clause = True
-        render_context.update(selected_stu_list=selected_stu_list,
-                              contents=contents,
-                              no_clause=no_clause)
+        selected_ids = set(contents.pop('students'))
+        selected_ids = [w['id'] for w in stu_list if w['id'] in selected_ids]
+        json_context.update(selected_ids=selected_ids)
+        render_context.update(contents=contents, show_clause=True)
     return render(request, 'Appointment/checkout.html', render_context)
 
 

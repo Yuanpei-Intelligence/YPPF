@@ -127,13 +127,6 @@
                                                         <select class="search-members" name="students" value=""
                                                             id="select-participants" multiple="multiple"
                                                             style="width: 100%; z-index: 200;">
-                                                            {% if warn_code %}
-                                                                {% for selected_stu in selected_stu_list %}
-                                                                    <option id="{{ selected_stu.id }}" value="{{ selected_stu.id }}" selected="selected">
-                                                                        {{ selected_stu.text }}
-                                                                    </option>
-                                                                {% endfor %}
-                                                            {% endif %}
                                                         </select>
                                                     </div>
                                                 </div>
@@ -242,16 +235,16 @@
                                                     </div>
                                                 </div>
                                             {% endif %}
+                                            {% if show_clause %}
                                             <div class="terms-accept">
                                                 <div class="custom-checkbox">
-                                                    <!--<input type="checkbox" id="terms_accept" name="regulation" checked>-->
-                                                    {% if no_clause %}
-                                                        <label for="terms_accept">
-                                                            我已阅读并同意 <a href="#">地下室运行条例</a>
-                                                        </label>
-                                                    {% endif %}
+                                                    <input type="checkbox" id="terms_accept" name="regulation" required>
+                                                    <label for="terms_accept">
+                                                        我已阅读并同意 <a href="#">地下室运行条例</a>
+                                                    </label>
                                                 </div>
                                             </div>
+                                            {% endif %}
                                             {% for k,v in appoint_params.items %}
                                                 {% if k != "longterm" and k != "start_week" %}<input type="hidden" name="{{ k }}" value="{{ v }}"/>{% endif %}
                                             {% endfor %}
@@ -349,6 +342,7 @@
              * @typedef {object} Context
              * @property {UserInfo[]} user_infos - 可预约人员列表
              * @property {string[]} member_ids - 小组成员 ID 列表
+             * @property {string[]} [selected_ids] - 已选中的 ID 列表
              */
             const CONTEXT = JSON.parse(document.getElementById('context-data').textContent);
         </script>
@@ -399,6 +393,10 @@
             // 添加小组相关功能
             $(document).ready(function () {
                 initSelect2(CONTEXT.user_infos);
+                // 初始化已选中的成员
+                if (CONTEXT.selected_ids) {
+                    $('#select-participants').val(CONTEXT.selected_ids).trigger('change');
+                }
                 // 筛选小组成员功能
                 $('#group-filter').on("click", function () {
                     group_filter_active = !group_filter_active
