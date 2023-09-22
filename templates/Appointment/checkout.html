@@ -318,15 +318,10 @@
         <script src="{% static 'Appointment/assets/js/script.js' %}"></script>
         <!-- Select2 JS -->
         <script src="{% static 'Appointment/assets/select2/js/select2.min.js' %}"></script>
+        {% comment %} 提供本项目的用户搜索函数matchUser {% endcomment %}
+        <script src="{% static 'assets/select2/js/user-matcher.js' %}"></script>
         {{ json_context | json_script:'context-data' }}
         <script>
-            /**
-             * @typedef {object} SearchData - 用于搜索的数据对象
-             * @property {string} text - 在下拉列表中显示的文本
-             * @property {string} [pinyin] - 文本的拼音。
-             * @property {string} [acronym] - 文本的首字母缩写
-             */
-
             /**
              * @typedef {object} UserInfo - 用户信息对象
              * @property {number} id - 用户 ID
@@ -347,37 +342,6 @@
             const CONTEXT = JSON.parse(document.getElementById('context-data').textContent);
         </script>
         <script>
-            /**
-             * 用于搜索用户的自定义搜索函数
-             * @param {Params} params - 包含搜索参数的对象。
-             * @param {SearchData} data - 包含要过滤的数据的对象。
-             * @returns {?object} - 返回过滤后的数据对象，如果不符合搜索条件，则返回 null。
-             * @typedef {object} Params
-             * @property {string} term - 用户输入的搜索词。
-             */
-            function matchCustom(params, data) {
-                // 如果没有搜索条件，则返回所有数据
-                if ($.trim(params.term) === '') {
-                    return data;
-                }
-                // 如果没有'text'属性，则不显示该项
-                if (typeof data.text === 'undefined') {
-                    return null;
-                }
-                // `params.term` 是搜索关键词
-                // `data.text` 是显示数据对象的文本
-                // 可用 `$.extend(true, {}, data);` 深拷贝并返回修改对象
-                if (data.text.indexOf(params.term) > -1) { return data; }
-                if (data.pinyin && data.pinyin.indexOf(params.term) > -1) {
-                    return data;
-                }
-                if (data.acronym && data.acronym.indexOf(params.term) > -1 ){
-                    return data;
-                }
-                // 不显示该搜索结果
-                return null;
-            }
-
             let group_filter_active = false;
 
             function initSelect2(data) {
@@ -386,7 +350,7 @@
                     placeholder: "成员(姓名/拼音首字母搜索)",
                     allowClear: true,
                     data: data,
-                    matcher: matchCustom,
+                    matcher: matchUser,
                 }).trigger('change');
             }
 
