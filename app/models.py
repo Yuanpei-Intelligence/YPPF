@@ -37,6 +37,7 @@ models.py
 @Date 2022-03-11
 '''
 import random
+from math import ceil
 from datetime import datetime, timedelta
 
 from django.db import models, transaction
@@ -1024,19 +1025,35 @@ class Activity(CommentBase):
             return True
         return False
 
-    def yqp_settlement(self):
-        assert self.status == Activity.Status.END
+    def eval_point(self) -> int:
+        '''计算价值的活动积分'''
+        # TODO: 添加到模型字段，固定每个活动的积分
         hours = (self.end - self.start).seconds / 3600
         if hours > CONFIG.yqpoint.activity.invalid_hour:
             return 0
-        from math import ceil
         point = ceil(CONFIG.yqpoint.activity.per_hour * hours)
         # 单次活动记录的积分上限，默认无上限
         if CONFIG.yqpoint.activity.max is not None:
             point = min(CONFIG.yqpoint.activity.max, point)
-        participants = self.attended_participants.values_list(
-            'person_id__person_id', flat=True)
-        participants = User.objects.filter(id__in=participants)
+        return point
+
+    @transaction.atomic
+    def settle_yqpoint(self, status: Status | None = None, point: int | None = None):
+        '''结算活动积分，应仅在活动结束时调用'''
+        if status is None:
+            status = self.status  # type: ignore
+        assert self.status == Activity.Status.END, "活动未结束，不能结算积分"
+        if point is None:
+            point = self.eval_point()
+        assert point >= 0, "活动积分不能为负"
+        # 活动积分为0时，不记录
+        if point == 0:
+            return
+
+        self = Activity.objects.select_for_update().get(pk=self.pk)
+        participant_ids = list(self.attended_participants.values_list(
+            'person_id__person_id', flat=True))
+        participants = User.objects.filter(id__in=participant_ids)
         User.objects.bulk_increase_YQPoint(
             participants, point, "参加活动", YQPointRecord.SourceType.ACTIVITY)
 
