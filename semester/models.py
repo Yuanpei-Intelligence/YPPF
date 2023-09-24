@@ -11,6 +11,9 @@ class SemesterType(models.Model):
 
     name = models.CharField(max_length=20)
 
+    def __str__(self):
+        return self.name
+
 
 class Semester(models.Model):
     '''学期

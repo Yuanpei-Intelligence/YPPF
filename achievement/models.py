@@ -7,10 +7,14 @@ __all__ = ['AchievementType', 'Achievement', 'AchievementUnlock']
 
 
 class AchievementType(models.Model):
-    title = models.CharField(max_length=100)
-    description = models.TextField()
-    badge = models.ImageField(upload_to='achievement/badges/')
-    avatar = models.ImageField(upload_to='achievement/avatars/')
+    class Meta:
+        verbose_name = '成就类型'
+        verbose_name_plural = verbose_name
+
+    title = models.CharField('名称', max_length=100)
+    description = models.TextField('描述', blank=True)
+    badge = models.ImageField('徽章', upload_to='achievement/badges/')
+    avatar = models.ImageField('图标', upload_to='achievement/avatars/')
 
     @admin_only
     def __str__(self):
@@ -29,16 +33,20 @@ class AchievementType(models.Model):
 
 
 class Achievement(models.Model):
-    name = models.CharField(max_length=100)
-    description = models.TextField()
+    class Meta:
+        verbose_name = '成就'
+        verbose_name_plural = verbose_name
+
+    name = models.CharField('名称', max_length=100)
+    description = models.TextField('描述')
     achievement_type = models.ForeignKey(
-        AchievementType, on_delete=models.CASCADE)
-    hidden = models.BooleanField(default=False)
+        AchievementType, on_delete=models.CASCADE, verbose_name='类型')
+    hidden = models.BooleanField('隐藏', default=False)
     # Only used for filtering. Whether an achievement is auto-triggered is
     # not stored in the database.
-    auto_trigger = models.BooleanField(default=False)
+    auto_trigger = models.BooleanField('自动触发', default=False)
 
-    reward_points = models.PositiveIntegerField(default=0)
+    reward_points = models.PositiveIntegerField('奖励积分', default=0)
 
     @admin_only
     def __str__(self):
@@ -46,11 +54,14 @@ class Achievement(models.Model):
 
 
 class AchievementUnlock(models.Model):
-    user = models.ForeignKey(User, on_delete=models.CASCADE)
-    achievement = models.ForeignKey(Achievement, on_delete=models.CASCADE)
-    time = models.DateTimeField("解锁时间", auto_now_add=True)
-    private = models.BooleanField(default=False)
-
     class Meta:
+        verbose_name = '成就解锁记录'
+        verbose_name_plural = verbose_name
         # XXX: 工具函数的并行安全性完全依赖于此约束
         unique_together = ['user', 'achievement']
+
+    user = models.ForeignKey(User, on_delete=models.CASCADE, verbose_name='用户')
+    achievement = models.ForeignKey(Achievement, on_delete=models.CASCADE,
+                                    verbose_name='解锁成就')
+    time = models.DateTimeField('解锁时间', auto_now_add=True)
+    private = models.BooleanField('不公开', default=False)
