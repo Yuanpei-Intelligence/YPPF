@@ -109,7 +109,7 @@ def changeActivityStatus(aid, cur_status, to_status):
         # 结束，计算元气值
         elif (to_status == Activity.Status.END
               and activity.category != Activity.ActivityCategory.COURSE):
-            activity.yqp_settlement()
+            activity.settle_yqpoint(status=to_status)
         # 过早进行这个修改，将被写到activity待执行的保存中，导致失败后调用activity.save仍会调整状态
         activity.status = to_status
         activity.save()

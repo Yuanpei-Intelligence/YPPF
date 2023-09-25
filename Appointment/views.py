@@ -932,21 +932,22 @@ def checkout_appoint(request: UserRequest):
     # 提供搜索功能的数据
     search_users = User.objects.filter_type(User.Type.PERSON)
     search_users = search_users.exclude(pk=request.user.pk)
-    js_stu_list = to_search_indices(search_users, active=True)
-    js_stu_group_list = get_member_ids(request.user)
+    # 保证都在预约人员列表中且不是隐藏用户
+    search_users = search_users.filter(
+        pk__in=Participant.objects.filter(hidden=False).values('Sid__pk'))
+    stu_list = to_search_indices(search_users, active=True)
+    member_ids = get_member_ids(request.user)
 
-    render_context.update(js_stu_list=js_stu_list,
-                          js_stu_group_list=js_stu_group_list)
+    # 用于前端的JSON数据，由Django标签在渲染时转化为JSON格式
+    json_context = dict(user_infos=stu_list, member_ids=member_ids)
+    render_context.update(json_context=json_context)
 
     if request.method == 'POST':
         # 预约失败。补充一些已有信息，以避免重复填写
-        selected_stu_list = [
-            w for w in js_stu_list if w['id'] in contents['students']
-        ]
-        no_clause = True
-        render_context.update(selected_stu_list=selected_stu_list,
-                              contents=contents,
-                              no_clause=no_clause)
+        selected_ids = set(contents.pop('students'))
+        selected_ids = [w['id'] for w in stu_list if w['id'] in selected_ids]
+        json_context.update(selected_ids=selected_ids)
+        render_context.update(contents=contents, show_clause=True)
     return render(request, 'Appointment/checkout.html', render_context)
 
 

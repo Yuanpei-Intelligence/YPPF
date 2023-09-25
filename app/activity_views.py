@@ -1231,7 +1231,7 @@ class WeeklyActivitySummaryView(ProfileTemplateView):
             ]
             Participant.objects.bulk_create(participants)
             activity.current_participants = len(participants_ids)
-            activity.yqp_settlement()
+            activity.settle_yqpoint()
             activity.save()
 
             # 创建活动总结

@@ -1,6 +1,7 @@
 from django.contrib import admin
 
-from .models import *
+from achievement.models import *
+from generic.admin import UserAdmin
 
 
 @admin.register(AchievementType)
@@ -20,4 +21,4 @@ class AchievementAdmin(admin.ModelAdmin):
 class AchievementUnlockAdmin(admin.ModelAdmin):
     list_display = ['user', 'achievement',
                     'time', 'private']
-    search_fields = ['user', 'achievement']
+    search_fields = [*UserAdmin.suggest_search_fields('user'), 'achievement__name']
