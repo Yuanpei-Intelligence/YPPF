@@ -37,7 +37,10 @@ from django.db.models.fields.related_descriptors import (
 from django.db.models.constants import LOOKUP_SEP
 
 
-__all__ = ['f', 'q', 'lq']
+__all__ = [
+    'f', 'q', 'lq', 'sq',
+    'Index', 'Forward', 'Reverse',
+]
 
 
 NormalFieldDescriptor: TypeAlias = DeferredAttribute
@@ -52,8 +55,43 @@ FieldLike: TypeAlias = NormalFieldLike | RelatedFieldLike
 FieldLikeExpr: TypeAlias = FieldLike | str
 
 
-def _is_relation(field: FieldLike) -> TypeGuard[RelatedFieldLike]:
+class SpecialRelation:
+    '''特殊关联字段
+
+    用于标记字段为特殊关联字段，转化查询时使用`fieldlike`属性。
+    '''
+    def __init__(self, fieldlike: RelatedFieldLike) -> None:
+        self.fieldlike = fieldlike
+
+
+class Index(SpecialRelation):
+    '''索引字段
+
+    标记字段为索引字段，查询时转化为`%field_name%_id`。
+    '''
+    pass
+
+
+class Forward(SpecialRelation):
+    '''正向关系字段
+
+    标记字段为正向关系字段，查询时转化为`%field_name%`。
+    '''
+    pass
+
+
+class Reverse(SpecialRelation):
+    '''反向关系字段
+
+    标记字段为反向关系字段，查询时转化为`%field_name%`。
+    '''
+    pass
+
+
+def _is_relation(field: FieldLike | SpecialRelation) -> TypeGuard[RelatedFieldLike]:
     '''判断字段是否为关系字段相关属性'''
+    if isinstance(field, SpecialRelation):
+        field = field.fieldlike
     if isinstance(field, Field):
         return field.is_relation
     if isinstance(field, RelatedDescriptor):
@@ -61,27 +99,35 @@ def _is_relation(field: FieldLike) -> TypeGuard[RelatedFieldLike]:
     return False
 
 
-def _is_foreign_index(field: RelatedFieldLike) -> TypeGuard[ForeignIndexDescriptor]:
+def _is_foreign_index(field: RelatedFieldLike | SpecialRelation) -> TypeGuard[ForeignIndexDescriptor]:
     '''判断字段是否为外键索引字段'''
+    if isinstance(field, Index):
+        return True
     return isinstance(field, ForeignIndexDescriptor)
 
 
-def _is_forward_relation(field: RelatedFieldLike) -> bool:
+def _is_forward_relation(field: RelatedFieldLike | SpecialRelation) -> bool:
     '''判断字段是否为正向关系字段'''
     if isinstance(field, ManyToManyDescriptor):
         return not field.reverse
+    if isinstance(field, Forward):
+        return True
     return isinstance(field, ForwardDescriptor | RelatedField)
 
 
-def _is_reverse_relation(field: RelatedFieldLike) -> bool:
+def _is_reverse_relation(field: RelatedFieldLike | SpecialRelation) -> bool:
     '''判断字段是否为反向关系字段'''
     if isinstance(field, ManyToManyDescriptor):
         return field.reverse
+    if isinstance(field, Reverse):
+        return True
     return isinstance(field, ReverseDescriptor)
 
 
-def _get_related_field(field: RelatedFieldLike) -> RelatedField:
+def _get_related_field(field: RelatedFieldLike | SpecialRelation) -> RelatedField:
     '''获取关系字段'''
+    if isinstance(field, SpecialRelation):
+        field = field.fieldlike
     if isinstance(field, RelatedField):
         return field
     if isinstance(field, ForeignIndexDescriptor):
@@ -106,25 +152,29 @@ def _normal_name(field: NormalFieldLike) -> str:
     return field.name
 
 
-def _foreign_index_name(field: RelatedFieldLike) -> str:
+def _foreign_index_name(field: RelatedFieldLike | SpecialRelation) -> str:
     '''获取外键索引字段的查询名称'''
     # `attname`属性代表`ForeignKey`对应数据库字段的名称，即`%field_name%_id`
     return _get_related_field(field).attname
 
 
-def _forward_name(field: RelatedFieldLike) -> str:
+def _forward_name(field: RelatedFieldLike | SpecialRelation) -> str:
     '''获取正向关系字段的查询名称'''
     # 关联字段的`name`属性代表模型字段的名称
     return _get_related_field(field).name
 
 
-def _reverse_name(field: RelatedFieldLike) -> str:
+def _reverse_name(field: RelatedFieldLike | SpecialRelation) -> str:
     '''获取反向关系字段的查询名称'''
     # 反向关系字段的`name`属性代表模型字段的名称
-    return _get_related_field(field).related_query_name()
+    field = _get_related_field(field)
+    if cast(ForeignObjectRel, field.remote_field).is_hidden():
+        # 隐藏的反向关系字段的`name`属性代表模型字段的名称
+        raise ValueError(f'Cannot get reverse name for hidden field: {field}')
+    return field.related_query_name()
 
 
-def _to_field_name(field: FieldLikeExpr) -> str:
+def _to_field_name(field: FieldLikeExpr | SpecialRelation) -> str:
     '''获取字段的查询名称'''
     if isinstance(field, str):
         return field
@@ -140,16 +190,21 @@ def _to_field_name(field: FieldLikeExpr) -> str:
     raise TypeError(f'Unsupported type: {type(field)} for field')
 
 
-def f(*fields: FieldLikeExpr) -> str:
+def f(*fields: FieldLikeExpr | SpecialRelation) -> str:
     '''获取连续字段的查询名称'''
     return LOOKUP_SEP.join(_to_field_name(field) for field in fields)
 
 
-def q(*fields: FieldLikeExpr, value: Any) -> Q:
+def q(*fields: FieldLikeExpr | SpecialRelation, value: Any) -> Q:
     '''获取连续字段的查询Q对象'''
     return Q(**{f(*fields): value})
 
 
-def lq(value: Any, *fields: FieldLikeExpr) -> Q:
+def lq(value: Any, *fields: FieldLikeExpr | SpecialRelation) -> Q:
     '''获取连续字段的查询Q对象，参数线性排列'''
     return q(*fields, value=value)
+
+
+def sq(field: FieldLikeExpr | SpecialRelation, value: Any) -> Q:
+    '''获取单个字段的查询Q对象'''
+    return q(field, value=value)
