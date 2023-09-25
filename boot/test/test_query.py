@@ -1,7 +1,9 @@
 from django.test import SimpleTestCase
 from django.db.models import Q
 
-from app.models import *
+from generic.models import User
+from app.models import NaturalPerson, Position
+from Appointment.models import Participant
 
 from utils.models.query import *
 
@@ -55,3 +57,8 @@ class SQueryTest(SimpleTestCase):
         '''测试检测外键索引字段的功能'''
         self.assertEqual(f(NaturalPerson.person_id_id), 'person_id_id')
         self.assertEqual(f(Position.person_id), 'person_id')
+
+    def test_reverse_relations(self):
+        '''测试检测反向关系字段的功能'''
+        self.assertEqual(f(User.naturalperson), 'naturalperson')
+        self.assertEqual(f(Participant.appoint_list), 'appoint_list')

@@ -29,6 +29,8 @@ from django.db.models.fields.related import RelatedField, ForeignObjectRel
 from django.db.models.fields.related_descriptors import (
     ForwardManyToOneDescriptor,
     ForwardOneToOneDescriptor,
+    ReverseManyToOneDescriptor,
+    ReverseOneToOneDescriptor,
     ManyToManyDescriptor,
     ForeignKeyDeferredAttribute,
 )
@@ -41,8 +43,9 @@ __all__ = ['f', 'q', 'lq']
 NormalFieldDescriptor: TypeAlias = DeferredAttribute
 NormalFieldLike: TypeAlias = Field | NormalFieldDescriptor
 ForwardDescriptor: TypeAlias = ForwardManyToOneDescriptor | ForwardOneToOneDescriptor
+ReverseDescriptor: TypeAlias = ReverseManyToOneDescriptor | ReverseOneToOneDescriptor
 ForeignIndexDescriptor: TypeAlias = ForeignKeyDeferredAttribute
-RelatedDescriptor: TypeAlias = (ForwardDescriptor
+RelatedDescriptor: TypeAlias = (ForwardDescriptor | ReverseDescriptor
                                 | ForeignIndexDescriptor | ManyToManyDescriptor)
 RelatedFieldLike: TypeAlias = RelatedField | RelatedDescriptor
 FieldLike: TypeAlias = NormalFieldLike | RelatedFieldLike
@@ -66,8 +69,15 @@ def _is_foreign_index(field: RelatedFieldLike) -> TypeGuard[ForeignIndexDescript
 def _is_forward_relation(field: RelatedFieldLike) -> bool:
     '''判断字段是否为正向关系字段'''
     if isinstance(field, ManyToManyDescriptor):
-        return True
+        return not field.reverse
     return isinstance(field, ForwardDescriptor | RelatedField)
+
+
+def _is_reverse_relation(field: RelatedFieldLike) -> bool:
+    '''判断字段是否为反向关系字段'''
+    if isinstance(field, ManyToManyDescriptor):
+        return field.reverse
+    return isinstance(field, ReverseDescriptor)
 
 
 def _get_related_field(field: RelatedFieldLike) -> RelatedField:
@@ -80,6 +90,10 @@ def _get_related_field(field: RelatedFieldLike) -> RelatedField:
         return cast(RelatedField, field.field)
     if isinstance(field, ManyToManyDescriptor):
         return field.field
+    if isinstance(field, ReverseOneToOneDescriptor):
+        return field.related.field
+    if isinstance(field, ReverseManyToOneDescriptor):
+        return cast(RelatedField, field.field)
     assert False, f'{type(field)} is not a related field'
 
 
@@ -104,6 +118,12 @@ def _forward_name(field: RelatedFieldLike) -> str:
     return _get_related_field(field).name
 
 
+def _reverse_name(field: RelatedFieldLike) -> str:
+    '''获取反向关系字段的查询名称'''
+    # 反向关系字段的`name`属性代表模型字段的名称
+    return _get_related_field(field).related_query_name()
+
+
 def _to_field_name(field: FieldLikeExpr) -> str:
     '''获取字段的查询名称'''
     if isinstance(field, str):
@@ -113,6 +133,8 @@ def _to_field_name(field: FieldLikeExpr) -> str:
             return _foreign_index_name(field)
         if _is_forward_relation(field):
             return _forward_name(field)
+        if _is_reverse_relation(field):
+            return _reverse_name(field)
     elif isinstance(field, NormalFieldLike):
         return _normal_name(field)
     raise TypeError(f'Unsupported type: {type(field)} for field')
