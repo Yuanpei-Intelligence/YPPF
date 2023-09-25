@@ -41,3 +41,17 @@ class SQueryTest(SimpleTestCase):
         self.assertEqual(f(User.active), 'active')
         self.assertEqual(f(User.last_login), 'last_login')
         self.assertEqual(f(NaturalPerson.avatar), 'avatar')
+
+    def test_forward_relations(self):
+        '''测试检测正向关系字段的功能'''
+        self.assertEqual(f(NaturalPerson.person_id), 'person_id')
+        self.assertEqual(f(NaturalPerson.person_id.field), 'person_id')
+        self.assertEqual(f(Position.person), 'person')
+        self.assertEqual(f(Position.person.field), 'person')
+        self.assertEqual(f(NaturalPerson.unsubscribe_list), 'unsubscribe_list')
+        self.assertEqual(f(NaturalPerson.unsubscribe_list.field), 'unsubscribe_list')
+
+    def test_foreign_index(self):
+        '''测试检测外键索引字段的功能'''
+        self.assertEqual(f(NaturalPerson.person_id_id), 'person_id_id')
+        self.assertEqual(f(Position.person_id), 'person_id')
