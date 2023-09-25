@@ -2,7 +2,7 @@ from django.test import SimpleTestCase
 from django.db.models import Q
 
 from generic.models import User
-from app.models import NaturalPerson, Position
+from app.models import NaturalPerson, Organization, Position
 from Appointment.models import Participant
 
 from utils.models.query import *
@@ -62,3 +62,26 @@ class SQueryTest(SimpleTestCase):
         '''测试检测反向关系字段的功能'''
         self.assertEqual(f(User.naturalperson), 'naturalperson')
         self.assertEqual(f(Participant.appoint_list), 'appoint_list')
+
+    def test_index_form(self):
+        '''测试特殊形式的字段的功能'''
+        self.assertEqual(f(Index(NaturalPerson.person_id)), 'person_id_id')
+        self.assertEqual(f(Index(Position.person)), 'person_id')
+        self.assertEqual(f(Index(NaturalPerson.unsubscribe_list)), 'unsubscribe_list')
+        self.assertEqual(f(Index(Position.person_id)), 'person_id')
+
+    def test_forward_form(self):
+        '''测试特殊形式的正向关系字段的功能'''
+        self.assertEqual(f(Forward(User.naturalperson)), 'person_id')
+        self.assertEqual(f(Forward(NaturalPerson.position_set)), 'person')
+        self.assertEqual(f(Forward(Organization.unsubscribers)), 'unsubscribe_list')
+        self.assertEqual(f(Forward(Position.person)), 'person')
+
+    def test_reverse_form(self):
+        '''测试特殊形式的反向关系字段的功能，不会因此跨越隐藏关系字段'''
+        self.assertEqual(f(Reverse(NaturalPerson.person_id)), 'naturalperson')
+        self.assertEqual(f(Reverse(Position.person)), 'position_set')
+        self.assertEqual(f(Reverse(NaturalPerson.unsubscribe_list)), 'unsubscribers')
+        self.assertEqual(f(Reverse(Participant.appoint_list)), 'appoint_list')
+        with self.assertRaises(ValueError):
+            f(Reverse(Participant.Sid))
