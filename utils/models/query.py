@@ -1,6 +1,7 @@
 '''查询引用字段
 
-提供获取查询字段的函数，且同时支持字段描述符、字段实例以及字段名称。
+- 获取查询字段的函数，且同时支持字段描述符、字段实例以及字段名称。
+- 通过标记字段为特殊关联字段，可以获取特殊关联字段的查询名称。
 
 在以往的代码中，我们经常会看到这样的代码::
 
@@ -18,10 +19,16 @@
 如需修改`fkey2_name`字段的名称，则无法追踪以上代码，因此修改起来非常困难，且容易出错。
 这是因为我们使用字符串来引用字段来引用字段。如果我们通过字段本身来引用，就可以避免这个问题。
 
+Example:
+    使用`f`和`q`类型函数来获取字段的查询名称和条件，并追踪引用::
+
+        instance = BModel.objects.filter(sq([BModel.fkey2_name, AModel.fkey_name, 'field_name'], ...))
+        values = BModel.objects.values(f(BModel.fkey2_name, AModel.fkey_name, 'field_name'))
+
 Warning:
     本模块的函数在模型定义时无法使用，因为字段描述符在模型类创建后才会被创建，但你可以在任何方法中使用。
 '''
-from typing import cast, Any, TypeAlias, TypeGuard
+from typing import cast, Any, TypeAlias, TypeGuard, TypeVar
 
 from django.db.models import Field, Q
 from django.db.models.query_utils import DeferredAttribute
@@ -227,6 +234,20 @@ def lq(value: Any, *fields: FieldLikeExpr | SpecialRelation) -> Q:
     return q(*fields, value=value)
 
 
-def sq(field: FieldLikeExpr | SpecialRelation, value: Any) -> Q:
-    '''获取单个字段的查询Q对象'''
-    return q(field, value=value)
+T = TypeVar('T')
+ListLike: TypeAlias = list[T] | tuple[T, ...]
+Extend: TypeAlias = T | ListLike[T]
+
+
+def _as_seq(value: Extend[T]) -> ListLike[T]:
+    '''将参数转化成类似列表的序列形式'''
+    if not isinstance(value, (list, tuple)):
+        value = [value]
+    return value
+
+
+def sq(field: Extend[FieldLikeExpr | SpecialRelation], value: Any) -> Q:
+    '''获取单个查询条件的Q对象，可以包含连续字段'''
+    return q(*_as_seq(field), value=value)
+
+
