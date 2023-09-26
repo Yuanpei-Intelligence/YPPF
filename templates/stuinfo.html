@@ -1557,7 +1557,7 @@
                               {% for acs in achievement_types %}
                               <div class="carousel-item">
                                 <center><img src="/media/{{ acs.badge }}" height=300, width=300></center>
-                                <p>{{acs.title}}成就总数: {{all_achievement_stat.acs.title}}</p>
+                                <p>{{acs.title}}成就总数: {{count.acs.title}}</p>
                                 <p>{{acs.title}}成就收集数:{{unlocked_personal_stat.acs.title}}</p>
                                 <p
                                                 style="text-align: left; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
@@ -1579,8 +1579,8 @@
                         
                         <!--  勋章墙展示  -->
                         <div class="container mt-3 achievement-container">
-                            {% for atype, unlocked_personal_stat, all_achievement_stat, achievement_unlocked, achievement_locked, achievement_hidden in achievement_params.achievement_by_types %}
-                            {% if forloop.counter0 % 3 == 0 %}<box>{% endif %}
+                            {% for atype, count, achievement_unlocked, achievement_locked, achievement_hidden in achievement_params.achievement_by_types %}
+                            {% if forloop.counter0|divisibleby:"3" %}<box>{% endif %}
                                 <td>
                                     <a data-toggle="modal" data-target="#achievementModal-{{ atype.title }}">
                                         <img src="{{ atype.badge.url }}" class="achievement-img">
@@ -1604,7 +1604,7 @@
                                                             <p>{{ atype.description }}</p>
                                                         </center>
                                                         <center>
-                                                            <h4>解锁成就：{{ unlocked_personal_stat }} / {{ all_achievement_stat }}</h4>
+                                                            <h4>解锁成就：{{ achievement_unlocked | length }} / {{ count }}</h4>
                                                             {% for ac in achievement_unlocked %}<p class="solid">{{ ac.name }}</p>{% endfor %}
                                                             <div style=" height:20px "></div>
                                                             <h4>未解锁成就</h4>
@@ -1624,10 +1624,10 @@
                                         <!-- /.modal -->
                                     </div>
                                     <center>
-                                        <p>{{ unlocked_personal_stat }} / {{ all_achievement_stat }}</p>
+                                        <p>{{ achievement_unlocked | length }} / {{ count }}</p>
                                     </center>
                                 </td>
-                            {% if forloop.counter % 3 == 0 or forloop.last %}</box>{% endif %}
+                            {% if forloop.counter|divisibleby:"3" or forloop.last %}</box>{% endif %}
                             {% endfor %}
                         </div>
                         <!--  END 勋章墙展示  -->
