@@ -367,7 +367,7 @@
 
                         <div class="row">
                             <h3 class="noafter col mb-0">{{ name }}的学术地图</h3>
-                            {% if academic_params.user_type == "author" and academic_params.have_content == True %}
+                            {% if Academic.user_type == "author" and Academic.have_content == True %}
                             <button class="flex btn btn-primary mb-4 mr-2" id="modify_academic" 
                                 onclick="location.href='/modifyAcademic/'">
                                 修改
@@ -377,8 +377,8 @@
 
                         <div class="bio-skill-box">
 
-                            {% if academic_params.user_type == "author" %}
-                                {% if academic_params.have_content == False %}
+                            {% if Academic.user_type == "author" %}
+                                {% if Academic.have_content == False %}
                                 <p style="text-align: center;">你还没有可以公开展示的信息~</p>
                                 <p style="text-align: center;">
                                     去<a href="/modifyAcademic/"><u>填写或修改公开权限</u></a>吧~
@@ -393,18 +393,18 @@
                                     </tr>
                                     {% endif %}
 
-                                    {% if academic_params.selected_major_list|length != 0 %}
+                                    {% if Academic.selected_major_list|length != 0 %}
                                     <tr>
                                         <th width="15%" style="min-width: 60px;color: #1b55e2;">主修专业</th>
                                         <td>
-                                            {% for selected_major in academic_params.selected_major_list %}
+                                            {% for selected_major in Academic.selected_major_list %}
                                             <span class="badge badge-info">
                                                 {{selected_major.text}}
                                             </span>
                                             {% endfor %}
                                         </td>
 
-                                        {% if academic_params.major_status == "公开" %}
+                                        {% if Academic.major_status == "公开" %}
                                         <td>
                                             <div class="custom-control custom-switch">
                                                 <input type="checkbox" class="custom-control-input"
@@ -424,18 +424,18 @@
                                     </tr>
                                     {% endif %}
 
-                                    {% if academic_params.selected_minor_list|length != 0 %}
+                                    {% if Academic.selected_minor_list|length != 0 %}
                                     <tr>
                                         <th width="15%" style="min-width: 60px;color: #1b55e2;">辅修专业</th>
                                         <td>
-                                            {% for selected_minor in academic_params.selected_minor_list %}
+                                            {% for selected_minor in Academic.selected_minor_list %}
                                             <span class="badge badge-info">
                                                 {{selected_minor.text}}
                                             </span>
                                             {% endfor %}
                                         </td>
 
-                                        {% if academic_params.minor_status == "公开" %}
+                                        {% if Academic.minor_status == "公开" %}
                                         <td>
                                             <div class="custom-control custom-switch">
                                                 <input type="checkbox" class="custom-control-input"
@@ -455,18 +455,18 @@
                                     </tr>
                                     {% endif %}
 
-                                    {% if academic_params.selected_double_degree_list|length != 0 %}
+                                    {% if Academic.selected_double_degree_list|length != 0 %}
                                     <tr>
                                         <th width="15%" style="min-width: 60px;color: #1b55e2;">双学位专业</th>
                                         <td>
-                                            {% for selected_double_degree in academic_params.selected_double_degree_list %}
+                                            {% for selected_double_degree in Academic.selected_double_degree_list %}
                                             <span class="badge badge-info">
                                                 {{selected_double_degree.text}}
                                             </span>
                                             {% endfor %}
                                         </td>
 
-                                        {% if academic_params.double_degree_status == "公开" %}
+                                        {% if Academic.double_degree_status == "公开" %}
                                         <td>
                                             <div class="custom-control custom-switch">
                                                 <input type="checkbox" class="custom-control-input"
@@ -486,18 +486,18 @@
                                     </tr>
                                     {% endif %}
 
-                                    {% if academic_params.selected_project_list|length != 0 %}
+                                    {% if Academic.selected_project_list|length != 0 %}
                                     <tr>
                                         <th width="15%" style="min-width: 60px;color: #1b55e2;">参与项目</th>
                                         <td>
-                                            {% for selected_project in academic_params.selected_project_list %}
+                                            {% for selected_project in Academic.selected_project_list %}
                                             <span class="badge badge-info">
                                                 {{selected_project.text}}
                                             </span>
                                             {% endfor %}
                                         </td>
 
-                                        {% if academic_params.project_status == "公开" %}
+                                        {% if Academic.project_status == "公开" %}
                                         <td>
                                             <div class="custom-control custom-switch">
                                                 <input type="checkbox" class="custom-control-input"
@@ -517,12 +517,12 @@
                                     </tr>
                                     {% endif %}
 
-                                    {% if academic_params.scientific_research_list|length != 0 %}
+                                    {% if Academic.scientific_research_list|length != 0 %}
                                     <tr>
                                         <th width="15%" style="min-width: 60px;color: #1b55e2;">本科生科研</th>
                                         <td>
                                             {% spaceless %}
-                                            {% for scientific_research in academic_params.scientific_research_list %}
+                                            {% for scientific_research in Academic.scientific_research_list %}
                                                 <span class="badge badge-pill" style="overflow:hidden; text-overflow:ellipsis; 
                                                     white-space:normal; word-break:break-all; text-align:left; background-color:#eee; 
                                                     border-radius:4px; color:#666; margin:2px; margin-top:3px;" id="{{scientific_research}}__scientific_research">
@@ -531,7 +531,7 @@
                                             {% endspaceless %}
                                         </td>
 
-                                        {% if academic_params.scientific_research_status == "公开" %}
+                                        {% if Academic.scientific_research_status == "公开" %}
                                         <td>
                                             <div class="custom-control custom-switch">
                                                 <input type="checkbox" class="custom-control-input"
@@ -551,12 +551,12 @@
                                     </tr>
                                     {% endif %}
 
-                                    {% if academic_params.challenge_cup_list|length != 0 %}
+                                    {% if Academic.challenge_cup_list|length != 0 %}
                                     <tr>
                                         <th width="15%" style="min-width: 60px;color: #1b55e2;">挑战杯</th>
                                         <td>
                                             {% spaceless %}
-                                            {% for challenge_cup in academic_params.challenge_cup_list %}
+                                            {% for challenge_cup in Academic.challenge_cup_list %}
                                                 <span class="badge badge-pill" style="overflow:hidden; text-overflow:ellipsis; 
                                                     white-space:normal; word-break:break-all; text-align:left; background-color:#eee; 
                                                     border-radius:4px; color:#666; margin:2px; margin-top:3px;" id="{{challenge_cup}}__challenge_cup">
@@ -565,7 +565,7 @@
                                             {% endspaceless %}
                                         </td>
 
-                                        {% if academic_params.challenge_cup_status == "公开" %}
+                                        {% if Academic.challenge_cup_status == "公开" %}
                                         <td>
                                             <div class="custom-control custom-switch">
                                                 <input type="checkbox" class="custom-control-input"
@@ -585,12 +585,12 @@
                                     </tr>
                                     {% endif %}
 
-                                    {% if academic_params.internship_list|length != 0 %}
+                                    {% if Academic.internship_list|length != 0 %}
                                     <tr>
                                         <th width="15%" style="min-width: 60px;color: #1b55e2;">实习经历</th>
                                         <td>
                                             {% spaceless %}
-                                            {% for internship in academic_params.internship_list %}
+                                            {% for internship in Academic.internship_list %}
                                                 <span class="badge badge-pill" style="overflow:hidden; text-overflow:ellipsis; 
                                                     white-space:normal; word-break:break-all; text-align:left; background-color:#eee; 
                                                     border-radius:4px; color:#666; margin:2px; margin-top:3px;" id="{{internship}}__internship">
@@ -599,7 +599,7 @@
                                             {% endspaceless %}
                                         </td>
 
-                                        {% if academic_params.internship_status == "公开" %}
+                                        {% if Academic.internship_status == "公开" %}
                                         <td>
                                             <div class="custom-control custom-switch">
                                                 <input type="checkbox" class="custom-control-input"
@@ -619,12 +619,12 @@
                                     </tr>
                                     {% endif %}
 
-                                    {% if academic_params.scientific_direction_list|length != 0 %}
+                                    {% if Academic.scientific_direction_list|length != 0 %}
                                     <tr>
                                         <th width="15%" style="min-width: 60px;color: #1b55e2;">科研方向</th>
                                         <td>
                                             {% spaceless %}
-                                            {% for scientific_direction in academic_params.scientific_direction_list %}
+                                            {% for scientific_direction in Academic.scientific_direction_list %}
                                                 <span class="badge badge-pill" style="overflow:hidden; text-overflow:ellipsis; 
                                                     white-space:normal; word-break:break-all; text-align:left; background-color:#eee; 
                                                     border-radius:4px; color:#666; margin:2px; margin-top:3px;" id="{{scientific_direction}}__scientific_direction">
@@ -633,7 +633,7 @@
                                             {% endspaceless %}
                                         </td>
 
-                                        {% if academic_params.scientific_direction_status == "公开" %}
+                                        {% if Academic.scientific_direction_status == "公开" %}
                                         <td>
                                             <div class="custom-control custom-switch">
                                                 <input type="checkbox" class="custom-control-input"
@@ -653,12 +653,12 @@
                                     </tr>
                                     {% endif %}
 
-                                    {% if academic_params.graduation_list|length != 0 %}
+                                    {% if Academic.graduation_list|length != 0 %}
                                     <tr>
                                         <th width="15%" style="min-width: 60px;color: #1b55e2;">毕业去向</th>
                                         <td>
                                             {% spaceless %}
-                                            {% for graduation in academic_params.graduation_list %}
+                                            {% for graduation in Academic.graduation_list %}
                                                 <span class="badge badge-pill" style="overflow:hidden; text-overflow:ellipsis; 
                                                     white-space:normal; word-break:break-all; text-align:left; background-color:#eee; 
                                                     border-radius:4px; color:#666; margin:2px; margin-top:3px;" id="{{graduation}}__graduation">
@@ -667,7 +667,7 @@
                                             {% endspaceless %}
                                         </td>
 
-                                        {% if academic_params.graduation_status == "公开" %}
+                                        {% if Academic.graduation_status == "公开" %}
                                         <td>
                                             <div class="custom-control custom-switch">
                                                 <input type="checkbox" class="custom-control-input"
@@ -689,7 +689,7 @@
                                 </table>
                                 {% endif %}
                             {% else %}
-                                {% if academic_params.have_content == False %}
+                                {% if Academic.have_content == False %}
                                 <p style="text-align: center;">用户的学术地图未公开或无内容</p>
                                 {% else %}
                                 <table class="table">
@@ -700,11 +700,11 @@
                                     </tr>
                                     {% endif %}
 
-                                    {% if academic_params.selected_major_list|length != 0 %}
+                                    {% if Academic.selected_major_list|length != 0 %}
                                     <tr>
                                         <th width="10%" style="min-width: 100px;color: #1b55e2;">主修专业</th>
                                         <td>
-                                            {% for selected_major in academic_params.selected_major_list %}
+                                            {% for selected_major in Academic.selected_major_list %}
                                             <span class="badge badge-info">
                                                 {{selected_major.text}}
                                             </span>
@@ -713,11 +713,11 @@
                                     </tr>
                                     {% endif %}
 
-                                    {% if academic_params.selected_minor_list|length != 0 %}
+                                    {% if Academic.selected_minor_list|length != 0 %}
                                     <tr>
                                         <th width="10%" style="min-width: 100px;color: #1b55e2;">辅修专业</th>
                                         <td>
-                                            {% for selected_minor in academic_params.selected_minor_list %}
+                                            {% for selected_minor in Academic.selected_minor_list %}
                                             <span class="badge badge-info">
                                                 {{selected_minor.text}}
                                             </span>
@@ -726,11 +726,11 @@
                                     </tr>
                                     {% endif %}
 
-                                    {% if academic_params.selected_double_degree_list|length != 0 %}
+                                    {% if Academic.selected_double_degree_list|length != 0 %}
                                     <tr>
                                         <th width="10%" style="min-width: 100px;color: #1b55e2;">双学位专业</th>
                                         <td>
-                                            {% for selected_double_degree in academic_params.selected_double_degree_list %}
+                                            {% for selected_double_degree in Academic.selected_double_degree_list %}
                                             <span class="badge badge-info">
                                                 {{selected_double_degree.text}}
                                             </span>
@@ -739,11 +739,11 @@
                                     </tr>
                                     {% endif %}
 
-                                    {% if academic_params.selected_project_list|length != 0 %}
+                                    {% if Academic.selected_project_list|length != 0 %}
                                     <tr>
                                         <th width="10%" style="min-width: 100px;color: #1b55e2;">参与项目</th>
                                         <td>
-                                            {% for selected_project in academic_params.selected_project_list %}
+                                            {% for selected_project in Academic.selected_project_list %}
                                             <span class="badge badge-info">
                                                 {{selected_project.text}}
                                             </span>
@@ -752,12 +752,12 @@
                                     </tr>
                                     {% endif %}
 
-                                    {% if academic_params.scientific_research_list|length != 0 %}
+                                    {% if Academic.scientific_research_list|length != 0 %}
                                     <tr>
                                         <th width="10%" style="min-width: 100px;color: #1b55e2;">本科生科研</th>
                                         <td>
                                             {% spaceless %}
-                                            {% for scientific_research in academic_params.scientific_research_list %}
+                                            {% for scientific_research in Academic.scientific_research_list %}
                                                 <span class="badge badge-pill" style="overflow:hidden; text-overflow:ellipsis; 
                                                     white-space:normal; word-break:break-all; text-align:left; background-color:#eee; 
                                                     border-radius:4px; color:#666; margin:2px; margin-top:3px;" id="{{scientific_research}}__scientific_research">
@@ -768,12 +768,12 @@
                                     </tr>
                                     {% endif %}
 
-                                    {% if academic_params.challenge_cup_list|length != 0 %}
+                                    {% if Academic.challenge_cup_list|length != 0 %}
                                     <tr>
                                         <th width="10%" style="min-width: 100px;color: #1b55e2;">挑战杯</th>
                                         <td>
                                             {% spaceless %}
-                                            {% for challenge_cup in academic_params.challenge_cup_list %}
+                                            {% for challenge_cup in Academic.challenge_cup_list %}
                                                 <span class="badge badge-pill" style="overflow:hidden; text-overflow:ellipsis; 
                                                     white-space:normal; word-break:break-all; text-align:left; background-color:#eee; 
                                                     border-radius:4px; color:#666; margin:2px; margin-top:3px;" id="{{challenge_cup}}__challenge_cup">
@@ -784,7 +784,7 @@
                                     </tr>
                                     {% endif %}
 
-                                    {% if academic_params.internship_list|length != 0 %}
+                                    {% if Academic.internship_list|length != 0 %}
                                     <tr>
                                         <th width="10%" style="min-width: 100px;color: #1b55e2;">实习经历</th>
                                         <td>
@@ -800,12 +800,12 @@
                                     </tr>
                                     {% endif %}
 
-                                    {% if academic_params.scientific_direction_list|length != 0 %}
+                                    {% if Academic.scientific_direction_list|length != 0 %}
                                     <tr>
                                         <th width="10%" style="min-width: 100px;color: #1b55e2;">科研方向</th>
                                         <td>
                                             {% spaceless %}
-                                            {% for scientific_direction in academic_params.scientific_direction_list %}
+                                            {% for scientific_direction in Academic.scientific_direction_list %}
                                                 <span class="badge badge-pill" style="overflow:hidden; text-overflow:ellipsis; 
                                                     white-space:normal; word-break:break-all; text-align:left; background-color:#eee; 
                                                     border-radius:4px; color:#666; margin:2px; margin-top:3px;" id="{{scientific_direction}}__scientific_direction">
@@ -816,12 +816,12 @@
                                     </tr>
                                     {% endif %}
 
-                                    {% if academic_params.graduation_list|length != 0 %}
+                                    {% if Academic.graduation_list|length != 0 %}
                                     <tr>
                                         <th width="10%" style="min-width: 100px;color: #1b55e2;">毕业去向</th>
                                         <td>
                                             {% spaceless %}
-                                            {% for graduation in academic_params.graduation_list %}
+                                            {% for graduation in Academic.graduation_list %}
                                                 <span class="badge badge-pill" style="overflow:hidden; text-overflow:ellipsis; 
                                                     white-space:normal; word-break:break-all; text-align:left; background-color:#eee; 
                                                     border-radius:4px; color:#666; margin:2px; margin-top:3px;" id="{{graduation}}__graduation">
@@ -837,7 +837,7 @@
 
                         </div>
 
-                        {% if academic_params.user_type == "inspector" and academic_params.have_unaudit == True %}
+                        {% if Academic.user_type == "inspector" and Academic.have_unaudit == True %}
                         <div class="row mx-0">
                             <button class="btn btn-primary mb-5" value="audit" name="post_academic"
                                 style="margin: auto;" onclick="confirmAuditAcademic(this);">
@@ -1310,9 +1310,9 @@
                                 </div>
                                 {% endfor %}
                             </div>
-                            {% if course_me_past or course_no_use %}
+                            {% if Course.past_courses or Course.useless_courses %}
                                 <p class="text-left">
-                                    已有学时 / 规定学时 ： {{total_hours_sum|floatformat:-1}} / {{ruled_hours}} 
+                                    已有学时 / 规定学时 ： {{Course.complete_hours|floatformat:-1}} / {{Course.ruled_hours}} 
                                 </p>
                                 <p class="text-right">
                                     <button id="course_record" type="button" class="btn btn-info mb-4 mr-2">显示/隐藏详细学时</button>
@@ -1327,7 +1327,7 @@
                                         <th style='text-align: center;'>课程类型</th>
                                     </thead>
                                     <tbody>
-                                        {% for course_record in course_me_past %}
+                                        {% for course_record in Course.past_courses %}
                                             <tr>
                                                 <td style='text-align: center;'>{{course_record.get_course_name}}</td>
                                                 <td style='text-align: center;'>{{course_record.year}}</td>
@@ -1338,26 +1338,26 @@
                                                 {% endif %}
                                                 <td style='text-align: center;'>{{course_record.attend_times}}</td>
                                                 <td style='text-align: center;'>{{course_record.total_hours|floatformat:-1}}</td>
-                                                {% if course_record.course is None %}
+                                                {% if course_record.Course is None %}
                                                     <td style="text-align: center; color:#9E9EA3;">未分类</td>
                                                 {% else %}
                                                     <td style="text-align: center; 
-                                                    {% if course_record.course.type == 0 %}
+                                                    {% if course_record.Course.type == 0 %}
                                                         color:#0092c7;
-                                                    {% elif course_record.course.type == 1 %}
+                                                    {% elif course_record.Course.type == 1 %}
                                                         color:#22c3aa;
-                                                    {% elif course_record.course.type == 2 %}
+                                                    {% elif course_record.Course.type == 2 %}
                                                         color:#AD8976;
-                                                    {% elif course_record.course.type == 3 %}
+                                                    {% elif course_record.Course.type == 3 %}
                                                         color:#f3b59b;
-                                                    {% elif course_record.course.type == 4 %}
+                                                    {% elif course_record.Course.type == 4 %}
                                                         color:#f29c9c;
                                                     {% endif %}
-                                                        ">{{course_record.course.get_type_display}}</td>
+                                                        ">{{course_record.Course.get_type_display}}</td>
                                                 {% endif %}
                                             </tr>
                                         {% endfor %}
-                                        {% for course_record in course_no_use %}
+                                        {% for course_record in Course.useless_courses %}
                                             <tr bgcolor = "#F1F3F4">
                                                 <td style='text-align: center; color:grey;'>{{course_record.get_course_name}}</td>
                                                 <td style='text-align: center; color:grey;'>{{course_record.year}}</td>
@@ -1376,7 +1376,7 @@
                                 <p>注：根据学院规定，自2021学年秋季学期，同一门书院课程须完成8学时及以上，才可以认定时长。</p>
                                 <br>
                             {% else %}
-                                <p class="text-left"> 已有学时 / 规定学时 ： {{total_hours_sum}} / {{ruled_hours}} </p>
+                                <p class="text-left"> 已有学时 / 规定学时 ： {{Course.complete_hours}} / {{Course.ruled_hours}} </p>
                                 <br>
                                 <p class="text-center">没有参与的书院课程</p>
                                 <br>
@@ -1579,7 +1579,7 @@
                         
                         <!--  勋章墙展示  -->
                         <div class="container mt-3 achievement-container">
-                            {% for atype, count, achievement_unlocked, achievement_locked, achievement_hidden in achievement_params.achievement_by_types %}
+                            {% for atype, count, achievement_unlocked, achievement_locked, achievement_hidden in Achievement.type_order_displays %}
                             {% if forloop.counter0|divisibleby:"3" %}<box>{% endif %}
                                 <td>
                                     <a data-toggle="modal" data-target="#achievementModal-{{ atype.title }}">
@@ -1893,7 +1893,7 @@
     }
 
     function confirmAuditAcademic(a) { //审核该页面的学术地图
-        {% if academic_params.user_type == "inspector" %}
+        {% if Academic.user_type == "inspector" %}
         confirm_res = confirm(`确认允许发布？`);
         if (confirm_res == 0){
             return;
@@ -1903,7 +1903,7 @@
             type: "post",
             data: {
                 action: "auditMap",
-                author_id: {{ academic_params.author_id }},
+                author_id: {{ Academic.author_id }},
             },
             success: function (context) {
                 if(context.warn_code == 2){

@@ -212,7 +212,7 @@ def comments2Display(chat: Chat, context: dict, user: User):
 
 
 def get_js_tag_list(author: NaturalPerson, type: AcademicTag.Type,
-                    selected: bool, status_in: list = None) -> list[dict]:
+                    selected: bool, status_in: list | None = None) -> list[dict]:
     """
     用于前端显示支持搜索的专业/项目列表，返回形如[{id, content}]的列表。
 

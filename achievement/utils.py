@@ -33,20 +33,16 @@ def personal_achievements(user: User):
     unlocked_ids = list(unlocked_achievements.values_list('achievement', flat=True))
     achievement_types = AchievementType.objects.all().order_by('id')
     # （类型，总数，已解锁成就，未解锁成就，隐藏成就）
-    display_by_types = []
+    display_by_types: list[tuple[AchievementType, int,
+        list[Achievement], list[Achievement], list[Achievement]]] = []
     for achievement_type in achievement_types:
         achievements = Achievement.objects.filter(achievement_type=achievement_type)
         unlocked = list(achievements.filter(pk__in=unlocked_ids))
         all_locked = achievements.exclude(pk__in=unlocked_ids)
         locked = list(all_locked.filter(hidden=False))
         hidden = list(all_locked.filter(hidden=True))
-        display_by_types.append((
-            achievement_type,
-            achievements.count(),
-            unlocked,
-            locked,
-            hidden,
-        ))
+        display = (achievement_type, achievements.count(), unlocked, locked, hidden)
+        display_by_types.append(display)
     return invisible_achievements, visible_achievements, display_by_types
 
 
