@@ -19,6 +19,12 @@ class SQueryTest(SimpleTestCase):
         q2 = lq(1, 'a')
         self.assertIsInstance(q2, Q)
         self.assertEqual(q2, Q(a=1))
+        q3 = sq('a', 1)
+        self.assertIsInstance(q3, Q)
+        self.assertEqual(q3, Q(a=1))
+        q4 = sq(['a'], 1)
+        self.assertIsInstance(q4, Q)
+        self.assertEqual(q4, Q(a=1))
 
     def test_concat(self):
         '''测试函数连接的功能'''
@@ -27,6 +33,12 @@ class SQueryTest(SimpleTestCase):
         self.assertEqual(f('user', 'name', 'in'), 'user__name__in')
         self.assertEqual(q('user', 'id', 'lt', value=1), Q(user__id__lt=1))
         self.assertEqual(lq(1, 'user', 'id', 'lt'), Q(user__id__lt=1))
+        self.assertEqual(sq(['user', 'id', 'lt'], 2), Q(user__id__lt=2))
+
+
+
+class SQueryFieldTest(SimpleTestCase):
+    '''测试SQuery转化字段的功能'''
 
     def test_normal_fields(self):
         '''测试检测普通字段的功能'''
@@ -69,6 +81,7 @@ class SQueryTest(SimpleTestCase):
         self.assertEqual(f(Index(Position.person)), 'person_id')
         self.assertEqual(f(Index(NaturalPerson.unsubscribe_list)), 'unsubscribe_list')
         self.assertEqual(f(Index(Position.person_id)), 'person_id')
+        self.assertEqual(f(Index(Position.person.field)), 'person_id')
 
     def test_forward_form(self):
         '''测试特殊形式的正向关系字段的功能'''
@@ -76,6 +89,7 @@ class SQueryTest(SimpleTestCase):
         self.assertEqual(f(Forward(NaturalPerson.position_set)), 'person')
         self.assertEqual(f(Forward(Organization.unsubscribers)), 'unsubscribe_list')
         self.assertEqual(f(Forward(Position.person)), 'person')
+        self.assertEqual(f(Forward(Position.person.field)), 'person')
 
     def test_reverse_form(self):
         '''测试特殊形式的反向关系字段的功能，不会因此跨越隐藏关系字段'''
@@ -83,5 +97,6 @@ class SQueryTest(SimpleTestCase):
         self.assertEqual(f(Reverse(Position.person)), 'position_set')
         self.assertEqual(f(Reverse(NaturalPerson.unsubscribe_list)), 'unsubscribers')
         self.assertEqual(f(Reverse(Participant.appoint_list)), 'appoint_list')
+        self.assertEqual(f(Reverse(Position.person.field)), 'position_set')
         with self.assertRaises(ValueError):
             f(Reverse(Participant.Sid))
