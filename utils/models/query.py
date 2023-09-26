@@ -2,6 +2,9 @@
 
 - 获取查询字段的函数，且同时支持字段描述符、字段实例以及字段名称。
 - 通过标记字段为特殊关联字段，可以获取特殊关联字段的查询名称。
+- 进行单条件查询的函数，使用首个字段所在模型的默认管理器进行查询。
+
+在本模块中，以 s 开头的函数均为单字段转化函数或单条件查询函数。
 
 在以往的代码中，我们经常会看到这样的代码::
 
@@ -27,10 +30,13 @@ Example:
 
 Warning:
     本模块的函数在模型定义时无法使用，因为字段描述符在模型类创建后才会被创建，但你可以在任何方法中使用。
+
+Note:
+    本模块不提供与更新相关的函数，因为更新不会跨越关系，且应以管理器要求的安全方式进行。
 '''
 from typing import cast, Any, TypeAlias, TypeGuard, TypeVar
 
-from django.db.models import Field, Q
+from django.db.models import Field, Q, QuerySet, Model
 from django.db.models.query_utils import DeferredAttribute
 from django.db.models.fields.files import FileDescriptor
 from django.db.models.fields.related import RelatedField, ForeignObjectRel
@@ -48,6 +54,7 @@ from django.db.models.constants import LOOKUP_SEP
 __all__ = [
     'f', 'q', 'lq', 'sq',
     'Index', 'Forward', 'Reverse',
+    'sget', 'sfilter', 'sexclude',
 ]
 
 
@@ -246,8 +253,46 @@ def _as_seq(value: Extend[T]) -> ListLike[T]:
     return value
 
 
+def _first(field: Extend[T]) -> T:
+    '''获取字段的第一个元素'''
+    fields = _as_seq(field)
+    if not fields:
+        raise TypeError('Empty fields')
+    return fields[0]
+
+
 def sq(field: Extend[FieldLikeExpr | SpecialRelation], value: Any) -> Q:
     '''获取单个查询条件的Q对象，可以包含连续字段'''
     return q(*_as_seq(field), value=value)
 
 
+def _get_queryset(field: Extend[FieldLike | SpecialRelation]) -> QuerySet[Model]:
+    '''获取字段的查询集'''
+    field = _first(field)
+    if _is_relation(field):
+        if _is_reverse_relation(field):
+            rel = _get_reverse_relation(_get_related_field(field))
+            return cast(type[Model], rel.model)._default_manager.all()
+        field = _get_related_field(field)
+    else:
+        field = _get_normal_field(field)  # type: ignore
+    return field.model._default_manager.all()
+
+
+def _ext(fields: Extend[FieldLike | SpecialRelation]) -> Extend[Any]:
+    return fields
+
+
+def sget(field: Extend[FieldLike | SpecialRelation], value: Any) -> Model:
+    '''单条件获取模型实例，见`QuerySet.get`'''
+    return _get_queryset(field).get(sq(_ext(field), value))
+
+
+def sfilter(field: Extend[FieldLike | SpecialRelation], value: Any) -> QuerySet:
+    '''单条件过滤查询集，见`QuerySet.filter`'''
+    return _get_queryset(field).filter(sq(_ext(field), value))
+
+
+def sexclude(field: Extend[FieldLike | SpecialRelation], value: Any) -> QuerySet:
+    '''单条件排除查询集，见`QuerySet.exclude`'''
+    return _get_queryset(field).exclude(sq(_ext(field), value))

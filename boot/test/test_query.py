@@ -1,4 +1,5 @@
-from django.test import SimpleTestCase
+# type: ignore
+from django.test import SimpleTestCase, TestCase
 from django.db.models import Q
 
 from generic.models import User
@@ -100,3 +101,56 @@ class SQueryFieldTest(SimpleTestCase):
         self.assertEqual(f(Reverse(Position.person.field)), 'position_set')
         with self.assertRaises(ValueError):
             f(Reverse(Participant.Sid))
+
+
+class SQueryFunctionTest(TestCase):
+    @classmethod
+    def setUpTestData(cls):
+        User.objects.all().delete()
+        cls.u1 = User.objects.create_user('11', 'a', password='111')
+        cls.u2 = User.objects.create_user('22', 'b', password='222')
+        cls.u3 = User.objects.create_user('33', 'a', password='333')
+        cls.users = [cls.u1, cls.u2, cls.u3]
+        
+        person_datas = [
+            [cls.u1, '1', '2018'],
+            [cls.u2, '2', '2018'],
+            [cls.u3, '3', '2019'],
+        ]
+        cls.p1, cls.p2, cls.p3 = (
+            NaturalPerson.objects.create(person_id=u, name=name, stu_grade=grade)
+            for u, name, grade in person_datas
+        )
+
+    def test_empty_field(self):
+        '''测试空字段能否抛出异常'''
+        with self.assertRaises(TypeError): sget([], 'a')
+        with self.assertRaises(TypeError): sfilter([], 'a')
+        with self.assertRaises(TypeError): sexclude([], 'a')
+
+    def test_get(self):
+        '''测试`SQuery.sget`的功能'''
+        self.assertEqual(sget(User.username, self.u1.username), self.u1)
+        self.assertEqual(sget(User.id, self.u2.id), self.u2)
+        with self.assertRaises(User.DoesNotExist):
+            sget(User.username, '44')
+        self.assertEqual(sget(NaturalPerson.name, self.p1.name), self.p1)
+        self.assertEqual(sget(NaturalPerson.stu_grade, '2019'), self.p3)
+        self.assertEqual(sget([NaturalPerson.person_id, User.username],
+                              self.u1.username), self.p1)
+        with self.assertRaises(NaturalPerson.MultipleObjectsReturned):
+            sget(NaturalPerson.stu_grade, '2018')
+
+    def test_filter(self):
+        '''测试`SQuery.sfilter`的功能'''
+        self.assertCountEqual(sfilter(User.name, 'a'), [self.u1, self.u3])
+        self.assertCountEqual(sfilter(NaturalPerson.stu_grade, '2018'), [self.p1, self.p2])
+        self.assertCountEqual(sfilter([NaturalPerson.person_id, User.name], 'a'),
+                              [self.p1, self.p3])
+
+    def test_exclude(self):
+        '''测试`SQuery.sexclude`的功能'''
+        self.assertCountEqual(sexclude(User.name, 'b'), [self.u1, self.u3])
+        self.assertCountEqual(sexclude(NaturalPerson.stu_grade, '2018'), [self.p3])
+        self.assertCountEqual(sexclude([NaturalPerson.person_id, User.name], 'a'),
+                              [self.p2])
