@@ -25,6 +25,7 @@ from typing import cast, Any, TypeAlias, TypeGuard
 
 from django.db.models import Field, Q
 from django.db.models.query_utils import DeferredAttribute
+from django.db.models.fields.files import FileDescriptor
 from django.db.models.fields.related import RelatedField, ForeignObjectRel
 from django.db.models.fields.related_descriptors import (
     ForwardManyToOneDescriptor,
@@ -43,7 +44,7 @@ __all__ = [
 ]
 
 
-NormalFieldDescriptor: TypeAlias = DeferredAttribute
+NormalFieldDescriptor: TypeAlias = DeferredAttribute | FileDescriptor
 NormalFieldLike: TypeAlias = Field | NormalFieldDescriptor
 ForwardDescriptor: TypeAlias = ForwardManyToOneDescriptor | ForwardOneToOneDescriptor
 ReverseDescriptor: TypeAlias = ReverseManyToOneDescriptor | ReverseOneToOneDescriptor
@@ -88,7 +89,11 @@ class Reverse(SpecialRelation):
     pass
 
 
-def _is_relation(field: FieldLike | SpecialRelation) -> TypeGuard[RelatedFieldLike]:
+IndexLike: TypeAlias = ForeignIndexDescriptor | Index
+RelationLike: TypeAlias = RelatedFieldLike | SpecialRelation
+
+
+def _is_relation(field: FieldLike | SpecialRelation) -> TypeGuard[RelationLike]:
     '''判断字段是否为关系字段相关属性'''
     if isinstance(field, SpecialRelation):
         field = field.fieldlike
@@ -99,14 +104,14 @@ def _is_relation(field: FieldLike | SpecialRelation) -> TypeGuard[RelatedFieldLi
     return False
 
 
-def _is_foreign_index(field: RelatedFieldLike | SpecialRelation) -> TypeGuard[ForeignIndexDescriptor]:
+def _is_foreign_index(field: RelationLike) -> TypeGuard[IndexLike]:
     '''判断字段是否为外键索引字段'''
     if isinstance(field, Index):
         return True
     return isinstance(field, ForeignIndexDescriptor)
 
 
-def _is_forward_relation(field: RelatedFieldLike | SpecialRelation) -> bool:
+def _is_forward_relation(field: RelationLike) -> bool:
     '''判断字段是否为正向关系字段'''
     if isinstance(field, ManyToManyDescriptor):
         return not field.reverse
@@ -115,7 +120,7 @@ def _is_forward_relation(field: RelatedFieldLike | SpecialRelation) -> bool:
     return isinstance(field, ForwardDescriptor | RelatedField)
 
 
-def _is_reverse_relation(field: RelatedFieldLike | SpecialRelation) -> bool:
+def _is_reverse_relation(field: RelationLike) -> bool:
     '''判断字段是否为反向关系字段'''
     if isinstance(field, ManyToManyDescriptor):
         return field.reverse
@@ -124,7 +129,16 @@ def _is_reverse_relation(field: RelatedFieldLike | SpecialRelation) -> bool:
     return isinstance(field, ReverseDescriptor)
 
 
-def _get_related_field(field: RelatedFieldLike | SpecialRelation) -> RelatedField:
+def _get_normal_field(field: NormalFieldLike) -> Field:
+    '''获取普通字段，同样可用于关联字段，但不适用于关联字段描述符'''
+    if isinstance(field, NormalFieldDescriptor):
+        field = field.field
+    if not isinstance(field, Field):
+        raise TypeError(f'{type(field)} is not a normal field')
+    return field
+
+
+def _get_related_field(field: RelationLike) -> RelatedField:
     '''获取关系字段'''
     if isinstance(field, SpecialRelation):
         field = field.fieldlike
@@ -140,37 +154,45 @@ def _get_related_field(field: RelatedFieldLike | SpecialRelation) -> RelatedFiel
         return field.related.field
     if isinstance(field, ReverseManyToOneDescriptor):
         return cast(RelatedField, field.field)
-    assert False, f'{type(field)} is not a related field'
+    raise TypeError(f'{type(field)} is not a related field')
 
 
 def _normal_name(field: NormalFieldLike) -> str:
     '''获取普通字段的查询名称'''
     # 普通字段的`name`属性代表字段在查询时使用的名称
     # 见`Field.get_filter_kwargs_for_object`
-    if isinstance(field, NormalFieldDescriptor):
-        field = field.field
-    return field.name
+    return _get_normal_field(field).name
 
 
-def _foreign_index_name(field: RelatedFieldLike | SpecialRelation) -> str:
+def _foreign_index_name(field: RelationLike) -> str:
     '''获取外键索引字段的查询名称'''
     # `attname`属性代表`ForeignKey`对应数据库字段的名称，即`%field_name%_id`
     return _get_related_field(field).attname
 
 
-def _forward_name(field: RelatedFieldLike | SpecialRelation) -> str:
+def _forward_name(field: RelationLike) -> str:
     '''获取正向关系字段的查询名称'''
     # 关联字段的`name`属性代表模型字段的名称
     return _get_related_field(field).name
 
 
-def _reverse_name(field: RelatedFieldLike | SpecialRelation) -> str:
+def _get_reverse_relation(related_field: RelatedField) -> ForeignObjectRel:
+    '''获取反向关系字段
+
+    Raises:
+        ValueError: 如果反向关系字段不可用
+    '''
+    rel = cast(ForeignObjectRel, related_field.remote_field)
+    if rel.is_hidden():
+        raise ValueError(f'Cannot reverse a hidden relation: {related_field}')
+    return rel
+    
+
+def _reverse_name(field: RelationLike) -> str:
     '''获取反向关系字段的查询名称'''
     # 反向关系字段的`name`属性代表模型字段的名称
     field = _get_related_field(field)
-    if cast(ForeignObjectRel, field.remote_field).is_hidden():
-        # 隐藏的反向关系字段的`name`属性代表模型字段的名称
-        raise ValueError(f'Cannot get reverse name for hidden field: {field}')
+    _get_reverse_relation(field)
     return field.related_query_name()
 
 
