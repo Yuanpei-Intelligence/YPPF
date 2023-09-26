@@ -19,7 +19,7 @@ from app.comment_utils import showComment
 __all__ = [
     'get_search_results',
     'chats2Display',
-    'comments2Display',
+    'comments2display',
     'get_js_tag_list',
     'get_text_list',
     'get_tag_status',
@@ -29,7 +29,7 @@ __all__ = [
     'update_academic_map',
     'get_wait_audit_student',
     'audit_academic_map',
-    'have_entries_of_type',
+    'have_entries',
     'get_tags_for_search',
 ]
 
@@ -144,7 +144,7 @@ def chats2Display(user: User, sent: bool) -> dict[str, list[dict]]:
     }
 
 
-def comments2Display(chat: Chat, context: dict, user: User):
+def comments2display(chat: Chat, user: User) -> dict:
     """
     获取一个chat中的所有comment并转化为前端展示所需的形式（复用了comment_utils.py/showComment）
     """
@@ -158,36 +158,45 @@ def comments2Display(chat: Chat, context: dict, user: User):
     if respondent_anonymous:
         anonymous_users.append(chat.respondent)
 
-    context['title'] = chat.title or "无主题"
-    context[
-        'chat_id'] = chat.id  # TODO: 统一用AcademicQA模型后，不建议再用chat.id，而应该使用AcademicQA的id
-    context['messages'] = showComment(chat, anonymous_users)
-    if not context['messages']:
-        context['not_found_messages'] = "当前问答没有信息."
+    context = dict()
+    messages = showComment(chat, anonymous_users)
+    # TODO: 统一用AcademicQA模型后，不建议再用chat.id，而应该使用AcademicQA的id
+    context.update(
+        title=chat.title or "无主题",
+        chat_id=chat.id,
+        messages=messages,
+    )
+    if not messages:
+        context.update(not_found_messages="当前问答没有信息.")
 
-    context['status'] = chat.get_status_display()
-    context[
-        'commentable'] = chat.status == Chat.Status.PROGRESSING  # 若为True，则前端会给出评论区和“关闭当前问答”的按钮
-    context['anonymous_chat'] = chat.questioner_anonymous
-    context['accept_anonymous'] = chat.respondent.accept_anonymous_chat
-    context['answered'] = chat.comments.filter(
-        commentator=chat.respondent).exists()
+    # 若commentable为True，则前端会给出评论区和“关闭当前问答”的按钮
+    context.update(
+        status=chat.get_status_display(),
+        commentable=chat.status == Chat.Status.PROGRESSING,
+        anonymous_chat=chat.questioner_anonymous,
+        accept_anonymous=chat.respondent.accept_anonymous_chat,
+        answered=chat.comments.filter(commentator=chat.respondent).exists()
+    )
 
-    context['is_questioner'] = is_questioner
-    context[
-        'is_anonymous'] = questioner_anonymous if is_questioner else respondent_anonymous
-    context['questioner_anonymous'] = questioner_anonymous
-    context['respondent_anonymous'] = respondent_anonymous
+    context.update(
+        is_questioner=is_questioner,
+        is_anonymous=questioner_anonymous if is_questioner else respondent_anonymous,
+        questioner_anonymous=questioner_anonymous,
+        respondent_anonymous=respondent_anonymous,
+    )
 
-    context['my_name'] = get_person_or_org(user).get_display_name()
-    context['questioner_name'] = get_person_or_org(
-        chat.questioner).get_display_name()
-    context['respondent_name'] = get_person_or_org(
-        chat.respondent).get_display_name()
-    context['academic_url'] = get_person_or_org(
-        chat.respondent).get_absolute_url(
-    ) if is_questioner else get_person_or_org(
-            chat.questioner).get_absolute_url()
+    my_name = get_person_or_org(user).get_display_name()
+    questioner_info = get_person_or_org(chat.questioner)
+    respondent_info = get_person_or_org(chat.respondent)
+    academic_url = (respondent_info.get_absolute_url()
+                    if is_questioner else questioner_info.get_absolute_url())
+
+    context.update(
+        my_name=my_name,
+        questioner_name=questioner_info.get_display_name(),
+        respondent_name=respondent_info.get_display_name(),
+        academic_url=academic_url
+    )
 
     # 在对方匿名时，提供一些简单的信息
     if is_questioner:
@@ -197,7 +206,7 @@ def comments2Display(chat: Chat, context: dict, user: User):
             context['respondent_tags'] = list(qa.keywords)
         else:
             context['respondent_tags'] = []
-        return
+        return context
 
     try:
         major = AcademicTagEntry.objects.get(
@@ -209,6 +218,7 @@ def comments2Display(chat: Chat, context: dict, user: User):
     context['questioner_tags'] = [
         chat.questioner.username[:2] + "级", major_display
     ]
+    return context
 
 
 def get_js_tag_list(author: NaturalPerson, type: AcademicTag.Type,
@@ -544,7 +554,7 @@ def audit_academic_map(author: NaturalPerson) -> None:
         status=AcademicEntry.EntryStatus.PUBLIC)
 
 
-def have_entries_of_type(author: NaturalPerson,
+def have_entries(author: NaturalPerson,
                          status_in: list[AcademicEntry.EntryStatus]) -> bool:
     """
     判断用户有无status属性为public/wait_audit...的学术地图条目(tag和text)

@@ -8,7 +8,7 @@ from app.models import (
 )
 from app.academic_utils import (
     chats2Display,
-    comments2Display,
+    comments2display,
     get_js_tag_list,
     get_text_list,
     get_tag_status,
@@ -78,7 +78,7 @@ class ViewChat(ProfileTemplateView):
 
     def get(self) -> HttpResponse:
         user = self.request.user
-        comments2Display(self.chat, self.extra_context, user)
+        self.extra_context.update(comments2display(self.chat, user))
         return self.render()
 
 

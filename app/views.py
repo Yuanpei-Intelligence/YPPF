@@ -2,6 +2,7 @@ import json
 import random
 import requests
 from datetime import datetime, timedelta
+from typing import cast
 
 from django.contrib import auth
 from django.db import transaction
@@ -49,10 +50,10 @@ from app.notification_utils import (
 from app.YQPoint_utils import add_signin_point
 from app.academic_utils import (
     get_search_results,
-    comments2Display,
+    comments2display,
     get_js_tag_list,
     get_text_list,
-    have_entries_of_type,
+    have_entries,
     get_tag_status,
     get_text_status,
 )
@@ -160,7 +161,7 @@ def stuinfo(request: UserRequest):
         else:  # 有很多人，这时候假设加号后面的是user的id
             if len(name_list) == 1:  # 没有任何后缀信息，那么如果是自己则跳转主页，否则跳转搜索
                 if request.user.is_person() and oneself.name == name:
-                    person = oneself
+                    person = cast(NaturalPerson, oneself)
                 else:  # 不是自己，信息不全跳转搜索
                     return redirect("/search?Query=" + name)
             else:
@@ -452,8 +453,10 @@ def stuinfo(request: UserRequest):
             chat__respondent=person.get_user()
         )
         if progressing_chat.exists():
-            comments2Display(progressing_chat.first().chat,
-                             html_display, request.user)  # TODO: 字典的key有冲突风险
+            chat_qa = progressing_chat.first()
+            comment_display = comments2display(chat_qa.chat, request.user)
+            # TODO: 字典的key有冲突风险
+            html_display.update(comment_display)
             html_display["have_progressing_chat"] = True
         else:  # 没有进行中的问答，显示提问区
             html_display["have_progressing_chat"] = False
@@ -461,11 +464,11 @@ def stuinfo(request: UserRequest):
             html_display["accept_anonymous"] = person.get_user().accept_anonymous_chat
 
         # ------------------ 查看学术地图 ------------------ #
-        academic_utype, status_in = "viewer", [AcademicEntry.EntryStatus.PUBLIC]
+        status_in = [AcademicEntry.EntryStatus.PUBLIC]
+        is_teacher = request.user.is_person() and oneself.is_teacher()
         if is_myself:
-            academic_utype, status_in = "author", None
-        elif request.user.is_person() and oneself.is_teacher():
-            academic_utype = "inspector"
+            status_in = None
+        elif is_teacher:
             status_in.append(AcademicEntry.EntryStatus.WAIT_AUDIT)
 
         # 判断用户是否有可以展示的内容
@@ -475,10 +478,10 @@ def stuinfo(request: UserRequest):
                               AcademicEntry.EntryStatus.WAIT_AUDIT]
         academic_params = dict()
         academic_params.update(
-            user_type=academic_utype,
+            is_inspector=is_teacher,
             author_id=person.person_id_id,
-            have_content=have_entries_of_type(person, content_status),
-            have_unaudit=have_entries_of_type(person, [AcademicEntry.EntryStatus.WAIT_AUDIT]),
+            have_content=have_entries(person, content_status),
+            have_unaudit=have_entries(person, [AcademicEntry.EntryStatus.WAIT_AUDIT]),
         )
 
         # 获取用户已有的专业/项目的列表，用于select的默认选中项

@@ -367,7 +367,7 @@
 
                         <div class="row">
                             <h3 class="noafter col mb-0">{{ name }}的学术地图</h3>
-                            {% if Academic.user_type == "author" and Academic.have_content == True %}
+                            {% if html_display.is_myself and Academic.have_content %}
                             <button class="flex btn btn-primary mb-4 mr-2" id="modify_academic" 
                                 onclick="location.href='/modifyAcademic/'">
                                 修改
@@ -377,7 +377,7 @@
 
                         <div class="bio-skill-box">
 
-                            {% if Academic.user_type == "author" %}
+                            {% if html_display.is_myself %}
                                 {% if Academic.have_content == False %}
                                 <p style="text-align: center;">你还没有可以公开展示的信息~</p>
                                 <p style="text-align: center;">
@@ -837,7 +837,7 @@
 
                         </div>
 
-                        {% if Academic.user_type == "inspector" and Academic.have_unaudit == True %}
+                        {% if Academic.is_inspector and Academic.have_unaudit %}
                         <div class="row mx-0">
                             <button class="btn btn-primary mb-5" value="audit" name="post_academic"
                                 style="margin: auto;" onclick="confirmAuditAcademic(this);">
@@ -1893,7 +1893,7 @@
     }
 
     function confirmAuditAcademic(a) { //审核该页面的学术地图
-        {% if Academic.user_type == "inspector" %}
+        {% if Academic.is_inspector %}
         confirm_res = confirm(`确认允许发布？`);
         if (confirm_res == 0){
             return;
