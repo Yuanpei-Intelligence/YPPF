@@ -212,7 +212,8 @@ def comments2Display(chat: Chat, context: dict, user: User):
 
 
 def get_js_tag_list(author: NaturalPerson, type: AcademicTag.Type,
-                    selected: bool, status_in: list | None = None) -> list[dict]:
+                    selected: bool,
+                    status_in: list[AcademicEntry.EntryStatus] | None = None) -> list[dict]:
     """
     用于前端显示支持搜索的专业/项目列表，返回形如[{id, content}]的列表。
 
@@ -222,24 +223,15 @@ def get_js_tag_list(author: NaturalPerson, type: AcademicTag.Type,
     :type type: AcademicTag.Type
     :param selected: 用于标记是否获取本人已有的专业项目，selected代表获取前端默认选中的项目
     :type selected: bool
-    :param status_in: 所要检索的状态的字符串的列表，如["public","private"]，默认为None，表示搜索全部
-    :type status_in: list
+    :param status_in: 所要检索的状态的列表，默认为None，表示搜索全部
+    :type status_in: list[AcademicEntry.EntryStatus]
     :return: 所有专业/项目组成的List[dict]，key值如上所述
     :rtype: list[dict]
     """
-    type_map = {
-        "public": AcademicEntry.EntryStatus.PUBLIC,
-        "wait_audit": AcademicEntry.EntryStatus.WAIT_AUDIT,
-        "private": AcademicEntry.EntryStatus.PRIVATE,
-        "outdate": AcademicEntry.EntryStatus.OUTDATE
-    }
-    stats = []
-    if status_in is not None:
-        stats = [type_map[s] for s in status_in]
     if selected:
         all_my_tags = AcademicTagEntry.objects.activated().filter(person=author)
         if status_in is not None:
-            all_my_tags = all_my_tags.filter(status__in=stats)
+            all_my_tags = all_my_tags.filter(status__in=status_in)
         tags = all_my_tags.filter(tag__atype=type).values(
             'tag__id', 'tag__tag_content')
         js_list = [{"id": tag['tag__id'], "text": tag['tag__tag_content']}
@@ -252,7 +244,7 @@ def get_js_tag_list(author: NaturalPerson, type: AcademicTag.Type,
 
 
 def get_text_list(author: NaturalPerson, type: AcademicTextEntry.Type,
-                  status_in: list = None) -> list[str]:
+                  status_in: list[AcademicEntry.EntryStatus] | None = None) -> list[str]:
     """
     获取自己的所有类型为type的TextEntry的内容列表。
 
@@ -260,23 +252,14 @@ def get_text_list(author: NaturalPerson, type: AcademicTextEntry.Type,
     :type author: NaturalPerson
     :param type: TextEntry的类型
     :type type: AcademicTextEntry.Type
-    :param status_in: 所要检索的状态的字符串的列表，如["public","private"]，默认为None，表示搜索全部
+    :param status_in: 所要检索的状态的列表，默认为None，表示搜索全部
     :type status_in: list
     :return: 含有所有类型为type的TextEntry的content的list
     :rtype: list[str]
     """
-    type_map = {
-        "public": AcademicEntry.EntryStatus.PUBLIC,
-        "wait_audit": AcademicEntry.EntryStatus.WAIT_AUDIT,
-        "private": AcademicEntry.EntryStatus.PRIVATE,
-        "outdate": AcademicEntry.EntryStatus.OUTDATE
-    }
-    stats = []
-    if status_in is not None:
-        stats = [type_map[s] for s in status_in]
     all_my_text = AcademicTextEntry.objects.activated().filter(person=author, atype=type)
     if status_in is not None:
-        all_my_text = all_my_text.filter(status__in=stats)
+        all_my_text = all_my_text.filter(status__in=status_in)
     text_list = [text.content for text in all_my_text]
     return text_list
 
@@ -561,27 +544,21 @@ def audit_academic_map(author: NaturalPerson) -> None:
         status=AcademicEntry.EntryStatus.PUBLIC)
 
 
-def have_entries_of_type(author: NaturalPerson, status_in: list) -> bool:
+def have_entries_of_type(author: NaturalPerson,
+                         status_in: list[AcademicEntry.EntryStatus]) -> bool:
     """
     判断用户有无status属性为public/wait_audit...的学术地图条目(tag和text)
     :param author: 条目作者用户
     :type author: NaturalPerson
-    :param status_in: ["public", "wait_audit", "private", "outdate"]中的str构成的list
-    :type status_in: list
+    :param status_in: AcademicEntry.EntryStatus构成的list
+    :type status_in: list[AcademicEntry.EntryStatus]
     :return: 是否有该类别的条目
     :rtype: bool
     """
-    type_map = {
-        "public": AcademicEntry.EntryStatus.PUBLIC,
-        "wait_audit": AcademicEntry.EntryStatus.WAIT_AUDIT,
-        "private": AcademicEntry.EntryStatus.PRIVATE,
-        "outdate": AcademicEntry.EntryStatus.OUTDATE
-    }
-    stats = [type_map[s] for s in status_in]
     all_tag_entries = AcademicTagEntry.objects.activated().filter(
-        person=author, status__in=stats)
+        person=author, status__in=status_in)
     all_text_entries = (AcademicTextEntry.objects.activated().filter(
-        person=author, status__in=stats))
+        person=author, status__in=status_in))
     return bool(all_tag_entries) or bool(all_text_entries)
 
 

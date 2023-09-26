@@ -18,6 +18,7 @@ from app.models import (
     Freshman,
     Position,
     AcademicTag,
+    AcademicEntry,
     AcademicTextEntry,
     Organization,
     OrganizationTag,
@@ -460,20 +461,24 @@ def stuinfo(request: UserRequest):
             html_display["accept_anonymous"] = person.get_user().accept_anonymous_chat
 
         # ------------------ 查看学术地图 ------------------ #
-        academic_utype, status_in = "viewer", ["public"]
+        academic_utype, status_in = "viewer", [AcademicEntry.EntryStatus.PUBLIC]
         if is_myself:
             academic_utype, status_in = "author", None
         elif request.user.is_person() and oneself.is_teacher():
-            academic_utype, status_in = "inspector", ["public", "wait_audit"]
+            academic_utype = "inspector"
+            status_in.append(AcademicEntry.EntryStatus.WAIT_AUDIT)
 
         # 判断用户是否有可以展示的内容
-        content_status = ['public', 'wait_audit'] if is_myself else status_in
+        content_status = status_in
+        if is_myself:
+            content_status = [AcademicEntry.EntryStatus.PUBLIC,
+                              AcademicEntry.EntryStatus.WAIT_AUDIT]
         academic_params = dict()
         academic_params.update(
             user_type=academic_utype,
             author_id=person.person_id_id,
             have_content=have_entries_of_type(person, content_status),
-            have_unaudit=have_entries_of_type(person, ["wait_audit"]),
+            have_unaudit=have_entries_of_type(person, [AcademicEntry.EntryStatus.WAIT_AUDIT]),
         )
 
         # 获取用户已有的专业/项目的列表，用于select的默认选中项
