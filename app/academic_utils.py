@@ -19,7 +19,7 @@ from app.comment_utils import showComment
 __all__ = [
     'get_search_results',
     'chats2Display',
-    'comments2Display',
+    'comments2display',
     'get_js_tag_list',
     'get_text_list',
     'get_tag_status',
@@ -29,7 +29,7 @@ __all__ = [
     'update_academic_map',
     'get_wait_audit_student',
     'audit_academic_map',
-    'have_entries_of_type',
+    'have_entries',
     'get_tags_for_search',
 ]
 
@@ -144,7 +144,7 @@ def chats2Display(user: User, sent: bool) -> dict[str, list[dict]]:
     }
 
 
-def comments2Display(chat: Chat, context: dict, user: User):
+def comments2display(chat: Chat, user: User) -> dict:
     """
     获取一个chat中的所有comment并转化为前端展示所需的形式（复用了comment_utils.py/showComment）
     """
@@ -158,36 +158,45 @@ def comments2Display(chat: Chat, context: dict, user: User):
     if respondent_anonymous:
         anonymous_users.append(chat.respondent)
 
-    context['title'] = chat.title or "无主题"
-    context[
-        'chat_id'] = chat.id  # TODO: 统一用AcademicQA模型后，不建议再用chat.id，而应该使用AcademicQA的id
-    context['messages'] = showComment(chat, anonymous_users)
-    if not context['messages']:
-        context['not_found_messages'] = "当前问答没有信息."
+    context = dict()
+    messages = showComment(chat, anonymous_users)
+    # TODO: 统一用AcademicQA模型后，不建议再用chat.id，而应该使用AcademicQA的id
+    context.update(
+        title=chat.title or "无主题",
+        chat_id=chat.id,
+        messages=messages,
+    )
+    if not messages:
+        context.update(not_found_messages="当前问答没有信息.")
 
-    context['status'] = chat.get_status_display()
-    context[
-        'commentable'] = chat.status == Chat.Status.PROGRESSING  # 若为True，则前端会给出评论区和“关闭当前问答”的按钮
-    context['anonymous_chat'] = chat.questioner_anonymous
-    context['accept_anonymous'] = chat.respondent.accept_anonymous_chat
-    context['answered'] = chat.comments.filter(
-        commentator=chat.respondent).exists()
+    # 若commentable为True，则前端会给出评论区和“关闭当前问答”的按钮
+    context.update(
+        status=chat.get_status_display(),
+        commentable=chat.status == Chat.Status.PROGRESSING,
+        anonymous_chat=chat.questioner_anonymous,
+        accept_anonymous=chat.respondent.accept_anonymous_chat,
+        answered=chat.comments.filter(commentator=chat.respondent).exists()
+    )
 
-    context['is_questioner'] = is_questioner
-    context[
-        'is_anonymous'] = questioner_anonymous if is_questioner else respondent_anonymous
-    context['questioner_anonymous'] = questioner_anonymous
-    context['respondent_anonymous'] = respondent_anonymous
+    context.update(
+        is_questioner=is_questioner,
+        is_anonymous=questioner_anonymous if is_questioner else respondent_anonymous,
+        questioner_anonymous=questioner_anonymous,
+        respondent_anonymous=respondent_anonymous,
+    )
 
-    context['my_name'] = get_person_or_org(user).get_display_name()
-    context['questioner_name'] = get_person_or_org(
-        chat.questioner).get_display_name()
-    context['respondent_name'] = get_person_or_org(
-        chat.respondent).get_display_name()
-    context['academic_url'] = get_person_or_org(
-        chat.respondent).get_absolute_url(
-    ) if is_questioner else get_person_or_org(
-            chat.questioner).get_absolute_url()
+    my_name = get_person_or_org(user).get_display_name()
+    questioner_info = get_person_or_org(chat.questioner)
+    respondent_info = get_person_or_org(chat.respondent)
+    academic_url = (respondent_info.get_absolute_url()
+                    if is_questioner else questioner_info.get_absolute_url())
+
+    context.update(
+        my_name=my_name,
+        questioner_name=questioner_info.get_display_name(),
+        respondent_name=respondent_info.get_display_name(),
+        academic_url=academic_url
+    )
 
     # 在对方匿名时，提供一些简单的信息
     if is_questioner:
@@ -197,7 +206,7 @@ def comments2Display(chat: Chat, context: dict, user: User):
             context['respondent_tags'] = list(qa.keywords)
         else:
             context['respondent_tags'] = []
-        return
+        return context
 
     try:
         major = AcademicTagEntry.objects.get(
@@ -209,10 +218,12 @@ def comments2Display(chat: Chat, context: dict, user: User):
     context['questioner_tags'] = [
         chat.questioner.username[:2] + "级", major_display
     ]
+    return context
 
 
 def get_js_tag_list(author: NaturalPerson, type: AcademicTag.Type,
-                    selected: bool, status_in: list = None) -> list[dict]:
+                    selected: bool,
+                    status_in: list[AcademicEntry.EntryStatus] | None = None) -> list[dict]:
     """
     用于前端显示支持搜索的专业/项目列表，返回形如[{id, content}]的列表。
 
@@ -222,24 +233,15 @@ def get_js_tag_list(author: NaturalPerson, type: AcademicTag.Type,
     :type type: AcademicTag.Type
     :param selected: 用于标记是否获取本人已有的专业项目，selected代表获取前端默认选中的项目
     :type selected: bool
-    :param status_in: 所要检索的状态的字符串的列表，如["public","private"]，默认为None，表示搜索全部
-    :type status_in: list
+    :param status_in: 所要检索的状态的列表，默认为None，表示搜索全部
+    :type status_in: list[AcademicEntry.EntryStatus]
     :return: 所有专业/项目组成的List[dict]，key值如上所述
     :rtype: list[dict]
     """
-    type_map = {
-        "public": AcademicEntry.EntryStatus.PUBLIC,
-        "wait_audit": AcademicEntry.EntryStatus.WAIT_AUDIT,
-        "private": AcademicEntry.EntryStatus.PRIVATE,
-        "outdate": AcademicEntry.EntryStatus.OUTDATE
-    }
-    stats = []
-    if status_in is not None:
-        stats = [type_map[s] for s in status_in]
     if selected:
         all_my_tags = AcademicTagEntry.objects.activated().filter(person=author)
         if status_in is not None:
-            all_my_tags = all_my_tags.filter(status__in=stats)
+            all_my_tags = all_my_tags.filter(status__in=status_in)
         tags = all_my_tags.filter(tag__atype=type).values(
             'tag__id', 'tag__tag_content')
         js_list = [{"id": tag['tag__id'], "text": tag['tag__tag_content']}
@@ -252,7 +254,7 @@ def get_js_tag_list(author: NaturalPerson, type: AcademicTag.Type,
 
 
 def get_text_list(author: NaturalPerson, type: AcademicTextEntry.Type,
-                  status_in: list = None) -> list[str]:
+                  status_in: list[AcademicEntry.EntryStatus] | None = None) -> list[str]:
     """
     获取自己的所有类型为type的TextEntry的内容列表。
 
@@ -260,23 +262,14 @@ def get_text_list(author: NaturalPerson, type: AcademicTextEntry.Type,
     :type author: NaturalPerson
     :param type: TextEntry的类型
     :type type: AcademicTextEntry.Type
-    :param status_in: 所要检索的状态的字符串的列表，如["public","private"]，默认为None，表示搜索全部
+    :param status_in: 所要检索的状态的列表，默认为None，表示搜索全部
     :type status_in: list
     :return: 含有所有类型为type的TextEntry的content的list
     :rtype: list[str]
     """
-    type_map = {
-        "public": AcademicEntry.EntryStatus.PUBLIC,
-        "wait_audit": AcademicEntry.EntryStatus.WAIT_AUDIT,
-        "private": AcademicEntry.EntryStatus.PRIVATE,
-        "outdate": AcademicEntry.EntryStatus.OUTDATE
-    }
-    stats = []
-    if status_in is not None:
-        stats = [type_map[s] for s in status_in]
     all_my_text = AcademicTextEntry.objects.activated().filter(person=author, atype=type)
     if status_in is not None:
-        all_my_text = all_my_text.filter(status__in=stats)
+        all_my_text = all_my_text.filter(status__in=status_in)
     text_list = [text.content for text in all_my_text]
     return text_list
 
@@ -561,27 +554,21 @@ def audit_academic_map(author: NaturalPerson) -> None:
         status=AcademicEntry.EntryStatus.PUBLIC)
 
 
-def have_entries_of_type(author: NaturalPerson, status_in: list) -> bool:
+def have_entries(author: NaturalPerson,
+                         status_in: list[AcademicEntry.EntryStatus]) -> bool:
     """
     判断用户有无status属性为public/wait_audit...的学术地图条目(tag和text)
     :param author: 条目作者用户
     :type author: NaturalPerson
-    :param status_in: ["public", "wait_audit", "private", "outdate"]中的str构成的list
-    :type status_in: list
+    :param status_in: AcademicEntry.EntryStatus构成的list
+    :type status_in: list[AcademicEntry.EntryStatus]
     :return: 是否有该类别的条目
     :rtype: bool
     """
-    type_map = {
-        "public": AcademicEntry.EntryStatus.PUBLIC,
-        "wait_audit": AcademicEntry.EntryStatus.WAIT_AUDIT,
-        "private": AcademicEntry.EntryStatus.PRIVATE,
-        "outdate": AcademicEntry.EntryStatus.OUTDATE
-    }
-    stats = [type_map[s] for s in status_in]
     all_tag_entries = AcademicTagEntry.objects.activated().filter(
-        person=author, status__in=stats)
+        person=author, status__in=status_in)
     all_text_entries = (AcademicTextEntry.objects.activated().filter(
-        person=author, status__in=stats))
+        person=author, status__in=status_in))
     return bool(all_tag_entries) or bool(all_text_entries)
 
 

@@ -2,6 +2,7 @@ import json
 import random
 import requests
 from datetime import datetime, timedelta
+from typing import cast
 
 from django.contrib import auth
 from django.db import transaction
@@ -18,6 +19,7 @@ from app.models import (
     Freshman,
     Position,
     AcademicTag,
+    AcademicEntry,
     AcademicTextEntry,
     Organization,
     OrganizationTag,
@@ -48,10 +50,10 @@ from app.notification_utils import (
 from app.YQPoint_utils import add_signin_point
 from app.academic_utils import (
     get_search_results,
-    comments2Display,
+    comments2display,
     get_js_tag_list,
     get_text_list,
-    have_entries_of_type,
+    have_entries,
     get_tag_status,
     get_text_status,
 )
@@ -159,7 +161,7 @@ def stuinfo(request: UserRequest):
         else:  # 有很多人，这时候假设加号后面的是user的id
             if len(name_list) == 1:  # 没有任何后缀信息，那么如果是自己则跳转主页，否则跳转搜索
                 if request.user.is_person() and oneself.name == name:
-                    person = oneself
+                    person = cast(NaturalPerson, oneself)
                 else:  # 不是自己，信息不全跳转搜索
                     return redirect("/search?Query=" + name)
             else:
@@ -321,6 +323,17 @@ def stuinfo(request: UserRequest):
             or None
         )
 
+
+        # 准备前端展示量，前移代码位置以保证后续功能不再使用locals()
+        render_context = locals().copy()
+        render_context.pop("is_myself", None)
+        html_display["is_myself"] = is_myself
+
+        render_context.update(
+            html_display=html_display,
+            inform_share=inform_share,
+            alert_message=alert_message,
+        )
         # ----------------------------------- 活动卡片 ----------------------------------- #
 
         # ------------------ 学时查询 ------------------ #
@@ -328,36 +341,36 @@ def stuinfo(request: UserRequest):
         # 只有是自己的主页时才显示学时
         if is_myself:
             # 把当前学期的活动去除
-            course_me_past = CourseRecord.objects.past().filter(person_id=oneself)
+            past_courses = CourseRecord.objects.past().filter(person_id=oneself)
 
             # 无效学时，在前端呈现
-            course_no_use = (
-                course_me_past
+            useless_courses = (
+                past_courses
                 .filter(invalid=True)
             )
 
             # 特判，需要一定时长才能计入总学时
-            course_me_past = (
-                course_me_past
+            past_courses = (
+                past_courses
                 .exclude(invalid=True)
             )
 
-            course_me_past = course_me_past.order_by('year', 'semester')
-            course_no_use = course_no_use.order_by('year', 'semester')
+            past_courses = past_courses.order_by('year', 'semester')
+            useless_courses = useless_courses.order_by('year', 'semester')
 
             progress_list = []
 
             # 计算每个类别的学时
             for course_type in list(Course.CourseType):  # CourseType.values亦可
                 progress_list.append((
-                    course_me_past
+                    past_courses
                     .filter(course__type=course_type)
                     .aggregate(Sum('total_hours'))
                 )['total_hours__sum'] or 0)
 
             # 计算没有对应Course的学时
             progress_list.append((
-                course_me_past
+                past_courses
                 .filter(course__isnull=True)
                 .aggregate(Sum('total_hours'))
             )['total_hours__sum'] or 0)
@@ -376,24 +389,22 @@ def stuinfo(request: UserRequest):
                 ruled_hours = 0
 
             # 计算总学时
-            total_hours_sum = sum(progress_list)
+            complete_hours = sum(progress_list)
             # 用于算百分比的实际总学时（考虑到可能会超学时），仅后端使用
-            actual_total_hours = max(total_hours_sum, ruled_hours)
+            actual_total_hours = max(complete_hours, ruled_hours)
             if actual_total_hours > 0:
                 progress_list = [
                     hour / actual_total_hours * 100 for hour in progress_list
                 ]
 
-        # 准备前端展示量，前移代码位置以保证后续功能不再使用locals()
-        html_display["is_myself"] = is_myself
-        render_context = locals()
-
-        # is_myself是内部变量，不传给前端
-        render_context.update(
-            html_display=html_display,
-            inform_share=inform_share,
-            alert_message=alert_message,
-        )
+            course_context = dict(
+                ruled_hours=ruled_hours,
+                complete_hours=complete_hours,
+                past_courses=past_courses,
+                useless_courses=useless_courses,
+                progress_list=progress_list,
+            )
+            render_context.update(Course=course_context)
 
         # ------------------ 活动参与 ------------------ #
 
@@ -442,8 +453,10 @@ def stuinfo(request: UserRequest):
             chat__respondent=person.get_user()
         )
         if progressing_chat.exists():
-            comments2Display(progressing_chat.first().chat,
-                             html_display, request.user)  # TODO: 字典的key有冲突风险
+            chat_qa = progressing_chat.first()
+            comment_display = comments2display(chat_qa.chat, request.user)
+            # TODO: 字典的key有冲突风险
+            html_display.update(comment_display)
             html_display["have_progressing_chat"] = True
         else:  # 没有进行中的问答，显示提问区
             html_display["have_progressing_chat"] = False
@@ -451,109 +464,79 @@ def stuinfo(request: UserRequest):
             html_display["accept_anonymous"] = person.get_user().accept_anonymous_chat
 
         # ------------------ 查看学术地图 ------------------ #
-        academic_params = {"author_id": person.person_id_id}
-        # 下面准备前端展示量
-        status_in = None
+        status_in = [AcademicEntry.EntryStatus.PUBLIC]
+        is_teacher = request.user.is_person() and oneself.is_teacher()
         if is_myself:
-            academic_params["user_type"] = "author"
-        elif request.user.is_person() and oneself.is_teacher():
-            academic_params["user_type"] = "inspector"
-            status_in = ['public', 'wait_audit']
-        else:
-            academic_params["user_type"] = "viewer"
-            status_in = ['public']
+            status_in = None
+        elif is_teacher:
+            status_in.append(AcademicEntry.EntryStatus.WAIT_AUDIT)
 
         # 判断用户是否有可以展示的内容
-        if academic_params["user_type"] == "viewer":
-            academic_params["have_content"] = have_entries_of_type(person, [
-                                                                   "public"])
-        else:
-            academic_params["have_content"] = have_entries_of_type(
-                person, ["public", "wait_audit"])
-        academic_params["have_unaudit"] = have_entries_of_type(person, [
-                                                               "wait_audit"])
+        content_status = status_in
+        if is_myself:
+            content_status = [AcademicEntry.EntryStatus.PUBLIC,
+                              AcademicEntry.EntryStatus.WAIT_AUDIT]
+        academic_params = dict()
+        academic_params.update(
+            is_inspector=is_teacher,
+            author_id=person.person_id_id,
+            have_content=have_entries(person, content_status),
+            have_unaudit=have_entries(person, [AcademicEntry.EntryStatus.WAIT_AUDIT]),
+        )
 
         # 获取用户已有的专业/项目的列表，用于select的默认选中项
-        academic_params.update(
-            selected_major_list=get_js_tag_list(person, AcademicTag.Type.MAJOR,
-                                                selected=True, status_in=status_in),
-            selected_minor_list=get_js_tag_list(person, AcademicTag.Type.MINOR,
-                                                selected=True, status_in=status_in),
-            selected_double_degree_list=get_js_tag_list(person, AcademicTag.Type.DOUBLE_DEGREE,
-                                                        selected=True, status_in=status_in),
-            selected_project_list=get_js_tag_list(person, AcademicTag.Type.PROJECT,
-                                                  selected=True, status_in=status_in),
+        selected_dict = dict(
+            selected_major_list=AcademicTag.Type.MAJOR,
+            selected_minor_list=AcademicTag.Type.MINOR,
+            selected_double_degree_list=AcademicTag.Type.DOUBLE_DEGREE,
+            selected_project_list=AcademicTag.Type.PROJECT,
         )
+        academic_params.update({
+            name: get_js_tag_list(person, type, selected=True, status_in=status_in)
+            for name, type in selected_dict.items()
+        })
 
         # 获取用户已有的TextEntry的contents，用于TextEntry填写栏的前端预填写
-        scientific_research_list = get_text_list(
-            person, AcademicTextEntry.Type.SCIENTIFIC_RESEARCH, status_in
+        text_dict = dict(
+            scientific_research_list=AcademicTextEntry.Type.SCIENTIFIC_RESEARCH,
+            challenge_cup_list=AcademicTextEntry.Type.CHALLENGE_CUP,
+            internship_list=AcademicTextEntry.Type.INTERNSHIP,
+            scientific_direction_list=AcademicTextEntry.Type.SCIENTIFIC_DIRECTION,
+            graduation_list=AcademicTextEntry.Type.GRADUATION,
         )
-        challenge_cup_list = get_text_list(
-            person, AcademicTextEntry.Type.CHALLENGE_CUP, status_in
-        )
-        internship_list = get_text_list(
-            person, AcademicTextEntry.Type.INTERNSHIP, status_in
-        )
-        scientific_direction_list = get_text_list(
-            person, AcademicTextEntry.Type.SCIENTIFIC_DIRECTION, status_in
-        )
-        graduation_list = get_text_list(
-            person, AcademicTextEntry.Type.GRADUATION, status_in
-        )
-        academic_params.update(
-            scientific_research_list=scientific_research_list,
-            challenge_cup_list=challenge_cup_list,
-            internship_list=internship_list,
-            scientific_direction_list=scientific_direction_list,
-            graduation_list=graduation_list,
-            scientific_research_num=len(scientific_research_list),
-            challenge_cup_num=len(challenge_cup_list),
-            internship_num=len(internship_list),
-            scientific_direction_num=len(scientific_direction_list),
-            graduation_num=len(graduation_list),
-        )
+        academic_params.update({
+            name: get_text_list(person, type, status_in)
+            for name, type in text_dict.items()
+        })
 
         # 最后获取每一种atype对应的entry的公开状态，如果没有则默认为公开
-        major_status = get_tag_status(person, AcademicTag.Type.MAJOR)
-        minor_status = get_tag_status(person, AcademicTag.Type.MINOR)
-        double_degree_status = get_tag_status(
-            person, AcademicTag.Type.DOUBLE_DEGREE)
-        project_status = get_tag_status(person, AcademicTag.Type.PROJECT)
-        scientific_research_status = get_text_status(
-            person, AcademicTextEntry.Type.SCIENTIFIC_RESEARCH
+        tag_status_dict = dict(
+            major_status=AcademicTag.Type.MAJOR,
+            minor_status=AcademicTag.Type.MINOR,
+            double_degree_status=AcademicTag.Type.DOUBLE_DEGREE,
+            project_status=AcademicTag.Type.PROJECT,
         )
-        challenge_cup_status = get_text_status(
-            person, AcademicTextEntry.Type.CHALLENGE_CUP
+        academic_params.update({
+            name: get_tag_status(person, type)
+            for name, type in tag_status_dict.items()
+        })
+        text_status_dict = dict(
+            scientific_research_status=AcademicTextEntry.Type.SCIENTIFIC_RESEARCH,
+            challenge_cup_status=AcademicTextEntry.Type.CHALLENGE_CUP,
+            internship_status=AcademicTextEntry.Type.INTERNSHIP,
+            scientific_direction_status=AcademicTextEntry.Type.SCIENTIFIC_DIRECTION,
+            graduation_status=AcademicTextEntry.Type.GRADUATION,
         )
-        internship_status = get_text_status(
-            person, AcademicTextEntry.Type.INTERNSHIP
-        )
-        scientific_direction_status = get_text_status(
-            person, AcademicTextEntry.Type.SCIENTIFIC_DIRECTION
-        )
-        graduation_status = get_text_status(
-            person, AcademicTextEntry.Type.GRADUATION
-        )
-
-        status_dict = dict(
-            major_status=major_status,
-            minor_status=minor_status,
-            double_degree_status=double_degree_status,
-            project_status=project_status,
-            scientific_research_status=scientific_research_status,
-            challenge_cup_status=challenge_cup_status,
-            internship_status=internship_status,
-            scientific_direction_status=scientific_direction_status,
-            graduation_status=graduation_status,
-        )
-        academic_params.update(status_dict)
-        render_context.update(academic_params=academic_params)
+        academic_params.update({
+            name: get_text_status(person, type)
+            for name, type in text_status_dict.items()
+        })
+        render_context.update(Academic=academic_params)
 
         # ------------------ 成就卡片 ------------------ #
         _, _, achievement_by_types = personal_achievements(person.get_user())
-        achievement_params = dict(achievement_by_types=achievement_by_types)
-        render_context.update(achievement_params=achievement_params)
+        achievement_params = dict(type_order_displays=achievement_by_types)
+        render_context.update(Achievement=achievement_params)
 
         # ------------------ 前端准备 ------------------ #
         # 存储被查询人的信息

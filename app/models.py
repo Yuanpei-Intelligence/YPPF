@@ -267,7 +267,7 @@ class NaturalPerson(models.Model):
         verbose_name_plural = verbose_name
 
     # Common Attributes
-    person_id: User = models.OneToOneField(to=User, on_delete=models.CASCADE)
+    person_id = models.OneToOneField(to=User, on_delete=models.CASCADE)
 
     # 不要在任何地方使用此字段，建议先删除unique进行迁移，然后循环调用save
     stu_id_dbonly = models.CharField("学号——仅数据库", max_length=150,
@@ -459,7 +459,7 @@ class OrganizationType(models.Model):
         "小组类型编号", unique=True, primary_key=True)
     otype_name = models.CharField("小组类型名称", max_length=25)
     otype_superior_id = models.SmallIntegerField("上级小组类型编号", default=0)
-    incharge: NaturalPerson = models.ForeignKey(
+    incharge = models.ForeignKey(
         NaturalPerson,
         related_name="incharge",
         on_delete=models.SET_NULL,
@@ -1170,7 +1170,7 @@ class Notification(models.Model):
     bulk_identifier = models.CharField("批量信息标识", max_length=64, default="",
                                        db_index=True)
     anonymous_flag = models.BooleanField("是否匿名", default=False)
-    relate_instance: CommentBase = models.ForeignKey(
+    relate_instance = models.ForeignKey(
         CommentBase,
         related_name="relate_notifications",
         on_delete=models.CASCADE,
@@ -1409,7 +1409,7 @@ class ModifyRecord(models.Model):
         verbose_name = "~R.修改记录"
         verbose_name_plural = verbose_name
         ordering = ["-time"]
-    user: User = models.ForeignKey(User, on_delete=models.SET_NULL,
+    user = models.ForeignKey(User, on_delete=models.SET_NULL,
                                    related_name="modify_records",
                                    to_field='username', blank=True, null=True)
     usertype = models.CharField('用户类型', max_length=16, default='', blank=True)
@@ -1611,7 +1611,7 @@ class CourseRecord(models.Model):
         verbose_name_plural = verbose_name
 
     person = models.ForeignKey(NaturalPerson, on_delete=models.CASCADE)
-    course: Course = models.ForeignKey(
+    course = models.ForeignKey(
         Course, on_delete=models.SET_NULL, null=True, blank=True,
     )
     # 长度兼容组织和课程名
@@ -1743,7 +1743,7 @@ class Chat(CommentBase):
         super().save(*args, **kwargs)
 
 
-class AcademicQAManager(models.Manager):
+class AcademicQAManager(models.Manager['AcademicQA']):
     def activated(self):
         return self.filter(chat__status=Chat.Status.PROGRESSING)
 
@@ -1766,7 +1766,7 @@ class AcademicQAAwards(models.Model):
         verbose_name = "P.学术问答相关奖励"
         verbose_name_plural = verbose_name
 
-    user: User = models.OneToOneField(User, on_delete=models.CASCADE)
+    user = models.OneToOneField(User, on_delete=models.CASCADE)
     created_undirected_qa = models.BooleanField("是否发起过非定向提问", default=False)
 
 
@@ -1831,7 +1831,7 @@ class PoolItem(models.Model):
         verbose_name_plural = verbose_name
 
     pool = models.ForeignKey(Pool, verbose_name='奖池', on_delete=models.CASCADE)
-    prize: Prize = models.ForeignKey(Prize, verbose_name='奖品', on_delete=models.CASCADE,
+    prize = models.ForeignKey(Prize, verbose_name='奖品', on_delete=models.CASCADE,
                                      null=True, blank=True)
     origin_num = models.IntegerField('初始数量')
     consumed_num = models.IntegerField('已兑换', default=0)
@@ -1839,7 +1839,7 @@ class PoolItem(models.Model):
     exchange_limit = models.IntegerField('单人兑换上限', default=0)
     exchange_price = models.IntegerField('价格', null=True, blank=True)
     # 下面这个在抽奖/盲盒奖池中有效
-    is_big_prize: bool = models.BooleanField('是否特别奖品', default=False)
+    is_big_prize = models.BooleanField('是否特别奖品', default=False)
 
     @property
     def is_empty(self) -> bool:
@@ -1867,7 +1867,7 @@ class PoolRecord(models.Model):
 
     user = models.ForeignKey(User, verbose_name='用户', on_delete=models.CASCADE)
     pool = models.ForeignKey(Pool, verbose_name='奖池', on_delete=models.CASCADE)
-    prize: Prize = models.ForeignKey(
+    prize = models.ForeignKey(
         Prize, verbose_name='奖品', on_delete=models.CASCADE,
         null=True, blank=True,
     )

@@ -27,34 +27,22 @@ __all__ = [
 
 def personal_achievements(user: User):
     unlocked_achievements = AchievementUnlock.objects.filter(user=user)
-    invisible_achievements = unlocked_achievements.filter(private=True)
-    visible_achievements = unlocked_achievements.filter(private=False)
+    invisible_achievements = list(unlocked_achievements.filter(private=True))
+    visible_achievements = list(unlocked_achievements.filter(private=False))
 
+    unlocked_ids = list(unlocked_achievements.values_list('achievement', flat=True))
     achievement_types = AchievementType.objects.all().order_by('id')
-    # （类型，已解锁数量，总数，已解锁成就，未解锁成就，隐藏成就）
-    display_by_types = []
+    # （类型，总数，已解锁成就，未解锁成就，隐藏成就）
+    display_by_types: list[tuple[AchievementType, int,
+        list[Achievement], list[Achievement], list[Achievement]]] = []
     for achievement_type in achievement_types:
         achievements = Achievement.objects.filter(achievement_type=achievement_type)
-        all_achievement_stat = achievements.count()
-        unlocked_personal_stat = unlocked_achievements.filter(
-            achievement__in=achievements).count()
-
-        unlocked_achievements = []
-        # achievement_unlocked is the list of unlocked achievements which are not hidden
-        locked_achievements = []
-        hidden_achievements = []
-        for achievement in achievements:
-            # count achievementUnlocks attached to achievement
-            if achievement in unlocked_achievements:
-                unlocked_achievements.append(achievement)
-            elif achievement.hidden:
-                hidden_achievements.append(achievement)
-            else:
-                locked_achievements.append(achievement)
-
-        display_by_types.append(
-            (achievement_type, unlocked_personal_stat, all_achievement_stat,
-             unlocked_achievements, locked_achievements, hidden_achievements))
+        unlocked = list(achievements.filter(pk__in=unlocked_ids))
+        all_locked = achievements.exclude(pk__in=unlocked_ids)
+        locked = list(all_locked.filter(hidden=False))
+        hidden = list(all_locked.filter(hidden=True))
+        display = (achievement_type, achievements.count(), unlocked, locked, hidden)
+        display_by_types.append(display)
     return invisible_achievements, visible_achievements, display_by_types
 
 
