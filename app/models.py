@@ -39,6 +39,7 @@ models.py
 import random
 from math import ceil
 from datetime import datetime, timedelta
+from typing import TypeAlias
 
 from django.db import models, transaction
 from django.db.models import Q, QuerySet, Sum
@@ -55,6 +56,7 @@ __all__ = [
     # 模型
     'User',
     'NaturalPerson',
+    'Person',
     'Freshman',
     'OrganizationType',
     'OrganizationTag',
@@ -420,6 +422,9 @@ class NaturalPerson(models.Model):
         else:
             assert self.stu_id_dbonly == self.person_id.username, "学号不匹配！"
         super().save(*args, **kwargs)
+
+
+Person: TypeAlias = NaturalPerson
 
 
 class Freshman(models.Model):

@@ -3,7 +3,11 @@ from django.test import SimpleTestCase, TestCase
 from django.db.models import Q
 
 from generic.models import User
-from app.models import NaturalPerson, Organization, Position
+from app.models import (
+    NaturalPerson as Person,
+    Organization as Org,
+    Position as Position,
+)
 from Appointment.models import Participant
 
 from utils.models.query import *
@@ -47,7 +51,7 @@ class SQueryFieldTest(SimpleTestCase):
         self.assertEqual(f(User.credit.field), 'credit')
         self.assertEqual(f(User.active.field), 'active')
         self.assertEqual(f(User.last_login.field), 'last_login')
-        self.assertEqual(f(NaturalPerson.avatar.field), 'avatar')
+        self.assertEqual(f(Person.avatar.field), 'avatar')
 
     def test_normal_descriptors(self):
         '''测试检测普通字段描述符的功能'''
@@ -55,20 +59,20 @@ class SQueryFieldTest(SimpleTestCase):
         self.assertEqual(f(User.credit), 'credit')
         self.assertEqual(f(User.active), 'active')
         self.assertEqual(f(User.last_login), 'last_login')
-        self.assertEqual(f(NaturalPerson.avatar), 'avatar')
+        self.assertEqual(f(Person.avatar), 'avatar')
 
     def test_forward_relations(self):
         '''测试检测正向关系字段的功能'''
-        self.assertEqual(f(NaturalPerson.person_id), 'person_id')
-        self.assertEqual(f(NaturalPerson.person_id.field), 'person_id')
+        self.assertEqual(f(Person.person_id), 'person_id')
+        self.assertEqual(f(Person.person_id.field), 'person_id')
         self.assertEqual(f(Position.person), 'person')
         self.assertEqual(f(Position.person.field), 'person')
-        self.assertEqual(f(NaturalPerson.unsubscribe_list), 'unsubscribe_list')
-        self.assertEqual(f(NaturalPerson.unsubscribe_list.field), 'unsubscribe_list')
+        self.assertEqual(f(Person.unsubscribe_list), 'unsubscribe_list')
+        self.assertEqual(f(Person.unsubscribe_list.field), 'unsubscribe_list')
 
     def test_foreign_index(self):
         '''测试检测外键索引字段的功能'''
-        self.assertEqual(f(NaturalPerson.person_id_id), 'person_id_id')
+        self.assertEqual(f(Person.person_id_id), 'person_id_id')
         self.assertEqual(f(Position.person_id), 'person_id')
 
     def test_reverse_relations(self):
@@ -78,25 +82,25 @@ class SQueryFieldTest(SimpleTestCase):
 
     def test_index_form(self):
         '''测试特殊形式的字段的功能'''
-        self.assertEqual(f(Index(NaturalPerson.person_id)), 'person_id_id')
+        self.assertEqual(f(Index(Person.person_id)), 'person_id_id')
         self.assertEqual(f(Index(Position.person)), 'person_id')
-        self.assertEqual(f(Index(NaturalPerson.unsubscribe_list)), 'unsubscribe_list')
+        self.assertEqual(f(Index(Person.unsubscribe_list)), 'unsubscribe_list')
         self.assertEqual(f(Index(Position.person_id)), 'person_id')
         self.assertEqual(f(Index(Position.person.field)), 'person_id')
 
     def test_forward_form(self):
         '''测试特殊形式的正向关系字段的功能'''
         self.assertEqual(f(Forward(User.naturalperson)), 'person_id')
-        self.assertEqual(f(Forward(NaturalPerson.position_set)), 'person')
-        self.assertEqual(f(Forward(Organization.unsubscribers)), 'unsubscribe_list')
+        self.assertEqual(f(Forward(Person.position_set)), 'person')
+        self.assertEqual(f(Forward(Org.unsubscribers)), 'unsubscribe_list')
         self.assertEqual(f(Forward(Position.person)), 'person')
         self.assertEqual(f(Forward(Position.person.field)), 'person')
 
     def test_reverse_form(self):
         '''测试特殊形式的反向关系字段的功能，不会因此跨越隐藏关系字段'''
-        self.assertEqual(f(Reverse(NaturalPerson.person_id)), 'naturalperson')
+        self.assertEqual(f(Reverse(Person.person_id)), 'naturalperson')
         self.assertEqual(f(Reverse(Position.person)), 'position_set')
-        self.assertEqual(f(Reverse(NaturalPerson.unsubscribe_list)), 'unsubscribers')
+        self.assertEqual(f(Reverse(Person.unsubscribe_list)), 'unsubscribers')
         self.assertEqual(f(Reverse(Participant.appoint_list)), 'appoint_list')
         self.assertEqual(f(Reverse(Position.person.field)), 'position_set')
         with self.assertRaises(ValueError):
@@ -119,7 +123,7 @@ class SQueryFunctionTest(TestCase):
             [cls.u3, '3', '2019'],
         ]
         cls.p1, cls.p2, cls.p3 = (
-            NaturalPerson.objects.create(person_id=u, name=name, stu_grade=grade)
+            Person.objects.create(person_id=u, name=name, stu_grade=grade)
             for u, name, grade in person_datas
         )
 
@@ -138,25 +142,25 @@ class SQueryFunctionTest(TestCase):
         self.assertEqual(sget(User.id, self.u2.id), self.u2)
         with self.assertRaises(User.DoesNotExist):
             sget(User.username, '44')
-        self.assertEqual(sget(NaturalPerson.name, self.p1.name), self.p1)
-        self.assertEqual(sget(NaturalPerson.stu_grade, '2019'), self.p3)
-        self.assertEqual(sget([NaturalPerson.person_id, User.username],
+        self.assertEqual(sget(Person.name, self.p1.name), self.p1)
+        self.assertEqual(sget(Person.stu_grade, '2019'), self.p3)
+        self.assertEqual(sget([Person.person_id, User.username],
                               self.u1.username), self.p1)
-        with self.assertRaises(NaturalPerson.MultipleObjectsReturned):
-            sget(NaturalPerson.stu_grade, '2018')
+        with self.assertRaises(Person.MultipleObjectsReturned):
+            sget(Person.stu_grade, '2018')
 
     def test_filter(self):
         '''测试`SQuery.sfilter`的功能'''
         self.assertCountEqual(sfilter(User.name, 'a'), [self.u1, self.u3])
-        self.assertCountEqual(sfilter(NaturalPerson.stu_grade, '2018'), [self.p1, self.p2])
-        self.assertCountEqual(sfilter([NaturalPerson.person_id, User.name], 'a'),
+        self.assertCountEqual(sfilter(Person.stu_grade, '2018'), [self.p1, self.p2])
+        self.assertCountEqual(sfilter([Person.person_id, User.name], 'a'),
                               [self.p1, self.p3])
 
     def test_exclude(self):
         '''测试`SQuery.sexclude`的功能'''
         self.assertCountEqual(sexclude(User.name, 'b'), [self.u1, self.u3, self.uorg])
-        self.assertCountEqual(sexclude(NaturalPerson.stu_grade, '2018'), [self.p3])
-        self.assertCountEqual(sexclude([NaturalPerson.person_id, User.name], 'a'),
+        self.assertCountEqual(sexclude(Person.stu_grade, '2018'), [self.p3])
+        self.assertCountEqual(sexclude([Person.person_id, User.name], 'a'),
                               [self.p2])
 
     def assertValuesEqual(self, qs1, qs2):
@@ -167,24 +171,24 @@ class SQueryFunctionTest(TestCase):
     def test_values(self):
         '''测试`SQuery.svalues`的功能'''
         self.assertValuesEqual(User.objects.values('username'), svalues(User.username))
-        self.assertValuesEqual(NaturalPerson.objects.values('name'), svalues(NaturalPerson.name))
-        self.assertValuesEqual(svalues(NaturalPerson.person_id, NaturalPerson.name),
-                               NaturalPerson.objects.values('person_id__name'))
+        self.assertValuesEqual(Person.objects.values('name'), svalues(Person.name))
+        self.assertValuesEqual(svalues(Person.person_id, Person.name),
+                               Person.objects.values('person_id__name'))
 
     def test_values_list(self):
         '''测试`SQuery.svlist`的功能'''
         self.assertListEqual(svlist(User.username), ['11', '22', '33', 'zz00000'])
-        self.assertListEqual(svlist(NaturalPerson.person_id), [u.pk for u in self.users])
-        self.assertListEqual(svlist(NaturalPerson.person_id, User.name), ['a', 'b', 'a'])
+        self.assertListEqual(svlist(Person.person_id), [u.pk for u in self.users])
+        self.assertListEqual(svlist(Person.person_id, User.name), ['a', 'b', 'a'])
 
     def test_reverse_form(self):
         '''测试`SQuery.Reverse`能否正确从另一侧模型管理器生成查询'''
-        svalues(NaturalPerson.unsubscribe_list)  # 检查能否处理延迟加载的关系
-        self.assertListEqual(svlist(Reverse(NaturalPerson.person_id), NaturalPerson.name),
-                             svlist(NaturalPerson.name) + [None])
+        svalues(Person.unsubscribe_list)  # 检查能否处理延迟加载的关系
+        self.assertListEqual(svlist(Reverse(Person.person_id), Person.name),
+                             svlist(Person.name) + [None])
         self.assertEqual(sget(User.naturalperson, self.p1.id), self.u1)
-        self.assertEqual(sget(Reverse(NaturalPerson.person_id), self.p1), self.u1)
-        self.assertEqual(sget([Reverse(NaturalPerson.person_id), 'isnull'], True), self.uorg)
-        self.assertCountEqual(sfilter([Reverse(NaturalPerson.person_id), NaturalPerson.stu_grade], 2018),
+        self.assertEqual(sget(Reverse(Person.person_id), self.p1), self.u1)
+        self.assertEqual(sget([Reverse(Person.person_id), 'isnull'], True), self.uorg)
+        self.assertCountEqual(sfilter([Reverse(Person.person_id), Person.stu_grade], 2018),
                               [self.u1, self.u2])
-        self.assertCountEqual(sexclude(Reverse(NaturalPerson.person_id), None), self.users)
+        self.assertCountEqual(sexclude(Reverse(Person.person_id), None), self.users)
