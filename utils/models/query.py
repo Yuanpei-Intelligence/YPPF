@@ -4,7 +4,7 @@
 - 通过标记字段为特殊关联字段，可以获取特殊关联字段的查询名称。
 - 进行单条件查询的函数，使用首个字段所在模型的默认管理器进行查询。
 
-在本模块中，以 s 开头的函数均为单字段转化函数或单条件查询函数。
+在本模块中，有 s 前缀的函数均为单字段转化函数或单条件查询函数。
 
 在以往的代码中，我们经常会看到这样的代码::
 
@@ -54,7 +54,8 @@ from django.db.models.constants import LOOKUP_SEP
 __all__ = [
     'f', 'q', 'lq', 'sq',
     'Index', 'Forward', 'Reverse',
-    'sget', 'sfilter', 'sexclude',
+    'sget', 'sfilter', 'sexclude', 'svalues', 'svlist',
+    'qsvlist',
 ]
 
 
@@ -67,7 +68,6 @@ RelatedDescriptor: TypeAlias = (ForwardDescriptor | ReverseDescriptor
                                 | ForeignIndexDescriptor | ManyToManyDescriptor)
 RelatedFieldLike: TypeAlias = RelatedField | RelatedDescriptor
 FieldLike: TypeAlias = NormalFieldLike | RelatedFieldLike
-FieldLikeExpr: TypeAlias = FieldLike | str
 
 
 class SpecialRelation:
@@ -105,9 +105,11 @@ class Reverse(SpecialRelation):
 
 IndexLike: TypeAlias = ForeignIndexDescriptor | Index
 RelationLike: TypeAlias = RelatedFieldLike | SpecialRelation
+FieldLikeObject: TypeAlias = FieldLike | SpecialRelation
+FieldLikeExpr: TypeAlias = FieldLikeObject | str
 
 
-def _is_relation(field: FieldLike | SpecialRelation) -> TypeGuard[RelationLike]:
+def _is_relation(field: FieldLikeObject) -> TypeGuard[RelationLike]:
     '''判断字段是否为关系字段相关属性'''
     if isinstance(field, SpecialRelation):
         field = field.fieldlike
@@ -210,7 +212,7 @@ def _reverse_name(field: RelationLike) -> str:
     return field.related_query_name()
 
 
-def _to_field_name(field: FieldLikeExpr | SpecialRelation) -> str:
+def _to_field_name(field: FieldLikeExpr) -> str:
     '''获取字段的查询名称'''
     if isinstance(field, str):
         return field
@@ -226,17 +228,17 @@ def _to_field_name(field: FieldLikeExpr | SpecialRelation) -> str:
     raise TypeError(f'Unsupported type: {type(field)} for field')
 
 
-def f(*fields: FieldLikeExpr | SpecialRelation) -> str:
+def f(*fields: FieldLikeExpr) -> str:
     '''获取连续字段的查询名称'''
     return LOOKUP_SEP.join(_to_field_name(field) for field in fields)
 
 
-def q(*fields: FieldLikeExpr | SpecialRelation, value: Any) -> Q:
+def q(*fields: FieldLikeExpr, value: Any) -> Q:
     '''获取连续字段的查询Q对象'''
     return Q(**{f(*fields): value})
 
 
-def lq(value: Any, *fields: FieldLikeExpr | SpecialRelation) -> Q:
+def lq(value: Any, *fields: FieldLikeExpr) -> Q:
     '''获取连续字段的查询Q对象，参数线性排列'''
     return q(*fields, value=value)
 
@@ -261,12 +263,12 @@ def _first(field: Extend[T]) -> T:
     return fields[0]
 
 
-def sq(field: Extend[FieldLikeExpr | SpecialRelation], value: Any) -> Q:
+def sq(field: Extend[FieldLikeExpr], value: Any) -> Q:
     '''获取单个查询条件的Q对象，可以包含连续字段'''
     return q(*_as_seq(field), value=value)
 
 
-def _get_queryset(field: Extend[FieldLike | SpecialRelation]) -> QuerySet[Model]:
+def _get_queryset(field: Extend[FieldLikeObject]) -> QuerySet[Model]:
     '''获取字段的查询集'''
     field = _first(field)
     if _is_relation(field):
@@ -279,20 +281,35 @@ def _get_queryset(field: Extend[FieldLike | SpecialRelation]) -> QuerySet[Model]
     return field.model._default_manager.all()
 
 
-def _ext(fields: Extend[FieldLike | SpecialRelation]) -> Extend[Any]:
+def _ext(fields: Extend[FieldLikeObject]) -> Extend[Any]:
     return fields
 
 
-def sget(field: Extend[FieldLike | SpecialRelation], value: Any) -> Model:
+def sget(field: Extend[FieldLikeObject], value: Any) -> Model:
     '''单条件获取模型实例，见`QuerySet.get`'''
     return _get_queryset(field).get(sq(_ext(field), value))
 
 
-def sfilter(field: Extend[FieldLike | SpecialRelation], value: Any) -> QuerySet:
+def sfilter(field: Extend[FieldLikeObject], value: Any) -> QuerySet:
     '''单条件过滤查询集，见`QuerySet.filter`'''
     return _get_queryset(field).filter(sq(_ext(field), value))
 
 
-def sexclude(field: Extend[FieldLike | SpecialRelation], value: Any) -> QuerySet:
+def sexclude(field: Extend[FieldLikeObject], value: Any) -> QuerySet:
     '''单条件排除查询集，见`QuerySet.exclude`'''
     return _get_queryset(field).exclude(sq(_ext(field), value))
+
+
+def svalues(field: FieldLikeObject, *extras: FieldLikeExpr):
+    '''单条件查询字段值，见`QuerySet.values`'''
+    return _get_queryset(field).values(f(field, *extras))
+
+
+def qsvlist(queryset: QuerySet, field: FieldLikeExpr, *extras: FieldLikeExpr) -> list:
+    '''单条件查询字段值，立即计算并转为列表，见`QuerySet.values_list`'''
+    return list(queryset.values_list(f(field, *extras), flat=True))
+
+
+def svlist(field: FieldLikeObject, *extras: FieldLikeExpr) -> list:
+    '''单条件查询字段值，立即计算并转为列表，见`QuerySet.values_list`'''
+    return qsvlist(_get_queryset(field), field, *extras)
