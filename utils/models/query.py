@@ -3,8 +3,9 @@
 - 获取查询字段的函数，且同时支持字段描述符、字段实例以及字段名称。
 - 通过标记字段为特殊关联字段，可以获取特殊关联字段的查询名称。
 - 进行单条件查询的函数，使用首个字段所在模型的默认管理器进行查询。
+- 辅助多条件查询的函数，追踪关系并查询字段。
 
-在本模块中，有 s 前缀的函数均为单字段转化函数或单条件查询函数。
+在本模块中，有 s 前缀的函数均为单字段转化函数或单条件查询函数，m 前缀的为多条件查询函数。
 
 在以往的代码中，我们经常会看到这样的代码::
 
@@ -28,11 +29,16 @@ Example:
         instance = BModel.objects.filter(sq([BModel.fkey2_name, AModel.fkey_name, 'field_name'], ...))
         values = BModel.objects.values(f(BModel.fkey2_name, AModel.fkey_name, 'field_name'))
 
+    对于**名称固定**的最终非关系字段，使用关键字参数查询往往更方便::
+        
+        instance = queryset.get(mq(BModel.fkey2_name, AModel.fkey_name, field_name=...))
+
 Warning:
     本模块的函数在模型定义时无法使用，因为字段描述符在模型类创建后才会被创建，但你可以在任何方法中使用。
 
 Note:
     本模块不提供与更新相关的函数，因为更新不会跨越关系，且应以管理器要求的安全方式进行。
+    尽管多条件查询支持关键字参数，你仍应避免在条件中包含`__`以阻碍`field=`型字段追踪。
 '''
 from typing import cast, Any, TypeAlias, TypeGuard, TypeVar
 
@@ -52,7 +58,7 @@ from django.db.models.constants import LOOKUP_SEP
 
 
 __all__ = [
-    'f', 'q', 'lq', 'sq',
+    'f', 'q', 'sq', 'mq',
     'Index', 'Forward', 'Reverse',
     'sget', 'sfilter', 'sexclude', 'svalues', 'svlist',
     'qsvlist',
@@ -238,8 +244,31 @@ def q(*fields: FieldLikeExpr, value: Any) -> Q:
     return Q(**{f(*fields): value})
 
 
+def mq(*fields: FieldLikeExpr, **querys: Any) -> Q:
+    '''获取包含某字段多个查询条件的Q对象
+    
+    Args:
+        *fields: 代表字段的完整路径，可以包含连续字段
+        **querys: 查询条件，键为查询类型，值为查询值
+
+    Returns:
+        Q: 将每个查询条件`key: value`转为`q(*fields, key, value=value)`的`Q`条件之交
+
+    Example:
+        >>> mq('user', 'id', lt=1, gt=0, isnull=False)
+        Q(user__id__lt=1, user__id__gt=0, user__id__isnull=False)
+
+    Note:
+        尽量避免在查询条件中包含`__`，这严重妨碍了`field=`型字段追踪。
+    '''
+    prefix = f(*fields)
+    if prefix:
+        prefix += LOOKUP_SEP
+    return Q(**{prefix + key: value for key, value in querys.items()})
+
+
 def lq(value: Any, *fields: FieldLikeExpr) -> Q:
-    '''获取连续字段的查询Q对象，参数线性排列'''
+    '''获取连续字段的查询Q对象，参数线性排列，已废弃'''
     return q(*fields, value=value)
 
 

@@ -18,18 +18,9 @@ class SQueryTest(SimpleTestCase):
     def test_transform(self):
         '''测试转换器的功能'''
         self.assertEqual(f('a'), 'a')
-        q1 = q('a', value=1)
-        self.assertIsInstance(q1, Q)
-        self.assertEqual(q1, Q(a=1))
-        q2 = lq(1, 'a')
-        self.assertIsInstance(q2, Q)
-        self.assertEqual(q2, Q(a=1))
-        q3 = sq('a', 1)
-        self.assertIsInstance(q3, Q)
-        self.assertEqual(q3, Q(a=1))
-        q4 = sq(['a'], 1)
-        self.assertIsInstance(q4, Q)
-        self.assertEqual(q4, Q(a=1))
+        self.assertEqual(q('a', value=1), Q(a=1))
+        self.assertEqual(sq('a', 1), Q(a=1))
+        self.assertEqual(sq(['a'], 1), Q(a=1))
 
     def test_concat(self):
         '''测试函数连接的功能'''
@@ -37,8 +28,16 @@ class SQueryTest(SimpleTestCase):
         self.assertEqual(f('a', 'b', 'c_id'), 'a__b__c_id')
         self.assertEqual(f('user', 'name', 'in'), 'user__name__in')
         self.assertEqual(q('user', 'id', 'lt', value=1), Q(user__id__lt=1))
-        self.assertEqual(lq(1, 'user', 'id', 'lt'), Q(user__id__lt=1))
         self.assertEqual(sq(['user', 'id', 'lt'], 2), Q(user__id__lt=2))
+
+    def test_multiple_query(self):
+        '''测试多个查询的功能'''
+        self.assertEqual(mq(), Q())
+        self.assertEqual(mq('a', exact=True), Q(a__exact=True))
+        mq1 = mq('val', lt=1, gt=0, isnull=False)
+        self.assertEqual(mq1, Q(val__lt=1, val__gt=0, val__isnull=False))
+        mq2 = mq('user', 'id', lt=1, isnull=False)
+        self.assertEqual(mq2, Q(user__id__lt=1, user__id__isnull=False))
 
 
 
