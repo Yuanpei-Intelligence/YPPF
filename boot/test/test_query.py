@@ -180,6 +180,29 @@ class SQueryFunctionTest(TestCase):
         self.assertListEqual(svlist(Person.person_id), [u.pk for u in self.users])
         self.assertListEqual(svlist(Person.person_id, User.name), ['a', 'b', 'a'])
 
+    def test_multiple_get(self):
+        '''测试`SQuery.mget`的多个查询功能'''
+        self.assertEqual(mget(Person.person_id, name='a', username='11'), self.p1)
+        with self.assertRaises(Person.DoesNotExist):
+            mget(Person.person_id, name='a', username='22')
+
+    def test_multiple_filter(self):
+        '''测试`SQuery.mfilter`的多个查询功能'''
+        self.assertCountEqual(mfilter(User.id, gte=self.u2.id, lte=self.u3.id),
+                              [self.u2, self.u3])
+        self.assertFalse(mfilter(Person.person_id, id=self.p1.id, name='b'))
+        self.assertCountEqual(mfilter(Person.person_id, User.name, startswith='b'),
+                              [self.p2])
+
+    def test_multiple_exclude(self):
+        '''测试`SQuery.mexclude`的多个查询功能'''
+        self.assertCountEqual(mexclude(User.id, gte=self.u2.id, lte=self.u3.id),
+                              [self.u1, self.uorg])
+        self.assertCountEqual(mexclude(Person.person_id, id=self.p1.id, name='b'),
+                              [self.p1, self.p2, self.p3])
+        self.assertCountEqual(mexclude(Person.person_id, User.name, exact='a'),
+                              [self.p2])
+
     def test_reverse_form(self):
         '''测试`SQuery.Reverse`能否正确从另一侧模型管理器生成查询'''
         svalues(Person.unsubscribe_list)  # 检查能否处理延迟加载的关系

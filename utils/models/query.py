@@ -33,6 +33,12 @@ Example:
         
         instance = queryset.get(mq(BModel.fkey2_name, AModel.fkey_name, field_name=...))
 
+    在默认管理器上进行查询时，可以直接使用查询函数::
+
+        instance = mget(BModel.fkey2_name, AModel.fkey_name, field_name=...)
+        names = svlist(BModel.fkey2_name, AModel.fkey_name, field_name)
+        blogs = mfilter(Blog.author, Author.user, score=0, active=True)
+
 Warning:
     本模块的函数在模型定义时无法使用，因为字段描述符在模型类创建后才会被创建，但你可以在任何方法中使用。
 
@@ -62,6 +68,7 @@ __all__ = [
     'Index', 'Forward', 'Reverse',
     'sget', 'sfilter', 'sexclude', 'svalues', 'svlist',
     'qsvlist',
+    'mget', 'mfilter', 'mexclude',
 ]
 
 
@@ -267,11 +274,6 @@ def mq(*fields: FieldLikeExpr, **querys: Any) -> Q:
     return Q(**{prefix + key: value for key, value in querys.items()})
 
 
-def lq(value: Any, *fields: FieldLikeExpr) -> Q:
-    '''获取连续字段的查询Q对象，参数线性排列，已废弃'''
-    return q(*fields, value=value)
-
-
 T = TypeVar('T')
 ListLike: TypeAlias = list[T] | tuple[T, ...]
 Extend: TypeAlias = T | ListLike[T]
@@ -319,14 +321,29 @@ def sget(field: Extend[FieldLikeObject], value: Any) -> Model:
     return _get_queryset(field).get(sq(_ext(field), value))
 
 
+def mget(field: FieldLikeObject, *extras: FieldLikeExpr, **querys: Any) -> Model:
+    '''多条件获取模型实例，见`QuerySet.get`'''
+    return _get_queryset(field).get(mq(field, *extras, **querys))
+
+
 def sfilter(field: Extend[FieldLikeObject], value: Any) -> QuerySet:
     '''单条件过滤查询集，见`QuerySet.filter`'''
     return _get_queryset(field).filter(sq(_ext(field), value))
 
 
+def mfilter(field: FieldLikeObject, *extras: FieldLikeExpr, **querys: Any) -> QuerySet:
+    '''多条件过滤查询集，见`QuerySet.filter`'''
+    return _get_queryset(field).filter(mq(field, *extras, **querys))
+
+
 def sexclude(field: Extend[FieldLikeObject], value: Any) -> QuerySet:
     '''单条件排除查询集，见`QuerySet.exclude`'''
     return _get_queryset(field).exclude(sq(_ext(field), value))
+
+
+def mexclude(field: FieldLikeObject, *extras: FieldLikeExpr, **querys: Any) -> QuerySet:
+    '''多条件排除查询集，见`QuerySet.exclude`，查询条件为交集'''
+    return _get_queryset(field).exclude(mq(field, *extras, **querys))
 
 
 def svalues(field: FieldLikeObject, *extras: FieldLikeExpr):
