@@ -127,6 +127,9 @@ class SQueryFunctionTest(TestCase):
         with self.assertRaises(TypeError): sget([], 'a')
         with self.assertRaises(TypeError): sfilter([], 'a')
         with self.assertRaises(TypeError): sexclude([], 'a')
+        with self.assertRaises(TypeError): svalues()
+        with self.assertRaises(TypeError): svlist()
+        with self.assertRaises(TypeError): qsvlist(User.objects.all())
 
     def test_get(self):
         '''测试`SQuery.sget`的功能'''
@@ -154,3 +157,21 @@ class SQueryFunctionTest(TestCase):
         self.assertCountEqual(sexclude(NaturalPerson.stu_grade, '2018'), [self.p3])
         self.assertCountEqual(sexclude([NaturalPerson.person_id, User.name], 'a'),
                               [self.p2])
+
+    def assertValuesEqual(self, qs1, qs2):
+        '''测试QuerySet的值是否相等，由于QuerySet无法直接比较，因此需要转化为list'''
+        self.assertEqual(type(qs1), type(qs2))
+        self.assertListEqual(list(qs1), list(qs2))
+
+    def test_values(self):
+        '''测试`SQuery.svalues`的功能'''
+        self.assertValuesEqual(User.objects.values('username'), svalues(User.username))
+        self.assertValuesEqual(NaturalPerson.objects.values('name'), svalues(NaturalPerson.name))
+        self.assertValuesEqual(svalues(NaturalPerson.person_id, NaturalPerson.name),
+                               NaturalPerson.objects.values('person_id__name'))
+
+    def test_values_list(self):
+        '''测试`SQuery.svlist`的功能'''
+        self.assertListEqual(svlist(User.username), ['11', '22', '33'])
+        self.assertListEqual(svlist(NaturalPerson.person_id), [u.pk for u in self.users])
+        self.assertListEqual(svlist(NaturalPerson.person_id, User.name), ['a', 'b', 'a'])
