@@ -111,6 +111,7 @@ class SQueryFunctionTest(TestCase):
         cls.u2 = User.objects.create_user('22', 'b', password='222')
         cls.u3 = User.objects.create_user('33', 'a', password='333')
         cls.users = [cls.u1, cls.u2, cls.u3]
+        cls.uorg = User.objects.create_user('zz00000', 'org', password='333')
         
         person_datas = [
             [cls.u1, '1', '2018'],
@@ -153,7 +154,7 @@ class SQueryFunctionTest(TestCase):
 
     def test_exclude(self):
         '''测试`SQuery.sexclude`的功能'''
-        self.assertCountEqual(sexclude(User.name, 'b'), [self.u1, self.u3])
+        self.assertCountEqual(sexclude(User.name, 'b'), [self.u1, self.u3, self.uorg])
         self.assertCountEqual(sexclude(NaturalPerson.stu_grade, '2018'), [self.p3])
         self.assertCountEqual(sexclude([NaturalPerson.person_id, User.name], 'a'),
                               [self.p2])
@@ -172,6 +173,18 @@ class SQueryFunctionTest(TestCase):
 
     def test_values_list(self):
         '''测试`SQuery.svlist`的功能'''
-        self.assertListEqual(svlist(User.username), ['11', '22', '33'])
+        self.assertListEqual(svlist(User.username), ['11', '22', '33', 'zz00000'])
         self.assertListEqual(svlist(NaturalPerson.person_id), [u.pk for u in self.users])
         self.assertListEqual(svlist(NaturalPerson.person_id, User.name), ['a', 'b', 'a'])
+
+    def test_reverse_form(self):
+        '''测试`SQuery.Reverse`能否正确从另一侧模型管理器生成查询'''
+        svalues(NaturalPerson.unsubscribe_list)  # 检查能否处理延迟加载的关系
+        self.assertListEqual(svlist(Reverse(NaturalPerson.person_id), NaturalPerson.name),
+                             svlist(NaturalPerson.name) + [None])
+        self.assertEqual(sget(User.naturalperson, self.p1.id), self.u1)
+        self.assertEqual(sget(Reverse(NaturalPerson.person_id), self.p1), self.u1)
+        self.assertEqual(sget([Reverse(NaturalPerson.person_id), 'isnull'], True), self.uorg)
+        self.assertCountEqual(sfilter([Reverse(NaturalPerson.person_id), NaturalPerson.stu_grade], 2018),
+                              [self.u1, self.u2])
+        self.assertCountEqual(sexclude(Reverse(NaturalPerson.person_id), None), self.users)
