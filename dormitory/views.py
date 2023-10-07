@@ -22,7 +22,7 @@ class DormitoryAssignmentViewSet(viewsets.ReadOnlyModelViewSet):
 
 class DormitoryRoutineQAView(ProfileTemplateView):
 
-    template_name = 'dormitory/dormitory_routine_QA.html'
+    template_name = 'dormitory/routine_QA.html'
     page_name = '生活习惯调研'
     need_prepare = False
 
@@ -59,7 +59,7 @@ class DormitoryRoutineQAView(ProfileTemplateView):
 
 class DormitoryAssignResultView(ProfileTemplateView):
 
-    template_name = 'dormitory/dormitory_assign_result.html'
+    template_name = 'dormitory/assign_result.html'
     page_name = '宿舍分配结果'
     http_method_names = ['get']
     need_prepare = False

@@ -373,7 +373,7 @@ def viewFeedback(request: HttpRequest, fid):
     bar_display = utils.get_sidebar_and_navbar(request.user, navbar_name="反馈信息")
     title = feedback.title
     comments = showComment(feedback, anonymous_users=[feedback.person.person_id])
-    return render(request, "feedback_info.html", locals())
+    return render(request, "feedback/info.html", locals())
 
 
 @login_required(redirect_field_name='origin')
@@ -538,7 +538,7 @@ def feedbackWelcome(request: HttpRequest):
 
     bar_display = utils.get_sidebar_and_navbar(request.user, navbar_name="反馈中心")
 
-    return render(request, "feedback_welcome.html", locals())
+    return render(request, "feedback/welcome.html", locals())
 
 
 @login_required(redirect_field_name='origin')
@@ -729,4 +729,4 @@ def modifyFeedback(request: HttpRequest):
     bar_display = utils.get_sidebar_and_navbar(
         request.user, navbar_name="填写反馈" if is_new_feedback else "反馈详情"
     )
-    return render(request, "modify_feedback.html", locals())
+    return render(request, "feedback/modify.html", locals())
