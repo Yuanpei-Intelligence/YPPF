@@ -8,6 +8,7 @@ from django.db import transaction  # 原子化更改数据库
 from django.db.models import F
 
 from utils.marker import script
+from utils.models.semester import select_current
 from boot.config import GLOBAL_CONFIG
 from semester.api import current_semester
 from record.models import PageLog
@@ -385,9 +386,8 @@ def happy_birthday():
 @script
 @periodical('cron', 'weekly_activity_summary_reminder', hour=20, minute=0, day_of_week='sun')
 def weekly_activity_summary_reminder():
-    '''每周日晚上8点提醒未填写周报的组织负责人，目前仅限于团委，学学学委员会，学学学学会，学生会'''
+    '''每周日晚上8点提醒所有组织负责人通过每周活动总结填写未在系统中申报的活动，目前仅限于团委，学学学委员会，学学学学会，学生会'''
     today = date.today()
-    monday = today - timedelta(days=today.weekday())
     cur_semester = current_semester()
     if not cur_semester.start_date <= today <= cur_semester.end_date:
         return
@@ -397,32 +397,14 @@ def weekly_activity_summary_reminder():
     title = "每周活动总结提醒"
     for org in Organization.objects.filter(otype__in=notify_org_type):
 
-        act_summary_map = {
-            summary.activity: summary for summary in
-            ActivitySummary.objects.filter(
-                activity__organization_id=org,
-                # time__date__gte=monday,
-                time__date__lte=today).prefetch_related('activity')
-        }
-        activities = Activity.objects.filter(
-            organization_id=org,
-            # start__date__gte=monday,
-            end__date__lte=today,
-            status=Activity.Status.END,
-        )
-        notify_act_list = [
-            act for act in activities if act not in act_summary_map]
-        to_notify_user = Position.objects.filter(
-            org=org, pos=0).first().person.get_user()
+        incharge_users = Position.objects.filter(org=org, pos=0)
+        to_notify_user = select_current(incharge_users).first().person.get_user()
 
-        if not act_summary_map or notify_act_list:
-            message = '请及时填写每周活动总结\n' + '\n'.join(
-                ['\t活动：' + act.title for act in notify_act_list]
-            )
-            notification_create(
-                to_notify_user, sender,
-                Notification.Type.NEEDREAD, title, message,
-                publish_to_wechat=True,
-                publish_kws={'level': WechatMessageLevel.IMPORTANT,
-                             'show_source': False},
-            )
+        message = '如果本周举办了未在系统中申报的活动，请通过每周活动总结及时填报！'
+        notification_create(
+            to_notify_user, sender,
+            Notification.Type.NEEDREAD, title, message,
+            publish_to_wechat=True,
+            publish_kws={'level': WechatMessageLevel.IMPORTANT,
+                            'show_source': False},
+        )
