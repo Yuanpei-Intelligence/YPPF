@@ -839,6 +839,7 @@ def finishedActivityCenter(request: HttpRequest):
     对审核老师进行了特判
     """
     is_auditor = False
+    me = get_person_or_org(request.user)
     if request.user.is_person():
         try:
             person = get_person_or_org(request.user)
@@ -866,6 +867,13 @@ def finishedActivityCenter(request: HttpRequest):
                 activity__organization_id__organization_id=request.user
             ).exclude(status=ActivitySummary.Status.WAITING).order_by("-time")
         }
+
+    # 判断是否有权限进行每周活动总结
+    if_weekly_activity_summary = False
+    valid_otype_names = ['团委', '学学学委员会', '学学学学会', '学生会']
+    if request.user.is_org():
+        if me.otype.otype_name in valid_otype_names:
+            if_weekly_activity_summary = True
 
     # 前端使用
     context = dict(
@@ -1146,6 +1154,9 @@ class WeeklyActivitySummary(ProfileTemplateView):
         me = utils.get_person_or_org(self.request.user)
         if not self.request.user.is_org():
             return redirect(message_url(wrong('小组账号才能发起每周活动总结')))
+        valid_otype_names = ['团委', '学学学委员会', '学学学学会', '学生会']
+        if not me.otype.otype_name in valid_otype_names:
+            return redirect(message_url(wrong('您没有权限发起每周活动总结')))
 
         # 准备前端展示量
         html_display["applicant_name"] = me.oname

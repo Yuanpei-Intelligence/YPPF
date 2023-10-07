@@ -51,10 +51,12 @@
                             </div> -->
 
                                 <div class="d-flex justify-content-end">
+                                    {% if if_weekly_activity_summary %}
                                     <button type="button" class="btn btn-info mb-4 mr-2 "
                                     onclick="location.href = '/weekly-activity-summary/';" 
                                         >{{"每周活动总结"}}
                                     </button>
+                                    {% endif %}
                                     
                                     <button type="button" class="btn btn-info mb-4 mr-2 "
                                     onclick="location.href = '{{link}}{{new_link}}';" 
