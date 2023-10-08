@@ -5,17 +5,16 @@ from datetime import datetime, timedelta
 from typing import Literal
 
 from django.db import transaction
-from django.db.models import Q, F, QuerySet
+from django.db.models import F
 import csv
 import qrcode
 
-from generic.models import User, YQPointRecord
+from generic.models import User
 from generic.utils import to_search_indices
 from app.views_dependency import *
 from app.view.base import ProfileTemplateView
 from app.models import (
     NaturalPerson,
-    Organization,
     OrganizationType,
     Position,
     Activity,
@@ -34,6 +33,7 @@ from app.activity_utils import (
     withdraw_activity,
     get_activity_QRcode,
     modify_participants,
+    weekly_activity_summary_active_orgs,
 )
 from app.comment_utils import addComment, showComment
 from app.utils import (
@@ -869,17 +869,18 @@ def finishedActivityCenter(request: HttpRequest):
         }
 
     # 判断是否有权限进行每周活动总结
-    if_weekly_activity_summary = False
-    valid_otype_names = ['团委', '学学学委员会', '学学学学会', '学生会']
+    weekly_activity_summary_active = False
+    valid_orgs = weekly_activity_summary_active_orgs() 
     if request.user.is_org():
-        if me.otype.otype_name in valid_otype_names:
-            if_weekly_activity_summary = True
+        if me in valid_orgs:
+            weekly_activity_summary_active = True
 
     # 前端使用
     context = dict(
         bar_display=utils.get_sidebar_and_navbar(request.user, "活动结项"),
         all_instances=all_instances,
         user=request.user,
+        weekly_activity_summary_active = weekly_activity_summary_active,
     )
     return render(request, "activity/finished_center.html", context)
 
@@ -972,62 +973,69 @@ def activitySummary(request: UserRequest):
 
         if (post_type != "new_submit") and not application.is_pending():
             return redirect(message_url(wrong("不可以修改状态不为申请中的申请")))
-
-        if post_type in ["new_submit", "modify_submit"]:
-            if post_type == "new_submit":
-                # 检查活动
-                try:
-                    act_id = int(request.POST.get('activity_id'))
-                    activity = Activity.objects.get(id=act_id)
-                    assert activity in activities  # 防止篡改POST导致伪造
-                except:
-                    return redirect(message_url(wrong('找不到该活动，请检查活动总结的合法性！')))
-
+        
+        if post_type == "new_submit":
+            # 检查活动
+            try:
+                act_id = int(request.POST.get('activity_id'))
+                activity = Activity.objects.get(id=act_id)
+                assert activity in activities  # 防止篡改POST导致伪造
+            except:
+                return redirect(message_url(wrong('找不到该活动，请检查活动总结的合法性！')))
             # 与总结图片相关的原子操作
             with transaction.atomic():
-                # 活动总结图片
+                # 活动总结图片合法性检查
                 summary_photos = request.FILES.getlist('summaryimages')
                 photo_num = len(summary_photos)
                 if photo_num == 1:
-                    # 合法性检查
                     for image in summary_photos:
                         if utils.if_image(image) != 2:
                             return redirect(
                                 message_url(wrong("上传的总结图片只支持图片格式！")))
                 else:
-                    # 注意：modify_submit时，如果不修改总结图片，photo_num将为0，需要单独排除这种情况
-                    if not (photo_num == 0 and post_type == "modify_submit"):
-                        return redirect(message_url(wrong('图片内容为空或有多张图片！'), request.path))
-
-                if post_type == "new_submit":
-                    # 新建activity summary
-                    application: ActivitySummary = ActivitySummary.objects.create(
-                        status=ActivitySummary.Status.WAITING,
-                        activity=activity,
-                        image=summary_photos[0]
-                    )
-                    context = succeed(
-                        f'活动“{application.activity.title}”的申请已成功发送，请耐心等待{application.activity.examine_teacher.name}老师审批！'
-                    )
-                elif post_type == "modify_submit":
-                    # 修改活动总结图片
-                    # modify_submit时，如果没有修改总结图片，summmary_photos为空，photo_num为0
-                    if photo_num > 0:
-                        assert photo_num == 1
-                        application.image = summary_photos[0]
-                        application.save()
-                    context = succeed(
-                        f'活动“{application.activity.title}”的申请已成功修改，请耐心等待{application.activity.examine_teacher.name}老师审批！'
-                    )
+                    return redirect(message_url(wrong('图片内容为空或有多张图片！'), request.path))
+                # 新建activity summary
+                application: ActivitySummary = ActivitySummary.objects.create(
+                    status=ActivitySummary.Status.WAITING,
+                    activity=activity,
+                    image=summary_photos[0]
+                )
+                context = succeed(
+                    f'活动“{application.activity.title}”的申请已成功发送，请耐心等待{application.activity.examine_teacher.name}老师审批！'
+                )
             context["application_id"] = application.id
-
-            # 与参与人员、元气值、活动相关的原子操作，只有修改活动总结时使用
-            if post_type == "modify_submit":
-                now_participant_uids = request.POST.getlist("students")
-                # 检查参与人员是否为空
-                if len(now_participant_uids) == 0:
-                    return redirect(message_url(wrong('参与人员不能为空'), request.path))
-                modify_participants(application.activity, now_participant_uids)
+            
+        elif post_type == "modify_submit":
+            # 与总结图片相关的原子操作
+            with transaction.atomic():
+                # 活动总结图片合法性检查
+                summary_photos = request.FILES.getlist('summaryimages')
+                photo_num = len(summary_photos)
+                if photo_num == 1:
+                    for image in summary_photos:
+                        if utils.if_image(image) != 2:
+                            return redirect(
+                                message_url(wrong("上传的总结图片只支持图片格式！")))
+                # 注意：modify_submit时，如果不修改总结图片，photo_num将为0，需要单独排除这种情况
+                elif not (photo_num == 0):
+                    return redirect(message_url(wrong('图片内容为空或有多张图片！'), request.get_full_path()))
+                # 修改活动总结图片
+                # modify_submit时，如果没有修改总结图片，summmary_photos为空，photo_num为0
+                if photo_num > 0:
+                    assert photo_num == 1
+                    application.image = summary_photos[0]
+                    application.save()
+                context = succeed(
+                    f'活动“{application.activity.title}”的申请已成功修改，请耐心等待{application.activity.examine_teacher.name}老师审批！'
+                )
+            context["application_id"] = application.id
+            # 修改参与人员
+            now_participant_uids = request.POST.getlist("students")
+            # 检查参与人员是否为空
+            if len(now_participant_uids) == 0:
+                return redirect(message_url(wrong('参与人员不能为空'), request.get_full_path()))
+            print(now_participant_uids)
+            modify_participants(application.activity, now_participant_uids)
 
         elif post_type == "cancel_submit":
             if not application.is_pending():  # 如果不在pending状态, 可能是重复点击
@@ -1153,8 +1161,8 @@ class WeeklyActivitySummary(ProfileTemplateView):
         me = utils.get_person_or_org(self.request.user)
         if not self.request.user.is_org():
             return redirect(message_url(wrong('小组账号才能发起每周活动总结')))
-        valid_otype_names = ['团委', '学学学委员会', '学学学学会', '学生会']
-        if not me.otype.otype_name in valid_otype_names:
+        valid_orgs = weekly_activity_summary_active_orgs()
+        if not me in valid_orgs:
             return redirect(message_url(wrong('您没有权限发起每周活动总结')))
 
         # 准备前端展示量

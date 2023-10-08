@@ -33,6 +33,7 @@ from app.models import (
 from app.activity_utils import (
     changeActivityStatus,
     notifyActivity,
+    weekly_activity_summary_active_orgs,
 )
 from app.notification_utils import (
     bulk_notification_create,
@@ -391,14 +392,11 @@ def weekly_activity_summary_reminder():
     cur_semester = current_semester()
     if not cur_semester.start_date <= today <= cur_semester.end_date:
         return
-    notify_org_type = OrganizationType.objects.filter(
-        otype_name__in=['团委', '学学学委员会', '学学学学会', '学生会'])
+    notify_orgs = weekly_activity_summary_active_orgs()
     sender = User.objects.get(username='zz00000')
     title = "每周活动总结提醒"
-    for org in Organization.objects.filter(otype__in=notify_org_type):
-
-        incharge_users = Position.objects.filter(org=org, pos=0)
-        to_notify_user = select_current(incharge_users).first().person.get_user()
+    for org in notify_orgs:
+        to_notify_user = org.get_user()
 
         message = '如果本周举办了未在系统中申报的活动，请通过每周活动总结及时填报！'
         notification_create(

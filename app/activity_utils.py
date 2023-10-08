@@ -17,6 +17,7 @@ from datetime import datetime, timedelta
 import qrcode
 
 from utils.http.utils import build_full_url
+import utils.models.query as SQ
 from generic.models import User, YQPointRecord
 from scheduler.adder import ScheduleAdder
 from scheduler.cancel import remove_job
@@ -913,13 +914,12 @@ def withdraw_activity(request, activity):
 @transaction.atomic
 def _add_participants(activity: Activity, new_participant_uids):
     # 获取需要添加的Participants
-    new_participant_nps: QuerySet['NaturalPerson'] = NaturalPerson.objects.filter(
-        person_id__username__in=new_participant_uids)
+    new_participant_nps: QuerySet['Person'] = Person.objects.filter(
+        SQ.sq([Person.person_id, 'username', 'in'], new_participant_uids))
     # 此处必须执行查询，否则是lazy query，会导致后面的bulk_increase_YQPoint出错
-    new_participant_ids = list(new_participant_nps.values_list(
-        "person_id__id", flat=True))
+    new_participant_ids = SQ.qsvlist(new_participant_nps, "person_id", "id")
     new_participants: QuerySet['User'] = User.objects.filter(
-        id__in=new_participant_ids)
+        SQ.sq([User.id, 'in'], new_participant_ids))
     point = activity.eval_point()
     # 为添加的Participants增加元气值
     User.objects.bulk_increase_YQPoint(
@@ -933,12 +933,34 @@ def _add_participants(activity: Activity, new_participant_uids):
 
 
 @transaction.atomic
+def _delete_outdate_participants(activity: Activity, removed_participation: QuerySet['Participant']):
+    # 获取需要删除的Participants
+    removed_participant_ids: list[int] = SQ.qsvlist(
+        removed_participation, 'person_id', 'person_id', 'id')
+    removed_participants: QuerySet['User'] = User.objects.filter(
+        SQ.sq([User.id, 'in'], removed_participant_ids))
+    point = activity.eval_point()
+    # 为删除的Participant撤销元气值发放
+    User.objects.bulk_withdraw_YQPoint(removed_participants, point, 
+        "撤销参加活动", YQPointRecord.SourceType.CONSUMPTION)
+    removed_participation.delete()
+
+
+@transaction.atomic
 def modify_participants(activity: Activity, now_participant_uids):
     participation: QuerySet['Participant'] = activity.attended_participants
-    participant_uids = participation.values_list(
-        "person_id__person_id__username", flat=True)
+    removed_participation: QuerySet['Participant'] = participation.exclude(
+        SQ.sq([Participant.person_id, 'person_id', 'username', 'in'], now_participant_uids))
+    _delete_outdate_participants(activity, removed_participation)
+    participant_uids = SQ.qsvlist(participation, 'person_id', 'person_id', 'username')
     new_participant_uids = [usrname for usrname in now_participant_uids if
                                         usrname not in participant_uids]
     _add_participants(activity, new_participant_uids)
     activity.current_participants = len(new_participant_uids)
     activity.save()
+
+@transaction.atomic
+def weekly_activity_summary_active_orgs() -> QuerySet['Organization']:
+    valid_org_types = ['团委', '学学学委员会', '学学学学会', '学生会']
+    return Organization.objects.filter(
+        SQ.sq([Organization.otype, 'otype_name', 'in'], valid_org_types))
