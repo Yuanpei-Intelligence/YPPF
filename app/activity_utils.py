@@ -58,6 +58,7 @@ scheduler.add_job(changeActivityStatus, "date",
 
 @logger.secure_func('活动状态更新异常')
 @logger.secure_func('检查活动状态', exc_type=AssertionError)
+@transaction.atomic
 def changeActivityStatus(aid, cur_status, to_status):
     '''
     幂等；可能发生异常；包装器负责处理异常
@@ -65,54 +66,54 @@ def changeActivityStatus(aid, cur_status, to_status):
     即：报名中->等待中->进行中->结束
     状态不符合时，抛出AssertionError
     '''
-    # print(f"Change Activity Job works: aid: {aid}, cur_status: {cur_status}, to_status: {to_status}\n")
-    with transaction.atomic():
-        activity = Activity.objects.select_for_update().get(id=aid)
-        if cur_status is not None:
-            assert cur_status == activity.status, f"希望的状态是{cur_status}，但实际状态为{activity.status}"
-            if cur_status == Activity.Status.APPLYING:
-                assert to_status == Activity.Status.WAITING, f"不能从{cur_status}变更到{to_status}"
-            elif cur_status == Activity.Status.WAITING:
-                assert to_status == Activity.Status.PROGRESSING, f"不能从{cur_status}变更到{to_status}"
-            elif cur_status == Activity.Status.PROGRESSING:
-                assert to_status == Activity.Status.END, f"不能从{cur_status}变更到{to_status}"
+    activity = Activity.objects.select_for_update().get(id=aid)
+    if cur_status is None:
+        raise AssertionError('未提供当前状态，不允许进行活动状态修改')
+    assert cur_status == activity.status, f'{activity.status}与期望的状态{cur_status}不符'
+
+    FSM = [
+        (Activity.Status.APPLYING, Activity.Status.WAITING),
+        (Activity.Status.WAITING, Activity.Status.PROGRESSING),
+        (Activity.Status.PROGRESSING, Activity.Status.END),
+    ]
+    LIMITED_STATUS = list(set(map(lambda x: x[0], FSM)))
+    if cur_status in LIMITED_STATUS:
+        assert (cur_status, to_status) in FSM, f'不能从{cur_status}变更到{to_status}'
+
+    if to_status == Activity.Status.WAITING:
+        if activity.bidding:
+            draw_lots(activity)
+
+    # 活动变更为进行中时，修改参与人参与状态
+    elif to_status == Activity.Status.PROGRESSING:
+        if activity.need_checkin:
+            Participant.objects.filter(
+                activity_id=aid,
+                status=Participant.AttendStatus.APPLYSUCCESS
+            ).update(status=Participant.AttendStatus.UNATTENDED)
         else:
-            raise AssertionError('未提供当前状态，不允许进行活动状态修改')
+            Participant.objects.filter(
+                activity_id=aid,
+                status=Participant.AttendStatus.APPLYSUCCESS
+            ).update(status=Participant.AttendStatus.ATTENDED)
 
-        if to_status == Activity.Status.WAITING:
-            if activity.bidding:
-                draw_lots(activity)
+        # if not activity.valid:
+        #     # 活动开始后，未审核自动通过
+        #     activity.valid = True
+        #     notification = Notification.objects.get(
+        #         relate_instance=activity,
+        #         status=Notification.Status.UNDONE,
+        #         title=Notification.Title.VERIFY_INFORM
+        #     )
+        #     notification_status_change(notification, Notification.Status.DONE)
 
-        # 活动变更为进行中时，修改参与人参与状态
-        elif to_status == Activity.Status.PROGRESSING:
-            if activity.need_checkin:
-                Participant.objects.filter(
-                    activity_id=aid,
-                    status=Participant.AttendStatus.APPLYSUCCESS
-                ).update(status=Participant.AttendStatus.UNATTENDED)
-            else:
-                Participant.objects.filter(
-                    activity_id=aid,
-                    status=Participant.AttendStatus.APPLYSUCCESS
-                ).update(status=Participant.AttendStatus.ATTENDED)
-
-            # if not activity.valid:
-            #     # 活动开始后，未审核自动通过
-            #     activity.valid = True
-            #     notification = Notification.objects.get(
-            #         relate_instance=activity,
-            #         status=Notification.Status.UNDONE,
-            #         title=Notification.Title.VERIFY_INFORM
-            #     )
-            #     notification_status_change(notification, Notification.Status.DONE)
-
-        # 结束，计算元气值
-        elif (to_status == Activity.Status.END
-              and activity.category != Activity.ActivityCategory.COURSE):
-            activity.settle_yqpoint(status=to_status)
-        # 过早进行这个修改，将被写到activity待执行的保存中，导致失败后调用activity.save仍会调整状态
-        activity.status = to_status
-        activity.save()
+    # 结束，计算元气值
+    elif (to_status == Activity.Status.END
+            and activity.category != Activity.ActivityCategory.COURSE):
+        activity.settle_yqpoint(status=to_status)
+    # 过早进行这个修改，将被写到activity待执行的保存中，导致失败后调用activity.save仍会调整状态
+    activity.status = to_status
+    activity.save()
 
 
 """
