@@ -970,6 +970,7 @@ def activitySummary(request: UserRequest):
         if (post_type != "new_submit") and not application.is_pending():
             return redirect(message_url(wrong("不可以修改状态不为申请中的申请")))
         
+        full_path = request.get_full_path()
         if post_type == "new_submit":
             # 检查活动
             try:
@@ -978,60 +979,50 @@ def activitySummary(request: UserRequest):
                 assert activity in activities  # 防止篡改POST导致伪造
             except:
                 return redirect(message_url(wrong('找不到该活动，请检查活动总结的合法性！')))
-            # 与总结图片相关的原子操作
-            with transaction.atomic():
-                # 活动总结图片合法性检查
-                summary_photos = request.FILES.getlist('summaryimages')
-                photo_num = len(summary_photos)
-                if photo_num == 1:
-                    for image in summary_photos:
-                        if utils.if_image(image) != 2:
-                            return redirect(
-                                message_url(wrong("上传的总结图片只支持图片格式！")))
-                else:
-                    return redirect(message_url(wrong('图片内容为空或有多张图片！'), request.path))
-                # 新建activity summary
-                application: ActivitySummary = ActivitySummary.objects.create(
-                    status=ActivitySummary.Status.WAITING,
-                    activity=activity,
-                    image=summary_photos[0]
-                )
-                context = succeed(
-                    f'活动“{application.activity.title}”的申请已成功发送，请耐心等待{application.activity.examine_teacher.name}老师审批！'
-                )
+            # 活动总结图片合法性检查
+            summary_photos = request.FILES.getlist('summaryimages')
+            photo_num = len(summary_photos)
+            if photo_num != 1:
+                return redirect(message_url(wrong('图片内容为空或有多张图片！'), full_path))
+            for image in summary_photos:
+                if utils.if_image(image) != 2:
+                    return redirect(message_url(wrong("上传的总结图片只支持图片格式！"), full_path))
+            # 新建activity summary
+            application: ActivitySummary = ActivitySummary.objects.create(
+                status=ActivitySummary.Status.WAITING,
+                activity=activity,
+                image=summary_photos[0]
+            )
+            context = succeed(
+                f'活动“{application.activity.title}”的申请已成功发送，' +
+                f'请耐心等待{application.activity.examine_teacher.name}老师审批！'
+            )
             context["application_id"] = application.id
             
         elif post_type == "modify_submit":
+            summary_photos = request.FILES.getlist('summaryimages')
+            now_participant_uids = request.POST.getlist('students')
+            photo_num = len(summary_photos)
+            if photo_num > 1:
+                return redirect(message_url(wrong('有多张图片！'), full_path))
+            for image in summary_photos:
+                if utils.if_image(image) != 2:
+                    return redirect(message_url(wrong("上传的总结图片只支持图片格式！"), full_path))
+            if len(now_participant_uids) == 0:
+                return redirect(message_url(wrong('参与人员不能为空'), full_path))
             # 与总结图片相关的原子操作
             with transaction.atomic():
-                # 活动总结图片合法性检查
-                summary_photos = request.FILES.getlist('summaryimages')
-                photo_num = len(summary_photos)
-                if photo_num == 1:
-                    for image in summary_photos:
-                        if utils.if_image(image) != 2:
-                            return redirect(
-                                message_url(wrong("上传的总结图片只支持图片格式！")))
-                # 注意：modify_submit时，如果不修改总结图片，photo_num将为0，需要单独排除这种情况
-                elif not (photo_num == 0):
-                    return redirect(message_url(wrong('图片内容为空或有多张图片！'), request.get_full_path()))
                 # 修改活动总结图片
-                # modify_submit时，如果没有修改总结图片，summmary_photos为空，photo_num为0
                 if photo_num > 0:
-                    assert photo_num == 1
                     application.image = summary_photos[0]
                     application.save()
-                context = succeed(
-                    f'活动“{application.activity.title}”的申请已成功修改，请耐心等待{application.activity.examine_teacher.name}老师审批！'
-                )
+                # 修改参与人员
+                modify_participants(application.activity, now_participant_uids)
+            context = succeed(
+                f'活动“{application.activity.title}”的申请已成功修改，' +
+                f'请耐心等待{application.activity.examine_teacher.name}老师审批！'
+            )
             context["application_id"] = application.id
-            # 修改参与人员
-            now_participant_uids = request.POST.getlist("students")
-            # 检查参与人员是否为空
-            if len(now_participant_uids) == 0:
-                return redirect(message_url(wrong('参与人员不能为空'), request.get_full_path()))
-            print(now_participant_uids)
-            modify_participants(application.activity, now_participant_uids)
 
         elif post_type == "cancel_submit":
             if not application.is_pending():  # 如果不在pending状态, 可能是重复点击
