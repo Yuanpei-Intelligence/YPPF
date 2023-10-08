@@ -251,12 +251,21 @@ def q(*fields: FieldLikeExpr, value: Any) -> Q:
     return Q(**{f(*fields): value})
 
 
+def _concat_query_key(prefix: str, query_key: str) -> str:
+    '''拼接查询字段，转化特殊的关键字查询'''
+    if not prefix:
+        return query_key
+    if query_key.lower() == 'in':
+        query_key = 'in'  # in 是 Python 的关键字，无法作为关键字参数传递
+    return prefix + LOOKUP_SEP + query_key
+
+
 def mq(*fields: FieldLikeExpr, **querys: Any) -> Q:
     '''获取包含某字段多个查询条件的Q对象
     
     Args:
         *fields: 代表字段的完整路径，可以包含连续字段
-        **querys: 查询条件，键为查询类型，值为查询值
+        **querys: 查询条件，键为查询类型（见Note部分），值为查询值
 
     Returns:
         Q: 将每个查询条件`key: value`转为`q(*fields, key, value=value)`的`Q`条件之交
@@ -264,14 +273,15 @@ def mq(*fields: FieldLikeExpr, **querys: Any) -> Q:
     Example:
         >>> mq('user', 'id', lt=1, gt=0, isnull=False)
         Q(user__id__lt=1, user__id__gt=0, user__id__isnull=False)
+        >>> mq('user', 'id', IN=[1, 2, 3])
+        Q(user__id__in=[1, 2, 3])
 
     Note:
         尽量避免在查询条件中包含`__`，这严重妨碍了`field=`型字段追踪。
+        Python 的关键字`in`无法作为关键字参数传递，可以使用其任何大小写形式代替。
     '''
     prefix = f(*fields)
-    if prefix:
-        prefix += LOOKUP_SEP
-    return Q(**{prefix + key: value for key, value in querys.items()})
+    return Q(**{_concat_query_key(prefix, key): value for key, value in querys.items()})
 
 
 T = TypeVar('T')

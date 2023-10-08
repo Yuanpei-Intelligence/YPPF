@@ -38,6 +38,8 @@ class SQueryTest(SimpleTestCase):
         self.assertEqual(mq1, Q(val__lt=1, val__gt=0, val__isnull=False))
         mq2 = mq('user', 'id', lt=1, isnull=False)
         self.assertEqual(mq2, Q(user__id__lt=1, user__id__isnull=False))
+        self.assertEqual(mq('user', 'id', IN=[1, 2]), Q(user__id__in=[1, 2]))
+        self.assertEqual(mq('user', 'id', In=[1, 2]), Q(user__id__in=[1, 2]))
 
 
 
