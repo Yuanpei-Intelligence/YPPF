@@ -33,7 +33,7 @@ from app.activity_utils import (
     withdraw_activity,
     get_activity_QRcode,
     modify_participants,
-    weekly_activity_summary_active_orgs,
+    weekly_summary_orgs,
 )
 from app.comment_utils import addComment, showComment
 from app.utils import (
@@ -839,7 +839,6 @@ def finishedActivityCenter(request: HttpRequest):
     对审核老师进行了特判
     """
     is_auditor = False
-    me = get_person_or_org(request.user)
     if request.user.is_person():
         try:
             person = get_person_or_org(request.user)
@@ -869,18 +868,15 @@ def finishedActivityCenter(request: HttpRequest):
         }
 
     # 判断是否有权限进行每周活动总结
-    weekly_activity_summary_active = False
-    valid_orgs = weekly_activity_summary_active_orgs() 
-    if request.user.is_org():
-        if me in valid_orgs:
-            weekly_activity_summary_active = True
+    weekly_summary_active = (request.user.is_org() and 
+                             get_person_or_org(request.user) in weekly_summary_orgs())
 
     # 前端使用
     context = dict(
         bar_display=utils.get_sidebar_and_navbar(request.user, "活动结项"),
         all_instances=all_instances,
         user=request.user,
-        weekly_activity_summary_active = weekly_activity_summary_active,
+        weekly_activity_summary_active=weekly_summary_active,
     )
     return render(request, "activity/finished_center.html", context)
 
@@ -1161,7 +1157,7 @@ class WeeklyActivitySummary(ProfileTemplateView):
         me = utils.get_person_or_org(self.request.user)
         if not self.request.user.is_org():
             return redirect(message_url(wrong('小组账号才能发起每周活动总结')))
-        valid_orgs = weekly_activity_summary_active_orgs()
+        valid_orgs = weekly_summary_orgs()
         if not me in valid_orgs:
             return redirect(message_url(wrong('您没有权限发起每周活动总结')))
 
