@@ -35,6 +35,7 @@ from django.views.decorators.http import require_POST, require_GET
 from utils.hasher import MySHA256Hasher
 import utils.global_messages as my_messages
 from utils.global_messages import append_query
+import utils.models.query as SQ
 from app.config import *
 from app import utils
 from app.view.dependency import *

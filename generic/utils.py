@@ -36,6 +36,6 @@ def to_search_indices(
             'id': uid,
             'text': name + uid[:2],
             'pinyin': pinyin,
-            'acronym': acronym
+            'acronym': acronym,
         })
     return search_indices

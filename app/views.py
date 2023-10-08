@@ -1488,7 +1488,7 @@ def search(request: HttpRequest):
     academic_list = []
     for username, contents in academic_map_dict.items():
         info = dict()
-        np = NaturalPerson.objects.get(person_id__username=username)
+        np: NaturalPerson = SQ.mget(NaturalPerson.person_id, username=username)
         info['ref'] = np.get_absolute_url() + '#tab=academic_map'
         info['avatar'] = np.get_user_ava()
         info['sname'] = np.name

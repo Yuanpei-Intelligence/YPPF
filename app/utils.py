@@ -633,7 +633,8 @@ def update_related_account_in_session(request, username, shift=False, oname=""):
     """
 
     try:
-        np = NaturalPerson.objects.activated().get(person_id__username=username)
+        np = NaturalPerson.objects.activated().get(
+            SQ.mq(NaturalPerson.person_id, username=username))
     except:
         return False
     orgs = list(Position.objects.activated().filter(

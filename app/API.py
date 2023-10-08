@@ -8,7 +8,11 @@
 @Date 2022-08-17
 '''
 from generic.models import User
-from app.models import Position
+from utils.models.query import qsvlist
+from app.models import (
+    NaturalPerson as Person,
+    Position as Position,
+)
 from app.utils import (
     get_user_ava as __get_ava,
     get_classified_user as __get_obj,
@@ -42,8 +46,7 @@ def get_members(valid_user: User, noncurrent: bool = False) -> list[str]:
         return []
     obj = __get_obj(valid_user)
     positions = Position.objects.activated(noncurrent=noncurrent).filter(org=obj)
-    members = positions.values_list('person__person_id__username', flat=True)
-    return list(members)
+    return qsvlist(positions, Position.person, Person.person_id, User.username)
 
 
 def get_auditors(valid_user: User) -> list[str]:

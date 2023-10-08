@@ -48,6 +48,7 @@ from typing_extensions import Self
 
 from app.config import *
 from generic.models import User, YQPointRecord
+import utils.models.query as SQ
 from utils.models.descriptor import (invalid_for_frontend,
                                      necessary_for_frontend)
 from utils.models.semester import Semester, select_current
@@ -257,10 +258,11 @@ class NaturalPersonManager(models.Manager['NaturalPerson']):
             self = self.activated()
         return self.filter(identity=NaturalPerson.Identity.TEACHER)
 
-    def get_teacher(self, name_or_id, activate=True):
+    def get_teacher(self, name_or_id: str, activate: bool = True):
         '''姓名或工号，不存在或不止一个时抛出异常'''
         teachers = self.teachers(activate=activate)
-        return teachers.get(Q(name=name_or_id) | Q(person_id__username=name_or_id))
+        return teachers.get(Q(name=name_or_id) |
+                            SQ.mq(NaturalPerson.person_id, username=name_or_id))
 
 
 class NaturalPerson(models.Model):
@@ -448,10 +450,8 @@ class Freshman(models.Model):
 
     def exists(self):
         user_exist = User.objects.filter(username=self.sid).exists()
-        person_exist = NaturalPerson.objects.filter(
-            person_id__username=self.sid).exists()
-        return "person" if person_exist else (
-            "user" if user_exist else "")
+        person_exist = SQ.mfilter(NaturalPerson.person_id, username=self.sid).exists()
+        return "person" if person_exist else ("user" if user_exist else "")
 
 
 class OrganizationType(models.Model):
@@ -1056,8 +1056,8 @@ class Activity(CommentBase):
             return
 
         self = Activity.objects.select_for_update().get(pk=self.pk)
-        participant_ids = list(self.attended_participants.values_list(
-            'person_id__person_id', flat=True))
+        participant_ids = SQ.qsvlist(self.attended_participants,
+                                     Participant.person_id, NaturalPerson.person_id)
         participants = User.objects.filter(id__in=participant_ids)
         User.objects.bulk_increase_YQPoint(
             participants, point, "参加活动", YQPointRecord.SourceType.ACTIVITY)

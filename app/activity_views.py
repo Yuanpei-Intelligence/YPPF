@@ -1225,8 +1225,8 @@ class WeeklyActivitySummary(ProfileTemplateView):
                 image=self.context["announce_pic_src"], type=ActivityPhoto.PhotoType.ANNOUNCE, activity=activity)
 
             # 创建参与人
-            nps = NaturalPerson.objects.filter(
-                person_id__username__in=participants_ids)
+            nps = SQ.sfilter([NaturalPerson.person_id, User.username, 'in'],
+                             participants_ids)
             participants = [
                 Participant(
                     activity_id=activity,

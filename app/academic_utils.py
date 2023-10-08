@@ -45,15 +45,17 @@ def get_search_results(query: str):
         tag__tag_content__icontains=query,
         status=AcademicEntry.EntryStatus.PUBLIC,
     ).values_list(
-        "person__person_id__username",  # person_id_id用于避免重名
-        "tag__atype", "tag__tag_content",
+        SQ.f(AcademicEntry.person, NaturalPerson.person_id, User.username),
+        SQ.f(AcademicTagEntry.tag, AcademicTag.atype),
+        SQ.f(AcademicTagEntry.tag, AcademicTag.tag_content),
     )
     academic_texts = AcademicTextEntry.objects.filter(
         content__icontains=query,
         status=AcademicEntry.EntryStatus.PUBLIC,
     ).values_list(
-        "person__person_id__username",
-        "atype", "content",
+        SQ.f(AcademicEntry.person, NaturalPerson.person_id, User.username),
+        SQ.f(AcademicTextEntry.atype),
+        SQ.f(AcademicTextEntry.content),
     )
 
     # 根据tag/text对应的人，整合学术地图项目

@@ -23,7 +23,7 @@ from scheduler.cancel import remove_job
 from app.utils_dependency import *
 from app.models import (
     User,
-    NaturalPerson,
+    NaturalPerson as Person,
     Organization,
     Position,
     Activity,
@@ -156,10 +156,10 @@ def draw_lots(activity: Activity):
                 participant.status = Participant.AttendStatus.APPLYFAILED
             participant.save()
     # 签到成功的转发通知和微信通知
-    receivers = Participant.objects.filter(
+    receivers = SQ.qsvlist(Participant.objects.filter(
         activity_id=activity.id,
         status=Participant.AttendStatus.APPLYSUCCESS
-    ).values_list('person_id__person_id', flat=True)
+    ), Participant.person_id, Person.person_id)
     receivers = User.objects.filter(id__in=receivers)
     sender = activity.organization_id.get_user()
     typename = Notification.Type.NEEDREAD
@@ -180,10 +180,10 @@ def draw_lots(activity: Activity):
             },
         )
     # 抽签失败的同学发送通知
-    receivers = Participant.objects.filter(
+    receivers = SQ.qsvlist(Participant.objects.filter(
         activity_id=activity.id,
         status=Participant.AttendStatus.APPLYFAILED
-    ).values_list('person_id__person_id', flat=True)
+    ), Participant.person_id, Person.person_id)
     receivers = User.objects.filter(id__in=receivers)
     content = f'很抱歉通知您，您参与抽签的活动“{activity.title}”报名失败！'
     if len(receivers) > 0:
@@ -209,6 +209,22 @@ scheduler.add_job(notifyActivityStart, "date",
 """
 
 
+def _participant_uids(activity: Activity) -> list[int]:
+    participant_person_id = SQ.qsvlist(Participant.objects.filter(
+        activity=activity,
+        status__in=[Participant.AttendStatus.APPLYSUCCESS,
+                    Participant.AttendStatus.APPLYING]
+    ), Participant.person_id)
+    return SQ.qsvlist(Person.objects.activated().filter(
+        id__in=participant_person_id), Person.person_id)
+
+
+def _subscriber_uids(activity: Activity) -> list[int]:
+    return SQ.qsvlist(Person.objects.activated().exclude(
+        id__in=activity.organization_id.unsubscribers.all()
+    ), Person.person_id)
+
+
 @logger.secure_func('活动消息发送异常')
 def notifyActivity(aid: int, msg_type: str, msg=""):
     activity = Activity.objects.get(id=aid)
@@ -219,10 +235,7 @@ def notifyActivity(aid: int, msg_type: str, msg=""):
         msg = f"您关注的小组{activity.organization_id.oname}发布了新的活动。"
         msg += f"\n开始时间: {activity.start.strftime('%Y-%m-%d %H:%M')}"
         msg += f"\n活动地点: {activity.location}"
-        subscribers = NaturalPerson.objects.activated().exclude(
-            id__in=activity.organization_id.unsubscribers.all()
-        ).values_list('person_id', flat=True)
-        receivers = User.objects.filter(id__in=subscribers)
+        receivers = User.objects.filter(id__in=_subscriber_uids(activity))
         publish_kws = {"app": WechatApp.TO_SUBSCRIBER}
     elif msg_type == "remind":
         with transaction.atomic():
@@ -240,126 +253,47 @@ def notifyActivity(aid: int, msg_type: str, msg=""):
             msg += f"\n活动地点: {activity.location}"
             participants = Participant.objects.filter(
                 activity_id=aid, status=Participant.AttendStatus.APPLYSUCCESS)
-            receivers = participants.values_list(
-                'person_id__person_id', flat=True)
+            receivers = SQ.qsvlist(participants, Participant.person_id, Person.person_id)
             receivers = User.objects.filter(id__in=receivers)
-            # receivers = [participant.person_id.person_id for participant in participants]
             publish_kws = {"app": WechatApp.TO_PARTICIPANT}
 
     elif msg_type == 'modification_sub':
-        subscribers = NaturalPerson.objects.activated().exclude(
-            id__in=activity.organization_id.unsubscribers.all()
-        ).values_list('person_id', flat=True)
-        receivers = User.objects.filter(id__in=subscribers)
+        receivers = User.objects.filter(id__in=_subscriber_uids(activity))
         publish_kws = {"app": WechatApp.TO_SUBSCRIBER}
     elif msg_type == 'modification_par':
-        participants = Participant.objects.filter(
-            activity_id=aid,
-            status__in=[Participant.AttendStatus.APPLYSUCCESS,
-                        Participant.AttendStatus.APPLYING]
-        )
-        receivers = participants.values_list('person_id__person_id', flat=True)
-        receivers = User.objects.filter(id__in=receivers)
-        # receivers = [participant.person_id.person_id for participant in participants]
+        receivers = User.objects.filter(id__in=_participant_uids(activity))
         publish_kws = {
             "app": WechatApp.TO_PARTICIPANT,
             "level": WechatMessageLevel.IMPORTANT,
         }
     elif msg_type == "modification_sub_ex_par":
-        '''
-        YWolfeee: 查询策略为，拿到NP list
-        拿到NP list中的person_id_id字段，作为一个list来操作
-        直接访问一次user表得到user list，而不是通过for循环每一个进行一次
-        要知道 [NP.user for NP in NP_list]的查询速度是O(xy),其中x是NP_list长度，y是User表长度
-        而 User.objects.filter(id__in = [NP_person_id_id_list])则是O(y)
-        '''
-        # ———————————————— 拿参与者的user_id ————————————————
-        participant_person_id = Participant.objects.filter(
-            activity_id=aid,
-            status__in=[Participant.AttendStatus.APPLYSUCCESS,
-                        Participant.AttendStatus.APPLYING]
-        ).prefetch_related("person_id_id").values_list("person_id_id", flat=True)  # 拿的是person_id
-        participant_user_id = NaturalPerson.objects.activated().filter(id__in=participant_person_id).values_list(
-            "person_id_id", flat=True)   # 这回拿到的是user_id
-
-        #  ———————————————— 拿订阅者的user_id ————————————————
-        subscribers_user_id = NaturalPerson.objects.activated().exclude(
-            id__in=activity.organization_id.unsubscribers.all()
-        ).values_list("person_id_id", flat=True)  # 拿的是user_id
-
-        # ———————————————— 获取对应的User QuerySet ————————————————
-        receiver_id_list = list(
-            set(subscribers_user_id) - set(participant_user_id))
-        receivers = User.objects.filter(id__in=receiver_id_list)
-
-        # ↓这么写特别慢！
-        # receivers = list(set(subscribers) - set([participant.person_id for participant in participants]))
-        # receivers = [receiver.person_id for receiver in receivers]
+        receiver_uids = list(set(_subscriber_uids(activity)) -
+                             set(_participant_uids(activity)))
+        receivers = User.objects.filter(id__in=receiver_uids)
         publish_kws = {"app": WechatApp.TO_SUBSCRIBER}
 
     # 应该用不到了，调用的时候分别发给 par 和 sub
     # 主要发给两类用户的信息往往是不一样的
     elif msg_type == 'modification_all':
-        # ———————————————— 拿参与者的user_id ————————————————
-        participant_person_id = Participant.objects.filter(
-            activity_id=aid,
-            status__in=[Participant.AttendStatus.APPLYSUCCESS,
-                        Participant.AttendStatus.APPLYING]
-        ).values_list("person_id_id", flat=True)  # 拿的是person_id
-        participant_user_id = NaturalPerson.objects.activated().filter(
-            id__in=participant_person_id).values_list(
-                "person_id_id", flat=True)   # 这回拿到的是user_id
-
-        #  ———————————————— 拿订阅者的user_id ————————————————
-        subscribers_user_id = NaturalPerson.objects.activated().exclude(
-            id__in=activity.organization_id.unsubscribers.all()
-        ).values_list("person_id_id", flat=True)  # 拿的是user_id
-
-        # ———————————————— 获取对应的User QuerySet ————————————————
-        receiver_id_list = list(set(subscribers_user_id)
-                                | set(participant_user_id))
-        receivers = User.objects.filter(id__in=receiver_id_list)
-
-        # ↓这么写特别慢！
-        # receivers = set([participant.person_id for participant in participants]) | set(subscribers)
-        # receivers = [receiver.person_id for receiver in receivers]
+        receiver_uids = list(set(_subscriber_uids(activity)) |
+                             set(_participant_uids(activity)))
+        receivers = User.objects.filter(id__in=receiver_uids)
         publish_kws = {"app": WechatApp.TO_SUBSCRIBER}
     elif msg_type == 'newCourseActivity':
         title = activity.title
         msg = f"课程{activity.organization_id.oname}发布了新的课程活动。"
         msg += f"\n开始时间: {activity.start.strftime('%Y-%m-%d %H:%M')}"
         msg += f"\n活动地点: {activity.location}"
-        # ———————————————— 拿参与者的user_id ————————————————
-        participant_person_id = Participant.objects.filter(
-            activity_id=aid,
-            status__in=[Participant.AttendStatus.APPLYSUCCESS,
-                        Participant.AttendStatus.APPLYING]
-        ).values_list("person_id_id", flat=True)  # 拿的是person_id
-        participant_user_id = NaturalPerson.objects.activated().filter(
-            id__in=participant_person_id).values_list(
-                "person_id_id", flat=True)   # 这回拿到的是user_id
-
-        #  ———————————————— 拿订阅者的user_id ————————————————
-        subscribers_user_id = NaturalPerson.objects.activated().exclude(
-            id__in=activity.organization_id.unsubscribers.all()
-        ).values_list("person_id_id", flat=True)  # 拿的是user_id
-
-        # ———————————————— 获取对应的User QuerySet ————————————————
-        receiver_id_list = list(set(subscribers_user_id)
-                                | set(participant_user_id))
-        receivers = User.objects.filter(id__in=receiver_id_list)
-
-        # ↓这么写特别慢！
-        # receivers = set([participant.person_id for participant in participants]) | set(subscribers)
-        # receivers = [receiver.person_id for receiver in receivers]
+        receiver_uids = list(set(_subscriber_uids(activity)) |
+                             set(_participant_uids(activity)))
+        receivers = User.objects.filter(id__in=receiver_uids)
         publish_kws = {"app": WechatApp.TO_SUBSCRIBER}
     else:
         raise ValueError(f"msg_type参数错误: {msg_type}")
 
     if inner and publish_kws.get('app') == WechatApp.TO_SUBSCRIBER:
-        member_id_list = Position.objects.activated().filter(
-            org=activity.organization_id).values_list(
-                'person__person_id', flat=True)
+        member_id_list = SQ.qsvlist(Position.objects.activated().filter(
+            org=activity.organization_id), Position.person, Person.person_id)
         receivers = receivers.filter(id__in=member_id_list)
 
     success, _ = bulk_notification_create(
@@ -576,8 +510,7 @@ def create_activity(request):
         return old_ones[0].id, False
 
     # 审批老师存在
-    examine_teacher = NaturalPerson.objects.get_teacher(
-        context["examine_teacher"])
+    examine_teacher = Person.objects.get_teacher(context["examine_teacher"])
 
     # 检查完毕，创建活动
     org = get_person_or_org(request.user, UTYPE_ORG)
@@ -863,9 +796,7 @@ def apply_activity(request, activity):
     context = dict()
     context["success"] = False
 
-    payer = NaturalPerson.objects.get(
-        person_id=request.user
-    )
+    payer = Person.objects.get_by_user(request.user)
 
     if activity.inner:
         position = Position.objects.activated().filter(
@@ -958,7 +889,7 @@ def cancel_activity(request, activity):
 
 def withdraw_activity(request, activity):
 
-    np = NaturalPerson.objects.get(person_id=request.user)
+    np = Person.objects.get_by_user(request.user)
     participant = Participant.objects.select_for_update().get(
         activity_id=activity,
         person_id=np,

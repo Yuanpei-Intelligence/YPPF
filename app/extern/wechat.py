@@ -17,6 +17,7 @@ from app.extern.config import (
 )
 from app.models import NaturalPerson, Organization, Notification, Position
 from app.utils import get_person_or_org
+import utils.models.query as SQ
 from utils.http.utils import build_full_url
 from app.log import logger
 
@@ -74,7 +75,7 @@ def org2receivers(org, level=None, force=True):
         if not receivers.exists() and force:
             receivers = managers.filter(pos=0)
         managers = receivers
-    return list(managers.values_list("person__person_id__username", flat=True))
+    return SQ.qsvlist(managers, Position.person, NaturalPerson.person_id, 'username')
 
 
 def user2receivers(user, level=None, get_obj=False):
@@ -92,12 +93,11 @@ def user2receivers(user, level=None, get_obj=False):
 def get_person_receivers(all_receiver_ids, level=None):
     '''获取接收的个人的学号列表'''
     receivers = NaturalPerson.objects.activated().filter(
-        person_id__in=all_receiver_ids)
+        SQ.sq([NaturalPerson.person_id, 'in'], all_receiver_ids))
     # 提供等级时，不小于接收等级
     if level is not None:
         receivers = receivers.filter(wechat_receive_level__lte=level)
-    receivers = list(receivers.values_list("person_id__username", flat=True))
-    return receivers
+    return SQ.qsvlist(receivers, NaturalPerson.person_id, 'username')
 
 
 @logger.secure_func(fail_value=False)

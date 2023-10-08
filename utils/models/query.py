@@ -316,12 +316,12 @@ def _ext(fields: Extend[FieldLikeObject]) -> Extend[Any]:
     return fields
 
 
-def sget(field: Extend[FieldLikeObject], value: Any) -> Model:
+def sget(field: Extend[FieldLikeObject], value: Any) -> Any:
     '''单条件获取模型实例，见`QuerySet.get`'''
     return _get_queryset(field).get(sq(_ext(field), value))
 
 
-def mget(field: FieldLikeObject, *extras: FieldLikeExpr, **querys: Any) -> Model:
+def mget(field: FieldLikeObject, *extras: FieldLikeExpr, **querys: Any) -> Any:
     '''多条件获取模型实例，见`QuerySet.get`'''
     return _get_queryset(field).get(mq(field, *extras, **querys))
 
@@ -351,11 +351,11 @@ def svalues(field: FieldLikeObject, *extras: FieldLikeExpr):
     return _get_queryset(field).values(f(field, *extras))
 
 
-def qsvlist(queryset: QuerySet, field: FieldLikeExpr, *extras: FieldLikeExpr) -> list:
+def qsvlist(queryset: QuerySet, field: FieldLikeExpr, *extras: FieldLikeExpr) -> list[Any]:
     '''单条件查询字段值，立即计算并转为列表，见`QuerySet.values_list`'''
     return list(queryset.values_list(f(field, *extras), flat=True))
 
 
-def svlist(field: FieldLikeObject, *extras: FieldLikeExpr) -> list:
+def svlist(field: FieldLikeObject, *extras: FieldLikeExpr) -> list[Any]:
     '''单条件查询字段值，立即计算并转为列表，见`QuerySet.values_list`'''
     return qsvlist(_get_queryset(field), field, *extras)
