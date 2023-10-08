@@ -17,7 +17,7 @@ from datetime import datetime, timedelta
 import qrcode
 
 from utils.http.utils import build_full_url
-from generic.models import User
+from generic.models import User, YQPointRecord
 from scheduler.adder import ScheduleAdder
 from scheduler.cancel import remove_job
 from app.utils_dependency import *
@@ -920,7 +920,7 @@ def _add_participants(activity: Activity, new_participant_uids):
         "person_id__id", flat=True))
     new_participants: QuerySet['User'] = User.objects.filter(
         id__in=new_participant_ids)
-    point = activity.calculate_yqp()
+    point = activity.eval_point()
     # 为添加的Participants增加元气值
     User.objects.bulk_increase_YQPoint(
         new_participants, point, "参加活动", YQPointRecord.SourceType.ACTIVITY)
@@ -933,31 +933,12 @@ def _add_participants(activity: Activity, new_participant_uids):
 
 
 @transaction.atomic
-def _delete_outdate_participants(activity: Activity, now_participant_uids):
-    # 获取需要删除的Participants
-    participation: QuerySet['Participant'] = activity.attended_participants
-    removed_participation: QuerySet['Participant'] = participation.exclude(
-        person_id__person_id__username__in=now_participant_uids)
-    removed_participant_ids: list[int] = removed_participation.values_list(
-        "person_id__person_id__id", flat=True)
-    removed_participants: QuerySet['User'] = User.objects.filter(
-        id__in=removed_participant_ids)
-    point = activity.calculate_yqp()
-    # 为删除的Participant撤销元气值发放
-    for usr in removed_participants:
-        User.objects.modify_YQPoint(
-            usr, -point, "撤销参加活动", YQPointRecord.SourceType.CONSUMPTION)
-    removed_participation.delete()
-
-
-@transaction.atomic
-def _modify_participants(activity: Activity, now_participant_uids):
+def modify_participants(activity: Activity, now_participant_uids):
     participation: QuerySet['Participant'] = activity.attended_participants
     participant_uids = participation.values_list(
         "person_id__person_id__username", flat=True)
     new_participant_uids = [usrname for usrname in now_participant_uids if
                                         usrname not in participant_uids]
     _add_participants(activity, new_participant_uids)
-    _delete_outdate_participants(activity, now_participant_uids)
     activity.current_participants = len(new_participant_uids)
     activity.save()
