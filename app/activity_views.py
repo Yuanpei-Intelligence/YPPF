@@ -876,7 +876,7 @@ def finishedActivityCenter(request: HttpRequest):
         bar_display=utils.get_sidebar_and_navbar(request.user, "活动结项"),
         all_instances=all_instances,
         user=request.user,
-        weekly_activity_summary_active=weekly_summary_active,
+        weekly_summary_active=weekly_summary_active,
     )
     return render(request, "activity/finished_center.html", context)
 
