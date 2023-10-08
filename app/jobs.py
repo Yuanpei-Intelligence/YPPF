@@ -8,7 +8,7 @@ from django.db import transaction  # 原子化更改数据库
 from django.db.models import F
 
 from utils.marker import script
-from utils.models.semester import select_current
+import utils.models.query as SQ
 from boot.config import GLOBAL_CONFIG
 from semester.api import current_semester
 from record.models import PageLog
@@ -33,7 +33,7 @@ from app.models import (
 from app.activity_utils import (
     changeActivityStatus,
     notifyActivity,
-    weekly_activity_summary_active_orgs,
+    weekly_summary_orgs,
 )
 from app.notification_utils import (
     bulk_notification_create,
@@ -52,8 +52,7 @@ __all__ = [
     'get_weather_async',
     'update_active_score_per_day',
     'longterm_launch_course',
-    'public_feedback_per_hour',
-    'happy_birthday'
+    'happy_birthday',
 ]
 
 
@@ -387,22 +386,23 @@ def happy_birthday():
 @script
 @periodical('cron', 'weekly_activity_summary_reminder', hour=20, minute=0, day_of_week='sun')
 def weekly_activity_summary_reminder():
-    '''每周日晚上8点提醒所有组织负责人通过每周活动总结填写未在系统中申报的活动，目前仅限于团委，学学学委员会，学学学学会，学生会'''
+    '''提醒组织负责人填写每周活动总结
+    
+    每周日晚上8点提醒所有组织负责人通过每周活动总结填写未在系统中申报的活动
+    目前仅限于团委，学学学委员会，学学学学会，学生会
+    '''
     today = date.today()
     cur_semester = current_semester()
     if not cur_semester.start_date <= today <= cur_semester.end_date:
         return
-    notify_orgs = weekly_activity_summary_active_orgs()
+    notify_orgs = weekly_summary_orgs()
     sender = User.objects.get(username='zz00000')
-    title = "每周活动总结提醒"
-    for org in notify_orgs:
-        to_notify_user = org.get_user()
-
-        message = '如果本周举办了未在系统中申报的活动，请通过每周活动总结及时填报！'
+    for org in notify_orgs.select_related(SQ.f(Organization.organization_id)):
         notification_create(
-            to_notify_user, sender,
-            Notification.Type.NEEDREAD, title, message,
+            org.get_user(), sender,
+            Notification.Type.NEEDREAD, '每周活动总结提醒',
+            '如果本周举办了未在系统中申报的活动，请通过每周活动总结及时填报！',
             publish_to_wechat=True,
             publish_kws={'level': WechatMessageLevel.IMPORTANT,
-                            'show_source': False},
+                         'show_source': False},
         )
