@@ -34,6 +34,7 @@ from app.activity_utils import (
     get_activity_QRcode,
     modify_participants,
     weekly_summary_orgs,
+    available_participants,
 )
 from app.comment_utils import addComment, showComment
 from app.utils import (
@@ -1010,7 +1011,10 @@ def activitySummary(request: UserRequest):
                     return redirect(message_url(wrong("上传的总结图片只支持图片格式！"), full_path))
             if len(now_participant_uids) == 0:
                 return redirect(message_url(wrong('参与人员不能为空'), full_path))
-            # 与总结图片相关的原子操作
+            available_uids = SQ.qsvlist(available_participants(), User.username)
+            if set(now_participant_uids) - set(available_uids):
+                return redirect(message_url(wrong('参与人员不合法'), full_path))
+
             with transaction.atomic():
                 # 修改活动总结图片
                 if photo_num > 0:
@@ -1091,18 +1095,18 @@ def activitySummary(request: UserRequest):
     examine_teacher = application.activity.examine_teacher if application is not None else None
     bar_display = utils.get_sidebar_and_navbar(
         request.user, navbar_name="活动总结详情")
-    #所有人员和参与人员
-    user_queryset = User.objects.filter(id__in=
-        NaturalPerson.objects.activated().values_list("person_id__id", flat=True))
-    js_stu_list = to_search_indices(user_queryset)
-    js_participant_list = []
+    # 所有人员和参与人员
+    js_stu_list = to_search_indices(available_participants())
+    js_participant_list: list[str] = []  # 参与人员uid列表，不用转化为search_indices
     if application is not None:
-        participant_usr_id_list = \
-            application.activity.attended_participants.values_list("person_id__person_id", flat=True)
-        participant_usr_list = User.objects.filter(id__in=participant_usr_id_list)
-        js_participant_list = to_search_indices(participant_usr_list)
-
-    return render(request, "activity/summary_application.html", locals())
+        _participant_usr_ids = SQ.qsvlist(application.activity.attended_participants,
+                                          Participant.person_id, NaturalPerson.person_id)
+        _participant_usrs = User.objects.filter(id__in=_participant_usr_ids)
+        js_participant_list = to_search_indices(_participant_usrs)
+    render_context = locals()
+    json_context = dict()  # 用于前端展示，把js数据都放在这里
+    render_context.update(json_context=json_context)
+    return render(request, "activity/summary_application.html", render_context)
 
 
 class WeeklyActivitySummary(ProfileTemplateView):

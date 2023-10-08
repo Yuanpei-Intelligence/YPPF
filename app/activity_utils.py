@@ -58,6 +58,7 @@ __all__ = [
     'get_activity_QRcode',
     'modify_participants',
     'weekly_summary_orgs',
+    'available_participants',
 ]
 
 
@@ -985,3 +986,8 @@ def weekly_summary_orgs() -> QuerySet[Organization]:
     '''允许进行每周总结的组织'''
     VALID_ORG_TYPES = ['团委', '学学学委员会', '学学学学会', '学生会']
     return SQ.mfilter(Org.otype, OrgType.otype_name, IN=VALID_ORG_TYPES)
+
+
+def available_participants() -> QuerySet[User]:
+    '''允许参与活动的人'''
+    return SQ.mfilter(User.id, IN=SQ.qsvlist(Person.objects.activated(), Person.person_id))
