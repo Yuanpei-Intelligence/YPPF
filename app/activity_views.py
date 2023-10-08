@@ -2,7 +2,7 @@ import os
 import io
 import urllib.parse
 from datetime import datetime, timedelta
-from typing import Literal, List
+from typing import Literal
 
 from django.db import transaction
 from django.db.models import Q, F, QuerySet
@@ -33,7 +33,7 @@ from app.activity_utils import (
     cancel_activity,
     withdraw_activity,
     get_activity_QRcode,
-    _modify_participants,
+    modify_participants,
 )
 from app.comment_utils import addComment, showComment
 from app.utils import (
@@ -1027,7 +1027,7 @@ def activitySummary(request: UserRequest):
                 # 检查参与人员是否为空
                 if len(now_participant_uids) == 0:
                     return redirect(message_url(wrong('参与人员不能为空'), request.path))
-                _modify_participants(application.activity, now_participant_uids)
+                modify_participants(application.activity, now_participant_uids)
 
         elif post_type == "cancel_submit":
             if not application.is_pending():  # 如果不在pending状态, 可能是重复点击
@@ -1097,9 +1097,8 @@ def activitySummary(request: UserRequest):
     bar_display = utils.get_sidebar_and_navbar(
         request.user, navbar_name="活动总结详情")
     #所有人员和参与人员
-    person_list = NaturalPerson.objects.activated()
-    user_id_list = [person.person_id.id for person in person_list]
-    user_queryset = User.objects.filter(id__in=user_id_list)
+    user_queryset = User.objects.filter(id__in=
+        NaturalPerson.objects.activated().values_list("person_id__id", flat=True))
     js_stu_list = to_search_indices(user_queryset)
     js_participant_list = []
     if application is not None:
