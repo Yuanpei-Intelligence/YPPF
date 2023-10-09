@@ -7,7 +7,7 @@ from rpyc.utils.server import ThreadedServer
 
 from record.log.utils import get_logger
 from scheduler.config import scheduler_config as CONFIG
-
+from utils.health_check import db_conn_check
 
 TZ = settings.TIME_ZONE
 
@@ -23,11 +23,7 @@ class SchedulerService(rpyc.Service):
         return self.scheduler.wakeup()
 
     def exposed_health_check(self) -> bool:
-        db_conn = True
-        try:
-            self.scheduler.print_jobs()
-        except:
-            db_conn = False
+        db_conn = db_conn_check()
         running = self.scheduler.running
         return db_conn and running
 

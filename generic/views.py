@@ -1,12 +1,12 @@
 from typing import cast
 
 from django.contrib import auth
-from django.db import connection
 from utils.http.dependency import HttpRequest, HttpResponse, UserRequest
 
 from generic.models import User
 import utils.models.query as SQ
 from utils.global_messages import succeed
+from utils.health_check import db_conn_check
 from utils.views import SecureTemplateView, SecureView
 from app.models import Organization
 from app.utils import update_related_account_in_session
@@ -79,7 +79,8 @@ class Index(SecureTemplateView):
 
     def login(self) -> HttpResponse:
         # Try login
-        userinfo = auth.authenticate(username=self.username, password=self.password)
+        userinfo = auth.authenticate(
+            username=self.username, password=self.password)
         if userinfo is None:
             return self.wrong('密码错误')
 
@@ -125,10 +126,8 @@ def healthcheck(request: HttpRequest) -> HttpResponse:
     django健康状态检查
     尝试执行数据库操作，若成功返回200，不成功返回500
     '''
-    try:
-        with connection.cursor() as cursor:
-            cursor.execute('SELECT 1')
-            cursor.fetchall()
+    db_conn = db_conn_check()
+    if db_conn:
         return HttpResponse('healthy', status=200)
-    except:
+    else:
         return HttpResponse('unhealthy', status=500)
