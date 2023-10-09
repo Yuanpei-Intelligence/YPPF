@@ -1096,15 +1096,15 @@ def activitySummary(request: UserRequest):
     bar_display = utils.get_sidebar_and_navbar(
         request.user, navbar_name="活动总结详情")
     # 所有人员和参与人员
-    js_stu_list = to_search_indices(available_participants())
-    js_participant_list: list[str] = []  # 参与人员uid列表，不用转化为search_indices
+    user_infos = to_search_indices(available_participants())
+    participant_uids: list[str] = []  # 参与人员uid列表，不用转化为search_indices
     if application is not None:
         _participant_usr_ids = SQ.qsvlist(application.activity.attended_participants,
                                           Participant.person_id, NaturalPerson.person_id)
         _participant_usrs = User.objects.filter(id__in=_participant_usr_ids)
-        js_participant_list = to_search_indices(_participant_usrs)
+        participant_uids = SQ.qsvlist(_participant_usrs, User.username)
     render_context = locals()
-    json_context = dict()  # 用于前端展示，把js数据都放在这里
+    json_context = dict(user_infos=user_infos, participant_uids = participant_uids)  # 用于前端展示，把js数据都放在这里
     render_context.update(json_context=json_context)
     return render(request, "activity/summary_application.html", render_context)
 
