@@ -7,15 +7,15 @@ from dormitory.views import (DormitoryAssignmentViewSet,
 
 
 router = DefaultRouter()
-router.register('dormitory', DormitoryViewSet, basename="dormitory")
+router.register('dormitory', DormitoryViewSet, basename='dormitory')
 router.register('dormitoryassignment', DormitoryAssignmentViewSet,
-                basename="dormitoryassignment")
+                basename='dormitoryassignment')
 
 
 urlpatterns = [
     path('', include(router.urls)),
-    path("dormitory-routine-QA/", DormitoryRoutineQAView.as_view(),
-         name="dormitory-routine-QA"),
-    path("dormitory-assign-result/", DormitoryAssignResultView.as_view(),
-         name="dormitory-assign-result"),
+    path('routine-QA/', DormitoryRoutineQAView.as_view(),
+         name='dormitory-routine-QA'),
+    path('assign-result/', DormitoryAssignResultView.as_view(),
+         name='dormitory-assign-result'),
 ]

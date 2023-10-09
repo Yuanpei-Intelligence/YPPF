@@ -28,11 +28,7 @@ def delete_all():
 
 
 def create_superuser():
-    try:
-        User.objects.create_superuser(username='admin', password='admin',
-                                      email='admin@notexist.com')
-    except:
-        pass
+    User.objects.create_superuser('admin', '管理员', password='admin')
 
 
 @fix_me
@@ -196,8 +192,8 @@ def create_participant():
 
     
 def create_semester():
-    spring_type = SemesterType.objects.create(name = "春季学期")
-    autumn_type = SemesterType.objects.create(name = "秋季学期")
+    spring_type = SemesterType.objects.create(name="春季学期")
+    autumn_type = SemesterType.objects.create(name="秋季学期")
     
     #By default, spring semester is 2.1-6.30, autumn semester is 9.1-1.31
     #For summer vacation, the current semester object falls back to last semester, i.e. spring semester

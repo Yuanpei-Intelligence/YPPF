@@ -1,5 +1,5 @@
 from django.contrib import admin
-from django.contrib.auth.admin import UserAdmin
+from django.contrib.auth.admin import UserAdmin as _UserAdmin
 from django.contrib.auth.models import Permission
 from django.contrib.contenttypes.models import ContentType
 from django.db.models import QuerySet
@@ -62,8 +62,7 @@ class PermissionAdmin(admin.ModelAdmin):
 
 
 # 通用模型后台
-@admin.register(User)
-class MyUserAdmin(UserAdmin):
+class UserAdmin(_UserAdmin):
     list_display = [
         'id', 'username', 'name',
         'credit', 'YQpoint', 'utype', 'is_staff', 'is_superuser',
@@ -149,6 +148,7 @@ class MyUserAdmin(UserAdmin):
         User.objects.bulk_recover_credit(User.objects.all(), 1, '用户：全体恢复')
         return self.message_user(request, '操作成功!')
 
+admin.site.register(User, UserAdmin)
 
 @admin.register(CreditRecord)
 class CreditRecordAdmin(admin.ModelAdmin):
@@ -157,7 +157,7 @@ class CreditRecordAdmin(admin.ModelAdmin):
         'time', 'source', 'overflow', 'old_credit', 'new_credit',
         get_sign_filter('delta', '变化类型'),
     ]
-    search_fields = [*MyUserAdmin.suggest_search_fields(), 'source']
+    search_fields = [*UserAdmin.suggest_search_fields(), 'source']
     date_hierarchy = 'time'
 
 
@@ -169,5 +169,5 @@ class YQPointRecordAdmin(admin.ModelAdmin):
         get_sign_filter('delta', '变化类型',
                         choices=(('+', '收入'), ('-', '支出'))),
     ]
-    search_fields = [*MyUserAdmin.suggest_search_fields(), 'source']
+    search_fields = [*UserAdmin.suggest_search_fields(), 'source']
     date_hierarchy = 'time'

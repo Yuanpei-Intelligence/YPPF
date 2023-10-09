@@ -8,7 +8,7 @@ from django.db import transaction
 from django.db.models import QuerySet
 
 from generic.models import User, YQPointRecord, CreditRecord
-from app.models import Notification, NaturalPerson
+from app.models import Notification
 from achievement.models import Achievement, AchievementType, AchievementUnlock
 from utils.wrap import return_on_except
 from app.notification_utils import notification_create, bulk_notification_create
@@ -17,7 +17,7 @@ from utils.marker import need_refactor
 
 
 __all__ = [
-    'stuinfo_set_achievement'
+    'personal_achievements',
     'trigger_achievement',
     'bulk_add_achievement_record',
     'get_students_by_grade',
@@ -25,49 +25,25 @@ __all__ = [
 ]
 
 
-def stuinfo_set_achievement(user):
-    student = NaturalPerson.objects.get(person_id=user)
-    invisible_achievements = AchievementUnlock.objects.filter(
-        user=user, private=True)
-    visible_achievements = AchievementUnlock.objects.filter(
-        user=user, private=False)
-
+def personal_achievements(user: User):
     unlocked_achievements = AchievementUnlock.objects.filter(user=user)
+    invisible_achievements = list(unlocked_achievements.filter(private=True))
+    visible_achievements = list(unlocked_achievements.filter(private=False))
+
+    unlocked_ids = list(unlocked_achievements.values_list('achievement', flat=True))
     achievement_types = AchievementType.objects.all().order_by('id')
-    # (achievement_type, unlocked num, all num, achievement_unlocked, achievement_locked, achievement_locked_hidden)
-    display_tuple = []
-    for a_t in achievement_types:
-        all_achievement_stat = Achievement.objects.filter(
-            achievement_type=a_t).count()
-        achievement_a_t = Achievement.objects.filter(achievement_type=a_t)
-        unlocked_personal_stat = unlocked_achievements.filter(
-            achievement__in=achievement_a_t).count()
-
-        achievement_all = Achievement.objects.filter(achievement_type=a_t)
-        achievement_all_num = achievement_all.count()
-
-        achievement_unlocked = []
-        # achievement_unlocked is the list of unlocked achievements which are not hidden
-        achievement_locked = []
-        achievement_locked_hidden = []
-        for achievement in achievement_all:
-            # count achievementUnlocks attached to achievement
-            if AchievementUnlock.objects.filter(achievement=achievement, user=user).count():
-                achievement_unlocked.append(achievement)
-            else:
-                if achievement.hidden:
-                    achievement_locked_hidden.append(achievement)
-                else:
-                    achievement_locked.append(achievement)
-        achievement_num = len(achievement_unlocked)
-
-        display_tuple.append(
-            (a_t, unlocked_personal_stat, all_achievement_stat,
-             achievement_unlocked, achievement_locked, achievement_locked_hidden))
-    achievement_types_0 = display_tuple[:3]
-    achievement_types_1 = display_tuple[3:6]
-    achievement_types_2 = display_tuple[6:9]
-    return invisible_achievements, visible_achievements, achievement_types_0, achievement_types_1, achievement_types_2
+    # （类型，总数，已解锁成就，未解锁成就，隐藏成就）
+    display_by_types: list[tuple[AchievementType, int,
+        list[Achievement], list[Achievement], list[Achievement]]] = []
+    for achievement_type in achievement_types:
+        achievements = Achievement.objects.filter(achievement_type=achievement_type)
+        unlocked = list(achievements.filter(pk__in=unlocked_ids))
+        all_locked = achievements.exclude(pk__in=unlocked_ids)
+        locked = list(all_locked.filter(hidden=False))
+        hidden = list(all_locked.filter(hidden=True))
+        display = (achievement_type, achievements.count(), unlocked, locked, hidden)
+        display_by_types.append(display)
+    return invisible_achievements, visible_achievements, display_by_types
 
 
 @return_on_except(False, Exception)

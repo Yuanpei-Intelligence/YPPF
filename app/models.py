@@ -37,7 +37,9 @@ models.py
 @Date 2022-03-11
 '''
 import random
+from math import ceil
 from datetime import datetime, timedelta
+from typing import TypeAlias
 
 from django.db import models, transaction
 from django.db.models import Q, QuerySet, Sum
@@ -46,6 +48,7 @@ from typing_extensions import Self
 
 from app.config import *
 from generic.models import User, YQPointRecord
+import utils.models.query as SQ
 from utils.models.descriptor import (invalid_for_frontend,
                                      necessary_for_frontend)
 from utils.models.semester import Semester, select_current
@@ -54,6 +57,7 @@ __all__ = [
     # 模型
     'User',
     'NaturalPerson',
+    'Person',
     'Freshman',
     'OrganizationType',
     'OrganizationTag',
@@ -254,10 +258,11 @@ class NaturalPersonManager(models.Manager['NaturalPerson']):
             self = self.activated()
         return self.filter(identity=NaturalPerson.Identity.TEACHER)
 
-    def get_teacher(self, name_or_id, activate=True):
+    def get_teacher(self, name_or_id: str, activate: bool = True):
         '''姓名或工号，不存在或不止一个时抛出异常'''
         teachers = self.teachers(activate=activate)
-        return teachers.get(Q(name=name_or_id) | Q(person_id__username=name_or_id))
+        return teachers.get(Q(name=name_or_id) |
+                            SQ.mq(NaturalPerson.person_id, username=name_or_id))
 
 
 class NaturalPerson(models.Model):
@@ -266,7 +271,7 @@ class NaturalPerson(models.Model):
         verbose_name_plural = verbose_name
 
     # Common Attributes
-    person_id: User = models.OneToOneField(to=User, on_delete=models.CASCADE)
+    person_id = models.OneToOneField(to=User, on_delete=models.CASCADE)
 
     # 不要在任何地方使用此字段，建议先删除unique进行迁移，然后循环调用save
     stu_id_dbonly = models.CharField("学号——仅数据库", max_length=150,
@@ -421,6 +426,9 @@ class NaturalPerson(models.Model):
         super().save(*args, **kwargs)
 
 
+Person: TypeAlias = NaturalPerson
+
+
 class Freshman(models.Model):
     class Meta:
         verbose_name = "0.新生信息"
@@ -442,10 +450,8 @@ class Freshman(models.Model):
 
     def exists(self):
         user_exist = User.objects.filter(username=self.sid).exists()
-        person_exist = NaturalPerson.objects.filter(
-            person_id__username=self.sid).exists()
-        return "person" if person_exist else (
-            "user" if user_exist else "")
+        person_exist = SQ.mfilter(NaturalPerson.person_id, username=self.sid).exists()
+        return "person" if person_exist else ("user" if user_exist else "")
 
 
 class OrganizationType(models.Model):
@@ -458,7 +464,7 @@ class OrganizationType(models.Model):
         "小组类型编号", unique=True, primary_key=True)
     otype_name = models.CharField("小组类型名称", max_length=25)
     otype_superior_id = models.SmallIntegerField("上级小组类型编号", default=0)
-    incharge: NaturalPerson = models.ForeignKey(
+    incharge = models.ForeignKey(
         NaturalPerson,
         related_name="incharge",
         on_delete=models.SET_NULL,
@@ -1024,19 +1030,35 @@ class Activity(CommentBase):
             return True
         return False
 
-    def yqp_settlement(self):
-        assert self.status == Activity.Status.END
+    def eval_point(self) -> int:
+        '''计算价值的活动积分'''
+        # TODO: 添加到模型字段，固定每个活动的积分
         hours = (self.end - self.start).seconds / 3600
         if hours > CONFIG.yqpoint.activity.invalid_hour:
             return 0
-        from math import ceil
         point = ceil(CONFIG.yqpoint.activity.per_hour * hours)
         # 单次活动记录的积分上限，默认无上限
         if CONFIG.yqpoint.activity.max is not None:
             point = min(CONFIG.yqpoint.activity.max, point)
-        participants = self.attended_participants.values_list(
-            'person_id__person_id', flat=True)
-        participants = User.objects.filter(id__in=participants)
+        return point
+
+    @transaction.atomic
+    def settle_yqpoint(self, status: Status | None = None, point: int | None = None):
+        '''结算活动积分，应仅在活动结束时调用'''
+        if status is None:
+            status = self.status  # type: ignore
+        assert self.status == Activity.Status.END, "活动未结束，不能结算积分"
+        if point is None:
+            point = self.eval_point()
+        assert point >= 0, "活动积分不能为负"
+        # 活动积分为0时，不记录
+        if point == 0:
+            return
+
+        self = Activity.objects.select_for_update().get(pk=self.pk)
+        participant_ids = SQ.qsvlist(self.attended_participants,
+                                     Participant.person_id, NaturalPerson.person_id)
+        participants = User.objects.filter(id__in=participant_ids)
         User.objects.bulk_increase_YQPoint(
             participants, point, "参加活动", YQPointRecord.SourceType.ACTIVITY)
 
@@ -1153,7 +1175,7 @@ class Notification(models.Model):
     bulk_identifier = models.CharField("批量信息标识", max_length=64, default="",
                                        db_index=True)
     anonymous_flag = models.BooleanField("是否匿名", default=False)
-    relate_instance: CommentBase = models.ForeignKey(
+    relate_instance = models.ForeignKey(
         CommentBase,
         related_name="relate_notifications",
         on_delete=models.CASCADE,
@@ -1392,7 +1414,7 @@ class ModifyRecord(models.Model):
         verbose_name = "~R.修改记录"
         verbose_name_plural = verbose_name
         ordering = ["-time"]
-    user: User = models.ForeignKey(User, on_delete=models.SET_NULL,
+    user = models.ForeignKey(User, on_delete=models.SET_NULL,
                                    related_name="modify_records",
                                    to_field='username', blank=True, null=True)
     usertype = models.CharField('用户类型', max_length=16, default='', blank=True)
@@ -1594,7 +1616,7 @@ class CourseRecord(models.Model):
         verbose_name_plural = verbose_name
 
     person = models.ForeignKey(NaturalPerson, on_delete=models.CASCADE)
-    course: Course = models.ForeignKey(
+    course = models.ForeignKey(
         Course, on_delete=models.SET_NULL, null=True, blank=True,
     )
     # 长度兼容组织和课程名
@@ -1726,7 +1748,7 @@ class Chat(CommentBase):
         super().save(*args, **kwargs)
 
 
-class AcademicQAManager(models.Manager):
+class AcademicQAManager(models.Manager['AcademicQA']):
     def activated(self):
         return self.filter(chat__status=Chat.Status.PROGRESSING)
 
@@ -1749,7 +1771,7 @@ class AcademicQAAwards(models.Model):
         verbose_name = "P.学术问答相关奖励"
         verbose_name_plural = verbose_name
 
-    user: User = models.OneToOneField(User, on_delete=models.CASCADE)
+    user = models.OneToOneField(User, on_delete=models.CASCADE)
     created_undirected_qa = models.BooleanField("是否发起过非定向提问", default=False)
 
 
@@ -1818,7 +1840,7 @@ class PoolItem(models.Model):
         verbose_name_plural = verbose_name
 
     pool = models.ForeignKey(Pool, verbose_name='奖池', on_delete=models.CASCADE)
-    prize: Prize = models.ForeignKey(Prize, verbose_name='奖品', on_delete=models.CASCADE,
+    prize = models.ForeignKey(Prize, verbose_name='奖品', on_delete=models.CASCADE,
                                      null=True, blank=True)
     origin_num = models.IntegerField('初始数量')
     consumed_num = models.IntegerField('已兑换', default=0)
@@ -1826,7 +1848,7 @@ class PoolItem(models.Model):
     exchange_limit = models.IntegerField('单人兑换上限', default=0)
     exchange_price = models.IntegerField('价格', null=True, blank=True)
     # 下面这个在抽奖/盲盒奖池中有效
-    is_big_prize: bool = models.BooleanField('是否特别奖品', default=False)
+    is_big_prize = models.BooleanField('是否特别奖品', default=False)
 
     @property
     def is_empty(self) -> bool:
@@ -1854,7 +1876,7 @@ class PoolRecord(models.Model):
 
     user = models.ForeignKey(User, verbose_name='用户', on_delete=models.CASCADE)
     pool = models.ForeignKey(Pool, verbose_name='奖池', on_delete=models.CASCADE)
-    prize: Prize = models.ForeignKey(
+    prize = models.ForeignKey(
         Prize, verbose_name='奖品', on_delete=models.CASCADE,
         null=True, blank=True,
     )

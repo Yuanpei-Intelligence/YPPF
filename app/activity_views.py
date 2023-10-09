@@ -42,7 +42,9 @@ from app.utils import (
 
 __all__ = [
     'viewActivity', 'getActivityInfo', 'checkinActivity',
-    'addActivity', 'showActivity', 'examineActivity',
+    'addActivity', 'activityCenter', 'examineActivity',
+    'offlineCheckinActivity', 'finishedActivityCenter', 'activitySummary',
+    'WeeklyActivitySummary',
 ]
 
 
@@ -304,7 +306,7 @@ def viewActivity(request: HttpRequest, aid=None):
         visit_times=F('visit_times')+1)
     # activity.visit_times += 1
     # activity.save()
-    return render(request, "activity_info.html", locals())
+    return render(request, "activity/info.html", locals())
 
 
 @login_required(redirect_field_name="origin")
@@ -622,13 +624,13 @@ def addActivity(request: UserRequest, aid=None):
     else:
         bar_display = utils.get_sidebar_and_navbar(request.user, "修改活动")
 
-    return render(request, "activity_add.html", locals())
+    return render(request, "activity/application.html", locals())
 
 
 @login_required(redirect_field_name="origin")
 @utils.check_user_access(redirect_url="/logout/")
 @logger.secure_view()
-def showActivity(request: UserRequest):
+def activityCenter(request: UserRequest):
     """
     活动信息的聚合界面
     只有老师和小组才能看到，老师看到检查者是自己的，小组看到发起方是自己的
@@ -662,7 +664,7 @@ def showActivity(request: UserRequest):
     if request.user.is_org() and me.oname == CONFIG.yqpoint.org_name:
         YQPoint_Source_Org = True
 
-    return render(request, "activity_show.html", locals() | dict(user=request.user))
+    return render(request, "activity/center.html", locals() | dict(user=request.user))
 
 
 @login_required(redirect_field_name="origin")
@@ -759,7 +761,7 @@ def examineActivity(request: UserRequest, aid: int | str):
     bar_display = utils.get_sidebar_and_navbar(request.user, "活动审核")
     # bar_display["title_name"] = "审查活动"
     # bar_display["narbar_name"] = "审查活动"
-    return render(request, "activity_add.html", locals())
+    return render(request, "activity/application.html", locals())
 
 
 @login_required(redirect_field_name="origin")
@@ -824,13 +826,13 @@ def offlineCheckinActivity(request: HttpRequest, aid):
                                                navbar_name="调整签到信息")
     member_list = member_list.select_related('person_id')
     render_context = dict(bar_display=bar_display, member_list=member_list)
-    return render(request, "activity_checkinoffline.html", render_context)
+    return render(request, "activity/modify_checkin.html", render_context)
 
 
 @login_required(redirect_field_name="origin")
 @utils.check_user_access(redirect_url="/logout/")
 @logger.secure_view()
-def endActivity(request: HttpRequest):
+def finishedActivityCenter(request: HttpRequest):
     """
     之前被用为报销信息的聚合界面，现已将报销删去，留下总结图片的功能
     对审核老师进行了特判
@@ -865,16 +867,19 @@ def endActivity(request: HttpRequest):
         }
 
     # 前端使用
-    all_instances = all_instances
-    bar_display = utils.get_sidebar_and_navbar(request.user, "活动结项")
-    return render(request, "activity_summary_show.html", locals() | dict(user=request.user))
+    context = dict(
+        bar_display=utils.get_sidebar_and_navbar(request.user, "活动结项"),
+        all_instances=all_instances,
+        user=request.user,
+    )
+    return render(request, "activity/finished_center.html", context)
 
 
 # 新建+修改+取消+审核 报销信息
 @login_required(redirect_field_name="origin")
 @utils.check_user_access(redirect_url="/logout/")
 @logger.secure_view()
-def modifyEndActivity(request: UserRequest):
+def activitySummary(request: UserRequest):
     html_display = {}
 
     # ———————————————— 读取可能存在的申请 为POST和GET做准备 ————————————————
@@ -1069,12 +1074,12 @@ def modifyEndActivity(request: UserRequest):
     bar_display = utils.get_sidebar_and_navbar(
         request.user, navbar_name="活动总结详情")
 
-    return render(request, "modify_activity_summary.html", locals())
+    return render(request, "activity/summary_application.html", locals())
 
 
-class WeeklyActivitySummaryView(ProfileTemplateView):
+class WeeklyActivitySummary(ProfileTemplateView):
 
-    template_name = "weekly_activity_summary.html"
+    template_name = "activity/weekly_summary.html"
     page_name = "每周活动总结"
 
     def prepare_get(self):
@@ -1220,8 +1225,8 @@ class WeeklyActivitySummaryView(ProfileTemplateView):
                 image=self.context["announce_pic_src"], type=ActivityPhoto.PhotoType.ANNOUNCE, activity=activity)
 
             # 创建参与人
-            nps = NaturalPerson.objects.filter(
-                person_id__username__in=participants_ids)
+            nps = SQ.sfilter([NaturalPerson.person_id, User.username, 'in'],
+                             participants_ids)
             participants = [
                 Participant(
                     activity_id=activity,
@@ -1231,7 +1236,7 @@ class WeeklyActivitySummaryView(ProfileTemplateView):
             ]
             Participant.objects.bulk_create(participants)
             activity.current_participants = len(participants_ids)
-            activity.yqp_settlement()
+            activity.settle_yqpoint()
             activity.save()
 
             # 创建活动总结

@@ -126,16 +126,20 @@
                                                                             <path d="M16 8A8 8 0 1 1 0 8a8 8 0 0 1 16 0zM5.496 6.033h.825c.138 0 .248-.113.266-.25.09-.656.54-1.134 1.342-1.134.686 0 1.314.343 1.314 1.168 0 .635-.374.927-.965 1.371-.673.489-1.206 1.06-1.168 1.987l.003.217a.25.25 0 0 0 .25.246h.811a.25.25 0 0 0 .25-.25v-.105c0-.718.273-.927 1.01-1.486.609-.463 1.244-.977 1.244-2.056 0-1.511-1.276-2.241-2.673-2.241-1.267 0-2.655.59-2.75 2.286a.237.237 0 0 0 .241.247zm2.325 6.443c.61 0 1.029-.394 1.029-.927 0-.552-.42-.94-1.029-.94-.584 0-1.009.388-1.009.94 0 .533.425.927 1.01.927z" />
                                                                         </svg>
                                                                     </a>
-                                                                </label>
-                                                                <select class="select_keywords" name="keywords" value="" required multiple="multiple" style="width: 100%; z-index: 200;">
-                                                                </select>
-                                                            </div>
-                                                            
-                                                            <div id="select_receiver_tab" style="display:none">
-                                                                <label>姓名
-                                                                </label>
-                                                                <select class="select_receiver" name="receiver" value="" required multiple="multiple" style="width: 100%; z-index: 200;">
-                                                                </select>
+                                                                    </label>
+                                                                    <select id="select_keywords" name="keywords"
+                                                                            value="" required multiple="multiple"
+                                                                            class="search-select" style="width: 100%; z-index: 200;">
+                                                                    </select>
+                                                                </div>
+                                                                
+                                                                <div id="select_receiver_tab" style="display:none">
+                                                                    <label>姓名
+                                                                    </label>
+                                                                    <select id="select_receiver" name="receiver"
+                                                                            value="" required multiple="multiple"
+                                                                            class="search-select" style="width: 100%; z-index: 200;">
+                                                                    </select>
                                                             </div>
                                                             
                                                             
@@ -460,56 +464,26 @@
 
 {% block add_js_file %}
 <script src={% static "assets/js/select2/select2.min.js" %}></script>
+{% comment %} 提供本项目的用户搜索函数matchUser {% endcomment %}
+<script src="{% static 'assets/js/select2/user-matcher.js' %}"></script>
 
 <script type="text/javascript">
     // 用于选择标签的组件初始化
-    function matchCustom(params, data) {
-        // If there are no search terms, return all of the data
-        if ($.trim(params.term) === '') {
-            return data;
-        }
-        // Do not display the item if there is no 'text' property
-        if (typeof data.text === 'undefined') {
-            return null;
-        }
-        // `params.term` should be the term that is used for searching
-        // `data.text` is the text that is displayed for the data object
-        if (data.text.indexOf(params.term) > -1) {
-            //var modifiedData = $.extend({}, data, true);
-            //modifiedData.text += ' (matched)';
-            return data;
-            // You can return modified objects from here
-            // This includes matching the `children` how you want in nested data sets
-            //return modifiedData;
-        }
-        if (data.pinyin && data.pinyin.indexOf(params.term) > -1 ){
-            return data;
-        }
-        if (data.acronym && data.acronym.indexOf(params.term) > -1 ){
-            return data;
-        }
-        // Return `null` if the term should not be displayed
-        return null;
-    }
-    
     let stu_data = {{ stu_list | safe }};
     let tag_data = {{ tag_list | safe }};
 
     $(document).ready(function () {
-        $('.select_keywords').select2({
-            theme: "classic",
+        $('#select_keywords').select2({
             placeholder: "请选择1-3个标签",
             allowClear: true,
             data: tag_data,
-            matcher: matchCustom,
             maximumSelectionLength: 3,
         });
-        $('.select_receiver').select2({
-            theme: "classic",
+        $('#select_receiver').select2({
             placeholder: "搜索提问目标",
             allowClear: true,
             data: stu_data,
-            matcher: matchCustom,
+            matcher: matchUser,
             maximumSelectionLength: 1,
         });
         $("#target_type").on("change",(e)=>{
@@ -629,11 +603,11 @@
 		let target_url = "";
         if (target_type === "keywords"){
             target_url = "/startUndirectedChat/";
-		    data.keywords = $(".select_keywords").select2("data").map(option => option.text).slice(0,3).join(",")
+		    data.keywords = $("#select_keywords").select2("data").map(option => option.text).slice(0,3).join(",")
         }
         else if (target_type === "personal"){
             target_url = "/startChat/";
-            data.receiver_id = $(".select_receiver").val()[0];
+            data.receiver_id = $("#select_receiver").val()[0];
         }
 
         $.ajax({

@@ -8,7 +8,7 @@ from app.models import (
 )
 from app.academic_utils import (
     chats2Display,
-    comments2Display,
+    comments2display,
     get_js_tag_list,
     get_text_list,
     get_tag_status,
@@ -36,7 +36,7 @@ __all__ = [
 class ShowChats(ProfileTemplateView):
 
     http_method_names = ['get']
-    template_name = 'showChats.html'
+    template_name = 'academic/showChats.html'
     page_name = '学术地图问答'
 
     def prepare_get(self):
@@ -59,7 +59,7 @@ class ShowChats(ProfileTemplateView):
 class ViewChat(ProfileTemplateView):
 
     http_method_names = ['get']
-    template_name = 'viewChat.html'
+    template_name = 'academic/viewChat.html'
     page_name = '学术地图问答'
 
     def setup(self, request: HttpRequest, chat_id: int):
@@ -78,7 +78,7 @@ class ViewChat(ProfileTemplateView):
 
     def get(self) -> HttpResponse:
         user = self.request.user
-        comments2Display(self.chat, self.extra_context, user)
+        self.extra_context.update(comments2display(self.chat, user))
         return self.render()
 
 
@@ -211,7 +211,7 @@ def modifyAcademic(request: UserRequest) -> HttpResponse:
         request.user, "修改学术地图")
     frontend_dict["warn_code"] = request.GET.get('warn_code', 0)
     frontend_dict["warn_message"] = request.GET.get('warn_message', "")
-    return render(request, "modify_academic.html", frontend_dict)
+    return render(request, "academic/modify.html", frontend_dict)
 
 
 @login_required(redirect_field_name="origin")
@@ -236,7 +236,7 @@ def auditAcademic(request: UserRequest) -> HttpResponse:
         request.user, "审核学术地图")
     frontend_dict["student_list"] = get_wait_audit_student()
 
-    return render(request, "audit_academic.html", frontend_dict)
+    return render(request, "academic/audit.html", frontend_dict)
 
 
 @login_required(redirect_field_name="origin")

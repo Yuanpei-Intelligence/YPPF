@@ -78,7 +78,7 @@ select[readonly] {
                                                     </label>
                                                 </div>
                                             </div>
-                                            <select class="majors" name="majors" value="" id="majors" multiple="multiple" 
+                                            <select class="search-select" name="majors" value="" id="majors" multiple="multiple" 
                                                 style="border-color:#C1C9D3; border-radius:4px; width:100%; height:45px;">
                                                 {% for selected_major in selected_major_list %}
                                                     <option id="{{selected_major.id}}" value="{{selected_major.id}}" selected="selected">
@@ -102,7 +102,7 @@ select[readonly] {
                                                     </label>
                                                 </div>
                                             </div>
-                                            <select class="minors" name="minors" value="" id="minors" multiple="multiple" 
+                                            <select class="search-select" name="minors" value="" id="minors" multiple="multiple" 
                                                 style="border-color:#C1C9D3; border-radius:4px; width:100%; height:45px;">
                                                 {% for selected_minor in selected_minor_list %}
                                                     <option id="{{selected_minor.id}}" value="{{selected_minor.id}}" selected="selected">
@@ -126,7 +126,7 @@ select[readonly] {
                                                     </label>
                                                 </div>
                                             </div>
-                                            <select class="double_degrees" name="double_degrees" value="" id="double_degrees" multiple="multiple" 
+                                            <select class="search-select" name="double_degrees" value="" id="double_degrees" multiple="multiple" 
                                                 style="border-color:#C1C9D3; border-radius:4px; width:100%; height:45px;">
                                                 {% for selected_double_degree in selected_double_degree_list %}
                                                     <option id="{{selected_double_degree.id}}" value="{{selected_double_degree.id}}" selected="selected">
@@ -150,7 +150,7 @@ select[readonly] {
                                                     </label>
                                                 </div>
                                             </div>
-                                            <select class="projects" name="projects" value="" id="projects" multiple="multiple" 
+                                            <select class="search-select" name="projects" value="" id="projects" multiple="multiple" 
                                                 style="border-color:#C1C9D3; border-radius:4px; width:100%; height:45px;">
                                                 {% for selected_project in selected_project_list %}
                                                     <option id="{{selected_project.id}}" value="{{selected_project.id}}" selected="selected">
@@ -446,64 +446,33 @@ select[readonly] {
     <script src={% static "assets/js/users/account-settings.js" %}></script>
     <script src={% static "assets/js/select2/select2.min.js" %}></script>
     <script>
-        function matchCustom(params, data) {
-            // If there are no search terms, return all of the data
-            if ($.trim(params.term) === '') {
-                return data;
-            }
-            // Do not display the item if there is no 'text' property
-            if (typeof data.text === 'undefined') {
-                return null;
-            }
-            // `params.term` should be the term that is used for searching
-            // `data.text` is the text that is displayed for the data object
-            if (data.text.indexOf(params.term) > -1) {
-                return data;
-                // You can return modified objects from here
-                // This includes matching the `children` how you want in nested data sets
-                // var modifiedData = $.extend({}, data, true);
-                // modifiedData.text += ' (matched)';
-                //return modifiedData;
-            }
-            // Return `null` if the term should not be displayed
-            return null;
-        }
-
         let major_data = {{major_list|safe}};
         let minor_data = {{minor_list|safe}};
         let double_degree_data = {{double_degree_list|safe}};
         let project_data = {{project_list|safe}};
         const MAX_LENGTH = 4000;
 
-        $(document).ready( function () {
-            $('.majors').select2({
-                theme: "classic",
+        $(document).ready(function () {
+            $('#majors').select2({
                 placeholder: "根据专业名称搜索",
                 allowClear: true,
                 data: major_data,
-                matcher: matchCustom,
             });
-            $('.minors').select2({
-                theme: "classic",
+            $('#minors').select2({
                 placeholder: "根据专业名称搜索",
                 allowClear: true,
                 data: minor_data,
-                matcher: matchCustom,
             });
-            $('.double_degrees').select2({
-                theme: "classic",
+            $('#double_degrees').select2({
                 placeholder: "根据专业名称搜索",
                 allowClear: true,
                 data: double_degree_data,
-                matcher: matchCustom,
             });
-            $('.projects').select2({
-                theme: "classic",
+            $('#projects').select2({
                 placeholder: "根据项目名称搜索",
                 allowClear: true,
                 data: project_data,
-                matcher: matchCustom,
-            }); 
+            });
         });
 
         //设置所有checkbox的初始状态
