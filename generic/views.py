@@ -79,8 +79,7 @@ class Index(SecureTemplateView):
 
     def login(self) -> HttpResponse:
         # Try login
-        userinfo = auth.authenticate(
-            username=self.username, password=self.password)
+        userinfo = auth.authenticate(username=self.username, password=self.password)
         if userinfo is None:
             return self.wrong('密码错误')
 
