@@ -998,7 +998,6 @@ def activitySummary(request: UserRequest):
                 f'活动“{application.activity.title}”的申请已成功发送，' +
                 f'请耐心等待{application.activity.examine_teacher.name}老师审批！'
             )
-            context["application_id"] = application.id
             
         elif post_type == "modify_submit":
             summary_photos = request.FILES.getlist('summaryimages')
@@ -1026,7 +1025,6 @@ def activitySummary(request: UserRequest):
                 f'活动“{application.activity.title}”的申请已成功修改，' +
                 f'请耐心等待{application.activity.examine_teacher.name}老师审批！'
             )
-            context["application_id"] = application.id
 
         elif post_type == "cancel_submit":
             if not application.is_pending():  # 如果不在pending状态, 可能是重复点击
@@ -1034,7 +1032,6 @@ def activitySummary(request: UserRequest):
             application.status = ActivitySummary.Status.CANCELED
             application.save()
             context = succeed(f"成功取消“{application.activity.title}”的活动总结申请!")
-            context["application_id"] = application.id
 
         else:
             if not application.is_pending():
@@ -1046,7 +1043,6 @@ def activitySummary(request: UserRequest):
                 application.save()
                 context = succeed(
                     f'已成功拒绝活动“{application.activity.title}”的活动总结申请！')
-                context["application_id"] = application.id
             elif post_type == "accept_submit":
                 # 修改申请的状态
                 application.status = ActivitySummary.Status.CONFIRMED
@@ -1059,7 +1055,6 @@ def activitySummary(request: UserRequest):
                         type=ActivityPhoto.PhotoType.SUMMARY)
                 application.save()
                 context = succeed(f'活动“{application.activity.title}”的总结申请已通过！')
-                context["application_id"] = application.id
 
         # 为了保证稳定性，完成POST操作后同意全体回调函数，进入GET状态
         if application is None:
@@ -1073,6 +1068,9 @@ def activitySummary(request: UserRequest):
         老师：可能是审核申请
     '''
 
+    render_context = dict()
+    render_context.update(application=application, activities=activities,
+                          is_new_application=is_new_application)
     # (1) 是否允许修改表单
     # 小组写表格?
     allow_form_edit = (request.user.is_org()
@@ -1084,28 +1082,27 @@ def activitySummary(request: UserRequest):
                           and application.is_pending())
 
     # 用于前端展示：如果是新申请，申请人即“me”，否则从application获取。
-    apply_person = me if is_new_application else application.get_org()
-    # 申请人头像
-    app_avatar_path = apply_person.get_user_ava()
+    render_context.update(
+        allow_form_edit=allow_form_edit,
+        allow_audit_submit=allow_audit_submit,
+        applicant=me if is_new_application else application.get_org(),
+    )
 
     # 活动总结图片
-    summary_photo = application.image if application is not None else None
-    summary_photo_exist = True if summary_photo is not None else False
-    # 审核老师
-    examine_teacher = application.activity.examine_teacher if application is not None else None
-    bar_display = utils.get_sidebar_and_navbar(
-        request.user, navbar_name="活动总结详情")
-    # 所有人员和参与人员
-    user_infos = to_search_indices(available_participants())
-    participant_uids: list[str] = []  # 参与人员uid列表，不用转化为search_indices
     if application is not None:
-        _participant_usr_ids = SQ.qsvlist(application.activity.attended_participants,
-                                          Participant.person_id, NaturalPerson.person_id)
-        _participant_usrs = User.objects.filter(id__in=_participant_usr_ids)
-        participant_uids = SQ.qsvlist(_participant_usrs, User.username)
-    render_context = locals()
-    json_context = dict(user_infos=user_infos, participant_uids = participant_uids)  # 用于前端展示，把js数据都放在这里
+        render_context.update(summary_photo=application.image)
+
+    # 所有人员和参与人员
+    # 用于前端展示，把js数据都放在这里
+    json_context = dict(user_infos=to_search_indices(available_participants()))
+    if application is not None:
+        json_context.update(participant_ids=SQ.qsvlist(
+            application.activity.attended_participants,
+            Participant.person_id, NaturalPerson.person_id, User.username
+        ))
     render_context.update(json_context=json_context)
+    bar_display = utils.get_sidebar_and_navbar(request.user, '活动总结详情')
+    render_context.update(bar_display=bar_display, html_display=html_display)
     return render(request, "activity/summary_application.html", render_context)
 
 

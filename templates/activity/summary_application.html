@@ -61,10 +61,10 @@
                                                     <div align="right">
                                                         <h4>
                                                             申请小组：
-                                                            <img src={{ app_avatar_path }} width="24" height="24"
+                                                            <img src={{ applicant.get_user_ava }} width="24" height="24"
                                                                  alt="avatar">
-                                                            <a href='/orginfo/?name={{apply_person.oname}}'>
-                                                                <u>{{apply_person.oname}}</u></a>
+                                                            <a href="{{ applicant.get_absolute_url }}">
+                                                                <u>{{ applicant.get_display_name }}</u></a>
                                                         </h4>
                                                     </div>
                                                 </div>
@@ -129,14 +129,14 @@
                                         </label>
                                         <br>
                                         {%if not is_new_application%}
-                                            {%if summary_photo_exist%}
+                                            {% if summary_photo %}
                                             <div style="max-height:1000px;overflow:auto;">
-                                                <img  src="/media/{{summary_photo}}" >
+                                                <img src="{{ summary_photo.url }}" >
                                                 <!--移动端图片大小需要修正!-->
                                              </div>
                                              <br/>
                                             {%elif allow_audit_submit%}
-                                            <textarea disabled="disabled" class="form-control">小组“{{apply_person.oname}}”未上传活动总结图片
+                                            <textarea disabled="disabled" class="form-control">小组“{{ applicant.get_display_name }}”未上传活动总结图片
                                             </textarea>
                                             {%endif%}
                                         {%endif%}
@@ -149,7 +149,7 @@
                                                        accept="image/*" multiple>
                                                 <label id="summaryfile" class="custom-file-label"
                                                        for="customFile"
-                                                >{%if summary_photo_exist %}更新活动总结图片{%else%}上传活动总结图片{%endif%}</label>
+                                                >{% if summary_photo %}更新活动总结图片{% else %}上传活动总结图片{% endif %}</label>
 
                                             </div>
                                         </div>
@@ -168,7 +168,7 @@
                                                 </svg>
                                             </a>
                                             </label>
-                                            <select class="search-members" name="students" value="" id="multiselect" multiple="multiple" style="width: 100%; z-index: 200;">
+                                            <select class="search-members" name="students" value="" id="select-participants" multiple="multiple" style="width: 100%; z-index: 200;">
                                             </select>
                                         </div>
                                         {% endif %}
@@ -266,13 +266,13 @@
      * @type {Context}
      * @typedef {object} Context
      * @property {UserInfo[]} user_infos - 可选参与人员列表
-     * @property {string[]} participant_uids - 已有参与人员的用户名列表
+     * @property {string[]} [participant_ids] - 已有参与人员的用户名列表
      */
     const CONTEXT = JSON.parse(document.getElementById('context-data').textContent);
 </script>
 <script>
     $(document).ready(function () {
-        $('#multiselect').select2({
+        $('#select-participants').select2({
             theme: "classic",
             placeholder: "成员(姓名/拼音首字母搜索)",
             allowClear: false,
@@ -280,12 +280,15 @@
             matcher: matchUser,
         });
 
-        $('#multiselect').val(CONTEXT.participant_uids).trigger('change');
+        if (CONTEXT.participant_ids) {
+            $('#select-participants').val(CONTEXT.participant_ids).trigger('change');
+        }
     });
 </script>
 {% endif %}
 
 <script>
+{% comment %}
 function showFilename(files){
     var text = "";
     for (i = 0; i < files.length; i++)
@@ -296,6 +299,7 @@ function showFilename(files){
         text = "上传报销材料图片";
     $("#uploadfile").html(text);
 }
+{% endcomment %}
 function showsummaryFilename(files){
     var text = "";
     for (i = 0; i < files.length; i++)
@@ -303,15 +307,8 @@ function showsummaryFilename(files){
     text += (" "+files[i].name);
     }
     if (text == "")
-        text = "{%if application.summary_image is not None%}更新活动总结图片{%else%}上传一张活动总结图片{%endif%}";
+        text = {% if summary_photo is not None %}"更新活动总结图片"{% else %}"上传一张活动总结图片"{% endif %};
     $("#summaryfile").html(text);
 }
-</script>
-<script type="text/javascript">
-    {% if not is_new_application %}
-    document.getElementById("examine_teacher").value="{{examine_teacher.id}}";
-    document.getElementById("examine_teacher").disabled=true;
-    {% endif %}
-</script>
 {%endblock%}
 
