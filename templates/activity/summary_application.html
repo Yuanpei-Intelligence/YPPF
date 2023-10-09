@@ -250,24 +250,37 @@
 <script src="{% static 'assets/js/select2/user-matcher.js' %}"></script>
 
 {% if not is_new_application and allow_form_edit %}
+{{ json_context | json_script:'context-data' }}
 <script>
-    let stu_data = {{ js_stu_list|safe }};
-    let participant_data = {{ js_participant_list|safe }};
+    /**
+     * @typedef {object} UserInfo - 用户信息对象
+     * @property {number} id - 用户 ID
+     * @property {string} text - 文本表示，如姓名
+     * @property {string} [pinyin] - 文本的拼音
+     * @property {string} [acronym] - 文本的首字母缩写
+     * @extends SelectData
+     */
+
+    /**
+     * 上下文数据
+     * @type {Context}
+     * @typedef {object} Context
+     * @property {UserInfo[]} user_infos - 可选参与人员列表
+     * @property {string[]} participant_uids - 已有参与人员的用户名列表
+     */
+    const CONTEXT = JSON.parse(document.getElementById('context-data').textContent);
+</script>
+<script>
     $(document).ready(function () {
-        $('.search-members').select2({
+        $('#multiselect').select2({
             theme: "classic",
             placeholder: "成员(姓名/拼音首字母搜索)",
             allowClear: false,
-            data: stu_data,
+            data: CONTEXT.user_infos,
             matcher: matchUser,
         });
 
-        var select2Element = document.getElementById("multiselect");
-        for (var i=0; i<participant_data.length; i++){
-            var option = select2Element.querySelector("option[value='" + participant_data[i].id + "']");
-            option.selected = true;
-        }
-        $('.search-members').trigger('change');
+        $('#multiselect').val(CONTEXT.participant_uids).trigger('change');
     });
 </script>
 {% endif %}
