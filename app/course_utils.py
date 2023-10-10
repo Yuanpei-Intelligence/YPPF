@@ -234,8 +234,10 @@ def create_single_course_activity(request: HttpRequest) -> Tuple[int, bool]:
             id__in=person_pos)
         for member in members:
             participant = Participant.objects.create(
-                activity_id=activity,
-                person_id=member,
+                **dict([
+                    (SQ.f(Participant.activity_id), activity),
+                    (SQ.f(Participant.person_id), member),
+                ]),
                 status=Participant.AttendStatus.APPLYSUCCESS)
 
         activity.current_participants = len(person_pos)

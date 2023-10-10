@@ -1,9 +1,11 @@
 from datetime import datetime
 
 from django.contrib import admin
+from django.db.models import QuerySet
 from django.utils.safestring import mark_safe
 
 from utils.http.dependency import HttpRequest
+import utils.models.query as SQ
 from utils.admin_utils import *
 from app.models import *
 from scheduler.cancel import remove_job
@@ -386,14 +388,15 @@ class ActivityAdmin(admin.ModelAdmin):
     actions = []
 
     @as_action("更新 报名人数", actions, update=True)
-    def refresh_count(self, request, queryset):
+    def refresh_count(self, request, queryset: QuerySet[Activity]):
         for activity in queryset:
-            activity.current_participants = Participant.objects.filter(
-                activity_id=activity, status__in=[
+            activity.current_participants = SQ.sfilter(
+                Participant.activity_id, activity).filter(
+                status__in=[
                     Participant.AttendStatus.ATTENDED,
                     Participant.AttendStatus.UNATTENDED,
                     Participant.AttendStatus.APPLYSUCCESS,
-                    ]).count()
+                ]).count()
             activity.save()
         return self.message_user(request=request, message='修改成功!')
     

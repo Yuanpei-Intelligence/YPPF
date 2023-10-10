@@ -11,7 +11,7 @@ scheduler_func 依赖于 wechat_send 依赖于 utils
 """
 import io
 import base64
-from random import sample
+import random
 from datetime import datetime, timedelta
 
 import qrcode
@@ -107,16 +107,12 @@ def changeActivityStatus(aid, cur_status, to_status):
 
     # 活动变更为进行中时，修改参与人参与状态
     elif to_status == Activity.Status.PROGRESSING:
+        unchecked = SQ.sfilter(Participant.activity_id, activity).filter(
+            status=Participant.AttendStatus.APPLYSUCCESS)
         if activity.need_checkin:
-            Participant.objects.filter(
-                activity_id=aid,
-                status=Participant.AttendStatus.APPLYSUCCESS
-            ).update(status=Participant.AttendStatus.UNATTENDED)
+            unchecked.update(status=Participant.AttendStatus.UNATTENDED)
         else:
-            Participant.objects.filter(
-                activity_id=aid,
-                status=Participant.AttendStatus.APPLYSUCCESS
-            ).update(status=Participant.AttendStatus.ATTENDED)
+            unchecked.update(status=Participant.AttendStatus.ATTENDED)
 
         # if not activity.valid:
         #     # 活动开始后，未审核自动通过
@@ -144,31 +140,28 @@ def changeActivityStatus(aid, cur_status, to_status):
 
 
 def draw_lots(activity: Activity):
-    participants_applying = Participant.objects.filter(activity_id=activity.id,
-                                                       status=Participant.AttendStatus.APPLYING)
-    l = len(participants_applying)
+    participation = SQ.sfilter(Participant.activity_id, activity)
+    participation: QuerySet[Participant]
+    l = len(participation.filter(status=Participant.AttendStatus.APPLYING))
 
-    participants_applySuccess = Participant.objects.filter(
-        activity_id=activity.id,
+    engaged = len(participation.filter(
         status__in=[Participant.AttendStatus.APPLYSUCCESS,
-                    Participant.AttendStatus.UNATTENDED, Participant.AttendStatus.ATTENDED]
-    )
-    engaged = len(participants_applySuccess)
+                    Participant.AttendStatus.UNATTENDED,
+                    Participant.AttendStatus.ATTENDED]
+    ))
 
     leftQuota = activity.capacity - engaged
 
     if l <= leftQuota:
-        Participant.objects.filter(
-            activity_id=activity.id,
+        participation.filter(
             status__in=[Participant.AttendStatus.APPLYING,
                         Participant.AttendStatus.APPLYFAILED]
         ).update(status=Participant.AttendStatus.APPLYSUCCESS)
         activity.current_participants = engaged + l
     else:
-        lucky_ones = sample(range(l), leftQuota)
+        lucky_ones = random.sample(range(l), leftQuota)
         activity.current_participants = activity.capacity
-        for i, participant in enumerate(Participant.objects.select_for_update().filter(
-                activity_id=activity.id,
+        for i, participant in enumerate(participation.select_for_update().filter(
                 status__in=[Participant.AttendStatus.APPLYING,
                             Participant.AttendStatus.APPLYFAILED]
         )):
@@ -178,8 +171,7 @@ def draw_lots(activity: Activity):
                 participant.status = Participant.AttendStatus.APPLYFAILED
             participant.save()
     # 签到成功的转发通知和微信通知
-    receivers = SQ.qsvlist(Participant.objects.filter(
-        activity_id=activity.id,
+    receivers = SQ.qsvlist(participation.filter(
         status=Participant.AttendStatus.APPLYSUCCESS
     ), Participant.person_id, Person.person_id)
     receivers = User.objects.filter(id__in=receivers)
@@ -202,8 +194,7 @@ def draw_lots(activity: Activity):
             },
         )
     # 抽签失败的同学发送通知
-    receivers = SQ.qsvlist(Participant.objects.filter(
-        activity_id=activity.id,
+    receivers = SQ.qsvlist(participation.filter(
         status=Participant.AttendStatus.APPLYFAILED
     ), Participant.person_id, Person.person_id)
     receivers = User.objects.filter(id__in=receivers)
@@ -273,10 +264,7 @@ def notifyActivity(aid: int, msg_type: str, msg=""):
             msg = f"您参与的活动 <{activity.title}> 即将开始。"
             msg += f"\n开始时间: {activity.start.strftime('%Y-%m-%d %H:%M')}"
             msg += f"\n活动地点: {activity.location}"
-            participants = Participant.objects.filter(
-                activity_id=aid, status=Participant.AttendStatus.APPLYSUCCESS)
-            receivers = SQ.qsvlist(participants, Participant.person_id, Person.person_id)
-            receivers = User.objects.filter(id__in=receivers)
+            receivers = User.objects.filter(id__in=_participant_uids(activity))
             publish_kws = {"app": WechatApp.TO_PARTICIPANT}
 
     elif msg_type == 'modification_sub':
@@ -696,8 +684,7 @@ def modify_accepted_activity(request, activity):
     else:
         capacity = int(request.POST["maxpeople"])
         assert capacity > 0
-        if capacity < len(Participant.objects.filter(
-            activity_id=activity.id,
+        if capacity < len(SQ.sfilter(Participant.activity_id, activity).filter(
             status=Participant.AttendStatus.APPLYSUCCESS
         )):
             raise ActivityException(f"当前成功报名人数已超过{capacity}人!")
@@ -830,7 +817,8 @@ def apply_activity(request, activity):
 
     try:
         participant = Participant.objects.select_for_update().get(
-            activity_id=activity, person_id=payer
+            SQ.sq(Participant.activity_id, activity),
+            SQ.sq(Participant.person_id, payer),
         )
         participated = True
     except:
@@ -853,9 +841,10 @@ def apply_activity(request, activity):
         activity.current_participants += 1
 
     if not participated:
-        participant = Participant.objects.create(
-            activity_id=activity, person_id=payer
-        )
+        participant = Participant.objects.create(**dict([
+            (SQ.f(Participant.activity_id), activity),
+            (SQ.f(Participant.person_id), payer),
+        ]))
     if not activity.bidding:
         participant.status = Participant.AttendStatus.APPLYSUCCESS
     else:
@@ -909,12 +898,12 @@ def cancel_activity(request, activity):
     activity.save()
 
 
-def withdraw_activity(request, activity):
+def withdraw_activity(request, activity: Activity):
 
     np = Person.objects.get_by_user(request.user)
     participant = Participant.objects.select_for_update().get(
-        activity_id=activity,
-        person_id=np,
+        SQ.sq(Participant.activity_id, activity),
+        SQ.sq(Participant.person_id, np),
         status__in=[
             Activity.Status.WAITING,
             Participant.AttendStatus.APPLYING,

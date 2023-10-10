@@ -241,7 +241,8 @@ def viewActivity(request: HttpRequest, aid=None):
         person = True
         try:
             participant = Participant.objects.get(
-                activity_id=activity, person_id=me.id)
+                SQ.sq(Participant.activity_id, activity),
+                SQ.sq(Participant.person_id, me))
             # pStatus 是参与状态
             pStatus = participant.status
         except:
@@ -284,7 +285,7 @@ def viewActivity(request: HttpRequest, aid=None):
 
     # 参与者, 无论报名是否通过
     participants = Participant.objects.filter(
-        activity_id=activity,
+        SQ.sq(Participant.activity_id, activity),
         status__in=[
             Participant.AttendStatus.APPLYING,
             Participant.AttendStatus.APPLYSUCCESS,
@@ -354,9 +355,7 @@ def getActivityInfo(request: HttpRequest):
         assert activity.status != Activity.Status.APPLYING, "报名尚未截止"
 
         # get participants
-        # are you sure it's 'Paticipant' not 'Participant' ??
-        participants = Participant.objects.filter(activity_id=activity_id)
-        participants = participants.filter(
+        participants = SQ.sfilter(Participant.activity_id, activity).filter(
             status=Participant.AttendStatus.APPLYSUCCESS
         )
 
@@ -428,7 +427,8 @@ def checkinActivity(request: UserRequest, aid=None):
         try:
             with transaction.atomic():
                 participant = Participant.objects.select_for_update().get(
-                    activity_id=aid, person_id=np,
+                    SQ.sq(Participant.activity_id, activity),
+                    SQ.sq(Participant.person_id, np),
                     status__in=[
                         Participant.AttendStatus.UNATTENDED,
                         Participant.AttendStatus.APPLYSUCCESS,
@@ -790,7 +790,7 @@ def offlineCheckinActivity(request: HttpRequest, aid):
         return redirect(message_url(wrong('请不要随意访问其他网页！')))
 
     member_list = Participant.objects.filter(
-        activity_id=aid,
+        SQ.sq(Participant.activity_id, activity),
         status__in=[
             Participant.AttendStatus.UNATTENDED,
             Participant.AttendStatus.ATTENDED,
@@ -1261,8 +1261,10 @@ class WeeklyActivitySummary(ProfileTemplateView):
                              participants_ids)
             participants = [
                 Participant(
-                    activity_id=activity,
-                    person_id=np,
+                    **dict([
+                        (SQ.f(Participant.activity_id), activity),
+                        (SQ.f(Participant.person_id), np),
+                    ]),
                     status=Participant.AttendStatus.ATTENDED,
                 ) for np in nps
             ]
