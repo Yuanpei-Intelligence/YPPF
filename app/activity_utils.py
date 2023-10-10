@@ -12,6 +12,7 @@ scheduler_func 依赖于 wechat_send 依赖于 utils
 import io
 import base64
 import random
+from typing import Iterable
 from datetime import datetime, timedelta
 
 import qrcode
@@ -56,6 +57,7 @@ __all__ = [
     'cancel_activity',
     'withdraw_activity',
     'get_activity_QRcode',
+    'create_participate_infos',
     'modify_participants',
     'weekly_summary_orgs',
     'available_participants',
@@ -909,6 +911,18 @@ def withdraw_activity(request, activity: Activity):
 
 
 @transaction.atomic
+def create_participate_infos(activity: Activity, persons: Iterable[Person], **fields):
+    '''批量创建一系列参与信息，并返回创建的参与信息'''
+    participantion = [
+        Participant(**dict([
+            (SQ.f(Participant.activity_id), activity),
+            (SQ.f(Participant.person_id), person),
+        ]), **fields) for person in persons
+    ]
+    return Participant.objects.bulk_create(participantion)
+
+
+@transaction.atomic
 def _update_new_participants(activity: Activity, new_participant_uids: list[str]) -> int:
     '''更新活动的参与者，返回新增的参与者数量，不修改活动'''
     participants = SQ.qsvlist(activity.attended_participants.select_for_update(),
@@ -924,12 +938,8 @@ def _update_new_participants(activity: Activity, new_participant_uids: list[str]
     point = activity.eval_point()
     User.objects.bulk_increase_YQPoint(
         new_participants, point, '参加活动', YQPointRecord.SourceType.ACTIVITY)
-    for np in new_participant_nps:
-        Participant.objects.create(
-            activity_id=activity,
-            person_id=np,
-            status=Participant.AttendStatus.ATTENDED,
-        )
+    status = Participant.AttendStatus.ATTENDED
+    create_participate_infos(activity, new_participant_nps, status=status)
     return len(new_participant_nps)
 
 

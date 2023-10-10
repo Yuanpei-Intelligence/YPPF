@@ -33,6 +33,7 @@ from app.models import (
 from app.activity_utils import (
     changeActivityStatus,
     notifyActivity,
+    create_participate_infos,
     weekly_summary_orgs,
 )
 from app.notification_utils import (
@@ -223,13 +224,8 @@ def add_week_course_activity(course_id: int, weektime_id: int, cur_week: int, co
                 person_pos = list(set(person_pos))
             members = NaturalPerson.objects.filter(
                 id__in=person_pos)
-            for member in members:
-                participant = Participant.objects.create(
-                    **dict([
-                        (SQ.f(Participant.activity_id), activity),
-                        (SQ.f(Participant.person_id), member),
-                    ]),
-                    status=Participant.AttendStatus.APPLYSUCCESS)
+            status = Participant.AttendStatus.APPLYSUCCESS
+            create_participate_infos(activity, members, status=status)
 
             participate_num = len(person_pos)
             activity.capacity = participate_num

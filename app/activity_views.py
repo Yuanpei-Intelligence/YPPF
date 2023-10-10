@@ -32,6 +32,7 @@ from app.activity_utils import (
     cancel_activity,
     withdraw_activity,
     get_activity_QRcode,
+    create_participate_infos,
     modify_participants,
     weekly_summary_orgs,
     available_participants,
@@ -1257,18 +1258,9 @@ class WeeklyActivitySummary(ProfileTemplateView):
                 image=self.context["announce_pic_src"], type=ActivityPhoto.PhotoType.ANNOUNCE, activity=activity)
 
             # 创建参与人
-            nps = SQ.sfilter([NaturalPerson.person_id, User.username, 'in'],
-                             participants_ids)
-            participants = [
-                Participant(
-                    **dict([
-                        (SQ.f(Participant.activity_id), activity),
-                        (SQ.f(Participant.person_id), np),
-                    ]),
-                    status=Participant.AttendStatus.ATTENDED,
-                ) for np in nps
-            ]
-            Participant.objects.bulk_create(participants)
+            nps = SQ.mfilter(NaturalPerson.person_id, User.username, IN=participants_ids)
+            status = Participant.AttendStatus.ATTENDED
+            create_participate_infos(activity, nps, status=status)
             activity.current_participants = len(participants_ids)
             activity.settle_yqpoint()
             activity.save()
