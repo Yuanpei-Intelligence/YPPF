@@ -104,7 +104,7 @@ class ScheduleAdder(Generic[P]):
             id=self.id,
             name=self.name,
             replace_existing=self.replace,
-        )
+        ).id
 
 
 class MultipleAdder(Generic[P]):
