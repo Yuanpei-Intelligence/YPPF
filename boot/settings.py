@@ -85,7 +85,7 @@ MIDDLEWARE = [
 ]
 
 # TODO: Fix this
-CSRF_TRUSTED_ORIGINS = ['https://a.b.c.d']
+CSRF_TRUSTED_ORIGINS = [config.GLOBAL_CONFIG.base_url]
 
 # Templates
 TEMPLATES = [

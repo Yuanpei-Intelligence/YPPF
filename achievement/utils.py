@@ -67,6 +67,9 @@ def trigger_achievement(user: User, achievement: Achievement):
 
     # XXX: 并行安全性依赖于AchievementUnlock在数据库中的唯一性约束unique_together
     #     如果该约束被破坏，本函数将不再是安全的，但不易发现
+
+    assert user.is_person(), '暂时只允许个人解锁成就'
+
     _, created = AchievementUnlock.objects.get_or_create(
         user=user,
         achievement=achievement
