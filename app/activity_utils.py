@@ -212,9 +212,9 @@ scheduler.add_job(notifyActivityStart, "date",
 
 def _participant_uids(activity: Activity) -> list[int]:
     participant_person_id = SQ.qsvlist(Participant.objects.filter(
-        activity=activity,
-        status__in=[Participant.AttendStatus.APPLYSUCCESS,
-                    Participant.AttendStatus.APPLYING]
+        SQ.sq(Participant.activity_id, activity),
+        SQ.mq(Participant.status, IN=[Participant.AttendStatus.APPLYSUCCESS,
+                                      Participant.AttendStatus.APPLYING])
     ), Participant.person_id)
     return SQ.qsvlist(Person.objects.activated().filter(
         id__in=participant_person_id), Person.person_id)
