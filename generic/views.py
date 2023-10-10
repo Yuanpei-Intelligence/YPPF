@@ -6,7 +6,7 @@ from utils.http.dependency import HttpRequest, HttpResponse, UserRequest
 from generic.models import User
 import utils.models.query as SQ
 from utils.global_messages import succeed
-from utils.health_check import db_conn_check
+from utils.health_check import db_connection_healthy
 from utils.views import SecureTemplateView, SecureView
 from app.models import Organization
 from app.utils import update_related_account_in_session
@@ -125,8 +125,7 @@ def healthcheck(request: HttpRequest) -> HttpResponse:
     django健康状态检查
     尝试执行数据库操作，若成功返回200，不成功返回500
     '''
-    db_conn = db_conn_check()
-    if db_conn:
+    if db_connection_healthy():
         return HttpResponse('healthy', status=200)
     else:
         return HttpResponse('unhealthy', status=500)

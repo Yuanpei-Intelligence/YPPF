@@ -1,7 +1,10 @@
 from django.db import connection
 
 
-def db_conn_check() -> bool:
+__all__ = ['db_connection_healthy']
+
+
+def db_connection_healthy() -> bool:
     '''
     django健康状态检查函数
     尝试执行数据库操作，若成功返回True，不成功返回False
