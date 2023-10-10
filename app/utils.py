@@ -491,12 +491,11 @@ def export_activity(activity, inf_type):
     if activity is None:
         return response
     response['Content-Disposition'] = f'attachment;filename={activity.title}.xls'
+    participants: QuerySet[Participant] = SQ.sfilter(Participant.activity_id, activity)
     if inf_type == "sign":  # 签到信息
-        participants = Participant.objects.filter(activity_id=activity.id).filter(
-            status=Participant.AttendStatus.ATTENDED)
+        participants = participants.filter(status=Participant.AttendStatus.ATTENDED)
     elif inf_type == "enroll":  # 报名信息
-        participants = Participant.objects.filter(activity_id=activity.id).exclude(
-            status=Participant.AttendStatus.CANCELED)
+        participants = participants.exclude(status=Participant.AttendStatus.CANCELED)
     else:
         return response
         """导出excel表"""

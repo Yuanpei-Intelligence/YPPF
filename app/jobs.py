@@ -53,6 +53,7 @@ __all__ = [
     'update_active_score_per_day',
     'longterm_launch_course',
     'happy_birthday',
+    'weekly_activity_summary_reminder',
 ]
 
 
@@ -228,8 +229,10 @@ def add_week_course_activity(course_id: int, weektime_id: int, cur_week: int, co
                 id__in=person_pos)
             for member in members:
                 participant = Participant.objects.create(
-                    activity_id=activity,
-                    person_id=member,
+                    **dict([
+                        (SQ.f(Participant.activity_id), activity),
+                        (SQ.f(Participant.person_id), member),
+                    ]),
                     status=Participant.AttendStatus.APPLYSUCCESS)
 
             participate_num = len(person_pos)
