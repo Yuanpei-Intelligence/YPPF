@@ -112,8 +112,7 @@ def addComment(request: UserRequest, comment_base, receiver=None, *,
                     notification_title,
                     text,
                     URL[typename],
-                    publish_to_wechat=True,
-                    publish_kws={'app': WechatApp.AUDIT, 'level': WechatMessageLevel.INFO},
+                    to_wechat=dict(app=WechatApp.AUDIT, level=WechatMessageLevel.INFO),
                     anonymous_flag=anonymous,
                 )
         context = succeed("发送成功。")

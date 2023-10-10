@@ -524,11 +524,9 @@ def make_relevant_notification(application, info):
                 else Notification.Type.NEEDREAD)
     title = Notification.Title.VERIFY_INFORM if post_type != 'accept_submit' else not_type
     relate_instance = application if post_type == 'new_submit' else None
-    publish_to_wechat = True
-    publish_kws = {'app': WechatApp.AUDIT}
-    publish_kws['level'] = (WechatMessageLevel.IMPORTANT
-                            if post_type != 'cancel_submit'
-                            else WechatMessageLevel.INFO)
+    level = (WechatMessageLevel.IMPORTANT
+             if post_type != 'cancel_submit'
+             else WechatMessageLevel.INFO)
     # TODO cancel是否要发送notification？是否发送微信？
 
     # 正式创建notification
@@ -540,8 +538,7 @@ def make_relevant_notification(application, info):
         content=content,
         URL=URL,
         relate_instance=relate_instance,
-        publish_to_wechat=publish_to_wechat,
-        publish_kws=publish_kws,
+        to_wechat=dict(app=WechatApp.AUDIT, level=level),
     )
 
     # 对于处理类通知的完成(done)，修改状态
@@ -624,7 +621,7 @@ def send_message_check(me: Organization, request):
                 title=title,
                 content=content,
                 URL=URL,
-                publish_to_wechat=False,
+                to_wechat=False,
             )
         assert success
     except:

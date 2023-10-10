@@ -88,10 +88,7 @@ def _send_remind_notification(receivers: QuerySet[User], content: str):
         title=Notification.Title.YPLIB_INFORM,
         content=content,
         URL=URL,
-        publish_to_wechat=True,
-        publish_kws={
-            'level': WechatMessageLevel.IMPORTANT,
-        },
+        to_wechat=dict(level=WechatMessageLevel.IMPORTANT),
     )
 
 

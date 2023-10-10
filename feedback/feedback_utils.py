@@ -224,8 +224,7 @@ def make_relevant_notification(feedback, info, me):
         URL=f"/viewFeedback/{feedback.id}",
         relate_instance=relate_instance,
         anonymous_flag=True,
-        publish_to_wechat=True,
-        publish_kws={'app': WechatApp.AUDIT, 'level': WechatMessageLevel.IMPORTANT},
+        to_wechat=dict(app=WechatApp.AUDIT, level=WechatMessageLevel.IMPORTANT),
     )
 
 
@@ -239,8 +238,7 @@ def examine_notification(feedback):
         title=Notification.Title.VERIFY_INFORM,
         content=f"{feedback.org.oname}申请公开一条反馈信息",
         URL=f"/viewFeedback/{feedback.id}",
-        publish_to_wechat=True,
-        publish_kws={'app': WechatApp.AUDIT, 'level': WechatMessageLevel.INFO},
+        to_wechat=dict(app=WechatApp.AUDIT, level=WechatMessageLevel.INFO),
     )
 
 @logger.secure_func(raise_exc=True)
@@ -271,6 +269,5 @@ def inform_notification(sender: ClassifiedUser, receiver: ClassifiedUser,
         content=content,
         URL=f"/viewFeedback/{feedback.id}",
         anonymous_flag=anonymous,
-        publish_to_wechat=True,
-        publish_kws={'app': WechatApp.AUDIT, 'level': level},
+        to_wechat=dict(app=WechatApp.AUDIT, level=level),
     )
