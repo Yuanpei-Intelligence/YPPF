@@ -187,11 +187,7 @@ def draw_lots(activity: Activity):
             title=Notification.Title.ACTIVITY_INFORM,
             content=content,
             URL=URL,
-            publish_to_wechat=True,
-            publish_kws={
-                'app': WechatApp.TO_PARTICIPANT,
-                'level': WechatMessageLevel.IMPORTANT,
-            },
+            to_wechat=dict(app=WechatApp.TO_PARTICIPANT, level=WechatMessageLevel.IMPORTANT),
         )
     # 抽签失败的同学发送通知
     receivers = SQ.qsvlist(participation.filter(
@@ -207,11 +203,7 @@ def draw_lots(activity: Activity):
             title=Notification.Title.ACTIVITY_INFORM,
             content=content,
             URL=URL,
-            publish_to_wechat=True,
-            publish_kws={
-                'app': WechatApp.TO_PARTICIPANT,
-                'level': WechatMessageLevel.IMPORTANT,
-            },
+            to_wechat=dict(app=WechatApp.TO_PARTICIPANT, level=WechatMessageLevel.IMPORTANT),
         )
 
 
@@ -249,7 +241,7 @@ def notifyActivity(aid: int, msg_type: str, msg=""):
         msg += f"\n开始时间: {activity.start.strftime('%Y-%m-%d %H:%M')}"
         msg += f"\n活动地点: {activity.location}"
         receivers = User.objects.filter(id__in=_subscriber_uids(activity))
-        publish_kws = {"app": WechatApp.TO_SUBSCRIBER}
+        publish_kws = dict(app=WechatApp.TO_SUBSCRIBER)
     elif msg_type == "remind":
         with transaction.atomic():
             activity = Activity.objects.select_for_update().get(id=aid)
@@ -265,22 +257,22 @@ def notifyActivity(aid: int, msg_type: str, msg=""):
             msg += f"\n开始时间: {activity.start.strftime('%Y-%m-%d %H:%M')}"
             msg += f"\n活动地点: {activity.location}"
             receivers = User.objects.filter(id__in=_participant_uids(activity))
-            publish_kws = {"app": WechatApp.TO_PARTICIPANT}
+            publish_kws = dict(app=WechatApp.TO_PARTICIPANT)
 
     elif msg_type == 'modification_sub':
         receivers = User.objects.filter(id__in=_subscriber_uids(activity))
-        publish_kws = {"app": WechatApp.TO_SUBSCRIBER}
+        publish_kws = dict(app=WechatApp.TO_SUBSCRIBER)
     elif msg_type == 'modification_par':
         receivers = User.objects.filter(id__in=_participant_uids(activity))
-        publish_kws = {
-            "app": WechatApp.TO_PARTICIPANT,
-            "level": WechatMessageLevel.IMPORTANT,
-        }
+        publish_kws = dict(
+            app=WechatApp.TO_PARTICIPANT,
+            level=WechatMessageLevel.IMPORTANT,
+        )
     elif msg_type == "modification_sub_ex_par":
         receiver_uids = list(set(_subscriber_uids(activity)) -
                              set(_participant_uids(activity)))
         receivers = User.objects.filter(id__in=receiver_uids)
-        publish_kws = {"app": WechatApp.TO_SUBSCRIBER}
+        publish_kws = dict(app=WechatApp.TO_SUBSCRIBER)
 
     # 应该用不到了，调用的时候分别发给 par 和 sub
     # 主要发给两类用户的信息往往是不一样的
@@ -288,7 +280,7 @@ def notifyActivity(aid: int, msg_type: str, msg=""):
         receiver_uids = list(set(_subscriber_uids(activity)) |
                              set(_participant_uids(activity)))
         receivers = User.objects.filter(id__in=receiver_uids)
-        publish_kws = {"app": WechatApp.TO_SUBSCRIBER}
+        publish_kws = dict(app=WechatApp.TO_SUBSCRIBER)
     elif msg_type == 'newCourseActivity':
         title = activity.title
         msg = f"课程{activity.organization_id.oname}发布了新的课程活动。"
@@ -297,7 +289,7 @@ def notifyActivity(aid: int, msg_type: str, msg=""):
         receiver_uids = list(set(_subscriber_uids(activity)) |
                              set(_participant_uids(activity)))
         receivers = User.objects.filter(id__in=receiver_uids)
-        publish_kws = {"app": WechatApp.TO_SUBSCRIBER}
+        publish_kws = dict(app=WechatApp.TO_SUBSCRIBER)
     else:
         raise ValueError(f"msg_type参数错误: {msg_type}")
 
@@ -314,8 +306,7 @@ def notifyActivity(aid: int, msg_type: str, msg=""):
         content=msg,
         URL=f"/viewActivity/{aid}",
         relate_instance=activity,
-        publish_to_wechat=True,
-        publish_kws=publish_kws,
+        to_wechat=publish_kws,
     )
     assert success, "批量创建通知并发送时失败"
 
@@ -570,8 +561,7 @@ def create_activity(request):
         content="您有一个活动待审批",
         URL=f"/examineActivity/{activity.id}",
         relate_instance=activity,
-        publish_to_wechat=True,
-        publish_kws={"app": WechatApp.AUDIT},
+        to_wechat=dict(app=WechatApp.AUDIT),
     )
 
     return activity.id, True
@@ -737,8 +727,7 @@ def accept_activity(request, activity):
         content=f"您的活动{activity.title}已通过审批。",
         URL=f"/viewActivity/{activity.id}",
         relate_instance=activity,
-        publish_to_wechat=True,
-        publish_kws={"app": WechatApp.AUDIT},
+        to_wechat=dict(app=WechatApp.AUDIT),
     )
 
     if activity.status == Activity.Status.REVIEWING:
@@ -791,8 +780,7 @@ def reject_activity(request, activity):
         content=f"您的活动{activity.title}被拒绝。",
         URL=f"/viewActivity/{activity.id}",
         relate_instance=activity,
-        publish_to_wechat=True,
-        publish_kws={"app": WechatApp.AUDIT},
+        to_wechat=dict(app=WechatApp.AUDIT),
     )
 
     activity.save()

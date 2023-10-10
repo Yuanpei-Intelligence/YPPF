@@ -279,8 +279,7 @@ def create_single_course_activity(request: HttpRequest) -> Tuple[int, bool]:
         content="您有一个单次课程活动待审批",
         URL=f"/examineActivity/{activity.id}",
         relate_instance=activity,
-        publish_to_wechat=True,
-        publish_kws={"app": WechatApp.AUDIT},
+        to_wechat=dict(app=WechatApp.AUDIT),
     )
 
     return activity.id, True
@@ -867,11 +866,8 @@ def draw_lots():
                 title=title,
                 content=content,
                 URL=URL,
-                publish_to_wechat=True,
-                publish_kws={
-                    "app": WechatApp.TO_PARTICIPANT,
-                    "level": WechatMessageLevel.IMPORTANT,
-                },
+                to_wechat=dict(app=WechatApp.TO_PARTICIPANT,
+                               level=WechatMessageLevel.IMPORTANT)
             )
 
             # 给选课失败的同学发送通知
@@ -890,11 +886,8 @@ def draw_lots():
                     title=title,
                     content=content,
                     URL=URL,
-                    publish_to_wechat=True,
-                    publish_kws={
-                        "app": WechatApp.TO_PARTICIPANT,
-                        "level": WechatMessageLevel.IMPORTANT,
-                    },
+                    to_wechat=dict(app=WechatApp.TO_PARTICIPANT,
+                                   level=WechatMessageLevel.IMPORTANT),
                 )
 
 
@@ -1319,7 +1312,6 @@ def finish_course(course):
         # 通知课程小组成员该课程已结束
         title = f'课程结束通知！'
         msg = f'{course.name}在本学期的课程已结束！'
-        publish_kws = {"app": WechatApp.TO_PARTICIPANT}
         receivers = participants.values_list('person_id', flat=True)
         receivers = User.objects.filter(id__in=receivers)
         bulk_notification_create(
@@ -1329,8 +1321,7 @@ def finish_course(course):
             title=title,
             content=msg,
             URL=f"/viewCourse/?courseid={course.id}",
-            publish_to_wechat=True,
-            publish_kws=publish_kws,
+            to_wechat=dict(app=WechatApp.TO_PARTICIPANT),
         )
         # 设置课程状态
     except:

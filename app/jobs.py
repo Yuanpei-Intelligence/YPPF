@@ -66,9 +66,7 @@ def send_to_persons(title, message, url='/index/'):
     print(bulk_notification_create(
         receivers, sender,
         Notification.Type.NEEDREAD, title, message, url,
-        publish_to_wechat=True,
-        publish_kws={'level': WechatMessageLevel.IMPORTANT,
-                     'show_source': False},
+        to_wechat=dict(level=WechatMessageLevel.IMPORTANT, show_source=False),
     ))
 
 
@@ -81,9 +79,7 @@ def send_to_orgs(title, message, url='/index/'):
     bulk_notification_create(
         receivers, sender,
         Notification.Type.NEEDREAD, title, message, url,
-        publish_to_wechat=True,
-        publish_kws={'level': WechatMessageLevel.IMPORTANT,
-                     'show_source': False},
+        to_wechat=dict(level=WechatMessageLevel.IMPORTANT, show_source=False),
     )
 
 
@@ -277,8 +273,7 @@ def add_week_course_activity(course_id: int, weektime_id: int, cur_week: int, co
         content="新增了一个已审批的课程活动",
         URL=f"/examineActivity/{activity.id}",
         relate_instance=activity,
-        publish_to_wechat=True,
-        publish_kws={"app": WechatApp.AUDIT, 'level': WechatMessageLevel.INFO},
+        to_wechat={"app": WechatApp.AUDIT, 'level': WechatMessageLevel.INFO},
     )
 
 
@@ -380,9 +375,7 @@ def happy_birthday():
         bulk_notification_create(
             receivers, sender,
             Notification.Type.NEEDREAD, title, message, url,
-            publish_to_wechat=True,
-            publish_kws={'level': WechatMessageLevel.IMPORTANT,
-                         'show_source': False},
+            to_wechat=dict(level=WechatMessageLevel.IMPORTANT, show_source=False),
         )
 
 
@@ -405,7 +398,5 @@ def weekly_activity_summary_reminder():
             org.get_user(), sender,
             Notification.Type.NEEDREAD, '每周活动总结提醒',
             '如果本周举办了未在系统中申报的活动，请通过每周活动总结及时填报！',
-            publish_to_wechat=True,
-            publish_kws={'level': WechatMessageLevel.IMPORTANT,
-                         'show_source': False},
+            to_wechat=dict(show_source=False),
         )

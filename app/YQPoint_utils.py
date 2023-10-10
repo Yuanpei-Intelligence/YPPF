@@ -578,11 +578,8 @@ def run_lottery(pool_id: int):
                 title=title,
                 content=content,
                 # URL=f'', # TODO: 我的奖品页面？
-                publish_to_wechat=True,
-                publish_kws={
-                    "app": WechatApp.TO_PARTICIPANT,
-                    "level": WechatMessageLevel.IMPORTANT,
-                },
+                to_wechat=dict(app=WechatApp.TO_PARTICIPANT,
+                               level=WechatMessageLevel.IMPORTANT),
             )
 
         # 给没中奖的同学发送通知
@@ -600,11 +597,8 @@ def run_lottery(pool_id: int):
                 title=title,
                 content=content,
                 # URL=f'', # TODO: 我的奖品页面？
-                publish_to_wechat=True,
-                publish_kws={
-                    "app": WechatApp.TO_PARTICIPANT,
-                    "level": WechatMessageLevel.IMPORTANT,
-                },
+                to_wechat=dict(app=WechatApp.TO_PARTICIPANT,
+                               level=WechatMessageLevel.IMPORTANT),
             )
 
 
