@@ -5,7 +5,7 @@ from django.db.models import QuerySet
 from django.utils.safestring import mark_safe
 
 from utils.http.dependency import HttpRequest
-import utils.models.query as SQ
+from utils.models.query import sfilter, f
 from utils.admin_utils import *
 from app.models import *
 from scheduler.cancel import remove_job
@@ -28,8 +28,8 @@ class PositionInline(admin.TabularInline):
 class ParticipantInline(admin.TabularInline):
     model = Participant
     classes = ['collapse']
-    ordering = ['-activity_id']
-    fields = ['activity_id', 'person_id', 'status']
+    ordering = ['-' + f(model.activity_id)]
+    fields = [f(model.activity_id), f(model.person_id), f(model.status)]
     show_change_link = True
 
 @readonly_inline
@@ -390,7 +390,7 @@ class ActivityAdmin(admin.ModelAdmin):
     @as_action("更新 报名人数", actions, update=True)
     def refresh_count(self, request, queryset: QuerySet[Activity]):
         for activity in queryset:
-            activity.current_participants = SQ.sfilter(
+            activity.current_participants = sfilter(
                 Participant.activity_id, activity).filter(
                 status__in=[
                     Participant.AttendStatus.ATTENDED,
@@ -467,11 +467,15 @@ class ActivityAdmin(admin.ModelAdmin):
 
 @admin.register(Participant)
 class ParticipantAdmin(admin.ModelAdmin):
-    list_display = ["id", 'activity_id', "person_id", "status",]
-    search_fields = ('id','activity_id__id',
-                     "activity_id__title", "person_id__name",)
-    list_filter =   ("status", 'activity_id__category',
-                     'activity_id__year', 'activity_id__semester',)
+    _m = Participant
+    _act = _m.activity_id
+    list_display = ['id', f(_act), f(_m.person_id), f(_m.status)]
+    search_fields = ['id', f(_act, 'id'), f(_act, Activity.title),
+                     f(_m.person_id, NaturalPerson.name)]
+    list_filter = [
+        f(_m.status), f(_act, Activity.category),
+        f(_act, Activity.year), f(_act, Activity.semester),
+    ]
 
 
 @admin.register(Notification)

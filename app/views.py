@@ -410,8 +410,8 @@ def stuinfo(request: UserRequest):
 
         participants = Participant.objects.activated().filter(person_id=person)
         activities = Activity.objects.activated().filter(
-            Q(id__in=participants.values("activity_id")),
             # ~Q(status=Activity.Status.CANCELED), # 暂时可以呈现已取消的活动
+            id__in=SQ.qsvlist(participants, Participant.activity_id),
         )
         if request.user.is_person():
             # 因为上面筛选过活动，这里就不用筛选了
@@ -433,8 +433,8 @@ def stuinfo(request: UserRequest):
         # 呈现历史活动，不考虑共同活动的规则，直接全部呈现
         history_activities = list(
             Activity.objects.activated(noncurrent=True).filter(
-                Q(id__in=participants.values("activity_id")),
                 # ~Q(status=Activity.Status.CANCELED), # 暂时可以呈现已取消的活动
+                id__in=SQ.qsvlist(participants, Participant.activity_id),
             ))
         history_activities.sort(key=lambda a: a.start, reverse=True)
         html_display["history_act_info"] = list(history_activities) or None

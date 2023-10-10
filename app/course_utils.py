@@ -39,6 +39,7 @@ from app.notification_utils import (
 from app.activity_utils import (
     changeActivityStatus,
     notifyActivity,
+    create_participate_infos,
 )
 from app.extern.wechat import WechatApp, WechatMessageLevel
 from app.log import logger
@@ -232,13 +233,8 @@ def create_single_course_activity(request: HttpRequest) -> Tuple[int, bool]:
             person_pos = list(set(person_pos))
         members = NaturalPerson.objects.filter(
             id__in=person_pos)
-        for member in members:
-            participant = Participant.objects.create(
-                **dict([
-                    (SQ.f(Participant.activity_id), activity),
-                    (SQ.f(Participant.person_id), member),
-                ]),
-                status=Participant.AttendStatus.APPLYSUCCESS)
+        status = Participant.AttendStatus.APPLYSUCCESS
+        create_participate_infos(activity, members, status=status)
 
         activity.current_participants = len(person_pos)
         activity.capacity = len(person_pos)
