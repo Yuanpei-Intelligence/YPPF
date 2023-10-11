@@ -61,9 +61,9 @@
                                                         </div>
                                                     <div align="right">
                                                             <h4>
-                                                            <img src={{ app_avatar_path }} width="24" height="24" alt="avatar">
-                                                            <a href='{{apply_person.get_absolute_url}}'>
-                                                                <u>{{apply_person.name}}</u></a>
+                                                            <img src="{{ apply_person.get_user_ava }}" width="24" height="24" alt="avatar">
+                                                            <a href="{{ apply_person.get_absolute_url }}">
+                                                                <u>{{ apply_person.get_display_name }}</u></a>
                                                             </h4>
                                                     </div>
                                                     </div>

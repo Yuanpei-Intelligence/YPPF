@@ -421,11 +421,11 @@ def feedbackWelcome(request: HttpRequest):
         # 教师页面不显示我的反馈
         if me.is_teacher():
             show_feedback = False
-        my_feedback = issued_feedback.filter(person_id=me)
-        my_all_feedback = Feedback.objects.filter(person_id=me)
+        my_feedback = issued_feedback.filter(person=me)
+        my_all_feedback = Feedback.objects.filter(person=me)
     else:
-        my_feedback = issued_feedback.filter(org_id=me)
-        my_all_feedback = Feedback.objects.filter(org_id=me)
+        my_feedback = issued_feedback.filter(org=me)
+        my_all_feedback = Feedback.objects.filter(org=me)
 
     undone_feedback = (
         my_feedback

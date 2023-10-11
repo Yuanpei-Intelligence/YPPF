@@ -271,7 +271,7 @@ def update_org_application(application, me, request):
                     status=ModifyOrganization.Status.REFUSED)
                 context = succeed(
                     "成功拒绝来自"
-                    + NaturalPerson.objects.get(person_id=application.pos).name
+                    + NaturalPerson.objects.get_by_user(application.pos).name
                     + "的申请!")
                 context["application_id"] = application.id
                 return context
@@ -286,7 +286,7 @@ def update_org_application(application, me, request):
                         accept_modifyorg_submit(application)
                         context = succeed(
                             "成功通过来自"
-                             + NaturalPerson.objects.get(person_id=application.pos).name
+                             + NaturalPerson.objects.get_by_user(application.pos).name
                              + "的申请!")
                         context["application_id"] = application.id
                         return context
@@ -467,7 +467,7 @@ def make_relevant_notification(application, info):
         except:
             position_name = "退出小组"
     elif isinstance(application, ModifyOrganization):
-        apply_person = NaturalPerson.objects.get(person_id=application.pos)
+        apply_person = NaturalPerson.objects.get_by_user(application.pos)
         inchage_person = application.otype.incharge
         try:
             new_org: Organization = Organization.objects.get(oname=application.oname)

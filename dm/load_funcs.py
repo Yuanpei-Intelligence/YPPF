@@ -996,7 +996,7 @@ def load_birthday(filepath: str, use_name: bool=False, slash: bool=False):
                 year, month, day = map(int, birthday.split("/"))
             if not use_name:
                 user = User.objects.get(username=str(stuid))
-                stu = NaturalPerson.objects.get(person_id=user)
+                stu = NaturalPerson.objects.get_by_user(user)
             else:
                 stu = NaturalPerson.objects.get(name=name)
             stu.birthday = date(year, month, day)

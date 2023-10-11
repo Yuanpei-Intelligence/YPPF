@@ -247,7 +247,7 @@ class NaturalPersonManager(models.Manager['NaturalPerson']):
             self = self.activated()
         if update:
             self = self.select_for_update()
-        result: NaturalPerson = self.get(person_id=user)
+        result: NaturalPerson = self.get(SQ.sq(NaturalPerson.person_id, user))
         return result
 
     def activated(self):
@@ -1266,8 +1266,7 @@ class ModifyOrganization(CommentBase):
 
     def get_poster_name(self):
         try:
-            person = NaturalPerson.objects.get(person_id=self.pos)
-            return person.name
+            return NaturalPerson.objects.get_by_user(self.pos).name
         except:
             return '未知'
 

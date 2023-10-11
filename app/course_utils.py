@@ -1391,24 +1391,21 @@ def download_course_record(course: Course = None, year: int = None, semester: Se
                                   **relate_filter_kws,
                               )),
         ).order_by('person_id__username')
+
+        def _sum_hours(records: QuerySet[CourseRecord]) -> float:
+            agg = records.filter(**filter_kws).aggregate(Sum('total_hours'))
+            return agg['total_hours__sum'] or 0
+
         filtered_records = []
         for person in person_record:
-            course_me_past = CourseRecord.objects.filter(person_id=person).exclude(invalid=True)
+            valid_records = SQ.sfilter(CourseRecord.person, person).exclude(invalid=True)
             # 计算每个类别的学时
             record = []
             for course_type in list(Course.CourseType):  # CourseType.values亦可
-                record.append((
-                    course_me_past
-                    .filter(course__type=course_type, **relate_filter_kws)
-                    .aggregate(Sum('total_hours'))
-                )['total_hours__sum'] or 0)
+                record.append(_sum_hours(valid_records.filter(course__type=course_type)))
 
             # 计算没有对应Course的学时
-            record.append((
-                course_me_past
-                .filter(course__isnull=True, **relate_filter_kws)
-                .aggregate(Sum('total_hours'))
-            )['total_hours__sum'] or 0)
+            record.append(_sum_hours(valid_records.filter(course__isnull=True)))
 
             filtered_records.append(record)
         for person, record in zip(person_record.select_related('person_id'), 

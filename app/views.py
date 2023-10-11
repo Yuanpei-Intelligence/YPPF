@@ -110,7 +110,7 @@ def miniLogin(request: HttpRequest):
 
             # request.session["username"] = username 已废弃
             en_pw = GLOBAL_CONFIG.hasher.encode(username)
-            user_account = NaturalPerson.objects.get(person_id=username)
+            user_account = NaturalPerson.objects.get_by_user(username)
             return JsonResponse({"Sname": user_account.name, "Succeed": 1}, status=200)
         else:
             return JsonResponse({"Sname": username, "Succeed": 0}, status=400)
@@ -167,9 +167,7 @@ def stuinfo(request: UserRequest):
             else:
                 obtain_id = int(name_list[1])  # 获取增补信息
                 get_user = User.objects.get(id=obtain_id)
-                potential_person = NaturalPerson.objects.activated().get(
-                    person_id=get_user
-                )
+                potential_person = NaturalPerson.objects.activated().get_by_user(get_user)
                 assert potential_person in person
                 person = potential_person
 
@@ -341,7 +339,7 @@ def stuinfo(request: UserRequest):
         # 只有是自己的主页时才显示学时
         if is_myself:
             # 把当前学期的活动去除
-            past_courses = CourseRecord.objects.past().filter(person_id=oneself)
+            past_courses = CourseRecord.objects.past().filter(person=oneself)
 
             # 无效学时，在前端呈现
             useless_courses = (
@@ -580,7 +578,7 @@ def requestLoginOrg(request: UserRequest):
     if request.user.is_org():
         return redirect("/orginfo/")
     try:
-        me = NaturalPerson.objects.activated().get(person_id=request.user)
+        me = NaturalPerson.objects.activated().get_by_user(request.user)
     except:  # 找不到合法的用户
         return redirect(message_url(wrong('用户不存在!')))
     name = request.GET.get('name')
@@ -793,8 +791,7 @@ def homepage(request: UserRequest):
     # 今天第一次访问 welcome 界面，积分增加
     if request.user.is_person():
         with transaction.atomic():
-            np: NaturalPerson = NaturalPerson.objects.select_for_update().get(
-                person_id=request.user)
+            np = NaturalPerson.objects.select_for_update().get_by_user(request.user)
             if np.last_time_login is None or np.last_time_login.date() != nowtime.date():
                 np.last_time_login = nowtime
                 np.save()
@@ -964,10 +961,9 @@ def accountSetting(request: UserRequest):
     # bar_display["navbar_name"] = "账户设置"
 
     if request.user.is_person():
-        info = NaturalPerson.objects.filter(person_id=request.user)
-        userinfo = info.values()[0]
+        userinfo = SQ.sfilter(NaturalPerson.person_id, request.user).values()[0]
 
-        useroj = NaturalPerson.objects.get(person_id=request.user)
+        useroj = NaturalPerson.objects.get_by_user(request.user)
 
         former_wallpaper = utils.get_user_wallpaper(me)
 
@@ -1522,7 +1518,7 @@ def forgetPassword(request: HttpRequest):
         else:
             user = user[0]
             try:
-                person = NaturalPerson.objects.get(person_id=user)  # 目前只支持自然人
+                person = NaturalPerson.objects.get_by_user(user)  # 目前只支持自然人
             except:
                 display = wrong("暂不支持小组账号验证码登录！")
                 display["alert"] = True
