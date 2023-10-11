@@ -151,10 +151,7 @@ def get_weather_async():
 def get_weather() -> Dict[str, Any]:
     weather_file = os.path.join(GLOBAL_CONFIG.temporary_dir, "weather.json")
     if not os.path.exists(weather_file):
-        try:
-            get_weather_async.run()
-        except:
-            return dict()
+        return dict()
     with open(weather_file, "r") as f:
         return json.load(f)
 
