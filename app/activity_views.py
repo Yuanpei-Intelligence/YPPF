@@ -294,7 +294,7 @@ def viewActivity(request: HttpRequest, aid=None):
             Participant.AttendStatus.UNATTENDED,
         ])
     people_list = NaturalPerson.objects.activated().filter(
-        id__in=participants.values("person_id"))
+        id__in=SQ.qsvlist(participants, Participant.person_id))
 
     # 新版侧边栏，顶栏等的呈现，采用bar_display，必须放在render前最后一步，但这里render太多了
     # TODO: 整理好代码结构，在最后统一返回
@@ -802,7 +802,7 @@ def offlineCheckinActivity(request: HttpRequest, aid):
         if option == "saveSituation":
             # 修改签到状态
 
-            member_userids = member_list.values_list("person_id", flat=True)
+            member_userids = SQ.qsvlist(member_list, Participant.person_id)
             member_attend, member_unattend = [], []
             for person_id in member_userids:
                 checkin = request.POST.get(f"checkin_{person_id}")
@@ -827,7 +827,7 @@ def offlineCheckinActivity(request: HttpRequest, aid):
 
     bar_display = utils.get_sidebar_and_navbar(request.user,
                                                navbar_name="调整签到信息")
-    member_list = member_list.select_related('person_id')
+    member_list = member_list.select_related(SQ.f(Participant.person_id))
     render_context = dict(bar_display=bar_display, member_list=member_list)
     return render(request, "activity/modify_checkin.html", render_context)
 

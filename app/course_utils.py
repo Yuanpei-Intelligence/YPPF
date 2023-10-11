@@ -1210,10 +1210,11 @@ def cal_participate_num(course: Course) -> dict:
         person__identity=NaturalPerson.Identity.STUDENT,
         org=org,
     ).values_list("person", flat=True)
-    all_participants = (
+    all_participants = SQ.qsvlist(
         Participant.objects.activated(no_unattend=True)
-        .filter(activity_id__in=activities, person_id_id__in=members)
-    ).values_list("person_id", flat=True)
+        .filter(SQ.mq(Participant.activity_id, IN=activities),
+                SQ.mq(Participant.person_id, IN=members)),
+        Participant.person_id)
     participate_num = dict(Counter(all_participants))
     # 没有参加的参与次数设置为0
     participate_num.update(

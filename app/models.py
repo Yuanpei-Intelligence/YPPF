@@ -1084,6 +1084,7 @@ class ActivityPhoto(models.Model):
         upload_to=f"activity/photo/%Y/%m/", verbose_name=u'活动图片', null=True, blank=True)
     activity = models.ForeignKey(
         Activity, related_name="photos", on_delete=models.CASCADE)
+    activity_id: int
     time = models.DateTimeField("上传时间", auto_now_add=True)
 
     def get_image_path(self):

@@ -650,9 +650,11 @@ def load_course_record(filepath: str, output_func: Callable=None, html:bool=Fals
             display_message += '未查询到 ' + person[0] + '<br>' + print_show[1]
             if person[1].exists():
                 for message in person[1]:
+                    message: NaturalPerson
                     display_message += '<div style="color:cadetblue;">' + message.name + ' ' + message.person_id.username + '</div>'
             if person[2] != None and person[2].exists():
                 for message in person[2]:
+                    message: NaturalPerson
                     display_message += '<div style="color:cadetblue;">' + message.name + ' ' + message.person_id.username + '</div>'
             elif not person[1].exists():
                 display_message += '<div style="color:cadetblue;">未查询到类似数据</div>'

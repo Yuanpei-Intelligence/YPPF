@@ -766,9 +766,7 @@ def reject_activity(request, activity):
         Notification.objects.filter(
             relate_instance=activity
         ).update(status=Notification.Status.DELETE)
-        # Participant.objects.filter(
-        #         activity_id=activity
-        #     ).update(status=Participant.AttendStatus.APPLYFAILED)
+        # 曾将所有报名的人的状态改为申请失败
         notifyActivity(activity.id, "modification_par",
                        f"您报名的活动{activity.title}已取消。")
         activity.status = Activity.Status.CANCELED
@@ -789,8 +787,7 @@ def reject_activity(request, activity):
 
 
 # 调用的时候用 try
-# 调用者把 activity_id 作为参数传过来
-def apply_activity(request, activity):
+def apply_activity(request, activity: Activity):
     '''这个函数在正常情况下只应该抛出提示错误信息的ActivityException'''
     context = dict()
     context["success"] = False
@@ -879,10 +876,7 @@ def cancel_activity(request, activity):
     )
     notification_status_change(notification, Notification.Status.DELETE)
 
-    # 注意这里，活动取消后，状态变为申请失败了
-    # participants = Participant.objects.filter(
-    #         activity_id=activity
-    #     ).update(status=Participant.AttendStatus.APPLYFAILED)
+    # 活动取消后，曾将所有相关状态变为申请失败
 
     _remove_activity_jobs(activity)
     activity.save()

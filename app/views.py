@@ -408,7 +408,8 @@ def stuinfo(request: UserRequest):
 
         # ------------------ 活动参与 ------------------ #
 
-        participants = Participant.objects.activated().filter(person_id=person)
+        participants = Participant.objects.activated().filter(SQ.sq(
+                Participant.person_id, person))
         activities = Activity.objects.activated().filter(
             # ~Q(status=Activity.Status.CANCELED), # 暂时可以呈现已取消的活动
             id__in=SQ.qsvlist(participants, Participant.activity_id),
@@ -416,9 +417,9 @@ def stuinfo(request: UserRequest):
         if request.user.is_person():
             # 因为上面筛选过活动，这里就不用筛选了
             # 之前那个写法是O(nm)的
-            activities_me = Participant.objects.activated().filter(person_id=oneself)
-            activities_me = set(activities_me.values_list(
-                "activity_id_id", flat=True))
+            activities_me = Participant.objects.activated().filter(SQ.sq(
+                Participant.person_id, oneself))
+            activities_me = set(SQ.qsvlist(activities_me, Participant.activity_id))
         else:
             activities_me = activities.filter(organization_id=oneself)
             activities_me = set(activities_me.values_list("id", flat=True))
@@ -674,7 +675,7 @@ def orginfo(request: UserRequest):
             return redirect("/welcome/")
 
     # 该学年、该学期、该小组的 活动的信息,分为 未结束continuing 和 已结束ended ，按时间顺序降序展现
-    continuing_activity_list = (
+    continuing_activities = (
         Activity.objects.activated()
         .filter(organization_id=org)
         .filter(
@@ -688,7 +689,7 @@ def orginfo(request: UserRequest):
         .order_by("-start")
     )
 
-    ended_activity_list = (
+    ended_activities = (
         Activity.objects.activated()
         .filter(organization_id=org)
         .filter(status__in=[Activity.Status.CANCELED, Activity.Status.END])
@@ -696,7 +697,7 @@ def orginfo(request: UserRequest):
     )
 
     # 筛选历史活动，具体为不是这个学期的活动
-    history_activity_list = (
+    history_activities = (
         Activity.objects.activated(noncurrent=True)
         .filter(organization_id=org)
         .order_by("-start")
@@ -704,59 +705,24 @@ def orginfo(request: UserRequest):
 
     # 如果是用户登陆的话，就记录一下用户有没有加入该活动，用字典存每个活动的状态，再把字典存在列表里
 
-    prepare_times = Activity.EndBeforeHours.prepare_times
+    def _display_activities(activities: QuerySet[Activity]) -> list[dict]:
+        displays = []
+        for act in activities:
+            dictmp = {}
+            dictmp["act"] = act
+            hours = Activity.EndBeforeHours.prepare_times[act.endbefore]
+            dictmp["endbefore"] = act.start - timedelta(hours=hours)
+            if request.user.is_person():
+                participation = Participant.objects.filter(
+                    SQ.sq(Participant.activity_id, act), SQ.sq(Participant.person_id, me),
+                ).first()
+                dictmp["status"] = participation.status if participation else "无记录"
+            displays.append(dictmp)
+        return displays
 
-    continuing_activity_list_participantrec = []
-
-    for act in continuing_activity_list:
-        dictmp = {}
-        dictmp["act"] = act
-        dictmp["endbefore"] = act.start - \
-            timedelta(hours=prepare_times[act.endbefore])
-        if request.user.is_person():
-
-            existlist = Participant.objects.filter(activity_id_id=act.id).filter(
-                person_id_id=me.id
-            )
-
-            if existlist:  # 判断是否非空
-                dictmp["status"] = existlist[0].status
-            else:
-                dictmp["status"] = "无记录"
-        continuing_activity_list_participantrec.append(dictmp)
-
-    ended_activity_list_participantrec = []
-    for act in ended_activity_list:
-        dictmp = {}
-        dictmp["act"] = act
-        dictmp["endbefore"] = act.start - \
-            timedelta(hours=prepare_times[act.endbefore])
-        if request.user.is_person():
-            existlist = Participant.objects.filter(activity_id_id=act.id).filter(
-                person_id_id=me.id
-            )
-            if existlist:  # 判断是否非空
-                dictmp["status"] = existlist[0].status
-            else:
-                dictmp["status"] = "无记录"
-        ended_activity_list_participantrec.append(dictmp)
-
-    # 处理历史活动
-    history_activity_list_participantrec = []
-    for act in history_activity_list:
-        dictmp = {}
-        dictmp["act"] = act
-        dictmp["endbefore"] = act.start - \
-            timedelta(hours=prepare_times[act.endbefore])
-        if request.user.is_person():
-            existlist = Participant.objects.filter(activity_id_id=act.id).filter(
-                person_id_id=me.id
-            )
-            if existlist:  # 判断是否非空
-                dictmp["status"] = existlist[0].status
-            else:
-                dictmp["status"] = "无记录"
-        history_activity_list_participantrec.append(dictmp)
+    continuing_activity_list_participantrec = _display_activities(continuing_activities)
+    ended_activity_list_participantrec = _display_activities(ended_activities)
+    history_activity_list_participantrec = _display_activities(history_activities)
 
     # 判断我是不是老大, 首先设置为false, 然后如果有person_id和user一样, 就为True
     html_display["isboss"] = False
@@ -920,16 +886,16 @@ def homepage(request: UserRequest):
     """
     all_photo_display = ActivityPhoto.objects.filter(
         type=ActivityPhoto.PhotoType.SUMMARY).order_by('-time')
-    photo_display, activity_id_set = list(), set()  # 实例的哈希值未定义，不可靠
+    photo_display, _aid_set = list(), set()  # 实例的哈希值未定义，不可靠
     count = 9 - len(guidepics)  # 算第一张导航图
     for photo in all_photo_display:
         # 不用activity，因为外键需要访问数据库
-        if photo.activity_id not in activity_id_set and photo.image:
+        if photo.activity_id not in _aid_set and photo.image:
             # 数据库设成了image可以为空而不是空字符串，str的判断对None没有意义
 
             photo.image = MEDIA_URL + str(photo.image)
             photo_display.append(photo)
-            activity_id_set.add(photo.activity_id)
+            _aid_set.add(photo.activity_id)
             count -= 1
 
             if count <= 0:  # 目前至少能显示一个，应该也合理吧
