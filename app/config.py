@@ -18,6 +18,7 @@ from boot import (
     MEDIA_URL,
 )
 from utils.config import Config, LazySetting
+from utils.config.cast import mapping
 from utils.hasher import MySHA256Hasher
 from utils.global_messages import (
     WRONG, SUCCEED,
@@ -87,7 +88,7 @@ class CourseConfig(Config):
     # Course Info
     type_name = LazySetting('type_name', default='书院课程')
     least_record_hours = LazySetting('valid_hours', float, default=8.0)
-    audit_teacher = LazySetting('auditors', list[str])
+    audit_teachers = LazySetting('auditors', mapping(list, str), type=list[str])
 
 
 CONFIG = ProfileConfig(ROOT_CONFIG, '')

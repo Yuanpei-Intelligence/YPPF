@@ -258,11 +258,17 @@ class NaturalPersonManager(models.Manager['NaturalPerson']):
             self = self.activated()
         return self.filter(identity=NaturalPerson.Identity.TEACHER)
 
+    def get_teachers(self, identifiers: list[str], activate: bool = True
+                     ) -> QuerySet['NaturalPerson']:
+        '''姓名或工号获取教师'''
+        teachers = self.teachers(activate=activate)
+        name_query = SQ.mq(NaturalPerson.name, IN=identifiers)
+        uid_query = SQ.mq(NaturalPerson.person_id, User.username, IN=identifiers)
+        return teachers.filter(name_query | uid_query)
+
     def get_teacher(self, name_or_id: str, activate: bool = True):
         '''姓名或工号，不存在或不止一个时抛出异常'''
-        teachers = self.teachers(activate=activate)
-        return teachers.get(Q(name=name_or_id) |
-                            SQ.mq(NaturalPerson.person_id, username=name_or_id))
+        return self.get_teachers([name_or_id], activate=activate).get()
 
 
 class NaturalPerson(models.Model):

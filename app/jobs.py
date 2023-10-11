@@ -165,7 +165,7 @@ def add_week_course_activity(course_id: int, weektime_id: int, cur_week: int, co
     """
     course: Course = Course.objects.get(id=course_id)
     examine_teacher = NaturalPerson.objects.get_teacher(
-        CONFIG.course.audit_teacher[0])
+        CONFIG.course.audit_teachers[0])
     # 当前课程在学期已举办的活动
     conducted_num = Activity.objects.activated().filter(
         organization_id=course.organization,

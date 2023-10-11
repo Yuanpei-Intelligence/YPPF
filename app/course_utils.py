@@ -186,7 +186,7 @@ def create_single_course_activity(request: HttpRequest) -> Tuple[int, bool]:
 
     # 获取默认审核老师
     examine_teacher = NaturalPerson.objects.get_teacher(
-        APP_CONFIG.audit_teacher[0])
+        APP_CONFIG.audit_teachers[0])
 
     # 获取活动所属课程的图片，用于viewActivity, examineActivity等页面展示
     image = str(course.photo)
