@@ -1401,7 +1401,8 @@ def download_course_record(course: Course = None, year: int = None, semester: Se
                                   **relate_filter_kws,
                               )),
         ).order_by('person_id__username')
-        for person in all_person:
+        filtered_records = []
+        for person in person_record:
             course_me_past = CourseRecord.objects.filter(person_id=person).exclude(invalid=True)
             # 计算每个类别的学时
             record = []
@@ -1419,9 +1420,9 @@ def download_course_record(course: Course = None, year: int = None, semester: Se
                 .aggregate(Sum('total_hours'))
             )['total_hours__sum'] or 0)
 
-            person_record.append(record)
-        for person, record in zip(all_person.select_related('person_id'), 
-                                  person_record):
+            filtered_records.append(record)
+        for person, record in zip(person_record.select_related('person_id'), 
+                                  filtered_records):
             line = [person.person_id.username, person.name,
                     person.record_hours or 0, 
                     person.invalid_hours or 0]
