@@ -1112,6 +1112,11 @@ class Participant(models.Model):
     activity_id = models.ForeignKey(Activity, on_delete=models.CASCADE)
     person_id = models.ForeignKey(NaturalPerson, on_delete=models.CASCADE)
 
+    @necessary_for_frontend(person_id)
+    def get_participant(self):
+        '''供前端使用，追踪该字段的函数'''
+        return self.person_id
+
     class AttendStatus(models.TextChoices):
         APPLYING = "申请中"
         APPLYFAILED = "活动申请失败"

@@ -961,9 +961,8 @@ def accountSetting(request: UserRequest):
     # bar_display["navbar_name"] = "账户设置"
 
     if request.user.is_person():
-        userinfo = SQ.sfilter(NaturalPerson.person_id, request.user).values()[0]
-
         useroj = NaturalPerson.objects.get_by_user(request.user)
+        userinfo = NaturalPerson.objects.filter(pk=useroj.pk).values()[0]
 
         former_wallpaper = utils.get_user_wallpaper(me)
 

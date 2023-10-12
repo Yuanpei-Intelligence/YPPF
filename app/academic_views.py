@@ -246,8 +246,7 @@ def applyAuditAcademic(request: HttpRequest):
     if not NaturalPerson.objects.get_by_user(request.user).is_teacher():
         return JsonResponse(wrong("只有老师才能执行审核操作！"))
     try:
-        author = NaturalPerson.objects.get(
-            person_id_id=request.POST.get("author_id"))
+        author = NaturalPerson.objects.get_by_user(request.POST.get("author_id"))
         # 需要回传作者的person_id.id
         audit_academic_map(author)
         return JsonResponse(succeed("审核成功！"))

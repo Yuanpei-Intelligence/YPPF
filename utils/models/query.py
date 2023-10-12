@@ -40,11 +40,13 @@ Example:
         blogs = mfilter(Blog.author, Author.user, score=0, active=True)
 
 Warning:
+    从非抽象父类继承的字段仍存储于父类中，作为查询函数首个参数时，会使用父类的默认管理器进行查询。
     本模块的函数在模型定义时无法使用，因为字段描述符在模型类创建后才会被创建，但你可以在任何方法中使用。
 
 Note:
     本模块不提供与更新相关的函数，因为更新不会跨越关系，且应以管理器要求的安全方式进行。
     尽管多条件查询支持关键字参数，你仍应避免在条件中包含`__`以阻碍`field=`型字段追踪。
+    抽象模型的字段在子类被继承时被复制，因此可以在子类中使用本模块的函数。
 '''
 from typing import cast, Any, TypeAlias, TypeGuard, TypeVar
 

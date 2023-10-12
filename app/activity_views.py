@@ -812,10 +812,10 @@ def offlineCheckinActivity(request: HttpRequest, aid):
                     member_unattend.append(person_id)
             with transaction.atomic():
                 member_list.select_for_update().filter(
-                    person_id_id__in=member_attend).update(
+                    SQ.mq(Participant.person_id, IN=member_attend)).update(
                         status=Participant.AttendStatus.ATTENDED)
                 member_list.select_for_update().filter(
-                    person_id_id__in=member_unattend).update(
+                    SQ.mq(Participant.person_id, IN=member_unattend)).update(
                         status=Participant.AttendStatus.UNATTENDED)
             # 修改成功之后根据src的不同返回不同的界面，1代表聚合页面，2代表活动主页
             if src == "course_center":

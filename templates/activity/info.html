@@ -510,7 +510,7 @@
                                 </svg>
                             </a>
                         </h5>
-                        {% if participants is None or participants|length == 0 %}
+                        {% if not participants %}
                         <div style="text-align: center;">还没有参与者哦～</div>
                         {% else %}
                         <div class="row" style="margin-left: -4px;">
@@ -524,18 +524,19 @@
                                     border-radius: 12px;
                                 }
                             </style>
-                            {% for person in participants %}
+                            {% for _participation in participants %}
+                            {% with _participation.get_participant as _participant %}
                             <span class="col-0 m-1" style="border-radius: 8px; position: relative;">
-                                <a href="{{ person.person_id.get_absolute_url }}">
-                                    <img src="{{ person.person_id.get_user_ava }}" class="flex" alt="participant's avatar" style="border-radius: 8px; " height="50px" width="50px">
+                                <a href="{{ _participant.get_absolute_url }}">
+                                    <img src="{{ _participant.get_user_ava }}" class="flex" alt="participant's avatar" style="border-radius: 8px; " height="50px" width="50px">
                                     
-                                    {% if person.status == "未签到" %}
+                                    {% if _participation.status == "未签到" %}
 
                                     <div class="messages" style="background-color: rgb(255, 132, 132);">   
                                         <a data-toggle="tooltip" data-placement="bottom" title="未签到">&nbsp;
                                         </a>
                                     </div>
-                                    {% elif person.status == "已参与" %}
+                                    {% elif _participation.status == "已参与" %}
                                     <div class="messages" style="background-color: rgb(163, 219, 161);">
                                         <a data-toggle="tooltip" data-placement="bottom" title="已签到">&nbsp;
                                         </a>
@@ -543,6 +544,7 @@
                                     {% endif %}
                                 </a>
                             </span>
+                            {% endwith %}
                             {% endfor %}
                         </div>
                         {% endif %}

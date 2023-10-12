@@ -83,7 +83,7 @@
             let share_confirm = confirm("{{alert_message}}");
             if (share_confirm) {
                 const req = new XMLHttpRequest();
-                req.open('POST', '{{person.get_absolute_url}}', true);
+                req.open('POST', '{{ context.person.get_absolute_url }}', true);
                 req.responseType = 'blob';
                 req.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded'); //设置请求头
                 req.send("option=" + "cancelInformShare"); //输入参数 参数的值为option="share"
@@ -141,13 +141,13 @@
                         <div class="text-center user-info">
                             <img src={{ context.avatar_path }} height="90px" width="90px" alt="avatar">
                             <p class="">
-                                {% if person.show_gender == False %}
+                                {% if not context.person.show_gender %}
                                 <a data-toggle="tooltip" data-placement="bottom" data-html="true" title="" data-original-title="性别未公开">
                                     <span style="color: #0e1726;">{{ context.person.name }}</span>
                                 </a>
                                 {% else %}
 
-                                {% if person.gender == 0 %}
+                                {% if context.person.gender == 0 %}
                                 <span style="color: #4064bf;">
                                     {{ context.person.name }}
                                     <i class="fa fa-mars"></i>
@@ -329,7 +329,7 @@
                                             <path d="M12 7H7.5a2.5 2.5 0 0 1 0-5C11 2 12 7 12 7z" />
                                             <path d="M12 7h4.5a2.5 2.5 0 0 0 0-5C13 2 12 7 12 7z" />
                                         </svg>
-                                        <a href="/transPage/{{context.person.person_id_id}}">
+                                        <a href="/transPage/{{context.person.get_user.id}}">
                                             向{{ context.title }}转账</a>
                                         <a data-toggle="tooltip" data-placement="bottom" title="目前仅支持小组向小组转账">
                                             <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor"
@@ -1054,7 +1054,7 @@
                                                                 </label>
                                                                 <button type="submit"
                                                                         class="btn btn-primary"
-                                                                        name="comment_submit" value="{{person.person_id.username}}"
+                                                                        name="comment_submit" value="{{ context.person.get_user.username }}"
                                                                         onclick="start_chat(this)"> <!-- 因为创建问答要复用comment_utils.py，这里必须叫“comment_submit”  -->
                                                                     提问
                                                                 </button>
