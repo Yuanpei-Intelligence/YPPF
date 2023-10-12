@@ -745,12 +745,10 @@ def load_feedback(filepath: str, output_func: Callable=None, html=False):
         feedback_num += 1
         err = False
         try:
-            type_id = FeedbackType.objects.get(name=feedback_dict["type"]).id
-            person_id = NaturalPerson.objects.get(name=feedback_dict["person"]).id
-            org_id = Organization.objects.get(oname=feedback_dict["org"]).id
-
             feedback, mid = Feedback.objects.get_or_create(
-                type_id=type_id, person_id=person_id, org_id=org_id,
+                type=FeedbackType.objects.get(name=feedback_dict["type"]),
+                person=NaturalPerson.objects.get(name=feedback_dict["person"]),
+                org=Organization.objects.get(oname=feedback_dict["org"]),
             )
 
             feedback.title = feedback_dict["title"]

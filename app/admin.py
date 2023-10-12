@@ -44,18 +44,19 @@ class CourseParticipantInline(admin.TabularInline):
 # 后台模型
 @admin.register(NaturalPerson)
 class NaturalPersonAdmin(admin.ModelAdmin):
+    _m = NaturalPerson
     list_display = [
-        "person_id",
-        "name",
-        "identity",
+        f(_m.person_id),
+        f(_m.name),
+        f(_m.identity),
     ]
-    search_fields = ("person_id__username", "name")
-    readonly_fields = ("stu_id_dbonly",)
-    list_filter = (
-        "status", "identity",
-        "wechat_receive_level",
-        "stu_grade", "stu_class",
-        )
+    search_fields = [f(_m.person_id, User.username), f(_m.name)]
+    readonly_fields = [f(_m.stu_id_dbonly)]
+    list_filter = [
+        f(_m.status), f(_m.identity),
+        f(_m.wechat_receive_level),
+        f(_m.stu_grade), f(_m.stu_class),
+    ]
 
     inlines = [PositionInline, ParticipantInline, CourseParticipantInline]
 
@@ -65,33 +66,35 @@ class NaturalPersonAdmin(admin.ModelAdmin):
         return option
 
     def get_normal_fields(self, request, obj: NaturalPerson = None):
+        _m = NaturalPerson
         fields = []
-        fields.append(("person_id", "stu_id_dbonly"))
-        fields.append("name")
-        fields.append(self._show_by_option(obj, "show_nickname", "nickname"))
-        fields.append(self._show_by_option(obj, "show_gender", "gender"))
+        fields.append((f(_m.person_id), f(_m.stu_id_dbonly)))
+        fields.append(f(_m.name))
+        fields.append(self._show_by_option(obj, f(_m.show_nickname), f(_m.nickname)))
+        fields.append(self._show_by_option(obj, f(_m.show_gender), f(_m.gender)))
         fields.extend([
-            "identity", "status",
-            "wechat_receive_level",
-            "accept_promote", "active_score",
+            f(_m.identity), f(_m.status),
+            f(_m.wechat_receive_level),
+            f(_m.accept_promote), f(_m.active_score),
         ])
         return fields
 
     def get_student_fields(self, request, obj: NaturalPerson = None):
+        _m = NaturalPerson
         fields = []
-        fields.append("stu_grade")
-        fields.append("stu_class")
-        fields.append(self._show_by_option(obj, "show_major", "stu_major"))
-        fields.append(self._show_by_option(obj, "show_email", "email"))
-        fields.append(self._show_by_option(obj, "show_tel", "telephone"))
-        fields.append(self._show_by_option(obj, "show_dorm", "stu_dorm"))
-        fields.append(self._show_by_option(obj, "show_birthday", "birthday"))
+        fields.append(f(_m.stu_grade))
+        fields.append(f(_m.stu_class))
+        fields.append(self._show_by_option(obj, f(_m.show_major), f(_m.stu_major)))
+        fields.append(self._show_by_option(obj, f(_m.show_email), f(_m.email)))
+        fields.append(self._show_by_option(obj, f(_m.show_tel), f(_m.telephone)))
+        fields.append(self._show_by_option(obj, f(_m.show_dorm), f(_m.stu_dorm)))
+        fields.append(self._show_by_option(obj, f(_m.show_birthday), f(_m.birthday)))
         return fields
 
     # 无论如何都不显示的字段
     exclude = [
-        'avatar', 'wallpaper', 'QRcode', 'biography',
-        'unsubscribe_list',
+        f(_m.avatar), f(_m.wallpaper), f(_m.QRcode), f(_m.biography),
+        f(_m.unsubscribe_list),
     ]
 
     def get_fieldsets(self, request, obj=None):
@@ -692,16 +695,18 @@ class CourseParticipantAdmin(admin.ModelAdmin):
 
 @admin.register(CourseRecord)
 class CourseRecordAdmin(admin.ModelAdmin):
+    _m = CourseRecord
     list_display = [
-        'get_course_name', 'person',
-        'year', 'semester',
-        'attend_times', 'total_hours',
-        'invalid',
+        _m.get_course_name, f(_m.person),
+        f(_m.year), f(_m.semester),
+        f(_m.attend_times), f(_m.total_hours),
+        f(_m.invalid),
     ]
-    search_fields = (
-        'course__name', 'extra_name',
-        'person__name', 'person__person_id__username',
-    )
+    search_fields = [
+        f(_m.course, Course.name), f(_m.extra_name),
+        f(_m.person, NaturalPerson.name),
+        f(_m.person, NaturalPerson.person_id, User.username),
+    ]
     class TypeFilter(admin.SimpleListFilter):
         title = '学时类别'
         parameter_name = 'type' # 过滤器使用的过滤字段
@@ -723,16 +728,16 @@ class CourseRecordAdmin(admin.ModelAdmin):
             elif self.value() in map(str, Course.CourseType.values):
                 return queryset.filter(course__type=self.value())
             return queryset
-    list_filter = (TypeFilter, 'year', 'semester', 'invalid')
+    list_filter = [TypeFilter, f(_m.year), f(_m.semester), f(_m.invalid)]
 
-    autocomplete_fields = ['person', 'course']
+    autocomplete_fields = [f(_m.person), f(_m.course)]
 
     actions = []
 
     @as_action('更新来源名称', actions, update=True)
-    def update_extra_name(self, request, queryset):
+    def update_extra_name(self, request, queryset: QuerySet[CourseRecord]):
         records = queryset.filter(course__isnull=False)
-        for record in records.select_related('course'):
+        for record in records.select_related(f(CourseRecord.course)):
             record.extra_name = record.course.name
             record.save()
         return self.message_user(request=request, message='已更新关联学时名称!')

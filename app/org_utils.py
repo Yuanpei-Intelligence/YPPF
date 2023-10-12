@@ -57,7 +57,8 @@ def find_max_oname():
     return max_oname
 
 
-def accept_modifyorg_submit(application): #同意申请，假设都是合法操作
+def accept_modifyorg_submit(application: ModifyOrganization):
+    '''同意申请，假设都是合法操作'''
     # 新建一系列东西
     username = find_max_oname()
     user = User.objects.create_user(
@@ -90,7 +91,7 @@ def accept_modifyorg_submit(application): #同意申请，假设都是合法操�
     Wishes.objects.create(text=f"{org.otype.otype_name}“{org.oname}”刚刚成立啦！快点去关注一下吧！")
 
 
-def check_neworg_request(request, org=None):
+def check_neworg_request(request, org: Organization = None):
     '''检查neworg request参数的合法性, 用在modifyorganization函数中'''
     context = dict()
     context["warn_code"] = 0
@@ -166,9 +167,9 @@ def check_neworg_request(request, org=None):
     return context
 
 
-def update_org_application(application, me, request):
+def update_org_application(application: ModifyOrganization, me: NaturalPerson, request):
     '''
-    修改成员申请状态的操作函数, application为修改的对象，可以为None
+    修改组织申请状态的操作函数, application为修改的对象，可以为None
     me为操作者
     info为前端POST字典
     返回值为context, warn_code = 1表示失败, 2表示成功; 错误信息在context["warn_message"]
@@ -294,7 +295,8 @@ def update_org_application(application, me, request):
                     return wrong("出现系统意料之外的行为，请联系管理员处理!")
 
 
-def update_pos_application(application, me: ClassifiedUser, applied_org, info):
+def update_pos_application(application: ModifyPosition, me: ClassifiedUser,
+                           applied_org: Organization, info: dict):
     '''
     修改成员申请状态的操作函数, application为修改的对象，可以为None
     me为操作者
@@ -444,7 +446,8 @@ def update_pos_application(application, me: ClassifiedUser, applied_org, info):
 
 
 @logger.secure_func(raise_exc=True)
-def make_relevant_notification(application, info):
+def make_relevant_notification(application: ModifyPosition | ModifyOrganization,
+                               info: dict):
     '''
     对一个已经完成的申请, 构建相关的通知和对应的微信消息, 将有关的事务设为已完成
     如果有错误，则不应该是用户的问题，需要发送到管理员处解决
@@ -644,7 +647,7 @@ def send_message_check(me: Organization, request):
 
 
 # 查看前推广算法: commit b7d6ac7d358589f61db99a3990b1ecbe2a4ca039
-def get_promote_receiver(org, alpha=0.1, beta=0.1):
+def get_promote_receiver(org: Organization, alpha=0.1, beta=0.1):
     '''
     每个人收到推送的概率= 0.1 + 0.1 * max（for 组织in person的关注）（(组织的tag与org的tag的交集数）/ 该组织tag数）
     '''

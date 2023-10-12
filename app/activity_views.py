@@ -790,7 +790,7 @@ def offlineCheckinActivity(request: HttpRequest, aid):
     except:
         return redirect(message_url(wrong('请不要随意访问其他网页！')))
 
-    member_list = Participant.objects.filter(
+    member_participation = Participant.objects.filter(
         SQ.sq(Participant.activity_id, activity),
         status__in=[
             Participant.AttendStatus.UNATTENDED,
@@ -802,20 +802,20 @@ def offlineCheckinActivity(request: HttpRequest, aid):
         if option == "saveSituation":
             # 修改签到状态
 
-            member_userids = SQ.qsvlist(member_list, Participant.person_id)
-            member_attend, member_unattend = [], []
-            for person_id in member_userids:
-                checkin = request.POST.get(f"checkin_{person_id}")
+            member_userids = SQ.qsvlist(member_participation, Participant.person_id)
+            attend_pids, unattend_pids = [], []
+            for pid in member_userids:
+                checkin = request.POST.get(f"checkin_{pid}")
                 if checkin == "yes":
-                    member_attend.append(person_id)
+                    attend_pids.append(pid)
                 elif checkin == "no":
-                    member_unattend.append(person_id)
+                    unattend_pids.append(pid)
             with transaction.atomic():
-                member_list.select_for_update().filter(
-                    SQ.mq(Participant.person_id, IN=member_attend)).update(
+                member_participation.select_for_update().filter(
+                    SQ.mq(Participant.person_id, IN=attend_pids)).update(
                         status=Participant.AttendStatus.ATTENDED)
-                member_list.select_for_update().filter(
-                    SQ.mq(Participant.person_id, IN=member_unattend)).update(
+                member_participation.select_for_update().filter(
+                    SQ.mq(Participant.person_id, IN=unattend_pids)).update(
                         status=Participant.AttendStatus.UNATTENDED)
             # 修改成功之后根据src的不同返回不同的界面，1代表聚合页面，2代表活动主页
             if src == "course_center":
@@ -827,8 +827,9 @@ def offlineCheckinActivity(request: HttpRequest, aid):
 
     bar_display = utils.get_sidebar_and_navbar(request.user,
                                                navbar_name="调整签到信息")
-    member_list = member_list.select_related(SQ.f(Participant.person_id))
-    render_context = dict(bar_display=bar_display, member_list=member_list)
+    member_participation = member_participation.select_related(
+        SQ.f(Participant.person_id))
+    render_context = dict(bar_display=bar_display, member_list=member_participation)
     return render(request, "activity/modify_checkin.html", render_context)
 
 

@@ -667,7 +667,7 @@ def user_login_org(request: UserRequest, org: Organization) -> MESSAGECONTEXT:
     user = request.user
     try:
         assert user.is_person()
-        me = NaturalPerson.objects.activated().get(person_id=user)
+        me = NaturalPerson.objects.activated().get_by_user(user)
     except:
         return wrong("您没有权限访问该网址！请用对应小组账号登陆。")
     # 是小组一把手
