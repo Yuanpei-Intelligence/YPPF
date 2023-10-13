@@ -1053,7 +1053,7 @@ class Activity(CommentBase):
         '''结算活动积分，应仅在活动结束时调用'''
         if status is None:
             status = self.status  # type: ignore
-        assert self.status == Activity.Status.END, "活动未结束，不能结算积分"
+        assert status == Activity.Status.END, "活动未结束，不能结算积分"
         if point is None:
             point = self.eval_point()
         assert point >= 0, "活动积分不能为负"

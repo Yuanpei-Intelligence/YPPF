@@ -167,7 +167,7 @@ def stuinfo(request: UserRequest):
             else:
                 obtain_id = int(name_list[1])  # 获取增补信息
                 get_user = User.objects.get(id=obtain_id)
-                potential_person = NaturalPerson.objects.activated().get_by_user(get_user)
+                potential_person = NaturalPerson.objects.get_by_user(get_user, activate=True)
                 assert potential_person in person
                 person = potential_person
 
@@ -578,7 +578,7 @@ def requestLoginOrg(request: UserRequest):
     if request.user.is_org():
         return redirect("/orginfo/")
     try:
-        me = NaturalPerson.objects.activated().get_by_user(request.user)
+        me = NaturalPerson.objects.get_by_user(request.user, activate=True)
     except:  # 找不到合法的用户
         return redirect(message_url(wrong('用户不存在!')))
     name = request.GET.get('name')
@@ -791,7 +791,7 @@ def homepage(request: UserRequest):
     # 今天第一次访问 welcome 界面，积分增加
     if request.user.is_person():
         with transaction.atomic():
-            np = NaturalPerson.objects.select_for_update().get_by_user(request.user)
+            np = NaturalPerson.objects.get_by_user(request.user, update=True)
             if np.last_time_login is None or np.last_time_login.date() != nowtime.date():
                 np.last_time_login = nowtime
                 np.save()
@@ -1448,11 +1448,12 @@ def search(request: HttpRequest):
     academic_map_dict = get_search_results(query)
     academic_list = []
     for username, contents in academic_map_dict.items():
-        info = dict()
         np: NaturalPerson = SQ.mget(NaturalPerson.person_id, username=username)
-        info['ref'] = np.get_absolute_url() + '#tab=academic_map'
-        info['avatar'] = np.get_user_ava()
-        info['sname'] = np.name
+        info = dict(
+            ref=np.get_absolute_url() + '#tab=academic_map',
+            sname=np.name,
+            avatar=np.get_user_ava(),
+        )
         academic_list.append((info, contents))
 
     # 新版侧边栏, 顶栏等的呈现，采用 bar_display, 必须放在render前最后一步

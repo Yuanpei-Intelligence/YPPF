@@ -1,3 +1,4 @@
+from collections import defaultdict
 from typing import cast
 
 from django.http import HttpRequest
@@ -34,7 +35,7 @@ __all__ = [
 ]
 
 
-def get_search_results(query: str):
+def get_search_results(query: str) -> dict[str, dict[str, list[str]]]:
     # TODO: 更新文档
     """
     根据提供的关键词获取搜索结果。
@@ -59,25 +60,15 @@ def get_search_results(query: str):
     )
 
     # 根据tag/text对应的人，整合学术地图项目
-    # 使用defaultdict会导致前端items不可用，原因未知
-    academic_map_dict: 'dict[str, dict[str, list]]' = dict()
-    type2display = {ty: label for ty, label in AcademicTag.Type.choices}
+    # 直接使用defaultdict会导致前端items不可用，因为Django先尝试以键访问，并得到空列表
+    academic_map_dict = defaultdict(lambda: defaultdict(list[str]))
     for sid, ty, content in academic_tags:
-        # 将choice的值更新为对应的选项名
-        tag_type = type2display[ty]
-        academic_map_dict.setdefault(sid, {})
-        academic_map_dict[sid].setdefault(tag_type, [])
-        academic_map_dict[sid][tag_type].append(content)
+        academic_map_dict[sid][AcademicTag.Type(ty).label].append(content)
 
-    # TODO: 写法有点怪
-    type2display = {ty: label for ty, label in AcademicTextEntry.Type.choices}
     for sid, ty, content in academic_texts:
-        text_type = type2display[ty]
-        academic_map_dict.setdefault(sid, {})
-        academic_map_dict[sid].setdefault(text_type, [])
-        academic_map_dict[sid][text_type].append(content)
+        academic_map_dict[sid][AcademicTextEntry.Type(ty).label].append(content)
 
-    return academic_map_dict
+    return {k: dict(v) for k, v in academic_map_dict.items()}  # 转化为字典
 
 
 def chats2Display(user: User, sent: bool) -> dict[str, list[dict]]:
