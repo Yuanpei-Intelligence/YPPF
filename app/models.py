@@ -247,7 +247,7 @@ class NaturalPersonManager(models.Manager['NaturalPerson']):
             self = self.activated()
         if update:
             self = self.select_for_update()
-        result: NaturalPerson = self.get(person_id=user)
+        result: NaturalPerson = self.get(SQ.sq(NaturalPerson.person_id, user))
         return result
 
     def activated(self):
@@ -258,11 +258,17 @@ class NaturalPersonManager(models.Manager['NaturalPerson']):
             self = self.activated()
         return self.filter(identity=NaturalPerson.Identity.TEACHER)
 
+    def get_teachers(self, identifiers: list[str], activate: bool = True
+                     ) -> QuerySet['NaturalPerson']:
+        '''姓名或工号获取教师'''
+        teachers = self.teachers(activate=activate)
+        name_query = SQ.mq(NaturalPerson.name, IN=identifiers)
+        uid_query = SQ.mq(NaturalPerson.person_id, User.username, IN=identifiers)
+        return teachers.filter(name_query | uid_query)
+
     def get_teacher(self, name_or_id: str, activate: bool = True):
         '''姓名或工号，不存在或不止一个时抛出异常'''
-        teachers = self.teachers(activate=activate)
-        return teachers.get(Q(name=name_or_id) |
-                            SQ.mq(NaturalPerson.person_id, username=name_or_id))
+        return self.get_teachers([name_or_id], activate=activate).get()
 
 
 class NaturalPerson(models.Model):
@@ -1047,7 +1053,7 @@ class Activity(CommentBase):
         '''结算活动积分，应仅在活动结束时调用'''
         if status is None:
             status = self.status  # type: ignore
-        assert self.status == Activity.Status.END, "活动未结束，不能结算积分"
+        assert status == Activity.Status.END, "活动未结束，不能结算积分"
         if point is None:
             point = self.eval_point()
         assert point >= 0, "活动积分不能为负"
@@ -1078,6 +1084,7 @@ class ActivityPhoto(models.Model):
         upload_to=f"activity/photo/%Y/%m/", verbose_name=u'活动图片', null=True, blank=True)
     activity = models.ForeignKey(
         Activity, related_name="photos", on_delete=models.CASCADE)
+    activity_id: int
     time = models.DateTimeField("上传时间", auto_now_add=True)
 
     def get_image_path(self):
@@ -1104,6 +1111,11 @@ class Participant(models.Model):
 
     activity_id = models.ForeignKey(Activity, on_delete=models.CASCADE)
     person_id = models.ForeignKey(NaturalPerson, on_delete=models.CASCADE)
+
+    @necessary_for_frontend(person_id)
+    def get_participant(self):
+        '''供前端使用，追踪该字段的函数'''
+        return self.person_id
 
     class AttendStatus(models.TextChoices):
         APPLYING = "申请中"
@@ -1259,8 +1271,7 @@ class ModifyOrganization(CommentBase):
 
     def get_poster_name(self):
         try:
-            person = NaturalPerson.objects.get(person_id=self.pos)
-            return person.name
+            return NaturalPerson.objects.get_by_user(self.pos).name
         except:
             return '未知'
 

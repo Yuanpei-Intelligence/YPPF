@@ -57,7 +57,8 @@ def find_max_oname():
     return max_oname
 
 
-def accept_modifyorg_submit(application): #同意申请，假设都是合法操作
+def accept_modifyorg_submit(application: ModifyOrganization):
+    '''同意申请，假设都是合法操作'''
     # 新建一系列东西
     username = find_max_oname()
     user = User.objects.create_user(
@@ -90,7 +91,7 @@ def accept_modifyorg_submit(application): #同意申请，假设都是合法操�
     Wishes.objects.create(text=f"{org.otype.otype_name}“{org.oname}”刚刚成立啦！快点去关注一下吧！")
 
 
-def check_neworg_request(request, org=None):
+def check_neworg_request(request, org: Organization = None):
     '''检查neworg request参数的合法性, 用在modifyorganization函数中'''
     context = dict()
     context["warn_code"] = 0
@@ -166,9 +167,9 @@ def check_neworg_request(request, org=None):
     return context
 
 
-def update_org_application(application, me, request):
+def update_org_application(application: ModifyOrganization, me: NaturalPerson, request):
     '''
-    修改成员申请状态的操作函数, application为修改的对象，可以为None
+    修改组织申请状态的操作函数, application为修改的对象，可以为None
     me为操作者
     info为前端POST字典
     返回值为context, warn_code = 1表示失败, 2表示成功; 错误信息在context["warn_message"]
@@ -271,7 +272,7 @@ def update_org_application(application, me, request):
                     status=ModifyOrganization.Status.REFUSED)
                 context = succeed(
                     "成功拒绝来自"
-                    + NaturalPerson.objects.get(person_id=application.pos).name
+                    + NaturalPerson.objects.get_by_user(application.pos).name
                     + "的申请!")
                 context["application_id"] = application.id
                 return context
@@ -286,7 +287,7 @@ def update_org_application(application, me, request):
                         accept_modifyorg_submit(application)
                         context = succeed(
                             "成功通过来自"
-                             + NaturalPerson.objects.get(person_id=application.pos).name
+                             + NaturalPerson.objects.get_by_user(application.pos).name
                              + "的申请!")
                         context["application_id"] = application.id
                         return context
@@ -294,7 +295,8 @@ def update_org_application(application, me, request):
                     return wrong("出现系统意料之外的行为，请联系管理员处理!")
 
 
-def update_pos_application(application, me: ClassifiedUser, applied_org, info):
+def update_pos_application(application: ModifyPosition, me: ClassifiedUser,
+                           applied_org: Organization, info: dict):
     '''
     修改成员申请状态的操作函数, application为修改的对象，可以为None
     me为操作者
@@ -444,7 +446,8 @@ def update_pos_application(application, me: ClassifiedUser, applied_org, info):
 
 
 @logger.secure_func(raise_exc=True)
-def make_relevant_notification(application, info):
+def make_relevant_notification(application: ModifyPosition | ModifyOrganization,
+                               info: dict):
     '''
     对一个已经完成的申请, 构建相关的通知和对应的微信消息, 将有关的事务设为已完成
     如果有错误，则不应该是用户的问题，需要发送到管理员处解决
@@ -467,7 +470,7 @@ def make_relevant_notification(application, info):
         except:
             position_name = "退出小组"
     elif isinstance(application, ModifyOrganization):
-        apply_person = NaturalPerson.objects.get(person_id=application.pos)
+        apply_person = NaturalPerson.objects.get_by_user(application.pos)
         inchage_person = application.otype.incharge
         try:
             new_org: Organization = Organization.objects.get(oname=application.oname)
@@ -524,11 +527,9 @@ def make_relevant_notification(application, info):
                 else Notification.Type.NEEDREAD)
     title = Notification.Title.VERIFY_INFORM if post_type != 'accept_submit' else not_type
     relate_instance = application if post_type == 'new_submit' else None
-    publish_to_wechat = True
-    publish_kws = {'app': WechatApp.AUDIT}
-    publish_kws['level'] = (WechatMessageLevel.IMPORTANT
-                            if post_type != 'cancel_submit'
-                            else WechatMessageLevel.INFO)
+    level = (WechatMessageLevel.IMPORTANT
+             if post_type != 'cancel_submit'
+             else WechatMessageLevel.INFO)
     # TODO cancel是否要发送notification？是否发送微信？
 
     # 正式创建notification
@@ -540,8 +541,7 @@ def make_relevant_notification(application, info):
         content=content,
         URL=URL,
         relate_instance=relate_instance,
-        publish_to_wechat=publish_to_wechat,
-        publish_kws=publish_kws,
+        to_wechat=dict(app=WechatApp.AUDIT, level=level),
     )
 
     # 对于处理类通知的完成(done)，修改状态
@@ -624,7 +624,7 @@ def send_message_check(me: Organization, request):
                 title=title,
                 content=content,
                 URL=URL,
-                publish_to_wechat=False,
+                to_wechat=False,
             )
         assert success
     except:
@@ -646,46 +646,8 @@ def send_message_check(me: Organization, request):
         return succeed(f"成功创建知晓类消息，发送给所有的{receiver_type}了！共{len(receivers)}人。")
 
 
-
-# def get_promote_receiver(org, alpha=0.3, beta=0.16, gamma=0.09):
-#     '''
-#     获取该组织发送推广消息的对象，org为组织对象
-#     alpha, beta, gamma分别为计算推送概率的参数
-#     每个人被推送概率 = alpha + sqrt(beta * 活跃度) + sqrt(gamma * tag比重)
-#     每个人的 tag比重 = 1 - Prod_{tag in org.tag}[ 1 - 参加这个tag的组织发起的活动数 / 参与的活动总数 ]
-#     '''
-#     # 准备发送对象：接受推广的np列表
-#     raw_np_lst = list(NaturalPerson.objects.activated().filter(accept_promote=True))
-#     # 初始化概率列表、tag比重列表
-#     prob_lst = [alpha + (np.active_score * beta) ** 0.5 for np in raw_np_lst]
-#     tag_weight_lst = [1.0] * len(raw_np_lst) # tag比重，初始化为1
-#     # 每个人参与的活动列表
-#     np2activity_lst = [
-#         list(Participant.objects.filter(person_id=np).values_list('activity_id',flat=True)) \
-#             for np in raw_np_lst
-#     ]
-#     # 下面计算tag比重
-#     tag_considered = list(org.tags.all())
-#     if len(tag_considered) > 0:
-#         for tag in tag_considered:
-#             # 先查找带有这个tag的组织
-#             organization_with_tag = list(Organization.objects.filter(tags__in=[tag]))
-#             # 再找这些组织关联的活动
-#             activities_with_tag = list(Activity.objects.filter(organization_id__in=organization_with_tag))
-#             # 计算tag比重
-#             for idx, activity_list in enumerate(np2activity_lst):
-#                 if len(activity_list) == 0: continue
-#                 tag_weight = 1.0 * sum([activity in activities_with_tag for activity in activity_list]) \
-#                     / (1.0 * len(activity_list))
-#                 tag_weight_lst[idx] *= (1-tag_weight)
-#     # attention:
-#     # 1. 若小组没有tag，tag_weight为0。
-#     # 2. 若个人没有活动，tag_weight为0。
-#     tag_weight_lst = [1.0-weight for weight in tag_weight_lst]
-#     prob_lst = [prob + (tag_weight * gamma) ** 0.5 for prob, tag_weight in zip(prob_lst, tag_weight_lst)]
-#     return [raw_np_lst[i] for i in range(len(raw_np_lst)) if prob_lst[i] >= random.random()]
-
-def get_promote_receiver(org, alpha=0.1, beta=0.1):
+# 查看前推广算法: commit b7d6ac7d358589f61db99a3990b1ecbe2a4ca039
+def get_promote_receiver(org: Organization, alpha=0.1, beta=0.1):
     '''
     每个人收到推送的概率= 0.1 + 0.1 * max（for 组织in person的关注）（(组织的tag与org的tag的交集数）/ 该组织tag数）
     '''

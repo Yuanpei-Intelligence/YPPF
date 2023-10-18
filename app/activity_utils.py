@@ -11,13 +11,15 @@ scheduler_func 依赖于 wechat_send 依赖于 utils
 """
 import io
 import base64
-from random import sample
+import random
+from typing import Iterable
 from datetime import datetime, timedelta
 
 import qrcode
 
 from utils.http.utils import build_full_url
-from generic.models import User
+import utils.models.query as SQ
+from generic.models import User, YQPointRecord
 from scheduler.adder import ScheduleAdder
 from scheduler.cancel import remove_job
 from app.utils_dependency import *
@@ -25,6 +27,8 @@ from app.models import (
     User,
     NaturalPerson as Person,
     Organization,
+    Organization as Org,
+    OrganizationType as OrgType,
     Position,
     Activity,
     Participant,
@@ -39,6 +43,25 @@ from app.notification_utils import (
 )
 from app.extern.wechat import WechatApp, WechatMessageLevel
 from app.log import logger
+
+
+__all__ = [
+    'changeActivityStatus',
+    'notifyActivity',
+    'ActivityException',
+    'create_activity',
+    'modify_activity',
+    'accept_activity',
+    'reject_activity',
+    'apply_activity',
+    'cancel_activity',
+    'withdraw_activity',
+    'get_activity_QRcode',
+    'create_participate_infos',
+    'modify_participants',
+    'weekly_summary_orgs',
+    'available_participants',
+]
 
 
 """
@@ -69,7 +92,7 @@ def changeActivityStatus(aid, cur_status, to_status):
     activity = Activity.objects.select_for_update().get(id=aid)
     if cur_status is None:
         raise AssertionError('未提供当前状态，不允许进行活动状态修改')
-    assert cur_status == activity.status, f'{activity.status}与期望的状态{cur_status}不符'
+    assert cur_status == activity.status, f'<{activity.status}>与期望的状态<{cur_status}>不符'
 
     FSM = [
         (Activity.Status.APPLYING, Activity.Status.WAITING),
@@ -86,16 +109,12 @@ def changeActivityStatus(aid, cur_status, to_status):
 
     # 活动变更为进行中时，修改参与人参与状态
     elif to_status == Activity.Status.PROGRESSING:
+        unchecked = SQ.sfilter(Participant.activity_id, activity).filter(
+            status=Participant.AttendStatus.APPLYSUCCESS)
         if activity.need_checkin:
-            Participant.objects.filter(
-                activity_id=aid,
-                status=Participant.AttendStatus.APPLYSUCCESS
-            ).update(status=Participant.AttendStatus.UNATTENDED)
+            unchecked.update(status=Participant.AttendStatus.UNATTENDED)
         else:
-            Participant.objects.filter(
-                activity_id=aid,
-                status=Participant.AttendStatus.APPLYSUCCESS
-            ).update(status=Participant.AttendStatus.ATTENDED)
+            unchecked.update(status=Participant.AttendStatus.ATTENDED)
 
         # if not activity.valid:
         #     # 活动开始后，未审核自动通过
@@ -123,31 +142,28 @@ def changeActivityStatus(aid, cur_status, to_status):
 
 
 def draw_lots(activity: Activity):
-    participants_applying = Participant.objects.filter(activity_id=activity.id,
-                                                       status=Participant.AttendStatus.APPLYING)
-    l = len(participants_applying)
+    participation = SQ.sfilter(Participant.activity_id, activity)
+    participation: QuerySet[Participant]
+    l = len(participation.filter(status=Participant.AttendStatus.APPLYING))
 
-    participants_applySuccess = Participant.objects.filter(
-        activity_id=activity.id,
+    engaged = len(participation.filter(
         status__in=[Participant.AttendStatus.APPLYSUCCESS,
-                    Participant.AttendStatus.UNATTENDED, Participant.AttendStatus.ATTENDED]
-    )
-    engaged = len(participants_applySuccess)
+                    Participant.AttendStatus.UNATTENDED,
+                    Participant.AttendStatus.ATTENDED]
+    ))
 
     leftQuota = activity.capacity - engaged
 
     if l <= leftQuota:
-        Participant.objects.filter(
-            activity_id=activity.id,
+        participation.filter(
             status__in=[Participant.AttendStatus.APPLYING,
                         Participant.AttendStatus.APPLYFAILED]
         ).update(status=Participant.AttendStatus.APPLYSUCCESS)
         activity.current_participants = engaged + l
     else:
-        lucky_ones = sample(range(l), leftQuota)
+        lucky_ones = random.sample(range(l), leftQuota)
         activity.current_participants = activity.capacity
-        for i, participant in enumerate(Participant.objects.select_for_update().filter(
-                activity_id=activity.id,
+        for i, participant in enumerate(participation.select_for_update().filter(
                 status__in=[Participant.AttendStatus.APPLYING,
                             Participant.AttendStatus.APPLYFAILED]
         )):
@@ -157,8 +173,7 @@ def draw_lots(activity: Activity):
                 participant.status = Participant.AttendStatus.APPLYFAILED
             participant.save()
     # 签到成功的转发通知和微信通知
-    receivers = SQ.qsvlist(Participant.objects.filter(
-        activity_id=activity.id,
+    receivers = SQ.qsvlist(participation.filter(
         status=Participant.AttendStatus.APPLYSUCCESS
     ), Participant.person_id, Person.person_id)
     receivers = User.objects.filter(id__in=receivers)
@@ -174,15 +189,10 @@ def draw_lots(activity: Activity):
             title=Notification.Title.ACTIVITY_INFORM,
             content=content,
             URL=URL,
-            publish_to_wechat=True,
-            publish_kws={
-                'app': WechatApp.TO_PARTICIPANT,
-                'level': WechatMessageLevel.IMPORTANT,
-            },
+            to_wechat=dict(app=WechatApp.TO_PARTICIPANT, level=WechatMessageLevel.IMPORTANT),
         )
     # 抽签失败的同学发送通知
-    receivers = SQ.qsvlist(Participant.objects.filter(
-        activity_id=activity.id,
+    receivers = SQ.qsvlist(participation.filter(
         status=Participant.AttendStatus.APPLYFAILED
     ), Participant.person_id, Person.person_id)
     receivers = User.objects.filter(id__in=receivers)
@@ -195,11 +205,7 @@ def draw_lots(activity: Activity):
             title=Notification.Title.ACTIVITY_INFORM,
             content=content,
             URL=URL,
-            publish_to_wechat=True,
-            publish_kws={
-                'app': WechatApp.TO_PARTICIPANT,
-                'level': WechatMessageLevel.IMPORTANT,
-            },
+            to_wechat=dict(app=WechatApp.TO_PARTICIPANT, level=WechatMessageLevel.IMPORTANT),
         )
 
 
@@ -237,7 +243,7 @@ def notifyActivity(aid: int, msg_type: str, msg=""):
         msg += f"\n开始时间: {activity.start.strftime('%Y-%m-%d %H:%M')}"
         msg += f"\n活动地点: {activity.location}"
         receivers = User.objects.filter(id__in=_subscriber_uids(activity))
-        publish_kws = {"app": WechatApp.TO_SUBSCRIBER}
+        publish_kws = dict(app=WechatApp.TO_SUBSCRIBER)
     elif msg_type == "remind":
         with transaction.atomic():
             activity = Activity.objects.select_for_update().get(id=aid)
@@ -252,26 +258,23 @@ def notifyActivity(aid: int, msg_type: str, msg=""):
             msg = f"您参与的活动 <{activity.title}> 即将开始。"
             msg += f"\n开始时间: {activity.start.strftime('%Y-%m-%d %H:%M')}"
             msg += f"\n活动地点: {activity.location}"
-            participants = Participant.objects.filter(
-                activity_id=aid, status=Participant.AttendStatus.APPLYSUCCESS)
-            receivers = SQ.qsvlist(participants, Participant.person_id, Person.person_id)
-            receivers = User.objects.filter(id__in=receivers)
-            publish_kws = {"app": WechatApp.TO_PARTICIPANT}
+            receivers = User.objects.filter(id__in=_participant_uids(activity))
+            publish_kws = dict(app=WechatApp.TO_PARTICIPANT)
 
     elif msg_type == 'modification_sub':
         receivers = User.objects.filter(id__in=_subscriber_uids(activity))
-        publish_kws = {"app": WechatApp.TO_SUBSCRIBER}
+        publish_kws = dict(app=WechatApp.TO_SUBSCRIBER)
     elif msg_type == 'modification_par':
         receivers = User.objects.filter(id__in=_participant_uids(activity))
-        publish_kws = {
-            "app": WechatApp.TO_PARTICIPANT,
-            "level": WechatMessageLevel.IMPORTANT,
-        }
+        publish_kws = dict(
+            app=WechatApp.TO_PARTICIPANT,
+            level=WechatMessageLevel.IMPORTANT,
+        )
     elif msg_type == "modification_sub_ex_par":
         receiver_uids = list(set(_subscriber_uids(activity)) -
                              set(_participant_uids(activity)))
         receivers = User.objects.filter(id__in=receiver_uids)
-        publish_kws = {"app": WechatApp.TO_SUBSCRIBER}
+        publish_kws = dict(app=WechatApp.TO_SUBSCRIBER)
 
     # 应该用不到了，调用的时候分别发给 par 和 sub
     # 主要发给两类用户的信息往往是不一样的
@@ -279,7 +282,7 @@ def notifyActivity(aid: int, msg_type: str, msg=""):
         receiver_uids = list(set(_subscriber_uids(activity)) |
                              set(_participant_uids(activity)))
         receivers = User.objects.filter(id__in=receiver_uids)
-        publish_kws = {"app": WechatApp.TO_SUBSCRIBER}
+        publish_kws = dict(app=WechatApp.TO_SUBSCRIBER)
     elif msg_type == 'newCourseActivity':
         title = activity.title
         msg = f"课程{activity.organization_id.oname}发布了新的课程活动。"
@@ -288,7 +291,7 @@ def notifyActivity(aid: int, msg_type: str, msg=""):
         receiver_uids = list(set(_subscriber_uids(activity)) |
                              set(_participant_uids(activity)))
         receivers = User.objects.filter(id__in=receiver_uids)
-        publish_kws = {"app": WechatApp.TO_SUBSCRIBER}
+        publish_kws = dict(app=WechatApp.TO_SUBSCRIBER)
     else:
         raise ValueError(f"msg_type参数错误: {msg_type}")
 
@@ -305,8 +308,7 @@ def notifyActivity(aid: int, msg_type: str, msg=""):
         content=msg,
         URL=f"/viewActivity/{aid}",
         relate_instance=activity,
-        publish_to_wechat=True,
-        publish_kws=publish_kws,
+        to_wechat=publish_kws,
     )
     assert success, "批量创建通知并发送时失败"
 
@@ -561,8 +563,7 @@ def create_activity(request):
         content="您有一个活动待审批",
         URL=f"/examineActivity/{activity.id}",
         relate_instance=activity,
-        publish_to_wechat=True,
-        publish_kws={"app": WechatApp.AUDIT},
+        to_wechat=dict(app=WechatApp.AUDIT),
     )
 
     return activity.id, True
@@ -675,8 +676,7 @@ def modify_accepted_activity(request, activity):
     else:
         capacity = int(request.POST["maxpeople"])
         assert capacity > 0
-        if capacity < len(Participant.objects.filter(
-            activity_id=activity.id,
+        if capacity < len(SQ.sfilter(Participant.activity_id, activity).filter(
             status=Participant.AttendStatus.APPLYSUCCESS
         )):
             raise ActivityException(f"当前成功报名人数已超过{capacity}人!")
@@ -729,8 +729,7 @@ def accept_activity(request, activity):
         content=f"您的活动{activity.title}已通过审批。",
         URL=f"/viewActivity/{activity.id}",
         relate_instance=activity,
-        publish_to_wechat=True,
-        publish_kws={"app": WechatApp.AUDIT},
+        to_wechat=dict(app=WechatApp.AUDIT),
     )
 
     if activity.status == Activity.Status.REVIEWING:
@@ -767,9 +766,7 @@ def reject_activity(request, activity):
         Notification.objects.filter(
             relate_instance=activity
         ).update(status=Notification.Status.DELETE)
-        # Participant.objects.filter(
-        #         activity_id=activity
-        #     ).update(status=Participant.AttendStatus.APPLYFAILED)
+        # 曾将所有报名的人的状态改为申请失败
         notifyActivity(activity.id, "modification_par",
                        f"您报名的活动{activity.title}已取消。")
         activity.status = Activity.Status.CANCELED
@@ -783,16 +780,14 @@ def reject_activity(request, activity):
         content=f"您的活动{activity.title}被拒绝。",
         URL=f"/viewActivity/{activity.id}",
         relate_instance=activity,
-        publish_to_wechat=True,
-        publish_kws={"app": WechatApp.AUDIT},
+        to_wechat=dict(app=WechatApp.AUDIT),
     )
 
     activity.save()
 
 
 # 调用的时候用 try
-# 调用者把 activity_id 作为参数传过来
-def apply_activity(request, activity):
+def apply_activity(request, activity: Activity):
     '''这个函数在正常情况下只应该抛出提示错误信息的ActivityException'''
     context = dict()
     context["success"] = False
@@ -809,7 +804,8 @@ def apply_activity(request, activity):
 
     try:
         participant = Participant.objects.select_for_update().get(
-            activity_id=activity, person_id=payer
+            SQ.sq(Participant.activity_id, activity),
+            SQ.sq(Participant.person_id, payer),
         )
         participated = True
     except:
@@ -832,9 +828,10 @@ def apply_activity(request, activity):
         activity.current_participants += 1
 
     if not participated:
-        participant = Participant.objects.create(
-            activity_id=activity, person_id=payer
-        )
+        participant = Participant.objects.create(**dict([
+            (SQ.f(Participant.activity_id), activity),
+            (SQ.f(Participant.person_id), payer),
+        ]))
     if not activity.bidding:
         participant.status = Participant.AttendStatus.APPLYSUCCESS
     else:
@@ -879,21 +876,18 @@ def cancel_activity(request, activity):
     )
     notification_status_change(notification, Notification.Status.DELETE)
 
-    # 注意这里，活动取消后，状态变为申请失败了
-    # participants = Participant.objects.filter(
-    #         activity_id=activity
-    #     ).update(status=Participant.AttendStatus.APPLYFAILED)
+    # 活动取消后，曾将所有相关状态变为申请失败
 
     _remove_activity_jobs(activity)
     activity.save()
 
 
-def withdraw_activity(request, activity):
+def withdraw_activity(request, activity: Activity):
 
     np = Person.objects.get_by_user(request.user)
     participant = Participant.objects.select_for_update().get(
-        activity_id=activity,
-        person_id=np,
+        SQ.sq(Participant.activity_id, activity),
+        SQ.sq(Participant.person_id, np),
         status__in=[
             Activity.Status.WAITING,
             Participant.AttendStatus.APPLYING,
@@ -908,3 +902,73 @@ def withdraw_activity(request, activity):
 
     participant.save()
     activity.save()
+
+
+@transaction.atomic
+def create_participate_infos(activity: Activity, persons: Iterable[Person], **fields):
+    '''批量创建一系列参与信息，并返回创建的参与信息'''
+    participantion = [
+        Participant(**dict([
+            (SQ.f(Participant.activity_id), activity),
+            (SQ.f(Participant.person_id), person),
+        ]), **fields) for person in persons
+    ]
+    return Participant.objects.bulk_create(participantion)
+
+
+@transaction.atomic
+def _update_new_participants(activity: Activity, new_participant_uids: list[str]) -> int:
+    '''更新活动的参与者，返回新增的参与者数量，不修改活动'''
+    participants = SQ.qsvlist(activity.attended_participants.select_for_update(),
+                              Participant.person_id)
+    # 获取需要添加的Participants
+    new_participant_nps = SQ.mfilter(Person.person_id, User.username,
+                                     IN=new_participant_uids)
+    new_participant_nps = new_participant_nps.exclude(id__in=participants)
+    # 此处必须执行查询，否则是lazy query，会导致后面的bulk_increase_YQPoint出错
+    new_participant_ids = SQ.qsvlist(new_participant_nps, Person.person_id)
+    new_participants = User.objects.filter(id__in=new_participant_ids)
+    # 为添加的Participants增加元气值
+    point = activity.eval_point()
+    User.objects.bulk_increase_YQPoint(
+        new_participants, point, '参加活动', YQPointRecord.SourceType.ACTIVITY)
+    status = Participant.AttendStatus.ATTENDED
+    create_participate_infos(activity, new_participant_nps, status=status)
+    return len(new_participant_nps)
+
+
+@transaction.atomic
+def _delete_outdate_participants(activity: Activity, new_participant_uids: list[str]):
+    '''删除过期的Participants，收回元气值，返回删除的Participant的数量，不修改活动'''
+    # 获取需要删除的Participants
+    removed_participation = activity.attended_participants.select_for_update().exclude(
+        SQ.mq(Participant.person_id, Person.person_id, User.username,
+              IN=new_participant_uids))
+    removed_participant_ids = SQ.qsvlist(removed_participation,
+                                         Participant.person_id, Person.person_id)
+    removed_participants = User.objects.filter(id__in=removed_participant_ids)
+    # 为删除的Participant撤销元气值发放
+    point = activity.eval_point()
+    User.objects.bulk_withdraw_YQPoint(removed_participants, point, 
+        '撤销参加活动', YQPointRecord.SourceType.CONSUMPTION)
+    return removed_participation.delete()[0]
+
+
+@transaction.atomic
+def modify_participants(activity: Activity, new_participant_uids: list[str]):
+    '''将参与信息修改为指定的参与者，参与者已经检查合法性，暂不允许删除'''
+    new_uids = new_participant_uids
+    # activity.current_participants -= _delete_outdate_participants(activity, new_uids)
+    activity.current_participants += _update_new_participants(activity, new_uids)
+    activity.save()
+
+
+def weekly_summary_orgs() -> QuerySet[Organization]:
+    '''允许进行每周总结的组织'''
+    VALID_ORG_TYPES = ['团委', '学学学委员会', '学学学学会', '学生会']
+    return SQ.mfilter(Org.otype, OrgType.otype_name, IN=VALID_ORG_TYPES)
+
+
+def available_participants() -> QuerySet[User]:
+    '''允许参与活动的人'''
+    return SQ.mfilter(User.id, IN=SQ.qsvlist(Person.objects.activated(), Person.person_id))

@@ -39,6 +39,7 @@ from app.notification_utils import (
 from app.activity_utils import (
     changeActivityStatus,
     notifyActivity,
+    create_participate_infos,
 )
 from app.extern.wechat import WechatApp, WechatMessageLevel
 from app.log import logger
@@ -185,7 +186,7 @@ def create_single_course_activity(request: HttpRequest) -> Tuple[int, bool]:
 
     # 获取默认审核老师
     examine_teacher = NaturalPerson.objects.get_teacher(
-        APP_CONFIG.audit_teacher[0])
+        APP_CONFIG.audit_teachers[0])
 
     # 获取活动所属课程的图片，用于viewActivity, examineActivity等页面展示
     image = str(course.photo)
@@ -232,11 +233,8 @@ def create_single_course_activity(request: HttpRequest) -> Tuple[int, bool]:
             person_pos = list(set(person_pos))
         members = NaturalPerson.objects.filter(
             id__in=person_pos)
-        for member in members:
-            participant = Participant.objects.create(
-                activity_id=activity,
-                person_id=member,
-                status=Participant.AttendStatus.APPLYSUCCESS)
+        status = Participant.AttendStatus.APPLYSUCCESS
+        create_participate_infos(activity, members, status=status)
 
         activity.current_participants = len(person_pos)
         activity.capacity = len(person_pos)
@@ -277,8 +275,7 @@ def create_single_course_activity(request: HttpRequest) -> Tuple[int, bool]:
         content="您有一个单次课程活动待审批",
         URL=f"/examineActivity/{activity.id}",
         relate_instance=activity,
-        publish_to_wechat=True,
-        publish_kws={"app": WechatApp.AUDIT},
+        to_wechat=dict(app=WechatApp.AUDIT),
     )
 
     return activity.id, True
@@ -865,11 +862,8 @@ def draw_lots():
                 title=title,
                 content=content,
                 URL=URL,
-                publish_to_wechat=True,
-                publish_kws={
-                    "app": WechatApp.TO_PARTICIPANT,
-                    "level": WechatMessageLevel.IMPORTANT,
-                },
+                to_wechat=dict(app=WechatApp.TO_PARTICIPANT,
+                               level=WechatMessageLevel.IMPORTANT)
             )
 
             # 给选课失败的同学发送通知
@@ -888,11 +882,8 @@ def draw_lots():
                     title=title,
                     content=content,
                     URL=URL,
-                    publish_to_wechat=True,
-                    publish_kws={
-                        "app": WechatApp.TO_PARTICIPANT,
-                        "level": WechatMessageLevel.IMPORTANT,
-                    },
+                    to_wechat=dict(app=WechatApp.TO_PARTICIPANT,
+                                   level=WechatMessageLevel.IMPORTANT),
                 )
 
 
@@ -1219,10 +1210,11 @@ def cal_participate_num(course: Course) -> dict:
         person__identity=NaturalPerson.Identity.STUDENT,
         org=org,
     ).values_list("person", flat=True)
-    all_participants = (
+    all_participants = SQ.qsvlist(
         Participant.objects.activated(no_unattend=True)
-        .filter(activity_id__in=activities, person_id_id__in=members)
-    ).values_list("person_id", flat=True)
+        .filter(SQ.mq(Participant.activity_id, IN=activities),
+                SQ.mq(Participant.person_id, IN=members)),
+        Participant.person_id)
     participate_num = dict(Counter(all_participants))
     # 没有参加的参与次数设置为0
     participate_num.update(
@@ -1317,7 +1309,6 @@ def finish_course(course):
         # 通知课程小组成员该课程已结束
         title = f'课程结束通知！'
         msg = f'{course.name}在本学期的课程已结束！'
-        publish_kws = {"app": WechatApp.TO_PARTICIPANT}
         receivers = participants.values_list('person_id', flat=True)
         receivers = User.objects.filter(id__in=receivers)
         bulk_notification_create(
@@ -1327,8 +1318,7 @@ def finish_course(course):
             title=title,
             content=msg,
             URL=f"/viewCourse/?courseid={course.id}",
-            publish_to_wechat=True,
-            publish_kws=publish_kws,
+            to_wechat=dict(app=WechatApp.TO_PARTICIPANT),
         )
         # 设置课程状态
     except:
@@ -1401,27 +1391,25 @@ def download_course_record(course: Course = None, year: int = None, semester: Se
                                   **relate_filter_kws,
                               )),
         ).order_by('person_id__username')
-        for person in all_person:
-            course_me_past = CourseRecord.objects.filter(person_id=person).exclude(invalid=True)
+
+        def _sum_hours(records: QuerySet[CourseRecord]) -> float:
+            agg = records.filter(**filter_kws).aggregate(Sum('total_hours'))
+            return agg['total_hours__sum'] or 0
+
+        filtered_records = []
+        for person in person_record:
+            valid_records = SQ.sfilter(CourseRecord.person, person).exclude(invalid=True)
             # 计算每个类别的学时
             record = []
             for course_type in list(Course.CourseType):  # CourseType.values亦可
-                record.append((
-                    course_me_past
-                    .filter(course__type=course_type, **relate_filter_kws)
-                    .aggregate(Sum('total_hours'))
-                )['total_hours__sum'] or 0)
+                record.append(_sum_hours(valid_records.filter(course__type=course_type)))
 
             # 计算没有对应Course的学时
-            record.append((
-                course_me_past
-                .filter(course__isnull=True, **relate_filter_kws)
-                .aggregate(Sum('total_hours'))
-            )['total_hours__sum'] or 0)
+            record.append(_sum_hours(valid_records.filter(course__isnull=True)))
 
-            person_record.append(record)
-        for person, record in zip(all_person.select_related('person_id'), 
-                                  person_record):
+            filtered_records.append(record)
+        for person, record in zip(person_record.select_related('person_id'), 
+                                  filtered_records):
             line = [person.person_id.username, person.name,
                     person.record_hours or 0, 
                     person.invalid_hours or 0]

@@ -2,6 +2,7 @@ from django.http import HttpRequest
 
 from app.utils_dependency import *
 from app.models import (
+    NaturalPerson,
     Organization,
     OrganizationType,
     Notification,
@@ -191,7 +192,7 @@ def update_feedback(feedback, me, request: HttpRequest):
 
 
 @logger.secure_func(raise_exc=True)
-def make_relevant_notification(feedback, info, me):
+def make_relevant_notification(feedback: Feedback, info, me: NaturalPerson):
     '''
     在用户提交反馈后，向对应组织发送通知
     '''
@@ -224,13 +225,12 @@ def make_relevant_notification(feedback, info, me):
         URL=f"/viewFeedback/{feedback.id}",
         relate_instance=relate_instance,
         anonymous_flag=True,
-        publish_to_wechat=True,
-        publish_kws={'app': WechatApp.AUDIT, 'level': WechatMessageLevel.IMPORTANT},
+        to_wechat=dict(app=WechatApp.AUDIT, level=WechatMessageLevel.IMPORTANT),
     )
 
 
 @logger.secure_func(raise_exc=True)
-def examine_notification(feedback):
+def examine_notification(feedback: Feedback):
     examin_teacher = feedback.org.otype.incharge.person_id
     notification_create(
         receiver=examin_teacher,
@@ -239,8 +239,7 @@ def examine_notification(feedback):
         title=Notification.Title.VERIFY_INFORM,
         content=f"{feedback.org.oname}申请公开一条反馈信息",
         URL=f"/viewFeedback/{feedback.id}",
-        publish_to_wechat=True,
-        publish_kws={'app': WechatApp.AUDIT, 'level': WechatMessageLevel.INFO},
+        to_wechat=dict(app=WechatApp.AUDIT, level=WechatMessageLevel.INFO),
     )
 
 @logger.secure_func(raise_exc=True)
@@ -271,6 +270,5 @@ def inform_notification(sender: ClassifiedUser, receiver: ClassifiedUser,
         content=content,
         URL=f"/viewFeedback/{feedback.id}",
         anonymous_flag=anonymous,
-        publish_to_wechat=True,
-        publish_kws={'app': WechatApp.AUDIT, 'level': level},
+        to_wechat=dict(app=WechatApp.AUDIT, level=level),
     )

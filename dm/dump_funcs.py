@@ -8,6 +8,7 @@ from django.db.models import (
     Count, Aggregate, QuerySet
 )
 
+import utils.models.query as SQ
 from generic.models import *
 from record.models import *
 from app.models import *
@@ -42,7 +43,7 @@ class BaseDump():
             filter_kw['semester'] = semester
         if not isinstance(data_model, QuerySet):
             data_model = data_model.objects.all()
-        return data_model.objects.filter(**filter_kw)
+        return data_model.filter(**filter_kw)
 
     @classmethod
     def dump(cls, hash_func: Callable = None, **options) -> pd.DataFrame:
@@ -165,11 +166,11 @@ class PersonActivityDump(BaseDump):
         activity_queryset = cls.time_filter(Activity, year=options.get('year', None), 
                                             semester=options.get('semester', None))
         participants_data = pd.DataFrame(
-            Participant.objects.filter(activity_id__in=activity_queryset)
-                .values_list('person_id__person_id',
-                             'activity_id__organization_id__oname',
-                             'activity_id__title')
-                .order_by('person_id__person_id'),
+            Participant.objects.filter(SQ.mq(Participant.activity_id, IN=activity_queryset))
+                .values_list(SQ.f(Participant.person_id, NaturalPerson.person_id),
+                             SQ.f(Participant.activity_id, Activity.organization_id, Organization.oname),
+                             SQ.f(Participant.activity_id, Activity.title))
+                .order_by(SQ.f(Participant.person_id, NaturalPerson.person_id)),
             columns=('用户', '组织', '活动'))
         if hash_func is not None:
             participants_data['用户'].map(hash_func)

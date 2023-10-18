@@ -50,7 +50,7 @@
                             <div class="widget-content widget-content-area">
                                 <div class="table-responsive">
                                     <table class="table table-bordered mb-4">
-                                        {% if people_list.count != 0 %}
+                                        {% if people_list %}
                                         <thead>
                                             <tr>
                                                 <!-- <th>Name</th>
@@ -69,7 +69,7 @@
                                                 <!-- <td class="text-center"><span class="badge badge-success">元培学生</span></td> -->
                                                 {% for attribute in person.show_info %}
 
-                                                {% if forloop.counter == 1 %}
+                                                {% if forloop.first %}
                                                 <!-- 说明此时要展示姓名，关联链接 -->
                                                 <td style="min-width: 80px;">
                                                     <u>
@@ -144,7 +144,7 @@
                             <div class="widget-content widget-content-area">
                                 <div class="table-responsive">
                                     <table class="table table-bordered mb-4">
-                                        {% if org_display_list|length != 0 %}
+                                        {% if org_display_list %}
                                         <thead>
                                             {% for attribute in organization_field %}
                                             <th> {{attribute}} </th>
@@ -232,7 +232,7 @@
                             <div class="widget-content widget-content-area">
                                 <div class="table-responsive">
                                     <table class="table table-bordered mb-4">
-                                        {% if activity_list.count != 0 %}
+                                        {% if activity_list %}
                                         <thead>
                                             {% for attribute in activity_field %}
                                             <th> {{ attribute }} </th>
@@ -320,7 +320,7 @@
                             <div class="widget-content widget-content-area">
                                 <div class="table-responsive">
                                     <table class="table table-bordered mb-4" style="width: 100%; table-layout: fixed;">
-                                        {% if feedback_list.count != 0 %}
+                                        {% if feedback_list %}
                                         <thead>
                                             {% for attribute in feedback_field %}
                                             {% if forloop.counter == 4 %}
@@ -354,15 +354,12 @@
                                                         {% endif %}
                                                                     
                                                     {% else %}
-                                                    
-                                                        <span class="badge badge-pill 
                                                         {% if feedback.solve_status == 0 %}
-                                                            badge-success"
+                                                        <span class="badge badge-pill badge-success">
                                                         {% else %}
-                                                            badge-primary"
-                                                        {% endif %}>
+                                                        <span class="badge badge-pill badge-primary">
+                                                        {% endif %}
                                                         {{feedback.get_solve_status_display}} </span>
-
                                                     {% endif %}
                                                 </td>
                                                 <!-- 组织 -->
@@ -430,7 +427,7 @@
                             <div class="widget-content widget-content-area">
                                 <div class="table-responsive">
                                     <table class="table table-bordered mb-4">
-                                        {% if academic_list.count != 0 %}
+                                        {% if academic_list %}
                                         <thead>
                                             <tr>
                                                 <th class="text-center"> 姓名 </th>
@@ -443,7 +440,7 @@
                                             {% for content_type, contents_list in content_dict.items %}
                                             <tr>
                                                 <td style="min-width: 80px;">
-                                                    {% if forloop.counter == 1 %}
+                                                    {% if forloop.first %}
                                                     <u>
                                                         <a href="{{ person.ref }}">
                                                             <img src="{{ person.avatar }}" alt="大头照" style="height: 20px; width: 20px;">{{ person.sname }}

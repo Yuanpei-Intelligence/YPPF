@@ -491,12 +491,11 @@ def export_activity(activity, inf_type):
     if activity is None:
         return response
     response['Content-Disposition'] = f'attachment;filename={activity.title}.xls'
+    participants: QuerySet[Participant] = SQ.sfilter(Participant.activity_id, activity)
     if inf_type == "sign":  # 签到信息
-        participants = Participant.objects.filter(activity_id=activity.id).filter(
-            status=Participant.AttendStatus.ATTENDED)
+        participants = participants.filter(status=Participant.AttendStatus.ATTENDED)
     elif inf_type == "enroll":  # 报名信息
-        participants = Participant.objects.filter(activity_id=activity.id).exclude(
-            status=Participant.AttendStatus.CANCELED)
+        participants = participants.exclude(status=Participant.AttendStatus.CANCELED)
     else:
         return response
         """导出excel表"""
@@ -668,7 +667,7 @@ def user_login_org(request: UserRequest, org: Organization) -> MESSAGECONTEXT:
     user = request.user
     try:
         assert user.is_person()
-        me = NaturalPerson.objects.activated().get(person_id=user)
+        me = NaturalPerson.objects.get_by_user(user, activate=True)
     except:
         return wrong("您没有权限访问该网址！请用对应小组账号登陆。")
     # 是小组一把手

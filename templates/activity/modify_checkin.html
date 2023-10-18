@@ -29,27 +29,31 @@
                                 </tr>
                             </thead>
                             <tbody>
-                                {% for member in member_list %}
-                                    <tr>
-                                        <td>
-                                            <img src={{ member.person_id.get_user_ava }} width="24" height="24" alt="avatar">
-                                            <a href='{{ member.person_id.get_absolute_url }}'>
-                                                <u>{{ member.person_id }}</u>
-                                            </a>
-                                        </td>
-                                        <td>
-                                            <input type="radio" class="custom-control-inline"
-                                                name="checkin_{{member.person_id_id}}" value="no"
-                                                {% if member.status == "未签到" %} checked {% endif %}
-                                                >
-                                            未参与
-                                            <input type="radio" class="custom-control-inline"
-                                                name="checkin_{{member.person_id_id}}" value="yes"
-                                                {% if member.status == "已参与" %} checked {% endif %}
-                                                >
-                                            已参与
-                                        </td>
-                                    </tr>
+                                {% for _participation in member_list %}
+                                {% with _participation.get_participant as _member %}
+                                <tr>
+                                    <td>
+                                        <img src="{{ _member.get_user_ava }}" width="24" height="24" alt="avatar">
+                                        <a href="{{ _member.get_absolute_url }}">
+                                            <u>{{ _member }}</u>
+                                        </a>
+                                    </td>
+                                    <td>
+                                        <input type="radio"
+                                               class="custom-control-inline"
+                                               name="checkin_{{ _member.id }}"
+                                               value="no"
+                                               {% if _participation.status == "未签到" %} checked {% endif %}>
+                                        未参与
+                                        <input type="radio"
+                                               class="custom-control-inline"
+                                               name="checkin_{{ _member.id }}"
+                                               value="yes"
+                                               {% if _participation.status == "已参与" %} checked {% endif %}>
+                                        已参与
+                                    </td>
+                                </tr>
+                                {% endwith %}
                                 {% endfor %}
                             <tbody>
                             </table>

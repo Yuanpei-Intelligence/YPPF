@@ -650,9 +650,11 @@ def load_course_record(filepath: str, output_func: Callable=None, html:bool=Fals
             display_message += '未查询到 ' + person[0] + '<br>' + print_show[1]
             if person[1].exists():
                 for message in person[1]:
+                    message: NaturalPerson
                     display_message += '<div style="color:cadetblue;">' + message.name + ' ' + message.person_id.username + '</div>'
             if person[2] != None and person[2].exists():
                 for message in person[2]:
+                    message: NaturalPerson
                     display_message += '<div style="color:cadetblue;">' + message.name + ' ' + message.person_id.username + '</div>'
             elif not person[1].exists():
                 display_message += '<div style="color:cadetblue;">未查询到类似数据</div>'
@@ -743,12 +745,10 @@ def load_feedback(filepath: str, output_func: Callable=None, html=False):
         feedback_num += 1
         err = False
         try:
-            type_id = FeedbackType.objects.get(name=feedback_dict["type"]).id
-            person_id = NaturalPerson.objects.get(name=feedback_dict["person"]).id
-            org_id = Organization.objects.get(oname=feedback_dict["org"]).id
-
             feedback, mid = Feedback.objects.get_or_create(
-                type_id=type_id, person_id=person_id, org_id=org_id,
+                type=FeedbackType.objects.get(name=feedback_dict["type"]),
+                person=NaturalPerson.objects.get(name=feedback_dict["person"]),
+                org=Organization.objects.get(oname=feedback_dict["org"]),
             )
 
             feedback.title = feedback_dict["title"]
@@ -994,7 +994,7 @@ def load_birthday(filepath: str, use_name: bool=False, slash: bool=False):
                 year, month, day = map(int, birthday.split("/"))
             if not use_name:
                 user = User.objects.get(username=str(stuid))
-                stu = NaturalPerson.objects.get(person_id=user)
+                stu = NaturalPerson.objects.get_by_user(user)
             else:
                 stu = NaturalPerson.objects.get(name=name)
             stu.birthday = date(year, month, day)
