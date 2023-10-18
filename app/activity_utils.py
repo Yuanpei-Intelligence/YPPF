@@ -31,7 +31,7 @@ from app.models import (
     OrganizationType as OrgType,
     Position,
     Activity,
-    Participant,
+    Participation,
     Notification,
     ActivityPhoto,
 )
@@ -109,12 +109,12 @@ def changeActivityStatus(aid, cur_status, to_status):
 
     # 活动变更为进行中时，修改参与人参与状态
     elif to_status == Activity.Status.PROGRESSING:
-        unchecked = SQ.sfilter(Participant.activity, activity).filter(
-            status=Participant.AttendStatus.APPLYSUCCESS)
+        unchecked = SQ.sfilter(Participation.activity, activity).filter(
+            status=Participation.AttendStatus.APPLYSUCCESS)
         if activity.need_checkin:
-            unchecked.update(status=Participant.AttendStatus.UNATTENDED)
+            unchecked.update(status=Participation.AttendStatus.UNATTENDED)
         else:
-            unchecked.update(status=Participant.AttendStatus.ATTENDED)
+            unchecked.update(status=Participation.AttendStatus.ATTENDED)
 
         # if not activity.valid:
         #     # 活动开始后，未审核自动通过
@@ -142,40 +142,40 @@ def changeActivityStatus(aid, cur_status, to_status):
 
 
 def draw_lots(activity: Activity):
-    participation = SQ.sfilter(Participant.activity, activity)
-    participation: QuerySet[Participant]
-    l = len(participation.filter(status=Participant.AttendStatus.APPLYING))
+    participation = SQ.sfilter(Participation.activity, activity)
+    participation: QuerySet[Participation]
+    l = len(participation.filter(status=Participation.AttendStatus.APPLYING))
 
     engaged = len(participation.filter(
-        status__in=[Participant.AttendStatus.APPLYSUCCESS,
-                    Participant.AttendStatus.UNATTENDED,
-                    Participant.AttendStatus.ATTENDED]
+        status__in=[Participation.AttendStatus.APPLYSUCCESS,
+                    Participation.AttendStatus.UNATTENDED,
+                    Participation.AttendStatus.ATTENDED]
     ))
 
     leftQuota = activity.capacity - engaged
 
     if l <= leftQuota:
         participation.filter(
-            status__in=[Participant.AttendStatus.APPLYING,
-                        Participant.AttendStatus.APPLYFAILED]
-        ).update(status=Participant.AttendStatus.APPLYSUCCESS)
+            status__in=[Participation.AttendStatus.APPLYING,
+                        Participation.AttendStatus.APPLYFAILED]
+        ).update(status=Participation.AttendStatus.APPLYSUCCESS)
         activity.current_participants = engaged + l
     else:
         lucky_ones = random.sample(range(l), leftQuota)
         activity.current_participants = activity.capacity
         for i, participant in enumerate(participation.select_for_update().filter(
-                status__in=[Participant.AttendStatus.APPLYING,
-                            Participant.AttendStatus.APPLYFAILED]
+                status__in=[Participation.AttendStatus.APPLYING,
+                            Participation.AttendStatus.APPLYFAILED]
         )):
             if i in lucky_ones:
-                participant.status = Participant.AttendStatus.APPLYSUCCESS
+                participant.status = Participation.AttendStatus.APPLYSUCCESS
             else:
-                participant.status = Participant.AttendStatus.APPLYFAILED
+                participant.status = Participation.AttendStatus.APPLYFAILED
             participant.save()
     # 签到成功的转发通知和微信通知
     receivers = SQ.qsvlist(participation.filter(
-        status=Participant.AttendStatus.APPLYSUCCESS
-    ), Participant.person, Person.person_id)
+        status=Participation.AttendStatus.APPLYSUCCESS
+    ), Participation.person, Person.person_id)
     receivers = User.objects.filter(id__in=receivers)
     sender = activity.organization_id.get_user()
     typename = Notification.Type.NEEDREAD
@@ -193,8 +193,8 @@ def draw_lots(activity: Activity):
         )
     # 抽签失败的同学发送通知
     receivers = SQ.qsvlist(participation.filter(
-        status=Participant.AttendStatus.APPLYFAILED
-    ), Participant.person, Person.person_id)
+        status=Participation.AttendStatus.APPLYFAILED
+    ), Participation.person, Person.person_id)
     receivers = User.objects.filter(id__in=receivers)
     content = f'很抱歉通知您，您参与抽签的活动“{activity.title}”报名失败！'
     if len(receivers) > 0:
@@ -217,11 +217,11 @@ scheduler.add_job(notifyActivityStart, "date",
 
 
 def _participant_uids(activity: Activity) -> list[int]:
-    participant_person_id = SQ.qsvlist(Participant.objects.filter(
-        SQ.sq(Participant.activity, activity),
-        SQ.mq(Participant.status, IN=[Participant.AttendStatus.APPLYSUCCESS,
-                                      Participant.AttendStatus.APPLYING])
-    ), Participant.person)
+    participant_person_id = SQ.qsvlist(Participation.objects.filter(
+        SQ.sq(Participation.activity, activity),
+        SQ.mq(Participation.status, IN=[Participation.AttendStatus.APPLYSUCCESS,
+                                      Participation.AttendStatus.APPLYING])
+    ), Participation.person)
     return SQ.qsvlist(Person.objects.activated().filter(
         id__in=participant_person_id), Person.person_id)
 
@@ -676,8 +676,8 @@ def modify_accepted_activity(request, activity):
     else:
         capacity = int(request.POST["maxpeople"])
         assert capacity > 0
-        if capacity < len(SQ.sfilter(Participant.activity, activity).filter(
-            status=Participant.AttendStatus.APPLYSUCCESS
+        if capacity < len(SQ.sfilter(Participation.activity, activity).filter(
+            status=Participation.AttendStatus.APPLYSUCCESS
         )):
             raise ActivityException(f"当前成功报名人数已超过{capacity}人!")
     activity.capacity = capacity
@@ -803,20 +803,20 @@ def apply_activity(request, activity: Activity):
                 f"该活动是{activity.organization_id}内部活动，暂不开放对外报名。")
 
     try:
-        participant = Participant.objects.select_for_update().get(
-            SQ.sq(Participant.activity, activity),
-            SQ.sq(Participant.person, payer),
+        participant = Participation.objects.select_for_update().get(
+            SQ.sq(Participation.activity, activity),
+            SQ.sq(Participation.person, payer),
         )
         participated = True
     except:
         participated = False
     if participated:
         if (
-            participant.status == Participant.AttendStatus.APPLYSUCCESS or
-            participant.status == Participant.AttendStatus.APPLYING
+            participant.status == Participation.AttendStatus.APPLYSUCCESS or
+            participant.status == Participation.AttendStatus.APPLYING
         ):
             raise ActivityException("您已报名该活动。")
-        elif participant.status != Participant.AttendStatus.CANCELED:
+        elif participant.status != Participation.AttendStatus.CANCELED:
             raise ActivityException(f"您的报名状态异常，当前状态为：{participant.status}")
 
     if not activity.bidding:
@@ -828,14 +828,14 @@ def apply_activity(request, activity: Activity):
         activity.current_participants += 1
 
     if not participated:
-        participant = Participant.objects.create(**dict([
-            (SQ.f(Participant.activity), activity),
-            (SQ.f(Participant.person), payer),
+        participant = Participation.objects.create(**dict([
+            (SQ.f(Participation.activity), activity),
+            (SQ.f(Participation.person), payer),
         ]))
     if not activity.bidding:
-        participant.status = Participant.AttendStatus.APPLYSUCCESS
+        participant.status = Participation.AttendStatus.APPLYSUCCESS
     else:
-        participant.status = Participant.AttendStatus.APPLYING
+        participant.status = Participation.AttendStatus.APPLYING
 
     participant.save()
     activity.save()
@@ -885,19 +885,19 @@ def cancel_activity(request, activity):
 def withdraw_activity(request, activity: Activity):
 
     np = Person.objects.get_by_user(request.user)
-    participant = Participant.objects.select_for_update().get(
-        SQ.sq(Participant.activity, activity),
-        SQ.sq(Participant.person, np),
+    participant = Participation.objects.select_for_update().get(
+        SQ.sq(Participation.activity, activity),
+        SQ.sq(Participation.person, np),
         status__in=[
             Activity.Status.WAITING,
-            Participant.AttendStatus.APPLYING,
-            Participant.AttendStatus.APPLYSUCCESS,
-            Participant.AttendStatus.CANCELED,
+            Participation.AttendStatus.APPLYING,
+            Participation.AttendStatus.APPLYSUCCESS,
+            Participation.AttendStatus.CANCELED,
         ],
     )
-    if participant.status == Participant.AttendStatus.CANCELED:
+    if participant.status == Participation.AttendStatus.CANCELED:
         raise ActivityException("已退出活动。")
-    participant.status = Participant.AttendStatus.CANCELED
+    participant.status = Participation.AttendStatus.CANCELED
     activity.current_participants -= 1
 
     participant.save()
@@ -908,46 +908,46 @@ def withdraw_activity(request, activity: Activity):
 def create_participate_infos(activity: Activity, persons: Iterable[Person], **fields):
     '''批量创建一系列参与信息，并返回创建的参与信息'''
     participantion = [
-        Participant(**dict([
-            (SQ.f(Participant.activity), activity),
-            (SQ.f(Participant.person), person),
+        Participation(**dict([
+            (SQ.f(Participation.activity), activity),
+            (SQ.f(Participation.person), person),
         ]), **fields) for person in persons
     ]
-    return Participant.objects.bulk_create(participantion)
+    return Participation.objects.bulk_create(participantion)
 
 
 @transaction.atomic
 def _update_new_participants(activity: Activity, new_participant_uids: list[str]) -> int:
     '''更新活动的参与者，返回新增的参与者数量，不修改活动'''
     participants = SQ.qsvlist(activity.attended_participants.select_for_update(),
-                              Participant.person)
-    # 获取需要添加的Participants
+                              Participation.person)
+    # 获取需要添加的参与者
     new_participant_nps = SQ.mfilter(Person.person_id, User.username,
                                      IN=new_participant_uids)
     new_participant_nps = new_participant_nps.exclude(id__in=participants)
     # 此处必须执行查询，否则是lazy query，会导致后面的bulk_increase_YQPoint出错
     new_participant_ids = SQ.qsvlist(new_participant_nps, Person.person_id)
     new_participants = User.objects.filter(id__in=new_participant_ids)
-    # 为添加的Participants增加元气值
+    # 为添加的参与者增加元气值
     point = activity.eval_point()
     User.objects.bulk_increase_YQPoint(
         new_participants, point, '参加活动', YQPointRecord.SourceType.ACTIVITY)
-    status = Participant.AttendStatus.ATTENDED
+    status = Participation.AttendStatus.ATTENDED
     create_participate_infos(activity, new_participant_nps, status=status)
     return len(new_participant_nps)
 
 
 @transaction.atomic
 def _delete_outdate_participants(activity: Activity, new_participant_uids: list[str]):
-    '''删除过期的Participants，收回元气值，返回删除的Participant的数量，不修改活动'''
-    # 获取需要删除的Participants
+    '''删除过期的参与者，收回元气值，返回删除的参与者的数量，不修改活动'''
+    # 获取需要删除的参与者
     removed_participation = activity.attended_participants.select_for_update().exclude(
-        SQ.mq(Participant.person, Person.person_id, User.username,
+        SQ.mq(Participation.person, Person.person_id, User.username,
               IN=new_participant_uids))
     removed_participant_ids = SQ.qsvlist(removed_participation,
-                                         Participant.person, Person.person_id)
+                                         Participation.person, Person.person_id)
     removed_participants = User.objects.filter(id__in=removed_participant_ids)
-    # 为删除的Participant撤销元气值发放
+    # 为删除的参与者撤销元气值发放
     point = activity.eval_point()
     User.objects.bulk_withdraw_YQPoint(removed_participants, point, 
         '撤销参加活动', YQPointRecord.SourceType.CONSUMPTION)

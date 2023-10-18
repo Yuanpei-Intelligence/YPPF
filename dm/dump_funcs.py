@@ -166,11 +166,11 @@ class PersonActivityDump(BaseDump):
         activity_queryset = cls.time_filter(Activity, year=options.get('year', None), 
                                             semester=options.get('semester', None))
         participants_data = pd.DataFrame(
-            Participant.objects.filter(SQ.mq(Participant.activity, IN=activity_queryset))
-                .values_list(SQ.f(Participant.person, NaturalPerson.person_id),
-                             SQ.f(Participant.activity, Activity.organization_id, Organization.oname),
-                             SQ.f(Participant.activity, Activity.title))
-                .order_by(SQ.f(Participant.person, NaturalPerson.person_id)),
+            Participation.objects.filter(SQ.mq(Participation.activity, IN=activity_queryset))
+                .values_list(SQ.f(Participation.person, NaturalPerson.person_id),
+                             SQ.f(Participation.activity, Activity.organization_id, Organization.oname),
+                             SQ.f(Participation.activity, Activity.title))
+                .order_by(SQ.f(Participation.person, NaturalPerson.person_id)),
             columns=('用户', '组织', '活动'))
         if hash_func is not None:
             participants_data['用户'].map(hash_func)

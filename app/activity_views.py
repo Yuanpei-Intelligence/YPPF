@@ -19,7 +19,7 @@ from app.models import (
     Position,
     Activity,
     ActivityPhoto,
-    Participant,
+    Participation,
     ActivitySummary,
 )
 from app.activity_utils import (
@@ -241,9 +241,9 @@ def viewActivity(request: HttpRequest, aid=None):
         """
         person = True
         try:
-            participant = Participant.objects.get(
-                SQ.sq(Participant.activity, activity),
-                SQ.sq(Participant.person, me))
+            participant = Participation.objects.get(
+                SQ.sq(Participation.activity, activity),
+                SQ.sq(Participation.person, me))
             # pStatus 是参与状态
             pStatus = participant.status
         except:
@@ -285,16 +285,16 @@ def viewActivity(request: HttpRequest, aid=None):
             pass
 
     # 参与者, 无论报名是否通过
-    participants = Participant.objects.filter(
-        SQ.sq(Participant.activity, activity),
+    participants = Participation.objects.filter(
+        SQ.sq(Participation.activity, activity),
         status__in=[
-            Participant.AttendStatus.APPLYING,
-            Participant.AttendStatus.APPLYSUCCESS,
-            Participant.AttendStatus.ATTENDED,
-            Participant.AttendStatus.UNATTENDED,
+            Participation.AttendStatus.APPLYING,
+            Participation.AttendStatus.APPLYSUCCESS,
+            Participation.AttendStatus.ATTENDED,
+            Participation.AttendStatus.UNATTENDED,
         ])
     people_list = NaturalPerson.objects.activated().filter(
-        id__in=SQ.qsvlist(participants, Participant.person))
+        id__in=SQ.qsvlist(participants, Participation.person))
 
     # 新版侧边栏，顶栏等的呈现，采用bar_display，必须放在render前最后一步，但这里render太多了
     # TODO: 整理好代码结构，在最后统一返回
@@ -356,8 +356,8 @@ def getActivityInfo(request: HttpRequest):
         assert activity.status != Activity.Status.APPLYING, "报名尚未截止"
 
         # get participants
-        participants = SQ.sfilter(Participant.activity, activity).filter(
-            status=Participant.AttendStatus.APPLYSUCCESS
+        participants = SQ.sfilter(Participation.activity, activity).filter(
+            status=Participation.AttendStatus.APPLYSUCCESS
         )
 
         # get required fields
@@ -427,19 +427,19 @@ def checkinActivity(request: UserRequest, aid=None):
     ):
         try:
             with transaction.atomic():
-                participant = Participant.objects.select_for_update().get(
-                    SQ.sq(Participant.activity, activity),
-                    SQ.sq(Participant.person, np),
+                participant = Participation.objects.select_for_update().get(
+                    SQ.sq(Participation.activity, activity),
+                    SQ.sq(Participation.person, np),
                     status__in=[
-                        Participant.AttendStatus.UNATTENDED,
-                        Participant.AttendStatus.APPLYSUCCESS,
-                        Participant.AttendStatus.ATTENDED,
+                        Participation.AttendStatus.UNATTENDED,
+                        Participation.AttendStatus.APPLYSUCCESS,
+                        Participation.AttendStatus.ATTENDED,
                     ]
                 )
-                if participant.status == Participant.AttendStatus.ATTENDED:
+                if participant.status == Participation.AttendStatus.ATTENDED:
                     context = succeed("您已签到，无需重复签到!")
                 else:
-                    participant.status = Participant.AttendStatus.ATTENDED
+                    participant.status = Participation.AttendStatus.ATTENDED
                     participant.save()
                     context = succeed("签到成功!")
         except:
@@ -790,11 +790,11 @@ def offlineCheckinActivity(request: HttpRequest, aid):
     except:
         return redirect(message_url(wrong('请不要随意访问其他网页！')))
 
-    member_participation = Participant.objects.filter(
-        SQ.sq(Participant.activity, activity),
+    member_participation = Participation.objects.filter(
+        SQ.sq(Participation.activity, activity),
         status__in=[
-            Participant.AttendStatus.UNATTENDED,
-            Participant.AttendStatus.ATTENDED,
+            Participation.AttendStatus.UNATTENDED,
+            Participation.AttendStatus.ATTENDED,
         ])
 
     if request.method == "POST" and request.POST:
@@ -802,7 +802,7 @@ def offlineCheckinActivity(request: HttpRequest, aid):
         if option == "saveSituation":
             # 修改签到状态
 
-            member_userids = SQ.qsvlist(member_participation, Participant.person)
+            member_userids = SQ.qsvlist(member_participation, Participation.person)
             attend_pids, unattend_pids = [], []
             for pid in member_userids:
                 checkin = request.POST.get(f"checkin_{pid}")
@@ -812,11 +812,11 @@ def offlineCheckinActivity(request: HttpRequest, aid):
                     unattend_pids.append(pid)
             with transaction.atomic():
                 member_participation.select_for_update().filter(
-                    SQ.mq(Participant.person, IN=attend_pids)).update(
-                        status=Participant.AttendStatus.ATTENDED)
+                    SQ.mq(Participation.person, IN=attend_pids)).update(
+                        status=Participation.AttendStatus.ATTENDED)
                 member_participation.select_for_update().filter(
-                    SQ.mq(Participant.person, IN=unattend_pids)).update(
-                        status=Participant.AttendStatus.UNATTENDED)
+                    SQ.mq(Participation.person, IN=unattend_pids)).update(
+                        status=Participation.AttendStatus.UNATTENDED)
             # 修改成功之后根据src的不同返回不同的界面，1代表聚合页面，2代表活动主页
             if src == "course_center":
                 return redirect(message_url(
@@ -828,7 +828,7 @@ def offlineCheckinActivity(request: HttpRequest, aid):
     bar_display = utils.get_sidebar_and_navbar(request.user,
                                                navbar_name="调整签到信息")
     member_participation = member_participation.select_related(
-        SQ.f(Participant.person))
+        SQ.f(Participation.person))
     render_context = dict(bar_display=bar_display, member_list=member_participation)
     return render(request, "activity/modify_checkin.html", render_context)
 
@@ -1100,7 +1100,7 @@ def activitySummary(request: UserRequest):
     if application is not None:
         json_context.update(participant_ids=SQ.qsvlist(
             application.activity.attended_participants,
-            Participant.person, NaturalPerson.person_id, User.username
+            Participation.person, NaturalPerson.person_id, User.username
         ))
     render_context.update(json_context=json_context)
     bar_display = utils.get_sidebar_and_navbar(request.user, '活动总结详情')
@@ -1260,7 +1260,7 @@ class WeeklyActivitySummary(ProfileTemplateView):
 
             # 创建参与人
             nps = SQ.mfilter(NaturalPerson.person_id, User.username, IN=participants_ids)
-            status = Participant.AttendStatus.ATTENDED
+            status = Participation.AttendStatus.ATTENDED
             create_participate_infos(activity, nps, status=status)
             activity.current_participants = len(participants_ids)
             activity.settle_yqpoint()

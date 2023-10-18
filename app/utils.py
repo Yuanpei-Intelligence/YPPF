@@ -22,7 +22,7 @@ from app.models import (
     Position,
     Notification,
     Help,
-    Participant,
+    Participation,
     ModifyRecord,
 )
 
@@ -491,11 +491,11 @@ def export_activity(activity, inf_type):
     if activity is None:
         return response
     response['Content-Disposition'] = f'attachment;filename={activity.title}.xls'
-    participants: QuerySet[Participant] = SQ.sfilter(Participant.activity, activity)
+    participants: QuerySet[Participation] = SQ.sfilter(Participation.activity, activity)
     if inf_type == "sign":  # 签到信息
-        participants = participants.filter(status=Participant.AttendStatus.ATTENDED)
+        participants = participants.filter(status=Participation.AttendStatus.ATTENDED)
     elif inf_type == "enroll":  # 报名信息
-        participants = participants.exclude(status=Participant.AttendStatus.CANCELED)
+        participants = participants.exclude(status=Participation.AttendStatus.CANCELED)
     else:
         return response
         """导出excel表"""
