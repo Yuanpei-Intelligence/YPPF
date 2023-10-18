@@ -27,10 +27,6 @@ def delete_all():
     OrganizationTag.objects.all().delete()
 
 
-def create_superuser():
-    User.objects.create_superuser('admin', '管理员', password='admin')
-
-
 @fix_me
 def _create_old_user(username, password, usertype):
     user, created = User.objects.get_or_create(username=username)
@@ -39,74 +35,6 @@ def _create_old_user(username, password, usertype):
     user.utype = usertype
     user.save()
     return user, created
-
-
-def create_np():
-    uid, name = UIDS[0], '1号学生'
-    user, created = _create_old_user(uid, uid, User.Type.PERSON)
-    if created:
-        NaturalPerson.objects.create(
-            person_id=user,
-            stu_id_dbonly=uid,
-            name=name,
-            gender=NaturalPerson.Gender.MALE,
-            stu_major='元培计划（待定）',
-            stu_grade='2020',
-            stu_class=5,
-            email=uid + '@stu.pku.edu.cn',
-            telephone=None,
-            visit_times=100,
-            biography='我是1号学生',
-            identity=NaturalPerson.Identity.STUDENT,
-        )
-
-    uid, name = UIDS[1], '2号学生'
-    user, created = _create_old_user(uid, uid, User.Type.PERSON)
-    if created:
-        NaturalPerson.objects.create(
-            person_id=user,
-            stu_id_dbonly=uid,
-            name=name,
-            gender=NaturalPerson.Gender.FEMALE,
-            stu_major='元培计划（待定）',
-            stu_grade='2020',
-            stu_class=5,
-            email=uid + '@stu.pku.edu.cn',
-            telephone=None,
-            visit_times=100,
-            biography='我是2号学生',
-            identity=NaturalPerson.Identity.STUDENT,
-        )
-
-    uid, name = TEACHER_UIDS[0], '1号老师'
-    user, created = _create_old_user(uid, uid, User.Type.PERSON)
-    if created:
-        NaturalPerson.objects.create(
-            person_id=user,
-            stu_id_dbonly=uid,
-            name=name,
-            gender=NaturalPerson.Gender.MALE,
-            email=uid + '@pku.edu.cn',
-            telephone=None,
-            visit_times=100,
-            biography='我是1号老师',
-            identity=NaturalPerson.Identity.TEACHER,
-        )
-
-    uid, name = TEACHER_UIDS[1], '2号老师'
-    user, created = _create_old_user(uid, uid, User.Type.PERSON)
-    if created:
-        NaturalPerson.objects.create(
-            person_id=user,
-            stu_id_dbonly=uid,
-            name=name,
-            gender=NaturalPerson.Gender.MALE,
-            email=uid + '@pku.edu.cn',
-            telephone=None,
-            visit_times=100,
-            biography='我是2号老师',
-            identity=NaturalPerson.Identity.TEACHER,
-        )
 
 
 def create_org_type():
@@ -187,10 +115,6 @@ def create_all():
     # TODO: Add more
     # delete all
     delete_all()
-
-    # person
-    create_superuser()
-    create_np()
 
     # org
     create_org_type()
