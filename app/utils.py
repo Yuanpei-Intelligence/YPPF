@@ -491,7 +491,7 @@ def export_activity(activity, inf_type):
     if activity is None:
         return response
     response['Content-Disposition'] = f'attachment;filename={activity.title}.xls'
-    participants: QuerySet[Participant] = SQ.sfilter(Participant.activity_id, activity)
+    participants: QuerySet[Participant] = SQ.sfilter(Participant.activity, activity)
     if inf_type == "sign":  # 签到信息
         participants = participants.filter(status=Participant.AttendStatus.ATTENDED)
     elif inf_type == "enroll":  # 报名信息
@@ -515,10 +515,10 @@ def export_activity(activity, inf_type):
         # 写入数据
         excel_row = 1
         for participant in participants:
-            name = participant.person_id.name
-            Sno = participant.person_id.person_id.username
-            grade = str(participant.person_id.stu_grade) + '级' + \
-                str(participant.person_id.stu_class) + '班'
+            name = participant.person.name
+            Sno = participant.person.person_id.username
+            grade = str(participant.person.stu_grade) + '级' + \
+                str(participant.person.stu_class) + '班'
             if inf_type == "enroll":
                 status = participant.status
                 w.write(excel_row, 3, status)

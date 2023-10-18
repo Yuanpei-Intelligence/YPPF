@@ -28,8 +28,8 @@ class PositionInline(admin.TabularInline):
 class ParticipantInline(admin.TabularInline):
     model = Participant
     classes = ['collapse']
-    ordering = ['-' + f(model.activity_id)]
-    fields = [f(model.activity_id), f(model.person_id), f(model.status)]
+    ordering = ['-' + f(model.activity)]
+    fields = [f(model.activity), f(model.person), f(model.status)]
     show_change_link = True
 
 @readonly_inline
@@ -394,7 +394,7 @@ class ActivityAdmin(admin.ModelAdmin):
     def refresh_count(self, request, queryset: QuerySet[Activity]):
         for activity in queryset:
             activity.current_participants = sfilter(
-                Participant.activity_id, activity).filter(
+                Participant.activity, activity).filter(
                 status__in=[
                     Participant.AttendStatus.ATTENDED,
                     Participant.AttendStatus.UNATTENDED,
@@ -471,10 +471,10 @@ class ActivityAdmin(admin.ModelAdmin):
 @admin.register(Participant)
 class ParticipantAdmin(admin.ModelAdmin):
     _m = Participant
-    _act = _m.activity_id
-    list_display = ['id', f(_act), f(_m.person_id), f(_m.status)]
+    _act = _m.activity
+    list_display = ['id', f(_act), f(_m.person), f(_m.status)]
     search_fields = ['id', f(_act, 'id'), f(_act, Activity.title),
-                     f(_m.person_id, NaturalPerson.name)]
+                     f(_m.person, NaturalPerson.name)]
     list_filter = [
         f(_m.status), f(_act, Activity.category),
         f(_act, Activity.year), f(_act, Activity.semester),

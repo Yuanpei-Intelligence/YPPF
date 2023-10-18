@@ -1,0 +1,498 @@
+[
+    {
+        "model": "Appointment.room",
+        "pk": "B104",
+        "fields": {
+            "Rtitle": "研讨/活动室",
+            "Rmin": 4,
+            "Rmax": 50,
+            "Rstart": "07:00:00",
+            "Rfinish": "23:00:00",
+            "Rlatest_time": "2023-01-01T00:00:00.000",
+            "Rpresent": 0,
+            "Rstatus": 0,
+            "RIsAllNight": false,
+            "RneedAgree": false
+        }
+    },
+    {
+        "model": "Appointment.room",
+        "pk": "B106",
+        "fields": {
+            "Rtitle": "自习室",
+            "Rmin": 1,
+            "Rmax": 50,
+            "Rstart": "06:00:00",
+            "Rfinish": "01:30:00",
+            "Rlatest_time": "2023-01-01T00:00:00.000",
+            "Rpresent": 0,
+            "Rstatus": 1,
+            "RIsAllNight": false,
+            "RneedAgree": true
+        }
+    },
+    {
+        "model": "Appointment.room",
+        "pk": "B107A",
+        "fields": {
+            "Rtitle": "研讨室",
+            "Rmin": 4,
+            "Rmax": 50,
+            "Rstart": "07:00:00",
+            "Rfinish": "23:00:00",
+            "Rlatest_time": "2023-01-01T00:00:00.000",
+            "Rpresent": 0,
+            "Rstatus": 0,
+            "RIsAllNight": false,
+            "RneedAgree": false
+        }
+    },
+    {
+        "model": "Appointment.room",
+        "pk": "B107B",
+        "fields": {
+            "Rtitle": "研讨室",
+            "Rmin": 4,
+            "Rmax": 50,
+            "Rstart": "07:00:00",
+            "Rfinish": "23:00:00",
+            "Rlatest_time": "2023-01-01T00:00:00.000",
+            "Rpresent": 0,
+            "Rstatus": 0,
+            "RIsAllNight": false,
+            "RneedAgree": false
+        }
+    },
+    {
+        "model": "Appointment.room",
+        "pk": "B108",
+        "fields": {
+            "Rtitle": "自习室",
+            "Rmin": 1,
+            "Rmax": 50,
+            "Rstart": "06:00:00",
+            "Rfinish": "01:30:00",
+            "Rlatest_time": "2023-01-01T00:00:00.000",
+            "Rpresent": 0,
+            "Rstatus": 1,
+            "RIsAllNight": true,
+            "RneedAgree": false
+        }
+    },
+    {
+        "model": "Appointment.room",
+        "pk": "B109A",
+        "fields": {
+            "Rtitle": "报告厅",
+            "Rmin": 10,
+            "Rmax": 50,
+            "Rstart": "07:00:00",
+            "Rfinish": "07:00:00",
+            "Rlatest_time": "2023-01-01T00:00:00.000",
+            "Rpresent": 0,
+            "Rstatus": 2,
+            "RIsAllNight": false,
+            "RneedAgree": false
+        }
+    },
+    {
+        "model": "Appointment.room",
+        "pk": "B111",
+        "fields": {
+            "Rtitle": "研讨/书法室",
+            "Rmin": 4,
+            "Rmax": 50,
+            "Rstart": "07:00:00",
+            "Rfinish": "23:00:00",
+            "Rlatest_time": "2023-01-01T00:00:00.000",
+            "Rpresent": 0,
+            "Rstatus": 0,
+            "RIsAllNight": false,
+            "RneedAgree": false
+        }
+    },
+    {
+        "model": "Appointment.room",
+        "pk": "B112",
+        "fields": {
+            "Rtitle": "自习室",
+            "Rmin": 1,
+            "Rmax": 50,
+            "Rstart": "06:00:00",
+            "Rfinish": "01:30:00",
+            "Rlatest_time": "2023-01-01T00:00:00.000",
+            "Rpresent": 0,
+            "Rstatus": 1,
+            "RIsAllNight": false,
+            "RneedAgree": false
+        }
+    },
+    {
+        "model": "Appointment.room",
+        "pk": "B114",
+        "fields": {
+            "Rtitle": "无占座自习室",
+            "Rmin": 1,
+            "Rmax": 50,
+            "Rstart": "06:00:00",
+            "Rfinish": "01:30:00",
+            "Rlatest_time": "2023-01-01T00:00:00.000",
+            "Rpresent": 0,
+            "Rstatus": 1,
+            "RIsAllNight": false,
+            "RneedAgree": true
+        }
+    },
+    {
+        "model": "Appointment.room",
+        "pk": "B118",
+        "fields": {
+            "Rtitle": "自习室",
+            "Rmin": 1,
+            "Rmax": 50,
+            "Rstart": "06:00:00",
+            "Rfinish": "01:30:00",
+            "Rlatest_time": "2023-01-01T00:00:00.000",
+            "Rpresent": 0,
+            "Rstatus": 1,
+            "RIsAllNight": false,
+            "RneedAgree": false
+        }
+    },
+    {
+        "model": "Appointment.room",
+        "pk": "B119",
+        "fields": {
+            "Rtitle": "自习室",
+            "Rmin": 1,
+            "Rmax": 50,
+            "Rstart": "06:00:00",
+            "Rfinish": "01:30:00",
+            "Rlatest_time": "2023-01-01T00:00:00.000",
+            "Rpresent": 0,
+            "Rstatus": 1,
+            "RIsAllNight": false,
+            "RneedAgree": false
+        }
+    },
+    {
+        "model": "Appointment.room",
+        "pk": "B205",
+        "fields": {
+            "Rtitle": "研讨/航模室",
+            "Rmin": 2,
+            "Rmax": 50,
+            "Rstart": "07:00:00",
+            "Rfinish": "07:00:00",
+            "Rlatest_time": "2023-01-01T00:00:00.000",
+            "Rpresent": 0,
+            "Rstatus": 2,
+            "RIsAllNight": false,
+            "RneedAgree": false
+        }
+    },
+    {
+        "model": "Appointment.room",
+        "pk": "B206",
+        "fields": {
+            "Rtitle": "研讨/绘画室",
+            "Rmin": 4,
+            "Rmax": 50,
+            "Rstart": "07:00:00",
+            "Rfinish": "23:00:00",
+            "Rlatest_time": "2023-01-01T00:00:00.000",
+            "Rpresent": 0,
+            "Rstatus": 0,
+            "RIsAllNight": false,
+            "RneedAgree": false
+        }
+    },
+    {
+        "model": "Appointment.room",
+        "pk": "B207",
+        "fields": {
+            "Rtitle": "公共区域",
+            "Rmin": 10,
+            "Rmax": 50,
+            "Rstart": "07:00:00",
+            "Rfinish": "23:00:00",
+            "Rlatest_time": "2023-01-01T00:00:00.000",
+            "Rpresent": 0,
+            "Rstatus": 0,
+            "RIsAllNight": false,
+            "RneedAgree": false
+        }
+    },
+    {
+        "model": "Appointment.room",
+        "pk": "B208",
+        "fields": {
+            "Rtitle": "台球室",
+            "Rmin": 1,
+            "Rmax": 50,
+            "Rstart": "07:00:00",
+            "Rfinish": "23:00:00",
+            "Rlatest_time": "2023-01-01T00:00:00.000",
+            "Rpresent": 0,
+            "Rstatus": 0,
+            "RIsAllNight": false,
+            "RneedAgree": false
+        }
+    },
+    {
+        "model": "Appointment.room",
+        "pk": "B209",
+        "fields": {
+            "Rtitle": "研讨室",
+            "Rmin": 2,
+            "Rmax": 50,
+            "Rstart": "07:00:00",
+            "Rfinish": "23:00:00",
+            "Rlatest_time": "2023-01-01T00:00:00.000",
+            "Rpresent": 0,
+            "Rstatus": 2,
+            "RIsAllNight": false,
+            "RneedAgree": false
+        }
+    },
+    {
+        "model": "Appointment.room",
+        "pk": "B214",
+        "fields": {
+            "Rtitle": "活动/舞蹈室",
+            "Rmin": 1,
+            "Rmax": 50,
+            "Rstart": "07:00:00",
+            "Rfinish": "23:00:00",
+            "Rlatest_time": "2023-01-01T00:00:00.000",
+            "Rpresent": 0,
+            "Rstatus": 0,
+            "RIsAllNight": false,
+            "RneedAgree": false
+        }
+    },
+    {
+        "model": "Appointment.room",
+        "pk": "B215",
+        "fields": {
+            "Rtitle": "办公室",
+            "Rmin": 2,
+            "Rmax": 50,
+            "Rstart": "07:00:00",
+            "Rfinish": "07:00:00",
+            "Rlatest_time": "2023-01-01T00:00:00.000",
+            "Rpresent": 0,
+            "Rstatus": 2,
+            "RIsAllNight": false,
+            "RneedAgree": false
+        }
+    },
+    {
+        "model": "Appointment.room",
+        "pk": "B216",
+        "fields": {
+            "Rtitle": "舞蹈室",
+            "Rmin": 1,
+            "Rmax": 50,
+            "Rstart": "07:00:00",
+            "Rfinish": "23:00:00",
+            "Rlatest_time": "2023-01-01T00:00:00.000",
+            "Rpresent": 0,
+            "Rstatus": 0,
+            "RIsAllNight": false,
+            "RneedAgree": false
+        }
+    },
+    {
+        "model": "Appointment.room",
+        "pk": "B217",
+        "fields": {
+            "Rtitle": "活动/电影室",
+            "Rmin": 4,
+            "Rmax": 50,
+            "Rstart": "07:00:00",
+            "Rfinish": "23:00:00",
+            "Rlatest_time": "2023-01-01T00:00:00.000",
+            "Rpresent": 0,
+            "Rstatus": 0,
+            "RIsAllNight": false,
+            "RneedAgree": false
+        }
+    },
+    {
+        "model": "Appointment.room",
+        "pk": "B218",
+        "fields": {
+            "Rtitle": "健身室",
+            "Rmin": 1,
+            "Rmax": 50,
+            "Rstart": "07:00:00",
+            "Rfinish": "23:00:00",
+            "Rlatest_time": "2023-01-01T00:00:00.000",
+            "Rpresent": 0,
+            "Rstatus": 1,
+            "RIsAllNight": false,
+            "RneedAgree": false
+        }
+    },
+    {
+        "model": "Appointment.room",
+        "pk": "B220",
+        "fields": {
+            "Rtitle": "音乐室",
+            "Rmin": 1,
+            "Rmax": 50,
+            "Rstart": "07:00:00",
+            "Rfinish": "23:00:00",
+            "Rlatest_time": "2023-01-01T00:00:00.000",
+            "Rpresent": 0,
+            "Rstatus": 2,
+            "RIsAllNight": false,
+            "RneedAgree": false
+        }
+    },
+    {
+        "model": "Appointment.room",
+        "pk": "B221",
+        "fields": {
+            "Rtitle": "音乐室",
+            "Rmin": 1,
+            "Rmax": 50,
+            "Rstart": "07:00:00",
+            "Rfinish": "23:00:00",
+            "Rlatest_time": "2023-01-01T00:00:00.000",
+            "Rpresent": 0,
+            "Rstatus": 0,
+            "RIsAllNight": false,
+            "RneedAgree": false
+        }
+    },
+    {
+        "model": "Appointment.room",
+        "pk": "B222",
+        "fields": {
+            "Rtitle": "力量室",
+            "Rmin": 2,
+            "Rmax": 50,
+            "Rstart": "18:00:00",
+            "Rfinish": "18:00:00",
+            "Rlatest_time": "2023-01-01T00:00:00.000",
+            "Rpresent": 0,
+            "Rstatus": 2,
+            "RIsAllNight": false,
+            "RneedAgree": false
+        }
+    },
+    {
+        "model": "Appointment.room",
+        "pk": "R113",
+        "fields": {
+            "Rtitle": "研讨室",
+            "Rmin": 4,
+            "Rmax": 50,
+            "Rstart": "18:00:00",
+            "Rfinish": "22:30:00",
+            "Rlatest_time": "2023-01-01T00:00:00.000",
+            "Rpresent": 0,
+            "Rstatus": 0,
+            "RIsAllNight": false,
+            "RneedAgree": false
+        }
+    },
+    {
+        "model": "Appointment.room",
+        "pk": "R201",
+        "fields": {
+            "Rtitle": "研讨室",
+            "Rmin": 4,
+            "Rmax": 50,
+            "Rstart": "18:00:00",
+            "Rfinish": "22:30:00",
+            "Rlatest_time": "2023-01-01T00:00:00.000",
+            "Rpresent": 0,
+            "Rstatus": 0,
+            "RIsAllNight": false,
+            "RneedAgree": false
+        }
+    },
+    {
+        "model": "Appointment.room",
+        "pk": "R301",
+        "fields": {
+            "Rtitle": "元创空间",
+            "Rmin": 1,
+            "Rmax": 1,
+            "Rstart": "09:00:00",
+            "Rfinish": "17:00:00",
+            "Rlatest_time": "2023-01-01T00:00:00.000",
+            "Rpresent": 0,
+            "Rstatus": 0,
+            "RIsAllNight": false,
+            "RneedAgree": false
+        }
+    },
+    {
+        "model": "Appointment.room",
+        "pk": "R302",
+        "fields": {
+            "Rtitle": "元创空间",
+            "Rmin": 1,
+            "Rmax": 1,
+            "Rstart": "09:00:00",
+            "Rfinish": "17:00:00",
+            "Rlatest_time": "2023-01-01T00:00:00.000",
+            "Rpresent": 0,
+            "Rstatus": 0,
+            "RIsAllNight": false,
+            "RneedAgree": false
+        }
+    },
+    {
+        "model": "Appointment.room",
+        "pk": "R303",
+        "fields": {
+            "Rtitle": "元创空间",
+            "Rmin": 1,
+            "Rmax": 1,
+            "Rstart": "09:00:00",
+            "Rfinish": "17:00:00",
+            "Rlatest_time": "2023-01-01T00:00:00.000",
+            "Rpresent": 0,
+            "Rstatus": 0,
+            "RIsAllNight": false,
+            "RneedAgree": false
+        }
+    },
+    {
+        "model": "Appointment.room",
+        "pk": "R304",
+        "fields": {
+            "Rtitle": "元创空间",
+            "Rmin": 1,
+            "Rmax": 1,
+            "Rstart": "09:00:00",
+            "Rfinish": "17:00:00",
+            "Rlatest_time": "2023-01-01T00:00:00.000",
+            "Rpresent": 0,
+            "Rstatus": 0,
+            "RIsAllNight": false,
+            "RneedAgree": false
+        }
+    },
+    {
+        "model": "Appointment.room",
+        "pk": "R305",
+        "fields": {
+            "Rtitle": "元创空间",
+            "Rmin": 1,
+            "Rmax": 1,
+            "Rstart": "09:00:00",
+            "Rfinish": "17:00:00",
+            "Rlatest_time": "2023-01-01T00:00:00.000",
+            "Rpresent": 0,
+            "Rstatus": 0,
+            "RIsAllNight": false,
+            "RneedAgree": false
+        }
+    }
+]
