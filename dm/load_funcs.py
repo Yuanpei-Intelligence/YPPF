@@ -7,6 +7,7 @@ import pandas as pd
 from tqdm import tqdm
 from django.db import transaction
 
+import utils.models.query as SQ
 from boot.config import DEBUG
 from app.config import *
 from app.models import (
@@ -47,6 +48,10 @@ __all__ = [
 ]
 
 
+def _get_or_create_np(user: User, defaults = None, **kwargs):
+    kwargs[SQ.f(NaturalPerson.person_id)] = user
+    return NaturalPerson.objects.get_or_create(defaults=defaults, **kwargs)
+
 # local tools
 def create_user(id, rand_pw=False, reset_pw=None, **defaults):
     '''create user locally'''
@@ -75,8 +80,7 @@ def create_person(name, user, **defaults):
         stage = 'get user'
         user = user if isinstance(user, User) else User.objects.get(username=user)
         stage = 'create naturalperson'
-        person, created = NaturalPerson.objects.get_or_create(
-            person_id=user, name=name, defaults=defaults)
+        person, created = _get_or_create_np(user, name=name, defaults=defaults)
         return person
     except RuntimeError: raise
     except: raise RuntimeError(f'{stage} failed')
@@ -181,7 +185,7 @@ def load_orgtype(filepath: str, output_func: Callable=None, html=False, debug=Tr
         user.set_password(password)
         user.save()
 
-        Nperson, _ = NaturalPerson.objects.get_or_create(person_id=user)
+        Nperson, _ = _get_or_create_np(user)
         Nperson.name = "待定"
         Nperson.save()
     org_type_df = load_file(filepath)
@@ -195,10 +199,10 @@ def load_orgtype(filepath: str, output_func: Callable=None, html=False, debug=Tr
         orgtype.otype_name = type_name
         # orgtype.otype_superior_id = type_superior_id
         try:
-            Nperson, _ = NaturalPerson.objects.get(name=incharge)
+            Nperson = NaturalPerson.objects.get(name=incharge)
         except:
             user, _ = User.objects.get_or_create(username=incharge)
-            Nperson, _ = NaturalPerson.objects.get_or_create(person_id=user)
+            Nperson, _ = _get_or_create_np(user)
         orgtype.incharge = Nperson
         orgtype.job_name_list = otype_dict["job_name_list"]
         orgtype.control_pos_threshold = control_pos_threshold
@@ -386,11 +390,11 @@ def load_stu(filepath: str, output_func: Callable=None, html=False):
                 user.set_password(password)
                 user.save()
 
-            # 批量导入比循环导入快很多，但可惜由于外键person_id的存在，必须先保存user，User模型无法批量导入。
+            # 批量导入比循环导入快很多，但可惜由于外键pid的存在，必须先保存user，User模型无法批量导入。
             # 但重点还是 set_password 的加密算法太 TM 的慢了！
             stu_list.append(
                 NaturalPerson(
-                    person_id=user,
+                    **{SQ.f(NaturalPerson.person_id): user},
                     stu_id_dbonly=sid,
                     name=name,
                     gender=gender,
@@ -579,15 +583,16 @@ def load_course_record(filepath: str, output_func: Callable=None, html:bool=Fals
             if not sid:  #没有学号
                 info_show["stuID miss"].append(record_view)
             else:  #若有学号，则根据学号继续查找（排除重名）
-                person = person.filter(person_id__username=sid)
+                person = person.filter(SQ.sq(
+                    [NaturalPerson.person_id, User.username], sid))
 
             if not person.exists():
                 error_info = [record_view]
                 #若同时按照学号和姓名查找不到的话，则只用姓名或者只用学号查找可能的人员
                 person_guess_byname = NaturalPerson.objects.filter(name=name)
                 if sid:  #若填了学号的话，则试着查找
-                    person_guess_byId = NaturalPerson.objects.filter(
-                        person_id__username=sid)
+                    person_guess_byId = NaturalPerson.objects.filter(SQ.sq(
+                        [NaturalPerson.person_id, User.username], sid))
                 else:
                     person_guess_byId = None
                 error_info += [person_guess_byname, person_guess_byId]

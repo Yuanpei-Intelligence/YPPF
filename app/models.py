@@ -250,6 +250,10 @@ class NaturalPersonManager(models.Manager['NaturalPerson']):
         result: NaturalPerson = self.get(SQ.sq(NaturalPerson.person_id, user))
         return result
 
+    def create(self, user: User, **kwargs) -> 'NaturalPerson':
+        kwargs[SQ.f(NaturalPerson.person_id)] = user
+        return super().create(**kwargs)
+
     def activated(self):
         return self.exclude(status=NaturalPerson.GraduateStatus.GRADUATED)
 

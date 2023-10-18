@@ -19,11 +19,11 @@ class GetWaitAuditStudentsTestCase(TestCase):
         u4 = User.objects.create_user("44", "1", password="333")
         u5 = User.objects.create_user("55", "1", password="333")
         
-        NaturalPerson.objects.create(person_id=u1, name="1", stu_grade="2018")
-        NaturalPerson.objects.create(person_id=u2, name="2", stu_grade="2018")
-        NaturalPerson.objects.create(person_id=u3, name="3", stu_grade="2019")
-        NaturalPerson.objects.create(person_id=u4, name="4", stu_grade="2020")
-        NaturalPerson.objects.create(person_id=u5, name="5", stu_grade="2021")
+        NaturalPerson.objects.create(u1, name="1", stu_grade="2018")
+        NaturalPerson.objects.create(u2, name="2", stu_grade="2018")
+        NaturalPerson.objects.create(u3, name="3", stu_grade="2019")
+        NaturalPerson.objects.create(u4, name="4", stu_grade="2020")
+        NaturalPerson.objects.create(u5, name="5", stu_grade="2021")
 
         AcademicTag.objects.create(atype=AcademicTag.Type.MAJOR, tag_content="数学")
         AcademicTag.objects.create(atype=AcademicTag.Type.MAJOR, tag_content="物理")

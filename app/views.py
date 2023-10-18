@@ -1121,7 +1121,7 @@ def _create_freshman_account(sid: str, email: str = None):
             )
             current = "创建个人账号"
             NaturalPerson.objects.create(
-                **{SQ.f(NaturalPerson.person_id): user},
+                user,
                 stu_id_dbonly=sid,
                 name=name,
                 gender=np_gender,
@@ -1305,7 +1305,7 @@ def authRegister(request: HttpRequest):
                 password=password
             )
             person = NaturalPerson.objects.create(
-                **{SQ.f(NaturalPerson.person_id): user},
+                user,
                 stu_id_dbonly=sno,
                 name=name,
                 email=email,

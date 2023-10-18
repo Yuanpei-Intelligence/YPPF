@@ -124,7 +124,7 @@ class SQueryFunctionTest(TestCase):
             [cls.u3, '3', '2019'],
         ]
         cls.p1, cls.p2, cls.p3 = (
-            Person.objects.create(person_id=u, name=name, stu_grade=grade)
+            Person.objects.create(u, name=name, stu_grade=grade)
             for u, name, grade in person_datas
         )
 
