@@ -1063,7 +1063,7 @@ class Activity(CommentBase):
 
         self = Activity.objects.select_for_update().get(pk=self.pk)
         participant_ids = SQ.qsvlist(self.attended_participants,
-                                     Participant.person_id, NaturalPerson.person_id)
+                                     Participant.person, NaturalPerson.person_id)
         participants = User.objects.filter(id__in=participant_ids)
         User.objects.bulk_increase_YQPoint(
             participants, point, "参加活动", YQPointRecord.SourceType.ACTIVITY)
@@ -1109,13 +1109,13 @@ class Participant(models.Model):
         verbose_name_plural = verbose_name
         ordering = ["activity_id"]
 
-    activity_id = models.ForeignKey(Activity, on_delete=models.CASCADE)
-    person_id = models.ForeignKey(NaturalPerson, on_delete=models.CASCADE)
+    activity = models.ForeignKey(Activity, on_delete=models.CASCADE)
+    person = models.ForeignKey(NaturalPerson, on_delete=models.CASCADE)
 
-    @necessary_for_frontend(person_id)
+    @necessary_for_frontend(person)
     def get_participant(self):
         '''供前端使用，追踪该字段的函数'''
-        return self.person_id
+        return self.person
 
     class AttendStatus(models.TextChoices):
         APPLYING = "申请中"
