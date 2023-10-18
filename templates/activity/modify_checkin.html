@@ -29,27 +29,27 @@
                                 </tr>
                             </thead>
                             <tbody>
-                                {% for _participation in member_list %}
-                                {% with _participation.get_participant as _member %}
+                                {% for Tparticipation in member_list %}
+                                {% with Tparticipation.get_participant as Tmember %}
                                 <tr>
                                     <td>
-                                        <img src="{{ _member.get_user_ava }}" width="24" height="24" alt="avatar">
-                                        <a href="{{ _member.get_absolute_url }}">
-                                            <u>{{ _member }}</u>
+                                        <img src="{{ Tmember.get_user_ava }}" width="24" height="24" alt="avatar">
+                                        <a href="{{ Tmember.get_absolute_url }}">
+                                            <u>{{ Tmember }}</u>
                                         </a>
                                     </td>
                                     <td>
                                         <input type="radio"
                                                class="custom-control-inline"
-                                               name="checkin_{{ _member.id }}"
+                                               name="checkin_{{ Tmember.id }}"
                                                value="no"
-                                               {% if _participation.status == "未签到" %} checked {% endif %}>
+                                               {% if Tparticipation.status == "未签到" %} checked {% endif %}>
                                         未参与
                                         <input type="radio"
                                                class="custom-control-inline"
-                                               name="checkin_{{ _member.id }}"
+                                               name="checkin_{{ Tmember.id }}"
                                                value="yes"
-                                               {% if _participation.status == "已参与" %} checked {% endif %}>
+                                               {% if Tparticipation.status == "已参与" %} checked {% endif %}>
                                         已参与
                                     </td>
                                 </tr>
