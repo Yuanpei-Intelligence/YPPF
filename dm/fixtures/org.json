@@ -82,5 +82,146 @@
             "groups": [],
             "user_permissions": []
         }
+    },
+    {
+        "model": "app.organizationtype",
+        "pk": 1,
+        "fields": {
+            "otype_name": "学生小组",
+            "otype_superior_id": 0,
+            "incharge": 1,
+            "job_name_list": "部长,副部长,部员",
+            "allow_unsubscribe": true,
+            "control_pos_threshold": 0
+        }
+    },
+    {
+        "model": "app.organizationtag",
+        "pk": 1,
+        "fields": {
+            "name": "兴趣",
+            "color": "#DC143C"
+        }
+    },
+    {
+        "model": "app.organizationtag",
+        "pk": 2,
+        "fields": {
+            "name": "住宿生活",
+            "color": "#1E90FF"
+        }
+    },
+    {
+        "model": "app.organization",
+        "pk": 1,
+        "fields": {
+            "organization_id": 6,
+            "oname": "Official",
+            "otype": 1,
+            "status": true,
+            "introduction": "这里暂时没有介绍哦~",
+            "avatar": "",
+            "QRcode": "",
+            "wallpaper": "",
+            "visit_times": 0,
+            "inform_share": true,
+            "tags": [
+                1
+            ]
+        }
+    },
+    {
+        "model": "app.organization",
+        "pk": 11,
+        "fields": {
+            "organization_id": 7,
+            "oname": "绘画班",
+            "otype": 1,
+            "status": true,
+            "introduction": "这里暂时没有介绍哦~",
+            "avatar": "",
+            "QRcode": "",
+            "wallpaper": "",
+            "visit_times": 0,
+            "inform_share": true,
+            "tags": [
+                1
+            ]
+        }
+    },
+    {
+        "model": "app.organization",
+        "pk": 12,
+        "fields": {
+            "organization_id": 8,
+            "oname": "舞蹈班",
+            "otype": 1,
+            "status": true,
+            "introduction": "这里暂时没有介绍哦~",
+            "avatar": "",
+            "QRcode": "",
+            "wallpaper": "",
+            "visit_times": 0,
+            "inform_share": true,
+            "tags": [
+                1
+            ]
+        }
+    },
+    {
+        "model": "app.position",
+        "pk": 1,
+        "fields": {
+            "person": 1,
+            "org": 11,
+            "pos": 0,
+            "is_admin": true,
+            "show_post": true,
+            "year": 2023,
+            "semester": "Fall+Spring",
+            "status": "在职"
+        }
+    },
+    {
+        "model": "app.position",
+        "pk": 2,
+        "fields": {
+            "person": 1,
+            "org": 12,
+            "pos": 1,
+            "is_admin": false,
+            "show_post": true,
+            "year": 2023,
+            "semester": "Fall+Spring",
+            "status": "在职"
+        }
+    },
+    {
+        "model": "app.position",
+        "pk": 3,
+        "fields": {
+            "person": 3,
+            "org": 12,
+            "pos": 0,
+            "is_admin": true,
+            "show_post": true,
+            "year": 2023,
+            "semester": "Fall+Spring",
+            "status": "在职"
+        }
+    },
+    {
+        "model": "app.position",
+        "pk": 4,
+        "fields": {
+            "person": 2,
+            "org": 11,
+            "pos": 1,
+            "is_admin": false,
+            "show_post": true,
+            "year": 2023,
+            "semester": "Fall+Spring",
+            "status": "在职"
+        }
     }
 ]
