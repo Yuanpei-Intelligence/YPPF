@@ -183,46 +183,6 @@ def create_position():
     _create_position(UIDS[1], ORG_UIDS[0], 1, False)
 
 
-def create_activity():
-    ...
-
-
-def create_participant():
-    ...
-
-    
-def create_semester():
-    spring_type = SemesterType.objects.create(name="春季学期")
-    autumn_type = SemesterType.objects.create(name="秋季学期")
-    
-    #By default, spring semester is 2.1-6.30, autumn semester is 9.1-1.31
-    #For summer vacation, the current semester object falls back to last semester, i.e. spring semester
-    today = date.today()
-    spring_start = date(today.year, 2, 1)
-    if spring_start <= today <= date(today.year, 8, 31):
-        #current semester is spring semester
-        Semester.objects.bulk_create(
-            [
-                Semester(year=today.year, type=spring_type,
-                         start_date=spring_start, end_date=date(today.year, 6, 30)),
-                Semester(year=today.year, type=autumn_type,
-                         start_date=date(today.year, 9, 1), end_date=date(today.year+1, 1, 31))
-            ]
-        )
-    else:
-        #current semester is autumn semester
-        #if 1.1 <= today.date < 2.1, then semester's year is today.year-1
-        cur_year = today.year if today.month >= 9 else today.year - 1
-        Semester.objects.bulk_create(
-            [
-                Semester(year=cur_year, type=autumn_type,
-                         start_date=date(cur_year, 9, 1), end_date=date(cur_year+1, 1, 31)),
-                Semester(year=cur_year+1, type=spring_type,
-                         start_date=date(cur_year+1, 2, 1), end_date=date(cur_year+1, 6, 30))
-            ]
-        )
-
-
 def create_all():
     # TODO: Add more
     # delete all
@@ -237,6 +197,3 @@ def create_all():
     create_org_tag()
     create_org()
     create_position()
-
-    # semester
-    create_semester()
