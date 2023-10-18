@@ -26,7 +26,7 @@ from app.models import (
     OrganizationType,
     Activity,
     ActivityPhoto,
-    Participant,
+    Participation,
     Notification,
     Wishes,
     Course,
@@ -406,18 +406,18 @@ def stuinfo(request: UserRequest):
 
         # ------------------ 活动参与 ------------------ #
 
-        participants = Participant.objects.activated().filter(SQ.sq(
-                Participant.person, person))
+        participants = Participation.objects.activated().filter(SQ.sq(
+                Participation.person, person))
         activities = Activity.objects.activated().filter(
             # ~Q(status=Activity.Status.CANCELED), # 暂时可以呈现已取消的活动
-            id__in=SQ.qsvlist(participants, Participant.activity),
+            id__in=SQ.qsvlist(participants, Participation.activity),
         )
         if request.user.is_person():
             # 因为上面筛选过活动，这里就不用筛选了
             # 之前那个写法是O(nm)的
-            activities_me = Participant.objects.activated().filter(SQ.sq(
-                Participant.person, oneself))
-            activities_me = set(SQ.qsvlist(activities_me, Participant.activity))
+            activities_me = Participation.objects.activated().filter(SQ.sq(
+                Participation.person, oneself))
+            activities_me = set(SQ.qsvlist(activities_me, Participation.activity))
         else:
             activities_me = activities.filter(organization_id=oneself)
             activities_me = set(activities_me.values_list("id", flat=True))
@@ -433,7 +433,7 @@ def stuinfo(request: UserRequest):
         history_activities = list(
             Activity.objects.activated(noncurrent=True).filter(
                 # ~Q(status=Activity.Status.CANCELED), # 暂时可以呈现已取消的活动
-                id__in=SQ.qsvlist(participants, Participant.activity),
+                id__in=SQ.qsvlist(participants, Participation.activity),
             ))
         history_activities.sort(key=lambda a: a.start, reverse=True)
         html_display["history_act_info"] = list(history_activities) or None
@@ -711,8 +711,8 @@ def orginfo(request: UserRequest):
             hours = Activity.EndBeforeHours.prepare_times[act.endbefore]
             dictmp["endbefore"] = act.start - timedelta(hours=hours)
             if request.user.is_person():
-                participation = Participant.objects.filter(
-                    SQ.sq(Participant.activity, act), SQ.sq(Participant.person, me),
+                participation = Participation.objects.filter(
+                    SQ.sq(Participation.activity, act), SQ.sq(Participation.person, me),
                 ).first()
                 dictmp["status"] = participation.status if participation else "无记录"
             displays.append(dictmp)

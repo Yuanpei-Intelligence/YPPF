@@ -23,7 +23,7 @@ from app.models import (
     Activity,
     ActivityPhoto,
     ActivitySummary,
-    Participant,
+    Participation,
     Notification,
     Position,
     Course,
@@ -221,7 +221,7 @@ def add_week_course_activity(course_id: int, weektime_id: int, cur_week: int, co
                 person_pos = list(set(person_pos))
             members = NaturalPerson.objects.filter(
                 id__in=person_pos)
-            status = Participant.AttendStatus.APPLYSUCCESS
+            status = Participation.AttendStatus.APPLYSUCCESS
             create_participate_infos(activity, members, status=status)
 
             participate_num = len(person_pos)

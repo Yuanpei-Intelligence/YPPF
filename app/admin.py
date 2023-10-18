@@ -25,8 +25,8 @@ class PositionInline(admin.TabularInline):
     show_change_link = True
 
 @readonly_inline
-class ParticipantInline(admin.TabularInline):
-    model = Participant
+class ParticipationInline(admin.TabularInline):
+    model = Participation
     classes = ['collapse']
     ordering = ['-' + f(model.activity)]
     fields = [f(model.activity), f(model.person), f(model.status)]
@@ -58,7 +58,7 @@ class NaturalPersonAdmin(admin.ModelAdmin):
         f(_m.stu_grade), f(_m.stu_class),
     ]
 
-    inlines = [PositionInline, ParticipantInline, CourseParticipantInline]
+    inlines = [PositionInline, ParticipationInline, CourseParticipantInline]
 
     def _show_by_option(self, obj: NaturalPerson | None, option: str, detail: str):
         if obj is None or getattr(obj, option):
@@ -386,7 +386,7 @@ class ActivityAdmin(admin.ModelAdmin):
         return f'{obj.current_participants}/{"无限" if obj.capacity == 10000 else obj.capacity}'
     participant_diaplay.short_description = "报名情况"
 
-    inlines = [ParticipantInline]
+    inlines = [ParticipationInline]
 
     actions = []
 
@@ -394,11 +394,11 @@ class ActivityAdmin(admin.ModelAdmin):
     def refresh_count(self, request, queryset: QuerySet[Activity]):
         for activity in queryset:
             activity.current_participants = sfilter(
-                Participant.activity, activity).filter(
+                Participation.activity, activity).filter(
                 status__in=[
-                    Participant.AttendStatus.ATTENDED,
-                    Participant.AttendStatus.UNATTENDED,
-                    Participant.AttendStatus.APPLYSUCCESS,
+                    Participation.AttendStatus.ATTENDED,
+                    Participation.AttendStatus.UNATTENDED,
+                    Participation.AttendStatus.APPLYSUCCESS,
                 ]).count()
             activity.save()
         return self.message_user(request=request, message='修改成功!')
@@ -468,9 +468,9 @@ class ActivityAdmin(admin.ModelAdmin):
         return self.message_user(request=request, message=msg)
 
 
-@admin.register(Participant)
-class ParticipantAdmin(admin.ModelAdmin):
-    _m = Participant
+@admin.register(Participation)
+class ParticipationAdmin(admin.ModelAdmin):
+    _m = Participation
     _act = _m.activity
     list_display = ['id', f(_act), f(_m.person), f(_m.status)]
     search_fields = ['id', f(_act, 'id'), f(_act, Activity.title),

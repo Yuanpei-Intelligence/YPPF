@@ -68,7 +68,7 @@ __all__ = [
     'CommentBase',
     'Activity',
     'ActivityPhoto',
-    'Participant',
+    'Participation',
     'Notification',
     'Comment',
     'CommentPhoto',
@@ -988,13 +988,13 @@ class Activity(CommentBase):
                                     verbose_name="课程每周活动时间")
 
     @property
-    def participants(self) -> QuerySet['Participant']:
+    def participants(self) -> QuerySet['Participation']:
         return self.participant_set.all()
 
     @property
-    def attended_participants(self) -> QuerySet['Participant']:
+    def attended_participants(self) -> QuerySet['Participation']:
         return self.participants.filter(
-            status=Participant.AttendStatus.ATTENDED)
+            status=Participation.AttendStatus.ATTENDED)
 
     def save(self, *args, **kwargs):
         self.typename = "activity"
@@ -1063,7 +1063,7 @@ class Activity(CommentBase):
 
         self = Activity.objects.select_for_update().get(pk=self.pk)
         participant_ids = SQ.qsvlist(self.attended_participants,
-                                     Participant.person, NaturalPerson.person_id)
+                                     Participation.person, NaturalPerson.person_id)
         participants = User.objects.filter(id__in=participant_ids)
         User.objects.bulk_increase_YQPoint(
             participants, point, "参加活动", YQPointRecord.SourceType.ACTIVITY)
@@ -1091,19 +1091,19 @@ class ActivityPhoto(models.Model):
         return image_url(self.image, enable_abs=True)
 
 
-class ParticipantManager(models.Manager['Participant']):
+class ParticipationManager(models.Manager['Participation']):
     def activated(self, no_unattend=False):
         '''返回成功报名的参与信息'''
         exclude_status = [
-            Participant.AttendStatus.CANCELED,
-            Participant.AttendStatus.APPLYFAILED,
+            Participation.AttendStatus.CANCELED,
+            Participation.AttendStatus.APPLYFAILED,
         ]
         if no_unattend:
-            exclude_status.append(Participant.AttendStatus.UNATTENDED)
+            exclude_status.append(Participation.AttendStatus.UNATTENDED)
         return self.exclude(status__in=exclude_status)
 
 
-class Participant(models.Model):
+class Participation(models.Model):
     class Meta:
         verbose_name = "3.活动参与情况"
         verbose_name_plural = verbose_name
@@ -1131,7 +1131,7 @@ class Participant(models.Model):
         default=AttendStatus.APPLYING,
         max_length=32,
     )
-    objects: ParticipantManager = ParticipantManager()
+    objects: ParticipationManager = ParticipationManager()
 
 
 class NotificationManager(models.Manager['Notification']):

@@ -20,7 +20,7 @@ from app.models import (
     Notification,
     ActivityPhoto,
     Position,
-    Participant,
+    Participation,
     Course,
     CourseTime,
     CourseParticipant,
@@ -233,7 +233,7 @@ def create_single_course_activity(request: HttpRequest) -> Tuple[int, bool]:
             person_pos = list(set(person_pos))
         members = NaturalPerson.objects.filter(
             id__in=person_pos)
-        status = Participant.AttendStatus.APPLYSUCCESS
+        status = Participation.AttendStatus.APPLYSUCCESS
         create_participate_infos(activity, members, status=status)
 
         activity.current_participants = len(person_pos)
@@ -1211,10 +1211,10 @@ def cal_participate_num(course: Course) -> dict:
         org=org,
     ).values_list("person", flat=True)
     all_participants = SQ.qsvlist(
-        Participant.objects.activated(no_unattend=True)
-        .filter(SQ.mq(Participant.activity, IN=activities),
-                SQ.mq(Participant.person, IN=members)),
-        Participant.person)
+        Participation.objects.activated(no_unattend=True)
+        .filter(SQ.mq(Participation.activity, IN=activities),
+                SQ.mq(Participation.person, IN=members)),
+        Participation.person)
     participate_num = dict(Counter(all_participants))
     # 没有参加的参与次数设置为0
     participate_num.update(

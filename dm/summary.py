@@ -195,9 +195,9 @@ def cal_act(np: NaturalPerson):
     )
     club_num = pos.filter(org__otype__otype_name='学生小组').count()
     course_org_num = pos.filter(org__otype__otype_name='书院课程').count()
-    act_num = Participant.objects.activated().filter(
-        sq(Participant.person, np),
-        sq([Participant.activity, Activity.year], SUMMARY_YEAR),
+    act_num = Participation.objects.activated().filter(
+        sq(Participation.person, np),
+        sq([Participation.activity, Activity.year], SUMMARY_YEAR),
     ).count()
     position_num = pos.count()
     return dict(
