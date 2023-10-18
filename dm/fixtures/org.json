@@ -29,7 +29,7 @@
     },
     {
         "model": "generic.user",
-        "pk": 7,
+        "pk": 501,
         "fields": {
             "password": "zz00001",
             "last_login": null,
@@ -57,7 +57,7 @@
     },
     {
         "model": "generic.user",
-        "pk": 8,
+        "pk": 502,
         "fields": {
             "password": "zz00002",
             "last_login": null,
@@ -89,7 +89,7 @@
         "fields": {
             "otype_name": "学生小组",
             "otype_superior_id": 0,
-            "incharge": 1,
+            "incharge": 11,
             "job_name_list": "部长,副部长,部员",
             "allow_unsubscribe": true,
             "control_pos_threshold": 0
@@ -134,7 +134,7 @@
         "model": "app.organization",
         "pk": 11,
         "fields": {
-            "organization_id": 7,
+            "organization_id": 501,
             "oname": "绘画班",
             "otype": 1,
             "status": true,
@@ -153,7 +153,7 @@
         "model": "app.organization",
         "pk": 12,
         "fields": {
-            "organization_id": 8,
+            "organization_id": 502,
             "oname": "舞蹈班",
             "otype": 1,
             "status": true,
@@ -172,7 +172,7 @@
         "model": "app.position",
         "pk": 1,
         "fields": {
-            "person": 1,
+            "person": 101,
             "org": 11,
             "pos": 0,
             "is_admin": true,
@@ -186,7 +186,7 @@
         "model": "app.position",
         "pk": 2,
         "fields": {
-            "person": 1,
+            "person": 101,
             "org": 12,
             "pos": 1,
             "is_admin": false,
@@ -200,7 +200,7 @@
         "model": "app.position",
         "pk": 3,
         "fields": {
-            "person": 3,
+            "person": 11,
             "org": 12,
             "pos": 0,
             "is_admin": true,
@@ -214,7 +214,7 @@
         "model": "app.position",
         "pk": 4,
         "fields": {
-            "person": 2,
+            "person": 102,
             "org": 11,
             "pos": 1,
             "is_admin": false,
