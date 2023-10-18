@@ -478,7 +478,7 @@ def stuinfo(request: UserRequest):
         academic_params = dict()
         academic_params.update(
             is_inspector=is_teacher,
-            author_id=person.person_id_id,
+            author_id=person.person_id.id,
             have_content=have_entries(person, content_status),
             have_unaudit=have_entries(person, [AcademicEntry.EntryStatus.WAIT_AUDIT]),
         )
@@ -722,7 +722,7 @@ def orginfo(request: UserRequest):
     ended_activity_list_participantrec = _display_activities(ended_activities)
     history_activity_list_participantrec = _display_activities(history_activities)
 
-    # 判断我是不是老大, 首先设置为false, 然后如果有person_id和user一样, 就为True
+    # 判断我是不是老大, 首先设置为false, 然后如果有id和user一样, 就为True
     html_display["isboss"] = False
 
     # 小组成员list
@@ -1121,7 +1121,7 @@ def _create_freshman_account(sid: str, email: str = None):
             )
             current = "创建个人账号"
             NaturalPerson.objects.create(
-                person_id=user,
+                **{SQ.f(NaturalPerson.person_id): user},
                 stu_id_dbonly=sid,
                 name=name,
                 gender=np_gender,
@@ -1292,7 +1292,7 @@ def authRegister(request: HttpRequest):
 
         failed = False
         failed |= gender not in ['男', '女']
-        failed |= NaturalPerson.objects.filter(person_id=sno).exists()
+        failed |= SQ.sfilter(NaturalPerson.person_id, sno).exists()
         failed |= NaturalPerson.objects.filter(email=email).exists()
         if failed:
             return render(request, "auth_register_boxed.html")
@@ -1305,7 +1305,7 @@ def authRegister(request: HttpRequest):
                 password=password
             )
             person = NaturalPerson.objects.create(
-                person_id=user,
+                **{SQ.f(NaturalPerson.person_id): user},
                 stu_id_dbonly=sno,
                 name=name,
                 email=email,

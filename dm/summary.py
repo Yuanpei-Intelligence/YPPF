@@ -57,8 +57,8 @@ def person_info(np: 'NaturalPerson|User'):
 def person_infos(min=0, max=10000, count=10000):
     npd = {}
     for np in NaturalPerson.objects.filter(
-            person_id__id__gte=min, person_id__id__lte=max
-    ).select_related('person_id'):
+        mq(NaturalPerson.person_id, User.id, gte=min, lte=max)
+    ).select_related(f(NaturalPerson.person_id)):
         npd[np.person_id.username] = person_info(np)
         count -= 1
         if count <= 0:

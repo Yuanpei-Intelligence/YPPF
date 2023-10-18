@@ -4,6 +4,7 @@ from django.contrib.auth.models import Permission
 from django.contrib.contenttypes.models import ContentType
 from django.db.models import QuerySet
 
+from utils.models.query import svlist
 from utils.admin_utils import *
 from generic.models import *
 from generic.models import to_acronym
@@ -93,9 +94,9 @@ class UserAdmin(_UserAdmin):
     @as_action('同步用户类型', actions, atomic=True)
     def sync_user_type(self, request, queryset):
         from app.models import NaturalPerson, Organization
-        User.objects.filter(id__in=Organization.objects.values_list('organization_id')
+        User.objects.filter(id__in=svlist(Organization.organization_id)
             ).select_for_update().update(utype=User.Type.ORG)
-        User.objects.filter(id__in=NaturalPerson.objects.values_list('person_id')
+        User.objects.filter(id__in=svlist(NaturalPerson.person_id)
             ).exclude(utype__in=User.Type.Persons()
             ).select_for_update().update(utype=User.Type.PERSON)
         return self.message_user(request, '操作成功')
@@ -104,12 +105,12 @@ class UserAdmin(_UserAdmin):
     @as_action('同步用户名称', actions, atomic=True)
     def sync_user_name(self, request, queryset):
         from app.models import NaturalPerson, Organization
-        org_users = User.objects.filter(id__in=Organization.objects.values_list('organization_id')
+        org_users = User.objects.filter(id__in=svlist(Organization.organization_id)
             ).select_for_update().select_related('organization')
         for user in org_users:
             user.name = user.organization.get_display_name()
         User.objects.bulk_update(org_users, ['name'])
-        person_users = User.objects.filter(id__in=NaturalPerson.objects.values_list('person_id')
+        person_users = User.objects.filter(id__in=svlist(NaturalPerson.person_id)
             ).select_for_update().select_related('naturalperson')
         for user in person_users:
             user.name = user.naturalperson.get_display_name()
