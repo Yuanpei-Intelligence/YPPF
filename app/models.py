@@ -250,6 +250,10 @@ class NaturalPersonManager(models.Manager['NaturalPerson']):
         result: NaturalPerson = self.get(SQ.sq(NaturalPerson.person_id, user))
         return result
 
+    def create(self, user: User, **kwargs) -> 'NaturalPerson':
+        kwargs[SQ.f(NaturalPerson.person_id)] = user
+        return super().create(**kwargs)
+
     def activated(self):
         return self.exclude(status=NaturalPerson.GraduateStatus.GRADUATED)
 
@@ -987,15 +991,6 @@ class Activity(CommentBase):
                                     null=True, blank=True,
                                     verbose_name="课程每周活动时间")
 
-    @property
-    def participants(self) -> QuerySet['Participation']:
-        return self.participant_set.all()
-
-    @property
-    def attended_participants(self) -> QuerySet['Participation']:
-        return self.participants.filter(
-            status=Participation.AttendStatus.ATTENDED)
-
     def save(self, *args, **kwargs):
         self.typename = "activity"
         super().save(*args, **kwargs)
@@ -1109,8 +1104,8 @@ class Participation(models.Model):
         verbose_name_plural = verbose_name
         ordering = ["activity_id"]
 
-    activity = models.ForeignKey(Activity, on_delete=models.CASCADE)
-    person = models.ForeignKey(NaturalPerson, on_delete=models.CASCADE)
+    activity = models.ForeignKey(Activity, on_delete=models.CASCADE, related_name='+')
+    person = models.ForeignKey(NaturalPerson, on_delete=models.CASCADE, related_name='+')
 
     @necessary_for_frontend(person)
     def get_participant(self):

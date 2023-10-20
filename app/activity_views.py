@@ -1098,8 +1098,9 @@ def activitySummary(request: UserRequest):
     # 用于前端展示，把js数据都放在这里
     json_context = dict(user_infos=to_search_indices(available_participants()))
     if application is not None:
+        participation = SQ.sfilter(Participation.activity, application.activity)
         json_context.update(participant_ids=SQ.qsvlist(
-            application.activity.attended_participants,
+            participation.filter(status=Participation.AttendStatus.ATTENDED),
             Participation.person, NaturalPerson.person_id, User.username
         ))
     render_context.update(json_context=json_context)

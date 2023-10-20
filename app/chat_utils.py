@@ -151,17 +151,15 @@ def get_matched_users(query: str, current_user: User, anonymous: bool):
     比academic_utils中的类似函数更加精简
     """
     # 搜索所有含有关键词的公开的学术地图项目，忽略大小写
-    match_with_tags = list(
-        AcademicTagEntry.objects.filter(
+    match_with_tags = SQ.qsvlist(AcademicTagEntry.objects.filter(
             tag__tag_content__icontains=query,
             status=AcademicEntry.EntryStatus.PUBLIC,
-        ).values_list("person__person_id", flat=True))
+        ), AcademicEntry.person, NaturalPerson.person_id)
 
-    match_with_texts = list(
-        AcademicTextEntry.objects.filter(
+    match_with_texts = SQ.qsvlist(AcademicTextEntry.objects.filter(
             content__icontains=query,
             status=AcademicEntry.EntryStatus.PUBLIC,
-        ).values_list("person__person_id", flat=True))
+        ), AcademicEntry.person, NaturalPerson.person_id)
 
     matched_ids = match_with_tags + match_with_texts
     matched_users = User.objects.exclude(

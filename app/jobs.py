@@ -63,7 +63,7 @@ def send_to_persons(title, message, url='/index/'):
     sender = User.objects.get(username='zz00000')
     np = NaturalPerson.objects.activated().all()
     receivers = User.objects.filter(
-        id__in=np.values_list('person_id', flat=True))
+        id__in=SQ.qsvlist(np, NaturalPerson.person_id))
     print(bulk_notification_create(
         receivers, sender,
         Notification.Type.NEEDREAD, title, message, url,
@@ -304,7 +304,7 @@ def update_active_score_per_day(days=14):
             date = today - timedelta(days=i+1)
             userids = set(PageLog.objects.filter(
                 time__date=date).values_list('user', flat=True))
-            persons.filter(person_id__in=userids).update(
+            persons.filter(SQ.mq(NaturalPerson.person_id, IN=userids)).update(
                 active_score=F('active_score') + 1 / days)
 
 
@@ -364,7 +364,7 @@ def happy_birthday():
     sender = User.objects.get(username='zz00000')
     for np, message in zip(crowds, messages):
         receivers = User.objects.filter(
-            id__in=np.values_list('person_id', flat=True))
+            id__in=SQ.qsvlist(np, NaturalPerson.person_id))
         bulk_notification_create(
             receivers, sender,
             Notification.Type.NEEDREAD, title, message, url,

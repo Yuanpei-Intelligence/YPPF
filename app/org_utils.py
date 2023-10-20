@@ -607,11 +607,11 @@ def send_message_check(me: Organization, request):
     try:
         if receiver_type == "订阅用户":
             receivers = NaturalPerson.objects.activated().exclude(
-                id__in=me.unsubscribers.all()).select_related('person_id')
+                id__in=me.unsubscribers.all()).select_related(SQ.f(NaturalPerson.person_id))
         elif receiver_type == "小组成员":
             receivers = NaturalPerson.objects.activated().filter(
                 id__in=Position.objects.activated().filter(org=me).values_list("person", flat=True)
-            ).select_related('person_id')
+            ).select_related(SQ.f(NaturalPerson.person_id))
         else:  # 推广消息
             receivers = get_promote_receiver(me)
         receivers = [receiver.person_id for receiver in receivers]

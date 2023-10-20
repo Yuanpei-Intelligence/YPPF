@@ -841,10 +841,10 @@ def draw_lots():
                     current_participants=capacity)
 
             # 给选课成功的同学发送通知
-            receivers = CourseParticipant.objects.filter(
+            receivers = SQ.qsvlist(CourseParticipant.objects.filter(
                 course=course,
                 status=CourseParticipant.Status.SUCCESS,
-            ).values_list("person__person_id", flat=True)
+            ), CourseParticipant.person, NaturalPerson.person_id)
             receivers = User.objects.filter(id__in=receivers)
             sender = course.organization.get_user()
             typename = Notification.Type.NEEDREAD
@@ -868,10 +868,10 @@ def draw_lots():
 
             # 给选课失败的同学发送通知
 
-            receivers = CourseParticipant.objects.filter(
+            receivers = SQ.qsvlist(CourseParticipant.objects.filter(
                 course=course,
                 status=CourseParticipant.Status.FAILED,
-            ).values_list("person__person_id", flat=True)
+            ), CourseParticipant.person, NaturalPerson.person_id)
             receivers = User.objects.filter(id__in=receivers)
             content = f"很抱歉通知您，您未选上课程《{course.name}》。"
             if len(receivers) > 0:
@@ -1309,7 +1309,7 @@ def finish_course(course):
         # 通知课程小组成员该课程已结束
         title = f'课程结束通知！'
         msg = f'{course.name}在本学期的课程已结束！'
-        receivers = participants.values_list('person_id', flat=True)
+        receivers = SQ.qsvlist(participants, NaturalPerson.person_id)
         receivers = User.objects.filter(id__in=receivers)
         bulk_notification_create(
             receivers=list(receivers),
@@ -1390,7 +1390,7 @@ def download_course_record(course: Course = None, year: int = None, semester: Se
                                   courserecord__invalid=True,
                                   **relate_filter_kws,
                               )),
-        ).order_by('person_id__username')
+        ).order_by(SQ.sq(NaturalPerson.person_id, User.username))
 
         def _sum_hours(records: QuerySet[CourseRecord]) -> float:
             agg = records.filter(**filter_kws).aggregate(Sum('total_hours'))
@@ -1408,7 +1408,7 @@ def download_course_record(course: Course = None, year: int = None, semester: Se
             record.append(_sum_hours(valid_records.filter(course__isnull=True)))
 
             filtered_records.append(record)
-        for person, record in zip(person_record.select_related('person_id'), 
+        for person, record in zip(person_record.select_related(SQ.f(NaturalPerson.person_id)), 
                                   filtered_records):
             line = [person.person_id.username, person.name,
                     person.record_hours or 0, 
@@ -1419,7 +1419,7 @@ def download_course_record(course: Course = None, year: int = None, semester: Se
         records = CourseRecord.objects.filter(
             person__in=all_person,
             **filter_kws,
-        ).order_by('person__person_id__username')
+        ).order_by(SQ.f(CourseRecord.person, NaturalPerson.person_id, User.username))
         file_name = f'学时汇总-{ctime}'
 
     # 从第一行开始写，因为Excel文件的行号是从1开始，列号也是从1开始
@@ -1427,7 +1427,8 @@ def download_course_record(course: Course = None, year: int = None, semester: Se
     detail_sheet.append(detail_header)
     for record in records.values_list(
         'course__name', 'extra_name',
-        'person__name', 'person__person_id__username',
+        'person__name',
+        SQ.f(CourseRecord.person, NaturalPerson.person_id, User.username),
         'attend_times', 'total_hours',
         'year', 'semester', 'invalid',
     ):
@@ -1440,21 +1441,6 @@ def download_course_record(course: Course = None, year: int = None, semester: Se
         ]
         # 将每一个对象的所有字段的信息写入一行内
         detail_sheet.append(record_info)
-    '''
-    for record in records.select_related('person', 'course'):
-        record_info = [
-            record.get_course_name(),
-            record.person.name,
-            record.person.person_id.username,
-            record.attend_times,
-            record.total_hours,
-            f'{record.year}-{record.year + 1}',
-            '春' if record.semester == Semester.SPRING else '秋',
-            '否' if record.invalid else '是',
-        ]
-        # 将每一个对象的所有字段的信息写入一行内
-        detail_sheet.append(record_info)
-    '''
 
     # 设置文件名并保存
     response = HttpResponse(content_type='application/vnd.ms-excel')
@@ -1489,7 +1475,8 @@ def download_select_info(single_course: Course | None = None):
         lucky_ones = CourseParticipant.objects.filter(
             course=course, status=CourseParticipant.Status.SUCCESS)
         for info in lucky_ones.values_list(
-            'person__name', 'person__person_id__username'
+            SQ.f(CourseParticipant.person, NaturalPerson.name),
+            SQ.f(CourseParticipant.person, NaturalPerson.person_id, User.username)
         ):
             person_info = [
                 info[0],
