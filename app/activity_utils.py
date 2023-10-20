@@ -919,8 +919,9 @@ def create_participate_infos(activity: Activity, persons: Iterable[Person], **fi
 @transaction.atomic
 def _update_new_participants(activity: Activity, new_participant_uids: list[str]) -> int:
     '''更新活动的参与者，返回新增的参与者数量，不修改活动'''
-    participants = SQ.qsvlist(activity.attended_participants.select_for_update(),
-                              Participation.person)
+    status = Participation.AttendStatus.ATTENDED
+    participants = SQ.qsvlist(SQ.sfilter(Participation.activity, activity).filter(
+        status=status).select_for_update(), Participation.person)
     # 获取需要添加的参与者
     new_participant_nps = SQ.mfilter(Person.person_id, User.username,
                                      IN=new_participant_uids)
@@ -932,7 +933,6 @@ def _update_new_participants(activity: Activity, new_participant_uids: list[str]
     point = activity.eval_point()
     User.objects.bulk_increase_YQPoint(
         new_participants, point, '参加活动', YQPointRecord.SourceType.ACTIVITY)
-    status = Participation.AttendStatus.ATTENDED
     create_participate_infos(activity, new_participant_nps, status=status)
     return len(new_participant_nps)
 
@@ -941,7 +941,9 @@ def _update_new_participants(activity: Activity, new_participant_uids: list[str]
 def _delete_outdate_participants(activity: Activity, new_participant_uids: list[str]):
     '''删除过期的参与者，收回元气值，返回删除的参与者的数量，不修改活动'''
     # 获取需要删除的参与者
-    removed_participation = activity.attended_participants.select_for_update().exclude(
+    participation = SQ.sfilter(Participation.activity, activity).filter(
+        status=Participation.AttendStatus.ATTENDED).select_for_update()
+    removed_participation = participation.exclude(
         SQ.mq(Participation.person, Person.person_id, User.username,
               IN=new_participant_uids))
     removed_participant_ids = SQ.qsvlist(removed_participation,
