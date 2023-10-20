@@ -1057,7 +1057,9 @@ class Activity(CommentBase):
             return
 
         self = Activity.objects.select_for_update().get(pk=self.pk)
-        participant_ids = SQ.qsvlist(self.attended_participants,
+        participation = SQ.sfilter(Participation.activity, self).filter(
+            status=Participation.AttendStatus.ATTENDED)
+        participant_ids = SQ.qsvlist(participation,
                                      Participation.person, NaturalPerson.person_id)
         participants = User.objects.filter(id__in=participant_ids)
         User.objects.bulk_increase_YQPoint(
