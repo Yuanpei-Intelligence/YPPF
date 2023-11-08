@@ -64,6 +64,9 @@ local[_ ]*
 # Python #
 __pycache__/
 *.py[cod]
+# Virtual Environments #
+.venv/
+.env/
 
 # OPS Files *
 *.ini
