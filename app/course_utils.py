@@ -1423,24 +1423,16 @@ def download_course_record(course: Course = None, year: int = None, semester: Se
         agg = records.filter(**filter_kws).aggregate(sum=Sum('total_hours'))
         return agg['sum'] or 0
 
-    filtered_records = []
-    for person in person_record:
-        valid_records = SQ.sfilter(CourseRecord.person, person).exclude(invalid=True)
-        # 计算每个类别的学时
-        record = []
-        for course_type in list(Course.CourseType):  # CourseType.values亦可
-            record.append(_sum_hours(valid_records.filter(course__type=course_type)))
-
-        # 计算没有对应Course的学时
-        record.append(_sum_hours(valid_records.filter(course__isnull=True)))
-        filtered_records.append(record)
-
-    for person, record in zip(person_record.select_related(SQ.f(NaturalPerson.person_id)), 
-                              filtered_records):
+    for person in person_record.select_related(SQ.f(NaturalPerson.person_id)):
         line = [person.person_id.username, person.name,
                 person.record_hours or 0, 
                 person.invalid_hours or 0]
-        line.extend(record)
+        valid_records = SQ.sfilter(CourseRecord.person, person).exclude(invalid=True)
+        # 计算每个类别的学时
+        for course_type in list(Course.CourseType):
+            line.append(_sum_hours(valid_records.filter(course__type=course_type)))
+        # 计算没有对应Course的学时
+        line.append(_sum_hours(valid_records.filter(course__isnull=True)))
         total_sheet.append(line)
 
     # 详细信息
