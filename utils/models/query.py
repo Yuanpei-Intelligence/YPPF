@@ -113,7 +113,7 @@ class Forward(SpecialRelation):
 class Reverse(SpecialRelation):
     '''反向关系字段
 
-    标记字段为反向关系字段，查询时转化为`%field_name%`。
+    标记字段为反向关系字段，查询时转化为`%related_query_name%`。
     '''
     pass
 

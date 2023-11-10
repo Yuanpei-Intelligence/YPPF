@@ -45,6 +45,7 @@ from app.extern.wechat import WechatApp, WechatMessageLevel
 from app.log import logger
 
 import openpyxl
+import openpyxl.worksheet.worksheet
 from random import sample
 from urllib.parse import quote
 from collections import Counter
@@ -1328,6 +1329,41 @@ def finish_course(course):
     return succeed("结束课程成功！")
 
 
+def _excel_response(workbook: openpyxl.Workbook, file_name: str) -> HttpResponse:
+    '''创建Excel文件回应，file_name为未转义的文件名(不含后缀)'''
+    response = HttpResponse(content_type='application/vnd.ms-excel')
+    response['Content-Disposition'] = f'attachment; filename={quote(file_name)}.xlsx'
+    workbook.save(response)
+    return response
+
+
+def _write_detail_sheet(detail_sheet: openpyxl.worksheet.worksheet.Worksheet,
+                        records: QuerySet[CourseRecord], title: str = '详情') -> None:
+    '''将学时信息写入Excel文件的detail_sheet中'''
+    # 注意，标题中的中文符号如：无法被解读
+    detail_sheet.title = title
+    # 从第一行开始写，因为Excel文件的行号是从1开始，列号也是从1开始
+    detail_header = ['课程', '姓名', '学号', '次数', '学时', '学年', '学期', '有效']
+    detail_sheet.append(detail_header)
+    _M = CourseRecord
+    for record in records.values_list(
+        SQ.f(_M.course, Course.name), SQ.f(_M.extra_name),
+        SQ.f(_M.person, NaturalPerson.name),
+        SQ.f(_M.person, NaturalPerson.person_id, User.username),
+        SQ.f(_M.attend_times), SQ.f(_M.total_hours),
+        SQ.f(_M.year), SQ.f(_M.semester), SQ.f(_M.invalid),
+    ):
+        record_info = [
+            record[0] or record[1],
+            *record[2:6],
+            f'{record[6]}-{record[6] + 1}',
+            '春' if record[7] == Semester.SPRING else '秋',
+            '否' if record[8] else '是',
+        ]
+        # 将每一个对象的所有字段的信息写入一行内
+        detail_sheet.append(record_info)
+
+
 def download_course_record(course: Course = None, year: int = None, semester: Semester = None) -> HttpResponse:
     """返回需要导出的学时信息文件
     course:
@@ -1344,109 +1380,67 @@ def download_course_record(course: Course = None, year: int = None, semester: Se
     """
     wb = openpyxl.Workbook()  # 生成一个工作簿（即一个Excel文件）
     wb.encoding = 'utf-8'
-    # 获取第一个工作表（detail_sheet）
-    detail_sheet = wb.active
-    # 给工作表设置标题
-    # detail_sheet.title = str(course)  # 中文符号如：无法被解读
-    detail_sheet.title = '详情'
-    ctime = datetime.now().strftime('%Y-%m-%d %H:%M')
     # 学时筛选内容
     filter_kws = {}
     if course is not None:
-        filter_kws.update(course=course)
+        filter_kws[SQ.f(CourseRecord.course)] = course
     if year is not None:
-        filter_kws.update(year=year)
+        filter_kws[SQ.f(CourseRecord.year)] = year
     if semester is not None:
-        filter_kws.update(semester=semester)
+        filter_kws[SQ.f(CourseRecord.semester)] = semester
 
     if course is not None:
         # 助教下载自己课程的学时
         records = CourseRecord.objects.filter(**filter_kws)
-        file_name = f'{course.name}-{ctime}'
-    else:
-        # 设置明细和汇总两个sheet的相关信息
-        total_sheet = wb.create_sheet('汇总', 0)
-        first_line = ['学号', '姓名', '总有效学时', '总无效学时']
-        course_types = list(Course.CourseType)
-        first_line.extend(map(lambda x: x.label, course_types))
-        first_line.append('其他')
-        total_sheet.append(first_line)
+        _write_detail_sheet(wb.active, records)
+        now = datetime.now().strftime('%Y-%m-%d %H:%M')
+        return _excel_response(wb, f'{course.name}-{now}')
 
-        # 下载所有学时信息，包括无效学时
-        all_person = NaturalPerson.objects.activated().filter(
-            identity=NaturalPerson.Identity.STUDENT)
+    # 老师下载所有课程的学时
+    # 获取第一个工作表（detail_sheet）
+    detail_sheet = wb.active
+    # 设置明细和汇总两个sheet的相关信息
+    total_sheet: openpyxl.worksheet.worksheet.Worksheet = wb.create_sheet('汇总', 0)
+    first_line = ['学号', '姓名', '总有效学时', '总无效学时']
+    first_line.extend(Course.CourseType.labels)
+    first_line.append('其他')
+    total_sheet.append(first_line)
 
-        # 汇总表信息，姓名，学号，总学时
-        relate_filter_kws = {
-            f'courserecord__{k}': v for k, v in filter_kws.items()}
-        person_record = all_person.annotate(
-            record_hours=Sum('courserecord__total_hours',
-                             filter=Q(
-                                 courserecord__invalid=False,
-                                 **relate_filter_kws,
-                             )),
-            invalid_hours=Sum('courserecord__total_hours',
-                              filter=Q(
-                                  courserecord__invalid=True,
-                                  **relate_filter_kws,
-                              )),
-        ).order_by(SQ.sq(NaturalPerson.person_id, User.username))
+    # 下载所有学时信息，包括无效学时
+    all_person = NaturalPerson.objects.activated().filter(
+        identity=NaturalPerson.Identity.STUDENT)
 
-        def _sum_hours(records: QuerySet[CourseRecord]) -> float:
-            agg = records.filter(**filter_kws).aggregate(Sum('total_hours'))
-            return agg['total_hours__sum'] or 0
+    # 汇总表信息，姓名，学号，总学时
+    relate = SQ.Reverse(CourseRecord.person)
+    person_record = all_person.annotate(
+        record_hours=Sum(SQ.f(relate, CourseRecord.total_hours),
+                            filter=SQ.mq(relate, invalid=False, **filter_kws)),
+        invalid_hours=Sum(SQ.f(relate, CourseRecord.total_hours),
+                            filter=SQ.mq(relate, invalid=True, **filter_kws)),
+    ).order_by(SQ.f(NaturalPerson.person_id, User.username))
 
-        filtered_records = []
-        for person in person_record:
-            valid_records = SQ.sfilter(CourseRecord.person, person).exclude(invalid=True)
-            # 计算每个类别的学时
-            record = []
-            for course_type in list(Course.CourseType):  # CourseType.values亦可
-                record.append(_sum_hours(valid_records.filter(course__type=course_type)))
+    def _sum_hours(records: QuerySet[CourseRecord]) -> float:
+        agg = records.filter(**filter_kws).aggregate(sum=Sum('total_hours'))
+        return agg['sum'] or 0
 
-            # 计算没有对应Course的学时
-            record.append(_sum_hours(valid_records.filter(course__isnull=True)))
+    for person in person_record.select_related(SQ.f(NaturalPerson.person_id)):
+        line = [person.person_id.username, person.name,
+                person.record_hours or 0, 
+                person.invalid_hours or 0]
+        valid_records = SQ.sfilter(CourseRecord.person, person).exclude(invalid=True)
+        # 计算每个类别的学时
+        for course_type in list(Course.CourseType):
+            line.append(_sum_hours(valid_records.filter(course__type=course_type)))
+        # 计算没有对应Course的学时
+        line.append(_sum_hours(valid_records.filter(course__isnull=True)))
+        total_sheet.append(line)
 
-            filtered_records.append(record)
-        for person, record in zip(person_record.select_related(SQ.f(NaturalPerson.person_id)), 
-                                  filtered_records):
-            line = [person.person_id.username, person.name,
-                    person.record_hours or 0, 
-                    person.invalid_hours or 0]
-            line.extend(record)
-            total_sheet.append(line)
-        # 详细信息
-        records = CourseRecord.objects.filter(
-            person__in=all_person,
-            **filter_kws,
-        ).order_by(SQ.f(CourseRecord.person, NaturalPerson.person_id, User.username))
-        file_name = f'学时汇总-{ctime}'
-
-    # 从第一行开始写，因为Excel文件的行号是从1开始，列号也是从1开始
-    detail_header = ['课程', '姓名', '学号', '次数', '学时', '学年', '学期', '有效']
-    detail_sheet.append(detail_header)
-    for record in records.values_list(
-        'course__name', 'extra_name',
-        'person__name',
-        SQ.f(CourseRecord.person, NaturalPerson.person_id, User.username),
-        'attend_times', 'total_hours',
-        'year', 'semester', 'invalid',
-    ):
-        record_info = [
-            record[0] or record[1],
-            *record[2:6],
-            f'{record[6]}-{record[6] + 1}',
-            '春' if record[7] == Semester.SPRING else '秋',
-            '否' if record[8] else '是',
-        ]
-        # 将每一个对象的所有字段的信息写入一行内
-        detail_sheet.append(record_info)
-
-    # 设置文件名并保存
-    response = HttpResponse(content_type='application/vnd.ms-excel')
-    response['Content-Disposition'] = f'attachment;filename={quote(file_name)}.xlsx'
-    wb.save(response)
-    return response
+    # 详细信息
+    records = SQ.mfilter(CourseRecord.person, IN=all_person).filter(**filter_kws)
+    order = SQ.f(CourseRecord.person, NaturalPerson.person_id, User.username)
+    _write_detail_sheet(detail_sheet, records.order_by(order))
+    now = datetime.now().strftime('%Y-%m-%d %H:%M')
+    return _excel_response(wb, f'学时汇总-{now}')
 
 
 def download_select_info(single_course: Course | None = None):
@@ -1494,7 +1488,4 @@ def download_select_info(single_course: Course | None = None):
     else:
         file_name = f'{year}{semester}选课名单汇总-{ctime}'
     # 保存并返回
-    response = HttpResponse(content_type='application/vnd.ms-excel')
-    response['Content-Disposition'] = f'attachment;filename={quote(file_name)}.xlsx'
-    wb.save(response)
-    return response
+    return _excel_response(wb, file_name)

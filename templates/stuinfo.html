@@ -1338,22 +1338,22 @@
                                                 {% endif %}
                                                 <td style='text-align: center;'>{{course_record.attend_times}}</td>
                                                 <td style='text-align: center;'>{{course_record.total_hours|floatformat:-1}}</td>
-                                                {% if course_record.Course is None %}
+                                                {% if course_record.course is None %}
                                                     <td style="text-align: center; color:#9E9EA3;">未分类</td>
                                                 {% else %}
                                                     <td style="text-align: center; 
-                                                    {% if course_record.Course.type == 0 %}
+                                                    {% if course_record.course.type == 0 %}
                                                         color:#0092c7;
-                                                    {% elif course_record.Course.type == 1 %}
+                                                    {% elif course_record.course.type == 1 %}
                                                         color:#22c3aa;
-                                                    {% elif course_record.Course.type == 2 %}
+                                                    {% elif course_record.course.type == 2 %}
                                                         color:#AD8976;
-                                                    {% elif course_record.Course.type == 3 %}
+                                                    {% elif course_record.course.type == 3 %}
                                                         color:#f3b59b;
-                                                    {% elif course_record.Course.type == 4 %}
+                                                    {% elif course_record.course.type == 4 %}
                                                         color:#f29c9c;
                                                     {% endif %}
-                                                        ">{{course_record.Course.get_type_display}}</td>
+                                                        ">{{course_record.course.get_type_display}}</td>
                                                 {% endif %}
                                             </tr>
                                         {% endfor %}
