@@ -131,18 +131,18 @@ def create_appoint(
     发起者必须有足够的信用分，否则无法创建预约。
 
     Args:
-        appointer(Participant): 发起人
-        room(Room): 预约房间
-        start(datetime): 预约开始时间
-        finish(datetime): 预约结束时间
-        usage(str): 预约用途
-        students(Iterable[Participant], optional): 预约参与人，发起人默认参与
-        announce(str, optional): 预约内部公告
-        outer_num(int, optional): 预约外部人数
+        appointer (Participant): 发起人
+        room (Room): 预约房间
+        start (datetime): 预约开始时间
+        finish (datetime): 预约结束时间
+        usage (str): 预约用途
+        students (Iterable[Participant], optional): 预约参与人，发起人默认参与
+        announce (str, optional): 预约内部公告
+        outer_num (int, optional): 预约外部人数
 
     Keyword Args
-        type(Appoint.Type): 预约类型，默认为普通预约
-        notify(bool): 是否发送通知，默认为发送
+        type (Appoint.Type): 预约类型，默认为普通预约
+        notify (bool): 是否发送通知，默认为发送
 
     Returns:
         tuple[Appoint, Literal['']]: 预约对象和空错误信息

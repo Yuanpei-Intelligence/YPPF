@@ -29,7 +29,6 @@ Examples:
 from typing import Callable, ParamSpec, Generic
 from datetime import datetime, timedelta
 
-from utils.marker import fix_me
 from scheduler.scheduler import scheduler
 from scheduler.utils import as_schedule_time
 
@@ -46,12 +45,12 @@ class ScheduleAdder(Generic[P]):
     绑定调用的函数，调用时添加对应的定时任务
 
     Attributes:
-        func(Callable): 被绑定的函数
-        id(str | None): 任务ID，唯一值
-        name(str | None): 用于呈现的任务名称，往往无用，请勿和ID混淆
-        run_time(datetime | timedelta | None): 运行的时间
+        func (Callable): 被绑定的函数
+        id (str | None): 任务ID，唯一值
+        name (str | None): 用于呈现的任务名称，往往无用，请勿和ID混淆
+        run_time (datetime | timedelta | None): 运行的时间
             运行时间，指定时间、时间差或即刻发送
-        replace(bool): 是否替换已存在的任务
+        replace (bool): 是否替换已存在的任务
     '''
     def __init__(
         self, func: Callable[P, None], *,
@@ -68,11 +67,11 @@ class ScheduleAdder(Generic[P]):
             func(Callable): 被绑定的函数
 
         Keyword Args:
-            id(str, optional): 任务ID，唯一值
-            name(str, optional): 用于呈现的任务名称，请勿和ID混淆
-            run_time(datetime | timedelta, optional): 运行的时间
+            id (str, optional): 任务ID，唯一值
+            name (str, optional): 用于呈现的任务名称，请勿和ID混淆
+            run_time (datetime | timedelta, optional): 运行的时间
                 运行时间，指定时间、时间差或即刻发送，默认在短暂延迟后立刻发送
-            replace(bool, optional): 替换已存在的任务，默认为True
+            replace (bool, optional): 替换已存在的任务，默认为True
         '''
         self.func = func
         self.id = id
@@ -80,8 +79,6 @@ class ScheduleAdder(Generic[P]):
         self.run_time = run_time
         self.replace = replace
 
-    # TODO: 返回值是干嘛的？找一下 commit 记录，之前返回 id，现在 return Job，不确定作用
-    @fix_me
     def __call__(self, *args: P.args, **kwargs: P.kwargs) -> str:
         '''添加定时任务
 
@@ -111,7 +108,7 @@ class MultipleAdder(Generic[P]):
     '''多个定时任务添加器
 
     Attributes:
-        func(Callable): 被绑定的函数
+        func (Callable): 被绑定的函数
 
     Methods:
         schedule: 获取单次定时任务添加器
