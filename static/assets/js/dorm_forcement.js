@@ -1,5 +1,6 @@
 const dorm_path = '/dormitory/agreement';
-const query_path = '/dormitory/agreement-query';
+// const query_path = '/dormitory/agreement-query';
+const query_path = '/dormitory/agreement-query2';
 
 function currentIsDormPage() {
     var current_url = window.location.pathname;
@@ -11,7 +12,8 @@ function getAgreementState() {
     return fetch(query_path)
         .then(response => response.json())
         .then(data => {
-            return data.signed;
+            return data.length > 0;
+            // return data.signed;
         })
         .catch(error => {
             console.error('Error fetching agreement state:', error);

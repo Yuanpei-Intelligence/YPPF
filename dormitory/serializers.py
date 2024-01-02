@@ -1,6 +1,6 @@
 from rest_framework import serializers
 
-from dormitory.models import Dormitory, DormitoryAssignment
+from dormitory.models import Dormitory, DormitoryAssignment, DormitoryAssignment
 
 
 class DormitorySerializer(serializers.ModelSerializer):
@@ -13,3 +13,9 @@ class DormitoryAssignmentSerializer(serializers.ModelSerializer):
     class Meta:
         model = DormitoryAssignment
         fields = '__all__'
+
+
+class DormitoryAssignmentSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = DormitoryAssignment
+        fields = '__all__'  

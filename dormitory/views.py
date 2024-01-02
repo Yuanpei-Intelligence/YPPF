@@ -20,6 +20,12 @@ class DormitoryAssignmentViewSet(viewsets.ReadOnlyModelViewSet):
     serializer_class = DormitoryAssignmentSerializer
 
 
+class DormitoryAgreementViewSet(viewsets.ReadOnlyModelViewSet):
+    serializer_class = DormitoryAssignmentSerializer
+    def get_queryset(self):
+        return Agreement.objects.filter(user=self.request.user)
+
+
 class DormitoryRoutineQAView(ProfileTemplateView):
 
     template_name = 'dormitory/routine_QA.html'
