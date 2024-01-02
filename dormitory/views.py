@@ -2,6 +2,7 @@ from django.db import transaction
 from rest_framework import viewsets
 
 # TODO: Leaky dependency
+from generic.models import User
 from app.models import NaturalPerson
 from app.view.base import ProfileTemplateView, ProfileJsonView
 from dormitory.models import Dormitory, DormitoryAssignment, Agreement
@@ -24,7 +25,15 @@ class DormitoryAssignmentViewSet(viewsets.ReadOnlyModelViewSet):
 class DormitoryAgreementViewSet(viewsets.ReadOnlyModelViewSet):
     serializer_class = AgreementSerializer
     def get_queryset(self):
-        return Agreement.objects.filter(user=self.request.user)
+        # Only active students need to sign the agreement
+        require_agreement = User.objects.filter(active=True,
+            utype=User.Type.STUDENT).contains(self.request.user)
+        if require_agreement:
+            return Agreement.objects.filter(user=self.request.user)
+        # A hack to return something, so that the frontend won't redirect
+        official_user = User.objects.get(username='zz00000')
+        Agreement.objects.get_or_create(user=official_user)
+        return Agreement.objects.filter(user=official_user)
 
 
 class DormitoryRoutineQAView(ProfileTemplateView):
@@ -92,14 +101,6 @@ class DormitoryAssignResultView(ProfileTemplateView):
             )
         except DormitoryAssignment.DoesNotExist:
             self.extra_context.update(dorm_assign=False)
-
-
-class AgreementJsonView(ProfileJsonView):
-
-    def get(self):
-        return self.json_response(
-            {"signed": Agreement.objects.filter(user=self.request.user).exists()})
-
 
 class AgreementView(ProfileTemplateView):
     template_name = 'dormitory/agreement.html'

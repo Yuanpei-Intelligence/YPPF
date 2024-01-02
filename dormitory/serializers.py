@@ -18,4 +18,4 @@ class DormitoryAssignmentSerializer(serializers.ModelSerializer):
 class AgreementSerializer(serializers.ModelSerializer):
     class Meta:
         model = Agreement
-        fields = '__all__'  
+        fields = ['id']

@@ -11,8 +11,8 @@ router = DefaultRouter()
 router.register('dormitory', DormitoryViewSet, basename='dormitory')
 router.register('dormitoryassignment', DormitoryAssignmentViewSet,
                 basename='dormitoryassignment')
-router.register('agreement-query2', DormitoryAgreementViewSet,
-                basename='agreement-query2')
+router.register('agreement-query', DormitoryAgreementViewSet,
+                basename='agreement-query')
 
 
 urlpatterns = [
@@ -23,6 +23,4 @@ urlpatterns = [
          name='dormitory-assign-result'),
     path('agreement/', AgreementView.as_view(),
          name='agreement'),
-    path('agreement-query/', AgreementJsonView.as_view(),
-         name='agreement-query'),
 ]
