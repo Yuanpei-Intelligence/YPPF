@@ -3,8 +3,8 @@ from rest_framework import viewsets
 
 # TODO: Leaky dependency
 from app.models import NaturalPerson
-from app.view.base import ProfileTemplateView
-from dormitory.models import Dormitory, DormitoryAssignment
+from app.view.base import ProfileTemplateView, ProfileJsonView
+from dormitory.models import Dormitory, DormitoryAssignment, Agreement
 from dormitory.serializers import (DormitoryAssignmentSerializer,
                                    DormitorySerializer)
 from questionnaire.models import AnswerSheet, AnswerText, Survey
@@ -85,3 +85,24 @@ class DormitoryAssignResultView(ProfileTemplateView):
             )
         except DormitoryAssignment.DoesNotExist:
             self.extra_context.update(dorm_assign=False)
+
+
+class AgreementJsonView(ProfileJsonView):
+    need_prepare = False
+
+    def get(self):
+        return self.json_response(
+            signed=Agreement.objects.filter(user=self.request.user).exists())
+
+
+class AgreementView(ProfileTemplateView):
+    template_name = 'dormitory/agreement.html'
+    page_name = '住宿协议'
+
+    def get(self):
+        return self.render()
+
+    def post(self):
+        Agreement.objects.get_or_create(user=self.request.user)
+        return self.render()
+

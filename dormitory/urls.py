@@ -3,7 +3,7 @@ from rest_framework.routers import DefaultRouter
 
 from dormitory.views import (DormitoryAssignmentViewSet,
                              DormitoryAssignResultView, DormitoryRoutineQAView,
-                             DormitoryViewSet)
+                             DormitoryViewSet, AgreementJsonView, AgreementView)
 
 
 router = DefaultRouter()
@@ -18,4 +18,8 @@ urlpatterns = [
          name='dormitory-routine-QA'),
     path('assign-result/', DormitoryAssignResultView.as_view(),
          name='dormitory-assign-result'),
+    path('agreement/', AgreementView.as_view(),
+         name='agreement'),
+    path('agreement-query/', AgreementJsonView.as_view(),
+         name='agreement-query'),
 ]
