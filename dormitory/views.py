@@ -6,7 +6,8 @@ from app.models import NaturalPerson
 from app.view.base import ProfileTemplateView, ProfileJsonView
 from dormitory.models import Dormitory, DormitoryAssignment, Agreement
 from dormitory.serializers import (DormitoryAssignmentSerializer,
-                                   DormitorySerializer)
+                                   DormitorySerializer,
+                                   AgreementSerializer)
 from questionnaire.models import AnswerSheet, AnswerText, Survey
 
 
@@ -21,7 +22,7 @@ class DormitoryAssignmentViewSet(viewsets.ReadOnlyModelViewSet):
 
 
 class DormitoryAgreementViewSet(viewsets.ReadOnlyModelViewSet):
-    serializer_class = DormitoryAssignmentSerializer
+    serializer_class = AgreementSerializer
     def get_queryset(self):
         return Agreement.objects.filter(user=self.request.user)
 
@@ -94,16 +95,16 @@ class DormitoryAssignResultView(ProfileTemplateView):
 
 
 class AgreementJsonView(ProfileJsonView):
-    need_prepare = False
 
     def get(self):
         return self.json_response(
-            signed=Agreement.objects.filter(user=self.request.user).exists())
+            {"signed": Agreement.objects.filter(user=self.request.user).exists()})
 
 
 class AgreementView(ProfileTemplateView):
     template_name = 'dormitory/agreement.html'
     page_name = '住宿协议'
+    need_prepare = False
 
     def get(self):
         return self.render()

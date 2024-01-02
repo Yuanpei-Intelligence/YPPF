@@ -1,6 +1,6 @@
 from rest_framework import serializers
 
-from dormitory.models import Dormitory, DormitoryAssignment, DormitoryAssignment
+from dormitory.models import Dormitory, DormitoryAssignment, Agreement
 
 
 class DormitorySerializer(serializers.ModelSerializer):
@@ -15,7 +15,7 @@ class DormitoryAssignmentSerializer(serializers.ModelSerializer):
         fields = '__all__'
 
 
-class DormitoryAssignmentSerializer(serializers.ModelSerializer):
+class AgreementSerializer(serializers.ModelSerializer):
     class Meta:
-        model = DormitoryAssignment
+        model = Agreement
         fields = '__all__'  

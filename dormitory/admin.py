@@ -5,6 +5,8 @@ from generic.admin import UserAdmin
 
 admin.site.register(Dormitory)
 
+admin.site.register(Agreement)
+
 @admin.register(DormitoryAssignment)
 class DormitoryAssignmentAdmin(admin.ModelAdmin):
     list_display = ['dormitory', 'user', 'bed_id', 'time']

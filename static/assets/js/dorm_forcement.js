@@ -17,7 +17,7 @@ function getAgreementState() {
         })
         .catch(error => {
             console.error('Error fetching agreement state:', error);
-            return false;
+            return true; // Pretend user has signed on network error.
         });
 }
 
