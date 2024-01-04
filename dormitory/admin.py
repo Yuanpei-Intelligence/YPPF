@@ -5,7 +5,9 @@ from generic.admin import UserAdmin
 
 admin.site.register(Dormitory)
 
-admin.site.register(Agreement)
+@admin.register(Agreement)
+class DormitoryAgreementAdmin(admin.ModelAdmin):
+    list_display = ['user', 'sign_time']
 
 @admin.register(DormitoryAssignment)
 class DormitoryAssignmentAdmin(admin.ModelAdmin):

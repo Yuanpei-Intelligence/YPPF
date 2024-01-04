@@ -1,5 +1,5 @@
 const dorm_path = '/dormitory/agreement';
-const query_path = '/dormitory/agreement-query';
+const query_path = '/dormitory/agreement-query-fixme';
 
 function currentIsDormPage() {
     var current_url = window.location.pathname;
