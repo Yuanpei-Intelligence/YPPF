@@ -7,7 +7,18 @@ from generic.models import User
 __all__ = [
     'Dormitory',
     'DormitoryAssignment',
+    'Agreement'
 ]
+
+class Agreement(models.Model):
+
+    class Meta:
+        verbose_name = '住宿协议'
+        verbose_name_plural = verbose_name
+
+    user = models.ForeignKey(User, on_delete=models.CASCADE, verbose_name='用户')
+    sign_time = models.DateTimeField('签订时间', auto_now_add=True)
+
 
 class Dormitory(models.Model):
     class Meta:

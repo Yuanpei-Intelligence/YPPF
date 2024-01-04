@@ -2,11 +2,14 @@ from django.db import transaction
 from rest_framework import viewsets
 
 # TODO: Leaky dependency
+from utils.marker import fix_me
+from generic.models import User
 from app.models import NaturalPerson
 from app.view.base import ProfileTemplateView
-from dormitory.models import Dormitory, DormitoryAssignment
-from dormitory.serializers import (DormitoryAssignmentSerializer,
-                                   DormitorySerializer)
+from dormitory.models import Dormitory, DormitoryAssignment, Agreement
+from dormitory.serializers import (
+    DormitoryAssignmentSerializer, DormitorySerializer,
+    AgreementSerializerFixme, AgreementSerializer)
 from questionnaire.models import AnswerSheet, AnswerText, Survey
 
 
@@ -19,6 +22,23 @@ class DormitoryAssignmentViewSet(viewsets.ReadOnlyModelViewSet):
     queryset = DormitoryAssignment.objects.all()
     serializer_class = DormitoryAssignmentSerializer
 
+
+class DormitoryAgreementViewSetFixme(viewsets.ReadOnlyModelViewSet):
+    serializer_class = AgreementSerializerFixme
+    def get_queryset(self):
+        # Only active students need to sign the agreement
+        require_agreement = User.objects.filter(active=True,
+            utype=User.Type.STUDENT).contains(self.request.user)
+        if require_agreement:
+            return Agreement.objects.filter(user=self.request.user)
+        # A hack to return something, so that the frontend won't redirect
+        official_user = User.objects.get(username='zz00000')
+        Agreement.objects.get_or_create(user=official_user)
+        return Agreement.objects.filter(user=official_user)
+
+class DormitoryAgreementViewSet(viewsets.ReadOnlyModelViewSet):
+    queryset = Agreement.objects.all()
+    serializer_class = AgreementSerializer
 
 class DormitoryRoutineQAView(ProfileTemplateView):
 
@@ -85,3 +105,17 @@ class DormitoryAssignResultView(ProfileTemplateView):
             )
         except DormitoryAssignment.DoesNotExist:
             self.extra_context.update(dorm_assign=False)
+
+class AgreementView(ProfileTemplateView):
+    template_name = 'dormitory/agreement.html'
+    page_name = '住宿协议'
+    need_prepare = False
+
+    def get(self):
+        return self.render()
+
+    @fix_me
+    def post(self):
+        Agreement.objects.get_or_create(user=self.request.user)
+        from django.shortcuts import redirect
+        return redirect("/welcome")
