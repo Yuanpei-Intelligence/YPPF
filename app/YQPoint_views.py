@@ -80,7 +80,6 @@ class myPrize(ProfileTemplateView):
 
 @login_required(redirect_field_name="origin")
 @utils.check_user_access(redirect_url="/logout/")
-@utils.require_active_user(error_message="您的账号处于非活跃状态，不能兑换奖品！")
 @logger.secure_view()
 def showPools(request: UserRequest) -> HttpResponse:
     """
@@ -99,6 +98,9 @@ def showPools(request: UserRequest) -> HttpResponse:
     frontend_dict["current_pool"] = -1 # 当前所在的tab
     # 2表示无效果，1表示开出空盒（谢谢参与），0表示开出奖品
     frontend_dict["random_pool_effect_code"] = 2
+
+    # 用户是否处于活跃状态。已经毕业的用户只能查看奖池，不能参与兑换
+    frontend_dict['active_user'] = request.user.active
 
     # POST表明发起兑换/抽奖/买盲盒
     if request.method == "POST" and request.POST:
