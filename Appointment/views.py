@@ -880,7 +880,7 @@ def checkout_appoint(request: UserRequest):
 
         # 检查预约人活跃情况
         if not applicant.Sid.active:
-            wrong('您的账号处于非活跃状态，不能预约地下室，请联系管理员解决', render_context)
+            wrong('您已毕业，不能预约地下室', render_context)
 
         start_time = datetime(contents['year'], contents['month'], contents['day'],
                               *map(int, contents['starttime'].split(":")))
