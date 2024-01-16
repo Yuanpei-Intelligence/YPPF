@@ -80,6 +80,7 @@ class myPrize(ProfileTemplateView):
 
 @login_required(redirect_field_name="origin")
 @utils.check_user_access(redirect_url="/logout/")
+@utils.require_active_user(error_message="您的账号处于非活跃状态，不能兑换奖品！")
 @logger.secure_view()
 def showPools(request: UserRequest) -> HttpResponse:
     """
