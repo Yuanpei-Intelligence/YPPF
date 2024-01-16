@@ -54,21 +54,6 @@ def check_user_access(redirect_url="/logout/", is_modpw=False):
 
     return actual_decorator
 
-def require_active_user(error_message = 'Only active users can view this page.'):
-    '''
-    Decorator for views that require the user is active (not graduated or retired).
-    If the user is not active, redirects to message_url(wrong(error_message))
-    '''
-    def actual_decorator(view_function):
-        @wraps(view_function)
-        def _wrapped_view(request: UserRequest, *args, **kwargs):
-            if not request.user.active:
-                return redirect(message_url(wrong(error_message)))
-            return view_function(request, *args, **kwargs)
-        return _wrapped_view
-    return actual_decorator
-
-
 # TODO: Handle ip blocking
 _block_ips = set()
 
