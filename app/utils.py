@@ -25,7 +25,6 @@ from app.models import (
     Participation,
     ModifyRecord,
 )
-from utils.global_messages import message_url
 
 
 def check_user_access(redirect_url="/logout/", is_modpw=False):
