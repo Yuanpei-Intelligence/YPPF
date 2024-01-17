@@ -53,6 +53,7 @@ def check_user_access(redirect_url="/logout/", is_modpw=False):
 
     return actual_decorator
 
+
 # TODO: Handle ip blocking
 _block_ips = set()
 
