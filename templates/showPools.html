@@ -249,6 +249,9 @@
                                                     {% elif item.remain_num == 0 %}
                                                         <button class="btn btn-dark w-50 px-1">{{ item.exchange_price }} 元气值</button>
                                                         <button href="#" class="btn btn-light w-50 px-1 disabled">奖品不足</button>
+                                                    {% elif active_user == 0 %}
+                                                    <button class="btn btn-dark w-50 px-1">{{ item.exchange_price }} 元气值</button>
+                                                    <button href="#" class="btn btn-light w-50 px-1 disabled">兑换</button>
                                                     {% else %}
                                                         <button class="btn btn-success w-50 px-1">{{ item.exchange_price }} 元气值</button>
                                                         <button type="submit" 
@@ -376,6 +379,8 @@
                                                 <button class="btn btn-light w-50 px-1 disabled">
                                                     次数已用完
                                                 </button>
+                                            {% elif active_user == 0 %}
+                                                <button href="#" class="btn btn-light w-50 px-1 disabled">{{ pool.ticket_price }} 元气值 / 次</button>
                                             {% else %}
                                                 <button type="submit" 
                                                     class="btn btn-success w-50 px-1" 
@@ -466,6 +471,8 @@
                                             <button class="btn btn-light w-50 px-1 disabled">
                                                 次数已用完
                                             </button>
+                                        {% elif active_user == 0 %}
+                                            <button href="#" class="btn btn-light w-50 px-1 disabled">{{ pool.ticket_price }} 元气值 / 次</button>
                                         {% else %}
                                             {% if pool.capacity > pool.records_num %}
                                                 <button type="submit" 
