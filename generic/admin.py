@@ -151,6 +151,8 @@ class UserAdmin(_UserAdmin):
 
 admin.site.register(User, UserAdmin)
 
+admin.site.register(PermissionBlacklist)
+
 @admin.register(CreditRecord)
 class CreditRecordAdmin(admin.ModelAdmin):
     list_display = ['user', 'source', 'delta', 'overflow', 'time']

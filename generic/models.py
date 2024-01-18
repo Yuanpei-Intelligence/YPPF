@@ -17,7 +17,7 @@ from typing import Type, NoReturn, Final
 
 from django.db import models
 from django.contrib.auth import get_permission_codename
-from django.contrib.auth.models import AbstractUser, AnonymousUser
+from django.contrib.auth.models import AbstractUser, AnonymousUser, Permission
 from django.contrib.auth.models import UserManager as _UserManager
 from django.db import transaction
 from django.db.models import QuerySet, F
@@ -28,6 +28,7 @@ from utils.models.descriptor import necessary_for_frontend, invalid_for_frontend
 
 __all__ = [
     'User',
+    'PermissionBlacklist',
     'CreditRecord',
     'YQPointRecord',
 ]
@@ -403,6 +404,26 @@ class User(AbstractUser, PointMixin, metaclass=UserBase):
     def is_org(self) -> bool:
         return self.utype == self.Type.ORG
 
+class PermissionBlacklist(models.Model):
+    '''
+    权限黑名单
+
+    记录哪些用户被取消了哪些权限。在认证后端鉴权时，这个表中记录的信息比用户组优先级更高。
+    '''
+    class Meta:
+        verbose_name = '权限黑名单'
+        verbose_name_plural = verbose_name
+
+    user = models.ForeignKey(
+        User, verbose_name='用户', on_delete=models.CASCADE,
+        to_field='username'
+    )
+    permission = models.ForeignKey(
+        Permission, verbose_name='权限', on_delete=models.CASCADE
+    )
+
+    def get_cancelled_permissions(self, user_id: int):
+        return self.permission.objects.filter(user__exact = user_id)
 
 class CreditRecord(models.Model):
     '''
