@@ -226,6 +226,10 @@ class Appoint(models.Model):
         verbose_name = '预约信息'
         verbose_name_plural = verbose_name
         ordering = ['Aid']
+        permissions = [
+            ('make_appointment', 'Can make an appointment for a room'),
+            ('cancel_appointment', 'Can cancel a previously made appointment')
+        ]
 
     Aid = models.AutoField('预约编号', primary_key=True)
     # 申请时间为插入数据库的时间
@@ -287,10 +291,10 @@ class Appoint(models.Model):
     Acamera_ok_num = models.IntegerField('人数合格次数', default=0)
 
     class Reason(models.IntegerChoices):
-        R_NOVIOLATED = 0  # 没有违约
-        R_LATE = 1  # 迟到
-        R_TOOLITTLE = 2  # 人数不足
-        R_ELSE = 3  # 其它原因
+        R_NOVIOLATED = choice(0, '没有违约')
+        R_LATE = choice(1, '迟到')
+        R_TOOLITTLE = choice(2, '人数不足')
+        R_ELSE = choice(3, '其它原因')
 
     Areason = models.IntegerField('违约原因', choices=Reason.choices, default=0)
     get_Areason_display: DefaultDisplay
