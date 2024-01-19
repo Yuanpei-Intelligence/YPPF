@@ -422,8 +422,22 @@ class PermissionBlacklist(models.Model):
         Permission, verbose_name='权限', on_delete=models.CASCADE
     )
 
-    def get_cancelled_permissions(self, user_id: int):
-        return self.permission.objects.filter(user__exact = user_id)
+    @staticmethod
+    def get_cancelled_permissions(user: User) -> set[str]:
+        '''
+        Returns the cancelled permissions of the user with user_id as a set
+        of permission strings.
+        '''
+        if not isinstance(user, User):
+            raise TypeError('`user` expected to be a User object!')
+        return set((
+            f'{item.permission.content_type.app_label}.{item.permission.codename}'
+            for item in PermissionBlacklist.objects.filter(user = user)
+        ))
+
+    @admin_only
+    def __str__(self):
+        return f'{self.user} 被拒绝权限 {self.permission}'
 
 class CreditRecord(models.Model):
     '''
