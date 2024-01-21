@@ -222,13 +222,17 @@ class AppointManager(models.Manager['Appoint']):
 
 
 class Appoint(models.Model):
+    class Permissions:
+        MAKE = 'Appointment.预约地下室'
+        CANCEL = 'Appointment.取消预约'
+
     class Meta:
         verbose_name = '预约信息'
         verbose_name_plural = verbose_name
         ordering = ['Aid']
         permissions = [
-            ('make_appointment', 'Can make an appointment for a room'),
-            ('cancel_appointment', 'Can cancel a previously made appointment')
+            ('预约地下室', '预约地下室'),
+            ('取消预约', '取消预约')
         ]
 
     Aid = models.AutoField('预约编号', primary_key=True)
