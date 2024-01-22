@@ -1801,6 +1801,7 @@ class Prize(models.Model):
     def __str__(self):
         return self.name
 
+
 class Pool(models.Model):
     class Meta:
         verbose_name = '5.奖池'
