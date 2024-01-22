@@ -10,6 +10,7 @@ from django.db import transaction
 from utils.models.descriptor import admin_only
 from utils.models.choice import choice, CustomizedDisplay, DefaultDisplay
 from utils.models.manager import ManyRelatedManager
+from utils.models.permission import PermissionModelBase, BasePermission
 from generic.models import User
 from Appointment.config import appointment_config as CONFIG
 
@@ -221,19 +222,15 @@ class AppointManager(models.Manager['Appoint']):
         return self.exclude(Atype=Appoint.Type.LONGTERM, Astatus=Appoint.Status.CANCELED)
 
 
-class Appoint(models.Model):
-    class Permissions:
-        MAKE = 'Appointment.预约地下室'
-        CANCEL = 'Appointment.取消预约'
+class Appoint(models.Model, metaclass=PermissionModelBase):
+    class Permission(BasePermission):
+        CREATE = choice('create_appointment', '创建预约')
+        CANCEL = choice('cancel_appointment', '取消预约')
 
     class Meta:
         verbose_name = '预约信息'
         verbose_name_plural = verbose_name
         ordering = ['Aid']
-        permissions = [
-            ('预约地下室', '预约地下室'),
-            ('取消预约', '取消预约')
-        ]
 
     Aid = models.AutoField('预约编号', primary_key=True)
     # 申请时间为插入数据库的时间

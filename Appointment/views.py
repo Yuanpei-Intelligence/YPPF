@@ -50,7 +50,7 @@ def cancelAppoint(request: HttpRequest):
     context = {}
     cancel_type = request.POST.get("type")
 
-    if not request.user.has_perm(Appoint.Permissions.CANCEL):
+    if not request.user.has_perm(Appoint.Permission.CANCEL.perm):
         wrong('您没有取消预约的权限！', context)
         return redirect(message_url(context, reverse('Appointment:account')))
 
@@ -884,7 +884,7 @@ def checkout_appoint(request: UserRequest):
             wrong('您预约的面试次数已达到上限，结束后方可继续预约', render_context)
 
         # 检查预约人活跃情况
-        if not request.user.has_perm(Appoint.Permissions.MAKE):
+        if not request.user.has_perm(Appoint.Permission.CREATE.perm):
             wrong('您没有预约地下室的权限', render_context)
 
         start_time = datetime(contents['year'], contents['month'], contents['day'],
