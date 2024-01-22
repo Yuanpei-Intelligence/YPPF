@@ -495,6 +495,19 @@ def buy_random_pool(user: User, pool_id: str) -> Tuple[MESSAGECONTEXT, int, int]
                 source=f'盲盒奖池：{pool.title}',
                 source_type=YQPointRecord.SourceType.CONSUMPTION
             )
+            # 如果抽到了空盒子，按照设定值对用户给予元气值补偿并返回相应的提示
+            if modify_item.is_empty:
+                compensate_YQPoint = random.randint(
+                    pool.empty_YQPoint_compensation_lowerbound, pool.empty_YQPoint_compensation_upperbound)
+                if compensate_YQPoint == 0:
+                    return succeed(f'兑换盲盒成功!您抽到了空盒子，但是很遗憾这次没有元气值补偿QAQ'), -1, 1
+                User.objects.modify_YQPoint(
+                    user,
+                    compensate_YQPoint,
+                    source=f'盲盒奖池：{pool.title}空盒子补偿',
+                    source_type=YQPointRecord.SourceType.COMPENSATION
+                )
+                return succeed(f'兑换盲盒成功!您抽到了空盒子，获得{compensate_YQPoint}点元气值补偿!'), -1, 1
             if modify_item.prize is None:
                 return succeed('兑换盲盒成功!'), -1, 1
             return succeed('兑换盲盒成功!'), modify_item.prize.id, int(modify_item.is_empty)
