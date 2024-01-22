@@ -283,6 +283,9 @@ def buy_exchange_item(user: User, poolitem_id: str) -> MESSAGECONTEXT:
         return wrong('兑换时间已结束!')
     if poolitem.origin_num - poolitem.consumed_num <= 0:
         return wrong('奖品已售罄!')
+    # 检查用户是否已经毕业
+    if not user.active:
+        return wrong('您已毕业！')
 
     my_exchanged_time = PoolRecord.objects.filter(
         user=user, pool=poolitem.pool, prize=poolitem.prize).count()
@@ -350,6 +353,9 @@ def buy_lottery_pool(user: User, pool_id: str) -> MESSAGECONTEXT:
     my_entry_time = PoolRecord.objects.filter(pool=pool, user=user).count()
     if my_entry_time >= pool.entry_time:
         return wrong('您在本奖池中抽奖的次数已达上限!')
+    # 检查用户是否已经毕业
+    if not user.active:
+        return wrong('您已毕业！')
 
     try:
         with transaction.atomic():
@@ -447,6 +453,9 @@ def buy_random_pool(user: User, pool_id: str) -> Tuple[MESSAGECONTEXT, int, int]
     capacity = pool.get_capacity()
     if capacity <= total_entry_time:
         return wrong('盲盒已售罄!'), -1, 2
+    # 检查用户是否已经毕业
+    if not user.active:
+        return wrong('您已毕业！')
 
     try:
         with transaction.atomic():
