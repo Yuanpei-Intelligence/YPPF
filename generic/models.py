@@ -453,6 +453,7 @@ class YQPointRecord(models.Model):
         ACHIEVE = (4, '达成成就')
         QUESTIONNAIRE = (5, '填写问卷')
         CONSUMPTION = (6, '奖池花费')
+        COMPENSATION = (7, '奖池补偿')
 
     source_type = models.SmallIntegerField(
         '来源类型', choices=SourceType.choices, default=SourceType.SYSTEM)
