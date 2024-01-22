@@ -1823,6 +1823,10 @@ class Pool(models.Model):
     # 类型为兑换池时无效
     entry_time = models.IntegerField('进入次数', default=1)
     ticket_price = models.IntegerField('抽奖费', default=0)
+    empty_YQPoint_compensation_lowerbound = models.IntegerField(
+        '空盒元气值补偿下限', default=0)
+    empty_YQPoint_compensation_upperbound = models.IntegerField(
+        '空盒元气值补偿上限', default=0)
     start = models.DateTimeField('开始时间')
     end = models.DateTimeField('结束时间', null=True, blank=True)
     redeem_start = models.DateTimeField(
@@ -1857,10 +1861,11 @@ class PoolItem(models.Model):
     exchange_price = models.IntegerField('价格', null=True, blank=True)
     # 下面这个在抽奖/盲盒奖池中有效
     is_big_prize = models.BooleanField('是否特别奖品', default=False)
+    is_empty_prize = models.BooleanField('是否空盒', default=False)
 
     @property
     def is_empty(self) -> bool:
-        return self.prize is None
+        return self.is_empty_prize or (self.prize is None)
 
     @invalid_for_frontend
     def __str__(self):
