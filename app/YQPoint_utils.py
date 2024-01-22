@@ -499,6 +499,8 @@ def buy_random_pool(user: User, pool_id: str) -> Tuple[MESSAGECONTEXT, int, int]
             if modify_item.is_empty:
                 compensate_YQPoint = random.randint(
                     pool.empty_YQPoint_compensation_lowerbound, pool.empty_YQPoint_compensation_upperbound)
+                if compensate_YQPoint == 0:
+                    return succeed(f'兑换盲盒成功!您抽到了空盒子，但是很遗憾这次没有元气值补偿QAQ'), -1, 1
                 User.objects.modify_YQPoint(
                     user,
                     compensate_YQPoint,
