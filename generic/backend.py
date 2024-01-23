@@ -49,7 +49,19 @@ class BlacklistBackend(AllowAllUsersModelBackend):
         """
         返回所有具有perm权限的用户列表。默认要求用户is_active，且包括超级用户。
         """
-        return list(filter(
-            lambda user: perm not in self.get_cancelled(user),
-            super().with_perm(perm, is_active, include_superusers, obj)
-        ))
+        try:
+            app_label, codename = perm.split('.')
+        except ValueError:
+            raise ValueError("Permission string format incorrect")
+        # banned_users is a set of str (the username field)
+        banned_users = PermissionBlacklist.objects.filter(
+            permission__codename = codename,
+            permission__content_type__app_label = app_label
+        ).values_list("user", flat = True)
+        # Transform into set for O(log n) lookup
+        banned_users = set(banned_users)
+        result = []
+        for user in super().with_perm(perm, is_active, include_superusers, obj):
+            if user.username not in banned_users:
+                result.append(user)
+        return result

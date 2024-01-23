@@ -431,10 +431,11 @@ class PermissionBlacklist(models.Model):
         '''
         if not isinstance(user, User):
             raise TypeError('`user` expected to be a User object!')
-        return set((
-            f'{item.permission.content_type.app_label}.{item.permission.codename}'
-            for item in cls.objects.filter(user = user)
-        ))
+        perms = cls.objects.filter(user = user).values_list(
+            "permission__content_type__app_label", "permission__codename" 
+        )
+        result = {f'{app_label}.{codename}' for (app_label, codename) in perms}
+        return result
 
     @admin_only
     def __str__(self):
