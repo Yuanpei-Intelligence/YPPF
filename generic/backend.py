@@ -1,5 +1,8 @@
 from generic.models import User, PermissionBlacklist
+from utils.models.query import sq
 from django.contrib.auth.backends import AllowAllUsersModelBackend
+from django.contrib.auth.models import Permission
+from django.contrib.contenttypes.models import ContentType
 
 class BlacklistBackend(AllowAllUsersModelBackend):
     '''
@@ -55,8 +58,12 @@ class BlacklistBackend(AllowAllUsersModelBackend):
             raise ValueError("Permission string format incorrect")
         # banned_users is a set of str (the username field)
         banned_users = PermissionBlacklist.objects.filter(
-            permission__codename = codename,
-            permission__content_type__app_label = app_label
+            sq((PermissionBlacklist.permission, Permission.codename), codename) &
+            sq((
+                PermissionBlacklist.permission,
+                Permission.content_type,
+                ContentType.app_label
+            ), app_label)
         ).values_list("user", flat = True)
         # Transform into set for O(log n) lookup
         banned_users = set(banned_users)

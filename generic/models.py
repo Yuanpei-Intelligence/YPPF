@@ -19,12 +19,14 @@ from django.db import models
 from django.contrib.auth import get_permission_codename
 from django.contrib.auth.models import AbstractUser, AnonymousUser, Permission
 from django.contrib.auth.models import UserManager as _UserManager
+from django.contrib.contenttypes.models import ContentType
 from django.db import transaction
 from django.db.models import QuerySet, F
 import pypinyin
 
 from utils.models.choice import choice
 from utils.models.descriptor import necessary_for_frontend, invalid_for_frontend, admin_only
+from utils.models.query import f
 
 __all__ = [
     'User',
@@ -432,7 +434,8 @@ class PermissionBlacklist(models.Model):
         if not isinstance(user, User):
             raise TypeError('`user` expected to be a User object!')
         perms = cls.objects.filter(user = user).values_list(
-            "permission__content_type__app_label", "permission__codename" 
+            f(cls.permission, Permission.content_type, ContentType.app_label),
+            f(cls.permission, Permission.codename)
         )
         result = {f'{app_label}.{codename}' for (app_label, codename) in perms}
         return result
