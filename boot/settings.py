@@ -33,7 +33,9 @@ DEBUG = config.DEBUG
 SECRET_KEY = _configurables.secret_key
 ALLOWED_HOSTS = ["*"]
 AUTH_USER_MODEL = 'generic.User'
-AUTHENTICATION_BACKENDS = ["generic.backend.BlacklistBackend"]
+AUTHENTICATION_BACKENDS = [
+    "generic.backend.BlacklistBackend",
+]
 AUTH_PASSWORD_VALIDATORS = [
     {"NAME": "django.contrib.auth.password_validation.UserAttributeSimilarityValidator", },
     {"NAME": "django.contrib.auth.password_validation.MinimumLengthValidator", },

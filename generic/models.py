@@ -404,6 +404,7 @@ class User(AbstractUser, PointMixin, metaclass=UserBase):
     def is_org(self) -> bool:
         return self.utype == self.Type.ORG
 
+
 class PermissionBlacklist(models.Model):
     '''
     权限黑名单
@@ -422,8 +423,8 @@ class PermissionBlacklist(models.Model):
         Permission, verbose_name='权限', on_delete=models.CASCADE
     )
 
-    @staticmethod
-    def get_cancelled_permissions(user: User) -> set[str]:
+    @classmethod
+    def get_cancelled_permissions(cls, user: User) -> set[str]:
         '''
         Returns the cancelled permissions of the user with user_id as a set
         of permission strings.
@@ -432,12 +433,13 @@ class PermissionBlacklist(models.Model):
             raise TypeError('`user` expected to be a User object!')
         return set((
             f'{item.permission.content_type.app_label}.{item.permission.codename}'
-            for item in PermissionBlacklist.objects.filter(user = user)
+            for item in cls.objects.filter(user = user)
         ))
 
     @admin_only
     def __str__(self):
         return f'{self.user} 被拒绝权限 {self.permission}'
+
 
 class CreditRecord(models.Model):
     '''
