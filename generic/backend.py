@@ -10,9 +10,6 @@ from generic.models import User, PermissionBlacklist
 class BlacklistBackend(AllowAllUsersModelBackend):
     '''
     在django自带的认证后端的基础上，除去在黑名单中记录的用户权限。
-
-    如果在调试模式下运行，has_perm, with_perm将会检查传入的permission string
-    是否在数据库中有对应的permission.
     '''
 
     def _revoked_perms(self, user: User) -> set[str]:
