@@ -1,8 +1,11 @@
-from generic.models import User, PermissionBlacklist
-from utils.models.query import sq
 from django.contrib.auth.backends import AllowAllUsersModelBackend
 from django.contrib.auth.models import Permission
 from django.contrib.contenttypes.models import ContentType
+from django.db.models import QuerySet
+
+import utils.models.query as SQ
+from generic.models import User, PermissionBlacklist
+
 
 class BlacklistBackend(AllowAllUsersModelBackend):
     '''
@@ -48,7 +51,7 @@ class BlacklistBackend(AllowAllUsersModelBackend):
             for perm in self.get_all_permissions(user)
         )
 
-    def with_perm(self, perm: str, is_active=True, include_superusers=True, obj=None) -> list[User]:
+    def with_perm(self, perm: str, is_active=True, include_superusers=True, obj=None) -> QuerySet[User]:
         """
         返回所有具有perm权限的用户列表。默认要求用户is_active，且包括超级用户。
         """
@@ -56,19 +59,10 @@ class BlacklistBackend(AllowAllUsersModelBackend):
             app_label, codename = perm.split('.')
         except ValueError:
             raise ValueError("Permission string format incorrect")
-        # banned_users is a set of str (the username field)
-        banned_users = PermissionBlacklist.objects.filter(
-            sq((PermissionBlacklist.permission, Permission.codename), codename) &
-            sq((
-                PermissionBlacklist.permission,
-                Permission.content_type,
-                ContentType.app_label
-            ), app_label)
-        ).values_list("user", flat = True)
-        # Transform into set for O(log n) lookup
-        banned_users = set(banned_users)
-        result = []
-        for user in super().with_perm(perm, is_active, include_superusers, obj):
-            if user.username not in banned_users:
-                result.append(user)
-        return result
+        _M = PermissionBlacklist
+        banned_records = _M.objects.filter(
+            SQ.sq((_M.permission, Permission.codename), codename),
+            SQ.sq((_M.permission, Permission.content_type, ContentType.app_label), app_label)
+        )
+        users: QuerySet[User] = super().with_perm(perm, is_active, include_superusers, obj)
+        return users.exclude(pk__in=SQ.qsvlist(banned_records, _M.user, 'pk'))
