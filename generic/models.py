@@ -24,9 +24,9 @@ from django.db import transaction
 from django.db.models import QuerySet, F
 import pypinyin
 
+import utils.models.query as SQ
 from utils.models.choice import choice
 from utils.models.descriptor import necessary_for_frontend, invalid_for_frontend, admin_only
-from utils.models.query import f
 
 __all__ = [
     'User',
@@ -407,6 +407,31 @@ class User(AbstractUser, PointMixin, metaclass=UserBase):
         return self.utype == self.Type.ORG
 
 
+class PermissionBlacklistManager(models.Manager['PermissionBlacklist']):
+    '''
+    权限黑名单管理器
+
+    用于提供对权限黑名单的查询方法
+    '''
+
+    def get_revoked_permissions(self, user: User) -> set[str]:
+        '''
+        获取用户被禁止的权限
+
+        Args:
+            user (User): 要查询的对象
+
+        Returns:
+            set[str]: 被禁止的权限字符串集合
+        '''
+        _M = PermissionBlacklist
+        perms = self.filter(SQ.sq(_M.user, user)).values_list(
+            SQ.f(_M.permission, Permission.content_type, ContentType.app_label),
+            SQ.f(_M.permission, Permission.codename)
+        )
+        return {f'{app_label}.{codename}' for app_label, codename in perms}
+
+
 class PermissionBlacklist(models.Model):
     '''
     权限黑名单
@@ -419,30 +444,13 @@ class PermissionBlacklist(models.Model):
 
     user = models.ForeignKey(
         User, verbose_name='用户', on_delete=models.CASCADE,
-        to_field='username'
+        to_field='username',
     )
     permission = models.ForeignKey(
-        Permission, verbose_name='权限', on_delete=models.CASCADE
+        Permission, verbose_name='权限', on_delete=models.CASCADE,
     )
 
-    @classmethod
-    def get_cancelled_permissions(cls, user: User) -> set[str]:
-        '''
-        Returns the cancelled permissions of the user with user_id as a set
-        of permission strings.
-        '''
-        if not isinstance(user, User):
-            raise TypeError('`user` expected to be a User object!')
-        perms = cls.objects.filter(user = user).values_list(
-            f(cls.permission, Permission.content_type, ContentType.app_label),
-            f(cls.permission, Permission.codename)
-        )
-        result = {f'{app_label}.{codename}' for (app_label, codename) in perms}
-        return result
-
-    @admin_only
-    def __str__(self):
-        return f'{self.user} 被拒绝权限 {self.permission}'
+    objects: PermissionBlacklistManager = PermissionBlacklistManager()
 
 
 class CreditRecord(models.Model):

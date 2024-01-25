@@ -14,40 +14,34 @@ class BlacklistBackend(AllowAllUsersModelBackend):
     如果在调试模式下运行，has_perm, with_perm将会检查传入的permission string
     是否在数据库中有对应的permission.
     '''
-    # Currently not customizing authentication methods
-    def get_cancelled(self, user: User) -> set[str]:
-        return PermissionBlacklist.get_cancelled_permissions(user)
+
+    def _revoked_perms(self, user: User) -> set[str]:
+        return PermissionBlacklist.objects.get_revoked_permissions(user)
 
     def get_user_permissions(self, user: User, obj = None) -> set[str]:
-        '''
-        获取用户特有的权限(user_permission)，不包括黑名单中的权限。
-        '''
-        return super().get_user_permissions(user, obj) - self.get_cancelled(user)
+        '''获取用户自身权限，不包括组权限和黑名单中的权限。'''
+        return super().get_user_permissions(user, obj) - self._revoked_perms(user)
 
     def get_all_permissions(self, user: User, obj = None) -> set[str]:
-        '''
-        获取用户的所有权限，也就是用户所在组的权限 + 用户自身权限 - 黑名单中的权限
-        '''
-        return super().get_all_permissions(user, obj) - self.get_cancelled(user)
+        '''获取用户的所有权限，也就是用户所在组的权限 + 用户自身权限 - 黑名单中的权限'''
+        return super().get_all_permissions(user, obj) - self._revoked_perms(user)
 
     def get_group_permissions(self, user: User, obj = None) -> set[str]:
-        '''
-        获取用户通过其所在组获得的权限，不包括黑名单中的权限。
-        '''
-        return super().get_group_permissions(user, obj) - self.get_cancelled(user)
+        '''获取用户通过其所在组获得的权限，不包括黑名单中的权限。'''
+        return super().get_group_permissions(user, obj) - self._revoked_perms(user)
 
     def has_perm(self, user: User, perm: str, obj = None) -> bool:
-        '''
-        检查用户user是否有perm权限。暂时还不支持对于某一个特定的obj查询。
-        '''
-        return perm not in self.get_cancelled(user) and super().has_perm(user, perm, obj)
+        '''检查用户的特定权限。暂不支持对于某一个特定的obj查询。'''
+        return perm not in self._revoked_perms(user) and super().has_perm(user, perm, obj)
 
     def has_module_perms(self, user: User, app_label: str) -> bool:
         '''
-        检查用户是否有app_label这一应用的权限。如果用户有其中任何一个权限，就认为他是具有这个应用的权限的。
+        检查用户的应用权限
+        
+        如果用户有其中任何一个权限，就认为他具有这个应用的权限。
         '''
         return user.is_active and any(
-            perm[: perm.index(".")] == app_label
+            perm[: perm.index('.')] == app_label
             for perm in self.get_all_permissions(user)
         )
 
