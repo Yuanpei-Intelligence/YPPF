@@ -45,18 +45,29 @@ class BlacklistBackend(AllowAllUsersModelBackend):
             for perm in self.get_all_permissions(user)
         )
 
-    def with_perm(self, perm: str, is_active=True, include_superusers=True, obj=None) -> QuerySet[User]:
-        """
+    def with_perm(self, perm: str | Permission, is_active: bool = True,
+                  include_superusers: bool = True, obj = None) -> QuerySet[User]:
+        '''
         返回所有具有perm权限的用户列表。默认要求用户is_active，且包括超级用户。
-        """
-        try:
-            app_label, codename = perm.split('.')
-        except ValueError:
-            raise ValueError("Permission string format incorrect")
+
+        Args:
+            perm (str | Permission): 权限，字符串格式为app_label.codename
+            is_active (bool, optional): 是否要求用户是激活状态，默认为True
+            include_superusers (bool, optional): 是否包括超级用户
+            obj (Any, optional): 查询对于某一个特定的对象的权限，父类暂不支持
+
+        Returns:
+            具有权限的用户集合
+        '''
         _M = PermissionBlacklist
-        banned_records = _M.objects.filter(
-            SQ.sq((_M.permission, Permission.codename), codename),
-            SQ.sq((_M.permission, Permission.content_type, ContentType.app_label), app_label)
-        )
+        # 父类的with_perm方法会检查传入的perm是否符合格式
         users: QuerySet[User] = super().with_perm(perm, is_active, include_superusers, obj)
+        if isinstance(perm, str):
+            app_label, codename = perm.split('.')
+            banned_records = _M.objects.filter(
+                SQ.sq((_M.permission, Permission.codename), codename),
+                SQ.sq((_M.permission, Permission.content_type, ContentType.app_label), app_label)
+            )
+        elif isinstance(perm, Permission):
+            banned_records = SQ.sfilter(_M.permission, perm)
         return users.exclude(pk__in=SQ.qsvlist(banned_records, _M.user, 'pk'))
