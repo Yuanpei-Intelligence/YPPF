@@ -151,6 +151,11 @@ class UserAdmin(_UserAdmin):
 
 admin.site.register(User, UserAdmin)
 
+@admin.register(PermissionBlacklist)
+class PermissionBlacklistAdmin(admin.ModelAdmin):
+    list_display = ['user', 'permission']
+    search_fields = [*UserAdmin.suggest_search_fields(), 'permission__name']
+
 @admin.register(CreditRecord)
 class CreditRecordAdmin(admin.ModelAdmin):
     list_display = ['user', 'source', 'delta', 'overflow', 'time']
