@@ -10,6 +10,7 @@ from django.db import transaction
 from utils.models.descriptor import admin_only
 from utils.models.choice import choice, CustomizedDisplay, DefaultDisplay
 from utils.models.manager import ManyRelatedManager
+from utils.models.permission import PermissionModelBase, BasePermission
 from generic.models import User
 from Appointment.config import appointment_config as CONFIG
 
@@ -221,7 +222,11 @@ class AppointManager(models.Manager['Appoint']):
         return self.exclude(Atype=Appoint.Type.LONGTERM, Astatus=Appoint.Status.CANCELED)
 
 
-class Appoint(models.Model):
+class Appoint(models.Model, metaclass=PermissionModelBase):
+    class Permission(BasePermission):
+        CREATE = choice('create_appointment', '创建预约')
+        CANCEL = choice('cancel_appointment', '取消预约')
+
     class Meta:
         verbose_name = '预约信息'
         verbose_name_plural = verbose_name
@@ -287,10 +292,10 @@ class Appoint(models.Model):
     Acamera_ok_num = models.IntegerField('人数合格次数', default=0)
 
     class Reason(models.IntegerChoices):
-        R_NOVIOLATED = 0  # 没有违约
-        R_LATE = 1  # 迟到
-        R_TOOLITTLE = 2  # 人数不足
-        R_ELSE = 3  # 其它原因
+        R_NOVIOLATED = choice(0, '没有违约')
+        R_LATE = choice(1, '迟到')
+        R_TOOLITTLE = choice(2, '人数不足')
+        R_ELSE = choice(3, '其它原因')
 
     Areason = models.IntegerField('违约原因', choices=Reason.choices, default=0)
     get_Areason_display: DefaultDisplay
