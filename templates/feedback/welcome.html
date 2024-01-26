@@ -169,7 +169,7 @@
                     document.querySelector("#border-bottom").classList.remove("fade");
                     if (hasPublicFeedback) {
                         const card = document.querySelector(".b-skills");
-                        publicTab.style.height = publicBox.style.height = card.style.height;
+                        publicTab.style.height = publicBox.style.height = card.offsetHeight;
                     }
                     else {
                         publicTab.style.height = publicBox.style.height = "100px";
