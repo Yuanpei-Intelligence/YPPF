@@ -67,7 +67,7 @@ def person_info(np: 'NaturalPerson|User'):
     # person_info.update(cal_late_room(np))
     # person_info.update(cal_appoint_kw(np))
     # person_info.update(cal_appoint_sum(np))
-    
+
     return person_info
 
 
@@ -81,15 +81,16 @@ def person_infos(min=0, max=10000, count=10000):
         count -= 1
         if count <= 0:
             break
-        num+=1
+        num += 1
         if num % 100 == 0:
             print(num)
-        
+
     return npd
 
 
 # 通用统计部分从此开始
 __generics = None
+
 
 def cal_all_underground():
     """
@@ -108,45 +109,50 @@ def cal_all_underground():
     # 总刷卡次数
     total_swipe_num = _room_reords.aggregate(cnt=Count('*')).get('cnt', 0)
     # 研讨室刷卡总次数
-    total_talk_room_num = _room_reords.filter(Q(Cardroom__in=_talk_rooms)).aggregate(cnt=Count('*')).get('cnt', 0)
+    total_talk_room_num = _room_reords.filter(
+        Q(Cardroom__in=_talk_rooms)).aggregate(cnt=Count('*')).get('cnt', 0)
     # 研讨室预约总时长
-    _act_appoint = Appoint.objects.not_canceled().filter(Astart__gt=SUMMARY_SEM_START, Astart__lt=SUMMARY_SEM_END)
+    _act_appoint = Appoint.objects.not_canceled().filter(
+        Astart__gt=SUMMARY_SEM_START, Astart__lt=SUMMARY_SEM_END)
     _act_talk_appoint = _act_appoint.filter(Room__in=_talk_rooms)
     total_discuss_appoint_hour = sum([(finish - start).seconds for start,
-                                finish in _act_talk_appoint.values_list('Astart', 'Afinish')])//3600
+                                      finish in _act_talk_appoint.values_list('Astart', 'Afinish')])//3600
     # 最受欢迎的研讨室和预约次数
-    total_talk_appoint_most_name, total_talk_appoint_most_num= Counter(
-            _act_talk_appoint.values_list('Room__Rid')).most_common(1)[0]
+    total_talk_appoint_most_name, total_talk_appoint_most_num = Counter(
+        _act_talk_appoint.values_list('Room__Rid')).most_common(1)[0]
     total_talk_appoint_most_name = total_talk_appoint_most_name[0]
 
     # 功能房刷卡总次数
-    total_func_room_num = _room_reords.filter(Q(Cardroom__in=_func_rooms)).aggregate(cnt=Count('*')).get('cnt', 0)
+    total_func_room_num = _room_reords.filter(
+        Q(Cardroom__in=_func_rooms)).aggregate(cnt=Count('*')).get('cnt', 0)
     # 功能房预约总时长
     _act_func_appoint = _act_appoint.filter(Room__in=_func_rooms)
     total_func_appoint_hour = sum([(finish - start).seconds for start,
-                                finish in _act_func_appoint.values_list('Astart', 'Afinish')])//3600
+                                   finish in _act_func_appoint.values_list('Astart', 'Afinish')])//3600
     # 最受欢迎的功能房和预约次数
     total_func_appoint_most_name, total_func_appoint_most_num = Counter(
-            _act_func_appoint.values_list('Room__Rid')).most_common(1)[0]
+        _act_func_appoint.values_list('Room__Rid')).most_common(1)[0]
     total_func_appoint_most_name = total_func_appoint_most_name[0]
 
     return remove_local_var(locals())
+
 
 def get_hottest_courses(year, semester):
     """
     根据年份和学期获取最热门的前三门课程
     """
-    courses = Course.objects.filter(year=year, semester=semester).exclude(status=Course.Status.ABORT)
-    
+    courses = Course.objects.filter(
+        year=year, semester=semester).exclude(status=Course.Status.ABORT)
+
     # # 计算每门课程的预选人数
     course_with_preselect_count = courses.annotate(
         preselect_count=Count(
             'participant_set',
             filter=Q(participant_set__status__in=[
-                CourseParticipant.Status.SELECT, 
+                CourseParticipant.Status.SELECT,
                 CourseParticipant.Status.SUCCESS,
                 CourseParticipant.Status.FAILED,
-                ])
+            ])
         )
     )
     # 计算预选人数与选课名额之比，使用ExpressionWrapper来确保结果为浮点数
@@ -164,6 +170,7 @@ def get_hottest_courses(year, semester):
 
     return hottest_courses_list
 
+
 def cal_all_org():
     """
     - YPPF年度使用情况总览
@@ -176,7 +183,7 @@ def cal_all_org():
     # 学生小组总数量
     total_club_num = ModifyOrganization.objects.filter(
         otype__otype_name='学生小组', status=ModifyOrganization.Status.CONFIRMED).count()
-    
+
     # 活动总数量，注意这里是学年制
     total_act = Activity.objects.exclude(status__in=[
         Activity.Status.REVIEWING,
@@ -190,8 +197,8 @@ def cal_all_org():
         [(a.end-a.start) for a in total_act], timedelta(0))
     total_act_hour = round(total_act_hour.total_seconds() / 3600, 2)
 
-    return dict(total_org_num=total_org_num, total_club_num=total_club_num, 
-                total_act_num=total_act_num, total_act_hour=total_act_hour, 
+    return dict(total_org_num=total_org_num, total_club_num=total_club_num,
+                total_act_num=total_act_num, total_act_hour=total_act_hour,
                 )
 
 
@@ -206,7 +213,7 @@ def cal_all_course():
     # 书院本年度开课总数
     total_course_num = Course.objects.exclude(status=Course.Status.ABORT).filter(
         Q(year=SUMMARY_YEAR1, semester=Semester.FALL) | Q(year=SUMMARY_YEAR2, semester=Semester.SPRING)).count()
-    
+
     # 本年度课程活动
     course_act = Activity.objects.exclude(status__in=[
         Activity.Status.REVIEWING,
@@ -216,13 +223,13 @@ def cal_all_course():
     ]).filter(
         Q(year=SUMMARY_YEAR1, semester=Semester.FALL) | Q(year=SUMMARY_YEAR2, semester=Semester.SPRING), category=Activity.ActivityCategory.COURSE)
     total_course_act_num = len(course_act)
-    
+
     # 本年度课程活动时长
     total_course_act_hour: timedelta = sum(
         [(a.end-a.start) for a in course_act], timedelta(0))
     total_course_act_hour = round(
         total_course_act_hour.total_seconds() / 3600, 2)
-    
+
     # 本年度参与一门课程的人数、参与三门课程的人数
     persons = NaturalPerson.objects.annotate(cc=Count(
         'courseparticipant', filter=Q(
@@ -238,14 +245,16 @@ def cal_all_course():
                 CourseParticipant.Status.SELECT,
                 CourseParticipant.Status.SUCCESS],
         )
-        )
-        )
+    )
+    )
     have_course_num = persons.filter(cc__gte=1).count()
     have_three_course_num = persons.filter(cc__gte=3).count()
-    
+
     # 23年春季、秋季学期，最热门的三门书院课程（以预选人数和选课名额之比计算）
-    hottest_courses_23_Fall = get_hottest_courses(year=SUMMARY_YEAR1, semester=Semester.FALL)
-    hottest_courses_23_Spring = get_hottest_courses(year=SUMMARY_YEAR2, semester=Semester.SPRING)
+    hottest_courses_23_Fall = get_hottest_courses(
+        year=SUMMARY_YEAR1, semester=Semester.FALL)
+    hottest_courses_23_Spring = get_hottest_courses(
+        year=SUMMARY_YEAR2, semester=Semester.SPRING)
 
     return dict(total_course_num=total_course_num,
                 total_course_act_num=total_course_act_num, total_course_act_hour=total_course_act_hour,
@@ -257,6 +266,7 @@ def cal_all_course():
 
 # 个人统计部分从此开始
 __persons = None
+
 
 def cal_login_num(np: NaturalPerson):
     """
@@ -270,14 +280,15 @@ def cal_login_num(np: NaturalPerson):
     # 该用户本年度登陆系统次数
     _user = np.get_user()
     _day_check_kws = {}
-    _day_check_kws.update(time__date__gt=SUMMARY_SEM_START, time__date__lt=SUMMARY_SEM_END)
+    _day_check_kws.update(time__date__gt=SUMMARY_SEM_START,
+                          time__date__lt=SUMMARY_SEM_END)
     _signin_days = set(YQPointRecord.objects.filter(
         user=_user,
         source_type=YQPointRecord.SourceType.CHECK_IN,
         **_day_check_kws,
     ).order_by('time').values_list('time__date', flat=True).distinct())
     checkin_num = len(_signin_days)
-    
+
     # 计算该用户最长连续登录系统天数
     _signin_days = sorted(_signin_days)
     max_consecutive_days = 0
@@ -295,7 +306,7 @@ def cal_login_num(np: NaturalPerson):
         max_consecutive_days = max(max_consecutive_days, _current_streak)
         _previous_date = _current_date
 
-    return {'date_joined':date_joined, 'checkin_num':checkin_num, 'max_consecutive_days':max_consecutive_days}
+    return {'date_joined': date_joined, 'checkin_num': checkin_num, 'max_consecutive_days': max_consecutive_days}
 
 
 def cal_act(np: NaturalPerson):
@@ -310,32 +321,36 @@ def cal_act(np: NaturalPerson):
     from collections import defaultdict
 
     pos = Position.objects.activated(noncurrent=None).filter(
-        Q(person=np, year=SUMMARY_YEAR1, semester__in=[Semester.FALL, Semester.ANNUAL] ) | Q(person=np, year=SUMMARY_YEAR2, semester__in=[Semester.SPRING, Semester.ANNUAL]), 
+        Q(person=np, year=SUMMARY_YEAR1, semester__in=[Semester.FALL, Semester.ANNUAL]) | Q(
+            person=np, year=SUMMARY_YEAR2, semester__in=[Semester.SPRING, Semester.ANNUAL]),
     )
     # 参与的学生小组的数量
     club_num = pos.filter(org__otype__otype_name='学生小组').count()
     # 参与的书院课程的数量
     course_org_num = pos.filter(org__otype__otype_name='书院课程').count()
-    # 
+    #
     participated_acts = Participation.objects.activated().filter(
         sq(Participation.person, np),
-         (
-        Q(activity__year=SUMMARY_YEAR1, activity__semester=Semester.FALL) |
-        Q(activity__year=SUMMARY_YEAR2, activity__semester=Semester.SPRING)
-    ))
+        (
+            Q(activity__year=SUMMARY_YEAR1, activity__semester=Semester.FALL) |
+            Q(activity__year=SUMMARY_YEAR2, activity__semester=Semester.SPRING)
+        ))
     # 参与的活动的数量
     act_num = participated_acts.count()
     # 参与活动的关键词
     keyword_freq = defaultdict(int)
-    activity_titles = participated_acts.values_list('activity__title', flat=True)
+    activity_titles = participated_acts.values_list(
+        'activity__title', flat=True)
     # 该用户参与活动的出现频率最高的三个活动关键词
     for text in activity_titles:
         for keyword in jieba.analyse.extract_tags(text):
             keyword_freq[keyword] += 1
-    act_top_three_keywords = sorted(keyword_freq, key=keyword_freq.get, reverse=True)[:3]
+    act_top_three_keywords = sorted(
+        keyword_freq, key=keyword_freq.get, reverse=True)[:3]
 
     # 活动次数最高的时间段，按照每小时作为时间段。
-    time_periods = Activity.objects.filter(id__in=participated_acts.values_list('activity_id', flat=True)).values_list('start', 'end')
+    time_periods = Activity.objects.filter(id__in=participated_acts.values_list(
+        'activity_id', flat=True)).values_list('start', 'end')
     if time_periods.exists():
         hour_frequencies = Counter()
         for start, end in time_periods:
@@ -362,7 +377,7 @@ def cal_act(np: NaturalPerson):
     return dict(
         IScreate=IScreate, myclub_name=myclub_name,
         club_num=club_num, course_org_num=course_org_num, act_num=act_num,
-        position_num=position_num, admin_org_names=admin_org_names, 
+        position_num=position_num, admin_org_names=admin_org_names,
         act_top_three_keywords=act_top_three_keywords, most_act_common_hour=most_act_common_hour
     )
 
@@ -375,7 +390,7 @@ def cal_course(np: NaturalPerson):
         (3) 该用户投入学时最长的课程及学时时长
         (4) 用户春季学期、秋季学期选课数量
         (5) 用户春季学期、秋季学期选中书院课数量
-    """    
+    """
 
     # 这里计算的实际参与的课程活动总数，即便学时可能无效，但是只要有学时，就算
     course_me_past = CourseRecord.objects.filter(person=np, total_hours__gt=0)
@@ -389,13 +404,14 @@ def cal_course(np: NaturalPerson):
         t = course_me_past.filter(course__type=_course_type)
         if not t:
             continue
-        t = t.aggregate(Sum('total_hours'), Sum('attend_times'), count=Count('*'))
+        t = t.aggregate(Sum('total_hours'), Sum(
+            'attend_times'), count=Count('*'))
         pro.append([_course_type.label, t['total_hours__sum']
                    or 0, t['attend_times__sum'] or 0, t['count'] or 0])
 
     unclassified_hour = course_me_past.filter(course__isnull=True).aggregate(
         Sum('total_hours'))['total_hours__sum'] or 0
-    
+
     # 个人选修课程的总学时，选修课程类别学时最多的是哪一类、多少学时
     course_hour = 0
     types = []
@@ -409,7 +425,7 @@ def cal_course(np: NaturalPerson):
     if unclassified_hour:
         types.append('其它')
         course_hour += unclassified_hour
-    
+
     # 该用户选修的课程在五类课程中的哪几类
     course_type = '/'.join(types) + f' {len(types)}'
     type_count = len(types)
@@ -427,7 +443,7 @@ def cal_course(np: NaturalPerson):
         course_most_num_name, course_most_num = "无", 0
 
     elect_course = Course.objects.exclude(
-    status=Course.Status.ABORT).filter(
+        status=Course.Status.ABORT).filter(
         participant_set__person=np,
         participant_set__status__in=[
             CourseParticipant.Status.SELECT,
@@ -435,8 +451,10 @@ def cal_course(np: NaturalPerson):
             CourseParticipant.Status.FAILED,
         ])
     # 该用户23秋、23春课程选课数量(包含失败的情况)
-    preelect_course_23fall = elect_course.filter(year=SUMMARY_YEAR1, semester=Semester.FALL,)
-    preelect_course_23spring = elect_course.filter(year=SUMMARY_YEAR2, semester=Semester.SPRING,)
+    preelect_course_23fall = elect_course.filter(
+        year=SUMMARY_YEAR1, semester=Semester.FALL,)
+    preelect_course_23spring = elect_course.filter(
+        year=SUMMARY_YEAR2, semester=Semester.SPRING,)
     preelect_course_23fall_num = preelect_course_23fall.count()
     preelect_course_23spring_num = preelect_course_23spring.count()
 
@@ -444,23 +462,23 @@ def cal_course(np: NaturalPerson):
     elected_course_23fall_num = preelect_course_23fall.filter(
         participant_set__person=np,
         participant_set__status__in=[
-                CourseParticipant.Status.SELECT,
-                CourseParticipant.Status.SUCCESS,
-            ]).count()
+            CourseParticipant.Status.SELECT,
+            CourseParticipant.Status.SUCCESS,
+        ]).count()
     elected_course_23spring_num = preelect_course_23spring.filter(
         participant_set__person=np,
         participant_set__status__in=[
-                CourseParticipant.Status.SELECT,
-                CourseParticipant.Status.SUCCESS,
-            ]).count()
-    
+            CourseParticipant.Status.SELECT,
+            CourseParticipant.Status.SUCCESS,
+        ]).count()
+
     return dict(course_num=course_num,
                 course_hour=course_hour, course_type=course_type,
                 course_most_time_name=course_most_time_name, course_most_hour=course_most_hour,
                 course_most_num_name=course_most_num_name, course_most_num=course_most_num,
                 max_type_info=max_type_info, type_count=type_count,
-                preelect_course_23fall_num=preelect_course_23fall_num, 
-                preelect_course_23spring_num=preelect_course_23spring_num, 
+                preelect_course_23fall_num=preelect_course_23fall_num,
+                preelect_course_23spring_num=preelect_course_23spring_num,
                 elected_course_23fall_num=elected_course_23fall_num,
                 elected_course_23spring_num=elected_course_23spring_num,
                 )
@@ -476,22 +494,26 @@ def cal_anual_yqpoint(np: NaturalPerson):
     """
     _user = np.get_user()
     # 获取元气值总值, 消耗元气值总值
-    income, expenditure = get_income_expenditure(_user, SUMMARY_SEM_START, SUMMARY_SEM_END)
+    income, expenditure = get_income_expenditure(
+        _user, SUMMARY_SEM_START, SUMMARY_SEM_END)
 
-    _pool_records = PoolRecord.objects.filter(user=_user, time__gte=SUMMARY_SEM_START, time__lt=SUMMARY_SEM_END)
+    _pool_records = PoolRecord.objects.filter(
+        user=_user, time__gte=SUMMARY_SEM_START, time__lt=SUMMARY_SEM_END)
     _lucky_pool_records = _pool_records.filter(status__in=[
         PoolRecord.Status.UN_REDEEM,
         PoolRecord.Status.REDEEMED,
     ]).exclude(prize__name__contains='空盒')
-    
-    _unique_prizes = _lucky_pool_records.values_list('prize', flat=True).distinct()
+
+    _unique_prizes = _lucky_pool_records.values_list(
+        'prize', flat=True).distinct()
     # 兑换奖品种类
     number_of_unique_prizes = len(_unique_prizes)
     # 盲盒兑换次数
     _mystery_boxes = _pool_records.filter(pool__type=Pool.Type.RANDOM)
     mystery_boxes_num = _mystery_boxes.count()
     # 盲盒抽中次数
-    lucky_mystery_boxes_num = _lucky_pool_records.filter(pool__type=Pool.Type.RANDOM).count()
+    lucky_mystery_boxes_num = _lucky_pool_records.filter(
+        pool__type=Pool.Type.RANDOM).count()
 
     return remove_local_var(locals())
 
@@ -513,9 +535,11 @@ def cal_anual_academic(np: NaturalPerson):
     #     _count = _tag_count['count']
 
     # 学术地图提问次数
-    academic_QA_num = AcademicQA.objects.filter(chat__questioner=np.get_user()).count()
+    academic_QA_num = AcademicQA.objects.filter(
+        chat__questioner=np.get_user()).count()
 
     return remove_local_var(locals())
+
 
 def cal_study_room(np: NaturalPerson):
     """
@@ -558,7 +582,8 @@ def cal_study_room(np: NaturalPerson):
                 study_room_top_day=study_room_top_day,
                 )
 
-def cal_anual_appoint(_me_appoint: QuerySet[Appoint], _room_type: str=None):
+
+def cal_anual_appoint(_me_appoint: QuerySet[Appoint], _room_type: str = None):
     """"
     根据不同的房间类型，获取以下内容：
         (1) 用户本年度{_room_type}总预约次数、总时长
@@ -576,7 +601,7 @@ def cal_anual_appoint(_me_appoint: QuerySet[Appoint], _room_type: str=None):
     elif _room_type == 'Function':
         # 功能房
         _room_list = Room.objects.function_rooms().values_list('Rid')
-    
+
     _me_act_appoints = _me_appoint.filter(Room__in=_room_list)
     if not _me_act_appoints.exists():
         appoint_num = appoint_hour = 0
@@ -585,16 +610,16 @@ def cal_anual_appoint(_me_appoint: QuerySet[Appoint], _room_type: str=None):
         appoint_num = _me_act_appoints.aggregate(cnt=Count('*'))['cnt']
         # 用户本年度{room_type}预约时长
         appoint_hour = sum([(finish - start).seconds for start,
-                                finish in _me_act_appoints.values_list('Astart', 'Afinish')])//3600
+                            finish in _me_act_appoints.values_list('Astart', 'Afinish')])//3600
         # 用户本年度最长预约的{room_type}、时长
         # _my_rooms = set(_me_act_appoints.values_list('Room', flat=True))
         # appoint_long_room, appoint_long_hour = max([(r, _me_act_appoint.filter(Room=r).aggregate(
         #     tol=Sum(F('Afinish') - F('Astart')))['tol'].total_seconds()//3600) for r in _my_rooms], key=lambda x: x[1])
-        
+
         # 用户本年度最多预约的{room_type}、次数
         appoint_most_room, appoint_most_room_num = Counter(
             _me_act_appoints.values_list('Room__Rtitle', flat=True)).most_common(1)[0]
-        
+
         # 预约时长最多的日期，当日预约时长，当天的预约关键词
         # 计算每个预约的时长
         _discuss_duration_appointments = _me_act_appoints.annotate(
@@ -615,15 +640,17 @@ def cal_anual_appoint(_me_appoint: QuerySet[Appoint], _room_type: str=None):
         _longest_day = _daily_duration.first() if _daily_duration else None
 
         if _longest_day:
-            _hours, _remainder = divmod(_longest_day['total_duration'].seconds, 3600)
+            _hours, _remainder = divmod(
+                _longest_day['total_duration'].seconds, 3600)
             _minutes = _remainder // 60
             if _minutes == 0:
                 appoint_longest_duration = f"{_hours}小时"
             else:
                 appoint_longest_duration = f"{_hours}小时{_minutes}分钟"
             appoint_longest_day = _longest_day['day']
-            _purposes = _me_act_appoints.filter(Astart__date=appoint_longest_day).values_list('Ausage', flat=True)
-            
+            _purposes = _me_act_appoints.filter(
+                Astart__date=appoint_longest_day).values_list('Ausage', flat=True)
+
             if len(_purposes) == 1:
                 _keywords = jieba.analyse.extract_tags(_purposes[0], topK=1)
                 appoint_longest_day_keyword = _keywords[0] if _keywords else None
@@ -639,9 +666,9 @@ def cal_anual_appoint(_me_appoint: QuerySet[Appoint], _room_type: str=None):
             appoint_longest_duration = None
             appoint_longest_day = None
             appoint_longest_day_keyword = None
-    
+
         # 用户本年度最常使用的关键词
-        _year_purposes = _me_act_appoints.values_list('Ausage',flat=True)
+        _year_purposes = _me_act_appoints.values_list('Ausage', flat=True)
         _year_all_words = []
         for _text in _year_purposes:
             _year_all_words.extend(jieba.cut(_text))
@@ -649,10 +676,11 @@ def cal_anual_appoint(_me_appoint: QuerySet[Appoint], _room_type: str=None):
         appoint_year_keyword = _year_most_words[0][0] if _year_most_words else None
 
     _room_dict = remove_local_var(locals())
-    _prefix_room_dict = {f"{_room_type}_" + _key: _value for _key, _value in _room_dict.items()}
-    
+    _prefix_room_dict = {f"{_room_type}_" +
+                         _key: _value for _key, _value in _room_dict.items()}
+
     return _prefix_room_dict
-    
+
 
 def cal_appoint(np: NaturalPerson):
     """
@@ -676,7 +704,7 @@ def cal_appoint(np: NaturalPerson):
         students=_par, Astart__gt=_start_time, Astart__lt=_end_time)
     if not _me_act_appoint.exists():
         return room_dict
-    
+
     func_room_dict = cal_anual_appoint(_me_act_appoint, _room_type='Function')
     talk_room_dict = cal_anual_appoint(_me_act_appoint, _room_type='Discuss')
     room_dict.update(func_room_dict)
@@ -707,7 +735,8 @@ def cal_sharp_appoint(np: NaturalPerson):
         sharp_appoints, key=lambda x: x.Astart-x.Atime)
     sharp_appoint_day = sharp_appoint.Astart.strftime('%Y年%m月%d日')
     sharp_appoint_reason = sharp_appoint.Ausage
-    sharp_appoint_min = (sharp_appoint.Astart - sharp_appoint.Atime).total_seconds()
+    sharp_appoint_min = (sharp_appoint.Astart -
+                         sharp_appoint.Atime).total_seconds()
     if sharp_appoint_min < 60:
         sharp_appoint_min = f'{round(sharp_appoint_min)}秒'
     else:
@@ -780,8 +809,10 @@ def cal_co_appoint(np: NaturalPerson):
 
     return remove_local_var(locals())
 
+
 # 本年度未用到以下部分
 __useless = None
+
 
 def cal_appoint_kw(np: NaturalPerson):
     """
@@ -849,7 +880,7 @@ def cal_early_room(np: NaturalPerson):
     _room_reords = CardCheckInfo.objects.filter(_record_filter)
     if not _room_reords.exists():
         return dict(early_day_num=0)
-    
+
     early_day_num = _room_reords.values_list('Cardtime__date').annotate(
         cnt=Count('*')).aggregate(cnt=Count('*')).get('cnt', 0)
     if early_day_num:
@@ -892,8 +923,8 @@ def cal_late_room(np: NaturalPerson):
     if late_room_time.hour < 23:
         _late_room_ref_date = late_room_date - timedelta(days=1)
     late_room_people = len(list(set(CardCheckInfo.objects.filter(Cardtime__gt=_start_time,
-                                                    Cardtime__lt=_end_time,
-                                                    Cardtime__date=_late_room_ref_date,
-                                                    Cardtime__hour__gte=22
-                                            ).values_list('Cardstudent'))))
+                                                                 Cardtime__lt=_end_time,
+                                                                 Cardtime__date=_late_room_ref_date,
+                                                                 Cardtime__hour__gte=22
+                                                                 ).values_list('Cardstudent'))))
     return remove_local_var(locals())
