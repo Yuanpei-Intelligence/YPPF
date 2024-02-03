@@ -182,11 +182,12 @@ def summary2023(request: HttpRequest):
             update_related_account_in_session(request, username, shift=True)
 
     user_accept = request.GET.get('accept') == 'true'
+    user_cancel = request.GET.get('cancel') == 'true'
     infos = {}
 
-    infos.update(logged_in=logged_in, user_accept=user_accept)
+    infos.update(logged_in=logged_in, user_accept=user_accept, user_cancel=user_cancel)
 
-    if not user_accept or not logged_in:
+    if not user_accept or not logged_in or user_cancel:
         # 新生/不接受协议/未登录 展示样例
         example_file = os.path.join(base_dir, 'template.json')
         with open(example_file) as f:
