@@ -25,7 +25,7 @@
 
 <body>
 
-  <audio loop src="/static/Appointment/assets/bgm/风摇盛夏.mp3">不支持播放音乐</audio>
+  <audio loop src="/static/Appointment/assets/bgm/From the Moon.mp3">不支持播放音乐</audio>
 
   <div style="position: fixed; right: 2%; top: 2%; z-index: 100000;">
     <button class="btn" style="border: none; background-color: transparent;" id="play-music">
@@ -456,7 +456,7 @@
   <script lang="javascript">
     jQuery(document).ready(function ($) {
       // 若页面刷新并且不是由window.location.replace导致的，清空localStorage
-      if (localStorage.getItem('replaced') !== 'true')
+      if (performance.navigation.type === 1 && localStorage.getItem('replaced') !== 'true')
         localStorage.clear();
       else
         localStorage.removeItem('replaced');
@@ -468,11 +468,6 @@
 
       checked = localStorage.getItem('agree-rule') === 'true' ? true : false;
       $('#agree-rule').prop('checked', checked);
-
-      // 正确处理直接输入summary2023?accept=true的情况
-      {% if user_accept %}
-      $('#agree-rule').prop('checked', true);
-      {% endif %}
 
       var playing = localStorage.getItem('playing') == 'block' ? true : false;
       if(playing){
@@ -489,57 +484,29 @@
       if (playedTime)
         $('audio')[0].currentTime = playedTime;
       
-      {% if user_accept or user_cancel %}
-      history.pushState(null, null, "{% url 'Appointment:summary2023' %}");
-      $('#app').ready(function() {
-        $.fn.fullpage.moveTo(2, 0);
-      })
-      {% endif %}
-
       $('#app').fullpage({
         onLeave: function (index, nextIndex, direction) {
           if (index == 1) {
-            // 已登录
             {% if logged_in %}
               read_rule = !($('#rule').css('display') == 'none');
               if (read_rule)
                 return false;
               checked = $('#agree-rule').is(':checked');
-              // 不同意协议
               if (!checked){
-                {% if not user_cancel %}
-                  rst = confirm("请点击确认表示同意《智慧书院2023年度回忆授权协议》再开启你的年度总结之旅哦！\n如您不同意该协议，请点击取消，我们将为您展示样例。\n如您不慎误点取消，请上滑返回首页重新选择或刷新界面。\n祝您的回忆之旅轻松、愉快！");
-                  if (rst)
-                    $('#agree-rule').prop('checked', true).trigger('change');
-                  else{
-                    // 正确处理用户先同意协议进入第二页，再返回首页取消授权的情况
-                    {% if user_accept %}
-                      if (!redirect){
-                        localStorage.setItem('replaced', 'true');
-                        window.location.replace(window.location.origin + window.location.pathname + "?cancel=true");
-                      }
-                      redirect = true;
-                      return false;
-                    {% else %}
-                      return true;
-                    {% endif %}
-                  }
-                {% endif %} 
+                rst = confirm("请点击确认表示同意《智慧书院2023年度回忆授权协议》再开启你的年度总结之旅哦！如您不同意该协议，请点击取消，我们将为您展示样例。");
+                if (rst)
+                  $('#agree-rule').prop('checked', true).trigger('change');
+                else
+                  return true;
               }
-              checked = $('#agree-rule').is(':checked'); // 重新检测checked数值防止上面的代码中进行了修改
               {% if not user_accept %}
-                // 同意协议
-                if (checked){
-                  console.log(redirect);
-                  if (!redirect){
-                    localStorage.setItem('replaced', 'true');
-                    window.location.replace(window.location.origin + window.location.pathname + "?accept=true");
-                  }
-                  redirect = true;
-                  return false;
+                if (!redirect){
+                  localStorage.setItem('replaced', 'true');
+                  window.location.replace(window.location.href + "?accept=true");
                 }
-              {% endif %}
-            // 未登录
+                redirect = true;
+                return false;
+              {% endif %} 
             {% else %}
               rst = confirm("您尚未登录，将为您展示年度总结示例。点击取消跳转至登录界面。");
               if (!rst) {
@@ -557,6 +524,13 @@
         sectionColor: ['yellow', 'green', 'blue', 'purple'],
         fadingEffect: true,
       });
+
+      {% if user_accept %}
+      history.pushState(null, null, "{% url 'Appointment:summary2023' %}");
+      $('#app').ready(function() {
+        $.fn.fullpage.moveTo(2, 0);
+      })
+      {% endif %}
 
       $("#rule-link").on('click', function(e){
         e.preventDefault();
