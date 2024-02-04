@@ -50,4 +50,5 @@ urlpatterns = [
          name='display_getappoint'),
     path('summary', summary.summary, name='summary'),
     path('summary/2021', summary.summary2021, name='summary2021'),
+    path('summary/2023', summary.summary2023, name='summary2023'),
 ]
