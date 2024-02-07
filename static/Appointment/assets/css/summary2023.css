@@ -3317,7 +3317,7 @@
     padding: 0;
     color: rgb(60, 60, 60);
     font-size: 18px;
-    font-family: "Siyuan SongTi regular", "lucida grande", "lucida sans unicode", lucida, helvetica, "Hiragino Sans GB", "Microsoft YaHei", "WenQuanYi Micro Hei", sans-serif;
+    font-family: "Siyuan SongTi regular";
     line-height: 35px;
     word-break: break-all;
   }
@@ -6014,13 +6014,12 @@
     left: 0;
     background: url("../img/summary2023/homepage/信封.PNG") no-repeat;
     background-size: 100% auto;
-    background-position: bottom left;
+    background-position: left bottom;
   }
 
   .page-1 .content1 {
     position: absolute;
-    top: 16%;
-    left: 9%;
+    left: 10%;
     font-size: 25px;
   }
 
@@ -6035,10 +6034,6 @@
 
   .page-1 .button {
     position: absolute;
-    top: 81%;
-    bottom: 12%;
-    left: 36%;
-    right: 34%;
     opacity: 0;
   }
 
@@ -6063,6 +6058,7 @@
     padding: 20px;
     box-sizing: border-box;
     background: white;
+    z-index: 10000;
   }
 
   .page-1 .agreement .rule-wrapper {
@@ -6095,153 +6091,6 @@
     margin-right: auto;
     margin-top: 10px;
   }
-
-  /* .page-1 .title1 {
-    height: 180px;
-    width: 350px;
-    position: absolute;
-    bottom: 25%;
-    left:2%;
-    right:2%;
-    background: url("../img/summary2021/home_page/大标题.png") no-repeat;
-    background-size: cover;
-    display:table;
-  }
-  
-  .page-1 .title_bottom {
-    height: 40px;
-    width: 100vw;
-    position: absolute;
-    bottom: 5%;
-    left:0;
-    right:0;
-    background: url("../img/summary2021/home_page/底部文本框.png") no-repeat;
-    background-size: cover;
-    display:table;
-  }
-  
-  .page-1 .title_top {
-    height: 30px;
-    width: 95vw;
-    position: absolute;
-    top: 5%;
-    left: 5%;
-    right: 5%;
-    background: url("../img/summary2021/home_page/顶部文本框.png") no-repeat;
-    background-size: cover;
-    display:table;
-  }
-  
-  .page-1 .title_right {
-    height: 250px;
-    width: 80px;
-    position: absolute;
-    top: 20%;
-    right: 0%;
-    background: url("../img/summary2021/home_page/右侧文本框.png") no-repeat;
-    background-size: cover;
-    display:table;
-  }
-  
-  .page-1 .pic_yuan {
-    height: 300px;
-    width: 200px;
-    position: absolute;
-    bottom: 0%;
-    left:0;
-    background: url("../img/summary2021/home_page/“元”图标.png") no-repeat;
-    background-size: cover;
-    display:table;
-    z-index: 3;
-  }
-  
-  .page-1 .bg-white {
-    height: 100%;
-    width: 100%;
-    position: absolute;
-    top: 0;
-    left: 0;
-    background: url("http://s3.music.126.net/nact/s/client/images/year2017/cover/light.png?282c69970cb1ace98b08e594888bcc5e") no-repeat;
-  
-    background-size: cover;
-  }
-  
-  
-  .page-1 .button {
-    display: block;
-    position: absolute;
-    right: 55px;
-    bottom: 90px;
-    width: 72px;
-    height: 72px;
-    background-color: rgb(255, 255, 255);
-    color: rgb(51, 51, 51);
-    font-size: 18px;
-    line-height: 22px;
-    text-align: center;
-    vertical-align: middle;
-    border-radius: 999px;
-  }
-  
-  .page-1 .button span {
-    -webkit-box-sizing: border-box;
-            box-sizing: border-box;
-    position: relative;
-    display: block;
-    height: 100%;
-    padding-top: 14px;
-  }
-  
-  .page-1 .button span::before {
-    content: "";
-    display: block;
-    position: absolute;
-    top: -8px;
-    left: -8px;
-    width: 88px;
-    height: 88px;
-    border-radius: 999px;
-    background-color: rgba(255, 255, 255, 0.22);
-    -webkit-animation: halo 0.8s ease-in infinite alternate;
-            animation: halo 0.8s ease-in infinite alternate;
-  }
-  
-  .page-1 .button span::after {
-    content: "";
-    display: block;
-    position: absolute;
-    top: -130px;
-    left: 35px;
-    width: 2px;
-    height: 130px;
-    background: -webkit-gradient(linear, left top, left bottom, from(rgba(255, 255, 255, 0.2)), to(rgb(255, 255, 255)));
-    background: -webkit-linear-gradient(rgba(255, 255, 255, 0.2), rgb(255, 255, 255));
-    background: -o-linear-gradient(rgba(255, 255, 255, 0.2), rgb(255, 255, 255));
-    background: linear-gradient(rgba(255, 255, 255, 0.2), rgb(255, 255, 255));
-  }
-  
-  .page-1 .card {
-    position: absolute;
-    bottom: 155px;
-    left: 100px;
-    width: 61px;
-    height: 122px;
-    background: url("http://s3.music.126.net/nact/s/client/images/year2017/cover/card_front.jpg?cafc1dd6b435974ddac2189259bcf009") no-repeat;
-    background-size: cover;
-    -webkit-box-shadow: rgba(0, 0, 0, 0.298) -15px 10px 10px;
-            box-shadow: rgba(0, 0, 0, 0.298) -15px 10px 10px;
-    -webkit-transform: rotateZ(-60deg) skewY(35deg);
-        -ms-transform: rotate(-60deg) skewY(35deg);
-            transform: rotateZ(-60deg) skewY(35deg);
-  }
-  
-  .page-1 .content {
-    position: absolute;
-    bottom: 15%;
-    right: 0;
-    left: 0;
-    text-align: center;
-  } */
   
 
   .page-2 .bg-back {
@@ -6278,7 +6127,7 @@
   .page-3 .content {
     position: absolute;
     right: 8%;
-    top: 30%;
+    top: 25%;
     text-align: right;
   }
   
@@ -6339,7 +6188,7 @@
   .page-6 .content {
     position: absolute;
     left: 8%;
-    top: 25%;
+    top: 20%;
     text-align: left;
   }
   
@@ -6459,7 +6308,7 @@
 
   .page-2-3 .content-1 {
     position: absolute;
-    top: 15%;
+    top: 12%;
     left: 0;
     right: 0;
     text-align: center;
@@ -6467,7 +6316,7 @@
 
   .page-2-3 .content-2 {
     position: absolute;
-    top: 52%;
+    top: 49%;
     left: 0;
     right: 0;
     text-align: center;
@@ -6527,7 +6376,7 @@
 
   .page-2-6 .content {
     position: absolute;
-    top: 10%;
+    top: 5%;
     left: 8%;
     text-align: left;
   }

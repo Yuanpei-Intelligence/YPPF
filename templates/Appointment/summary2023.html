@@ -48,14 +48,14 @@
         const audio = document.querySelector("audio");
         if (audio.paused) {
           audio.play();
-          button.querySelector("div#playing").style.setProperty("display", "block")
-          button.querySelector("div#paused").style.setProperty("display", "none")
+          document.querySelector("div#playing").style.setProperty("display", "block");
+          document.querySelector("div#paused").style.setProperty("display", "none");
         } else {
           audio.pause();
-          button.querySelector("div#playing").style.setProperty("display", "none")
-          button.querySelector("div#paused").style.setProperty("display", "block")
+          document.querySelector("div#playing").style.setProperty("display", "none");
+          document.querySelector("div#paused").style.setProperty("display", "block");
         }
-      })
+      });
 
     </script>
   </div>
@@ -89,6 +89,77 @@
           <button class="rule-button" id="rule-button">我知道啦</button>
         </div>
       </div>
+      <script>
+        // 阅读授权协议时禁止fullpage的翻页功能，防止和协议的滚动条冲突
+        var startY=null, endY=null;
+
+        document.querySelector('#rule').addEventListener('touchmove', function(e){
+          e.stopPropagation();
+        });
+
+        document.querySelector('#rule').addEventListener('wheel', function(e){
+          e.stopPropagation();
+        });
+      </script>
+      <script>
+        // 计算“立即开启”按钮的位置
+        function get_button(button, img_w, img_h, window_h, offset_w=0){
+          var top_r = 0.74, left_r = 0.32;
+          var width_r = 0.38, height_r = 0.1;
+          var top = window_h - (1 - top_r) * img_h, left = offset_w + img_w * left_r;
+          var width = img_w * width_r, height = img_h * height_r;
+          button.style.top = top + 'px';
+          button.style.left = left + 'px';
+          button.style.width = width + 'px';
+          button.style.height = height + 'px';
+          return;
+        }
+
+        var y_ratio = 0.10 // 文字在标题图片中距离顶端的百分比
+
+        // 计算标题图片放缩后的大小(img_w, img_h)
+        var ori_img_w = 750, ori_img_h = 1206;
+        var window_w = window.innerWidth, window_h = window.innerHeight;
+        var img_w = window_w, img_h = ori_img_h * window_w / ori_img_w;
+
+        // 获得标题图片的background-position属性
+        var element = document.querySelector('.page-1 .title');
+        var style = window.getComputedStyle(element);
+        var backgroundPosition = style.getPropertyValue('background-position');
+        var backgroundPositionY = parseFloat(backgroundPosition.split(' ')[1].replace('%', '')) / 100;
+
+        // 计算文字距离窗口顶端的绝对距离
+        var ori_y = (window_h - img_h) * backgroundPositionY;
+        var word_y = ori_y + y_ratio * img_h;
+        var word = document.querySelector('.page-1 .content1');
+        word.style.top = word_y + 'px';
+
+        // 计算button大小及位置
+        var button = document.querySelector('.page-1 .button');
+        get_button(button, img_w, img_h, window_h);
+
+        // 适配电脑等宽高比大的设备
+        if (img_h > window_h){
+          var title = document.querySelector('.page-1 .title');
+          var envelope = document.querySelector('.page-1 .envelope');
+
+          img_h = window_h, img_w = ori_img_w * window_h / ori_img_h;
+          word.style.top = y_ratio * img_h + 'px';
+          var word_style = window.getComputedStyle(word);
+          var word_left = parseFloat(word_style.getPropertyValue('left').split('px')[0]);
+          var x_ratio = word_left / window_w;
+          word.style.left = x_ratio * img_w + 0.5 * (window_w - img_w) + 'px';
+          
+          var button_offset_w = 0.5 * (window_w - img_w);
+          get_button(button, img_w, img_h, window_h, button_offset_w);
+
+          title.style.backgroundSize = 'auto 100%';
+          envelope.style.backgroundSize = 'auto 100%';
+          title.style.backgroundPosition = '50% top';
+          envelope.style.backgroundPosition = '50% bottom';
+        }
+
+      </script>
     </section>
 
     <!-- 地下室部分 -->
@@ -462,7 +533,6 @@
         localStorage.removeItem('replaced');
 
       var checked = false; //检查用户是否同意授权协议
-      var read_rule = false; // 防止用户阅读授权协议时滑动窗口触发翻页
       var redirect = false; // 防止onLeave在window.location.replace过程中多次执行
       var rst = null;
 
@@ -501,14 +571,11 @@
           if (index == 1) {
             // 已登录
             {% if logged_in %}
-              read_rule = !($('#rule').css('display') == 'none');
-              if (read_rule)
-                return false;
               checked = $('#agree-rule').is(':checked');
               // 不同意协议
               if (!checked){
                 {% if not user_cancel %}
-                  rst = confirm("请点击确认表示同意《智慧书院2023年度回忆授权协议》再开启你的年度总结之旅哦！\n如您不同意该协议，请点击取消，我们将为您展示样例。\n如您不慎误点取消，请上滑返回首页重新选择或刷新界面。\n祝您的回忆之旅轻松、愉快！");
+                  rst = confirm("请点击确认表示同意《智慧书院2023年度回忆授权协议》再开启你的年度总结之旅哦！\n如您不同意该协议，请点击取消，我们将为您展示样例。\n如您不慎误点取消，请上滑返回首页重新选择或刷新界面。\n祝您的回忆之旅愉快！");
                   if (rst)
                     $('#agree-rule').prop('checked', true).trigger('change');
                   else{
@@ -520,8 +587,6 @@
                       }
                       redirect = true;
                       return false;
-                    {% else %}
-                      return true;
                     {% endif %}
                   }
                 {% endif %} 
@@ -530,7 +595,6 @@
               {% if not user_accept %}
                 // 同意协议
                 if (checked){
-                  console.log(redirect);
                   if (!redirect){
                     localStorage.setItem('replaced', 'true');
                     window.location.replace(window.location.origin + window.location.pathname + "?accept=true");
@@ -541,21 +605,19 @@
               {% endif %}
             // 未登录
             {% else %}
-              rst = confirm("您尚未登录，将为您展示年度总结示例。点击取消跳转至登录界面。");
-              if (!rst) {
+              rst = confirm("您尚未登录，将为您跳转至登录界面。点击取消将展示年度总结示例。");
+              if (rst) {
                 window.location.href = "{% url 'index' %}?origin={% url 'Appointment:summary2023' %}";
                 return false;
               }
             {% endif %}
           }
           
-          console.log(index + ' leave direction: ' + direction);
         },
         afterLoad: function (anchorLink, index) {
           console.log(index + ' loaded');
         },
         sectionColor: ['yellow', 'green', 'blue', 'purple'],
-        fadingEffect: true,
       });
 
       $("#rule-link").on('click', function(e){
@@ -586,7 +648,6 @@
       $('audio')[0].ontimeupdate = function() {
         localStorage.setItem('currentTime', $('audio')[0].currentTime);
       };
-
     });
 
   </script>
