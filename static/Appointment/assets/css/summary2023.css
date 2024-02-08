@@ -3309,7 +3309,7 @@
 
   @font-face {
     font-family: 'Siyuan SongTi regular';
-    src: url('../fonts/Siyuan-SongTi-regular.otf') format('opentype');
+    src: url('../fonts/Siyuan-SongTi-regular.ttf') format('truetype');
   }
   
   .para {
