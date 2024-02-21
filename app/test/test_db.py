@@ -10,4 +10,4 @@ class MigrateTest(TestCase):
             'john', 'john', password='johnpassword')
 
     def test_migrate(self):
-        NaturalPerson.objects.create(person_id=self.john, name='john')
+        NaturalPerson.objects.create(self.john, name='john')

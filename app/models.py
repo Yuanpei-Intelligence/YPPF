@@ -39,6 +39,7 @@ models.py
 import random
 from math import ceil
 from datetime import datetime, timedelta
+from typing import TypeAlias
 
 from django.db import models, transaction
 from django.db.models import Q, QuerySet, Sum
@@ -47,6 +48,7 @@ from typing_extensions import Self
 
 from app.config import *
 from generic.models import User, YQPointRecord
+import utils.models.query as SQ
 from utils.models.descriptor import (invalid_for_frontend,
                                      necessary_for_frontend)
 from utils.models.semester import Semester, select_current
@@ -55,6 +57,7 @@ __all__ = [
     # 模型
     'User',
     'NaturalPerson',
+    'Person',
     'Freshman',
     'OrganizationType',
     'OrganizationTag',
@@ -65,7 +68,7 @@ __all__ = [
     'CommentBase',
     'Activity',
     'ActivityPhoto',
-    'Participant',
+    'Participation',
     'Notification',
     'Comment',
     'CommentPhoto',
@@ -244,8 +247,12 @@ class NaturalPersonManager(models.Manager['NaturalPerson']):
             self = self.activated()
         if update:
             self = self.select_for_update()
-        result: NaturalPerson = self.get(person_id=user)
+        result: NaturalPerson = self.get(SQ.sq(NaturalPerson.person_id, user))
         return result
+
+    def create(self, user: User, **kwargs) -> 'NaturalPerson':
+        kwargs[SQ.f(NaturalPerson.person_id)] = user
+        return super().create(**kwargs)
 
     def activated(self):
         return self.exclude(status=NaturalPerson.GraduateStatus.GRADUATED)
@@ -255,10 +262,17 @@ class NaturalPersonManager(models.Manager['NaturalPerson']):
             self = self.activated()
         return self.filter(identity=NaturalPerson.Identity.TEACHER)
 
-    def get_teacher(self, name_or_id, activate=True):
-        '''姓名或工号，不存在或不止一个时抛出异常'''
+    def get_teachers(self, identifiers: list[str], activate: bool = True
+                     ) -> QuerySet['NaturalPerson']:
+        '''姓名或工号获取教师'''
         teachers = self.teachers(activate=activate)
-        return teachers.get(Q(name=name_or_id) | Q(person_id__username=name_or_id))
+        name_query = SQ.mq(NaturalPerson.name, IN=identifiers)
+        uid_query = SQ.mq(NaturalPerson.person_id, User.username, IN=identifiers)
+        return teachers.filter(name_query | uid_query)
+
+    def get_teacher(self, name_or_id: str, activate: bool = True):
+        '''姓名或工号，不存在或不止一个时抛出异常'''
+        return self.get_teachers([name_or_id], activate=activate).get()
 
 
 class NaturalPerson(models.Model):
@@ -422,6 +436,9 @@ class NaturalPerson(models.Model):
         super().save(*args, **kwargs)
 
 
+Person: TypeAlias = NaturalPerson
+
+
 class Freshman(models.Model):
     class Meta:
         verbose_name = "0.新生信息"
@@ -443,10 +460,8 @@ class Freshman(models.Model):
 
     def exists(self):
         user_exist = User.objects.filter(username=self.sid).exists()
-        person_exist = NaturalPerson.objects.filter(
-            person_id__username=self.sid).exists()
-        return "person" if person_exist else (
-            "user" if user_exist else "")
+        person_exist = SQ.mfilter(NaturalPerson.person_id, username=self.sid).exists()
+        return "person" if person_exist else ("user" if user_exist else "")
 
 
 class OrganizationType(models.Model):
@@ -976,15 +991,6 @@ class Activity(CommentBase):
                                     null=True, blank=True,
                                     verbose_name="课程每周活动时间")
 
-    @property
-    def participants(self) -> QuerySet['Participant']:
-        return self.participant_set.all()
-
-    @property
-    def attended_participants(self) -> QuerySet['Participant']:
-        return self.participants.filter(
-            status=Participant.AttendStatus.ATTENDED)
-
     def save(self, *args, **kwargs):
         self.typename = "activity"
         super().save(*args, **kwargs)
@@ -1042,7 +1048,7 @@ class Activity(CommentBase):
         '''结算活动积分，应仅在活动结束时调用'''
         if status is None:
             status = self.status  # type: ignore
-        assert self.status == Activity.Status.END, "活动未结束，不能结算积分"
+        assert status == Activity.Status.END, "活动未结束，不能结算积分"
         if point is None:
             point = self.eval_point()
         assert point >= 0, "活动积分不能为负"
@@ -1051,8 +1057,10 @@ class Activity(CommentBase):
             return
 
         self = Activity.objects.select_for_update().get(pk=self.pk)
-        participant_ids = list(self.attended_participants.values_list(
-            'person_id__person_id', flat=True))
+        participation = SQ.sfilter(Participation.activity, self).filter(
+            status=Participation.AttendStatus.ATTENDED)
+        participant_ids = SQ.qsvlist(participation,
+                                     Participation.person, NaturalPerson.person_id)
         participants = User.objects.filter(id__in=participant_ids)
         User.objects.bulk_increase_YQPoint(
             participants, point, "参加活动", YQPointRecord.SourceType.ACTIVITY)
@@ -1073,32 +1081,38 @@ class ActivityPhoto(models.Model):
         upload_to=f"activity/photo/%Y/%m/", verbose_name=u'活动图片', null=True, blank=True)
     activity = models.ForeignKey(
         Activity, related_name="photos", on_delete=models.CASCADE)
+    activity_id: int
     time = models.DateTimeField("上传时间", auto_now_add=True)
 
     def get_image_path(self):
         return image_url(self.image, enable_abs=True)
 
 
-class ParticipantManager(models.Manager['Participant']):
+class ParticipationManager(models.Manager['Participation']):
     def activated(self, no_unattend=False):
         '''返回成功报名的参与信息'''
         exclude_status = [
-            Participant.AttendStatus.CANCELED,
-            Participant.AttendStatus.APPLYFAILED,
+            Participation.AttendStatus.CANCELED,
+            Participation.AttendStatus.APPLYFAILED,
         ]
         if no_unattend:
-            exclude_status.append(Participant.AttendStatus.UNATTENDED)
+            exclude_status.append(Participation.AttendStatus.UNATTENDED)
         return self.exclude(status__in=exclude_status)
 
 
-class Participant(models.Model):
+class Participation(models.Model):
     class Meta:
         verbose_name = "3.活动参与情况"
         verbose_name_plural = verbose_name
         ordering = ["activity_id"]
 
-    activity_id = models.ForeignKey(Activity, on_delete=models.CASCADE)
-    person_id = models.ForeignKey(NaturalPerson, on_delete=models.CASCADE)
+    activity = models.ForeignKey(Activity, on_delete=models.CASCADE, related_name='+')
+    person = models.ForeignKey(NaturalPerson, on_delete=models.CASCADE, related_name='+')
+
+    @necessary_for_frontend(person)
+    def get_participant(self):
+        '''供前端使用，追踪该字段的函数'''
+        return self.person
 
     class AttendStatus(models.TextChoices):
         APPLYING = "申请中"
@@ -1114,7 +1128,7 @@ class Participant(models.Model):
         default=AttendStatus.APPLYING,
         max_length=32,
     )
-    objects: ParticipantManager = ParticipantManager()
+    objects: ParticipationManager = ParticipationManager()
 
 
 class NotificationManager(models.Manager['Notification']):
@@ -1254,8 +1268,7 @@ class ModifyOrganization(CommentBase):
 
     def get_poster_name(self):
         try:
-            person = NaturalPerson.objects.get(person_id=self.pos)
-            return person.name
+            return NaturalPerson.objects.get_by_user(self.pos).name
         except:
             return '未知'
 
@@ -1806,6 +1819,10 @@ class Pool(models.Model):
     # 类型为兑换池时无效
     entry_time = models.IntegerField('进入次数', default=1)
     ticket_price = models.IntegerField('抽奖费', default=0)
+    empty_YQPoint_compensation_lowerbound = models.IntegerField(
+        '空盒元气值补偿下限', default=0)
+    empty_YQPoint_compensation_upperbound = models.IntegerField(
+        '空盒元气值补偿上限', default=0)
     start = models.DateTimeField('开始时间')
     end = models.DateTimeField('结束时间', null=True, blank=True)
     redeem_start = models.DateTimeField(
@@ -1840,10 +1857,11 @@ class PoolItem(models.Model):
     exchange_price = models.IntegerField('价格', null=True, blank=True)
     # 下面这个在抽奖/盲盒奖池中有效
     is_big_prize = models.BooleanField('是否特别奖品', default=False)
+    is_empty_prize = models.BooleanField('是否空盒', default=False)
 
     @property
     def is_empty(self) -> bool:
-        return self.prize is None
+        return self.is_empty_prize or (self.prize is None)
 
     @invalid_for_frontend
     def __str__(self):

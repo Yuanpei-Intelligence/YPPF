@@ -36,7 +36,7 @@ __all__ = [
 class ShowChats(ProfileTemplateView):
 
     http_method_names = ['get']
-    template_name = 'showChats.html'
+    template_name = 'academic/showChats.html'
     page_name = '学术地图问答'
 
     def prepare_get(self):
@@ -59,7 +59,7 @@ class ShowChats(ProfileTemplateView):
 class ViewChat(ProfileTemplateView):
 
     http_method_names = ['get']
-    template_name = 'viewChat.html'
+    template_name = 'academic/viewChat.html'
     page_name = '学术地图问答'
 
     def setup(self, request: HttpRequest, chat_id: int):
@@ -211,7 +211,7 @@ def modifyAcademic(request: UserRequest) -> HttpResponse:
         request.user, "修改学术地图")
     frontend_dict["warn_code"] = request.GET.get('warn_code', 0)
     frontend_dict["warn_message"] = request.GET.get('warn_message', "")
-    return render(request, "modify_academic.html", frontend_dict)
+    return render(request, "academic/modify.html", frontend_dict)
 
 
 @login_required(redirect_field_name="origin")
@@ -236,7 +236,7 @@ def auditAcademic(request: UserRequest) -> HttpResponse:
         request.user, "审核学术地图")
     frontend_dict["student_list"] = get_wait_audit_student()
 
-    return render(request, "audit_academic.html", frontend_dict)
+    return render(request, "academic/audit.html", frontend_dict)
 
 
 @login_required(redirect_field_name="origin")
@@ -246,8 +246,7 @@ def applyAuditAcademic(request: HttpRequest):
     if not NaturalPerson.objects.get_by_user(request.user).is_teacher():
         return JsonResponse(wrong("只有老师才能执行审核操作！"))
     try:
-        author = NaturalPerson.objects.get(
-            person_id_id=request.POST.get("author_id"))
+        author = NaturalPerson.objects.get_by_user(request.POST.get("author_id"))
         # 需要回传作者的person_id.id
         audit_academic_map(author)
         return JsonResponse(succeed("审核成功！"))

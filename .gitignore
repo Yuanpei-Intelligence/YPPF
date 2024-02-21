@@ -44,8 +44,6 @@ Thumbs.db
 local_json*.json
 config*.json
 weather*.json
-*/migrations/*
-!*/migrations/__init__.py
 test_data/
 # Media #
 media/
@@ -57,16 +55,18 @@ static/admin
 # activity/
 # prize/
 logstore/
-* old.*
-*_old.*
-*fake.*
 *backup.*
 *backup/
+local[_ ]*
+*[_ ]local.*
 *local/
 
 # Python #
 __pycache__/
 *.py[cod]
+# Virtual Environments #
+.venv/
+.env/
 
 # OPS Files *
 *.ini

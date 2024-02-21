@@ -31,8 +31,7 @@ class RunLotteryTestCase(TestCase):
         u9 = User.objects.create_user("99", "1", password="333")
         u10 = User.objects.create_user("1010", "1", password="333")
 
-        n1 = NaturalPerson.objects.create(
-            person_id=u1, name="1", stu_grade="2018")
+        n1 = NaturalPerson.objects.create(u1, name="1", stu_grade="2018")
         u_YQP = User.objects.create_user("00", "0", password="111")
         otype = OrganizationType.objects.create(
             otype_id=1, otype_name="xxx", incharge=n1)

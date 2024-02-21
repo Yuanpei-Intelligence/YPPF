@@ -1,5 +1,5 @@
 from datetime import datetime
-from typing import Callable, Union, Type
+from typing import Callable
 import pandas as pd
 
 from django.db import models
@@ -8,16 +8,18 @@ from django.db.models import (
     Count, Aggregate, QuerySet
 )
 
+import utils.models.query as SQ
 from generic.models import *
 from record.models import *
 from app.models import *
+from feedback.models import Feedback
 from Appointment.models import Appoint
 
 
 class BaseDump():
 
     @staticmethod
-    def time_filter(data_model: Union[Type[models.Model], QuerySet],
+    def time_filter(data_model: type[models.Model] | QuerySet,
                     start_time: datetime = None,
                     end_time: datetime = None,
                     start_time_field: str = 'time',
@@ -42,7 +44,7 @@ class BaseDump():
             filter_kw['semester'] = semester
         if not isinstance(data_model, QuerySet):
             data_model = data_model.objects.all()
-        return data_model.objects.filter(**filter_kw)
+        return data_model.filter(**filter_kw)
 
     @classmethod
     def dump(cls, hash_func: Callable = None, **options) -> pd.DataFrame:
@@ -110,7 +112,7 @@ class OrgActivityDump(BaseDump):
 
     @classmethod
     def dump(cls, **options) -> pd.DataFrame:
-        org_name_field = 'organization_id__oname'
+        org_name_field = SQ.f(Activity.organization_id, Organization.oname)
         return pd.DataFrame(
             cls.time_filter(Activity, options.get('start_time', None),
                             options.get('end_time', None), start_time_field='start',
@@ -135,20 +137,20 @@ class PersonPosDump(BaseDump):
             def __init__(self, expression, distinct=False, ordering=None, separator=',', **extra):
                 super(GroupConcat, self).__init__(
                     expression,
-                    distinct='DISTINCT ' if distinct else '',
+                    distinct=distinct,
                     ordering=' ORDER BY %s' % ordering if ordering is not None else '',
                     separator=' SEPARATOR "%s"' % separator,
                     output_field=CharField(),
                     **extra
                 )
 
-        sid_field = 'person__person_id__username'  # 学号
         position_data = pd.DataFrame(
             cls.time_filter(Position, year=options.get('year', None), 
                             semester=options.get('semester', None))
-                .values(sid_field)
-                .annotate(count=Count('org'),
-                          org_list=GroupConcat('org__oname', separator=','))
+                .values(SQ.f(Position.person, NaturalPerson.person_id, User.username))
+                .annotate(count=Count(SQ.f(Position.org)),
+                          org_list=GroupConcat(
+                              SQ.f(Position.org, Organization.oname), separator=','))
                 .values_list(),
             columns=('用户', '参与组织个数', '参与组织'))
         if hash_func is not None:
@@ -165,11 +167,11 @@ class PersonActivityDump(BaseDump):
         activity_queryset = cls.time_filter(Activity, year=options.get('year', None), 
                                             semester=options.get('semester', None))
         participants_data = pd.DataFrame(
-            Participant.objects.filter(activity_id__in=activity_queryset)
-                .values_list('person_id__person_id',
-                             'activity_id__organization_id__oname',
-                             'activity_id__title')
-                .order_by('person_id__person_id'),
+            Participation.objects.filter(SQ.mq(Participation.activity, IN=activity_queryset))
+                .values_list(SQ.f(Participation.person, NaturalPerson.person_id),
+                             SQ.f(Participation.activity, Activity.organization_id, Organization.oname),
+                             SQ.f(Participation.activity, Activity.title))
+                .order_by(SQ.f(Participation.person, NaturalPerson.person_id)),
             columns=('用户', '组织', '活动'))
         if hash_func is not None:
             participants_data['用户'].map(hash_func)
@@ -183,18 +185,20 @@ class PersonCourseDump(BaseDump):
 
     @classmethod
     def dump(cls, hash_func: Callable = None, **options) -> pd.DataFrame:
+        _m = CourseRecord
         course_data = pd.DataFrame(
             cls.time_filter(CourseRecord, year=options.get('year', None),
                             semester=options.get('semester', None))
-                .values_list('person')
+                .values_list(SQ.f(_m.person))
                 .annotate(course_num=Count('id'),
                           record_times=Sum('attend_times', filter=Q(invalid=False)),
                           invalid_times=Sum('attend_times', filter=Q(invalid=True)),
                           record_hours=Sum('total_hours', filter=Q(invalid=False)),
                           invalid_hours=Sum('total_hours', filter=Q(invalid=True)))
-                .values_list('person__person_id__username', 'course_num',
-                             'record_times', 'invalid_times', 'record_hours',
-                             'invalid_hours'),
+                .values_list(
+                    SQ.f(_m.person, NaturalPerson.person_id, User.username),
+                    'course_num', 'record_times', 'invalid_times',
+                    'record_hours', 'invalid_hours'),
             columns=('用户', '课程数量', '有效次数', '无效次数', '有效时长', '无效时长'))
         if hash_func is not None:
             course_data['用户'].map(hash_func)
@@ -207,15 +211,18 @@ class PersonFeedbackDump(BaseDump):
     """
     @classmethod
     def dump(cls, hash_func: Callable = None, **options) -> pd.DataFrame:
+        _m = Feedback
         feedback_data = pd.DataFrame(
             cls.time_filter(Feedback, start_time=options.get('start_time', None),
                             end_time=options.get('end_time', None),
                             start_time_field='feedback_time',
                             end_time_field='feedback_time')
-                .values_list('person')
+                .values_list(SQ.f(_m.person))
                 .annotate(total_num=Count('id'),
                           solved_num=Count('id', filter=Q(solve_status=Feedback.SolveStatus.SOLVED)))
-                .values_list('person__person_id__username', 'total_num', 'solved_num'),
+                .values_list(
+                    SQ.f(_m.person, NaturalPerson.person_id, User.username),
+                    'total_num', 'solved_num'),
             columns=('用户', '提交反馈数', '已解决反馈数'))
         if hash_func is not None:
             feedback_data['用户'].map(hash_func)

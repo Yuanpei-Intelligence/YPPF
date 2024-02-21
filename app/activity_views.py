@@ -5,7 +5,7 @@ from datetime import datetime, timedelta
 from typing import Literal
 
 from django.db import transaction
-from django.db.models import Q, F
+from django.db.models import F
 import csv
 import qrcode
 
@@ -15,12 +15,11 @@ from app.views_dependency import *
 from app.view.base import ProfileTemplateView
 from app.models import (
     NaturalPerson,
-    Organization,
     OrganizationType,
     Position,
     Activity,
     ActivityPhoto,
-    Participant,
+    Participation,
     ActivitySummary,
 )
 from app.activity_utils import (
@@ -33,6 +32,10 @@ from app.activity_utils import (
     cancel_activity,
     withdraw_activity,
     get_activity_QRcode,
+    create_participate_infos,
+    modify_participants,
+    weekly_summary_orgs,
+    available_participants,
 )
 from app.comment_utils import addComment, showComment
 from app.utils import (
@@ -42,7 +45,9 @@ from app.utils import (
 
 __all__ = [
     'viewActivity', 'getActivityInfo', 'checkinActivity',
-    'addActivity', 'showActivity', 'examineActivity',
+    'addActivity', 'activityCenter', 'examineActivity',
+    'offlineCheckinActivity', 'finishedActivityCenter', 'activitySummary',
+    'WeeklyActivitySummary',
 ]
 
 
@@ -236,8 +241,9 @@ def viewActivity(request: HttpRequest, aid=None):
         """
         person = True
         try:
-            participant = Participant.objects.get(
-                activity_id=activity, person_id=me.id)
+            participant = Participation.objects.get(
+                SQ.sq(Participation.activity, activity),
+                SQ.sq(Participation.person, me))
             # pStatus 是参与状态
             pStatus = participant.status
         except:
@@ -279,16 +285,16 @@ def viewActivity(request: HttpRequest, aid=None):
             pass
 
     # 参与者, 无论报名是否通过
-    participants = Participant.objects.filter(
-        activity_id=activity,
+    participants = Participation.objects.filter(
+        SQ.sq(Participation.activity, activity),
         status__in=[
-            Participant.AttendStatus.APPLYING,
-            Participant.AttendStatus.APPLYSUCCESS,
-            Participant.AttendStatus.ATTENDED,
-            Participant.AttendStatus.UNATTENDED,
+            Participation.AttendStatus.APPLYING,
+            Participation.AttendStatus.APPLYSUCCESS,
+            Participation.AttendStatus.ATTENDED,
+            Participation.AttendStatus.UNATTENDED,
         ])
     people_list = NaturalPerson.objects.activated().filter(
-        id__in=participants.values("person_id"))
+        id__in=SQ.qsvlist(participants, Participation.person))
 
     # 新版侧边栏，顶栏等的呈现，采用bar_display，必须放在render前最后一步，但这里render太多了
     # TODO: 整理好代码结构，在最后统一返回
@@ -304,7 +310,7 @@ def viewActivity(request: HttpRequest, aid=None):
         visit_times=F('visit_times')+1)
     # activity.visit_times += 1
     # activity.save()
-    return render(request, "activity_info.html", locals())
+    return render(request, "activity/info.html", locals())
 
 
 @login_required(redirect_field_name="origin")
@@ -350,10 +356,8 @@ def getActivityInfo(request: HttpRequest):
         assert activity.status != Activity.Status.APPLYING, "报名尚未截止"
 
         # get participants
-        # are you sure it's 'Paticipant' not 'Participant' ??
-        participants = Participant.objects.filter(activity_id=activity_id)
-        participants = participants.filter(
-            status=Participant.AttendStatus.APPLYSUCCESS
+        participants = SQ.sfilter(Participation.activity, activity).filter(
+            status=Participation.AttendStatus.APPLYSUCCESS
         )
 
         # get required fields
@@ -423,18 +427,19 @@ def checkinActivity(request: UserRequest, aid=None):
     ):
         try:
             with transaction.atomic():
-                participant = Participant.objects.select_for_update().get(
-                    activity_id=aid, person_id=np,
+                participant = Participation.objects.select_for_update().get(
+                    SQ.sq(Participation.activity, activity),
+                    SQ.sq(Participation.person, np),
                     status__in=[
-                        Participant.AttendStatus.UNATTENDED,
-                        Participant.AttendStatus.APPLYSUCCESS,
-                        Participant.AttendStatus.ATTENDED,
+                        Participation.AttendStatus.UNATTENDED,
+                        Participation.AttendStatus.APPLYSUCCESS,
+                        Participation.AttendStatus.ATTENDED,
                     ]
                 )
-                if participant.status == Participant.AttendStatus.ATTENDED:
+                if participant.status == Participation.AttendStatus.ATTENDED:
                     context = succeed("您已签到，无需重复签到!")
                 else:
-                    participant.status = Participant.AttendStatus.ATTENDED
+                    participant.status = Participation.AttendStatus.ATTENDED
                     participant.save()
                     context = succeed("签到成功!")
         except:
@@ -622,13 +627,13 @@ def addActivity(request: UserRequest, aid=None):
     else:
         bar_display = utils.get_sidebar_and_navbar(request.user, "修改活动")
 
-    return render(request, "activity_add.html", locals())
+    return render(request, "activity/application.html", locals())
 
 
 @login_required(redirect_field_name="origin")
 @utils.check_user_access(redirect_url="/logout/")
 @logger.secure_view()
-def showActivity(request: UserRequest):
+def activityCenter(request: UserRequest):
     """
     活动信息的聚合界面
     只有老师和小组才能看到，老师看到检查者是自己的，小组看到发起方是自己的
@@ -662,7 +667,7 @@ def showActivity(request: UserRequest):
     if request.user.is_org() and me.oname == CONFIG.yqpoint.org_name:
         YQPoint_Source_Org = True
 
-    return render(request, "activity_show.html", locals() | dict(user=request.user))
+    return render(request, "activity/center.html", locals() | dict(user=request.user))
 
 
 @login_required(redirect_field_name="origin")
@@ -759,7 +764,7 @@ def examineActivity(request: UserRequest, aid: int | str):
     bar_display = utils.get_sidebar_and_navbar(request.user, "活动审核")
     # bar_display["title_name"] = "审查活动"
     # bar_display["narbar_name"] = "审查活动"
-    return render(request, "activity_add.html", locals())
+    return render(request, "activity/application.html", locals())
 
 
 @login_required(redirect_field_name="origin")
@@ -785,11 +790,11 @@ def offlineCheckinActivity(request: HttpRequest, aid):
     except:
         return redirect(message_url(wrong('请不要随意访问其他网页！')))
 
-    member_list = Participant.objects.filter(
-        activity_id=aid,
+    member_participation = Participation.objects.filter(
+        SQ.sq(Participation.activity, activity),
         status__in=[
-            Participant.AttendStatus.UNATTENDED,
-            Participant.AttendStatus.ATTENDED,
+            Participation.AttendStatus.UNATTENDED,
+            Participation.AttendStatus.ATTENDED,
         ])
 
     if request.method == "POST" and request.POST:
@@ -797,21 +802,21 @@ def offlineCheckinActivity(request: HttpRequest, aid):
         if option == "saveSituation":
             # 修改签到状态
 
-            member_userids = member_list.values_list("person_id", flat=True)
-            member_attend, member_unattend = [], []
-            for person_id in member_userids:
-                checkin = request.POST.get(f"checkin_{person_id}")
+            member_userids = SQ.qsvlist(member_participation, Participation.person)
+            attend_pids, unattend_pids = [], []
+            for pid in member_userids:
+                checkin = request.POST.get(f"checkin_{pid}")
                 if checkin == "yes":
-                    member_attend.append(person_id)
+                    attend_pids.append(pid)
                 elif checkin == "no":
-                    member_unattend.append(person_id)
+                    unattend_pids.append(pid)
             with transaction.atomic():
-                member_list.select_for_update().filter(
-                    person_id_id__in=member_attend).update(
-                        status=Participant.AttendStatus.ATTENDED)
-                member_list.select_for_update().filter(
-                    person_id_id__in=member_unattend).update(
-                        status=Participant.AttendStatus.UNATTENDED)
+                member_participation.select_for_update().filter(
+                    SQ.mq(Participation.person, IN=attend_pids)).update(
+                        status=Participation.AttendStatus.ATTENDED)
+                member_participation.select_for_update().filter(
+                    SQ.mq(Participation.person, IN=unattend_pids)).update(
+                        status=Participation.AttendStatus.UNATTENDED)
             # 修改成功之后根据src的不同返回不同的界面，1代表聚合页面，2代表活动主页
             if src == "course_center":
                 return redirect(message_url(
@@ -822,15 +827,16 @@ def offlineCheckinActivity(request: HttpRequest, aid):
 
     bar_display = utils.get_sidebar_and_navbar(request.user,
                                                navbar_name="调整签到信息")
-    member_list = member_list.select_related('person_id')
-    render_context = dict(bar_display=bar_display, member_list=member_list)
-    return render(request, "activity_checkinoffline.html", render_context)
+    member_participation = member_participation.select_related(
+        SQ.f(Participation.person))
+    render_context = dict(bar_display=bar_display, member_list=member_participation)
+    return render(request, "activity/modify_checkin.html", render_context)
 
 
 @login_required(redirect_field_name="origin")
 @utils.check_user_access(redirect_url="/logout/")
 @logger.secure_view()
-def endActivity(request: HttpRequest):
+def finishedActivityCenter(request: HttpRequest):
     """
     之前被用为报销信息的聚合界面，现已将报销删去，留下总结图片的功能
     对审核老师进行了特判
@@ -864,17 +870,25 @@ def endActivity(request: HttpRequest):
             ).exclude(status=ActivitySummary.Status.WAITING).order_by("-time")
         }
 
+    # 判断是否有权限进行每周活动总结
+    weekly_summary_active = (request.user.is_org() and 
+                             get_person_or_org(request.user) in weekly_summary_orgs())
+
     # 前端使用
-    all_instances = all_instances
-    bar_display = utils.get_sidebar_and_navbar(request.user, "活动结项")
-    return render(request, "activity_summary_show.html", locals() | dict(user=request.user))
+    context = dict(
+        bar_display=utils.get_sidebar_and_navbar(request.user, "活动结项"),
+        all_instances=all_instances,
+        user=request.user,
+        weekly_summary_active=weekly_summary_active,
+    )
+    return render(request, "activity/finished_center.html", context)
 
 
 # 新建+修改+取消+审核 报销信息
 @login_required(redirect_field_name="origin")
 @utils.check_user_access(redirect_url="/logout/")
 @logger.secure_view()
-def modifyEndActivity(request: UserRequest):
+def activitySummary(request: UserRequest):
     html_display = {}
 
     # ———————————————— 读取可能存在的申请 为POST和GET做准备 ————————————————
@@ -958,48 +972,61 @@ def modifyEndActivity(request: UserRequest):
 
         if (post_type != "new_submit") and not application.is_pending():
             return redirect(message_url(wrong("不可以修改状态不为申请中的申请")))
-
-        if post_type in ["new_submit", "modify_submit"]:
-            if post_type == "new_submit":
-                # 检查活动
-                try:
-                    act_id = int(request.POST.get('activity_id'))
-                    activity = Activity.objects.get(id=act_id)
-                    assert activity in activities  # 防止篡改POST导致伪造
-                except:
-                    return redirect(message_url(wrong('找不到该活动，请检查活动总结的合法性！')))
+        
+        full_path = request.get_full_path()
+        if post_type == "new_submit":
+            # 检查活动
+            try:
+                act_id = int(request.POST.get('activity_id'))
+                activity = Activity.objects.get(id=act_id)
+                assert activity in activities  # 防止篡改POST导致伪造
+            except:
+                return redirect(message_url(wrong('找不到该活动，请检查活动总结的合法性！')))
+            # 活动总结图片合法性检查
+            summary_photos = request.FILES.getlist('summaryimages')
+            photo_num = len(summary_photos)
+            if photo_num != 1:
+                return redirect(message_url(wrong('图片内容为空或有多张图片！'), full_path))
+            for image in summary_photos:
+                if utils.if_image(image) != 2:
+                    return redirect(message_url(wrong("上传的总结图片只支持图片格式！"), full_path))
+            # 新建activity summary
+            application: ActivitySummary = ActivitySummary.objects.create(
+                status=ActivitySummary.Status.WAITING,
+                activity=activity,
+                image=summary_photos[0]
+            )
+            context = succeed(
+                f'活动“{application.activity.title}”的申请已成功发送，' +
+                f'请耐心等待{application.activity.examine_teacher.name}老师审批！'
+            )
+            
+        elif post_type == "modify_submit":
+            summary_photos = request.FILES.getlist('summaryimages')
+            now_participant_uids = request.POST.getlist('students')
+            photo_num = len(summary_photos)
+            if photo_num > 1:
+                return redirect(message_url(wrong('有多张图片！'), full_path))
+            for image in summary_photos:
+                if utils.if_image(image) != 2:
+                    return redirect(message_url(wrong("上传的总结图片只支持图片格式！"), full_path))
+            if len(now_participant_uids) == 0:
+                return redirect(message_url(wrong('参与人员不能为空'), full_path))
+            available_uids = SQ.qsvlist(available_participants(), User.username)
+            if set(now_participant_uids) - set(available_uids):
+                return redirect(message_url(wrong('参与人员不合法'), full_path))
 
             with transaction.atomic():
-                if post_type == "new_submit":
-                    # 新建activity summary
-                    application: ActivitySummary = ActivitySummary.objects.create(
-                        status=ActivitySummary.Status.WAITING,
-                        activity=activity,
-                    )
-                # 活动总结图片
-                summary_photos = request.FILES.getlist('summaryimages')
-                photo_num = len(summary_photos)
-                if photo_num == 1:
-                    # 合法性检查
-                    for image in summary_photos:
-                        if utils.if_image(image) != 2:
-                            return redirect(
-                                message_url(wrong("上传的总结图片只支持图片格式！")))
+                # 修改活动总结图片
+                if photo_num > 0:
                     application.image = summary_photos[0]
                     application.save()
-
-                else:
-                    return redirect(message_url(wrong('图片内容为空或有多张图片！'), request.path))
-
-                if post_type == "new_submit":
-                    context = succeed(
-                        f'活动“{application.activity.title}”的申请已成功发送，请耐心等待{application.activity.examine_teacher.name}老师审批！'
-                    )
-                else:
-                    context = succeed(
-                        f'活动“{application.activity.title}”的申请已成功修改，请耐心等待{application.activity.examine_teacher.name}老师审批！'
-                    )
-                context["application_id"] = application.id
+                # 修改参与人员
+                modify_participants(application.activity, now_participant_uids)
+            context = succeed(
+                f'活动“{application.activity.title}”的申请已成功修改，' +
+                f'请耐心等待{application.activity.examine_teacher.name}老师审批！'
+            )
 
         elif post_type == "cancel_submit":
             if not application.is_pending():  # 如果不在pending状态, 可能是重复点击
@@ -1007,7 +1034,6 @@ def modifyEndActivity(request: UserRequest):
             application.status = ActivitySummary.Status.CANCELED
             application.save()
             context = succeed(f"成功取消“{application.activity.title}”的活动总结申请!")
-            context["application_id"] = application.id
 
         else:
             if not application.is_pending():
@@ -1019,7 +1045,6 @@ def modifyEndActivity(request: UserRequest):
                 application.save()
                 context = succeed(
                     f'已成功拒绝活动“{application.activity.title}”的活动总结申请！')
-                context["application_id"] = application.id
             elif post_type == "accept_submit":
                 # 修改申请的状态
                 application.status = ActivitySummary.Status.CONFIRMED
@@ -1032,7 +1057,6 @@ def modifyEndActivity(request: UserRequest):
                         type=ActivityPhoto.PhotoType.SUMMARY)
                 application.save()
                 context = succeed(f'活动“{application.activity.title}”的总结申请已通过！')
-                context["application_id"] = application.id
 
         # 为了保证稳定性，完成POST操作后同意全体回调函数，进入GET状态
         if application is None:
@@ -1046,6 +1070,9 @@ def modifyEndActivity(request: UserRequest):
         老师：可能是审核申请
     '''
 
+    render_context = dict()
+    render_context.update(application=application, activities=activities,
+                          is_new_application=is_new_application)
     # (1) 是否允许修改表单
     # 小组写表格?
     allow_form_edit = (request.user.is_org()
@@ -1057,24 +1084,34 @@ def modifyEndActivity(request: UserRequest):
                           and application.is_pending())
 
     # 用于前端展示：如果是新申请，申请人即“me”，否则从application获取。
-    apply_person = me if is_new_application else application.get_org()
-    # 申请人头像
-    app_avatar_path = apply_person.get_user_ava()
+    render_context.update(
+        allow_form_edit=allow_form_edit,
+        allow_audit_submit=allow_audit_submit,
+        applicant=me if is_new_application else application.get_org(),
+    )
 
     # 活动总结图片
-    summary_photo = application.image if application is not None else None
-    summary_photo_exist = True if summary_photo is not None else False
-    # 审核老师
-    examine_teacher = application.activity.examine_teacher if application is not None else None
-    bar_display = utils.get_sidebar_and_navbar(
-        request.user, navbar_name="活动总结详情")
+    if application is not None:
+        render_context.update(summary_photo=application.image)
 
-    return render(request, "modify_activity_summary.html", locals())
+    # 所有人员和参与人员
+    # 用于前端展示，把js数据都放在这里
+    json_context = dict(user_infos=to_search_indices(available_participants()))
+    if application is not None:
+        participation = SQ.sfilter(Participation.activity, application.activity)
+        json_context.update(participant_ids=SQ.qsvlist(
+            participation.filter(status=Participation.AttendStatus.ATTENDED),
+            Participation.person, NaturalPerson.person_id, User.username
+        ))
+    render_context.update(json_context=json_context)
+    bar_display = utils.get_sidebar_and_navbar(request.user, '活动总结详情')
+    render_context.update(bar_display=bar_display, html_display=html_display)
+    return render(request, "activity/summary_application.html", render_context)
 
 
-class WeeklyActivitySummaryView(ProfileTemplateView):
+class WeeklyActivitySummary(ProfileTemplateView):
 
-    template_name = "weekly_activity_summary.html"
+    template_name = "activity/weekly_summary.html"
     page_name = "每周活动总结"
 
     def prepare_get(self):
@@ -1115,6 +1152,9 @@ class WeeklyActivitySummaryView(ProfileTemplateView):
         me = utils.get_person_or_org(self.request.user)
         if not self.request.user.is_org():
             return redirect(message_url(wrong('小组账号才能发起每周活动总结')))
+        valid_orgs = weekly_summary_orgs()
+        if not me in valid_orgs:
+            return redirect(message_url(wrong('您没有权限发起每周活动总结')))
 
         # 准备前端展示量
         html_display["applicant_name"] = me.oname
@@ -1220,16 +1260,9 @@ class WeeklyActivitySummaryView(ProfileTemplateView):
                 image=self.context["announce_pic_src"], type=ActivityPhoto.PhotoType.ANNOUNCE, activity=activity)
 
             # 创建参与人
-            nps = NaturalPerson.objects.filter(
-                person_id__username__in=participants_ids)
-            participants = [
-                Participant(
-                    activity_id=activity,
-                    person_id=np,
-                    status=Participant.AttendStatus.ATTENDED,
-                ) for np in nps
-            ]
-            Participant.objects.bulk_create(participants)
+            nps = SQ.mfilter(NaturalPerson.person_id, User.username, IN=participants_ids)
+            status = Participation.AttendStatus.ATTENDED
+            create_participate_infos(activity, nps, status=status)
             activity.current_participants = len(participants_ids)
             activity.settle_yqpoint()
             activity.save()
@@ -1237,7 +1270,7 @@ class WeeklyActivitySummaryView(ProfileTemplateView):
             # 创建活动总结
             application: ActivitySummary = ActivitySummary.objects.create(
                 activity=activity,
-                status=ActivitySummary.Status.CONFIRMED,
+                status=ActivitySummary.Status.WAITING,
                 image=self.context["summary_pic"]
             )
             application.save()

@@ -1,11 +1,12 @@
 from typing import cast
 
 from django.contrib import auth
-from django.db import connection
 from utils.http.dependency import HttpRequest, HttpResponse, UserRequest
 
 from generic.models import User
+import utils.models.query as SQ
 from utils.global_messages import succeed
+from utils.health_check import db_connection_healthy
 from utils.views import SecureTemplateView, SecureView
 from app.models import Organization
 from app.utils import update_related_account_in_session
@@ -52,24 +53,26 @@ class Index(SecureTemplateView):
                 f'“{user.get_full_name()}”不存在成长档案，您可以登录其他账号'
             )
 
-    def prepare_login(self) -> SecureView.HandlerType:
+    def ip_check(self) -> None:
         # Prevent bug report
         x_forwarded_for = self.request.META.get('HTTP_X_FORWARDED_FOR')
         if x_forwarded_for and x_forwarded_for.split(',')[0] == '127.0.0.1':
-            return self.http_forbidden()
+            self.permission_denied('请使用域名访问')
 
+    def prepare_login(self) -> SecureView.HandlerType:
+        self.ip_check()
         assert 'username' in self.request.POST
         assert 'password' in self.request.POST
         _user = self.request.user
         assert not _user.is_authenticated or not cast(User, _user).is_valid()
         username = self.request.POST['username']
         # Check weather username exists
-        if not User.objects.filter(username=username).exists():
+        if not SQ.sfilter(User.username, username).exists():
             # Allow org to login with orgname
-            org = Organization.objects.filter(oname=username).first()
+            org = SQ.sfilter(Organization.oname, username).first()
             if org is None:
                 return self.wrong('用户名不存在')
-            username = org.get_user().username
+            username = cast(Organization, org).get_user().username
         self.username = username
         self.password = self.request.POST['password']
         return self.login
@@ -118,19 +121,11 @@ class Logout(SecureView):
 
 
 def healthcheck(request: HttpRequest) -> HttpResponse:
-    """
+    '''
     django健康状态检查
     尝试执行数据库操作，若成功返回200，不成功返回500
-    """
-    try:
-        with connection.cursor() as cursor:
-            cursor.execute("SELECT 1")
-            _ = cursor.fetchall()
-
-        response = HttpResponse("healthy")
-        response.status_code = 200
-        return response
-    except Exception:
-        response = HttpResponse("unhealthy")
-        response.status_code = 500
-        return response
+    '''
+    if db_connection_healthy():
+        return HttpResponse('healthy', status=200)
+    else:
+        return HttpResponse('unhealthy', status=500)

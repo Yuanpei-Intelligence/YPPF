@@ -298,6 +298,8 @@ class SecureTemplateView(SecureView):
             template=self.get_template_names(),
             context=self.get_context_data(**kwargs),
         )
+        # 实时加载模板，便于捕获模板错误
+        response.render()
         return self.response_created(response)
 
     def wrong(self, message: str):

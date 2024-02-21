@@ -20,7 +20,7 @@ from app.models import (
     Notification,
     ActivityPhoto,
     Position,
-    Participant,
+    Participation,
     Course,
     CourseTime,
     CourseParticipant,
@@ -39,11 +39,13 @@ from app.notification_utils import (
 from app.activity_utils import (
     changeActivityStatus,
     notifyActivity,
+    create_participate_infos,
 )
 from app.extern.wechat import WechatApp, WechatMessageLevel
 from app.log import logger
 
 import openpyxl
+import openpyxl.worksheet.worksheet
 from random import sample
 from urllib.parse import quote
 from collections import Counter
@@ -185,7 +187,7 @@ def create_single_course_activity(request: HttpRequest) -> Tuple[int, bool]:
 
     # 获取默认审核老师
     examine_teacher = NaturalPerson.objects.get_teacher(
-        APP_CONFIG.audit_teacher[0])
+        APP_CONFIG.audit_teachers[0])
 
     # 获取活动所属课程的图片，用于viewActivity, examineActivity等页面展示
     image = str(course.photo)
@@ -232,11 +234,8 @@ def create_single_course_activity(request: HttpRequest) -> Tuple[int, bool]:
             person_pos = list(set(person_pos))
         members = NaturalPerson.objects.filter(
             id__in=person_pos)
-        for member in members:
-            participant = Participant.objects.create(
-                activity_id=activity,
-                person_id=member,
-                status=Participant.AttendStatus.APPLYSUCCESS)
+        status = Participation.AttendStatus.APPLYSUCCESS
+        create_participate_infos(activity, members, status=status)
 
         activity.current_participants = len(person_pos)
         activity.capacity = len(person_pos)
@@ -277,8 +276,7 @@ def create_single_course_activity(request: HttpRequest) -> Tuple[int, bool]:
         content="您有一个单次课程活动待审批",
         URL=f"/examineActivity/{activity.id}",
         relate_instance=activity,
-        publish_to_wechat=True,
-        publish_kws={"app": WechatApp.AUDIT},
+        to_wechat=dict(app=WechatApp.AUDIT),
     )
 
     return activity.id, True
@@ -844,10 +842,10 @@ def draw_lots():
                     current_participants=capacity)
 
             # 给选课成功的同学发送通知
-            receivers = CourseParticipant.objects.filter(
+            receivers = SQ.qsvlist(CourseParticipant.objects.filter(
                 course=course,
                 status=CourseParticipant.Status.SUCCESS,
-            ).values_list("person__person_id", flat=True)
+            ), CourseParticipant.person, NaturalPerson.person_id)
             receivers = User.objects.filter(id__in=receivers)
             sender = course.organization.get_user()
             typename = Notification.Type.NEEDREAD
@@ -865,19 +863,16 @@ def draw_lots():
                 title=title,
                 content=content,
                 URL=URL,
-                publish_to_wechat=True,
-                publish_kws={
-                    "app": WechatApp.TO_PARTICIPANT,
-                    "level": WechatMessageLevel.IMPORTANT,
-                },
+                to_wechat=dict(app=WechatApp.TO_PARTICIPANT,
+                               level=WechatMessageLevel.IMPORTANT)
             )
 
             # 给选课失败的同学发送通知
 
-            receivers = CourseParticipant.objects.filter(
+            receivers = SQ.qsvlist(CourseParticipant.objects.filter(
                 course=course,
                 status=CourseParticipant.Status.FAILED,
-            ).values_list("person__person_id", flat=True)
+            ), CourseParticipant.person, NaturalPerson.person_id)
             receivers = User.objects.filter(id__in=receivers)
             content = f"很抱歉通知您，您未选上课程《{course.name}》。"
             if len(receivers) > 0:
@@ -888,11 +883,8 @@ def draw_lots():
                     title=title,
                     content=content,
                     URL=URL,
-                    publish_to_wechat=True,
-                    publish_kws={
-                        "app": WechatApp.TO_PARTICIPANT,
-                        "level": WechatMessageLevel.IMPORTANT,
-                    },
+                    to_wechat=dict(app=WechatApp.TO_PARTICIPANT,
+                                   level=WechatMessageLevel.IMPORTANT),
                 )
 
 
@@ -1219,10 +1211,11 @@ def cal_participate_num(course: Course) -> dict:
         person__identity=NaturalPerson.Identity.STUDENT,
         org=org,
     ).values_list("person", flat=True)
-    all_participants = (
-        Participant.objects.activated(no_unattend=True)
-        .filter(activity_id__in=activities, person_id_id__in=members)
-    ).values_list("person_id", flat=True)
+    all_participants = SQ.qsvlist(
+        Participation.objects.activated(no_unattend=True)
+        .filter(SQ.mq(Participation.activity, IN=activities),
+                SQ.mq(Participation.person, IN=members)),
+        Participation.person)
     participate_num = dict(Counter(all_participants))
     # 没有参加的参与次数设置为0
     participate_num.update(
@@ -1317,8 +1310,7 @@ def finish_course(course):
         # 通知课程小组成员该课程已结束
         title = f'课程结束通知！'
         msg = f'{course.name}在本学期的课程已结束！'
-        publish_kws = {"app": WechatApp.TO_PARTICIPANT}
-        receivers = participants.values_list('person_id', flat=True)
+        receivers = SQ.qsvlist(participants, NaturalPerson.person_id)
         receivers = User.objects.filter(id__in=receivers)
         bulk_notification_create(
             receivers=list(receivers),
@@ -1327,8 +1319,7 @@ def finish_course(course):
             title=title,
             content=msg,
             URL=f"/viewCourse/?courseid={course.id}",
-            publish_to_wechat=True,
-            publish_kws=publish_kws,
+            to_wechat=dict(app=WechatApp.TO_PARTICIPANT),
         )
         # 设置课程状态
     except:
@@ -1336,6 +1327,41 @@ def finish_course(course):
     course.status = Course.Status.END
     course.save()
     return succeed("结束课程成功！")
+
+
+def _excel_response(workbook: openpyxl.Workbook, file_name: str) -> HttpResponse:
+    '''创建Excel文件回应，file_name为未转义的文件名(不含后缀)'''
+    response = HttpResponse(content_type='application/vnd.ms-excel')
+    response['Content-Disposition'] = f'attachment; filename={quote(file_name)}.xlsx'
+    workbook.save(response)
+    return response
+
+
+def _write_detail_sheet(detail_sheet: openpyxl.worksheet.worksheet.Worksheet,
+                        records: QuerySet[CourseRecord], title: str = '详情') -> None:
+    '''将学时信息写入Excel文件的detail_sheet中'''
+    # 注意，标题中的中文符号如：无法被解读
+    detail_sheet.title = title
+    # 从第一行开始写，因为Excel文件的行号是从1开始，列号也是从1开始
+    detail_header = ['课程', '姓名', '学号', '次数', '学时', '学年', '学期', '有效']
+    detail_sheet.append(detail_header)
+    _M = CourseRecord
+    for record in records.values_list(
+        SQ.f(_M.course, Course.name), SQ.f(_M.extra_name),
+        SQ.f(_M.person, NaturalPerson.name),
+        SQ.f(_M.person, NaturalPerson.person_id, User.username),
+        SQ.f(_M.attend_times), SQ.f(_M.total_hours),
+        SQ.f(_M.year), SQ.f(_M.semester), SQ.f(_M.invalid),
+    ):
+        record_info = [
+            record[0] or record[1],
+            *record[2:6],
+            f'{record[6]}-{record[6] + 1}',
+            '春' if record[7] == Semester.SPRING else '秋',
+            '否' if record[8] else '是',
+        ]
+        # 将每一个对象的所有字段的信息写入一行内
+        detail_sheet.append(record_info)
 
 
 def download_course_record(course: Course = None, year: int = None, semester: Semester = None) -> HttpResponse:
@@ -1354,125 +1380,67 @@ def download_course_record(course: Course = None, year: int = None, semester: Se
     """
     wb = openpyxl.Workbook()  # 生成一个工作簿（即一个Excel文件）
     wb.encoding = 'utf-8'
-    # 获取第一个工作表（detail_sheet）
-    detail_sheet = wb.active
-    # 给工作表设置标题
-    # detail_sheet.title = str(course)  # 中文符号如：无法被解读
-    detail_sheet.title = '详情'
-    ctime = datetime.now().strftime('%Y-%m-%d %H:%M')
     # 学时筛选内容
     filter_kws = {}
     if course is not None:
-        filter_kws.update(course=course)
+        filter_kws[SQ.f(CourseRecord.course)] = course
     if year is not None:
-        filter_kws.update(year=year)
+        filter_kws[SQ.f(CourseRecord.year)] = year
     if semester is not None:
-        filter_kws.update(semester=semester)
+        filter_kws[SQ.f(CourseRecord.semester)] = semester
 
     if course is not None:
         # 助教下载自己课程的学时
         records = CourseRecord.objects.filter(**filter_kws)
-        file_name = f'{course.name}-{ctime}'
-    else:
-        # 设置明细和汇总两个sheet的相关信息
-        total_sheet = wb.create_sheet('汇总', 0)
-        first_line = ['学号', '姓名', '总有效学时', '总无效学时']
-        course_types = list(Course.CourseType)
-        first_line.extend(map(lambda x: x.label, course_types))
-        first_line.append('其他')
-        total_sheet.append(first_line)
+        _write_detail_sheet(wb.active, records)
+        now = datetime.now().strftime('%Y-%m-%d %H:%M')
+        return _excel_response(wb, f'{course.name}-{now}')
 
-        # 下载所有学时信息，包括无效学时
-        all_person = NaturalPerson.objects.activated().filter(
-            identity=NaturalPerson.Identity.STUDENT)
+    # 老师下载所有课程的学时
+    # 获取第一个工作表（detail_sheet）
+    detail_sheet = wb.active
+    # 设置明细和汇总两个sheet的相关信息
+    total_sheet: openpyxl.worksheet.worksheet.Worksheet = wb.create_sheet('汇总', 0)
+    first_line = ['学号', '姓名', '总有效学时', '总无效学时']
+    first_line.extend(Course.CourseType.labels)
+    first_line.append('其他')
+    total_sheet.append(first_line)
 
-        # 汇总表信息，姓名，学号，总学时
-        relate_filter_kws = {
-            f'courserecord__{k}': v for k, v in filter_kws.items()}
-        person_record = all_person.annotate(
-            record_hours=Sum('courserecord__total_hours',
-                             filter=Q(
-                                 courserecord__invalid=False,
-                                 **relate_filter_kws,
-                             )),
-            invalid_hours=Sum('courserecord__total_hours',
-                              filter=Q(
-                                  courserecord__invalid=True,
-                                  **relate_filter_kws,
-                              )),
-        ).order_by('person_id__username')
-        for person in all_person:
-            course_me_past = CourseRecord.objects.filter(person_id=person).exclude(invalid=True)
-            # 计算每个类别的学时
-            record = []
-            for course_type in list(Course.CourseType):  # CourseType.values亦可
-                record.append((
-                    course_me_past
-                    .filter(course__type=course_type, **relate_filter_kws)
-                    .aggregate(Sum('total_hours'))
-                )['total_hours__sum'] or 0)
+    # 下载所有学时信息，包括无效学时
+    all_person = NaturalPerson.objects.activated().filter(
+        identity=NaturalPerson.Identity.STUDENT)
 
-            # 计算没有对应Course的学时
-            record.append((
-                course_me_past
-                .filter(course__isnull=True, **relate_filter_kws)
-                .aggregate(Sum('total_hours'))
-            )['total_hours__sum'] or 0)
+    # 汇总表信息，姓名，学号，总学时
+    relate = SQ.Reverse(CourseRecord.person)
+    person_record = all_person.annotate(
+        record_hours=Sum(SQ.f(relate, CourseRecord.total_hours),
+                            filter=SQ.mq(relate, invalid=False, **filter_kws)),
+        invalid_hours=Sum(SQ.f(relate, CourseRecord.total_hours),
+                            filter=SQ.mq(relate, invalid=True, **filter_kws)),
+    ).order_by(SQ.f(NaturalPerson.person_id, User.username))
 
-            person_record.append(record)
-        for person, record in zip(all_person.select_related('person_id'), 
-                                  person_record):
-            line = [person.person_id.username, person.name,
-                    person.record_hours or 0, 
-                    person.invalid_hours or 0]
-            line.extend(record)
-            total_sheet.append(line)
-        # 详细信息
-        records = CourseRecord.objects.filter(
-            person__in=all_person,
-            **filter_kws,
-        ).order_by('person__person_id__username')
-        file_name = f'学时汇总-{ctime}'
+    def _sum_hours(records: QuerySet[CourseRecord]) -> float:
+        agg = records.filter(**filter_kws).aggregate(sum=Sum('total_hours'))
+        return agg['sum'] or 0
 
-    # 从第一行开始写，因为Excel文件的行号是从1开始，列号也是从1开始
-    detail_header = ['课程', '姓名', '学号', '次数', '学时', '学年', '学期', '有效']
-    detail_sheet.append(detail_header)
-    for record in records.values_list(
-        'course__name', 'extra_name',
-        'person__name', 'person__person_id__username',
-        'attend_times', 'total_hours',
-        'year', 'semester', 'invalid',
-    ):
-        record_info = [
-            record[0] or record[1],
-            *record[2:6],
-            f'{record[6]}-{record[6] + 1}',
-            '春' if record[7] == Semester.SPRING else '秋',
-            '否' if record[8] else '是',
-        ]
-        # 将每一个对象的所有字段的信息写入一行内
-        detail_sheet.append(record_info)
-    '''
-    for record in records.select_related('person', 'course'):
-        record_info = [
-            record.get_course_name(),
-            record.person.name,
-            record.person.person_id.username,
-            record.attend_times,
-            record.total_hours,
-            f'{record.year}-{record.year + 1}',
-            '春' if record.semester == Semester.SPRING else '秋',
-            '否' if record.invalid else '是',
-        ]
-        # 将每一个对象的所有字段的信息写入一行内
-        detail_sheet.append(record_info)
-    '''
+    for person in person_record.select_related(SQ.f(NaturalPerson.person_id)):
+        line = [person.person_id.username, person.name,
+                person.record_hours or 0, 
+                person.invalid_hours or 0]
+        valid_records = SQ.sfilter(CourseRecord.person, person).exclude(invalid=True)
+        # 计算每个类别的学时
+        for course_type in list(Course.CourseType):
+            line.append(_sum_hours(valid_records.filter(course__type=course_type)))
+        # 计算没有对应Course的学时
+        line.append(_sum_hours(valid_records.filter(course__isnull=True)))
+        total_sheet.append(line)
 
-    # 设置文件名并保存
-    response = HttpResponse(content_type='application/vnd.ms-excel')
-    response['Content-Disposition'] = f'attachment;filename={quote(file_name)}.xlsx'
-    wb.save(response)
-    return response
+    # 详细信息
+    records = SQ.mfilter(CourseRecord.person, IN=all_person).filter(**filter_kws)
+    order = SQ.f(CourseRecord.person, NaturalPerson.person_id, User.username)
+    _write_detail_sheet(detail_sheet, records.order_by(order))
+    now = datetime.now().strftime('%Y-%m-%d %H:%M')
+    return _excel_response(wb, f'学时汇总-{now}')
 
 
 def download_select_info(single_course: Course | None = None):
@@ -1501,7 +1469,8 @@ def download_select_info(single_course: Course | None = None):
         lucky_ones = CourseParticipant.objects.filter(
             course=course, status=CourseParticipant.Status.SUCCESS)
         for info in lucky_ones.values_list(
-            'person__name', 'person__person_id__username'
+            SQ.f(CourseParticipant.person, NaturalPerson.name),
+            SQ.f(CourseParticipant.person, NaturalPerson.person_id, User.username)
         ):
             person_info = [
                 info[0],
@@ -1519,7 +1488,4 @@ def download_select_info(single_course: Course | None = None):
     else:
         file_name = f'{year}{semester}选课名单汇总-{ctime}'
     # 保存并返回
-    response = HttpResponse(content_type='application/vnd.ms-excel')
-    response['Content-Disposition'] = f'attachment;filename={quote(file_name)}.xlsx'
-    wb.save(response)
-    return response
+    return _excel_response(wb, file_name)

@@ -39,13 +39,13 @@ class Scheduler:
     When adding the job to database, also try to wakeup the executor
     """
 
-    def __init__(self, wrapped_schedule: BackgroundScheduler):
-        self.wrapped_schedule = wrapped_schedule
+    def __init__(self, scheduler: BackgroundScheduler, retry_times: int = 3):
+        self.wrapped_scheduler = scheduler
         self.remote_scheduler: BackgroundScheduler | None = None
-        self.remain_times = 3
+        self.retry_times = retry_times
 
     def __getattr__(self, name: str):
-        target_method = getattr(self.wrapped_schedule, name)
+        target_method = getattr(self.wrapped_scheduler, name)
 
         def wrapper(*args, **kwargs):
             val = target_method(*args, **kwargs)
@@ -55,31 +55,33 @@ class Scheduler:
         return wrapper
 
     def wakeup_executor(self):
-        if self.remote_scheduler is None:
-            if not self.try_connect_remote():
-                return
+        for _ in range(self.retry_times):
+            if self._try_wakeup():
+                break
+            self.connect_remote()
+        if self.remote_scheduler is not None or self.connect_remote():
+            self._try_wakeup()
+
+    def _try_wakeup(self) -> bool:
         try:
             self.remote_scheduler.wakeup()
+            return True
         except:
-            if self.try_connect_remote():
-                self.remote_scheduler.wakeup()
+            return False
 
-    def connect_remote(self):
-        conn: rpyc.Connection = rpyc.connect(
-            "localhost", CONFIG.rpc_port,
-            config={"allow_all_attrs": True})
-        self.remote_scheduler = conn.root
-
-    def try_connect_remote(self) -> bool:
+    def connect_remote(self) -> bool:
         try:
-            self.connect_remote()
+            conn: rpyc.Connection = rpyc.connect(
+                "localhost", CONFIG.rpc_port,
+                config={"allow_all_attrs": True})
+            self.remote_scheduler = conn.root
             return True
         except Exception as e:
-            self.encounter_network_err(e)
-        return False
+            self.log_network_err(e)
+            return False
 
-    def encounter_network_err(self, e):
-        logger.exception(f'Remotely wakeup executor failed: {e}')
+    def log_network_err(self, exc):
+        logger.exception(f'Remotely wakeup executor failed: {exc}')
 
 
 def start_scheduler() -> BackgroundScheduler:

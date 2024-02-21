@@ -8,6 +8,7 @@ from django.db import transaction  # 原子化更改数据库
 from django.db.models import F
 
 from utils.marker import script
+import utils.models.query as SQ
 from boot.config import GLOBAL_CONFIG
 from semester.api import current_semester
 from record.models import PageLog
@@ -22,7 +23,7 @@ from app.models import (
     Activity,
     ActivityPhoto,
     ActivitySummary,
-    Participant,
+    Participation,
     Notification,
     Position,
     Course,
@@ -32,6 +33,8 @@ from app.models import (
 from app.activity_utils import (
     changeActivityStatus,
     notifyActivity,
+    create_participate_infos,
+    weekly_summary_orgs,
 )
 from app.notification_utils import (
     bulk_notification_create,
@@ -50,8 +53,8 @@ __all__ = [
     'get_weather_async',
     'update_active_score_per_day',
     'longterm_launch_course',
-    'public_feedback_per_hour',
-    'happy_birthday'
+    'happy_birthday',
+    'weekly_activity_summary_reminder',
 ]
 
 
@@ -60,13 +63,11 @@ def send_to_persons(title, message, url='/index/'):
     sender = User.objects.get(username='zz00000')
     np = NaturalPerson.objects.activated().all()
     receivers = User.objects.filter(
-        id__in=np.values_list('person_id', flat=True))
+        id__in=SQ.qsvlist(np, NaturalPerson.person_id))
     print(bulk_notification_create(
         receivers, sender,
         Notification.Type.NEEDREAD, title, message, url,
-        publish_to_wechat=True,
-        publish_kws={'level': WechatMessageLevel.IMPORTANT,
-                     'show_source': False},
+        to_wechat=dict(level=WechatMessageLevel.IMPORTANT, show_source=False),
     ))
 
 
@@ -79,9 +80,7 @@ def send_to_orgs(title, message, url='/index/'):
     bulk_notification_create(
         receivers, sender,
         Notification.Type.NEEDREAD, title, message, url,
-        publish_to_wechat=True,
-        publish_kws={'level': WechatMessageLevel.IMPORTANT,
-                     'show_source': False},
+        to_wechat=dict(level=WechatMessageLevel.IMPORTANT, show_source=False),
     )
 
 
@@ -152,10 +151,7 @@ def get_weather_async():
 def get_weather() -> Dict[str, Any]:
     weather_file = os.path.join(GLOBAL_CONFIG.temporary_dir, "weather.json")
     if not os.path.exists(weather_file):
-        try:
-            get_weather_async.run()
-        except:
-            return dict()
+        return dict()
     with open(weather_file, "r") as f:
         return json.load(f)
 
@@ -166,7 +162,7 @@ def add_week_course_activity(course_id: int, weektime_id: int, cur_week: int, co
     """
     course: Course = Course.objects.get(id=course_id)
     examine_teacher = NaturalPerson.objects.get_teacher(
-        CONFIG.course.audit_teacher[0])
+        CONFIG.course.audit_teachers[0])
     # 当前课程在学期已举办的活动
     conducted_num = Activity.objects.activated().filter(
         organization_id=course.organization,
@@ -225,11 +221,8 @@ def add_week_course_activity(course_id: int, weektime_id: int, cur_week: int, co
                 person_pos = list(set(person_pos))
             members = NaturalPerson.objects.filter(
                 id__in=person_pos)
-            for member in members:
-                participant = Participant.objects.create(
-                    activity_id=activity,
-                    person_id=member,
-                    status=Participant.AttendStatus.APPLYSUCCESS)
+            status = Participation.AttendStatus.APPLYSUCCESS
+            create_participate_infos(activity, members, status=status)
 
             participate_num = len(person_pos)
             activity.capacity = participate_num
@@ -273,8 +266,7 @@ def add_week_course_activity(course_id: int, weektime_id: int, cur_week: int, co
         content="新增了一个已审批的课程活动",
         URL=f"/examineActivity/{activity.id}",
         relate_instance=activity,
-        publish_to_wechat=True,
-        publish_kws={"app": WechatApp.AUDIT, 'level': WechatMessageLevel.INFO},
+        to_wechat={"app": WechatApp.AUDIT, 'level': WechatMessageLevel.INFO},
     )
 
 
@@ -312,7 +304,7 @@ def update_active_score_per_day(days=14):
             date = today - timedelta(days=i+1)
             userids = set(PageLog.objects.filter(
                 time__date=date).values_list('user', flat=True))
-            persons.filter(person_id__in=userids).update(
+            persons.filter(SQ.mq(NaturalPerson.person_id, IN=userids)).update(
                 active_score=F('active_score') + 1 / days)
 
 
@@ -372,57 +364,32 @@ def happy_birthday():
     sender = User.objects.get(username='zz00000')
     for np, message in zip(crowds, messages):
         receivers = User.objects.filter(
-            id__in=np.values_list('person_id', flat=True))
+            id__in=SQ.qsvlist(np, NaturalPerson.person_id))
         bulk_notification_create(
             receivers, sender,
             Notification.Type.NEEDREAD, title, message, url,
-            publish_to_wechat=True,
-            publish_kws={'level': WechatMessageLevel.IMPORTANT,
-                         'show_source': False},
+            to_wechat=dict(level=WechatMessageLevel.IMPORTANT, show_source=False),
         )
 
 
 @script
 @periodical('cron', 'weekly_activity_summary_reminder', hour=20, minute=0, day_of_week='sun')
 def weekly_activity_summary_reminder():
-    '''每周日晚上8点提醒未填写周报的组织负责人，目前仅限于团委，学学学委员会，学学学学会，学生会'''
+    '''提醒组织负责人填写每周活动总结
+    
+    每周日晚上8点提醒所有组织负责人通过每周活动总结填写未在系统中申报的活动
+    目前仅限于团委，学学学委员会，学学学学会，学生会
+    '''
     today = date.today()
-    monday = today - timedelta(days=today.weekday())
     cur_semester = current_semester()
     if not cur_semester.start_date <= today <= cur_semester.end_date:
         return
-    notify_org_type = OrganizationType.objects.filter(
-        otype_name__in=['团委', '学学学委员会', '学学学学会', '学生会'])
+    notify_orgs = weekly_summary_orgs()
     sender = User.objects.get(username='zz00000')
-    title = "每周活动总结提醒"
-    for org in Organization.objects.filter(otype__in=notify_org_type):
-
-        act_summary_map = {
-            summary.activity: summary for summary in
-            ActivitySummary.objects.filter(
-                activity__organization_id=org,
-                # time__date__gte=monday,
-                time__date__lte=today).prefetch_related('activity')
-        }
-        activities = Activity.objects.filter(
-            organization_id=org,
-            # start__date__gte=monday,
-            end__date__lte=today,
-            status=Activity.Status.END,
+    for org in notify_orgs.select_related(SQ.f(Organization.organization_id)):
+        notification_create(
+            org.get_user(), sender,
+            Notification.Type.NEEDREAD, '每周活动总结提醒',
+            '如果本周举办了未在系统中申报的活动，请通过每周活动总结及时填报！',
+            to_wechat=dict(show_source=False),
         )
-        notify_act_list = [
-            act for act in activities if act not in act_summary_map]
-        to_notify_user = Position.objects.filter(
-            org=org, pos=0).first().person.get_user()
-
-        if not act_summary_map or notify_act_list:
-            message = '请及时填写每周活动总结\n' + '\n'.join(
-                ['\t活动：' + act.title for act in notify_act_list]
-            )
-            notification_create(
-                to_notify_user, sender,
-                Notification.Type.NEEDREAD, title, message,
-                publish_to_wechat=True,
-                publish_kws={'level': WechatMessageLevel.IMPORTANT,
-                             'show_source': False},
-            )

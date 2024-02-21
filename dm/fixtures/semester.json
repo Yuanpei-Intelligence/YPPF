@@ -1,0 +1,36 @@
+[
+    {
+        "model": "semester.semestertype",
+        "pk": 1,
+        "fields": {
+            "name": "春季学期"
+        }
+    },
+    {
+        "model": "semester.semestertype",
+        "pk": 2,
+        "fields": {
+            "name": "秋季学期"
+        }
+    },
+    {
+        "model": "semester.semester",
+        "pk": 1,
+        "fields": {
+            "year": 2023,
+            "type": 2,
+            "start_date": "2023-09-01",
+            "end_date": "2024-01-31"
+        }
+    },
+    {
+        "model": "semester.semester",
+        "pk": 2,
+        "fields": {
+            "year": 2024,
+            "type": 1,
+            "start_date": "2024-02-01",
+            "end_date": "2024-06-30"
+        }
+    }
+]

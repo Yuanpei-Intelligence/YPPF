@@ -8,6 +8,7 @@ from collections import defaultdict, Counter
 
 from django.db.models import *
 
+from utils.models.query import *
 from app.config import *
 from app.models import *
 from Appointment.models import Appoint, CardCheckInfo, Room
@@ -56,8 +57,8 @@ def person_info(np: 'NaturalPerson|User'):
 def person_infos(min=0, max=10000, count=10000):
     npd = {}
     for np in NaturalPerson.objects.filter(
-            person_id__id__gte=min, person_id__id__lte=max
-    ).select_related('person_id'):
+        mq(NaturalPerson.person_id, User.id, gte=min, lte=max)
+    ).select_related(f(NaturalPerson.person_id)):
         npd[np.person_id.username] = person_info(np)
         count -= 1
         if count <= 0:
@@ -194,9 +195,9 @@ def cal_act(np: NaturalPerson):
     )
     club_num = pos.filter(org__otype__otype_name='学生小组').count()
     course_org_num = pos.filter(org__otype__otype_name='书院课程').count()
-    act_num = Participant.objects.activated().filter(
-        person_id=np,
-        activity_id__year=SUMMARY_YEAR
+    act_num = Participation.objects.activated().filter(
+        sq(Participation.person, np),
+        sq([Participation.activity, Activity.year], SUMMARY_YEAR),
     ).count()
     position_num = pos.count()
     return dict(

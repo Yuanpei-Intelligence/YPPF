@@ -34,7 +34,8 @@ SECRET_KEY = _configurables.secret_key
 ALLOWED_HOSTS = ["*"]
 AUTH_USER_MODEL = 'generic.User'
 AUTHENTICATION_BACKENDS = [
-    "django.contrib.auth.backends.AllowAllUsersModelBackend"]
+    "generic.backend.BlacklistBackend",
+]
 AUTH_PASSWORD_VALIDATORS = [
     {"NAME": "django.contrib.auth.password_validation.UserAttributeSimilarityValidator", },
     {"NAME": "django.contrib.auth.password_validation.MinimumLengthValidator", },
@@ -85,7 +86,7 @@ MIDDLEWARE = [
 ]
 
 # TODO: Fix this
-CSRF_TRUSTED_ORIGINS = ['https://a.b.c.d']
+CSRF_TRUSTED_ORIGINS = [config.GLOBAL_CONFIG.base_url]
 
 # Templates
 TEMPLATES = [

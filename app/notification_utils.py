@@ -109,8 +109,7 @@ def notification_create(
         relate_instance=None,
         anonymous_flag=False,
         *,
-        publish_to_wechat=False,
-        publish_kws=None,
+        to_wechat: bool | dict = False,
 ):
     """
     对于一个需要创建通知的事件，请调用该函数创建通知！
@@ -122,11 +121,10 @@ def notification_create(
         URL: 需要跳转到处理事务的页面
 
     注意事项：
-        publish_to_wechat: bool 仅关键字参数
+        to_wechat: bool | dict 仅关键字参数
         - 不要在循环中重复调用以发送，你可能需要看`bulk_notification_create`
         - 在线程锁或原子锁内时，也不要发送
-        publish_kws: dict 仅关键字参数
-        - 发送给微信的额外参数，主要是应用和发送等级，参考publish_notification即可
+        - 若为字典，视为发送给微信的额外参数，主要是应用和发送等级，参考publish_notification即可
 
     现在，你应该在不急于等待的时候显式调用publish_notification(s)这两个函数，
         具体选择哪个取决于你创建的通知是一批类似通知还是单个通知
@@ -142,9 +140,11 @@ def notification_create(
         relate_instance=relate_instance,
         anonymous_flag=anonymous_flag,
     )
-    if publish_to_wechat == True:
-        if not publish_kws:
+    if to_wechat is True or isinstance(to_wechat, dict):
+        if to_wechat is True:
             publish_kws = {}
+        else:
+            publish_kws = to_wechat
         if anonymous_flag:
             publish_kws['show_source'] = False
         publish_notification(notification, **publish_kws)
@@ -188,8 +188,7 @@ def bulk_notification_create(
         relate_instance=None,
         *,
         duplicate_behavior='ok',
-        publish_to_wechat=False,
-        publish_kws=None,
+        to_wechat: bool | dict = False,
 ):
     """
     对于一个需要创建通知的事件，请调用该函数创建通知！
@@ -201,10 +200,9 @@ def bulk_notification_create(
         URL: 需要跳转到处理事务的页面
 
     注意事项：
-        publish_to_wechat: bool 仅关键字参数
+        to_wechat: bool | dict 仅关键字参数
         - 在线程锁或原子锁内时，不要发送
-        publish_kws: dict 仅关键字参数
-        - 发送给微信的额外参数，主要是应用和发送等级，参考publish_notifications即可
+        - 字典视为发送给微信的额外参数，主要是应用和发送等级，参考publish_notifications即可
         duplicate_behavior: str 仅关键字参数
         - 重复通知的处理行为，可选值包括: ok, fail, success, remove, report, log
         - 除了ok之外，这些值都会进行识别码重复检查，分别代表直接失败/成功/移除重复值/报告/记录
@@ -297,7 +295,7 @@ def bulk_notification_create(
         # except:
         #     logger.exception(f'更新通知创建时间时失败, 识别码为{bulk_identifier}, 创建时间为{start_time}')
         success = True
-        if publish_to_wechat:
+        if to_wechat is True or isinstance(to_wechat, dict):
             cur_status = '发送微信'
             # TODO:
             # 由于识别码将不再是批量创建的唯一值，未来发送微信需要增加参数
@@ -313,8 +311,10 @@ def bulk_notification_create(
                 # "start_time__gte": start_time,
                 # "receiver_id__in": [receiver.id for receiver in receivers],
             }
-            if not publish_kws:
+            if to_wechat is True:
                 publish_kws = {}
+            else:
+                publish_kws = to_wechat
             success = publish_notifications(
                 filter_kws=filter_kws, **publish_kws)
     except Exception as e:
@@ -339,29 +339,25 @@ def make_notification(application, request, content, receiver):
         'modifyposition': f'/modifyPosition/?pos_id={application.id}',
         'neworganization': f'/modifyOrganization/?org_id={application.id}',
     }
-    sender = request.user
     typename = Notification.Type.NEEDDO if post_type == 'new_submit' else Notification.Type.NEEDREAD
     title = Notification.Title.VERIFY_INFORM if post_type != 'accept_submit' else Notification.Title.POSITION_INFORM
 
     relate_instance = application if post_type == 'new_submit' else None
-    publish_to_wechat = True
-    publish_kws = {'app': WechatApp.AUDIT}
-    publish_kws['level'] = (WechatMessageLevel.IMPORTANT
-                            if post_type != 'cancel_submit'
-                            else WechatMessageLevel.INFO)
+    level = (WechatMessageLevel.IMPORTANT
+             if post_type != 'cancel_submit'
+             else WechatMessageLevel.INFO)
     # TODO cancel是否要发送notification？是否发送微信？
 
     # 正式创建notification
     notification_create(
         receiver=receiver,
-        sender=sender,
+        sender=request.user,
         typename=typename,
         title=title,
         content=content[post_type],
         URL=URL[application.typename],
         relate_instance=relate_instance,
-        publish_to_wechat=publish_to_wechat,
-        publish_kws=publish_kws,
+        to_wechat=dict(app=WechatApp.AUDIT, level=level),
     )
     # 对于处理类通知的完成(done)，修改状态
     # 这里的逻辑保证：所有的处理类通知的生命周期必须从“成员发起”开始，从“取消”“通过”“拒绝”结束。

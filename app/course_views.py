@@ -131,7 +131,7 @@ def editCourseActivity(request: HttpRequest, aid: int):
     # 判断本活动是否为长期定时活动
     course_time_tag = (activity.course_time is not None)
 
-    return render(request, "lesson_add.html", locals())
+    return render(request, "course/lesson_add.html", locals())
 
 
 @login_required(redirect_field_name="origin")
@@ -191,7 +191,7 @@ def addSingleCourseActivity(request: HttpRequest):
     edit = False  # 前端据此区分是编辑还是创建
     course_time_tag = False
 
-    return render(request, "lesson_add.html", locals())
+    return render(request, "course/lesson_add.html", locals())
 
 
 @login_required(redirect_field_name='origin')
@@ -288,7 +288,7 @@ def showCourseActivity(request: HttpRequest):
         else:
             return redirect(message_url(wrong(error)), request.path)
 
-    return render(request, "org_show_course_activity.html", locals())
+    return render(request, "course/show_course_activity.html", locals())
 
 
 @login_required(redirect_field_name="origin")
@@ -428,7 +428,7 @@ def showCourseRecord(request: UserRequest) -> HttpResponse:
         editable=editable,
         bar_display=bar_display, messages=messages,
     )
-    return render(request, "course_record.html", render_context)
+    return render(request, "course/course_record.html", render_context)
 
 
 @login_required(redirect_field_name="origin")
@@ -529,7 +529,7 @@ def selectCourse(request: HttpRequest):
     selected_display = course_to_display(selected_courses, me)
 
     bar_display = utils.get_sidebar_and_navbar(request.user, "书院课程")
-    return render(request, "select_course.html", locals())
+    return render(request, "course/select_course.html", locals())
 
 
 @login_required(redirect_field_name="origin")
@@ -556,7 +556,7 @@ def viewCourse(request: HttpRequest):
 
     bar_display = utils.get_sidebar_and_navbar(request.user, course_display[0]["name"])
 
-    return render(request, "course_info.html", locals())
+    return render(request, "course/course_info.html", locals())
 
 
 @login_required(redirect_field_name="origin")
@@ -677,7 +677,7 @@ def addCourse(request: HttpRequest, cid=None):
     else:
         bar_display = utils.get_sidebar_and_navbar(request.user, "修改课程")
 
-    return render(request, "register_course.html", locals())
+    return render(request, "course/register_course.html", locals())
 
 
 @login_required(redirect_field_name="origin")
@@ -692,7 +692,7 @@ def outputRecord(request: UserRequest):
     """
     me = utils.get_person_or_org(request.user)
     # 获取默认审核老师，不应该出错
-    examine_teachers = NaturalPerson.objects.teachers().filter(name__in=APP_CONFIG.audit_teacher)
+    examine_teachers = NaturalPerson.objects.get_teachers(APP_CONFIG.audit_teachers)
 
     if me not in examine_teachers:
         return redirect(message_url(wrong("只有书院课审核老师账号可以访问该链接！")))
@@ -732,7 +732,7 @@ def outputAllSelectInfo(request: UserRequest):
     """
     me = utils.get_person_or_org(request.user)
     # 获取默认审核老师，不应该出错
-    examine_teachers = NaturalPerson.objects.teachers().filter(name__in=APP_CONFIG.audit_teacher)
+    examine_teachers = NaturalPerson.objects.get_teachers(APP_CONFIG.audit_teachers)
 
     if me not in examine_teachers:
         return redirect(message_url(wrong("只有书院课审核老师账号可以访问该链接！")))

@@ -17,17 +17,20 @@ from typing import Type, NoReturn, Final
 
 from django.db import models
 from django.contrib.auth import get_permission_codename
-from django.contrib.auth.models import AbstractUser, AnonymousUser
+from django.contrib.auth.models import AbstractUser, AnonymousUser, Permission
 from django.contrib.auth.models import UserManager as _UserManager
+from django.contrib.contenttypes.models import ContentType
 from django.db import transaction
 from django.db.models import QuerySet, F
 import pypinyin
 
+import utils.models.query as SQ
 from utils.models.choice import choice
 from utils.models.descriptor import necessary_for_frontend, invalid_for_frontend, admin_only
 
 __all__ = [
     'User',
+    'PermissionBlacklist',
     'CreditRecord',
     'YQPointRecord',
 ]
@@ -404,6 +407,52 @@ class User(AbstractUser, PointMixin, metaclass=UserBase):
         return self.utype == self.Type.ORG
 
 
+class PermissionBlacklistManager(models.Manager['PermissionBlacklist']):
+    '''
+    权限黑名单管理器
+
+    用于提供对权限黑名单的查询方法
+    '''
+
+    def get_revoked_permissions(self, user: User) -> set[str]:
+        '''
+        获取用户被禁止的权限
+
+        Args:
+            user (User): 要查询的对象
+
+        Returns:
+            set[str]: 被禁止的权限字符串集合
+        '''
+        _M = PermissionBlacklist
+        perms = self.filter(SQ.sq(_M.user, user)).values_list(
+            SQ.f(_M.permission, Permission.content_type, ContentType.app_label),
+            SQ.f(_M.permission, Permission.codename)
+        )
+        return {f'{app_label}.{codename}' for app_label, codename in perms}
+
+
+class PermissionBlacklist(models.Model):
+    '''
+    权限黑名单
+
+    记录哪些用户被取消了哪些权限。在认证后端鉴权时，这个表中记录的信息比用户组优先级更高。
+    '''
+    class Meta:
+        verbose_name = '权限黑名单'
+        verbose_name_plural = verbose_name
+
+    user = models.ForeignKey(
+        User, verbose_name='用户', on_delete=models.CASCADE,
+        to_field='username',
+    )
+    permission = models.ForeignKey(
+        Permission, verbose_name='权限', on_delete=models.CASCADE,
+    )
+
+    objects: PermissionBlacklistManager = PermissionBlacklistManager()
+
+
 class CreditRecord(models.Model):
     '''
     信用分更改记录
@@ -453,6 +502,7 @@ class YQPointRecord(models.Model):
         ACHIEVE = (4, '达成成就')
         QUESTIONNAIRE = (5, '填写问卷')
         CONSUMPTION = (6, '奖池花费')
+        COMPENSATION = (7, '奖池补偿')
 
     source_type = models.SmallIntegerField(
         '来源类型', choices=SourceType.choices, default=SourceType.SYSTEM)

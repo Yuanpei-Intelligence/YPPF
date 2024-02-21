@@ -26,7 +26,7 @@ from app.models import (
     OrganizationType,
     Activity,
     ActivityPhoto,
-    Participant,
+    Participation,
     Notification,
     Wishes,
     Course,
@@ -110,7 +110,7 @@ def miniLogin(request: HttpRequest):
 
             # request.session["username"] = username 已废弃
             en_pw = GLOBAL_CONFIG.hasher.encode(username)
-            user_account = NaturalPerson.objects.get(person_id=username)
+            user_account = NaturalPerson.objects.get_by_user(username)
             return JsonResponse({"Sname": user_account.name, "Succeed": 1}, status=200)
         else:
             return JsonResponse({"Sname": username, "Succeed": 0}, status=400)
@@ -167,9 +167,7 @@ def stuinfo(request: UserRequest):
             else:
                 obtain_id = int(name_list[1])  # 获取增补信息
                 get_user = User.objects.get(id=obtain_id)
-                potential_person = NaturalPerson.objects.activated().get(
-                    person_id=get_user
-                )
+                potential_person = NaturalPerson.objects.get_by_user(get_user, activate=True)
                 assert potential_person in person
                 person = potential_person
 
@@ -341,7 +339,7 @@ def stuinfo(request: UserRequest):
         # 只有是自己的主页时才显示学时
         if is_myself:
             # 把当前学期的活动去除
-            past_courses = CourseRecord.objects.past().filter(person_id=oneself)
+            past_courses = CourseRecord.objects.past().filter(person=oneself)
 
             # 无效学时，在前端呈现
             useless_courses = (
@@ -408,17 +406,18 @@ def stuinfo(request: UserRequest):
 
         # ------------------ 活动参与 ------------------ #
 
-        participants = Participant.objects.activated().filter(person_id=person)
+        participants = Participation.objects.activated().filter(SQ.sq(
+                Participation.person, person))
         activities = Activity.objects.activated().filter(
-            Q(id__in=participants.values("activity_id")),
             # ~Q(status=Activity.Status.CANCELED), # 暂时可以呈现已取消的活动
+            id__in=SQ.qsvlist(participants, Participation.activity),
         )
         if request.user.is_person():
             # 因为上面筛选过活动，这里就不用筛选了
             # 之前那个写法是O(nm)的
-            activities_me = Participant.objects.activated().filter(person_id=oneself)
-            activities_me = set(activities_me.values_list(
-                "activity_id_id", flat=True))
+            activities_me = Participation.objects.activated().filter(SQ.sq(
+                Participation.person, oneself))
+            activities_me = set(SQ.qsvlist(activities_me, Participation.activity))
         else:
             activities_me = activities.filter(organization_id=oneself)
             activities_me = set(activities_me.values_list("id", flat=True))
@@ -433,8 +432,8 @@ def stuinfo(request: UserRequest):
         # 呈现历史活动，不考虑共同活动的规则，直接全部呈现
         history_activities = list(
             Activity.objects.activated(noncurrent=True).filter(
-                Q(id__in=participants.values("activity_id")),
                 # ~Q(status=Activity.Status.CANCELED), # 暂时可以呈现已取消的活动
+                id__in=SQ.qsvlist(participants, Participation.activity),
             ))
         history_activities.sort(key=lambda a: a.start, reverse=True)
         html_display["history_act_info"] = list(history_activities) or None
@@ -479,7 +478,7 @@ def stuinfo(request: UserRequest):
         academic_params = dict()
         academic_params.update(
             is_inspector=is_teacher,
-            author_id=person.person_id_id,
+            author_id=person.person_id.id,
             have_content=have_entries(person, content_status),
             have_unaudit=have_entries(person, [AcademicEntry.EntryStatus.WAIT_AUDIT]),
         )
@@ -579,7 +578,7 @@ def requestLoginOrg(request: UserRequest):
     if request.user.is_org():
         return redirect("/orginfo/")
     try:
-        me = NaturalPerson.objects.activated().get(person_id=request.user)
+        me = NaturalPerson.objects.get_by_user(request.user, activate=True)
     except:  # 找不到合法的用户
         return redirect(message_url(wrong('用户不存在!')))
     name = request.GET.get('name')
@@ -674,7 +673,7 @@ def orginfo(request: UserRequest):
             return redirect("/welcome/")
 
     # 该学年、该学期、该小组的 活动的信息,分为 未结束continuing 和 已结束ended ，按时间顺序降序展现
-    continuing_activity_list = (
+    continuing_activities = (
         Activity.objects.activated()
         .filter(organization_id=org)
         .filter(
@@ -688,7 +687,7 @@ def orginfo(request: UserRequest):
         .order_by("-start")
     )
 
-    ended_activity_list = (
+    ended_activities = (
         Activity.objects.activated()
         .filter(organization_id=org)
         .filter(status__in=[Activity.Status.CANCELED, Activity.Status.END])
@@ -696,7 +695,7 @@ def orginfo(request: UserRequest):
     )
 
     # 筛选历史活动，具体为不是这个学期的活动
-    history_activity_list = (
+    history_activities = (
         Activity.objects.activated(noncurrent=True)
         .filter(organization_id=org)
         .order_by("-start")
@@ -704,61 +703,26 @@ def orginfo(request: UserRequest):
 
     # 如果是用户登陆的话，就记录一下用户有没有加入该活动，用字典存每个活动的状态，再把字典存在列表里
 
-    prepare_times = Activity.EndBeforeHours.prepare_times
+    def _display_activities(activities: QuerySet[Activity]) -> list[dict]:
+        displays = []
+        for act in activities:
+            dictmp = {}
+            dictmp["act"] = act
+            hours = Activity.EndBeforeHours.prepare_times[act.endbefore]
+            dictmp["endbefore"] = act.start - timedelta(hours=hours)
+            if request.user.is_person():
+                participation = Participation.objects.filter(
+                    SQ.sq(Participation.activity, act), SQ.sq(Participation.person, me),
+                ).first()
+                dictmp["status"] = participation.status if participation else "无记录"
+            displays.append(dictmp)
+        return displays
 
-    continuing_activity_list_participantrec = []
+    continuing_activity_list_participantrec = _display_activities(continuing_activities)
+    ended_activity_list_participantrec = _display_activities(ended_activities)
+    history_activity_list_participantrec = _display_activities(history_activities)
 
-    for act in continuing_activity_list:
-        dictmp = {}
-        dictmp["act"] = act
-        dictmp["endbefore"] = act.start - \
-            timedelta(hours=prepare_times[act.endbefore])
-        if request.user.is_person():
-
-            existlist = Participant.objects.filter(activity_id_id=act.id).filter(
-                person_id_id=me.id
-            )
-
-            if existlist:  # 判断是否非空
-                dictmp["status"] = existlist[0].status
-            else:
-                dictmp["status"] = "无记录"
-        continuing_activity_list_participantrec.append(dictmp)
-
-    ended_activity_list_participantrec = []
-    for act in ended_activity_list:
-        dictmp = {}
-        dictmp["act"] = act
-        dictmp["endbefore"] = act.start - \
-            timedelta(hours=prepare_times[act.endbefore])
-        if request.user.is_person():
-            existlist = Participant.objects.filter(activity_id_id=act.id).filter(
-                person_id_id=me.id
-            )
-            if existlist:  # 判断是否非空
-                dictmp["status"] = existlist[0].status
-            else:
-                dictmp["status"] = "无记录"
-        ended_activity_list_participantrec.append(dictmp)
-
-    # 处理历史活动
-    history_activity_list_participantrec = []
-    for act in history_activity_list:
-        dictmp = {}
-        dictmp["act"] = act
-        dictmp["endbefore"] = act.start - \
-            timedelta(hours=prepare_times[act.endbefore])
-        if request.user.is_person():
-            existlist = Participant.objects.filter(activity_id_id=act.id).filter(
-                person_id_id=me.id
-            )
-            if existlist:  # 判断是否非空
-                dictmp["status"] = existlist[0].status
-            else:
-                dictmp["status"] = "无记录"
-        history_activity_list_participantrec.append(dictmp)
-
-    # 判断我是不是老大, 首先设置为false, 然后如果有person_id和user一样, 就为True
+    # 判断我是不是老大, 首先设置为false, 然后如果有id和user一样, 就为True
     html_display["isboss"] = False
 
     # 小组成员list
@@ -827,8 +791,7 @@ def homepage(request: UserRequest):
     # 今天第一次访问 welcome 界面，积分增加
     if request.user.is_person():
         with transaction.atomic():
-            np: NaturalPerson = NaturalPerson.objects.select_for_update().get(
-                person_id=request.user)
+            np = NaturalPerson.objects.get_by_user(request.user, update=True)
             if np.last_time_login is None or np.last_time_login.date() != nowtime.date():
                 np.last_time_login = nowtime
                 np.save()
@@ -920,16 +883,16 @@ def homepage(request: UserRequest):
     """
     all_photo_display = ActivityPhoto.objects.filter(
         type=ActivityPhoto.PhotoType.SUMMARY).order_by('-time')
-    photo_display, activity_id_set = list(), set()  # 实例的哈希值未定义，不可靠
+    photo_display, _aid_set = list(), set()  # 实例的哈希值未定义，不可靠
     count = 9 - len(guidepics)  # 算第一张导航图
     for photo in all_photo_display:
         # 不用activity，因为外键需要访问数据库
-        if photo.activity_id not in activity_id_set and photo.image:
+        if photo.activity_id not in _aid_set and photo.image:
             # 数据库设成了image可以为空而不是空字符串，str的判断对None没有意义
 
             photo.image = MEDIA_URL + str(photo.image)
             photo_display.append(photo)
-            activity_id_set.add(photo.activity_id)
+            _aid_set.add(photo.activity_id)
             count -= 1
 
             if count <= 0:  # 目前至少能显示一个，应该也合理吧
@@ -998,10 +961,8 @@ def accountSetting(request: UserRequest):
     # bar_display["navbar_name"] = "账户设置"
 
     if request.user.is_person():
-        info = NaturalPerson.objects.filter(person_id=request.user)
-        userinfo = info.values()[0]
-
-        useroj = NaturalPerson.objects.get(person_id=request.user)
+        useroj = NaturalPerson.objects.get_by_user(request.user)
+        userinfo = NaturalPerson.objects.filter(pk=useroj.pk).values()[0]
 
         former_wallpaper = utils.get_user_wallpaper(me)
 
@@ -1160,7 +1121,7 @@ def _create_freshman_account(sid: str, email: str = None):
             )
             current = "创建个人账号"
             NaturalPerson.objects.create(
-                person_id=user,
+                user,
                 stu_id_dbonly=sid,
                 name=name,
                 gender=np_gender,
@@ -1331,7 +1292,7 @@ def authRegister(request: HttpRequest):
 
         failed = False
         failed |= gender not in ['男', '女']
-        failed |= NaturalPerson.objects.filter(person_id=sno).exists()
+        failed |= SQ.sfilter(NaturalPerson.person_id, sno).exists()
         failed |= NaturalPerson.objects.filter(email=email).exists()
         if failed:
             return render(request, "auth_register_boxed.html")
@@ -1344,7 +1305,7 @@ def authRegister(request: HttpRequest):
                 password=password
             )
             person = NaturalPerson.objects.create(
-                person_id=user,
+                user,
                 stu_id_dbonly=sno,
                 name=name,
                 email=email,
@@ -1487,11 +1448,12 @@ def search(request: HttpRequest):
     academic_map_dict = get_search_results(query)
     academic_list = []
     for username, contents in academic_map_dict.items():
-        info = dict()
-        np = NaturalPerson.objects.get(person_id__username=username)
-        info['ref'] = np.get_absolute_url() + '#tab=academic_map'
-        info['avatar'] = np.get_user_ava()
-        info['sname'] = np.name
+        np: NaturalPerson = SQ.mget(NaturalPerson.person_id, username=username)
+        info = dict(
+            ref=np.get_absolute_url() + '#tab=academic_map',
+            sname=np.name,
+            avatar=np.get_user_ava(),
+        )
         academic_list.append((info, contents))
 
     # 新版侧边栏, 顶栏等的呈现，采用 bar_display, 必须放在render前最后一步
@@ -1556,7 +1518,7 @@ def forgetPassword(request: HttpRequest):
         else:
             user = user[0]
             try:
-                person = NaturalPerson.objects.get(person_id=user)  # 目前只支持自然人
+                person = NaturalPerson.objects.get_by_user(user)  # 目前只支持自然人
             except:
                 display = wrong("暂不支持小组账号验证码登录！")
                 display["alert"] = True

@@ -1,0 +1,95 @@
+{% extends "base.html" %}
+
+{% load static %}
+
+{% block add_css_file %}
+<link href={% static "datetimepicker/css/bootstrap-datetimepicker-standalone.css" %} rel="stylesheet" type="text/css" />
+<link href={% static "datetimepicker/css/bootstrap-datetimepicker.css" %} rel="stylesheet" type="text/css" />
+<link href={% static "datetimepicker/css/bootstrap-datetimepicker.min.css" %} rel="stylesheet" type="text/css" />
+
+
+<style class="text/css">
+    h5 {
+        font-family: 'Nunito', sans-serif;
+        font-size: 1rem;
+        font-weight: bold;
+    }
+</style>
+
+{% endblock %}
+
+{% block mainpage %}
+<!--  BEGIN CONTENT AREA  -->
+<div id="content" class="main-content">
+    <div class="container">
+
+
+        {% if html_display.warn_code == 1 %}
+        <div class="alert alert-warning  text-center" id="warn_msg">{{ html_display.warn_message }}</div>
+        {% endif %}
+
+        <div class="row layout-top-spacing">
+            {% if bar_display.help_paragraphs %}
+            {% include 'help_with_table.html' %}
+            {% endif %}
+            <div class="col-lg-12 col-sm-12 col-12 layout-spacing">
+                <div class="row">
+                    <div class="col-md-12 mb-4">
+                        <div class="statbox widget box box-shadow">
+
+                            <!--  BEGIN HEADER AREA  -->
+                            <div class="widget-header">
+                                <div class="d-flex justify-content-between">
+                                    <div>
+                                        <h4>宿舍分配结果</h4>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!--  BEGIN CONTENT AREA  -->
+                            <div class="widget-content widget-content-area">
+                                {% if dorm_assigned %}
+                                <div class="alert alert-success  text-center" id="success_msg">
+                                    此处是你的宿舍分配结果</div>
+                                <div style="text-align:center;">
+                                    <table style="white-space:nowrap;width:100%; font-size:13px; border:solid; border-width:0px;" class="table">
+                                        <caption style="font-size:20px;font-weight:bold;color:#eceef3;background-color:#669900;">
+                                        </caption>
+                                        <tr>
+                                            <th align="middle" bgcolor="#669900" style="color:white"> 姓名 </th>
+                                            <th align="middle" bgcolor="#669900" style="color:white"> 宿舍号 </th>
+                                            {% comment %} <th align="middle" bgcolor="#669900" style="color:white"> 床号 </th> {% endcomment %}
+                                            <th align="middle" bgcolor="#669900" style="color:white"> 你的室友 </th>  
+                                        </tr>
+                                        {% for roommate in roommates %}
+                                            <tr>
+                                                {% if forloop.first %}
+                                                <td rowspan={{ roommates | length }} align="middle" valign="middle" bgcolor="#F5F5F5">{{name}}</td>
+                                                <td rowspan={{ roommates | length }} align="middle" valign="middle" bgcolor="#F5F5F5">{{dorm_id}}</td>
+                                                {% comment %} <td rowspan={{ roommates | length }} align="middle" valign="middle" bgcolor="#F5F5F5">{{bed_id}}</td> {% endcomment %}
+                                                {% endif %}
+                                                <td align="middle" valign="middle" bgcolor="#F5F5F5"> <img src="{{roommate.get_user_ava}}" height="38px" width="38px"> <a href="{{roommate.get_absolute_url}}">&nbsp{{roommate.name}}</a> </td>
+                                            </tr>
+                                        {% endfor %}
+                                    </table>
+                                </div>
+                                {% else %}   
+                                <div class="alert alert-success  text-center" id="success_msg">
+                                    系统中尚未查询到你的宿舍分配结果，待结果载入后将通知</div>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+
+
+
+    </div>
+
+</div>
+<!--  END CONTENT AREA  -->
+
+{% endblock %}

@@ -37,6 +37,7 @@ from utils.global_messages import (
     succeed,
 )
 import utils.global_messages as my_messages
+import utils.models.query as SQ
 
 # 内部加密用，不同utils文件不共享，可能被对应的views依赖
 from utils.hasher import MySHA256Hasher

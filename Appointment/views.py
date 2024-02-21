@@ -49,6 +49,7 @@ wklist = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
 def cancelAppoint(request: HttpRequest):
     context = {}
     cancel_type = request.POST.get("type")
+
     if cancel_type == "longterm":
         try:
             pk = int(request.POST.get('cancel_id'))
@@ -854,6 +855,13 @@ def checkout_appoint(request: UserRequest):
             contents['students'] = [contents['Sid']]
         else:
             contents['students'].append(contents['Sid'])
+        
+        # 不允许用非活跃用户凑数
+        # 虽然在生成搜索列表时已经排除了非活跃用户，但这里再检查一次，以防万一
+        contents['students'] = list(filter(
+            lambda sid: User.objects.get(username = sid).active,
+            contents['students']
+        ))
 
         # 检查预约次数
         if is_longterm and not (1 <= times <= CONFIG.longterm_max_time_once
@@ -870,6 +878,10 @@ def checkout_appoint(request: UserRequest):
                 major_student=applicant, Atype=Appoint.Type.INTERVIEW
         ).count() >= CONFIG.interview_max_num:
             wrong('您预约的面试次数已达到上限，结束后方可继续预约', render_context)
+
+        # 检查预约人活跃情况
+        if not applicant.Sid.active:
+            wrong('您已毕业，不能预约地下室', render_context)
 
         start_time = datetime(contents['year'], contents['month'], contents['day'],
                               *map(int, contents['starttime'].split(":")))

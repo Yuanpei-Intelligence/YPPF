@@ -5,8 +5,9 @@ from datetime import datetime, date
 
 from django.db.models import Sum
 
+import utils.models.query as SQ
 from generic.models import User
-from app.models import CourseRecord, Course
+from app.models import CourseRecord, Course, NaturalPerson as Person
 from achievement.models import Achievement
 from achievement.utils import trigger_achievement, bulk_add_achievement_record, get_students_without_credit_record
 
@@ -66,8 +67,8 @@ def unlock_course_achievements(user: User) -> None:
     :param user: 要查询的用户
     :type user: User
     '''
-    records = CourseRecord.objects.filter(
-        person__person_id=user, invalid=False)
+    records = SQ.sfilter([CourseRecord.person, Person.person_id], user
+                         ).filter(invalid=False)
     if not records:
         return
 
@@ -83,7 +84,7 @@ def unlock_course_achievements(user: User) -> None:
     ])
 
     # 德智体美劳检验
-    course_types = set(records.values_list('course__type', flat=True))
+    course_types = set(SQ.qsvlist(records, CourseRecord.course, Course.type))
     COURSE_DICT = {
         Course.CourseType.MORAL: '德育',
         Course.CourseType.INTELLECTUAL: '智育',

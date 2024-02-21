@@ -206,8 +206,7 @@ def modifyOrganization(request: UserRequest):
     commentable = allow_comment
     comments = showComment(application) if application is not None else None
     # 用于前端展示
-    apply_person = me if is_new_application else NaturalPerson.objects.get(person_id=application.pos)
-    app_avatar_path = apply_person.get_user_ava()
+    apply_person = me if is_new_application else NaturalPerson.objects.get_by_user(application.pos)
     former_img = Organization.get_user_ava()
     org_avatar_path = application.get_user_ava() if application else former_img
     org_types = OrganizationType.objects.order_by("-otype_id").all()  # 当前小组类型，前端展示需要

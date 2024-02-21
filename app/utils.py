@@ -22,7 +22,7 @@ from app.models import (
     Position,
     Notification,
     Help,
-    Participant,
+    Participation,
     ModifyRecord,
 )
 
@@ -491,12 +491,11 @@ def export_activity(activity, inf_type):
     if activity is None:
         return response
     response['Content-Disposition'] = f'attachment;filename={activity.title}.xls'
+    participants: QuerySet[Participation] = SQ.sfilter(Participation.activity, activity)
     if inf_type == "sign":  # 签到信息
-        participants = Participant.objects.filter(activity_id=activity.id).filter(
-            status=Participant.AttendStatus.ATTENDED)
+        participants = participants.filter(status=Participation.AttendStatus.ATTENDED)
     elif inf_type == "enroll":  # 报名信息
-        participants = Participant.objects.filter(activity_id=activity.id).exclude(
-            status=Participant.AttendStatus.CANCELED)
+        participants = participants.exclude(status=Participation.AttendStatus.CANCELED)
     else:
         return response
         """导出excel表"""
@@ -516,10 +515,10 @@ def export_activity(activity, inf_type):
         # 写入数据
         excel_row = 1
         for participant in participants:
-            name = participant.person_id.name
-            Sno = participant.person_id.person_id.username
-            grade = str(participant.person_id.stu_grade) + '级' + \
-                str(participant.person_id.stu_class) + '班'
+            name = participant.person.name
+            Sno = participant.person.person_id.username
+            grade = str(participant.person.stu_grade) + '级' + \
+                str(participant.person.stu_class) + '班'
             if inf_type == "enroll":
                 status = participant.status
                 w.write(excel_row, 3, status)
@@ -633,7 +632,8 @@ def update_related_account_in_session(request, username, shift=False, oname=""):
     """
 
     try:
-        np = NaturalPerson.objects.activated().get(person_id__username=username)
+        np = NaturalPerson.objects.activated().get(
+            SQ.mq(NaturalPerson.person_id, username=username))
     except:
         return False
     orgs = list(Position.objects.activated().filter(
@@ -667,7 +667,7 @@ def user_login_org(request: UserRequest, org: Organization) -> MESSAGECONTEXT:
     user = request.user
     try:
         assert user.is_person()
-        me = NaturalPerson.objects.activated().get(person_id=user)
+        me = NaturalPerson.objects.get_by_user(user, activate=True)
     except:
         return wrong("您没有权限访问该网址！请用对应小组账号登陆。")
     # 是小组一把手

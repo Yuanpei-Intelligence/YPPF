@@ -283,6 +283,9 @@ def buy_exchange_item(user: User, poolitem_id: str) -> MESSAGECONTEXT:
         return wrong('兑换时间已结束!')
     if poolitem.origin_num - poolitem.consumed_num <= 0:
         return wrong('奖品已售罄!')
+    # 检查用户是否已经毕业
+    if not user.active:
+        return wrong('您已毕业！')
 
     my_exchanged_time = PoolRecord.objects.filter(
         user=user, pool=poolitem.pool, prize=poolitem.prize).count()
@@ -350,6 +353,9 @@ def buy_lottery_pool(user: User, pool_id: str) -> MESSAGECONTEXT:
     my_entry_time = PoolRecord.objects.filter(pool=pool, user=user).count()
     if my_entry_time >= pool.entry_time:
         return wrong('您在本奖池中抽奖的次数已达上限!')
+    # 检查用户是否已经毕业
+    if not user.active:
+        return wrong('您已毕业！')
 
     try:
         with transaction.atomic():
@@ -447,6 +453,9 @@ def buy_random_pool(user: User, pool_id: str) -> Tuple[MESSAGECONTEXT, int, int]
     capacity = pool.get_capacity()
     if capacity <= total_entry_time:
         return wrong('盲盒已售罄!'), -1, 2
+    # 检查用户是否已经毕业
+    if not user.active:
+        return wrong('您已毕业！')
 
     try:
         with transaction.atomic():
@@ -486,6 +495,19 @@ def buy_random_pool(user: User, pool_id: str) -> Tuple[MESSAGECONTEXT, int, int]
                 source=f'盲盒奖池：{pool.title}',
                 source_type=YQPointRecord.SourceType.CONSUMPTION
             )
+            # 如果抽到了空盒子，按照设定值对用户给予元气值补偿并返回相应的提示
+            if modify_item.is_empty:
+                compensate_YQPoint = random.randint(
+                    pool.empty_YQPoint_compensation_lowerbound, pool.empty_YQPoint_compensation_upperbound)
+                if compensate_YQPoint == 0:
+                    return succeed(f'兑换盲盒成功!您抽到了空盒子，但是很遗憾这次没有元气值补偿QAQ'), -1, 1
+                User.objects.modify_YQPoint(
+                    user,
+                    compensate_YQPoint,
+                    source=f'盲盒奖池：{pool.title}空盒子补偿',
+                    source_type=YQPointRecord.SourceType.COMPENSATION
+                )
+                return succeed(f'兑换盲盒成功!您抽到了空盒子，获得{compensate_YQPoint}点元气值补偿!'), -1, 1
             if modify_item.prize is None:
                 return succeed('兑换盲盒成功!'), -1, 1
             return succeed('兑换盲盒成功!'), modify_item.prize.id, int(modify_item.is_empty)
@@ -578,11 +600,8 @@ def run_lottery(pool_id: int):
                 title=title,
                 content=content,
                 # URL=f'', # TODO: 我的奖品页面？
-                publish_to_wechat=True,
-                publish_kws={
-                    "app": WechatApp.TO_PARTICIPANT,
-                    "level": WechatMessageLevel.IMPORTANT,
-                },
+                to_wechat=dict(app=WechatApp.TO_PARTICIPANT,
+                               level=WechatMessageLevel.IMPORTANT),
             )
 
         # 给没中奖的同学发送通知
@@ -600,11 +619,8 @@ def run_lottery(pool_id: int):
                 title=title,
                 content=content,
                 # URL=f'', # TODO: 我的奖品页面？
-                publish_to_wechat=True,
-                publish_kws={
-                    "app": WechatApp.TO_PARTICIPANT,
-                    "level": WechatMessageLevel.IMPORTANT,
-                },
+                to_wechat=dict(app=WechatApp.TO_PARTICIPANT,
+                               level=WechatMessageLevel.IMPORTANT),
             )
 
 

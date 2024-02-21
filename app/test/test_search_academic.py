@@ -17,9 +17,9 @@ class GetSearchAcademicTestCase(TestCase):
         u2 = User.objects.create_user("22", "2", password="222")
         u3 = User.objects.create_user("33", "1", password="333")
         
-        NaturalPerson.objects.create(person_id=u1, name="1", stu_grade="2018")
-        NaturalPerson.objects.create(person_id=u2, name="2", stu_grade="2018")
-        NaturalPerson.objects.create(person_id=u3, name="3", stu_grade="2019")
+        NaturalPerson.objects.create(u1, name="1", stu_grade="2018")
+        NaturalPerson.objects.create(u2, name="2", stu_grade="2018")
+        NaturalPerson.objects.create(u3, name="3", stu_grade="2019")
 
         AcademicTag.objects.create(atype=AcademicTag.Type.MAJOR, tag_content="数学")
         AcademicTag.objects.create(atype=AcademicTag.Type.MAJOR, tag_content="物理")
