@@ -92,6 +92,7 @@ __all__ = [
     'Pool',
     'PoolItem',
     'PoolRecord',
+    'ActivitySummary',
 ]
 
 
