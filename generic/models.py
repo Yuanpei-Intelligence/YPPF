@@ -444,7 +444,6 @@ class PermissionBlacklist(models.Model):
 
     user = models.ForeignKey(
         User, verbose_name='用户', on_delete=models.CASCADE,
-        to_field='username',
     )
     permission = models.ForeignKey(
         Permission, verbose_name='权限', on_delete=models.CASCADE,
