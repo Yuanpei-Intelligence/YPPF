@@ -15,4 +15,4 @@ class FeedbackAdmin(admin.ModelAdmin):
 @admin.register(FeedbackType)
 class FeedbackTypeAdmin(admin.ModelAdmin):
     list_display = ["name", "org_type", "org",]
-    search_fields = ("name", "org_type", "org",)
+    search_fields = ("name", "org_type__otype_name", "org__oname",)
