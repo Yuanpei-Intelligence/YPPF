@@ -12,5 +12,5 @@ class DormitoryAgreementAdmin(admin.ModelAdmin):
 @admin.register(DormitoryAssignment)
 class DormitoryAssignmentAdmin(admin.ModelAdmin):
     list_display = ['dormitory', 'user', 'bed_id', 'time']
-    list_filter = ['bed_id', 'time']
-    search_fields = ['dormitory', *UserAdmin.suggest_search_fields('user'), 'time']
+    list_filter = ['bed_id', 'dormitory__gender', 'time']
+    search_fields = ['dormitory__id', *UserAdmin.suggest_search_fields('user'), 'time']
