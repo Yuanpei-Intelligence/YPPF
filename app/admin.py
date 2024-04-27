@@ -779,15 +779,14 @@ class AcademicEntryAdmin(admin.ModelAdmin):
 @admin.register(AcademicTagEntry)
 class AcademicTagEntryAdmin(AcademicEntryAdmin):
     list_display = ["person", "status", "tag"]
-    search_fields =  ("person", "status", "tag")
+    search_fields =  ("person__name", "tag__tag_content")
     list_filter = ["tag__atype", "status"]
 
 
 @admin.register(AcademicTextEntry)
 class AcademicTextEntryAdmin(AcademicEntryAdmin):
     list_display = ["person", "status", "atype", "content"]
-    # todo: django.core.exceptions.FieldError: Related Field got invalid lookup: icontains
-    search_fields =  ("person", "status", "atype", "content")
+    search_fields =  ("person__name", "content")
     list_filter = ["atype", "status"]
 
 
