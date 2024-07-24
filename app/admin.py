@@ -846,21 +846,31 @@ class PoolRecordAdmin(admin.ModelAdmin):
             qs = qs.filter(prize__provider=request.user)
         return qs
 
-    @as_action('兑换', actions, ['change', 'manage'], update=True, single=True)
+    @as_action('兑换', actions, ['change', 'manage'], update=True, single=False)  # 修改single为False以允许选择多个记录
     def redeem_prize(self, request, queryset):
-        record: PoolRecord = queryset[0]
-        if (not self.has_change_permission(request, record)
-                and not self.has_manage_permission(request, record)):
-            return self.message_user(request, '无权负责该礼品的兑换!', 'error')
-        if record.status != PoolRecord.Status.UN_REDEEM:
-            return self.message_user(request, '仅可兑换尚未兑换的奖品!', 'error')
-        if record.prize.name.startswith('信用分'):
-            User.objects.modify_credit(record.user, 1, '元气值：兑换')
-        record.status = PoolRecord.Status.REDEEMED
-        record.redeem_time = datetime.now()
-        record.save()
-        return self.message_user(request, '兑换成功!')
+        # 检查权限和记录状态，统计可以兑换的记录数
+        redeemable_records = []
+        for record in queryset:
+            if not (self.has_change_permission(request, record) or self.has_manage_permission(request, record)):
+                return self.message_user(request, '无权负责一部分选定的礼品兑换!', 'warning')
+            if record.status != PoolRecord.Status.UN_REDEEM:
+                return self.message_user(request, f'奖品 {record.prize.name} 已被兑换或不可兑换！', 'warning')
+            redeemable_records.append(record)
 
+        # 如果没有可兑换的记录，提前返回
+        if not redeemable_records:
+            return self.message_usesr(request, '没有可兑换的奖品！', 'error')
+
+        # 对可以兑换的记录进行兑换处理
+        for record in redeemable_records:
+            if record.prize.name.startswith('信用分'):
+                User.objects.modify_credit(record.user, 1, '元气值：兑换')
+            record.status = PoolRecord.Status.REDEEMED
+            record.redeem_time = datetime.now()
+            record.save()
+
+        # 返回成功信息
+        self.message_user(request, f'成功兑换 {len(redeemable_records)} 个奖品！')
 
 admin.site.register(OrganizationTag)
 admin.site.register(Comment)

@@ -897,6 +897,7 @@ def homepage(request: UserRequest):
 
             if count <= 0:  # 目前至少能显示一个，应该也合理吧
                 break
+    photo_display = ()
     if photo_display:
         guidepics = guidepics[1:]   # 第一张只是封面图，如果有需要呈现的内容就不显示
 
