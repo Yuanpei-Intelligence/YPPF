@@ -283,6 +283,9 @@ def modifyPosition(request: UserRequest):
     html_display = {}
     me = get_person_or_org(request.user)  # 获取自身
 
+    if not request.user.active:
+        return redirect(message_url(wrong("您的账号处于未激活状态，不能发起成员申请，如有需要请联系管理员！")))
+
     # 前端使用量user_type，表示观察者是小组还是个人
 
     # ———————————————— 读取可能存在的申请 为POST和GET做准备 ————————————————
