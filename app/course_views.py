@@ -468,6 +468,10 @@ def selectCourse(request: HttpRequest):
             wrong("非学生账号不能进行选课！", html_display)
             return redirect(message_url(html_display, request.path))
 
+        if not request.user.active:
+            wrong("您已毕业，不能进行选课或退课操作！", html_display)
+            return redirect(message_url(html_display, request.path))
+
         # 参数: 课程id，操作action: select/cancel
         try:
             course_id = request.POST.get('courseid')

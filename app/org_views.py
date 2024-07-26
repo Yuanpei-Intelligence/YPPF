@@ -72,6 +72,9 @@ def modifyOrganization(request: UserRequest):
     if request.user.is_org():
         return redirect(message_url(wrong("请不要使用小组账号申请新小组！")))
 
+    if not request.user.active:
+        return redirect(message_url(wrong("您已毕业，无法更改小组信息！")))
+
     # ———————————————— 读取可能存在的申请 为POST和GET做准备 ————————————————
 
     # 设置application为None, 如果非None则自动覆盖
