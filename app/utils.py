@@ -211,6 +211,7 @@ def get_sidebar_and_navbar(user: User, navbar_name="", title_name=""):
     bar_display["user_type"] = _utype
     if user.is_staff:
         bar_display["is_staff"] = True
+    bar_display["user_active"] = user.active
 
     # 接下来填补各种前端呈现信息
 

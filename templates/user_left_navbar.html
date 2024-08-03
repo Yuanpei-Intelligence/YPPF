@@ -24,6 +24,7 @@
                     </div>
                 </a>
             </li>
+            {% if bar_display.user_active %}
             <li class="menu">
                 <a href="{{bar_display.underground_url}}" aria-expanded="false" class="dropdown-toggle">
                     <div class="">
@@ -39,6 +40,7 @@
                     </div>
                 </a>
             </li>
+            {% endif %}
             <li class="menu">
                 <a href="/feedback/" aria-expanded="false" class="dropdown-toggle">
                     <div class="">
@@ -80,9 +82,11 @@
                     <li>
                         <a href="{% url 'myPrize' %}">我的奖品</a>
                     </li>
+                    {% if bar_display.user_active %}
                     <li>
                         <a href="{% url 'showPools' %}">元气值商城</a>
                     </li>
+                    {% endif %}
                 </ul>
             </li>
             <li class="menu">
@@ -97,6 +101,7 @@
                     </div>
                 </a>
             </li>
+            {% if bar_display.user_active %}
             <li class="menu">
                 <a href="/selectCourse/" aria-expanded="false" class="dropdown-toggle">
                     <div class="">
@@ -109,6 +114,7 @@
                     </div>
                 </a>
             </li>
+            {% endif %}
             <!--
             <li class="menu">
                 <a href="/stuinfo/#organization" aria-expanded="false" class="dropdown-toggle">
@@ -214,6 +220,7 @@
                 </a>
             </li>
 
+            {% if bar_display.user_active %}
             <li class="menu">
                 <a href="/showNewOrganization/" aria-expanded="false" class="dropdown-toggle">
                     <div class="">
@@ -230,6 +237,7 @@
                     </div>
                 </a>
             </li>
+            {% endif %}
             <li class="menu">
                 <a href="/yplibrary/" aria-expanded="false" class="dropdown-toggle">
                     <div class="">
