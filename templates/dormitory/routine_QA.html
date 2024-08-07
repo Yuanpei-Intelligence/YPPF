@@ -49,7 +49,7 @@
                                           onsubmit="return check_input()">
                                         {% for question, choices in survey_iter %}
                                             <div class="form-group mb-3 mx-5">
-                                                <h6>
+                                                <h6 id="survey-question-{{ question.order }}">
                                                     {{ question.order }}. {{ question.topic }}
                                                     {% if question.required %}<span class="req">*</span>{% endif %}
                                                 </h6>
@@ -100,6 +100,7 @@
                                             </div>
                                         {% else %}
                                             <div class="mt-4 mx-5">
+                                                <h6 id="error-message" style="text-align: center;"></h6>
                                                 <button type="submit" class="btn btn-primary btn-block mb-3" value="">
                                                     提交
                                                 </button>
@@ -127,16 +128,15 @@ var required_multiple_questions = [
     {% endif %}{% endfor %}
 ]
 const check_input = () => {
-    if (!required_multiple_questions.every(order => {
+    return required_multiple_questions.every(order => {
         var boxes = document.querySelectorAll('input[name="' + order + '"]:checked');
         if (boxes.length === 0) {
-            alert('您还未作答第' + order + '题！');
+            document.getElementById("error-message").innerHTML = '您还未作答<a href="#survey-question-'
+                + order + '" style="color:blue;">第' + order + '题</a>！';
             return false;
         }
         return true;
-    }))
-        return false;
-    return confirm('确认提交？提交后将不能修改，请确认信息无误后再提交。');
+    }) && confirm('确认提交？提交后将不能修改，请确认信息无误后再提交。');
 }
 </script>
 {% endblock add_js_file %}
