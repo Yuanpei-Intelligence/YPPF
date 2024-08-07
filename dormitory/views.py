@@ -69,6 +69,7 @@ class DormitoryRoutineQAView(ProfileTemplateView):
             for question in survey.questions.order_by('order'):
                 answer = self.request.POST.get(str(question.order))
                 if answer is None:
+                    assert not question.required, f"必填题{question.order}未作答"
                     continue
                 AnswerText.objects.create(question=question,
                                           answersheet=sheet,
