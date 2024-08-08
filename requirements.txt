@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 # Django
-django>=4.2
+django>=5.0,<5.1
 djangorestframework
 
 # 数据库
