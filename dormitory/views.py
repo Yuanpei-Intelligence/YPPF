@@ -99,14 +99,14 @@ class DormitoryAssignResultView(ProfileTemplateView):
             roommates = [NaturalPerson.objects.get_by_user(assign.user)
                          for assign in dorm_assignment.exclude(user=user)]
             self.extra_context.update(
-                dorm_assign=True,
+                dorm_assigned=True,
                 name=user.get_full_name(),
                 dorm_id=assignment.dormitory.id,
                 bed_id=assignment.bed_id,
                 roommates=roommates,
             )
         except DormitoryAssignment.DoesNotExist:
-            self.extra_context.update(dorm_assign=False)
+            self.extra_context.update(dorm_assigned=False)
 
 class AgreementView(ProfileTemplateView):
     template_name = 'dormitory/agreement.html'
