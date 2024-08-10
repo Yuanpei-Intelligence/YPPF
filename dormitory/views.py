@@ -11,6 +11,7 @@ from dormitory.serializers import (
     DormitoryAssignmentSerializer, DormitorySerializer,
     AgreementSerializerFixme, AgreementSerializer)
 from questionnaire.models import AnswerSheet, AnswerText, Survey
+from semester.api import next_semester
 
 
 class DormitoryViewSet(viewsets.ReadOnlyModelViewSet):
@@ -47,7 +48,7 @@ class DormitoryRoutineQAView(ProfileTemplateView):
     need_prepare = False
 
     def get_survey(self):
-        return Survey.objects.get(title='宿舍生活习惯调研')
+        return Survey.objects.get(title=f'宿舍生活习惯调研-{next_semester().year}')
 
     def get(self):
         survey = self.get_survey()
