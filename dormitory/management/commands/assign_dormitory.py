@@ -22,10 +22,12 @@ class Freshman:
 
 
 class Dormitory:
-    def __init__(self, id, remain):
+    def __init__(self, id: int, remain: int, is_noisy: bool):
         self.id = id
         self.remain = remain
         self.stu = []
+        # 盥洗室和楼道口比较吵闹，此属性为 True，其他寝室为 False
+        self.noisy = is_noisy
 
     def add(self, student: Freshman):
         self.stu.append(student)
@@ -53,14 +55,20 @@ class Dormitory:
         '''
         计算宿舍得分，应用于交换优化场景。
         宿舍计分项包括：
-        专业是否平均分配：2文2理 > 4文/4理 > 文理1:3
         存在来自同一省份的同学减分，并针对北京地区特别操作
-        衡量起床时间、睡眠时间的接近程度，计算方差
+        专业是否平均分配：2文2理 > 4文/4理 > 文理1:3
+        性格分配是否合理：尽量一个寝室不要多于两个内向
+        是否愿意和留学生/交换生同宿舍
         衡量能接受的最低空调温度接近程度，计算方差，特别计算能否接受整夜开空调的统一程度
+        衡量起床时间、睡眠时间的接近程度，计算方差
+        睡眠困扰同学尽量远离盥洗室和楼梯口（用 Dormitory.noisy 衡量）
+        宿舍环境（尽量保证一个宿舍整洁条理的有2人/随性就好的有2人）
+        对室友期待（一个寝室尽量不要全部专注学习/全面发展）
         在手动分配前，尽量保证宿舍是4人或3人的
-        与留学生住宿意愿也加入得分中
         '''
         score = 0
+
+        # FIXME: Reorder the following blocks to match the precedence mentioned above.
 
         major_score = sum([s.data['major'] for s in self.stu])
         if major_score == 2:
@@ -98,7 +106,7 @@ class Dormitory:
         return score
 
 
-def read_info():
+def read_info() -> list[Freshman]:
     '''返回一个Freshman的list'''
     freshmen = []
 
@@ -108,6 +116,7 @@ def read_info():
     for index, stu in df.iterrows():
         data = defaultdict()
 
+        # FIXME: Change the "question strings" here. Pull in more properties.
         data['name'] = stu["姓名*"]
         data['gender'] = stu["性别*"]
         data['sid'] = stu["学号*"]
@@ -126,6 +135,7 @@ def read_info():
         data['origin'] = info_row["省市"]
         data['high_school'] = info_row["中学"]
 
+        # 注意此处 map 的值要和 out_as_excel() 中对应
         major_map = {"文科类": 0,
                      "理工类": 1, }
         data['major'] = major_map.get(data['major'])
@@ -166,7 +176,7 @@ def read_info():
     return freshmen
 
 
-def read_dorm():
+def read_dorm() -> tuple[list[Dormitory], list[Dormitory]]:
     '''返回一个Dormitory的list'''
     dorm = []
 
@@ -175,11 +185,13 @@ def read_dorm():
     for index, room in df.iterrows():
         rid = int(room["房间"])
         if len(dorm) == 0 or dorm[-1].id != rid:
-            dorm.append(Dormitory(rid, 1))
+            # We can tell if a dormitory is noisy from its last two digits
+            dorm.append(Dormitory(rid, 1, (rid % 100) in (12, 25, 35, 36, 38, 39, 40, 49, 64)))
         else:
             dorm[-1].remain += 1
 
     # 注意，只选择了剩余床位为4的作为分配目标
+    # FIXME: The dormitory partition scheme changed this year.
     male_dorm = [d for d in dorm if (d.id < 400 or (
         d.id < 500 and d.id > 464)) and d.remain == 4]
     female_dorm = [d for d in dorm if d.id > 500 and d.remain == 4][:24]
@@ -187,7 +199,7 @@ def read_dorm():
     return male_dorm, female_dorm
 
 
-def assign_dorm():
+def assign_dorm() -> list[Dormitory]:
     '''
     分配宿舍算法：
     执行若干次（250000次）随机交换（选取任一宿舍，选取任一床位），
@@ -329,6 +341,7 @@ def out_as_excel():
 
     df = pd.DataFrame()
 
+    # FIXME: Adapt the lists to the definition in read_info().
     major_list = ["文科类", "理工类"]
     international_list = ["不愿意", "都可以", "愿意"]
     wake_list = ["上午6点之前", "6点-7点", "7点-8点", "8点-9点", "9点-10点", "10点之后"]
