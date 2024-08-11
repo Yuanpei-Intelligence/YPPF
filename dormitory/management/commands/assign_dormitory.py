@@ -408,6 +408,7 @@ def out_as_excel(dorm_result: list[Dormitory]):
                 "睡眠质量": sleep_quality_list[stu.data['sleep_quality']],
                 "希望宿舍环境": environment_list[stu.data['environment']],
                 "对大学生活期待": expectation_list[stu.data['expectation']],
+                "得分": dorm.check_better(),
             }
             temp_df = pd.DataFrame(data, index=[0])
             df = pd.concat([df, temp_df], ignore_index=True)
