@@ -116,24 +116,28 @@ def read_info() -> list[Freshman]:
     for index, stu in df.iterrows():
         data = defaultdict()
 
-        # FIXME: Change the "question strings" here. Pull in more properties.
-        data['name'] = stu["姓名*"]
-        data['gender'] = stu["性别*"]
-        data['sid'] = stu["学号*"]
-        data['origin'] = stu["生源地*"]
-        data['high_school'] = stu["生源高中*"]
-        data['major'] = stu["大学专业意向*"]
-        data['weight'] = stu["体重*（单位：kg）"]
-        data['international'] = stu["是否愿意与留学生住在同一间宿舍? (都在元培35号宿舍楼居住，即你是否愿意舍友中有留学生同学? )*"]
-        data['wake'] = stu["起床时间*"]
-        data['sleep'] = stu["入睡时间*"]
-        data['ac_temp'] = stu["夏天能接受的最低空调温度*"]
-        data['all_night_ac'] = stu["是否接受夏天整夜开空调*"]
+        data['name'] = stu["姓名"]
+        data['gender'] = stu["性别"]
+        data['sid'] = stu["学号"]
+        data['origin'] = stu["生源地"]
+        data['high_school'] = stu["生源高中"]
+        data['major'] = stu["专业意向"]
+        data['weight'] = stu["体重"]
+        data['international'] = stu["是否愿意和留学生住一起"]
+        data['wake'] = stu["你预期的大学生活起床时间"]
+        data['sleep'] = stu["你预期的大学生活睡觉时间"]
+        data['ac_temp'] = stu["夏天能接受的最低空调温度"]
+        data['all_night_ac'] = stu["是否接受夏天整晚开空调"]
+        data['personality'] = stu["你的性格"]
+        data['sleep_quality'] = stu["你的睡眠质量是"]
+        data['environment'] = stu["你希望你的宿舍环境是"]
+        data['expectation'] = stu["你本人更希望大学生活是"]
 
         # 在info表格中，根据学号找到对应行，读取生源地和生源高中信息，保证信息准确
         info_row = df2.loc[df2["学号"] == data['sid']].iloc[0]
         data['origin'] = info_row["省市"]
-        data['high_school'] = info_row["中学"]
+        # 2024年的 info 表格不包含这个列，只能选择相信问卷里填的
+        # data['high_school'] = info_row["中学"]
 
         # 注意此处 map 的值要和 out_as_excel() 中对应
         major_map = {"文科类": 0,
@@ -147,20 +151,19 @@ def read_info() -> list[Freshman]:
                              "不愿意": 0, }
         data['international'] = international_map.get(data['international'])
 
-        wake_map = {"上午6点之前": 0,
-                    "6点-7点": 1,
-                    "7点-8点": 2,
-                    "8点-9点": 3,
-                    "9点-10点": 4,
-                    "10点之后": 5, }
+        wake_map = {"7点前": 0,
+                    "7~8点": 1,
+                    "8~9点": 2,
+                    "9-10点": 3,
+                    "10-11点": 4,
+                    "11点后": 5, }
         data['wake'] = wake_map.get(data['wake'])
 
-        sleep_map = {"22点之前": 0,
-                     "22点-23点": 1,
-                     "23点-24点": 2,
-                     "0点-1点": 3,
-                     "1点-2点": 4,
-                     "2点之后": 5, }
+        sleep_map = {"23点前": 0,
+                     "23-24点": 1,
+                     "24-1点": 2,
+                     "1-2点": 3,
+                     "2点后": 4, }
         data['sleep'] = sleep_map.get(data['sleep'])
 
         data['ac_temp'] = int(data['ac_temp'][:2])
@@ -168,6 +171,21 @@ def read_info() -> list[Freshman]:
         ac_map = {"是": 1,
                   "否": 0, }
         data['all_night_ac'] = ac_map.get(data['all_night_ac'])
+
+        personality_map = {"内向型（独处时精力充沛；更封闭，更愿意在经挑选的小群体中分享个人的情况；不把兴奋说出来。）": 0,
+                           "适中型（介于二者之间，能够在内外向之间切换，在人群中乐意与人交谈结交朋友，同时也享受独处。）": 1,
+                           "外向型（与他人相处时精力充沛；易于“读”和了解，随意地分享个人情况；高度热情地社交。）": 2, }
+        data['personality'] = personality_map.get(data['personality'])
+
+        sleep_quality_map = {"浅眠型（易受声、光影响）": 0,
+                             "酣睡型（较少受影响，一觉到天亮）": 1, }
+        data['sleep_quality'] = sleep_quality_map.get(data['sleep_quality'])
+
+        environment_map = {"整洁条理": 0, "随性就好": 1, }
+        data['environment'] = environment_map.get(data['environment'])
+
+        expectation_map = {"专注学习": 0, "全面发展": 1}
+        data['expectation'] = expectation_map.get(data['expectation'])
 
         freshman_data = dict(data)
         freshman = Freshman(freshman_data)
@@ -335,18 +353,21 @@ def assign_dorm() -> list[Dormitory]:
     return dorm_result
 
 
-def out_as_excel():
+def out_as_excel(dorm_result: list[Dormitory]):
     '''将结果导出为excel文件，存储在reference/dorm_assigned.xlsx下'''
-    dorm_result = assign_dorm()
-
     df = pd.DataFrame()
 
-    # FIXME: Adapt the lists to the definition in read_info().
     major_list = ["文科类", "理工类"]
     international_list = ["不愿意", "都可以", "愿意"]
-    wake_list = ["上午6点之前", "6点-7点", "7点-8点", "8点-9点", "9点-10点", "10点之后"]
-    sleep_list = ["22点之前", "22点-23点", "23点-24点", "0点-1点", "1点-2点", "2点之后"]
+    wake_list = ["7点前", "7~8点", "8~9点", "9-10点", "10-11点", "11点后"]
+    sleep_list = ["23点前", "23-24点", "24-1点", "1-2点", "2点后"]
     ac_list = ["否", "是"]
+    personality_list = ["内向型（独处时精力充沛；更封闭，更愿意在经挑选的小群体中分享个人的情况；不把兴奋说出来。）",
+                        "适中型（介于二者之间，能够在内外向之间切换，在人群中乐意与人交谈结交朋友，同时也享受独处。）",
+                        "外向型（与他人相处时精力充沛；易于“读”和了解，随意地分享个人情况；高度热情地社交。）"]
+    sleep_quality_list = ["浅眠型（易受声、光影响）", "酣睡型（较少受影响，一觉到天亮）"]
+    environment_list = ["整洁条理", "随性就好"]
+    expectation_list = ["专注学习", "全面发展"]
 
     for dorm in dorm_result:
         for stu in dorm.stu:
@@ -364,6 +385,10 @@ def out_as_excel():
                 "入睡时间": sleep_list[stu.data['sleep']],
                 "夏天能接受的最低空调温度": stu.data['ac_temp'],
                 "是否接受夏天整夜开空调": ac_list[stu.data['all_night_ac']],
+                "性格": personality_list[stu.data['personality']],
+                "睡眠质量": sleep_quality_list[stu.data['sleep_quality']],
+                "希望宿舍环境": environment_list[stu.data['environment']],
+                "对大学生活期待": expectation_list[stu.data['expectation']],
             }
             temp_df = pd.DataFrame(data, index=[0])
             df = pd.concat([df, temp_df], ignore_index=True)
