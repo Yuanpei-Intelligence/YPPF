@@ -68,14 +68,6 @@ class Dormitory:
         '''
         score = 0
 
-        # FIXME: Reorder the following blocks to match the precedence mentioned above.
-
-        major_score = sum([s.data['major'] for s in self.stu])
-        if major_score == 2:
-            score += 1200
-        elif major_score == 0 or major_score == 4:
-            score += 800
-
         origin = [s.data['origin'] for s in self.stu]
         if len(set(origin)) == len(self.stu) - 1:
             score -= 300
@@ -83,16 +75,32 @@ class Dormitory:
         if len(beijing) >= 2:
             score -= 700
 
+        major_score = sum([s.data['major'] for s in self.stu])
+        if major_score == 2:
+            score += 1200
+        elif major_score == 0 or major_score == 4:
+            score += 800
+
+        # FIXME: personality here
+
+        score += 8 * np.prod([s.data['international'] for s in self.stu])
+
+        ac_score = 20 * np.var([s.data['ac_temp'] for s in self.stu])
+        ac_score += (len(set([s.data['all_night_ac']
+                     for s in self.stu])) - 1) * 400
+        score -= ac_score
+
         wake_score = np.var([s.data['wake'] for s in self.stu])
         score -= 30 * wake_score
 
         sleep_score = np.var([s.data['sleep'] for s in self.stu])
         score -= 30 * sleep_score
 
-        ac_score = 20 * np.var([s.data['ac_temp'] for s in self.stu])
-        ac_score += (len(set([s.data['all_night_ac']
-                     for s in self.stu])) - 1) * 400
-        score -= ac_score
+        # FIXME: Sleep quality here
+
+        # FIXME: Environment here
+
+        # FIXME: Expectation here
 
         stu_cnt_map = {4: 600,
                        3: 400,
@@ -100,8 +108,6 @@ class Dormitory:
                        1: 0,
                        0: 0, }
         score += stu_cnt_map.get(len(self.stu))
-
-        score += 8 * np.prod([s.data['international'] for s in self.stu])
 
         return score
 
