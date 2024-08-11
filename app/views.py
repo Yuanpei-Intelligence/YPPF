@@ -1117,7 +1117,7 @@ def _create_freshman_account(sid: str, email: str = None):
             current = "创建用户"
             user = User.objects.create_user(
                 username=sid, name=name,
-                usertype=User.Type.PERSON,
+                usertype=User.Type.STUDENT,
                 password=password
             )
             current = "创建个人账号"
@@ -1276,48 +1276,6 @@ def userAgreement(request: UserRequest):
     bar_display = utils.get_sidebar_and_navbar(request.user, "用户须知")
     return render(request, 'user_agreement.html',
                   dict(request=request, bar_display=bar_display))
-
-
-@deprecated
-@logger.secure_view()
-def authRegister(request: HttpRequest):
-    if not request.user.is_superuser:
-        return HttpResponseRedirect("/index/")
-
-    if request.method == "POST" and request.POST:
-        keys = ["name", "password", "snum", "email", "password2", "syear", "sgender"]
-        values = [request.POST[key] for key in keys]
-        name, password, sno, email, password2, stu_grade, gender = values
-        if password != password2:
-            return render(request, "index.html")
-
-        failed = False
-        failed |= gender not in ['男', '女']
-        failed |= SQ.sfilter(NaturalPerson.person_id, sno).exists()
-        failed |= NaturalPerson.objects.filter(email=email).exists()
-        if failed:
-            return render(request, "auth_register_boxed.html")
-
-        # OK!
-        try:
-            user = User.objects.create_user(
-                username=sno, name=name,
-                usertype=User.Type.PERSON,
-                password=password
-            )
-            person = NaturalPerson.objects.create(
-                user,
-                stu_id_dbonly=sno,
-                name=name,
-                email=email,
-                stu_grade=stu_grade,
-                gender=NaturalPerson.Gender.MALE if gender == '男'
-                else NaturalPerson.Gender.FEMALE,
-            )
-        except:
-            return HttpResponseRedirect("/admin/")
-        return HttpResponseRedirect("/index/")
-    return render(request, "auth_register_boxed.html")
 
 
 @login_required(redirect_field_name="origin")

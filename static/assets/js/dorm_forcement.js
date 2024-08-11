@@ -1,9 +1,10 @@
+const user_agreement_path = '/agreement'
 const dorm_path = '/dormitory/agreement';
 const query_path = '/dormitory/agreement-query-fixme';
 
-function currentIsDormPage() {
+function skipThisPage() {
     var current_url = window.location.pathname;
-    return current_url.includes(dorm_path);
+    return current_url.includes(dorm_path) || current_url.includes(user_agreement_path);
 }
 
 function getAgreementState() {
@@ -22,7 +23,7 @@ function getAgreementState() {
 }
 
 $(function() {
-    if (!currentIsDormPage()) {
+    if (!skipThisPage()) {
         getAgreementState().then(signed => {
             if (!signed) {
                 window.location.href = dorm_path;
