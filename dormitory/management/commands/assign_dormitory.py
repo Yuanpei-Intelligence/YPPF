@@ -195,27 +195,27 @@ def read_info() -> list[Freshman]:
 
 
 def read_dorm() -> tuple[list[Dormitory], list[Dormitory]]:
-    '''返回一个Dormitory的list'''
-    dorm = []
+    '''返回两个Dormitory的list，分别代表男寝和女寝'''
+    def read_from_sheet(sheet: str) -> list[Dormitory]:
+        ''' Reads information from a specific sheet in the workbook. '''
+        dorm = []
 
-    df = pd.read_excel("/workspace/dormitory/references/dorm.xlsx")
+        df = pd.read_excel("/workspace/dormitory/references/dorm.xlsx", sheet_name = sheet)
 
-    for index, room in df.iterrows():
-        rid = int(room["房间"])
-        if len(dorm) == 0 or dorm[-1].id != rid:
-            # We can tell if a dormitory is noisy from its last two digits
-            dorm.append(Dormitory(rid, 1, (rid % 100) in (12, 25, 35, 36, 38, 39, 40, 49, 64)))
-        else:
-            dorm[-1].remain += 1
+        for index, room in df.iterrows():
+            rid = int(room["房间"])
+            if len(dorm) == 0 or dorm[-1].id != rid:
+                if len(dorm) != 0:
+                    assert dorm[-1].id < rid, "Expect room number to be ascending order"
+                # We can tell if a dormitory is noisy from its last two digits
+                dorm.append(Dormitory(rid, 1, (rid % 100) in (12, 25, 35, 36, 38, 39, 40, 49, 64)))
+            else:
+                dorm[-1].remain += 1
 
-    # 注意，只选择了剩余床位为4的作为分配目标
-    # FIXME: The dormitory partition scheme changed this year.
-    male_dorm = [d for d in dorm if (d.id < 400 or (
-        d.id < 500 and d.id > 464)) and d.remain == 4]
-    female_dorm = [d for d in dorm if d.id > 500 and d.remain == 4][:24]
+        # 注意，只选择了剩余床位为4的作为分配目标
+        return list(filter(lambda d: d.remain == 4, dorm))
 
-    return male_dorm, female_dorm
-
+    return read_from_sheet("男生宿舍"), read_from_sheet("女生宿舍")
 
 def assign_dorm() -> list[Dormitory]:
     '''
