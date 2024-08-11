@@ -21,6 +21,9 @@ class Freshman:
     def __init__(self, data):
         self.data = data
 
+    def __repr__(self):
+        return repr(self.data)
+
 
 class Dormitory:
     def __init__(self, id: int, remain: int, is_noisy: bool):
@@ -67,6 +70,10 @@ class Dormitory:
         对室友期待（一个寝室尽量不要全部专注学习/全面发展）
         在手动分配前，尽量保证宿舍是4人或3人的
         '''
+        # Just return 0 for empty dormitories. Otherwise, using np.var raises a warning
+        if len(self.stu) == 0:
+            return 0
+
         score = 0
 
         origin = [s.data['origin'] for s in self.stu]
@@ -87,15 +94,15 @@ class Dormitory:
 
         score += 8 * np.prod([s.data['international'] for s in self.stu])
 
-        ac_score = 20 * np.var([s.data['ac_temp'] for s in self.stu])
+        ac_score = 20 * np.var([s.data['ac_temp'] for s in self.stu], ddof = 0)
         ac_score += (len(set([s.data['all_night_ac']
-                     for s in self.stu])) - 1) * 400
+                    for s in self.stu])) - 1) * 400
         score -= ac_score
 
-        wake_score = np.var([s.data['wake'] for s in self.stu])
+        wake_score = np.var([s.data['wake'] for s in self.stu], ddof = 0)
         score -= 30 * wake_score
 
-        sleep_score = np.var([s.data['sleep'] for s in self.stu])
+        sleep_score = np.var([s.data['sleep'] for s in self.stu], ddof = 0)
         score -= 30 * sleep_score
 
         if self.noisy and any(s.data['sleep_quality'] == 0 for s in self.stu):
@@ -265,6 +272,7 @@ def assign_dorm() -> list[Dormitory]:
                     dorm.stu.pop()
 
     # 随机交换
+    print('\033[36mProcessing male dormitories...\033[0m')
     epsilon = 0.3
     for episode in trange(250000):
 
@@ -275,9 +283,9 @@ def assign_dorm() -> list[Dormitory]:
 
         room1: Dormitory = copy.deepcopy(male_dorm[rid1])
         room2: Dormitory = copy.deepcopy(male_dorm[rid2])
-        o_score = room1.check_better() + room2.check_better()
         if len(room1.stu) == 0 or len(room2.stu) == 0:
             continue
+        o_score = room1.check_better() + room2.check_better()
 
         temp1: Dormitory = copy.deepcopy(room1)
         temp2: Dormitory = copy.deepcopy(room2)
@@ -312,6 +320,7 @@ def assign_dorm() -> list[Dormitory]:
             male_dorm.append(room1)
             male_dorm.append(room2)
 
+    print("\033[35mProcessing female dormitories...\033[0m")
     for episode in trange(250000):
 
         rid1 = random.randint(0, len(female_dorm) - 1)
@@ -321,9 +330,9 @@ def assign_dorm() -> list[Dormitory]:
 
         room1: Dormitory = copy.deepcopy(female_dorm[rid1])
         room2: Dormitory = copy.deepcopy(female_dorm[rid2])
-        o_score = room1.check_better() + room2.check_better()
         if len(room1.stu) == 0 or len(room2.stu) == 0:
             continue
+        o_score = room1.check_better() + room2.check_better()
 
         temp1: Dormitory = copy.deepcopy(room1)
         temp2: Dormitory = copy.deepcopy(room2)
@@ -374,10 +383,8 @@ def out_as_excel(dorm_result: list[Dormitory]):
     wake_list = ["7点前", "7~8点", "8~9点", "9-10点", "10-11点", "11点后"]
     sleep_list = ["23点前", "23-24点", "24-1点", "1-2点", "2点后"]
     ac_list = ["否", "是"]
-    personality_list = ["内向型（独处时精力充沛；更封闭，更愿意在经挑选的小群体中分享个人的情况；不把兴奋说出来。）",
-                        "适中型（介于二者之间，能够在内外向之间切换，在人群中乐意与人交谈结交朋友，同时也享受独处。）",
-                        "外向型（与他人相处时精力充沛；易于“读”和了解，随意地分享个人情况；高度热情地社交。）"]
-    sleep_quality_list = ["浅眠型（易受声、光影响）", "酣睡型（较少受影响，一觉到天亮）"]
+    personality_list = ["内向型", "适中型", "外向型"]
+    sleep_quality_list = ["浅眠型", "酣睡型"]
     environment_list = ["整洁条理", "随性就好"]
     expectation_list = ["专注学习", "全面发展"]
 
