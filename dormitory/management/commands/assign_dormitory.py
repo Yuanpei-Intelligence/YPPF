@@ -81,7 +81,8 @@ class Dormitory:
         elif major_score == 0 or major_score == 4:
             score += 800
 
-        # FIXME: personality here
+        if len([s for s in self.stu if s.data['personality'] == 0]) > 2:
+            score -= 600
 
         score += 8 * np.prod([s.data['international'] for s in self.stu])
 
@@ -96,11 +97,17 @@ class Dormitory:
         sleep_score = np.var([s.data['sleep'] for s in self.stu])
         score -= 30 * sleep_score
 
-        # FIXME: Sleep quality here
+        if self.noisy and any(s.data['sleep_quality'] == 0 for s in self.stu):
+            score -= 300
 
-        # FIXME: Environment here
+        env_score = sum(s.data['environment'] for s in self.stu)
+        if env_score == 2:
+            score += 200
+        if env_score in (0, 4):
+            score += 100
 
-        # FIXME: Expectation here
+        if len(set(s.data['expectation'] for s in self.stu)) == 1:
+            score -= 200
 
         stu_cnt_map = {4: 600,
                        3: 400,
