@@ -5,6 +5,7 @@ from collections import defaultdict
 import numpy as np
 import pandas as pd
 from django.core.management.base import BaseCommand
+from tqdm import trange
 
 '''
 有关reference文件夹的说明：
@@ -265,8 +266,7 @@ def assign_dorm() -> list[Dormitory]:
 
     # 随机交换
     epsilon = 0.3
-    for episode in range(250000):
-        print(episode)
+    for episode in trange(250000):
 
         rid1 = random.randint(0, len(male_dorm) - 1)
         rid2 = random.randint(0, len(male_dorm) - 1)
@@ -312,8 +312,7 @@ def assign_dorm() -> list[Dormitory]:
             male_dorm.append(room1)
             male_dorm.append(room2)
 
-    for episode in range(250000):
-        print(episode)
+    for episode in trange(250000):
 
         rid1 = random.randint(0, len(female_dorm) - 1)
         rid2 = random.randint(0, len(female_dorm) - 1)
@@ -414,4 +413,4 @@ class Command(BaseCommand):
     help = "Assign dormitory."
 
     def handle(self, *args, **options):
-        out_as_excel()
+        out_as_excel(assign_dorm())
