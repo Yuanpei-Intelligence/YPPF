@@ -92,7 +92,7 @@ class Dormitory:
         if len([s for s in self.stu if s.data['personality'] == 0]) > 2:
             score -= 600
 
-        score += 8 * np.prod([s.data['international'] for s in self.stu])
+        # score += 8 * np.prod([s.data['international'] for s in self.stu])
 
         ac_score = 20 * np.var([s.data['ac_temp'] for s in self.stu], ddof = 0)
         ac_score += (len(set([s.data['all_night_ac']
@@ -155,8 +155,13 @@ def read_info() -> list[Freshman]:
         data['expectation'] = stu["你本人更希望大学生活是"]
 
         # 在info表格中，根据学号找到对应行，读取生源地和生源高中信息，保证信息准确
-        info_row = df2.loc[df2["学号"] == data['sid']].iloc[0]
-        data['origin'] = info_row["省市"]
+        try:
+            info_row = df2.loc[df2["学号"] == data['sid']].iloc[0]
+            data['origin'] = info_row["省市"]
+        except IndexError:
+            import sys
+            print('IndexError when consulting info.xlsx', data['name'])
+            sys.exit(1)
         # 2024年的 info 表格不包含这个列，只能选择相信问卷里填的
         # data['high_school'] = info_row["中学"]
 
