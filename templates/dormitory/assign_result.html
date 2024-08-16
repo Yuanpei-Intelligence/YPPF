@@ -58,7 +58,7 @@
                                         <tr>
                                             <th align="middle" bgcolor="#669900" style="color:white"> 姓名 </th>
                                             <th align="middle" bgcolor="#669900" style="color:white"> 宿舍号 </th>
-                                            {% comment %} <th align="middle" bgcolor="#669900" style="color:white"> 床号 </th> {% endcomment %}
+                                            <th align="middle" bgcolor="#669900" style="color:white"> 床号 </th>
                                             <th align="middle" bgcolor="#669900" style="color:white"> 你的室友 </th>  
                                         </tr>
                                         {% for roommate in roommates %}
@@ -66,7 +66,7 @@
                                                 {% if forloop.first %}
                                                 <td rowspan={{ roommates | length }} align="middle" valign="middle" bgcolor="#F5F5F5">{{name}}</td>
                                                 <td rowspan={{ roommates | length }} align="middle" valign="middle" bgcolor="#F5F5F5">{{dorm_id}}</td>
-                                                {% comment %} <td rowspan={{ roommates | length }} align="middle" valign="middle" bgcolor="#F5F5F5">{{bed_id}}</td> {% endcomment %}
+                                                <td rowspan={{ roommates | length }} align="middle" valign="middle" bgcolor="#F5F5F5">{{bed_id}}</td>
                                                 {% endif %}
                                                 <td align="middle" valign="middle" bgcolor="#F5F5F5"> <img src="{{roommate.get_user_ava}}" height="38px" width="38px"> <a href="{{roommate.get_absolute_url}}">&nbsp{{roommate.name}}</a> </td>
                                             </tr>
