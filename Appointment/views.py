@@ -699,7 +699,7 @@ def _add_appoint(contents: dict, start: datetime, finish: datetime, non_yp_num: 
     create_min = create_require_num(room, type)
 
     # 检查人员信息
-    if 2 * len(students) < create_min:
+    if contents.get('longterm') != 'on' and 2 * len(students) < create_min:
         return _error('院内使用人数需要达到房间最小人数的一半！')
 
     # 预约是否超过3小时

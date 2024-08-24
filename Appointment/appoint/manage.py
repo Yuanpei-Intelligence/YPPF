@@ -159,8 +159,9 @@ def create_appoint(
         students.append(appointer)
     inner_num = len(students)
 
-    _check_create_num(room, type, inner_num, outer_num)
-    _check_num_constraint(room, type, inner_num, outer_num)
+    if type != Appoint.Type.LONGTERM:
+        _check_create_num(room, type, inner_num, outer_num)
+        _check_num_constraint(room, type, inner_num, outer_num)
 
     _check_credit(appointer)
     appoint = Appoint(
