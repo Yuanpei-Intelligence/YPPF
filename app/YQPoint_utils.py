@@ -196,13 +196,12 @@ def get_pools_and_items(pool_type: Pool.Type, user: User, frontend_dict: Dict[st
             "id", "origin_num", "consumed_num", "exchange_price",
             "exchange_limit", "is_big_prize",
             "prize__name", "prize__more_info", "prize__stock",
-            "prize__reference_price", "prize__image", "prize__id"
+            "prize__reference_price", "prize__image", "prize__id", "attributes",
         ))
         for item in this_pool_items:
             item["remain_num"] = item["origin_num"] - item["consumed_num"]
         this_pool_info["items"] = sorted(
             this_pool_items, key=lambda x: -x["remain_num"])  # 按剩余数量降序排序，已卖完的在最后
-
         if pool_type != Pool.Type.EXCHANGE:
             this_pool_info["my_entry_time"] = PoolRecord.objects.filter(
                 user=user, pool=pool).count()
@@ -259,7 +258,9 @@ def get_pools_and_items(pool_type: Pool.Type, user: User, frontend_dict: Dict[st
     frontend_dict["pools_info"] = pools_info
 
 
-def buy_exchange_item(user: User, poolitem_id: str) -> MESSAGECONTEXT:
+def buy_exchange_item(
+        user: User, poolitem_id: str,
+        attributes: dict[str, str] = {}) -> MESSAGECONTEXT:
     """
     购买兑换奖池的某个奖品
 
@@ -292,6 +293,12 @@ def buy_exchange_item(user: User, poolitem_id: str) -> MESSAGECONTEXT:
     if my_exchanged_time >= poolitem.exchange_limit:
         return wrong('您兑换该奖品的次数已达上限!')
 
+    for exchange_attribute in poolitem.exchange_attributes:
+        if exchange_attribute['name'] not in attributes:
+            return wrong('请填写完整的兑换信息!')
+        if attributes[exchange_attribute['name']] not in exchange_attribute['range']:
+            return wrong('兑换信息填写错误!')
+
     try:
         with transaction.atomic():
             poolitem = PoolItem.objects.select_for_update().get(
@@ -313,6 +320,7 @@ def buy_exchange_item(user: User, poolitem_id: str) -> MESSAGECONTEXT:
                 user=user,
                 pool=poolitem.pool,
                 prize=poolitem.prize,
+                attributes=attributes,
                 status=PoolRecord.Status.UN_REDEEM,
             )
 

@@ -236,9 +236,6 @@
                                                         <span class="text-info px-1"><i class="fa fa-solid fa-info-circle"></i> 详情</span>
                                                     </a>
                                                 </p>
-                                                <form action="" method="POST" class="invisible" id="getExchangeForm{{ item.id }}">
-                                                    <input type="hidden" name="pool_id" value="{{ pool.id }}">
-                                                </form>
                                                 <div class="btn-group btn-group-sm w-100" role="group">
                                                     {% if item.exchange_price > my_YQpoint %}
                                                         <button class="btn btn-dark w-50 px-1">{{ item.exchange_price }} 元气值</button>
@@ -254,15 +251,28 @@
                                                     <button href="#" class="btn btn-light w-50 px-1 disabled">兑换</button>
                                                     {% else %}
                                                         <button class="btn btn-success w-50 px-1">{{ item.exchange_price }} 元气值</button>
-                                                        <button type="submit" 
-                                                            class="btn btn-outline-success w-50 px-1" 
-                                                            form="getExchangeForm{{ item.id }}" 
-                                                            name="submit_exchange" 
-                                                            value="{{ item.id }}"
-                                                            onclick="return confirm('确定要兑换该奖品吗？')"
-                                                            >
-                                                            兑换
-                                                        </button>
+                                                        {% if item.attributes %}
+                                                            <button type="button" 
+                                                                class="btn btn-outline-success w-50 px-1" 
+                                                                data-toggle="modal" 
+                                                                data-target="#prize-{{ item.id }}"
+                                                                onclick="ModuleTrackFunction(3, '奖品详情: {{item.prize__name}}'); 
+                                                                return false"
+                                                                >
+                                                                选择规格
+                                                            </button>
+                                                        {% else %}
+                                                            <button type="submit" 
+                                                                class="btn btn-outline-success w-50 px-1" 
+                                                                form="getExchangeForm{{ item.id }}" 
+                                                                name="submit_exchange" 
+                                                                value="{{ item.id }}"
+                                                                onclick="ModuleTrackFunction(3, '奖品详情: {{item.prize__name}}'); 
+                                                                return confirm('确定要兑换该奖品吗？')"
+                                                                >
+                                                                兑换
+                                                            </button>
+                                                        {% endif %}
                                                     {% endif %}
                                                 </div>
                                             </div>
@@ -529,10 +539,6 @@
                                 <p>
                                     <i class="fa fa-fw fa-info"></i> 奖品说明：{{ item.prize__more_info }}
                                 </p>
-                                {% comment %} <p>
-                                    <i class="fa fa-fw fa-yen-sign"></i> 参考价格：{{ item.prize__reference_price }} 元
-                                </p> {% endcomment %}
-                                {% if pool.type == "兑换" %}
                                     <p>
                                         <i class="fa fa-fw fa-exchange-alt"></i> 兑换比例：{{ item.exchange_price }} 元气值/个
                                     </p>
@@ -545,17 +551,46 @@
                                     <p>
                                         <i class="fas fa-fw fa-ticket-alt"></i> 已兑换次数：{{ item.my_exchange_time }} / {{ item.exchange_limit }} 次
                                     </p>
-                                {% endif %}
-                                {% if pool.type == "抽奖" %}
-                                    <p>
-                                        <i class="fa fa-fw fa-boxes"></i> 奖品数量：{{ item.origin_num }} 个
-                                    </p>
-                                {% endif %}
-                                {% if pool.type == "盲盒" and item.is_big_prize %}
-                                    <p>
-                                        <i class="far fa-fw fa-star"></i> 获取概率：{{ item.probability }}%
-                                    </p>
-                                {% endif %}
+                                    <form action="" method="POST" id="getExchangeForm{{ item.id }}">
+                                        <input type="hidden" name="pool_id" value="{{ pool.id }}">
+                                        {% for attribute in item.attributes %}
+                                        <div style="display: inline-block;">
+                                        {% for ty in attribute.range %}
+                                            <span class="btn btn-light my-2" style="display: inline-block;">
+                                            <input type="radio" style="display: inline-block;" name="{{ attribute.name }}" value="{{ ty }}" required>
+                                            {{ ty }}
+                                            </span>
+                                        {% endfor %}
+                                        </div>
+                                        {% endfor %}
+                                    </form>
+                                    <br>
+                                    <div class="btn-group btn-group-sm w-100" role="group">
+                                        {% if item.exchange_price > my_YQpoint %}
+                                            <button class="btn btn-dark w-50 px-1">{{ item.exchange_price }} 元气值</button>
+                                            <button href="#" class="btn btn-light w-50 px-1 disabled">元气值不足</button>
+                                        {% elif item.my_exchange_time >= item.exchange_limit %}
+                                            <button class="btn btn-dark w-50 px-1">{{ item.exchange_price }} 元气值</button>
+                                            <button href="#" class="btn btn-light w-50 px-1 disabled">次数已用完</button>
+                                        {% elif item.remain_num == 0 %}
+                                            <button class="btn btn-dark w-50 px-1">{{ item.exchange_price }} 元气值</button>
+                                            <button href="#" class="btn btn-light w-50 px-1 disabled">奖品不足</button>
+                                        {% elif active_user == 0 %}
+                                        <button class="btn btn-dark w-50 px-1">{{ item.exchange_price }} 元气值</button>
+                                        <button href="#" class="btn btn-light w-50 px-1 disabled">兑换</button>
+                                        {% else %}
+                                            <button class="btn btn-success w-50 px-1">{{ item.exchange_price }} 元气值</button>
+                                            <button type="submit" 
+                                                class="btn btn-outline-success w-50 px-1" 
+                                                form="getExchangeForm{{ item.id }}" 
+                                                name="submit_exchange" 
+                                                value="{{ item.id }}"
+                                                onclick="return confirm('确定要兑换该奖品吗？')"
+                                                >
+                                                兑换
+                                            </button>
+                                        {% endif %}
+                                    </div>
                             </div>
                         </div>
                     </div>
