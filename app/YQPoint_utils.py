@@ -196,7 +196,7 @@ def get_pools_and_items(pool_type: Pool.Type, user: User, frontend_dict: Dict[st
             "id", "origin_num", "consumed_num", "exchange_price",
             "exchange_limit", "is_big_prize",
             "prize__name", "prize__more_info", "prize__stock",
-            "prize__reference_price", "prize__image", "prize__id", "attributes",
+            "prize__reference_price", "prize__image", "prize__id", "exchange_attributes",
         ))
         for item in this_pool_items:
             item["remain_num"] = item["origin_num"] - item["consumed_num"]

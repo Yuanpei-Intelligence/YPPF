@@ -553,7 +553,7 @@
                                     </p>
                                     <form action="" method="POST" id="getExchangeForm{{ item.id }}">
                                         <input type="hidden" name="pool_id" value="{{ pool.id }}">
-                                        {% for attribute in item.attributes %}
+                                        {% for attribute in item.exchange_attributes %}
                                         <div style="display: inline-block;">
                                         {% for ty in attribute.range %}
                                             <span class="btn btn-light my-2" style="display: inline-block;">
@@ -576,8 +576,8 @@
                                             <button class="btn btn-dark w-50 px-1">{{ item.exchange_price }} 元气值</button>
                                             <button href="#" class="btn btn-light w-50 px-1 disabled">奖品不足</button>
                                         {% elif active_user == 0 %}
-                                        <button class="btn btn-dark w-50 px-1">{{ item.exchange_price }} 元气值</button>
-                                        <button href="#" class="btn btn-light w-50 px-1 disabled">兑换</button>
+                                            <button class="btn btn-dark w-50 px-1">{{ item.exchange_price }} 元气值</button>
+                                            <button href="#" class="btn btn-light w-50 px-1 disabled">兑换</button>
                                         {% else %}
                                             <button class="btn btn-success w-50 px-1">{{ item.exchange_price }} 元气值</button>
                                             <button type="submit" 
