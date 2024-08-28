@@ -692,7 +692,6 @@ def _add_appoint(contents: dict, start: datetime, finish: datetime, non_yp_num: 
 
     # 检查预约类型
     if datetime.now().date() == start.date() and type == Appoint.Type.NORMAL:
-        # 长期预约必须保证预约时达到正常人数要求
         type = Appoint.Type.TODAY
 
     # 创建预约时要求的人数
