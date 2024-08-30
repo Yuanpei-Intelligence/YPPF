@@ -259,6 +259,41 @@ def get_pools_and_items(pool_type: Pool.Type, user: User, frontend_dict: Dict[st
     frontend_dict["pools_info"] = pools_info
 
 
+def check_user_pool(user: User, pool: Pool) -> None | str:
+    """
+    检查用户 user 是否已经毕业，以及是否参加了 pool 所关联的活动；当前是否在奖池的运行时间内。
+
+    :param user: 当前用户
+    :type user: User
+    :param pool: 待购买的物品所属奖池
+    :type pool: Pool
+    :return: 如果检查通过，返回None。否则，返回一个可以作为 wrong() 函数参数的字符串。
+    :rtype: None | str
+    """
+    # 检查奖池运行时间
+    if pool.start > datetime.now():
+        return '当前奖池时间未开始！'
+    if pool.end is not None and pool.end < datetime.now():
+        return '当前奖池时间已结束！'
+
+    # 检查用户是否已经毕业
+    if not user.active:
+        return '您已毕业！'
+
+    # 检查用户是否参加了相关的活动
+    if pool.activity is not None:
+        assert hasattr(user, 'naturalperson'), "非个人用户发起了奖池兑换请求"
+        participates = Participation.objects.filter(
+            activity = pool.activity,
+            person = user.naturalperson,
+            status = Participation.AttendStatus.ATTENDED,
+        )
+        if not participates.exists():
+            return '该奖池为"' + str(pool.activity) + '"活动限定奖池，请先参加再来购买！'
+
+    return None
+
+
 def buy_exchange_item(
         user: User, poolitem_id: str,
         attributes: dict[str, str] = {}) -> MESSAGECONTEXT:
@@ -279,26 +314,11 @@ def buy_exchange_item(
             id=poolitem_id, pool__type=Pool.Type.EXCHANGE)
     except:
         return wrong('奖品不存在!')
-    if poolitem.pool.start > datetime.now():
-        return wrong('兑换时间未开始!')
-    if poolitem.pool.end is not None and poolitem.pool.end < datetime.now():
-        return wrong('兑换时间已结束!')
     if poolitem.origin_num - poolitem.consumed_num <= 0:
         return wrong('奖品已售罄!')
-    # 检查用户是否已经毕业
-    if not user.active:
-        return wrong('您已毕业！')
-
-    # 检查用户是否参加了相关的活动
-    if poolitem.pool.activity is not None:
-        assert hasattr(user, 'naturalperson'), "非个人用户发起了奖池兑换请求"
-        participates = Participation.objects.filter(
-            activity = poolitem.pool.activity,
-            person = user.naturalperson,
-            status = Participation.AttendStatus.ATTENDED,
-        )
-        if not participates.exists():
-            return wrong(f'该奖池为"{poolitem.pool.activity}"活动限定奖池，请先参加再来购买！')
+    other_errors = check_user_pool(user, poolitem.pool)
+    if other_errors:
+        return wrong(other_errors)
 
     my_exchanged_time = PoolRecord.objects.filter(
         user=user, pool=poolitem.pool, prize=poolitem.prize).count()
@@ -366,27 +386,12 @@ def buy_lottery_pool(user: User, pool_id: str) -> MESSAGECONTEXT:
         pool = Pool.objects.get(id=pool_id, type=Pool.Type.LOTTERY)
     except:
         return wrong('抽奖不存在!')
-    if pool.start > datetime.now():
-        return wrong('抽奖未开始!')
-    if pool.end is not None and pool.end < datetime.now():  # 实际上抽奖类的奖池的end应该不可能是None
-        return wrong('抽奖已结束!')
     my_entry_time = PoolRecord.objects.filter(pool=pool, user=user).count()
     if my_entry_time >= pool.entry_time:
         return wrong('您在本奖池中抽奖的次数已达上限!')
-    # 检查用户是否已经毕业
-    if not user.active:
-        return wrong('您已毕业！')
-    
-    # 检查用户是否参加了相关的活动
-    if pool.activity is not None:
-        assert hasattr(user, 'naturalperson'), "非个人用户发起了奖池抽奖请求"
-        participates = Participation.objects.filter(
-            activity = pool.activity,
-            person = user.naturalperson,
-            status = Participation.AttendStatus.ATTENDED,
-        )
-        if not participates.exists():
-            return wrong(f'该奖池为"{pool.activity}"活动限定奖池，请先参加再来购买！')
+    other_errors = check_user_pool(user, pool)
+    if other_errors:
+        return wrong(other_errors)
 
     try:
         with transaction.atomic():
@@ -473,10 +478,6 @@ def buy_random_pool(user: User, pool_id: str) -> Tuple[MESSAGECONTEXT, int, int]
         pool = Pool.objects.get(id=pool_id, type=Pool.Type.RANDOM)
     except:
         return wrong('盲盒不存在!'), -1, 2
-    if pool.start > datetime.now():
-        return wrong('盲盒兑换时间未开始!'), -1, 2
-    if pool.end is not None and pool.end < datetime.now():
-        return wrong('盲盒兑换时间已结束!'), -1, 2
     my_entry_time = PoolRecord.objects.filter(pool=pool, user=user).count()
     if my_entry_time >= pool.entry_time:
         return wrong('您兑换这款盲盒的次数已达上限!'), -1, 2
@@ -484,20 +485,9 @@ def buy_random_pool(user: User, pool_id: str) -> Tuple[MESSAGECONTEXT, int, int]
     capacity = pool.get_capacity()
     if capacity <= total_entry_time:
         return wrong('盲盒已售罄!'), -1, 2
-    # 检查用户是否已经毕业
-    if not user.active:
-        return wrong('您已毕业！')
-    
-    # 检查用户是否参加了相关的活动
-    if pool.activity is not None:
-        assert hasattr(user, 'naturalperson'), "非个人用户发起了盲盒购买请求"
-        participates = Participation.objects.filter(
-            activity = pool.activity,
-            person = user.naturalperson,
-            status = Participation.AttendStatus.ATTENDED,
-        )
-        if not participates.exists():
-            return wrong(f'该奖池为"{pool.activity}"活动限定奖池，请先参加再来购买！')
+    other_errors = check_user_pool(user, pool)
+    if other_errors:
+        return wrong(other_errors), -1, 2
 
     try:
         with transaction.atomic():
