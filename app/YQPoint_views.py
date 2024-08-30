@@ -106,7 +106,10 @@ def showPools(request: UserRequest) -> HttpResponse:
     if request.method == "POST" and request.POST:
         if request.POST.get('submit_exchange', '') != '':
             context = buy_exchange_item(
-                request.user, poolitem_id=request.POST['submit_exchange'])
+                request.user,
+                poolitem_id=request.POST['submit_exchange'],
+                attributes={k: v for k, v in request.POST.items()
+                            if k not in ['pool_id', 'submit_exchange']})
             my_messages.transfer_message_context(
                 context, frontend_dict, normalize=True)
             frontend_dict["current_pool"] = int(request.POST["pool_id"])
