@@ -1829,6 +1829,9 @@ class Pool(models.Model):
     redeem_start = models.DateTimeField(
         '兑奖开始时间', null=True, blank=True)  # 指线下获取奖品实物
     redeem_end = models.DateTimeField('兑奖结束时间', null=True, blank=True)
+    # 如果activity非空，只有参加了该活动的用户可以参与这个奖池的兑换。
+    activity = models.ForeignKey('Activity', on_delete=models.SET_NULL,
+        null=True, blank=True)
 
     @invalid_for_frontend
     def __str__(self):
@@ -1856,7 +1859,7 @@ class PoolItem(models.Model):
     # 下面三个在 pool 类型为兑换奖池时有效
     exchange_limit = models.IntegerField('单人兑换上限', default=0)
     exchange_price = models.IntegerField('价格', null=True, blank=True)
-    exchange_attributes = models.JSONField('属性', default=list)
+    exchange_attributes = models.JSONField('属性', default=list, null=True, blank=True)
     # 下面这个在抽奖/盲盒奖池中有效
     is_big_prize = models.BooleanField('是否特别奖品', default=False)
     is_empty_prize = models.BooleanField('是否空盒', default=False)
