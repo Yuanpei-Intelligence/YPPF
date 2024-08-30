@@ -14,6 +14,7 @@ from app.models import (
     PoolRecord,
     Notification,
     Organization,
+    Participation,
 )
 from app.extern.wechat import WechatApp, WechatMessageLevel
 from app.notification_utils import bulk_notification_create, notification_create
@@ -288,6 +289,17 @@ def buy_exchange_item(
     if not user.active:
         return wrong('您已毕业！')
 
+    # 检查用户是否参加了相关的活动
+    if poolitem.pool.activity is not None:
+        assert hasattr(user, 'naturalperson'), "非个人用户发起了奖池兑换请求"
+        participates = Participation.objects.filter(
+            activity = poolitem.pool.activity,
+            person = user.naturalperson,
+            status = Participation.AttendStatus.ATTENDED,
+        )
+        if not participates.exists():
+            return wrong(f'该奖池为"{poolitem.pool.activity}"活动限定奖池，请先参加再来购买！')
+
     my_exchanged_time = PoolRecord.objects.filter(
         user=user, pool=poolitem.pool, prize=poolitem.prize).count()
     if my_exchanged_time >= poolitem.exchange_limit:
@@ -364,6 +376,17 @@ def buy_lottery_pool(user: User, pool_id: str) -> MESSAGECONTEXT:
     # 检查用户是否已经毕业
     if not user.active:
         return wrong('您已毕业！')
+    
+    # 检查用户是否参加了相关的活动
+    if pool.activity is not None:
+        assert hasattr(user, 'naturalperson'), "非个人用户发起了奖池抽奖请求"
+        participates = Participation.objects.filter(
+            activity = pool.activity,
+            person = user.naturalperson,
+            status = Participation.AttendStatus.ATTENDED,
+        )
+        if not participates.exists():
+            return wrong(f'该奖池为"{pool.activity}"活动限定奖池，请先参加再来购买！')
 
     try:
         with transaction.atomic():
@@ -464,6 +487,17 @@ def buy_random_pool(user: User, pool_id: str) -> Tuple[MESSAGECONTEXT, int, int]
     # 检查用户是否已经毕业
     if not user.active:
         return wrong('您已毕业！')
+    
+    # 检查用户是否参加了相关的活动
+    if pool.activity is not None:
+        assert hasattr(user, 'naturalperson'), "非个人用户发起了盲盒购买请求"
+        participates = Participation.objects.filter(
+            activity = pool.activity,
+            person = user.naturalperson,
+            status = Participation.AttendStatus.ATTENDED,
+        )
+        if not participates.exists():
+            return wrong(f'该奖池为"{pool.activity}"活动限定奖池，请先参加再来购买！')
 
     try:
         with transaction.atomic():
