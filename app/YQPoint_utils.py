@@ -2,7 +2,7 @@ import random
 from typing import List, Dict, Optional, Tuple
 from datetime import datetime, timedelta, date
 
-from django.db.models import QuerySet, Q
+from django.db.models import QuerySet, Q, Exists, OuterRef
 from django.forms.models import model_to_dict
 
 from generic.models import User, YQPointRecord
@@ -137,7 +137,7 @@ def add_signin_point(user: User):
 
 def get_pools_and_items(pool_type: Pool.Type, user: User, frontend_dict: Dict[str, any]):
     """
-    获取某一种类的所有当前开放的pool的前端所需信息
+    获取某一种类的所有当前开放的pool的前端所需信息。如果用户未参加奖池关联的活动，这个奖池的信息不会被返回。
 
     :param pool_type: pool种类
     :type pool_type: Pool.Type
@@ -146,9 +146,18 @@ def get_pools_and_items(pool_type: Pool.Type, user: User, frontend_dict: Dict[st
     :param frontend_dict: 前端字典
     :type frontend_dict: Dict[str, any]
     """
+    assert hasattr(user, 'naturalperson'), "非个人用户发起了奖池兑换请求"
     pools = Pool.objects.filter(
         Q(type=pool_type) & Q(start__lte=datetime.now())
-        & (Q(end__isnull=True) | Q(end__gte=datetime.now() - timedelta(days=1))))
+        & (Q(end__isnull=True) | Q(end__gte=datetime.now() - timedelta(days=1)))
+        & (Q(activity__isnull=True) | Exists(
+            Participation.objects.filter(
+                activity = OuterRef('activity'),
+                person = user.naturalperson,
+                status = Participation.AttendStatus.ATTENDED,
+            )
+        ))
+    )
 
     pools_info = []
     # 此列表中含有若干dict，每个dict对应一个待展示的pool，例如：
