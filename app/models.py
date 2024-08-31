@@ -1830,8 +1830,8 @@ class Pool(models.Model):
         '兑奖开始时间', null=True, blank=True)  # 指线下获取奖品实物
     redeem_end = models.DateTimeField('兑奖结束时间', null=True, blank=True)
     # 如果activity非空，只有参加了该活动的用户可以参与这个奖池的兑换。
-    activity = models.ForeignKey('Activity', on_delete=models.SET_NULL,
-        null=True, blank=True)
+    activity = models.ForeignKey(Activity, on_delete=models.SET_NULL,
+        null=True, blank=True, default=None)
 
     @invalid_for_frontend
     def __str__(self):
