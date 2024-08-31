@@ -812,6 +812,8 @@ class PoolAdmin(admin.ModelAdmin):
 
     @as_action('立即结束', actions, 'change', update = True)
     def terminate_pool(self, request, queryset: QuerySet['Pool']):
+        if queryset.filter(end__isnull = False, end__lt = datetime.now()).exists():
+            raise ValueError('请不要在已结束的奖池上调用！')
         queryset.update(end = datetime.now())
         # Immediately get the results of the lottery pools
         lottery_pool_ids = list(queryset.filter(type = Pool.Type.LOTTERY).values_list('id', flat = True))
