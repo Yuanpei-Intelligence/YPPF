@@ -9,7 +9,7 @@ from utils.models.query import sfilter, f
 from utils.admin_utils import *
 from app.models import *
 from scheduler.cancel import remove_job
-
+from app.YQPoint_utils import run_lottery
 
 # 通用内联模型
 @readonly_inline
@@ -808,6 +808,15 @@ class PrizeAdmin(admin.ModelAdmin):
 @admin.register(Pool)
 class PoolAdmin(admin.ModelAdmin):
     inlines = [PoolItemInline]
+    actions = []
+
+    @as_action('立即结束', actions, 'change', update = True)
+    def terminate_pool(self, request, queryset: QuerySet['Pool']):
+        queryset.update(end = datetime.now())
+        # Immediately get the results of the lottery pools
+        lottery_pool_ids = list(queryset.filter(type = Pool.Type.LOTTERY).values_list('id', flat = True))
+        for pool_id in lottery_pool_ids:
+            run_lottery(pool_id)
 
 
 @admin.register(PoolRecord)
