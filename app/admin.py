@@ -810,20 +810,38 @@ class PoolAdmin(admin.ModelAdmin):
     inlines = [PoolItemInline]
     actions = []
 
-    @as_action('立即结束', actions, 'change', update = True)
-    def terminate_pool(self, request, queryset: QuerySet['Pool']):
-        if queryset.filter(end__isnull = False, end__lt = datetime.now()).exists():
-            raise ValueError('请不要在已结束的奖池上调用！')
-        queryset.update(end = datetime.now())
-        # Immediately get the results of the lottery pools
+    def _do_draw_lots(self, request, queryset: QuerySet['Pool']):
+        '''对queryset中所有未完成抽奖的抽奖奖池进行奖品分配。
+        
+        这个函数假定queryset已经被select_for_update锁定，所以可以安全地查找“奖池记录”中与该奖池有关的行。
+        '''
         lottery_pool_ids = list(queryset.filter(type = Pool.Type.LOTTERY).values_list('id', flat = True))
         for pool_id in lottery_pool_ids:
+            pool_title = Pool.objects.get(id = pool_id).title
+            if PoolRecord.objects.filter(
+                pool__id = pool_id
+            ).exclude(
+                status = PoolRecord.Status.LOTTERING
+            ).exists():
+                self.message_user(request, "奖池【" + pool_title + "】在调用前已完成抽奖", 'warning')
+                continue
             run_lottery(pool_id)
+            self.message_user(request, "奖池【" + pool_title + "】抽奖已完成")
+
+    @as_action('立即抽奖', actions, 'change', update = True)
+    def draw_lots(self, request, queryset: QuerySet['Pool']):
+        self._do_draw_lots(request, queryset)
+
+    @as_action('立即停止并抽奖', actions, 'change', update = True)
+    def stop_and_draw(self, request, queryset: QuerySet['Pool']):
+        queryset.update(end = datetime.now())
+        self.message_user(request, "已将选中奖池全部停止")
+        self._do_draw_lots(request, queryset)
 
 
 @admin.register(PoolRecord)
 class PoolRecordAdmin(admin.ModelAdmin):
-    list_display = ['user_display', 'status', 'prize', 'time']
+    list_display = ['user_display', 'pool', 'status', 'prize', 'time']
     search_fields = ['user__name']
     list_filter = [
         'status', 'prize', 'time',
