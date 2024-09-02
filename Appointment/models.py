@@ -91,6 +91,9 @@ class Participant(models.Model):
             return self.name
         return self.name + '_' + acronym
 
+    def natural_key(self):
+        return self.name
+
 
 class RoomQuerySet(models.QuerySet['Room']):
     def permitted(self):
@@ -190,6 +193,9 @@ class Room(models.Model):
 
     def __str__(self):
         return self.Rid + ' ' + self.Rtitle
+
+    def natural_key(self):
+        return self.Rid
 
 
 class AppointQuerySet(models.QuerySet['Appoint']):
@@ -369,6 +375,9 @@ class Appoint(models.Model, metaclass=PermissionModelBase):
         }
         return data
 
+    def natural_key(self):
+        return self.Aid
+
 
 class CardCheckInfo(models.Model):
     # 这里Room使用外键的话只能设置DO_NOTHING，否则删除房间就会丢失预约信息
@@ -517,6 +526,9 @@ class LongTermAppoint(models.Model):
     def get_applicant_id(self) -> str:
         '''获取申请者id'''
         return self.applicant.get_id()
+
+    def natural_key(self):
+        return self.appoint
 
 
 @receiver(pre_delete, sender=Appoint)
