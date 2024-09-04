@@ -496,12 +496,9 @@ def make_relevant_notification(application: ModifyPosition | ModifyOrganization,
         not_type = Notification.Title.POSITION_INFORM
         URL = f'/modifyPosition/?pos_id={application.id}'
     elif isinstance(application, ModifyOrganization):
-        if post_type == 'new_submit':
-            content = f'{apply_person.name}发起新建小组申请，新建小组：{application.oname}，请审核～'
-        elif post_type == 'modify_submit':
-            content = f'{apply_person.name}修改了小组申请信息，请审核～'
-        elif post_type == 'cancel_submit':
-            content = f'{apply_person.name}取消了小组{application.oname}的申请。'
+        # 审核老师表示不想收到小组申请相关的通知
+        if feasible_post.index(post_type) < 3:
+            return
         elif post_type == 'accept_submit':
             content = (
                 f'恭喜，您申请的小组：{application.oname}，审核已通过！'
