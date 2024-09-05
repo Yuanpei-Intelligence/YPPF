@@ -26,11 +26,14 @@ class Command(BaseCommand):
             raise CommandError('年级参数不合法')
         
         with transaction.atomic():
-            # 选出指定年级的学生(通过学号前两位判断,person_id为学号)
-            students = NaturalPerson.objects.filter(person_id__username__startswith=str(year))
-            for student in students:
-                student.status = NaturalPerson.GraduateStatus.GRADUATED
-                student.save()
+            # 选出指定年级的自然人(通过学号前两位判断,person_id为学号)
+            people = NaturalPerson.objects.filter(person_id__username__startswith=str(year))
+            for person in people:
+                if person.identity == NaturalPerson.Identity.TEACHER:
+                    #防止误伤教师
+                    continue
+                person.status = NaturalPerson.GraduateStatus.GRADUATED
+                person.save()
             # 打印结果
             self.stdout.write(self.style.SUCCESS('成功将%d级学生状态调整为“已毕业”' % year))
                 
