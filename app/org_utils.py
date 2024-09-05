@@ -496,9 +496,12 @@ def make_relevant_notification(application: ModifyPosition | ModifyOrganization,
         not_type = Notification.Title.POSITION_INFORM
         URL = f'/modifyPosition/?pos_id={application.id}'
     elif isinstance(application, ModifyOrganization):
-        # 审核老师表示不想收到小组申请相关的通知
-        if feasible_post.index(post_type) < 3:
-            return
+        if post_type == 'new_submit':
+            content = f'{apply_person.name}发起新建小组申请，新建小组：{application.oname}，请审核～'
+        elif post_type == 'modify_submit':
+            content = f'{apply_person.name}修改了小组申请信息，请审核～'
+        elif post_type == 'cancel_submit':
+            content = f'{apply_person.name}取消了小组{application.oname}的申请。'
         elif post_type == 'accept_submit':
             content = (
                 f'恭喜，您申请的小组：{application.oname}，审核已通过！'
@@ -513,14 +516,14 @@ def make_relevant_notification(application: ModifyPosition | ModifyOrganization,
         else:
             raise NotImplementedError
         applyer_id = apply_person.person_id
-        applyee_id = inchage_person.person_id
+        applyee_id = User.objects.get(username = GLOBAL_CONFIG.official_uid)
         not_type = Notification.Title.NEW_ORGANIZATION
         URL = f'/modifyOrganization/?org_id={application.id}'
 
     sender = applyer_id if feasible_post.index(post_type) < 3 else applyee_id
     receiver = applyee_id if feasible_post.index(post_type) < 3 else applyer_id
     typename = (Notification.Type.NEEDDO
-                if post_type == 'new_submit'
+                if post_type == 'new_submit' and isinstance(application, ModifyPosition)
                 else Notification.Type.NEEDREAD)
     title = Notification.Title.VERIFY_INFORM if post_type != 'accept_submit' else not_type
     relate_instance = application if post_type == 'new_submit' else None
