@@ -27,16 +27,11 @@ class Command(BaseCommand):
             # 选出指定年级的自然人(通过学号前两位判断,person_id为学号)
             NaturalPerson.objects.filter(
                 person_id__username__startswith=str(year),
-                identity = NaturalPerson.Identity.STUDENT
-                ).update(
+                identity = NaturalPerson.Identity.STUDENT).update(
                     status = NaturalPerson.GraduateStatus.GRADUATED,
-                    accept_promote = False
-                    )
+                    accept_promote = False)
             User.objects.filter(
                 username__startswith=str(year),
-                utype = User.Type.STUDENT
-                ).update(
-                    active = False
-                    )
+                utype = User.Type.STUDENT).update(active = False)
             # 打印结果
-            self.stdout.write(self.style.SUCCESS('成功将%d级学生状态调整为“已毕业”' % year))    
+            self.stdout.write(self.style.SUCCESS('成功将%d级学生状态调整为“已毕业”' % year))
