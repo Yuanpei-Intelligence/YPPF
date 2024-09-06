@@ -2,7 +2,8 @@ from django.core.management.base import BaseCommand, CommandParser, CommandError
 from django.db import transaction
 
 from app.models import (
-    NaturalPerson
+    NaturalPerson,
+    User
 )
 
 class Command(BaseCommand):
@@ -21,19 +22,21 @@ class Command(BaseCommand):
         # 检查参数是否为空
         if year is None:
             raise CommandError('请指定年级参数')
-        # 检查年份是否合法
-        if year < 15 or year > 29:
-            raise CommandError('年级参数不合法')
-        
+
         with transaction.atomic():
             # 选出指定年级的自然人(通过学号前两位判断,person_id为学号)
-            people = NaturalPerson.objects.filter(person_id__username__startswith=str(year))
-            for person in people:
-                if person.identity == NaturalPerson.Identity.TEACHER:
-                    #防止误伤教师
-                    continue
-                person.status = NaturalPerson.GraduateStatus.GRADUATED
-                person.save()
+            NaturalPerson.objects.filter(
+                person_id__username__startswith=str(year),
+                identity = NaturalPerson.Identity.STUDENT
+                ).update(
+                    status = NaturalPerson.GraduateStatus.GRADUATED,
+                    accept_promote = False
+                    )
+            User.objects.filter(
+                username__startswith=str(year),
+                utype = User.Type.STUDENT
+                ).update(
+                    active = False
+                    )
             # 打印结果
-            self.stdout.write(self.style.SUCCESS('成功将%d级学生状态调整为“已毕业”' % year))
-                
+            self.stdout.write(self.style.SUCCESS('成功将%d级学生状态调整为“已毕业”' % year))    
