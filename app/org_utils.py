@@ -516,14 +516,16 @@ def make_relevant_notification(application: ModifyPosition | ModifyOrganization,
         else:
             raise NotImplementedError
         applyer_id = apply_person.person_id
-        applyee_id = inchage_person.person_id
+        # 小组申请现在由运营初步审核，所以通知发给智慧书院小组
+        applyee_id = User.objects.get(username = GLOBAL_CONFIG.official_uid)
         not_type = Notification.Title.NEW_ORGANIZATION
         URL = f'/modifyOrganization/?org_id={application.id}'
 
     sender = applyer_id if feasible_post.index(post_type) < 3 else applyee_id
     receiver = applyee_id if feasible_post.index(post_type) < 3 else applyer_id
+    # 通过新小组申请是在后台进行的，只有在处理新的职位申请时需要跳转到申请页面处理
     typename = (Notification.Type.NEEDDO
-                if post_type == 'new_submit'
+                if post_type == 'new_submit' and isinstance(application, ModifyPosition)
                 else Notification.Type.NEEDREAD)
     title = Notification.Title.VERIFY_INFORM if post_type != 'accept_submit' else not_type
     relate_instance = application if post_type == 'new_submit' else None

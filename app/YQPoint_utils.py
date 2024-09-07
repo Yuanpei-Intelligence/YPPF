@@ -2,7 +2,7 @@ import random
 from typing import List, Dict, Optional, Tuple
 from datetime import datetime, timedelta, date
 
-from django.db.models import QuerySet, Q
+from django.db.models import QuerySet, Q, Exists, OuterRef
 from django.forms.models import model_to_dict
 
 from generic.models import User, YQPointRecord
@@ -14,6 +14,7 @@ from app.models import (
     PoolRecord,
     Notification,
     Organization,
+    Participation,
 )
 from app.extern.wechat import WechatApp, WechatMessageLevel
 from app.notification_utils import bulk_notification_create, notification_create
@@ -136,7 +137,7 @@ def add_signin_point(user: User):
 
 def get_pools_and_items(pool_type: Pool.Type, user: User, frontend_dict: Dict[str, any]):
     """
-    获取某一种类的所有当前开放的pool的前端所需信息
+    获取某一种类的所有当前开放的pool的前端所需信息。如果用户未参加奖池关联的活动，这个奖池的信息不会被返回。
 
     :param pool_type: pool种类
     :type pool_type: Pool.Type
@@ -145,9 +146,18 @@ def get_pools_and_items(pool_type: Pool.Type, user: User, frontend_dict: Dict[st
     :param frontend_dict: 前端字典
     :type frontend_dict: Dict[str, any]
     """
+    assert hasattr(user, 'naturalperson'), "非个人用户发起了奖池兑换请求"
     pools = Pool.objects.filter(
         Q(type=pool_type) & Q(start__lte=datetime.now())
-        & (Q(end__isnull=True) | Q(end__gte=datetime.now() - timedelta(days=1))))
+        & (Q(end__isnull=True) | Q(end__gte=datetime.now() - timedelta(days=1)))
+        & (Q(activity__isnull=True) | Exists(
+            Participation.objects.filter(
+                activity = OuterRef('activity'),
+                person = user.naturalperson,
+                status = Participation.AttendStatus.ATTENDED,
+            )
+        ))
+    )
 
     pools_info = []
     # 此列表中含有若干dict，每个dict对应一个待展示的pool，例如：
@@ -258,6 +268,41 @@ def get_pools_and_items(pool_type: Pool.Type, user: User, frontend_dict: Dict[st
     frontend_dict["pools_info"] = pools_info
 
 
+def check_user_pool(user: User, pool: Pool) -> None | str:
+    """
+    检查用户 user 是否已经毕业，以及是否参加了 pool 所关联的活动；当前是否在奖池的运行时间内。
+
+    :param user: 当前用户
+    :type user: User
+    :param pool: 待购买的物品所属奖池
+    :type pool: Pool
+    :return: 如果检查通过，返回None。否则，返回一个可以作为 wrong() 函数参数的字符串。
+    :rtype: None | str
+    """
+    # 检查奖池运行时间
+    if pool.start > datetime.now():
+        return '当前奖池时间未开始！'
+    if pool.end is not None and pool.end < datetime.now():
+        return '当前奖池时间已结束！'
+
+    # 检查用户是否已经毕业
+    if not user.active:
+        return '您已毕业！'
+
+    # 检查用户是否参加了相关的活动
+    if pool.activity is not None:
+        assert hasattr(user, 'naturalperson'), "非个人用户发起了奖池兑换请求"
+        participates = Participation.objects.filter(
+            activity = pool.activity,
+            person = user.naturalperson,
+            status = Participation.AttendStatus.ATTENDED,
+        )
+        if not participates.exists():
+            return '该奖池为"' + str(pool.activity) + '"活动限定奖池，请先参加再来购买！'
+
+    return None
+
+
 def buy_exchange_item(
         user: User, poolitem_id: str,
         attributes: dict[str, str] = {}) -> MESSAGECONTEXT:
@@ -278,15 +323,11 @@ def buy_exchange_item(
             id=poolitem_id, pool__type=Pool.Type.EXCHANGE)
     except:
         return wrong('奖品不存在!')
-    if poolitem.pool.start > datetime.now():
-        return wrong('兑换时间未开始!')
-    if poolitem.pool.end is not None and poolitem.pool.end < datetime.now():
-        return wrong('兑换时间已结束!')
     if poolitem.origin_num - poolitem.consumed_num <= 0:
         return wrong('奖品已售罄!')
-    # 检查用户是否已经毕业
-    if not user.active:
-        return wrong('您已毕业！')
+    other_errors = check_user_pool(user, poolitem.pool)
+    if other_errors:
+        return wrong(other_errors)
 
     my_exchanged_time = PoolRecord.objects.filter(
         user=user, pool=poolitem.pool, prize=poolitem.prize).count()
@@ -354,16 +395,12 @@ def buy_lottery_pool(user: User, pool_id: str) -> MESSAGECONTEXT:
         pool = Pool.objects.get(id=pool_id, type=Pool.Type.LOTTERY)
     except:
         return wrong('抽奖不存在!')
-    if pool.start > datetime.now():
-        return wrong('抽奖未开始!')
-    if pool.end is not None and pool.end < datetime.now():  # 实际上抽奖类的奖池的end应该不可能是None
-        return wrong('抽奖已结束!')
     my_entry_time = PoolRecord.objects.filter(pool=pool, user=user).count()
     if my_entry_time >= pool.entry_time:
         return wrong('您在本奖池中抽奖的次数已达上限!')
-    # 检查用户是否已经毕业
-    if not user.active:
-        return wrong('您已毕业！')
+    other_errors = check_user_pool(user, pool)
+    if other_errors:
+        return wrong(other_errors)
 
     try:
         with transaction.atomic():
@@ -450,10 +487,6 @@ def buy_random_pool(user: User, pool_id: str) -> Tuple[MESSAGECONTEXT, int, int]
         pool = Pool.objects.get(id=pool_id, type=Pool.Type.RANDOM)
     except:
         return wrong('盲盒不存在!'), -1, 2
-    if pool.start > datetime.now():
-        return wrong('盲盒兑换时间未开始!'), -1, 2
-    if pool.end is not None and pool.end < datetime.now():
-        return wrong('盲盒兑换时间已结束!'), -1, 2
     my_entry_time = PoolRecord.objects.filter(pool=pool, user=user).count()
     if my_entry_time >= pool.entry_time:
         return wrong('您兑换这款盲盒的次数已达上限!'), -1, 2
@@ -461,9 +494,9 @@ def buy_random_pool(user: User, pool_id: str) -> Tuple[MESSAGECONTEXT, int, int]
     capacity = pool.get_capacity()
     if capacity <= total_entry_time:
         return wrong('盲盒已售罄!'), -1, 2
-    # 检查用户是否已经毕业
-    if not user.active:
-        return wrong('您已毕业！')
+    other_errors = check_user_pool(user, pool)
+    if other_errors:
+        return wrong(other_errors), -1, 2
 
     try:
         with transaction.atomic():
@@ -523,6 +556,7 @@ def buy_random_pool(user: User, pool_id: str) -> Tuple[MESSAGECONTEXT, int, int]
         return wrong(str(e)), -1, 2
 
 
+@transaction.atomic
 def run_lottery(pool_id: int):
     """
     抽奖；更新PoolRecord表和PoolItem表；给所有参与者发送通知
@@ -531,105 +565,104 @@ def run_lottery(pool_id: int):
     :type pool_id: int
     """
     # 部分参考了course_utils.py的draw_lots函数
-    pool = Pool.objects.get(id=pool_id, type=Pool.Type.LOTTERY)
+    pool = Pool.objects.select_for_update().get(id=pool_id, type=Pool.Type.LOTTERY)
     assert not PoolRecord.objects.filter(  # 此时pool关联的所有records都应该是LOTTERING
         pool=pool).exclude(status=PoolRecord.Status.LOTTERING).exists()
-    with transaction.atomic():
-        related_records = PoolRecord.objects.filter(
-            pool=pool, status=PoolRecord.Status.LOTTERING)
-        records_num = related_records.count()
-        if records_num == 0:
-            return
+    related_records = PoolRecord.objects.filter(
+        pool=pool, status=PoolRecord.Status.LOTTERING)
+    records_num = related_records.count()
+    if records_num == 0:
+        return
 
-        # 抽奖
-        record_ids_and_participant_ids = list(
-            related_records.values("id", "user__id"))
-        items = pool.items.all()
-        user2prize_names = {d["user__id"]: []
-                            for d in record_ids_and_participant_ids}  # 便于发通知
-        winner_record_id2item_id = {}  # poolrecord.id: poolitem.id，便于更新poolrecord
-        loser_record_ids = []  # poolrecord.id，便于更新poolrecord
-        num_all_items = 0  # 该奖池中奖品总数
-        for item in items:
-            num_all_items += item.origin_num - item.consumed_num
-        if num_all_items >= records_num:  # 抽奖记录数少于或等于奖品数，人人有奖，给每个记录分配一个随机奖品
-            shuffled_items = select_random_prize(
-                items, records_num)  # 随机选出待发放的奖品
-            for i in range(records_num):  # 遍历所有记录，每个记录都有奖品
-                user2prize_names[record_ids_and_participant_ids[i]["user__id"]].append(
-                    items.get(id=shuffled_items[i]).prize.name
-                )
-                winner_record_id2item_id[record_ids_and_participant_ids[i]
-                                         ["id"]] = shuffled_items[i]
-        else:  # 抽奖记录数多于奖品数，给每个奖品分配一个中奖者
-            for item in items:  # 遍历所有奖品，每个奖品都会送给一个记录
-                for i in range(item.origin_num - item.consumed_num):
-                    winner_record_index = random.randint(
-                        0, len(record_ids_and_participant_ids) - 1)
-                    user2prize_names[record_ids_and_participant_ids[winner_record_index]["user__id"]].append(
-                        item.prize.name)
-                    winner_record_id2item_id[record_ids_and_participant_ids[winner_record_index]["id"]] = item.id
-                    # 因为记录多，奖品少，这里肯定不会pop成空列表
-                    record_ids_and_participant_ids.pop(winner_record_index)
-            # pop剩下的就是没中奖的那些记录
-            loser_record_ids = [d["id"]
-                                for d in record_ids_and_participant_ids]
-
-        # 更新数据库
-        for winner_record_id, poolitem_id in winner_record_id2item_id.items():
-            record = PoolRecord.objects.select_for_update().get(id=winner_record_id)
-            item = PoolItem.objects.select_for_update().get(id=poolitem_id)
-            record.status = PoolRecord.Status.UN_REDEEM
-            record.prize = item.prize
-            record.time = datetime.now()
-            item.consumed_num += 1
-            record.save()
-            item.save()
-        for loser_record_id in loser_record_ids:
-            record = PoolRecord.objects.select_for_update().get(id=loser_record_id)
-            record.status = PoolRecord.Status.NOT_LUCKY
-            record.time = datetime.now()
-            record.save()
-
-        # 给中奖的同学发送通知
-        sender = Organization.objects.get(
-            oname=CONFIG.yqpoint.org_name).get_user()
-        for user_id in user2prize_names.keys():
-            receiver = User.objects.get(id=user_id)
-            typename = Notification.Type.NEEDREAD
-            title = Notification.Title.LOTTERY_INFORM
-            content = f"恭喜您在奖池【{pool.title}】中抽中奖品"
-            for prize_name in user2prize_names[user_id]:
-                content += f"【{prize_name}】"  # 可能出现重复，即一种奖品中了好几次，不过感觉问题也不太大
-            notification_create(
-                receiver=receiver,
-                sender=sender,
-                typename=typename,
-                title=title,
-                content=content,
-                # URL=f'', # TODO: 我的奖品页面？
-                to_wechat=dict(app=WechatApp.TO_PARTICIPANT,
-                               level=WechatMessageLevel.IMPORTANT),
+    # 抽奖
+    record_ids_and_participant_ids = list(
+        related_records.values("id", "user__id"))
+    items = pool.items.all()
+    user2prize_names = {d["user__id"]: []
+                        for d in record_ids_and_participant_ids}  # 便于发通知
+    winner_record_id2item_id = {}  # poolrecord.id: poolitem.id，便于更新poolrecord
+    loser_record_ids = []  # poolrecord.id，便于更新poolrecord
+    num_all_items = 0  # 该奖池中奖品总数
+    for item in items:
+        num_all_items += item.origin_num - item.consumed_num
+    if num_all_items >= records_num:  # 抽奖记录数少于或等于奖品数，人人有奖，给每个记录分配一个随机奖品
+        shuffled_items = select_random_prize(
+            items, records_num)  # 随机选出待发放的奖品
+        for i in range(records_num):  # 遍历所有记录，每个记录都有奖品
+            user2prize_names[record_ids_and_participant_ids[i]["user__id"]].append(
+                items.get(id=shuffled_items[i]).prize.name
             )
+            winner_record_id2item_id[record_ids_and_participant_ids[i]
+                                        ["id"]] = shuffled_items[i]
+    else:  # 抽奖记录数多于奖品数，给每个奖品分配一个中奖者
+        for item in items:  # 遍历所有奖品，每个奖品都会送给一个记录
+            for i in range(item.origin_num - item.consumed_num):
+                winner_record_index = random.randint(
+                    0, len(record_ids_and_participant_ids) - 1)
+                user2prize_names[record_ids_and_participant_ids[winner_record_index]["user__id"]].append(
+                    item.prize.name)
+                winner_record_id2item_id[record_ids_and_participant_ids[winner_record_index]["id"]] = item.id
+                # 因为记录多，奖品少，这里肯定不会pop成空列表
+                record_ids_and_participant_ids.pop(winner_record_index)
+        # pop剩下的就是没中奖的那些记录
+        loser_record_ids = [d["id"]
+                            for d in record_ids_and_participant_ids]
 
-        # 给没中奖的同学发送通知
-        receivers = PoolRecord.objects.filter(
-            id__in=loser_record_ids,
-        ).values_list("user", flat=True)
-        receivers = User.objects.filter(id__in=receivers)
-        content = f"很抱歉通知您，您在奖池【{pool.title}】中没有中奖"
+    # 更新数据库
+    for winner_record_id, poolitem_id in winner_record_id2item_id.items():
+        record = PoolRecord.objects.select_for_update().get(id=winner_record_id)
+        item = PoolItem.objects.select_for_update().get(id=poolitem_id)
+        record.status = PoolRecord.Status.UN_REDEEM
+        record.prize = item.prize
+        record.time = datetime.now()
+        item.consumed_num += 1
+        record.save()
+        item.save()
+    for loser_record_id in loser_record_ids:
+        record = PoolRecord.objects.select_for_update().get(id=loser_record_id)
+        record.status = PoolRecord.Status.NOT_LUCKY
+        record.time = datetime.now()
+        record.save()
 
-        if len(receivers) > 0:
-            bulk_notification_create(
-                receivers=receivers,
-                sender=sender,
-                typename=typename,
-                title=title,
-                content=content,
-                # URL=f'', # TODO: 我的奖品页面？
-                to_wechat=dict(app=WechatApp.TO_PARTICIPANT,
-                               level=WechatMessageLevel.IMPORTANT),
-            )
+    # 给中奖的同学发送通知
+    sender = Organization.objects.get(
+        oname=CONFIG.yqpoint.org_name).get_user()
+    for user_id in user2prize_names.keys():
+        receiver = User.objects.get(id=user_id)
+        typename = Notification.Type.NEEDREAD
+        title = Notification.Title.LOTTERY_INFORM
+        content = f"恭喜您在奖池【{pool.title}】中抽中奖品"
+        for prize_name in user2prize_names[user_id]:
+            content += f"【{prize_name}】"  # 可能出现重复，即一种奖品中了好几次，不过感觉问题也不太大
+        notification_create(
+            receiver=receiver,
+            sender=sender,
+            typename=typename,
+            title=title,
+            content=content,
+            # URL=f'', # TODO: 我的奖品页面？
+            to_wechat=dict(app=WechatApp.TO_PARTICIPANT,
+                            level=WechatMessageLevel.IMPORTANT),
+        )
+
+    # 给没中奖的同学发送通知
+    receivers = PoolRecord.objects.filter(
+        id__in=loser_record_ids,
+    ).values_list("user", flat=True)
+    receivers = User.objects.filter(id__in=receivers)
+    content = f"很抱歉通知您，您在奖池【{pool.title}】中没有中奖"
+
+    if len(receivers) > 0:
+        bulk_notification_create(
+            receivers=receivers,
+            sender=sender,
+            typename=typename,
+            title=title,
+            content=content,
+            # URL=f'', # TODO: 我的奖品页面？
+            to_wechat=dict(app=WechatApp.TO_PARTICIPANT,
+                            level=WechatMessageLevel.IMPORTANT),
+        )
 
 
 def get_income_expenditure(
