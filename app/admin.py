@@ -10,6 +10,7 @@ from utils.admin_utils import *
 from app.models import *
 from scheduler.cancel import remove_job
 from app.YQPoint_utils import run_lottery
+from app.org_utils import accept_modifyorg_submit
 
 # 通用内联模型
 @readonly_inline
@@ -638,8 +639,14 @@ class ModifyOrganizationAdmin(admin.ModelAdmin):
     list_display = ["id", "oname", "otype", "pos", "get_poster_name", "status"]
     search_fields = ("id", "oname", "otype__otype_name", "pos__username",)
     list_filter = ('status', "otype", 'time', 'modify_time',)
+    actions = []
     ModifyOrganization.get_poster_name.short_description = "申请者"
 
+    @as_action("同意申请", actions, 'change', update = True)
+    def approve_requests(self, request, queryset: QuerySet['ModifyOrganization']):
+        for application in queryset:
+            accept_modifyorg_submit(application)
+        self.message_user(request, '操作成功完成！')
 
 @admin.register(Course)
 class CourseAdmin(admin.ModelAdmin):
