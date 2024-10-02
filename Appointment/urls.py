@@ -33,6 +33,7 @@ urlpatterns = [
     path('admin-index.html', views.account, name='account'),
     path('admin-credit.html', views.credit, name='credit'),
     path('agreement', views.agreement, name='agreement'),
+    path('code_of_conduct', views.code_of_conduct, name='code_of_conduct')
 ] + [
     # 预约
     path('arrange_time', views.arrange_time, name='arrange_time'),

@@ -1,0 +1,188 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+	<meta charset="utf-8">
+	<title>地下室使用规范 | 元培地下空间</title>
+	<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=0">
+
+	<!-- Favicons -->
+	<link href="{% static 'Appointment/assets/img/yp_favicon.png' %} " rel="icon">
+
+	<!-- Bootstrap CSS -->
+	<link rel="stylesheet" href="{% static 'Appointment/assets/css/bootstrap.min.css' %}">
+
+	<!-- Fontawesome CSS -->
+	<link rel="stylesheet" href="{% static 'Appointment/assets/plugins/fontawesome/css/fontawesome.min.css' %} ">
+	<link rel="stylesheet" href="{% static 'Appointment/assets/plugins/fontawesome/css/all.min.css' %} ">
+
+	<!-- Main CSS -->
+	<link rel="stylesheet" href="{% static 'Appointment/assets/css/style.css' %} ">
+
+	<!-- HTML5 shim and Respond.js IE8 support of HTML5 elements and media queries -->
+	<!--[if lt IE 9]>
+			<script src="{% static 'Appointment/assets/js/html5shiv.min.js"></script>
+			<script src="{% static 'Appointment/assets/js/respond.min.js"></script>
+		<![endif]-->
+		
+</head>
+
+<body>
+
+	<!-- Main Wrapper -->
+	<div class="main-wrapper">
+		<div class="breadcrumb-bar">
+			<div class="container-fluid">
+				<div class="row align-items-center">
+					<div class="col-md-12 col-12">
+						<h4 class="breadcrumb-title"><a href='index'>主页</a> / 地下室使用规范</h4>
+					</div>
+
+				</div>
+			</div>
+		</div>
+		<!-- /Breadcrumb -->
+
+		<!-- Page Content -->
+		<div class="content">
+			<div class="container-fluid">
+			{% if warn_code == 1 %}
+			<div class="alert alert-warning  text-center" >{{ warn_message }}</div>
+			{% elif warn_code == 2 %}
+			<div class="alert alert-success  text-center" >{{ warn_message }}</div>
+			{% endif %}
+
+                <div class="form-container outer">
+
+                    <center>
+                        <div class="form-form">
+                            <div class="form-content">
+        
+                                <form class="text-left" id="form" method="POST">
+        
+                                    <div class="widget-content widget-content-area">
+        
+                                        <div class="widget-header">
+                                            <div class="row">
+                                                <div class="col-xl-12 col-md-12 col-sm-12 col-12">
+                                                    <h3 style="text-align: center; padding-top: 20px; padding-bottom: 20px;">35楼地下室使用规范</h3>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        
+                                        <!-- <div class="row"> -->
+                                        <div class="col">
+											<h4 style="text-align: center; padding-top: 10px; padding-bottom: 10px;">第一部分 公共空间</h4>
+                                            <br/>
+                                            <p>1.地下室公共空间（包括公共自习区域、各个房间的柜子）<b>禁止长时间存放个人物品</b>，每天1：30-6：30物业会将地下室遗留物品<b>转移到物业办公室（B108每天7:30-8:00转移占座物品）</b>，物业管理人员及学院等管理团队对转移的物品没有保管的责任和义务，如物品遗失由使用者个人负责。</p>
+                                            <br/>
+                                            <p>2.地下室遗留物品在物业办公室<b>存放两天</b>，随后转移到<b>内联部柜子</b>，此后最近的一个<b>周日</b>，内联部对柜子内当周新增物品通过<b>企业微信、年级群</b>等渠道公示一周，希望同学们尽快联系物业或内联部领取，公示期结束后，遗留物品会被清理。</p>
+                                            <br/>
+                                            <p>3.学生组织、书院课助教、运动队等团体可以在向物业申请在指定地下室柜子中长时间存放组织用物品。</p>
+                                            <br/>
+                                            <p>4.同学可以在地下室公共空间小憩，但是不能脱鞋上沙发，物业人员有权制止相关行为。</b></p>
+                                            <br/>
+                                            <p>5.公共自习室禁止进餐，希望大家前往咖啡厅和水吧进餐，请在用餐后及时清理垃圾，共同维护整洁的地下室环境。</p>
+                                            <br/>
+                                            <p>6.地下室卫生间蹲坑冲水能力有限，请大家不要向蹲坑内丢弃卫生纸和其他杂物（如骨头、食物残渣等），这样会造成管道堵塞，严重情况下会导致蹲坑长达一学期无法使用。</p>
+                                            <br/>
+											<h4 style="text-align: center; padding-top: 10px; padding-bottom: 10px;">第二部分 自习室</h4>
+											<br/>
+                                            <p>1.<b>无占座自习室（B106、B114）禁止占座超过一个小时</b>，所有自习室（包括B108）<b>禁止隔夜占座。</b></p>
+                                            <br/>
+                                            <p>2.使用无占座自习室需签署<a href="/underground/agreement"><u><span style="color:blue;">无占座协议</span></u></a>。在无占座自习室，离开座位前同学们可以取用<b>占座贴</b>，并且写上<b>姓名（或学号）和离开座位的时间</b>。若一个小时后仍未返回，或没有取占座贴即离开，<b>其他同学可以把该同学的东西转移</b>，希望大家优先将占座物品放在座位下，空间不足可转移至每个自习室墙角黑架子。</p>
+                                            <br/>
+                                            <p>3.请不要在无键盘自习室（B119）使用键盘，理解需要更加安静的自习环境的同学的需求。</p>
+                                            <br/>
+                                            <p>4.为了维护自习室的安静和整洁，自习室内不可以进餐，可以饮用饮品。</p>
+                                            <br/>
+											<h4 style="text-align: center; padding-top: 10px; padding-bottom: 10px;">第三部分 研讨室、活动室</h4>
+                                            <br/>
+											<p>1.违约扣分的情况：<ul>
+												<li>预约开始时间前后15分钟内始终无人刷卡使用。</li>
+												<li>预约时间段内超过 40% 时间，房间内实际人数未达到房间预约人数一半以上。（注:不是一半及以上。例如有2个人预约，则需要两个人同时到场时间超过预约时间的40%）</li>
+											</ul></p>
+											<br/>
+											<p>2.研讨室和功能房预约本着<b>先到先得的原则</b>，在不损坏房间设施的前提下对使用房间的方式不作限制。</p>
+											<br/>
+											<p>3.为灵活利用闲置房间，预约当天的教室没有最低人数限制，距离下一场预约30分钟以上时可以在房间刷卡临时预约。</p>
+											<br/>
+											<p>4.音乐室和朗读仓隔音效果有限，希望大家注意音量。</p>
+											<br/>
+                                            <p>5.地下室空间资源有限，希望大家可以理解彼此对于房间的需求，如果遇到问题希望大家积极相互沟通。</p>
+                                            <br/>
+        
+                                        </div>
+                                        <!-- </div> -->
+                                    </div>
+                                </form>
+        
+        
+                            </div>
+                        </div>
+                    </center>
+                </div>
+			</div>
+
+		</div>
+		<!-- /Page Content -->
+
+		<!-- Footer -->
+		<footer class="footer">
+
+
+			<!-- Footer Bottom -->
+			<div class="footer-bottom">
+				<div class="container-fluid">
+
+					<!-- Copyright -->
+					<div class="copyright">
+						<div class="row">
+							<div class=" col-lg-1">
+								<div class="footer-logo">
+									<img src="{% static 'Appointment/assets/img/yuan_logo_white.png' %} " alt="logo">
+								</div>
+
+							</div>
+							<div class=" col-lg-11">
+
+								<!-- Copyright Menu -->
+								<div class="copyright-menu">
+
+									<ul class="policy-menu">
+										<li><a href="https://github.com/Yuanpei-Intelligence/YPPF">智慧校园开发组 元培学院</a></li>
+									</ul>
+									<ul class="policy-menu">
+										<li><a>&copy; All rights Reserved.</a></li>
+									</ul>
+								</div>
+								<!-- /Copyright Menu -->
+
+							</div>
+						</div>
+					</div>
+					<!-- /Copyright -->
+
+				</div>
+			</div>
+			<!-- /Footer Bottom -->
+
+		</footer>
+		<!-- /Footer -->
+
+	</div>
+	<!-- /Main Wrapper -->
+
+	<!-- jQuery -->
+	<script src="{% static 'Appointment/assets/js/jquery.min.js' %} "></script>
+
+	<!-- Bootstrap Core JS -->
+	<script src="{% static 'Appointment/assets/js/popper.min.js' %} "></script>
+	<script src="{% static 'Appointment/assets/js/bootstrap.min.js' %}"></script>
+
+	<!-- Custom JS -->
+	<script src="{% static 'Appointment/assets/js/script.js' %} "></script>
+
+</body>
+</html>
