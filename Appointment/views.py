@@ -398,9 +398,9 @@ def agreement(request):
 
 
 @identity_check(redirect_field_name='origin')
-def code_of_conduct(request):
+def instructions(request):
     render_context = {}
-    return render(request, 'Appointment/conduct.html', render_context)
+    return render(request, 'Appointment/instructions.html', render_context)
 
 
 @identity_check(redirect_field_name='origin')
