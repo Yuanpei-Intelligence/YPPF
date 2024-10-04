@@ -39,6 +39,19 @@
 			});
 			
 		</script>
+		{% block add_css_file %}
+		<style class="text/css">
+			[data-toggle="collapse"] .fa:before {
+				font-family: 'Font Awesome 5 Free';  
+				content: "\f068";
+				float: right; 
+			}
+
+			[data-toggle="collapse"].collapsed .fa:before {
+				content: "\f067"; 
+			}
+		</style>
+		{% endblock %}
 	
 	</head>
 	<body>
@@ -84,6 +97,9 @@
 								<a href="agreement">无占座协议</a>
 							</li>
 							<li>
+								<a href="instructions">使用规范</a>
+							</li>
+							<li>
 								<a href="/">成长档案</a>
 							</li>
 							{% if show_admin %}
@@ -115,7 +131,7 @@
 			<div class="alert alert-warning  text-center" >{{ announcement.announcement }}</div>
 			{% endfor %}
 			{% endif %}
-			  
+
 			<!-- Clinic and Specialities -->
 			<section class="section section-specialities" >
 				<div class="container-fluid">
@@ -562,7 +578,6 @@
 		<!-- jQuery -->
 		<script src="{% static 'Appointment/assets/js/jquery.min.js' %} "></script>
 		
-		</script>
 		<!-- Bootstrap Core JS -->
 		<script src="{% static 'Appointment/assets/js/popper.min.js' %} "></script>
 		<script src="{% static 'Appointment/assets/js/bootstrap.min.js' %}"></script><!--http://cdn.bootstrapmb.com/bootstrap/4.4.0/js/bootstrap.min.js-->

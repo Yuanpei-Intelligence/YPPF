@@ -398,6 +398,12 @@ def agreement(request):
 
 
 @identity_check(redirect_field_name='origin')
+def instructions(request):
+    render_context = {}
+    return render(request, 'Appointment/instructions.html', render_context)
+
+
+@identity_check(redirect_field_name='origin')
 def arrange_time(request: HttpRequest):
     """
     选择预约时间
