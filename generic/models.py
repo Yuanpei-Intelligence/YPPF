@@ -406,6 +406,9 @@ class User(AbstractUser, PointMixin, metaclass=UserBase):
     def is_org(self) -> bool:
         return self.utype == self.Type.ORG
 
+    def natural_key(self):
+        return self.name
+
 
 class PermissionBlacklistManager(models.Manager['PermissionBlacklist']):
     '''

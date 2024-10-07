@@ -21,6 +21,9 @@ class Reader(models.Model):
     def __str__(self):
         return self.student_id
 
+    def natural_key(self):
+        return self.student_id
+
 
 class Book(models.Model):
     class Meta:
@@ -39,6 +42,9 @@ class Book(models.Model):
 
     def __str__(self):
         return str(self.title)
+
+    def natural_key(self):
+        return self.title
 
 
 class LendRecord(models.Model):
