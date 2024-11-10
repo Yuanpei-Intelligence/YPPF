@@ -250,8 +250,6 @@ def get_sidebar_and_navbar(user: User, navbar_name="", title_name=""):
 
     if navbar_name:
         help_key = navbar_name
-        if help_key == "我的元气值":
-            help_key += _utype.lower()
         help_info = Help.objects.filter(title=navbar_name).first()
         bar_display.update(
             help_message=CONFIG.help_message.get(help_key, ""),

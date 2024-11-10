@@ -20,11 +20,8 @@ from app.models import (
     OrganizationType,
     Activity,
     Help,
-    Course,
-    CourseRecord,
     Semester,
     Comment,
-    AcademicTag,
 )
 from app.utils import random_code_init
 from feedback.models import (
@@ -43,8 +40,7 @@ __all__ = [
     'load_activity',
     'load_freshman', 'load_help', 'load_course_record', 
     'load_org_tag', 'load_old_org_tags', 'load_feedback_type', 
-    'load_feedback', 'load_feedback_comments', 'load_major',
-    'load_minor', 'load_double_degree', 'load_project'
+    'load_feedback', 'load_feedback_comments',
 ]
 
 
@@ -887,89 +883,6 @@ def load_feedback_comments(filepath: str, output_func: Callable=None, html=False
                 ))
     return try_output(msg, output_func, html)
 
-
-def load_major(filepath: str, output_func: Callable=None, html=False):
-    '''该函数用于导入学术地图中的主修专业标签(文件须为txt格式)'''
-    if not filepath.endswith('txt'):
-        return try_output("请确保数据文件为txt格式！", output_func, html)
-    
-    try:
-        file = open(filepath, 'r')
-    except:
-        return try_output(f"没有找到{filepath},请确认该文件已经在test_data中。", output_func, html)
-    
-    lines = [line.strip() for line in file.readlines()]
-    majors = [line for i, line in enumerate(lines) if (line != '') and (i > 0 and lines[i-1] != '')]
-    for major in majors:
-        AcademicTag.objects.get_or_create(
-            atype=AcademicTag.Type.MAJOR,
-            tag_content=major,
-        )
-    file.close()
-    return try_output("导入主修专业信息成功！", output_func, html)
-
-
-def load_minor(filepath: str, output_func: Callable=None, html=False):
-    '''该函数用于导入学术地图中的辅修专业标签(文件须为txt格式)'''
-    if not filepath.endswith('txt'):
-        return try_output("请确保数据文件为txt格式！", output_func, html)
-    
-    try:
-        file = open(filepath, 'r')
-    except:
-        return try_output(f"没有找到{filepath},请确认该文件已经在test_data中。", output_func, html)
-    
-    lines = [line.strip() for line in file.readlines()]
-    minors = [line for i, line in enumerate(lines) if (line != '') and (i > 0 and lines[i-1] != '')]
-    for minor in minors:
-        AcademicTag.objects.get_or_create(
-            atype=AcademicTag.Type.MINOR,
-            tag_content=minor,
-        )
-    file.close()
-    return try_output("导入辅修专业信息成功！", output_func, html)
-
-
-def load_double_degree(filepath: str, output_func: Callable=None, html=False):
-    '''该函数用于导入学术地图中的双学位专业标签(文件须为txt格式)'''
-    if not filepath.endswith('txt'):
-        return try_output("请确保数据文件为txt格式！", output_func, html)
-    
-    try:
-        file = open(filepath, 'r')
-    except:
-        return try_output(f"没有找到{filepath},请确认该文件已经在test_data中。", output_func, html)
-    
-    lines = [line.strip() for line in file.readlines()]
-    majors = [line for i, line in enumerate(lines) if (line != '') and (i > 0 and lines[i-1] != '')]
-    for major in majors:
-        AcademicTag.objects.get_or_create(
-            atype=AcademicTag.Type.DOUBLE_DEGREE,
-            tag_content=major,
-        )
-    file.close()
-    return try_output("导入双学位专业信息成功！", output_func, html)
-
-
-def load_project(filepath: str, output_func: Callable=None, html=False):
-    '''该函数用于导入学术地图中的项目标签(文件须为txt格式)'''
-    if not filepath.endswith('txt'):
-        return try_output("请确保数据文件为txt格式！", output_func, html)
-    
-    try:
-        file = open(filepath, 'r')
-    except:
-        return try_output(f"没有找到{filepath},请确认该文件已经在test_data中。", output_func, html)
-    
-    lines = [line.strip() for line in file.readlines()]
-    projects = [line for line in lines if line != '']
-    for project in projects:
-        AcademicTag.objects.get_or_create(
-            atype=AcademicTag.Type.PROJECT,
-            tag_content=project,
-        )
-    file.close()
-    return try_output("导入项目信息成功！", output_func, html)
 
 def load_birthday(filepath: str, use_name: bool=False, slash: bool=False):
     '''

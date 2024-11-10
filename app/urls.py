@@ -15,10 +15,6 @@ from app import (
     views,
     org_views,
     activity_views,
-    course_views,
-    academic_views,
-    chat_api,
-    YQPoint_views,
 )
 
 # 尽量不使用<type:arg>, 不支持
@@ -71,48 +67,4 @@ urlpatterns = [
     path("modifyOrganization/", org_views.modifyOrganization,
          name="modifyOrganization"),
     path("sendMessage/", org_views.sendMessage, name="sendMessage"),
-    # path("applyPosition/<str:oid>", views.apply_position, name="applyPosition"), 弃用多年
-] + [
-    # 发布选课相关操作
-    path("addCourse/", course_views.addCourse, name="addCourse"),
-    path("editCourse/<str:cid>", course_views.addCourse, name="editCourse"),
-    # 选课相关操作
-    path("selectCourse/", course_views.selectCourse, name="selectCourse"),
-    path("viewCourse/", course_views.viewCourse, name="viewCourse"),
-    # 课程相关操作
-    path("addSingleCourseActivity/", course_views.addSingleCourseActivity,
-         name="addSingleCourseActivity"),
-    path("editCourseActivity/<str:aid>",
-         course_views.editCourseActivity, name="editCourseActivity"),
-    path("showCourseActivity/", course_views.showCourseActivity,
-         name="showCourseActivity"),
-    path("showCourseRecord/", course_views.showCourseRecord,
-         name="showCourseRecord"),
-    # 数据导出
-    path("outputRecord/", course_views.outputRecord, name="outputRecord"),
-    path("outputSelectInfo/", course_views.outputSelectInfo,
-         name="outputSelectInfo"),
-     path("output-all-select-info/", course_views.outputAllSelectInfo,
-         name="output-all-select-info"),
-] + [
-    # 学术地图
-    path("modifyAcademic/", academic_views.modifyAcademic, name="modifyAcademic"),
-    path("AcademicQA/", academic_views.ShowChats.as_view(), name="showChats"),
-    path("viewQA/<int:chat_id>", academic_views.ViewChat.as_view(), name="viewChat"),
-    path("auditAcademic/", academic_views.auditAcademic, name="auditAcademic"),
-    path("applyAuditAcademic/", academic_views.applyAuditAcademic,
-         name="applyAuditAcademic"),
-] + [
-    # 问答相关
-    # TODO: url等合并前端后再改
-    path("addChatComment/", chat_api.AddComment.as_view(), name="addComment"),
-    path("closeChat/", chat_api.CloseChat.as_view(), name="closeChat"),
-    path("startChat/", chat_api.StartChat.as_view(), name="startChat"),
-    path("startUndirectedChat/", chat_api.StartUndirectedChat.as_view(), name="startUndirectedChat"),
-    path("rateAnswer/", chat_api.RateAnswer.as_view(), name="rateAnswer")
-] + [
-    # 元气值
-    path("myYQPoint/", YQPoint_views.myYQPoint.as_view(), name="myYQPoint"),
-    path("showPools/", YQPoint_views.showPools, name="showPools"),
-    path("myPrize/", YQPoint_views.myPrize.as_view(), name="myPrize"),
 ]

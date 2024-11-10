@@ -18,9 +18,6 @@ from app.models import (
     NaturalPerson,
     Freshman,
     Position,
-    AcademicTag,
-    AcademicEntry,
-    AcademicTextEntry,
     Organization,
     OrganizationTag,
     OrganizationType,
@@ -29,10 +26,7 @@ from app.models import (
     Participation,
     Notification,
     Wishes,
-    Course,
-    CourseRecord,
     Semester,
-    AcademicQA,
 )
 from app.utils import (
     get_person_or_org,
@@ -47,19 +41,7 @@ from app.notification_utils import (
     notification_status_change,
     notification2Display,
 )
-from app.YQPoint_utils import add_signin_point
-from app.academic_utils import (
-    get_search_results,
-    comments2display,
-    get_js_tag_list,
-    get_text_list,
-    have_entries,
-    get_tag_status,
-    get_text_status,
-)
 
-from achievement.utils import personal_achievements
-from achievement.api import unlock_achievement, unlock_YQPoint_achievements
 from semester.api import current_semester
 
 
@@ -334,75 +316,6 @@ def stuinfo(request: UserRequest):
         )
         # ----------------------------------- 活动卡片 ----------------------------------- #
 
-        # ------------------ 学时查询 ------------------ #
-
-        # 只有是自己的主页时才显示学时
-        if is_myself:
-            # 把当前学期的活动去除
-            past_courses = CourseRecord.objects.past().filter(person=oneself)
-
-            # 无效学时，在前端呈现
-            useless_courses = (
-                past_courses
-                .filter(invalid=True)
-            )
-
-            # 特判，需要一定时长才能计入总学时
-            past_courses = (
-                past_courses
-                .exclude(invalid=True)
-            )
-
-            past_courses = past_courses.order_by('year', 'semester')
-            useless_courses = useless_courses.order_by('year', 'semester')
-
-            progress_list = []
-
-            # 计算每个类别的学时
-            for course_type in list(Course.CourseType):  # CourseType.values亦可
-                progress_list.append((
-                    past_courses
-                    .filter(course__type=course_type)
-                    .aggregate(Sum('total_hours'))
-                )['total_hours__sum'] or 0)
-
-            # 计算没有对应Course的学时
-            progress_list.append((
-                past_courses
-                .filter(course__isnull=True)
-                .aggregate(Sum('total_hours'))
-            )['total_hours__sum'] or 0)
-
-            # 每个人的规定学时，按年级讨论
-            try:
-                # 本科生
-                if int(oneself.stu_grade) <= 2018:
-                    ruled_hours = 0
-                elif int(oneself.stu_grade) == 2019:
-                    ruled_hours = 32
-                else:
-                    ruled_hours = 64
-            except:
-                # 其它，如老师和住宿辅导员等
-                ruled_hours = 0
-
-            # 计算总学时
-            complete_hours = sum(progress_list)
-            # 用于算百分比的实际总学时（考虑到可能会超学时），仅后端使用
-            actual_total_hours = max(complete_hours, ruled_hours)
-            if actual_total_hours > 0:
-                progress_list = [
-                    hour / actual_total_hours * 100 for hour in progress_list
-                ]
-
-            course_context = dict(
-                ruled_hours=ruled_hours,
-                complete_hours=complete_hours,
-                past_courses=past_courses,
-                useless_courses=useless_courses,
-                progress_list=progress_list,
-            )
-            render_context.update(Course=course_context)
 
         # ------------------ 活动参与 ------------------ #
 
@@ -444,98 +357,6 @@ def stuinfo(request: UserRequest):
         if request.GET.get("modinfo", "") == "success":
             succeed("修改个人信息成功!", html_display)
 
-        # ----------------------------------- 学术地图 ----------------------------------- #
-        # ------------------ 提问区 or 进行中的问答------------------ #
-        progressing_chat = AcademicQA.objects.activated().filter(
-            directed=True,
-            chat__questioner=request.user,
-            chat__respondent=person.get_user()
-        )
-        if progressing_chat.exists():
-            chat_qa = progressing_chat.first()
-            comment_display = comments2display(chat_qa.chat, request.user)
-            # TODO: 字典的key有冲突风险
-            html_display.update(comment_display)
-            html_display["have_progressing_chat"] = True
-        else:  # 没有进行中的问答，显示提问区
-            html_display["have_progressing_chat"] = False
-            html_display["accept_chat"] = person.get_user().accept_chat
-            html_display["accept_anonymous"] = person.get_user().accept_anonymous_chat
-
-        # ------------------ 查看学术地图 ------------------ #
-        status_in = [AcademicEntry.EntryStatus.PUBLIC]
-        is_teacher = request.user.is_person() and oneself.is_teacher()
-        if is_myself:
-            status_in = None
-        elif is_teacher:
-            status_in.append(AcademicEntry.EntryStatus.WAIT_AUDIT)
-
-        # 判断用户是否有可以展示的内容
-        content_status = status_in
-        if is_myself:
-            content_status = [AcademicEntry.EntryStatus.PUBLIC,
-                              AcademicEntry.EntryStatus.WAIT_AUDIT]
-        academic_params = dict()
-        academic_params.update(
-            is_inspector=is_teacher,
-            author_id=person.person_id.id,
-            have_content=have_entries(person, content_status),
-            have_unaudit=have_entries(person, [AcademicEntry.EntryStatus.WAIT_AUDIT]),
-        )
-
-        # 获取用户已有的专业/项目的列表，用于select的默认选中项
-        selected_dict = dict(
-            selected_major_list=AcademicTag.Type.MAJOR,
-            selected_minor_list=AcademicTag.Type.MINOR,
-            selected_double_degree_list=AcademicTag.Type.DOUBLE_DEGREE,
-            selected_project_list=AcademicTag.Type.PROJECT,
-        )
-        academic_params.update({
-            name: get_js_tag_list(person, type, selected=True, status_in=status_in)
-            for name, type in selected_dict.items()
-        })
-
-        # 获取用户已有的TextEntry的contents，用于TextEntry填写栏的前端预填写
-        text_dict = dict(
-            scientific_research_list=AcademicTextEntry.Type.SCIENTIFIC_RESEARCH,
-            challenge_cup_list=AcademicTextEntry.Type.CHALLENGE_CUP,
-            internship_list=AcademicTextEntry.Type.INTERNSHIP,
-            scientific_direction_list=AcademicTextEntry.Type.SCIENTIFIC_DIRECTION,
-            graduation_list=AcademicTextEntry.Type.GRADUATION,
-        )
-        academic_params.update({
-            name: get_text_list(person, type, status_in)
-            for name, type in text_dict.items()
-        })
-
-        # 最后获取每一种atype对应的entry的公开状态，如果没有则默认为公开
-        tag_status_dict = dict(
-            major_status=AcademicTag.Type.MAJOR,
-            minor_status=AcademicTag.Type.MINOR,
-            double_degree_status=AcademicTag.Type.DOUBLE_DEGREE,
-            project_status=AcademicTag.Type.PROJECT,
-        )
-        academic_params.update({
-            name: get_tag_status(person, type)
-            for name, type in tag_status_dict.items()
-        })
-        text_status_dict = dict(
-            scientific_research_status=AcademicTextEntry.Type.SCIENTIFIC_RESEARCH,
-            challenge_cup_status=AcademicTextEntry.Type.CHALLENGE_CUP,
-            internship_status=AcademicTextEntry.Type.INTERNSHIP,
-            scientific_direction_status=AcademicTextEntry.Type.SCIENTIFIC_DIRECTION,
-            graduation_status=AcademicTextEntry.Type.GRADUATION,
-        )
-        academic_params.update({
-            name: get_text_status(person, type)
-            for name, type in text_status_dict.items()
-        })
-        render_context.update(Academic=academic_params)
-
-        # ------------------ 成就卡片 ------------------ #
-        _, _, achievement_by_types = personal_achievements(person.get_user())
-        achievement_params = dict(type_order_displays=achievement_by_types)
-        render_context.update(Achievement=achievement_params)
 
         # ------------------ 前端准备 ------------------ #
         # 存储被查询人的信息
@@ -643,9 +464,7 @@ def orginfo(request: UserRequest):
 
     html_display = {}
     html_display["is_myself"] = is_myself
-    html_display["is_course"] = (
-        Course.objects.activated().filter(organization=org).exists()
-    )
+
     inform_share, alert_message = utils.get_inform_share(
         me, is_myself=is_myself)
 
@@ -788,26 +607,6 @@ def homepage(request: UserRequest):
     my_messages.transfer_message_context(request.GET, html_display)
 
     nowtime = datetime.now()
-    # 今天第一次访问 welcome 界面，积分增加
-    if request.user.is_person():
-        with transaction.atomic():
-            np = NaturalPerson.objects.get_by_user(request.user, update=True)
-            if np.last_time_login is None or np.last_time_login.date() != nowtime.date():
-                np.last_time_login = nowtime
-                np.save()
-                add_point, html_display['signin_display'] = add_signin_point(
-                    request.user)
-                html_display['first_signin'] = True  # 前端显示
-
-    # 解锁成就-注册智慧书院
-    # 如果放在注册页面结束判定 则已经注册好的用户获取不到该成就
-    unlock_achievement(request.user, '注册智慧书院')
-
-    # 元气满满系列更新
-    semester = current_semester()
-    start_datetime = datetime.combine(semester.start_date, datetime.min.time())
-    end_datetime = datetime.combine(semester.end_date, datetime.max.time())
-    unlock_YQPoint_achievements(request.user, start_datetime, end_datetime)
 
     # 开始时间在前后一周内，除了取消和审核中的活动。按时间逆序排序
     recentactivity_list = Activity.objects.get_recent_activity(
@@ -1024,8 +823,6 @@ def accountSetting(request: UserRequest):
                 modify_msg = '\n'.join(modify_info)
                 record_modify_with_session(request,
                                            f"修改了{expr}项信息：\n{modify_msg}")
-                # 解锁成就-更新一次个人档案
-                unlock_achievement(request.user, '更新一次个人档案')
                 return redirect("/stuinfo/?modinfo=success")
             # else: 没有更新
 
@@ -1402,18 +1199,6 @@ def search(request: HttpRequest):
     #     Q(title__icontains=query)
     #     | Q(org__oname__icontains=query)
     # )
-
-    # 学术地图内容
-    academic_map_dict = get_search_results(query)
-    academic_list = []
-    for username, contents in academic_map_dict.items():
-        np: NaturalPerson = SQ.mget(NaturalPerson.person_id, username=username)
-        info = dict(
-            ref=np.get_absolute_url() + '#tab=academic_map',
-            sname=np.name,
-            avatar=np.get_user_ava(),
-        )
-        academic_list.append((info, contents))
 
     # 新版侧边栏, 顶栏等的呈现，采用 bar_display, 必须放在render前最后一步
     bar_display = utils.get_sidebar_and_navbar(request.user, "信息搜索")

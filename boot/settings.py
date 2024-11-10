@@ -67,11 +67,7 @@ INSTALLED_APPS = [
     "Appointment",
     'dm',
     "scheduler",
-    "yp_library",
-    "questionnaire",
-    "dormitory",
     "feedback",
-    "achievement",
 ]
 
 
