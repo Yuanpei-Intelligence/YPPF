@@ -13,7 +13,6 @@ from Appointment.extern.jobs import set_appoint_reminder
 from utils.wrap import return_on_except, stringify_to
 
 
-
 __all__ = [
     'create_require_num',
     'create_appoint',

@@ -14,7 +14,7 @@ Including another URLconf
     2. Add a URL to urlpatterns:  path('blog/', include('blog.urls'))
 '''
 from django.urls import path
-from Appointment import views, summary, hardware_api
+from Appointment import views, hardware_api
 
 # 参考：https://stackoverflow.com/questions/61254816/what-is-the-purpose-of-app-name-in-urls-py-in-django
 # 一般情况下不需要使用 app_name
@@ -49,7 +49,4 @@ urlpatterns = [
     path('camera-check', hardware_api.cameracheck, name='cameracheck'),
     path('display_getappoint', hardware_api.display_getappoint,
          name='display_getappoint'),
-    path('summary', summary.summary, name='summary'),
-    path('summary/2021', summary.summary2021, name='summary2021'),
-    path('summary/2023', summary.summary2023, name='summary2023'),
 ]
