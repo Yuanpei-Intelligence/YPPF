@@ -67,7 +67,7 @@ INSTALLED_APPS = [
     "Appointment",
     'dm',
     "scheduler",
-    "feedback",
+    # "feedback",
 ]
 
 
