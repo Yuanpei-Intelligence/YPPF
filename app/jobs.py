@@ -20,18 +20,8 @@ from app.models import (
     NaturalPerson,
     Organization,
     OrganizationType,
-    Activity,
-    ActivityPhoto,
-    ActivitySummary,
-    Participation,
     Notification,
     Position,
-)
-from app.activity_utils import (
-    changeActivityStatus,
-    notifyActivity,
-    create_participate_infos,
-    weekly_summary_orgs,
 )
 from app.notification_utils import (
     bulk_notification_create,
@@ -79,48 +69,6 @@ def send_to_orgs(title, message, url='/index/'):
         Notification.Type.NEEDREAD, title, message, url,
         to_wechat=dict(level=WechatMessageLevel.IMPORTANT, show_source=False),
     )
-
-
-@periodical('interval', job_id='activityStatusUpdater', minutes=5)
-def changeAllActivities():
-    """
-    频繁执行，添加更新其他活动的定时任务，主要是为了异步调度
-    对于被多次落下的活动，每次更新一步状态
-    """
-    def next_time_generator(first: timedelta | datetime, step: timedelta):
-        while True:
-            yield first
-            first += step
-    now = datetime.now()
-    times = next_time_generator(
-        now + timedelta(seconds=20), timedelta(seconds=5))
-    adder = MultipleAdder(changeActivityStatus)
-
-    def _update_all(_cur, _next, activities):
-        for activity in activities:
-            adder.schedule(f'activity_{activity.id}_{_next}',
-                           run_time=next(times))(activity.id, _cur, _next)
-
-    applying_activities = Activity.objects.filter(
-        status=Activity.Status.APPLYING,
-        apply_end__lte=now,
-    )
-    _update_all(Activity.Status.APPLYING,
-                Activity.Status.WAITING, applying_activities)
-
-    waiting_activities = Activity.objects.filter(
-        status=Activity.Status.WAITING,
-        start__lte=now,
-    )
-    _update_all(Activity.Status.WAITING,
-                Activity.Status.PROGRESSING, waiting_activities)
-
-    progressing_activities = Activity.objects.filter(
-        status=Activity.Status.PROGRESSING,
-        end__lte=now,
-    )
-    _update_all(Activity.Status.PROGRESSING,
-                Activity.Status.END, progressing_activities)
 
 
 @periodical('interval', job_id="get weather per hour", hours=1)
@@ -230,27 +178,4 @@ def happy_birthday():
             receivers, sender,
             Notification.Type.NEEDREAD, title, message, url,
             to_wechat=dict(level=WechatMessageLevel.IMPORTANT, show_source=False),
-        )
-
-
-@script
-@periodical('cron', 'weekly_activity_summary_reminder', hour=20, minute=0, day_of_week='sun')
-def weekly_activity_summary_reminder():
-    '''提醒组织负责人填写每周活动总结
-    
-    每周日晚上8点提醒所有组织负责人通过每周活动总结填写未在系统中申报的活动
-    目前仅限于团委，学学学委员会，学学学学会，学生会
-    '''
-    today = date.today()
-    cur_semester = current_semester()
-    if not cur_semester.start_date <= today <= cur_semester.end_date:
-        return
-    notify_orgs = weekly_summary_orgs()
-    sender = User.objects.get(username='zz00000')
-    for org in notify_orgs.select_related(SQ.f(Organization.organization_id)):
-        notification_create(
-            org.get_user(), sender,
-            Notification.Type.NEEDREAD, '每周活动总结提醒',
-            '如果本周举办了未在系统中申报的活动，请通过每周活动总结及时填报！',
-            to_wechat=dict(show_source=False),
         )

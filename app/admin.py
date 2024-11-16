@@ -24,15 +24,6 @@ class PositionInline(admin.TabularInline):
     ]
     show_change_link = True
 
-@readonly_inline
-class ParticipationInline(admin.TabularInline):
-    model = Participation
-    classes = ['collapse']
-    ordering = ['-' + f(model.activity)]
-    fields = [f(model.activity), f(model.person), f(model.status)]
-    show_change_link = True
-
-
 
 # 后台模型
 @admin.register(NaturalPerson)
@@ -51,7 +42,7 @@ class NaturalPersonAdmin(admin.ModelAdmin):
         f(_m.stu_grade), f(_m.stu_class),
     ]
 
-    inlines = [PositionInline, ParticipationInline]
+    inlines = [PositionInline]
 
     def _show_by_option(self, obj: NaturalPerson | None, option: str, detail: str):
         if obj is None or getattr(obj, option):
@@ -301,267 +292,267 @@ class PositionAdmin(admin.ModelAdmin):
         return self.message_user(request, f'修改成功!新增职务：{new}')
 
 
-@admin.register(Activity)
-class ActivityAdmin(admin.ModelAdmin):
-    list_display = ["title", 'id', "organization_id",
-                    "status", "participant_diaplay",
-                    "publish_time", "start", "end",]
-    search_fields = ('id', "title", "organization_id__oname",
-                     "current_participants",)
+# @admin.register(Activity)
+# class ActivityAdmin(admin.ModelAdmin):
+#     list_display = ["title", 'id', "organization_id",
+#                     "status", "participant_diaplay",
+#                     "publish_time", "start", "end",]
+#     search_fields = ('id', "title", "organization_id__oname",
+#                      "current_participants",)
     
-    class ErrorFilter(admin.SimpleListFilter):
-        title = '错误状态' # 过滤标题显示为"以 错误状态"
-        parameter_name = 'wrong_status' # 过滤器使用的过滤字段
+#     class ErrorFilter(admin.SimpleListFilter):
+#         title = '错误状态' # 过滤标题显示为"以 错误状态"
+#         parameter_name = 'wrong_status' # 过滤器使用的过滤字段
     
-        def lookups(self, request, model_admin):
-            '''针对字段值设置过滤器的显示效果'''
-            return (
-                ('all', '全部错误状态'),
-                ('not_waiting', '未进入 等待中 状态'),
-                ('not_processing', '未进入 进行中 状态'),
-                ('not_end', '未进入 已结束 状态'),
-                ('review_end', '已结束的未审核'),
-                ('normal', '正常'),
-            )
+#         def lookups(self, request, model_admin):
+#             '''针对字段值设置过滤器的显示效果'''
+#             return (
+#                 ('all', '全部错误状态'),
+#                 ('not_waiting', '未进入 等待中 状态'),
+#                 ('not_processing', '未进入 进行中 状态'),
+#                 ('not_end', '未进入 已结束 状态'),
+#                 ('review_end', '已结束的未审核'),
+#                 ('normal', '正常'),
+#             )
         
-        def queryset(self, request, queryset):
-            '''定义过滤器的过滤动作'''
-            now = datetime.now()
-            error_id_set = set()
-            activate_queryset = queryset.exclude(
-                    status__in=[
-                        Activity.Status.REVIEWING,
-                        Activity.Status.CANCELED,
-                        Activity.Status.REJECT,
-                        Activity.Status.ABORT,
-                    ])
-            if self.value() in ['not_waiting', 'all', 'normal']:
-                error_id_set.update(activate_queryset.exclude(
-                    status=Activity.Status.WAITING).filter(
-                    apply_end__lte=now,
-                    start__gt=now,
-                    ).values_list('id', flat=True))
-            if self.value() in ['not_processing', 'all', 'normal']:
-                error_id_set.update(activate_queryset.exclude(
-                    status=Activity.Status.PROGRESSING).filter(
-                    start__lte=now,
-                    end__gt=now,
-                    ).values_list('id', flat=True))
-            if self.value() in ['not_end', 'all', 'normal']:
-                error_id_set.update(activate_queryset.exclude(
-                    status=Activity.Status.END).filter(
-                    end__lte=now,
-                    ).values_list('id', flat=True))
-            if self.value() in ['review_end', 'all', 'normal']:
-                error_id_set.update(queryset.filter(
-                    status=Activity.Status.REVIEWING,
-                    end__lte=now,
-                    ).values_list('id', flat=True))
+#         def queryset(self, request, queryset):
+#             '''定义过滤器的过滤动作'''
+#             now = datetime.now()
+#             error_id_set = set()
+#             activate_queryset = queryset.exclude(
+#                     status__in=[
+#                         Activity.Status.REVIEWING,
+#                         Activity.Status.CANCELED,
+#                         Activity.Status.REJECT,
+#                         Activity.Status.ABORT,
+#                     ])
+#             if self.value() in ['not_waiting', 'all', 'normal']:
+#                 error_id_set.update(activate_queryset.exclude(
+#                     status=Activity.Status.WAITING).filter(
+#                     apply_end__lte=now,
+#                     start__gt=now,
+#                     ).values_list('id', flat=True))
+#             if self.value() in ['not_processing', 'all', 'normal']:
+#                 error_id_set.update(activate_queryset.exclude(
+#                     status=Activity.Status.PROGRESSING).filter(
+#                     start__lte=now,
+#                     end__gt=now,
+#                     ).values_list('id', flat=True))
+#             if self.value() in ['not_end', 'all', 'normal']:
+#                 error_id_set.update(activate_queryset.exclude(
+#                     status=Activity.Status.END).filter(
+#                     end__lte=now,
+#                     ).values_list('id', flat=True))
+#             if self.value() in ['review_end', 'all', 'normal']:
+#                 error_id_set.update(queryset.filter(
+#                     status=Activity.Status.REVIEWING,
+#                     end__lte=now,
+#                     ).values_list('id', flat=True))
 
-            if self.value() == 'normal':
-                return queryset.exclude(id__in=error_id_set)
-            elif self.value() is not None:
-                return queryset.filter(id__in=error_id_set)
-            return queryset
+#             if self.value() == 'normal':
+#                 return queryset.exclude(id__in=error_id_set)
+#             elif self.value() is not None:
+#                 return queryset.filter(id__in=error_id_set)
+#             return queryset
     
-    list_filter = (
-        "status",
-        'year', 'semester', 'category',
-        "organization_id__otype",
-        "inner", "need_checkin", "valid",
-        ErrorFilter,
-        'endbefore',
-        "publish_time", 'start', 'end',
-    )
-    date_hierarchy = 'start'
+#     list_filter = (
+#         "status",
+#         'year', 'semester', 'category',
+#         "organization_id__otype",
+#         "inner", "need_checkin", "valid",
+#         ErrorFilter,
+#         'endbefore',
+#         "publish_time", 'start', 'end',
+#     )
+#     date_hierarchy = 'start'
 
-    def participant_diaplay(self, obj):
-        return f'{obj.current_participants}/{"无限" if obj.capacity == 10000 else obj.capacity}'
-    participant_diaplay.short_description = "报名情况"
+#     def participant_diaplay(self, obj):
+#         return f'{obj.current_participants}/{"无限" if obj.capacity == 10000 else obj.capacity}'
+#     participant_diaplay.short_description = "报名情况"
 
-    inlines = [ParticipationInline]
+#     inlines = [ParticipationInline]
 
-    actions = []
+#     actions = []
 
-    @as_action("更新 报名人数", actions, update=True)
-    def refresh_count(self, request, queryset: QuerySet[Activity]):
-        for activity in queryset:
-            activity.current_participants = sfilter(
-                Participation.activity, activity).filter(
-                status__in=[
-                    Participation.AttendStatus.ATTENDED,
-                    Participation.AttendStatus.UNATTENDED,
-                    Participation.AttendStatus.APPLYSUCCESS,
-                ]).count()
-            activity.save()
-        return self.message_user(request=request, message='修改成功!')
+#     @as_action("更新 报名人数", actions, update=True)
+#     def refresh_count(self, request, queryset: QuerySet[Activity]):
+#         for activity in queryset:
+#             activity.current_participants = sfilter(
+#                 Participation.activity, activity).filter(
+#                 status__in=[
+#                     Participation.AttendStatus.ATTENDED,
+#                     Participation.AttendStatus.UNATTENDED,
+#                     Participation.AttendStatus.APPLYSUCCESS,
+#                 ]).count()
+#             activity.save()
+#         return self.message_user(request=request, message='修改成功!')
     
-    @as_action('设为 普通活动', actions, update=True)
-    def set_normal_category(self, request, queryset):
-        queryset.update(category=Activity.ActivityCategory.NORMAL)
-        return self.message_user(request=request, message='修改成功!')
+#     @as_action('设为 普通活动', actions, update=True)
+#     def set_normal_category(self, request, queryset):
+#         queryset.update(category=Activity.ActivityCategory.NORMAL)
+#         return self.message_user(request=request, message='修改成功!')
 
-    @as_action('设为 课程活动', actions, update=True)
-    def set_course_category(self, request, queryset):
-        queryset.update(category=Activity.ActivityCategory.COURSE)
-        return self.message_user(request=request, message='修改成功!')
+#     @as_action('设为 课程活动', actions, update=True)
+#     def set_course_category(self, request, queryset):
+#         queryset.update(category=Activity.ActivityCategory.COURSE)
+#         return self.message_user(request=request, message='修改成功!')
 
-    def _change_status(self, activity, from_status, to_status):
-        from app.activity_utils import changeActivityStatus
-        changeActivityStatus(activity.id, from_status, to_status)
-        if remove_job(f'activity_{activity.id}_{to_status}'):
-            return '修改成功, 并移除了定时任务!'
-        else:
-            return '修改成功!'
+#     def _change_status(self, activity, from_status, to_status):
+#         from app.activity_utils import changeActivityStatus
+#         changeActivityStatus(activity.id, from_status, to_status)
+#         if remove_job(f'activity_{activity.id}_{to_status}'):
+#             return '修改成功, 并移除了定时任务!'
+#         else:
+#             return '修改成功!'
 
-    @as_action("进入 等待中 状态", actions, single=True)
-    def to_waiting(self, request, queryset):
-        _from, _to = Activity.Status.APPLYING, Activity.Status.WAITING
-        msg = self._change_status(queryset[0], _from, _to)
-        return self.message_user(request, msg)
+#     @as_action("进入 等待中 状态", actions, single=True)
+#     def to_waiting(self, request, queryset):
+#         _from, _to = Activity.Status.APPLYING, Activity.Status.WAITING
+#         msg = self._change_status(queryset[0], _from, _to)
+#         return self.message_user(request, msg)
     
-    @as_action("进入 进行中 状态", actions, single=True)
-    def to_processing(self, request, queryset):
-        _from, _to = Activity.Status.WAITING, Activity.Status.PROGRESSING
-        msg = self._change_status(queryset[0], _from, _to)
-        return self.message_user(request, msg)
+#     @as_action("进入 进行中 状态", actions, single=True)
+#     def to_processing(self, request, queryset):
+#         _from, _to = Activity.Status.WAITING, Activity.Status.PROGRESSING
+#         msg = self._change_status(queryset[0], _from, _to)
+#         return self.message_user(request, msg)
     
-    @as_action("进入 已结束 状态", actions, single=True)
-    def to_end(self, request, queryset):
-        _from, _to = Activity.Status.PROGRESSING, Activity.Status.END
-        msg = self._change_status(queryset[0], _from, _to)
-        return self.message_user(request, msg)
+#     @as_action("进入 已结束 状态", actions, single=True)
+#     def to_end(self, request, queryset):
+#         _from, _to = Activity.Status.PROGRESSING, Activity.Status.END
+#         msg = self._change_status(queryset[0], _from, _to)
+#         return self.message_user(request, msg)
 
-    @as_action("取消 定时任务", actions)
-    def cancel_scheduler(self, request, queryset):
-        success_list = []
-        failed_list = []
-        CANCEL_STATUSES = [
-            'remind',
-            Activity.Status.END,
-            Activity.Status.PROGRESSING,
-            Activity.Status.WAITING,
-        ]
-        for activity in queryset:
-            failed_statuses = []
-            for status in CANCEL_STATUSES:
-                if not remove_job(f'activity_{activity.id}_{status}'):
-                    failed_statuses.append(status)
-            if failed_statuses:
-                if len(failed_statuses) != len(CANCEL_STATUSES):
-                    failed_list.append(f'{activity.id}: {",".join(failed_statuses)}')
-                else:
-                    failed_list.append(f'{activity.id}')
-            else:
-                success_list.append(f'{activity.id}')
+#     @as_action("取消 定时任务", actions)
+#     def cancel_scheduler(self, request, queryset):
+#         success_list = []
+#         failed_list = []
+#         CANCEL_STATUSES = [
+#             'remind',
+#             Activity.Status.END,
+#             Activity.Status.PROGRESSING,
+#             Activity.Status.WAITING,
+#         ]
+#         for activity in queryset:
+#             failed_statuses = []
+#             for status in CANCEL_STATUSES:
+#                 if not remove_job(f'activity_{activity.id}_{status}'):
+#                     failed_statuses.append(status)
+#             if failed_statuses:
+#                 if len(failed_statuses) != len(CANCEL_STATUSES):
+#                     failed_list.append(f'{activity.id}: {",".join(failed_statuses)}')
+#                 else:
+#                     failed_list.append(f'{activity.id}')
+#             else:
+#                 success_list.append(f'{activity.id}')
         
-        msg = f'成功取消{len(success_list)}项活动的定时任务!' if success_list else '未能完全取消任何任务'
-        if failed_list:
-            msg += f'\n{len(failed_list)}项活动取消失败：\n{";".join(failed_list)}'
-        return self.message_user(request=request, message=msg)
+#         msg = f'成功取消{len(success_list)}项活动的定时任务!' if success_list else '未能完全取消任何任务'
+#         if failed_list:
+#             msg += f'\n{len(failed_list)}项活动取消失败：\n{";".join(failed_list)}'
+#         return self.message_user(request=request, message=msg)
 
 
-@admin.register(Participation)
-class ParticipationAdmin(admin.ModelAdmin):
-    _m = Participation
-    _act = _m.activity
-    list_display = ['id', f(_act), f(_m.person), f(_m.status)]
-    search_fields = ['id', f(_act, 'id'), f(_act, Activity.title),
-                     f(_m.person, NaturalPerson.name)]
-    list_filter = [
-        f(_m.status), f(_act, Activity.category),
-        f(_act, Activity.year), f(_act, Activity.semester),
-    ]
+# @admin.register(Participation)
+# class ParticipationAdmin(admin.ModelAdmin):
+#     _m = Participation
+#     _act = _m.activity
+#     list_display = ['id', f(_act), f(_m.person), f(_m.status)]
+#     search_fields = ['id', f(_act, 'id'), f(_act, Activity.title),
+#                      f(_m.person, NaturalPerson.name)]
+#     list_filter = [
+#         f(_m.status), f(_act, Activity.category),
+#         f(_act, Activity.year), f(_act, Activity.semester),
+#     ]
 
 
-@admin.register(Notification)
-class NotificationAdmin(admin.ModelAdmin):
-    list_display = ["id", "receiver", "sender", "title", "start_time"]
-    search_fields = ('id', "receiver__username", "sender__username", 'title')
-    list_filter = ('start_time', 'status', 'typename', "finish_time")
+# @admin.register(Notification)
+# class NotificationAdmin(admin.ModelAdmin):
+#     list_display = ["id", "receiver", "sender", "title", "start_time"]
+#     search_fields = ('id', "receiver__username", "sender__username", 'title')
+#     list_filter = ('start_time', 'status', 'typename', "finish_time")
 
-    actions = [
-        'set_delete',
-        'republish',
-        'republish_bulk_at_promote', 'republish_bulk_at_message',
-        ]
+#     actions = [
+#         'set_delete',
+#         'republish',
+#         'republish_bulk_at_promote', 'republish_bulk_at_message',
+#         ]
 
-    @as_action("设置状态为 删除", update=True)
-    def set_delete(self, request, queryset):
-        queryset.update(status=Notification.Status.DELETE)
-        return self.message_user(request=request,
-                                 message='修改成功!')
+#     @as_action("设置状态为 删除", update=True)
+#     def set_delete(self, request, queryset):
+#         queryset.update(status=Notification.Status.DELETE)
+#         return self.message_user(request=request,
+#                                  message='修改成功!')
 
-    @as_action("重发 单个通知")
-    def republish(self, request, queryset):
-        if len(queryset) != 1:
-            return self.message_user(request=request,
-                                     message='一次只能重发一个通知!',
-                                     level='error')
-        notification = queryset[0]
-        from app.extern.wechat import publish_notification, WechatApp
-        if not publish_notification(
-            notification,
-            app=WechatApp.NORMAL,
-            ):
-            return self.message_user(request=request,
-                                     message='发送失败!请检查通知内容!',
-                                     level='error')
-        return self.message_user(request=request,
-                                 message='已成功定时,将发送至默认窗口!')
+#     @as_action("重发 单个通知")
+#     def republish(self, request, queryset):
+#         if len(queryset) != 1:
+#             return self.message_user(request=request,
+#                                      message='一次只能重发一个通知!',
+#                                      level='error')
+#         notification = queryset[0]
+#         from app.extern.wechat import publish_notification, WechatApp
+#         if not publish_notification(
+#             notification,
+#             app=WechatApp.NORMAL,
+#             ):
+#             return self.message_user(request=request,
+#                                      message='发送失败!请检查通知内容!',
+#                                      level='error')
+#         return self.message_user(request=request,
+#                                  message='已成功定时,将发送至默认窗口!')
     
-    def republish_bulk(self, request, queryset, app):
-        if not request.user.is_superuser:
-            return self.message_user(request=request,
-                                     message='操作失败,没有权限,请联系老师!',
-                                     level='warning')
-        if len(queryset) != 1:
-            return self.message_user(request=request,
-                                     message='一次只能选择一个通知!',
-                                     level='error')
-        bulk_identifier = queryset[0].bulk_identifier
-        if not bulk_identifier:
-            return self.message_user(request=request,
-                                     message='该通知不存在批次标识!',
-                                     level='error')
-        try:
-            from app.extern.wechat import publish_notifications
-        except Exception as e:
-            return self.message_user(request=request,
-                                     message=f'导入失败, 原因: {e}',
-                                     level='error')
-        if not publish_notifications(
-            filter_kws={'bulk_identifier': bulk_identifier},
-            app=app,
-            ):
-            return self.message_user(request=request,
-                                     message='发送失败!请检查通知内容!',
-                                     level='error')
-        return self.message_user(request=request,
-                                 message=f'已成功定时!标识为{bulk_identifier}')
-    republish_bulk.short_description = "错误的重发操作"
+#     def republish_bulk(self, request, queryset, app):
+#         if not request.user.is_superuser:
+#             return self.message_user(request=request,
+#                                      message='操作失败,没有权限,请联系老师!',
+#                                      level='warning')
+#         if len(queryset) != 1:
+#             return self.message_user(request=request,
+#                                      message='一次只能选择一个通知!',
+#                                      level='error')
+#         bulk_identifier = queryset[0].bulk_identifier
+#         if not bulk_identifier:
+#             return self.message_user(request=request,
+#                                      message='该通知不存在批次标识!',
+#                                      level='error')
+#         try:
+#             from app.extern.wechat import publish_notifications
+#         except Exception as e:
+#             return self.message_user(request=request,
+#                                      message=f'导入失败, 原因: {e}',
+#                                      level='error')
+#         if not publish_notifications(
+#             filter_kws={'bulk_identifier': bulk_identifier},
+#             app=app,
+#             ):
+#             return self.message_user(request=request,
+#                                      message='发送失败!请检查通知内容!',
+#                                      level='error')
+#         return self.message_user(request=request,
+#                                  message=f'已成功定时!标识为{bulk_identifier}')
+#     republish_bulk.short_description = "错误的重发操作"
 
-    @as_action("重发 所在批次 于 订阅窗口")
-    def republish_bulk_at_promote(self, request, queryset):
-        try:
-            from app.extern.wechat import WechatApp
-            app = WechatApp._PROMOTE
-        except Exception as e:
-            return self.message_user(request=request,
-                                     message=f'导入失败, 原因: {e}',
-                                     level='error')
-        return self.republish_bulk(request, queryset, app)
+#     @as_action("重发 所在批次 于 订阅窗口")
+#     def republish_bulk_at_promote(self, request, queryset):
+#         try:
+#             from app.extern.wechat import WechatApp
+#             app = WechatApp._PROMOTE
+#         except Exception as e:
+#             return self.message_user(request=request,
+#                                      message=f'导入失败, 原因: {e}',
+#                                      level='error')
+#         return self.republish_bulk(request, queryset, app)
 
-    @as_action("重发 所在批次 于 消息窗口")
-    def republish_bulk_at_message(self, request, queryset):
-        try:
-            from app.extern.wechat import WechatApp
-            app = WechatApp._MESSAGE
-        except Exception as e:
-            return self.message_user(request=request,
-                                     message=f'导入失败, 原因: {e}',
-                                     level='error')
-        return self.republish_bulk(request, queryset, app)
+#     @as_action("重发 所在批次 于 消息窗口")
+#     def republish_bulk_at_message(self, request, queryset):
+#         try:
+#             from app.extern.wechat import WechatApp
+#             app = WechatApp._MESSAGE
+#         except Exception as e:
+#             return self.message_user(request=request,
+#                                      message=f'导入失败, 原因: {e}',
+#                                      level='error')
+#         return self.republish_bulk(request, queryset, app)
 
 
 @admin.register(Help)
@@ -644,4 +635,4 @@ class ModifyOrganizationAdmin(admin.ModelAdmin):
 admin.site.register(OrganizationTag)
 admin.site.register(Comment)
 admin.site.register(CommentPhoto)
-admin.site.register(ActivitySummary)
+# admin.site.register(ActivitySummary)

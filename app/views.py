@@ -21,9 +21,6 @@ from app.models import (
     Organization,
     OrganizationTag,
     OrganizationType,
-    Activity,
-    ActivityPhoto,
-    Participation,
     Notification,
     Wishes,
     Semester,
@@ -317,39 +314,39 @@ def stuinfo(request: UserRequest):
         # ----------------------------------- 活动卡片 ----------------------------------- #
 
 
-        # ------------------ 活动参与 ------------------ #
+        # # ------------------ 活动参与 ------------------ #
 
-        participants = Participation.objects.activated().filter(SQ.sq(
-                Participation.person, person))
-        activities = Activity.objects.activated().filter(
-            # ~Q(status=Activity.Status.CANCELED), # 暂时可以呈现已取消的活动
-            id__in=SQ.qsvlist(participants, Participation.activity),
-        )
-        if request.user.is_person():
-            # 因为上面筛选过活动，这里就不用筛选了
-            # 之前那个写法是O(nm)的
-            activities_me = Participation.objects.activated().filter(SQ.sq(
-                Participation.person, oneself))
-            activities_me = set(SQ.qsvlist(activities_me, Participation.activity))
-        else:
-            activities_me = activities.filter(organization_id=oneself)
-            activities_me = set(activities_me.values_list("id", flat=True))
-        activity_is_same = [
-            activity in activities_me
-            for activity in activities.values_list("id", flat=True)
-        ]
-        activity_info = list(zip(activities, activity_is_same))
-        activity_info.sort(key=lambda a: a[0].start, reverse=True)
-        html_display["activity_info"] = list(activity_info) or None
+        # participants = Participation.objects.activated().filter(SQ.sq(
+        #         Participation.person, person))
+        # activities = Activity.objects.activated().filter(
+        #     # ~Q(status=Activity.Status.CANCELED), # 暂时可以呈现已取消的活动
+        #     id__in=SQ.qsvlist(participants, Participation.activity),
+        # )
+        # if request.user.is_person():
+        #     # 因为上面筛选过活动，这里就不用筛选了
+        #     # 之前那个写法是O(nm)的
+        #     activities_me = Participation.objects.activated().filter(SQ.sq(
+        #         Participation.person, oneself))
+        #     activities_me = set(SQ.qsvlist(activities_me, Participation.activity))
+        # else:
+        #     activities_me = activities.filter(organization_id=oneself)
+        #     activities_me = set(activities_me.values_list("id", flat=True))
+        # activity_is_same = [
+        #     activity in activities_me
+        #     for activity in activities.values_list("id", flat=True)
+        # ]
+        # activity_info = list(zip(activities, activity_is_same))
+        # activity_info.sort(key=lambda a: a[0].start, reverse=True)
+        # html_display["activity_info"] = list(activity_info) or None
 
-        # 呈现历史活动，不考虑共同活动的规则，直接全部呈现
-        history_activities = list(
-            Activity.objects.activated(noncurrent=True).filter(
-                # ~Q(status=Activity.Status.CANCELED), # 暂时可以呈现已取消的活动
-                id__in=SQ.qsvlist(participants, Participation.activity),
-            ))
-        history_activities.sort(key=lambda a: a.start, reverse=True)
-        html_display["history_act_info"] = list(history_activities) or None
+        # # 呈现历史活动，不考虑共同活动的规则，直接全部呈现
+        # history_activities = list(
+        #     Activity.objects.activated(noncurrent=True).filter(
+        #         # ~Q(status=Activity.Status.CANCELED), # 暂时可以呈现已取消的活动
+        #         id__in=SQ.qsvlist(participants, Participation.activity),
+        #     ))
+        # history_activities.sort(key=lambda a: a.start, reverse=True)
+        # html_display["history_act_info"] = list(history_activities) or None
 
         # 警告呈现信息
 
@@ -491,55 +488,55 @@ def orginfo(request: UserRequest):
             org.save()
             return redirect("/welcome/")
 
-    # 该学年、该学期、该小组的 活动的信息,分为 未结束continuing 和 已结束ended ，按时间顺序降序展现
-    continuing_activities = (
-        Activity.objects.activated()
-        .filter(organization_id=org)
-        .filter(
-            status__in=[
-                Activity.Status.REVIEWING,
-                Activity.Status.APPLYING,
-                Activity.Status.WAITING,
-                Activity.Status.PROGRESSING,
-            ]
-        )
-        .order_by("-start")
-    )
+    # # 该学年、该学期、该小组的 活动的信息,分为 未结束continuing 和 已结束ended ，按时间顺序降序展现
+    # continuing_activities = (
+    #     Activity.objects.activated()
+    #     .filter(organization_id=org)
+    #     .filter(
+    #         status__in=[
+    #             Activity.Status.REVIEWING,
+    #             Activity.Status.APPLYING,
+    #             Activity.Status.WAITING,
+    #             Activity.Status.PROGRESSING,
+    #         ]
+    #     )
+    #     .order_by("-start")
+    # )
 
-    ended_activities = (
-        Activity.objects.activated()
-        .filter(organization_id=org)
-        .filter(status__in=[Activity.Status.CANCELED, Activity.Status.END])
-        .order_by("-start")
-    )
+    # ended_activities = (
+    #     Activity.objects.activated()
+    #     .filter(organization_id=org)
+    #     .filter(status__in=[Activity.Status.CANCELED, Activity.Status.END])
+    #     .order_by("-start")
+    # )
 
-    # 筛选历史活动，具体为不是这个学期的活动
-    history_activities = (
-        Activity.objects.activated(noncurrent=True)
-        .filter(organization_id=org)
-        .order_by("-start")
-    )
+    # # 筛选历史活动，具体为不是这个学期的活动
+    # history_activities = (
+    #     Activity.objects.activated(noncurrent=True)
+    #     .filter(organization_id=org)
+    #     .order_by("-start")
+    # )
 
-    # 如果是用户登陆的话，就记录一下用户有没有加入该活动，用字典存每个活动的状态，再把字典存在列表里
+    # # 如果是用户登陆的话，就记录一下用户有没有加入该活动，用字典存每个活动的状态，再把字典存在列表里
 
-    def _display_activities(activities: QuerySet[Activity]) -> list[dict]:
-        displays = []
-        for act in activities:
-            dictmp = {}
-            dictmp["act"] = act
-            hours = Activity.EndBeforeHours.prepare_times[act.endbefore]
-            dictmp["endbefore"] = act.start - timedelta(hours=hours)
-            if request.user.is_person():
-                participation = Participation.objects.filter(
-                    SQ.sq(Participation.activity, act), SQ.sq(Participation.person, me),
-                ).first()
-                dictmp["status"] = participation.status if participation else "无记录"
-            displays.append(dictmp)
-        return displays
+    # def _display_activities(activities: QuerySet[Activity]) -> list[dict]:
+    #     displays = []
+    #     for act in activities:
+    #         dictmp = {}
+    #         dictmp["act"] = act
+    #         hours = Activity.EndBeforeHours.prepare_times[act.endbefore]
+    #         dictmp["endbefore"] = act.start - timedelta(hours=hours)
+    #         if request.user.is_person():
+    #             participation = Participation.objects.filter(
+    #                 SQ.sq(Participation.activity, act), SQ.sq(Participation.person, me),
+    #             ).first()
+    #             dictmp["status"] = participation.status if participation else "无记录"
+    #         displays.append(dictmp)
+    #     return displays
 
-    continuing_activity_list_participantrec = _display_activities(continuing_activities)
-    ended_activity_list_participantrec = _display_activities(ended_activities)
-    history_activity_list_participantrec = _display_activities(history_activities)
+    # continuing_activity_list_participantrec = _display_activities(continuing_activities)
+    # ended_activity_list_participantrec = _display_activities(ended_activities)
+    # history_activity_list_participantrec = _display_activities(history_activities)
 
     # 判断我是不是老大, 首先设置为false, 然后如果有id和user一样, 就为True
     html_display["isboss"] = False
@@ -608,35 +605,35 @@ def homepage(request: UserRequest):
 
     nowtime = datetime.now()
 
-    # 开始时间在前后一周内，除了取消和审核中的活动。按时间逆序排序
-    recentactivity_list = Activity.objects.get_recent_activity(
-    ).select_related('organization_id')
+    # # 开始时间在前后一周内，除了取消和审核中的活动。按时间逆序排序
+    # recentactivity_list = Activity.objects.get_recent_activity(
+    # ).select_related('organization_id')
 
-    # 开始时间在今天的活动,且不展示结束的活动。按开始时间由近到远排序
-    activities = Activity.objects.get_today_activity().select_related('organization_id')
-    activities_start = [
-        activity.start.strftime("%H:%M") for activity in activities
-    ]
-    html_display['today_activities'] = list(
-        zip(activities, activities_start)) or None
+    # # 开始时间在今天的活动,且不展示结束的活动。按开始时间由近到远排序
+    # activities = Activity.objects.get_today_activity().select_related('organization_id')
+    # activities_start = [
+    #     activity.start.strftime("%H:%M") for activity in activities
+    # ]
+    # html_display['today_activities'] = list(
+    #     zip(activities, activities_start)) or None
 
-    # 最新一周内发布的活动，按发布的时间逆序
-    newlyreleased_list = Activity.objects.get_newlyreleased_activity(
-    ).select_related('organization_id')
+    # # 最新一周内发布的活动，按发布的时间逆序
+    # newlyreleased_list = Activity.objects.get_newlyreleased_activity(
+    # ).select_related('organization_id')
 
-    # 即将截止的活动，按截止时间正序
-    prepare_times = Activity.EndBeforeHours.prepare_times
+    # # 即将截止的活动，按截止时间正序
+    # prepare_times = Activity.EndBeforeHours.prepare_times
 
-    signup_list = []
-    signup_rec = Activity.objects.activated().select_related(
-        'organization_id').filter(status=Activity.Status.APPLYING).order_by("category", "apply_end")[:10]
-    for act in signup_rec:
-        deadline = act.apply_end
-        dictmp = {}
-        dictmp["deadline"] = deadline
-        dictmp["act"] = act
-        dictmp["tobestart"] = (deadline - nowtime).total_seconds()//360/10
-        signup_list.append(dictmp)
+    # signup_list = []
+    # signup_rec = Activity.objects.activated().select_related(
+    #     'organization_id').filter(status=Activity.Status.APPLYING).order_by("category", "apply_end")[:10]
+    # for act in signup_rec:
+    #     deadline = act.apply_end
+    #     dictmp = {}
+    #     dictmp["deadline"] = deadline
+    #     dictmp["act"] = act
+    #     dictmp["tobestart"] = (deadline - nowtime).total_seconds()//360/10
+    #     signup_list.append(dictmp)
 
     # 如果提交了心愿，发生如下的操作
     if request.method == "POST" and request.POST:
@@ -676,26 +673,26 @@ def homepage(request: UserRequest):
     # (firstpic, firsturl), guidepics = guidepics[0], guidepics[1:]
     # firstpic是第一个导航图，不是第一张图片，现在把这个逻辑在模板处理了
 
-    """ 
-        取出过去一周的所有活动，filter出上传了照片的活动，从每个活动的照片中随机选择一张
-        如果列表为空，那么添加一张default，否则什么都不加。
-    """
-    all_photo_display = ActivityPhoto.objects.filter(
-        type=ActivityPhoto.PhotoType.SUMMARY).order_by('-time')
-    photo_display, _aid_set = list(), set()  # 实例的哈希值未定义，不可靠
-    count = 9 - len(guidepics)  # 算第一张导航图
-    for photo in all_photo_display:
-        # 不用activity，因为外键需要访问数据库
-        if photo.activity_id not in _aid_set and photo.image:
-            # 数据库设成了image可以为空而不是空字符串，str的判断对None没有意义
+    # """ 
+    #     取出过去一周的所有活动，filter出上传了照片的活动，从每个活动的照片中随机选择一张
+    #     如果列表为空，那么添加一张default，否则什么都不加。
+    # """
+    # all_photo_display = ActivityPhoto.objects.filter(
+    #     type=ActivityPhoto.PhotoType.SUMMARY).order_by('-time')
+    # photo_display, _aid_set = list(), set()  # 实例的哈希值未定义，不可靠
+    # count = 9 - len(guidepics)  # 算第一张导航图
+    # for photo in all_photo_display:
+    #     # 不用activity，因为外键需要访问数据库
+    #     if photo.activity_id not in _aid_set and photo.image:
+    #         # 数据库设成了image可以为空而不是空字符串，str的判断对None没有意义
 
-            photo.image = MEDIA_URL + str(photo.image)
-            photo_display.append(photo)
-            _aid_set.add(photo.activity_id)
-            count -= 1
+    #         photo.image = MEDIA_URL + str(photo.image)
+    #         photo_display.append(photo)
+    #         _aid_set.add(photo.activity_id)
+    #         count -= 1
 
-            if count <= 0:  # 目前至少能显示一个，应该也合理吧
-                break
+    #         if count <= 0:  # 目前至少能显示一个，应该也合理吧
+    #             break
     photo_display = ()
     if photo_display:
         guidepics = guidepics[1:]   # 第一张只是封面图，如果有需要呈现的内容就不显示
@@ -1145,13 +1142,13 @@ def search(request: HttpRequest):
 
     now = datetime.now()
 
-    def get_recent_activity(org):
-        activities = Activity.objects.activated().filter(Q(organization_id=org.id)
-                                                         & ~Q(status=Activity.Status.CANCELED)
-                                                         & ~Q(status=Activity.Status.REJECT))
-        activities = list(activities)
-        activities.sort(key=lambda activity: abs(now - activity.start))
-        return None if len(activities) == 0 else activities[0:3]
+    # def get_recent_activity(org):
+    #     activities = Activity.objects.activated().filter(Q(organization_id=org.id)
+    #                                                      & ~Q(status=Activity.Status.CANCELED)
+    #                                                      & ~Q(status=Activity.Status.REJECT))
+    #     activities = list(activities)
+    #     activities.sort(key=lambda activity: abs(now - activity.start))
+    #     return None if len(activities) == 0 else activities[0:3]
 
     org_display_list = []
     for org in organization_list:
@@ -1171,7 +1168,7 @@ def search(request: HttpRequest):
                 #             .values("person__name")
                 #     )
                 # ],
-                "activities": get_recent_activity(org),
+                # "activities": get_recent_activity(org),
                 "get_user_ava": org.get_user_ava()
             }
         )
@@ -1179,13 +1176,13 @@ def search(request: HttpRequest):
     # 小组要呈现的具体内容
     organization_field = ["小组名称", "小组类型", "负责人", "近期活动"]
 
-    # 搜索活动
-    activity_list = Activity.objects.activated().filter(
-        Q(title__icontains=query) | Q(organization_id__oname__icontains=query) & ~Q(
-            status=Activity.Status.CANCELED)
-        & ~Q(status=Activity.Status.REJECT)
-        & ~Q(status=Activity.Status.REVIEWING) & ~Q(status=Activity.Status.ABORT)
-    )
+    # # 搜索活动
+    # activity_list = Activity.objects.activated().filter(
+    #     Q(title__icontains=query) | Q(organization_id__oname__icontains=query) & ~Q(
+    #         status=Activity.Status.CANCELED)
+    #     & ~Q(status=Activity.Status.REJECT)
+    #     & ~Q(status=Activity.Status.REVIEWING) & ~Q(status=Activity.Status.ABORT)
+    # )
 
     # 活动要呈现的内容
     activity_field = ["活动名称", "承办小组", "状态"]

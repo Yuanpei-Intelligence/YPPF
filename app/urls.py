@@ -14,7 +14,6 @@ from django.urls import path
 from app import (
     views,
     org_views,
-    activity_views,
 )
 
 # 尽量不使用<type:arg>, 不支持
@@ -39,23 +38,6 @@ urlpatterns = [
          name="subscribeOrganization"),
     path("saveSubscribeStatus", views.saveSubscribeStatus,
          name="saveSubscribeStatus"),
-] + [
-    # 活动
-    path("viewActivity/<str:aid>", activity_views.viewActivity, name="viewActivity"),
-    path("getActivityInfo/", activity_views.getActivityInfo, name="getActivityInfo"),
-    path("checkinActivity/<str:aid>",
-         activity_views.checkinActivity, name="checkinActivity"),
-    path("addActivity/", activity_views.addActivity, name="addActivity"),
-    path("showActivity/", activity_views.activityCenter, name="showActivity"),
-    path("editActivity/<str:aid>", activity_views.addActivity, name="editActivity"),
-    path("examineActivity/<str:aid>",
-         activity_views.examineActivity, name="examineActivity"),
-    path("offlineCheckinActivity/<str:aid>",
-         activity_views.offlineCheckinActivity, name="offlineCheckinActivity"),
-    path("endActivity/", activity_views.finishedActivityCenter, name="endActivity"),
-    path("modifyEndActivity/", activity_views.activitySummary,
-         name="modifyEndActivity"),
-    path("weekly-activity-summary/", activity_views.WeeklyActivitySummary.as_view(), name="weekly_activity_summary"),
 ] + [
     # 组织相关操作
     path("saveShowPositionStatus", org_views.saveShowPositionStatus,
