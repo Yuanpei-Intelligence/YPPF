@@ -12,7 +12,6 @@ import utils.models.query as SQ
 from generic.models import *
 from record.models import *
 from app.models import *
-from feedback.models import Feedback
 from Appointment.models import Appoint
 
 
@@ -177,53 +176,3 @@ class PersonActivityDump(BaseDump):
             participants_data['用户'].map(hash_func)
         return participants_data
 
-
-class PersonCourseDump(BaseDump):
-    """个人书院课程参与记录
-    包含：课程数量，有效次数，无效次数，有效时长，无效时长
-    """
-
-    @classmethod
-    def dump(cls, hash_func: Callable = None, **options) -> pd.DataFrame:
-        _m = CourseRecord
-        course_data = pd.DataFrame(
-            cls.time_filter(CourseRecord, year=options.get('year', None),
-                            semester=options.get('semester', None))
-                .values_list(SQ.f(_m.person))
-                .annotate(course_num=Count('id'),
-                          record_times=Sum('attend_times', filter=Q(invalid=False)),
-                          invalid_times=Sum('attend_times', filter=Q(invalid=True)),
-                          record_hours=Sum('total_hours', filter=Q(invalid=False)),
-                          invalid_hours=Sum('total_hours', filter=Q(invalid=True)))
-                .values_list(
-                    SQ.f(_m.person, NaturalPerson.person_id, User.username),
-                    'course_num', 'record_times', 'invalid_times',
-                    'record_hours', 'invalid_hours'),
-            columns=('用户', '课程数量', '有效次数', '无效次数', '有效时长', '无效时长'))
-        if hash_func is not None:
-            course_data['用户'].map(hash_func)
-        return course_data
-
-
-class PersonFeedbackDump(BaseDump):
-    """个人反馈数据记录
-    包含：提交反馈数、解决反馈数。
-    """
-    @classmethod
-    def dump(cls, hash_func: Callable = None, **options) -> pd.DataFrame:
-        _m = Feedback
-        feedback_data = pd.DataFrame(
-            cls.time_filter(Feedback, start_time=options.get('start_time', None),
-                            end_time=options.get('end_time', None),
-                            start_time_field='feedback_time',
-                            end_time_field='feedback_time')
-                .values_list(SQ.f(_m.person))
-                .annotate(total_num=Count('id'),
-                          solved_num=Count('id', filter=Q(solve_status=Feedback.SolveStatus.SOLVED)))
-                .values_list(
-                    SQ.f(_m.person, NaturalPerson.person_id, User.username),
-                    'total_num', 'solved_num'),
-            columns=('用户', '提交反馈数', '已解决反馈数'))
-        if hash_func is not None:
-            feedback_data['用户'].map(hash_func)
-        return feedback_data
