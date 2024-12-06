@@ -60,11 +60,64 @@
                             <div id="myTabContent" class="tab-content">
                                 <div class="tab-pane fade in active show" id="home">
                                     <div id="undone-empty" style="display: none; margin-top: 40px; margin-bottom: -40px;">
-                                        <p style="text-align: center;">您的信箱很干净！没有要处理的信息.</p>
+                                        <p style="text-align: center;">您的信箱很干净！没有要处理的信息。</p>
                                     </div>
                                     <div class="bio-skill-box">
                                         <div id="undone-list" class="row">
                                             {% for note in undone_list %}
+                                            <div class="col-12 col-xl-6 col-lg-12 mb-xl-4 mb-4 " id="undone={{note.id}}" {% if not note.status == "待处理" %} hidden {%endif%}>
+
+                                                <div class=" b-skills">
+
+
+                                                    <div class="d-flex justify-content-between">
+                                                        <div>
+                                                            <h5>
+                                                                {% if note.URL %}
+                                                                <a href='{{note.URL}}' {% if note.type == "知晓类" %} onclick="read.call(this);this.blur();" {% endif %} id="{{note.id}}"><u>{{note.title}}</u></a><br />
+                                                                {% else %}
+                                                                <u style="text-decoration: none">{{note.title}}</u><br />
+                                                                {% endif %}
+                                                            </h5>
+                                                        </div>
+                                                        <div>
+                                                            {% if note.type == "知晓类" %}
+                                                            <h5>
+                                                                <button class="btn btn-primary" type="submit"
+                                                                    name='post_button' value="{{note.id}}"
+                                                                    onclick="read.call(this);this.blur();" id="{{note.id}}">知道啦</button>
+                                                            </h5>
+                                                            {% else %}
+                                                            <h5>
+                                                                <a href="#" class="btn btn-primary" tabindex="-1"
+                                                                    role="button"
+                                                                    onclick="window.location='{{note.URL}}'">去处理</a>
+                                                            </h5>
+                                                            {% endif %}
+                                                        </div>
+                                                    </div>
+                                                    
+                                                    <p style="color: rgb(66, 67, 68);">
+                                                        <i class="fa fa-address-book" style="width: 14px;"></i>
+                                                        <span class="ml-1">来自&nbsp;<b>{{note.sender}}</b></span>
+                                                    </p>
+
+                                                    <p style="color: rgb(66, 67, 68);">
+                                                        <i class="fa fa-bell" style="width: 14px;"></i>
+                                                        <span class="ml-1">{{note.start_time}}发出</span>
+                                                    </p>
+
+                                                    <p style="color: rgb(66, 67, 68);">
+                                                        <i class="fa fa-envelope" style="width: 14px;"></i>
+                                                        <span class="ml-1">{{note.content|linebreaksbr}}</span>
+                                                        <!-- <span class="ml-1">{{note.content}}</span> -->
+                                                    </p>
+                                                </div>
+                                            </div>
+                                            {% endfor %}
+
+
+                                            {% for note in done_list %}
                                             <div class="col-12 col-xl-6 col-lg-12 mb-xl-4 mb-4 " id="undone={{note.id}}" {% if not note.status == "待处理" %} hidden {%endif%}>
 
                                                 <div class=" b-skills">
@@ -122,11 +175,97 @@
                                 </div>
                                 <div class="tab-pane fade" id="done">
                                     <div id="done-empty" style="display: none; margin-top: 40px; margin-bottom: -40px;">
-                                        <p style="text-align: center;">没有已处理的消息记录.</p>
+                                        <p style="text-align: center;">没有已处理的消息记录。</p>
                                     </div>
                                     <div class="bio-skill-box">
                                         <div id="done-list" class="row">
                                             {% for note in done_list %}
+                                            <div class="col-12 col-xl-6 col-lg-12 mb-xl-4 mb-4 " id="done={{note.id}}" {% if not note.status == "已处理" %} hidden {%endif%}>
+
+                                                <div class=" b-skills">
+
+                                                    <div class="d-flex justify-content-between">
+                                                        <div>
+                                                            <h5>
+                                                                {% if note.URL %}
+                                                                <a href='{{note.URL}}'><u>{{note.title}}</u></a>
+                                                                {% else %}
+                                                                <u style="text-decoration: none">{{note.title}}</u>
+                                                                {% endif %}
+                                                            </h5>
+                                                        </div>
+                                                        <div>
+                                                            {% if note.type == "知晓类" %}
+                                                            <div class="btn-group">
+                                                                <div style="margin-left: 8px; ">
+                                                                    <div class="btn-group">
+                                                                        <button type="button"
+                                                                            class="btn btn-light dropdown-toggle dropdown-toggle-split"
+                                                                            data-toggle="dropdown" style="display:block;white-space:nowrap;overflow:hidden; ">
+                                                                            操作
+                                                                        </button>
+                                                                        <div class="dropdown-menu">
+                                                                            <button class="dropdown-item"
+                                                                                type="submit" name='post_button'
+                                                                                value="{{note.id}}" id="{{note.id}}" onclick="unread.call(this);this.blur();"
+                                                                            >标记为未读</button>
+                                                                            <button class="dropdown-item"
+                                                                                type="submit" name='post_button' id="{{note.id}}"
+                                                                                value="{{note.id}}+cancel" onclick="if(confirm('你确定要删除这条消息?')){cancel.call(this);this.blur();}">删除</button>
+                                                                        </div>
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+                                                            {% else %}
+                                                            <div class="btn-group">
+                                                                <div style="margin-left: 8px; ">
+                                                                    <div class="btn-group">
+                                                                        <button type="button"
+                                                                            class="btn btn-light dropdown-toggle dropdown-toggle-split"
+                                                                            data-toggle="dropdown" style="display:block;white-space:nowrap;overflow:hidden; ">
+                                                                            操作
+                                                                        </button>
+                                                                        <div class="dropdown-menu">
+                                                                            <button class="dropdown-item"
+                                                                                type="submit" name='post_button' id="{{note.id}}"
+                                                                                value="{{note.id}}+cancel"
+                                                                                onclick="if(confirm('你确定要删除这条消息?')){cancel.call(this);this.blur();}">删除</button>
+                                                                        </div>
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+                                                            {% endif %}
+                                                        </div>
+                                                    </div>
+
+                                                    <p style="color: rgb(66, 67, 68);">
+                                                        <i class="fa fa-address-book" style="width: 14px;"></i>
+                                                        <span class="ml-1">来自&nbsp;<b>{{note.sender}}</b></span>
+                                                    </p>
+
+                                                    <p style="color: rgb(66, 67, 68);">
+                                                        <i class="fa fa-bell" style="width: 14px;"></i>
+                                                        <span class="ml-1">{{note.start_time}}发出</span>
+                                                    </p>
+
+                                                    <p style="color: rgb(66, 67, 68);">
+                                                        <i class="fa fa-eye" style="width: 14px;"></i>
+                                                        <span class="ml-1">{{note.finish_time}}收到</span>
+                                                    </p>
+
+                                                    <p style="color: rgb(66, 67, 68);">
+                                                        <i class="fa fa-envelope" style="width: 14px;"></i>
+                                                        <span class="ml-1">{{note.content|linebreaksbr}}</span>
+                                                        <!-- <span class="ml-1">{{note.content}}</span> -->
+                                                    </p>
+                                                </div>
+
+
+                                            </div>
+                                            {% endfor %}
+
+
+                                            {% for note in undone_list %}
                                             <div class="col-12 col-xl-6 col-lg-12 mb-xl-4 mb-4 " id="done={{note.id}}" {% if not note.status == "已处理" %} hidden {%endif%}>
 
                                                 <div class=" b-skills">
@@ -261,6 +400,7 @@
         if (success) {
             document.getElementById("undone="+String(this.id)).hidden = true;
             document.getElementById("done="+String(this.id)).hidden = false;
+            document.getElementById("done-list").prepend(document.getElementById("done="+String(this.id)));
             document.getElementById("mail_num").innerHTML = String(Number(document.getElementById("mail_num").innerHTML) - 1);
             refresh();
         }
@@ -270,6 +410,7 @@
         if (success) {
             document.getElementById("done="+String(this.id)).hidden = true;
             document.getElementById("undone="+String(this.id)).hidden = false;
+            document.getElementById("undone-list").prepend(document.getElementById("undone="+String(this.id)));
             document.getElementById("mail_num").innerHTML = String(Number(document.getElementById("mail_num").innerHTML) + 1);
             refresh();
         }
