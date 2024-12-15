@@ -132,7 +132,6 @@
 			{% endfor %}
 			{% endif %}
 
-			<!-- Clinic and Specialities -->
 			<section class="section section-specialities" >
 				<div class="container-fluid">
 					<div class="section-header text-center" style="margin-bottom: 10px;">
@@ -229,303 +228,62 @@
 								{% endfor %}
 							</div>
 						</div>
-						<!--  END STATISTICS TAB  -->
-
 					</div>
-
 				</div>   
 			</section>	 
-			<!-- Clinic and Specialities -->
-		  
 
-			<!-- 功能房预约 -->
-			<section class="section section-doctor" >
-				<div class="container-fluid" >
-				   <!--<div class="row">
-					<div class="col-lg-4">-->
-							<div class="section-header text-center">
-								<h2>功能房预约</h2>
-								
-							</div>
-							<!--<div class="banner-wrapper">
-								
-									<h3></h3>
-								</div>
-								
-							
-						</div>-->
-						<!--
-						<div class="about-content">
-							<p>It is a long established fact that a reader will be distracted by the readable content of a page when looking at its layout. The point of using Lorem Ipsum.</p>
-							<p>web page editors now use Lorem Ipsum as their default model text, and a search for 'lorem ipsum' will uncover many web sites still in their infancy. Various versions have evolved over the years, sometimes</p>					
-							<a href="javascript:;">Read More..</a>
-						</div>
-						-->
-					<!--</div>
-					<div class="col-lg-8">-->
-						<div class="doctor-slider slider" >
-						{% for func_room in function_room_list %}
-							<!-- Doctor Widget -->
-							<div class="profile-widget">
-								<div class="doc-img">
-										<img class="img-fluid" alt="User Image" src="{% static 'Appointment/assets/img/RoomIcon/' %}{{func_room.Rid}}.png">
-									<!--
-									<a href="javascript:void(0)" class="fav-btn">
-										<i class="far fa-bookmark"></i>
-									</a>
-									-->
-								</div>
-								<div class="pro-content">
-									<h3 class="title">
-										<p>{{func_room}}</p>
-										<!--<a href="doctor-profile.html">{{talk_room}}</a> -->
-										<!--<i class="fas fa-check-circle verified"></i>-->
-									</h3>
-									<ul class="available-info">
-										<li>
-											<i class="far fa fa-child"></i> {{func_room.Rmin}}-{{func_room.Rmax}}人可用
-										</li>
-										
-										<li>
-											<i class="far fa fa-history"></i> {{func_room.Rstart}}-{{func_room.Rfinish}}
-											<i class="fas fa-info-circle" data-toggle="tooltip" title="可用时间"></i>
-										</li>
-									</ul>
-									<div class="row row-sm" style="text-align:center">
-										<!--
-										<div class="col-6">
-											<a href="doctor-profile.html" class="btn view-btn">View Profile</a>
-										</div>
-										-->
-										<div class="col-12">
-											<a href="arrange_time?Rid={{func_room.Rid}}" class="btn book-btn">预约</a>
-											<!--<btn class="btn book-btn" type="submit" value='{{appoit_room.Rid}}'>预约</btn>-->
-										</div>
-										
-									</div>
-								</div>
-							</div>
-							<!-- /Doctor Widget -->
-					
-						{% endfor %}	
-						</div>
-						
-					<!--</div>
-				   </div>-->
-				</div>
-			</section>
-			<!-- /功能房预约 -->
-
-			<!-- 研讨室预约 -->
-			<section class="section section-doctor" style="background-color: white;">
-				<div class="container-fluid" >
-				   <!--<div class="row">
-					<div class="col-lg-4">-->
-						<div class="section-header text-center">
-							<h2>研讨室预约</h2>
-							
-						</div>
-						<div class="banner-wrapper">
-							<!--
-								<h3></h3>
-							</div>
-							-->
-							<!-- Search -->
-							<div class="search-box">
-								<form method="POST">
-									{% csrf_token %}
-									<!--
-									<div class="form-group search-location">
-										<input type="text" class="form-control" placeholder="Search Location">
-										<span class="form-text">Based on your Location</span>
-									</div>
-									-->
-									<div class="row" style="margin: 0 auto">
-									<div class="form search-info" >
-										<div class="cal-icon">
-											<input type="text" class="form-control datetimepicker" placeholder="选择预约日期" name="request_time">
-										</div>	
-										<!--<input type="text" class="form-control " name="request_time" value="{{nowtime}}">
-										-->
-										<!--<span class="form-text">查看对应时间的空闲房间</span>-->
-										
-									</div>
-									<button type="submit" class="btn btn-primary search-btn"><i class="fas fa-search"></i> <span>Search</span></button>
-								</div>
-								</form>
-							</div>
-							<!-- /Search -->
-							
-						
-						</div>
-						<div class="doctor-slider slider" >
-						{% for talk_room in talk_room_list %}
-							<!-- Doctor Widget -->
-							<div class="profile-widget">
-								<div class="doc-img">
-										<img class="img-fluid" alt="User Image" src="{% static 'Appointment/assets/img/RoomIcon/' %}{{talk_room.Rid}}.png">
-									<!--
-									<a href="javascript:void(0)" class="fav-btn">
-										<i class="far fa-bookmark"></i>
-									</a>
-									-->
-								</div>
-								<div class="pro-content">
-									<h3 class="title">
-										<p>{{talk_room}}</p>
-										<!--<a href="doctor-profile.html">{{talk_room}}</a> -->
-										<!--<i class="fas fa-check-circle verified"></i>-->
-									</h3>
-									<!--<p class="speciality">MDS - Periodontology and Oral Implantology, BDS</p>-->
-									<!--
-									<div class="rating">
-										<i class="fas fa-star filled"></i>
-										<i class="fas fa-star filled"></i>
-										<i class="fas fa-star filled"></i>
-										<i class="fas fa-star filled"></i>
-										<i class="fas fa-star filled"></i>
-										<span class="d-inline-block average-rating">(17)</span>
-									</div>
-									-->
-									<ul class="available-info">
-										<li>
-											<i class="far fa fa-child"></i> {{talk_room.Rmin}}-{{talk_room.Rmax}}人可用
-										</li>
-										
-										<li>
-											<i class="far fa fa-history"></i> {{talk_room.Rstart}}-{{talk_room.Rfinish}}
-											<i class="fas fa-info-circle" data-toggle="tooltip" title="可用时间"></i>
-										</li>
-									</ul>
-									<div class="row row-sm" style="text-align:center">
-										<!--
-										<div class="col-6">
-											<a href="doctor-profile.html" class="btn view-btn">View Profile</a>
-										</div>
-										-->
-										<div class="col-12">
-											<a href="arrange_time?Rid={{talk_room.Rid}}" class="btn book-btn">预约</a>
-											<!--<btn class="btn book-btn" type="submit" value='{{appoit_room.Rid}}'>预约</btn>-->
-										</div>
-										
-									</div>
-								</div>
-							</div>
-							<!-- /Doctor Widget -->
-					
-						{% endfor %}	
-						</div>
-							
-					<!--</div>
-				   </div>-->
-				</div>
-			</section>
-			<!-- /研讨室预约 -->
-		   
-			{% if russ_len >= 1 %}
-				<!-- 俄文楼预约 -->
+			{% for room_class in reservable_room_classes %}
 				<section class="section section-doctor" >
 					<div class="container-fluid" >
-						<!--<div class="row">
-						<div class="col-lg-4">-->
-								<div class="section-header text-center">
-									<h2>俄文楼预约</h2>
-									<p>个人面试 / 线上授课</p>
-								</div>
-								<!--<div class="banner-wrapper">
-									
-										<h3></h3>
-									</div>
-									
-								
-							</div>-->
-							<!--
-							<div class="about-content">
-								<p>It is a long established fact that a reader will be distracted by the readable content of a page when looking at its layout. The point of using Lorem Ipsum.</p>
-								<p>web page editors now use Lorem Ipsum as their default model text, and a search for 'lorem ipsum' will uncover many web sites still in their infancy. Various versions have evolved over the years, sometimes</p>					
-								<a href="javascript:;">Read More..</a>
-							</div>
-							-->
-						<!-- Search -->
+						<div class="section-header text-center">
+							<h2>{{room_class.name}}预约</h2>
+							<p>{{room_class.description}}</p>
+						</div>
 						<div class="search-box">
 							<form method="POST">
 								{% csrf_token %}
-								<!--
-								<div class="form-group search-location">
-									<input type="text" class="form-control" placeholder="Search Location">
-									<span class="form-text">Based on your Location</span>
-								</div>
-								-->
 								<div class="row" style="margin: 0 auto">
 								<div class="form search-info" >
 									<div class="cal-icon">
-										<input type="text" class="form-control datetimepicker" placeholder="选择预约日期" name="russ_request_time">
+										<input type="text" class="form-control datetimepicker" placeholder="选择预约日期" name="request_time">
+										<input type="hidden" name="room_class" value="{{room_class.name}}">
 									</div>	
-									<!--<span class="form-text">查看对应时间的空闲房间</span>-->
-									
 								</div>
 								<button type="submit" class="btn btn-primary search-btn"><i class="fas fa-search"></i> <span>Search</span></button>
 							</div>
 							</form>
 						</div>
-						<!-- /Search -->
-						<!--</div>
-						<div class="col-lg-8">-->
-							<div class="doctor-slider slider" >
-							{% for russ_room in russian_room_list %}
-								<!-- Doctor Widget -->
-								<div class="profile-widget">
-									<div class="doc-img">
-											<img class="img-fluid" alt="User Image" src="{% static 'Appointment/assets/img/RoomIcon/' %}{{russ_room.Rid}}.png">
-										<!--
-										<a href="javascript:void(0)" class="fav-btn">
-											<i class="far fa-bookmark"></i>
-										</a>
-										-->
-									</div>
-									<div class="pro-content">
-										<h3 class="title">
-											<p>{{russ_room}}</p>
-											<!--<a href="doctor-profile.html">{{talk_room}}</a> -->
-											<!--<i class="fas fa-check-circle verified"></i>-->
-										</h3>
-										<ul class="available-info">
-											<li>
-												<i class="far fa fa-child"></i> {{russ_room.Rmin}}-{{russ_room.Rmax}}人可用
-											</li>
-											
-											<li>
-												<i class="far fa fa-history"></i> {{russ_room.Rstart}}-{{russ_room.Rfinish}}
-												<i class="fas fa-info-circle" data-toggle="tooltip" title="可用时间"></i>
-											</li>
-										</ul>
-										<div class="row row-sm" style="text-align:center">
-											<!--
-											<div class="col-6">
-												<a href="doctor-profile.html" class="btn view-btn">View Profile</a>
-											</div>
-											-->
-											<div class="col-12">
-												<a href="arrange_time?Rid={{russ_room.Rid}}" class="btn book-btn">预约</a>
-												<!--<btn class="btn book-btn" type="submit" value='{{appoit_room.Rid}}'>预约</btn>-->
-											</div>
-											
+						<div class="doctor-slider slider" >
+						{% for room in room_class.rooms.permitted %}
+							<div class="profile-widget">
+								<div class="doc-img">
+										<img class="img-fluid" alt="User Image" src="/media/{{room.image}}">
+								</div>
+								<div class="pro-content">
+									<h3 class="title">
+										<p>{{room}}</p>
+									</h3>
+									<ul class="available-info">
+										<li>
+											<i class="far fa fa-child"></i> {{room.Rmin}}-{{russ_room.Rmax}}人可用
+										</li>
+										<li>
+											<i class="far fa fa-history"></i> {{room.Rstart}}-{{room.Rfinish}}
+											<i class="fas fa-info-circle" data-toggle="tooltip" title="可用时间"></i>
+										</li>
+									</ul>
+									<div class="row row-sm" style="text-align:center">
+										<div class="col-12">
+											<a href="arrange_time?Rid={{room.Rid}}" class="btn book-btn">预约</a>
 										</div>
 									</div>
 								</div>
-								<!-- /Doctor Widget -->
-						
-							{% endfor %}	
 							</div>
-							
-						<!--</div>
-						</div>-->
+						{% endfor %}	
+						</div>
 					</div>
 				</section>
-				<!-- 俄文楼预约 -->
-			{% endif %}
-
-
+			{% endfor %}
 
 			<!-- Footer -->
 			<footer class="footer">

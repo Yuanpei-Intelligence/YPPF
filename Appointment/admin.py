@@ -109,6 +109,13 @@ class ParticipantAdmin(admin.ModelAdmin):
         return self.message_user(request, '操作成功!')
 
 
+@admin.register(RoomClass)
+class RoomClassAdmin(admin.ModelAdmin):
+    list_display = ('id', 'name', 'sort_idx', 'reservable',)
+    ordering = ('sort_idx',)
+    # For many-to-many fields
+    filter_horizontal = ('rooms',)
+
 @admin.register(Room)
 class RoomAdmin(admin.ModelAdmin):
     list_display = ('Rid', 'Rtitle', 'Rmin', 'Rmax', 'Rstart', 'Rfinish',
