@@ -14,6 +14,9 @@ class SemesterType(models.Model):
     def __str__(self):
         return self.name
 
+    def natural_key(self):
+        return self.name
+
 
 class Semester(models.Model):
     '''学期
@@ -35,3 +38,6 @@ class Semester(models.Model):
     type = models.ForeignKey(SemesterType, on_delete=models.CASCADE)
     start_date = models.DateField('开学日期')
     end_date = models.DateField('放假日期')
+
+    def natural_key(self):
+        return self.year, self.type

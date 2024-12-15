@@ -436,6 +436,9 @@ class NaturalPerson(models.Model):
             assert self.stu_id_dbonly == self.person_id.username, "学号不匹配！"
         super().save(*args, **kwargs)
 
+    def natural_key(self):
+        return self.name
+
 
 Person: TypeAlias = NaturalPerson
 
@@ -463,6 +466,9 @@ class Freshman(models.Model):
         user_exist = User.objects.filter(username=self.sid).exists()
         person_exist = SQ.mfilter(NaturalPerson.person_id, username=self.sid).exists()
         return "person" if person_exist else ("user" if user_exist else "")
+
+    def natural_key(self):
+        return self.name
 
 
 class OrganizationType(models.Model):
@@ -516,6 +522,9 @@ class OrganizationType(models.Model):
         '''供生成时方便调用的函数，是否成为负责人的默认值'''
         return position <= self.control_pos_threshold
 
+    def natural_key(self):
+        return self.otype_name
+
 
 class OrganizationTag(models.Model):
     class Meta:
@@ -538,6 +547,9 @@ class OrganizationTag(models.Model):
     color = models.CharField("颜色", choices=ColorChoice.choices, max_length=10)
 
     def __str__(self):
+        return self.name
+
+    def natural_key(self):
         return self.name
 
 
@@ -613,6 +625,9 @@ class Organization(models.Model):
             return NaturalPerson.objects.activated().exclude(
                 id__in=self.unsubscribers.all()).count()
         return NaturalPerson.objects.all().count() - self.unsubscribers.count()
+
+    def natural_key(self):
+        return self.oname
 
 
 class PositionManager(models.Manager['Position']):
@@ -729,6 +744,9 @@ class Position(models.Model):
 
     def get_pos_number(self):  # 返回对应的pos number 并作超出处理
         return min(len(self.org.otype.job_name_list), self.pos)
+
+    def natural_key(self):
+        return self.person, self.org
 
 
 class ActivityManager(models.Manager['Activity']):
@@ -1066,6 +1084,9 @@ class Activity(CommentBase):
         User.objects.bulk_increase_YQPoint(
             participants, point, "参加活动", YQPointRecord.SourceType.ACTIVITY)
 
+    def natural_key(self):
+        return self.title
+
 
 class ActivityPhoto(models.Model):
     class Meta:
@@ -1288,6 +1309,9 @@ class ModifyOrganization(CommentBase):
     def is_pending(self):  # 表示是不是pending状态
         return self.status == ModifyOrganization.Status.PENDING
 
+    def natural_key(self):
+        return self.oname
+
 
 class ModifyPosition(CommentBase):
     class Meta:
@@ -1380,6 +1404,9 @@ class ModifyPosition(CommentBase):
     def save(self, *args, **kwargs):
         self.typename = "modifyposition"
         super().save(*args, **kwargs)
+
+    def natural_key(self):
+        return self.org, self.person
 
 
 class Help(models.Model):
@@ -1551,6 +1578,9 @@ class Course(models.Model):
 
     def get_QRcode_path(self):
         return image_url(self.QRcode)
+
+    def natural_key(self):
+        return self.name
 
 
 class CourseTime(models.Model):
@@ -1802,6 +1832,9 @@ class Prize(models.Model):
     def __str__(self):
         return self.name
 
+    def natural_key(self):
+        return self.name
+
 
 class Pool(models.Model):
     class Meta:
@@ -1844,6 +1877,9 @@ class Pool(models.Model):
     @invalid_for_frontend
     def get_capacity(self):
         return self.items.aggregate(Sum('origin_num'))['origin_num__sum'] or 0
+
+    def natural_key(self):
+        return self.title
 
 
 class PoolItem(models.Model):

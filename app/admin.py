@@ -1,10 +1,14 @@
 from datetime import datetime
+from io import BytesIO
+import json
 
+from django.core import serializers
 from django.contrib import admin
 from django.db.models import QuerySet
 from django.utils.safestring import mark_safe
+from pandas import DataFrame
 
-from utils.http.dependency import HttpRequest
+from utils.http.dependency import HttpRequest, HttpResponse
 from utils.models.query import sfilter, f
 from utils.admin_utils import *
 from app.models import *
@@ -40,6 +44,33 @@ class CourseParticipantInline(admin.TabularInline):
     ordering = ['-id']
     fields = ['course', 'person', 'status']
     show_change_link = True
+
+
+# 导出为Excel的action
+def export_as_excel(modeladmin: admin.ModelAdmin, request: HttpRequest, queryset: QuerySet) -> HttpResponse:
+    # TODO: Add column selection
+    # Each item in json_list is a JSON string for one object.
+    json_list: list[str] = serializers.serialize(
+        'jsonl', queryset,
+        use_natural_foreign_keys = True,
+        use_natural_primary_keys = True,
+    ).strip().split('\n')
+    # We are not going to recover objects from this representation,
+    # so we only need to keep the "fields" property.
+    df = DataFrame(json.loads(s)['fields'] for s in json_list)
+    # Rename the columns to their corresponding verbose name for better UX
+    rename_dict = {k: getattr(modeladmin.model, k).field.verbose_name for k in df.columns}
+    df = df.rename(columns = rename_dict)
+    # Write to a BytesIO object to avoid creating temporary files
+    excel_file = BytesIO()
+    df.to_excel(excel_file, index = False)
+    return HttpResponse(excel_file.getvalue(), headers = {
+        "Content-Type": "application/vnd.ms-excel",
+        "Content-Disposition": 'attachment; filename="result.xlsx"',
+    })
+
+# Make exporting action available site-wide. See Django docs on "admin action".
+admin.site.add_action(export_as_excel, '导出为Excel文件')
 
 
 # 后台模型
