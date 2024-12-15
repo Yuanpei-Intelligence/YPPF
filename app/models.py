@@ -610,8 +610,7 @@ class Organization(models.Model):
     def get_subscriber_num(self, activated=True):
         '''仅供前端使用'''
         if activated:
-            return NaturalPerson.objects.activated().exclude(
-                id__in=self.unsubscribers.all()).count()
+            return NaturalPerson.objects.activated().exclude(id__in=self.unsubscribers.all()).count()
         return NaturalPerson.objects.all().count() - self.unsubscribers.count()
 
 
