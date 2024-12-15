@@ -142,7 +142,7 @@ class NaturalPersonAdmin(admin.ModelAdmin):
     @as_action("设置 全部订阅")
     def all_subscribe(self, request, queryset):
         for org in queryset:
-            org.unsubscribers.clear()
+            org.unsubscribe_list.clear()
             org.save()
         return self.message_user(request=request,
                                  message='修改成功!')
@@ -152,7 +152,7 @@ class NaturalPersonAdmin(admin.ModelAdmin):
         orgs = list(Organization.objects.exclude(
             otype__otype_id=0).values_list('id', flat=True))
         for person in queryset:
-            person.unsubscribers.set(orgs)
+            person.unsubscribe_list.set(orgs)
             person.save()
         return self.message_user(request=request,
                                  message='修改成功!已经取消所有非官方组织的订阅!')
