@@ -1815,8 +1815,8 @@ def notifications(request: HttpRequest):
         receiver=request.user,
         status=Notification.Status.UNDONE).order_by("-start_time")
 
-    done_list = notification2Display(done_notifications)
-    undone_list = notification2Display(undone_notifications)
+    notes_list = notification2Display(
+        done_notifications) + notification2Display(undone_notifications)
 
     # 新版侧边栏, 顶栏等的呈现，采用 bar_display, 必须放在render前最后一步
     bar_display = utils.get_sidebar_and_navbar(request.user,
