@@ -208,7 +208,7 @@ class NaturalPersonAdmin(admin.ModelAdmin):
                             np_gender = (
                                 NaturalPerson.Gender.MALE if gender == "男" else NaturalPerson.Gender.FEMALE)
 
-                            password = '123456'
+                            password = GLOBAL_CONFIG.hasher.encode(sid)
 
                             user = User.objects.create_user(
                                 username=sid, name=name_value,
