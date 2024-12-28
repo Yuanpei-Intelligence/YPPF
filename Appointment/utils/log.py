@@ -64,7 +64,7 @@ class AppointmentLogger(Logger):
         from extern.wechat import send_wechat
         send_wechat(
             GLOBAL_CONFIG.debug_stuids,
-            '地下室发生错误', message,
+            '房间发生错误', message,
             url=f'/logs/?file={self.name}.log',
         )
 

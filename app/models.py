@@ -64,11 +64,7 @@ __all__ = [
     'Semester',
     'Organization',
     'Position',
-    'Course',
     'CommentBase',
-    'Activity',
-    'ActivityPhoto',
-    'Participation',
     'Notification',
     'Comment',
     'CommentPhoto',
@@ -77,22 +73,6 @@ __all__ = [
     'Help',
     'Wishes',
     'ModifyRecord',
-    'Course',
-    'CourseTime',
-    'CourseParticipant',
-    'CourseRecord',
-    'AcademicTag',
-    'AcademicEntry',
-    'AcademicTagEntry',
-    'AcademicTextEntry',
-    'AcademicQA',
-    'AcademicQAAwards',
-    'Chat',
-    'Prize',
-    'Pool',
-    'PoolItem',
-    'PoolRecord',
-    'ActivitySummary',
 ]
 
 
@@ -731,71 +711,71 @@ class Position(models.Model):
         return min(len(self.org.otype.job_name_list), self.pos)
 
 
-class ActivityManager(models.Manager['Activity']):
-    def activated(self, only_displayable=True, noncurrent=False):
-        # 选择学年相同，并且学期相同或者覆盖的
-        # 请保证query_range是一个queryset，将manager的行为包装在query_range计算完之前
-        if only_displayable:
-            query_range = self.displayable()
-        else:
-            query_range = self.all()
-        return select_current(query_range, noncurrent=noncurrent)
+# class ActivityManager(models.Manager['Activity']):
+#     def activated(self, only_displayable=True, noncurrent=False):
+#         # 选择学年相同，并且学期相同或者覆盖的
+#         # 请保证query_range是一个queryset，将manager的行为包装在query_range计算完之前
+#         if only_displayable:
+#             query_range = self.displayable()
+#         else:
+#             query_range = self.all()
+#         return select_current(query_range, noncurrent=noncurrent)
 
-    def displayable(self):
-        # REVIEWING, ABORT 状态的活动，只对创建者和审批者可见，对其他人不可见
-        # 过审后被取消的活动，还是可能被看到，也应该让学生看到这个活动被取消了
-        return self.exclude(status__in=[
-            Activity.Status.REVIEWING,
-            # Activity.Status.CANCELED,
-            Activity.Status.ABORT,
-            Activity.Status.REJECT
-        ])
+#     def displayable(self):
+#         # REVIEWING, ABORT 状态的活动，只对创建者和审批者可见，对其他人不可见
+#         # 过审后被取消的活动，还是可能被看到，也应该让学生看到这个活动被取消了
+#         return self.exclude(status__in=[
+#             Activity.Status.REVIEWING,
+#             # Activity.Status.CANCELED,
+#             Activity.Status.ABORT,
+#             Activity.Status.REJECT
+#         ])
 
-    def get_newlyended_activity(self):
-        # 一周内结束的活动
-        nowtime = datetime.now()
-        mintime = nowtime - timedelta(days=7)
-        return select_current(
-            self.filter(end__gt=mintime, status=Activity.Status.END))
+#     def get_newlyended_activity(self):
+#         # 一周内结束的活动
+#         nowtime = datetime.now()
+#         mintime = nowtime - timedelta(days=7)
+#         return select_current(
+#             self.filter(end__gt=mintime, status=Activity.Status.END))
 
-    def get_recent_activity(self):
-        # 开始时间在前后一周内，除了取消和审核中的活动。按时间逆序排序
-        nowtime = datetime.now()
-        mintime = nowtime - timedelta(days=7)
-        maxtime = nowtime + timedelta(days=7)
-        return select_current(self.filter(
-            start__gt=mintime,
-            start__lt=maxtime,
-            status__in=[
-                Activity.Status.APPLYING,
-                Activity.Status.WAITING,
-                Activity.Status.PROGRESSING,
-                Activity.Status.END
-            ],
-        )).order_by("category", "-start")
+#     def get_recent_activity(self):
+#         # 开始时间在前后一周内，除了取消和审核中的活动。按时间逆序排序
+#         nowtime = datetime.now()
+#         mintime = nowtime - timedelta(days=7)
+#         maxtime = nowtime + timedelta(days=7)
+#         return select_current(self.filter(
+#             start__gt=mintime,
+#             start__lt=maxtime,
+#             status__in=[
+#                 Activity.Status.APPLYING,
+#                 Activity.Status.WAITING,
+#                 Activity.Status.PROGRESSING,
+#                 Activity.Status.END
+#             ],
+#         )).order_by("category", "-start")
 
-    def get_newlyreleased_activity(self):
-        nowtime = datetime.now()
-        return select_current(self.filter(
-            publish_time__gt=nowtime - timedelta(days=7),
-            status__in=[
-                Activity.Status.APPLYING,
-                Activity.Status.WAITING,
-                Activity.Status.PROGRESSING
-            ],
-        )).order_by("category", "-publish_time")
+#     def get_newlyreleased_activity(self):
+#         nowtime = datetime.now()
+#         return select_current(self.filter(
+#             publish_time__gt=nowtime - timedelta(days=7),
+#             status__in=[
+#                 Activity.Status.APPLYING,
+#                 Activity.Status.WAITING,
+#                 Activity.Status.PROGRESSING
+#             ],
+#         )).order_by("category", "-publish_time")
 
-    def get_today_activity(self):
-        # 开始时间在今天的活动,且不展示结束的活动。按开始时间由近到远排序
-        nowtime = datetime.now()
-        return self.filter(
-            status__in=[
-                Activity.Status.APPLYING,
-                Activity.Status.WAITING,
-                Activity.Status.PROGRESSING,
-            ]
-        ).filter(start__date=nowtime.date(),
-                 ).order_by("start")
+#     def get_today_activity(self):
+#         # 开始时间在今天的活动,且不展示结束的活动。按开始时间由近到远排序
+#         nowtime = datetime.now()
+#         return self.filter(
+#             status__in=[
+#                 Activity.Status.APPLYING,
+#                 Activity.Status.WAITING,
+#                 Activity.Status.PROGRESSING,
+#             ]
+#         ).filter(start__date=nowtime.date(),
+#                  ).order_by("start")
 
 
 class CommentBase(models.Model):
@@ -867,269 +847,266 @@ class CommentBase(models.Model):
             return self
 
 
-class Activity(CommentBase):
-    class Meta:
-        verbose_name = "3.活动"
-        verbose_name_plural = verbose_name
+# class Activity(CommentBase):
+#     class Meta:
+#         verbose_name = "3.活动"
+#         verbose_name_plural = verbose_name
 
-    """
-    Jul 30晚, Activity类经历了较大的更新, 请阅读群里[活动发起逻辑]文档，看一下活动发起需要用到的变量
-    (1) 删除是否允许改变价格, 直接允许价格变动, 取消政策见文档【不允许投点的价格变动】
-    (2) 取消活动报名时间的填写, 改为选择在活动结束前多久结束报名，选项见EndBefore
-    (3) 活动容量[capacity]允许是正无穷
-    (4) 增加活动状态类, 恢复之前的活动状态记录方式, 通过定时任务来改变 #TODO
-    (5) 除了定价方式[bidding]之外的量都可以改变, 其中[capicity]不能低于目前已经报名人数, 活动的开始时间不能早于当前时间+1h
-    (6) 修改活动时间同步导致报名时间的修改, 当然也需要考虑EndBefore的修改; 这部分修改通过定时任务的时间体现, 详情请见地下室schedule任务的新建和取消
-    (7) 增加活动立项的接口, activated, 筛选出这个学期的活动(见class [ActivityManager])
-    """
+#     """
+#     Jul 30晚, Activity类经历了较大的更新, 请阅读群里[活动发起逻辑]文档，看一下活动发起需要用到的变量
+#     (1) 删除是否允许改变价格, 直接允许价格变动, 取消政策见文档【不允许投点的价格变动】
+#     (2) 取消活动报名时间的填写, 改为选择在活动结束前多久结束报名，选项见EndBefore
+#     (3) 活动容量[capacity]允许是正无穷
+#     (4) 增加活动状态类, 恢复之前的活动状态记录方式, 通过定时任务来改变 #TODO
+#     (5) 除了定价方式[bidding]之外的量都可以改变, 其中[capicity]不能低于目前已经报名人数, 活动的开始时间不能早于当前时间+1h
+#     (6) 修改活动时间同步导致报名时间的修改, 当然也需要考虑EndBefore的修改; 这部分修改通过定时任务的时间体现, 详情请见地下室schedule任务的新建和取消
+#     (7) 增加活动立项的接口, activated, 筛选出这个学期的活动(见class [ActivityManager])
+#     """
 
-    title = models.CharField("活动名称", max_length=50)
-    organization_id = models.ForeignKey(
-        Organization,
-        on_delete=models.CASCADE,
-    )
+#     title = models.CharField("活动名称", max_length=50)
+#     organization_id = models.ForeignKey(
+#         Organization,
+#         on_delete=models.CASCADE,
+#     )
 
-    year = models.IntegerField("活动年份", default=current_year)
+#     year = models.IntegerField("活动年份", default=current_year)
 
-    semester = models.CharField(
-        "活动学期",
-        choices=Semester.choices,
-        max_length=15,
-        default=current_semester,
-    )
+#     semester = models.CharField(
+#         "活动学期",
+#         choices=Semester.choices,
+#         max_length=15,
+#         default=current_semester,
+#     )
 
-    class PublishDay(models.IntegerChoices):
-        instant = (0, "立即发布")
-        oneday = (1, "提前一天")
-        twoday = (2, "提前两天")
-        threeday = (3, "提前三天")
+#     class PublishDay(models.IntegerChoices):
+#         instant = (0, "立即发布")
+#         oneday = (1, "提前一天")
+#         twoday = (2, "提前两天")
+#         threeday = (3, "提前三天")
 
-    publish_day = models.SmallIntegerField(
-        "信息发布提前时间", default=PublishDay.threeday)  # 默认为提前三天时间
-    publish_time = models.DateTimeField(
-        "信息发布时间", default=datetime.now)  # 默认为当前时间，可以被覆盖
-    need_apply = models.BooleanField("是否需要报名", default=False)
+#     publish_day = models.SmallIntegerField(
+#         "信息发布提前时间", default=PublishDay.threeday)  # 默认为提前三天时间
+#     publish_time = models.DateTimeField(
+#         "信息发布时间", default=datetime.now)  # 默认为当前时间，可以被覆盖
+#     need_apply = models.BooleanField("是否需要报名", default=False)
 
-    # 删除显示报名时间, 保留一个字段表示报名截止于活动开始前多久：1h / 1d / 3d / 7d
-    class EndBefore(models.IntegerChoices):
-        onehour = (0, "一小时")
-        oneday = (1, "一天")
-        threeday = (2, "三天")
-        oneweek = (3, "一周")
+#     # 删除显示报名时间, 保留一个字段表示报名截止于活动开始前多久：1h / 1d / 3d / 7d
+#     class EndBefore(models.IntegerChoices):
+#         onehour = (0, "一小时")
+#         oneday = (1, "一天")
+#         threeday = (2, "三天")
+#         oneweek = (3, "一周")
 
-    class EndBeforeHours:
-        prepare_times = [1, 24, 72, 168]
+#     class EndBeforeHours:
+#         prepare_times = [1, 24, 72, 168]
 
-    # TODO: 修改默认报名截止时间为活动开始前（5分钟）
-    endbefore = models.SmallIntegerField(
-        "报名截止于", choices=EndBefore.choices, default=EndBefore.oneday
-    )
+#     # TODO: 修改默认报名截止时间为活动开始前（5分钟）
+#     endbefore = models.SmallIntegerField(
+#         "报名截止于", choices=EndBefore.choices, default=EndBefore.oneday
+#     )
 
-    apply_end = models.DateTimeField(
-        "报名截止时间", blank=True, default=datetime.now)
-    start = models.DateTimeField("活动开始时间", blank=True, default=datetime.now)
-    end = models.DateTimeField("活动结束时间", blank=True, default=datetime.now)
-    # prepare_time = models.FloatField("活动准备小时数", default=24.0)
-    # apply_start = models.DateTimeField("报名开始时间", blank=True, default=datetime.now)
+#     apply_end = models.DateTimeField(
+#         "报名截止时间", blank=True, default=datetime.now)
+#     start = models.DateTimeField("活动开始时间", blank=True, default=datetime.now)
+#     end = models.DateTimeField("活动结束时间", blank=True, default=datetime.now)
+#     # prepare_time = models.FloatField("活动准备小时数", default=24.0)
+#     # apply_start = models.DateTimeField("报名开始时间", blank=True, default=datetime.now)
 
-    location = models.CharField("活动地点", blank=True, max_length=200)
-    introduction = models.TextField("活动简介", max_length=225, blank=True)
+#     location = models.CharField("活动地点", blank=True, max_length=200)
+#     introduction = models.TextField("活动简介", max_length=225, blank=True)
 
-    QRcode = models.ImageField(upload_to=f"QRcode/", blank=True)  # 二维码字段
+#     QRcode = models.ImageField(upload_to=f"QRcode/", blank=True)  # 二维码字段
 
-    # url,活动二维码
+#     # url,活动二维码
 
-    bidding = models.BooleanField("是否投点竞价", default=False)
+#     bidding = models.BooleanField("是否投点竞价", default=False)
 
-    need_checkin = models.BooleanField("是否需要签到", default=False)
+#     need_checkin = models.BooleanField("是否需要签到", default=False)
 
-    visit_times = models.IntegerField("浏览次数", default=0)
+#     visit_times = models.IntegerField("浏览次数", default=0)
 
-    examine_teacher = models.ForeignKey(
-        NaturalPerson, on_delete=models.CASCADE, verbose_name="审核老师")
-    # recorded 其实是冗余，但用着方便，存了吧,activity_show.html用到了
-    recorded = models.BooleanField("是否预报备", default=False)
-    valid = models.BooleanField("是否已审核", default=False)
+#     examine_teacher = models.ForeignKey(
+#         NaturalPerson, on_delete=models.CASCADE, verbose_name="审核老师")
+#     # recorded 其实是冗余，但用着方便，存了吧,activity_show.html用到了
+#     recorded = models.BooleanField("是否预报备", default=False)
+#     valid = models.BooleanField("是否已审核", default=False)
 
-    inner = models.BooleanField("内部活动", default=False)
+#     inner = models.BooleanField("内部活动", default=False)
 
-    # 允许是正无穷, 可以考虑用INTINF
-    capacity = models.IntegerField("活动最大参与人数", default=100)
-    current_participants = models.IntegerField("活动当前报名人数", default=0)
+#     # 允许是正无穷, 可以考虑用INTINF
+#     capacity = models.IntegerField("活动最大参与人数", default=100)
+#     current_participants = models.IntegerField("活动当前报名人数", default=0)
 
-    URL = models.URLField("活动相关(推送)网址", max_length=1024,
-                          default="", blank=True)
+#     URL = models.URLField("活动相关(推送)网址", max_length=1024,
+#                           default="", blank=True)
 
-    def __str__(self):
-        return str(self.title)
+#     def __str__(self):
+#         return str(self.title)
 
-    class Status(models.TextChoices):
-        REVIEWING = "审核中"
-        ABORT = "已撤销"
-        REJECT = "未过审"
-        CANCELED = "已取消"
-        APPLYING = "报名中"
-        UNPUBLISHED = "待发布"
-        WAITING = "等待中"
-        PROGRESSING = "进行中"
-        END = "已结束"
+#     class Status(models.TextChoices):
+#         REVIEWING = "审核中"
+#         ABORT = "已撤销"
+#         REJECT = "未过审"
+#         CANCELED = "已取消"
+#         APPLYING = "报名中"
+#         UNPUBLISHED = "待发布"
+#         WAITING = "等待中"
+#         PROGRESSING = "进行中"
+#         END = "已结束"
 
-    # 恢复活动状态的类别
-    status = models.CharField(
-        "活动状态", choices=Status.choices, default=Status.REVIEWING, max_length=32
-    )
+#     # 恢复活动状态的类别
+#     status = models.CharField(
+#         "活动状态", choices=Status.choices, default=Status.REVIEWING, max_length=32
+#     )
 
-    objects: ActivityManager = ActivityManager()
+#     objects: ActivityManager = ActivityManager()
 
-    class ActivityCategory(models.IntegerChoices):
-        NORMAL = (0, "普通活动")
-        COURSE = (1, "课程活动")
+#     class ActivityCategory(models.IntegerChoices):
+#         NORMAL = (0, "普通活动")
+#         COURSE = (1, "课程活动")
 
-    category = models.SmallIntegerField(
-        "活动类别", choices=ActivityCategory.choices, default=0
-    )
-    course_time = models.ForeignKey("CourseTime", on_delete=models.SET_NULL,
-                                    null=True, blank=True,
-                                    verbose_name="课程每周活动时间")
+#     category = models.SmallIntegerField(
+#         "活动类别", choices=ActivityCategory.choices, default=0
+#     )
 
-    def save(self, *args, **kwargs):
-        self.typename = "activity"
-        super().save(*args, **kwargs)
+#     def save(self, *args, **kwargs):
+#         self.typename = "activity"
+#         super().save(*args, **kwargs)
 
-    def related_job_ids(self):
-        jobids = []
-        try:
-            jobids.append(f'activity_{self.id}_remind')
-            jobids.append(f'activity_{self.id}_{Activity.Status.APPLYING}')
-            jobids.append(f'activity_{self.id}_{Activity.Status.WAITING}')
-            jobids.append(f'activity_{self.id}_{Activity.Status.PROGRESSING}')
-            jobids.append(f'activity_{self.id}_{Activity.Status.END}')
-        except:
-            pass
-        return jobids
+#     def related_job_ids(self):
+#         jobids = []
+#         try:
+#             jobids.append(f'activity_{self.id}_remind')
+#             jobids.append(f'activity_{self.id}_{Activity.Status.APPLYING}')
+#             jobids.append(f'activity_{self.id}_{Activity.Status.WAITING}')
+#             jobids.append(f'activity_{self.id}_{Activity.Status.PROGRESSING}')
+#             jobids.append(f'activity_{self.id}_{Activity.Status.END}')
+#         except:
+#             pass
+#         return jobids
 
-    def popular_level(self, any_status=False):
-        if not any_status and not self.status in [
-            Activity.Status.WAITING,
-            Activity.Status.PROGRESSING,
-            Activity.Status.END,
-        ]:
-            return 0
-        if self.current_participants >= self.capacity:
-            return 2
-        if (self.current_participants >= 30
-            or (self.capacity >= 10 and self.current_participants >= self.capacity * 0.85)
-            ):
-            return 1
-        return 0
+#     def popular_level(self, any_status=False):
+#         if not any_status and not self.status in [
+#             Activity.Status.WAITING,
+#             Activity.Status.PROGRESSING,
+#             Activity.Status.END,
+#         ]:
+#             return 0
+#         if self.current_participants >= self.capacity:
+#             return 2
+#         if (self.current_participants >= 30
+#             or (self.capacity >= 10 and self.current_participants >= self.capacity * 0.85)
+#             ):
+#             return 1
+#         return 0
 
-    def has_tag(self):
-        if self.need_checkin or self.inner:
-            return True
-        if self.status == Activity.Status.APPLYING:
-            return True
-        if self.popular_level():
-            return True
-        return False
+#     def has_tag(self):
+#         if self.need_checkin or self.inner:
+#             return True
+#         if self.status == Activity.Status.APPLYING:
+#             return True
+#         if self.popular_level():
+#             return True
+#         return False
 
-    def eval_point(self) -> int:
-        '''计算价值的活动积分'''
-        # TODO: 添加到模型字段，固定每个活动的积分
-        hours = (self.end - self.start).seconds / 3600
-        if hours > CONFIG.yqpoint.activity.invalid_hour:
-            return 0
-        point = ceil(CONFIG.yqpoint.activity.per_hour * hours)
-        # 单次活动记录的积分上限，默认无上限
-        if CONFIG.yqpoint.activity.max is not None:
-            point = min(CONFIG.yqpoint.activity.max, point)
-        return point
+#     def eval_point(self) -> int:
+#         '''计算价值的活动积分'''
+#         # TODO: 添加到模型字段，固定每个活动的积分
+#         hours = (self.end - self.start).seconds / 3600
+#         if hours > CONFIG.yqpoint.activity.invalid_hour:
+#             return 0
+#         point = ceil(CONFIG.yqpoint.activity.per_hour * hours)
+#         # 单次活动记录的积分上限，默认无上限
+#         if CONFIG.yqpoint.activity.max is not None:
+#             point = min(CONFIG.yqpoint.activity.max, point)
+#         return point
 
-    @transaction.atomic
-    def settle_yqpoint(self, status: Status | None = None, point: int | None = None):
-        '''结算活动积分，应仅在活动结束时调用'''
-        if status is None:
-            status = self.status  # type: ignore
-        assert status == Activity.Status.END, "活动未结束，不能结算积分"
-        if point is None:
-            point = self.eval_point()
-        assert point >= 0, "活动积分不能为负"
-        # 活动积分为0时，不记录
-        if point == 0:
-            return
+#     @transaction.atomic
+#     def settle_yqpoint(self, status: Status | None = None, point: int | None = None):
+#         '''结算活动积分，应仅在活动结束时调用'''
+#         if status is None:
+#             status = self.status  # type: ignore
+#         assert status == Activity.Status.END, "活动未结束，不能结算积分"
+#         if point is None:
+#             point = self.eval_point()
+#         assert point >= 0, "活动积分不能为负"
+#         # 活动积分为0时，不记录
+#         if point == 0:
+#             return
 
-        self = Activity.objects.select_for_update().get(pk=self.pk)
-        participation = SQ.sfilter(Participation.activity, self).filter(
-            status=Participation.AttendStatus.ATTENDED)
-        participant_ids = SQ.qsvlist(participation,
-                                     Participation.person, NaturalPerson.person_id)
-        participants = User.objects.filter(id__in=participant_ids)
-        User.objects.bulk_increase_YQPoint(
-            participants, point, "参加活动", YQPointRecord.SourceType.ACTIVITY)
+#         self = Activity.objects.select_for_update().get(pk=self.pk)
+#         participation = SQ.sfilter(Participation.activity, self).filter(
+#             status=Participation.AttendStatus.ATTENDED)
+#         participant_ids = SQ.qsvlist(participation,
+#                                      Participation.person, NaturalPerson.person_id)
+#         participants = User.objects.filter(id__in=participant_ids)
+#         User.objects.bulk_increase_YQPoint(
+#             participants, point, "参加活动", YQPointRecord.SourceType.ACTIVITY)
 
 
-class ActivityPhoto(models.Model):
-    class Meta:
-        verbose_name = "3.活动图片"
-        verbose_name_plural = verbose_name
-        ordering = ["-time"]
+# class ActivityPhoto(models.Model):
+#     class Meta:
+#         verbose_name = "3.活动图片"
+#         verbose_name_plural = verbose_name
+#         ordering = ["-time"]
 
-    class PhotoType(models.IntegerChoices):
-        ANNOUNCE = (0, "预告图片")
-        SUMMARY = (1, "总结图片")
+#     class PhotoType(models.IntegerChoices):
+#         ANNOUNCE = (0, "预告图片")
+#         SUMMARY = (1, "总结图片")
 
-    type = models.SmallIntegerField(choices=PhotoType.choices)
-    image = models.ImageField(
-        upload_to=f"activity/photo/%Y/%m/", verbose_name=u'活动图片', null=True, blank=True)
-    activity = models.ForeignKey(
-        Activity, related_name="photos", on_delete=models.CASCADE)
-    activity_id: int
-    time = models.DateTimeField("上传时间", auto_now_add=True)
+#     type = models.SmallIntegerField(choices=PhotoType.choices)
+#     image = models.ImageField(
+#         upload_to=f"activity/photo/%Y/%m/", verbose_name=u'活动图片', null=True, blank=True)
+#     activity = models.ForeignKey(
+#         Activity, related_name="photos", on_delete=models.CASCADE)
+#     activity_id: int
+#     time = models.DateTimeField("上传时间", auto_now_add=True)
 
-    def get_image_path(self):
-        return image_url(self.image, enable_abs=True)
-
-
-class ParticipationManager(models.Manager['Participation']):
-    def activated(self, no_unattend=False):
-        '''返回成功报名的参与信息'''
-        exclude_status = [
-            Participation.AttendStatus.CANCELED,
-            Participation.AttendStatus.APPLYFAILED,
-        ]
-        if no_unattend:
-            exclude_status.append(Participation.AttendStatus.UNATTENDED)
-        return self.exclude(status__in=exclude_status)
+#     def get_image_path(self):
+#         return image_url(self.image, enable_abs=True)
 
 
-class Participation(models.Model):
-    class Meta:
-        verbose_name = "3.活动参与情况"
-        verbose_name_plural = verbose_name
-        ordering = ["activity_id"]
+# class ParticipationManager(models.Manager['Participation']):
+#     def activated(self, no_unattend=False):
+#         '''返回成功报名的参与信息'''
+#         exclude_status = [
+#             Participation.AttendStatus.CANCELED,
+#             Participation.AttendStatus.APPLYFAILED,
+#         ]
+#         if no_unattend:
+#             exclude_status.append(Participation.AttendStatus.UNATTENDED)
+#         return self.exclude(status__in=exclude_status)
 
-    activity = models.ForeignKey(Activity, on_delete=models.CASCADE, related_name='+')
-    person = models.ForeignKey(NaturalPerson, on_delete=models.CASCADE, related_name='+')
 
-    @necessary_for_frontend(person)
-    def get_participant(self):
-        '''供前端使用，追踪该字段的函数'''
-        return self.person
+# class Participation(models.Model):
+#     class Meta:
+#         verbose_name = "3.活动参与情况"
+#         verbose_name_plural = verbose_name
+#         ordering = ["activity_id"]
 
-    class AttendStatus(models.TextChoices):
-        APPLYING = "申请中"
-        APPLYFAILED = "活动申请失败"
-        APPLYSUCCESS = "已报名"
-        ATTENDED = "已参与"
-        UNATTENDED = "未签到"
-        CANCELED = "放弃"
+#     activity = models.ForeignKey(Activity, on_delete=models.CASCADE, related_name='+')
+#     person = models.ForeignKey(NaturalPerson, on_delete=models.CASCADE, related_name='+')
 
-    status = models.CharField(
-        "学生参与活动状态",
-        choices=AttendStatus.choices,
-        default=AttendStatus.APPLYING,
-        max_length=32,
-    )
-    objects: ParticipationManager = ParticipationManager()
+#     @necessary_for_frontend(person)
+#     def get_participant(self):
+#         '''供前端使用，追踪该字段的函数'''
+#         return self.person
+
+#     class AttendStatus(models.TextChoices):
+#         APPLYING = "申请中"
+#         APPLYFAILED = "活动申请失败"
+#         APPLYSUCCESS = "已报名"
+#         ATTENDED = "已参与"
+#         UNATTENDED = "未签到"
+#         CANCELED = "放弃"
+
+#     status = models.CharField(
+#         "学生参与活动状态",
+#         choices=AttendStatus.choices,
+#         default=AttendStatus.APPLYING,
+#         max_length=32,
+#     )
+#     objects: ParticipationManager = ParticipationManager()
 
 
 class NotificationManager(models.Manager['Notification']):
@@ -1160,20 +1137,13 @@ class Notification(models.Model):
         NEEDDO = (1, "处理类")  # 需要处理的事务
 
     class Title(models.TextChoices):
-        # 等待逻辑补充，可以自定义
-        TRANSFER_INFORM = "元气值入账通知"
-        TRANSFER_CONFIRM = "转账确认通知"
         ACTIVITY_INFORM = "活动状态通知"
         VERIFY_INFORM = "审核信息通知"
         POSITION_INFORM = "成员变动通知"
         TRANSFER_FEEDBACK = "转账回执"
         NEW_ORGANIZATION = "新建小组通知"
-        YQ_DISTRIBUTION = "元气值发放通知"
         PENDING_INFORM = "事务开始通知"
         FEEDBACK_INFORM = "反馈通知"
-        YPLIB_INFORM = "元培书房通知"
-        LOTTERY_INFORM = "抽奖结果通知"
-        ACHIEVE_INFORM = "解锁成就通知"
 
     status = models.SmallIntegerField(choices=Status.choices, default=1)
     title = models.CharField("通知标题", blank=True, null=True, max_length=50)
@@ -1432,503 +1402,35 @@ class ModifyRecord(models.Model):
     time = models.DateTimeField('修改时间', auto_now_add=True)
 
 
-class CourseManager(models.Manager['Course']):
-    def activated(self, noncurrent: bool | None = False):
-        # 选择当前学期的开设课程
-        # 不显示已撤销的课程信息
-        return select_current(
-            self.exclude(status=Course.Status.ABORT), noncurrent=noncurrent)
-
-    def selected(self, person: NaturalPerson, unfailed=False):
-        all_status = [
-            CourseParticipant.Status.SELECT,
-            CourseParticipant.Status.SUCCESS,
-        ]
-        if not unfailed:
-            all_status.append(CourseParticipant.Status.FAILED)
-        # 返回当前学生所选的所有课程，选课失败也要算入
-        # participant_set是对CourseParticipant的反向查询
-        return self.activated().filter(participant_set__person=person,
-                                       participant_set__status__in=all_status)
-
-    def unselected(self, person: NaturalPerson):
-        # 返回当前学生没选上的所有课程
-        my_course_list = self.selected(
-            person, unfailed=True).values_list("id", flat=True)
-        return self.activated().exclude(id__in=my_course_list)
-
-
-class Course(models.Model):
-    """
-    助教发布课程需要填写的信息
-    """
-    class Meta:
-        verbose_name = "4.书院课程"
-        verbose_name_plural = verbose_name
-        ordering = ["id"]
-
-    name = models.CharField("课程名称", max_length=60)
-    organization = models.ForeignKey(Organization, on_delete=models.CASCADE,
-                                     verbose_name="开课组织")
-
-    year = models.IntegerField("开课年份", default=current_year)
-
-    semester = models.CharField("开课学期",
-                                choices=Semester.choices,
-                                max_length=15,
-                                default=current_semester)
-
-    # 课程开设的周数
-    times = models.SmallIntegerField("课程开设周数", default=16)
-    classroom = models.CharField("预期上课地点",
-                                 max_length=60,
-                                 default="",
-                                 blank=True)
-    teacher = models.CharField("授课教师", max_length=48, default="", blank=True)
-
-    introduction = models.TextField("课程简介", blank=True, default="这里暂时没有介绍哦~")
-    teaching_plan = models.TextField("教学计划", blank=True, default="暂无")
-    record_cal_method = models.TextField("学时计算方式", blank=True, default="暂无")
-
-    class Status(models.IntegerChoices):
-        # 预选前和预选结束到补退选开始都是WAITING状态
-        ABORT = (0, "已撤销")
-        WAITING = (1, "未开始")
-        STAGE1 = (2, "预选")
-        DRAWING = (3, "抽签中")
-        STAGE2 = (4, "补退选")
-        SELECT_END = (5, "选课结束")
-        END = (6, "已结束")
-
-    status = models.SmallIntegerField("开课状态",
-                                      choices=Status.choices,
-                                      default=Status.WAITING)
-
-    class CourseType(models.IntegerChoices):
-        # 课程类型
-        MORAL = (0, "德")
-        INTELLECTUAL = (1, "智")
-        PHYSICAL = (2, "体")
-        AESTHETICS = (3, "美")
-        LABOUR = (4, "劳")
-
-    type = models.SmallIntegerField("课程类型", choices=CourseType.choices)
-
-    capacity = models.IntegerField("课程容量", default=100)
-    current_participants = models.IntegerField("当前选课人数", default=0)
-
-    class PublishDay(models.IntegerChoices):
-        instant = (0, "立即发布")
-        oneday = (1, "提前一天")
-        twoday = (2, "提前两天")
-        threeday = (3, "提前三天")
-
-    publish_day = models.SmallIntegerField(
-        "信息发布时间", default=PublishDay.threeday)  # 默认为提前三天时间
-    need_apply = models.BooleanField("是否需要报名", default=False)
-    # 暂时只允许上传一张图片
-    photo = models.ImageField(verbose_name="宣传图片",
-                              upload_to=f"course/photo/%Y/",
-                              blank=True)
-
-    # 课程群二维码
-    QRcode = models.ImageField(upload_to=f"course/QRcode/%Y/",
-                               blank=True,
-                               null=True)
-
-    objects: CourseManager = CourseManager()
-
-    def save(self, *args, **kwargs):
-        super().save(*args, **kwargs)
-
-    @invalid_for_frontend
-    def __str__(self):
-        return f'{self.name}_{self.year}{self.get_semester_display()}'
-
-    def get_photo_path(self):
-        # 暂不要求课程的宣传图片必须存在 报错更令人烦恼
-        return image_url(self.photo, enable_abs=True)
-
-    def get_QRcode_path(self):
-        return image_url(self.QRcode)
-
-
-class CourseTime(models.Model):
-    """
-    记录课程每周的上课时间，同一课程可以对应多个上课时间
-    """
-    class Meta:
-        verbose_name = "4.上课时间"
-        verbose_name_plural = verbose_name
-        ordering = ["start"]
-
-    course = models.ForeignKey(Course, on_delete=models.CASCADE,
-                               related_name="time_set")
-
-    # 开始时间和结束时间指的是一次课程的上课时间和下课时间
-    # 需要提醒助教，填写的时间是第一周上课的时间，这影响到课程活动的统一开设。
-    start = models.DateTimeField("开始时间")
-    end = models.DateTimeField("结束时间")
-    cur_week = models.IntegerField("已生成周数", default=0)
-    end_week = models.IntegerField("总周数", default=16)
-
-
-class CourseParticipant(models.Model):
-    """
-    学生的选课情况
-    """
-    class Meta:
-        verbose_name = "4.课程报名情况"
-        verbose_name_plural = verbose_name
-
-    course = models.ForeignKey(Course, on_delete=models.CASCADE,
-                               related_name="participant_set")
-    person = models.ForeignKey(NaturalPerson, on_delete=models.CASCADE)
-
-    class Status(models.IntegerChoices):
-        SELECT = (0, "已选课")
-        UNSELECT = (1, "未选课")
-        SUCCESS = (2, "选课成功")
-        FAILED = (3, "选课失败")
-
-    status = models.SmallIntegerField(
-        "选课状态",
-        choices=Status.choices,
-        default=Status.UNSELECT,
-    )
-
-
-class CourseRecordManager(models.Manager['CourseRecord']):
-    def current(self):
-        # 选择当前学期的学时
-        return select_current(self)
-
-    def past(self):
-        # 只存在当前学期和过去的，非本学期即是过去
-        return select_current(self, noncurrent=True)
-
-    def valid(self, noncurrent=None):
-        '''有效学时，可加入参数来过滤时间'''
-        return select_current(self.filter(invalid=False), noncurrent=noncurrent)
-
-    def invalid(self, noncurrent=None):
-        '''无效学时，可加入参数来过滤时间'''
-        return select_current(self.filter(invalid=True), noncurrent=noncurrent)
-
-
-class CourseRecord(models.Model):
-    """
-    学时表
-    """
-    class Meta:
-        verbose_name = "4.学时表"
-        verbose_name_plural = verbose_name
-
-    person = models.ForeignKey(NaturalPerson, on_delete=models.CASCADE)
-    course = models.ForeignKey(
-        Course, on_delete=models.SET_NULL, null=True, blank=True,
-    )
-    # 长度兼容组织和课程名
-    extra_name = models.CharField("课程名称额外标注", max_length=60, blank=True)
-
-    year = models.IntegerField("课程所在学年", default=current_year)
-    semester = models.CharField(
-        "课程所在学期",
-        choices=Semester.choices,
-        default=current_semester,
-        max_length=15,
-    )
-    total_hours = models.FloatField("总计参加学时")
-    attend_times = models.IntegerField("参加课程次数", default=0)
-    invalid = models.BooleanField("无效", default=False)
-
-    objects: CourseRecordManager = CourseRecordManager()
-
-    def get_course_name(self):
-        if self.course is not None:
-            return self.course.name
-        return self.extra_name
-    get_course_name.short_description = "课程名"
-
-
-# 学术地图相关模型
-class AcademicTag(models.Model):
-    class Meta:
-        verbose_name = "P.学术地图标签"
-        verbose_name_plural = verbose_name
-
-    class Type(models.IntegerChoices):
-        MAJOR = (0, '主修专业')
-        MINOR = (1, '辅修专业')
-        DOUBLE_DEGREE = (2, '双学位专业')
-        PROJECT = (3, '参与项目')
-
-    atype = models.SmallIntegerField('标签类型', choices=Type.choices)
-    tag_content = models.CharField('标签内容', max_length=63)
-
-    def __str__(self) -> str:
-        return self.get_atype_display() + ' - ' + self.tag_content
-
-
-class AcademicEntryManager(models.Manager['AcademicEntry']):
-    def activated(self):
-        # 筛选未被删除的entry
-        return self.exclude(status=AcademicEntry.EntryStatus.OUTDATE)
-
-
-class AcademicEntry(models.Model):
-    class Meta:
-        abstract = True
-
-    class EntryStatus(models.IntegerChoices):
-        PRIVATE = (0, '不公开')
-        WAIT_AUDIT = (1, '待审核')
-        PUBLIC = (2, '已公开')
-        OUTDATE = (3, '已弃用')
-
-    person = models.ForeignKey(NaturalPerson, on_delete=models.CASCADE)
-    status = models.SmallIntegerField('记录状态', choices=EntryStatus.choices)
-
-    objects: AcademicEntryManager = AcademicEntryManager()
-
-
-class AcademicTagEntry(AcademicEntry):
-    class Meta:
-        verbose_name = "P.学术地图标签项目"
-        verbose_name_plural = verbose_name
-
-    tag = models.ForeignKey(AcademicTag, on_delete=models.CASCADE)
-
-    @property
-    def content(self) -> str:
-        return self.tag.tag_content
-
-
-class AcademicTextEntry(AcademicEntry):
-    class Meta:
-        verbose_name = "P.学术地图文本项目"
-        verbose_name_plural = verbose_name
-
-    class Type(models.IntegerChoices):
-        SCIENTIFIC_RESEARCH = (0, '本科生科研')
-        CHALLENGE_CUP = (1, '挑战杯')
-        INTERNSHIP = (2, '实习经历')
-        SCIENTIFIC_DIRECTION = (3, '科研方向')
-        GRADUATION = (4, '毕业去向')
-
-    atype = models.SmallIntegerField('类型', choices=Type.choices)
-    content = models.CharField('内容', max_length=4095)
-
-
-class ChatManager(models.Manager['Chat']):
-    def activated(self):
-        # 筛选进行中的对话
-        return self.filter(status=Chat.Status.PROGRESSING)
-
-
-class Chat(CommentBase):
-    """
-    每个Chat支持一对用户间的多次通信，每一条信息是一个Comment记录
-    一对用户间可以开启多个Chat，进行不同主题的讨论
-
-    应用于学术地图的QA功能
-    """
-    class Meta:
-        verbose_name = "2.对话"
-        verbose_name_plural = verbose_name
-
-    questioner = models.ForeignKey(User, on_delete=models.CASCADE,
-                                   related_name="send_chat_set")
-    respondent = models.ForeignKey(User, on_delete=models.CASCADE,
-                                   related_name="receive_chat_set")
-    title = models.CharField("主题", default="", max_length=50)
-    questioner_anonymous = models.BooleanField("提问方是否匿名", default=True)
-    respondent_anonymous = models.BooleanField("回答方是否匿名", default=False)
-
-    class Status(models.IntegerChoices):
-        PROGRESSING = (0, "进行中")
-        CLOSED = (1, "已关闭")  # 发送方或接收方选择关闭时转入该状态，此后双方不能再向该Chat发消息
-    status = models.SmallIntegerField(choices=Status.choices, default=0)
-
-    objects: ChatManager = ChatManager()
-
-    def save(self, *args, **kwargs):
-        self.typename = "Chat"
-        super().save(*args, **kwargs)
-
-
-class AcademicQAManager(models.Manager['AcademicQA']):
-    def activated(self):
-        return self.filter(chat__status=Chat.Status.PROGRESSING)
-
-
-class AcademicQA(models.Model):
-    class Meta:
-        verbose_name = "P.学术问答"
-        verbose_name_plural = verbose_name
-
-    chat = models.OneToOneField(to=Chat, on_delete=models.CASCADE)
-    keywords = models.JSONField('关键词', null=True, blank=True)
-    directed = models.BooleanField('是否定向', default=False)
-    rating = models.IntegerField('评价', default=0)
-
-    objects: AcademicQAManager = AcademicQAManager()
-
-
-class AcademicQAAwards(models.Model):
-    class Meta:
-        verbose_name = "P.学术问答相关奖励"
-        verbose_name_plural = verbose_name
-
-    user = models.OneToOneField(User, on_delete=models.CASCADE)
-    created_undirected_qa = models.BooleanField("是否发起过非定向提问", default=False)
-
-
-class Prize(models.Model):
-    class Meta:
-        verbose_name = '5.奖品'
-        verbose_name_plural = verbose_name
-
-    name = models.CharField('名称', max_length=50)
-    more_info = models.CharField('详情', max_length=255, default='', blank=True)
-    stock = models.IntegerField('参考库存', default=0)
-    reference_price = models.IntegerField('参考价格')
-    image = models.ImageField(
-        '图片', upload_to=f'prize/%Y-%m/', null=True, blank=True)
-    provider = models.ForeignKey(User, verbose_name='提供者', on_delete=models.CASCADE,
-                                 null=True, blank=True)
-
-    @invalid_for_frontend
-    def __str__(self):
-        return self.name
-
-
-class Pool(models.Model):
-    class Meta:
-        verbose_name = '5.奖池'
-        verbose_name_plural = verbose_name
-
-    class Type(models.TextChoices):
-        EXCHANGE = '兑换', '兑换奖池'
-        # 等结束抽签
-        LOTTERY = '抽奖', '抽奖奖池'
-        # 类似盲盒，每次抽可以获得一件物品，但不一定是大奖
-        RANDOM = '盲盒', '盲盒奖池'
-
-    title = models.CharField('名称', max_length=50)
-    type = models.CharField('类型', choices=Type.choices, max_length=15)
-    # 类型为兑换池时无效
-    entry_time = models.IntegerField('进入次数', default=1)
-    ticket_price = models.IntegerField('抽奖费', default=0)
-    empty_YQPoint_compensation_lowerbound = models.IntegerField(
-        '空盒元气值补偿下限', default=0)
-    empty_YQPoint_compensation_upperbound = models.IntegerField(
-        '空盒元气值补偿上限', default=0)
-    start = models.DateTimeField('开始时间')
-    end = models.DateTimeField('结束时间', null=True, blank=True)
-    redeem_start = models.DateTimeField(
-        '兑奖开始时间', null=True, blank=True)  # 指线下获取奖品实物
-    redeem_end = models.DateTimeField('兑奖结束时间', null=True, blank=True)
-    # 如果activity非空，只有参加了该活动的用户可以参与这个奖池的兑换。
-    activity = models.ForeignKey(Activity, on_delete=models.SET_NULL,
-        null=True, blank=True, default=None)
-
-    @invalid_for_frontend
-    def __str__(self):
-        return self.title
-
-    @property
-    def items(self) -> 'models.manager.RelatedManager[PoolItem]':
-        return self.poolitem_set
-
-    @invalid_for_frontend
-    def get_capacity(self):
-        return self.items.aggregate(Sum('origin_num'))['origin_num__sum'] or 0
-
-
-class PoolItem(models.Model):
-    class Meta:
-        verbose_name = '5.奖池奖品'
-        verbose_name_plural = verbose_name
-
-    pool = models.ForeignKey(Pool, verbose_name='奖池', on_delete=models.CASCADE)
-    prize = models.ForeignKey(Prize, verbose_name='奖品', on_delete=models.CASCADE,
-                                     null=True, blank=True)
-    origin_num = models.IntegerField('初始数量')
-    consumed_num = models.IntegerField('已兑换', default=0)
-    # 下面三个在 pool 类型为兑换奖池时有效
-    exchange_limit = models.IntegerField('单人兑换上限', default=0)
-    exchange_price = models.IntegerField('价格', null=True, blank=True)
-    exchange_attributes = models.JSONField('属性', default=list, blank=True)
-    # 下面这个在抽奖/盲盒奖池中有效
-    is_big_prize = models.BooleanField('是否特别奖品', default=False)
-    is_empty_prize = models.BooleanField('是否空盒', default=False)
-
-    @property
-    def is_empty(self) -> bool:
-        return self.is_empty_prize or (self.prize is None)
-
-    @invalid_for_frontend
-    def __str__(self):
-        if self.is_empty:
-            return f'{self.pool} 空盒'
-        return f'{self.pool} {self.prize}'
-
-
-class PoolRecord(models.Model):
-    class Meta:
-        verbose_name = '5.奖池记录'
-        verbose_name_plural = verbose_name
-
-    class Status(models.TextChoices):
-        # 抽奖奖池时有效
-        LOTTERING = '抽奖中', '抽奖中'
-        NOT_LUCKY = '未中奖', '未中奖'
-        UN_REDEEM = '未兑奖', '未兑奖'  # 指线下获取奖品实物
-        REDEEMED = '已兑奖', '已兑奖'
-        OVERDUE = '已失效', '已失效'
-
-    user = models.ForeignKey(User, verbose_name='用户', on_delete=models.CASCADE)
-    pool = models.ForeignKey(Pool, verbose_name='奖池', on_delete=models.CASCADE)
-    prize = models.ForeignKey(
-        Prize, verbose_name='奖品', on_delete=models.CASCADE,
-        null=True, blank=True,
-    )
-    attributes = models.JSONField('属性', default=dict, blank=True)
-    status = models.CharField('状态', choices=Status.choices, max_length=15)
-    time = models.DateTimeField('记录时间', auto_now_add=True)
-    redeem_time = models.DateTimeField('兑奖时间', null=True, blank=True)
-
-
-class ActivitySummary(models.Model):
-    class Meta:
-        verbose_name = "3.活动总结"
-        verbose_name_plural = verbose_name
-        ordering = ["-time"]
-
-    class Status(models.IntegerChoices):
-        WAITING = (0, "待审核")
-        CONFIRMED = (1, "已通过")
-        CANCELED = (2, "已取消")
-        REFUSED = (3, "已拒绝")
-
-    activity = models.ForeignKey(Activity, on_delete=models.CASCADE)
-
-    status = models.SmallIntegerField(choices=Status.choices, default=0)
-    image = models.ImageField(upload_to=f"ActivitySummary/photo/%Y/%m/",
-                              verbose_name='活动总结图片', null=True, blank=True)
-    time = models.DateTimeField("申请时间", auto_now_add=True)
-
-    def __str__(self):
-        return f'{self.activity.title}活动总结'
-
-    def is_pending(self):  # 表示是不是pending状态
-        return self.status == ActivitySummary.Status.WAITING
-
-    @necessary_for_frontend('activity.organization_id')
-    def get_org(self):
-        return self.activity.organization_id
-
-    @necessary_for_frontend('activity.title', '__str__')
-    def get_audit_display(self):
-        return f'{self.activity.title}总结'
+# class ActivitySummary(models.Model):
+#     class Meta:
+#         verbose_name = "3.活动总结"
+#         verbose_name_plural = verbose_name
+#         ordering = ["-time"]
+
+#     class Status(models.IntegerChoices):
+#         WAITING = (0, "待审核")
+#         CONFIRMED = (1, "已通过")
+#         CANCELED = (2, "已取消")
+#         REFUSED = (3, "已拒绝")
+
+#     activity = models.ForeignKey(Activity, on_delete=models.CASCADE)
+
+#     status = models.SmallIntegerField(choices=Status.choices, default=0)
+#     image = models.ImageField(upload_to=f"ActivitySummary/photo/%Y/%m/",
+#                               verbose_name='活动总结图片', null=True, blank=True)
+#     time = models.DateTimeField("申请时间", auto_now_add=True)
+
+#     def __str__(self):
+#         return f'{self.activity.title}活动总结'
+
+#     def is_pending(self):  # 表示是不是pending状态
+#         return self.status == ActivitySummary.Status.WAITING
+
+#     @necessary_for_frontend('activity.organization_id')
+#     def get_org(self):
+#         return self.activity.organization_id
+
+#     @necessary_for_frontend('activity.title', '__str__')
+#     def get_audit_display(self):
+#         return f'{self.activity.title}总结'

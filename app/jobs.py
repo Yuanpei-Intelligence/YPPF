@@ -20,21 +20,8 @@ from app.models import (
     NaturalPerson,
     Organization,
     OrganizationType,
-    Activity,
-    ActivityPhoto,
-    ActivitySummary,
-    Participation,
     Notification,
     Position,
-    Course,
-    CourseTime,
-    CourseParticipant,
-)
-from app.activity_utils import (
-    changeActivityStatus,
-    notifyActivity,
-    create_participate_infos,
-    weekly_summary_orgs,
 )
 from app.notification_utils import (
     bulk_notification_create,
@@ -84,48 +71,6 @@ def send_to_orgs(title, message, url='/index/'):
     )
 
 
-@periodical('interval', job_id='activityStatusUpdater', minutes=5)
-def changeAllActivities():
-    """
-    频繁执行，添加更新其他活动的定时任务，主要是为了异步调度
-    对于被多次落下的活动，每次更新一步状态
-    """
-    def next_time_generator(first: timedelta | datetime, step: timedelta):
-        while True:
-            yield first
-            first += step
-    now = datetime.now()
-    times = next_time_generator(
-        now + timedelta(seconds=20), timedelta(seconds=5))
-    adder = MultipleAdder(changeActivityStatus)
-
-    def _update_all(_cur, _next, activities):
-        for activity in activities:
-            adder.schedule(f'activity_{activity.id}_{_next}',
-                           run_time=next(times))(activity.id, _cur, _next)
-
-    applying_activities = Activity.objects.filter(
-        status=Activity.Status.APPLYING,
-        apply_end__lte=now,
-    )
-    _update_all(Activity.Status.APPLYING,
-                Activity.Status.WAITING, applying_activities)
-
-    waiting_activities = Activity.objects.filter(
-        status=Activity.Status.WAITING,
-        start__lte=now,
-    )
-    _update_all(Activity.Status.WAITING,
-                Activity.Status.PROGRESSING, waiting_activities)
-
-    progressing_activities = Activity.objects.filter(
-        status=Activity.Status.PROGRESSING,
-        end__lte=now,
-    )
-    _update_all(Activity.Status.PROGRESSING,
-                Activity.Status.END, progressing_activities)
-
-
 @periodical('interval', job_id="get weather per hour", hours=1)
 def get_weather_async():
     city = "Haidian"
@@ -155,142 +100,6 @@ def get_weather() -> Dict[str, Any]:
     with open(weather_file, "r") as f:
         return json.load(f)
 
-
-def add_week_course_activity(course_id: int, weektime_id: int, cur_week: int, course_stage2: bool):
-    """
-    添加每周的课程活动
-    """
-    course: Course = Course.objects.get(id=course_id)
-    examine_teacher = NaturalPerson.objects.get_teacher(
-        CONFIG.course.audit_teachers[0])
-    # 当前课程在学期已举办的活动
-    conducted_num = Activity.objects.activated().filter(
-        organization_id=course.organization,
-        category=Activity.ActivityCategory.COURSE).count()
-    # 发起活动，并设置报名
-    with transaction.atomic():
-        week_time = CourseTime.objects.select_for_update().get(id=weektime_id)
-        if week_time.cur_week != cur_week:
-            return False
-        start_time = week_time.start + timedelta(days=7 * cur_week)
-        end_time = week_time.end + timedelta(days=7 * cur_week)
-        activity = Activity.objects.create(
-            title=f'{course.name}-第{conducted_num+1}次课',
-            organization_id=course.organization,
-            examine_teacher=examine_teacher,
-            location=course.classroom,
-            start=start_time,
-            end=end_time,
-            category=Activity.ActivityCategory.COURSE,
-        )
-        activity.status = Activity.Status.UNPUBLISHED
-        activity.publish_day = course.publish_day
-        if course.publish_day == Course.PublishDay.instant:
-            # 指定为立即发布的活动在上一周结束后一天发布
-            activity.publish_time = week_time.end + \
-                timedelta(days=7 * cur_week - 6)
-        else:
-            activity.publish_time = week_time.start + \
-                timedelta(days=7 * cur_week - course.publish_day)
-
-        activity.need_apply = course.need_apply  # 是否需要报名
-
-        if course.need_apply:
-            activity.endbefore = Activity.EndBefore.onehour
-            activity.apply_end = activity.start - timedelta(hours=1)
-
-        activity.need_checkin = True  # 需要签到
-        activity.recorded = True
-        activity.course_time = week_time
-        activity.introduction = f'{course.organization.oname}每周课程活动'
-        ActivityPhoto.objects.create(image=course.photo,
-                                     type=ActivityPhoto.PhotoType.ANNOUNCE,
-                                     activity=activity)
-        if not activity.need_apply:
-            # 选课人员自动报名活动
-            # 选课结束以后，活动参与人员从小组成员获取
-            person_pos = list(Position.objects.activated().filter(
-                org=course.organization).values_list("person", flat=True))
-            if course_stage2:
-                # 如果处于补退选阶段，活动参与人员从课程选课情况获取
-                selected_person = list(CourseParticipant.objects.filter(
-                    course=course,
-                    status=CourseParticipant.Status.SUCCESS,
-                ).values_list("person", flat=True))
-                person_pos += selected_person
-                person_pos = list(set(person_pos))
-            members = NaturalPerson.objects.filter(
-                id__in=person_pos)
-            status = Participation.AttendStatus.APPLYSUCCESS
-            create_participate_infos(activity, members, status=status)
-
-            participate_num = len(person_pos)
-            activity.capacity = participate_num
-            activity.current_participants = participate_num
-
-        week_time.cur_week += 1
-        week_time.save()
-        activity.save()
-    # 在活动发布时通知参与成员,创建定时任务并修改活动状态
-    changer = MultipleAdder(changeActivityStatus)
-    notifier = MultipleAdder(notifyActivity)
-    # TODO: 修改UNPUBLISHED状态的诡异逻辑和状态切换
-    if activity.need_apply:
-        changer.schedule(f'activity_{activity.id}_{Activity.Status.APPLYING}',
-                         run_time=activity.publish_time
-                         )(activity.id, Activity.Status.UNPUBLISHED, Activity.Status.APPLYING)
-        changer.schedule(f'activity_{activity.id}_{Activity.Status.WAITING}',
-                         run_time=activity.start - timedelta(hours=1)
-                         )(activity.id, Activity.Status.APPLYING, Activity.Status.WAITING)
-    else:
-        changer.schedule(f'activity_{activity.id}_{Activity.Status.WAITING}',
-                         run_time=activity.publish_time
-                         )(activity.id, Activity.Status.UNPUBLISHED, Activity.Status.WAITING)
-
-    notifier.schedule(f'activity_{activity.id}_newCourseActivity',
-                      run_time=activity.publish_time)(activity.id, "newCourseActivity")
-    notifier.schedule(f'activity_{activity.id}_remind',
-                      run_time=activity.start - timedelta(minutes=15))(activity.id, "remind")
-    changer.schedule(f'activity_{activity.id}_{Activity.Status.PROGRESSING}',
-                     run_time=activity.start
-                     )(activity.id, Activity.Status.WAITING, Activity.Status.PROGRESSING)
-    changer.schedule(f'activity_{activity.id}_{Activity.Status.END}',
-                     run_time=activity.end
-                     )(activity.id, Activity.Status.PROGRESSING, Activity.Status.END)
-
-    notification_create(
-        receiver=examine_teacher.person_id,
-        sender=course.organization.get_user(),
-        typename=Notification.Type.NEEDDO,
-        title=Notification.Title.VERIFY_INFORM,
-        content="新增了一个已审批的课程活动",
-        URL=f"/examineActivity/{activity.id}",
-        relate_instance=activity,
-        to_wechat={"app": WechatApp.AUDIT, 'level': WechatMessageLevel.INFO},
-    )
-
-
-@periodical('interval', 'courseWeeklyActivitylauncher', minutes=5)
-def longterm_launch_course():
-    """
-    定时发起长期课程活动
-    提前一周发出课程，一般是在本周课程活动结束时发出
-    本函数的循环不幂等，幂等通过课程活动创建函数的幂等实现
-    """
-    courses = Course.objects.activated().filter(
-        status__in=[Course.Status.SELECT_END, Course.Status.STAGE2])
-    for course in courses:
-        for week_time in course.time_set.all():
-            cur_week = week_time.cur_week
-            end_week = week_time.end_week
-            if cur_week < end_week:  # end_week默认16周，允许助教修改
-                # 在本周课程结束后生成下一周课程活动
-                due_time = week_time.end + timedelta(days=7 * cur_week)
-                if due_time - timedelta(days=7) < datetime.now() < due_time:
-                    # 如果处于补退选阶段：
-                    course_stage2 = True if course.status == Course.Status.STAGE2 else False
-                    add_week_course_activity(
-                        course.id, week_time.id, cur_week, course_stage2)
 
 
 @periodical('cron', 'active_score_updater', hour=1)
@@ -359,7 +168,7 @@ def happy_birthday():
         "愿少年不惧岁月长，新的一岁光彩依旧，兴致盎然~",
         "旦逢良辰，顺颂时宜。愿君常似少年时，永远二十赶朝暮~",
     ]
-    title = "元培学院祝你生日快乐！"
+    title = "人工智能研究院祝你生日快乐！"
     url = None
     sender = User.objects.get(username='zz00000')
     for np, message in zip(crowds, messages):
@@ -369,27 +178,4 @@ def happy_birthday():
             receivers, sender,
             Notification.Type.NEEDREAD, title, message, url,
             to_wechat=dict(level=WechatMessageLevel.IMPORTANT, show_source=False),
-        )
-
-
-@script
-@periodical('cron', 'weekly_activity_summary_reminder', hour=20, minute=0, day_of_week='sun')
-def weekly_activity_summary_reminder():
-    '''提醒组织负责人填写每周活动总结
-    
-    每周日晚上8点提醒所有组织负责人通过每周活动总结填写未在系统中申报的活动
-    目前仅限于团委，学学学委员会，学学学学会，学生会
-    '''
-    today = date.today()
-    cur_semester = current_semester()
-    if not cur_semester.start_date <= today <= cur_semester.end_date:
-        return
-    notify_orgs = weekly_summary_orgs()
-    sender = User.objects.get(username='zz00000')
-    for org in notify_orgs.select_related(SQ.f(Organization.organization_id)):
-        notification_create(
-            org.get_user(), sender,
-            Notification.Type.NEEDREAD, '每周活动总结提醒',
-            '如果本周举办了未在系统中申报的活动，请通过每周活动总结及时填报！',
-            to_wechat=dict(show_source=False),
         )

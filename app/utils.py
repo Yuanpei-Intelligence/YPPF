@@ -22,7 +22,6 @@ from app.models import (
     Position,
     Notification,
     Help,
-    Participation,
     ModifyRecord,
 )
 
@@ -250,8 +249,6 @@ def get_sidebar_and_navbar(user: User, navbar_name="", title_name=""):
 
     if navbar_name:
         help_key = navbar_name
-        if help_key == "我的元气值":
-            help_key += _utype.lower()
         help_info = Help.objects.filter(title=navbar_name).first()
         bar_display.update(
             help_message=CONFIG.help_message.get(help_key, ""),
@@ -481,60 +478,6 @@ def check_account_setting(request: UserRequest):
         attr_dict['introduction'] = request.POST['introduction']
         attr_dict['tags_modify'] = request.POST['tags_modify']
     return attr_dict, show_dict, html_display
-
-# 导出Excel文件
-
-
-def export_activity(activity, inf_type):
-
-    # 设置HTTPResponse的类型
-    response = HttpResponse(content_type='application/vnd.ms-excel')
-    if activity is None:
-        return response
-    response['Content-Disposition'] = f'attachment;filename={activity.title}.xls'
-    participants: QuerySet[Participation] = SQ.sfilter(Participation.activity, activity)
-    if inf_type == "sign":  # 签到信息
-        participants = participants.filter(status=Participation.AttendStatus.ATTENDED)
-    elif inf_type == "enroll":  # 报名信息
-        participants = participants.exclude(status=Participation.AttendStatus.CANCELED)
-    else:
-        return response
-        """导出excel表"""
-    if len(participants) > 0:
-        # 创建工作簿
-        ws = xlwt.Workbook(encoding='utf-8')
-        # 添加第一页数据表
-        w = ws.add_sheet('sheet1')  # 新建sheet（sheet的名称为"sheet1"）
-        # 写入表头
-        w.write(0, 0, u'姓名')
-        w.write(0, 1, u'学号')
-        w.write(0, 2, u'年级/班级')
-        if inf_type == "enroll":
-            w.write(0, 3, u'报名状态')
-            w.write(0, 4, u'注：报名状态为“已参与”时表示报名成功并成功签到，“未签到”表示报名成功但未签到，'
-                          u'"已报名"表示报名成功，“活动申请失败”表示在抽签模式中落选，“申请中”则表示抽签尚未开始。')
-        # 写入数据
-        excel_row = 1
-        for participant in participants:
-            name = participant.person.name
-            Sno = participant.person.person_id.username
-            grade = str(participant.person.stu_grade) + '级' + \
-                str(participant.person.stu_class) + '班'
-            if inf_type == "enroll":
-                status = participant.status
-                w.write(excel_row, 3, status)
-            # 写入每一行对应的数据
-            w.write(excel_row, 0, name)
-            w.write(excel_row, 1, Sno)
-            w.write(excel_row, 2, grade)
-            excel_row += 1
-        # 写出到IO
-        output = BytesIO()
-        ws.save(output)
-        # 重新定位到开始
-        output.seek(0)
-        response.write(output.getvalue())
-    return response
 
 
 # 导出小组成员信息Excel文件
