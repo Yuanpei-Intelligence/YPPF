@@ -310,7 +310,7 @@ def index(request):  # 主页
         if rooms:
             reservable_room_classes.append((rclass, rooms))
     quick_reservable_rooms = [
-        room for room in Room.objects.permitted().filter(quick_reservable=True)
+        room for room in Room.objects.permitted()
         if room.check_user_perm(user)
     ]
     room_info = [(room, room.Rid in occupied_rooms,
