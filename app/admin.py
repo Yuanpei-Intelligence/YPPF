@@ -1,16 +1,33 @@
+import openpyxl
+import random
 from datetime import datetime
 
-from django.contrib import admin
+from django.urls import path, reverse
+from django.shortcuts import render, redirect
+from django.contrib import admin, messages
 from django.db.models import QuerySet
+from django.db import transaction
+from django import forms
+from django.utils.translation import gettext_lazy as _
 from django.utils.safestring import mark_safe
 
 from utils.http.dependency import HttpRequest
 from utils.models.query import sfilter, f
 from utils.admin_utils import *
 from app.models import *
+from app.config import GLOBAL_CONFIG
 from scheduler.cancel import remove_job
 from app.org_utils import accept_modifyorg_submit
 
+
+class ExcelImportForm(forms.Form):
+    """
+    用于上传Excel的Form，只包含一个上传文件的字段
+    """
+    excel_file = forms.FileField(
+        label=_("请选择要上传的Excel文件"),
+        required=True
+    )
 # 通用内联模型
 @readonly_inline
 class PositionInline(admin.TabularInline):
@@ -139,6 +156,87 @@ class NaturalPersonAdmin(admin.ModelAdmin):
             person.save()
         return self.message_user(request=request,
                                  message='修改成功!已经取消所有非官方组织的订阅!')
+
+    # 2024.12.28 以下为批量导入逻辑
+
+    change_list_template = "admin/naturalperson_changelist.html"
+
+    def get_urls(self):
+        """
+        重写get_urls，为Admin添加一个新的url映射(import_excel)。
+        """
+        urls = super().get_urls()
+        my_urls = [
+            path("import-excel/", self.admin_site.admin_view(self.import_excel_view),
+                 name="naturalperson_import_excel"),
+        ]
+        return my_urls + urls
+
+    def import_excel_view(self, request):
+        """
+        用于上传并处理Excel文件的自定义视图。
+        """
+        # 获取Admin的上下文
+        context = dict(
+            self.admin_site.each_context(request),
+            opts=self.model._meta,  # 用于模板中显示标题等信息
+        )
+
+        if request.method == "POST":
+            form = ExcelImportForm(request.POST, request.FILES)
+            if form.is_valid():
+                excel_file = request.FILES["excel_file"]
+                try:
+                    with transaction.atomic():
+                        # 使用 openpyxl 读取 Excel
+                        wb = openpyxl.load_workbook(excel_file)
+                        sheet = wb.active  # 默认读取第一个sheet
+
+                        # 从表格的第二行开始读(假设第一行为标题)
+                        for row_idx, row in enumerate(sheet.iter_rows(values_only=True), start=1):
+                            if row_idx == 1:
+                                # 第一行标题跳过
+                                continue
+
+                            # row是一个元组
+                            sid = row[0]
+                            name_value = row[1]
+                            gender = row[2]
+                            email = row[3]
+                            # ... 视情况增加更多字段
+
+                            assert '@' in email, f"第{row_idx}行的邮箱格式不正确"
+                            assert gender in ("男", "女"), f"第{row_idx}行的性别格式不正确"
+                            
+                            np_gender = (
+                                NaturalPerson.Gender.MALE if gender == "男" else NaturalPerson.Gender.FEMALE)
+
+                            password = GLOBAL_CONFIG.hasher.encode(sid)
+
+                            user = User.objects.create_user(
+                                username=sid, name=name_value,
+                                usertype=User.Type.STUDENT,
+                                password=password
+                            )
+
+                            NaturalPerson.objects.create(
+                                user,
+                                stu_id_dbonly=sid,
+                                name=name_value,
+                                gender=np_gender,
+                                email=email,
+                            )
+
+                    messages.success(request, "Excel 导入成功！")
+                    # 导入结束后重定向回列表页
+                    return redirect("admin:app_naturalperson_changelist")
+                except Exception as e:
+                    messages.error(request, f"导入失败：{e}")
+        else:
+            form = ExcelImportForm()
+
+        context["form"] = form
+        return render(request, "admin/naturalperson_import_excel.html", context)
 
 @admin.register(Freshman)
 class FreshmanAdmin(admin.ModelAdmin):
