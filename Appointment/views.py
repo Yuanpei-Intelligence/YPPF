@@ -23,7 +23,7 @@ from Appointment.models import (
 )
 from Appointment.extern.wechat import MessageType, notify_appoint
 from Appointment.utils.utils import (
-    get_conflict_appoints, to_feedback_url,
+    get_conflict_appoints, to_feedback_notification,
 )
 from Appointment.utils.log import logger, get_user_logger
 import Appointment.utils.web_func as web_func
@@ -228,8 +228,8 @@ def account(request: HttpRequest):
     if request.method == 'POST' and request.POST:
         if request.POST.get('feedback') is not None:
             try:
-                url = to_feedback_url(request)
-                return redirect(url)
+                message = to_feedback_notification(request)
+                succeed(message, render_context)
             except AssertionError as e:
                 wrong(str(e), render_context)
 

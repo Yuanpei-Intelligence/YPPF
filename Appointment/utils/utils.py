@@ -4,6 +4,12 @@ from django.http import HttpRequest
 from django.db.models import Q, QuerySet
 
 from Appointment.models import Room, Appoint
+from app.notification_utils import notification_create
+from app.models import (
+    Notification,
+    NaturalPerson
+)
+from app.config import *
 
 '''
 YWolfeee:
@@ -170,11 +176,10 @@ def get_conflict_appoints(appoint: Appoint, times: int = 1,
     return conflict_appoints.order_by('Astart', 'Afinish')
 
 
-def to_feedback_url(request: HttpRequest) -> str:
+def to_feedback_notification(request: HttpRequest) -> str:
     """
     检查预约记录是否可以申诉。
-    如果可以，向session添加传递到反馈填写界面的信息。
-    最终函数返回跳转到的url。
+    如果可以，创建申诉通知
 
     :param request: http请求
     :type request: HttpRequest
@@ -200,15 +205,23 @@ def to_feedback_url(request: HttpRequest) -> str:
     appoint_finish = appoint.Afinish.strftime('%H:%M')
     appoint_reason = appoint.get_status()
 
-    # 向session添加信息
-    request.session['feedback_type'] = '地下室预约问题反馈'
-    request.session['feedback_url'] = appoint.get_admin_url()
-    request.session['feedback_content'] = '\n'.join((
+    text = '\n'.join((
         f'申请人：{appoint_student}',
         f'房间：{appoint_room}',
         f'预约时间：{appoint_start} - {appoint_finish}',
         f'违规原因：{appoint_reason}',
     ))
+    # 获取默认审核老师
+    examine_teacher = NaturalPerson.objects.get_teacher(
+        CONFIG.appoint.audit_teachers[0])
 
-    # 最终返回填写feedback的url
-    return '/feedback/?argue'
+    notification_create(
+                    receiver=examine_teacher.person_id,
+                    sender=request.user,
+                    title=f'地下室预约问题反馈-{appoint_student}',
+                    typename=Notification.Type.NEEDDO,
+                    content=text,
+                    URL=appoint.get_admin_url(),
+                )
+    
+    return '预约申诉已反馈给管理员，请耐心等待处理。'

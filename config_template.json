@@ -68,6 +68,9 @@
         "btx_election_end": "2022-02-16 14:00:00",
         "publish_time": "2022-02-20 20:35:00"
     },
+    "appoint": {
+        "auditors": ["admin"]
+    },
     "YQPoint": {
         "signin_points": [1, 2, 2, [2, 4], 2, 2, [5, 7]],
         "activity": {
