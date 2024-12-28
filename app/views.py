@@ -1124,7 +1124,7 @@ def forgetPassword(request: HttpRequest):
                     post_data = {
                         "sender": "北京大学人工智能研究院",  # 发件人标识
                         "toaddrs": [email],  # 收件人列表
-                        "subject": "YPPF登录验证",  # 邮件主题/标题
+                        "subject": "智能空间管理系统-登录验证",  # 邮件主题/标题
                         "content": msg,  # 邮件内容
                         # 若subject为空, 第一个\n视为标题和内容的分隔符
                         "html": True,  # 可选 如果为真则content被解读为html
