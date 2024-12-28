@@ -599,6 +599,10 @@ def orginfo(request: UserRequest):
 @utils.check_user_access(redirect_url="/logout/")
 @logger.secure_view()
 def homepage(request: UserRequest):
+    if request.user.is_org():
+        return redirect("/orginfo/")
+    else:
+        return redirect("/stuinfo/")
     html_display = {}
     my_messages.transfer_message_context(request.GET, html_display)
 
