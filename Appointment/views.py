@@ -365,8 +365,8 @@ def arrange_time(request: HttpRequest):
         raise PermissionError('您没有权限预约该房间！')
     # 判断当前用户是否可以进行长期预约
     has_longterm_permission = get_participant(user).longterm
-    is_longterm = (request.GET.get(
-        'longterm') == 'on') and has_longterm_permission
+    is_longterm = has_longterm_permission and request.GET.get(
+        'start_week') != None
     next_week = (request.GET.get('start_week') == '1') and is_longterm
     dayrange_list, start_day, end_next_day = web_func.get_dayrange(
         day_offset=7 if next_week else 0)
