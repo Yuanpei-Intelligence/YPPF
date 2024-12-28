@@ -205,6 +205,9 @@ class NaturalPersonAdmin(admin.ModelAdmin):
                             email = row[3]
                             # ... 视情况增加更多字段
 
+                            assert '@' in email, f"第{row_idx}行的邮箱格式不正确"
+                            assert gender in ("男", "女"), f"第{row_idx}行的性别格式不正确"
+                            
                             np_gender = (
                                 NaturalPerson.Gender.MALE if gender == "男" else NaturalPerson.Gender.FEMALE)
 
