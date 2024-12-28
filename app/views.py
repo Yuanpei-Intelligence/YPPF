@@ -63,7 +63,7 @@ def shiftAccount(request: HttpRequest):
         arg_url = request.GET["origin"]
         if arg_url.startswith('/'):  # 暂时只允许内部链接
             return redirect(arg_url)
-    return redirect("/welcome/")
+    return redirect("/underground/")
 
 
 # Return content
@@ -1242,7 +1242,7 @@ def forgetPassword(request: HttpRequest):
         - 如果引入企业微信验证，建议将send_captcha分为'qywx'和'email'
     """
     if request.user.is_authenticated:
-        return redirect("/welcome/")
+        return redirect("/underground/")
 
     if request.session.get("received_user"):
         username = request.session["received_user"]  # 自动填充，方便跳转后继续

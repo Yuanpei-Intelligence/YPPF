@@ -44,7 +44,7 @@ class Index(SecureTemplateView):
         if self.request.GET.get('is_logout') is not None:
             return self.redirect('logout')
 
-        return self.redirect('welcome')
+        return self.redirect('/underground')
 
     def valid_user_check(self, user: User):
         # Special user
@@ -102,7 +102,7 @@ class Index(SecureTemplateView):
         if origin and self._is_origin_safe(self.request, origin):
             return self.redirect(origin)
         else:
-            return self.redirect('welcome')
+            return self.redirect('underground')
 
     def _is_origin_safe(self, request: HttpRequest,
                         origin: str | None = None) -> bool:
