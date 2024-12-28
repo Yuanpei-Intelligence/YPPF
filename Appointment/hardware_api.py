@@ -8,10 +8,7 @@ from django.db import transaction
 
 from Appointment.models import Room, Appoint, Participant, CardCheckInfo
 from Appointment.extern.wechat import notify_user
-from Appointment.utils.utils import (
-    door2room, ip2room,
-    check_temp_appoint,
-)
+from Appointment.utils.utils import door2room, ip2room
 from Appointment.utils.log import logger
 import Appointment.utils.web_func as web_func
 from Appointment.utils.identity import get_participant
@@ -266,7 +263,7 @@ def door_check(request: HttpRequest):
     # 当前无预约
 
     # 房间不可以临时预约
-    if not check_temp_appoint(room):
+    if not room.quick_reservable:
         return _temp_failed(f"该房间不可临时预约", False)
 
     # 该房间可以用于临时预约
