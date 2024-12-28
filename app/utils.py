@@ -164,9 +164,9 @@ def get_user_ava(obj: ClassifiedUser):
 
 def get_user_wallpaper(person: ClassifiedUser):
     if person.get_user().is_person():
-        return MEDIA_URL + (str(person.wallpaper) or "wallpaper/person_wall_default.jpg")
+        return MEDIA_URL + (str(person.wallpaper) or "wallpaper/person_wall_default.png")
     else:
-        return MEDIA_URL + (str(person.wallpaper) or "wallpaper/org_wall_default.jpg")
+        return MEDIA_URL + (str(person.wallpaper) or "wallpaper/org_wall_default.png")
 
 
 # 检验是否要展示如何分享信息的帮助，预期只在stuinfo, orginfo, viewActivity使用
