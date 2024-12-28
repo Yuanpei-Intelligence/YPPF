@@ -6,6 +6,7 @@ from django.db.models.signals import pre_delete
 from django.db.models import QuerySet, Q
 from django.dispatch import receiver
 from django.db import transaction
+from django.contrib.auth.models import Permission
 
 from utils.models.descriptor import admin_only
 from utils.models.choice import choice, CustomizedDisplay, DefaultDisplay
@@ -13,6 +14,7 @@ from utils.models.manager import ManyRelatedManager
 from utils.models.permission import PermissionModelBase, BasePermission
 from generic.models import User
 from Appointment.config import appointment_config as CONFIG
+from Appointment.apps import AppointmentConfig
 
 __all__ = [
     'User',
@@ -141,6 +143,10 @@ class Room(models.Model):
         verbose_name = '房间'
         verbose_name_plural = verbose_name
         ordering = ['Rid']
+        # 可以临时修改来生成 migrations 文件，但具体的权限不要留在 develop 分支里
+        permissions = [
+            ('can_book_example_rooms', '可预约样例房间'),
+        ]
 
     # 房间编号我不确定是否需要。如果地下室有门牌的话（例如B101）保留房间编号比较好
     # 如果删除Rid记得把Rtitle设置成主键
@@ -153,6 +159,15 @@ class Room(models.Model):
     Rlatest_time = models.DateTimeField("摄像头心跳", auto_now_add=True)
     Rpresent = models.IntegerField('目前人数', default=0)
     image = models.ImageField('房间图片', upload_to='room_images', null=True)
+    # 不使用 “perms”，避免又一个 many-to-many 的表
+    required_perm = models.ForeignKey(
+        Permission, default=None, null=True, blank=True,
+        on_delete=models.SET_NULL)
+
+    def check_user_perm(self, user: User) -> bool:
+        '''检查用户是否有权限预约此房间'''
+        return self.required_perm is None or user.has_perm(
+            f'{AppointmentConfig.name}.{self.required_perm.codename}')
 
     # Rstatus 标记当前房间是否允许预约，可由管理员修改
     class Status(models.IntegerChoices):

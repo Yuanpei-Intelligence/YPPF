@@ -232,7 +232,7 @@
 				</div>   
 			</section>	 
 
-			{% for room_class in reservable_room_classes %}
+			{% for room_class, rooms in reservable_room_classes %}
 				<section class="section section-doctor" >
 					<div class="container-fluid" >
 						<div class="section-header text-center">
@@ -254,7 +254,7 @@
 							</form>
 						</div>
 						<div class="doctor-slider slider" >
-						{% for room in room_class.rooms.permitted %}
+						{% for room in rooms %}
 							<div class="profile-widget">
 								<div class="doc-img">
 										<img class="img-fluid" alt="User Image" src="/media/{{room.image}}">

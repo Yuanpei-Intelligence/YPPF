@@ -266,10 +266,8 @@ def credit(request):
 
 @identity_check(redirect_field_name='origin', auth_func=lambda x: True)
 def index(request):  # 主页
-    render_context = {}
-    render_context.update(
-        show_admin=(request.user.is_superuser or request.user.is_staff),
-    )
+    user: User = request.user
+    render_context = dict(show_admin=(user.is_superuser or user.is_staff))
     # 处理学院公告
     announcements = College_Announcement.objects.filter(
         show=College_Announcement.Show_Status.Yes)
@@ -304,11 +302,14 @@ def index(request):  # 主页
         '-Rtitle')                     # 开放房间
     statistics_info = [(room, (room.Rpresent * 10) // (room.Rmax or 1))
                        for room in unlimited_rooms]                                # 开放房间人数统计
-    # TODO: optimization
-    reservable_room_classes = [
-        rclass for rclass in RoomClass.objects.order_by('sort_idx')
-        if rclass.rooms.permitted().exists()
-    ]
+    reservable_room_classes = []
+    for rclass in RoomClass.objects.order_by('sort_idx').prefetch_related('rooms'):
+        # TODO: perm check optimization?
+        rooms = [room for room in rclass.rooms.permitted()
+                 if room.check_user_perm(user)]
+        if rooms:
+            reservable_room_classes.append((rclass, rooms))
+
     quick_reservable_rooms = Room.objects.permitted().filter(quick_reservable=True)
     room_info = [(room, room.Rid in occupied_rooms,
                   format_time(room_appointments[room.Rid]))
@@ -358,10 +359,12 @@ def arrange_time(request: HttpRequest):
     """
     选择预约时间
     """
-
+    user: User = request.user
     room = Room.objects.permitted().get(Rid=request.GET.get('Rid'))
+    if not room.check_user_perm(user):
+        raise PermissionError('您没有权限预约该房间！')
     # 判断当前用户是否可以进行长期预约
-    has_longterm_permission = get_participant(request.user).longterm
+    has_longterm_permission = get_participant(user).longterm
     is_longterm = (request.GET.get(
         'longterm') == 'on') and has_longterm_permission
     next_week = (request.GET.get('start_week') == '1') and is_longterm
@@ -478,7 +481,9 @@ def arrange_talk_room(request):
             or re_time.date() - datetime.now().date() > timedelta(days=6)):
         return redirect(reverse("Appointment:index"))
 
-    room_list = RoomClass.objects.get(name=room_class).rooms.permitted()
+    room_list = [
+        room for room in RoomClass.objects.get(name=room_class).rooms.permitted()
+        if room.check_user_perm(request.user)]
     Rids = [room.Rid for room in room_list]
     # TODO: Fix `get_talkroom_timerange`
     t_start, t_finish = web_func.get_talkroom_timerange(
