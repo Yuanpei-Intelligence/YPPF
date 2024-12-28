@@ -13,14 +13,7 @@ from utils.http import UserRequest, HttpRequest
 from utils.global_messages import wrong, succeed, message_url
 import utils.global_messages as my_messages
 from generic.utils import to_search_indices
-from Appointment.models import (
-    User,
-    Participant,
-    Room,
-    Appoint,
-    College_Announcement,
-    LongTermAppoint,
-)
+from Appointment.models import *
 from Appointment.extern.wechat import MessageType, notify_appoint
 from Appointment.utils.utils import (
     get_conflict_appoints, to_feedback_notification,
@@ -306,68 +299,51 @@ def index(request):  # 主页
         hour, rem = divmod(delta.seconds, 3600)
         return f"{rem // 60}min" if hour == 0 else f"{hour}h{rem // 60}min"
 
-    # --------- 1,2 地下室状态部分 ---------#
-    function_room_list = Room.objects.function_rooms().order_by('Rid')
-
     # --------- 地下室状态：left tab ---------#
     unlimited_rooms = room_list.unlimited().order_by(
         '-Rtitle')                     # 开放房间
     statistics_info = [(room, (room.Rpresent * 10) // (room.Rmax or 1))
-                       for room in unlimited_rooms]                                 # 开放房间人数统计
-
-    # --------- 地下室状态：right tab ---------#
-    talk_room_list = Room.objects.talk_rooms().order_by('Rid')
-    room_info = [(room,
-                  room.Rid in occupied_rooms,
+                       for room in unlimited_rooms]                                # 开放房间人数统计
+    # TODO: optimization
+    reservable_room_classes = [
+        rclass for rclass in RoomClass.objects.order_by('sort_idx')
+        if rclass.rooms.permitted().exists()
+    ]
+    quick_reservable_rooms = Room.objects.permitted().filter(quick_reservable=True)
+    room_info = [(room, room.Rid in occupied_rooms,
                   format_time(room_appointments[room.Rid]))
-                 for room in talk_room_list]                                       # 研讨室占用情况
-
-    # --------- 3 俄文楼部分 ---------#
-
-    russian_room_list = Room.objects.russian_rooms().order_by('Rid')                # 俄文楼
-    russ_len = len(russian_room_list)
+                 for room in quick_reservable_rooms]
 
     render_context.update(
-        function_room_list=function_room_list,
+        room_info=room_info,
         statistics_info=statistics_info,
-        talk_room_list=talk_room_list, room_info=room_info,
-        russian_room_list=russian_room_list, russ_len=russ_len,
+        reservable_room_classes=reservable_room_classes,
     )
 
     if request.method == "POST":
 
-        # YHT: added for Russian search
         request_time = request.POST.get("request_time", None)
-        russ_request_time = request.POST.get("russ_request_time", None)
-        check_type = ""
-        if request_time is None and russ_request_time is not None:
-            check_type = "russ"
-            request_time = russ_request_time
-        elif request_time is not None and russ_request_time is None:
-            check_type = "talk"
-        else:
+        room_class = request.POST.get("room_class", None)
+        if not request_time or not room_class:
             return render(request, 'Appointment/index.html', render_context)
-
-        if request_time != None and request_time != "":  # 初始加载或者不选时间直接搜索则直接返回index页面，否则进行如下反查时间
-            day, month, year = int(request_time[:2]), int(
-                request_time[3:5]), int(request_time[6:10])
-            re_time = datetime(year, month, day)  # 获取目前request时间的datetime结构
-            if re_time.date() < datetime.now().date():  # 如果搜过去时间
-                render_context.update(search_code=1,
-                                      search_message="请不要搜索已经过去的时间!")
-                return render(request, 'Appointment/index.html', render_context)
-            elif re_time.date() - datetime.now().date() > timedelta(days=6):
-                # 查看了7天之后的
-                render_context.update(search_code=1,
-                                      search_message="只能查看最近7天的情况!")
-                return render(request, 'Appointment/index.html', render_context)
-            # 到这里 搜索没问题 进行跳转
-            urls = my_messages.append_query(
-                reverse("Appointment:arrange_talk"),
-                year=year, month=month, day=day, type=check_type)
-            # YHT: added for Russian search
-            return redirect(urls)
-
+        # TODO: Fix this
+        day, month, year = int(request_time[:2]), int(
+            request_time[3:5]), int(request_time[6:10])
+        re_time = datetime(year, month, day)  # 获取目前request时间的datetime结构
+        if re_time.date() < datetime.now().date():  # 如果搜过去时间
+            render_context.update(
+                search_code=1, search_message="请不要搜索已经过去的时间!")
+            return render(request, 'Appointment/index.html', render_context)
+        elif re_time.date() - datetime.now().date() > timedelta(days=6):
+            # 查看了7天之后的
+            render_context.update(search_code=1,
+                                  search_message="只能查看最近7天的情况!")
+            return render(request, 'Appointment/index.html', render_context)
+        # 到这里 搜索没问题 进行跳转
+        urls = my_messages.append_query(
+            reverse("Appointment:arrange_talk"),
+            year=year, month=month, day=day, type=room_class)
+        return redirect(urls)
     return render(request, 'Appointment/index.html', render_context)
 
 
@@ -383,44 +359,14 @@ def arrange_time(request: HttpRequest):
     选择预约时间
     """
 
-    # 只接受GET方法，不接受POST方法
-    if request.method == 'POST':
-        return redirect(reverse('Appointment:index'))
-
+    room = Room.objects.permitted().get(Rid=request.GET.get('Rid'))
     # 判断当前用户是否可以进行长期预约
     has_longterm_permission = get_participant(request.user).longterm
-
-    # 获取房间编号
-    Rid = request.GET.get('Rid')
-    try:
-        room: Room = Room.objects.get(Rid=Rid)
-        room_object = room  # 用于前端使用
-    except:
-        return redirect(
-            message_url(wrong(f"房间号{Rid}不存在!"),
-                        reverse("Appointment:account")))
-
-    if room.Rstatus == Room.Status.FORBIDDEN:
-        return render(request, 'Appointment/booking.html', locals())
-
-    # start_week=0代表查看本周，start_week=1代表查看下周
-    start_week = request.GET.get('start_week')
-    if start_week is None:
-        is_longterm = False
-        start_week = 0
-    else:
-        is_longterm = True
-    try:
-        start_week = int(start_week)
-        # 参数检查
-        assert start_week == 0 or start_week == 1
-        assert has_longterm_permission or not is_longterm
-    except:
-        return redirect(reverse('Appointment:index'))
-
+    is_longterm = (request.GET.get(
+        'longterm') == 'on') and has_longterm_permission
+    next_week = (request.GET.get('start_week') == '1') and is_longterm
     dayrange_list, start_day, end_next_day = web_func.get_dayrange(
-        day_offset=start_week * 7)
-
+        day_offset=7 if next_week else 0)
     # 获取预约时间的最大时间块id
     max_stamp_id = web_func.get_time_id(room, room.Rfinish, mode="leftopen")
 
@@ -450,14 +396,14 @@ def arrange_time(request: HttpRequest):
 
     # 筛选已经存在的预约
     appoints: QuerySet[Appoint] = Appoint.objects.not_canceled().filter(
-        Room_id=Rid, Afinish__gte=start_day, Astart__date__lt=end_next_day)
+        Room_id=room.Rid, Afinish__gte=start_day, Astart__date__lt=end_next_day)
 
     start_day = dayrange_list[0]
     start_day = date(start_day['year'], start_day['month'], start_day['day'])
     # 给出已有预约的信息
     # TODO: 后续可优化
     for appoint in appoints:
-        change_id_list = web_func.timerange2idlist(Rid, appoint.Astart,
+        change_id_list = web_func.timerange2idlist(room.Rid, appoint.Astart,
                                                    appoint.Afinish,
                                                    max_stamp_id)
         appoint_usage = html.escape(appoint.Ausage).replace('\n', '<br/>')
@@ -502,51 +448,39 @@ def arrange_time(request: HttpRequest):
             day['timesection'][i]['display_info'] = display_info
 
     # 删去今天已经过去的时间
-    if start_week == 0:
+    if not next_week:
         curr_stamp_id = web_func.get_time_id(room, datetime.now().time())
         for i in range(min(max_stamp_id, curr_stamp_id) + 1):
             dayrange_list[0]['timesection'][i]['status'] = TimeStatus.PASSED
 
-    # 转换成方便前端使用的形式
-    js_dayrange_list = json.dumps(dayrange_list)
-
-    # 获取房间信息，以支持房间切换的功能
-    function_room_list = Room.objects.function_rooms().order_by('Rid')
-    talk_room_list = Room.objects.talk_rooms().order_by('Rid')
-
-    return render(request, 'Appointment/booking.html', locals())
+    render_context = dict(
+        room_object=room,
+        is_longterm=is_longterm,
+        has_longterm_permission=has_longterm_permission,
+        start_week=1 if next_week else 0,
+        dayrange_list=dayrange_list,
+        # 转换成方便前端使用的形式
+        js_dayrange_list=json.dumps(dayrange_list),
+        TimeStatus=TimeStatus,
+    )
+    return render(request, 'Appointment/booking.html', render_context)
 
 
 @identity_check(redirect_field_name='origin')
 def arrange_talk_room(request):
 
-    try:
-        assert request.method == "GET"
-        year = int(request.GET.get("year"))
-        month = int(request.GET.get("month"))
-        day = int(request.GET.get("day"))
-        # YHT: added for russian search
-        check_type = str(request.GET.get("type"))
-        assert check_type in {"russ", "talk"}
-        re_time = datetime(year, month, day)  # 如果有bug 直接跳转
-        if (re_time.date() < datetime.now().date()
-                or re_time.date() - datetime.now().date() > timedelta(days=6)):
-            # 这种就是乱改url
-            return redirect(reverse("Appointment:index"))
-        # 接下来判断时间
-    except:
+    year = int(request.GET.get("year"))
+    month = int(request.GET.get("month"))
+    day = int(request.GET.get("day"))
+    room_class = str(request.GET.get("type"))
+    re_time = datetime(year, month, day)  # 如果有bug 直接跳转
+    if (re_time.date() < datetime.now().date()
+            or re_time.date() - datetime.now().date() > timedelta(days=6)):
         return redirect(reverse("Appointment:index"))
 
-    is_today = False
-    if check_type == "talk":
-        if re_time.date() == datetime.now().date():
-            is_today = True
-            show_min = CONFIG.today_min
-        room_list = Room.objects.talk_rooms().basement_only().order_by('Rmin', 'Rid')
-    else:  # type == "russ"
-        room_list = Room.objects.russian_rooms().order_by('Rid')
-    # YHT: added for russian search
+    room_list = RoomClass.objects.get(name=room_class).rooms.permitted()
     Rids = [room.Rid for room in room_list]
+    # TODO: Fix `get_talkroom_timerange`
     t_start, t_finish = web_func.get_talkroom_timerange(
         room_list)  # 对所有讨论室都有一个统一的时间id标准
     t_start = web_func.time2datetime(year, month, day, t_start)  # 转换成datetime类

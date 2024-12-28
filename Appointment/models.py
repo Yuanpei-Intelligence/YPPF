@@ -18,6 +18,7 @@ __all__ = [
     'User',
     'College_Announcement',
     'Participant',
+    'RoomClass',
     'Room',
     'Appoint',
     'LongTermAppoint',
@@ -102,15 +103,6 @@ class RoomQuerySet(models.QuerySet['Room']):
         '''只保留所有可用的房间'''
         return self.filter(Rstatus__in=[Room.Status.UNLIMITED, Room.Status.PERMITTED])
 
-    def basement_only(self):
-        '''只保留所有地下室的房间'''
-        return self.exclude(Rid__icontains="R")
-
-    def russian_only(self):
-        '''只保留所有俄文楼的房间'''
-        return self.filter(Rid__icontains="R")
-
-
 class RoomManager(models.Manager['Room']):
     def get_queryset(self) -> RoomQuerySet:
         return RoomQuerySet(self.model, using=self._db, hints=self._hints)
@@ -124,27 +116,25 @@ class RoomManager(models.Manager['Room']):
     def unlimited(self):
         return self.get_queryset().unlimited()
 
-    def function_rooms(self):
-        '''获取所有可预约功能房'''
-        titles = ['航模', '绘画', '书法', '活动']
-        title_query = ~Q(Rtitle__icontains="研讨")
-        title_query |= Q(Rtitle__icontains="/")
-        for room_title in titles:
-            title_query |= Q(Rtitle__icontains=room_title)
-        return self.get_queryset().permitted().basement_only().filter(title_query)
-
-    def talk_rooms(self):
-        '''获取所有研讨室'''
-        return self.get_queryset().permitted().filter(Rtitle__icontains="研讨")
-
-    def russian_rooms(self):
-        '''获取所有可预约俄文楼教室'''
-        return self.get_queryset().permitted().russian_only()
-
     def interview_room_ids(self):
-        '''获取所有可面试俄文楼教室'''
         return set()
 
+
+class RoomClass(models.Model):
+    class Meta:
+        verbose_name = '房间类别'
+        verbose_name_plural = verbose_name
+
+    sort_idx = models.SmallIntegerField('主页排序')
+    name = models.CharField('类别名称', max_length=32, unique=True)
+    description = models.CharField(
+        '类别描述', max_length=256, blank=True, default='')
+    rooms = models.ManyToManyField(
+        'Room', verbose_name='房间列表', db_index=True, related_name='classes')
+
+    # Used for room's many-to-many field
+    def __str__(self):
+        return self.name
 
 class Room(models.Model):
     class Meta:
@@ -162,12 +152,14 @@ class Room(models.Model):
     Rfinish = models.TimeField('最迟预约时间')
     Rlatest_time = models.DateTimeField("摄像头心跳", auto_now_add=True)
     Rpresent = models.IntegerField('目前人数', default=0)
+    image = models.ImageField('房间图片', upload_to='room_images', null=True)
 
     # Rstatus 标记当前房间是否允许预约，可由管理员修改
     class Status(models.IntegerChoices):
         PERMITTED = 0, '允许预约'  # 允许预约
         UNLIMITED = 1, '无需预约'  # 允许使用
         FORBIDDEN = 2, '禁止使用'  # 禁止使用
+    quick_reservable = models.BooleanField('支持临时预约', default=False)
 
     Rstatus = models.SmallIntegerField('房间状态', choices=Status.choices, default=0)
 
