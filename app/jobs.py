@@ -168,7 +168,7 @@ def happy_birthday():
         "愿少年不惧岁月长，新的一岁光彩依旧，兴致盎然~",
         "旦逢良辰，顺颂时宜。愿君常似少年时，永远二十赶朝暮~",
     ]
-    title = "元培学院祝你生日快乐！"
+    title = "人工智能研究院祝你生日快乐！"
     url = None
     sender = User.objects.get(username='zz00000')
     for np, message in zip(crowds, messages):

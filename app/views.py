@@ -1282,10 +1282,10 @@ def forgetPassword(request: HttpRequest):
                         "有效)</span></p>"
                         f'点击进入<a href="{request.build_absolute_uri("/")}">元培成长档案</a><br/>'
                         "<br/>"
-                        "元培学院开发组<br/>" + datetime.now().strftime("%Y年%m月%d日")
+                        "智慧校园<br/>" + datetime.now().strftime("%Y年%m月%d日")
                     )
                     post_data = {
-                        "sender": "元培学院开发组",  # 发件人标识
+                        "sender": "智慧校园开发组",  # 发件人标识
                         "toaddrs": [email],  # 收件人列表
                         "subject": "YPPF登录验证",  # 邮件主题/标题
                         "content": msg,  # 邮件内容

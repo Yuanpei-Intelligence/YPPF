@@ -11,8 +11,8 @@ from generic.models import to_acronym
 
 
 # 后台显示
-admin.site.site_title = '元培智慧书院管理后台'
-admin.site.site_header = '元培智慧书院 - 管理后台'
+admin.site.site_title = '智能空间管理系统管理后台'
+admin.site.site_header = '智能空间管理系统 - 管理后台'
 
 
 # Django自带模型
