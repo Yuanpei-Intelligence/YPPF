@@ -266,6 +266,10 @@ def door_check(request: HttpRequest):
     if not room.quick_reservable:
         return _temp_failed(f"该房间不可临时预约", False)
 
+    # 无权限
+    if not room.check_user_perm(student.Sid):
+        return _temp_failed(f"无权预约", False)
+
     # 该房间可以用于临时预约
     start, finish, timeid, valid = _temp_appoint_valid(room)
 
