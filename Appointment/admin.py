@@ -66,7 +66,7 @@ class ParticipantAdmin(admin.ModelAdmin):
         stu_all = Participant.objects.all()
         stu_all = stu_all.filter(hidden=False)
         stu_all = User.objects.filter(id__in=stu_all.values_list('Sid__id'))
-        User.objects.bulk_recover_credit(stu_all, 1, '地下室：全体学生恢复')
+        User.objects.bulk_recover_credit(stu_all, 1, '全体学生恢复')
         return self.message_user(request, '操作成功!')
 
     @as_action('赋予长期预约权限', actions, 'change', update=True)
@@ -267,7 +267,7 @@ class AppointAdmin(admin.ModelAdmin):
     def _violated2judged(self, appoint: Appoint):
         appoint.Astatus = Appoint.Status.JUDGED
         appoint.save()
-        User.objects.modify_credit(appoint.get_major_id(), 1, '地下室：申诉')
+        User.objects.modify_credit(appoint.get_major_id(), 1, '申诉')
         notify_appoint(appoint, MessageType.APPEAL_APPROVED, appoint.get_status(),
                        students_id=[appoint.get_major_id()], admin=True)
         logger.info(f"{appoint.Aid}号预约被管理员通过，发起人：{_appointor(appoint)}")
@@ -302,7 +302,7 @@ class AppointAdmin(admin.ModelAdmin):
             ori_status = appoint.get_status()
             if appoint.Astatus != Appoint.Status.VIOLATED:
                 appoint.Astatus = Appoint.Status.VIOLATED
-                User.objects.modify_credit(appoint.get_major_id(), -1, '地下室：后台')
+                User.objects.modify_credit(appoint.get_major_id(), -1, '后台')
             appoint.Areason = Appoint.Reason.R_ELSE
             appoint.save()
 

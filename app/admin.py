@@ -703,26 +703,6 @@ class HelpAdmin(admin.ModelAdmin):
     list_display = ["id", "title"]
 
 
-@admin.register(Wishes)
-class WishesAdmin(admin.ModelAdmin):
-    list_display = ["id", "text", 'time', "background_display"]
-    list_filter = ('time', 'background')
-    
-    def background_display(self, obj):
-        return mark_safe(f'<span style="color: {obj.background};"><strong>{obj.background}</strong></span>')
-    background_display.short_description = "背景颜色"
-
-    actions = ['change_color']
-
-    @as_action("随机设置背景颜色", superuser=False, update=True)
-    def change_color(self, request, queryset):
-        for wish in queryset:
-            wish.background = Wishes.rand_color()
-            wish.save()
-        return self.message_user(request=request,
-                                 message='修改成功!已经随机设置了背景颜色!')
-        
-
 @admin.register(ModifyRecord)
 class ModifyRecordAdmin(admin.ModelAdmin):
     list_display = ["id", "user", "usertype", "name", 'time']
