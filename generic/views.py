@@ -102,7 +102,7 @@ class Index(SecureTemplateView):
         if origin and self._is_origin_safe(self.request, origin):
             return self.redirect(origin)
         else:
-            return self.redirect('underground')
+            return self.redirect('/underground')
 
     def _is_origin_safe(self, request: HttpRequest,
                         origin: str | None = None) -> bool:
