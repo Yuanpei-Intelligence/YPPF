@@ -13,7 +13,6 @@ from app.config import *
 from app.models import (
     User,
     NaturalPerson,
-    Freshman,
     Position,
     Organization,
     OrganizationTag,
@@ -32,7 +31,7 @@ __all__ = [
     'create_person_account', 'create_org_account',
     # load functions
     'load_stu', 'load_orgtype', 'load_org',
-    'load_freshman', 'load_help', 
+    'load_help', 
     'load_org_tag', 'load_old_org_tags',
 ]
 
@@ -365,32 +364,6 @@ def load_stu(filepath: str, output_func: Callable=None, html=False):
                 f'最后一次失败原因为: {fail_info}' if fail_info is not None else '',
                 ))
     return try_output(msg, output_func, html)
-
-
-def load_freshman(filepath: str, output_func: Callable=None, html=False):
-    freshman_df = load_file(filepath)
-    freshman_list = []
-    for _, freshman_dict in tqdm(freshman_df.iterrows()):
-        sid = freshman_dict["学号"]
-        name = freshman_dict["姓名"]
-        gender = freshman_dict["性别"]
-        birthday = datetime.strptime(freshman_dict["生日"], "%Y/%m/%d").date()
-        place = freshman_dict["生源地"]
-        grade = freshman_dict.get("年级", "20" + sid[:2])
-
-        freshman_list.append(
-            Freshman(
-                sid=sid,
-                name=name,
-                gender=gender,
-                birthday=birthday,
-                place=place,
-                grade=grade,
-                status=Freshman.Status.UNREGISTERED
-            )
-        )
-    Freshman.objects.bulk_create(freshman_list)
-    return try_output("导入新生信息成功！", output_func, html)
 
 
 def load_help(filepath: str, output_func: Callable=None, html=False):

@@ -295,18 +295,6 @@ class NaturalPersonAdmin(admin.ModelAdmin):
         context["form"] = form
         return render(request, "admin/naturalperson_import_excel.html", context)
 
-@admin.register(Freshman)
-class FreshmanAdmin(admin.ModelAdmin):
-    list_display = [
-        "sid",
-        "name",
-        "place",
-        "grade",
-        "status",
-    ]
-    search_fields = ("sid", "name")
-    list_filter = ("status", "grade", "place")
-
 
 @admin.register(OrganizationType)
 class OrganizationTypeAdmin(admin.ModelAdmin):

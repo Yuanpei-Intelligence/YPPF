@@ -59,7 +59,6 @@ register_dump_groups('org', ['org_activity'])
 register_dump_groups('person', ['person_position', 'person_activity', 'person_feedback', 'person_course'])
 
 register_load('stu', load_stu, 'stuinf.csv')
-register_load('freshman', load_freshman, 'freshman.csv')
 register_load('orgtype', load_orgtype, 'orgtypeinf.csv')
 register_load('org', load_org, 'orginf.csv')
 register_load('orgtag', load_org_tag, 'orgtag.csv')
