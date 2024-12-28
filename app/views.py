@@ -63,7 +63,7 @@ def shiftAccount(request: HttpRequest):
         arg_url = request.GET["origin"]
         if arg_url.startswith('/'):  # 暂时只允许内部链接
             return redirect(arg_url)
-    return redirect("/welcome/")
+    return redirect("/underground/")
 
 
 # Return content
@@ -733,7 +733,7 @@ def homepage(request: UserRequest):
     # -------------------------------天气结束-------------------------
 
     # 新版侧边栏, 顶栏等的呈现，采用 bar_display, 必须放在render前最后一步
-    bar_display = utils.get_sidebar_and_navbar(request.user, "元培生活")
+    bar_display = utils.get_sidebar_and_navbar(request.user, "AI生活")
     # bar_display["title_name"] = "Welcome Page"
     # bar_display["navbar_name"] = "元培生活"
 
@@ -1242,7 +1242,7 @@ def forgetPassword(request: HttpRequest):
         - 如果引入企业微信验证，建议将send_captcha分为'qywx'和'email'
     """
     if request.user.is_authenticated:
-        return redirect("/welcome/")
+        return redirect("/underground/")
 
     if request.session.get("received_user"):
         username = request.session["received_user"]  # 自动填充，方便跳转后继续
@@ -1285,7 +1285,7 @@ def forgetPassword(request: HttpRequest):
                         "智慧校园<br/>" + datetime.now().strftime("%Y年%m月%d日")
                     )
                     post_data = {
-                        "sender": "智慧校园开发组",  # 发件人标识
+                        "sender": "北京大学人工智能研究院",  # 发件人标识
                         "toaddrs": [email],  # 收件人列表
                         "subject": "YPPF登录验证",  # 邮件主题/标题
                         "content": msg,  # 邮件内容

@@ -8,7 +8,7 @@
         <title>我的预约 | 智能空间管理系统</title>
         <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=0">
         <!-- Favicons -->
-        <link type="image/x-icon" href="{% static 'Appointment/assets/img/yp_favicon.png' %} " rel="icon">
+        <link type="image/x-icon" href="{% static 'Appointment/assets/img/AI_logo_red.png' %} " rel="icon">
         <!-- Bootstrap CSS -->
         <link rel="stylesheet" href="{% static 'Appointment/assets/css/bootstrap.min.css' %}">
         <!-- Fontawesome CSS -->
@@ -60,13 +60,13 @@
                                 <!--<a href="admin/index.html" target="_blank">Admin</a>-->
                             </li>
                             <li>
-                                <a href="agreement">无占座协议</a>
-                            </li>
-                            <li>
 								<a href="instructions">使用规范</a>
 							</li>
                             <li>
-                                <a href="/">成长档案</a>
+                                <a href="/welcome">成长档案</a>
+                            </li>
+                            <li>
+                                <a href="/notifications">通知信箱</a>
                             </li>
                             {% if show_admin %}
                                 <li>
@@ -106,11 +106,6 @@
                                         <div class="profile-det-info">
                                             <h3>
                                                 {{ my_info.name }}
-                                                {% if my_info.agree_time %}
-                                                    <span id="ret" class="badge badge-pill badge-success">已签署协议</span>
-                                                {% else %}
-                                                    <span id="ret" class="badge badge-pill badge-danger">未签署协议</span>
-                                                {% endif %}
                                             </h3>
                                             <div class="patient-details">
                                                 <h5 class="mb-0">{{ my_info.id }}</h5>
@@ -470,7 +465,7 @@
                             <div class="row">
                                 <div class=" col-lg-1">
                                     <div class="footer-logo">
-                                        <img src="{% static 'Appointment/assets/img/yuan_logo_white.png' %} " alt="logo">
+                                        <img src="{% static 'Appointment/assets/img/AI_logo_white.png' %} " alt="logo">
                                     </div>
                                 </div>
                                 <div class=" col-lg-11">
@@ -478,7 +473,7 @@
                                     <div class="copyright-menu">
                                         <ul class="policy-menu">
                                             <li>
-                                                <a href="https://github.com/Yuanpei-Intelligence/YPPF">智慧校园开发组</a>
+                                                <a href="https://www.ai.pku.edu.cn/">北京大学人工智能研究院</a>
                                             </li>
                                         </ul>
                                         <ul class="policy-menu">

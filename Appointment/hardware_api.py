@@ -221,12 +221,6 @@ def door_check(request: HttpRequest):
     if room.Rstatus == Room.Status.FORBIDDEN:   # 禁止使用的房间
         return _fail(f"刷卡拒绝：禁止使用")
 
-    if room.RneedAgree and student.agree_time is None:
-        notify_user(Sid, '您刷卡的房间需要签署协议',
-                    '点击本消息即可快捷跳转到用户协议页面',
-                    place=room.__str__(), url='agreement', btntxt='签署协议')
-        return _fail(f"刷卡拒绝：未签署协议")
-
     if room.Rstatus == Room.Status.UNLIMITED:   # 自习室
         if room.RIsAllNight:
             # 通宵自习室
