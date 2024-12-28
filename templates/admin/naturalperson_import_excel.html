@@ -1,0 +1,17 @@
+{# templates/admin/naturalperson_import_excel.html #}
+{% extends "admin/base_site.html" %}
+{% load static i18n %}
+{% block title %}Excel 导入 - {{ title }}{% endblock %}
+
+{% block content %}
+    <h1>Excel 导入 - {{ opts.verbose_name_plural }}</h1>
+
+    <form method="POST" enctype="multipart/form-data">
+        {% csrf_token %}
+        {{ form.as_p }}
+        <button type="submit" class="default">导入</button>
+        <a href="{% url 'admin:app_naturalperson_changelist' %}" class="button">
+            返回列表
+        </a>
+    </form>
+{% endblock %}
