@@ -1,7 +1,10 @@
 import openpyxl
 import random
 from datetime import datetime
+import csv
+import io
 
+from django.http import HttpResponse
 from django.urls import path, reverse
 from django.shortcuts import render, redirect
 from django.contrib import admin, messages
@@ -19,6 +22,7 @@ from app.config import GLOBAL_CONFIG
 from scheduler.cancel import remove_job
 from app.org_utils import accept_modifyorg_submit
 
+from Appointment.models import Participant
 
 class ExcelImportForm(forms.Form):
     """
@@ -186,6 +190,7 @@ class NaturalPersonAdmin(admin.ModelAdmin):
             form = ExcelImportForm(request.POST, request.FILES)
             if form.is_valid():
                 excel_file = request.FILES["excel_file"]
+                password_list = []  # List to store (username, password) tuples
                 try:
                     with transaction.atomic():
                         # 使用 openpyxl 读取 Excel
@@ -194,42 +199,94 @@ class NaturalPersonAdmin(admin.ModelAdmin):
 
                         # 从表格的第二行开始读(假设第一行为标题)
                         for row_idx, row in enumerate(sheet.iter_rows(values_only=True), start=1):
+
                             if row_idx == 1:
                                 # 第一行标题跳过
                                 continue
 
                             # row是一个元组
-                            sid = row[0]
-                            name_value = row[1]
-                            gender = row[2]
-                            email = row[3]
+                            sid = str(row[0]).strip()
+                            name_value = str(row[1]).strip()
+                            gender = str(row[2]).strip()
+                            email = str(row[3]).strip()
+                            student_or_teacher = str(row[4]).strip()
                             # ... 视情况增加更多字段
 
-                            assert '@' in email, f"第{row_idx}行的邮箱格式不正确"
-                            assert gender in ("男", "女"), f"第{row_idx}行的性别格式不正确"
-                            
+                            # 如果有字段都是空的，跳过
+                            empty_symbol = [None, "", "None"]
+                            if any(field in empty_symbol for field in (sid, name_value, gender, email, student_or_teacher)):
+                                continue
+
+                            # 数据验证
+                            assert '@' in email, f"第{row_idx}行的邮箱格式:{email}不正确"
+                            assert gender in (
+                                "男", "女"), f"第{row_idx}行的性别:{gender}格式不正确"
+                            assert student_or_teacher in (
+                                "学生", "教师"), f"第{row_idx}行的身份格式P{student_or_teacher}不正确"
+
+                            # 生成性别枚举
                             np_gender = (
-                                NaturalPerson.Gender.MALE if gender == "男" else NaturalPerson.Gender.FEMALE)
-
-                            password = GLOBAL_CONFIG.hasher.encode(sid)
-
-                            user = User.objects.create_user(
-                                username=sid, name=name_value,
-                                usertype=User.Type.STUDENT,
-                                password=password
+                                NaturalPerson.Gender.MALE if gender == "男" else NaturalPerson.Gender.FEMALE
                             )
 
+                            # 生成密码，这里假设密码为SID，您可以根据需求更改
+                            password = GLOBAL_CONFIG.hasher.encode(
+                                sid)[:12]  # 或者使用其他生成方式
+
+                            # 创建用户
+                            user = User.objects.create_user(
+                                username=sid,
+                                name=name_value,
+                                usertype=User.Type.STUDENT if student_or_teacher == "学生" else User.Type.TEACHER,
+                                password=password  # 设置明文密码
+                            )
+
+                            # 创建NaturalPerson实例
                             NaturalPerson.objects.create(
-                                user,
+                                user=user,
                                 stu_id_dbonly=sid,
                                 name=name_value,
                                 gender=np_gender,
                                 email=email,
+                                # ... 其他字段
                             )
 
-                    messages.success(request, "Excel 导入成功！")
-                    # 导入结束后重定向回列表页
-                    return redirect("admin:app_naturalperson_changelist")
+                            # 创建预约用户
+                            Participant.objects.create(Sid=user)
+
+                            # 添加到密码列表
+                            password_list.append((sid, name_value, password))
+
+                    # 导入结束后生成CSV
+                    if password_list:
+                        # 创建一个内存中的文本流
+                        csv_buffer = io.StringIO()
+                        csv_writer = csv.writer(csv_buffer)
+
+                        # 写入表头
+                        csv_writer.writerow(['ID', '姓名', '密码'])
+
+                        # 写入数据行
+                        for uid, name, pwd in password_list:
+                            csv_writer.writerow([uid, name, pwd])
+
+                        # 获取CSV内容
+                        csv_content = csv_buffer.getvalue()
+                        csv_buffer.close()
+
+                        # 创建HTTP响应
+                        response = HttpResponse(
+                            csv_content, content_type='text/csv')
+                        response['Content-Disposition'] = 'attachment; filename="user_password.csv"'
+
+                        # 添加成功消息
+                        messages.success(request, "Excel 导入成功！下载密码列表。")
+
+                        return response
+                    else:
+                        messages.success(request, "Excel 导入成功，但未导入任何用户。")
+                        return redirect("admin:app_naturalperson_changelist")
+
                 except Exception as e:
                     messages.error(request, f"导入失败：{e}")
         else:
