@@ -20,7 +20,6 @@ from app import (
 urlpatterns = [
     # path("requestLoginOrg/", views.requestLoginOrg, name="requestLoginOrg"), # 已废弃
     path("welcome/", views.homepage, name="welcome"),
-    path("freshman/", views.freshman, name="freshman"),
     path("agreement/", views.userAgreement, name="userAgreement"),
     path("shiftAccount/", views.shiftAccount, name="shiftAccount"),
     # path("org/", views.org, name="org"),

@@ -58,7 +58,6 @@ __all__ = [
     'User',
     'NaturalPerson',
     'Person',
-    'Freshman',
     'OrganizationType',
     'OrganizationTag',
     'Semester',
@@ -418,31 +417,6 @@ class NaturalPerson(models.Model):
 
 
 Person: TypeAlias = NaturalPerson
-
-
-class Freshman(models.Model):
-    class Meta:
-        verbose_name = "0.新生信息"
-        verbose_name_plural = verbose_name
-
-    sid = models.CharField("学号", max_length=20, unique=True)
-    name = models.CharField("姓名", max_length=10)
-    gender = models.CharField("性别", max_length=5)
-    birthday = models.DateField("生日")
-    place = models.CharField("生源地", default="其它", max_length=32, blank=True)
-
-    class Status(models.IntegerChoices):
-        UNREGISTERED = (0, "未注册")
-        REGISTERED = (1, "已注册")
-
-    grade = models.CharField("年级", max_length=5, null=True, blank=True)
-    status = models.SmallIntegerField(
-        "注册状态", choices=Status.choices, default=0)
-
-    def exists(self):
-        user_exist = User.objects.filter(username=self.sid).exists()
-        person_exist = SQ.mfilter(NaturalPerson.person_id, username=self.sid).exists()
-        return "person" if person_exist else ("user" if user_exist else "")
 
 
 class OrganizationType(models.Model):

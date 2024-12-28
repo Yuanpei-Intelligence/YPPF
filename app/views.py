@@ -16,7 +16,6 @@ from utils.hasher import MyMD5Hasher
 from app.views_dependency import *
 from app.models import (
     NaturalPerson,
-    Freshman,
     Position,
     Organization,
     OrganizationTag,
@@ -32,7 +31,6 @@ from app.utils import (
 )
 from extern.wechat import (
     send_verify_code,
-    invite_to_wechat,
 )
 from app.notification_utils import (
     notification_status_change,
@@ -885,168 +883,6 @@ def accountSetting(request: UserRequest):
             # else: 没有更新
 
         return render(request, "org_account_setting.html", locals())
-
-
-def _create_freshman_account(sid: str, email: str = None):
-    """创建用户和自然人，检查并修改新生创建状态，原子化操作"""
-    try:
-        with transaction.atomic():
-            current = "获取新生信息"
-            freshman: Freshman = Freshman.objects.select_for_update().get(sid=sid)
-            name = freshman.name
-            np_gender = (NaturalPerson.Gender.MALE
-                         if freshman.gender == "男" else
-                         NaturalPerson.Gender.FEMALE)
-            current = "确认注册状态"
-            assert freshman.status != Freshman.Status.REGISTERED
-            if email is None:
-                domain = "pku.edu.cn" if freshman.grade[2:].startswith(
-                    "1") else "stu.pku.edu.cn"
-                email = f"{sid}@{domain}"
-            current = "随机生成密码"
-            password = GLOBAL_CONFIG.hasher.encode(name + str(random.random()))
-            current = "创建用户"
-            user = User.objects.create_user(
-                username=sid, name=name,
-                usertype=User.Type.STUDENT,
-                password=password
-            )
-            current = "创建个人账号"
-            NaturalPerson.objects.create(
-                user,
-                stu_id_dbonly=sid,
-                name=name,
-                gender=np_gender,
-                stu_major="元培计划（待定）",
-                stu_grade=freshman.grade,
-                email=email,
-            )
-            current = "更新注册状态"
-            freshman.status = Freshman.Status.REGISTERED
-            freshman.save()
-        return
-    except:
-        return current
-
-
-@logger.secure_view()
-def freshman(request: HttpRequest):
-    if request.user.is_authenticated:
-        return redirect(message_url(wrong('你已经登录，无需进行注册!')))
-
-    if request.GET.get("success") is not None:
-        alert = request.GET.get("alert")
-        return render(request, "registerSuccess.html", dict(alert=alert))
-
-    # 选择生源地列表，前端使用量
-    address_set = set(Freshman.objects.all().values_list("place", flat=True))
-    address_set.discard("")
-    address_set.discard("其它")
-    address_list = sorted(address_set)
-    address_list.append("其它")
-    html_path = "freshman-top.html"
-    # 准备创建用的变量
-    need_create = False
-    if request.method == "POST":
-        # 这些也是失败时的前端使用量
-        try:
-            sid = request.POST["sid"]
-            sname = request.POST["sname"]
-            gender = request.POST["gender"]
-            send_to = request.POST.get("type", "")
-            check_more = not send_to
-            if check_more:
-                birthday = request.POST["birthday"]  # 前端使用
-                birthplace = request.POST["birthplace"]
-                email = request.POST["email"]
-        except:
-            err_msg = "提交信息不足"
-            return render(request, html_path, locals())
-        try:
-            sid = str(sid)
-            sname = str(sname)
-            gender = str(gender)
-            if check_more:
-                birthday_date = datetime.strptime(birthday, "%Y-%m-%d").date()
-                birthplace = str(birthplace)
-                email = str(email)
-        except:
-            err_msg = "错误的个人信息格式"
-            return render(request, html_path, locals())
-        try:
-            freshman: Freshman = Freshman.objects.get(sid=sid)
-        except:
-            err_msg = "暂不存在该学号的新生信息"
-            return render(request, html_path, locals())
-        try:
-            assert freshman.name == sname, "姓名不匹配"
-            assert freshman.gender == gender, "个人信息错误"
-            if check_more:
-                assert freshman.birthday == birthday_date, "个人信息错误"
-                if freshman.place != "":
-                    assert freshman.place == birthplace, "生源地错误"
-                else:
-                    assert "其它" == birthplace, "生源地错误"
-                assert "@" in email, "请使用合法的邮件地址"
-            assert gender in ["男", "女"], "性别数据异常，请联系管理员"
-        except Exception as e:
-            err_msg = str(e)
-            return render(request, html_path, locals())
-        if check_more:
-            need_create = True
-        elif send_to == "wechat":
-            from extern.wechat import send_wechat
-            auth = GLOBAL_CONFIG.hasher.encode(sid + "_freshman_register")
-            send_wechat(
-                [sid], "新生注册邀请", "点击按钮即可注册账号",
-                url=f"/freshman/?sid={sid}&auth={auth}"
-            )
-            err_msg = "已向企业微信发送注册邀请，点击邀请信息即可注册！"
-            return render(request, html_path, locals())
-
-    if request.GET.get("sid") is not None and request.GET.get("auth") is not None:
-        sid = request.GET["sid"]
-        auth = request.GET["auth"]
-        if auth != GLOBAL_CONFIG.hasher.encode(sid + "_freshman_register"):
-            err_msg = "密钥错误，验证失败"
-            return render(request, html_path, locals())
-        need_create = True
-
-    if need_create:
-        try:
-            email = email
-        except:
-            email = None
-        try:
-            freshman: Freshman = Freshman.objects.get(sid=sid)
-        except:
-            err_msg = "暂不存在该学号的新生信息"
-            return render(request, html_path, locals())
-        try:
-            exist = freshman.exists()
-            assert exist != "user", "用户仅部分注册，请联系管理员"
-            registered = freshman.status == Freshman.Status.REGISTERED
-            assert not (exist and not registered), "您尚未注册，但用户已存在，请联系管理员"
-            assert not (not exist and registered), "您已经注册，但用户不存在，请联系管理员"
-            if exist or registered:
-                err_msg = "您的账号已被注册过，请阅读使用说明！"
-                return redirect("/freshman/?success=1&alert=" + err_msg)
-        except Exception as e:
-            err_msg = str(e)
-            return render(request, html_path, locals())
-
-        current = _create_freshman_account(sid, email=email)
-        if current is not None:
-            err_msg = f"在{current}时意外发生了错误，请联系管理员"
-            return render(request, html_path, locals())
-
-        # 发送企业微信邀请，不会报错
-        invite_to_wechat(sid, multithread=True)
-
-        err_msg = "您的账号已成功注册，请尽快加入企业微信以接受后续通知！"
-        return redirect("/freshman/?success=1&alert=" + err_msg)
-
-    return render(request, html_path, locals())
 
 
 @login_required(redirect_field_name="origin")
