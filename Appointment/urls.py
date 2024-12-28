@@ -32,7 +32,6 @@ urlpatterns = [
     # 账户
     path('admin-index.html', views.account, name='account'),
     path('admin-credit.html', views.credit, name='credit'),
-    path('agreement', views.agreement, name='agreement'),
     path('instructions', views.instructions, name='instructions')
 ] + [
     # 预约

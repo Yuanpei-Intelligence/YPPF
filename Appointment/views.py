@@ -164,8 +164,6 @@ def account(request: HttpRequest):
     Pid = request.user.username
     my_info = web_func.get_user_info(Pid)
     participant = get_participant(Pid)
-    if participant.agree_time is not None:
-        my_info['agree_time'] = str(participant.agree_time)
 
     has_longterm_permission = participant.longterm
 
@@ -250,8 +248,6 @@ def credit(request):
     Pid = request.user.username
     my_info = web_func.get_user_info(Pid)
     participant = get_participant(Pid)
-    if participant.agree_time is not None:
-        my_info['agree_time'] = str(participant.agree_time)
 
     # 头像信息
     img_path = get_avatar(request.user)
@@ -373,28 +369,6 @@ def index(request):  # 主页
             return redirect(urls)
 
     return render(request, 'Appointment/index.html', render_context)
-
-
-@identity_check(redirect_field_name='origin')
-def agreement(request):
-    render_context = {}
-    participant = get_participant(request.user)
-    if request.method == 'POST' and request.POST.get('type', '') == 'confirm':
-        try:
-            with transaction.atomic():
-                participant = get_participant(request.user, update=True)
-                participant.agree_time = datetime.now().date()
-                participant.save()
-            return redirect(message_url(
-                succeed('协议签署成功!'),
-                reverse("Appointment:account")))
-        except:
-            my_messages.wrong('签署失败，请重试！', render_context)
-    elif request.method == 'POST':
-        return redirect(reverse("Appointment:index"))
-    if participant.agree_time is not None:
-        render_context.update(agree_time=str(participant.agree_time))
-    return render(request, 'Appointment/agreement.html', render_context)
 
 
 @identity_check(redirect_field_name='origin')

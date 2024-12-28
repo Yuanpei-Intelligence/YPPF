@@ -35,26 +35,7 @@ class ParticipantAdmin(admin.ModelAdmin):
     list_display = ('Sid_id', 'name', 'credit', 'longterm', 'hidden')
     list_display_links = ('Sid_id', 'name')
 
-    class AgreeFilter(admin.SimpleListFilter):
-        title = '签署状态'
-        parameter_name = 'Agree'
-    
-        def lookups(self, request, model_admin):
-            '''针对字段值设置过滤器的显示效果'''
-            return (
-                ('true', "已签署"),
-                ('false', "未签署"),
-            )
-        
-        def queryset(self, request, queryset):
-            '''定义过滤器的过滤动作'''
-            if self.value() == 'true':
-                return queryset.exclude(agree_time__isnull=True)
-            elif self.value() == 'false':
-                return queryset.filter(agree_time__isnull=True)
-            return queryset
-
-    list_filter = ('Sid__credit', 'longterm', 'hidden', AgreeFilter)
+    list_filter = ('Sid__credit', 'longterm', 'hidden')
 
     @readonly_inline
     class AppointInline(admin.TabularInline):
