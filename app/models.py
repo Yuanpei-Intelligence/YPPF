@@ -391,11 +391,11 @@ class NaturalPerson(models.Model):
         info = [self.name]
         info.append(self.nickname if (self.show_nickname) else "未公开")
 
-        info += [self.stu_grade, self.stu_class]
+        # info += [self.stu_grade, self.stu_class]
         # info.append(self.nickname if (self.show_nickname) else unpublished)
         # info.append(
         #    unpublished if ((not self.show_gender) or (self.gender == None)) else gender[self.gender])
-        info.append(self.stu_major if (self.show_major) else "未公开")
+        # info.append(self.stu_major if (self.show_major) else "未公开")
         # info.append(self.email if (self.show_email) else unpublished)
         # info.append(self.telephone if (self.show_tel) else unpublished)
         # info.append(self.stu_dorm if (self.show_dorm) else unpublished)
