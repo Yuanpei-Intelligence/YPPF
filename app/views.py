@@ -1011,7 +1011,7 @@ def search(request: HttpRequest):
         )
 
     # 小组要呈现的具体内容
-    organization_field = ["小组名称", "小组类型", "负责人", "近期活动"]
+    organization_field = ["小组名称", "小组类型", "负责人"]
 
     # # 搜索活动
     # activity_list = Activity.objects.activated().filter(

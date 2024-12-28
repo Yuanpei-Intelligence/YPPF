@@ -176,15 +176,6 @@
 
                                                     {% endfor %}
                                                 </td>
-                                                <td style="min-width: 100px;">
-                                                    {% for activity in orgn.activities %}
-                                                        <a href="/viewActivity/{{ activity.id }}">
-                                                            <u>{{activity.title }}</u>
-                                                        </a>
-                                                    {% empty %}
-                                                        暂无活动
-                                                    {% endfor %}
-                                                </td>
                                             </tr>
                                             {% endfor %}
                                         </tbody>
