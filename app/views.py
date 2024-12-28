@@ -733,7 +733,7 @@ def homepage(request: UserRequest):
     # -------------------------------天气结束-------------------------
 
     # 新版侧边栏, 顶栏等的呈现，采用 bar_display, 必须放在render前最后一步
-    bar_display = utils.get_sidebar_and_navbar(request.user, "元培生活")
+    bar_display = utils.get_sidebar_and_navbar(request.user, "AI生活")
     # bar_display["title_name"] = "Welcome Page"
     # bar_display["navbar_name"] = "元培生活"
 
@@ -1285,7 +1285,7 @@ def forgetPassword(request: HttpRequest):
                         "智慧校园<br/>" + datetime.now().strftime("%Y年%m月%d日")
                     )
                     post_data = {
-                        "sender": "智能空间管理系统开发组",  # 发件人标识
+                        "sender": "北京大学人工智能研究院",  # 发件人标识
                         "toaddrs": [email],  # 收件人列表
                         "subject": "YPPF登录验证",  # 邮件主题/标题
                         "content": msg,  # 邮件内容
