@@ -450,7 +450,6 @@ def orginfo(request: UserRequest):
     try:
         # 下面是小组信息
         org = Organization.objects.activated().get(oname=name)
-        org_tags = org.tags.all()
     except:
         return redirect(message_url(wrong('该小组不存在!')))
 
@@ -831,8 +830,6 @@ def accountSetting(request: UserRequest):
 
         useroj = Organization.objects.get(organization_id=user)
         former_wallpaper = utils.get_user_wallpaper(me)
-        org_tags = list(useroj.tags.all())
-        all_tags = list(OrganizationTag.objects.all())
         if request.method == "POST" and request.POST:
 
             ava = request.FILES.get("avatar")

@@ -40,7 +40,6 @@ __all__ = [
     'update_pos_application',
     'make_relevant_notification',
     'send_message_check',
-    'get_tags',
 ]
 
 
@@ -75,8 +74,6 @@ def accept_modifyorg_submit(application: ModifyOrganization):
 
     # 反向关联管理器可以使用set方法一次性设置，且设置被自动提交，无需save
     org.unsubscribers.set(NaturalPerson.objects.activated().all())
-    org_tags = get_tags(application.tags)
-    org.tags.set(org_tags)
     # org.save()
     charger = get_person_or_org(application.pos)
     pos = Position.objects.create(person=charger,
@@ -615,7 +612,7 @@ def send_message_check(me: Organization, request):
                 id__in=Position.objects.activated().filter(org=me).values_list("person", flat=True)
             ).select_related(SQ.f(NaturalPerson.person_id))
         else:  # 推广消息
-            receivers = get_promote_receiver(me)
+            receivers = []
         receivers = [receiver.person_id for receiver in receivers]
 
         # 创建通知
@@ -646,37 +643,3 @@ def send_message_check(me: Organization, request):
         return succeed(f"成功创建知晓类消息，发送给所有推广算法匹配的用户了！共{len(receivers)}人。")
     else:
         return succeed(f"成功创建知晓类消息，发送给所有的{receiver_type}了！共{len(receivers)}人。")
-
-
-# 查看前推广算法: commit b7d6ac7d358589f61db99a3990b1ecbe2a4ca039
-def get_promote_receiver(org: Organization, alpha=0.1, beta=0.1):
-    '''
-    每个人收到推送的概率= 0.1 + 0.1 * max（for 组织in person的关注）（(组织的tag与org的tag的交集数）/ 该组织tag数）
-    '''
-    # 准备发送对象：接受推广的np列表
-    raw_np_lst = list(NaturalPerson.objects.activated().filter(accept_promote=True))
-    # 初始化概率列表、tag比重列表
-    delta_lst = []
-    # org的tag列表
-    org_tags: QuerySet[OrganizationTag] = org.tags.all()
-    for np in raw_np_lst:
-        Max = 0.0
-        for organization in Organization.objects.activated().exclude(
-                id__in=np.unsubscribe_list.all()):
-            # organization的tag列表
-            organization_tags = list(organization.tags.all())
-            if len(organization_tags):
-                Max = max(Max, beta * len([
-                    tag for tag in org_tags if tag in organization_tags
-                ]) / len(organization_tags))
-        delta_lst.append(Max)
-    prob_lst = [alpha + delta for delta in delta_lst]
-    return [raw_np_lst[i] for i in range(len(raw_np_lst)) if prob_lst[i] >= random.random()]
-
-
-def get_tags(tag_names: str):
-    '''返回Tag对象的list'''
-    if isinstance(tag_names, str):
-        tag_names = [tag_name for tag_name in tag_names.split(";") if tag_name]
-    tag_list = list(OrganizationTag.objects.filter(name__in=tag_names))
-    return tag_list

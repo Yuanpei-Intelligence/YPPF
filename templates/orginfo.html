@@ -166,32 +166,6 @@
                                         {{ org.visit_times }}次浏览
                                     </li>
 
-
-                                    {% if org_tags %}
-                                    <li class="contacts-block__item">
-                                        <!-- 下面的css语句定义一个可滚动的框，其中滚动条隐藏 -->
-                                        <style> 
-                                            .MyStyle {margin:0px; padding:0px; display:inline-block; white-space: nowrap; overflow: hidden; overflow-x: scroll; -webkit-backface-visibility: hidden; -webkit-overflow-scrolling: touch; }
-                                            .MyStyle::-webkit-scrollbar {width:0; height:0; display:none;}
-                                        </style>
-                                        <div class="MyStyle">
-                                            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none"
-                                                    stroke="currentcolor" stroke-width="1.5" stroke-linecap="round"
-                                                    stroke-linejoin="round" class="bi bi-tags-fill" viewBox="0 0 18 18">
-                                                    <path d="M2 2a1 1 0 0 1 1-1h4.586a1 1 0 0 1 .707.293l7 7a1 1 0 0 1 0 1.414l-4.586 4.586a1 1 0 0 1-1.414 0l-7-7A1 1 0 0 1 2 6.586V2zm3.5 4a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3z"/>
-                                                    <path d="M1.293 7.793A1 1 0 0 1 1 7.086V2a1 1 0 0 0-1 1v4.586a1 1 0 0 0 .293.707l7 7a1 1 0 0 0 1.414 0l.043-.043-7.457-7.457z"/>
-                                            </svg>
-                                        </div>
-                                        <div class="col-8 MyStyle">
-                                            {% spaceless %}
-                                            {% for tag in org_tags %}
-                                                <span class="badge badge-pill" style="background-color:{{tag.color}}; border-radius:4px; color:#FFFFFF; margin:2px; margin-top:0px; margin-bottom:4px;">{{tag.name}}</span>
-                                            {% endfor %}
-                                            {% endspaceless %}
-                                        </div>
-                                    </li>
-                                    {% endif %}
-
                                     {% if html_display.is_myself == False %}
                                     {% if user.is_person %}
                                     <li class="contacts-block__item">
