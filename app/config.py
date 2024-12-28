@@ -47,6 +47,7 @@ class ProfileConfig(Config):
         self.email = EmailConfig(self, 'email')
         self.course = CourseConfig(self, 'course')
         self.yqpoint = YQPointConfig(self, 'YQPoint')
+        self.appoint = AppointConfig(self, 'appoint')
 
     # Informations
     max_inform_rank = LazySetting('max_inform_rank', default={}, type=dict[str, int])
@@ -90,5 +91,8 @@ class CourseConfig(Config):
     least_record_hours = LazySetting('valid_hours', float, default=8.0)
     audit_teachers = LazySetting('auditors', mapping(list, str), type=list[str])
 
+class AppointConfig(Config):
+    
+    audit_teachers = LazySetting('auditors', mapping(list, str), type=list[str])
 
 CONFIG = ProfileConfig(ROOT_CONFIG, '')
