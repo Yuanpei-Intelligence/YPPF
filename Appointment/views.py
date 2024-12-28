@@ -309,8 +309,10 @@ def index(request):  # 主页
                  if room.check_user_perm(user)]
         if rooms:
             reservable_room_classes.append((rclass, rooms))
-
-    quick_reservable_rooms = Room.objects.permitted().filter(quick_reservable=True)
+    quick_reservable_rooms = [
+        room for room in Room.objects.permitted().filter(quick_reservable=True)
+        if room.check_user_perm(user)
+    ]
     room_info = [(room, room.Rid in occupied_rooms,
                   format_time(room_appointments[room.Rid]))
                  for room in quick_reservable_rooms]
