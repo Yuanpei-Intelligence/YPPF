@@ -476,7 +476,6 @@ def check_account_setting(request: UserRequest):
         html_display['warn_code'] = 0
         html_display['warn_message'] = ""
         attr_dict['introduction'] = request.POST['introduction']
-        attr_dict['tags_modify'] = request.POST['tags_modify']
     return attr_dict, show_dict, html_display
 
 

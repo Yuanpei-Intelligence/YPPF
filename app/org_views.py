@@ -484,7 +484,7 @@ def sendMessage(request: UserRequest):
             'disabled' : False,  # 是否禁止选择这个量
             'selected' : w == _selected_type   # 是否默认选中这个量
         }
-        for w in ['订阅用户','小组成员','推广消息']
+        for w in ['订阅用户', '小组成员']
     }
 
     # 设置默认量

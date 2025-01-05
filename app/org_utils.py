@@ -157,13 +157,7 @@ def check_neworg_request(request, org: Organization = None):
     if context["application"] == "":
         context["warn_code"] = 1
         context["warn_message"] = "申请理由不能为空"
-    
-    context["tags_modify"] = request.POST.get("tags_modify") # 标签增加/修改
-    
-    if context["tags_modify"] == "":
-        context["warn_code"] = 1
-        context["warn_message"] = "新建小组至少要选择一个标签噢！"
-        
+
     return context
 
 

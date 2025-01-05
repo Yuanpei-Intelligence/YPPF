@@ -852,23 +852,10 @@ def accountSetting(request: UserRequest):
             if (attr_dict[attr] != "" and str(getattr(useroj, attr)) != attr_dict[attr]):
                 modify_info += [
                     f'{attr}: {getattr(useroj, attr)}->{attr_dict[attr]}']
-            attr = 'tags_modify'
-            if attr_dict[attr] != "":
-                modify_info += [f'{attr}: {attr_dict[attr]}']
 
             attr = 'introduction'
             if attr_dict[attr] != "" and str(getattr(useroj, attr)) != attr_dict[attr]:
                 setattr(useroj, attr, attr_dict[attr])
-            if attr_dict['tags_modify'] != "":
-                for modify in attr_dict['tags_modify'].split(';'):
-                    if modify != "":
-                        action, tag_name = modify.split(" ")
-                        if action == 'add':
-                            useroj.tags.add(
-                                OrganizationTag.objects.get(name=tag_name))
-                        else:
-                            useroj.tags.remove(
-                                OrganizationTag.objects.get(name=tag_name))
             if ava is None:
                 pass
             else:
