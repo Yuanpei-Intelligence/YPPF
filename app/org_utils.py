@@ -48,6 +48,9 @@ def find_max_oname():
     organizations = Organization.objects.filter(
         organization_id__username__startswith="zz"
     ).order_by("-organization_id__username")
+    if not organizations.exists():
+        # TODO: remove hard code
+        return "zz10001"
     max_org: Organization = organizations[0]
     max_oname = str(max_org.get_user().username)
     max_oname = int(max_oname[2:]) + 1
@@ -223,7 +226,6 @@ def update_org_application(application: ModifyOrganization, me: NaturalPerson, r
                         pos=me.person_id,
                         introduction=info.get('introduction'),
                         application=info.get('application'),
-                        tags=info.get('tags_modify')
                     )
                     if context["avatar"] is not None:
                         application.avatar = context['avatar'];
@@ -242,16 +244,14 @@ def update_org_application(application: ModifyOrganization, me: NaturalPerson, r
                     if (application.oname == info.get("oname")
                             and application.introduction == info.get('introduction')
                             and application.avatar == info.get('avatar', None)
-                            and application.application == info.get('application')
-                            and application.tags == info.get('tags_modify')):
+                            and application.application == info.get('application')):
                         return wrong("没有检测到修改！")
                     # 至此可以发起修改
                     ModifyOrganization.objects.filter(id=application.id).update(
                         oname=info.get('oname'),
                         #otype=OrganizationType.objects.get(otype_name=info.get('otype')),
                         introduction=info.get('introduction'),
-                        application=info.get('application'),
-                        tags=info.get('tags_modify'))
+                        application=info.get('application'))
                     if context["avatar"] is not None:
                         application.avatar = context['avatar']
                         application.save()
@@ -513,8 +513,8 @@ def make_relevant_notification(application: ModifyPosition | ModifyOrganization,
         else:
             raise NotImplementedError
         applyer_id = apply_person.person_id
-        # 小组申请现在由运营初步审核，所以通知发给智慧书院小组
-        applyee_id = User.objects.get(username = GLOBAL_CONFIG.official_uid)
+        # Revert to incharge id
+        applyee_id = inchage_person.person_id
         not_type = Notification.Title.NEW_ORGANIZATION
         URL = f'/modifyOrganization/?org_id={application.id}'
 

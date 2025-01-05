@@ -136,10 +136,7 @@ def modifyOrganization(request: UserRequest):
 
                 # 处理通知相关的操作，并根据情况发送微信
                 # 默认需要成功,失败也不是用户的问题，直接给管理员报错 TODO
-                try:
-                    make_relevant_notification(application, request.POST)
-                except:
-                    raise NotImplementedError
+                make_relevant_notification(application, request.POST)
 
             elif context["warn_code"] != 1: # 没有返回操作提示
                 raise NotImplementedError("处理小组申请中出现未预见状态，请联系管理员处理！")
