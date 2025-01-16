@@ -165,15 +165,3 @@ class CreditRecordAdmin(admin.ModelAdmin):
     ]
     search_fields = [*UserAdmin.suggest_search_fields(), 'source']
     date_hierarchy = 'time'
-
-
-@admin.register(YQPointRecord)
-class YQPointRecordAdmin(admin.ModelAdmin):
-    list_display = ['user', 'source', 'delta', 'time']
-    list_filter = [
-        'time', 'source_type',
-        get_sign_filter('delta', '变化类型',
-                        choices=(('+', '收入'), ('-', '支出'))),
-    ]
-    search_fields = [*UserAdmin.suggest_search_fields(), 'source']
-    date_hierarchy = 'time'
