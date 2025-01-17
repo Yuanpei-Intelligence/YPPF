@@ -913,7 +913,8 @@ def checkout_appoint(request: UserRequest):
         
         # 预约时间检查
         if (
-            not is_longterm 
+            applicant.Sid.is_person()
+            and not is_longterm 
             and not is_interview
             and get_total_appoint_time(applicant, start_time.date()) + (end_time - start_time) > CONFIG.max_appoint_time
         ):
@@ -921,7 +922,8 @@ def checkout_appoint(request: UserRequest):
         
         # 检查预约者是否有同时段的预约
         if (
-            not CONFIG.allow_overlap 
+            applicant.Sid.is_person()
+            and not CONFIG.allow_overlap 
             and not is_longterm 
             and not is_interview 
             and get_overlap_appoints(applicant, start_time, end_time).exists()

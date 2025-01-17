@@ -440,8 +440,6 @@
                     if(endid - startid + 1 > available_hours[weekday] * 2) {
                         return alert("每人每天常规预约时间不得超过" + {{ max_appoint_time }} + "小时!");
                     }
-                    console.log("available_hours: " + available_hours[weekday]);
-                    console.log("used_hours: " + (endid - startid + 1));
                     if(endid - startid === 1){
                         if(!confirm("时长30分钟的预约只需点击开始时间块即可。您确定要发起时长1小时的预约吗?")) return;
                     }

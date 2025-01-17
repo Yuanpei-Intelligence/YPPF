@@ -104,11 +104,13 @@ def check_temp_appoint(room: Room) -> bool:
     return '研讨' in room.Rtitle
 
 # 获取当日预约总时长，不含长期预约和面试
-def get_total_appoint_time(appointer: Participant, day: date) -> timedelta:
+def get_total_appoint_time(appointer: Participant, day: date, lock=False) -> timedelta:
     # 获取当日预约，不含长期预约和面试
     appoints = appointer.appoint_list.filter(Astart__date=day).exclude(
         Atype__in=(Appoint.Type.LONGTERM, Appoint.Type.INTERVIEW)
     )
+    if lock:
+        appoints = appoints.select_for_update()
     # 计算总时长
     total_time = timedelta()
     for appoint in appoints:
