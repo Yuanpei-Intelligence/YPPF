@@ -23,7 +23,10 @@ from Appointment.models import (
 )
 from Appointment.extern.wechat import MessageType, notify_appoint
 from Appointment.utils.utils import (
-    get_conflict_appoints, to_feedback_url,
+    get_conflict_appoints, 
+    to_feedback_url, 
+    get_total_appoint_time, 
+    get_overlap_appoints
 )
 from Appointment.utils.log import logger, get_user_logger
 import Appointment.utils.web_func as web_func
@@ -415,6 +418,10 @@ def arrange_time(request: HttpRequest):
 
     # 判断当前用户是否可以进行长期预约
     has_longterm_permission = get_participant(request.user).longterm
+
+    # 用于前端使用
+    allow_overlap = CONFIG.allow_overlap 
+    max_appoint_time = CONFIG.max_appoint_time
 
     # 获取房间编号
     Rid = request.GET.get('Rid')
@@ -895,6 +902,24 @@ def checkout_appoint(request: UserRequest):
         # TODO: 隔周预约的处理可优化，根据start_week调整实际预约时间
         start_time += timedelta(weeks=start_week)
         end_time += timedelta(weeks=start_week)
+        
+        # 预约时间检查
+        if (
+            not is_longterm 
+            and not is_interview
+            and get_total_appoint_time(applicant, start_time.date()) + (end_time - start_time) >= CONFIG.max_appoint_time
+        ):
+            wrong('您预约的时长已超过每日最大预约时长', render_context)
+        
+        # 检查预约者是否有同时段的预约
+        if (
+            not CONFIG.allow_overlap 
+            and not is_longterm 
+            and not is_interview 
+            and get_overlap_appoints(applicant, start_time, end_time).exists()
+        ):
+            wrong(f'您在该时间段已经有预约', render_context)
+        
         if my_messages.get_warning(render_context)[0] is None:
             # 参数检查全部通过，下面开始创建预约
             appoint_type = Appoint.Type.NORMAL

@@ -1,9 +1,9 @@
-from datetime import timedelta
+from datetime import timedelta, date, datetime
 
 from django.http import HttpRequest
 from django.db.models import Q, QuerySet
 
-from Appointment.models import Room, Appoint
+from Appointment.models import Room, Appoint, Participant
 
 '''
 YWolfeee:
@@ -103,6 +103,27 @@ def door2room(door):
 def check_temp_appoint(room: Room) -> bool:
     return '研讨' in room.Rtitle
 
+# 获取当日预约总时长，不含长期预约和面试
+def get_total_appoint_time(appointer: Participant, day: date) -> timedelta:
+    # 获取当日预约，不含长期预约和面试
+    appoints = appointer.appoint_list.filter(Astart__date=day).exclude(
+        Atype__in=(Appoint.Type.LONGTERM, Appoint.Type.INTERVIEW)
+    )
+    # 计算总时长
+    total_time = timedelta()
+    for appoint in appoints:
+        total_time += appoint.Afinish - appoint.Astart
+    return total_time
+
+# 获取预约者同时进行的预约，不含长期预约和面试
+def get_overlap_appoints(appointer: Participant, start_time: datetime, finish_time: datetime) -> QuerySet[Appoint]:
+    parrallel_appoints = appointer.appoint_list.exclude(
+        Atype__in=(Appoint.Type.LONGTERM, Appoint.Type.INTERVIEW)
+    ).exclude(
+        Q(Afinish__lte=start_time) | Q(Astart__gte=finish_time)
+    ).all()
+    return parrallel_appoints
+                           
 
 def get_conflict_appoints(appoint: Appoint, times: int = 1,
                           interval: int = 1, week_offset: int = 0,

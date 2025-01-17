@@ -2,6 +2,7 @@ from boot.config import ROOT_CONFIG
 from utils.config import Config, LazySetting
 from utils.config.cast import str_to_time
 
+from datetime import timedelta
 
 __all__ = [
     'appointment_config',
@@ -43,6 +44,9 @@ class AppointmentConfig(Config):
     allow_newstu_appoint = True
     # 是否限制开始前的预约取消时间
     restrict_cancel_time = False
-
+    # 单人单日预约总时长上限
+    max_appoint_time = timedelta(hours=6)
+    # 是否允许单人同一时段预约两个房间
+    allow_overlap = False
 
 appointment_config = AppointmentConfig(ROOT_CONFIG, 'underground')
