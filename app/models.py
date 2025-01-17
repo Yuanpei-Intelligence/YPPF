@@ -1580,6 +1580,9 @@ class CourseParticipant(models.Model):
     class Meta:
         verbose_name = "4.课程报名情况"
         verbose_name_plural = verbose_name
+        constraints = [
+            models.UniqueConstraint(fields = ['course', 'person'], name='Unique course selection record')
+        ]
 
     course = models.ForeignKey(Course, on_delete=models.CASCADE,
                                related_name="participant_set")
