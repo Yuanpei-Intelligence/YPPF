@@ -117,12 +117,12 @@ def get_total_appoint_time(appointer: Participant, day: date) -> timedelta:
 
 # 获取预约者同时进行的预约，不含长期预约和面试
 def get_overlap_appoints(appointer: Participant, start_time: datetime, finish_time: datetime) -> QuerySet[Appoint]:
-    parrallel_appoints = appointer.appoint_list.exclude(
+    parallel_appoints = appointer.appoint_list.exclude(
         Atype__in=(Appoint.Type.LONGTERM, Appoint.Type.INTERVIEW)
     ).exclude(
         Q(Afinish__lte=start_time) | Q(Astart__gte=finish_time)
     ).all()
-    return parrallel_appoints
+    return parallel_appoints
                            
 
 def get_conflict_appoints(appoint: Appoint, times: int = 1,

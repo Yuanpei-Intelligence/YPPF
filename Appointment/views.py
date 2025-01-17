@@ -454,6 +454,13 @@ def arrange_time(request: HttpRequest):
     dayrange_list, start_day, end_next_day = web_func.get_dayrange(
         day_offset=start_week * 7)
 
+    # 获取每天剩余的可预约时长
+    available_hours = {}
+    for day in [start_day + timedelta(days=i) for i in range(7)]:
+        used_time = get_total_appoint_time(get_participant(request.user), day)
+        available_hour = CONFIG.max_appoint_time - used_time
+        available_hours[day.strftime('%a')] = int(available_hour.total_seconds() // 3600) # 以小时计算
+
     # 获取预约时间的最大时间块id
     max_stamp_id = web_func.get_time_id(room, room.Rfinish, mode="leftopen")
 
@@ -542,6 +549,7 @@ def arrange_time(request: HttpRequest):
 
     # 转换成方便前端使用的形式
     js_dayrange_list = json.dumps(dayrange_list)
+    js_available_hours = json.dumps(available_hours)
 
     # 获取房间信息，以支持房间切换的功能
     function_room_list = Room.objects.function_rooms().order_by('Rid')
@@ -907,7 +915,7 @@ def checkout_appoint(request: UserRequest):
         if (
             not is_longterm 
             and not is_interview
-            and get_total_appoint_time(applicant, start_time.date()) + (end_time - start_time) >= CONFIG.max_appoint_time
+            and get_total_appoint_time(applicant, start_time.date()) + (end_time - start_time) > CONFIG.max_appoint_time
         ):
             wrong('您预约的时长已超过每日最大预约时长', render_context)
         
