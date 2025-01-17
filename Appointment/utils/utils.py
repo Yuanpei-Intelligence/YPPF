@@ -100,10 +100,6 @@ def door2room(door):
     return door_room_dict[door]
 
 
-def check_temp_appoint(room: Room) -> bool:
-    return '研讨' in room.Rtitle
-
-
 def get_conflict_appoints(appoint: Appoint, times: int = 1,
                           interval: int = 1, week_offset: int = 0,
                           exclude_this: bool = False,
