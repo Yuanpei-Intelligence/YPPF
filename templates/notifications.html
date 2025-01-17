@@ -60,11 +60,11 @@
                             <div id="myTabContent" class="tab-content">
                                 <div class="tab-pane fade in active show" id="home">
                                     <div id="undone-empty" style="display: none; margin-top: 40px; margin-bottom: -40px;">
-                                        <p style="text-align: center;">您的信箱很干净！没有要处理的信息.</p>
+                                        <p style="text-align: center;">您的信箱很干净！没有要处理的信息。</p>
                                     </div>
                                     <div class="bio-skill-box">
                                         <div id="undone-list" class="row">
-                                            {% for note in undone_list %}
+                                            {% for note in notes_list %}
                                             <div class="col-12 col-xl-6 col-lg-12 mb-xl-4 mb-4 " id="undone={{note.id}}" {% if not note.status == "待处理" %} hidden {%endif%}>
 
                                                 <div class=" b-skills">
@@ -122,11 +122,11 @@
                                 </div>
                                 <div class="tab-pane fade" id="done">
                                     <div id="done-empty" style="display: none; margin-top: 40px; margin-bottom: -40px;">
-                                        <p style="text-align: center;">没有已处理的消息记录.</p>
+                                        <p style="text-align: center;">没有已处理的消息记录。</p>
                                     </div>
                                     <div class="bio-skill-box">
                                         <div id="done-list" class="row">
-                                            {% for note in done_list %}
+                                            {% for note in notes_list %}
                                             <div class="col-12 col-xl-6 col-lg-12 mb-xl-4 mb-4 " id="done={{note.id}}" {% if not note.status == "已处理" %} hidden {%endif%}>
 
                                                 <div class=" b-skills">
@@ -261,6 +261,7 @@
         if (success) {
             document.getElementById("undone="+String(this.id)).hidden = true;
             document.getElementById("done="+String(this.id)).hidden = false;
+            document.getElementById("done-list").prepend(document.getElementById("done="+String(this.id)));
             document.getElementById("mail_num").innerHTML = String(Number(document.getElementById("mail_num").innerHTML) - 1);
             refresh();
         }
@@ -270,6 +271,7 @@
         if (success) {
             document.getElementById("done="+String(this.id)).hidden = true;
             document.getElementById("undone="+String(this.id)).hidden = false;
+            document.getElementById("undone-list").prepend(document.getElementById("undone="+String(this.id)));
             document.getElementById("mail_num").innerHTML = String(Number(document.getElementById("mail_num").innerHTML) + 1);
             refresh();
         }
