@@ -46,7 +46,7 @@ from app.log import logger
 
 import openpyxl
 import openpyxl.worksheet.worksheet
-from random import sample
+from numpy.random import choice
 from urllib.parse import quote
 from collections import Counter
 from datetime import datetime, timedelta
@@ -809,7 +809,11 @@ def draw_lots():
             if participants_num <= 0:
                 continue
 
-            participants_id = list(participants.values_list("id", flat=True))
+            participants_info = participants.values_list("id", "person__course_priority")
+            participants_id, priority = map(list, zip(*participants_info))
+            # Turn priority into a probability distribution
+            sum_priority = sum(priority)
+            priority = [i / sum_priority for i in priority]
             capacity = course.capacity
 
             if participants_num <= capacity:
@@ -821,7 +825,7 @@ def draw_lots():
                     current_participants=participants_num)
             else:
                 # 抽签；可能实现得有一些麻烦
-                lucky_ones = sample(participants_id, capacity)
+                lucky_ones = choice(participants_id, capacity, replace=False, p=priority)
                 unlucky_ones = list(
                     set(participants_id).difference(set(lucky_ones)))
                 # 不确定是否要加悲观锁
