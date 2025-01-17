@@ -77,6 +77,7 @@ class NaturalPersonAdmin(admin.ModelAdmin):
             f(_m.identity), f(_m.status),
             f(_m.wechat_receive_level),
             f(_m.accept_promote), f(_m.active_score),
+            f(_m.course_priority)
         ])
         return fields
 
