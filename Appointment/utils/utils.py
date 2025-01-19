@@ -108,6 +108,8 @@ def get_total_appoint_time(appointer: Participant, day: date, lock=False) -> tim
     # 获取当日预约，不含长期预约和面试
     appoints = appointer.appoint_list.filter(Astart__date=day).exclude(
         Atype__in=(Appoint.Type.LONGTERM, Appoint.Type.INTERVIEW)
+    ).exclude(
+        Astatus=Appoint.Status.CANCELED
     )
     if lock:
         appoints = appoints.select_for_update()
@@ -121,6 +123,8 @@ def get_total_appoint_time(appointer: Participant, day: date, lock=False) -> tim
 def get_overlap_appoints(appointer: Participant, start_time: datetime, finish_time: datetime) -> QuerySet[Appoint]:
     parallel_appoints = appointer.appoint_list.exclude(
         Atype__in=(Appoint.Type.LONGTERM, Appoint.Type.INTERVIEW)
+    ).exclude(
+        Astatus=Appoint.Status.CANCELED
     ).exclude(
         Q(Afinish__lte=start_time) | Q(Astart__gte=finish_time)
     ).all()

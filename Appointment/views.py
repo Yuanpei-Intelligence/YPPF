@@ -422,6 +422,7 @@ def arrange_time(request: HttpRequest):
     # 用于前端使用
     allow_overlap = CONFIG.allow_overlap 
     max_appoint_time = int(CONFIG.max_appoint_time.total_seconds() // 3600) # 以小时计算
+    is_person = request.user.is_person()
 
     # 获取房间编号
     Rid = request.GET.get('Rid')
