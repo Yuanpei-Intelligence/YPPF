@@ -1,10 +1,10 @@
+from typing import Dict, List
+
 from django.core.management.base import BaseCommand
 from django.db import transaction
-
-from app.models import NaturalPerson, CourseRecord
-
-from typing import Dict, List
 from tqdm import trange
+
+from app.models import CourseRecord, NaturalPerson
 
 class Command(BaseCommand):
     # This command should be run before new semester starts
