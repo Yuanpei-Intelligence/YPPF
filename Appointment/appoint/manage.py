@@ -5,7 +5,7 @@ from django.db import transaction
 
 from Appointment.config import appointment_config as CONFIG
 from Appointment.models import Participant, Room, Appoint
-from Appointment.utils.utils import get_conflict_appoints
+from Appointment.utils.utils import get_conflict_appoints, get_total_appoint_time
 from Appointment.utils.log import logger, get_user_logger
 from Appointment.appoint.jobs import set_scheduler, cancel_scheduler
 from Appointment.extern.wechat import MessageType, notify_appoint
@@ -93,6 +93,9 @@ def _check_conflict(appoint: Appoint):
     conflict_appoints = get_conflict_appoints(appoint, lock=True)
     assert len(conflict_appoints) == 0, '预约时间段与已有预约冲突！'
 
+def _check_total_time(appointer: Participant, start: datetime, finish: datetime):
+    total_time = get_total_appoint_time(appointer, start.date(), lock=True)
+    assert total_time + finish - start <= CONFIG.max_appoint_time, '单日预约时长超限！'
 
 def _attend_require_num(room: Room, type: Appoint.Type, start: datetime, finish: datetime) -> int:
     '''实际监控检查要求的人数'''
@@ -163,6 +166,15 @@ def create_appoint(
         _check_create_num(room, type, inner_num, outer_num)
         _check_num_constraint(room, type, inner_num, outer_num)
 
+    # 个人预约需要检查总时长
+    user = appointer.Sid
+    if (
+        user.is_person()
+        and type != Appoint.Type.LONGTERM
+        and type != Appoint.Type.INTERVIEW
+    ):
+        _check_total_time(appointer, start, finish)
+
     _check_credit(appointer)
     appoint = Appoint(
         major_student=appointer, Room=room,
@@ -185,7 +197,6 @@ def create_appoint(
     get_user_logger(appointer).info(f"发起预约，预约号{appoint.pk}")
 
     # 如果预约者是个人，解锁成就-完成地下室预约 该部分尚未测试
-    user = appointer.Sid
     if user.is_person():
         unlock_achievement(user, '完成地下室预约')
 
