@@ -64,7 +64,7 @@ def _check_credit(appointer: Participant):
 
 def _check_appoint_time(start: datetime, finish: datetime):
     assert start <= finish, '开始时间不能晚于结束时间！'
-    assert finish > datetime.now(), '预约时间不能早于当前时间！'
+    assert start >= datetime.now(), '预约时间不能早于当前时间！'
 
 
 def _check_room_valid(room: Room | None):
