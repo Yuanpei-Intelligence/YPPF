@@ -62,9 +62,12 @@ def _check_credit(appointer: Participant):
     assert appointer.credit > 0, '信用分不足，本月无法发起预约！'
 
 
-def _check_appoint_time(start: datetime, finish: datetime):
+def _check_appoint_time(start: datetime, finish: datetime, temporary: bool):
     assert start <= finish, '开始时间不能晚于结束时间！'
-    assert finish > datetime.now(), '预约时间不能早于当前时间！'
+    if temporary:  # 临时预约
+        assert finish > datetime.now(), '预约时间不能早于当前时间！'
+    else:  # 普通预约
+        assert start >= datetime.now(), '预约时间不能早于当前时间！'
 
 
 def _check_room_valid(room: Room | None):
@@ -153,7 +156,7 @@ def create_appoint(
     '''
 
     _check_room_valid(room)
-    _check_appoint_time(start, finish)
+    _check_appoint_time(start, finish, type == Appoint.Type.TEMPORARY)
 
     if students is None:
         students = []
