@@ -12,8 +12,8 @@ remaining_willingness_point（暂不启用）: 计算学生剩余的意愿点数
 process_time: 把datetime对象转换成人类可读的时间表示
 check_course_time_conflict: 检查当前选择的课是否与已选的课上课时间冲突
 """
-from collections import Counter
-from typing import Callable, Dict
+from collections import Counter, defaultdict
+from typing import Callable
 
 from app.utils_dependency import *
 from app.models import (
@@ -1514,12 +1514,10 @@ def update_course_priority(year: int, semester: str, priority_func: Callable[[in
         # Counts the number of occurrences of a person's ID in invalid list
         invalid_counter: Counter[int] = Counter(invalid_records)
         # a[k] is the list of id of people who have k invalid records
-        a: Dict[int, List[int]] = dict()
+        a = defaultdict(list)
         # Length of the current continuous segment
         for person_id in invalid_counter:
             cnt = invalid_counter[person_id]
-            if cnt not in a:
-                a[cnt] = []
             a[cnt].append(person_id)
         for i in a:
             # There are len(a[i]) people with i invalid records
