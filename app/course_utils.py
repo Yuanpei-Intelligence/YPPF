@@ -12,6 +12,7 @@ remaining_willingness_point（暂不启用）: 计算学生剩余的意愿点数
 process_time: 把datetime对象转换成人类可读的时间表示
 check_course_time_conflict: 检查当前选择的课是否与已选的课上课时间冲突
 """
+from collections import Counter
 from typing import Callable, Dict
 
 from app.utils_dependency import *
@@ -1504,27 +1505,22 @@ def update_course_priority(year: int, semester: str, priority_func: Callable[[in
     with transaction.atomic():
         # First, all set to 1.0
         NaturalPerson.objects.update(course_priority=1.0)
-        # A list of invalid record's student id.
-        invalid_id: List[int] = list(CourseRecord.objects.filter(
+        # Invalid records in the given semester
+        invalid_records = CourseRecord.objects.filter(
             year = year, invalid = True, semester = semester
-        ).order_by(
-            'person__id'
         ).values_list(
             'person__id', flat = True
-        ))
-        # Number of invalid records
-        n = len(invalid_id)
+        )
+        # Counts the number of occurrences of a person's ID in invalid list
+        invalid_counter: Counter[int] = Counter(invalid_records)
         # a[k] is the list of id of people who have k invalid records
         a: Dict[int, List[int]] = dict()
         # Length of the current continuous segment
-        k = 0
-        for i in range(n):
-            k += 1
-            if i == n - 1 or invalid_id[i] != invalid_id[i + 1]:
-                if k not in a:
-                    a[k] = []
-                a[k].append(invalid_id[i])
-                k = 0
+        for person_id in invalid_counter:
+            cnt = invalid_counter[person_id]
+            if cnt not in a:
+                a[cnt] = []
+            a[cnt].append(person_id)
         for i in a:
             # There are len(a[i]) people with i invalid records
             p = priority_func(i)
