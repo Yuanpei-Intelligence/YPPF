@@ -1665,11 +1665,18 @@ def subscribeOrganization(request: UserRequest):
 
     me = get_person_or_org(request.user)
     # orgava_list = [(org, utils.get_user_ava(org, UTYPE_ORG)) for org in org_list]
-    otype_infos = [(
-        otype,
-        list(Organization.objects.activated().filter(otype=otype)
-             .select_related("organization_id")),
-    ) for otype in OrganizationType.objects.all().order_by('-otype_id')]
+    # 获取所有组织类型
+    organization_types = list(OrganizationType.objects.all().order_by('-otype_id'))
+
+    # 强制只执行一次查询，prefetch防止多次查询
+    organizations = list(Organization.objects.activated().select_related('otype').prefetch_related('organization_id'))
+
+    # 获取组织信息
+    otype_infos_dict = {otype: [] for otype in organization_types}
+    for org in organizations:
+        otype_infos_dict[org.otype].append(org)
+    otype_infos = [(otype, otype_infos_dict[otype]) for otype in organization_types]
+
 
     # 获取不订阅列表（数据库里的是不订阅列表）
     if request.user.is_person():
@@ -1808,8 +1815,8 @@ def notifications(request: HttpRequest):
         receiver=request.user,
         status=Notification.Status.UNDONE).order_by("-start_time")
 
-    done_list = notification2Display(done_notifications)
-    undone_list = notification2Display(undone_notifications)
+    notes_list = notification2Display(
+        done_notifications) + notification2Display(undone_notifications)
 
     # 新版侧边栏, 顶栏等的呈现，采用 bar_display, 必须放在render前最后一步
     bar_display = utils.get_sidebar_and_navbar(request.user,

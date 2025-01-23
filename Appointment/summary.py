@@ -516,34 +516,24 @@ def summary2024(request: HttpRequest):
 
     # 2024 年新特性（MBTI计算等）
     # 未使用的 2023 特性没有删除
-    # 根据最长连续签到百分比对用户进行评语
-    max_consecutive_days_rank = infos.get('max_consecutive_days_rank')
-    consecutive_rank_comment = ''
-    if max_consecutive_days_rank < 30.0:
-        consecutive_rank_comment = '登录智慧书院系统可以获得元气值奖励哦！你懂的。'
-    elif max_consecutive_days_rank < 50.0:
-        consecutive_rank_comment = '欢迎常回家看看，或许有新的惊喜等你发现！'
-    elif max_consecutive_days_rank < 75.0:
-        consecutive_rank_comment = '我单方面宣布，你就是YPPF的好朋友！'
-    else:
-        consecutive_rank_comment = '终于找到你，YPPF的永恒真爱粉！'
-    infos['consecutive_rank_comment'] = consecutive_rank_comment
+    # 根据最长连续签到百分比对用户进行评语，评语选择于前端实现
+    max_consecutive_days_rank = infos.get('max_consecutive_days_rank', 0.0)
 
     # 根据用户预约习惯对用户进行评语
     sharp_appoint_num = infos.get('sharp_appoint_num')
-    isobey_num = infos.get('isobey_num')
-    appoint_habit_comment = ''
+    disobey_num = infos.get('disobey_num')
+    appoint_habit: int = 1
     if sharp_appoint_num == 0:
-        if isobey_num == 0:
-            appoint_habit_comment = '令人敬佩的纯血“J人”，稳稳的，很安心！'
+        if disobey_num == 0:
+            appoint_habit = 1
         else:
-            appoint_habit_comment = '我懂，计划就是用来打破的……不过，今后还是要好好遵守地下室使用规则哦！'
+            appoint_habit = 2
     else:
-        if isobey_num == 0:
-            appoint_habit_comment = '主打一个“P”中有“J”，P人总是有按时赶到的魔力！'
+        if disobey_num == 0:
+            appoint_habit = 3
         else:
-            appoint_habit_comment = '100%“P人”表示，我不做计划，是我生性就不爱计划。不过，今后还是要好好遵守地下室使用规则哦！'
-    infos['appoint_habit_comment'] = appoint_habit_comment
+            appoint_habit = 4
+    infos['appoint_habit'] = appoint_habit
 
     # 根据参加小组活动最频繁时间段授予用户评语（已修改为2024文案版本）
     most_act_common_hour = infos.get('most_act_common_hour')
@@ -555,7 +545,7 @@ def summary2024(request: HttpRequest):
         elif most_act_common_hour <= 16:
             infos.update(most_act_common_hour_name='什么午后休息，不存在的！')
         elif most_act_common_hour <= 18:
-            infos.update(most_act_common_hour_name='时间正好，和小伙伴们去看看夕阳。')
+            infos.update(most_act_common_hour_name='时间正好，和小伙伴们去看看夕阳')
         elif most_act_common_hour <= 23:
             infos.update(most_act_common_hour_name='辛苦学习一天，当然要和伙伴们痛快一场！')
         else:
@@ -575,13 +565,13 @@ def summary2024(request: HttpRequest):
         infos.update(type_count_name='我自有安排')
 
     #根据用户兑换的奖池奖品数量给出相应的评语
-    number_of_unique_prizes_comment = ''
-    number_of_unique_prizes = infos.get('number_of_unique_prizes', 0)
-    if number_of_unique_prizes > 0:
-        number_of_unique_prizes_comment = '手速与元气值兼备，你就是古希腊掌管兑换奖池的神！'
-    else:
-        number_of_unique_prizes_comment = '元气值商城永远欢迎你！'
-    infos['number_of_unique_prizes_comment'] = number_of_unique_prizes_comment
+    # number_of_unique_prizes_comment = ''
+    # number_of_unique_prizes = infos.get('number_of_unique_prizes', 0)
+    # if number_of_unique_prizes > 0:
+    #     number_of_unique_prizes_comment = '手速与元气值兼备，你就是古希腊掌管兑换奖池的神！'
+    # else:
+    #     number_of_unique_prizes_comment = '元气值商城永远欢迎你！'
+    # infos['number_of_unique_prizes_comment'] = number_of_unique_prizes_comment
 
     # 根据盲盒中奖率授予成就（已经修改为 2024 版本）
     mystery_boxes_num = infos['mystery_boxes_num']
@@ -591,8 +581,9 @@ def summary2024(request: HttpRequest):
         infos.update(lucky_mystery_boxes_num=lucky_mystery_boxes_num)
     lucky_mystery_boxes_num = infos['lucky_mystery_boxes_num']
     # 防止除零错误
-    if (lucky_mystery_boxes_num != 0):
-        lucky_rate = mystery_boxes_num / lucky_mystery_boxes_num
+    if (mystery_boxes_num != 0):
+        lucky_rate = lucky_mystery_boxes_num / mystery_boxes_num 
+        infos['lucky_rate'] = lucky_rate
         if lucky_rate >= 0.5:
             infos.update(mystery_boxes_name='不说了，让我默默羡慕一会儿……')
         else:
@@ -605,7 +596,7 @@ def summary2024(request: HttpRequest):
     MBTI_SN = ''
     MBTI_TF = ''
     MBTI_JP = ''
-    act_num_rank = infos.get('act_num_rank')
+    act_num_rank: float = infos.get('act_num_rank', 0)
     # 小组活动排名
     if act_num_rank >= 50.0:
         MBTI_EI = 'E'
@@ -617,7 +608,7 @@ def summary2024(request: HttpRequest):
     else:
         MBTI_SN = 'N'
     # 平均研讨时间排名
-    average_duration_rank = infos.get('average_duration_rank')
+    average_duration_rank: float = infos.get('average_duration_rank', 0)
     if average_duration_rank < 50.0:
         MBTI_TF = 'T'
     else:
@@ -631,5 +622,13 @@ def summary2024(request: HttpRequest):
     infos['MBTI_SN'] = MBTI_SN
     infos['MBTI_TF'] = MBTI_TF
     infos['MBTI_JP'] = MBTI_JP
+
+    average_duration_rank_inverse: float = 100 - average_duration_rank
+    infos['average_duration_rank_inverse'] = average_duration_rank_inverse
+
+    # Django模板无法进行减法运算
+    sharp_appoint_num_rank: float = infos.get('sharp_appoint_num_rank', 0)
+    sharp_appoint_num_rank_inverse: float = 100 - sharp_appoint_num_rank
+    infos['sharp_appoint_num_rank_inverse'] = sharp_appoint_num_rank_inverse
 
     return render(request, 'Appointment/summary2024.html', infos)

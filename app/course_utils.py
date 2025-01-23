@@ -608,8 +608,6 @@ def registration_status_change(course_id: int, user: NaturalPerson,
             and course_status != Course.Status.STAGE2):
         return wrong("在非选课阶段不能选课！")
 
-    need_to_create = False
-
     if action == "select":
         if CourseParticipant.objects.filter(course_id=course_id,
                                             person=user).exists():
@@ -617,7 +615,6 @@ def registration_status_change(course_id: int, user: NaturalPerson,
                 course_id=course_id, person=user)
             cur_status = participant_info.status
         else:
-            need_to_create = True
             cur_status = CourseParticipant.Status.UNSELECT
 
         if course_status == Course.Status.STAGE1:
@@ -681,15 +678,11 @@ def registration_status_change(course_id: int, user: NaturalPerson,
                     course.current_participants += 1
                     course.save()
 
-                    # 由于不同用户之间的状态不共享，这个更新应该可以不加锁
-                    if need_to_create:
-                        CourseParticipant.objects.create(course_id=course_id,
-                                                         person=user,
-                                                         status=to_status)
-                    else:
-                        CourseParticipant.objects.filter(
-                            course_id=course_id,
-                            person=user).update(status=to_status)
+                    CourseParticipant.objects.update_or_create(
+                        course_id = course_id,
+                        person = user,
+                        defaults = {"status": to_status}
+                    )
                     succeed("选课成功！", context)
     except:
         return context

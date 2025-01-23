@@ -43,13 +43,27 @@
                         {% comment %} replace js alert with bootstrap alert {% endcomment %}
                         <div class="col-12">
                             <div class="alert alert-info alert-dismissible fade show" role="alert">
-                                <strong>温馨提示：</strong> 点击【房间名称】可以选择【其他房间】进行预约。
+                                <strong>温馨提示：</strong> 
+                                点击【房间名称】可以选择【其他房间】进行预约。
+                                {% if not allow_overlapse and is_person %}
+                                不可以预约同时段的多个房间。
+                                {% endif %}
                                 <button type="button" class="close" data-dismiss="alert">
                                     <span >&times;</span>
                                 </button>
                             </div>
                             <div class="alert alert-info alert-dismissible fade show" role="alert">
-                                <strong>温馨提示：</strong> 每个【时间块】表示自显示时刻起的 30 分钟使用时间，长于 30 分钟的预约只需点击【起始时间块】和【结束时间块】即可。
+                                <strong>温馨提示：</strong> 
+                                每个【时间块】表示自显示时刻起的 30 分钟使用时间，长于 30 分钟的预约只需点击【起始时间块】和【结束时间块】即可。
+                                {% if is_person %}
+                                每人每天常规预约时间不得超过 {{ max_appoint_time }} 小时。
+                                {% endif %}
+                                <button type="button" class="close" data-dismiss="alert">
+                                    <span >&times;</span>
+                                </button>
+                            </div>
+                            <div class="alert alert-info alert-dismissible fade show" role="alert">
+                                <strong>温馨提示：</strong> 预约开始时间前后15分钟内始终无人刷卡使用，或预约时间段内超过 40% 时间房间内实际人数未达到房间预约人数一半以上，将被扣除信用分。
                                 <button type="button" class="close" data-dismiss="alert">
                                     <span >&times;</span>
                                 </button>
@@ -407,6 +421,7 @@
 				//document.getElementById(btn.id).textContent="hehe";
 			}
 			function submitfunc() {
+                let available_hours = {{ available_hours|safe }};
 				if (!(timestatus >= 1)) {
 					alert("请选择预约时段!");
 				}
@@ -424,6 +439,9 @@
 					if(endid - startid > 5){
                         return alert("常规预约时间不能超过3小时!");
 					}
+                    if({{ is_person | yesno:"true, false" }} && endid - startid + 1 > available_hours[weekday] * 2) {
+                        return alert("每人每天常规预约时间不得超过" + {{ max_appoint_time }} + "小时!");
+                    }
                     if(endid - startid === 1){
                         if(!confirm("时长30分钟的预约只需点击开始时间块即可。您确定要发起时长1小时的预约吗?")) return;
                     }
