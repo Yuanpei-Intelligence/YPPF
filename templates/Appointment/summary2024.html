@@ -1,0 +1,896 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <title>35楼来信：这一年的我和你</title>
+    <meta name="description" content="35楼来信：这一年的我和你" />
+    <meta name="keywords" />
+    <link type="image/x-icon"
+          href="{% static 'Appointment/assets/img/yp_favicon.png' %} "
+          rel="icon" />
+    <meta name="theme-color" content="#f00" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport"
+          content="width=device-width, user-scalable=no, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0, minimal-ui">
+    <meta name="full-screen" content="yes" />
+    <meta name="browsermode" content="application" />
+    <meta name="x5-fullscreen" content="true" />
+    <meta name="x5-page-mode" content="app" />
+    <meta name="apple-mobile-web-app-status-bar-style"
+          content="black-translucent" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="format-detection" content="telephone=no, email=no" />
+    <link rel="stylesheet"
+          href="{% static 'Appointment/assets/css/jquery.fullpage.css' %}" />
+    <!-- 使用`fullpage.js`扩展，设置 <element class="section"> 可实现一页一页滚动 -->
+    <link rel="stylesheet"
+          href="{% static 'Appointment/assets/css/summary2024.css' %}" />
+  </head>
+  <body>
+    <audio loop src="/static/Appointment/assets/bgm/From the Moon.mp3">不支持播放音乐</audio>
+    <div style="position: fixed; right: 2%; top: 2%; z-index: 100000;">
+      <button class="btn"
+              style="border: none;
+                     background-color: transparent"
+              id="play-music">
+        <div id="playing" style="display: none;">
+          <svg xmlns="http://www.w3.org/2000/svg"
+               width="30"
+               height="30"
+               fill="currentColor"
+               class="bi bi-music-note-beamed"
+               viewBox="0 0 16 16">
+            <path d="M6 13c0 1.105-1.12 2-2.5 2S1 14.105 1 13c0-1.104 1.12-2 2.5-2s2.5.896 2.5 2zm9-2c0 1.105-1.12 2-2.5 2s-2.5-.895-2.5-2 1.12-2 2.5-2 2.5.895 2.5 2z" />
+            <path fill-rule="evenodd" d="M14 11V2h1v9h-1zM6 3v10H5V3h1z" />
+            <path d="M5 2.905a1 1 0 0 1 .9-.995l8-.8a1 1 0 0 1 1.1.995V3L5 4V2.905z" />
+          </svg>
+        </div>
+        <div id="paused">
+          <svg xmlns="http://www.w3.org/2000/svg"
+               width="30"
+               height="30"
+               fill="currentColor"
+               class="bi bi-volume-mute-fill"
+               viewBox="0 0 16 16">
+            <path d="M6.717 3.55A.5.5 0 0 1 7 4v8a.5.5 0 0 1-.812.39L3.825 10.5H1.5A.5.5 0 0 1 1 10V6a.5.5 0 0 1 .5-.5h2.325l2.363-1.89a.5.5 0 0 1 .529-.06zm7.137 2.096a.5.5 0 0 1 0 .708L12.207 8l1.647 1.646a.5.5 0 0 1-.708.708L11.5 8.707l-1.646 1.647a.5.5 0 0 1-.708-.708L10.793 8 9.146 6.354a.5.5 0 1 1 .708-.708L11.5 7.293l1.646-1.647a.5.5 0 0 1 .708 0z" />
+          </svg>
+        </div>
+      </button>
+      <script>
+      var button = document.querySelector("button#play-music");
+      button.addEventListener("click", () => {
+        const audio = document.querySelector("audio");
+        if (audio.paused) {
+          audio.play();
+          document.querySelector("div#playing").style.setProperty("display", "block");
+          document.querySelector("div#paused").style.setProperty("display", "none");
+        } else {
+          audio.pause();
+          document.querySelector("div#playing").style.setProperty("display", "none");
+          document.querySelector("div#paused").style.setProperty("display", "block");
+        }
+      });
+
+      </script>
+    </div>
+    <div id="app">
+      <!-- 首页图 -->
+      <section class="section page page-home">
+        <div class="bg-back"></div>
+        <div class="title"></div>
+        <div class="envelope"></div>
+        <div class="content1">@ {{ home_Sname }}</div>
+        <button class="button" id="continue-button"></button>
+        <label for="agree-rule" class="content2">
+          <input type="checkbox" id="agree-rule">
+          同意<a href="#" id="rule-link">《智慧书院2024年度回忆授权协议》</a>并查看报告
+        </label>
+        <div id="overlay" class="overlay"></div>
+        <div id="rule" class="agreement">
+          <div class="rule-wrapper">
+            <h1 class="rule-title">智慧书院2024年度回忆授权协议</h1>
+            <p class="rule-content">
+              感谢您阅读《智慧书院2024年度回忆授权协议》！在正式使用智慧书院2024年度回忆功能之前，您应仔细阅读并充分理解本协议中的全部内容，并通过本页面点击确认的方式同意使用该功能，如您不同意本协议中的任何条款，请勿点击确认授权。您使用智慧书院2023年度回忆功能的行为将被视为已经仔细阅读、充分理解并毫无保留地接受本协议所有条款。
+            </p>
+            <ol class="rule-content">
+              <li>
+                1.
+                为了生成您的2024年度回忆，您同意授权智慧校园项目组查询您的姓名、年级等个人基本信息以及在2024自然年度（2024.2.1-2025.1.15）的智慧书院使用数据（包括系统登录记录、地下室使用记录、加入小组记录、书院课程参与记录、活动参与记录、元气值使用记录、学术地图使用记录等）并进行汇总统计分析，以用于年度回忆页面向您进行个性化专属展示。
+              </li>
+              <li>2. 您的2024年度回忆为根据算法自动生成，可能与实际情况存在偏差，敬请理解。</li>
+              <li>3. 请您确认，您的2024年度回忆包含您的个人信息，您有权自行处理您的个人信息，包括但不限于使用、保存及对外共享给他人等行为，您将承担由您的操作或行为导致的个人信息安全风险。</li>
+              <li>4. 除以上声明的目的外，智慧校园项目组不会对本次查询的信息以及产生的分析结果作其他任何处理。</li>
+              <li>5. 如您对本次2024年度回忆有任何疑问，您可通过YPPF反馈中心联系智慧校园项目组。</li>
+            </ol>
+            <button class="rule-button" id="rule-button">我知道啦</button>
+          </div>
+        </div>
+        <script>
+        // 阅读授权协议时禁止fullpage的翻页功能，防止和协议的滚动条冲突
+        var startY = null, endY = null;
+
+        document.querySelector('#rule').addEventListener('touchmove', function (e) {
+          e.stopPropagation();
+        });
+
+        document.querySelector('#rule').addEventListener('wheel', function (e) {
+          e.stopPropagation();
+        });
+        </script>
+        <script>
+        // 计算“立即开启”按钮的位置
+        function get_button(button, img_w, img_h, window_h, offset_w = 0) {
+          var top_r = 0.74, left_r = 0.32;
+          var width_r = 0.38, height_r = 0.1;
+          var top = window_h - (1 - top_r) * img_h, left = offset_w + img_w * left_r;
+          var width = img_w * width_r, height = img_h * height_r;
+          button.style.top = top + 'px';
+          button.style.left = left + 'px';
+          button.style.width = width + 'px';
+          button.style.height = height + 'px';
+          return;
+        }
+
+        var y_ratio = 0.10; // 文字在标题图片中距离顶端的百分比
+
+        // 计算标题图片放缩后的大小(img_w, img_h)
+        var ori_img_w = 750, ori_img_h = 1206;
+        var window_w = window.innerWidth, window_h = window.innerHeight;
+        var img_w = window_w, img_h = ori_img_h * window_w / ori_img_w;
+
+        // 获得标题图片的background-position属性
+        var element = document.querySelector('.page-home .title');
+        var style = window.getComputedStyle(element);
+        var backgroundPosition = style.getPropertyValue('background-position');
+        var backgroundPositionY = parseFloat(backgroundPosition.split(' ')[1].replace('%', '')) / 100;
+
+        // 计算文字距离窗口顶端的绝对距离
+        var ori_y = (window_h - img_h) * backgroundPositionY;
+        var word_y = ori_y + y_ratio * img_h;
+        var word = document.querySelector('.page-home .content1');
+        word.style.top = word_y + 'px';
+
+        // 计算button大小及位置
+        var button = document.querySelector('.page-home .button');
+        get_button(button, img_w, img_h, window_h);
+
+        // 适配电脑等宽高比大的设备
+        if (img_h > window_h) {
+          var title = document.querySelector('.page-home .title');
+          var envelope = document.querySelector('.page-home .envelope');
+
+          img_h = window_h, img_w = ori_img_w * window_h / ori_img_h;
+          word.style.top = y_ratio * img_h + 'px';
+          var word_style = window.getComputedStyle(word);
+          var word_left = parseFloat(word_style.getPropertyValue('left').split('px')[0]);
+          var x_ratio = word_left / window_w;
+          word.style.left = x_ratio * img_w + 0.5 * (window_w - img_w) + 'px';
+
+          var button_offset_w = 0.5 * (window_w - img_w);
+          get_button(button, img_w, img_h, window_h, button_offset_w);
+
+          title.style.backgroundSize = 'auto 100%';
+          envelope.style.backgroundSize = 'auto 100%';
+          title.style.backgroundPosition = '50% top';
+          envelope.style.backgroundPosition = '50% bottom';
+        }
+
+        </script>
+      </section>
+      <!-- 地下室部分 -->
+      <section class="section page page-1-1-1">
+        <!-- 引入 -->
+        <div class="bg-back" />
+        <div class="content">
+          <p>
+            <span class="fs-36b">你</span>好，<span class="fc-rose">{{ Sname }}</span>
+          </p>
+          <p class="mt-35">我是燕园35号楼</p>
+          <p>二十九级台阶，两次转角</p>
+          <p>这条通往地下室的路</p>
+          <p>你曾经走过多少次？</p>
+          <p class="mt-35">
+            与你相伴的 <span class="fc-rose">{{ days_passed }}</span> 天里
+          </p>
+          <p>我始终在这里守候</p>
+          <p>推开这扇门</p>
+          <p>门外的你</p>
+          <p>带着初次相遇的清澈好奇</p>
+          <p>还是装着一书包的疲惫迷蒙</p>
+          <p>又或者藏着期待欣喜的笑意</p>
+        </div>
+      </section>
+      <section class="section page page-1-1-2">
+        <!-- 引入 -->
+        <div class="bg-back" />
+        <div class="content">
+          <p>
+            <span class="fs-36b">对</span>着楼梯间墙上
+          </p>
+          <p>橙红色的凸面镜打声招呼吧！</p>
+          <p>整理好心情</p>
+          <p>跟我一起探索奇妙的35楼地下空间——</p>
+        </div>
+      </section>
+      <section class="section page page-1-2">
+        <!-- B1空间使用情况总览 -->
+        <div class="bg-back"></div>
+        <div class="content">
+          <p>
+            <span class="fs-36b">这</span>一年里，
+          </p>
+          <p>
+            地下室所有房间总计 <span class="fc-rose">{{ total_swipe_num }}</span> 次
+          </p>
+          <p>欢迎大家的造访</p>
+          <p>扣上卡，推开门</p>
+          <p>身体在这里扎营</p>
+          <p>灵魂在更广阔的天地徜徉</p>
+          <p class="mt-35">
+            你看，研讨室的灯光曾经 <span class="fc-rose">{{ total_talk_room_num }}</span> 次亮起
+          </p>
+          <p>
+            为 <span class="fc-rose">{{ total_discuss_appoint_hour }}</span> 小时的交流点亮探照灯
+          </p>
+          <p>
+            我愿称 <span class="fc-rose">{{ total_talk_appoint_most_name }}</span> 为“灵感宝地”
+          </p>
+          <p>这一年里</p>
+          <p>
+            它曾见证 <span class="fc-rose">{{ total_talk_appoint_most_num }}</span> 次豁然开朗
+          </p>
+          <p>你也曾在这里</p>
+          <p>体会过灵光乍现的欣喜吗？</p>
+        </div>
+      </section>
+      <section class="section page page-1-3">
+        <!-- B2空间（功能室）使用情况总览 -->
+        <div class="bg-back"></div>
+        <div class="content">
+          <p>
+            <span class="fs-36b">走</span>过绿植墙，采下一抹生机
+          </p>
+          <p>欢迎来到B2这个巨大的元气加油站！</p>
+          <p class="mt-35">
+            这一年里，功能室曾经 <span class="fc-rose">{{ total_func_room_num }}</span> 次
+          </p>
+          <p>为大家注入元气</p>
+          <p class="mt-35">
+            在长达 <span class="fc-rose">{{ total_func_appoint_hour }}</span> 小时的治愈之旅里
+          </p>
+          <p>琴房里的音符飞扬</p>
+          <p>活动室里的舞姿翩跹</p>
+          <p>健身房里的挥汗如雨</p>
+          <p>电影室里的悲欢离合</p>
+          <p>台球室里的千钧一发……</p>
+          <p>那些鲜活恣意的片段</p>
+          <p>现在想来还能让人会心一笑</p>
+        </div>
+      </section>
+      <section class="section page page-1-4">
+        <!-- 过渡个人Part -->
+        <div class="bg-back"></div>
+        <div class="content">
+          <p>
+            <span class="fs-36b">如</span>果说35楼地下室
+          </p>
+          <p>是校园里的平行空间</p>
+          <p>每一个你都是这个平行世界里</p>
+          <p>最独特的主角</p>
+          <p class="mt-35">来吧，握紧我的手</p>
+          <p>坐上时光机</p>
+          <p>回溯你的独家记忆——</p>
+        </div>
+      </section>
+      <section class="section page page-1-5">
+        <!-- 自习室 -->
+        <div class="bg-back"></div>
+        <div class="content">
+          <p>
+            <span class="fs-36b">2024</span> 年里
+          </p>
+          <p>
+            你曾经 <span class="fc-rose">{{ study_room_num }}</span> 次走进自习室
+          </p>
+          <p>
+            比 <span class="fc-rose">{{ study_room_num_rank }}</span> %的同学
+          </p>
+          <p>更熟悉地下室的日夜</p>
+          {% if study_room_num > 0 %}
+            <p class="mt-35">
+              <span class="fc-rose">{{ study_room_top }}</span> 一定是你的情有独钟
+            </p>
+            <p>
+              你曾在那里度过 <span class="fc-rose">{{ study_room_top_day }}</span> 天的精神之旅
+            </p>
+            <p>多幸运能见证你的一次次沉思</p>
+          {% endif %}
+        </div>
+      </section>
+      <section class="section page page-1-6">
+        <!-- 研讨室 -->
+        <div class="bg-back"></div>
+        <div class="content">
+          <p>
+            <span class="fs-36b">我</span>们如此期待
+          </p>
+          <p>同声相应，同气相求</p>
+          <p>
+            这一年里你预约了 <span class="fc-rose">{{ Discuss_appoint_num }}</span> 次研讨室
+          </p>
+          <p>与伙伴们经历了</p>
+          <p>
+            <span class="fc-rose">{{ Discuss_appoint_hour }}</span> 小时的头脑风暴
+          </p>
+          {% if Discuss_appoint_num > 0 %}
+            <p class=" mt-35">
+              还记得 <span class="fc-rose">{{ Discuss_appoint_longest_day }}</span> 吗？
+            </p>
+            <p>那一天你和伙伴一同度过了</p>
+            <p>
+              <span class="fc-rose">{{ Discuss_appoint_longest_day_hours }}</span> 小时的研讨时光
+            </p>
+            <p>相信你们一同探讨的</p>
+            <p>
+              <span class="fc-rose">{{ Discuss_appoint_longest_day_keyword }}</span>
+            </p>
+            <p>一定有了完满的答案</p>
+          {% endif %}
+        </div>
+      </section>
+      <section class="section page page-1-7">
+        <!-- 功能室 -->
+        <div class="bg-back"></div>
+        <div class="content">
+          <p>
+            <span class="fs-36b">你</span>在这一年中预约了 <span class="fc-rose">{{ Function_appoint_num }}</span> 次功能室
+          </p>
+          <p>
+            共 <span class="fc-rose">{{ Function_appoint_hour }}</span> 小时
+          </p>
+          <p>去热爱生活吧！自由之风永远吹向你</p>
+          {% if Function_appoint_num > 0 %}
+            <p class="mt-35">
+              我好像经常在 <span class="fc-rose">{{ Function_appoint_most_room }}</span> 看到你？
+            </p>
+            <p>
+              你曾经 <span class="fc-rose">{{ Function_appoint_most_room_num }}</span> 次走进这里
+            </p>
+            <p>希望与它相处的时光能带给你力量</p>
+          {% endif %}
+        </div>
+      </section>
+      {% if co_appoint_num > 0 %}
+        <section class="section page page-1-8">
+          <!-- 亲密关系 -->
+          <div class="bg-back"></div>
+          <div class="content">
+            <p>
+              <span class="fs-36b">在</span>这纷繁如宇宙的世界
+            </p>
+            <p>每个人都拥有属于自己的运行轨道</p>
+            <p>但有一颗星星，似乎离你很近</p>
+            <p>
+              <span class="fc-rose">{{ co_mate }}</span>，是你的“地下室搭子”吗？
+            </p>
+            <p class="mt-35">
+              这一年你们一起预约过 <span class="fc-rose">{{ co_appoint_num }}</span> 次
+            </p>
+            <p>
+              在地下室共处的时间超过 <span class="fc-rose">{{ co_appoint_hour }}</span> 小时
+            </p>
+            <p>最常使用的预约理由是</p>
+            <p>
+              “<span class="fc-rose">{{ co_keyword }}</span>”
+            </p>
+            <p class="mt-35">致陪伴！致共同！</p>
+          </div>
+        </section>
+      {% endif %}
+      <section class="section page page-1-9">
+        <!-- 个人预约总览 -->
+        <div class="bg-back"></div>
+        <div class="content">
+          <p>
+            <span class="fs-36b">嘘</span>，小声点儿——
+          </p>
+          <p>
+            这一年里，你曾 <span class="fc-rose">{{ sharp_appoint_num }}</span> 次
+          </p>
+          <p>在开始前30分钟“极限预约”</p>
+          <p>
+            有过 <span class="fc-rose">{{ disobey_num }}</span> 分的信用分“合理损耗”
+          </p>
+          {% if appoint_habit == 1 %}
+            <p class="mt-35">令人敬佩的纯血“J人”</p>
+            <p>稳稳的，很安心！</p>
+          {% elif appoint_habit == 2 %}
+            <p class="mt-35">我懂，计划就是用来打破的……</p>
+            <p>不过，今后还是要好好遵守地下室使用规则哦!</p>
+          {% elif appoint_habit == 3 %}
+            <p class="mt-35">主打一个“P”中有“J”</p>
+            <p>P人总是有按时赶到的魔力！</p>
+          {% elif appoint_habit == 4 %}
+            <p class="mt-35">100%“P人”表示</p>
+            <p>我不做计划，是我生性就不爱计划</p>
+            <p>不过，今后还是要好好遵守地下室使用规则哦！</p>
+          {% endif %}
+        </div>
+      </section>
+      <!-- 开始元培书院部分 -->
+      <section class="section page page-2-1">
+        <!-- YPPF 引入 -->
+        <div class="bg-back"></div>
+        <div class="content">
+          <p>
+            <span class="fs-36b">等</span>等 地下室预约？
+          </p>
+          <p>说到地下室预约</p>
+          <p>就不得不介绍一位重磅NPC了</p>
+          <p class="mt-35">还没想起来？</p>
+          <p class="mt-35">那么——</p>
+          <p>
+            接下来，让我们欢迎<span class="fc-rose">智慧书院</span>
+          </p>
+          <p>为我们介绍</p>
+          <p>“赛博家园”里的年度记忆！</p>
+        </div>
+      </section>
+      <section class="section page page-2-2">
+        <!-- YPPF 使用总览 -->
+        <div class="bg-back"></div>
+        <div class="content">
+          <p>
+            <span class="fs-36b">这</span>一年
+          </p>
+          <p>
+            智慧书院 <span class="fc-rose">{{ total_org_num }}</span> 个小组
+          </p>
+          <p>
+            总共发起活动 <span class="fc-rose">{{ total_act_num }}</span> 次
+          </p>
+          <p>
+            累计活动时长 <span class="fc-rose">{{ total_act_hour }}</span> 小时
+          </p>
+          <p class="mt-35">多幸运，人与人总相遇</p>
+          <p>在那些狂歌竟夜的瞬间</p>
+          <p>“化孤独为共同”</p>
+          <p>有了独属于每一个人的具象表达</p>
+          <p class="mt-35">这一年里，我们共同创造了</p>
+          <p>
+            <span class="fc-rose">{{ total_course_num }}</span> 门书院课
+          </p>
+          <p>急需课程测评？</p>
+          <p>欢迎查收住宿辅导员的倾情安利！</p>
+        </div>
+      </section>
+      <section class="section page page-2-3">
+        <!-- 个人登录情况 -->
+        <div class="bg-back" />
+        <div class="content">
+          <p>
+            <span class="fs-36b">这</span>一年
+          </p>
+          <p>
+            你曾经 <span class="fc-rose">{{ checkin_num }}</span> 次登录智慧书院系统
+          </p>
+          <p>
+            最长连续 <span class="fc-rose">{{ max_consecutive_days }}</span> 天回到这里
+          </p>
+          <p>
+            超过 <span class="fc-rose">{{ max_consecutive_days_rank }}%</span> 的智慧书院用户
+          </p>
+          {% if max_consecutive_days_rank < 30 %}
+            <p class="mt-35">登录智慧书院系统可以获得元气值奖励哦！</p>
+            <p>你懂的。</p>
+          {% elif max_consecutive_days_rank < 50 %}
+            <p class="mt-35">欢迎常回家看看</p>
+            <p>或许有新的惊喜等你发现！</p>
+          {% elif max_consecutive_days_rank < 75 %}
+            <p class="mt-35">我单方面宣布</p>
+            <p>你就是YPPF的好朋友！</p>
+          {% else %}
+            <p class="mt-35">终于找到你</p>
+            <p>YPPF的永恒真爱粉！</p>
+          {% endif %}
+        </div>
+      </section>
+      <section class="section page page-2-4">
+        <!-- 个人小组活动参与情况 -->
+        <div class="bg-back"></div>
+        <div class="content">
+          <p>
+            <span class="fs-36b">你</span>参与了 <span class="fc-rose">{{ club_course_num }}</span> 个小组
+          </p>
+          {% if myclub_name != '' %}
+            <p>其中由你创建的有</p>
+            <p class="fc-rose">{{ myclub_name }}</p>
+          {% endif %}
+          {% if admin_org_names_str != '' %}
+            <p>
+              你还是 <span class="fc-rose">{{ admin_org_names_str }}</span> 的骨干力量
+            </p>
+          {% endif %}
+          <p>感谢你的加入</p>
+          <p>让我们的共同家园更加温暖！</p>
+          <p class="mt-35">
+            这一年里，你参与了 <span class="fc-rose">{{ act_num }}</span> 场小组活动
+          </p>
+          {% if act_num > 0 %}
+            <p>出现最多的关键词是</p>
+            <p class="fc-rose">{{ act_top_three_keywords_str }}</p>
+            <p>
+              你参加的小组活动最经常在 <span class="fc-rose">{{ most_act_common_hour }}</span> 开始
+            </p>
+            <p>{{ most_act_common_hour_name }}</p>
+          {% endif %}
+        </div>
+      </section>
+      <section class="section page page-2-5">
+        <!-- 个人书院课选修情况 -->
+        <div class="bg-back"></div>
+        <div class="content">
+          <p>
+            <span class="fs-36b">截</span>至2024年底
+          </p>
+          <p>
+            你已经选修了 <span class="fc-rose">{{ course_num }}</span> 门书院课程
+          </p>
+          <p>
+            累计学时 <span class="fc-rose">{{ course_hour }}</span>
+          </p>
+          <p>在所有类别的课程中</p>
+          <p>你已经选修了</p>
+          <p>
+            <span class="fc-rose">{{ course_type }}</span> 类课程
+          </p>
+          <p>
+            恭喜你达成 <span class="fc-rose">{{ type_count_name }}</span> 成就
+          </p>
+          <p class=" mt-35">在尝试过的课程里</p>
+          <p>
+            你似乎最爱 <span class="fc-rose">{{ course_most_time_name }}</span>
+          </p>
+          <p>
+            与它相伴的 <span class="fc-rose">{{ course_most_hour }}</span> 个课时
+          </p>
+          <p>一定让你很难忘吧！</p>
+        </div>
+      </section>
+      <section class="section page page-2-6">
+        <!-- 元气值收入 -->
+        <div class="bg-back"></div>
+        <div class="content">
+          <p>
+            <span class="fs-36b">突</span>击提问
+          </p>
+          <p>你最常登录YPPF是为了做什么？</p>
+          <p>不会只有我</p>
+          <p>是来逛元气值商城的吧……</p>
+          <p class="mt-35">2024年</p>
+          <p>
+            你总共获得了 <span class="fc-rose">{{ income }}</span> 点元气值
+          </p>
+          <p>希望这些元气值</p>
+          <p>也能给你的生活注入活力！</p>
+        </div>
+      </section>
+      <section class="section page page-2-7">
+        <!-- 元气值商城 -->
+        <div class="bg-back"></div>
+        <div class="content">
+          <p>
+            <span class="fs-36b">这</span>一年
+          </p>
+          <p>你在元气值商城</p>
+          <p>
+            一共花费了 <span class="fc-rose">{{ expenditure }}</span> 点元气值
+          </p>
+          <p>成功兑换了</p>
+          <p>
+            <span class="fc-rose">{{ number_of_unique_prizes }}</span>类奖品
+          </p>
+          {% if number_of_unique_prizes > 0 %}
+            <p>元气值商城永远欢迎你！</p>
+          {% else %}
+            <p>手速与元气值兼备</p>
+            <p>你就是古希腊掌管兑换奖池的神！</p>
+          {% endif %}
+          <p class=" mt-35">你还在元气值商城参与过</p>
+          <p>
+            <span class="fc-rose">{{ mystery_boxes_num }}</span> 次盲盒抽奖
+          </p>
+          <p>
+            成功抽中 <span class="fc-rose">{{ lucky_mystery_boxes_num }}</span> 次惊喜大礼
+          </p>
+          {% if lucky_mystery_boxes_num > 0 %}<p>{{ mystery_boxes_name }}</p>{% endif %}
+        </div>
+      </section>
+      <section class="section page page-2-8">
+        <!-- 学术地图 -->
+        <div class="bg-back"></div>
+        <div class="content">
+          <p>
+            <span class="fs-36b">从</span>踏入燕园的那一刻起
+          </p>
+          <p>你的每一次选择，每一次挑战</p>
+          <p>都是登攀前行的来时路</p>
+          {% if academic_tag_num == 0 %}
+            <p class="mt-35">欢迎开拓你的学术地图</p>
+            <p>让每一次出发都被记录！</p>
+          {% else %}
+            <p class="mt-35">过去的一年里</p>
+            <p>
+              你在学术地图中记录了 <span class="fc-rose">{{ academic_tags_num }}</span> 个高光时刻
+            </p>
+            <p>分别是</p>
+            <p>每一次出发都有意义！</p>
+            {% if academic_QA_num == 0 %}
+              <p class="mt-50">我们只能自己丈量世界</p>
+              <p>但并非孤独流浪</p>
+              <p>欢迎探索学术地图提问功能</p>
+              <p>站在前人的肩膀上</p>
+              <p>我们或许能看得更远</p>
+            {% else %}
+              <p class="mt-50">过去的一年里</p>
+              <p>你在学术地图上</p>
+              <p>
+                向他人提出过 <span class="fc-rose">{{ academic_QA_num }}</span> 次问题
+              </p>
+              <p class="mt-35">夜空总是黑暗</p>
+              <p>但群星能带给我们一线光亮</p>
+            {% endif %}
+          {% endif %}
+        </div>
+      </section>
+      <section class="section page page-2-9">
+        <!-- 结束页 -->
+        <div class="bg-back"></div>
+        <div class="content">
+          <p>
+            <span class="fs-36b">时</span>光漂流总有尽头
+          </p>
+          <p>一年一度的回忆之旅</p>
+          <p>又到了说再见的时候</p>
+          <p class="mt-35">还好，我们还会共同迎来新的春天</p>
+          <p>还好，35楼里还有友人、爱人和亲人</p>
+          <p>那些在地下室里的</p>
+          <p>沉思、探索与欢聚总会重演</p>
+          <p class="mt-35">新春将至</p>
+          <p>愿万象更新，也望情谊不变</p>
+          <p>新的旅途，不见不散！</p>
+          <p class="mt-35">欢迎查收你的</p>
+          <p>
+            2024地下室使用<span class="fc-rose">MBTI</span>——
+          </p>
+        </div>
+      </section>
+      <section class="section page page-2-10">
+        <div class="bg-back" />
+        <div class="content">
+          <div class="content-panel">
+            <p class="fs-25b">
+              @<span class="fc-rose">{{ home_Sname }}</span>
+            </p>
+            <p class="fs-25b">
+              你的2024地下室使用<span class="fc-rose">MBTI</span>——
+            </p>
+            <div class="mbti-table">
+              <div class="mbti-cell">
+                <h2 class="mbti-heading">{{ MBTI_EI }}</h2>
+                <p>累计参与</p>
+                <p>
+                  <span class="fc-rose">{{ act_num }}</span> 场小组活动
+                </p>
+                <p>
+                  超越 <span class="fc-rose">{{ act_num_rank }}%</span> 的人
+                </p>
+              </div>
+              <div class="mbti-cell">
+                <h2 class="mbti-heading">{{ MBTI_SN }}</h2>
+                <p>已经选修</p>
+                <p>
+                  <span class="fc-rose">{{ course_type }}</span> 类课程
+                </p>
+                {% if MBTI_SN == 'S' %}
+                  <p>有望成为五边形战士！</p>
+                {% else %}
+                  <p>主打一个“垂直深耕”</p>
+                {% endif %}
+              </div>
+              <div class="mbti-cell">
+                <h2 class="mbti-heading">{{ MBTI_TF }}</h2>
+                <p>
+                  预约 <span class="fc-rose">{{ Discuss_appoint_num }}</span> 次研讨室
+                </p>
+                <p>累计研讨时长</p>
+                <p>
+                  <span class="fc-rose">{{ Discuss_appoint_hour }}</span> 小时
+                </p>
+                {% if MBTI_TF == 'T' %}
+                  <p>
+                    比 <span class="fc-rose">{{ average_duration_rank_inverse }}%</span> 的人
+                  </p>
+                  <p>更快结束战斗</p>
+                {% else %}
+                  <p>平均研讨时长</p>
+                  <p>
+                    超越 <span class="fc-rose">{{ average_duration_rank }}%</span> 的人
+                  </p>
+                {% endif %}
+              </div>
+              <div class="mbti-cell">
+                <h2>{{ MBTI_JP }}</h2>
+                <p>
+                  极限预约 <span class="fc-rose">{{ sharp_appoint_num }}</span> 次
+                </p>
+                {% if MBTI_JP == 'J' %}
+                  <p>
+                    比 <span class="fc-rose">{{ sharp_appoint_num_rank_inverse }}%</span> 的人更稳如泰山
+                  </p>
+                {% else %}
+                  <p>
+                    比 <span class="fc-rose">{{ sharp_appoint_num_rank }}%</span> 的人更随性
+                  </p>
+                {% endif %}
+              </div>
+            </div>
+            {% if study_room_num > 0 %}
+              <div class="flex gap-20dvw">
+                <p>
+                  # <span class="fc-rose">{{ study_room_num }}</span> 次走进自习室
+                </p>
+                <p>
+                  # 最喜欢 <span class="fc-rose">{{ study_room_top }}</span>
+                </p>
+              </div>
+            {% endif %}
+            {% if number_of_unique_prizes > 0 %}
+              <p>
+                # 在元气值商城成功兑换 <span class="fc-rose">{{ number_of_unique_prizes }}</span> 类商品
+              </p>
+            {% endif %}
+            {% if lucky_mystery_boxes_num > 0 %}
+              <p>
+                # 盲盒中奖率 <span class="fc-rose">{{ lucky_rate }}%</span>
+              </p>
+            {% endif %}
+          </div>
+        </div>
+      </section>
+    </div>
+    <!-- lib -->
+    <script src="{% static 'Appointment/assets/js/jquery.min.js' %}"></script>
+    <!-- <script src="https://unpkg.com/jplayer@2.9.2/dist/jplayer/jquery.jplayer.min.js"></script> -->
+    <script src="{% static 'Appointment/assets/js/jquery.fullpage.js' %}"></script>
+    <!-- components -->
+    <script src="{% static 'Appointment/./assets/js/App.js' %}"></script>
+    <!-- main -->
+    <script lang="javascript">
+    jQuery(document).ready(function ($) {
+      // 若页面刷新并且不是由window.location.replace导致的，清空localStorage
+      if (localStorage.getItem('replaced') !== 'true')
+        localStorage.clear();
+      else
+        localStorage.removeItem('replaced');
+
+      var checked = false; //检查用户是否同意授权协议
+      var redirect = false; // 防止onLeave在window.location.replace过程中多次执行
+      var rst = null;
+
+      checked = localStorage.getItem('agree-rule') === 'true' ? true : false;
+      $('#agree-rule').prop('checked', checked);
+
+      // 正确处理直接输入summary2024?accept=true的情况
+      {% if user_accept %}$('#agree-rule').prop('checked', true);{% endif %}
+
+      var playing = localStorage.getItem('playing') == 'block' ? true : false;
+      if (playing) {
+        $('audio')[0].play();
+        $('div#playing').css({
+          'display': 'block',
+        });
+        $('div#paused').css({
+          'display': 'none',
+        });
+      }
+
+      var playedTime = localStorage.getItem('currentTime');
+      if (playedTime)
+        $('audio')[0].currentTime = playedTime;
+
+      {% if user_accept or user_cancel %}
+      history.pushState(null, null, "{% url 'Appointment:summary2023' %}");
+      $('#app').ready(function () {
+        $.fn.fullpage.moveTo(2, 0);
+      });
+      {% endif %}
+
+      $('#app').fullpage({
+        onLeave: function (index, nextIndex, direction) {
+          if (index == 1) {
+            // 已登录
+            {% if logged_in %}
+            checked = $('#agree-rule').is(':checked');
+            // 不同意协议
+            if (!checked) {
+              {% if not user_cancel %}
+              rst = confirm("请点击确认表示同意《智慧书院2023年度回忆授权协议》再开启你的年度总结之旅哦！\n如您不同意该协议，请点击取消，我们将为您展示样例。\n如您不慎误点取消，请上滑返回首页重新选择或刷新界面。\n祝您的回忆之旅愉快！");
+              if (rst)
+                $('#agree-rule').prop('checked', true).trigger('change');
+              else {
+                // 正确处理用户先同意协议进入第二页，再返回首页取消授权的情况
+                {% if user_accept %}
+                if (!redirect) {
+                  localStorage.setItem('replaced', 'true');
+                  window.location.replace(window.location.origin + window.location.pathname + "?cancel=true");
+                }
+                redirect = true;
+                return false;
+                {% endif %}
+              }
+              {% endif %}
+            }
+            checked = $('#agree-rule').is(':checked'); // 重新检测checked数值防止上面的代码中进行了修改
+            {% if not user_accept %}
+            // 同意协议
+            if (checked) {
+              if (!redirect) {
+                localStorage.setItem('replaced', 'true');
+                window.location.replace(window.location.origin + window.location.pathname + "?accept=true");
+              }
+              redirect = true;
+              return false;
+            }
+            {% endif %}
+            // 未登录
+            {% else %}
+              rst = confirm("您尚未登录，将为您跳转至登录界面。点击取消将展示年度总结示例。");
+        if(rst) {
+          window.location.href = "{% url 'index' %}?origin={% url 'Appointment:summary2023' %}";
+          return false;
+        }
+            {% endif %}
+          }
+          
+        },
+      afterLoad: function (anchorLink, index) {
+        console.log(index + ' loaded');
+      },
+      sectionColor: ['yellow', 'green', 'blue', 'purple'],
+      });
+
+    $("#rule-link").on('click', function (e) {
+      e.preventDefault();
+      $("#overlay, #rule").show();
+    });
+
+    $('#continue-button').on('click', function () {
+      $.fn.fullpage.moveSectionDown();
+    });
+
+    $('#rule-button').on('click', function () {
+      $('#overlay, #rule').hide();
+    });
+
+    $('#agree-rule').on('change', function () {
+      localStorage.setItem('agree-rule', this.checked);
+    });
+
+    $('#overlay').on('click', function () {
+      $('#overlay, #rule').hide();
+    });
+
+    $('#play-music').on('click', function () {
+      localStorage.setItem('playing', $('div#playing').css('display'));
+    });
+
+    $('audio')[0].ontimeupdate = function () {
+      localStorage.setItem('currentTime', $('audio')[0].currentTime);
+    };
+    });
+
+    </script>
+  </body>
+</html>

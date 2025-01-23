@@ -52,4 +52,5 @@ urlpatterns = [
     path('summary', summary.summary, name='summary'),
     path('summary/2021', summary.summary2021, name='summary2021'),
     path('summary/2023', summary.summary2023, name='summary2023'),
+    path('summary/2024', summary.summary2024, name='summary2024'),
 ]
