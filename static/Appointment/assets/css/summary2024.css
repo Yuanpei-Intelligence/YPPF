@@ -20,6 +20,11 @@
     margin-top: 50px;
   }
 
+  .fs-20b {
+    font-size: 20px;
+    font-weight: bold;
+  }
+
   .fs-25b {
     font-size: 25px;
     font-weight: bold;
@@ -360,7 +365,7 @@
   }
 
   #page-2-2 .content {
-    top: 16%;
+    top: 18%;
     left: 10%;
   }
 
@@ -417,7 +422,7 @@
   }
 
   #page-2-7 .content {
-    top: 12%;
+    top: 18%;
     left: 10%;
   }
 
@@ -455,6 +460,12 @@
     flex-direction: column;
     height: 100%;
     width: 100%;
+  }
+
+  #page-2-10 .YPPF-logo {
+    position: absolute;
+    top: 2%;
+    right: 5%;
   }
 
   #page-2-10 .content-panel {
