@@ -384,6 +384,7 @@ def feedbackWelcome(request: HttpRequest):
     is_person = request.user.is_person()
     me = get_person_or_org(request.user)
 
+    # 如果有argue参数，说明是从申诉页面跳转过来的
     if 'argue' in request.GET.keys() and request.session.has_key('feedback_type'):
         if not request.session.has_key('feedback_url'):
             # 弹出
@@ -391,17 +392,19 @@ def feedbackWelcome(request: HttpRequest):
         else:
             feedback_type = request.session['feedback_type']
             feedback_url = request.session['feedback_url']
-            try:
-                feedback: Feedback = Feedback.objects.filter(url=feedback_url)[0]
-                # 弹出
-                request.session.pop('feedback_type')
-                request.session.pop('feedback_url')
-                request.session.pop('feedback_content', '')
-                return redirect(message_url(
-                    succeed('检测到您填写的申诉内容，已自动跳转'),
-                    feedback.get_absolute_url()
-                ))
-            except:
+            try: # 获取最新的反馈，如果已被删除则创建新的反馈
+                feedback = Feedback.objects.filter(url=feedback_url).order_by('-feedback_time')[0]
+                if feedback.issue_status == Feedback.IssueStatus.DELETED:
+                    return redirect(f'/modifyFeedback/?type={feedback_type}')
+                else:
+                    request.session.pop('feedback_type')
+                    request.session.pop('feedback_url')
+                    request.session.pop('feedback_content', '')
+                    return redirect(message_url(
+                        succeed('检测到您填写的申诉内容，已自动跳转'),
+                        feedback.get_absolute_url()
+                    ))
+            except: # 如果没有找到对应的反馈，直接创建新的反馈
                 pass
         return redirect(f'/modifyFeedback/?type={feedback_type}')
 
