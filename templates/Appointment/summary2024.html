@@ -29,12 +29,9 @@
   </head>
   <body>
     <audio loop src="/static/Appointment/assets/bgm/From the Moon.mp3">不支持播放音乐</audio>
-    <div style="position: fixed; right: 2%; top: 2%; z-index: 100000;">
-      <button class="btn"
-              style="border: none;
-                     background-color: transparent"
-              id="play-music">
-        <div id="playing" style="display: none;">
+    <div id="music-container">
+      <button id="play-music" type="button">
+        <div id="playing">
           <svg xmlns="http://www.w3.org/2000/svg"
                width="30"
                height="30"
@@ -76,32 +73,31 @@
     </div>
     <div id="app">
       <!-- 首页图 -->
-      <section class="section page page-home">
-        <div class="bg-back"></div>
-        <div class="title"></div>
-        <div class="envelope"></div>
+      <section id="page-home" class="section page">
+        <div class="bg-back" />
+        <div class="title" />
+        <div class="envelope" />
         <div class="content1">@ {{ home_Sname }}</div>
-        <button class="button" id="continue-button"></button>
+        <button id="continue-button" type="button"></button>
         <label for="agree-rule" class="content2">
-          <input type="checkbox" id="agree-rule">
+          <input type="checkbox" id="agree-rule" />
           同意<a href="#" id="rule-link">《智慧书院2024年度回忆授权协议》</a>并查看报告
         </label>
-        <div id="overlay" class="overlay"></div>
+        <div id="overlay" class="overlay" />
         <div id="rule" class="agreement">
           <div class="rule-wrapper">
             <h1 class="rule-title">智慧书院2024年度回忆授权协议</h1>
             <p class="rule-content">
-              感谢您阅读《智慧书院2024年度回忆授权协议》！在正式使用智慧书院2024年度回忆功能之前，您应仔细阅读并充分理解本协议中的全部内容，并通过本页面点击确认的方式同意使用该功能，如您不同意本协议中的任何条款，请勿点击确认授权。您使用智慧书院2023年度回忆功能的行为将被视为已经仔细阅读、充分理解并毫无保留地接受本协议所有条款。
+              感谢您阅读《智慧书院2024年度回忆授权协议》！在正式使用智慧书院2024年度回忆功能之前，您应仔细阅读并充分理解本协议中的全部内容，并通过本页面点击确认的方式同意使用该功能，如您不同意本协议中的任何条款，请勿点击确认授权。您使用智慧书院2024年度回忆功能的行为将被视为已经仔细阅读、充分理解并毫无保留地接受本协议所有条款。
             </p>
             <ol class="rule-content">
               <li>
-                1.
                 为了生成您的2024年度回忆，您同意授权智慧校园项目组查询您的姓名、年级等个人基本信息以及在2024自然年度（2024.2.1-2025.1.15）的智慧书院使用数据（包括系统登录记录、地下室使用记录、加入小组记录、书院课程参与记录、活动参与记录、元气值使用记录、学术地图使用记录等）并进行汇总统计分析，以用于年度回忆页面向您进行个性化专属展示。
               </li>
-              <li>2. 您的2024年度回忆为根据算法自动生成，可能与实际情况存在偏差，敬请理解。</li>
-              <li>3. 请您确认，您的2024年度回忆包含您的个人信息，您有权自行处理您的个人信息，包括但不限于使用、保存及对外共享给他人等行为，您将承担由您的操作或行为导致的个人信息安全风险。</li>
-              <li>4. 除以上声明的目的外，智慧校园项目组不会对本次查询的信息以及产生的分析结果作其他任何处理。</li>
-              <li>5. 如您对本次2024年度回忆有任何疑问，您可通过YPPF反馈中心联系智慧校园项目组。</li>
+              <li>您的2024年度回忆为根据算法自动生成，可能与实际情况存在偏差，敬请理解。</li>
+              <li>请您确认，您的2024年度回忆包含您的个人信息，您有权自行处理您的个人信息，包括但不限于使用、保存及对外共享给他人等行为，您将承担由您的操作或行为导致的个人信息安全风险。</li>
+              <li>除以上声明的目的外，智慧校园项目组不会对本次查询的信息以及产生的分析结果作其他任何处理。</li>
+              <li>如您对本次2024年度回忆有任何疑问，您可通过YPPF反馈中心联系智慧校园项目组。</li>
             </ol>
             <button class="rule-button" id="rule-button">我知道啦</button>
           </div>
@@ -140,7 +136,7 @@
         var img_w = window_w, img_h = ori_img_h * window_w / ori_img_w;
 
         // 获得标题图片的background-position属性
-        var element = document.querySelector('.page-home .title');
+        var element = document.querySelector('#page-home .title');
         var style = window.getComputedStyle(element);
         var backgroundPosition = style.getPropertyValue('background-position');
         var backgroundPositionY = parseFloat(backgroundPosition.split(' ')[1].replace('%', '')) / 100;
@@ -148,17 +144,17 @@
         // 计算文字距离窗口顶端的绝对距离
         var ori_y = (window_h - img_h) * backgroundPositionY;
         var word_y = ori_y + y_ratio * img_h;
-        var word = document.querySelector('.page-home .content1');
+        var word = document.querySelector('#page-home .content1');
         word.style.top = word_y + 'px';
 
         // 计算button大小及位置
-        var button = document.querySelector('.page-home .button');
+        var button = document.querySelector('#page-home #continue-button');
         get_button(button, img_w, img_h, window_h);
 
         // 适配电脑等宽高比大的设备
         if (img_h > window_h) {
-          var title = document.querySelector('.page-home .title');
-          var envelope = document.querySelector('.page-home .envelope');
+          var title = document.querySelector('#page-home .title');
+          var envelope = document.querySelector('#page-home .envelope');
 
           img_h = window_h, img_w = ori_img_w * window_h / ori_img_h;
           word.style.top = y_ratio * img_h + 'px';
@@ -179,7 +175,7 @@
         </script>
       </section>
       <!-- 地下室部分 -->
-      <section class="section page page-1-1-1">
+      <section id="page-1-1-1" class="section page">
         <!-- 引入 -->
         <div class="bg-back" />
         <div class="content">
@@ -201,7 +197,7 @@
           <p>又或者藏着期待欣喜的笑意</p>
         </div>
       </section>
-      <section class="section page page-1-1-2">
+      <section id="page-1-1-2" class="section page">
         <!-- 引入 -->
         <div class="bg-back" />
         <div class="content">
@@ -213,9 +209,9 @@
           <p>跟我一起探索奇妙的35楼地下空间——</p>
         </div>
       </section>
-      <section class="section page page-1-2">
+      <section id="page-1-2" class="section page">
         <!-- B1空间使用情况总览 -->
-        <div class="bg-back"></div>
+        <div class="bg-back" />
         <div class="content">
           <p>
             <span class="fs-36b">这</span>一年里，
@@ -244,9 +240,9 @@
           <p>体会过灵光乍现的欣喜吗？</p>
         </div>
       </section>
-      <section class="section page page-1-3">
+      <section id="page-1-3" class="section page">
         <!-- B2空间（功能室）使用情况总览 -->
-        <div class="bg-back"></div>
+        <div class="bg-back" />
         <div class="content">
           <p>
             <span class="fs-36b">走</span>过绿植墙，采下一抹生机
@@ -268,9 +264,9 @@
           <p>现在想来还能让人会心一笑</p>
         </div>
       </section>
-      <section class="section page page-1-4">
+      <section id="page-1-4" class="section page">
         <!-- 过渡个人Part -->
-        <div class="bg-back"></div>
+        <div class="bg-back" />
         <div class="content">
           <p>
             <span class="fs-36b">如</span>果说35楼地下室
@@ -283,9 +279,9 @@
           <p>回溯你的独家记忆——</p>
         </div>
       </section>
-      <section class="section page page-1-5">
+      <section id="page-1-5" class="section page">
         <!-- 自习室 -->
-        <div class="bg-back"></div>
+        <div class="bg-back" />
         <div class="content">
           <p>
             <span class="fs-36b">2024</span> 年里
@@ -308,9 +304,9 @@
           {% endif %}
         </div>
       </section>
-      <section class="section page page-1-6">
+      <section id="page-1-6" class="section page">
         <!-- 研讨室 -->
-        <div class="bg-back"></div>
+        <div class="bg-back" />
         <div class="content">
           <p>
             <span class="fs-36b">我</span>们如此期待
@@ -339,9 +335,9 @@
           {% endif %}
         </div>
       </section>
-      <section class="section page page-1-7">
+      <section id="page-1-7" class="section page">
         <!-- 功能室 -->
-        <div class="bg-back"></div>
+        <div class="bg-back" />
         <div class="content">
           <p>
             <span class="fs-36b">你</span>在这一年中预约了 <span class="fc-rose">{{ Function_appoint_num }}</span> 次功能室
@@ -362,9 +358,9 @@
         </div>
       </section>
       {% if co_appoint_num > 0 %}
-        <section class="section page page-1-8">
+        <section id="page-1-8" class="section page">
           <!-- 亲密关系 -->
-          <div class="bg-back"></div>
+          <div class="bg-back" />
           <div class="content">
             <p>
               <span class="fs-36b">在</span>这纷繁如宇宙的世界
@@ -388,9 +384,9 @@
           </div>
         </section>
       {% endif %}
-      <section class="section page page-1-9">
+      <section id="page-1-9" class="section page">
         <!-- 个人预约总览 -->
-        <div class="bg-back"></div>
+        <div class="bg-back" />
         <div class="content">
           <p>
             <span class="fs-36b">嘘</span>，小声点儿——
@@ -419,9 +415,9 @@
         </div>
       </section>
       <!-- 开始元培书院部分 -->
-      <section class="section page page-2-1">
+      <section id="page-2-1" class="section page">
         <!-- YPPF 引入 -->
-        <div class="bg-back"></div>
+        <div class="bg-back" />
         <div class="content">
           <p>
             <span class="fs-36b">等</span>等 地下室预约？
@@ -437,9 +433,9 @@
           <p>“赛博家园”里的年度记忆！</p>
         </div>
       </section>
-      <section class="section page page-2-2">
+      <section id="page-2-2" class="section page">
         <!-- YPPF 使用总览 -->
-        <div class="bg-back"></div>
+        <div class="bg-back" />
         <div class="content">
           <p>
             <span class="fs-36b">这</span>一年
@@ -465,7 +461,7 @@
           <p>欢迎查收住宿辅导员的倾情安利！</p>
         </div>
       </section>
-      <section class="section page page-2-3">
+      <section id="page-2-3" class="section page">
         <!-- 个人登录情况 -->
         <div class="bg-back" />
         <div class="content">
@@ -496,9 +492,9 @@
           {% endif %}
         </div>
       </section>
-      <section class="section page page-2-4">
+      <section id="page-2-4" class="section page">
         <!-- 个人小组活动参与情况 -->
-        <div class="bg-back"></div>
+        <div class="bg-back" />
         <div class="content">
           <p>
             <span class="fs-36b">你</span>参与了 <span class="fc-rose">{{ club_course_num }}</span> 个小组
@@ -527,9 +523,9 @@
           {% endif %}
         </div>
       </section>
-      <section class="section page page-2-5">
+      <section id="page-2-5" class="section page">
         <!-- 个人书院课选修情况 -->
-        <div class="bg-back"></div>
+        <div class="bg-back" />
         <div class="content">
           <p>
             <span class="fs-36b">截</span>至2024年底
@@ -558,9 +554,9 @@
           <p>一定让你很难忘吧！</p>
         </div>
       </section>
-      <section class="section page page-2-6">
+      <section id="page-2-6" class="section page">
         <!-- 元气值收入 -->
-        <div class="bg-back"></div>
+        <div class="bg-back" />
         <div class="content">
           <p>
             <span class="fs-36b">突</span>击提问
@@ -576,9 +572,9 @@
           <p>也能给你的生活注入活力！</p>
         </div>
       </section>
-      <section class="section page page-2-7">
+      <section id="page-2-7" class="section page">
         <!-- 元气值商城 -->
-        <div class="bg-back"></div>
+        <div class="bg-back" />
         <div class="content">
           <p>
             <span class="fs-36b">这</span>一年
@@ -607,9 +603,9 @@
           {% if lucky_mystery_boxes_num > 0 %}<p>{{ mystery_boxes_name }}</p>{% endif %}
         </div>
       </section>
-      <section class="section page page-2-8">
+      <section id="page-2-8" class="section page">
         <!-- 学术地图 -->
-        <div class="bg-back"></div>
+        <div class="bg-back" />
         <div class="content">
           <p>
             <span class="fs-36b">从</span>踏入燕园的那一刻起
@@ -644,9 +640,9 @@
           {% endif %}
         </div>
       </section>
-      <section class="section page page-2-9">
+      <section id="page-2-9" class="section page">
         <!-- 结束页 -->
-        <div class="bg-back"></div>
+        <div class="bg-back" />
         <div class="content">
           <p>
             <span class="fs-36b">时</span>光漂流总有尽头
@@ -666,7 +662,7 @@
           </p>
         </div>
       </section>
-      <section class="section page page-2-10">
+      <section id="page-2-10" class="section page">
         <div class="bg-back" />
         <div class="content">
           <div class="content-panel">
@@ -676,7 +672,7 @@
             <p class="fs-25b">
               你的2024地下室使用<span class="fc-rose">MBTI</span>——
             </p>
-            <div class="mbti-table">
+            <div id="mbti-table">
               <div class="mbti-cell">
                 <h2 class="mbti-heading">{{ MBTI_EI }}</h2>
                 <p>累计参与</p>
@@ -762,7 +758,6 @@
     </div>
     <!-- lib -->
     <script src="{% static 'Appointment/assets/js/jquery.min.js' %}"></script>
-    <!-- <script src="https://unpkg.com/jplayer@2.9.2/dist/jplayer/jquery.jplayer.min.js"></script> -->
     <script src="{% static 'Appointment/assets/js/jquery.fullpage.js' %}"></script>
     <!-- components -->
     <script src="{% static 'Appointment/./assets/js/App.js' %}"></script>
