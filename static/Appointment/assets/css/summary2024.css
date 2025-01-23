@@ -3,6 +3,13 @@
     src: url("../fonts/Siyuan-SongTi-regular.ttf") format("truetype");
   }
 
+  h1,
+  h2,
+  h3 {
+    margin-block: 0;
+    margin-inline: 0;
+  }
+
   /* UTILITIES */
   .flex {
     display: flex;
@@ -66,7 +73,6 @@
     font-family: "Siyuan SongTi regular";
     font-size: 18px;
     line-height: 35px;
-    word-break: break-all;
   }
 
 
@@ -119,67 +125,119 @@
   /* page-home */
   #page-home {
     padding-bottom: 0 !important;
+    --content-z-index: 100;
   }
 
   #page-home .bg-back {
     background-image: url("../img/summary2023/homepage/底图.jpeg");
   }
 
+  #page-home .YPPF-logo {
+    position: absolute;
+    top: 30%;
+    right: 5%;
+  }
+
+  #page-home .content {
+    position: relative;
+    z-index: var(--content-z-index);
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    height: 100%;
+  }
+
   #page-home .title {
-    position: absolute;
-    top: 0;
-    left: 0;
+    display: flex;
+    column-gap: 15px;
+    align-items: start;
+    justify-content: center;
     width: 100%;
-    height: 100%;
-    background: url("../img/summary2023/homepage/标题.jpeg") no-repeat;
-    background-size: 100% auto;
-    background-position: left 35%;
+    margin: 10% auto 20px auto;
   }
 
-  #page-home .envelope {
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background: url("../img/summary2023/homepage/信封.jpeg") no-repeat;
-    background-size: 100% auto;
-    background-position: left bottom;
+  #page-home .title left {
+    display: grid;
+    grid-template-rows: 2fr 1fr;
   }
 
-  #page-home .content1 {
-    position: absolute;
-    left: 10%;
-    font-size: 25px;
-    line-height: 25px;
+  #page-home .title right {
+    display: grid;
+    grid-template-rows: 1fr 2fr 1fr;
   }
 
-  #page-home .content2 {
-    position: absolute;
-    top: 90%;
-    left: 1%;
-    right: 0;
-    font-size: 14px;
-    line-height: 14px;
+  #page-home .title .zh {
+    margin-top: 0;
+    margin-bottom: 0;
+    color: #15558d;
+    font-size: 72px;
+    font-weight: bold;
+    letter-spacing: 10px;
     text-align: center;
   }
 
+  #page-home .title .en {
+    margin-top: 0;
+    margin-bottom: 0;
+    color: #15558d;
+    font-size: 32px;
+    font-weight: bold;
+    text-align: center;
+  }
+
+  #page-home h3 {
+    font-size: 36px;
+  }
+
+  #page-home .subtitle {
+    position: relative;
+    top: -30px;
+    height: 50dvh;
+    margin-left: 10%;
+    text-align: left;
+    writing-mode: vertical-lr;
+    text-orientation: upright;
+    letter-spacing: 10px;
+  }
+
+  #page-home footer {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+    justify-content: center;
+    align-items: center;
+    padding-bottom: 3dvh;
+  }
+
   #page-home #continue-button {
-    position: absolute;
-    opacity: 0;
+    position: relative;
+    border: none;
+    background-color: transparent;
   }
 
-  #page-home .overlay {
-    position: absolute;
-    top: 0;
-    left: 0;
-    display: none;
-    width: 100%;
-    height: 100%;
-    background: rgba(0, 0, 0, 0.5);
+  #page-home #continue-button h3 {
+    position: relative;
+    z-index: calc(var(--content-z-index) + 1);
   }
 
-  #page-home .agreement {
+  #page-home .agree-rule-label {
+    display: flex;
+    align-items: center;
+    font-size: 18px;
+    line-height: 18px;
+    text-align: center;
+    vertical-align: middle;
+  }
+
+  #page-home .agree-rule-label p {
+    margin: 0;
+  }
+
+  #page-home .agree-rule-label #rule-link {
+    color: #15558d;
+  }
+
+  #page-home #rule {
     position: absolute;
     z-index: 10000;
     top: 20%;
@@ -191,34 +249,35 @@
     height: 60%;
     padding: 20px;
     background: white;
+    border-radius: 0.25rem;
   }
 
-  #page-home .agreement .rule-wrapper {
+  #page-home #rule .rule-wrapper {
     width: 100%;
   }
 
-  #page-home .agreement .rule-title {
+  #page-home #rule .rule-title {
     margin-bottom: 10px;
     font-size: 17px;
     font-weight: bold;
     text-align: center;
   }
 
-  #page-home .agreement .rule-content {
+  #page-home #rule .rule-content {
     font-size: 14px;
     line-height: 22px;
     text-align: justify;
   }
 
-  #page-home .agreement p.rule-content {
+  #page-home #rule p.rule-content {
     text-indent: 2em;
   }
 
-  #page-home .agreement ol.rule-content {
+  #page-home #rule ol.rule-content {
     margin-left: 3em;
   }
 
-  #page-home .agreement .rule-button {
+  #page-home #rule .rule-button {
     display: block;
     margin: 10px auto 0;
     border: 2px solid #15558d;

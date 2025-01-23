@@ -3,8 +3,8 @@
 <html lang="zh-CN">
   <head>
     <meta charset="UTF-8" />
-    <title>35楼来信：这一年的我和你</title>
-    <meta name="description" content="35楼来信：这一年的我和你" />
+    <title>雪中春信至</title>
+    <meta name="description" content="雪中春信至" />
     <meta name="keywords" />
     <link type="image/x-icon"
           href="{% static 'Appointment/assets/img/yp_favicon.png' %} "
@@ -30,7 +30,7 @@
   <body>
     <audio loop src="/static/Appointment/assets/bgm/From the Moon.mp3">不支持播放音乐</audio>
     <div id="music-container">
-      <button id="play-music" type="button">
+      <button id="play-music" type="button" title="播放/暂停音乐">
         <div id="playing">
           <svg xmlns="http://www.w3.org/2000/svg"
                width="30"
@@ -74,32 +74,55 @@
     <div id="app">
       <!-- 首页图 -->
       <section id="page-home" class="section page">
-        <div class="bg-back" />
-        <div class="title" />
-        <div class="envelope" />
-        <div class="content1">@ {{ home_Sname }}</div>
-        <button id="continue-button" type="button"></button>
-        <label for="agree-rule" class="content2">
-          <input type="checkbox" id="agree-rule" />
-          同意<a href="#" id="rule-link">《智慧书院2024年度回忆授权协议》</a>并查看报告
-        </label>
-        <div id="overlay" class="overlay" />
-        <div id="rule" class="agreement">
-          <div class="rule-wrapper">
-            <h1 class="rule-title">智慧书院2024年度回忆授权协议</h1>
-            <p class="rule-content">
-              感谢您阅读《智慧书院2024年度回忆授权协议》！在正式使用智慧书院2024年度回忆功能之前，您应仔细阅读并充分理解本协议中的全部内容，并通过本页面点击确认的方式同意使用该功能，如您不同意本协议中的任何条款，请勿点击确认授权。您使用智慧书院2024年度回忆功能的行为将被视为已经仔细阅读、充分理解并毫无保留地接受本协议所有条款。
-            </p>
-            <ol class="rule-content">
-              <li>
-                为了生成您的2024年度回忆，您同意授权智慧校园项目组查询您的姓名、年级等个人基本信息以及在2024自然年度（2024.2.1-2025.1.15）的智慧书院使用数据（包括系统登录记录、地下室使用记录、加入小组记录、书院课程参与记录、活动参与记录、元气值使用记录、学术地图使用记录等）并进行汇总统计分析，以用于年度回忆页面向您进行个性化专属展示。
-              </li>
-              <li>您的2024年度回忆为根据算法自动生成，可能与实际情况存在偏差，敬请理解。</li>
-              <li>请您确认，您的2024年度回忆包含您的个人信息，您有权自行处理您的个人信息，包括但不限于使用、保存及对外共享给他人等行为，您将承担由您的操作或行为导致的个人信息安全风险。</li>
-              <li>除以上声明的目的外，智慧校园项目组不会对本次查询的信息以及产生的分析结果作其他任何处理。</li>
-              <li>如您对本次2024年度回忆有任何疑问，您可通过YPPF反馈中心联系智慧校园项目组。</li>
-            </ol>
-            <button class="rule-button" id="rule-button">我知道啦</button>
+        <div class="bg-back"></div>
+        <img class="YPPF-logo"
+             src="{% static 'Appointment/assets/img/summary2024/YPPF-logo.png' %}"
+             alt="YPPF 智慧书院"
+             width="90"
+             height="90" />
+        <div class="bg-elements">
+          <div class="draw-stroke"></div>
+        </div>
+        <div class="content">
+          <div class="title">
+            <div class="left">
+              <h1 class="zh">雪中</h1>
+              <h2 class="en">of you</h2>
+            </div>
+            <div class="right">
+              <h2 class="en">special memories</h2>
+              <h1 class="zh">春信至</h1>
+              <h2 class="en">2024-2025</h2>
+            </div>
+          </div>
+          <h3 class="subtitle">你的三十五楼独家记忆</h3>
+          <footer>
+            <button id="continue-button" type="button" title="开启旅程">
+              <h3>开启旅程</h3>
+              <div class="draw-stroke"></div>
+            </button>
+            <label for="agree-rule" class="agree-rule-label">
+              <input type="checkbox" id="agree-rule" />
+              <p>同意<a href="#" id="rule-link">《智慧书院2024年度回忆授权协议》</a>并查看报告</p>
+            </label>
+          </footer>
+          <div id="rule">
+            <div class="rule-wrapper">
+              <h1 class="rule-title">智慧书院2024年度回忆授权协议</h1>
+              <p class="rule-content">
+                感谢您阅读《智慧书院2024年度回忆授权协议》！在正式使用智慧书院2024年度回忆功能之前，您应仔细阅读并充分理解本协议中的全部内容，并通过本页面点击确认的方式同意使用该功能，如您不同意本协议中的任何条款，请勿点击确认授权。您使用智慧书院2024年度回忆功能的行为将被视为已经仔细阅读、充分理解并毫无保留地接受本协议所有条款。
+              </p>
+              <ol class="rule-content">
+                <li>
+                  为了生成您的2024年度回忆，您同意授权智慧校园项目组查询您的姓名、年级等个人基本信息以及在2024自然年度（2024.2.1-2025.1.15）的智慧书院使用数据（包括系统登录记录、地下室使用记录、加入小组记录、书院课程参与记录、活动参与记录、元气值使用记录、学术地图使用记录等）并进行汇总统计分析，以用于年度回忆页面向您进行个性化专属展示。
+                </li>
+                <li>您的2024年度回忆为根据算法自动生成，可能与实际情况存在偏差，敬请理解。</li>
+                <li>请您确认，您的2024年度回忆包含您的个人信息，您有权自行处理您的个人信息，包括但不限于使用、保存及对外共享给他人等行为，您将承担由您的操作或行为导致的个人信息安全风险。</li>
+                <li>除以上声明的目的外，智慧校园项目组不会对本次查询的信息以及产生的分析结果作其他任何处理。</li>
+                <li>如您对本次2024年度回忆有任何疑问，您可通过YPPF反馈中心联系智慧校园项目组。</li>
+              </ol>
+              <button class="rule-button" id="rule-button">我知道啦</button>
+            </div>
           </div>
         </div>
         <script>
@@ -114,70 +137,11 @@
           e.stopPropagation();
         });
         </script>
-        <script>
-        // 计算“立即开启”按钮的位置
-        function get_button(button, img_w, img_h, window_h, offset_w = 0) {
-          var top_r = 0.74, left_r = 0.32;
-          var width_r = 0.38, height_r = 0.1;
-          var top = window_h - (1 - top_r) * img_h, left = offset_w + img_w * left_r;
-          var width = img_w * width_r, height = img_h * height_r;
-          button.style.top = top + 'px';
-          button.style.left = left + 'px';
-          button.style.width = width + 'px';
-          button.style.height = height + 'px';
-          return;
-        }
-
-        var y_ratio = 0.10; // 文字在标题图片中距离顶端的百分比
-
-        // 计算标题图片放缩后的大小(img_w, img_h)
-        var ori_img_w = 750, ori_img_h = 1206;
-        var window_w = window.innerWidth, window_h = window.innerHeight;
-        var img_w = window_w, img_h = ori_img_h * window_w / ori_img_w;
-
-        // 获得标题图片的background-position属性
-        var element = document.querySelector('#page-home .title');
-        var style = window.getComputedStyle(element);
-        var backgroundPosition = style.getPropertyValue('background-position');
-        var backgroundPositionY = parseFloat(backgroundPosition.split(' ')[1].replace('%', '')) / 100;
-
-        // 计算文字距离窗口顶端的绝对距离
-        var ori_y = (window_h - img_h) * backgroundPositionY;
-        var word_y = ori_y + y_ratio * img_h;
-        var word = document.querySelector('#page-home .content1');
-        word.style.top = word_y + 'px';
-
-        // 计算button大小及位置
-        var button = document.querySelector('#page-home #continue-button');
-        get_button(button, img_w, img_h, window_h);
-
-        // 适配电脑等宽高比大的设备
-        if (img_h > window_h) {
-          var title = document.querySelector('#page-home .title');
-          var envelope = document.querySelector('#page-home .envelope');
-
-          img_h = window_h, img_w = ori_img_w * window_h / ori_img_h;
-          word.style.top = y_ratio * img_h + 'px';
-          var word_style = window.getComputedStyle(word);
-          var word_left = parseFloat(word_style.getPropertyValue('left').split('px')[0]);
-          var x_ratio = word_left / window_w;
-          word.style.left = x_ratio * img_w + 0.5 * (window_w - img_w) + 'px';
-
-          var button_offset_w = 0.5 * (window_w - img_w);
-          get_button(button, img_w, img_h, window_h, button_offset_w);
-
-          title.style.backgroundSize = 'auto 100%';
-          envelope.style.backgroundSize = 'auto 100%';
-          title.style.backgroundPosition = '50% top';
-          envelope.style.backgroundPosition = '50% bottom';
-        }
-
-        </script>
       </section>
       <!-- 地下室部分 -->
       <section id="page-1-1-1" class="section page">
         <!-- 引入 -->
-        <div class="bg-back" />
+        <div class="bg-back"></div>
         <div class="content">
           <p>
             <span class="fs-36b">你</span>好，<span class="fc-rose">{{ Sname }}</span>
@@ -199,7 +163,7 @@
       </section>
       <section id="page-1-1-2" class="section page">
         <!-- 引入 -->
-        <div class="bg-back" />
+        <div class="bg-back"></div>
         <div class="content">
           <p>
             <span class="fs-36b">对</span>着楼梯间墙上
@@ -211,7 +175,7 @@
       </section>
       <section id="page-1-2" class="section page">
         <!-- B1空间使用情况总览 -->
-        <div class="bg-back" />
+        <div class="bg-back"></div>
         <div class="content">
           <p>
             <span class="fs-36b">这</span>一年里，
@@ -242,7 +206,7 @@
       </section>
       <section id="page-1-3" class="section page">
         <!-- B2空间（功能室）使用情况总览 -->
-        <div class="bg-back" />
+        <div class="bg-back"></div>
         <div class="content">
           <p>
             <span class="fs-36b">走</span>过绿植墙，采下一抹生机
@@ -266,7 +230,7 @@
       </section>
       <section id="page-1-4" class="section page">
         <!-- 过渡个人Part -->
-        <div class="bg-back" />
+        <div class="bg-back"></div>
         <div class="content">
           <p>
             <span class="fs-36b">如</span>果说35楼地下室
@@ -281,7 +245,7 @@
       </section>
       <section id="page-1-5" class="section page">
         <!-- 自习室 -->
-        <div class="bg-back" />
+        <div class="bg-back"></div>
         <div class="content">
           <p>
             <span class="fs-36b">2024</span> 年里
@@ -306,7 +270,7 @@
       </section>
       <section id="page-1-6" class="section page">
         <!-- 研讨室 -->
-        <div class="bg-back" />
+        <div class="bg-back"></div>
         <div class="content">
           <p>
             <span class="fs-36b">我</span>们如此期待
@@ -337,7 +301,7 @@
       </section>
       <section id="page-1-7" class="section page">
         <!-- 功能室 -->
-        <div class="bg-back" />
+        <div class="bg-back"></div>
         <div class="content">
           <p>
             <span class="fs-36b">你</span>在这一年中预约了 <span class="fc-rose">{{ Function_appoint_num }}</span> 次功能室
@@ -360,7 +324,7 @@
       {% if co_appoint_num > 0 %}
         <section id="page-1-8" class="section page">
           <!-- 亲密关系 -->
-          <div class="bg-back" />
+          <div class="bg-back"></div>
           <div class="content">
             <p>
               <span class="fs-36b">在</span>这纷繁如宇宙的世界
@@ -386,7 +350,7 @@
       {% endif %}
       <section id="page-1-9" class="section page">
         <!-- 个人预约总览 -->
-        <div class="bg-back" />
+        <div class="bg-back"></div>
         <div class="content">
           <p>
             <span class="fs-36b">嘘</span>，小声点儿——
@@ -417,7 +381,7 @@
       <!-- 开始元培书院部分 -->
       <section id="page-2-1" class="section page">
         <!-- YPPF 引入 -->
-        <div class="bg-back" />
+        <div class="bg-back"></div>
         <div class="content">
           <p>
             <span class="fs-36b">等</span>等 地下室预约？
@@ -435,7 +399,7 @@
       </section>
       <section id="page-2-2" class="section page">
         <!-- YPPF 使用总览 -->
-        <div class="bg-back" />
+        <div class="bg-back"></div>
         <div class="content">
           <p>
             <span class="fs-36b">这</span>一年
@@ -463,7 +427,7 @@
       </section>
       <section id="page-2-3" class="section page">
         <!-- 个人登录情况 -->
-        <div class="bg-back" />
+        <div class="bg-back"></div>
         <div class="content">
           <p>
             <span class="fs-36b">这</span>一年
@@ -494,7 +458,7 @@
       </section>
       <section id="page-2-4" class="section page">
         <!-- 个人小组活动参与情况 -->
-        <div class="bg-back" />
+        <div class="bg-back"></div>
         <div class="content">
           <p>
             <span class="fs-36b">你</span>参与了 <span class="fc-rose">{{ club_course_num }}</span> 个小组
@@ -525,7 +489,7 @@
       </section>
       <section id="page-2-5" class="section page">
         <!-- 个人书院课选修情况 -->
-        <div class="bg-back" />
+        <div class="bg-back"></div>
         <div class="content">
           <p>
             <span class="fs-36b">截</span>至2024年底
@@ -556,7 +520,7 @@
       </section>
       <section id="page-2-6" class="section page">
         <!-- 元气值收入 -->
-        <div class="bg-back" />
+        <div class="bg-back"></div>
         <div class="content">
           <p>
             <span class="fs-36b">突</span>击提问
@@ -574,7 +538,7 @@
       </section>
       <section id="page-2-7" class="section page">
         <!-- 元气值商城 -->
-        <div class="bg-back" />
+        <div class="bg-back"></div>
         <div class="content">
           <p>
             <span class="fs-36b">这</span>一年
@@ -605,7 +569,7 @@
       </section>
       <section id="page-2-8" class="section page">
         <!-- 学术地图 -->
-        <div class="bg-back" />
+        <div class="bg-back"></div>
         <div class="content">
           <p>
             <span class="fs-36b">从</span>踏入燕园的那一刻起
@@ -642,7 +606,7 @@
       </section>
       <section id="page-2-9" class="section page">
         <!-- 结束页 -->
-        <div class="bg-back" />
+        <div class="bg-back"></div>
         <div class="content">
           <p>
             <span class="fs-36b">时</span>光漂流总有尽头
@@ -663,7 +627,7 @@
         </div>
       </section>
       <section id="page-2-10" class="section page">
-        <div class="bg-back" />
+        <div class="bg-back"></div>
         <div class="content">
           <img class="YPPF-logo"
                src="{% static 'Appointment/assets/img/summary2024/YPPF-logo.png' %}"
@@ -776,8 +740,8 @@
         localStorage.removeItem('replaced');
 
       var checked = false; //检查用户是否同意授权协议
-      var redirect = false; // 防止onLeave在window.location.replace过程中多次执行
-      var rst = null;
+      let redirect = false; // 防止onLeave在window.location.replace过程中多次执行
+      let rst = null;
 
       checked = localStorage.getItem('agree-rule') === 'true' ? true : false;
       $('#agree-rule').prop('checked', checked);
@@ -785,7 +749,7 @@
       // 正确处理直接输入summary2024?accept=true的情况
       {% if user_accept %}$('#agree-rule').prop('checked', true);{% endif %}
 
-      var playing = localStorage.getItem('playing') == 'block' ? true : false;
+      let playing = localStorage.getItem('playing') == 'block' ? true : false;
       if (playing) {
         $('audio')[0].play();
         $('div#playing').css({
@@ -796,7 +760,7 @@
         });
       }
 
-      var playedTime = localStorage.getItem('currentTime');
+      let playedTime = localStorage.getItem('currentTime');
       if (playedTime)
         $('audio')[0].currentTime = playedTime;
 
