@@ -586,7 +586,7 @@ def summary2024(request: HttpRequest):
     if (mystery_boxes_num != 0):
         lucky_rate = lucky_mystery_boxes_num / mystery_boxes_num * 100.0
         infos['lucky_rate'] = lucky_rate
-        if lucky_rate >= 0.5:
+        if lucky_rate >= 50.0:
             infos.update(mystery_boxes_name='不说了，让我默默羡慕一会儿……')
         else:
             infos.update(mystery_boxes_name='根据运气守恒定律，下一次我看好你！')
