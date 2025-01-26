@@ -583,8 +583,8 @@ def check_course_time_conflict(current_course: Course,
     '''
 
 
-@transaction.atomic
 @logger.secure_func()
+@transaction.atomic
 def registration_status_change(course_id: int, user: NaturalPerson,
                                action: str) -> MESSAGECONTEXT:
     """
