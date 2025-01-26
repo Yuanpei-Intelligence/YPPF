@@ -4,8 +4,8 @@
   }
 
   @font-face {
-    font-family: "GenWanMin2-R";
-    src: url("../fonts/GenWanMin2-R.ttc") format("otf");
+    font-family: "GenWanMin2TC-R";
+    src: url("../fonts/GenWanMin2TC-R.otf") format("otf");
   }
 
   @font-face {
@@ -38,19 +38,13 @@
     margin-top: 50px;
   }
 
-  .fs-20b {
-    font-size: 20px;
-    font-weight: bold;
-  }
-
-  .fs-25b {
-    font-size: 25px;
-    font-weight: bold;
-  }
-
   .fs-36b {
     font-size: 36px;
     font-weight: bold;
+  }
+
+  .fc-blue {
+    color: #004AAD
   }
 
   .fc-rose {
@@ -59,46 +53,18 @@
   }
 
   /* ANIMATIONS */
-
-  @keyframes wait {
-    from {
-      opacity: 0;
-    }
-
-    to {
-      opacity: 0;
-    }
-  }
-
+  /* @params --final-opacity */
+  /* @params --translate tuples of 3 coordinates */
   @keyframes fade-in {
     from {
       opacity: 0;
-      transform: translate3d(0, 30%, 0);
-      -webkit-transform: translate3d(0, 30%, 0);
+      transform: translate3d(var(--translate));
     }
 
     to {
-      opacity: 1;
+      opacity: var(--final-opacity, 1);
       transform: translate3d(0, 0, 0);
-      -webkit-transform: translate3d(0, 0, 0);
     }
-  }
-
-  @-webkit-keyframes fade-in {
-    from {
-      opacity: 0;
-      -webkit-transform: translate3d(0, 30%, 0);
-    }
-
-    to {
-      opacity: 1;
-      -webkit-transform: translate3d(0, 0, 0);
-    }
-  }
-
-  .fade-in {
-    animation-name: fade-in;
-    animation-duration: 2s;
   }
 
   /* ELEMENTS */
@@ -180,16 +146,62 @@
   #page-home {
     padding-bottom: 0 !important;
     --content-z-index: 100;
+
+    /* Animation params */
+    --animation-base-delay: 200ms;
+    --animate-username-delay: var(--animation-base-delay);
+    --animate-username-duration: 700ms;
+    --animate-title-delay: calc(var(--animation-base-delay) + 450ms);
+    --animate-title-duration: 900ms;
+    --animate-subtitle-delay: calc(var(--animation-base-delay) + 600ms);
+    --animate-subtitle-duration: 700ms;
+    --animate-logo-delay: calc(var(--animation-base-delay) + 800ms);
+    --animate-logo-duration: 700ms;
+    --animate-snowflakes-delay: calc(var(--animation-base-delay) + 700ms);
+    --animate-snowflakes-duration: 900ms;
+    --animate-clock-delay: calc(var(--animation-base-delay) + 1100ms);
+    --animate-clock-duration: 700ms;
+    --animate-footer-delay: calc(var(--animation-base-delay) + 1000ms);
+    --animate-footer-duration: 500ms;
   }
 
   #page-home .bg-back {
     background-image: url("../img/summary2024/home-bg.png");
   }
 
+  #page-home .bg-elements {
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    z-index: 2;
+  }
+
+
+  #page-home .bg-elements .clock {
+    position: absolute;
+    top: 40%;
+    right: 0;
+    opacity: 0;
+    --final-opacity: 0.8;
+    --translate: 30%, 0, 0;
+    animation: fade-in var(--animate-clock-delay) ease-in-out var(--animate-clock-duration) forwards;
+  }
+
+  #page-home .zh {
+    font-family: "GenWanMin2TC-R";
+  }
+
+  #page-home .en {
+    font-family: "TANTWINKLE";
+  }
+
   #page-home .YPPF-logo {
     position: absolute;
     top: 30%;
     right: 5%;
+    opacity: 0;
+    --translate: 30px, 0, 0;
+    animation: fade-in var(--animate-logo-duration) ease-in-out var(--animate-logo-delay) forwards;
   }
 
   #page-home .content {
@@ -197,51 +209,84 @@
     z-index: var(--content-z-index);
     display: flex;
     flex-direction: column;
+    justify-content: space-between;
     width: 100%;
     height: 100%;
   }
 
+  #page-home .title-container {
+    margin-top: 10%;
+    margin-bottom: 20px;
+  }
+
+  #page-home .username {
+    margin-left: 20px;
+    opacity: 0;
+    --translate: -30px, 0, 0;
+    animation: fade-in var(--animate-username-duration) ease-in-out var(--animate-username-delay) forwards;
+  }
+
   #page-home .title {
+    position: relative;
     display: flex;
-    column-gap: 15px;
     align-items: start;
     justify-content: center;
     width: 100%;
-    margin: 10% auto 20px auto;
-    animation-name: fade-in;
-    animation-duration: 900ms;
-    animation-timing-function: ease-in;
+    margin: 0 auto 0 auto;
+    opacity: 0;
+    --translate: 0, 30%, 0;
+    animation: fade-in var(--animate-title-delay) ease-in-out var(--animate-title-delay) forwards;
   }
 
   #page-home .title left {
     display: grid;
     grid-template-rows: 2fr 1fr;
+    z-index: var(--content-z-index);
   }
 
   #page-home .title right {
     display: grid;
     grid-template-rows: 1fr 2fr 1fr;
+    z-index: var(--content-z-index);
   }
 
   #page-home .title .zh {
     margin-top: 0;
     margin-bottom: 0;
-    color: #15558d;
-    font-family: "GenWanMin2-R";
-    font-size: 64px;
-    font-weight: bold;
+    font-size: 56px;
     letter-spacing: 10px;
     text-align: center;
+    z-index: var(--content-z-index);
   }
 
   #page-home .title .en {
     margin-top: 0;
     margin-bottom: 0;
-    color: #15558d;
-    font-family: "TANTWINKLE";
-    font-size: 24px;
+    font-size: 16.5px;
     font-weight: bold;
     text-align: center;
+    z-index: var(--content-z-index);
+  }
+
+  #page-home .title .title-stroke {
+    position: absolute;
+    top: -60%;
+    left: -10%;
+    opacity: 0.4;
+    z-index: -1;
+    width: 120%;
+  }
+
+  #page-home .title .snowflakes {
+    position: absolute;
+    top: 35%;
+    left: -2%;
+    z-index: -1;
+    opacity: 0;
+    width: 100%;
+    --final-opacity: 0.8;
+    --translate: 0, -30px, 0;
+    animation: fade-in var(--animate-snowflakes-duration) ease-in-out var(--animate-snowflakes-duration) forwards;
   }
 
   #page-home h3 {
@@ -250,27 +295,29 @@
 
   #page-home .subtitle {
     position: relative;
-    top: -30px;
     height: 50dvh;
     margin-left: 10%;
     text-align: left;
     writing-mode: vertical-lr;
     text-orientation: upright;
     letter-spacing: 10px;
+    opacity: 0;
+    --translate: -30px, 0, 0;
+    animation: fade-in var(--animate-subtitle-delay) ease-in-out var(--animate-subtitle-duration) forwards;
   }
 
   #page-home footer {
     display: flex;
     flex-direction: column;
-    gap: 15px;
+    gap: 0.25rem;
     justify-content: center;
     align-items: center;
-    padding-bottom: 3dvh;
-    animation-name: wait, fade-in;
-    animation-duration: 1500ms,900ms;
-    animation-delay: 0, 1500ms;
-    animation-timing-function: linear, linear;
-    animation-composition: replace, replace;
+    padding-bottom: 5dvh;
+    opacity: 0;
+    /* Initial opacity */
+    ;
+    --translate: 0, 30%, 0;
+    animation: fade-in var(--animate-footer-duration) ease-in var(--animate-footer-delay) forwards;
   }
 
   #page-home #continue-button {
@@ -280,21 +327,25 @@
   }
 
   #page-home #continue-button h3 {
-    position: relative;
+    position: absolute;
+    top: 30%;
+    left: 0;
+    right: 0;
     z-index: calc(var(--content-z-index) + 1);
+    font-family: "GenWanMin2TC-R";
   }
 
   #page-home .agree-rule-label {
     display: flex;
     align-items: center;
-    font-size: 18px;
-    line-height: 18px;
     text-align: center;
     vertical-align: middle;
   }
 
   #page-home .agree-rule-label p {
     margin: 0;
+    font-size: 14px;
+    line-height: 14px;
   }
 
   #page-home .agree-rule-label #rule-link {
@@ -338,10 +389,10 @@
   }
 
   #page-home #rule ol.rule-content {
-    margin-left: 3em;
+    margin-left: 2em;
   }
 
-  #page-home #rule .rule-button {
+  #page-home #rule #rule-button {
     display: block;
     margin: 10px auto 0;
     border: 2px solid #15558d;
@@ -353,6 +404,112 @@
     text-align: center;
   }
 
+  /* Responsive Design */
+  @media (max-width: 340px) {
+    #page-home .username h3 {
+      font-size: 22px;
+    }
+
+    #page-home .title .zh {
+      font-size: 48px;
+    }
+
+    #page-home .title .en {
+      font-size: 15px;
+    }
+
+    #page-home .agree-rule-label p {
+      font-size: 13px;
+    }
+  }
+
+  @media (min-width: 380px) {
+    #page-home #continue-button h3 {
+      font-size: 26px;
+    }
+
+    #page-home .agree-rule-label p {
+      font-size: 16px;
+    }
+  }
+
+  @media (min-width: 380px) and (max-width: 500px) {
+    #page-home .title .zh {
+      font-size: 60px;
+    }
+
+    #page-home .title .en {
+      font-size: 18px;
+    }
+  }
+
+  @media (min-width: 500px) and (max-width: 768px) {
+    #page-home .title-container {
+      margin-top: 10%;
+    }
+
+    #page-home .username {
+      margin-left: 15%;
+    }
+
+    #page-home .username h3 {
+      font-size: 26px;
+    }
+
+    #page-home .title .zh {
+      font-size: 72px;
+    }
+
+    #page-home .title .en {
+      font-size: 26px;
+    }
+
+    #page-home .subtitle {
+      height: min(48dvh, 368px);
+    }
+  }
+
+  @media (min-width: 769px) {
+    #page-home .title-container {
+      margin-top: 10%;
+    }
+
+    #page-home .username {
+      margin-left: 15%;
+    }
+
+    #page-home .username h3 {
+      font-size: 26px;
+    }
+
+    #page-home .title .zh {
+      font-size: 72px;
+    }
+
+    #page-home .title .en {
+      font-size: 26px;
+    }
+
+    #page-home .subtitle {
+      margin-left: 15%;
+      font-size: 36px;
+      height: min(48dvh, 368px);
+    }
+  }
+
+  @media (max-height: 670px) {
+    #page-home .subtitle {
+      letter-spacing: 1dvh;
+    }
+
+  }
+
+  @media (min-width: 380px) and (min-height: 720px) and (max-height: 950px) {
+    #page-home .subtitle {
+      font-size: 26px;
+    }
+  }
+
   /* 地下室部分 */
   /* 引入 */
   #page-1-1-1 .bg-back {
@@ -360,8 +517,20 @@
   }
 
   #page-1-1-1 .content {
-    top: 20%;
+    top: 15%;
     left: 10%;
+  }
+
+  @media (max-height: 690px) {
+    #page-1-1-1 .content {
+      top: 5%;
+    }
+  }
+
+  @media (min-height: 690px) and (max-height: 750px) {
+    #page-1-1-1 .content {
+      top: 10%;
+    }
   }
 
   #page-1-1-2 .bg-back {
@@ -386,6 +555,12 @@
     left: 10%;
   }
 
+  @media (max-height: 690px) {
+    #page-1-2 .content {
+      top: 5%;
+    }
+  }
+
   /* B2空间（功能室）使用情况总览 */
   #page-1-3 .bg-back {
     background-image: url("../img/summary2024/p1-3.png");
@@ -396,6 +571,12 @@
     left: 0;
     right: 0;
     text-align: center;
+  }
+
+  @media (max-height: 690px) {
+    #page-1-3 .content {
+      top: 5%;
+    }
   }
 
   /* 过渡个人Part */
@@ -434,6 +615,12 @@
     text-align: center;
   }
 
+  @media (max-height: 690px) {
+    #page-1-6 .content {
+      top: 10%;
+    }
+  }
+
   /* 功能室 */
   #page-1-7 .bg-back {
     background-image: url("../img/summary2024/p1-7.png");
@@ -457,6 +644,12 @@
     text-align: center;
   }
 
+  @media (max-height: 690px) {
+    #page-1-8 .content {
+      top: 20%;
+    }
+  }
+
   /* 个人预约总览 */
   #page-1-9 .bg-back {
     background-image: url("../img/summary2024/p1-9.png");
@@ -476,10 +669,22 @@
   }
 
   #page-2-1 .content {
-    top: 30%;
+    top: 25%;
     left: 0;
     right: 0;
     text-align: center;
+  }
+
+  @media (max-height: 690px) {
+    #page-2-1 .content {
+      top: 15%;
+    }
+  }
+
+  @media (min-height: 690px) and (max-height: 750px) {
+    #page-2-1 .content {
+      top: 20%;
+    }
   }
 
   /* YPPF 使用总览 */
@@ -490,6 +695,12 @@
   #page-2-2 .content {
     top: 18%;
     left: 10%;
+  }
+
+  @media (max-height: 690px) {
+    #page-2-2 .content {
+      top: 5%;
+    }
   }
 
   /* 个人登录情况 */
@@ -517,6 +728,12 @@
     text-align: center;
   }
 
+  @media (max-height: 690px) {
+    #page-2-4 .content {
+      top: 10%;
+    }
+  }
+
   /* 个人书院课选修情况 */
   #page-2-5 .bg-back {
     background-image: url("../img/summary2024/p2-5.png");
@@ -537,6 +754,12 @@
     left: 0;
     right: 0;
     text-align: center;
+  }
+
+  @media (max-height: 690px) {
+    #page-2-6 .content {
+      top: 20%;
+    }
   }
 
   /* 元气值商城 */
@@ -561,6 +784,12 @@
     text-align: center;
   }
 
+  @media (max-height: 690px) {
+    #page-2-8 .content {
+      top: 2%;
+    }
+  }
+
   /* 结束页 */
   #page-2-9 .bg-back {
     background-image: url("../img/summary2024/p2-9.png");
@@ -571,6 +800,12 @@
     left: 0;
     right: 0;
     text-align: center;
+  }
+
+  @media (max-height: 690px) {
+    #page-2-9 .content {
+      top: 5%;
+    }
   }
 
   /* 展示页 */
@@ -596,6 +831,16 @@
     margin: 5dvh 10dvw 5dvh 10dvw;
   }
 
+  #page-2-10 .username {
+    font-size: 25px;
+    font-weight: bold;
+  }
+
+  #page-2-10 .forewords {
+    font-size: 20px;
+    font-weight: bold;
+  }
+
   #mbti-table {
     display: grid;
     grid-template-columns: repeat(2, 1fr);
@@ -619,7 +864,7 @@
 
   #mbti-table .mbti-cell h2 {
     position: absolute;
-    top: -25%;
+    top: -20%;
     font-size: 90px;
     font-weight: 900;
     text-shadow: 0 20px 25px rgb(0 0 0 / 0.1), 0 8px 10px rgb(0 0 0 / 0.1);
@@ -628,4 +873,55 @@
   #mbti-table .mbti-cell p {
     line-height: 18px;
     text-align: center;
+  }
+
+  @media (max-width: 360px) {
+    #page-2-10 .username {
+      font-size: 21px;
+    }
+
+    #page-2-10 .forewords {
+      font-size: 18px;
+    }
+
+    #mbti-table .mbti-cell h2 {
+      top: -25%;
+      font-size: 85px;
+    }
+
+    #mbti-table .mbti-cell p {
+      font-size: 14px;
+    }
+
+    #page-2-10 footer p {
+      font-size: 14px;
+      line-height: 1.8;
+    }
+  }
+
+  @media (max-height: 690px) {
+    #mbti-table .mbti-cell h2 {
+      font-size: 72px;
+    }
+
+    #mbti-table .mbti-cell p {
+      font-size: 14px;
+    }
+
+    #page-2-10 footer p {
+      margin-top: 5px;
+      font-size: 14px;
+      line-height: 1.8;
+    }
+  }
+
+  @media (min-width: 360px) and (max-width: 400px) {
+    #mbti-table .mbti-cell p {
+      font-size: 16px;
+    }
+
+    #page-2-10 footer p {
+      font-size: 16px;
+      line-height: 1.8;
+    }
   }

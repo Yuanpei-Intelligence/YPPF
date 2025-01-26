@@ -3,8 +3,8 @@
 <html lang="zh-CN">
   <head>
     <meta charset="UTF-8" />
-    <title>雪中春信至</title>
-    <meta name="description" content="雪中春信至" />
+    <title>雪中元信至</title>
+    <meta name="description" content="雪中元信至" />
     <meta name="keywords" />
     <link type="image/x-icon"
           href="{% static 'Appointment/assets/img/yp_favicon.png' %} "
@@ -28,7 +28,7 @@
           href="{% static 'Appointment/assets/css/summary2024.css' %}" />
   </head>
   <body>
-    <audio loop src="/static/Appointment/assets/bgm/From the Moon.mp3">不支持播放音乐</audio>
+    <audio loop src="/static/Appointment/assets/bgm/from-the-earth.mp3">不支持播放音乐</audio>
     <div id="music-container">
       <button id="play-music" type="button" title="播放/暂停音乐">
         <div id="playing">
@@ -78,32 +78,58 @@
         <img class="YPPF-logo"
              src="{% static 'Appointment/assets/img/summary2024/YPPF-logo.png' %}"
              alt="YPPF 智慧书院"
-             width="90"
-             height="90" />
+             width="75"
+             height="75" />
         <div class="bg-elements">
-          <div class="draw-stroke"></div>
+          <img class="clock"
+               src="{% static 'Appointment/assets/img/summary2024/home-clock.svg' %}"
+               alt="Background clock image"
+               width="350"
+               height="350" />
         </div>
         <div class="content">
-          <div class="title">
-            <div class="left">
-              <h1 class="zh">雪中</h1>
-              <h2 class="en">of you</h2>
+          <div class="title-container">
+            <div class="username">
+              <h3 class="zh">
+                <span class="fc-blue">{{ Sname }}</span> 亲启
+              </h3>
             </div>
-            <div class="right">
-              <h2 class="en">special memories</h2>
-              <h1 class="zh">春信至</h1>
-              <h2 class="en">2024-2025</h2>
+            <div class="title">
+              <div class="left">
+                <h1 class="zh">雪中</h1>
+                <h2 class="en">of you</h2>
+              </div>
+              <div class="right">
+                <h2 class="en">special memories</h2>
+                <h1 class="zh">元信至</h1>
+                <h2 class="en">2024-2025</h2>
+              </div>
+              <img class="title-stroke"
+                   src="{% static 'Appointment/assets/img/summary2024/home-title-stroke.svg' %}"
+                   alt="Title background stroke"
+                   width="420"
+                   height="420" />
+              <img class="snowflakes"
+                   src="{% static 'Appointment/assets/img/summary2024/home-snowflakes.svg' %}"
+                   alt="Background snowflakes"
+                   width="390"
+                   height="340" />
             </div>
           </div>
-          <h3 class="subtitle">你的三十五楼独家记忆</h3>
+          <h3 class="subtitle zh fc-blue">你的三十五楼独家记忆</h3>
           <footer>
             <button id="continue-button" type="button" title="开启旅程">
-              <h3>开启旅程</h3>
-              <div class="draw-stroke"></div>
+              <h3 class="zh fc-blue">开启旅程</h3>
+              <img src="{% static 'Appointment/assets/img/summary2024/home-button-stroke.svg' %}"
+                   alt="Button background stroke"
+                   width="250"
+                   height="60" />
             </button>
             <label for="agree-rule" class="agree-rule-label">
-              <input type="checkbox" id="agree-rule" />
-              <p>同意<a href="#" id="rule-link">《智慧书院2024年度回忆授权协议》</a>并查看报告</p>
+              <!-- <input type="checkbox" id="agree-rule" /> -->
+              <p class="zh">
+                同意<a href="#" id="rule-link">《智慧书院2024年度回忆授权协议》</a>并查看报告
+              </p>
             </label>
           </footer>
           <div id="rule">
@@ -114,14 +140,14 @@
               </p>
               <ol class="rule-content">
                 <li>
-                  为了生成您的2024年度回忆，您同意授权智慧校园项目组查询您的姓名、年级等个人基本信息以及在2024自然年度（2024.2.1-2025.1.15）的智慧书院使用数据（包括系统登录记录、地下室使用记录、加入小组记录、书院课程参与记录、活动参与记录、元气值使用记录、学术地图使用记录等）并进行汇总统计分析，以用于年度回忆页面向您进行个性化专属展示。
+                  为了生成您的2024年度回忆，您同意授权智慧校园项目组查询您的姓名、年级等个人基本信息以及在2024自然年度（2024.1.16-2025.1.18）的智慧书院使用数据（包括系统登录记录、地下室使用记录、加入小组记录、书院课程参与记录、活动参与记录、元气值使用记录、学术地图使用记录等）并进行汇总统计分析，以用于年度回忆页面向您进行个性化专属展示。
                 </li>
                 <li>您的2024年度回忆为根据算法自动生成，可能与实际情况存在偏差，敬请理解。</li>
                 <li>请您确认，您的2024年度回忆包含您的个人信息，您有权自行处理您的个人信息，包括但不限于使用、保存及对外共享给他人等行为，您将承担由您的操作或行为导致的个人信息安全风险。</li>
                 <li>除以上声明的目的外，智慧校园项目组不会对本次查询的信息以及产生的分析结果作其他任何处理。</li>
                 <li>如您对本次2024年度回忆有任何疑问，您可通过YPPF反馈中心联系智慧校园项目组。</li>
               </ol>
-              <button class="rule-button" id="rule-button">我知道啦</button>
+              <button id="rule-button">我知道啦</button>
             </div>
           </div>
         </div>
@@ -635,10 +661,10 @@
                width="90"
                height="90" />
           <div class="content-panel">
-            <p class="fs-25b">
-              @<span class="fc-rose">{{ Sname }}</span>
+            <p class="username">
+              @ <span class="fc-rose">{{ Sname }}</span>
             </p>
-            <p class="fs-20b">
+            <p class="forewords">
               你的2024地下室使用<span class="fc-rose">MBTI</span>——
             </p>
             <div id="mbti-table">
@@ -661,7 +687,8 @@
                 {% if MBTI_SN == 'S' %}
                   <p>有望成为五边形战士！</p>
                 {% else %}
-                  <p>主打一个“垂直深耕”</p>
+                  <p>主打一个</p>
+                  <p>“垂直深耕”</p>
                 {% endif %}
               </div>
               <div class="mbti-cell">
@@ -701,27 +728,29 @@
                 {% endif %}
               </div>
             </div>
-            {% if study_room_num > 0 %}
-              <div class="flex gap-10dvw">
+            <footer>
+              {% if study_room_num > 0 %}
+                <div class="flex gap-10dvw">
+                  <p>
+                    # <span class="fc-rose">{{ study_room_num }}</span> 次走进自习室
+                  </p>
+                  <p>
+                    # 最喜欢 <span class="fc-rose">{{ study_room_top }}</span>
+                  </p>
+                </div>
+              {% endif %}
+              {% if number_of_unique_prizes > 0 %}
                 <p>
-                  # <span class="fc-rose">{{ study_room_num }}</span> 次走进自习室
+                  # 在元气值商城成功兑换 <span class="fc-rose">{{ number_of_unique_prizes }}</span> 类商品
                 </p>
+              {% endif %}
+              {% if lucky_mystery_boxes_num > 0 %}
                 <p>
-                  # 最喜欢 <span class="fc-rose">{{ study_room_top }}</span>
+                  # 盲盒中奖率 <span class="fc-rose">{{ lucky_rate }}%</span>
                 </p>
-              </div>
-            {% endif %}
-            {% if number_of_unique_prizes > 0 %}
-              <p>
-                # 在元气值商城成功兑换 <span class="fc-rose">{{ number_of_unique_prizes }}</span> 类商品
-              </p>
-            {% endif %}
-            {% if lucky_mystery_boxes_num > 0 %}
-              <p>
-                # 盲盒中奖率 <span class="fc-rose">{{ lucky_rate }}%</span>
-              </p>
-            {% endif %}
-          </div>
+              {% endif %}
+            </div>
+          </footer>
         </div>
       </section>
     </div>
@@ -732,6 +761,10 @@
     <script src="{% static 'Appointment/./assets/js/App.js' %}"></script>
     <!-- main -->
     <script lang="javascript">
+    screen.orientation.lock('landscape').catch(() => {
+      console.log('Orientation lock is only available in mobile devices.');
+    });
+
     jQuery(document).ready(function ($) {
       // 若页面刷新并且不是由window.location.replace导致的，清空localStorage
       if (localStorage.getItem('replaced') !== 'true')
