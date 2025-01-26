@@ -3,6 +3,17 @@
     src: url("../fonts/Siyuan-SongTi-regular.ttf") format("truetype");
   }
 
+  @font-face {
+    font-family: "GenWanMin2-R";
+    src: url("../fonts/GenWanMin2-R.ttc") format("otf");
+  }
+
+  @font-face {
+    font-family: "TANTWINKLE";
+    src: url("../fonts/TANTWINKLE.ttf") format("truetype");
+  }
+
+  /* PREFLIGHT */
   h1,
   h2,
   h3 {
@@ -15,8 +26,8 @@
     display: flex;
   }
 
-  .gap-20dvw {
-    gap: 20dvw;
+  .gap-10dvw {
+    gap: 10dvw;
   }
 
   .mt-35 {
@@ -45,6 +56,49 @@
   .fc-rose {
     font-weight: 900;
     color: #ff5757;
+  }
+
+  /* ANIMATIONS */
+
+  @keyframes wait {
+    from {
+      opacity: 0;
+    }
+
+    to {
+      opacity: 0;
+    }
+  }
+
+  @keyframes fade-in {
+    from {
+      opacity: 0;
+      transform: translate3d(0, 30%, 0);
+      -webkit-transform: translate3d(0, 30%, 0);
+    }
+
+    to {
+      opacity: 1;
+      transform: translate3d(0, 0, 0);
+      -webkit-transform: translate3d(0, 0, 0);
+    }
+  }
+
+  @-webkit-keyframes fade-in {
+    from {
+      opacity: 0;
+      -webkit-transform: translate3d(0, 30%, 0);
+    }
+
+    to {
+      opacity: 1;
+      -webkit-transform: translate3d(0, 0, 0);
+    }
+  }
+
+  .fade-in {
+    animation-name: fade-in;
+    animation-duration: 2s;
   }
 
   /* ELEMENTS */
@@ -129,7 +183,7 @@
   }
 
   #page-home .bg-back {
-    background-image: url("../img/summary2023/homepage/底图.jpeg");
+    background-image: url("../img/summary2024/home-bg.png");
   }
 
   #page-home .YPPF-logo {
@@ -154,6 +208,9 @@
     justify-content: center;
     width: 100%;
     margin: 10% auto 20px auto;
+    animation-name: fade-in;
+    animation-duration: 900ms;
+    animation-timing-function: ease-in;
   }
 
   #page-home .title left {
@@ -170,7 +227,8 @@
     margin-top: 0;
     margin-bottom: 0;
     color: #15558d;
-    font-size: 72px;
+    font-family: "GenWanMin2-R";
+    font-size: 64px;
     font-weight: bold;
     letter-spacing: 10px;
     text-align: center;
@@ -180,13 +238,14 @@
     margin-top: 0;
     margin-bottom: 0;
     color: #15558d;
-    font-size: 32px;
+    font-family: "TANTWINKLE";
+    font-size: 24px;
     font-weight: bold;
     text-align: center;
   }
 
   #page-home h3 {
-    font-size: 36px;
+    font-size: 24px;
   }
 
   #page-home .subtitle {
@@ -207,6 +266,11 @@
     justify-content: center;
     align-items: center;
     padding-bottom: 3dvh;
+    animation-name: wait, fade-in;
+    animation-duration: 1500ms,900ms;
+    animation-delay: 0, 1500ms;
+    animation-timing-function: linear, linear;
+    animation-composition: replace, replace;
   }
 
   #page-home #continue-button {
@@ -447,7 +511,7 @@
   }
 
   #page-2-4 .content {
-    top: 25%;
+    top: 20%;
     left: 0;
     right: 0;
     text-align: center;
@@ -491,7 +555,7 @@
   }
 
   #page-2-8 .content {
-    top: 20%;
+    top: 15%;
     left: 0;
     right: 0;
     text-align: center;
@@ -515,6 +579,7 @@
   }
 
   #page-2-10 .content {
+    top: 0;
     display: flex;
     flex-direction: column;
     height: 100%;
@@ -554,7 +619,7 @@
 
   #mbti-table .mbti-cell h2 {
     position: absolute;
-    top: -45%;
+    top: -25%;
     font-size: 90px;
     font-weight: 900;
     text-shadow: 0 20px 25px rgb(0 0 0 / 0.1), 0 8px 10px rgb(0 0 0 / 0.1);
