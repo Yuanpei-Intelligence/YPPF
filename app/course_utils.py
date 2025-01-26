@@ -583,6 +583,7 @@ def check_course_time_conflict(current_course: Course,
     '''
 
 
+@transaction.atomic
 @logger.secure_func()
 def registration_status_change(course_id: int, user: NaturalPerson,
                                action: str) -> MESSAGECONTEXT:
@@ -599,6 +600,10 @@ def registration_status_change(course_id: int, user: NaturalPerson,
     :rtype: MESSAGECONTEXT
     """
     context = wrong("在修改选课状态的过程中发生错误，请联系管理员！")
+
+    # 如果不把 user 锁起来，前面做的检查到后面更新数据库时可能已经无效了，会让用户选上超过6门或者时间冲突的课。
+    # 最后get是为了强制对QuerySet求值，起到上锁的效果
+    NaturalPerson.objects.select_for_update().get(id=user.id)
 
     # 在外部保证课程ID是存在的
     course = Course.objects.get(id=course_id)
