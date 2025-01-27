@@ -91,7 +91,7 @@
           <div class="title-container">
             <div class="username">
               <h3 class="zh">
-                <span class="fc-blue">{{ Sname }}</span> 亲启
+                <span class="fc-blue">{{ home_Sname }}</span> 亲启
               </h3>
             </div>
             <div class="title">
@@ -126,7 +126,7 @@
                    height="60" />
             </button>
             <label for="agree-rule" class="agree-rule-label">
-              <!-- <input type="checkbox" id="agree-rule" /> -->
+              <input type="checkbox" id="agree-rule" />
               <p class="zh">
                 同意<a href="#" id="rule-link">《智慧书院2024年度回忆授权协议》</a>并查看报告
               </p>
@@ -170,7 +170,7 @@
         <div class="bg-back"></div>
         <div class="content">
           <p>
-            <span class="fs-36b">你</span>好，<span class="fc-rose">{{ Sname }}</span>
+            <span class="fs-36b">你</span>好，<span class="fc-rose">{{ home_Sname }}</span>
           </p>
           <p class="mt-35">我是燕园35号楼</p>
           <p>二十九级台阶，两次转角</p>
@@ -610,7 +610,6 @@
             <p>
               你在学术地图中记录了 <span class="fc-rose">{{ academic_tags_num }}</span> 个高光时刻
             </p>
-            <p>分别是</p>
             <p>每一次出发都有意义！</p>
             {% if academic_QA_num == 0 %}
               <p class="mt-50">我们只能自己丈量世界</p>
@@ -662,7 +661,7 @@
                height="90" />
           <div class="content-panel">
             <p class="username">
-              @ <span class="fc-rose">{{ Sname }}</span>
+              @ <span class="fc-rose">{{ home_Sname }}</span>
             </p>
             <p class="forewords">
               你的2024地下室使用<span class="fc-rose">MBTI</span>——
@@ -773,8 +772,8 @@
         localStorage.removeItem('replaced');
 
       var checked = false; //检查用户是否同意授权协议
-      let redirect = false; // 防止onLeave在window.location.replace过程中多次执行
-      let rst = null;
+      var redirect = false; // 防止onLeave在window.location.replace过程中多次执行
+      var rst = null;
 
       checked = localStorage.getItem('agree-rule') === 'true' ? true : false;
       $('#agree-rule').prop('checked', checked);
@@ -782,7 +781,7 @@
       // 正确处理直接输入summary2024?accept=true的情况
       {% if user_accept %}$('#agree-rule').prop('checked', true);{% endif %}
 
-      let playing = localStorage.getItem('playing') == 'block' ? true : false;
+      var playing = localStorage.getItem('playing') == 'block' ? true : false;
       if (playing) {
         $('audio')[0].play();
         $('div#playing').css({
@@ -793,7 +792,7 @@
         });
       }
 
-      let playedTime = localStorage.getItem('currentTime');
+      var playedTime = localStorage.getItem('currentTime');
       if (playedTime)
         $('audio')[0].currentTime = playedTime;
 
@@ -813,7 +812,7 @@
             // 不同意协议
             if (!checked) {
               {% if not user_cancel %}
-              rst = confirm("请点击确认表示同意《智慧书院2024年度回忆授权协议》再开启你的年度总结之旅哦！\n如您不同意该协议，请点击取消，我们将为您展示样例。\n如您不慎误点取消，请上滑返回首页重新选择或刷新界面。\n祝您的回忆之旅愉快！");
+              rst = confirm("请点击确认表示同意《智慧书院2024年度回忆授权协议》再开启你的年度总结之旅哦！\n如您不同意该协议，请点击取消，数据部分我们将为您展示样例。\n如您不慎误点取消，请上滑返回首页重新选择或刷新界面。\n祝您的回忆之旅愉快！");
               if (rst)
                 $('#agree-rule').prop('checked', true).trigger('change');
               else {
