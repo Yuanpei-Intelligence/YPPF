@@ -37,7 +37,10 @@ class FeedbackType(models.Model):
 
     def __str__(self):
         return self.name
-    
+
+    def natural_key(self):
+        return self.name
+
 
 class Feedback(CommentBase):
     class Meta:
@@ -116,3 +119,6 @@ class Feedback(CommentBase):
         else:
             url = f'/viewFeedback/{self.id}'
         return url
+
+    def natural_key(self):
+        return self.title

@@ -38,6 +38,9 @@ class Dormitory(models.Model):
     def __str__(self):
         return str(self.id)
 
+    def natural_key(self):
+        return self.id
+
 
 class DormitoryAssignment(models.Model):
     class Meta:
