@@ -362,6 +362,7 @@ class NaturalPerson(models.Model):
 
     accept_promote = models.BooleanField(default=True)    # 是否接受推广消息
     active_score = models.FloatField("活跃度", default=0)  # 用户活跃度
+    course_priority = models.FloatField("书院课选课权重", default=1.0)  # 书院课预选抽签权重
 
     def __str__(self):
         return str(self.name)
