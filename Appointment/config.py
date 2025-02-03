@@ -44,5 +44,10 @@ class AppointmentConfig(Config):
     # 是否限制开始前的预约取消时间
     restrict_cancel_time = False
 
+    # 海康 SDK
+    haikang_lib_path = 'extern/haikang/libhcnetsdk.so'
+    # Must be an absolute path according to the documentation
+    haikang_log_path = '/var/log/haikang.log'
+
 
 appointment_config = AppointmentConfig(ROOT_CONFIG, 'underground')
