@@ -414,7 +414,7 @@
                                                         </div>
                                                         <div role="group" class="d-flex justify-content-start">
                                                                 <form method="POST" id="delete_form">
-                                                                    <a data-toggle="tooltip" title="删除" onclick="if(confirm('确认要删除反馈草稿吗？')){document.getElementById('delete_form').submit();}" type="submit">
+                                                                    <a data-toggle="tooltip" title="删除" onclick="if(confirm('确认要删除反馈草稿吗？此操作无法撤回！')){document.getElementById('delete_form').submit();}" type="submit">
                                                                     <input type="hidden" name="option" value="delete">
                                                                     <input type="hidden" name="id" value="{{feedback.id}}">
                                                                         <h5><i class="fa fa-trash-alt"></i></h5>

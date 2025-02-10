@@ -284,8 +284,7 @@ def viewFeedback(request: HttpRequest, fid):
                     return redirect(message_url(wrong("只有未解决的反馈才可以撤回"), request.path))
                 with transaction.atomic():
                     feedback = Feedback.objects.select_for_update().get(id=fid)
-                    feedback.issue_status = Feedback.IssueStatus.DELETED
-                    feedback.save()
+                    feedback.delete()
                     succeed_message.append("成功撤销反馈！")
         """
         # 如果有任何数据库操作，都需要提示操作成功
@@ -308,37 +307,30 @@ def viewFeedback(request: HttpRequest, fid):
     if request.user.is_person() and feedback.person == me:
         login_identity = "publisher"
         # 未结束反馈发布者可评论，可撤销
-        if feedback.solve_status in (Feedback.SolveStatus.SOLVING, Feedback.SolveStatus.UNMARKED) \
-            and feedback.issue_status != Feedback.IssueStatus.DELETED:
+        if feedback.solve_status in (Feedback.SolveStatus.SOLVING, Feedback.SolveStatus.UNMARKED):
             commentable = True
             # 撤销反馈功能迁移到反馈聚合页面
             # cancel_editable = True
         # 未公开反馈，且老师没有设置成不予公开时，发布者可修改自身公开状态
-        if (not feedback.publisher_public) and feedback.public_status != Feedback.PublicStatus.FORCE_PRIVATE \
-            and feedback.issue_status != Feedback.IssueStatus.DELETED:
+        if (not feedback.publisher_public) and feedback.public_status != Feedback.PublicStatus.FORCE_PRIVATE:
             public_editable = True
     # 二、当前登录用户为老师
     elif request.user.is_person() and me.is_teacher():
         login_identity = "teacher"
         # 未结束反馈可评论
-        if feedback.solve_status in (Feedback.SolveStatus.SOLVING, Feedback.SolveStatus.UNMARKED) \
-            and feedback.issue_status != Feedback.IssueStatus.DELETED:
+        if feedback.solve_status in (Feedback.SolveStatus.SOLVING, Feedback.SolveStatus.UNMARKED):
             commentable = True
         # 所有反馈老师可修改公开状态
-        if feedback.issue_status != Feedback.IssueStatus.DELETED:
-            public_editable = True
-        if feedback.public_status == Feedback.PublicStatus.PUBLIC \
-            and feedback.issue_status != Feedback.IssueStatus.DELETED:
+        public_editable = True
+        if feedback.public_status == Feedback.PublicStatus.PUBLIC:
             public = True
         # 未结束反馈可评论
-        if feedback.solve_status in (Feedback.SolveStatus.SOLVING, Feedback.SolveStatus.UNMARKED) \
-            and feedback.issue_status != Feedback.IssueStatus.DELETED:
+        if feedback.solve_status in (Feedback.SolveStatus.SOLVING, Feedback.SolveStatus.UNMARKED):
             commentable = True
     # 三、当前登录用户为发布者和老师以外的个人
     elif request.user.is_person():
         # 检查当前个人是否具有访问权限，只有公开反馈有访问权限
-        if feedback.public_status == Feedback.PublicStatus.PUBLIC \
-            and feedback.issue_status != Feedback.IssueStatus.DELETED:
+        if feedback.public_status == Feedback.PublicStatus.PUBLIC:
             login_identity = "student"
         else:
             # 如果是组织管理员，尝试登录
@@ -350,17 +342,14 @@ def viewFeedback(request: HttpRequest, fid):
     elif request.user.is_org() and feedback.org == me:
         login_identity = "org"
         # 未读反馈可修改未为已读
-        if feedback.read_status == Feedback.ReadStatus.UNREAD \
-            and feedback.issue_status != Feedback.IssueStatus.DELETED:
+        if feedback.read_status == Feedback.ReadStatus.UNREAD:
             read_editable = True
         # 未结束反馈可修改为已结束，并且可以评论
-        if feedback.solve_status in (Feedback.SolveStatus.SOLVING, Feedback.SolveStatus.UNMARKED) \
-            and feedback.issue_status != Feedback.IssueStatus.DELETED:
+        if feedback.solve_status in (Feedback.SolveStatus.SOLVING, Feedback.SolveStatus.UNMARKED):
             solve_editable = True
             commentable = True
         # 个人愿意公开，老师没有设置成不予公开时，组织可修改自身公开状态
-        if feedback.public_status != Feedback.PublicStatus.FORCE_PRIVATE \
-            and feedback.issue_status != Feedback.IssueStatus.DELETED:
+        if feedback.public_status != Feedback.PublicStatus.FORCE_PRIVATE:
             public_editable = True
     # 其他用户（非受反馈小组）暂时不开放任何权限
     else:
@@ -393,17 +382,15 @@ def feedbackWelcome(request: HttpRequest):
             feedback_type = request.session['feedback_type']
             feedback_url = request.session['feedback_url']
             try: # 获取最新的反馈，如果已被删除则创建新的反馈
-                feedback = Feedback.objects.filter(url=feedback_url).order_by('-feedback_time')[0]
-                if feedback.issue_status == Feedback.IssueStatus.DELETED:
-                    return redirect(f'/modifyFeedback/?type={feedback_type}')
-                else:
-                    request.session.pop('feedback_type')
-                    request.session.pop('feedback_url')
-                    request.session.pop('feedback_content', '')
-                    return redirect(message_url(
-                        succeed('检测到您填写的申诉内容，已自动跳转'),
-                        feedback.get_absolute_url()
-                    ))
+                feedback = Feedback.objects.filter(
+                    url=feedback_url).order_by('-feedback_time')[0]
+                request.session.pop('feedback_type')
+                request.session.pop('feedback_url')
+                request.session.pop('feedback_content', '')
+                return redirect(message_url(
+                    succeed('检测到您填写的申诉内容，已自动跳转'),
+                    feedback.get_absolute_url()
+                ))
             except: # 如果没有找到对应的反馈，直接创建新的反馈
                 pass
         return redirect(f'/modifyFeedback/?type={feedback_type}')
@@ -442,7 +429,6 @@ def feedbackWelcome(request: HttpRequest):
         .filter(
             Q(solve_status=Feedback.SolveStatus.SOLVED)
             | Q(solve_status=Feedback.SolveStatus.UNSOLVABLE)
-            | Q(issue_status=Feedback.IssueStatus.DELETED)
         )
     )
 
@@ -510,12 +496,9 @@ def feedbackWelcome(request: HttpRequest):
             # 合法性检查
             if del_feedback.issue_status == Feedback.IssueStatus.ISSUED:
                 return redirect(message_url(wrong('不能删除已经发布的反馈！'), request.path))
-            if del_feedback.issue_status == Feedback.IssueStatus.DELETED:
-                return redirect(message_url(wrong('这条反馈已经被删除啦！'), request.path))
 
             with transaction.atomic():
-                del_feedback.issue_status = Feedback.IssueStatus.DELETED
-                del_feedback.save()
+                del_feedback.delete()
             succeed('成功删除反馈草稿！', html_display)
 
         elif option == "withdraw":
@@ -526,8 +509,6 @@ def feedbackWelcome(request: HttpRequest):
             # 合法性检查
             if del_feedback.issue_status != Feedback.IssueStatus.ISSUED:
                 return redirect(message_url(wrong('不能撤回没有发布的反馈！'), request.path))
-            if del_feedback.issue_status == Feedback.IssueStatus.DELETED:
-                return redirect(message_url(wrong('这条反馈已经被撤回啦！'), request.path))
             if del_feedback.solve_status in [
                 Feedback.SolveStatus.SOLVED,
                 Feedback.SolveStatus.UNSOLVABLE,
@@ -535,8 +516,7 @@ def feedbackWelcome(request: HttpRequest):
                 return redirect(message_url(wrong('不能撤回已经发布的反馈！'), request.path))
 
             with transaction.atomic():
-                del_feedback.issue_status = Feedback.IssueStatus.DELETED
-                del_feedback.save()
+                del_feedback.delete()
             succeed('成功撤回反馈！', html_display)
 
     bar_display = utils.get_sidebar_and_navbar(request.user, navbar_name="反馈中心")

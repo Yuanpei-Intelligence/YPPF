@@ -57,7 +57,6 @@ class Feedback(CommentBase):
     class IssueStatus(models.IntegerChoices):
         DRAFTED = (0, "草稿")
         ISSUED = (1, "已发布")
-        DELETED = (2, "已删除")
 
     class ReadStatus(models.IntegerChoices):
         READ = (0, "已读")
