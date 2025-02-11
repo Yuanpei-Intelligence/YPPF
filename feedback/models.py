@@ -37,7 +37,13 @@ class FeedbackType(models.Model):
 
     def __str__(self):
         return self.name
-    
+
+
+class FeedbackManager(models.Manager['Feedback']):
+    def activated(self):
+        '''返回所有未被删除的反馈'''
+        return self.exclude(issue_status=Feedback.IssueStatus.DELETED)
+
 
 class Feedback(CommentBase):
     class Meta:
@@ -116,3 +122,5 @@ class Feedback(CommentBase):
         else:
             url = f'/viewFeedback/{self.id}'
         return url
+
+    objects: FeedbackManager = FeedbackManager()
