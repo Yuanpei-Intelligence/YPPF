@@ -45,25 +45,13 @@
                             </a>
                         </div>
                         {% endfor %}
-                        <!--
-                        <div class="carousel-item {% if not photo_display %} active{% endif %}">
-                            {% if firsturl %}
-                            <a href="{{ firsturl }}">
-                            {% endif %}
-                                <img class="d-block w-100 slide-image" style="height: 50vh; object-fit: cover;"
-                                    src="/static/assets/img/guidepics/{{ firstpic }}" %}>
-                            {% if firsturl %}
-                            </a>
-                            {% endif %}
-                        </div>
-                        -->
                         {% for pic, url in guidepics %}
                         <div class="carousel-item{% if forloop.first and not photo_display %} active{% endif %}">
                             {% if url %}
                             <a href="{{ url }}">
                             {% endif %}
                                 <img class="d-block w-100 slide-image" style="height: 50vh; object-fit: cover;"
-                                    src="/static/assets/img/guidepics/{{ pic }}" %}>
+                                    src="{{ pic }}" %}>
                             {% if url %}
                             </a>
                             {% endif %}

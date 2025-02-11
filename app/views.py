@@ -33,6 +33,7 @@ from app.models import (
     CourseRecord,
     Semester,
     AcademicQA,
+    HomepageImage,
 )
 from app.utils import (
     get_person_or_org,
@@ -60,6 +61,7 @@ from app.academic_utils import (
 
 from achievement.utils import personal_achievements
 from achievement.api import unlock_achievement, unlock_YQPoint_achievements
+from boot.settings import MEDIA_URL
 from semester.api import current_semester
 
 
@@ -869,13 +871,10 @@ def homepage(request: UserRequest):
         } for i, color in enumerate(colors)
     ]
 
-    # 从redirect.json读取要作为引导图的图片，按照原始顺序
-    guidepicdir = "static/assets/img/guidepics"
-    with open(f"{guidepicdir}/redirect.json") as file:
-        img2url = json.load(file)
-    guidepics = list(img2url.items())
-    # (firstpic, firsturl), guidepics = guidepics[0], guidepics[1:]
-    # firstpic是第一个导航图，不是第一张图片，现在把这个逻辑在模板处理了
+    guidepics = [
+        (MEDIA_URL + filename, url) for (filename, url) in
+            HomepageImage.objects.all().values_list('image', 'redirect_url')
+    ]
 
     """ 
         取出过去一周的所有活动，filter出上传了照片的活动，从每个活动的照片中随机选择一张
