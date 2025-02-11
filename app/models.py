@@ -93,6 +93,7 @@ __all__ = [
     'PoolItem',
     'PoolRecord',
     'ActivitySummary',
+    'HomepageImage',
 ]
 
 
@@ -1935,3 +1936,15 @@ class ActivitySummary(models.Model):
     @necessary_for_frontend('activity.title', '__str__')
     def get_audit_display(self):
         return f'{self.activity.title}总结'
+
+
+class HomepageImage(models.Model):
+    class Meta:
+        verbose_name = "首页图片"
+        verbose_name_plural = verbose_name
+
+    redirect_url = models.CharField("跳转URL", max_length = 50, default = "", blank = True)
+    image = models.ImageField("图片", upload_to = "guidepics/")
+
+    def __str__(self):
+        return self.image.name
