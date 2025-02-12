@@ -28,7 +28,7 @@
                         {% for _ in photo_display %}
                         <li data-target="#style1" {% if forloop.first %}class="active"{% endif %}></li>
                         {% endfor %}
-                        {% for _ in guidepics %}
+                        {% for _ in homepage_image %}
                         <li data-target="#style1" {% if forloop.first and not photo_display %}class="active"{% endif %}></li>
                         {% endfor %}
                     </ol>
@@ -45,7 +45,7 @@
                             </a>
                         </div>
                         {% endfor %}
-                        {% for pic, url in guidepics %}
+                        {% for pic, url in homepage_image %}
                         <div class="carousel-item{% if forloop.first and not photo_display %} active{% endif %}">
                             {% if url %}
                             <a href="{{ url }}">

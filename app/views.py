@@ -2,7 +2,7 @@ import json
 import random
 import requests
 from datetime import datetime, timedelta
-from typing import cast
+from typing import cast, List, Tuple
 
 from django.contrib import auth
 from django.db import transaction
@@ -884,7 +884,7 @@ def homepage(request: UserRequest):
     all_photo_display = ActivityPhoto.objects.filter(
         type=ActivityPhoto.PhotoType.SUMMARY).order_by('-time')
     photo_display, _aid_set = list(), set()  # 实例的哈希值未定义，不可靠
-    count = 9 - len(guidepics)  # 算第一张导航图
+    count = 9 - len(homepage_image)  # 算第一张导航图
     for photo in all_photo_display:
         # 不用activity，因为外键需要访问数据库
         if photo.activity_id not in _aid_set and photo.image:
@@ -899,7 +899,7 @@ def homepage(request: UserRequest):
                 break
     photo_display = ()
     if photo_display:
-        guidepics = guidepics[1:]   # 第一张只是封面图，如果有需要呈现的内容就不显示
+        homepage_image = homepage_image[1:]   # 第一张只是封面图，如果有需要呈现的内容就不显示
 
     """ 暂时不需要这些，目前逻辑是取photo_display的前四个，如果没有也没问题
     if len(photo_display) == 0: # 这个分类是为了前端显示的便利，就不采用append了

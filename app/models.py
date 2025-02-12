@@ -1954,7 +1954,7 @@ class HomepageImage(models.Model):
         verbose_name_plural = verbose_name
 
     redirect_url = models.CharField("跳转URL", max_length = 50, default = "", blank = True)
-    image = models.ImageField("图片", upload_to = "guidepics/")
+    image = models.ImageField("图片", upload_to = "homepage_image/")
     description = models.CharField("图片说明", max_length = 50, default = "", blank = True)
     upload_date = models.DateTimeField("上传时间", auto_now_add=True)
     sort_id = models.SmallIntegerField("展示顺序", default = 0)
