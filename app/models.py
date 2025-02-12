@@ -1938,14 +1938,29 @@ class ActivitySummary(models.Model):
         return f'{self.activity.title}总结'
 
 
+class HomepageImageManager(models.Manager['HomepageImage']):
+    def activated(self):
+        return self.filter(activated = True)
+
+
 class HomepageImage(models.Model):
-    '''首页上展示的功能介绍图片。之前叫做 guide pictures. 不包含活动宣传、活动总结的图片。'''
+    '''首页上展示的功能介绍图片。之前叫做 guide pictures. 不包含活动宣传、活动总结的图片。
+
+    sort_id 域记录的是图片在首页展示时的相对顺序。这个数字越小，越靠前展示。数字相同的图片将以随机顺序展示。
+    
+    '''
     class Meta:
         verbose_name = "首页图片"
         verbose_name_plural = verbose_name
 
     redirect_url = models.CharField("跳转URL", max_length = 50, default = "", blank = True)
     image = models.ImageField("图片", upload_to = "guidepics/")
+    description = models.CharField("图片说明", max_length = 50, default = "", blank = True)
+    upload_date = models.DateTimeField("上传时间", auto_now_add=True)
+    sort_id = models.SmallIntegerField("展示顺序", default = 0)
+    activated = models.BooleanField("是否启用", default = True)
 
     def __str__(self):
-        return self.image.name
+        return self.image.name + ' ' + self.description
+
+    objects: HomepageImageManager = HomepageImageManager()
