@@ -93,7 +93,7 @@ __all__ = [
     'PoolItem',
     'PoolRecord',
     'ActivitySummary',
-    'GuidePicture',
+    'HomepageImage',
 ]
 
 
@@ -1938,7 +1938,8 @@ class ActivitySummary(models.Model):
         return f'{self.activity.title}总结'
 
 
-class GuidePicture(models.Model):
+class HomepageImage(models.Model):
+    '''首页上展示的功能介绍图片。之前叫做 guide pictures. 不包含活动宣传、活动总结的图片。'''
     class Meta:
         verbose_name = "首页图片"
         verbose_name_plural = verbose_name

@@ -33,7 +33,7 @@ from app.models import (
     CourseRecord,
     Semester,
     AcademicQA,
-    GuidePicture,
+    HomepageImage,
 )
 from app.utils import (
     get_person_or_org,
@@ -873,7 +873,7 @@ def homepage(request: UserRequest):
 
     guidepics = [
         (MEDIA_URL + filename, url) for (filename, url) in
-            GuidePicture.objects.all().values_list('image', 'redirect_url')
+            HomepageImage.objects.all().values_list('image', 'redirect_url')
     ]
 
     """ 

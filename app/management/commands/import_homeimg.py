@@ -4,7 +4,7 @@ from django.core.files import File
 from django.core.management.base import BaseCommand
 from django.db import transaction
 
-from app.models import GuidePicture
+from app.models import HomepageImage
 
 class Command(BaseCommand):
     help = 'Import the home page guide pictures into the database from static/assets/img/guidepics/redirect.json'
@@ -19,5 +19,5 @@ class Command(BaseCommand):
                     # Django file
                     df = File(f)
                     df.name = name
-                    GuidePicture.objects.create(redirect_url = url, image = df)
+                    HomepageImage.objects.create(redirect_url = url, image = df)
                 print(f'Uploaded {name}, redirecting to "{url}"')
