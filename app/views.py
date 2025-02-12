@@ -2,7 +2,7 @@ import json
 import random
 import requests
 from datetime import datetime, timedelta
-from typing import cast
+from typing import cast, List, Tuple
 
 from django.contrib import auth
 from django.db import transaction
@@ -33,6 +33,7 @@ from app.models import (
     CourseRecord,
     Semester,
     AcademicQA,
+    HomepageImage,
 )
 from app.utils import (
     get_person_or_org,
@@ -60,6 +61,7 @@ from app.academic_utils import (
 
 from achievement.utils import personal_achievements
 from achievement.api import unlock_achievement, unlock_YQPoint_achievements
+from boot.settings import MEDIA_URL
 from semester.api import current_semester
 
 
@@ -869,13 +871,11 @@ def homepage(request: UserRequest):
         } for i, color in enumerate(colors)
     ]
 
-    # 从redirect.json读取要作为引导图的图片，按照原始顺序
-    guidepicdir = "static/assets/img/guidepics"
-    with open(f"{guidepicdir}/redirect.json") as file:
-        img2url = json.load(file)
-    guidepics = list(img2url.items())
-    # (firstpic, firsturl), guidepics = guidepics[0], guidepics[1:]
-    # firstpic是第一个导航图，不是第一张图片，现在把这个逻辑在模板处理了
+    homepage_image: List[Tuple[str, str]] = [
+        (MEDIA_URL + filename, url) for (filename, url) in
+            HomepageImage.objects.activated().order_by('sort_id')
+            .values_list('image', 'redirect_url')
+    ]
 
     """ 
         取出过去一周的所有活动，filter出上传了照片的活动，从每个活动的照片中随机选择一张
@@ -884,7 +884,7 @@ def homepage(request: UserRequest):
     all_photo_display = ActivityPhoto.objects.filter(
         type=ActivityPhoto.PhotoType.SUMMARY).order_by('-time')
     photo_display, _aid_set = list(), set()  # 实例的哈希值未定义，不可靠
-    count = 9 - len(guidepics)  # 算第一张导航图
+    count = 9 - len(homepage_image)  # 算第一张导航图
     for photo in all_photo_display:
         # 不用activity，因为外键需要访问数据库
         if photo.activity_id not in _aid_set and photo.image:
@@ -899,15 +899,11 @@ def homepage(request: UserRequest):
                 break
     photo_display = ()
     if photo_display:
-        guidepics = guidepics[1:]   # 第一张只是封面图，如果有需要呈现的内容就不显示
+        homepage_image = homepage_image[1:]   # 第一张只是封面图，如果有需要呈现的内容就不显示
 
-    """ 暂时不需要这些，目前逻辑是取photo_display的前四个，如果没有也没问题
-    if len(photo_display) == 0: # 这个分类是为了前端显示的便利，就不采用append了
-        homepagephoto = "/static/assets/img/taskboard.jpg"
-    else:
-        firstpic = photo_display[0]
-        photos = photo_display[1:]
-    """
+    # 如果到这里，homepage_image 里面还是一张图片都没有，则采用硬编码的 fallback
+    if len(homepage_image) == 0:
+        homepage_image.append(('/static/assets/img/homepage_fallback.jpeg', ''))
 
     # -----------------------------天气---------------------------------
     # TODO: Put get_weather somewhere else
