@@ -873,7 +873,8 @@ def homepage(request: UserRequest):
 
     guidepics = [
         (MEDIA_URL + filename, url) for (filename, url) in
-            HomepageImage.objects.all().values_list('image', 'redirect_url')
+            HomepageImage.objects.activated().order_by('sort_id')
+            .values_list('image', 'redirect_url')
     ]
 
     """ 
