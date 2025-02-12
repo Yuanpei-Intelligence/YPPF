@@ -14,10 +14,13 @@ class Command(BaseCommand):
         with open(f'{guide_pic_dir}/redirect.json') as f:
             a = json.load(f)
         with transaction.atomic():
-            for (name, url) in a.items():
+            for (i, (name, url)) in enumerate(a.items()):
                 with open(f'{guide_pic_dir}/{name}', 'rb') as f:
                     # Django file
                     df = File(f)
                     df.name = name
-                    HomepageImage.objects.create(redirect_url = url, image = df)
+                    HomepageImage.objects.create(
+                        redirect_url = url, image = df, description = f'Image {i}',
+                        sort_id = i, activated = True
+                    )
                 print(f'Uploaded {name}, redirecting to "{url}"')
