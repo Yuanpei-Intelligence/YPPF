@@ -871,7 +871,7 @@ def homepage(request: UserRequest):
         } for i, color in enumerate(colors)
     ]
 
-    guidepics = [
+    homepage_image: List[Tuple[str, str]] = [
         (MEDIA_URL + filename, url) for (filename, url) in
             HomepageImage.objects.activated().order_by('sort_id')
             .values_list('image', 'redirect_url')
@@ -901,13 +901,9 @@ def homepage(request: UserRequest):
     if photo_display:
         homepage_image = homepage_image[1:]   # 第一张只是封面图，如果有需要呈现的内容就不显示
 
-    """ 暂时不需要这些，目前逻辑是取photo_display的前四个，如果没有也没问题
-    if len(photo_display) == 0: # 这个分类是为了前端显示的便利，就不采用append了
-        homepagephoto = "/static/assets/img/taskboard.jpg"
-    else:
-        firstpic = photo_display[0]
-        photos = photo_display[1:]
-    """
+    # 如果到这里，homepage_image 里面还是一张图片都没有，则采用硬编码的 fallback
+    if len(homepage_image) == 0:
+        homepage_image.append(('/static/assets/img/homepage_fallback.jpeg', ''))
 
     # -----------------------------天气---------------------------------
     # TODO: Put get_weather somewhere else
