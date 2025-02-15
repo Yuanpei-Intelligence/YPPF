@@ -1273,7 +1273,7 @@ def finish_course(course):
                 Activity.Status.END,
             ])
     if cur_activities.exists():
-        return wrong("存在尚未结束的课程活动，请在所有课程活结束以后再结束课程。")
+        return wrong("存在尚未结束的课程活动，请在所有课程活动结束以后再结束课程。")
 
     try:
         # 取消发布每周定时活动
