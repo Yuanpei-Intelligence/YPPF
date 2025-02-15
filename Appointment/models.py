@@ -25,6 +25,7 @@ __all__ = [
     'Appoint',
     'LongTermAppoint',
     'CardCheckInfo',
+    'EntranceGuard',
 ]
 
 
@@ -58,6 +59,7 @@ class Participant(models.Model):
         verbose_name='学号',
         primary_key=True,
     )
+    cross_sys_uid = models.CharField('跨系统id', max_length=32, null=True)
 
     @property
     def name(self) -> str:
@@ -194,6 +196,21 @@ class Room(models.Model):
 
     def __str__(self):
         return self.Rid + ' ' + self.Rtitle
+
+
+class EntranceGuard(models.Model):
+
+    class Meta:
+        verbose_name = '门禁设备'
+        verbose_name_plural = verbose_name
+
+    door_id = models.IntegerField('门禁编号', primary_key=True)
+    ip = models.GenericIPAddressField('IP地址', unique=True)
+    port = models.IntegerField('端口', default=8000)
+    username = models.CharField('用户名', max_length=32)
+    password = models.CharField('密码', max_length=32)
+    room = models.ForeignKey(Room, on_delete=models.SET_NULL, verbose_name='对应房间',
+                             null=True, related_name='entrance_guards')
 
 
 class AppointQuerySet(models.QuerySet['Appoint']):

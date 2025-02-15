@@ -121,6 +121,11 @@ class RoomAdmin(admin.ModelAdmin):
         )
 
 
+@admin.register(EntranceGuard)
+class EntranceGuardAdmin(admin.ModelAdmin):
+    pass
+
+
 @admin.register(Appoint)
 class AppointAdmin(admin.ModelAdmin):
     actions_on_top = True
