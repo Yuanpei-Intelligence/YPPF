@@ -1228,6 +1228,7 @@ def check_post_and_modify(records: QuerySet[CourseRecord], post_data: QueryDict)
     如果可以，修改学时
     - 返回wrong|succeed
     - 不抛出异常
+    在检查过程中，会使用事务和 select_for_update 来保证原子性。
     :param records: 原本的学时数据
     :type records: QuerySet[CourseRecord]
     :param post_data: 由前端上传上来的修改结果
@@ -1237,20 +1238,22 @@ def check_post_and_modify(records: QuerySet[CourseRecord], post_data: QueryDict)
     """
     try:
         # 对每一条记录而言
-        for record in records:
-            # 选取id作为匹配键
-            key = str(record.person.id)
-            assert key in post_data.keys(), "提交的人员信息不匹配，请联系管理员！"
+        with transaction.atomic():
+            for record in records.select_for_update():
+                # 选取id作为匹配键
+                key = str(record.person.id)
+                assert key in post_data.keys(), "提交的人员信息不匹配，请联系管理员！"
 
-            # 读取小时数
-            bonus_hours = float(post_data.get(str(key), -1))
-            assert bonus_hours >= 0, "学时数据为负数，请检查输入数据！"
-            record.bonus_hours = bonus_hours
-            record.total_hours = bonus_hours + record.attend_times * record.hours_per_class
-            # 更新是否有效
-            record.invalid = (record.total_hours < APP_CONFIG.least_record_hours)
+                # 读取小时数
+                bonus_hours = float(post_data.get(str(key), -1))
+                assert bonus_hours >= 0, "学时数据为负数，请检查输入数据！"
+                record.bonus_hours = bonus_hours
+                record.total_hours = bonus_hours + record.attend_times * record.hours_per_class
+                # 更新是否有效
+                record.invalid = (record.total_hours < APP_CONFIG.least_record_hours)
 
-        CourseRecord.objects.bulk_update(records, ["bonus_hours", "total_hours", "invalid"])
+            CourseRecord.objects.bulk_update(records, ["bonus_hours", "total_hours", "invalid"])
+
         return succeed("修改学时信息成功！")
     except AssertionError as e:
         # 此时相当于出现用户应该知晓的信息

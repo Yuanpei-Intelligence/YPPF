@@ -355,12 +355,9 @@ def showCourseRecord(request: UserRequest) -> HttpResponse:
                 return redirect(message_url(
                     wrong('未查询到相应课程记录，请联系管理员。'), request.path))
             return download_course_record(course, year, semester)
-        # 不是其他post类型时的默认行为
-        with transaction.atomic():
-            # 检查信息并进行修改
-            record_search = record_search.select_for_update()
-            messages = check_post_and_modify(record_search, request.POST)
-            # TODO: 发送微信消息?不一定需要
+        # 不是其他post类型时的默认行为，检查信息并进行修改
+        messages = check_post_and_modify(record_search, request.POST)
+        # TODO: 发送微信消息?不一定需要
 
     # -------- GET 部分 --------
     # 如果进入这个页面时课程的状态(Course.Status)为未结束，那么只能查看不能修改，此时从函数读取
