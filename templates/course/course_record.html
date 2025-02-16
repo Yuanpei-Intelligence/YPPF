@@ -31,6 +31,11 @@
               </form>
             </div>
           {% endif %}
+          <br />
+          <p>本课程一次活动计 {{ hours_per_class }} 学时。</p>
+          {% if not editable %}
+          <p>结束课程后，可以手动设置额外学时。</p>
+          {% endif %}
         </div>
 
         
@@ -49,7 +54,8 @@
                     <th scope="col">年级</th>
                     <th scope="col">次数</th>
                     {% if editable %}
-                      <th scope="col" >学时</th>
+                      <th scope="col">额外学时</th>
+                      <th scope="col">总学时</th>
                     {% endif %}
                   </tr>
                 </thead>
@@ -61,15 +67,19 @@
                       <a href='/stuinfo/?name={{ record.name }}'><u>{{record.name}}</u></a>
                     </td>
                     <td class="grade">{{record.grade}}</td>
-                    <td class="times"><a1>{{record.times}}</a1></td>
-                    {% if editable %}
-                    <!-- 若处于可以修改的状态 -->
-                    <td class="hours">
-                      <input type="text" class="form-control" id="{{record.pk}}" name="{{record.pk}}"
-                      style="text-align: center;" size="1" value = "{{record.hours}}">
+                    <td class="times">
+                      <a1>{{record.times}}</a1>
                     </td>
-                    <!-- <td class="hours"><a2>{{record.hours}}</a1></td> -->
-                      {% endif %}
+                    {% if editable %}
+                    <td class="bonus_hours">
+                      <input type="text" class="form-control" id="{{record.pk}}" name="{{record.pk}}"
+                      style="text-align: center;" size="1" value = "{{record.bonus_hours}}"
+                      >
+                    </td>
+                    <td class="total_hours">
+                      <a1>{{ record.total_hours }}</a1>
+                    </td>
+                    {% endif %}
                     </tr>
                     {% endfor %}
                     
@@ -87,7 +97,7 @@
             </button>
           {% else %}
             <button type="submit" class="btn btn-primary btn-block mb-4 mr-2" name="post_type" value="end"
-                onclick="return confirm('确认结束课程？结束课程后每周定时活动将不再发布且学时表将自动创建。确认后请耐心等待，不要重复点击本按钮。')">
+                onclick="return confirm('确认结束课程？结束课程后每周定时活动将不再发布且学时表将自动发布，您后续仍可以修改学时信息。确认后请耐心等待，不要重复点击本按钮。')">
                 结束课程
             </button>
           {% endif %}

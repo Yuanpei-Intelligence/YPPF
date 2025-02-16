@@ -399,21 +399,24 @@ def showCourseRecord(request: UserRequest) -> HttpResponse:
             # 前端循环list
             for record in record_search:
                 # 每次都需要更新一下参与次数，避免出现手动调整签到但是未能记录在学时表的情况
+                # 同时更新总学时
                 record.attend_times = participate_raw[record.person.id]
-                if int(record.total_hours) != record.total_hours:
-                    record.total_hours = int(record.total_hours)
+                record.total_hours = record.bonus_hours + (
+                    record.hours_per_class * record.attend_times
+                )
                 records_list.append({
                     "pk": record.person.id,
                     "name": record.person.name,
                     "grade": record.person.stu_grade,
                     "avatar": record.person.get_user_ava(),
                     "times": record.attend_times,
-                    "hours": record.total_hours
+                    "bonus_hours": record.bonus_hours,
+                    "total_hours": record.total_hours
                 })
-            CourseRecord.objects.bulk_update(record_search, ["attend_times"])
+            CourseRecord.objects.bulk_update(record_search, ["attend_times", "total_hours"])
             # 如果点击提交学时按钮，修改数据库之后，跳转至已结束的活动界面
             if request.method == "POST":
-                return(redirect("/showCourseActivity"))
+                return(redirect(message_url(messages, "/showCourseActivity")))
 
     # 前端呈现信息，用于展示
     course_info = {
@@ -425,7 +428,7 @@ def showCourseRecord(request: UserRequest) -> HttpResponse:
 
     render_context = dict(
         course_info=course_info, records_list=records_list,
-        editable=editable,
+        editable=editable, hours_per_class=course.hours_per_class,
         bar_display=bar_display, messages=messages,
     )
     return render(request, "course/course_record.html", render_context)
