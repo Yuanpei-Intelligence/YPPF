@@ -1010,6 +1010,7 @@ def course_base_check(request, if_new=None):
             "introduction",
             "classroom",
             "teaching_plan",
+            "hours_per_class",
             "record_cal_method",
             "need_apply",
             "publish_day",
@@ -1127,6 +1128,7 @@ def create_course(request, course_id=None):
                 course.teacher = context['teacher']
                 course.introduction = context["introduction"]
                 course.teaching_plan = context["teaching_plan"]
+                course.hours_per_class = context["hours_per_class"]
                 course.record_cal_method = context["record_cal_method"]
                 course.type = context['type']
                 course.capacity = context["capacity"]
