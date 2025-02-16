@@ -1351,22 +1351,22 @@ def _write_detail_sheet(detail_sheet: openpyxl.worksheet.worksheet.Worksheet,
     # 注意，标题中的中文符号如：无法被解读
     detail_sheet.title = title
     # 从第一行开始写，因为Excel文件的行号是从1开始，列号也是从1开始
-    detail_header = ['课程', '姓名', '学号', '次数', '学时', '学年', '学期', '有效']
+    detail_header = ['课程', '姓名', '学号', '次数', '额外学时', '总学时', '学年', '学期', '有效']
     detail_sheet.append(detail_header)
     _M = CourseRecord
     for record in records.values_list(
         SQ.f(_M.course, Course.name), SQ.f(_M.extra_name),
         SQ.f(_M.person, NaturalPerson.name),
         SQ.f(_M.person, NaturalPerson.person_id, User.username),
-        SQ.f(_M.attend_times), SQ.f(_M.total_hours),
+        SQ.f(_M.attend_times), SQ.f(_M.bonus_hours), SQ.f(_M.total_hours),
         SQ.f(_M.year), SQ.f(_M.semester), SQ.f(_M.invalid),
     ):
         record_info = [
             record[0] or record[1],
-            *record[2:6],
-            f'{record[6]}-{record[6] + 1}',
-            '春' if record[7] == Semester.SPRING else '秋',
-            '否' if record[8] else '是',
+            *record[2:7],
+            f'{record[7]}-{record[7] + 1}',
+            '春' if record[8] == Semester.SPRING else '秋',
+            '否' if record[9] else '是',
         ]
         # 将每一个对象的所有字段的信息写入一行内
         detail_sheet.append(record_info)
