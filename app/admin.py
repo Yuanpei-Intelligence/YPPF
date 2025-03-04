@@ -210,6 +210,7 @@ class NaturalPersonAdmin(admin.ModelAdmin):
                             gender = str(row[2]).strip()
                             email = str(row[3]).strip()
                             student_or_teacher = str(row[4]).strip()
+                            cross_sys_uid = str(row[5]).strip()
                             # ... 视情况增加更多字段
 
                             # 如果有字段都是空的，跳过
@@ -252,7 +253,8 @@ class NaturalPersonAdmin(admin.ModelAdmin):
                             )
 
                             # 创建预约用户
-                            Participant.objects.create(Sid=user)
+                            Participant.objects.create(
+                                Sid=user, cross_sys_uid=cross_sys_uid)
 
                             # 添加到密码列表
                             password_list.append((sid, name_value, password))
