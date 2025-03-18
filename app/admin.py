@@ -215,11 +215,10 @@ class NaturalPersonAdmin(admin.ModelAdmin):
 
                             # 如果有字段都是空的，跳过
                             empty_symbol = [None, "", "None"]
-                            if any(field in empty_symbol for field in (sid, name_value, gender, email, student_or_teacher)):
+                            if any(field in empty_symbol for field in (sid, name_value, gender, student_or_teacher)):
                                 continue
 
                             # 数据验证
-                            assert '@' in email, f"第{row_idx}行的邮箱格式:{email}不正确"
                             assert gender in (
                                 "男", "女"), f"第{row_idx}行的性别:{gender}格式不正确"
                             assert student_or_teacher in (
