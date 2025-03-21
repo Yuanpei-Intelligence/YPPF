@@ -1475,12 +1475,15 @@ def download_select_info(single_course: Course | None = None):
         # 生成新的sheet，并设置表头
         sheet = wb.create_sheet(title=f'{course.name}')
         sheet.append(sheet_header)
-        # 导出相关信息，不包括手动选课
-        lucky_ones = CourseParticipant.objects.filter(
-            course=course, status=CourseParticipant.Status.SUCCESS)
-        for info in lucky_ones.values_list(
-            SQ.f(CourseParticipant.person, NaturalPerson.name),
-            SQ.f(CourseParticipant.person, NaturalPerson.person_id, User.username)
+        # 导出课程小组信息
+        class_members = NaturalPerson.objects.filter(
+            id__in=Position.objects.activated()
+                      .filter(org=course.organization)
+                      .values_list("person", flat=True)
+        )
+        for info in class_members.values_list(
+            SQ.f(NaturalPerson.name), 
+            SQ.f(NaturalPerson.person_id, User.username)
         ):
             person_info = [
                 info[0],

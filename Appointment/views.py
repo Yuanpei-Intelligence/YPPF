@@ -197,7 +197,7 @@ def account(request: HttpRequest):
         # 获取长期预约数据
         appoint_list_longterm = []
         longterm_appoints = LongTermAppoint.objects.filter(
-            applicant=participant)
+            applicant=participant).order_by('-appoint__Astart')
         # 判断是否达到上限
         count = LongTermAppoint.objects.activated().filter(applicant=participant).count()
         is_full = count >= CONFIG.longterm_max_num
