@@ -340,8 +340,7 @@ def stuinfo(request: UserRequest):
 
         # 只有是自己的主页时才显示学时
         if is_myself:
-            # 把当前学期的活动去除
-            past_courses = CourseRecord.objects.past().filter(person=oneself)
+            past_courses = CourseRecord.objects.filter(person=oneself)
 
             # 无效学时，在前端呈现
             useless_courses = (

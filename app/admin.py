@@ -706,6 +706,7 @@ class CourseRecordAdmin(admin.ModelAdmin):
     list_display = [
         _m.get_course_name, f(_m.person),
         f(_m.year), f(_m.semester),
+        f(_m.bonus_hours), f(_m.hours_per_class),
         f(_m.attend_times), f(_m.total_hours),
         f(_m.invalid),
     ]

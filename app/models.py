@@ -42,7 +42,7 @@ from datetime import datetime, timedelta
 from typing import TypeAlias
 
 from django.db import models, transaction
-from django.db.models import Q, QuerySet, Sum
+from django.db.models import F, Q, QuerySet, Sum
 from django_mysql.models.fields import ListCharField
 from typing_extensions import Self
 
@@ -1481,6 +1481,8 @@ class Course(models.Model):
 
     # 课程开设的周数
     times = models.SmallIntegerField("课程开设周数", default=16)
+    # 每节课学时数
+    hours_per_class = models.FloatField("每节课学时数", default=2)
     classroom = models.CharField("预期上课地点",
                                  max_length=60,
                                  default="",
@@ -1628,6 +1630,13 @@ class CourseRecord(models.Model):
         verbose_name = "4.学时表"
         verbose_name_plural = verbose_name
 
+        constraints = [
+            models.CheckConstraint(
+                check = Q(total_hours = F('bonus_hours') + F('attend_times') * F('hours_per_class')),
+                name = "total_hours_is_sum"
+            )
+        ]
+
     person = models.ForeignKey(NaturalPerson, on_delete=models.CASCADE)
     course = models.ForeignKey(
         Course, on_delete=models.SET_NULL, null=True, blank=True,
@@ -1644,6 +1653,11 @@ class CourseRecord(models.Model):
     )
     total_hours = models.FloatField("总计参加学时")
     attend_times = models.IntegerField("参加课程次数", default=0)
+    # 每一次活动的学时数，应该等于 course.hours_per_class. 由于 course 的 on_delete 选项设成了 SET_NULL
+    # 而且 CheckConstraint 不能检查外键的值，把这个属性复制一下
+    hours_per_class = models.FloatField("每节课学时数", default=2.0)
+    # 额外的学时数，由助教手动设置
+    bonus_hours = models.FloatField("额外学时", default=0.0)
     invalid = models.BooleanField("无效", default=False)
 
     objects: CourseRecordManager = CourseRecordManager()
