@@ -23,7 +23,10 @@ from Appointment.models import (
 )
 from Appointment.extern.wechat import MessageType, notify_appoint
 from Appointment.utils.utils import (
-    get_conflict_appoints, to_feedback_url,
+    get_conflict_appoints, 
+    to_feedback_url, 
+    get_total_appoint_time, 
+    get_overlap_appoints
 )
 from Appointment.utils.log import logger, get_user_logger
 import Appointment.utils.web_func as web_func
@@ -194,7 +197,7 @@ def account(request: HttpRequest):
         # 获取长期预约数据
         appoint_list_longterm = []
         longterm_appoints = LongTermAppoint.objects.filter(
-            applicant=participant)
+            applicant=participant).order_by('-appoint__Astart')
         # 判断是否达到上限
         count = LongTermAppoint.objects.activated().filter(applicant=participant).count()
         is_full = count >= CONFIG.longterm_max_num
@@ -416,6 +419,11 @@ def arrange_time(request: HttpRequest):
     # 判断当前用户是否可以进行长期预约
     has_longterm_permission = get_participant(request.user).longterm
 
+    # 用于前端使用
+    allow_overlap = CONFIG.allow_overlap 
+    max_appoint_time = int(CONFIG.max_appoint_time.total_seconds() // 3600) # 以小时计算
+    is_person = request.user.is_person()
+
     # 获取房间编号
     Rid = request.GET.get('Rid')
     try:
@@ -446,6 +454,13 @@ def arrange_time(request: HttpRequest):
 
     dayrange_list, start_day, end_next_day = web_func.get_dayrange(
         day_offset=start_week * 7)
+
+    # 获取每天剩余的可预约时长
+    available_hours = {}
+    for day in [start_day + timedelta(days=i) for i in range(7)]:
+        used_time = get_total_appoint_time(get_participant(request.user), day)
+        available_hour = CONFIG.max_appoint_time - used_time
+        available_hours[day.strftime('%a')] = int(available_hour.total_seconds() // 3600) # 以小时计算
 
     # 获取预约时间的最大时间块id
     max_stamp_id = web_func.get_time_id(room, room.Rfinish, mode="leftopen")
@@ -535,6 +550,7 @@ def arrange_time(request: HttpRequest):
 
     # 转换成方便前端使用的形式
     js_dayrange_list = json.dumps(dayrange_list)
+    js_available_hours = json.dumps(available_hours)
 
     # 获取房间信息，以支持房间切换的功能
     function_room_list = Room.objects.function_rooms().order_by('Rid')
@@ -895,6 +911,26 @@ def checkout_appoint(request: UserRequest):
         # TODO: 隔周预约的处理可优化，根据start_week调整实际预约时间
         start_time += timedelta(weeks=start_week)
         end_time += timedelta(weeks=start_week)
+        
+        # 预约时间检查
+        if (
+            applicant.Sid.is_person()
+            and not is_longterm 
+            and not is_interview
+            and get_total_appoint_time(applicant, start_time.date()) + (end_time - start_time) > CONFIG.max_appoint_time
+        ):
+            wrong('您预约的时长已超过每日最大预约时长', render_context)
+        
+        # 检查预约者是否有同时段的预约
+        if (
+            applicant.Sid.is_person()
+            and not CONFIG.allow_overlap 
+            and not is_longterm 
+            and not is_interview 
+            and get_overlap_appoints(applicant, start_time, end_time).exists()
+        ):
+            wrong(f'您在该时间段已经有预约', render_context)
+        
         if my_messages.get_warning(render_context)[0] is None:
             # 参数检查全部通过，下面开始创建预约
             appoint_type = Appoint.Type.NORMAL

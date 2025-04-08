@@ -42,7 +42,7 @@ from datetime import datetime, timedelta
 from typing import TypeAlias
 
 from django.db import models, transaction
-from django.db.models import Q, QuerySet, Sum
+from django.db.models import F, Q, QuerySet, Sum
 from django_mysql.models.fields import ListCharField
 from typing_extensions import Self
 
@@ -93,6 +93,7 @@ __all__ = [
     'PoolItem',
     'PoolRecord',
     'ActivitySummary',
+    'HomepageImage',
 ]
 
 
@@ -1480,6 +1481,8 @@ class Course(models.Model):
 
     # 课程开设的周数
     times = models.SmallIntegerField("课程开设周数", default=16)
+    # 每节课学时数
+    hours_per_class = models.FloatField("每节课学时数", default=2)
     classroom = models.CharField("预期上课地点",
                                  max_length=60,
                                  default="",
@@ -1580,6 +1583,9 @@ class CourseParticipant(models.Model):
     class Meta:
         verbose_name = "4.课程报名情况"
         verbose_name_plural = verbose_name
+        constraints = [
+            models.UniqueConstraint(fields = ['course', 'person'], name='Unique course selection record')
+        ]
 
     course = models.ForeignKey(Course, on_delete=models.CASCADE,
                                related_name="participant_set")
@@ -1624,6 +1630,13 @@ class CourseRecord(models.Model):
         verbose_name = "4.学时表"
         verbose_name_plural = verbose_name
 
+        constraints = [
+            models.CheckConstraint(
+                check = Q(total_hours = F('bonus_hours') + F('attend_times') * F('hours_per_class')),
+                name = "total_hours_is_sum"
+            )
+        ]
+
     person = models.ForeignKey(NaturalPerson, on_delete=models.CASCADE)
     course = models.ForeignKey(
         Course, on_delete=models.SET_NULL, null=True, blank=True,
@@ -1640,6 +1653,11 @@ class CourseRecord(models.Model):
     )
     total_hours = models.FloatField("总计参加学时")
     attend_times = models.IntegerField("参加课程次数", default=0)
+    # 每一次活动的学时数，应该等于 course.hours_per_class. 由于 course 的 on_delete 选项设成了 SET_NULL
+    # 而且 CheckConstraint 不能检查外键的值，把这个属性复制一下
+    hours_per_class = models.FloatField("每节课学时数", default=2.0)
+    # 额外的学时数，由助教手动设置
+    bonus_hours = models.FloatField("额外学时", default=0.0)
     invalid = models.BooleanField("无效", default=False)
 
     objects: CourseRecordManager = CourseRecordManager()
@@ -1936,3 +1954,31 @@ class ActivitySummary(models.Model):
     @necessary_for_frontend('activity.title', '__str__')
     def get_audit_display(self):
         return f'{self.activity.title}总结'
+
+
+class HomepageImageManager(models.Manager['HomepageImage']):
+    def activated(self):
+        return self.filter(activated = True)
+
+
+class HomepageImage(models.Model):
+    '''首页上展示的功能介绍图片。之前叫做 guide pictures. 不包含活动宣传、活动总结的图片。
+
+    sort_id 域记录的是图片在首页展示时的相对顺序。这个数字越小，越靠前展示。数字相同的图片将以随机顺序展示。
+    
+    '''
+    class Meta:
+        verbose_name = "首页图片"
+        verbose_name_plural = verbose_name
+
+    redirect_url = models.CharField("跳转URL", max_length = 50, default = "", blank = True)
+    image = models.ImageField("图片", upload_to = "homepage_image/")
+    description = models.CharField("图片说明", max_length = 50, default = "", blank = True)
+    upload_date = models.DateTimeField("上传时间", auto_now_add=True)
+    sort_id = models.SmallIntegerField("展示顺序", default = 0)
+    activated = models.BooleanField("是否启用", default = True)
+
+    def __str__(self):
+        return self.image.name + ' ' + self.description
+
+    objects: HomepageImageManager = HomepageImageManager()

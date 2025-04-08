@@ -2,7 +2,7 @@ import json
 import random
 import requests
 from datetime import datetime, timedelta
-from typing import cast
+from typing import cast, List, Tuple
 
 from django.contrib import auth
 from django.db import transaction
@@ -33,6 +33,7 @@ from app.models import (
     CourseRecord,
     Semester,
     AcademicQA,
+    HomepageImage,
 )
 from app.utils import (
     get_person_or_org,
@@ -60,6 +61,7 @@ from app.academic_utils import (
 
 from achievement.utils import personal_achievements
 from achievement.api import unlock_achievement, unlock_YQPoint_achievements
+from boot.settings import MEDIA_URL
 from semester.api import current_semester
 
 
@@ -338,8 +340,7 @@ def stuinfo(request: UserRequest):
 
         # 只有是自己的主页时才显示学时
         if is_myself:
-            # 把当前学期的活动去除
-            past_courses = CourseRecord.objects.past().filter(person=oneself)
+            past_courses = CourseRecord.objects.filter(person=oneself)
 
             # 无效学时，在前端呈现
             useless_courses = (
@@ -869,13 +870,11 @@ def homepage(request: UserRequest):
         } for i, color in enumerate(colors)
     ]
 
-    # 从redirect.json读取要作为引导图的图片，按照原始顺序
-    guidepicdir = "static/assets/img/guidepics"
-    with open(f"{guidepicdir}/redirect.json") as file:
-        img2url = json.load(file)
-    guidepics = list(img2url.items())
-    # (firstpic, firsturl), guidepics = guidepics[0], guidepics[1:]
-    # firstpic是第一个导航图，不是第一张图片，现在把这个逻辑在模板处理了
+    homepage_image: List[Tuple[str, str]] = [
+        (MEDIA_URL + filename, url) for (filename, url) in
+            HomepageImage.objects.activated().order_by('sort_id')
+            .values_list('image', 'redirect_url')
+    ]
 
     """ 
         取出过去一周的所有活动，filter出上传了照片的活动，从每个活动的照片中随机选择一张
@@ -884,7 +883,7 @@ def homepage(request: UserRequest):
     all_photo_display = ActivityPhoto.objects.filter(
         type=ActivityPhoto.PhotoType.SUMMARY).order_by('-time')
     photo_display, _aid_set = list(), set()  # 实例的哈希值未定义，不可靠
-    count = 9 - len(guidepics)  # 算第一张导航图
+    count = 9 - len(homepage_image)  # 算第一张导航图
     for photo in all_photo_display:
         # 不用activity，因为外键需要访问数据库
         if photo.activity_id not in _aid_set and photo.image:
@@ -899,15 +898,11 @@ def homepage(request: UserRequest):
                 break
     photo_display = ()
     if photo_display:
-        guidepics = guidepics[1:]   # 第一张只是封面图，如果有需要呈现的内容就不显示
+        homepage_image = homepage_image[1:]   # 第一张只是封面图，如果有需要呈现的内容就不显示
 
-    """ 暂时不需要这些，目前逻辑是取photo_display的前四个，如果没有也没问题
-    if len(photo_display) == 0: # 这个分类是为了前端显示的便利，就不采用append了
-        homepagephoto = "/static/assets/img/taskboard.jpg"
-    else:
-        firstpic = photo_display[0]
-        photos = photo_display[1:]
-    """
+    # 如果到这里，homepage_image 里面还是一张图片都没有，则采用硬编码的 fallback
+    if len(homepage_image) == 0:
+        homepage_image.append(('/static/assets/img/homepage_fallback.jpeg', ''))
 
     # -----------------------------天气---------------------------------
     # TODO: Put get_weather somewhere else
@@ -1665,11 +1660,18 @@ def subscribeOrganization(request: UserRequest):
 
     me = get_person_or_org(request.user)
     # orgava_list = [(org, utils.get_user_ava(org, UTYPE_ORG)) for org in org_list]
-    otype_infos = [(
-        otype,
-        list(Organization.objects.activated().filter(otype=otype)
-             .select_related("organization_id")),
-    ) for otype in OrganizationType.objects.all().order_by('-otype_id')]
+    # 获取所有组织类型
+    organization_types = list(OrganizationType.objects.all().order_by('-otype_id'))
+
+    # 强制只执行一次查询，prefetch防止多次查询
+    organizations = list(Organization.objects.activated().select_related('otype').prefetch_related('organization_id'))
+
+    # 获取组织信息
+    otype_infos_dict = {otype: [] for otype in organization_types}
+    for org in organizations:
+        otype_infos_dict[org.otype].append(org)
+    otype_infos = [(otype, otype_infos_dict[otype]) for otype in organization_types]
+
 
     # 获取不订阅列表（数据库里的是不订阅列表）
     if request.user.is_person():
@@ -1808,8 +1810,8 @@ def notifications(request: HttpRequest):
         receiver=request.user,
         status=Notification.Status.UNDONE).order_by("-start_time")
 
-    done_list = notification2Display(done_notifications)
-    undone_list = notification2Display(undone_notifications)
+    notes_list = notification2Display(
+        done_notifications) + notification2Display(undone_notifications)
 
     # 新版侧边栏, 顶栏等的呈现，采用 bar_display, 必须放在render前最后一步
     bar_display = utils.get_sidebar_and_navbar(request.user,

@@ -277,9 +277,14 @@
                                             required="required" maxlength=1000>{{teaching_plan|default:''}}</textarea>
                                     </div>
                                     <div class="form-group">
+                                        <label for="aintro">每节课学时数</label>
+                                        <input type="number" id="hours_per_class" name="hours_per_class" class="form-control" aria-label="Default"
+                                            placeholder="必填，请填写每节课的学时数" required="required" onclick="fill_value(this)" value="{{hours_per_class|default:''}}" />
+                                    </div>
+                                    <div class="form-group">
                                         <label for="aintro">学时计算方式</label>
                                         <textarea id="record_cal_method" name="record_cal_method" class="form-control" rows="3"
-                                            placeholder="必填，在这里介绍一下学时计算方式吧~" onclick="fill_value(this)"
+                                            placeholder="必填，在这里介绍一下其他的学时计算方式吧~" onclick="fill_value(this)"
                                             required="required" maxlength=1000>{{record_cal_method|default:''}}</textarea>
                                     </div>
                                     <div class="form-group">

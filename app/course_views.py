@@ -355,12 +355,9 @@ def showCourseRecord(request: UserRequest) -> HttpResponse:
                 return redirect(message_url(
                     wrong('未查询到相应课程记录，请联系管理员。'), request.path))
             return download_course_record(course, year, semester)
-        # 不是其他post类型时的默认行为
-        with transaction.atomic():
-            # 检查信息并进行修改
-            record_search = record_search.select_for_update()
-            messages = check_post_and_modify(record_search, request.POST)
-            # TODO: 发送微信消息?不一定需要
+        # 不是其他post类型时的默认行为，检查信息并进行修改
+        messages = check_post_and_modify(record_search, request.POST)
+        # TODO: 发送微信消息?不一定需要
 
     # -------- GET 部分 --------
     # 如果进入这个页面时课程的状态(Course.Status)为未结束，那么只能查看不能修改，此时从函数读取
@@ -399,21 +396,24 @@ def showCourseRecord(request: UserRequest) -> HttpResponse:
             # 前端循环list
             for record in record_search:
                 # 每次都需要更新一下参与次数，避免出现手动调整签到但是未能记录在学时表的情况
+                # 同时更新总学时
                 record.attend_times = participate_raw[record.person.id]
-                if int(record.total_hours) != record.total_hours:
-                    record.total_hours = int(record.total_hours)
+                record.total_hours = record.bonus_hours + (
+                    record.hours_per_class * record.attend_times
+                )
                 records_list.append({
                     "pk": record.person.id,
                     "name": record.person.name,
                     "grade": record.person.stu_grade,
                     "avatar": record.person.get_user_ava(),
                     "times": record.attend_times,
-                    "hours": record.total_hours
+                    "bonus_hours": record.bonus_hours,
+                    "total_hours": record.total_hours
                 })
-            CourseRecord.objects.bulk_update(record_search, ["attend_times"])
+            CourseRecord.objects.bulk_update(record_search, ["attend_times", "total_hours"])
             # 如果点击提交学时按钮，修改数据库之后，跳转至已结束的活动界面
             if request.method == "POST":
-                return(redirect("/showCourseActivity"))
+                return(redirect(message_url(messages, "/showCourseActivity")))
 
     # 前端呈现信息，用于展示
     course_info = {
@@ -425,7 +425,7 @@ def showCourseRecord(request: UserRequest) -> HttpResponse:
 
     render_context = dict(
         course_info=course_info, records_list=records_list,
-        editable=editable,
+        editable=editable, hours_per_class=course.hours_per_class,
         bar_display=bar_display, messages=messages,
     )
     return render(request, "course/course_record.html", render_context)
@@ -665,8 +665,9 @@ def addCourse(request: HttpRequest, cid=None):
         teacher = utils.escape_for_templates(course.teacher)
         course_time = course.time_set.all()
         introduction = utils.escape_for_templates(course.introduction)
-        teaching_plan=utils.escape_for_templates(course.teaching_plan)
-        record_cal_method=utils.escape_for_templates(course.record_cal_method)
+        teaching_plan = utils.escape_for_templates(course.teaching_plan)
+        hours_per_class = course.hours_per_class
+        record_cal_method = utils.escape_for_templates(course.record_cal_method)
         status = course.status
         need_apply = course.need_apply
         publish_day = course.publish_day

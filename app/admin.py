@@ -1,7 +1,7 @@
 from datetime import datetime
 
 from django.contrib import admin
-from django.db.models import QuerySet
+from django.db.models import F, QuerySet
 from django.utils.safestring import mark_safe
 
 from utils.http.dependency import HttpRequest
@@ -142,7 +142,7 @@ class NaturalPersonAdmin(admin.ModelAdmin):
     @as_action("设置 全部订阅")
     def all_subscribe(self, request, queryset):
         for org in queryset:
-            org.unsubscribers.clear()
+            org.unsubscribe_list.clear()
             org.save()
         return self.message_user(request=request,
                                  message='修改成功!')
@@ -152,7 +152,7 @@ class NaturalPersonAdmin(admin.ModelAdmin):
         orgs = list(Organization.objects.exclude(
             otype__otype_id=0).values_list('id', flat=True))
         for person in queryset:
-            person.unsubscribers.set(orgs)
+            person.unsubscribe_list.set(orgs)
             person.save()
         return self.message_user(request=request,
                                  message='修改成功!已经取消所有非官方组织的订阅!')
@@ -706,6 +706,7 @@ class CourseRecordAdmin(admin.ModelAdmin):
     list_display = [
         _m.get_course_name, f(_m.person),
         f(_m.year), f(_m.semester),
+        f(_m.bonus_hours), f(_m.hours_per_class),
         f(_m.attend_times), f(_m.total_hours),
         f(_m.invalid),
     ]
@@ -907,6 +908,32 @@ class PoolRecordAdmin(admin.ModelAdmin):
 
         # 返回成功信息
         self.message_user(request, f'成功兑换 {len(redeemable_records)} 个奖品！')
+
+
+@admin.register(HomepageImage)
+class HomepageImageAdmin(admin.ModelAdmin):
+    actions = []
+    list_display = ['id', 'image', 'description', 'redirect_url', 'activated', 'sort_id']
+    list_filter = ['activated']
+    ordering = ['sort_id']
+    search_fields = ['image', 'description']
+
+    @as_action("显示所选的图片", actions, ['change'], atomic = True, update = True)
+    def activate_selected(self, request, queryset: QuerySet[HomepageImage]):
+        queryset.update(activated = True)
+
+    @as_action("不显示所选的图片", actions, ['change'], atomic = True, update = True)
+    def deactivate_selected(self, request, queryset: QuerySet[HomepageImage]):
+        queryset.update(activated = False)
+
+    @as_action("所选图片展示顺序+1", actions, ['change'], atomic = True, update = True)
+    def increment_sort_id(self, request, queryset: QuerySet[HomepageImage]):
+        queryset.update(sort_id = F('sort_id') + 1)
+
+    @as_action("所选图片展示顺序-1", actions, ['change'], atomic = True, update = True)
+    def decrement_sort_id(self, request, queryset: QuerySet[HomepageImage]):
+        queryset.update(sort_id = F('sort_id') - 1)
+
 
 admin.site.register(OrganizationTag)
 admin.site.register(Comment)
