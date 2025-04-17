@@ -771,7 +771,7 @@ def accountSetting(request: UserRequest):
             attr_dict, show_dict, html_display = utils.check_account_setting(
                 request)
             attr_check_list = [attr for attr in attr_dict.keys() if attr not in [
-                'gender', 'ava', 'wallpaper', 'accept_promote', 'wechat_receive_level']]
+                'gender', 'ava', 'wallpaper']]
             if html_display['warn_code'] == 1:
                 return render(request, "person_account_setting.html", locals())
 
@@ -779,12 +779,12 @@ def accountSetting(request: UserRequest):
             if attr_dict['gender'] != useroj.get_gender_display():
                 modify_info.append(
                     f'gender: {useroj.get_gender_display()}->{attr_dict["gender"]}')
-            if attr_dict['accept_promote'] != useroj.get_accept_promote_display():
-                modify_info.append(
-                    f'accept_promote: {useroj.get_accept_promote_display()}->{attr_dict["accept_promote"]}')
-            if attr_dict['wechat_receive_level'] != useroj.get_wechat_receive_level_display():
-                modify_info.append(
-                    f'wechat_receive_level: {useroj.get_wechat_receive_level_display()}->{attr_dict["wechat_receive_level"]}')
+            # if attr_dict['accept_promote'] != useroj.get_accept_promote_display():
+            #     modify_info.append(
+            #         f'accept_promote: {useroj.get_accept_promote_display()}->{attr_dict["accept_promote"]}')
+            # if attr_dict['wechat_receive_level'] != useroj.get_wechat_receive_level_display():
+            #     modify_info.append(
+            #         f'wechat_receive_level: {useroj.get_wechat_receive_level_display()}->{attr_dict["wechat_receive_level"]}')
             if attr_dict['ava']:
                 modify_info.append(f'avatar: {attr_dict["ava"]}')
             if attr_dict['wallpaper']:
@@ -799,11 +799,11 @@ def accountSetting(request: UserRequest):
             if attr_dict['gender'] != useroj.gender:
                 useroj.gender = NaturalPerson.Gender.MALE if attr_dict[
                     'gender'] == '男' else NaturalPerson.Gender.FEMALE
-            if attr_dict['wechat_receive_level'] != useroj.wechat_receive_level:
-                useroj.wechat_receive_level = NaturalPerson.ReceiveLevel.MORE if attr_dict[
-                    'wechat_receive_level'] == '接受全部消息' else NaturalPerson.ReceiveLevel.LESS
-            if attr_dict['accept_promote'] != useroj.get_accept_promote_display():
-                useroj.accept_promote = True if attr_dict['accept_promote'] == '是' else False
+            # if attr_dict['wechat_receive_level'] != useroj.wechat_receive_level:
+            #     useroj.wechat_receive_level = NaturalPerson.ReceiveLevel.MORE if attr_dict[
+            #         'wechat_receive_level'] == '接受全部消息' else NaturalPerson.ReceiveLevel.LESS
+            # if attr_dict['accept_promote'] != useroj.get_accept_promote_display():
+            #     useroj.accept_promote = True if attr_dict['accept_promote'] == '是' else False
             for attr in attr_check_list:
                 if attr_dict[attr] != "" and str(getattr(useroj, attr)) != attr_dict[attr]:
                     setattr(useroj, attr, attr_dict[attr])

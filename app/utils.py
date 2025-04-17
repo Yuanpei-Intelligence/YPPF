@@ -431,15 +431,15 @@ def check_account_setting(request: UserRequest):
         attr_dict['biography'] = request.POST["aboutBio"]
         attr_dict['telephone'] = request.POST["tel"]
         attr_dict['email'] = request.POST["email"]
-        attr_dict['stu_major'] = request.POST["major"]
+        # attr_dict['stu_major'] = request.POST["major"]
         # attr_dict['stu_grade'] = request.POST['grade'] 用户无法填写
         # attr_dict['stu_class'] = request.POST['class'] 用户无法填写
-        attr_dict['stu_dorm'] = request.POST['dorm']
+        # attr_dict['stu_dorm'] = request.POST['dorm']
         attr_dict['ava'] = request.FILES.get("avatar")
         attr_dict['gender'] = request.POST['gender']
         attr_dict['birthday'] = request.POST['birthday']
-        attr_dict['accept_promote'] = request.POST['accept_promote']
-        attr_dict['wechat_receive_level'] = request.POST['wechat_receive_level']
+        # attr_dict['accept_promote'] = request.POST['accept_promote']
+        # attr_dict['wechat_receive_level'] = request.POST['wechat_receive_level']
         attr_dict['wallpaper'] = request.FILES.get("wallpaper")
 
         show_dict = dict()
@@ -449,8 +449,8 @@ def check_account_setting(request: UserRequest):
         show_dict['show_birthday'] = request.POST.get('show_birthday') == 'on'
         show_dict['show_tel'] = request.POST.get('show_tel') == 'on'
         show_dict['show_email'] = request.POST.get('show_email') == 'on'
-        show_dict['show_major'] = request.POST.get('show_major') == 'on'
-        show_dict['show_dorm'] = request.POST.get('show_dorm') == 'on'
+        # show_dict['show_major'] = request.POST.get('show_major') == 'on'
+        # show_dict['show_dorm'] = request.POST.get('show_dorm') == 'on'
 
         # 合法性检查
         """if len(attr_dict['nickname']) > 20:
@@ -462,13 +462,6 @@ def check_account_setting(request: UserRequest):
             html_display['warn_code'] = 1
             html_display['warn_message'] += "输入的简介过长，不能超过1024个字符哦！"
 
-        if len(attr_dict['stu_major']) > 25:
-            html_display['warn_code'] = 1
-            html_display['warn_message'] += "输入的专业过长，不能超过25个字符哦！"
-
-        if len(attr_dict['stu_dorm']) > 6:
-            html_display['warn_code'] = 1
-            html_display['warn_message'] += "输入的宿舍过长，不能超过6个字符哦！"
     else:
         html_display = dict()
         attr_dict = dict()
