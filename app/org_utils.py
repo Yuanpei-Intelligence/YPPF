@@ -516,7 +516,7 @@ def make_relevant_notification(application: ModifyPosition | ModifyOrganization,
     receiver = applyee_id if feasible_post.index(post_type) < 3 else applyer_id
     # 通过新小组申请是在后台进行的，只有在处理新的职位申请时需要跳转到申请页面处理
     typename = (Notification.Type.NEEDDO
-                if post_type == 'new_submit' and isinstance(application, ModifyPosition)
+                if post_type == 'new_submit'
                 else Notification.Type.NEEDREAD)
     title = Notification.Title.VERIFY_INFORM if post_type != 'accept_submit' else not_type
     relate_instance = application if post_type == 'new_submit' else None
