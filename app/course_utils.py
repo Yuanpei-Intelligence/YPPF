@@ -1241,7 +1241,8 @@ def check_post_and_modify(records: QuerySet[CourseRecord], post_data: QueryDict)
     try:
         # 对每一条记录而言
         with transaction.atomic():
-            for record in records.select_for_update():
+            records = records.select_for_update()
+            for record in records:
                 # 选取id作为匹配键
                 key = str(record.person.id)
                 assert key in post_data.keys(), "提交的人员信息不匹配，请联系管理员！"
