@@ -12,6 +12,9 @@ remaining_willingness_point（暂不启用）: 计算学生剩余的意愿点数
 process_time: 把datetime对象转换成人类可读的时间表示
 check_course_time_conflict: 检查当前选择的课是否与已选的课上课时间冲突
 """
+from collections import Counter, defaultdict
+from typing import Callable
+
 from app.utils_dependency import *
 from app.models import (
     User,
@@ -46,7 +49,7 @@ from app.log import logger
 
 import openpyxl
 import openpyxl.worksheet.worksheet
-from random import sample
+from numpy.random import choice
 from urllib.parse import quote
 from collections import Counter
 from datetime import datetime, timedelta
@@ -814,7 +817,11 @@ def draw_lots():
             if participants_num <= 0:
                 continue
 
-            participants_id = list(participants.values_list("id", flat=True))
+            participants_info = participants.values_list("id", "person__course_priority")
+            participants_id, priority = map(list, zip(*participants_info))
+            # Turn priority into a probability distribution
+            sum_priority = sum(priority)
+            priority = [i / sum_priority for i in priority]
             capacity = course.capacity
 
             if participants_num <= capacity:
@@ -826,7 +833,7 @@ def draw_lots():
                     current_participants=participants_num)
             else:
                 # 抽签；可能实现得有一些麻烦
-                lucky_ones = sample(participants_id, capacity)
+                lucky_ones = choice(participants_id, capacity, replace=False, p=priority)
                 unlucky_ones = list(
                     set(participants_id).difference(set(lucky_ones)))
                 # 不确定是否要加悲观锁
@@ -1503,3 +1510,37 @@ def download_select_info(single_course: Course | None = None):
         file_name = f'{year}{semester}选课名单汇总-{ctime}'
     # 保存并返回
     return _excel_response(wb, file_name)
+
+
+def update_course_priority(year: int, semester: str, priority_func: Callable[[int], float]):
+    """
+    根据指定学期的学时表，计算新的书院课选课权重。
+
+    :param year: 用于查找学时表 table, 一个可能值示例为2024
+    :param semester: 用于查找学时表 table。semester的值应为'Fall'或'Spring'
+    :param priority_func: 一个函数，它接受一个int，表示过去学期学时无效的书院课门数，返回新学期选课优先级(0~1)
+    :return: None
+    """
+    if semester not in ('Fall', 'Spring'):
+        raise ValueError('semester must have value of "Fall" or "Spring"!')
+    with transaction.atomic():
+        # First, all set to 1.0
+        NaturalPerson.objects.update(course_priority=1.0)
+        # Invalid records in the given semester
+        invalid_records = CourseRecord.objects.filter(
+            year = year, invalid = True, semester = semester
+        ).values_list(
+            'person__id', flat = True
+        )
+        # Counts the number of occurrences of a person's ID in invalid list
+        invalid_counter: Counter[int] = Counter(invalid_records)
+        # a[k] is the list of id of people who have k invalid records
+        a = defaultdict(list)
+        # Length of the current continuous segment
+        for person_id in invalid_counter:
+            cnt = invalid_counter[person_id]
+            a[cnt].append(person_id)
+        for i in a:
+            # There are len(a[i]) people with i invalid records
+            p = priority_func(i)
+            NaturalPerson.objects.filter(id__in = a[i]).update(course_priority = p)
