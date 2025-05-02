@@ -1,10 +1,13 @@
 from datetime import datetime, timedelta
 
+from django.db import transaction
+
 from Appointment.config import appointment_config as CONFIG
 from Appointment.models import Appoint
 from Appointment.appoint.judge import appoint_violate
 from Appointment.utils.log import logger, get_user_logger
 from Appointment.extern.wechat import MessageType, notify_appoint
+from Appointment.haikang_api import HaikangSDK, HaikangAPIError
 
 
 def _adjusted_rate(original_rate: float, appoint: Appoint) -> float:
@@ -34,17 +37,32 @@ def _adjusted_rate(original_rate: float, appoint: Appoint) -> float:
     return rate
 
 
+@transaction.atomic
 def start_appoint(appoint_id: int):
     '''预约开始，切换状态'''
     try:
-        appoint = Appoint.objects.get(Aid=appoint_id)
+        appoint = Appoint.objects.select_for_update().get(Aid=appoint_id)
     except:
         return logger.exception(f"预约{appoint_id}意外消失")
 
     if appoint.Astatus == Appoint.Status.APPOINTED:     # 顺利开始
-        appoint.Astatus = Appoint.Status.PROCESSING
+        if appoint.Afinish > datetime.now():
+            # 还未结束，可以开始
+            stu_ids = appoint.students_manager.values_list('cross_sys_uid', flat=True)
+            for entrance_guard in appoint.Room.entrance_guards.all():
+                with HaikangSDK.get_entrace_guard_device(entrance_guard) as device:
+                    try:
+                        device.grant_access(stu_ids)
+                    except HaikangAPIError as e:
+                        logger.error(f'预约{appoint.pk}对门禁{entrance_guard.door_id}授权失败：{e}')
+                        # 授权失败，让预约保持在 APPOINTED 状态
+                        return
+            appoint.Astatus = Appoint.Status.PROCESSING
+            logger.info(f"预约{appoint_id}成功开始: 状态变为进行中")
+        else:
+            appoint.Astatus = Appoint.Status.CONFIRMED
+            logger.error(f"预约{appoint_id}开始时已经结束")
         appoint.save()
-        logger.info(f"预约{appoint_id}成功开始: 状态变为进行中")
 
     elif appoint.Astatus == Appoint.Status.PROCESSING:  # 已经开始
         logger.info(f"预约{appoint_id}在检查时已经开始")
@@ -53,16 +71,7 @@ def start_appoint(appoint_id: int):
         logger.error(f"预约{appoint_id}的状态异常: {appoint.get_status()}")
 
 
-def _teminate_handler(appoint: Appoint):
-    if appoint.Astatus == Appoint.Status.CONFIRMED:   # 可能已经判定通过，如公共区域和俄文楼
-        rid = appoint.Room.Rid
-        if rid[:1] != 'R' and rid not in {'B109A', 'B207'}:
-            logger.warning(f"预约{appoint.pk}提前合格: {rid}房间")
-
-    elif appoint.Astatus != Appoint.Status.CANCELED:    # 状态异常，多半是已经判定过了
-        logger.warning(f"预约{appoint.pk}提前终止: {appoint.get_status()}")
-
-
+@transaction.atomic
 def finish_appoint(appoint_id: int):
     '''
     结束预约
@@ -70,47 +79,36 @@ def finish_appoint(appoint_id: int):
     - 可以处理任何状态的预约
     - 对于非终止状态，判断人数是否合格，并转化为终止状态
 
-    要注意的是，由于定时任务可能执行多次，第二次的时候可能已经终止
     '''
     try:
-        appoint: Appoint = Appoint.objects.get(Aid=appoint_id)
+        appoint: Appoint = Appoint.objects.select_for_update().get(Aid=appoint_id)
     except:
         return logger.exception(f"预约{appoint_id}意外消失")
 
-    # 如果处于非终止状态，只需检查人数判断是否合格
-    if appoint.Astatus in Appoint.Status.Terminals():
-        return _teminate_handler(appoint)
-
-    # 希望接受的非终止状态只有进行中，但其他状态也同样判定是否合格
     if appoint.Astatus != Appoint.Status.PROCESSING:
-        get_user_logger(appoint).error(
-            f"预约{appoint_id}结束时状态为{appoint.get_status()}：照常检查是否合格")
-
-    # 摄像头出现超时问题，直接通过
-    if datetime.now() - appoint.Room.Rlatest_time > timedelta(minutes=15):
-        appoint.Astatus = Appoint.Status.CONFIRMED  # waiting
-        appoint.save()
-        get_user_logger(appoint).info(f"预约{appoint_id}的状态已确认: 顺利完成")
+        logger.error(f"预约{appoint_id}结束时状态为{appoint.get_status()}")
         return
 
-    # 检查人数是否足够
-    adjusted_rate = _adjusted_rate(CONFIG.camera_qualify_rate, appoint)
-    need_num = appoint.Acamera_check_num * adjusted_rate - 0.01
-    check_failed = appoint.Acamera_ok_num < need_num
+    # 更新设备权限
+    stu_ids = set(appoint.students_manager.values_list('cross_sys_uid', flat=True))
+    # 若该房间还有晚结束且进行中的预约，不能撤销重复人员的权限
+    # TODO: Likely to race lock for next appoint's start
+    # Do we need to do something?
+    next_appoint = Appoint.objects.filter(
+        Room=appoint.Room, Afinish__gt=appoint.Afinish,
+        Astatus=Appoint.Status.PROCESSING).select_for_update().first()
+    if next_appoint:
+        next_stu_ids = set(next_appoint.students_manager.values_list('cross_sys_uid', flat=True))
+        stu_ids = stu_ids - next_stu_ids
+    for entrance_guard in appoint.Room.entrance_guards.all():
+        with HaikangSDK.get_entrace_guard_device(entrance_guard) as device:
+            try:
+                device.revoke_access(stu_ids)
+            except HaikangAPIError as e:
+                logger.error(f'预约{appoint.pk}对门禁{entrance_guard.door_id}授权失败：{e}')
+                # 撤销权限失败，让预约保持在 PROCESSING 状态
+                return
 
-    if check_failed:
-        # 迟到的预约通知在这里处理。如果迟到不扣分，删掉这个if的内容即可
-        # 让下面那个camera check的if判断是否违规。
-        if appoint.Areason == Appoint.Reason.R_LATE:
-            reason = Appoint.Reason.R_LATE
-        else:
-            reason = Appoint.Reason.R_TOOLITTLE
-        if appoint_violate(appoint, reason):
-            appoint.refresh_from_db()
-            notify_appoint(appoint, MessageType.VIOLATED, appoint.get_status(),
-                            students_id=[appoint.get_major_id()])
-
-    else:   # 通过
-        appoint.Astatus = Appoint.Status.CONFIRMED
-        appoint.save()
-        logger.info(f"预约{appoint_id}人数合格，已通过")
+    # TODO: 人数检查
+    appoint.Astatus = Appoint.Status.CONFIRMED
+    appoint.save()

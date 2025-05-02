@@ -6,6 +6,7 @@ from Appointment.appoint.status_control import start_appoint, finish_appoint
 from Appointment.extern.jobs import remove_appoint_reminder
 from scheduler.adder import ScheduleAdder
 from scheduler.cancel import remove_job
+from scheduler.periodic import periodical
 
 
 @logger.secure_func('设置预约定时任务出错', fail_value=False)
@@ -59,3 +60,27 @@ def cancel_scheduler(appoint: Appoint | int, record_miss: bool = False) -> bool:
     if not remove_appoint_reminder(aid) and record_miss:
         logger.info(f"预约{aid}取消时未发现微信提醒")
     return True
+
+
+@periodical('interval', minutes=30,
+            start_date=datetime.now().replace(minute=3, second=0) + timedelta(hours=1))
+def appoint_status_monitor():
+    '''
+    监控预约状态，若定时任务未执行可能会导致状态异常
+    该函数定期进行检查并修复
+    '''
+    now = datetime.now()
+    for appoint_id in Appoint.objects.filter(
+        Astatus=Appoint.Status.APPOINTED, Astart__lt=now).values_list('pk', flat=True):
+        try:
+            start_appoint(appoint_id)
+        except Exception as e:
+            logger.error(f"Failed to start appoint {appoint_id} ({e})")
+
+    now = datetime.now()
+    for appoint_id in Appoint.objects.filter(
+        Astatus=Appoint.Status.PROCESSING, Afinish__lt=now).values_list('pk', flat=True):
+        try:
+            finish_appoint(appoint_id)
+        except Exception as e:
+            logger.error(f"Failed to finish appoint {appoint_id} ({e})")
