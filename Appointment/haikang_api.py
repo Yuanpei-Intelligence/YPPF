@@ -56,16 +56,13 @@ class EntranceGuard():
         return resp["UserInfoSearch"]["UserInfo"]
 
     def _modify_users(self, employee_ids: list[int], grant: bool):
+        # TODO: check batch limit?
+        # API may not guarantee to return all results at once
         u_lists = self.query_users(employee_ids)
         failed_list = []
         handle = self._SDK.get_user_modify_handle(self._uid)
         for u_info in u_lists:
-            door_rights = set(u_info['doorRight'].split(','))
-            if grant:
-                door_rights.add(self.door_id)
-            else:
-                door_rights.discard(self.door_id)
-            u_info['doorRight'] = ','.join(door_rights)
+            u_info['doorRight'] = '1' if grant else ''
             succeed = False
             try:
                 resp = self._SDK.access_user_json_api(handle, {"userInfo": u_info})
