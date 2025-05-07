@@ -1,0 +1,11 @@
+{% extends "admin/base_site.html" %}
+{% load i18n admin_urls static %}
+
+{% block content %}
+<h1>从Excel导入预约</h1>
+<form method="post" enctype="multipart/form-data">
+    {% csrf_token %}
+    {{ form.as_p }}
+    <button type="submit">上传并导入</button>
+</form>
+{% endblock %}

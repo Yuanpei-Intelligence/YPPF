@@ -1,11 +1,17 @@
 import string
+import openpyxl
 import pypinyin
 from datetime import datetime, timedelta
 
+from django import forms
+from django.http import HttpResponse
 from django.contrib import admin, messages
 from django.utils.safestring import mark_safe
+from django.shortcuts import render, redirect
 from django.utils.html import format_html, format_html_join
 from django.db.models import QuerySet
+from django.db import transaction
+from django.urls import path, reverse
 
 from utils.admin_utils import *
 from Appointment import jobs
@@ -21,6 +27,14 @@ def _appointor(appoint: Appoint) -> str:
     return appoint.major_student.__str__()
 
 
+class ExcelImportForm(forms.Form):
+    """
+    用于上传Excel的Form，只包含一个上传文件的字段
+    """
+    excel_file = forms.FileField(
+        label=("请选择要上传的Excel文件"),
+        required=True
+    )
 @admin.register(College_Announcement)
 class College_AnnouncementAdmin(admin.ModelAdmin):
     list_display = ['id', 'announcement', 'show']
@@ -398,6 +412,246 @@ class AppointAdmin(admin.ModelAdmin):
     # @as_action('按单双周 增加四次本预约', actions, 'add', single=True)
     def longterm4_2(self, request, queryset):
         return self.longterm_wk(request, queryset, 4, 2)
+
+    # 2024.12.28 以下为批量导入逻辑
+
+    change_list_template = "admin/appointment_changelist.html"
+
+    def get_urls(self):
+        """
+        重写get_urls，为Admin添加一个新的url映射(import_excel)。
+        """
+        urls = super().get_urls()
+        my_urls = [
+            path("import-excel/", self.admin_site.admin_view(self.import_excel_view),
+                 name="appointment_import_excel"),
+        ]
+        return my_urls + urls
+
+    def import_excel_view(self, request):
+        """
+        用于上传并处理Excel文件的自定义视图。
+        """
+        context = dict(
+            self.admin_site.each_context(request),
+            opts=self.model._meta,
+        )
+
+        if request.method == "POST":
+            form = ExcelImportForm(request.POST, request.FILES)
+            if form.is_valid():
+                excel_file = request.FILES["excel_file"]
+                imported_count = 0
+                skipped_rows = []
+
+                try:
+                    with transaction.atomic():
+                        wb = openpyxl.load_workbook(excel_file)
+                        sheet = wb.active
+
+                        for row_idx, row in enumerate(sheet.iter_rows(values_only=True), start=1):
+                            if row_idx == 1:  # 跳过标题行
+                                continue
+
+                            try:
+                                # 根据测试数据调整列索引
+                                # 姓名	部门	职工号或学号	资源名称	创建时间	预约时间	预约人数	状态	预约理由
+                                # 0      1      2           3          4          5           6          7      8
+                                if len(row) < 9:
+                                    skipped_rows.append(
+                                        f"第 {row_idx} 行数据列数不足，已跳过。")
+                                    continue
+
+                                name = str(row[0]).strip() if row[0] else ""
+                                # department = str(row[1]).strip() # 部门，暂未使用
+                                sid = str(row[2]).strip() if row[2] else ""
+                                room_name = str(
+                                    row[3]).strip() if row[3] else ""
+                                create_time_str = str(
+                                    row[4]).strip() if row[4] else ""
+                                appoint_times_str = str(
+                                    row[5]).strip() if row[5] else ""
+                                person_num_str = str(
+                                    row[6]).strip() if row[6] else ""
+                                # status_str = str(row[7]).strip() # 状态，暂未使用，将直接创建为“已预约”
+                                usage = str(row[8]).strip() if row[8] else ""
+
+                                # 基本校验：学号、房间名、预约时间不能为空
+                                if not all([sid, room_name, appoint_times_str, create_time_str]):
+                                    skipped_rows.append(
+                                        f"第 {row_idx} 行关键信息缺失 (学号, 房间名, 创建时间或预约时间)，已跳过。")
+                                    continue
+
+                                # 1. 获取或创建主要参与者 (Major Student)
+                                try:
+                                    major_participant_user, created = User.objects.get_or_create(
+                                        username=sid,
+                                        defaults={
+                                            'name': name,
+                                            'pinyin': "".join(pypinyin.lazy_pinyin(name, style=pypinyin.Style.NORMAL)),
+                                            'acronym': "".join([i[0] for i in pypinyin.lazy_pinyin(name, style=pypinyin.Style.NORMAL)]).lower()
+                                        }
+                                    )
+                                    major_participant, _ = Participant.objects.get_or_create(
+                                        Sid=major_participant_user,
+                                        defaults={'name': name}
+                                    )
+                                except Exception as e:
+                                    skipped_rows.append(
+                                        f"第 {row_idx} 行处理发起人 '{name}({sid})' 失败: {e}，已跳过。")
+                                    continue
+
+                                # 2. 获取房间
+                                try:
+                                    room = Room.objects.get(Rtitle=room_name)
+                                except Room.DoesNotExist:
+                                    skipped_rows.append(
+                                        f"第 {row_idx} 行房间 '{room_name}' 不存在，已跳过。")
+                                    continue
+                                except Room.MultipleObjectsReturned:
+                                    # 如果房间名不唯一，可以考虑更复杂的逻辑或报错
+                                    room = Room.objects.filter(
+                                        Rtitle=room_name).first()
+                                    if not room:  # Should not happen if MultipleObjectsReturned
+                                        skipped_rows.append(
+                                            f"第 {row_idx} 行房间 '{room_name}' 查找异常，已跳过。")
+                                        continue
+                                    messages.warning(
+                                        request, f"第 {row_idx} 行房间 '{room_name}' 存在多个匹配项，已选择第一个。")
+
+                                # 3. 解析创建时间 (Atime)
+                                try:
+                                    apply_time = datetime.strptime(
+                                        create_time_str, '%Y-%m-%d %H:%M:%S')
+                                except ValueError:
+                                    try:  # 尝试另一种常见格式
+                                        apply_time = datetime.fromisoformat(
+                                            create_time_str)
+                                    except ValueError:
+                                        skipped_rows.append(
+                                            f"第 {row_idx} 行创建时间 '{create_time_str}' 格式错误，应为 'YYYY-MM-DD HH:MM:SS'，已跳过。")
+                                        continue
+
+                                # 4. 解析预约人数
+                                try:
+                                    person_num = int(
+                                        person_num_str) if person_num_str else 1
+                                except ValueError:
+                                    skipped_rows.append(
+                                        f"第 {row_idx} 行预约人数 '{person_num_str}' 非数字，已跳过。")
+                                    continue
+
+                                # 5. 解析并创建多个预约时段
+                                # 示例: "2025-07-03 20:00-21:00, 2025-07-03 19:00-20:00"
+                                individual_appoint_slots = [
+                                    slot.strip() for slot in appoint_times_str.split(',')]
+                                if not individual_appoint_slots or not any(individual_appoint_slots):
+                                    skipped_rows.append(
+                                        f"第 {row_idx} 行预约时间格式不正确或为空，已跳过。")
+                                    continue
+
+                                for slot_idx, time_slot_str in enumerate(individual_appoint_slots):
+                                    if not time_slot_str:
+                                        continue
+                                    try:
+                                        # 假定格式 "YYYY-MM-DD HH:MM-HH:MM"
+                                        date_str, time_range_str = time_slot_str.split(
+                                            ' ', 1)
+                                        start_time_str, finish_time_str = time_range_str.split(
+                                            '-')
+
+                                        astart_dt_str = f"{date_str} {start_time_str.strip()}"
+                                        afinish_dt_str = f"{date_str} {finish_time_str.strip()}"
+
+                                        astart = datetime.strptime(
+                                            astart_dt_str, '%Y-%m-%d %H:%M')
+                                        afinish = datetime.strptime(
+                                            afinish_dt_str, '%Y-%m-%d %H:%M')
+
+                                        if astart >= afinish:
+                                            skipped_rows.append(
+                                                f"第 {row_idx} 行, 时段 {slot_idx+1} ('{time_slot_str}') 结束时间早于或等于开始时间，已跳过。")
+                                            continue
+
+                                        # 创建 Appoint 对象
+                                        appoint = Appoint(
+                                            Astart=astart,
+                                            Afinish=afinish,
+                                            Ausage=usage if usage else "导入预约",
+                                            Room=room,
+                                            major_student=major_participant,
+                                            Astatus=Appoint.Status.APPOINTED,  # 默认为已预约
+                                            Ayp_num=person_num,
+                                            Anon_yp_num=0,  # 假设导入的都是院内，可根据需要修改
+                                            Aneed_num=person_num,  # 检查人数要求，暂设为总人数
+                                            # Atime 会通过 auto_now_add 设置，如果希望使用Excel中的创建时间，需修改模型字段或手动设置
+                                        )
+                                        # 如果希望使用Excel的创建时间，且Atime没有auto_now_add=True
+                                        # appoint.Atime = apply_time # 取消注释并确保模型字段允许
+
+                                        appoint.save()  # 保存Appoint对象以获得Aid
+
+                                        # 添加参与者 (包括主要参与者)
+                                        appoint.students.add(major_participant)
+                                        # 如果Excel中有其他参与者信息，也需要在这里处理并添加
+
+                                        # 设置 Atime (如果不由auto_now_add控制)
+                                        # 如果要强制设定 Atime 为 Excel 中的时间，可以这样做：
+                                        if hasattr(Appoint, 'Atime') and not Appoint._meta.get_field('Atime').auto_now_add:
+                                            appoint.Atime = apply_time
+                                            appoint.save(
+                                                update_fields=['Atime'])
+                                        elif Appoint._meta.get_field('Atime').auto_now_add and apply_time:
+                                            # 如果是 auto_now_add, 但仍想记录Excel中的申请时间，可以新增一个字段
+                                            # 或者，如果只是想在导入时覆盖，可以考虑临时移除auto_now_add，
+                                            # 但更安全的做法是，如果创建时间很重要，则模型不应设为auto_now_add
+                                            # 这里选择更新，虽然auto_now_add通常在create时生效
+                                            Appoint.objects.filter(
+                                                pk=appoint.pk).update(Atime=apply_time)
+
+                                        # 设置定时任务等 (如果需要)
+                                        # set_scheduler(appoint)
+                                        # set_appoint_reminder(appoint)
+                                        # logger.info(f"Imported appointment {appoint.Aid} for {major_participant.name} in room {room.Rtitle}")
+
+                                        imported_count += 1
+
+                                    except ValueError as ve:
+                                        skipped_rows.append(
+                                            f"第 {row_idx} 行, 时段 {slot_idx+1} ('{time_slot_str}') 时间格式错误: {ve}，已跳过。")
+                                        continue
+                                    except Exception as e_slot:
+                                        skipped_rows.append(
+                                            f"第 {row_idx} 行, 时段 {slot_idx+1} ('{time_slot_str}') 创建预约失败: {e_slot}，已跳过。")
+                                        continue
+
+                            except Exception as e_row:
+                                skipped_rows.append(
+                                    f"处理第 {row_idx} 行数据时发生意外错误: {e_row}，已跳过。")
+                                continue
+
+                    if imported_count > 0:
+                        messages.success(
+                            request, f"成功导入 {imported_count} 条预约记录。")
+                    else:
+                        messages.warning(request, "没有成功导入任何预约记录。")
+
+                    if skipped_rows:
+                        messages.warning(request, mark_safe(
+                            "以下行导入失败或被跳过：<br>" + "<br>".join(skipped_rows)))
+
+                except Exception as e:
+                    messages.error(request, f"导入过程中发生严重错误：{e}")
+                    # 如果在事务中发生错误，Django会自动回滚
+
+            else:  # form is not valid
+                messages.error(request, "上传的文件无效或表单错误。")
+
+        else:  # GET request
+            form = ExcelImportForm()
+
+        context["form"] = form
+        return render(request, "admin/appointment_import_excel.html", context)
 
 
 @admin.register(CardCheckInfo)
