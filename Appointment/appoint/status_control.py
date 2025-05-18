@@ -36,6 +36,17 @@ def _adjusted_rate(original_rate: float, appoint: Appoint) -> float:
         rate += 0.05             # 建议在0.2-0.4之间 极端可考虑0.5 目前仅测试
     return rate
 
+    
+@transaction.atomic
+def start_appoint_ahead(appoint_id: int):
+    try:
+        appoint = Appoint.objects.select_for_update().get(Aid=appoint_id)
+    except:
+        return logger.exception(f"预约{appoint_id}意外消失")
+    current = datetime.now()
+    if not Appoint.objects.filter(Astart__lt=current, Afinish__gt=current, Room=appoint.Room).exists():
+        start_appoint(appoint_id)
+
 
 @transaction.atomic
 def start_appoint(appoint_id: int):

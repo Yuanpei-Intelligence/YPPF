@@ -2,7 +2,9 @@ from datetime import datetime, timedelta
 
 from Appointment.models import Appoint
 from Appointment.utils.log import logger
-from Appointment.appoint.status_control import start_appoint, finish_appoint
+from Appointment.appoint.status_control import (
+    start_appoint_ahead, start_appoint, finish_appoint
+)
 from Appointment.extern.jobs import remove_appoint_reminder
 from scheduler.adder import ScheduleAdder
 from scheduler.cancel import remove_job
@@ -20,6 +22,7 @@ def set_scheduler(appoint: Appoint) -> bool:
     Returns:
         bool: 是否设置成功，当不符合条件时返回False
     '''
+    start_ahead = appoint.Astart - timedelta(minutes=10)
     start = appoint.Astart
     finish = appoint.Afinish
     current_time = datetime.now() + timedelta(seconds=5)
@@ -32,6 +35,12 @@ def set_scheduler(appoint: Appoint) -> bool:
     has_started = start < current_time
     if has_started:             # 临时预约或特殊情况下设置任务时预约可能已经开始
         start = current_time    # 改为立刻执行
+
+    if current_time < start_ahead:
+        ScheduleAdder(start_appoint_ahead, id=f'{appoint.pk}_start_ahead',
+                      run_time=start_ahead)(appoint.pk)
+    elif current_time < start:
+        start_appoint_ahead(appoint.pk)
 
     if not (has_started and appoint.Astatus == Appoint.Status.PROCESSING):
         ScheduleAdder(start_appoint, id=f'{appoint.pk}_start',
@@ -54,6 +63,8 @@ def cancel_scheduler(appoint: Appoint | int, record_miss: bool = False) -> bool:
         if record_miss:
             logger.warning(f"预约{aid}取消时未发现计时器")
         return False
+
+    remove_job(f'{aid}_start_ahead')
 
     if not remove_job(f'{aid}_start') and record_miss:
         logger.warning(f"预约{aid}取消时未发现开始计时器")
