@@ -1249,9 +1249,9 @@ def check_post_and_modify(records: QuerySet[CourseRecord], post_data: QueryDict)
 
                 # 读取小时数
                 bonus_hours = float(post_data.get(str(key), -1))
-                assert bonus_hours >= 0, "学时数据为负数，请检查输入数据！"
                 record.bonus_hours = bonus_hours
                 record.total_hours = bonus_hours + record.attend_times * record.hours_per_class
+                assert record.total_hours >= 0, "总学时数据为负数，请检查输入数据！"
                 # 更新是否有效
                 record.invalid = (record.total_hours < APP_CONFIG.least_record_hours)
 
