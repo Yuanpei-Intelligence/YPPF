@@ -3,7 +3,10 @@ from django.contrib import admin
 from dormitory.models import *
 from generic.admin import UserAdmin
 
-admin.site.register(Dormitory)
+@admin.register(Dormitory)
+class DormitoryAdmin(admin.ModelAdmin):
+    list_display = ('id', 'capacity', 'gender')
+    search_fields = ('id',)
 
 @admin.register(Agreement)
 class DormitoryAgreementAdmin(admin.ModelAdmin):

@@ -11,8 +11,9 @@ from dormitory.serializers import (
     DormitoryAssignmentSerializer, DormitorySerializer,
     AgreementSerializerFixme, AgreementSerializer)
 from questionnaire.models import AnswerSheet, AnswerText, Survey
-from semester.api import next_semester
-
+from semester.api import current_semester
+from django.http import HttpResponse
+from openpyxl import Workbook
 
 class DormitoryViewSet(viewsets.ReadOnlyModelViewSet):
     queryset = Dormitory.objects.all()
@@ -48,7 +49,7 @@ class DormitoryRoutineQAView(ProfileTemplateView):
     need_prepare = False
 
     def get_survey(self):
-        return Survey.objects.get(title=f'宿舍生活习惯调研-{next_semester().year}')
+        return Survey.objects.get(title=f'宿舍生活习惯调研-{current_semester().year}')
 
     def get(self):
         survey = self.get_survey()
@@ -121,3 +122,49 @@ class AgreementView(ProfileTemplateView):
         Agreement.objects.get_or_create(user=self.request.user)
         from django.shortcuts import redirect
         return redirect("/welcome")
+
+
+
+def download_xlsx(request) -> HttpResponse:
+    wb = Workbook()
+    ws = wb.active
+    ws.title = "Result"
+
+    survey = Survey.objects.get(title='宿舍生活习惯调研-2024')
+    questions = survey.questions.order_by('order').all()
+
+    # Add header row
+    headers = [question.topic for question in questions]
+    for col_num, column_title in enumerate(headers, 1):
+        col_letter = ws.cell(row=1, column=col_num)
+        col_letter.value = column_title
+
+    # Iterate through the AnswerSheet objects
+    for row_num, answer_sheet in enumerate(AnswerSheet.objects.filter(survey=survey), 2):
+        answers = {answer.question.id: answer for answer in answer_sheet.answertext_set.all()}
+        for col_num, question in enumerate(questions, 1):
+            col_letter = ws.cell(row=row_num, column=col_num)
+            answer = answers.get(question.id)
+            if answer:
+                if question.type == 'TEXT':
+                    col_letter.value = answer.body
+                elif question.type == 'SINGLE':
+                    t = list(question.choices.filter(order=int(answer.body)))
+                    if len(t) != 1:
+                        raise ValueError(t)
+                    col_letter.value = question.choices.get(order=int(answer.body)).text
+                elif question.type == 'MULTIPLE':
+                    choices_orders = answer.body.split(',')
+                    choices_texts = [question.choices.get(order=int(order)).text for order in choices_orders]
+                    col_letter.value = ', '.join(choices_texts)
+            else:
+                # If no answer, set as empty or a default value
+                col_letter.value = None  # or you can use "" or "N/A"
+
+    # Save and return the workbook
+    response = HttpResponse(
+        content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+    response['Content-Disposition'] = 'attachment; filename=questions.xlsx'
+    wb.save(response)
+
+    return response

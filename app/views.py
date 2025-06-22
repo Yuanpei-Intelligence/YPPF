@@ -1112,7 +1112,7 @@ def _create_freshman_account(sid: str, email: str = None):
             current = "创建用户"
             user = User.objects.create_user(
                 username=sid, name=name,
-                usertype=User.Type.STUDENT,
+                usertype=User.Type.PERSON,
                 password=password
             )
             current = "创建个人账号"

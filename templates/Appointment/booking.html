@@ -42,6 +42,14 @@
                     <div class="row">
                         {% comment %} replace js alert with bootstrap alert {% endcomment %}
                         <div class="col-12">
+                            {% if room_object.Rid == 'R301' %}
+                            <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                                <strong>重要提醒：</strong> 俄文楼301房间在预约使用时，需要提前联系俄文楼一楼值班人员手动预约并在主管老师审批同意后，再在此系统进行线上预约。
+                                <button type="button" class="close" data-dismiss="alert">
+                                    <span >&times;</span>
+                                </button>
+                            </div>
+                            {% endif %}
                             <div class="alert alert-info alert-dismissible fade show" role="alert">
                                 <strong>温馨提示：</strong> 
                                 点击【房间名称】可以选择【其他房间】进行预约。

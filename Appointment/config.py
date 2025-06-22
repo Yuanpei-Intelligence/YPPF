@@ -31,9 +31,9 @@ class AppointmentConfig(Config):
     # 表示临时预约放宽的人数下限
     temporary_min = 1
     # 长期预约总数上限
-    longterm_max_num = 4
+    longterm_max_num = 8
     # 单个长期预约总次数上限
-    longterm_max_time_once = 8
+    longterm_max_time_once = 11
     longterm_max_time = 16
     # 单个长期预约总周数上限
     longterm_max_interval = 2

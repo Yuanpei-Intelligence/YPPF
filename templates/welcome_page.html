@@ -184,9 +184,9 @@
                 <!-- BEGIN WISHWALL -->
                 <div class="widget-content widget-content-area mt-2 mx-0 bio">
                     <div class="d-flex justify-content-between">
-                        <h5>心愿墙</h5>
+                        <h5>公告栏</h5>
                         <!-- <a href="#myModal" class="mb-2 edit-profile" data-toggle="modal"> -->
-                        <a onclick="alert(`心愿墙暂未启用，敬请期待！`);" class="mb-2 edit-profile" data-toggle="modal"
+                        <a onclick="alert(`公告栏暂未启用，敬请期待！`);" class="mb-2 edit-profile" data-toggle="modal"
                             style="color: gainsboro;">
                             <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor"
                                 stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
@@ -204,7 +204,7 @@
 
                                 <!-- 模态框头部 -->
                                 <div class="modal-header">
-                                    <h4 class="modal-title">添加心愿</h4>
+                                    <h4 class="modal-title">添加公告</h4>
                                     <button type="button" class="close" data-dismiss="modal">&times;</button>
                                 </div>
 
@@ -247,7 +247,7 @@
                     <div class="bio-skill-box p-0" id="custom-wishes"
                         style="min-height: 15vh; overflow-y: scroll; overflow-x: visible;">
                         {% if wishes|length == 0 %}
-                        <p class="mx-auto" style="text-align: center;">暂时没有心愿！</p>
+                        <p class="mx-auto" style="text-align: center;">暂时没有公告！</p>
                         {% else %}
                         {% for wish in wishes %}
                         <div class="b-skills my-3 p-0 w-100" style="background-color:{{ wish.background }};">

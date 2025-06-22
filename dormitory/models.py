@@ -34,7 +34,6 @@ class Dormitory(models.Model):
 
     gender = models.CharField('性别', max_length=1, choices=Gender.choices)
 
-    @admin_only
     def __str__(self):
         return str(self.id)
 
