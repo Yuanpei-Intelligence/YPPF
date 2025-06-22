@@ -32,7 +32,7 @@ __all__ = [
 ]
 
 
-DEBUG = False
+DEBUG = True
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 
