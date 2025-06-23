@@ -36,6 +36,8 @@ services:
     volumes:
       - ../:/workspace
     working_dir: /workspace
+    environment:
+      - DEBUG=true
     depends_on:
       mysql:
         condition: service_healthy
@@ -61,6 +63,7 @@ services:
       - DB_USER=root
       - DB_PASSWORD=secret
       - DB_DATABASE=yppf
+      - DEBUG=true
     volumes:
       - ../:/workspace
     command: python3 manage.py runserver
@@ -76,6 +79,8 @@ services:
     volumes:
       - ../:/workspace
     working_dir: /workspace
+    environment:
+      - DEBUG=true
     depends_on:
       mysql:
         condition: service_healthy
