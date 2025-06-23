@@ -32,7 +32,7 @@ __all__ = [
 ]
 
 
-DEBUG = True
+DEBUG = 'DEBUG' in os.environ and os.environ['DEBUG'].lower() == 'true'
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 

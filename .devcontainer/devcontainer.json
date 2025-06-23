@@ -9,6 +9,10 @@
     "service": "yppf",
     "workspaceFolder": "/workspace",
     "remoteUser": "vscode",
+    // Dev container is used for development, so the DEBUG environment variable should be set
+    "containerEnv": {
+        "DEBUG": "true"
+    },
     "customizations": {
         "vscode": {
             "settings": {

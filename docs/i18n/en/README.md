@@ -148,7 +148,7 @@ Execute any of the commands to start, until you exit with `Ctrl-C` or close the 
 
 - Production/Debug Mode
 
-    In `boot/config.py`, set the `DEBUG` constant to `True` to enable debug mode.
+    Set the `DEBUG` environment variable to `true` to enable debug mode.
 
     Debug mode is easy to use, so unless you plan to deploy this project in a production environment, please set it to debug mode.
 

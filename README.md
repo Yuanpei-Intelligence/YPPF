@@ -145,7 +145,7 @@ python manage.py runserver ip:port
 
 - 生产/调试模式
 
-    在`boot/config.py`中，将`DEBUG`常量设为`True`以启用调试模式。
+    将`DEBUG`环境变量设置为`true`以开启调试模式。
 
     调试模式便于使用，除非你打算在生产环境部署本项目，否则请设置为调试模式。
 
