@@ -1,10 +1,11 @@
 const user_agreement_path = '/agreement'
 const dorm_path = '/dormitory/agreement';
+const modpw_path = '/modpw';
 const query_path = '/dormitory/agreement-query-fixme';
 
 function skipThisPage() {
     var current_url = window.location.pathname;
-    return current_url.includes(dorm_path) || current_url.includes(user_agreement_path);
+    return current_url.includes(dorm_path) || current_url.includes(user_agreement_path) || current_url.includes(modpw_path);
 }
 
 function getAgreementState() {
