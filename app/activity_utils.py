@@ -92,7 +92,7 @@ def changeActivityStatus(aid, cur_status, to_status):
     activity = Activity.objects.select_for_update().get(id=aid)
     if cur_status is None:
         raise AssertionError('未提供当前状态，不允许进行活动状态修改')
-    if cur_status == Activity.Status.CANCELED:
+    if activity.status == Activity.Status.CANCELED:
         return
     assert cur_status == activity.status, f'<{activity.status}>与期望的状态<{cur_status}>不符'
 
