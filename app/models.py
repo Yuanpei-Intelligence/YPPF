@@ -693,6 +693,12 @@ class Position(models.Model):
     class Meta:
         verbose_name = "1.职务"
         verbose_name_plural = verbose_name
+        constraints = [
+            models.UniqueConstraint(
+                fields=['person', 'org', 'semester', 'year'],
+                name='Unique position per person, org, semester, year'
+            )
+        ]
 
     person = models.ForeignKey(
         NaturalPerson, related_name="position_set", on_delete=models.CASCADE,
