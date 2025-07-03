@@ -26,7 +26,7 @@ jobs:
       - name: Start containers
         run: docker compose -f .devcontainer/docker-compose.yml up -d
       - name: Build docs
-        run: docker compose -f .devcontainer/docker-compose.yml exec -T yppf bash docs/build.sh
+        run: docker compose -f .devcontainer/docker-compose.yml exec -T yppf bash -c "DEBUG=true bash docs/build.sh"
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
