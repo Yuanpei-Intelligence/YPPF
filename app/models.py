@@ -381,8 +381,7 @@ class NaturalPerson(models.Model):
 
     def get_absolute_url(self, absolute=False):
         '''User一对一模型的建议方法'''
-        url = f'/stuinfo/?name={self.name}'
-        url += f'+{self.person_id_id}'
+        url = f'/stuinfo/?name={self.name}&id={self.person_id_id}'
         return url
 
     def get_user_ava(self: Self | None = None):
