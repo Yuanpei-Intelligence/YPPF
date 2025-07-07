@@ -152,9 +152,20 @@ def stuinfo(request: UserRequest):
             assert request.user.is_person()
             return redirect(append_query(oneself.get_absolute_url(), **request.GET.dict()))
     else:
-        # 先对可能的加号做处理
-        name_list = name.replace(' ', '+').split("+")
-        name = name_list[0]
+        # 对可能的加号处理
+        name = name.replace(' ', '+')
+        # 保留前面的用户名中含有的空格
+        if "+" in name:
+            name_list = name.split("+")
+            name = name_list[0]
+            name_list.pop(0)
+            while (len(name_list) > 1):
+                name += " "
+                name += name_list[0]
+                name_list.pop(0)
+        else:
+            name = name
+        
         person = NaturalPerson.objects.activated().filter(name=name)
         if len(person) == 0:  # 查无此人
             return redirect(message_url(wrong('用户不存在!')))
