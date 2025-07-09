@@ -424,6 +424,11 @@ def arrange_time(request: HttpRequest):
     max_appoint_time = int(CONFIG.max_appoint_time.total_seconds() // 3600) # 以小时计算
     is_person = request.user.is_person()
 
+     # 处理从URL参数传递过来的错误信息
+    html_display = {}
+    html_display["warn_code"], html_display["warn_message"] = my_messages.get_request_message(
+        request)
+    
     # 获取房间编号
     Rid = request.GET.get('Rid')
     try:
@@ -794,10 +799,8 @@ def checkout_appoint(request: UserRequest):
         startid = int(startid)
         endid = int(endid)
         if is_longterm and request.method == 'POST':
-            assert times, '长期预约周数未填写'
-            times = int(times)
-            interval = int(interval)
-            assert 1 <= interval <= CONFIG.longterm_max_interval, '间隔周数'
+            times = int(times) if times else 0
+            interval = int(interval) if interval else 0
         assert weekday in wklist, '星期几'
         assert startid >= 0, '起始时间'
         assert endid >= 0, '结束时间'
@@ -807,9 +810,17 @@ def checkout_appoint(request: UserRequest):
         if is_interview:
             assert has_interview_permission, '没有面试权限'
     except AssertionError as e:
-        return redirect(message_url(wrong(f'参数不合法: {e}'), reverse('Appointment:index')))
+        # 参数不合法时，重定向回arrange_time页面并显示错误信息
+        redirect_url = f'/underground/arrange_time?Rid={Rid}&start_week={start_week}'
+        if is_longterm:
+            redirect_url += '&longterm=on'
+        return redirect(message_url(wrong(f'参数不合法: {e}'), redirect_url))
     except:
-        return redirect(message_url(wrong('参数不合法'), reverse('Appointment:index')))
+        # 参数不合法时，重定向回arrange_time页面并显示错误信息
+        redirect_url = f'/underground/arrange_time?Rid={Rid}&start_week={start_week}'
+        if is_longterm:
+            redirect_url += '&longterm=on'
+        return redirect(message_url(wrong('参数不合法'), redirect_url))
 
     appoint_params = {
         'Rid': Rid,
@@ -883,9 +894,14 @@ def checkout_appoint(request: UserRequest):
             lambda sid: User.objects.get(username = sid).active,
             contents['students']
         ))
-
+        # 检查长期预约周数是否填写
+        if is_longterm and not times:
+            wrong("长期预约周数未填写", render_context)
+        # 检查间隔周数
+        elif is_longterm and not (1 <= interval <= CONFIG.longterm_max_interval):
+            wrong("间隔周数不符合要求", render_context)
         # 检查预约次数
-        if is_longterm and not (1 <= times <= CONFIG.longterm_max_time_once
+        elif is_longterm and not (1 <= times <= CONFIG.longterm_max_time_once
                                 and 1 <= interval * times <= CONFIG.longterm_max_week):
             wrong("您填写的预约周数不符合要求", render_context)
 
