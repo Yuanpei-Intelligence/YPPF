@@ -798,9 +798,6 @@ def checkout_appoint(request: UserRequest):
         start_week = int(start_week)
         startid = int(startid)
         endid = int(endid)
-        if is_longterm and request.method == 'POST':
-            times = int(times) if times else 0
-            interval = int(interval) if interval else 0
         assert weekday in wklist, '星期几'
         assert startid >= 0, '起始时间'
         assert endid >= 0, '结束时间'
@@ -815,6 +812,12 @@ def checkout_appoint(request: UserRequest):
         if is_longterm:
             redirect_url += '&longterm=on'
         return redirect(message_url(wrong(f'参数不合法: {e}'), redirect_url))
+    except ValueError:
+        # 参数类型转换失败时，重定向回arrange_time页面并显示错误信息
+        redirect_url = f'/underground/arrange_time?Rid={Rid}&start_week={start_week}'
+        if is_longterm:
+            redirect_url += '&longterm=on'
+        return redirect(message_url(wrong('参数格式错误，请检查输入'), redirect_url))
     except:
         # 参数不合法时，重定向回arrange_time页面并显示错误信息
         redirect_url = f'/underground/arrange_time?Rid={Rid}&start_week={start_week}'
@@ -871,6 +874,16 @@ def checkout_appoint(request: UserRequest):
                 contents[key] = contents[key][0]
                 if key in {'year', 'month', 'day'}:
                     contents[key] = int(contents[key])
+        # 处理长期预约的times和interval参数
+        if is_longterm:
+            try:
+                times = int(contents.get('times', 0)) if contents.get('times') else 0
+                interval = int(contents.get('interval', 0)) if contents.get('interval') else 0
+            except ValueError:
+                wrong("长期预约周数或间隔周数格式错误，请输入数字", render_context)
+                # 简化错误处理
+                render_context.update(contents=contents, show_clause=True)
+                return render(request, 'Appointment/checkout.html', render_context)
         # 处理外院人数
         if contents['non_yp_num'] == "":
             contents['non_yp_num'] = 0
@@ -898,10 +911,10 @@ def checkout_appoint(request: UserRequest):
         if is_longterm and not times:
             wrong("长期预约周数未填写", render_context)
         # 检查间隔周数
-        elif is_longterm and not (1 <= interval <= CONFIG.longterm_max_interval):
+        if is_longterm and not (1 <= interval <= CONFIG.longterm_max_interval):
             wrong("间隔周数不符合要求", render_context)
         # 检查预约次数
-        elif is_longterm and not (1 <= times <= CONFIG.longterm_max_time_once
+        if is_longterm and not (1 <= times <= CONFIG.longterm_max_time_once
                                 and 1 <= interval * times <= CONFIG.longterm_max_week):
             wrong("您填写的预约周数不符合要求", render_context)
 
