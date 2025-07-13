@@ -309,8 +309,9 @@
                                         </div>
                                         {% if QRcode %}
                                         <div style="max-height:1000px;overflow:auto;">
-                                            <img src="/media/{{ QRcode }}" id="QRcode_image" alt="当前二维码">
-                                            <!--移动端图片大小需要修正!-->
+                                            <img src="/media/{{ QRcode }}" id="QRcode_image" alt="当前二维码"
+                                                style="max-width: 100%; max-height: 80vh; height: auto; display: block; margin: 0 auto;">
+                                            <!--移动端图片修正完成!-->
                                         </div>
                                          {%endif%}  
                                     </div>
