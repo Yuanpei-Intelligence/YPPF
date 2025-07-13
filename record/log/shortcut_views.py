@@ -5,19 +5,22 @@ from django.http import HttpResponse
 from utils.views import SecureView
 from record.log.utils import get_logger
 from record.log.config import log_config as CONFIG
+from boot.config import GLOBAL_CONFIG
 
 
 class LogShortcut(SecureView):
     '''日志文件快捷呈现
 
-    显示日志文件列表，点击文件名可预览日志内容，GET参数控制末尾行数
-    由于安全性考虑，只有管理员可访问
+    显示日志文件列表，点击文件名可预览日志内容，GET参数控制末尾行数。
+    出于安全性考虑，只有超级用户或在 config.json 的 debug_stuids 配置中的用户可以访问。
     '''
     http_method_names = ['get']
 
     def check_perm(self) -> None:
         super().check_perm()
-        if not self.request.user.is_superuser:
+        user = self.request.user
+        # Allow superuser or debug_stuids
+        if not (user.is_superuser or (hasattr(user, 'username') and user.username in GLOBAL_CONFIG.debug_stuids)):
             self.permission_denied()
 
     def dispatch_prepare(self, method: str):

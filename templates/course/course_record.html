@@ -64,7 +64,7 @@
                   <tr>
                     <td class="name" scope="row">
                       <img src={{ record.avatar }} width="24" height="24" alt="avatar">
-                      <a href='/stuinfo/?name={{ record.name }}'><u>{{record.name}}</u></a>
+                      <a href='{{ record.get_absolute_url }}'><u>{{record.name}}</u></a>
                     </td>
                     <td class="grade">{{record.grade}}</td>
                     <td class="times">
