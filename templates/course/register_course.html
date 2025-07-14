@@ -309,9 +309,10 @@
                                         </div>
                                         {% if QRcode %}
                                         <div style="max-height:1000px;overflow:auto;">
-                                            <img  src="/media/{{QRcode}}" >
-                                            <!--移动端图片大小需要修正!-->
-                                         </div>
+                                            <img src="/media/{{ QRcode }}" id="QRcode_image" alt="当前二维码"
+                                                style="max-width: 100%; max-height: 80vh; height: auto; display: block; margin: 0 auto;">
+                                            <!--移动端图片修正完成!-->
+                                        </div>
                                          {%endif%}  
                                     </div>
 
@@ -437,6 +438,11 @@
                 
                 }
                 $("#QRcode_label").html(text);
+                if (files.length > 0) {
+            const reader = new FileReader();
+            reader.onload = e => document.querySelector('#QRcode_preview img').src = e.target.result;
+            reader.readAsDataURL(files[0]);
+        }
             }
     }
     function get_type_value(a) {
