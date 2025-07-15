@@ -131,7 +131,7 @@ def cameracheck(request: HttpRequest):
         Astart__lte=now_time,
         Afinish__gte=now_time,
         Room=room,
-    )
+    ).order_by('Astart', 'Afinish')
 
     # 逻辑是尽量宽容，因为一分钟只记录两次，两次随机大概率只有一次成功
     # 所以没必要必须随机成功才能修改错误结果
