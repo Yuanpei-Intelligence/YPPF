@@ -800,10 +800,23 @@ def checkout_appoint(request: UserRequest):
 
     try:
         # 参数类型转换与合法性检查
-        # 在类型转换之前验证start_week是否为数字
+
+        # 由于预约url中存在Rid和start_week
+        # 故先进行Rid和start_week合法性检验
         if is_longterm and not str(start_week).isdigit():
             raise AssertionError(f'预约周数必须为0或1')
         start_week = int(start_week)
+        if start_week not in [0, 1]:
+            raise AssertionError(f'预约周数必须为0或1')
+        else:
+            safe_start_week = start_week
+        if not Room.objects.filter(Rid=Rid).exists():
+            raise AssertionError(f'房间{Rid}不存在')
+        room = Room.objects.get(Rid=Rid)
+        if not room.Rstatus == Room.Status.PERMITTED:
+            raise AssertionError(f'房间{Rid}不可预约')
+
+        # 其他参数的合法性检验
         startid = int(startid)
         endid = int(endid)
         assert weekday in wklist, '星期几'
@@ -813,40 +826,19 @@ def checkout_appoint(request: UserRequest):
         assert has_longterm_permission or not is_longterm, '没有长期预约权限'
         if is_interview:
             assert has_interview_permission, '没有面试权限'
-        # 验证房间是否存在且可预约
-        room = Room.objects.get(Rid=Rid)
-        if room.Rstatus == Room.Status.FORBIDDEN:
-            raise AssertionError(f'房间{Rid}不可预约')
-        # 验证start_week参数
-        if start_week not in [0, 1]:
-            raise AssertionError(f'预约周数必须为0或1')
-        else:
-            safe_start_week = start_week
 
-    except AssertionError as e:
-        # 参数不合法时，重定向回arrange_time页面并显示错误信息
-        safe_rid = room.Rid if room else "B107A"
-        redirect_url = f'/underground/arrange_time?Rid={safe_rid}&start_week={safe_start_week}'
-        if is_longterm:
-            redirect_url += '&longterm=on'
-        return redirect(message_url(wrong(f'参数不合法: {str(e)}'), redirect_url))
+    except AssertionError:
+        # Rid或start_week不合法，直接跳转到主页
+        return redirect('')
     except ValueError:
         # 参数类型转换失败时，重定向回arrange_time页面并显示错误信息
-        safe_rid = room.Rid if room else "B107A"
-        redirect_url = f'/underground/arrange_time?Rid={safe_rid}&start_week={safe_start_week}'
+        redirect_url = f'/underground/arrange_time?Rid={Rid}&start_week={safe_start_week}'
         if is_longterm:
             redirect_url += '&longterm=on'
         return redirect(message_url(wrong('参数格式错误，请检查输入'), redirect_url))
-    except Room.DoesNotExist:
-        # 房间不存在时使用默认房间
-        redirect_url = f'/underground/arrange_time?Rid=B107A&start_week={safe_start_week}'
-        if is_longterm:
-            redirect_url += '&longterm=on'
-        return redirect(message_url(wrong(f'房间{Rid}不存在'), redirect_url))
     except:
         # 参数不合法时，重定向回arrange_time页面并显示错误信息
-        safe_rid = room.Rid if room else "B107A"
-        redirect_url = f'/underground/arrange_time?Rid={safe_rid}&start_week={safe_start_week}'
+        redirect_url = f'/underground/arrange_time?Rid={Rid}&start_week={safe_start_week}'
         if is_longterm:
             redirect_url += '&longterm=on'
         return redirect(message_url(wrong('参数不合法'), redirect_url))
@@ -1022,7 +1014,7 @@ def checkout_appoint(request: UserRequest):
                     message_url(succeed(f"预约{room.Rtitle}成功!"),
                                 reverse("Appointment:account")))
             elif appoint is None:
-                wrong(err_msg, render_context)
+                return redirect('')
             else:
                 # 长期预约
                 try:
