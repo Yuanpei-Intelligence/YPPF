@@ -977,9 +977,9 @@ def checkout_appoint(request: UserRequest):
                                         reverse("Appointment:account")))
                 except:
                     appoint.delete()
-                    conflict_appoints = sorted(conflict_appoints,
-                                               key=lambda x: (x.Astart, x.Afinish))
                     if conflict_appoints:
+                        conflict_appoints = sorted(conflict_appoints,
+                                                   key=lambda x: (x.Astart, x.Afinish))
                         wrong(f"与预约时间为{conflict_appoints[0].Astart}"
                               + f"-{conflict_appoints[0].Afinish}的预约发生冲突",
                               render_context)
