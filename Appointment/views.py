@@ -829,7 +829,7 @@ def checkout_appoint(request: UserRequest):
 
     except AssertionError:
         # Rid或start_week不合法，直接跳转到主页
-        return redirect('')
+        return redirect('/underground/index')
     except ValueError:
         # 参数类型转换失败时，重定向回arrange_time页面并显示错误信息
         redirect_url = f'/underground/arrange_time?Rid={Rid}&start_week={safe_start_week}'
