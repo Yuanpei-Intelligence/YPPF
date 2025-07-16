@@ -99,9 +99,9 @@
                   <div class="form-group">
                     <label>反馈标题</label>
                     {% if not is_new_feedback %}
-                      <textarea type="text" name="title" rows="1" class="form-control" aria-label="Default" placeholder="标题不能超过30字噢！" {% if not is_new_feedback %}disabled="disabled"{% endif %}>{{feedback.title}}</textarea>
+                      <textarea type="text" name="title" id="title" rows="1" class="form-control" aria-label="Default" placeholder="标题不能超过30字噢！" {% if not is_new_feedback %}disabled="disabled"{% endif %}>{{feedback.title}}</textarea>
                     {% else %}
-                      <input type="text" name="title" class="form-control"
+                      <input type="text" name="title" id="title" class="form-control"
                                                       aria-label="Default" placeholder="标题不能超过30字噢！">
                     {% endif %}
                   </div>
@@ -198,7 +198,8 @@
                   <br/>
                   {% if is_new_feedback %}
                   <div align="center">
-                    <button type="submit" class="btn btn-primary btn-lg mb-4 mr-2" value="save" name="post_type" onclick="return confirm('确认将反馈保存入草稿箱？')">保存反馈</button>
+                    <button type="submit" class="btn btn-primary btn-lg mb-4 mr-2" value="save" name="post_type" 
+                    onclick="return check_length()&&confirm('确认将反馈保存入草稿箱？')">保存反馈</button>
                     <button type="submit" class="btn btn-primary btn-lg mb-4 mr-2" value="directly_submit" name="post_type" onclick="return confirm('确认直接提交反馈？提交后将只能发布评论和修改公开状态，不允许修改标题和内容！')">提交反馈</button>
                   </div>
                   {% else %}
@@ -294,5 +295,14 @@
         opt.text = name;
         return opt;
     }
+    function check_length() {
+    const input = document.getElementById('title');
+    const content = input.value;
+    if (content.length > 30) {
+        alert('请确保标题不超过30个字符。当前长度：' + content.length);
+        return false;
+    }
+    return true;
+}
   </script>
 {% endblock %}
