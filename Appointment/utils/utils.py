@@ -153,7 +153,7 @@ def get_conflict_appoints(appoint: Appoint, times: int = 1,
     :type no_cross_day: bool, optional
     :param lock: 查询时上锁, defaults to False
     :type lock: bool, optional
-    :return: 时间升序排序的冲突预约集
+    :return: 冲突预约集
     :rtype: QuerySet[Appoint]
     '''
     # 获取该房间的所有有效预约
@@ -194,7 +194,7 @@ def get_conflict_appoints(appoint: Appoint, times: int = 1,
         conflict_appoints = activate_appoints.filter(conditions)
     if exclude_this:
         conflict_appoints = conflict_appoints.exclude(pk=appoint.pk)
-    return conflict_appoints.order_by('Astart', 'Afinish')
+    return conflict_appoints
 
 
 def to_feedback_url(request: HttpRequest) -> str:
