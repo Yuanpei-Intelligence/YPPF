@@ -98,6 +98,8 @@ def add_longterm_appoint(appoint: 'Appoint | int',
         conflict_appoints = get_conflict_appoints(
             appoint, times, interval, week_offset, lock=True)
         if conflict_appoints:
+            conflict_appoints = sorted(conflict_appoints,
+                                       key=lambda x: (x.Astart, x.Afinish))
             first_conflict = conflict_appoints[0]
             first_time = ((first_conflict.Afinish - appoint.Astart
                            - timedelta(weeks=week_offset)

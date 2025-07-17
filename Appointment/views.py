@@ -424,6 +424,11 @@ def arrange_time(request: HttpRequest):
     max_appoint_time = int(CONFIG.max_appoint_time.total_seconds() // 3600) # 以小时计算
     is_person = request.user.is_person()
 
+     # 处理从URL参数传递过来的错误信息
+    html_display = {}
+    html_display["warn_code"], html_display["warn_message"] = my_messages.get_request_message(
+        request)
+    
     # 获取房间编号
     Rid = request.GET.get('Rid')
     try:
@@ -758,6 +763,9 @@ def checkout_appoint(request: UserRequest):
     """
     提交预约表单，检查合法性，进行预约
     """
+    stu_list = []
+    json_context = {}
+
     if request.method == "GET":
         Rid = request.GET.get('Rid')
         weekday = request.GET.get('weekday')
@@ -787,29 +795,53 @@ def checkout_appoint(request: UserRequest):
     has_longterm_permission = applicant.longterm
     has_interview_permission = not (applicant.longterm or applicant.hidden)
     has_interview_permission &= Rid in Room.objects.interview_room_ids()
+    room = None
+    safe_start_week = 0
 
     try:
         # 参数类型转换与合法性检查
+
+        # 由于预约url中存在Rid和start_week
+        # 故先进行Rid和start_week合法性检验
+        if is_longterm and not str(start_week).isdigit():
+            raise AssertionError(f'预约周数必须为0或1')
         start_week = int(start_week)
+        if start_week not in [0, 1]:
+            raise AssertionError(f'预约周数必须为0或1')
+        else:
+            safe_start_week = start_week
+        if not Room.objects.filter(Rid=Rid).exists():
+            raise AssertionError(f'房间{Rid}不存在')
+        room = Room.objects.get(Rid=Rid)
+        if not room.Rstatus == Room.Status.PERMITTED:
+            raise AssertionError(f'房间{Rid}不可预约')
+
+        # 其他参数的合法性检验
         startid = int(startid)
         endid = int(endid)
-        if is_longterm and request.method == 'POST':
-            assert times, '长期预约周数未填写'
-            times = int(times)
-            interval = int(interval)
-            assert 1 <= interval <= CONFIG.longterm_max_interval, '间隔周数'
         assert weekday in wklist, '星期几'
         assert startid >= 0, '起始时间'
         assert endid >= 0, '结束时间'
         assert endid >= startid, '起始时间晚于结束时间'
-        assert start_week == 0 or start_week == 1, '预约周数'
         assert has_longterm_permission or not is_longterm, '没有长期预约权限'
         if is_interview:
             assert has_interview_permission, '没有面试权限'
-    except AssertionError as e:
-        return redirect(message_url(wrong(f'参数不合法: {e}'), reverse('Appointment:index')))
+
+    except AssertionError:
+        # Rid或start_week不合法，直接跳转到主页
+        return redirect('/underground/index')
+    except ValueError:
+        # 参数类型转换失败时，重定向回arrange_time页面并显示错误信息
+        redirect_url = f'/underground/arrange_time?Rid={Rid}&start_week={safe_start_week}'
+        if is_longterm:
+            redirect_url += '&longterm=on'
+        return redirect(message_url(wrong('参数格式错误，请检查输入'), redirect_url))
     except:
-        return redirect(message_url(wrong('参数不合法'), reverse('Appointment:index')))
+        # 参数不合法时，重定向回arrange_time页面并显示错误信息
+        redirect_url = f'/underground/arrange_time?Rid={Rid}&start_week={safe_start_week}'
+        if is_longterm:
+            redirect_url += '&longterm=on'
+        return redirect(message_url(wrong('参数不合法'), redirect_url))
 
     appoint_params = {
         'Rid': Rid,
@@ -819,7 +851,6 @@ def checkout_appoint(request: UserRequest):
         'longterm': is_longterm,
         'start_week': start_week,
     }
-    room = Room.objects.get(Rid=Rid)
     # 表单参数都统一为可预约的第一周，具体预约哪周根据POST的start_week判断
     dayrange_list = web_func.get_dayrange(day_offset=0)[0]
     for day in dayrange_list:
@@ -852,6 +883,19 @@ def checkout_appoint(request: UserRequest):
                           has_interview_permission=has_interview_permission,
                           interview_max_count=CONFIG.interview_max_num)
 
+    # 提供搜索功能的数据
+    search_users = User.objects.filter_type(User.Type.PERSON)
+    search_users = search_users.exclude(pk=request.user.pk)
+    # 保证都在预约人员列表中且不是隐藏用户
+    search_users = search_users.filter(
+        pk__in=Participant.objects.filter(hidden=False).values('Sid__pk'))
+    stu_list = to_search_indices(search_users, active=True)
+    member_ids = get_member_ids(request.user)
+
+    # 用于前端的JSON数据，由Django标签在渲染时转化为JSON格式
+    json_context = dict(user_infos=stu_list, member_ids=member_ids)
+    render_context.update(json_context=json_context)
+
     # 提交预约信息
     if request.method == 'POST':
         contents = dict(request.POST)
@@ -883,7 +927,28 @@ def checkout_appoint(request: UserRequest):
             lambda sid: User.objects.get(username = sid).active,
             contents['students']
         ))
-
+        # 处理长期预约的times和interval参数 - 移到这里
+        if is_longterm:
+            try:
+                times = int(contents.get('times', 0)
+                            ) if contents.get('times') else 0
+                interval = int(contents.get('interval', 0)
+                               ) if contents.get('interval') else 0
+            except ValueError:
+                wrong("长期预约周数或间隔周数格式错误，请输入数字", render_context)
+                # 预约失败。补充一些已有信息，以避免重复填写
+                selected_ids = set(contents.pop('students'))
+                selected_ids = [w['id']
+                                for w in stu_list if w['id'] in selected_ids]
+                json_context.update(selected_ids=selected_ids)
+                render_context.update(contents=contents, show_clause=True, json_context=json_context)
+                return render(request, 'Appointment/checkout.html', render_context)
+        # 检查长期预约周数是否填写
+        if is_longterm and not times:
+            wrong("长期预约周数未填写", render_context)
+        # 检查间隔周数
+        if is_longterm and not (1 <= interval <= CONFIG.longterm_max_interval):
+            wrong("间隔周数不符合要求", render_context)
         # 检查预约次数
         if is_longterm and not (1 <= times <= CONFIG.longterm_max_time_once
                                 and 1 <= interval * times <= CONFIG.longterm_max_week):
@@ -949,7 +1014,7 @@ def checkout_appoint(request: UserRequest):
                     message_url(succeed(f"预约{room.Rtitle}成功!"),
                                 reverse("Appointment:account")))
             elif appoint is None:
-                wrong(err_msg, render_context)
+                return redirect('')
             else:
                 # 长期预约
                 try:
@@ -978,29 +1043,18 @@ def checkout_appoint(request: UserRequest):
                 except:
                     appoint.delete()
                     if conflict_appoints:
+                        conflict_appoints = sorted(conflict_appoints,
+                                                   key=lambda x: (x.Astart, x.Afinish))
                         wrong(f"与预约时间为{conflict_appoints[0].Astart}"
                               + f"-{conflict_appoints[0].Afinish}的预约发生冲突",
                               render_context)
-
-    # 提供搜索功能的数据
-    search_users = User.objects.filter_type(User.Type.PERSON)
-    search_users = search_users.exclude(pk=request.user.pk)
-    # 保证都在预约人员列表中且不是隐藏用户
-    search_users = search_users.filter(
-        pk__in=Participant.objects.filter(hidden=False).values('Sid__pk'))
-    stu_list = to_search_indices(search_users, active=True)
-    member_ids = get_member_ids(request.user)
-
-    # 用于前端的JSON数据，由Django标签在渲染时转化为JSON格式
-    json_context = dict(user_infos=stu_list, member_ids=member_ids)
-    render_context.update(json_context=json_context)
 
     if request.method == 'POST':
         # 预约失败。补充一些已有信息，以避免重复填写
         selected_ids = set(contents.pop('students'))
         selected_ids = [w['id'] for w in stu_list if w['id'] in selected_ids]
         json_context.update(selected_ids=selected_ids)
-        render_context.update(contents=contents, show_clause=True)
+        render_context.update(contents=contents, show_clause=True, json_context=json_context) 
     return render(request, 'Appointment/checkout.html', render_context)
 
 
