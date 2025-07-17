@@ -77,7 +77,7 @@ def check_feedback(request, post_type, me):
     # 草稿不用检查标题、内容、公开的合法性，提交反馈需要检查！
     if post_type in ["directly_submit", "submit_draft"]:
         if len(title) >= 30:
-            return wrong("标题不能超过30字哦！")
+            return wrong("标题不能超过25字哦！")
 
         if title == "":
             return wrong("标题不能为空哦！")
