@@ -5,7 +5,7 @@
     //     "source=${localEnv:HOME}/.ssh,target=/home/vscode/.ssh,type=bind,consistency=cached"
     // ],
     "dockerComposeFile": "docker-compose.yml",
-    "postCreateCommand": "pip install -r .devcontainer/dev_requirements.txt",
+    "postCreateCommand": "pip install -r .devcontainer/dev_requirements.txt --resume-retries 5",
     "service": "yppf",
     "workspaceFolder": "/workspace",
     "remoteUser": "vscode",
