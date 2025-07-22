@@ -214,7 +214,7 @@ def _get_reverse_relation(related_field: RelatedField) -> ForeignObjectRel:
         ValueError: 如果反向关系字段不可用
     '''
     rel = cast(ForeignObjectRel, related_field.remote_field)
-    if rel.is_hidden():
+    if rel.hidden:
         raise ValueError(f'Cannot reverse a hidden relation: {related_field}')
     return rel
     
