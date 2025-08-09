@@ -15,6 +15,7 @@ from semester.api import current_semester
 from django.http import HttpResponse
 from openpyxl import Workbook
 
+
 class DormitoryViewSet(viewsets.ReadOnlyModelViewSet):
     queryset = Dormitory.objects.all()
     serializer_class = DormitorySerializer
@@ -27,10 +28,11 @@ class DormitoryAssignmentViewSet(viewsets.ReadOnlyModelViewSet):
 
 class DormitoryAgreementViewSetFixme(viewsets.ReadOnlyModelViewSet):
     serializer_class = AgreementSerializerFixme
+
     def get_queryset(self):
         # Only active students need to sign the agreement
         require_agreement = User.objects.filter(active=True,
-            utype=User.Type.STUDENT).contains(self.request.user)
+                                                utype=User.Type.STUDENT).contains(self.request.user)
         if require_agreement:
             return Agreement.objects.filter(user=self.request.user)
         # A hack to return something, so that the frontend won't redirect
@@ -38,9 +40,11 @@ class DormitoryAgreementViewSetFixme(viewsets.ReadOnlyModelViewSet):
         Agreement.objects.get_or_create(user=official_user)
         return Agreement.objects.filter(user=official_user)
 
+
 class DormitoryAgreementViewSet(viewsets.ReadOnlyModelViewSet):
     queryset = Agreement.objects.all()
     serializer_class = AgreementSerializer
+
 
 class DormitoryRoutineQAView(ProfileTemplateView):
 
@@ -79,7 +83,6 @@ class DormitoryRoutineQAView(ProfileTemplateView):
         return self.render(submitted=True)
 
 
-
 class DormitoryAssignResultView(ProfileTemplateView):
 
     template_name = 'dormitory/assign_result.html'
@@ -109,6 +112,7 @@ class DormitoryAssignResultView(ProfileTemplateView):
         except DormitoryAssignment.DoesNotExist:
             self.extra_context.update(dorm_assigned=False)
 
+
 class AgreementView(ProfileTemplateView):
     template_name = 'dormitory/agreement.html'
     page_name = '住宿协议'
@@ -124,13 +128,12 @@ class AgreementView(ProfileTemplateView):
         return redirect("/welcome")
 
 
-
 def download_xlsx(request) -> HttpResponse:
     wb = Workbook()
     ws = wb.active
     ws.title = "Result"
 
-    survey = Survey.objects.get(title='宿舍生活习惯调研-2024')
+    survey = Survey.objects.get(title='宿舍生活习惯调研-2025')
     questions = survey.questions.order_by('order').all()
 
     # Add header row
@@ -141,7 +144,8 @@ def download_xlsx(request) -> HttpResponse:
 
     # Iterate through the AnswerSheet objects
     for row_num, answer_sheet in enumerate(AnswerSheet.objects.filter(survey=survey), 2):
-        answers = {answer.question.id: answer for answer in answer_sheet.answertext_set.all()}
+        answers = {
+            answer.question.id: answer for answer in answer_sheet.answertext_set.all()}
         for col_num, question in enumerate(questions, 1):
             col_letter = ws.cell(row=row_num, column=col_num)
             answer = answers.get(question.id)
@@ -152,10 +156,12 @@ def download_xlsx(request) -> HttpResponse:
                     t = list(question.choices.filter(order=int(answer.body)))
                     if len(t) != 1:
                         raise ValueError(t)
-                    col_letter.value = question.choices.get(order=int(answer.body)).text
+                    col_letter.value = question.choices.get(
+                        order=int(answer.body)).text
                 elif question.type == 'MULTIPLE':
                     choices_orders = answer.body.split(',')
-                    choices_texts = [question.choices.get(order=int(order)).text for order in choices_orders]
+                    choices_texts = [question.choices.get(
+                        order=int(order)).text for order in choices_orders]
                     col_letter.value = ', '.join(choices_texts)
             else:
                 # If no answer, set as empty or a default value
