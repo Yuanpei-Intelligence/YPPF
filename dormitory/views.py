@@ -15,7 +15,6 @@ from semester.api import current_semester
 from django.http import HttpResponse
 from openpyxl import Workbook
 
-
 class DormitoryViewSet(viewsets.ReadOnlyModelViewSet):
     queryset = Dormitory.objects.all()
     serializer_class = DormitorySerializer
@@ -127,7 +126,6 @@ class AgreementView(ProfileTemplateView):
         from django.shortcuts import redirect
         return redirect("/welcome")
 
-
 def download_xlsx(request) -> HttpResponse:
     wb = Workbook()
     ws = wb.active
@@ -174,3 +172,4 @@ def download_xlsx(request) -> HttpResponse:
     wb.save(response)
 
     return response
+
