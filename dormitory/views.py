@@ -72,7 +72,9 @@ class DormitoryRoutineQAView(ProfileTemplateView):
             sheet = AnswerSheet.objects.create(creator=self.request.user,
                                                survey=survey)
             for question in survey.questions.order_by('order'):
-                answer = self.request.POST.get(str(question.order))
+                # Use getlist to get all the choices for MULTIPLE questions.
+                answer = self.request.POST.getlist(str(question.order))
+                answer = ','.join(answer)
                 if answer is None:
                     assert not question.required, f"必填题{question.order}未作答"
                     continue
