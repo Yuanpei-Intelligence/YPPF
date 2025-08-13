@@ -91,28 +91,23 @@ def viewFeedback(request: HttpRequest, fid):
         succeed_message = []
         # 一、修改已读状态
         # 只有已读条目才可以进行后续的修改
-        if feedback.read_status == Feedback.ReadStatus.UNREAD:
-            # 只有组织可以修改已读状态
-            if request.user.is_org() and feedback.org == me:
-                if read != "read":
-                    return redirect(message_url(wrong("必须先设置为已读！"), request.path))
-                with transaction.atomic():
-                    feedback = Feedback.objects.activated().select_for_update().get(id=fid)
-                    if read == "read":
-                        feedback.read_status = Feedback.ReadStatus.READ
-                        feedback.solve_status = Feedback.SolveStatus.SOLVING
-                    # 已读条目不允许恢复为未读
-                    # elif read == "unread":
-                    #     feedback.read_status = Feedback.ReadStatus.UNREAD
-                    feedback.save()
-                    succeed_message.append("成功修改状态为【已读】！")
-                    inform_notification(me, feedback.person,
-                                        f"您的反馈[{feedback.title}]已知悉。",
-                                        feedback,
-                                        important=True)
-            # 其他人没有标记已读权限
-            else:
-                return redirect(message_url(wrong("没有修改已读状态的权限！"), request.path))
+        if feedback.read_status == Feedback.ReadStatus.UNREAD and request.user.is_org() and feedback.org == me:
+            if read != "read":
+                return redirect(message_url(wrong("必须先设置为已读！"), request.path))
+            with transaction.atomic():
+                feedback = Feedback.objects.activated().select_for_update().get(id=fid)
+                if read == "read":
+                    feedback.read_status = Feedback.ReadStatus.READ
+                    feedback.solve_status = Feedback.SolveStatus.SOLVING
+                # 已读条目不允许恢复为未读
+                # elif read == "unread":
+                #     feedback.read_status = Feedback.ReadStatus.UNREAD
+                feedback.save()
+                succeed_message.append("成功修改状态为【已读】！")
+                inform_notification(me, feedback.person,
+                                    f"您的反馈[{feedback.title}]已知悉。",
+                                    feedback,
+                                    important=True)
 
 
         # 二、修改解决状态
