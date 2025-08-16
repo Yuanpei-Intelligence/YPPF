@@ -13,8 +13,19 @@ class Command(BaseCommand):
     def add_arguments(self, parser):
         parser.add_argument('excel_file', type=str,
                             help='Path to the Excel file')
+        parser.add_argument(
+            '--dry-run',
+            action='store_true',
+            help='Show what would be done without actually making changes',
+        )
 
     def handle(self, *args, **options):
+        dry_run = options['dry_run']
+
+        if dry_run:
+            self.stdout.write(self.style.WARNING(
+                'DRY RUN MODE - No changes will be made'))
+
         excel_file = options['excel_file']
 
         try:
@@ -30,12 +41,17 @@ class Command(BaseCommand):
             dormitory = Dormitory.objects.get(id=dorm_id)
             for i in range(len(df)):
                 user = User.objects.get(username=df.iloc[i]["学号"])
-                bed_id = int(df.iloc[i]["床位"])
+                bed_id = int(df.iloc[i]["床位"][:1])
+
+                if dry_run:
+                    self.stdout.write(
+                        f'DRY RUN: Would create DormitoryAssignment for Dormitory {dormitory.id}, User {user.username}, Bed ID {bed_id}')
+                    continue
                 _, created = DormitoryAssignment.objects.get_or_create(
                     dormitory=dormitory,
                     user=user,
                     bed_id=bed_id
                 )
                 if not created:
-                    print(
-                        f"This dormitory assignment entity already exists. Info: Dormitory id {dormitory.id}, user {user}, bed id {bed_id}.")
+                    self.stdout.write(self.style.ERROR(
+                        f"This dormitory assignment entity already exists. Info: Dormitory id {dormitory.id}, user {user}, bed id {bed_id}."))
