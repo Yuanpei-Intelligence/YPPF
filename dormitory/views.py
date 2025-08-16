@@ -21,7 +21,7 @@ class DormitoryViewSet(viewsets.ReadOnlyModelViewSet):
 
 
 class DormitoryAssignmentViewSet(viewsets.ReadOnlyModelViewSet):
-    queryset = DormitoryAssignment.objects.all()
+    queryset = DormitoryAssignment.objects.filter(active = True)
     serializer_class = DormitoryAssignmentSerializer
 
 
