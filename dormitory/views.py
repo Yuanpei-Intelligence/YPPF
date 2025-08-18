@@ -52,7 +52,7 @@ class DormitoryRoutineQAView(ProfileTemplateView):
     need_prepare = False
 
     def get_survey(self):
-        return Survey.objects.get(id=CONFIG.routine_qa_survey_id)
+        return Survey.objects.get(title=CONFIG.routine_qa_survey_title)
 
     def get(self):
         survey = self.get_survey()
