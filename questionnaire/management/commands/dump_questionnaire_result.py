@@ -3,13 +3,15 @@ from django.core.management.base import BaseCommand, CommandParser
 from tqdm import tqdm
 
 from questionnaire.models import Survey, AnswerSheet
+import os
 
 
 class Command(BaseCommand):
     help = 'Dumps the result of a questionnaire to raw_data/result.xlsx'
 
     def add_arguments(self, parser: CommandParser) -> None:
-        parser.add_argument('questionnaire_id', type=int, help='ID of questionnaire to dump')
+        parser.add_argument('questionnaire_title', type=str,
+                            help='Title of questionnaire to dump')
         parser.add_argument('output_file', type=str, default='raw_data/result.xlsx', help='Output file path')
         return super().add_arguments(parser)
 
@@ -18,9 +20,12 @@ class Command(BaseCommand):
         ws = wb.active
         ws.title = "Result"
 
-        survey = Survey.objects.get(id=options['questionnaire_id'])
+        survey = Survey.objects.get(title=options['questionnaire_title'])
         questions = survey.questions.order_by('order').all()
 
+        # 若没有该文件，自动创建
+        if not os.path.exists(options['output_file']):
+            os.makedirs(os.path.dirname(options['output_file']), exist_ok=True)
         self.stdout.write(self.style.NOTICE(f'Survey title: {survey.title}'))
 
         # Add header row
