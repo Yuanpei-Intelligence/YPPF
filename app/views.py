@@ -1,6 +1,7 @@
 import json
 import random
 import requests
+import copy
 from datetime import datetime, timedelta
 from typing import cast, List, Tuple
 
@@ -137,7 +138,8 @@ def stuinfo(request: UserRequest):
                 如果是自己，那么呈现并且有左边栏
                 如果不是自己或者自己是小组，那么呈现并且没有侧边栏
             如果重名
-                那么期望有一个"+"在name中，如果搜不到就跳转到Search/?Query=name让他跳转去
+                双参数方法可直接进行查找
+                旧的单参数方法则期望有一个"+"在name中，如果搜不到就跳转到Search/?Query=name让他跳转去
     """
 
     html_display = {}
@@ -171,16 +173,18 @@ def stuinfo(request: UserRequest):
             # 对可能的加号处理
             name = name.replace(' ', '+')
             # 保留前面的用户名中含有的空格
-            if "+" in name:
+            if "+" in name:  # 有加号，进行分隔
                 name_list = name.split("+")
-                name = name_list[0]
-                name_list.pop(0)
-                while (len(name_list) > 1):
+                name_list_copy = copy.deepcopy(name_list)
+                name = name_list_copy[0]
+                name_list_copy.pop(0)
+                while (len(name_list_copy) > 1):
                     name += " "
-                    name += name_list[0]
-                    name_list.pop(0)
-            else:
+                    name += name_list_copy[0]
+                    name_list_copy.pop(0)
+            else:  # 没有加号，直接使用
                 name = name
+                name_list = [name]
             
             person = NaturalPerson.objects.activated().filter(name=name)
             if len(person) == 0:  # 查无此人
@@ -193,6 +197,8 @@ def stuinfo(request: UserRequest):
                         person = cast(NaturalPerson, oneself)
                     else:  # 不是自己，信息不全跳转搜索
                         return redirect("/search?Query=" + name)
+                elif len(name_list) == 0:  # 理论上这种情况不会出现
+                    return redirect("/search?Query=" + name)
                 else:
                     obtain_id = int(name_list[1])  # 获取增补信息
                     get_user = User.objects.get(id=obtain_id)
