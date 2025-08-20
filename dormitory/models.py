@@ -48,3 +48,4 @@ class DormitoryAssignment(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE, verbose_name='成员')
     bed_id = models.IntegerField('床位号')
     time = models.DateTimeField('创建时间', auto_now_add=True)
+    active = models.BooleanField('是否有效', default=True)

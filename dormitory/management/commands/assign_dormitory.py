@@ -5,7 +5,7 @@ from collections import defaultdict
 import numpy as np
 import pandas as pd
 from django.core.management.base import BaseCommand
-from tqdm import trange
+from tqdm import tqdm, trange
 
 '''
 有关reference文件夹的说明：
@@ -62,7 +62,7 @@ class Dormitory:
         存在来自同一省份的同学减分，并针对北京地区特别操作
         专业是否平均分配：2文2理 > 4文/4理 > 文理1:3
         性格分配是否合理：尽量一个寝室不要多于两个内向
-        是否愿意和留学生/交换生同宿舍
+        竞赛生人数尽量不超过2个
         衡量能接受的最低空调温度接近程度，计算方差，特别计算能否接受整夜开空调的统一程度
         衡量起床时间、睡眠时间的接近程度，计算方差
         睡眠困扰同学尽量远离盥洗室和楼梯口（用 Dormitory.noisy 衡量）
@@ -79,7 +79,7 @@ class Dormitory:
         origin = [s.data['origin'] for s in self.stu]
         if len(set(origin)) == len(self.stu) - 1:
             score -= 300
-        beijing = [s for s in origin if s == "北京"]
+        beijing = [s for s in origin if s == "北京市"]
         if len(beijing) >= 2:
             score -= 700
 
@@ -93,6 +93,10 @@ class Dormitory:
             score -= 600
 
         # score += 8 * np.prod([s.data['international'] for s in self.stu])
+
+        olympiad_score = sum([s.data['olympiad'] for s in self.stu])
+        if olympiad_score > 2:
+            score -= 400
 
         ac_score = 20 * np.var([s.data['ac_temp'] for s in self.stu], ddof = 0)
         ac_score += (len(set([s.data['all_night_ac']
@@ -117,8 +121,8 @@ class Dormitory:
         if len(set(s.data['expectation'] for s in self.stu)) == 1:
             score -= 200
 
-        stu_cnt_map = {4: 600,
-                       3: 400,
+        stu_cnt_map = {4: 1200,
+                       3: 800,
                        2: 0,
                        1: 0,
                        0: 0, }
@@ -134,7 +138,7 @@ def read_info() -> list[Freshman]:
     df = pd.read_excel("/workspace/dormitory/references/results.xlsx")
     df2 = pd.read_excel("/workspace/dormitory/references/info.xlsx")
 
-    for index, stu in df.iterrows():
+    for index, stu in tqdm(df.iterrows(), desc = 'Reading freshman info', total = len(df)):
         data = defaultdict()
 
         data['name'] = stu["姓名"]
@@ -142,7 +146,7 @@ def read_info() -> list[Freshman]:
         data['sid'] = stu["学号"]
         data['origin'] = stu["生源地"]
         data['high_school'] = stu["生源高中"]
-        data['major'] = stu["专业意向"]
+        data['major'] = stu["意向专业方向"]
         data['weight'] = stu["体重"]
         data['international'] = stu["是否愿意和留学生住一起"]
         data['wake'] = stu["你预期的大学生活起床时间"]
@@ -157,17 +161,20 @@ def read_info() -> list[Freshman]:
         # 在info表格中，根据学号找到对应行，读取生源地和生源高中信息，保证信息准确
         try:
             info_row = df2.loc[df2["学号"] == data['sid']].iloc[0]
-            data['origin'] = info_row["省市"]
-        except IndexError:
+            data['origin'] = info_row["生源所在地"]
+            data['high_school'] = info_row["中学毕业院校"]
+            data['olympiad'] = int(info_row["录取类别"] == "保送——决赛保送")
+        except IndexError as e:
             import sys
             print('IndexError when consulting info.xlsx', data['name'])
+            print(str(e))
+            print(type(data['sid']), repr(data['sid']))
             sys.exit(1)
-        # 2024年的 info 表格不包含这个列，只能选择相信问卷里填的
-        # data['high_school'] = info_row["中学"]
 
         # 注意此处 map 的值要和 out_as_excel() 中对应
-        major_map = {"文科类": 0,
-                     "理工类": 1, }
+        major_map = {"人文社科": 0,
+                     "其他": 0,
+                     "理工": 1, }
         data['major'] = major_map.get(data['major'])
 
         data['weight'] = float(data['weight'].replace("kg", ""))
@@ -192,7 +199,8 @@ def read_info() -> list[Freshman]:
                      "2点后": 4, }
         data['sleep'] = sleep_map.get(data['sleep'])
 
-        data['ac_temp'] = int(data['ac_temp'][:2])
+        if isinstance(data['ac_temp'], str):
+            data['ac_temp'] = int(data['ac_temp'][:2])
 
         ac_map = {"是": 1,
                   "否": 0, }
@@ -228,7 +236,7 @@ def read_dorm() -> tuple[list[Dormitory], list[Dormitory]]:
 
         df = pd.read_excel("/workspace/dormitory/references/dorm.xlsx", sheet_name = sheet)
 
-        for index, room in df.iterrows():
+        for index, room in tqdm(df.iterrows(), desc=f'Reading {sheet}', total=len(df)):
             rid = int(room["房间"])
             if len(dorm) == 0 or dorm[-1].id != rid:
                 if len(dorm) != 0:
@@ -383,7 +391,7 @@ def out_as_excel(dorm_result: list[Dormitory]):
     '''将结果导出为excel文件，存储在reference/dorm_assigned.xlsx下'''
     df = pd.DataFrame()
 
-    major_list = ["文科类", "理工类"]
+    major_list = ["人文社科", "理工类"]
     international_list = ["不愿意", "都可以", "愿意"]
     wake_list = ["7点前", "7~8点", "8~9点", "9-10点", "10-11点", "11点后"]
     sleep_list = ["23点前", "23-24点", "24-1点", "1-2点", "2点后"]
@@ -402,7 +410,8 @@ def out_as_excel(dorm_result: list[Dormitory]):
                 "学号": stu.data['sid'],
                 "生源地": stu.data['origin'],
                 "生源高中": stu.data['high_school'],
-                "意向专业": major_list[stu.data['major']],
+                "是否竞赛生": stu.data['olympiad'],
+                "意向专业方向": major_list[stu.data['major']],
                 "体重": stu.data['weight'],
                 "是否愿意与留学生住在同一间宿舍?": international_list[stu.data['international'] % 3],
                 "起床时间": wake_list[stu.data['wake']],

@@ -70,3 +70,7 @@ __pycache__/
 
 # OPS Files *
 *.ini
+
+# Secret files
+raw_data/*
+dormitory/references/*
