@@ -1,7 +1,6 @@
 import json
 import random
 import requests
-import copy
 from datetime import datetime, timedelta
 from typing import cast, List, Tuple
 
@@ -175,13 +174,13 @@ def stuinfo(request: UserRequest):
             # 保留前面的用户名中含有的空格
             if "+" in name:  # 有加号，进行分隔
                 name_list = name.split("+")
-                name_list_copy = copy.deepcopy(name_list)
-                name = name_list_copy[0]
-                name_list_copy.pop(0)
-                while (len(name_list_copy) > 1):
+                name = name_list[0]
+                name_list.pop(0)
+                while (len(name_list) > 1):
                     name += " "
-                    name += name_list_copy[0]
-                    name_list_copy.pop(0)
+                    name += name_list[0]
+                    name_list.pop(0)
+                name_list = [name,name_list[0]]
             else:  # 没有加号，直接使用
                 name = name
                 name_list = [name]
