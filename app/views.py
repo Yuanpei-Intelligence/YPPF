@@ -23,6 +23,7 @@ from app.models import (
     Notification,
     Wishes,
     Semester,
+    Activity,
 )
 from app.utils import (
     get_person_or_org,
@@ -597,44 +598,34 @@ def orginfo(request: UserRequest):
 @utils.check_user_access(redirect_url="/logout/")
 @logger.secure_view()
 def homepage(request: UserRequest):
+    # 检查用户类型，如果是组织用户则重定向到组织信息页面
     if request.user.is_org():
         return redirect("/orginfo/")
-    else:
-        return redirect("/stuinfo/")
+
     html_display = {}
     my_messages.transfer_message_context(request.GET, html_display)
 
     nowtime = datetime.now()
 
-    # # 开始时间在前后一周内，除了取消和审核中的活动。按时间逆序排序
-    # recentactivity_list = Activity.objects.get_recent_activity(
-    # ).select_related('organization_id')
+    # 开始时间在前后一周内，除了取消和审核中的活动。按时间逆序排序
+    recentactivity_list = Activity.objects.get_recent_activity(
+    ).select_related('organization_id')
 
-    # # 开始时间在今天的活动,且不展示结束的活动。按开始时间由近到远排序
-    # activities = Activity.objects.get_today_activity().select_related('organization_id')
-    # activities_start = [
-    #     activity.start.strftime("%H:%M") for activity in activities
-    # ]
-    # html_display['today_activities'] = list(
-    #     zip(activities, activities_start)) or None
+    # 开始时间在今天的活动,且不展示结束的活动。按开始时间由近到远排序
+    activities = Activity.objects.get_today_activity().select_related('organization_id')
+    activities_start = [
+        activity.start.strftime("%H:%M") for activity in activities
+    ]
+    html_display['today_activities'] = list(
+        zip(activities, activities_start)) or None
 
-    # # 最新一周内发布的活动，按发布的时间逆序
-    # newlyreleased_list = Activity.objects.get_newlyreleased_activity(
-    # ).select_related('organization_id')
+    # 最新一周内发布的活动，按发布的时间逆序
+    newlyreleased_list = Activity.objects.get_newlyreleased_activity(
+    ).select_related('organization_id')
 
-    # # 即将截止的活动，按截止时间正序
-    # prepare_times = Activity.EndBeforeHours.prepare_times
-
-    # signup_list = []
-    # signup_rec = Activity.objects.activated().select_related(
-    #     'organization_id').filter(status=Activity.Status.APPLYING).order_by("category", "apply_end")[:10]
-    # for act in signup_rec:
-    #     deadline = act.apply_end
-    #     dictmp = {}
-    #     dictmp["deadline"] = deadline
-    #     dictmp["act"] = act
-    #     dictmp["tobestart"] = (deadline - nowtime).total_seconds()//360/10
-    #     signup_list.append(dictmp)
+    # 即将截止的活动，按截止时间正序
+    recentends_list = Activity.objects.activated().select_related(
+        'organization_id').filter(status=Activity.Status.APPLYING).order_by("category", "apply_end")[:10]
 
     # 如果提交了心愿，发生如下的操作
     if request.method == "POST" and request.POST:

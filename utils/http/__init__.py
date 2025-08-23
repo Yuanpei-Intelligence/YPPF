@@ -1,6 +1,7 @@
-from .dependency import HttpRequest, UserRequest
+from .dependency import HttpRequest, UserRequest, HttpResponse
 
 __all__ = [
     'HttpRequest',
     'UserRequest',
+    'HttpResponse',
 ]

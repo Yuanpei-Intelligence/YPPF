@@ -10,7 +10,7 @@ class Migration(migrations.Migration):
     initial = True
 
     dependencies = [
-        ("app", "0003_remove_modifyorganization_tags"),
+        ("app", "0003_rename_activity_id_participant_activity_and_more"),
     ]
 
     operations = [

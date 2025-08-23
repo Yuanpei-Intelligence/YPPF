@@ -10,7 +10,7 @@ import xlwt
 import imghdr
 from django.contrib import auth
 from django.shortcuts import redirect
-from utils.http.dependency import HttpResponse, HttpRequest, UserRequest
+from utils.http import HttpResponse, HttpRequest, UserRequest
 
 from utils.http.utils import get_ip
 from app.utils_dependency import *
