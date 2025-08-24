@@ -563,7 +563,11 @@ def stuinfo(request: UserRequest):
         bar_display = utils.get_sidebar_and_navbar(
             request.user, navbar_name="个人主页", title_name=person.name
         )
-        render_context.update(bar_display=bar_display, context=context)
+
+        # post的url构造函数，避免&的转义
+        post_url = person.get_absolute_url()
+        render_context.update(bar_display=bar_display,
+                              context=context, post_url=post_url)
 
         if request.session.get('alert_message'):
             render_context.update(load_alert_message=request.session.pop('alert_message'))
