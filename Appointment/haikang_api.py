@@ -146,8 +146,6 @@ class WrappedHaikangSDK:
         return out_buf.value
 
 
-# 注释掉海康SDK初始化，避免缺少库文件错误
-# HaikangSDK = WrappedHaikangSDK(
-#     appointment_config.haikang_lib_path,
-#     appointment_config.haikang_log_path)
-HaikangSDK = None  # 临时设置为None
+HaikangSDK = WrappedHaikangSDK(
+    appointment_config.haikang_lib_path,
+    appointment_config.haikang_log_path)
