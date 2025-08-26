@@ -44,8 +44,6 @@ services:
       - DB_DATABASE=yppf
     volumes:
       - ../:/workspace
-    ports:
-      - "8000:8000"
 
 volumes:
   yppf-mysql-data:
