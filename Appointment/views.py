@@ -23,9 +23,9 @@ from Appointment.models import (
 )
 from Appointment.extern.wechat import MessageType, notify_appoint
 from Appointment.utils.utils import (
-    get_conflict_appoints, 
-    to_feedback_url, 
-    get_total_appoint_time, 
+    get_conflict_appoints,
+    to_feedback_url,
+    get_total_appoint_time,
     get_overlap_appoints
 )
 from Appointment.utils.log import logger, get_user_logger
@@ -147,7 +147,6 @@ def renewLongtermAppoint(request):
     else:
         wrong(f"续约第{conflict}次失败，后续时间段存在预约冲突!", context)
     return redirect(message_url(context, reverse("Appointment:account")))
-
 
 
 @identity_check(redirect_field_name='origin')
@@ -421,15 +420,16 @@ def arrange_time(request: HttpRequest):
     has_longterm_permission = get_participant(request.user).longterm
 
     # 用于前端使用
-    allow_overlap = CONFIG.allow_overlap 
-    max_appoint_time = int(CONFIG.max_appoint_time.total_seconds() // 3600) # 以小时计算
+    allow_overlap = CONFIG.allow_overlap
+    max_appoint_time = int(
+        CONFIG.max_appoint_time.total_seconds() // 3600)  # 以小时计算
     is_person = request.user.is_person()
 
-     # 处理从URL参数传递过来的错误信息
+    # 处理从URL参数传递过来的错误信息
     html_display = {}
     html_display["warn_code"], html_display["warn_message"] = my_messages.get_request_message(
         request)
-    
+
     # 获取房间编号
     Rid = request.GET.get('Rid')
     try:
@@ -466,7 +466,8 @@ def arrange_time(request: HttpRequest):
     for day in [start_day + timedelta(days=i) for i in range(7)]:
         used_time = get_total_appoint_time(get_participant(request.user), day)
         available_hour = CONFIG.max_appoint_time - used_time
-        available_hours[day.strftime('%a')] = int(available_hour.total_seconds() // 3600) # 以小时计算
+        available_hours[day.strftime('%a')] = int(
+            available_hour.total_seconds() // 3600)  # 以小时计算
 
     # 获取预约时间的最大时间块id
     max_stamp_id = web_func.get_time_id(room, room.Rfinish, mode="leftopen")
@@ -685,6 +686,7 @@ def _get_content_room(contents: dict) -> Room:
     assert room is not None, f'房间{room_id}不存在！'
     return room
 
+
 def _get_content_students(contents: dict):
     students_id = contents.get('students')
     # TODO: 目前调用时一定存在，后续看情况是处理后调用本函数与否，修改检查方式
@@ -693,9 +695,10 @@ def _get_content_students(contents: dict):
     assert len(students) == len(students_id), '预约人信息有误，请检查后重新发起预约！'
     return students
 
+
 def _add_appoint(contents: dict, start: datetime, finish: datetime, non_yp_num: int,
-               type: Appoint.Type = Appoint.Type.NORMAL,
-               notify_create: bool = True) -> tuple[Appoint | None, str]:
+                 type: Appoint.Type = Appoint.Type.NORMAL,
+                 notify_create: bool = True) -> tuple[Appoint | None, str]:
     '''
     创建一个预约，检查各种条件，屎山函数
 
@@ -882,7 +885,8 @@ def checkout_appoint(request: UserRequest):
                           appoint_params=appoint_params,
                           has_longterm_permission=has_longterm_permission,
                           has_interview_permission=has_interview_permission,
-                          interview_max_count=CONFIG.interview_max_num)
+                          interview_max_count=CONFIG.interview_max_num,
+                          AI_Inspection_Enabled=CONFIG.AI_Inspection_Enabled)
 
     # 提供搜索功能的数据
     search_users = User.objects.filter_type(User.Type.PERSON)
@@ -919,17 +923,17 @@ def checkout_appoint(request: UserRequest):
         # 自动化审核房间用途是否合规
         is_valid, reason = AI_Inspection(room.Rtitle, contents['Ausage'])
         if not is_valid:
-            wrong(f"房间用途不合规: {reason}", render_context)
+            wrong(f"预约失败！ {reason}", render_context)
         # 处理单人预约
         if "students" not in contents.keys():
             contents['students'] = [contents['Sid']]
         else:
             contents['students'].append(contents['Sid'])
-        
+
         # 不允许用非活跃用户凑数
         # 虽然在生成搜索列表时已经排除了非活跃用户，但这里再检查一次，以防万一
         contents['students'] = list(filter(
-            lambda sid: User.objects.get(username = sid).active,
+            lambda sid: User.objects.get(username=sid).active,
             contents['students']
         ))
         # 处理长期预约的times和interval参数 - 移到这里
@@ -946,7 +950,8 @@ def checkout_appoint(request: UserRequest):
                 selected_ids = [w['id']
                                 for w in stu_list if w['id'] in selected_ids]
                 json_context.update(selected_ids=selected_ids)
-                render_context.update(contents=contents, show_clause=True, json_context=json_context)
+                render_context.update(
+                    contents=contents, show_clause=True, json_context=json_context)
                 return render(request, 'Appointment/checkout.html', render_context)
         # 检查长期预约周数是否填写
         if is_longterm and not times:
@@ -981,26 +986,26 @@ def checkout_appoint(request: UserRequest):
         # TODO: 隔周预约的处理可优化，根据start_week调整实际预约时间
         start_time += timedelta(weeks=start_week)
         end_time += timedelta(weeks=start_week)
-        
+
         # 预约时间检查
         if (
             applicant.Sid.is_person()
-            and not is_longterm 
+            and not is_longterm
             and not is_interview
             and get_total_appoint_time(applicant, start_time.date()) + (end_time - start_time) > CONFIG.max_appoint_time
         ):
             wrong('您预约的时长已超过每日最大预约时长', render_context)
-        
+
         # 检查预约者是否有同时段的预约
         if (
             applicant.Sid.is_person()
-            and not CONFIG.allow_overlap 
-            and not is_longterm 
-            and not is_interview 
+            and not CONFIG.allow_overlap
+            and not is_longterm
+            and not is_interview
             and get_overlap_appoints(applicant, start_time, end_time).exists()
         ):
             wrong(f'您在该时间段已经有预约', render_context)
-        
+
         if my_messages.get_warning(render_context)[0] is None:
             # 参数检查全部通过，下面开始创建预约
             appoint_type = Appoint.Type.NORMAL
@@ -1059,7 +1064,8 @@ def checkout_appoint(request: UserRequest):
         selected_ids = set(contents.pop('students'))
         selected_ids = [w['id'] for w in stu_list if w['id'] in selected_ids]
         json_context.update(selected_ids=selected_ids)
-        render_context.update(contents=contents, show_clause=True, json_context=json_context) 
+        render_context.update(
+            contents=contents, show_clause=True, json_context=json_context)
     return render(request, 'Appointment/checkout.html', render_context)
 
 

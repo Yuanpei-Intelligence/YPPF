@@ -41,6 +41,8 @@ def _call_glm_decision(text: str, timeout: int = 30) -> tuple[str, str]:
                          json=payload, timeout=timeout)
     if resp.status_code != 200:
         # 把上游错误透出一小段，便于排查
+        if resp.status_code == 400:
+            return False, "请勿在预约理由中包含敏感词汇！"
         raise RuntimeError(f"Upstream {resp.status_code}: {resp.text[:300]}")
 
     data = resp.json()
@@ -83,7 +85,7 @@ def Ollama_Inspection(room_name, reason) -> tuple[bool, str]:
             return True, "Approved"
         elif output.startswith("0"):
             reason = output[1:].strip()  # 获取不通过的原因
-            return False, reason if reason else "Not approved"
+            return False, "房间用途不合规：" + reason if reason else "Not approved"
         else:
             return False, "Unexpected response format"
 
@@ -105,7 +107,7 @@ def GLM_Inspection(room_name, reason) -> tuple[bool, str]:
         if passed:
             return True, "合规"
         else:
-            return False, f"不合规：{why or '无具体理由'}"
+            return False, f"房间用途不合规：{why or '无具体理由'}"
     except Exception as e:
         # API 调用失败：不通过并附带错误信息
         return False, str(e)

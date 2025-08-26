@@ -39,6 +39,14 @@
             </div>
             <!-- /Breadcrumb -->
             <!-- Page Content -->
+            {% if AI_Inspection_Enabled %}
+            <div class="alert alert-info alert-dismissible fade show" role="alert">
+                <strong>温馨提示：</strong> AI自动审核已启动，点击提交后请耐心等待审核完成！
+                    <button type="button" class="close" data-dismiss="alert">
+                    <span >&times;</span>
+                </button>
+            </div>
+            {% endif %}
             <div class="content">
                 <div class="container">
                     {% if warn_code == 1 %}
