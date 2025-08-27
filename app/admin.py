@@ -50,6 +50,7 @@ class NaturalPersonAdmin(admin.ModelAdmin):
         f(_m.person_id),
         f(_m.name),
         f(_m.identity),
+        f(_m.status),
     ]
     search_fields = [f(_m.person_id, User.username), f(_m.name)]
     readonly_fields = [f(_m.stu_id_dbonly)]
@@ -112,6 +113,7 @@ class NaturalPersonAdmin(admin.ModelAdmin):
     actions = [
         'set_student', 'set_teacher',
         'set_graduate', 'set_ungraduate',
+        'set_instructor', 'set_leave', 'set_postpone',
         'all_subscribe', 'all_unsubscribe',
         ]
 
@@ -127,13 +129,43 @@ class NaturalPersonAdmin(admin.ModelAdmin):
         return self.message_user(request=request,
                                  message='修改成功!')
 
-    @as_action("设为 已毕业", update=True)
+    @as_action("设为 已毕业/退休", update=True)
     def set_graduate(self, request, queryset):
         queryset.update(status=NaturalPerson.GraduateStatus.GRADUATED)
         return self.message_user(request=request,
                                  message='修改成功!')
 
-    @as_action("设为 未毕业", update=True)
+    @as_action("设为 住宿辅导员", update=True)
+    def set_instructor(self, request, queryset):
+        if queryset.filter(identity=NaturalPerson.Identity.TEACHER).exists():
+            return self.message_user(request=request,
+                                     message='操作失败!不能将老师设为住宿辅导员!',
+                                     level='error')
+        queryset.update(status=NaturalPerson.GraduateStatus.INSTRUCTOR)
+        return self.message_user(request=request,
+                                 message='修改成功!')
+    
+    @as_action("设为 休学", update=True)
+    def set_leave(self, request, queryset):
+        if queryset.filter(identity=NaturalPerson.Identity.TEACHER).exists():
+            return self.message_user(request=request,
+                                     message='操作失败!不能将老师设为休学!',
+                                     level='error')
+        queryset.update(status=NaturalPerson.GraduateStatus.ONLEAVE)
+        return self.message_user(request=request,
+                                 message='修改成功!')
+    
+    @as_action("设为 延毕", update=True)
+    def set_postpone(self, request, queryset):
+        if queryset.filter(identity=NaturalPerson.Identity.TEACHER).exists():
+            return self.message_user(request=request,
+                                     message='操作失败!不能将老师设为延毕!',
+                                     level='error')
+        queryset.update(status=NaturalPerson.GraduateStatus.POSTPONED)
+        return self.message_user(request=request,
+                                 message='修改成功!')
+
+    @as_action("设为 在读/在职", update=True)
     def set_ungraduate(self, request, queryset):
         queryset.update(status=NaturalPerson.GraduateStatus.UNDERGRADUATED)
         return self.message_user(request=request,
