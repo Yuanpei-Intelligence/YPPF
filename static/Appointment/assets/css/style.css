@@ -2939,12 +2939,31 @@ html.menu-opened body {
     padding: 6px;
 }
 
-.book-btn:hover, .book-btn:focus {
+.book-btn:not(.disabled):hover,
+.book-btn:not(.disabled):focus {
     background-color: #01cae4;
     border-color: #01cae4;
     color: #fff;
 }
 
+/*禁用 */
+.book-btn.disabled {
+    background-color: #ccc;
+    border-color: #ccc;
+    color: #666;
+    cursor: not-allowed;
+    pointer-events: none;
+
+}
+
+
+.book-btn.disabled:hover,
+.book-btn.disabled:focus {
+    background-color: #ccc;
+    border-color: #ccc;
+    color: #666;
+
+}
 .section-doctor .profile-widget {
     box-shadow: 2px 2px 13px rgba(0, 0, 0, 0.1);
     margin-bottom: 0;

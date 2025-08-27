@@ -7,7 +7,7 @@ from Appointment.models import Appoint
 from Appointment.appoint.judge import appoint_violate
 from Appointment.utils.log import logger, get_user_logger
 from Appointment.extern.wechat import MessageType, notify_appoint
-from Appointment.haikang_api import HaikangSDK, HaikangAPIError
+# from Appointment.haikang_api import HaikangSDK, HaikangAPIError
 
 
 def _adjusted_rate(original_rate: float, appoint: Appoint) -> float:
@@ -60,14 +60,14 @@ def start_appoint(appoint_id: int):
         if appoint.Afinish > datetime.now():
             # 还未结束，可以开始
             stu_ids = appoint.students_manager.values_list('cross_sys_uid', flat=True)
-            for entrance_guard in appoint.Room.entrance_guards.all():
-                with HaikangSDK.get_entrace_guard_device(entrance_guard) as device:
-                    try:
-                        device.grant_access(stu_ids)
-                    except HaikangAPIError as e:
-                        logger.error(f'预约{appoint.pk}对门禁{entrance_guard.door_id}授权失败：{e}')
-                        # 授权失败，让预约保持在 APPOINTED 状态
-                        return
+            # for entrance_guard in appoint.Room.entrance_guards.all():
+            #     with HaikangSDK.get_entrace_guard_device(entrance_guard) as device:
+            #         try:
+            #             device.grant_access(stu_ids)
+            #         except HaikangAPIError as e:
+            #             logger.error(f'预约{appoint.pk}对门禁{entrance_guard.door_id}授权失败：{e}')
+            #             # 授权失败，让预约保持在 APPOINTED 状态
+            #             return
             appoint.Astatus = Appoint.Status.PROCESSING
             logger.info(f"预约{appoint_id}成功开始: 状态变为进行中")
         else:
@@ -111,14 +111,14 @@ def finish_appoint(appoint_id: int):
     if next_appoint:
         next_stu_ids = set(next_appoint.students_manager.values_list('cross_sys_uid', flat=True))
         stu_ids = stu_ids - next_stu_ids
-    for entrance_guard in appoint.Room.entrance_guards.all():
-        with HaikangSDK.get_entrace_guard_device(entrance_guard) as device:
-            try:
-                device.revoke_access(stu_ids)
-            except HaikangAPIError as e:
-                logger.error(f'预约{appoint.pk}对门禁{entrance_guard.door_id}授权失败：{e}')
-                # 撤销权限失败，让预约保持在 PROCESSING 状态
-                return
+    # for entrance_guard in appoint.Room.entrance_guards.all():
+    #     with HaikangSDK.get_entrace_guard_device(entrance_guard) as device:
+    #         try:
+    #             device.revoke_access(stu_ids)
+    #         except HaikangAPIError as e:
+    #             logger.error(f'预约{appoint.pk}对门禁{entrance_guard.door_id}授权失败：{e}')
+    #             # 撤销权限失败，让预约保持在 PROCESSING 状态
+    #             return
 
     # TODO: 人数检查
     appoint.Astatus = Appoint.Status.CONFIRMED

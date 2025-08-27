@@ -193,6 +193,7 @@
 						<!--  END AVAILABLE ROOM TAB  -->
 
 						<!--  BEGIN STATISTICS TAB  -->
+
 						<div class="tab-pane fade show" id="statistics" role="tabpanel">
 							<div class="row justify-content-center overflow-auto" style="height: 25vh;">
 								{% for room, crowd in statistics_info %}
@@ -227,7 +228,7 @@
 				</div>   
 			</section>	 
 
-			{% for room_class, rooms in reservable_room_classes %}
+			{% for room_class, rooms,all_rooms in reservable_room_classes%}
 				<section class="section section-doctor" >
 					<div class="container-fluid" >
 						<div class="section-header text-center">
@@ -249,7 +250,7 @@
 							</form>
 						</div>
 						<div class="doctor-slider slider" >
-						{% for room in rooms %}
+						{% for room in all_rooms %}
 							<div class="profile-widget">
 								<div class="doc-img">
 										<img class="img-fluid" alt="User Image" src="/media/{{room.image}}">
@@ -269,7 +270,11 @@
 									</ul>
 									<div class="row row-sm" style="text-align:center">
 										<div class="col-12">
-											<a href="arrange_time?Rid={{room.Rid}}" class="btn book-btn">预约</a>
+											{% if room in rooms %}
+												<a href="arrange_time?Rid={{room.Rid}}" class="btn book-btn">预约</a>
+											{% else %}
+												<span class="book-btn disabled">不可预约</span>
+											{% endif %}
 										</div>
 									</div>
 								</div>
@@ -344,6 +349,7 @@
 		
 		<!-- Custom JS -->
 		<script src="{% static 'Appointment/assets/js/script.js' %} "></script>
+		
 		
 	</body>
 </html>
