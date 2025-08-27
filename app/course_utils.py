@@ -1206,9 +1206,14 @@ def cal_participate_num(course: Course) -> dict:
         category=Activity.ActivityCategory.COURSE,
     )
     # 只有小组成员才可以有学时
+    # 只有在读和延毕的同学才可以有学时
     members = Position.objects.activated().filter(
         pos__gte=1,
         person__identity=NaturalPerson.Identity.STUDENT,
+        person__status__in=[
+            NaturalPerson.GraduateStatus.UNDERGRADUATED,
+            NaturalPerson.GraduateStatus.POSTPONED,
+        ],
         org=org,
     ).values_list("person", flat=True)
     all_participants = SQ.qsvlist(
