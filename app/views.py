@@ -163,7 +163,7 @@ def stuinfo(request: UserRequest):
             try:
                 user_id = int(user_id)
                 get_user = User.objects.get(id=user_id)
-                person = NaturalPerson.objects.get_by_user(get_user, activate=True)
+                person = NaturalPerson.objects.get_by_user(get_user)
                 # 验证姓名是否匹配
                 if person.name != name:
                     return redirect(message_url(wrong('用户信息不匹配!')))
@@ -171,7 +171,7 @@ def stuinfo(request: UserRequest):
                 return redirect(message_url(wrong('用户不存在!')))
         # 若id不存在
         else:
-            person = NaturalPerson.objects.activated().filter(name=name)
+            person = NaturalPerson.objects.filter(name=name)
             if len(person) == 0:  # 查无此人
                 return redirect(message_url(wrong('用户不存在!')))
             if len(person) == 1:  # 无重名
