@@ -89,9 +89,13 @@ class Command(BaseCommand):
                         self.stdout.write(self.style.ERROR('学号%s的学生不存在,跳过' % stu_id))
                         continue
                     person.status = status
-                    if status == NaturalPerson.GraduateStatus.GRADUATED:
-                        person.person_id.active = False # 毕业的账号也要设置
+                    if status == NaturalPerson.GraduateStatus.GRADUATED or status == NaturalPerson.GraduateStatus.ONLEAVE:
+                        person.person_id.active = False # 毕业和休学的账号也要设置
                         person.accept_promote = False
+                        person.person_id.save()
+                    else:
+                        person.person_id.active = True
+                        person.accept_promote = True
                         person.person_id.save()
                     person.save()
                     self.stdout.write(self.style.SUCCESS('成功将学号%s的学生状态调整为%s' % (stu_id, status_map[status])))

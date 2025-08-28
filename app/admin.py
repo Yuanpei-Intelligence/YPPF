@@ -146,6 +146,10 @@ class NaturalPersonAdmin(admin.ModelAdmin):
                                      message='操作失败!不能将老师设为住宿辅导员!',
                                      level='error')
         queryset.update(status=NaturalPerson.GraduateStatus.INSTRUCTOR)
+        queryset.update(accept_promote=True)
+        for person in queryset:
+            person.person_id.active = True
+            person.person_id.save()
         return self.message_user(request=request,
                                  message='修改成功!')
     
@@ -156,6 +160,10 @@ class NaturalPersonAdmin(admin.ModelAdmin):
                                      message='操作失败!不能将老师设为休学!',
                                      level='error')
         queryset.update(status=NaturalPerson.GraduateStatus.ONLEAVE)
+        queryset.update(accept_promote=False)
+        for person in queryset:
+            person.person_id.active = False # 休学应该不能使用账号
+            person.person_id.save()
         return self.message_user(request=request,
                                  message='修改成功!')
     
@@ -166,6 +174,10 @@ class NaturalPersonAdmin(admin.ModelAdmin):
                                      message='操作失败!不能将老师设为延毕!',
                                      level='error')
         queryset.update(status=NaturalPerson.GraduateStatus.POSTPONED)
+        queryset.update(accept_promote=True)
+        for person in queryset:
+            person.person_id.active = True
+            person.person_id.save()
         return self.message_user(request=request,
                                  message='修改成功!')
 
