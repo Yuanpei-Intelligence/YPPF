@@ -132,6 +132,10 @@ class NaturalPersonAdmin(admin.ModelAdmin):
     @as_action("设为 已毕业/退休", update=True)
     def set_graduate(self, request, queryset):
         queryset.update(status=NaturalPerson.GraduateStatus.GRADUATED)
+        queryset.update(accept_promote=False)
+        for person in queryset:
+            person.person_id.active = False
+            person.person_id.save()
         return self.message_user(request=request,
                                  message='修改成功!')
 
@@ -168,6 +172,10 @@ class NaturalPersonAdmin(admin.ModelAdmin):
     @as_action("设为 在读/在职", update=True)
     def set_ungraduate(self, request, queryset):
         queryset.update(status=NaturalPerson.GraduateStatus.UNDERGRADUATED)
+        queryset.update(accept_promote=True)
+        for person in queryset:
+            person.person_id.active = True
+            person.person_id.save()
         return self.message_user(request=request,
                                  message='修改成功!')
 
