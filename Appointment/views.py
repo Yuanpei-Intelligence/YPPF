@@ -303,7 +303,6 @@ def index(request):  # 主页
     statistics_info = [(room, (room.Rpresent * 10) // (room.Rmax or 1))
                        for room in unlimited_rooms]                                # 开放房间人数统计
     reservable_room_classes = []
-    rooms = []
     for rclass in RoomClass.objects.order_by('sort_idx').prefetch_related('rooms'):
         # TODO: perm check optimization?
         rooms = [room for room in rclass.rooms.permitted()
