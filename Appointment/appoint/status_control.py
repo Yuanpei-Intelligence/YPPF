@@ -65,8 +65,7 @@ def start_appoint(appoint_id: int):
                     try:
                         device.grant_access(stu_ids)
                     except HaikangAPIError as e:
-                        logger.error(
-                            f'预约{appoint.pk}对门禁{entrance_guard.door_id}授权失败：{e}')
+                        logger.error(f'预约{appoint.pk}对门禁{entrance_guard.door_id}授权失败：{e}')
                         # 授权失败，让预约保持在 APPOINTED 状态
                         return
             appoint.Astatus = Appoint.Status.PROCESSING
@@ -117,8 +116,7 @@ def finish_appoint(appoint_id: int):
             try:
                 device.revoke_access(stu_ids)
             except HaikangAPIError as e:
-                logger.error(
-                    f'预约{appoint.pk}对门禁{entrance_guard.door_id}授权失败：{e}')
+                logger.error(f'预约{appoint.pk}对门禁{entrance_guard.door_id}授权失败：{e}')
                 # 撤销权限失败，让预约保持在 PROCESSING 状态
                 return
 
