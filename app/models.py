@@ -76,7 +76,6 @@ __all__ = [
     'Activity',
     'ActivityPhoto',
     'Participation',
-    'ActivitySummary',
 ]
 
 
@@ -1380,35 +1379,35 @@ class ModifyRecord(models.Model):
     time = models.DateTimeField('修改时间', auto_now_add=True)
 
 
-class ActivitySummary(models.Model):
-    class Meta:
-        verbose_name = "3.活动总结"
-        verbose_name_plural = verbose_name
-        ordering = ["-time"]
+# class ActivitySummary(models.Model):
+#     class Meta:
+#         verbose_name = "3.活动总结"
+#         verbose_name_plural = verbose_name
+#         ordering = ["-time"]
 
-    class Status(models.IntegerChoices):
-        WAITING = (0, "待审核")
-        CONFIRMED = (1, "已通过")
-        CANCELED = (2, "已取消")
-        REFUSED = (3, "已拒绝")
+#     class Status(models.IntegerChoices):
+#         WAITING = (0, "待审核")
+#         CONFIRMED = (1, "已通过")
+#         CANCELED = (2, "已取消")
+#         REFUSED = (3, "已拒绝")
 
-    activity = models.ForeignKey(Activity, on_delete=models.CASCADE)
+#     activity = models.ForeignKey(Activity, on_delete=models.CASCADE)
 
-    status = models.SmallIntegerField(choices=Status.choices, default=0)
-    image = models.ImageField(upload_to=f"ActivitySummary/photo/%Y/%m/",
-                              verbose_name='活动总结图片', null=True, blank=True)
-    time = models.DateTimeField("申请时间", auto_now_add=True)
+#     status = models.SmallIntegerField(choices=Status.choices, default=0)
+#     image = models.ImageField(upload_to=f"ActivitySummary/photo/%Y/%m/",
+#                               verbose_name='活动总结图片', null=True, blank=True)
+#     time = models.DateTimeField("申请时间", auto_now_add=True)
 
-    def __str__(self):
-        return f'{self.activity.title}活动总结'
+#     def __str__(self):
+#         return f'{self.activity.title}活动总结'
 
-    def is_pending(self):  # 表示是不是pending状态
-        return self.status == ActivitySummary.Status.WAITING
+#     def is_pending(self):  # 表示是不是pending状态
+#         return self.status == ActivitySummary.Status.WAITING
 
-    @necessary_for_frontend('activity.organization_id')
-    def get_org(self):
-        return self.activity.organization_id
+#     @necessary_for_frontend('activity.organization_id')
+#     def get_org(self):
+#         return self.activity.organization_id
 
-    @necessary_for_frontend('activity.title', '__str__')
-    def get_audit_display(self):
-        return f'{self.activity.title}总结'
+#     @necessary_for_frontend('activity.title', '__str__')
+#     def get_audit_display(self):
+#         return f'{self.activity.title}总结'
