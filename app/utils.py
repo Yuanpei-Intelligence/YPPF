@@ -236,7 +236,8 @@ def get_sidebar_and_navbar(user: User, navbar_name="", title_name=""):
         bar_display.update(
             profile_name="小组主页",
             profile_url="/orginfo/",
-            is_course=me.otype.otype_name == CONFIG.course.type_name,
+            # For AI college, there are no "course" orgs.
+            is_course=False,
         )
 
     # 个人组织都可以预约
