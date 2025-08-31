@@ -5,6 +5,15 @@ from app.models import (
     NaturalPerson,
     User
 )
+
+status_map = {
+    0: '在读',
+    1: '住宿辅导员',
+    2: '延毕',
+    3: '休学',
+    4: '已毕业'
+}
+
 class Command(BaseCommand):
     help = '通过学号批量调整指定年级的学生状态为“已毕业”'
 
@@ -18,23 +27,26 @@ class Command(BaseCommand):
 
     def handle(self, *args, **options):
         year = options['year']
-        config = options['config']
-        
-        # 检查参数是否为空
-        if year is None and config is None:
-            raise CommandError('请至少提供一个参数: --year 或 --config')
+        cnt = 0
+        for person in NaturalPerson.objects.filter(person_id__username__startswith=str(year), identity = NaturalPerson.Identity.STUDENT):
+            self.stdout.write(self.style.WARNING('学号%s的学生状态: %s => 毕业' % (person.person_id.username, status_map[person.status])))
+            cnt += 1
+        self.stdout.write(self.style.WARNING('=> 共处理学生%d人' % cnt))
+        self.stdout.write(self.style.WARNING('请确认无误后,输入y以继续,n以取消'))
+        confirm = input()
+        if confirm.lower() != 'y':
+            self.stdout.write(self.style.ERROR('操作已取消'))
+            return
 
-        # 指定年级
-        if year is not None:
-            with transaction.atomic():
-                # 选出指定年级的自然人(通过学号前两位判断,person_id为学号)
-                NaturalPerson.objects.filter(
-                    person_id__username__startswith=str(year),
-                    identity = NaturalPerson.Identity.STUDENT).update(
-                        status = NaturalPerson.GraduateStatus.GRADUATED,
-                        accept_promote = False)
-                User.objects.filter(
-                    username__startswith=str(year),
-                    utype = User.Type.STUDENT).update(active = False)
-                # 打印结果
-                self.stdout.write(self.style.SUCCESS('成功将%d级学生状态调整为“已毕业”' % year))
+        with transaction.atomic():
+            # 选出指定年级的自然人(通过学号前两位判断,person_id为学号)
+            NaturalPerson.objects.filter(
+                person_id__username__startswith=str(year),
+                identity = NaturalPerson.Identity.STUDENT).update(
+                    status = NaturalPerson.GraduateStatus.GRADUATED,
+                    accept_promote = False)
+            User.objects.filter(
+                username__startswith=str(year),
+                utype = User.Type.STUDENT).update(active = False)
+            # 打印结果
+            self.stdout.write(self.style.SUCCESS('成功将%d级学生状态调整为“已毕业”' % year))
