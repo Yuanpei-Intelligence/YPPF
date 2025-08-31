@@ -31,10 +31,6 @@ from app.activity_utils import (
     cancel_activity,
     withdraw_activity,
     get_activity_QRcode,
-    create_participate_infos,
-    modify_participants,
-    weekly_summary_orgs,
-    available_participants,
 )
 from app.comment_utils import addComment, showComment
 from app.utils import (

@@ -59,7 +59,6 @@ __all__ = [
     'get_activity_QRcode',
     'create_participate_infos',
     'modify_participants',
-    'weekly_summary_orgs',
     'available_participants',
 ]
 
@@ -951,12 +950,6 @@ def modify_participants(activity: Activity, new_participant_uids: list[str]):
     # activity.current_participants -= _delete_outdate_participants(activity, new_uids)
     activity.current_participants += _update_new_participants(activity, new_uids)
     activity.save()
-
-
-def weekly_summary_orgs() -> QuerySet[Organization]:
-    '''允许进行每周总结的组织'''
-    VALID_ORG_TYPES = ['团委', '学学学委员会', '学学学学会', '学生会']
-    return SQ.mfilter(Org.otype, OrgType.otype_name, IN=VALID_ORG_TYPES)
 
 
 def available_participants() -> QuerySet[User]:
