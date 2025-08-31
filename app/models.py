@@ -47,7 +47,7 @@ from django_mysql.models.fields import ListCharField
 from typing_extensions import Self
 
 from app.config import *
-from generic.models import User, YQPointRecord
+from generic.models import User
 import utils.models.query as SQ
 from utils.models.descriptor import (invalid_for_frontend,
                                      necessary_for_frontend)
@@ -986,40 +986,6 @@ class Activity(CommentBase):
         if self.popular_level():
             return True
         return False
-
-    def eval_point(self) -> int:
-        '''计算价值的活动积分'''
-        # TODO: 添加到模型字段，固定每个活动的积分
-        hours = (self.end - self.start).seconds / 3600
-        if hours > CONFIG.yqpoint.activity.invalid_hour:
-            return 0
-        point = ceil(CONFIG.yqpoint.activity.per_hour * hours)
-        # 单次活动记录的积分上限，默认无上限
-        if CONFIG.yqpoint.activity.max is not None:
-            point = min(CONFIG.yqpoint.activity.max, point)
-        return point
-
-    @transaction.atomic
-    def settle_yqpoint(self, status: Status | None = None, point: int | None = None):
-        '''结算活动积分，应仅在活动结束时调用'''
-        if status is None:
-            status = self.status  # type: ignore
-        assert status == Activity.Status.END, "活动未结束，不能结算积分"
-        if point is None:
-            point = self.eval_point()
-        assert point >= 0, "活动积分不能为负"
-        # 活动积分为0时，不记录
-        if point == 0:
-            return
-
-        self = Activity.objects.select_for_update().get(pk=self.pk)
-        participation = SQ.sfilter(Participation.activity, self).filter(
-            status=Participation.AttendStatus.ATTENDED)
-        participant_ids = SQ.qsvlist(participation,
-                                     Participation.person, NaturalPerson.person_id)
-        participants = User.objects.filter(id__in=participant_ids)
-        User.objects.bulk_increase_YQPoint(
-            participants, point, "参加活动", YQPointRecord.SourceType.ACTIVITY)
 
 
 class ActivityPhoto(models.Model):

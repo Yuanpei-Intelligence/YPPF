@@ -32,7 +32,6 @@ __all__ = [
     'User',
     'PermissionBlacklist',
     'CreditRecord',
-    'YQPointRecord',
 ]
 
 
@@ -206,102 +205,6 @@ class UserManager(_UserManager['User']):
             source=source,
         )
 
-    @transaction.atomic
-    def modify_YQPoint(self, user: 'User | int | str', delta: int,
-                       source: str, source_type: 'YQPointRecord.SourceType'):
-        '''
-        修改元气值并记录，不足扣除时抛出AssertionError，原子化操作
-        '''
-        update_user = self.get_user(user, update=True)
-        update_user.YQpoint += delta
-        assert not (update_user.YQpoint < 0 and delta < 0), '元气值不足'
-        self._record_YQpoint_change(update_user, delta, source, source_type)
-        update_user.save(update_fields=['YQpoint'])
-        if isinstance(user, User):
-            user.YQpoint = update_user.YQpoint
-
-    @transaction.atomic
-    def _bulk_change_YQPoint(self, users: QuerySet['User'], delta: int,
-                             source: str, source_type: 'YQPointRecord.SourceType'):
-        '''
-        无条件批量修改元气值并记录，不论元气值**是否足够**，原子化操作
-
-        Warning:
-            请勿直接调用，应使用`bulk_increase_YQPoint`或`bulk_withdraw_YQPoint`
-            实验表明`users`不应该包含复杂的级联查询，如`id__in=xxx.values('id')`，
-            否则可能由未知原因导致`OperationalError`
-        '''
-        users = users.select_for_update()
-        point_records = [
-            YQPointRecord(
-                user=user,
-                delta=delta,
-                source=source,
-                source_type=source_type,
-            ) for user in users
-        ]
-        YQPointRecord.objects.bulk_create(point_records)
-        if delta != 0:
-            users.update(YQpoint=F('YQpoint') + delta)
-
-    def bulk_increase_YQPoint(self, users: QuerySet['User'], delta: int,
-                              source: str, source_type: 'YQPointRecord.SourceType'):
-        '''
-        批量增加元气值
-
-        Args:
-        - users(QuerySet[User]): 待更改的用户集合，不修改内部对象
-        - delta(int): 增加的元气值数量，必须为非负数
-        - source(str): 元气值来源的简短说明
-        - source_type(YQPointRecord.SourceType): 元气值来源类型
-
-        Raises:
-            AssertionError: 元气值增量为负数
-        '''
-        assert delta >= 0, '元气值增量为负数'
-        return self._bulk_change_YQPoint(users, delta, source, source_type)
-
-    def bulk_withdraw_YQPoint(self, users: QuerySet['User'], value: int,
-                              source: str, source_type: 'YQPointRecord.SourceType'):
-        '''
-        强制批量收回元气值，可能导致元气值为负数
-
-        Args:
-        - users(QuerySet[User]): 待更改的用户集合，不修改内部对象
-        - value(int): 收回的元气值数量，必须为非负数
-        - source(str): 元气值来源的简短说明
-        - source_type(YQPointRecord.SourceType): 元气值来源类型
-
-        Raises:
-            AssertionError: 元气值收回量为负数
-
-        Warning:
-            只适合收回元气值，不适合用于扣除元气值，因为并不检查对象是否足够支付
-        '''
-        assert value >= 0, '元气值收回量为负数'
-        return self._bulk_change_YQPoint(users, -value, source, source_type)
-
-    def _record_YQpoint_change(self, user: 'User', delta: int,
-                               source: str, source_type: 'YQPointRecord.SourceType'):
-        YQPointRecord.objects.create(
-            user=user,
-            delta=delta,
-            source=source,
-            source_type=source_type,
-        )
-
-
-class PointMixin(models.Model):
-    '''
-    支持元气值和积分等系统，添加相关字段和操作
-
-    元气值修改由管理器负责并添加记录
-    '''
-    class Meta:
-        abstract = True
-
-    YQpoint = models.IntegerField('元气值', default=0)
-
 
 class UserBase(models.base.ModelBase):
     '''临时的类型提示助手'''
@@ -310,7 +213,7 @@ class UserBase(models.base.ModelBase):
     del objects
 
 
-class User(AbstractUser, PointMixin, metaclass=UserBase):
+class User(AbstractUser, metaclass=UserBase):
     '''用户模型
 
     Attributes:
@@ -471,38 +374,4 @@ class CreditRecord(models.Model):
     delta = models.IntegerField('变化量')
     overflow = models.BooleanField('溢出', default=False)
     source = models.CharField('来源', max_length=50, default='', blank=True)
-    time = models.DateTimeField('时间', auto_now_add=True)
-
-
-class YQPointRecord(models.Model):
-    '''
-    元气值更改记录
-
-    只起记录作用，应通过User管理器方法自动创建
-    '''
-    class Meta:
-        verbose_name = '元气值记录'
-        verbose_name_plural = verbose_name
-
-    user = models.ForeignKey(
-        User, verbose_name='用户', on_delete=models.CASCADE,
-        to_field='username',
-    )
-    delta = models.IntegerField('变化量')
-    source = models.CharField('来源', max_length=50, blank=True)
-
-    # TODO: Can we remove this?
-    class SourceType(models.IntegerChoices):
-        SYSTEM = (0, '系统操作')
-        CHECK_IN = (1, '每日签到')
-        ACTIVITY = (2, '参与活动')
-        FEEDBACK = (3, '问题反馈')
-        # 如完成个人信息填写，学术地图填写
-        ACHIEVE = (4, '达成成就')
-        QUESTIONNAIRE = (5, '填写问卷')
-        CONSUMPTION = (6, '奖池花费')
-        COMPENSATION = (7, '奖池补偿')
-
-    source_type = models.SmallIntegerField(
-        '来源类型', choices=SourceType.choices, default=SourceType.SYSTEM)
     time = models.DateTimeField('时间', auto_now_add=True)

@@ -66,7 +66,7 @@ class PermissionAdmin(admin.ModelAdmin):
 class UserAdmin(_UserAdmin):
     list_display = [
         'id', 'username', 'name',
-        'credit', 'YQpoint', 'utype', 'is_staff', 'is_superuser',
+        'credit', 'utype', 'is_staff', 'is_superuser',
     ]
     # list_editable = ['credit']
     search_fields = ['id', 'username', 'name', 'pinyin', 'acronym']
@@ -80,7 +80,7 @@ class UserAdmin(_UserAdmin):
     ]
     fieldsets = [
         (None, {'fields': ('username', 'name', 'acronym', 'pinyin', 'password')}),
-        ('自定义信息', {'fields': ['credit', 'YQpoint', 'utype', 'is_newuser', 'active']}),
+        ('自定义信息', {'fields': ['credit', 'utype', 'is_newuser', 'active']}),
         # 内置部分
         ('权限', {
             'fields': ('is_active', 'is_staff', 'is_superuser', 'groups', 'user_permissions'),

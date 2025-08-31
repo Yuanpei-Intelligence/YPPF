@@ -7,8 +7,7 @@ functionalities below:
 
 1. User & UserType
 2. Credit
-3. Bonus point: for now it is YQPoint
-4. Notification
+3. Notification
 
 Honestly speaking, "generic" is not a good name. But, emmm
 """

@@ -19,7 +19,7 @@ import qrcode
 
 from utils.http.utils import build_full_url
 import utils.models.query as SQ
-from generic.models import User, YQPointRecord
+from generic.models import User
 from scheduler.adder import ScheduleAdder
 from scheduler.cancel import remove_job
 from app.utils_dependency import *
@@ -128,10 +128,10 @@ def changeActivityStatus(aid, cur_status, to_status):
         #     )
         #     notification_status_change(notification, Notification.Status.DONE)
 
-    # 结束，计算元气值
+    # 结束，AI 院不计算元气值
     elif (to_status == Activity.Status.END
             and activity.category != Activity.ActivityCategory.COURSE):
-        activity.settle_yqpoint(status=to_status)
+        pass
     # 过早进行这个修改，将被写到activity待执行的保存中，导致失败后调用activity.save仍会调整状态
     activity.status = to_status
     activity.save()
@@ -928,33 +928,19 @@ def _update_new_participants(activity: Activity, new_participant_uids: list[str]
     new_participant_nps = SQ.mfilter(Person.person_id, User.username,
                                      IN=new_participant_uids)
     new_participant_nps = new_participant_nps.exclude(id__in=participants)
-    # 此处必须执行查询，否则是lazy query，会导致后面的bulk_increase_YQPoint出错
-    new_participant_ids = SQ.qsvlist(new_participant_nps, Person.person_id)
-    new_participants = User.objects.filter(id__in=new_participant_ids)
-    # 为添加的参与者增加元气值
-    point = activity.eval_point()
-    User.objects.bulk_increase_YQPoint(
-        new_participants, point, '参加活动', YQPointRecord.SourceType.ACTIVITY)
     create_participate_infos(activity, new_participant_nps, status=status)
     return len(new_participant_nps)
 
 
 @transaction.atomic
 def _delete_outdate_participants(activity: Activity, new_participant_uids: list[str]):
-    '''删除过期的参与者，收回元气值，返回删除的参与者的数量，不修改活动'''
+    '''删除过期的参与者，返回删除的参与者的数量，不修改活动'''
     # 获取需要删除的参与者
     participation = SQ.sfilter(Participation.activity, activity).filter(
         status=Participation.AttendStatus.ATTENDED).select_for_update()
     removed_participation = participation.exclude(
         SQ.mq(Participation.person, Person.person_id, User.username,
               IN=new_participant_uids))
-    removed_participant_ids = SQ.qsvlist(removed_participation,
-                                         Participation.person, Person.person_id)
-    removed_participants = User.objects.filter(id__in=removed_participant_ids)
-    # 为删除的参与者撤销元气值发放
-    point = activity.eval_point()
-    User.objects.bulk_withdraw_YQPoint(removed_participants, point, 
-        '撤销参加活动', YQPointRecord.SourceType.CONSUMPTION)
     return removed_participation.delete()[0]
 
 

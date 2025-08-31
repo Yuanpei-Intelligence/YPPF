@@ -6,7 +6,6 @@ from app.models import (
     User,
 )
 from app.config import *
-from generic.models import YQPointRecord
 from scheduler.periodic import periodical
 from feedback.feedback_utils import inform_notification
 from feedback.models import Feedback
@@ -31,9 +30,6 @@ def public_feedback_per_hour():
     feedbacks.select_for_update().update(
         public_status=Feedback.PublicStatus.PUBLIC)
     for feedback in feedbacks:
-        User.objects.modify_YQPoint(feedback.person.get_user(),
-                                    CONFIG.yqpoint.per_feedback,
-                                    "问题反馈", YQPointRecord.SourceType.FEEDBACK)
         inform_notification(feedback.org.otype.incharge, feedback.person,
                             f"您的反馈[{feedback.title}]已被公开",
                             feedback, anonymous=False)

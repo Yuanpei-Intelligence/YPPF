@@ -13,7 +13,6 @@ from app.utils import (
     get_person_or_org,
 )
 from app.comment_utils import addComment, showComment
-from generic.models import YQPointRecord
 from feedback.feedback_utils import (
     examine_notification,
     update_feedback,
@@ -209,10 +208,6 @@ def viewFeedback(request: HttpRequest, fid):
                     feedback = Feedback.objects.activated().select_for_update().get(id=fid)
                     feedback.public_status = Feedback.PublicStatus.PUBLIC
                     feedback.save()
-                    # 为提出者增加元气值
-                    User.objects.modify_YQPoint(feedback.person.get_user(),
-                                                CONFIG.yqpoint.per_feedback,
-                                                "问题反馈", YQPointRecord.SourceType.FEEDBACK)
                     succeed_message.append("成功修改反馈公开状态为【公开】！所有学生都有访问权限。")
                     inform_notification(
                         me, feedback.person, f"已公开您的反馈[{feedback.title}]。", feedback, anonymous=False)
