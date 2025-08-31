@@ -735,7 +735,7 @@ def examineActivity(request: UserRequest, aid: int | str):
     bidding = activity.bidding
     signscheme = "先到先得"
     if bidding:
-        signscheme = "投点参与"
+        signscheme = "抽签参与"
     capacity = activity.capacity
     no_limit = False
     if capacity == 10000:
