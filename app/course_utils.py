@@ -1206,9 +1206,14 @@ def cal_participate_num(course: Course) -> dict:
         category=Activity.ActivityCategory.COURSE,
     )
     # 只有小组成员才可以有学时
+    # 只有在读和延毕的同学才可以有学时
     members = Position.objects.activated().filter(
         pos__gte=1,
         person__identity=NaturalPerson.Identity.STUDENT,
+        person__status__in=[
+            NaturalPerson.GraduateStatus.UNDERGRADUATED,
+            NaturalPerson.GraduateStatus.POSTPONED,
+        ],
         org=org,
     ).values_list("person", flat=True)
     all_participants = SQ.qsvlist(
@@ -1354,7 +1359,7 @@ def _write_detail_sheet(detail_sheet: openpyxl.worksheet.worksheet.Worksheet,
     # 注意，标题中的中文符号如：无法被解读
     detail_sheet.title = title
     # 从第一行开始写，因为Excel文件的行号是从1开始，列号也是从1开始
-    detail_header = ['课程', '姓名', '学号', '次数', '额外学时', '总学时', '学年', '学期', '有效']
+    detail_header = ['课程', '姓名', '学号', '次数', '额外学时', '总学时', '学年', '学期', '有效', '学生类型']
     detail_sheet.append(detail_header)
     _M = CourseRecord
     for record in records.values_list(
@@ -1363,6 +1368,7 @@ def _write_detail_sheet(detail_sheet: openpyxl.worksheet.worksheet.Worksheet,
         SQ.f(_M.person, NaturalPerson.person_id, User.username),
         SQ.f(_M.attend_times), SQ.f(_M.bonus_hours), SQ.f(_M.total_hours),
         SQ.f(_M.year), SQ.f(_M.semester), SQ.f(_M.invalid),
+        SQ.f(_M.person, NaturalPerson.status)
     ):
         record_info = [
             record[0] or record[1],
@@ -1370,6 +1376,7 @@ def _write_detail_sheet(detail_sheet: openpyxl.worksheet.worksheet.Worksheet,
             f'{record[7]}-{record[7] + 1}',
             '春' if record[8] == Semester.SPRING else '秋',
             '否' if record[9] else '是',
+            NaturalPerson.GraduateStatus.labels[record[10]]
         ]
         # 将每一个对象的所有字段的信息写入一行内
         detail_sheet.append(record_info)
@@ -1412,7 +1419,7 @@ def download_course_record(course: Course = None, year: int = None, semester: Se
     detail_sheet = wb.active
     # 设置明细和汇总两个sheet的相关信息
     total_sheet: openpyxl.worksheet.worksheet.Worksheet = wb.create_sheet('汇总', 0)
-    first_line = ['学号', '姓名', '总有效学时', '总无效学时']
+    first_line = ['学号', '姓名', '总有效学时', '总无效学时', '学生类型']
     first_line.extend(Course.CourseType.labels)
     first_line.append('其他')
     total_sheet.append(first_line)
@@ -1437,13 +1444,16 @@ def download_course_record(course: Course = None, year: int = None, semester: Se
     for person in person_record.select_related(SQ.f(NaturalPerson.person_id)):
         line = [person.person_id.username, person.name,
                 person.record_hours or 0, 
-                person.invalid_hours or 0]
+                person.invalid_hours or 0] 
+        # 学生状态
+        line.append(NaturalPerson.GraduateStatus.labels[person.status])
         valid_records = SQ.sfilter(CourseRecord.person, person).exclude(invalid=True)
         # 计算每个类别的学时
         for course_type in list(Course.CourseType):
             line.append(_sum_hours(valid_records.filter(course__type=course_type)))
         # 计算没有对应Course的学时
         line.append(_sum_hours(valid_records.filter(course__isnull=True)))
+       
         total_sheet.append(line)
 
     # 详细信息
