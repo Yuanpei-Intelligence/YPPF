@@ -130,14 +130,17 @@ def stuinfo(request: UserRequest):
         如果name是空
             如果是个人账户，那么就自动跳转个人主页"/stuinfo/?name=myname&id=userid"
             如果是小组账户，那么自动跳转welcome
-        如果name非空但是找不到对应的对象
-            自动跳转到welcome
-        如果name有明确的对象
+        如果name和id均非空
+            利用id进行进行查找，不存在则跳转welcome
+            如果存在，那么验证姓名是否匹配，不匹配则跳转welcome
+            匹配则跳转个人主页"/stuinfo/?name=myname&id=userid"
+        如果name非空但id为空
             如果不重名
                 如果是自己，那么呈现并且有左边栏
                 如果不是自己或者自己是小组，那么呈现并且没有侧边栏
             如果重名
-                那么期望有一个"+"在name中，如果搜不到就跳转到Search/?Query=name让他跳转去
+                如果是自己，那么呈现并且有左边栏，并且补全id参数
+                如果不是自己，那么跳转搜索"/search?Query=name"
     """
 
     html_display = {}
@@ -160,45 +163,25 @@ def stuinfo(request: UserRequest):
             try:
                 user_id = int(user_id)
                 get_user = User.objects.get(id=user_id)
-                person = NaturalPerson.objects.get_by_user(get_user, activate=True)
+                person = NaturalPerson.objects.get_by_user(get_user)
                 # 验证姓名是否匹配
                 if person.name != name:
                     return redirect(message_url(wrong('用户信息不匹配!')))
             except (ValueError, User.DoesNotExist, NaturalPerson.DoesNotExist):
                 return redirect(message_url(wrong('用户不存在!')))
-        # 旧单参数url处理
+        # 若id不存在
         else:
-            # 对可能的加号处理
-            name = name.replace(' ', '+')
-            # 保留前面的用户名中含有的空格
-            if "+" in name:
-                name_list = name.split("+")
-                name = name_list[0]
-                name_list.pop(0)
-                while (len(name_list) > 1):
-                    name += " "
-                    name += name_list[0]
-                    name_list.pop(0)
-            else:
-                name = name
-            
-            person = NaturalPerson.objects.activated().filter(name=name)
+            person = NaturalPerson.objects.filter(name=name)
             if len(person) == 0:  # 查无此人
                 return redirect(message_url(wrong('用户不存在!')))
             if len(person) == 1:  # 无重名
                 person = person[0]
-            else:  # 有很多人，这时候假设加号后面的是user的id
-                if len(name_list) == 1:  # 没有任何后缀信息，那么如果是自己则跳转主页，否则跳转搜索
-                    if request.user.is_person() and oneself.name == name:
-                        person = cast(NaturalPerson, oneself)
-                    else:  # 不是自己，信息不全跳转搜索
-                        return redirect("/search?Query=" + name)
-                else:
-                    obtain_id = int(name_list[1])  # 获取增补信息
-                    get_user = User.objects.get(id=obtain_id)
-                    potential_person = NaturalPerson.objects.get_by_user(get_user, activate=True)
-                    assert potential_person in person
-                    person = potential_person
+            else:  # 存在重名
+                # 如果自己是重名用户之一，那么跳转主页
+                if request.user.is_person() and oneself.name == name:
+                    person = cast(NaturalPerson, oneself)
+                else:  # 不是自己，信息不全跳转搜索
+                    return redirect("/search?Query=" + name)
 
         is_myself = person.get_user() == request.user
         inform_share, alert_message = utils.get_inform_share(
@@ -580,7 +563,11 @@ def stuinfo(request: UserRequest):
         bar_display = utils.get_sidebar_and_navbar(
             request.user, navbar_name="个人主页", title_name=person.name
         )
-        render_context.update(bar_display=bar_display, context=context)
+
+        # post的url构造函数，避免&的转义
+        post_url = person.get_absolute_url()
+        render_context.update(bar_display=bar_display,
+                              context=context, post_url=post_url)
 
         if request.session.get('alert_message'):
             render_context.update(load_alert_message=request.session.pop('alert_message'))

@@ -116,7 +116,6 @@ def _attend_require_num(room: Room, type: Appoint.Type, start: datetime, finish:
 
 
 @logger.secure_func('创建预约失败', fail_value=_error('添加预约失败!请与管理员联系!'))
-@transaction.atomic
 @return_on_except(stringify_to(_error), AssertionError, merge_type=True)
 def create_appoint(
     appointer: Participant,
@@ -154,43 +153,43 @@ def create_appoint(
         tuple[Appoint, Literal['']]: 预约对象和空错误信息
         tuple[None, str]: 错误信息
     '''
+    with transaction.atomic():
+        _check_room_valid(room)
+        _check_appoint_time(start, finish, type == Appoint.Type.TEMPORARY)
 
-    _check_room_valid(room)
-    _check_appoint_time(start, finish, type == Appoint.Type.TEMPORARY)
+        if students is None:
+            students = []
+        students = list(students)
+        if appointer not in students:
+            students.append(appointer)
+        inner_num = len(students)
 
-    if students is None:
-        students = []
-    students = list(students)
-    if appointer not in students:
-        students.append(appointer)
-    inner_num = len(students)
+        if type != Appoint.Type.LONGTERM:
+            _check_create_num(room, type, inner_num, outer_num)
+            _check_num_constraint(room, type, inner_num, outer_num)
 
-    if type != Appoint.Type.LONGTERM:
-        _check_create_num(room, type, inner_num, outer_num)
-        _check_num_constraint(room, type, inner_num, outer_num)
+        # 个人预约需要检查总时长
+        user = appointer.Sid
+        if (
+            user.is_person()
+            and type != Appoint.Type.LONGTERM
+            and type != Appoint.Type.INTERVIEW
+        ):
+            _check_total_time(appointer, start, finish)
 
-    # 个人预约需要检查总时长
-    user = appointer.Sid
-    if (
-        user.is_person()
-        and type != Appoint.Type.LONGTERM
-        and type != Appoint.Type.INTERVIEW
-    ):
-        _check_total_time(appointer, start, finish)
+        _check_credit(appointer)
+        appoint = Appoint(
+            major_student=appointer, Room=room,
+            Astart=start, Afinish=finish,
+            Ausage=usage, Aannouncement=announce,
+            Anon_yp_num=outer_num, Ayp_num=inner_num,
+            Aneed_num=_attend_require_num(room, type, start, finish),
+            Atype=type,
+        )
+        _check_conflict(appoint)
 
-    _check_credit(appointer)
-    appoint = Appoint(
-        major_student=appointer, Room=room,
-        Astart=start, Afinish=finish,
-        Ausage=usage, Aannouncement=announce,
-        Anon_yp_num=outer_num, Ayp_num=inner_num,
-        Aneed_num=_attend_require_num(room, type, start, finish),
-        Atype=type,
-    )
-    _check_conflict(appoint)
-
-    appoint.save()
-    appoint.students_manager.set(students)
+        appoint.save()
+        appoint.students_manager.set(students)
 
     set_scheduler(appoint)
     if notify:
