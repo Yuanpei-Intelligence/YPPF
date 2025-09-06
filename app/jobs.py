@@ -192,6 +192,9 @@ def add_week_course_activity(course_id: int, weektime_id: int, cur_week: int, co
         else:
             activity.publish_time = week_time.start + \
                 timedelta(days=7 * cur_week - course.publish_day)
+        # 补退选阶段可能出现原定的发布时间晚于当前的情况。若如此，活动应立即发布
+        if course_stage2 and activity.publish_time < datetime.now():
+            activity.publish_time = datetime.now() + timedelta(seconds=10)
 
         activity.need_apply = course.need_apply  # 是否需要报名
 

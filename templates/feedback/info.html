@@ -141,10 +141,8 @@
                   <div class="form-group">
                     <label for="aintro">标记已读状态</label>
                     <select class="form-control selectpicker" id="read_status" name="read_status" onchange="read_confirm.call(this);">
-                      <div class="dropdown-menu">
-                        <option value="unread" {%if read == "未读" %}selected{%endif%}>未读</option>
-                        <option value="read" {%if read == "已读" %}selected{%endif%}>已读</option>
-                      </div>
+                      <option value="unread" {%if read == "未读" %}selected{%endif%}>未读</option>
+                      <option value="read" {%if read == "已读" %}selected{%endif%}>已读</option>
                     </select>
                   </div>
                   {% endif %}
