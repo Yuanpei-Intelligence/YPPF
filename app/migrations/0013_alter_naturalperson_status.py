@@ -2,6 +2,10 @@
 
 from django.db import migrations, models
 
+def change_status_1_to_4(apps, schema_editor):
+    # 将之前的状态同步到新的状态
+    NaturalPerson = apps.get_model("app", "NaturalPerson")
+    NaturalPerson.objects.filter(status=1).update(status=4)
 
 class Migration(migrations.Migration):
 
@@ -10,6 +14,7 @@ class Migration(migrations.Migration):
     ]
 
     operations = [
+        migrations.RunPython(change_status_1_to_4),
         migrations.AlterField(
             model_name="naturalperson",
             name="status",
