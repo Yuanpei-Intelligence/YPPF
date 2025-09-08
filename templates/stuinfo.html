@@ -523,10 +523,18 @@
                                         <td>
                                             {% spaceless %}
                                             {% for scientific_research in Academic.scientific_research_list %}
-                                                <span class="badge badge-pill" style="overflow:hidden; text-overflow:ellipsis; 
+                                                <div class="badge badge-pill" style="overflow:hidden; text-overflow:ellipsis; 
                                                     white-space:normal; word-break:break-all; text-align:left; background-color:#eee; 
-                                                    border-radius:4px; color:#666; margin:2px; margin-top:3px;" id="{{scientific_research}}__scientific_research">
-                                                    {{scientific_research}}</span>
+                                                    border-radius:4px; color:#666; margin:2px; margin-top:3px; display: inline-block; max-width: 100%;" id="{{scientific_research}}__scientific_research">
+                                                    {% if scientific_research.start_date %}
+                                                        <small style="color: #999; font-size: 0.8em;">
+                                                            {{ scientific_research.start_date }}{% if scientific_research.end_date %} - {{ scientific_research.end_date }}{% else %} - 至今{% endif %}
+                                                        </small><br>
+                                                    {% elif scientific_research.end_date %}
+                                                        <small style="color: #999; font-size: 0.8em;">- {{ scientific_research.end_date }}</small><br>
+                                                    {% endif %}
+                                                    <span>{{scientific_research.content}}</span>
+                                                </div>
                                             {% endfor %}
                                             {% endspaceless %}
                                         </td>
@@ -557,10 +565,18 @@
                                         <td>
                                             {% spaceless %}
                                             {% for challenge_cup in Academic.challenge_cup_list %}
-                                                <span class="badge badge-pill" style="overflow:hidden; text-overflow:ellipsis; 
+                                                <div class="badge badge-pill" style="overflow:hidden; text-overflow:ellipsis; 
                                                     white-space:normal; word-break:break-all; text-align:left; background-color:#eee; 
-                                                    border-radius:4px; color:#666; margin:2px; margin-top:3px;" id="{{challenge_cup}}__challenge_cup">
-                                                    {{challenge_cup}}</span>
+                                                    border-radius:4px; color:#666; margin:2px; margin-top:3px; display: inline-block; max-width: 100%;" id="{{challenge_cup}}__challenge_cup">
+                                                    {% if challenge_cup.start_date %}
+                                                        <small style="color: #999; font-size: 0.8em;">
+                                                            {{ challenge_cup.start_date }}{% if challenge_cup.end_date %} - {{ challenge_cup.end_date }}{% else %} - 至今{% endif %}
+                                                        </small><br>
+                                                    {% elif challenge_cup.end_date %}
+                                                        <small style="color: #999; font-size: 0.8em;">- {{ challenge_cup.end_date }}</small><br>
+                                                    {% endif %}
+                                                    <span>{{challenge_cup.content}}</span>
+                                                </div>
                                             {% endfor %}
                                             {% endspaceless %}
                                         </td>
@@ -591,10 +607,18 @@
                                         <td>
                                             {% spaceless %}
                                             {% for internship in Academic.internship_list %}
-                                                <span class="badge badge-pill" style="overflow:hidden; text-overflow:ellipsis; 
+                                                <div class="badge badge-pill" style="overflow:hidden; text-overflow:ellipsis; 
                                                     white-space:normal; word-break:break-all; text-align:left; background-color:#eee; 
-                                                    border-radius:4px; color:#666; margin:2px; margin-top:3px;" id="{{internship}}__internship">
-                                                    {{internship}}</span>
+                                                    border-radius:4px; color:#666; margin:2px; margin-top:3px; display: inline-block; max-width: 100%;" id="{{internship}}__internship">
+                                                    {% if internship.start_date %}
+                                                        <small style="color: #999; font-size: 0.8em;">
+                                                            {{ internship.start_date }}{% if internship.end_date %} - {{ internship.end_date }}{% else %} - 至今{% endif %}
+                                                        </small><br>
+                                                    {% elif internship.end_date %}
+                                                        <small style="color: #999; font-size: 0.8em;">- {{ internship.end_date }}</small><br>
+                                                    {% endif %}
+                                                    <span>{{internship.content}}</span>
+                                                </div>
                                             {% endfor %}
                                             {% endspaceless %}
                                         </td>
@@ -625,10 +649,18 @@
                                         <td>
                                             {% spaceless %}
                                             {% for scientific_direction in Academic.scientific_direction_list %}
-                                                <span class="badge badge-pill" style="overflow:hidden; text-overflow:ellipsis; 
+                                                <div class="badge badge-pill" style="overflow:hidden; text-overflow:ellipsis; 
                                                     white-space:normal; word-break:break-all; text-align:left; background-color:#eee; 
-                                                    border-radius:4px; color:#666; margin:2px; margin-top:3px;" id="{{scientific_direction}}__scientific_direction">
-                                                    {{scientific_direction}}</span>
+                                                    border-radius:4px; color:#666; margin:2px; margin-top:3px; display: inline-block; max-width: 100%;" id="{{scientific_direction}}__scientific_direction">
+                                                    {% if scientific_direction.start_date %}
+                                                        <small style="color: #999; font-size: 0.8em;">
+                                                            {{ scientific_direction.start_date }}{% if scientific_direction.end_date %} - {{ scientific_direction.end_date }}{% else %} - 至今{% endif %}
+                                                        </small><br>
+                                                    {% elif scientific_direction.end_date %}
+                                                        <small style="color: #999; font-size: 0.8em;">- {{ scientific_direction.end_date }}</small><br>
+                                                    {% endif %}
+                                                    <span>{{scientific_direction.content}}</span>
+                                                </div>
                                             {% endfor %}
                                             {% endspaceless %}
                                         </td>
@@ -659,10 +691,18 @@
                                         <td>
                                             {% spaceless %}
                                             {% for graduation in Academic.graduation_list %}
-                                                <span class="badge badge-pill" style="overflow:hidden; text-overflow:ellipsis; 
+                                                <div class="badge badge-pill" style="overflow:hidden; text-overflow:ellipsis; 
                                                     white-space:normal; word-break:break-all; text-align:left; background-color:#eee; 
-                                                    border-radius:4px; color:#666; margin:2px; margin-top:3px;" id="{{graduation}}__graduation">
-                                                    {{graduation}}</span>
+                                                    border-radius:4px; color:#666; margin:2px; margin-top:3px; display: inline-block; max-width: 100%;" id="{{graduation}}__graduation">
+                                                    {% if graduation.start_date %}
+                                                        <small style="color: #999; font-size: 0.8em;">
+                                                            {{ graduation.start_date }}{% if graduation.end_date %} - {{ graduation.end_date }}{% else %} - 至今{% endif %}
+                                                        </small><br>
+                                                    {% elif graduation.end_date %}
+                                                        <small style="color: #999; font-size: 0.8em;">- {{ graduation.end_date }}</small><br>
+                                                    {% endif %}
+                                                    <span>{{graduation.content}}</span>
+                                                </div>
                                             {% endfor %}
                                             {% endspaceless %}
                                         </td>
