@@ -178,7 +178,7 @@
 
                                 <!-- 模态框头部 -->
                                 <div class="modal-header">
-                                    <h4 class="modal-title">添加心愿</h4>
+                                    <h4 class="modal-title">添加留言</h4>
                                     <button type="button" class="close" data-dismiss="modal">&times;</button>
                                 </div>
 
@@ -187,7 +187,7 @@
                                     <div class="modal-body">
                                         <div class="form-group">
                                             <textarea id="wish" name="wish" class="form-control" rows="4"
-                                                placeholder="填写你的心愿，你的心愿是匿名的哦！（请共同创建文明友善的发言环境，否则可能面临封号和处分等风险）"></textarea>
+                                                placeholder="填写你的留言，你的心愿是匿名的哦！（请共同创建文明友善的发言环境，否则可能面临封号和处分等风险）"></textarea>
                                         </div>
                                         <div class="form-group">
                                             <p>背景颜色</p>
@@ -221,7 +221,7 @@
                     <div class="bio-skill-box p-0" id="custom-wishes"
                         style="min-height: 15vh; overflow-y: scroll; overflow-x: visible;">
                         {% if wishes|length == 0 %}
-                        <p class="mx-auto" style="text-align: center;">暂时没有心愿！</p>
+                        <p class="mx-auto" style="text-align: center;">暂时没有留言！</p>
                         {% else %}
                         {% for wish in wishes %}
                         <div class="b-skills my-3 p-0 w-100" style="background-color:{{ wish.background }};">
@@ -239,49 +239,12 @@
                 </div>
                 <!-- END WISHWALL -->
 
-                <div class=" widget-content widget-content-area mt-2 mx-0">
-                    <h5>今日活动</h5>
-                    <div class="timeline-alter px-0 py-1" style="overflow-y: scroll; overflow-x: show;"
-                        id="custom-activities">
-                        {% if html_display.today_activities|length == 0 %}
-                        <br />
-                        <p style="text-align: center; ">没有今天开始的活动！</p>
-                        {% endif %}
-                        {% for activity, start in html_display.today_activities %}
-                        <div class="item-timeline">
-                            <div class="t-meta-date pb-0">
-                                {{ start }}
-                            </div>
-                            <div class="t-dot" data-original-title="" title="">
-                            </div>
-                            <div style="padding: 10px; width: 70%;">
-                                <a class="row m-0" href="/viewActivity/{{ activity.id }}">
-                                    <h5
-                                        style="text-align: left; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
-                                        <u>{{ activity.title }}</u>
-                                    </h5>
-                                </a>
-                                <div class="d-flex justify-content-between">
-                                    <b class="flex"
-                                        style="text-align: left; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
-                                        {{ activity.organization_id }}</b>
-
-                                    {% if activity.status == "等待中" %}
-                                    <span class="flex badge badge-pill badge-info">{{ activity.status }}</span>
-                                    {% elif activity.status == "已取消" or activity.status == "已结束" %}
-                                    <span class="badge badge-pill badge-danger">{{ activity.status }}</span>
-                                    {% else %}
-                                    <span class="flex badge badge-pill badge-success">{{ activity.status }}</span>
-                                    {% endif %}
-                                </div>
-                            </div>
-                        </div>
-
-                        {% endfor %}
-                    </div>
-                </div>
                 <!-- END ACTIVITIES -->
             </div>
+
+        </div>
+
+        <div class="row">
 
             <!--2&3 近期活动&最新发布&即将截止-->
 
@@ -350,11 +313,11 @@
                                                             {% if act.status == "审核中" %}
                                                             <span class="flex badge badge-pill badge-secondary">
                                                             {% elif act.status == "未过审" or act.status == "已取消" or act.status == "已撤销" or act.status == "已结束" %}
-                                                            <span class="flex badge badge-pill badge-danger">
+                                                            <span class="badge badge-pill badge-danger">
                                                             {% elif act.status == "报名中" %}
-                                                            <span class="flex badge badge-pill badge-info">
+                                                            <span class="badge badge-pill badge-info">
                                                             {% elif act.status == "进行中" %}
-                                                            <span class="flex badge badge-pill badge-success">
+                                                            <span class="badge badge-pill badge-success">
                                                             {% endif %}
                                                                 {{ act.status }}
                                                             {% endif %}
@@ -374,7 +337,7 @@
                                                     {% if act.introduction %}
                                                     <p
                                                         style="text-align: left; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
-                                                        <i class="icon-info-circle" style="width: 20px;"></i>
+                                                        <i class="fa fa-info-circle" style="width: 20px;"></i>
                                                         <span class="ml-1">{{ act.introduction }}</span>
                                                     </p>
                                                     {% endif %}
@@ -448,11 +411,11 @@
                                                             {% if act.status == "审核中" %}
                                                             <span class="flex badge badge-pill badge-secondary">
                                                             {% elif act.status == "未过审" or act.status == "已取消" or act.status == "已撤销" or act.status == "已结束" %}
-                                                            <span class="flex badge badge-pill badge-secondary">
+                                                            <span class="badge badge-pill badge-danger">
                                                             {% elif act.status == "报名中" %}
-                                                            <span class="flex badge badge-pill badge-info">
+                                                            <span class="badge badge-pill badge-info">
                                                             {% elif act.status == "进行中" %}
-                                                            <span class="flex badge badge-pill badge-success">
+                                                            <span class="badge badge-pill badge-success">
                                                             {% endif %}
                                                                 {{ act.status }}
                                                             {% endif %}
@@ -472,7 +435,7 @@
                                                     {% if act.introduction %}
                                                     <p
                                                         style="text-align: left; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
-                                                        <i class="icon-info-circle" style="width: 20px;"></i>
+                                                        <i class="fa fa-info-circle" style="width: 20px;"></i>
                                                         <span class="ml-1">{{ act.introduction }}</span>
                                                     </p>
                                                     {% endif %}
@@ -527,13 +490,14 @@
 
                         <div id="recentends" class="tab-pane fade">
                             <div class="bio-skill-box layout-top-spacing" style="max-height: 75vh; overflow: scroll;">
-                                {% if recentends_list|length == 0 %}
+                                {% if signup_list|length == 0 %}
                                 <p style="text-align: center;">没有即将截止报名的活动！</p>
                                 {% endif %}
                                 <div class="row w-100 m-0">
-                                    {% for act in recentends_list %}
-                                    <div class="col-xm-12 col-md-6 mb-xl-5 mb-5 ">
-                                        <a href="/viewActivity/{{ act.id }}">
+                                    {% for rec in signup_list %}
+                                        {%with rec.act as act%}
+                                        <div class="col-xm-12 col-md-6 mb-xl-5 mb-5 ">
+                                            <a href="/viewActivity/{{ act.id }}">
                                             <div class="d-flex b-skills">
                                                 <div class="text-nowrap mw-100">
                                                     <div class="d-flex justify-content-between">
@@ -546,21 +510,19 @@
                                                             {% if act.status == "审核中" %}
                                                             <span class="flex badge badge-pill badge-secondary">
                                                             {% elif act.status == "未过审" or act.status == "已取消" or act.status == "已撤销" or act.status == "已结束" %}
-                                                            <span class="flex badge badge-pill badge-danger">
+                                                            <span class="badge badge-pill badge-danger">
                                                             {% elif act.status == "报名中" %}
-                                                            <span class="flex badge badge-pill badge-info">
+                                                            <span class="badge badge-pill badge-info">
                                                             {% elif act.status == "进行中" %}
-                                                            <span class="flex badge badge-pill badge-success">
+                                                            <span class="badge badge-pill badge-success">
                                                             {% endif %}
                                                                 {{ act.status }}
                                                             {% endif %}
                                                             </span>
         
                                                             {{ act.title }}
-
                                                         </h5>
                                                     </div>
-                                                    
 
                                                     <p
                                                         style="text-align: left; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
@@ -571,7 +533,7 @@
                                                     {% if act.introduction %}
                                                     <p
                                                         style="text-align: left; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
-                                                        <i class="icon-info-circle" style="width: 20px;"></i>
+                                                        <i class="fa fa-info-circle" style="width: 20px;"></i>
                                                         <span class="ml-1">{{ act.introduction }}</span>
                                                     </p>
                                                     {% endif %}
@@ -579,7 +541,7 @@
                                                     <p
                                                         style="text-align: left; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
                                                         <i class="fa fa-clock" style="width: 20px;"></i>
-                                                        <span class="ml-1">{{ act.apply_end }}&nbsp;报名截止</span>
+                                                        <span class="ml-1">{{ rec.deadline }}&nbsp;截止报名，还有 {{rec.tobestart}} 小时</span>
                                                     </p>
 
                                                     {% if act.has_tag %}
@@ -618,19 +580,19 @@
                                             </div>
                                         </a>
                                     </div>
-
+                                    {%endwith%}
                                     {% endfor %}
                                 </div>
                             </div>
                         </div>
 
                     </div>
+
                 </div>
             </div>
 
-        </div>
 
-        
+        </div>
     </div>
     <!--  END CONTENT PART  -->
 
