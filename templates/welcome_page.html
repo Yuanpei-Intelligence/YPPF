@@ -155,35 +155,12 @@
                 </style>
                 <!-- END OVERRIDE TIMELINE BREAKPOINT -->
 
-                <!-- BEGIN RT WEATHER -->
-                <div class="widget-content widget-content-area mb-2 mx-0">
-                    <h5>实时天气</h5>
-                    <div class="pl-0 pt-1 pb-3 d-flex justify-content-between">
-                        <span>
-                            地区：北京 天气：{{ html_display.weather.description }} <br />
-                            气温：{{ html_display.weather.temp }} &#8451
-                            体感温度：{{ html_display.weather.temp_feel }} &#8451 <br />
-                            上次更新：{{last_update}}
-                        </span>
-                        <div>
-                            <!-- <img
-                                src="http://www.weather.com.cn/m/i/weatherpic/29x20/{{ html_display.weather.weatherinfo.img1 }}">
-                            <img
-                                src="http://www.weather.com.cn/m/i/weatherpic/29x20/{{ html_display.weather.weatherinfo.img2 }}"> -->
-                            <img src="http://openweathermap.org/img/wn/{{html_display.weather.icon}}@2x.png"
-                                alt="it supposed to be a weather icon" style="width: 50px; height: 50px;">
-                        </div>
-
-                    </div>
-                </div>
-                <!-- END RT WEATHER -->
-
                 <!-- BEGIN WISHWALL -->
                 <div class="widget-content widget-content-area mt-2 mx-0 bio">
                     <div class="d-flex justify-content-between">
-                        <h5>心愿墙</h5>
+                        <h5>留言板</h5>
                         <!-- <a href="#myModal" class="mb-2 edit-profile" data-toggle="modal"> -->
-                        <a onclick="alert(`心愿墙暂未启用，敬请期待！`);" class="mb-2 edit-profile" data-toggle="modal"
+                        <a onclick="alert(`留言板暂未启用，敬请期待！`);" class="mb-2 edit-profile" data-toggle="modal"
                             style="color: gainsboro;">
                             <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor"
                                 stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
