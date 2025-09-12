@@ -65,7 +65,7 @@ def shiftAccount(request: HttpRequest):
         arg_url = request.GET["origin"]
         if arg_url.startswith('/'):  # 暂时只允许内部链接
             return redirect(arg_url)
-    return redirect("/underground/")
+    return redirect("/welcome/")
 
 
 # Return content
@@ -601,10 +601,6 @@ def orginfo(request: UserRequest):
 @utils.check_user_access(redirect_url="/logout/")
 @logger.secure_view()
 def homepage(request: UserRequest):
-    # 检查用户类型，如果是组织用户则重定向到组织信息页面
-    if request.user.is_org():
-        return redirect("/orginfo/")
-
     html_display = {}
     my_messages.transfer_message_context(request.GET, html_display)
 
