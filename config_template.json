@@ -61,7 +61,8 @@
             "enabled": false,
             "method": "Ollama",
             "Ollama_ADDR": "",
-            "GLM_API_Key": ""
+            "GLM_API_Key": "",
+            "GLM_Timeout": 30
         }
     },
     "course": {

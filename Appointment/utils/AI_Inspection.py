@@ -1,7 +1,10 @@
 from Appointment.config import appointment_config as CONFIG
+from Appointment.models import AI_Inspection_Info, Room
+from Appointment.utils.log import logger
 import os
 import json
 import requests
+from django.utils import timezone
 
 # 模型人设：只返回“合规/不合规”，JSON格式
 SYSTEM_PROMPT = (
@@ -64,7 +67,7 @@ def _call_glm_decision(text: str, timeout: int = 30) -> tuple[str, str]:
         return False, reason
 
 
-def Ollama_Inspection(room_name, reason) -> tuple[bool, str]:
+def Ollama_Inspection(room_name, reason, user) -> tuple[bool, str]:
     # Ollama 审核功能接口，将预约房间（名称）和事由发送至 API，然后接收判断结果（合格/不合格）
     # 完整的处理办法（需要在API调用失败时抛出错误）
     try:
@@ -82,38 +85,92 @@ def Ollama_Inspection(room_name, reason) -> tuple[bool, str]:
         # 根据上述格式解析 response 部分，给出返回值
         output = result.get("response", "").strip()
         if output.startswith("1"):
+            AI_Inspection_Info.objects.create(
+                Iperson=user,
+                Iroom=Room.objects.get(Rtitle=room_name),
+                Ireason=reason,
+                Iresult=AI_Inspection_Info.Result.APPROVED
+            )
             return True, "Approved"
         elif output.startswith("0"):
-            reason = output[1:].strip()  # 获取不通过的原因
-            return False, "房间用途不合规：" + reason if reason else "Not approved"
+            why = output[1:].strip()  # 获取不通过的原因
+            AI_Inspection_Info.objects.create(
+                Iperson=user,
+                Iroom=Room.objects.get(Rtitle=room_name),
+                Ireason=reason,
+                Iresult=AI_Inspection_Info.Result.NOT_APPROVED,
+                Idetail=why
+            )
+            return False, "房间用途不合规：" + why if why else "Not approved"
         else:
+            logger.error(
+                f"AI Inspection failed: Unexpected response format {output}")
             return False, "Unexpected response format"
 
     except requests.RequestException as e:
         # 处理请求异常
-        return False, str(e)
+        # Idetail 最多记录 500 字符
+        AI_Inspection_Info.objects.create(
+            Iperson=user,
+            Iroom=Room.objects.get(Rtitle=room_name),
+            Ireason=reason,
+            Iresult=AI_Inspection_Info.Result.NOT_APPROVED,
+            Idetail=f"Request failed: {str(e)[:480]}"
+        )
+
+        # 错误信息需记入日志
+        logger.error(f"AI Inspection failed: {str(e)}")
+
+        return False, f"发生错误，请稍后再试或联系管理员！"
 
 
-def GLM_Inspection(room_name, reason) -> tuple[bool, str]:
+def GLM_Inspection(room_name, reason, user) -> tuple[bool, str]:
     # GLM 审核
+
     # 组装要审核的文本
     content = f"房间：{room_name}\n事由：{reason}"
     # 超时时间可从配置读取，默认30秒
-    timeout = 30
+    timeout = CONFIG.GLM_Timeout
     try:
         decision, why = _call_glm_decision(content, timeout=timeout)
         passed = (decision == 1)
         # 返回是否通过和理由 True通过，False不通过
         if passed:
+            AI_Inspection_Info.objects.create(
+                Iperson=user,
+                Iroom=Room.objects.get(Rtitle=room_name),
+                Ireason=reason,
+                Iresult=AI_Inspection_Info.Result.APPROVED
+            )
             return True, "合规"
         else:
+            AI_Inspection_Info.objects.create(
+                Iperson=user,
+                Iroom=Room.objects.get(Rtitle=room_name),
+                Ireason=reason,
+                Iresult=AI_Inspection_Info.Result.NOT_APPROVED,
+                Idetail=why
+            )
             return False, f"房间用途不合规：{why or '无具体理由'}"
+
     except Exception as e:
         # API 调用失败：不通过并附带错误信息
-        return False, str(e)
+        # Idetail 最多记录 500 字符
+        AI_Inspection_Info.objects.create(
+            Iperson=user,
+            Iroom=Room.objects.get(Rtitle=room_name),
+            Ireason=reason,
+            Iresult=AI_Inspection_Info.Result.NOT_APPROVED,
+            Idetail=f"Request failed: {str(e)[:480]}"
+        )
+
+        # 错误信息需记入日志
+        logger.error(f"AI Inspection failed: {str(e)}")
+
+        return False, f"发生错误，请稍后再试或联系管理员！"
 
 
-def AI_Inspection(room_name, reason) -> tuple[bool, str]:
+def AI_Inspection(room_name, reason, user) -> tuple[bool, str]:
     # AI 审核功能接口，将预约房间（名称）和事由发送至 API，然后接收判断结果（合格/不合格）
     # Additional：最好能在不合格时附带理由
 
@@ -121,12 +178,29 @@ def AI_Inspection(room_name, reason) -> tuple[bool, str]:
         # 默认通过
         return True, "AI Inspection is disabled"
 
-    # 在此处实现 API 的调用，并处理 API 调用失败的情况
+    # reason 长度限制在 250 字符以内
+    if len(reason) > 250:
+        AI_Inspection_Info.objects.create(
+            Iperson=user,
+            Iroom=Room.objects.get(Rtitle=room_name),
+            Ireason=reason[:250],
+            Iresult=AI_Inspection_Info.Result.NOT_APPROVED,
+            Idetail="事由过长，超过250字符"
+        )
+        return False, "事由过长，请限制在250字符以内!"
 
+    # 获取该用户上一次提交审核记录的时间，若距离现在不足 1 分钟，则拒绝本次审核
+    last_record = AI_Inspection_Info.objects.filter(
+        Iperson=user).order_by('-Itimestamp').first()
+    if last_record:
+        if (timezone.now() - last_record.Itimestamp).total_seconds() < 60:
+            return False, "请勿频繁提交审核请求，请稍后再试!"
+
+    # 在此处实现 API 的调用，并处理 API 调用失败的情况
     if CONFIG.AI_Inspection_Method == "Ollama":
-        return Ollama_Inspection(room_name, reason)
+        return Ollama_Inspection(room_name, reason, user)
 
     if CONFIG.AI_Inspection_Method == "GLM":
-        return GLM_Inspection(room_name, reason)
+        return GLM_Inspection(room_name, reason, user)
 
     return False, "AI Inspection method is not recognized"

@@ -59,6 +59,8 @@ class AppointmentConfig(Config):
 
     # GLM 参数
     GLM_API_KEY = LazySetting('AI_Inspection/GLM_API_Key', type=str)
+    GLM_Timeout = LazySetting(
+        'AI_Inspection/GLM_Timeout', type=int, default=30)
 
 
 appointment_config = AppointmentConfig(ROOT_CONFIG, 'underground')

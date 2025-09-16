@@ -921,7 +921,8 @@ def checkout_appoint(request: UserRequest):
         if not contents['Ausage']:
             wrong("请输入房间用途!", render_context)
         # 自动化审核房间用途是否合规
-        is_valid, reason = AI_Inspection(room.Rtitle, contents['Ausage'])
+        is_valid, reason = AI_Inspection(
+            room.Rtitle, contents['Ausage'], request.user)
         if not is_valid:
             wrong(f"预约失败！ {reason}", render_context)
         # 处理单人预约

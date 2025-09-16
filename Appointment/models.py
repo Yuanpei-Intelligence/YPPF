@@ -22,8 +22,8 @@ __all__ = [
     'Appoint',
     'LongTermAppoint',
     'CardCheckInfo',
+    'AI_Inspection_Info',
 ]
-
 
 
 class College_Announcement(models.Model):
@@ -172,7 +172,8 @@ class Room(models.Model):
         UNLIMITED = 1, '无需预约'  # 允许使用
         FORBIDDEN = 2, '禁止使用'  # 禁止使用
 
-    Rstatus = models.SmallIntegerField('房间状态', choices=Status.choices, default=0)
+    Rstatus = models.SmallIntegerField(
+        '房间状态', choices=Status.choices, default=0)
 
     # 标记当前房间是否可以通宵使用，可由管理员修改（主要针对自习室）
     RIsAllNight = models.BooleanField('可通宵使用', default=False)
@@ -249,7 +250,7 @@ class Appoint(models.Model, metaclass=PermissionModelBase):
         PASSED = 1  # 预约在特定分钟内的检查是通过的
         UNSAVED = 2  # 预约在此分钟内尚未记录检测状态
     Acheck_status = models.SmallIntegerField('检测状态',
-        choices=CheckStatus.choices, default=2)
+                                             choices=CheckStatus.choices, default=2)
 
     # 这里Room使用外键的话只能设置DO_NOTHING，否则删除房间就会丢失预约信息
     # 所以房间信息不能删除，只能逻辑删除
@@ -309,7 +310,7 @@ class Appoint(models.Model, metaclass=PermissionModelBase):
         INTERVIEW = choice(4, '面试预约')
 
     Atype = models.SmallIntegerField('预约类型',
-        choices=Type.choices, default=Type.NORMAL)
+                                     choices=Type.choices, default=Type.NORMAL)
     get_Atype_display: CustomizedDisplay
 
     objects: AppointManager = AppointManager()
@@ -517,6 +518,31 @@ class LongTermAppoint(models.Model):
     def get_applicant_id(self) -> str:
         '''获取申请者id'''
         return self.applicant.get_id()
+
+
+class AI_Inspection_Info(models.Model):
+    """
+    记录AI审核的结果和理由
+    """
+    class Meta:
+        verbose_name = 'AI审核信息'
+        verbose_name_plural = verbose_name
+
+    Iperson = models.ForeignKey(
+        User, on_delete=models.CASCADE, verbose_name='预约人')
+    Iroom = models.ForeignKey(
+        Room, on_delete=models.CASCADE, verbose_name='房间号')
+    Ireason = models.CharField('事由', max_length=256)
+
+    class Result(models.IntegerChoices):
+        APPROVED = (1, '合规')
+        NOT_APPROVED = (0, '不合规')
+        ERROR = (-1, '错误')
+
+    Iresult = models.SmallIntegerField(
+        '审核结果', choices=Result.choices, default=Result.ERROR)
+    Idetail = models.CharField('审核详情', max_length=512, blank=True)
+    Itimestamp = models.DateTimeField('审核时间', auto_now_add=True)
 
 
 @receiver(pre_delete, sender=Appoint)
