@@ -1,2 +1,2 @@
-ipython
-djlint
+ipython==9.4.0
+djlint==1.36.4

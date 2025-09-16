@@ -28,10 +28,20 @@ class Command(BaseCommand):
     def handle(self, *args, **options):
         year = options['year']
         cnt = 0
+        cnt_map = {k:0 for k in status_map.keys()}
         for person in NaturalPerson.objects.filter(person_id__username__startswith=str(year), identity = NaturalPerson.Identity.STUDENT):
-            self.stdout.write(self.style.WARNING('学号%s的学生状态: %s => 毕业' % (person.person_id.username, status_map[person.status])))
+            cnt_map[person.status] += 1
+            self.stdout.write(self.style.WARNING('学号%s的学生状态: %s => 已毕业' % (person.person_id.username, status_map[person.status])))
             cnt += 1
+        
         self.stdout.write(self.style.WARNING('=> 共处理学生%d人' % cnt))
+        detail_str = "将要将"
+        for k, v in cnt_map.items():
+            if v > 0:
+                detail_str += " %s %d人," % (status_map[k], v)
+        detail_str = detail_str.rstrip(',') + '的状态调整为“已毕业”'
+        self.stdout.write(self.style.WARNING(detail_str))
+        self.stdout.write(self.style.WARNING('如需保留某些学生，请稍后再用updategraduatestatus命令调整其状态'))
         self.stdout.write(self.style.WARNING('请确认无误后,输入y以继续,n以取消'))
         confirm = input()
         if confirm.lower() != 'y':

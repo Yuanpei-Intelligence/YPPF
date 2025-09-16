@@ -5,13 +5,13 @@
     //     "source=${localEnv:HOME}/.ssh,target=/home/vscode/.ssh,type=bind,consistency=cached"
     // ],
     "dockerComposeFile": "docker-compose.yml",
-    "postCreateCommand": "pip install -r .devcontainer/dev_requirements.txt",
+    "postCreateCommand": "pip install -r .devcontainer/dev_requirements.txt --resume-retries 5",
     "service": "yppf",
     "workspaceFolder": "/workspace",
     "remoteUser": "vscode",
-    // Dev container is used for development, so the DEBUG environment variable should be set
+    // Dev container is used for development, so the YPPF_DEBUG environment variable should be set
     "containerEnv": {
-        "DEBUG": "true"
+        "YPPF_DEBUG": "true"
     },
     "customizations": {
         "vscode": {

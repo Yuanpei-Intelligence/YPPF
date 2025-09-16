@@ -328,10 +328,11 @@ class NaturalPerson(models.Model):
 
     class GraduateStatus(models.IntegerChoices):
         UNDERGRADUATED = (0, "在读/在职")
-        INSTRUCTOR = (1, "住宿辅导员")
-        POSTPONED = (2, "延毕")
-        ONLEAVE = (3, "休学")
-        GRADUATED = (4, "已毕业/退休")
+        GRADUATED = (1, "已毕业/退休")
+        INSTRUCTOR = (2, "住宿辅导员")
+        POSTPONED = (3, "延毕")
+        ONLEAVE = (4, "休学")
+        
 
     status = models.SmallIntegerField(
         "在校状态", choices=GraduateStatus.choices, default=0)

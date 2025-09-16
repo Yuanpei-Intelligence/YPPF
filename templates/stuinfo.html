@@ -36,23 +36,25 @@
         grid-template-columns: repeat(3, 33.33%);
         grid-template-rows: repeat(3, 33.33%);
     }
-    .nav-tabs {
-        display: flex;
-        flex-wrap: nowrap;
-        overflow-x: auto;
-        white-space: nowrap;
-        -webkit-overflow-scrolling: touch;
-      }
-      
-      .nav-tabs::-webkit-scrollbar {
-        display: none;
-      }
-      
-      .nav-tabs .nav-item {
-        flex: 0 0 auto;
-        margin-right: 10px;
-        animation: slide-in 0.5s ease-in-out;
-      }
+    @media (max-width: 992px) { /* only on lg screens */
+        .nav-tabs {
+            display: flex;
+            flex-wrap: nowrap;
+            overflow-x: auto;
+            white-space: nowrap;
+            -webkit-overflow-scrolling: touch;
+        }
+        
+        .nav-tabs::-webkit-scrollbar {
+            display: none;
+        }
+        
+        .nav-tabs .nav-item {
+            flex: 0 0 auto;
+            margin-right: 10px;
+            animation: slide-in 0.5s ease-in-out;
+        }
+    }
       
       @keyframes slide-in {
         0% {
@@ -106,7 +108,7 @@
     <!--  END WALLPAPER SECTION  -->
 
     <!--  BEGIN SWITCH TAB  -->
-    <ul class="nav nav-tabs nav-pills-slide" role="tablist">
+    <ul class="nav nav-tabs nav-pills-slide d-lg-none" role="tablist">
         <li class="nav-item">
             <b class="nav-link active" data-toggle="pill" role="tab" href="#information">个人信息</b>
         </li>
@@ -121,6 +123,23 @@
         </li>
         <li class="nav-item">
             <b class="nav-link" data-toggle="pill" role="tab" href="#achievement">{{ context.title }}的成就</b>
+        </li>
+    </ul>
+    <ul class="nav nav-tabs nav-tabs-solid nav-justified d-none d-lg-flex" role="tablist">
+        <li class="nav-item">
+            <b class="nav-link active" data-toggle="tab" role="tab" href="#information">个人信息</b>
+        </li>
+        <li class="nav-item">
+            <b class="nav-link" data-toggle="tab" role="tab" href="#academic_map">学术地图</b>
+        </li>
+        <li class="nav-item">
+            <b class="nav-link" data-toggle="tab" role="tab" href="#organization">{{ context.title }}的小组</b>
+        </li>
+        <li class="nav-item">
+            <b class="nav-link" data-toggle="tab" role="tab" href="#activity">{{ context.title }}的活动</b>
+        </li>
+        <li class="nav-item">
+            <b class="nav-link" data-toggle="tab" role="tab" href="#achievement">{{ context.title }}的成就</b>
         </li>
     </ul>
     <!--  END SWITCH TAB  -->

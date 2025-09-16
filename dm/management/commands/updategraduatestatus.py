@@ -10,10 +10,10 @@ import os
 
 status_map = {
     0: '在读',
-    1: '住宿辅导员',
-    2: '延毕',
-    3: '休学',
-    4: '已毕业'
+    1: '已毕业',
+    2: '住宿辅导员',
+    3: '延毕',
+    4: '休学',
 }
 
 def _load_from_csv(file_path):
@@ -43,7 +43,7 @@ class Command(BaseCommand):
         parser.add_argument(
             '--config',
             type=str,
-            help='指定包含特殊处理名单的csv文件路径,每行学号和状态(0-在读,1-住宿辅导员,2-延毕,3-休学,4-毕业)用逗号分隔',
+            help='指定包含特殊处理名单的csv文件路径,每行学号和状态(0-在读,1-已毕业,2-住宿辅导员,3-延毕,4-休学)用逗号分隔',
             required=True
         )
 
