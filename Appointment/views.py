@@ -1014,7 +1014,7 @@ def checkout_appoint(request: UserRequest):
                     message_url(succeed(f"预约{room.Rtitle}成功!"),
                                 reverse("Appointment:account")))
             elif appoint is None:
-                return redirect('')
+                wrong(err_msg, render_context)
             else:
                 # 长期预约
                 try:
