@@ -60,6 +60,7 @@ INSTALLED_APPS = [
     "django.contrib.staticfiles",
     "django_apscheduler",
     "rest_framework",
+    "drf_spectacular",
     "generic",
     "semester",
     "record",
@@ -165,9 +166,22 @@ USE_L10N = True
 USE_TZ = False
 
 REST_FRAMEWORK = {
+    "DEFAULT_AUTHENTICATION_CLASSES": [
+        'rest_framework.authentication.SessionAuthentication',
+        'rest_framework_simplejwt.authentication.JWTAuthentication',
+    ],
     # Use Django's standard `django.contrib.auth` permissions,
     # or allow read-only access for unauthenticated users.
     'DEFAULT_PERMISSION_CLASSES': [
         'rest_framework.permissions.DjangoModelPermissionsOrAnonReadOnly'
-    ]
+    ],
+    'DEFAULT_SCHEMA_CLASS': 'drf_spectacular.openapi.AutoSchema',
+}
+
+SPECTACULAR_SETTINGS = {
+    'TITLE': 'YPPF API',
+    'DESCRIPTION': 'API documentation for YPPF platform',
+    'VERSION': '2.0',
+    'SERVE_INCLUDE_SCHEMA': False,
+    'SCHEMA_PATH_PREFIX': '/api/',
 }

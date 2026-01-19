@@ -1,0 +1,10 @@
+---
+alwaysApply: true
+---
+
+You are working on a django web project.
+The global urls pattern is in `/boot/urls.py`.
+The global models can be found in `/generic/models.py`.
+The module specific models can be found in `/module_name/models.py`.
+
+When implementing a new function, add its corresponding test when possible.

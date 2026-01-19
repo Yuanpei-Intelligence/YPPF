@@ -506,3 +506,14 @@ class YQPointRecord(models.Model):
     source_type = models.SmallIntegerField(
         '来源类型', choices=SourceType.choices, default=SourceType.SYSTEM)
     time = models.DateTimeField('时间', auto_now_add=True)
+
+class UserWechatProfile(models.Model):
+    '''
+    用户-wxid 关联表
+    '''
+    user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='wx_profile')
+    openid = models.CharField(max_length=64, unique=True, verbose_name='微信id')
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name='绑定时间')
+
+    def __str__(self):
+        return f"{self.user.username}-{self.openid}"
