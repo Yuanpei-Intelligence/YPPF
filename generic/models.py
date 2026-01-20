@@ -33,6 +33,7 @@ __all__ = [
     'PermissionBlacklist',
     'CreditRecord',
     'YQPointRecord',
+    'UserWechatProfile'
 ]
 
 
@@ -511,6 +512,10 @@ class UserWechatProfile(models.Model):
     '''
     用户-wxid 关联表
     '''
+    class Meta:
+        verbose_name = '绑定关系'
+        verbose_name_plural = verbose_name
+    
     user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='wx_profile')
     openid = models.CharField(max_length=64, unique=True, verbose_name='微信id')
     created_at = models.DateTimeField(auto_now_add=True, verbose_name='绑定时间')

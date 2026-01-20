@@ -177,3 +177,9 @@ class YQPointRecordAdmin(admin.ModelAdmin):
     ]
     search_fields = [*UserAdmin.suggest_search_fields(), 'source']
     date_hierarchy = 'time'
+
+@admin.register(UserWechatProfile)
+class UserWechatProfileAdmin(admin.ModelAdmin):
+    list_display = ['user', 'openid', 'created_at']
+    search_fields = ['user']
+    date_hierarchy = 'created_at'
