@@ -122,7 +122,7 @@ class WxCodeLoginView(APIView):
                         "username": {"type": "string", "description": "用户名 (仅当 status=bound 时存在)"},
                         "name": {"type": "string", "description": "用户名称 (仅当 status=bound 时存在)"},
                         "signed_openid": {"type": "string", "description": "签名的 openid (仅当 status=unbound 时存在)"},
-                        "expires_in": {"type": "integer", "description": "signed_openid 过期时间（秒）(仅当 status=unbound 时存在)"},
+                        "expires_in": {"type": "integer", "description": "signed_openid/token 过期时间（秒)"},
                     },
                 },
             ),
@@ -151,12 +151,15 @@ class WxCodeLoginView(APIView):
                     "status": "bound",
                     "token": token,
                     "token_type": "Bearer",
+                    "expires_in": CONFIG.token_expire_minutes * 60, # in seconds
                     "username": profile.user.username,
                     "name": profile.user.name,
                 }
             )
 
         signed_openid = _sign_openid(openid)
+        # print("signed:", signed_openid)
+
         return Response(
             {
                 "status": "unbound",
@@ -187,7 +190,7 @@ class WxBindView(APIView):
                         "token": {"type": "string", "description": "JWT token"},
                         "token_type": {"type": "string", "description": "Bearer"},
                         "username": {"type": "string", "description": "用户名"},
-                        "name": {"type": "string", "description": "用户名称"},
+                        "expires_in": {"type": "integer", "description": "token过期时间（秒)"},
                     },
                 },
             ),
@@ -199,6 +202,8 @@ class WxBindView(APIView):
     def post(self, request):
         serializer = WxBindSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
+
+        # print("Received", serializer.validated_data["signed_openid"])
 
         try:
             openid = _unsign_openid(serializer.validated_data["signed_openid"])
@@ -236,7 +241,7 @@ class WxBindView(APIView):
                 "token": token,
                 "token_type": "Bearer",
                 "username": user.username,
-                "name": user.name,
+                "expires_in": CONFIG.token_expire_minutes * 60, # in seconds
             }
         )
 

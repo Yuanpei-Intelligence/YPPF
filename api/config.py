@@ -8,7 +8,6 @@ from utils.config import Config, LazySetting
 
 __all__ = ["WXMiniappConfig", "CONFIG"]
 
-
 class WXMiniappConfig(Config):
     """
     Settings for WeChat mini program authentication.

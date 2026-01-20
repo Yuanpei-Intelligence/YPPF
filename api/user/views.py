@@ -8,7 +8,10 @@ from drf_spectacular.utils import OpenApiResponse, extend_schema
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
+from rest_framework.exceptions import PermissionDenied
 
+from api.authentication import StrictJWTAuthentication
+from app.models import NaturalPerson
 from app.utils import get_user_wallpaper, get_person_or_org
 from generic.models import User
 
@@ -20,7 +23,12 @@ def _serialize_me(user: User) -> dict:
     This endpoint is meant for "my profile" so we can return more fields than
     public profile pages, but we still keep the payload stable and minimal.
     """
+    try:
+        classified = get_person_or_org(user)
+    except AssertionError:
+        raise PermissionDenied("不存在对应的自然人或组织")
     classified = get_person_or_org(user)
+
     base = {
         "id": user.pk,
         "username": user.username,
@@ -80,6 +88,7 @@ class MeView(APIView):
     """
 
     permission_classes = [IsAuthenticated]
+    authentication_classes = [StrictJWTAuthentication]
 
     @extend_schema(
         summary="获取本人信息",
