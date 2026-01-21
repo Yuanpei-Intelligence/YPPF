@@ -10,7 +10,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework.exceptions import PermissionDenied
 
-from api.authentication import StrictJWTAuthentication
+from api.authentication import WxJWTAuthentication
 from app.models import NaturalPerson
 from app.utils import get_user_wallpaper, get_person_or_org
 from generic.models import User
@@ -88,7 +88,7 @@ class MeView(APIView):
     """
 
     permission_classes = [IsAuthenticated]
-    authentication_classes = [StrictJWTAuthentication]
+    authentication_classes = [WxJWTAuthentication]
 
     @extend_schema(
         summary="获取本人信息",

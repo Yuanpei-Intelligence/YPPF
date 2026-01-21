@@ -21,7 +21,7 @@ from api.notification.serializers import (
     NotificationListQuerySerializer,
     NotificationStatisticsSerializer,
 )
-from api.authentication import StrictJWTAuthentication
+from api.authentication import WxJWTAuthentication
 
 
 class NotificationViewSet(viewsets.ViewSet):
@@ -35,7 +35,7 @@ class NotificationViewSet(viewsets.ViewSet):
     - Bulk operations (mark all as read, delete all)
     """
     permission_classes = [IsAuthenticated]
-    authentication_classes = [StrictJWTAuthentication]
+    authentication_classes = [WxJWTAuthentication]
 
     def get_queryset(self):
         """Get notifications for the current user."""
