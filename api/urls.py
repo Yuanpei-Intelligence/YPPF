@@ -36,6 +36,7 @@ urlpatterns = [
     path("v2/auth/", include("api.auth.urls")),
     path("v2/user/", include("api.user.urls")),
     path("v2/notification/", include("api.notification.urls")),
+    path("v2/appoint/", include("api.appoint.urls")),
 ]
 
 if settings.DEBUG:
