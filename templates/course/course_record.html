@@ -77,7 +77,11 @@
                       >
                     </td>
                     <td class="total_hours">
-                      <a1>{{ record.total_hours }}</a1>
+                      {% if record.has_credit_permission %}
+                        <a1>{{ record.total_hours }}</a1>
+                      {% else %}
+                        <a1 style="color: red;">没有学时权限！</a1>
+                      {% endif %}
                     </td>
                     {% endif %}
                     </tr>

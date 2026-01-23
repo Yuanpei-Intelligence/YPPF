@@ -378,6 +378,7 @@ def showCourseRecord(request: UserRequest) -> HttpResponse:
                 "grade": person.stu_grade,
                 "avatar": person.get_user_ava(),
                 "times": convert_dict[person.id],   # 参与次数
+                "has_credit_permission": person.credit_permission,  # 学时权限
             } for person in participant_list
         ]
 
@@ -408,7 +409,8 @@ def showCourseRecord(request: UserRequest) -> HttpResponse:
                     "avatar": record.person.get_user_ava(),
                     "times": record.attend_times,
                     "bonus_hours": record.bonus_hours,
-                    "total_hours": record.total_hours
+                    "total_hours": record.total_hours,
+                    "has_credit_permission": record.person.credit_permission,  # 学时权限
                 })
             CourseRecord.objects.bulk_update(record_search, ["attend_times", "total_hours"])
             # 如果点击提交学时按钮，修改数据库之后，跳转至已结束的活动界面
