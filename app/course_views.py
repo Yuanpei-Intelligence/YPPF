@@ -454,6 +454,10 @@ def selectCourse(request: HttpRequest):
     if request.user.is_org():
         return redirect(message_url(wrong("组织账号无法访问书院选课页面。如需选课，请切换至个人账号；如需查看您发起的书院课程，请点击【我的课程】。")))
 
+    # 检查选课权限
+    if not me.course_permission:
+        return redirect(message_url(wrong("您没有选课权限，无法访问选课页面。")))
+
     is_student = (me.identity == NaturalPerson.Identity.STUDENT)
 
     # 暂时不启用意愿点机制

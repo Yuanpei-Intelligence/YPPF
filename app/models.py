@@ -367,6 +367,8 @@ class NaturalPerson(models.Model):
 
     accept_promote = models.BooleanField(default=True)    # 是否接受推广消息
     active_score = models.FloatField("活跃度", default=0)  # 用户活跃度
+    course_permission = models.BooleanField("选课权限", default=False)  # 是否有选课权限
+    underground_permission = models.BooleanField("地下室权限", default=False)  # 是否有地下室权限
 
     def __str__(self):
         return str(self.name)

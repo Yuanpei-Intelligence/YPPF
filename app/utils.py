@@ -225,6 +225,10 @@ def get_sidebar_and_navbar(user: User, navbar_name="", title_name=""):
 
     if user.is_person():
         me = cast(NaturalPerson, me)
+        # 添加选课权限
+        bar_display["course_permission"] = me.course_permission
+        # 添加地下室权限
+        bar_display["has_basement_permission"] = me.underground_permission
         bar_display.update(
             profile_name="个人主页",
             profile_url="/stuinfo/",

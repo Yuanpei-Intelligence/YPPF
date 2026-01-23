@@ -24,7 +24,7 @@
                     </div>
                 </a>
             </li>
-            {% if bar_display.user_active %}
+            {% if bar_display.has_basement_permission %}
             <li class="menu">
                 <a href="{{bar_display.underground_url}}" aria-expanded="false" class="dropdown-toggle">
                     <div class="">
@@ -101,7 +101,7 @@
                     </div>
                 </a>
             </li>
-            {% if bar_display.user_active %}
+            {% if bar_display.course_permission %}
             <li class="menu">
                 <a href="/selectCourse/" aria-expanded="false" class="dropdown-toggle">
                     <div class="">
