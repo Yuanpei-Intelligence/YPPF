@@ -78,6 +78,9 @@ class NaturalPersonAdmin(admin.ModelAdmin):
             f(_m.identity), f(_m.status),
             f(_m.wechat_receive_level),
             f(_m.accept_promote), f(_m.active_score),
+            f(_m.course_permission),
+            f(_m.underground_permission),
+            f(_m.credit_permission),
         ])
         return fields
 
@@ -115,6 +118,9 @@ class NaturalPersonAdmin(admin.ModelAdmin):
         'set_graduate', 'set_ungraduate',
         'set_instructor', 'set_leave', 'set_postpone',
         'all_subscribe', 'all_unsubscribe',
+        'grant_course_permission', 'revoke_course_permission',
+        'grant_underground_permission', 'revoke_underground_permission',
+        'grant_credit_permission', 'revoke_credit_permission',
         ]
 
     @as_action("设为 学生", update=True)
@@ -208,6 +214,42 @@ class NaturalPersonAdmin(admin.ModelAdmin):
             person.save()
         return self.message_user(request=request,
                                  message='修改成功!已经取消所有非官方组织的订阅!')
+
+    @as_action("赋予 选课权限", update=True)
+    def grant_course_permission(self, request, queryset):
+        queryset.update(course_permission=True)
+        return self.message_user(request=request,
+                                 message='修改成功!已赋予选课权限!')
+
+    @as_action("收回 选课权限", update=True)
+    def revoke_course_permission(self, request, queryset):
+        queryset.update(course_permission=False)
+        return self.message_user(request=request,
+                                 message='修改成功!已收回选课权限!')
+
+    @as_action("赋予 地下室权限", update=True)
+    def grant_underground_permission(self, request, queryset):
+        queryset.update(underground_permission=True)
+        return self.message_user(request=request,
+                                 message='修改成功!已赋予地下室权限!')
+
+    @as_action("收回 地下室权限", update=True)
+    def revoke_underground_permission(self, request, queryset):
+        queryset.update(underground_permission=False)
+        return self.message_user(request=request,
+                                 message='修改成功!已收回地下室权限!')
+
+    @as_action("赋予 获得书院课学时权限", update=True)
+    def grant_credit_permission(self, request, queryset):
+        queryset.update(credit_permission=True)
+        return self.message_user(request=request,
+                                 message='修改成功!已赋予获得书院课学时权限!')
+
+    @as_action("收回 获得书院课学时权限", update=True)
+    def revoke_credit_permission(self, request, queryset):
+        queryset.update(credit_permission=False)
+        return self.message_user(request=request,
+                                 message='修改成功!已收回获得书院课学时权限!')
 
 @admin.register(Freshman)
 class FreshmanAdmin(admin.ModelAdmin):
