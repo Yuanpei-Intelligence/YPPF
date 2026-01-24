@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import html
 from datetime import datetime, timedelta, date
+from urllib.parse import unquote
 from rest_framework import status, viewsets
 from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated
@@ -44,9 +45,9 @@ from api.appoint.serializers import (
     AgreementResponseSerializer,
     CheckoutAppointRequestSerializer,
     CheckoutAppointResponseSerializer,
-    UserInfoSerializer,
     AppointDisplaySerializer,
     LongtermAppointDisplaySerializer,
+    UserInfoSerializer,
     ViolationAppointSerializer,
     RoomSerializer,
     RoomStatisticsSerializer,
@@ -60,9 +61,9 @@ from api.appoint.utils import (
     calculate_appointment_datetime,
     get_content_students,
 )
-from generic.utils import to_search_indices
 from generic.models import User
-
+from Appointment.models import Participant
+from django.db.models import QuerySet, Q
 # 一些固定值
 WEEKDAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
 
@@ -210,7 +211,7 @@ class AppointViewSet(viewsets.ViewSet):
             raise ValidationError(f"续约第{conflict}次失败，后续时间段存在预约冲突!")
 
 
-class AccountView(APIView):
+class MyAppointmentsView(APIView):
     """
     Get user's appointment information.
     """
@@ -298,7 +299,7 @@ class AccountView(APIView):
         return Response(serializer.data, status=status.HTTP_200_OK)
 
 
-class CreditView(APIView):
+class MyViolationsView(APIView):
     """
     Get user's violation records.
     """
@@ -588,7 +589,8 @@ class ArrangeTimeView(APIView):
             start_hour = room.Rstart.hour
             round_up = int(room.Rstart.minute >= 30)
 
-            for i in range(max_stamp_id + 1):
+            # 在小程序中，时间选择被改为了左闭右开，所以最后需要多一个时间块用于边界检查
+            for i in range(max_stamp_id + 1 + 1):
                 timesection = {}
                 timesection['starttime'] = str(
                     start_hour + (i + round_up) // 2).zfill(2) + ":" + str(
@@ -658,6 +660,7 @@ class ArrangeTimeView(APIView):
                 dayrange_list[0]['timesection'][i]['status'] = TimeStatus.PASSED
 
         # 获取房间信息，以支持房间切换的功能
+        # TODO: 在小程序中不需要，为了兼容老版本，保留了这部分代码
         function_room_list = Room.objects.function_rooms().order_by('Rid')
         talk_room_list = Room.objects.talk_rooms().order_by('Rid')
 
@@ -670,7 +673,7 @@ class ArrangeTimeView(APIView):
             'is_longterm': is_longterm,
             'start_week': start_week,
             'dayrange_list': dayrange_list,
-            'available_hours': available_hours,
+            'available_hours': available_hours,  # 其实应该是半小时，比如available_hours 6 = 3小时
             'function_room_list': [RoomSerializer(room).data for room in function_room_list],
             'talk_room_list': [RoomSerializer(room).data for room in talk_room_list],
         }
@@ -760,7 +763,8 @@ class ArrangeTalkRoomView(APIView):
 
         for sequence, room in enumerate(room_list):
             rooms_time_list.append([])
-            for time_id in range(t_range):
+            # 在小程序中，时间选择被改为了左闭右开，所以最后需要多一个时间块用于边界检查
+            for time_id in range(t_range + 1):
                 rooms_time_list[-1].append({})
                 rooms_time_list[sequence][time_id]['status'] = 1
                 rooms_time_list[sequence][time_id]['time_id'] = time_id
@@ -871,12 +875,6 @@ class CheckoutAppointView(APIView):
                 type=OpenApiTypes.INT,
                 enum=[0, 1],
             ),
-            OpenApiParameter(
-                name='longterm',
-                description='Whether this is a long-term appointment',
-                required=False,
-                type=OpenApiTypes.BOOL,
-            ),
         ],
         responses={
             200: OpenApiResponse(
@@ -904,7 +902,6 @@ class CheckoutAppointView(APIView):
                         "has_longterm_permission": {"type": "boolean"},
                         "has_interview_permission": {"type": "boolean"},
                         "interview_max_count": {"type": "integer"},
-                        "user_infos": {"type": "array"},
                         "member_ids": {"type": "array"},
                     },
                 },
@@ -921,7 +918,6 @@ class CheckoutAppointView(APIView):
         startid = request.query_params.get('startid')
         endid = request.query_params.get('endid')
         start_week = int(request.query_params.get('start_week', 0))
-        is_longterm = request.query_params.get('longterm') == 'on'
 
         if not Rid:
             raise ValidationError("房间号不能为空")
@@ -942,8 +938,10 @@ class CheckoutAppointView(APIView):
         appoint_params = {}
         if weekday and startid is not None and endid is not None:
             try:
+                # 在小程序中，时间选择被改为了左闭右开
+                # 原先是 [startid, endid]，现在变成了 [startid, endid), 所以得减1
                 startid = int(startid)
-                endid = int(endid)
+                endid = int(endid) - 1
                 WEEKDAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
                 assert weekday in WEEKDAYS
                 assert startid >= 0 and endid >= 0
@@ -976,18 +974,12 @@ class CheckoutAppointView(APIView):
             'weekday': weekday,
             'startid': startid,
             'endid': endid,
-            'longterm': is_longterm,
             'start_week': start_week,
             'Sid': applicant.get_id(),
             'Sname': applicant.name,
         })
 
-        # Provide search functionality data
-        search_users = User.objects.filter_type(User.Type.PERSON)
-        search_users = search_users.exclude(pk=request.user.pk)
-        search_users = search_users.filter(
-            pk__in=Participant.objects.filter(hidden=False).values('Sid__pk'))
-        stu_list = to_search_indices(search_users, active=True)
+        # 返回一个组织的全部成员
         member_ids = get_member_ids(request.user)
 
         return Response({
@@ -996,7 +988,6 @@ class CheckoutAppointView(APIView):
             'has_longterm_permission': has_longterm_permission,
             'has_interview_permission': has_interview_permission,
             'interview_max_count': CONFIG.interview_max_num,
-            'user_infos': stu_list,
             'member_ids': member_ids,
         }, status=status.HTTP_200_OK)
 
@@ -1083,7 +1074,7 @@ class CheckoutAppointView(APIView):
 
         if (
             applicant.Sid.is_person()
-            and start_time + timedelta(hours=3) > end_time
+            and start_time + timedelta(hours=3) < end_time
         ):
             raise ValidationError('预约时长不能超过3小时！')
 
@@ -1225,3 +1216,75 @@ class CheckoutAppointView(APIView):
                     appoint.delete()
                 logger.exception("创建长期预约失败")
                 raise ValidationError(f"创建长期预约失败: {str(e)}")
+
+
+class SearchUsersView(APIView):
+    """
+    Search users for appointment participants.
+    """
+    permission_classes = [IsAuthenticated]
+    authentication_classes = [WxJWTAuthentication]
+
+    @extend_schema(
+        summary="搜索用户",
+        description="根据姓名、学号、拼音等搜索可添加为预约参与者的用户",
+        parameters=[
+            OpenApiParameter(
+                name='query',
+                description='Search query (name, username, pinyin, acronym)',
+                required=False,
+                type=OpenApiTypes.STR,
+            ),
+            OpenApiParameter(
+                name='limit',
+                description='Maximum number of results to return',
+                required=False,
+                type=OpenApiTypes.INT,
+                default=10,
+            ),
+        ],
+        responses={
+            200: OpenApiResponse(
+                description="List of matching users",
+                response={
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "id": {"type": "string", "description": "User username"},
+                            "name": {"type": "string", "description": "User name"},
+                        },
+                    },
+                },
+            ),
+            403: OpenApiResponse(description="未登录或无权限"),
+        },
+        tags=['预约'],
+    )
+    def get(self, request):
+        """Search users by name, username, pinyin or acronym."""
+        query = unquote(request.query_params.get('query', ''))
+        try:
+            limit = int(request.query_params.get('limit', 10))
+            limit = min(max(1, limit), 50)  # Limit between 1-50
+        except (ValueError, TypeError):
+            limit = 10
+
+        # Filter out hidden participants and search
+        users = Participant.objects.filter(
+            hidden=False
+        ).filter(
+            Q(Sid__name__icontains=query) |
+            Q(Sid__username__icontains=query) |
+            Q(Sid__pinyin__icontains=query) |
+            Q(Sid__acronym__icontains=query)
+        ).exclude(
+            Sid=request.user  # Exclude current user
+        ).values('Sid__username', 'Sid__name')[:limit]
+
+        users = [{
+            'id': user['Sid__username'],
+            'name': user['Sid__name'],
+        } for user in users]
+
+        return Response(users, status=status.HTTP_200_OK)
