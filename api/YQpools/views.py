@@ -57,10 +57,14 @@ class PoolsViewSet(viewsets.ViewSet):
 
     @extend_schema(
         summary="获取兑换奖池列表",
-        description="获取所有当前可用的兑换奖池及其奖品信息",
+        description="获取所有当前可用的兑换奖池及其奖品信息。只返回用户已参加关联活动的奖池（如果奖池有关联活动）。",
         responses={
-            200: OpenApiResponse(description="所有兑换奖池信息"),
-            403: OpenApiResponse(description="非个人账号或无权限"),
+            200: OpenApiResponse(
+                response=PoolListSerializer,
+                description="兑换奖池列表，包含每个奖池的详细信息、奖品列表、用户兑换次数等"
+            ),
+            401: OpenApiResponse(description="未认证或token无效"),
+            403: OpenApiResponse(description="非个人账号或无权限访问"),
         },
         tags=['元气商城'],
     )
@@ -71,10 +75,14 @@ class PoolsViewSet(viewsets.ViewSet):
 
     @extend_schema(
         summary="获取抽奖奖池列表",
-        description="获取所有当前可用的抽奖奖池及其奖品信息",
+        description="获取所有当前可用的抽奖奖池及其奖品信息。抽奖奖池在结束后1天内仍可见，包含抽奖结果。",
         responses={
-            200: OpenApiResponse(description="所有抽奖奖池列表"),
-            403: OpenApiResponse(description="非个人账号或无权限"),
+            200: OpenApiResponse(
+                response=PoolListSerializer,
+                description="抽奖奖池列表，包含每个奖池的详细信息、用户参与次数、总参与次数、抽奖结果（如已结束）等"
+            ),
+            401: OpenApiResponse(description="未认证或token无效"),
+            403: OpenApiResponse(description="非个人账号或无权限访问"),
         },
         tags=['元气商城'],
     )
@@ -85,10 +93,14 @@ class PoolsViewSet(viewsets.ViewSet):
 
     @extend_schema(
         summary="获取盲盒奖池列表",
-        description="获取所有当前可用的盲盒奖池及其奖品信息",
+        description="获取所有当前可用的盲盒奖池及其奖品信息。盲盒奖池包含每个奖品的概率信息。",
         responses={
-            200: OpenApiResponse(description="所有盲盒奖池列表"),
-            403: OpenApiResponse(description="非个人账号或无权限"),
+            200: OpenApiResponse(
+                response=PoolListSerializer,
+                description="盲盒奖池列表，包含每个奖池的详细信息、奖品列表及概率、容量、用户参与次数等"
+            ),
+            401: OpenApiResponse(description="未认证或token无效"),
+            403: OpenApiResponse(description="非个人账号或无权限访问"),
         },
         tags=['元气商城'],
     )
@@ -99,11 +111,45 @@ class PoolsViewSet(viewsets.ViewSet):
 
     @extend_schema(
         summary="获取所有奖池",
-        description="一次性获取所有类型的奖池（兑换、抽奖、盲盒）",
+        description="一次性获取所有类型的奖池（兑换、抽奖、盲盒）。返回三个独立的列表，每个列表包含对应类型的所有可用奖池。",
         responses={
             200: OpenApiResponse(
                 description="所有奖池信息",
+                response={
+                    "type": "object",
+                    "properties": {
+                        "exchange_pools": {
+                            "type": "object",
+                            "properties": {
+                                "pools_info": {
+                                    "type": "array",
+                                    "items": {"type": "object"}
+                                }
+                            }
+                        },
+                        "lottery_pools": {
+                            "type": "object",
+                            "properties": {
+                                "pools_info": {
+                                    "type": "array",
+                                    "items": {"type": "object"}
+                                }
+                            }
+                        },
+                        "random_pools": {
+                            "type": "object",
+                            "properties": {
+                                "pools_info": {
+                                    "type": "array",
+                                    "items": {"type": "object"}
+                                }
+                            }
+                        },
+                    },
+                },
             ),
+            401: OpenApiResponse(description="未认证或token无效"),
+            403: OpenApiResponse(description="非个人账号或无权限访问"),
         },
         tags=['元气商城'],
     )
@@ -117,10 +163,15 @@ class PoolsViewSet(viewsets.ViewSet):
 
     @extend_schema(
         summary="获取单个奖池信息",
-        description="根据ID获取单个特定奖池的详细信息",
+        description="根据ID获取单个特定奖池的详细信息，包括所有奖品、用户参与情况等。如果奖池有关联活动，用户必须已参加该活动才能查看。",
         responses={
-            200: OpenApiResponse(description="单个奖池信息"),
-            404: OpenApiResponse(description="奖池不存在"),
+            200: OpenApiResponse(
+                response=PoolSerializer,
+                description="单个奖池的完整信息，包括所有字段和奖品列表"
+            ),
+            401: OpenApiResponse(description="未认证或token无效"),
+            403: OpenApiResponse(description="非个人账号、无权限访问或未参加关联活动"),
+            404: OpenApiResponse(description="奖池不存在或已过期不可用"),
         },
         tags=['元气商城'],
     )
@@ -147,17 +198,40 @@ class PoolsViewSet(viewsets.ViewSet):
 
     @extend_schema(
         summary="兑换奖品",
-        description="从兑换奖池中购买指定奖品",
-        parameters=[
-            # TODO
-        ],
+        description="从兑换奖池中购买指定奖品。需要足够的元气值，奖品未售罄，且未达到单人兑换上限。如果奖品需要属性（如尺寸、颜色），必须在attributes中提供。",
+        request=ExchangePurchaseSerializer,
         responses={
             200: OpenApiResponse(
-                description="兑换奖品响应",
+                description="兑换成功",
+                response={
+                    "type": "object",
+                    "properties": {
+                        "succeed": {"type": "boolean", "description": "是否成功"},
+                        "message": {"type": "string", "description": "响应消息"},
+                    },
+                },
             ),
-            400: OpenApiResponse(description="请求错误（如元气值不足、已售罄等）"),
+            400: OpenApiResponse(
+                description="请求错误",
+                response={
+                    "type": "object",
+                    "properties": {
+                        "succeed": {"type": "boolean", "example": False},
+                        "message": {
+                            "type": "string",
+                            "examples": [
+                                "您的元气值不足，兑换失败!",
+                                "奖品已售罄!",
+                                "您兑换该奖品的次数已达上限!",
+                                "请填写完整的兑换信息!",
+                            ],
+                        },
+                    },
+                },
+            ),
+            401: OpenApiResponse(description="未认证或token无效"),
+            403: OpenApiResponse(description="非个人账号、无权限或未参加关联活动"),
             404: OpenApiResponse(description="奖品不存在"),
-            403: OpenApiResponse(description="无权限或未参加活动"),
         },
         tags=['元气商城'],
     )
@@ -185,17 +259,42 @@ class PoolsViewSet(viewsets.ViewSet):
 
     @extend_schema(
         summary="购买抽奖",
-        description="购买抽奖奖池的抽奖机会",
-        parameters=[
-            # TODO
-        ],
+        description="购买抽奖奖池的抽奖机会。需要足够的元气值，且未达到单人参与次数上限。抽奖结果将在奖池结束后统一公布。",
+        request=LotteryPurchaseSerializer,
         responses={
             200: OpenApiResponse(
-                description="购买抽奖响应",
+                description="购买成功",
+                response={
+                    "type": "object",
+                    "properties": {
+                        "succeed": {"type": "boolean", "description": "是否成功"},
+                        "message": {
+                            "type": "string",
+                            "description": "响应消息，成功时提示可在抽奖结束后查看结果",
+                        },
+                    },
+                },
             ),
-            400: OpenApiResponse(description="请求错误（如元气值不足、次数达上限等）"),
+            400: OpenApiResponse(
+                description="请求错误",
+                response={
+                    "type": "object",
+                    "properties": {
+                        "succeed": {"type": "boolean", "example": False},
+                        "message": {
+                            "type": "string",
+                            "examples": [
+                                "您的元气值不足，兑换失败!",
+                                "您在本奖池中抽奖的次数已达上限!",
+                                "抽奖已结束!",
+                            ],
+                        },
+                    },
+                },
+            ),
+            401: OpenApiResponse(description="未认证或token无效"),
+            403: OpenApiResponse(description="非个人账号、无权限或未参加关联活动"),
             404: OpenApiResponse(description="奖池不存在"),
-            403: OpenApiResponse(description="无权限或未参加活动"),
         },
         tags=['元气商城'],
     )
@@ -221,17 +320,56 @@ class PoolsViewSet(viewsets.ViewSet):
 
     @extend_schema(
         summary="购买盲盒",
-        description="购买盲盒奖池的盲盒",
-        parameters=[
-            # TODO
-        ],
+        description="购买盲盒奖池的盲盒。立即开盒并返回结果。可能开出奖品或空盒，空盒会获得元气值补偿。需要足够的元气值，且未达到单人参与次数上限。",
+        request=RandomPurchaseSerializer,
         responses={
             200: OpenApiResponse(
-                description="购买盲盒响应"
+                description="购买成功",
+                response={
+                    "type": "object",
+                    "properties": {
+                        "succeed": {"type": "boolean", "description": "是否成功"},
+                        "message": {"type": "string", "description": "响应消息"},
+                        "prize_id": {
+                            "type": "integer",
+                            "nullable": True,
+                            "description": "获得的奖品ID，空盒时为null",
+                        },
+                        "effect_code": {
+                            "type": "integer",
+                            "description": "效果代码：0=开出奖品，1=开出空盒，2=无效果",
+                            "enum": [0, 1, 2],
+                        },
+                        "compensate_YQPoint": {
+                            "type": "integer",
+                            "description": "空盒补偿的元气值，非空盒时为0",
+                        },
+                    },
+                },
             ),
-            400: OpenApiResponse(description="请求错误（如元气值不足、次数达上限等）"),
+            400: OpenApiResponse(
+                description="请求错误",
+                response={
+                    "type": "object",
+                    "properties": {
+                        "succeed": {"type": "boolean", "example": False},
+                        "message": {
+                            "type": "string",
+                            "examples": [
+                                "您的元气值不足，兑换失败!",
+                                "您兑换这款盲盒的次数已达上限!",
+                                "盲盒已售罄!",
+                            ],
+                        },
+                        "prize_id": {"type": "integer", "nullable": True, "example": None},
+                        "effect_code": {"type": "integer", "example": 2},
+                        "compensate_YQPoint": {"type": "integer", "example": 0},
+                    },
+                },
+            ),
+            401: OpenApiResponse(description="未认证或token无效"),
+            403: OpenApiResponse(description="非个人账号、无权限或未参加关联活动"),
             404: OpenApiResponse(description="奖池不存在"),
-            403: OpenApiResponse(description="无权限或未参加活动"),
         },
         tags=['元气商城'],
     )
@@ -265,9 +403,13 @@ class PoolsViewSet(viewsets.ViewSet):
 
     @extend_schema(
         summary="获取元气值余额",
-        description="获取当前用户的元气值余额",
+        description="获取当前认证用户的元气值（YQPoint）余额。元气值可用于兑换奖品、购买抽奖和盲盒。",
         responses={
-            200: OpenApiResponse(description="元气值余额"),
+            200: OpenApiResponse(
+                response=YQPointBalanceSerializer,
+                description="用户的元气值余额"
+            ),
+            401: OpenApiResponse(description="未认证或token无效"),
         },
         tags=['元气商城'],
     )
