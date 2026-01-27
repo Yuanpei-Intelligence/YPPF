@@ -455,7 +455,9 @@ def arrange_time(request: HttpRequest):
         assert start_week == 0 or start_week == 1
         assert has_longterm_permission or not is_longterm
     except:
-        return redirect(reverse('Appointment:index'))
+        return redirect(
+            message_url(wrong("预约参数不合法，请重新选择！"),
+                        reverse("Appointment:account")))
 
     dayrange_list, start_day, end_next_day = web_func.get_dayrange(
         day_offset=start_week * 7)
