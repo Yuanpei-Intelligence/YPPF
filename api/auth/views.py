@@ -23,6 +23,7 @@ from rest_framework.views import APIView
 from api.config import CONFIG
 from api.auth.serializers import WxBindSerializer, WxCodeSerializer
 from generic.models import UserWechatProfile, User
+from app.utils import get_person_or_org
 
 logger = logging.getLogger(__name__)
 
@@ -217,6 +218,10 @@ class WxBindView(APIView):
         user = authenticate(username=username, password=password)
         if user is None:
             raise AuthenticationFailed("账号或密码错误")
+        try:
+            classified = get_person_or_org(user)
+        except AssertionError:
+            raise ValidationError({"signed_openid": "该用户类型无法绑定微信"})
 
         with transaction.atomic():
             if (
