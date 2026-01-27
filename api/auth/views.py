@@ -1,5 +1,24 @@
 """
 REST APIs for WeChat mini program login/binding.
+
+逻辑是：
+每个微信只能绑定一个主用户，这个主用户可能是个人账户，也可能是组织账户
+如果是个人账户，可能还是一些组织的管理员，那么这个用户可以登录这些组织
+
+登录时，用一个wx open id，确定主用户，如果没给username参数，就登录主用户
+否则，检查username是否在主用户的可登录账户列表中，如果在，就登录该账户，否则返回错误
+
+返回的jwt token中，包含以下字段
+```
+token["sub"] = str(user.pk) # 用户ID （可能是个人账户ID，也可能是组织账户ID）
+token["username"] = user.username # 用户名
+token["name"] = user.name # 用户姓名
+token["account_id"] = account_id # 主账号 username
+token["iat"] = int(now.timestamp()) # 签发时间
+token["exp"] = int(exp.timestamp()) # 过期时间
+token["scope"] = "wx_miniapp" # 作用域
+```
+额外可以拓展权限字段，待实现
 """
 from __future__ import annotations
 
@@ -16,14 +35,16 @@ from django.db import transaction
 from drf_spectacular.utils import extend_schema, OpenApiResponse
 from rest_framework import status
 from rest_framework.exceptions import AuthenticationFailed, ValidationError
-from rest_framework.permissions import AllowAny
+from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from api.config import CONFIG
 from api.auth.serializers import WxBindSerializer, WxCodeSerializer
+from api.authentication import WxJWTAuthentication
 from generic.models import UserWechatProfile, User
 from app.utils import get_person_or_org
+from app.models import NaturalPerson, Organization, Position
 
 logger = logging.getLogger(__name__)
 
@@ -65,16 +86,24 @@ def _fetch_openid_from_wechat(code: str) -> Tuple[str | None, str | None]:
     return openid, None
 
 
-def _issue_jwt_for_user(user: User) -> str:
+def _issue_jwt_for_user(user: User, account_id: str | None = None) -> str:
     """
     Sign a short-lived JWT for the mini program client.
+    
+    Args:
+        user: 当前登录的用户
+        account_id: 主账号 username，如果为 None 则自动获取
     """
+    if account_id is None:
+        account_id = _get_account_id(user)
+
     now = datetime.now(timezone.utc)
     exp = now + timedelta(minutes=CONFIG.token_expire_minutes)
     token = AccessToken.for_user(user)
     token["sub"] = str(user.pk)
     token["username"] = user.username
     token["name"] = user.name
+    token["account_id"] = account_id
     token["iat"] = int(now.timestamp())
     token["exp"] = int(exp.timestamp())
     token["scope"] = "wx_miniapp"
@@ -99,6 +128,79 @@ def _unsign_openid(signed_openid: str) -> str:
     )
 
 
+def _get_account_id(user: User) -> str | None:
+    """
+    获取主账号 account_id（username）。
+    如果是个人账户，返回 user.username。
+    如果是组织账户，返回管理该组织的个人账户的 username（取第一个管理员）。
+    如果找不到管理员，返回 None。
+    """
+    if user.is_person():
+        return user.username
+    elif user.is_org():
+        try:
+            org = Organization.objects.get_by_user(user, activate=True)
+            # 找到管理该组织的个人账户（取第一个管理员）
+            positions = Position.objects.activated().filter(
+                org=org, is_admin=True
+            )
+            if positions.exists():
+                person = positions.first().person
+                return person.person_id.username
+        except Exception:
+            logger.warning(f"无法找到组织 {user.username} 的管理员")
+    return None
+
+
+def _get_loginable_accounts(account_id: str) -> list[dict]:
+    """
+    获取 account_id（username）对应的主账号可以登录的所有账户列表。
+    返回格式: [{"username": str, "name": str, "type": str}, ...]
+    """
+    try:
+        main_user = User.objects.get(username=account_id)
+    except User.DoesNotExist:
+        return []
+
+    accounts = []
+
+    # 添加主账号（个人账户）
+    if main_user.is_person():
+        accounts.append({
+            "username": main_user.username,
+            "name": main_user.name,
+            "type": "person"
+        })
+
+        # 获取该个人账户管理的所有组织账户
+        try:
+            person = NaturalPerson.objects.get_by_user(
+                main_user, activate=True)
+            positions = Position.objects.activated().filter(
+                person=person, is_admin=True
+            )
+            for position in positions:
+                org = position.org
+                org_user = org.get_user()
+                accounts.append({
+                    "username": org_user.username,
+                    "name": org.oname,
+                    "type": "org"
+                })
+        except Exception as exc:
+            logger.warning(f"获取个人账户 {account_id} 管理的组织时出错: {exc}")
+
+    return accounts
+
+
+def _check_user_in_accounts(username: str, account_id: str) -> bool:
+    """
+    检查 username 是否在 account_id（username）对应的可登录账户列表中。
+    """
+    accounts = _get_loginable_accounts(account_id)
+    return any(acc["username"] == username for acc in accounts)
+
+
 class WxCodeLoginView(APIView):
     """
     Accepts the temporary code from ``wx.login`` and returns either a JWT
@@ -109,7 +211,7 @@ class WxCodeLoginView(APIView):
 
     @extend_schema(
         summary="微信小程序登录",
-        description="使用微信小程序 wx.login() 返回的 code 换取 openid，如果已绑定则返回 JWT，否则返回 signed_openid 用于后续绑定",
+        description="使用微信小程序 wx.login() 返回的 code 换取 openid，如果已绑定则返回 JWT，否则返回 signed_openid 用于后续绑定。可选的 username 参数用于指定登录到哪个账户（必须在可登录账户列表中）。",
         request=WxCodeSerializer,
         responses={
             200: OpenApiResponse(
@@ -122,6 +224,7 @@ class WxCodeLoginView(APIView):
                         "token_type": {"type": "string", "description": "Bearer (仅当 status=bound 时存在)"},
                         "username": {"type": "string", "description": "用户名 (仅当 status=bound 时存在)"},
                         "name": {"type": "string", "description": "用户名称 (仅当 status=bound 时存在)"},
+                        "account_id": {"type": "string", "description": "主账号 username (仅当 status=bound 时存在)"},
                         "signed_openid": {"type": "string", "description": "签名的 openid (仅当 status=unbound 时存在)"},
                         "expires_in": {"type": "integer", "description": "signed_openid/token 过期时间（秒)"},
                     },
@@ -135,6 +238,7 @@ class WxCodeLoginView(APIView):
         serializer = WxCodeSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         code = serializer.validated_data["code"]
+        username = serializer.validated_data.get("username")  # 可选的 username 参数
 
         openid, error = _fetch_openid_from_wechat(code)
         if error:
@@ -145,21 +249,69 @@ class WxCodeLoginView(APIView):
             .filter(openid=openid)
             .first()
         )
+        # 绑定了微信账号
         if profile is not None:
-            token = _issue_jwt_for_user(profile.user)
-            return Response(
-                {
-                    "status": "bound",
-                    "token": token,
-                    "token_type": "Bearer",
-                    "expires_in": CONFIG.token_expire_minutes * 60, # in seconds
-                    "username": profile.user.username,
-                    "name": profile.user.name,
-                }
-            )
+            # 获取主账号绑定的用户
+            main_user = profile.user
 
+            # 如果指定了 username，需要验证权限
+            if username:
+                # 获取主账号的 account_id
+                main_account_id = _get_account_id(main_user)
+                if main_account_id is None:
+                    return Response(
+                        {"detail": "无法确定主账号"},
+                        status=status.HTTP_400_BAD_REQUEST
+                    )
+
+                # 检查 username 是否在可登录账户列表中
+                if not _check_user_in_accounts(username, main_account_id):
+                    return Response(
+                        {"detail": "没有登录到该账户的权限"},
+                        status=status.HTTP_403_FORBIDDEN
+                    )
+
+                # 获取要登录的用户
+                try:
+                    target_user = User.objects.get(username=username)
+                except User.DoesNotExist:
+                    return Response(
+                        {"detail": "指定的用户不存在"},
+                        status=status.HTTP_400_BAD_REQUEST
+                    )
+
+                # 使用目标用户签发 JWT，但 account_id 仍然是主账号的
+                token = _issue_jwt_for_user(
+                    target_user, account_id=main_account_id)
+                return Response(
+                    {
+                        "status": "bound",
+                        "token": token,
+                        "token_type": "Bearer",
+                        "expires_in": CONFIG.token_expire_minutes * 60,
+                        "username": target_user.username,
+                        "name": target_user.name,
+                        "account_id": main_account_id,
+                    }
+                )
+            else:
+                # 默认使用主账号登录
+                account_id = _get_account_id(main_user)
+                token = _issue_jwt_for_user(main_user, account_id=account_id)
+                return Response(
+                    {
+                        "status": "bound",
+                        "token": token,
+                        "token_type": "Bearer",
+                        "expires_in": CONFIG.token_expire_minutes * 60,
+                        "username": main_user.username,
+                        "name": main_user.name,
+                        "account_id": account_id,
+                    }
+                )
+
+        # 未绑定微信账号，返回临时 signed_openid 用于后续绑定
         signed_openid = _sign_openid(openid)
-        # print("signed:", signed_openid)
 
         return Response(
             {
@@ -239,14 +391,79 @@ class WxBindView(APIView):
                 profile.openid = openid
                 profile.save(update_fields=["openid"])
 
-        token = _issue_jwt_for_user(user)
+        account_id = _get_account_id(user)
+        token = _issue_jwt_for_user(user, account_id=account_id)
         return Response(
             {
                 "status": "bound",
                 "token": token,
                 "token_type": "Bearer",
                 "username": user.username,
+                "account_id": account_id,
                 "expires_in": CONFIG.token_expire_minutes * 60, # in seconds
             }
         )
 
+
+class GetMyAccountsView(APIView):
+    """
+    获取当前 account_id 的所有可以登录的用户列表。
+    需要 JWT 认证。
+    """
+
+    permission_classes = [IsAuthenticated]
+    authentication_classes = [WxJWTAuthentication]
+
+    @extend_schema(
+        summary="获取可登录账户列表",
+        description="返回当前主账号 account_id 的所有可以登录的用户列表，包括主账号和管理的组织账户",
+        responses={
+            200: OpenApiResponse(
+                description="成功响应",
+                response={
+                    "type": "object",
+                    "properties": {
+                        "account_id": {"type": "string", "description": "主账号 username"},
+                        "accounts": {
+                            "type": "array",
+                            "items": {
+                                "type": "object",
+                                "properties": {
+                                    "username": {"type": "string"},
+                                    "name": {"type": "string"},
+                                    "type": {"type": "string", "enum": ["person", "org"]},
+                                },
+                            },
+                        },
+                    },
+                },
+            ),
+            400: OpenApiResponse(description="请求错误，如无法确定主账号"),
+        },
+        tags=["微信小程序认证"],
+    )
+    def get(self, request):
+        # 尝试从 JWT token 中获取 account_id
+        account_id = None
+        if hasattr(request, 'auth') and request.auth:
+            # request.auth 是 Token 对象，可以通过 payload 属性访问
+            try:
+                account_id = request.auth.payload.get('account_id')
+            except (AttributeError, KeyError, TypeError):
+                pass
+
+        # 如果 token 中没有 account_id，尝试从当前用户获取
+        if account_id is None and request.user.is_authenticated:
+            account_id = _get_account_id(request.user)
+
+        if account_id is None:
+            return Response(
+                {"detail": "无法确定主账号"},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        accounts = _get_loginable_accounts(account_id)
+        return Response({
+            "account_id": account_id,
+            "accounts": accounts,
+        })

@@ -30,7 +30,8 @@ def _serialize_me(user: User) -> dict:
     try:
         classified = get_person_or_org(user)
     except AssertionError:
-        raise PermissionDenied("不存在对应的自然人或组织")
+        raise PermissionDenied("不存在对应的自然人或组织，该账号不可登录小程序")
+
 
     base = {
         "id": user.pk,
