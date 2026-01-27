@@ -278,6 +278,7 @@ class MyAppointmentsView(APIView):
                 renewable = (longterm_appoint.status == LongTermAppoint.Status.APPROVED
                              and datetime.now() > last_start - timedelta(weeks=2)
                              and datetime.now() < last_start)
+
                 data = {
                     'longterm_id': longterm_appoint.pk,
                     'appoint': appoint_info,
@@ -1012,7 +1013,7 @@ class CheckoutAppointView(APIView):
         Rid = data['Rid']
         weekday = data['weekday']
         startid = data['startid']
-        endid = data['endid']
+        endid = data['endid'] - 1
         is_longterm = data.get('longterm', False)
         start_week = data.get('start_week', 0)
         is_interview = data.get('interview', False)
