@@ -15,4 +15,14 @@ class Migration(migrations.Migration):
             name="course_permission",
             field=models.BooleanField(default=False, verbose_name="选课权限"),
         ),
+        migrations.AddField(
+            model_name="naturalperson",
+            name="underground_permission",
+            field=models.BooleanField(default=False, verbose_name="地下室权限"),
+        ),
+        migrations.AddField(
+            model_name="naturalperson",
+            name="credit_permission",
+            field=models.BooleanField(default=False, verbose_name="获得书院课学时权限"),
+        ),
     ]
