@@ -8,6 +8,12 @@ class WxCodeSerializer(serializers.Serializer):
     """Validate the code returned by ``wx.login``."""
 
     code = serializers.CharField(max_length=128, help_text="wx.login temporary code")
+    username = serializers.CharField(
+        max_length=150, 
+        required=False, 
+        allow_blank=True,
+        help_text="可选，指定要登录的用户名（必须在可登录账户列表中）"
+    )
 
 
 class WxBindSerializer(serializers.Serializer):

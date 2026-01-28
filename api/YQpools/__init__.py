@@ -1,0 +1,3 @@
+﻿"""
+YQpools API module.
+"""
