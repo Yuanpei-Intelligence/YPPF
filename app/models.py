@@ -442,28 +442,7 @@ class NaturalPerson(models.Model):
         else:
             assert self.stu_id_dbonly == self.person_id.username, "学号不匹配！"
         
-        # 根据身份和状态设置默认权限
-        if self.identity == NaturalPerson.Identity.TEACHER:
-            # 老师，有选课权限、有地下室权限，无获得书院课学时权限
-            self.course_permission = True
-            self.underground_permission = True
-            self.credit_permission = False
-        elif self.identity == NaturalPerson.Identity.STUDENT:
-            if self.status in [NaturalPerson.GraduateStatus.UNDERGRADUATED, NaturalPerson.GraduateStatus.POSTPONED]:
-                # 在读和延毕同学：三个权限都有
-                self.course_permission = True
-                self.underground_permission = True
-                self.credit_permission = True
-            elif self.status == NaturalPerson.GraduateStatus.INSTRUCTOR:
-                # 住宿辅导员，有选课权限、有地下室权限，无获得书院课学时权限
-                self.course_permission = True
-                self.underground_permission = True
-                self.credit_permission = False
-            else:
-                # 休学和已毕业，三个权限都没有
-                self.course_permission = False
-                self.underground_permission = False
-                self.credit_permission = False
+
         
         super().save(*args, **kwargs)
 

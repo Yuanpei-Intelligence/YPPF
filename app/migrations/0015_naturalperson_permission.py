@@ -2,6 +2,33 @@
 
 from django.db import migrations, models
 
+# 默认权限配置
+def set_default_permissions(apps, schema_editor):
+    NaturalPerson = apps.get_model('app', 'NaturalPerson')
+    for person in NaturalPerson.objects.all():
+        if person.identity == NaturalPerson.Identity.TEACHER:
+            # 老师，有选课权限、有地下室权限，无获得书院课学时权限
+            person.course_permission = True
+            person.underground_permission = True
+            person.credit_permission = False
+        elif person.identity == NaturalPerson.Identity.STUDENT:
+            if person.status in [NaturalPerson.GraduateStatus.UNDERGRADUATED, NaturalPerson.GraduateStatus.POSTPONED]:
+                # 在读和延毕同学：三个权限都有
+                person.course_permission = True
+                person.underground_permission = True
+                person.credit_permission = True
+            elif person.status == NaturalPerson.GraduateStatus.INSTRUCTOR:
+                # 住宿辅导员，有选课权限、有地下室权限，无获得书院课学时权限
+                person.course_permission = True
+                person.underground_permission = True
+                person.credit_permission = False
+            else:
+                # 休学和已毕业，三个权限都没有
+                person.course_permission = False
+                person.underground_permission = False
+                person.credit_permission = False
+        person.save()
+
 
 class Migration(migrations.Migration):
 
@@ -25,4 +52,5 @@ class Migration(migrations.Migration):
             name="credit_permission",
             field=models.BooleanField(default=False, verbose_name="获得书院课学时权限"),
         ),
+        migrations.RunPython(set_default_permissions),
     ]
