@@ -28,7 +28,7 @@ from Appointment.extern.wechat import MessageType, notify_appoint
 from Appointment.utils.utils import get_conflict_appoints, get_total_appoint_time, get_overlap_appoints
 from Appointment.utils.log import logger, get_user_logger
 import Appointment.utils.web_func as web_func
-from Appointment.utils.identity import get_auditor_ids, get_avatar, get_participant
+from Appointment.utils.identity import get_auditor_ids, get_avatar, get_or_create_participant
 from Appointment.utils.identity import get_member_ids
 from Appointment.appoint.manage import cancel_appoint, create_appoint, create_require_num
 from Appointment import jobs
@@ -231,7 +231,7 @@ class MyAppointmentsView(APIView):
         """Get user's appointment information."""
         Pid = request.user.username
         my_info = web_func.get_user_info(Pid)
-        participant = get_participant(Pid)
+        participant = get_or_create_participant(request)
         if participant.agree_time is not None:
             my_info['agree_time'] = str(participant.agree_time)
 
@@ -320,7 +320,7 @@ class MyViolationsView(APIView):
         """Get user's violation records."""
         Pid = request.user.username
         my_info = web_func.get_user_info(Pid)
-        participant = get_participant(Pid)
+        participant = get_or_create_participant(request)
         if participant.agree_time is not None:
             my_info['agree_time'] = str(participant.agree_time)
 
@@ -441,7 +441,7 @@ class AgreementView(APIView):
     )
     def get(self, request):
         """Get agreement information."""
-        participant = get_participant(request.user)
+        participant = get_or_create_participant(request)
         response_data = {}
         if participant.agree_time is not None:
             response_data['agree_time'] = str(participant.agree_time)
@@ -473,8 +473,9 @@ class AgreementView(APIView):
     def post(self, request):
         """Sign the agreement."""
         try:
+            participant = get_or_create_participant(request)
             with transaction.atomic():
-                participant = get_participant(request.user, update=True)
+                participant = Participant.objects.select_for_update().get(pk=participant.pk)
                 participant.agree_time = datetime.now().date()
                 participant.save()
             return Response({
@@ -518,7 +519,7 @@ class ArrangeTimeView(APIView):
     )
     def get(self, request):
         """Get appointment time arrangement for a room."""
-        has_longterm_permission = get_participant(request.user).longterm
+        has_longterm_permission = get_or_create_participant(request).longterm
         allow_overlap = CONFIG.allow_overlap
         max_appoint_time = int(CONFIG.max_appoint_time.total_seconds() // 3600)
         is_person = request.user.is_person()
@@ -560,7 +561,7 @@ class ArrangeTimeView(APIView):
         available_hours = {}
         for day in [start_day + timedelta(days=i) for i in range(7)]:
             used_time = get_total_appoint_time(
-                get_participant(request.user), day)
+                get_or_create_participant(request), day)
             available_hour = CONFIG.max_appoint_time - used_time
             available_hours[day.strftime('%a')] = int(
                 available_hour.total_seconds() // 3600)
@@ -921,7 +922,7 @@ class CheckoutAppointView(APIView):
         except Room.DoesNotExist:
             raise NotFound(f"房间号{Rid}不存在")
 
-        applicant = get_participant(request.user, raise_except=True)
+        applicant = get_or_create_participant(request)
         has_longterm_permission = applicant.longterm
         has_interview_permission = not (applicant.longterm or applicant.hidden)
         has_interview_permission &= Rid in Room.objects.interview_room_ids()
@@ -1016,7 +1017,7 @@ class CheckoutAppointView(APIView):
         students = data.get('students', [])
 
         # Get applicant
-        applicant = get_participant(request.user, raise_except=True)
+        applicant = get_or_create_participant(request)
         has_longterm_permission = applicant.longterm
         has_interview_permission = not (applicant.longterm or applicant.hidden)
         has_interview_permission &= Rid in Room.objects.interview_room_ids()

@@ -65,6 +65,28 @@ def get_participant(user: User | str, update: bool = False,
         return None
 
 
+def get_or_create_participant(request: UserRequest) -> Participant:
+    '''通过User对象或学号获取对应的参与人对象，如果不存在则创建
+    Args:
+    - user: User对象或学号
+    Returns:
+    - participant: 满足participant.Sid=user, 不存在时创建并返回新对象
+    Raises:
+    - Exception: 当不允许创建，或者创建失败时抛出异常
+    '''
+    participant = get_participant(request.user, raise_except=False)
+    if participant is not None:
+        return participant
+    if not CONFIG.allow_newstu_appoint:
+        raise Exception('不允许创建地下室账户')
+
+    participant = _create_account(request)
+
+    if participant is None:
+        raise Exception('创建地下室账户失败')
+    return participant
+
+
 def _arg2user(participant: Participant | User) -> User:
     '''把范围内的参数转化为User对象'''
     if isinstance(participant, Participant):
