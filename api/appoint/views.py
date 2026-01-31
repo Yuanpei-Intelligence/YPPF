@@ -454,13 +454,7 @@ class AgreementView(APIView):
     @extend_schema(
         summary="签署协议",
         description="用户签署协议",
-        request={
-            "type": "object",
-            "properties": {
-                "type": {"type": "string", "enum": ["confirm"]},
-            },
-            "required": ["type"],
-        },
+        request=None,
         responses={
             200: OpenApiResponse(
                 description="协议签署成功",
@@ -478,19 +472,16 @@ class AgreementView(APIView):
     )
     def post(self, request):
         """Sign the agreement."""
-        if request.data.get('type', '') == 'confirm':
-            try:
-                with transaction.atomic():
-                    participant = get_participant(request.user, update=True)
-                    participant.agree_time = datetime.now().date()
-                    participant.save()
-                return Response({
-                    "message": "协议签署成功!",
-                }, status=status.HTTP_200_OK)
-            except:
-                raise ValidationError("签署失败，请重试！")
-        else:
-            raise ValidationError("Invalid request type")
+        try:
+            with transaction.atomic():
+                participant = get_participant(request.user, update=True)
+                participant.agree_time = datetime.now().date()
+                participant.save()
+            return Response({
+                "message": "协议签署成功!",
+            }, status=status.HTTP_200_OK)
+        except:
+            raise ValidationError("签署失败，请重试！")
 
 
 class ArrangeTimeView(APIView):
