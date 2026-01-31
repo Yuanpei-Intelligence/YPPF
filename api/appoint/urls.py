@@ -19,6 +19,7 @@ from api.appoint.views import (
 app_name = "appoint"
 
 router = DefaultRouter()
+# 取消和续约
 router.register(r'appointments', AppointViewSet, basename='appointment')
 
 urlpatterns = [

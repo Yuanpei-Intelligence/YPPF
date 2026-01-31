@@ -15,6 +15,10 @@ from app.models import NaturalPerson
 from app.utils import get_user_wallpaper, get_person_or_org
 from generic.models import User
 
+from app.YQPoint_utils import add_signin_point
+from django.db import transaction
+from datetime import datetime
+
 
 def _serialize_me(user: User) -> dict:
     """
@@ -26,8 +30,8 @@ def _serialize_me(user: User) -> dict:
     try:
         classified = get_person_or_org(user)
     except AssertionError:
-        raise PermissionDenied("不存在对应的自然人或组织")
-    classified = get_person_or_org(user)
+        raise PermissionDenied("不存在对应的自然人或组织，该账号不可登录小程序")
+
 
     base = {
         "id": user.pk,
@@ -122,3 +126,38 @@ class MeView(APIView):
         return Response(_serialize_me(request.user))
 
 
+class DailyLoginView(APIView):
+    """
+    Daily login, add YQPoint for user if not logged in today
+    """
+
+    permission_classes = [IsAuthenticated]
+    authentication_classes = [WxJWTAuthentication]
+
+    @extend_schema(
+        summary="每日登录",
+        description="每日登录，如果用户今天未登录，则添加 YQPoint",
+        responses={
+            200: OpenApiResponse(description="显示签到信息", response={
+                "type": "object",
+                "properties": {
+                    "message": {"type": "string"},
+                },
+            }),
+            401: OpenApiResponse(description="未登录"),
+        },
+        tags=["用户"],
+    )
+    def post(self, request):
+        nowtime = datetime.now()
+        # 今天第一次访问 welcome 界面，积分增加
+        if request.user.is_person():
+            with transaction.atomic():
+                np = NaturalPerson.objects.get_by_user(
+                    request.user, update=True)
+                if np.last_time_login is None or np.last_time_login.date() != nowtime.date():
+                    np.last_time_login = nowtime
+                    np.save()
+                    n, notice = add_signin_point(request.user)
+                    return Response({"message": notice}, status=200)
+        return Response({"message": "今日已登录"}, status=200)
