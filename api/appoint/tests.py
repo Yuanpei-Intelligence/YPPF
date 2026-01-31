@@ -95,7 +95,7 @@ class AppointAPITestCasePerson(APITestCase):
         self.assertIsInstance(response.data, list)
         # Should find the other user
         if len(response.data) > 0:
-            self.assertIn('Sid__name', response.data[0])
+            self.assertIn('name', response.data[0])
 
     def test_search_users_endpoint_empty_query(self):
         """Test search-users endpoint with empty query."""
@@ -110,7 +110,7 @@ class AppointAPITestCasePerson(APITestCase):
         self.assertEqual(response.status_code, http_status.HTTP_200_OK)
         # Current user should not be in results
         for user in response.data:
-            self.assertNotEqual(user.get('Sid__id'), self.user.id)
+            self.assertNotEqual(user.get('id'), self.user.id)
 
     def test_search_users_endpoint_respects_limit(self):
         """Test search-users endpoint respects limit parameter."""
@@ -237,7 +237,7 @@ class AppointAPITestCaseOrg(APITestCase):
         self.assertIsInstance(response.data, list)
         # Should find the other user
         if len(response.data) > 0:
-            self.assertIn('Sid__name', response.data[0])
+            self.assertIn('name', response.data[0])
 
     def test_search_users_endpoint_empty_query(self):
         """Test search-users endpoint with empty query."""
@@ -252,7 +252,7 @@ class AppointAPITestCaseOrg(APITestCase):
         self.assertEqual(response.status_code, http_status.HTTP_200_OK)
         # Current user should not be in results
         for user in response.data:
-            self.assertNotEqual(user.get('Sid__id'), self.user.id)
+            self.assertNotEqual(user.get('id'), self.user.id)
 
     def test_search_users_endpoint_respects_limit(self):
         """Test search-users endpoint respects limit parameter."""

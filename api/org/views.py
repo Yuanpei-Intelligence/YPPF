@@ -14,7 +14,7 @@ from drf_spectacular.utils import extend_schema, OpenApiResponse
 from django.db import transaction
 
 from api.authentication import WxJWTAuthentication
-from api.group.serializers import (
+from api.org.serializers import (
     SubscriptionListResponseSerializer,
     SubscribeStatusUpdateSerializer,
     OrganizationTypeWithOrgsSerializer,
@@ -27,14 +27,14 @@ from app.utils import get_person_or_org
 class SubscriptionListView(APIView):
     """
     List all organizations grouped by type with subscription status.
-    
+
     This API returns all active organizations along with the current user's
     subscription status for each organization.
     """
-    
+
     permission_classes = [IsAuthenticated]
     authentication_classes = [WxJWTAuthentication]
-    
+
     @extend_schema(
         summary="获取小组订阅列表",
         description="获取所有激活的小组列表，按类型分组，包含当前用户的订阅状态",
@@ -51,20 +51,20 @@ class SubscriptionListView(APIView):
         user = request.user
         is_person = user.is_person()
         readonly = not is_person
-        
+
         me = get_person_or_org(user)
-        
+
         # Get all organization types ordered by otype_id descending
         organization_types = list(
             OrganizationType.objects.all().order_by('-otype_id')
         )
-        
+
         # Get all active organizations with prefetch
         organizations = list(
             Organization.objects.activated()
             .select_related('otype', 'organization_id')
         )
-        
+
         # Get unsubscribe set for the current user
         if is_person:
             unsubscribe_set = set(
@@ -79,18 +79,18 @@ class SubscriptionListView(APIView):
                     'organization_id__username', flat=True
                 )
             )
-        
+
         # Group organizations by type
         otype_infos_dict = {otype: [] for otype in organization_types}
         for org in organizations:
             otype_infos_dict[org.otype].append(org)
-        
+
         # Serialize the data
         serializer_context = {
             'request': request,
             'unsubscribe_set': unsubscribe_set,
         }
-        
+
         result = []
         for otype in organization_types:
             orgs = otype_infos_dict[otype]
@@ -103,7 +103,7 @@ class SubscriptionListView(APIView):
                 'allow_unsubscribe': otype.allow_unsubscribe,
                 'organizations': org_serializer.data,
             })
-        
+
         return Response({
             'is_person': is_person,
             'readonly': readonly,
@@ -114,15 +114,15 @@ class SubscriptionListView(APIView):
 class SubscriptionUpdateView(APIView):
     """
     Update subscription status for an organization or organization type.
-    
+
     Allows users to subscribe/unsubscribe from:
     - A single organization (by username)
     - All organizations of a specific type (by otype_id)
     """
-    
+
     permission_classes = [IsAuthenticated]
     authentication_classes = [WxJWTAuthentication]
-    
+
     @extend_schema(
         summary="更新小组订阅状态",
         description=(
@@ -149,14 +149,14 @@ class SubscriptionUpdateView(APIView):
     def post(self, request):
         if not request.user.is_person():
             raise PermissionDenied("小组账号不支持订阅操作")
-        
+
         serializer = SubscribeStatusUpdateSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         data = serializer.validated_data
-        
+
         me = get_person_or_org(request.user)
         subscribe = data['status']  # True = subscribe, False = unsubscribe
-        
+
         with transaction.atomic():
             if 'id' in data:
                 # Subscribe/unsubscribe a single organization
@@ -167,7 +167,7 @@ class SubscriptionUpdateView(APIView):
                     )
                 except Organization.DoesNotExist:
                     raise ValidationError({"id": "小组不存在"})
-                
+
                 if subscribe:
                     me.unsubscribe_list.remove(org)
                     message = f"成功订阅 {org.oname}"
@@ -176,7 +176,7 @@ class SubscriptionUpdateView(APIView):
                         raise PermissionDenied("该类型的小组不允许取消订阅")
                     me.unsubscribe_list.add(org)
                     message = f"成功取消订阅 {org.oname}"
-            
+
             elif 'otype' in data:
                 # Subscribe/unsubscribe all organizations of a type
                 otype_id = data['otype']
@@ -184,9 +184,10 @@ class SubscriptionUpdateView(APIView):
                     otype = OrganizationType.objects.get(otype_id=otype_id)
                 except OrganizationType.DoesNotExist:
                     raise ValidationError({"otype": "小组类型不存在"})
-                
-                org_list = Organization.objects.filter(otype__otype_id=otype_id)
-                
+
+                org_list = Organization.objects.filter(
+                    otype__otype_id=otype_id)
+
                 if subscribe:
                     # Remove all organizations of this type from unsubscribe list
                     unsubscribed_list = me.unsubscribe_list.filter(
@@ -202,9 +203,9 @@ class SubscriptionUpdateView(APIView):
                     for org in org_list:
                         me.unsubscribe_list.add(org)
                     message = f"成功取消订阅所有 {otype.otype_name} 类型的小组"
-            
+
             me.save()
-        
+
         return Response({
             "success": True,
             "message": message,

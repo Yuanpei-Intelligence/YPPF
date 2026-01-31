@@ -40,13 +40,15 @@ urlpatterns = [
     path("v2/appoint/", include("api.appoint.urls")),
     path("v2/library/", include("api.library.urls")),
     path("v2/YQpools/", include("api.YQpools.urls")),
-    path("v2/group/", include("api.group.urls")),
+    path("v2/org/", include("api.org.urls")),
 ]
 
 if settings.DEBUG:
     # API documentation
     urlpatterns += [
         path("schema/", SpectacularAPIView.as_view(), name="schema"),
-        path("docs/", SpectacularSwaggerView.as_view(url_name="api:schema"), name="swagger-ui"),
-        path("docs/redoc/", SpectacularRedocView.as_view(url_name="api:schema"), name="redoc"),
+        path("docs/", SpectacularSwaggerView.as_view(url_name="api:schema"),
+             name="swagger-ui"),
+        path("docs/redoc/",
+             SpectacularRedocView.as_view(url_name="api:schema"), name="redoc"),
     ]
