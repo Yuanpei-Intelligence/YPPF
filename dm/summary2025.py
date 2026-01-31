@@ -29,6 +29,15 @@ func_room_list = ['B217', 'B220', 'B221', 'B207',
 # 本年度书院课「课程 id -> 选中人数/预选人数 比例」缓存，在 handle 中先调用 cal_select_course_ratio() 写入
 _select_course_ratio_cache = None
 
+# 所有用户「用户名 -> 刷卡或预约总天数」缓存，在处理个人数据时收集
+_underground_usage_days_cache = {}
+
+# 所有用户「用户名 -> 个人刷卡次数最多的自习室」缓存，在处理个人数据时收集
+_study_room_top_cache = {}
+
+# 所有用户「用户名 -> 最多学时书院课」缓存，在处理个人数据时收集
+_most_hours_course_cache = {}
+
 # 功能性函数
 
 
@@ -718,7 +727,219 @@ def get_person_yqpoint_income(person: 'NaturalPerson'):
 
 # 定义子模块数据处理函数(排名部分)（与其他用户对比的部分都放这个里面）
 
+# 定义子模块数据处理函数(排名部分)
+
+def calculate_underground_usage_percentile():
+    """
+    计算每个用户有刷卡或预约记录的总天数超越其他用户的百分比。
+    使用预缓存的 _underground_usage_days_cache 数据。
+    返回: {username: percentile} 字典，percentile 为 0-100 的浮点数，表示超越了多少百分比的其他用户。
+    """
+    global _underground_usage_days_cache
+    
+    if not _underground_usage_days_cache:
+        return {}
+    
+    # 将所有用户按天数排序（从低到高）
+    sorted_users = sorted(_underground_usage_days_cache.items(), key=lambda x: x[1])
+    total_users = len(sorted_users)
+    
+    if total_users == 0:
+        return {}
+    
+    # 计算每个用户的百分比排名
+    # percentile = (小于该用户天数的用户数) / 总用户数 * 100
+    result = {}
+    
+    # 使用字典记录每个天数对应的用户列表（处理相同天数的情况）
+    days_to_users = defaultdict(list)
+    for username, days in sorted_users:
+        days_to_users[days].append(username)
+    
+    # 计算每个用户的百分比
+    users_below = 0  # 当前天数以下的用户数
+    for days in sorted(set(_underground_usage_days_cache.values())):
+        users_with_this_days = days_to_users[days]
+        # 对于相同天数的用户，使用相同的百分比（取中位数）
+        # 百分比 = (users_below + users_with_this_days - 1) / total_users * 100
+        percentile = (users_below / total_users) * 100 if total_users > 1 else 0
+        
+        for username in users_with_this_days:
+            result[username] = round(percentile, 2)
+        
+        users_below += len(users_with_this_days)
+    
+    return result
+
+# 计算每个用户的 本年度“个人刷卡天数最多的自习室”记录相同的用户数
+
+
+def calculate_same_study_room_top_count():
+    """
+    计算每个用户的"本年度个人刷卡次数最多的自习室"记录相同的用户数。
+    使用预缓存的 _study_room_top_cache 数据。
+    先按自习室统计用户数（自习室 -> 用户列表），再遍历用户计算相同用户数。
+    返回: {username: count} 字典，count 为选择相同自习室的其他用户数（不包括自己）。
+    """
+    global _study_room_top_cache
+    
+    if not _study_room_top_cache:
+        return {}
+    
+    # 按自习室统计用户数：自习室 -> 用户列表
+    room_to_users = defaultdict(list)
+    for username, room in _study_room_top_cache.items():
+        if room is not None:  # 只统计有自习室记录的用户
+            room_to_users[room].append(username)
+    
+    # 计算每个用户有多少其他用户选择了相同的自习室
+    result = {}
+    for username, room in _study_room_top_cache.items():
+        if room is None:
+            # 如果没有自习室记录，相同用户数为0
+            result[username] = 0
+        else:
+            # 相同自习室的用户数 - 1（排除自己）
+            same_room_users = room_to_users[room]
+            result[username] = len(same_room_users) - 1
+    
+    return result
+
+# 计算每个用户的 “最多学时书院课” 与自己相同的用户数
+
+
+def calculate_same_most_hours_course_count():
+    """
+    计算每个用户的"最多学时书院课"与自己相同的用户数。
+    使用预缓存的 _most_hours_course_cache 数据。
+    先按课程名统计用户数（课程名 -> 用户列表），再遍历用户计算相同用户数。
+    返回: {username: count} 字典，count 为选择相同课程的其他用户数（不包括自己）。
+    """
+    global _most_hours_course_cache
+    
+    if not _most_hours_course_cache:
+        return {}
+    
+    # 按课程名统计用户数：课程名 -> 用户列表
+    course_to_users = defaultdict(list)
+    for username, course_name in _most_hours_course_cache.items():
+        if course_name is not None:  # 只统计有课程记录的用户
+            course_to_users[course_name].append(username)
+    
+    # 计算每个用户有多少其他用户选择了相同的课程
+    result = {}
+    for username, course_name in _most_hours_course_cache.items():
+        if course_name is None:
+            # 如果没有课程记录，相同用户数为0
+            result[username] = 0
+        else:
+            # 相同课程的用户数 - 1（排除自己）
+            same_course_users = course_to_users[course_name]
+            result[username] = len(same_course_users) - 1
+    
+    return result
+
+# 计算 a.个人账号预约中，最经常一起预约的人、一起预约次数
+#      b.小组账号预约中，最经常一起预约的人、一起预约次数
+# 方法：先取出时间段内所有的预约记录，根据预约申请者的类型判断是个人账户预约还是小组账户预约，然后对于每个参加本次预约的用户，遍历除了自己以外的其他参与者来更新自己的键值对表
+# 每个用户分别维护一系列键值对，记录其他人和自己一起出现在预约中的次数，最后对每个用户的键值对表排序得到结果
+
+def calculate_most_frequent_co_appoint():
+    """
+    计算每个用户最经常一起预约的人和一起预约次数。
+    分别统计个人账号预约和小组账号预约两种情况。
+    
+    方法：
+    1. 获取时间段内所有预约记录
+    2. 根据预约申请者(major_student.Sid.utype)判断是个人账户预约还是小组账户预约
+    3. 对于每个参与者，遍历除了自己以外的其他参与者来更新自己的键值对表
+    4. 每个用户分别维护键值对，记录其他人和自己一起出现在预约中的次数
+    5. 对每个用户的键值对表排序得到结果
+    
+    返回: {
+        'personal': {username: {'co_user': 用户名, 'count': 次数}},
+        'organization': {username: {'co_user': 用户名, 'count': 次数}}
+    }
+    """
+    # 获取时间段内所有预约记录
+    appoints = Appoint.objects.filter(
+        Astart__gt=SUMMARY_SEM_START,
+        Astart__lt=SUMMARY_SEM_END
+    ).select_related('major_student__Sid').prefetch_related('students__Sid')
+    
+    # 个人账户预约：用户 -> {其他用户: 一起预约次数}
+    personal_co_appoint_dict = defaultdict(lambda: defaultdict(int))
+    # 小组账户预约：用户 -> {其他用户: 一起预约次数}
+    org_co_appoint_dict = defaultdict(lambda: defaultdict(int))
+    
+    for appoint in appoints:
+        # 判断是个人账户预约还是小组账户预约
+        if appoint.major_student is None:
+            continue
+        
+        appointer_user = appoint.major_student.Sid
+        if appointer_user is None:
+            continue
+        
+        is_personal = appointer_user.utype == User.Type.PERSON
+        
+        # 获取所有参与者
+        participants = appoint.students.all()
+        participant_usernames = []
+        for participant in participants:
+            if participant.Sid is not None:
+                participant_usernames.append(participant.Sid.username)
+        
+        # 对于每个参与者，遍历除了自己以外的其他参与者
+        for username in participant_usernames:
+            co_appoint_dict = personal_co_appoint_dict if is_personal else org_co_appoint_dict
+            
+            for co_username in participant_usernames:
+                if co_username != username:
+                    co_appoint_dict[username][co_username] += 1
+    
+    # 对每个用户的键值对表排序，得到最经常一起预约的人和次数
+    result_personal = {}
+    result_org = {}
+    
+    for username, co_dict in personal_co_appoint_dict.items():
+        if co_dict:
+            # 按次数排序，次数相同则按用户名排序
+            sorted_co = sorted(co_dict.items(), key=lambda x: (-x[1], x[0]))
+            co_user, count = sorted_co[0]
+            result_personal[username] = {
+                'co_user': co_user,
+                'count': count,
+            }
+        else:
+            result_personal[username] = {
+                'co_user': None,
+                'count': 0,
+            }
+    
+    for username, co_dict in org_co_appoint_dict.items():
+        if co_dict:
+            # 按次数排序，次数相同则按用户名排序
+            sorted_co = sorted(co_dict.items(), key=lambda x: (-x[1], x[0]))
+            co_user, count = sorted_co[0]
+            result_org[username] = {
+                'co_user': co_user,
+                'count': count,
+            }
+        else:
+            result_org[username] = {
+                'co_user': None,
+                'count': 0,
+            }
+    
+    return {
+        'personal': result_personal,
+        'organization': result_org,
+    }
+
+
 # 定义子模块数据处理函数(总统计数据部分)
+
 
 # 地下室年度使用情况总览（自习室刷卡总次数，研讨室预约总次数，功能房预约总次数）
 
@@ -825,6 +1046,12 @@ class Command(BaseCommand):
         # 依次获取每个人的数据，并写入到json文件中 （ raw_data/summary2025/ 目录下 summary2025.json 文件中）
         # ========== 个人信息部分 ==========
         self.stdout.write("开始导出个人信息数据...")
+        # 初始化缓存
+        global _underground_usage_days_cache, _study_room_top_cache, _most_hours_course_cache
+        _underground_usage_days_cache = {}
+        _study_room_top_cache = {}
+        _most_hours_course_cache = {}
+        
         person_data = {}
         user_count = 0
         
@@ -849,13 +1076,21 @@ class Command(BaseCommand):
                 person_info.update(register_info)
             
             # 地下室使用总览
-            person_info['underground_usage_days'] = get_person_underground_usage(person)
+            underground_usage_days = get_person_underground_usage(person)
+            person_info['underground_usage_days'] = underground_usage_days
+            # 缓存用户名和天数，用于后续排名计算
+            _underground_usage_days_cache[user.username] = underground_usage_days
+            
             person_info['first_underground_record'] = get_person_first_underground_record(person)
             person_info['last_underground_record'] = get_person_last_underground_record(person)
             person_info['longest_underground_usage'] = get_person_longest_underground_usage(person)
             
             # 自习室使用情况
-            person_info['study_room_usage'] = get_person_study_room_usage(person)
+            study_room_usage = get_person_study_room_usage(person)
+            person_info['study_room_usage'] = study_room_usage
+            # 缓存用户名和最多的自习室，用于后续排名计算
+            global _study_room_top_cache
+            _study_room_top_cache[user.username] = study_room_usage.get('study_room_top')
             
             # 研讨室和功能房使用情况
             person_info['talk_and_func_room_usage'] = get_person_talk_and_func_room_usage(person)
@@ -870,7 +1105,11 @@ class Command(BaseCommand):
             person_info['org_usage'] = get_person_org_usage(person)
             
             # 书院课程参与情况
-            person_info['course_usage'] = get_person_course_usage(person)
+            course_usage = get_person_course_usage(person)
+            person_info['course_usage'] = course_usage
+            # 缓存用户名和最多学时课程，用于后续排名计算
+            global _most_hours_course_cache
+            _most_hours_course_cache[user.username] = course_usage.get('most_hours_course')
             
             # 元气值收入
             person_info['yqpoint_income'] = get_person_yqpoint_income(person)
@@ -887,11 +1126,57 @@ class Command(BaseCommand):
         self.stdout.write(self.style.SUCCESS(f"个人信息数据已写入: {person_file} (共 {user_count} 个用户)"))
         
         # ========== 排名数据部分 ==========
-        # TODO: 排名逻辑待实现
-        self.stdout.write("排名数据部分待实现...")
+        self.stdout.write("开始计算排名数据...")
+        rank_data = {}
+        
+        # 计算每个用户有刷卡或预约记录的总天数超越其他用户的百分比
+        underground_percentile = calculate_underground_usage_percentile()
+        
+        # 计算每个用户的"个人刷卡次数最多的自习室"记录相同的用户数
+        same_study_room_top_count = calculate_same_study_room_top_count()
+        
+        # 计算每个用户的"最多学时书院课"与自己相同的用户数
+        same_most_hours_course_count = calculate_same_most_hours_course_count()
+        
+        # 计算每个用户最经常一起预约的人和一起预约次数（个人账户和小组账户分别统计）
+        most_frequent_co_appoint = calculate_most_frequent_co_appoint()
+        
+        # 将数据组织为 用户名 -> 数据名 -> 值 的结构
+        all_usernames = (
+            set(underground_percentile.keys()) |
+            set(same_study_room_top_count.keys()) |
+            set(same_most_hours_course_count.keys()) |
+            set(most_frequent_co_appoint['personal'].keys()) |
+            set(most_frequent_co_appoint['organization'].keys())
+        )
+        
+        for username in all_usernames:
+            if username not in rank_data:
+                rank_data[username] = {}
+            
+            if username in underground_percentile:
+                rank_data[username]['underground_usage_percentile'] = underground_percentile[username]
+            
+            if username in same_study_room_top_count:
+                rank_data[username]['same_study_room_top_count'] = same_study_room_top_count[username]
+            
+            if username in same_most_hours_course_count:
+                rank_data[username]['same_most_hours_course_count'] = same_most_hours_course_count[username]
+            
+            # 个人账号预约中最经常一起预约的人
+            if username in most_frequent_co_appoint['personal']:
+                rank_data[username]['personal_most_frequent_co_appoint'] = most_frequent_co_appoint['personal'][username]
+            
+            # 小组账号预约中最经常一起预约的人
+            if username in most_frequent_co_appoint['organization']:
+                rank_data[username]['organization_most_frequent_co_appoint'] = most_frequent_co_appoint['organization'][username]
+        
+        # 按用户名排序
+        sorted_rank_data = dict(sorted(rank_data.items()))
+        
         rank_file = 'raw_data/summary2025/rank2025.json'
         with open(rank_file, 'w', encoding='utf-8') as f:
-            json.dump({}, f, ensure_ascii=False, indent=2)
-        self.stdout.write(self.style.SUCCESS(f"排名数据文件已创建: {rank_file}"))
+            json.dump(sorted_rank_data, f, ensure_ascii=False, indent=2)
+        self.stdout.write(self.style.SUCCESS(f"排名数据已写入: {rank_file}"))
         
         self.stdout.write(self.style.SUCCESS("\n所有数据导出完成！"))
