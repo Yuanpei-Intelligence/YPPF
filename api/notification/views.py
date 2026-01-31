@@ -36,6 +36,7 @@ class NotificationViewSet(viewsets.ViewSet):
     """
     permission_classes = [IsAuthenticated]
     authentication_classes = [WxJWTAuthentication]
+    serializer_class = NotificationSerializer
 
     def get_queryset(self):
         """Get notifications for the current user."""

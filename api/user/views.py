@@ -9,8 +9,16 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework.exceptions import PermissionDenied
+from rest_framework import serializers
 
 from api.authentication import WxJWTAuthentication
+
+
+class DailyLoginResponseSerializer(serializers.Serializer):
+    """Response serializer for daily login (sign-in) endpoint."""
+
+    message = serializers.CharField(
+        help_text="Sign-in result or status message")
 from app.models import NaturalPerson
 from app.utils import get_user_wallpaper, get_person_or_org
 from generic.models import User
@@ -133,17 +141,13 @@ class DailyLoginView(APIView):
 
     permission_classes = [IsAuthenticated]
     authentication_classes = [WxJWTAuthentication]
+    serializer_class = DailyLoginResponseSerializer
 
     @extend_schema(
         summary="每日登录",
         description="每日登录，如果用户今天未登录，则添加 YQPoint",
         responses={
-            200: OpenApiResponse(description="显示签到信息", response={
-                "type": "object",
-                "properties": {
-                    "message": {"type": "string"},
-                },
-            }),
+            200: DailyLoginResponseSerializer,
             401: OpenApiResponse(description="未登录"),
         },
         tags=["用户"],
