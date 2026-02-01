@@ -41,6 +41,7 @@ from rest_framework.views import APIView
 
 from api.config import CONFIG
 from api.auth.serializers import WxBindSerializer, WxCodeSerializer
+from api.auth.ticket import WEBVIEW_TICKET_TTL, create_webview_ticket
 from api.authentication import WxJWTAuthentication
 from generic.models import UserWechatProfile, User
 from app.utils import get_person_or_org
@@ -466,4 +467,81 @@ class GetMyAccountsView(APIView):
         return Response({
             "account_id": account_id,
             "accounts": accounts,
+        })
+
+
+class CheckLoginView(APIView):
+    """
+    Check if the user is logged in.
+    """
+
+    permission_classes = [IsAuthenticated]
+    authentication_classes = [WxJWTAuthentication]
+
+    @extend_schema(
+        summary="检查是否登录",
+        description="检查当前用户是否登录，如果登录则返回用户信息",
+        responses={
+            200: OpenApiResponse(description="成功响应", response={
+                "type": "object",
+                "properties": {
+                    "is_login": {"type": "boolean"},
+                    "username": {"type": "string"},
+                    "name": {"type": "string"},
+                    "type": {"type": "string", "enum": ["person", "org"]},
+                },
+            }),
+            401: OpenApiResponse(description="未登录"),
+        },
+        tags=["微信小程序认证"],
+    )
+    def get(self, request):
+        if not request.user.is_authenticated:
+            return Response(status=status.HTTP_401_UNAUTHORIZED)
+        return Response({
+            "is_login": True,
+            "username": request.user.username,
+            "name": request.user.name,
+            "type": "person" if request.user.is_person() else "org",
+        })
+
+
+class ExchangeTicketView(APIView):
+    """
+    用 JWT 换取一次性 ticket，用于 webview 跳转登录。
+    ticket 在 /redirect/?ticket=xxx 使用一次后立即失效，提高安全性。
+    """
+
+    permission_classes = [IsAuthenticated]
+    authentication_classes = [WxJWTAuthentication]
+
+    @extend_schema(
+        summary="JWT 换取 ticket",
+        description="使用 JWT 换取一次性 ticket，用于 webview 跳转。",
+        responses={
+            200: OpenApiResponse(
+                description="成功",
+                response={
+                    "type": "object",
+                    "properties": {
+                        "ticket": {"type": "string", "description": "一次性 ticket"},
+                        "expires_in": {"type": "integer", "description": "有效秒数"},
+                    },
+                },
+            ),
+            401: OpenApiResponse(description="未提供或无效的 JWT"),
+        },
+        tags=["微信小程序认证"],
+    )
+    def post(self, request):
+        user = request.user
+        if not user or not user.is_authenticated:
+            return Response(
+                {"detail": "未认证"},
+                status=status.HTTP_401_UNAUTHORIZED,
+            )
+        ticket = create_webview_ticket(user.pk)
+        return Response({
+            "ticket": ticket,
+            "expires_in": WEBVIEW_TICKET_TTL,
         })

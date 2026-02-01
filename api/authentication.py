@@ -1,6 +1,10 @@
 from rest_framework_simplejwt.authentication import JWTAuthentication
 from rest_framework.exceptions import AuthenticationFailed
+from rest_framework.authentication import BaseAuthentication
 from drf_spectacular.extensions import OpenApiAuthenticationExtension
+
+from api.auth.ticket import consume_webview_ticket
+from generic.models import User
 
 
 class WxJWTAuthentication(JWTAuthentication):
@@ -24,6 +28,27 @@ class WxJWTAuthentication(JWTAuthentication):
                 "Authentication credentials were not provided")
 
         return super().authenticate(request)
+
+
+class TicketAuthentication(BaseAuthentication):
+    """
+    One-time ticket authentication for webview redirect.
+    Reads ticket from query param `ticket`, validates and consumes it (deletes from cache).
+    Used by /redirect/?ticket=xxx&to=... to avoid passing JWT in URL.
+    """
+
+    def authenticate(self, request):
+        ticket = request.GET.get("ticket")
+        if not ticket:
+            return None
+        user_id = consume_webview_ticket(ticket)
+        if user_id is None:
+            raise AuthenticationFailed("invalid or expired ticket")
+        try:
+            user = User.objects.get(pk=user_id)
+        except User.DoesNotExist:
+            raise AuthenticationFailed("invalid ticket")
+        return (user, None)
 
 
 class WxJWTAuthenticationExt(OpenApiAuthenticationExtension):

@@ -3,7 +3,9 @@ from typing import cast
 from django.contrib import auth
 from django.contrib.auth import login
 from django.shortcuts import redirect
-from api.authentication import WxJWTAuthentication
+from rest_framework.exceptions import AuthenticationFailed
+
+from api.authentication import TicketAuthentication
 from utils.http.dependency import HttpRequest, HttpResponse, UserRequest
 
 from generic.models import User
@@ -136,25 +138,17 @@ def healthcheck(request: HttpRequest) -> HttpResponse:
 
 def redirect_to_webview(request: HttpRequest) -> HttpResponse:
     '''
-    Use JWT token to authenticate user, and redirect to the given URL.
-    Used in wx webview as a jumpboard to skip the login process.
+    使用一次性 ticket 鉴权并重定向到目标 URL。
+    用于微信 webview 跳板，避免在 URL 中传递 JWT。
+    ticket 通过 POST /api/auth/ticket/ 用 JWT 换取，鉴权后立即失效。
     '''
-    # Extract query parameters
-    token = request.GET.get('token')
     to = request.GET.get('to', '/')
-    if not token:
-        return HttpResponse('token is required', status=400)
-
-    # Set Authorization header, so that WxJWTAuthentication can authenticate the request
-    request.META['HTTP_AUTHORIZATION'] = f'Bearer {token}'
-
-    # Authenticate the request
-    user_auth_tuple = WxJWTAuthentication().authenticate(request)
-    if user_auth_tuple is None or user_auth_tuple[0] is None:
-        return HttpResponse('invalid token', status=401)
-
-    # Login the user
-    user, _ = user_auth_tuple
+    try:
+        auth_tuple = TicketAuthentication().authenticate(request)
+    except AuthenticationFailed:
+        return HttpResponse('invalid or expired ticket', status=401)
+    if auth_tuple is None:
+        return HttpResponse('ticket is required', status=400)
+    user, _ = auth_tuple
     login(request, user)
-
     return redirect(to)

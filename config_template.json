@@ -51,7 +51,8 @@
         "secret": "$MINIAPP_SECRET$",
         "jscode2session_url": "https://api.weixin.qq.com/sns/jscode2session",
         "token_expire_minutes": 120,
-        "signed_openid_ttl_minutes": 10
+        "signed_openid_ttl_minutes": 10,
+        "ticket_ttl_seconds": 60
     },
     "email": {
         "url": "",

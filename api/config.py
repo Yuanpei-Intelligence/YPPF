@@ -24,6 +24,7 @@ class WXMiniappConfig(Config):
     signed_openid_ttl_minutes = LazySetting(
         "signed_openid_ttl_minutes", int, default=10
     )
+    ticket_ttl_seconds = LazySetting("ticket_ttl_seconds", int, default=60)
 
 
 CONFIG = WXMiniappConfig(ROOT_CONFIG, "wx_miniapp")

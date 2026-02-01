@@ -108,6 +108,13 @@ TEMPLATES = [
 ]
 
 
+# Cache (used for one-time webview tickets, etc.)
+CACHES = {
+    "default": {
+        "BACKEND": "django.core.cache.backends.locmem.LocMemCache",
+    }
+}
+
 # Database
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 DATABASES = {
