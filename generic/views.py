@@ -1,6 +1,9 @@
 from typing import cast
 
 from django.contrib import auth
+from django.contrib.auth import login
+from django.shortcuts import redirect
+from api.authentication import WxJWTAuthentication
 from utils.http.dependency import HttpRequest, HttpResponse, UserRequest
 
 from generic.models import User
@@ -129,3 +132,29 @@ def healthcheck(request: HttpRequest) -> HttpResponse:
         return HttpResponse('healthy', status=200)
     else:
         return HttpResponse('unhealthy', status=500)
+
+
+def redirect_to_webview(request: HttpRequest) -> HttpResponse:
+    '''
+    Use JWT token to authenticate user, and redirect to the given URL.
+    Used in wx webview as a jumpboard to skip the login process.
+    '''
+    # Extract query parameters
+    token = request.GET.get('token')
+    to = request.GET.get('to', '/')
+    if not token:
+        return HttpResponse('token is required', status=400)
+
+    # Set Authorization header, so that WxJWTAuthentication can authenticate the request
+    request.META['HTTP_AUTHORIZATION'] = f'Bearer {token}'
+
+    # Authenticate the request
+    user_auth_tuple = WxJWTAuthentication().authenticate(request)
+    if user_auth_tuple is None or user_auth_tuple[0] is None:
+        return HttpResponse('invalid token', status=401)
+
+    # Login the user
+    user, _ = user_auth_tuple
+    login(request, user)
+
+    return redirect(to)
