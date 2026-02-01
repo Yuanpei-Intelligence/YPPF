@@ -137,8 +137,7 @@ function GetIEVersion() {
  * Hide navbar when in WeChat mini-program embedded webview
  */
 (function () {
-    var query = window.location.search;
-    var noNavBar = query.includes('no-navbar');
+    var noNavBar = navigator.userAgent && navigator.userAgent.indexOf('miniProgram') > -1;
     if (noNavBar) {
         $('.header-container').hide();
         $('.sub-header-container').hide();
