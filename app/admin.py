@@ -249,19 +249,15 @@ class NaturalPersonAdmin(admin.ModelAdmin):
 # 为每个权限创建grant和revoke方法
 for perm_config in NaturalPersonAdmin.PERMISSION_CONFIG:
     perm_key = perm_config['key']
-    # 赋予权限
-    def create_grant_method(key):
-        def grant_method(self, request, queryset, form=None):
-            return self._handle_permission(request, queryset, key, True)
-        return grant_method
-    # 收回权限
-    def create_revoke_method(key):
-        def revoke_method(self, request, queryset, form=None):
-            return self._handle_permission(request, queryset, key, False)
-        return revoke_method
     
-    setattr(NaturalPersonAdmin, f'grant_{perm_key}', create_grant_method(perm_key))
-    setattr(NaturalPersonAdmin, f'revoke_{perm_key}', create_revoke_method(perm_key))
+    def grant_method(self, request, queryset, key=perm_key):
+        return self._handle_permission(request, queryset, key, True)
+    
+    def revoke_method(self, request, queryset, key=perm_key):
+        return self._handle_permission(request, queryset, key, False)
+    
+    setattr(NaturalPersonAdmin, f'grant_{perm_key}', grant_method)
+    setattr(NaturalPersonAdmin, f'revoke_{perm_key}', revoke_method)
 
 @admin.register(Freshman)
 class FreshmanAdmin(admin.ModelAdmin):
