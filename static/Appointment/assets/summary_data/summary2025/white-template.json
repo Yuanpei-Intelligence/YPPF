@@ -1,5 +1,5 @@
 {
-  "透明人": {
+  "2500000000": {
     "date_joined": "2020-09-01",
     "days": 0,
     "underground_usage_days": 0,
@@ -58,6 +58,7 @@
       "most_hours": 0,
       "highest_ratio_course": null
     },
-    "yqpoint_income": 0
+    "yqpoint_income": 0,
+    "name": ""
   }
 }

@@ -1,5 +1,5 @@
 {
-  "虚拟人": {
+  "2300000000": {
     "date_joined": "2020-09-01",
     "days": 1593,
     "underground_usage_days": 100,
@@ -93,6 +93,7 @@
         "total_participants": 50
       }
     },
-    "yqpoint_income": 100
+    "yqpoint_income": 100,
+    "name": "虚拟人"
   }
 }
