@@ -169,7 +169,7 @@ def identity_check(
             if check_underground and request.user.is_person():
                 try:
                     natural_person = NaturalPerson.objects.get(person_id=request.user)
-                    if not natural_person.underground_permission:
+                    if not natural_person.has_permission('underground_appointment'):
                         warn_message = ('您没有地下室权限，无法访问地下室相关页面。')
                         wrong(warn_message, context)
                         # 没有地下室权限时返回到成长档案主页面（若返回underground下的任何路径均可能会触发无限重定向）

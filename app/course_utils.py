@@ -1210,7 +1210,7 @@ def cal_participate_num(course: Course) -> dict:
     members = Position.objects.activated().filter(
         pos__gte=1,
         person__identity=NaturalPerson.Identity.STUDENT,
-        person__credit_permission=True,
+        person__has_perm('gain_credit'),
         org=org,
     ).values_list("person", flat=True)
     all_participants = SQ.qsvlist(

@@ -62,10 +62,21 @@ class NaturalPersonAdmin(admin.ModelAdmin):
 
     inlines = [PositionInline, ParticipationInline, CourseParticipantInline]
 
+    PERMISSION_CONFIG = [
+        {'key': 'select_course', 'name': '选课权限', 'old_field': 'course_permission'},
+        {'key': 'underground_appointment', 'name': '地下室权限', 'old_field': 'underground_permission'},
+        {'key': 'gain_credit', 'name': '获得书院课学时权限', 'old_field': 'credit_permission'},
+    ]
+
     def _show_by_option(self, obj: NaturalPerson | None, option: str, detail: str):
         if obj is None or getattr(obj, option):
             return option, detail
         return option
+
+    def _get_permission_display(self, obj: NaturalPerson | None, perm_key: str):
+        if obj is None:
+            return f'permissions.{perm_key}'
+        return f'permissions.{perm_key}'
 
     def get_normal_fields(self, request, obj: NaturalPerson = None):
         _m = NaturalPerson
@@ -78,10 +89,9 @@ class NaturalPersonAdmin(admin.ModelAdmin):
             f(_m.identity), f(_m.status),
             f(_m.wechat_receive_level),
             f(_m.accept_promote), f(_m.active_score),
-            f(_m.course_permission),
-            f(_m.underground_permission),
-            f(_m.credit_permission),
         ])
+        for perm_config in self.PERMISSION_CONFIG:
+            fields.append(self._get_permission_display(obj, perm_config['key']))
         return fields
 
     def get_student_fields(self, request, obj: NaturalPerson = None):
@@ -113,15 +123,21 @@ class NaturalPersonAdmin(admin.ModelAdmin):
     def view_on_site(self, obj: NaturalPerson):
         return obj.get_absolute_url()
 
+    def get_actions(self, request):
+        actions = super().get_actions(request)
+        for perm_config in self.PERMISSION_CONFIG:
+            grant_action = f'grant_{perm_config["key"]}'
+            revoke_action = f'revoke_{perm_config["key"]}'
+            actions[grant_action] = (getattr(self, grant_action), grant_action, f'赋予 {perm_config["name"]}')
+            actions[revoke_action] = (getattr(self, revoke_action), revoke_action, f'收回 {perm_config["name"]}')
+        return actions
+
     actions = [
         'set_student', 'set_teacher',
         'set_graduate', 'set_ungraduate',
         'set_instructor', 'set_leave', 'set_postpone',
         'all_subscribe', 'all_unsubscribe',
-        'grant_course_permission', 'revoke_course_permission',
-        'grant_underground_permission', 'revoke_underground_permission',
-        'grant_credit_permission', 'revoke_credit_permission',
-        ]
+    ]
 
     @as_action("设为 学生", update=True)
     def set_student(self, request, queryset):
@@ -215,41 +231,37 @@ class NaturalPersonAdmin(admin.ModelAdmin):
         return self.message_user(request=request,
                                  message='修改成功!已经取消所有非官方组织的订阅!')
 
-    @as_action("赋予 选课权限", update=True)
-    def grant_course_permission(self, request, queryset):
-        queryset.update(course_permission=True)
-        return self.message_user(request=request,
-                                 message='修改成功!已赋予选课权限!')
+    # 权限操作方法
+    def _handle_permission(self, request, queryset, perm_key, grant):
+        perm_config = next((pc for pc in self.PERMISSION_CONFIG if pc['key'] == perm_key), None)
+        if not perm_config:
+            return self.message_user(request=request, message='权限配置不存在!', level='error')
+        
+        for person in queryset:
+            if grant:
+                person.grant_permission(perm_key)
+            else:
+                person.revoke_permission(perm_key)
+        
+        action = '赋予' if grant else '收回'
+        return self.message_user(request=request, message=f'修改成功!已{action}{perm_config["name"]}!')
 
-    @as_action("收回 选课权限", update=True)
-    def revoke_course_permission(self, request, queryset):
-        queryset.update(course_permission=False)
-        return self.message_user(request=request,
-                                 message='修改成功!已收回选课权限!')
-
-    @as_action("赋予 地下室权限", update=True)
-    def grant_underground_permission(self, request, queryset):
-        queryset.update(underground_permission=True)
-        return self.message_user(request=request,
-                                 message='修改成功!已赋予地下室权限!')
-
-    @as_action("收回 地下室权限", update=True)
-    def revoke_underground_permission(self, request, queryset):
-        queryset.update(underground_permission=False)
-        return self.message_user(request=request,
-                                 message='修改成功!已收回地下室权限!')
-
-    @as_action("赋予 获得书院课学时权限", update=True)
-    def grant_credit_permission(self, request, queryset):
-        queryset.update(credit_permission=True)
-        return self.message_user(request=request,
-                                 message='修改成功!已赋予获得书院课学时权限!')
-
-    @as_action("收回 获得书院课学时权限", update=True)
-    def revoke_credit_permission(self, request, queryset):
-        queryset.update(credit_permission=False)
-        return self.message_user(request=request,
-                                 message='修改成功!已收回获得书院课学时权限!')
+# 为每个权限创建grant和revoke方法
+for perm_config in NaturalPersonAdmin.PERMISSION_CONFIG:
+    perm_key = perm_config['key']
+    # 赋予权限
+    def create_grant_method(key):
+        def grant_method(self, request, queryset):
+            return self._handle_permission(request, queryset, key, True)
+        return grant_method
+    # 收回权限
+    def create_revoke_method(key):
+        def revoke_method(self, request, queryset):
+            return self._handle_permission(request, queryset, key, False)
+        return revoke_method
+    
+    setattr(NaturalPersonAdmin, f'grant_{perm_key}', create_grant_method(perm_key))
+    setattr(NaturalPersonAdmin, f'revoke_{perm_key}', create_revoke_method(perm_key))
 
 @admin.register(Freshman)
 class FreshmanAdmin(admin.ModelAdmin):
