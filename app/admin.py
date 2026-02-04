@@ -63,9 +63,9 @@ class NaturalPersonAdmin(admin.ModelAdmin):
     inlines = [PositionInline, ParticipationInline, CourseParticipantInline]
 
     PERMISSION_CONFIG = [
-        {'key': 'select_course', 'name': '选课权限', 'old_field': 'course_permission'},
-        {'key': 'underground_appointment', 'name': '地下室权限', 'old_field': 'underground_permission'},
-        {'key': 'gain_credit', 'name': '获得书院课学时权限', 'old_field': 'credit_permission'},
+        {'key': 'select_course', 'name': '选课权限'},
+        {'key': 'underground_appointment', 'name': '地下室权限'},
+        {'key': 'gain_credit', 'name': '获得书院课学时权限'},
     ]
 
     def _show_by_option(self, obj: NaturalPerson | None, option: str, detail: str):
@@ -251,12 +251,12 @@ for perm_config in NaturalPersonAdmin.PERMISSION_CONFIG:
     perm_key = perm_config['key']
     # 赋予权限
     def create_grant_method(key):
-        def grant_method(self, request, queryset):
+        def grant_method(self, request, queryset, form=None):
             return self._handle_permission(request, queryset, key, True)
         return grant_method
     # 收回权限
     def create_revoke_method(key):
-        def revoke_method(self, request, queryset):
+        def revoke_method(self, request, queryset, form=None):
             return self._handle_permission(request, queryset, key, False)
         return revoke_method
     
