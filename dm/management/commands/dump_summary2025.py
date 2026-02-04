@@ -1031,7 +1031,8 @@ def calculate_most_frequent_co_appoint():
                 # 缓存username到name的映射
                 if username not in username_to_name_cache:
                     try:
-                        person = NaturalPerson.objects.get_by_user(participant.Sid)
+                        person = NaturalPerson.objects.get_by_user(
+                            participant.Sid)
                         username_to_name_cache[username] = person.name
                     except NaturalPerson.DoesNotExist:
                         # 如果不是自然人，使用User的name字段
@@ -1158,13 +1159,15 @@ def cal_select_course_ratio():
     import sys
     output = sys.stdout
     output.write("\n=== 课程选课比例调试信息 ===\n")
-    output.write(f"{'课程ID':<10} {'课程名称':<30} {'成功人数':<10} {'总选课人数':<12} {'比例':<10}\n")
+    output.write(
+        f"{'课程ID':<10} {'课程名称':<30} {'成功人数':<10} {'总选课人数':<12} {'比例':<10}\n")
     output.write("-" * 80 + "\n")
     for c in courses.order_by('id'):
         ratio = (c.success_count / c.preselect_count) if c.preselect_count else 0
         result[c.id] = round(ratio, 4)
         course_name = c.name[:28] if len(c.name) > 28 else c.name
-        output.write(f"{c.id:<10} {course_name:<30} {c.success_count:<10} {c.preselect_count:<12} {ratio:.4f}\n")
+        output.write(
+            f"{c.id:<10} {course_name:<30} {c.success_count:<10} {c.preselect_count:<12} {ratio:.4f}\n")
     output.write(f"\n总计: {len(result)} 门课程\n")
     output.write("=" * 80 + "\n\n")
     output.flush()
@@ -1321,6 +1324,9 @@ class Command(BaseCommand):
 
             # 元气值收入
             person_info['yqpoint_income'] = get_person_yqpoint_income(person)
+
+            # 添加自然人姓名
+            person_info['name'] = person.name if person.name else ''
 
             # 使用用户名作为key
             person_data[user.username] = person_info
