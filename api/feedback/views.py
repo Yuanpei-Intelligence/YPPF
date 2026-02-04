@@ -300,3 +300,62 @@ class FeedbackViewSet(viewsets.ViewSet):
         qs = FeedbackType.objects.all()
         serializer = FeedbackTypeSerializer(qs, many=True)
         return Response(serializer.data)
+
+    @extend_schema(
+        description="获取所有公开的反馈（公示栏用）- 返回所有已解决/无法解决且公开的反馈，不限制用户",
+        parameters=[
+            OpenApiParameter(
+                name="ordering",
+                description="排序",
+                required=False,
+                type=OpenApiTypes.STR,
+                enum=[
+                    "feedback_time",
+                    "-feedback_time",
+                    "time",
+                    "-time",
+                    "modify_time",
+                    "-modify_time",
+                ],
+            ),
+        ],
+        responses={
+            200: OpenApiResponse(
+                response=FeedbackSerializer(many=True),
+                description="公开反馈列表",
+            ),
+        },
+        tags=["反馈"],
+    )
+    @action(detail=False, methods=["get"], url_path="public")
+    def public(self, request):
+        """
+        获取所有公开的反馈（公示栏用）
+        返回所有已解决/无法解决且公开的反馈，不限制用户
+        """
+        queryset = (
+            Feedback.objects.activated()
+            .filter(public_status=Feedback.PublicStatus.PUBLIC)
+            .filter(issue_status=Feedback.IssueStatus.ISSUED)
+            .filter(
+                Q(solve_status=Feedback.SolveStatus.SOLVED)
+                | Q(solve_status=Feedback.SolveStatus.UNSOLVABLE)
+            )
+        )
+
+        ordering = request.query_params.get("ordering", "-feedback_time")
+        allowed = {
+            "feedback_time",
+            "-feedback_time",
+            "time",
+            "-time",
+            "modify_time",
+            "-modify_time",
+        }
+        if ordering in allowed:
+            queryset = queryset.order_by(ordering)
+
+        serializer = FeedbackSerializer(
+            queryset, many=True, context={"request": request}
+        )
+        return Response(serializer.data)

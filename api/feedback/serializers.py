@@ -200,12 +200,14 @@ class FeedbackCreateSerializer(serializers.Serializer):
             Organization.objects.get(oname=org) if org else None
         )
 
-        if org_type and org_type.incharge == me:
-            raise serializers.ValidationError(
-                "老师您好，本系统暂不支持给您管理的小组发送反馈！抱歉。"
-            )
-
         post_type = validated_data["post_type"]
+        
+        # 仅在提交反馈时检查（与 feedback_utils.py 第 97-98 行逻辑一致）
+        if post_type == "directly_submit":
+            if org_type and org_type.incharge == me:
+                raise serializers.ValidationError(
+                    "老师您好，本系统暂不支持给您管理的小组发送反馈！抱歉。"
+                )
         issue_status = (
             Feedback.IssueStatus.DRAFTED
             if post_type == "save"
