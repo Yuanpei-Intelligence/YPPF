@@ -128,8 +128,8 @@ class NaturalPersonAdmin(admin.ModelAdmin):
         for perm_config in self.PERMISSION_CONFIG:
             grant_action = f'grant_{perm_config["key"]}'
             revoke_action = f'revoke_{perm_config["key"]}'
-            actions[grant_action] = (getattr(self, grant_action), grant_action, f'赋予 {perm_config["name"]}')
-            actions[revoke_action] = (getattr(self, revoke_action), revoke_action, f'收回 {perm_config["name"]}')
+            actions[grant_action] = (getattr(self.__class__, grant_action), grant_action, f'赋予 {perm_config["name"]}')
+            actions[revoke_action] = (getattr(self.__class__, revoke_action), revoke_action, f'收回 {perm_config["name"]}')
         return actions
 
     actions = [
