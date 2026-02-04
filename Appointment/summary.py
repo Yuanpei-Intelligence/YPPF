@@ -208,7 +208,7 @@ def summary2023(request: HttpRequest):
             infos.update(json.load(f)[request.user.username])
 
     # 读取年度总结中所有用户的总体数据
-    with open(os.path.join(base_dir, 'summary_overall_2023.json'), 'r') as f:
+    with open(os.path.join(base_dir, 'summary_overall_2023.json'), 'r') as f: 
         infos.update(json.load(f))
 
     # 将数据中缺少的项利用white-template中的默认值补齐
@@ -378,7 +378,6 @@ def summary2023(request: HttpRequest):
 def summary2024(request: HttpRequest):
     # 2024年度总结
     base_dir = 'static/Appointment/assets/summary_data/summary2024'
-
     logged_in = request.user.is_authenticated
     if logged_in:
         username = request.session.get("NP", "")
@@ -499,7 +498,7 @@ def summary2024(request: HttpRequest):
         else:
             infos.update(admin_org_names_str='，'.join(admin_org_names))
     else:
-         infos.update(admin_org_names_str='')
+        infos.update(admin_org_names_str='')
 
     # 将小组活动预约top3关键词由list转为一个string
     if infos.get('act_top_three_keywords'):
@@ -634,3 +633,150 @@ def summary2024(request: HttpRequest):
     infos['sharp_appoint_num_rank_inverse'] = sharp_appoint_num_rank_inverse
 
     return render(request, 'Appointment/summary2024.html', infos)
+
+
+def summary2025(request: HttpRequest):
+    # 2025年度总结
+    base_dir = 'static/Appointment/assets/summary_data/summary2025'
+    logged_in = request.user.is_authenticated
+    if logged_in:
+        username = request.session.get("NP", "")
+        if username:
+            from app.utils import update_related_account_in_session
+            update_related_account_in_session(request, username, shift=True)
+
+
+    infos.update(logged_in=logged_in, user_accept=user_accept, user_cancel=user_cancel)
+    user_accept = request.GET.get('accept') == 'true'
+    user_cancel = request.GET.get('cancel') == 'true'
+    infos = {}
+
+    infos.update(logged_in=logged_in, user_accept=user_accept, user_cancel=user_cancel)
+    if not user_accept or not logged_in or user_cancel:
+        # 新生/不接受协议/未登录 展示样例
+        example_file = os.path.join(base_dir, 'template.json')
+        with open(example_file ,encoding='utf-8') as f:
+            infos.update(json.load(f))
+        if logged_in:
+            with open(os.path.join(base_dir, 'summary2025.json'), 'r', encoding='utf-8') as f:
+                infos.update(home_Sname=json.load(f)[request.user.username].get('Sname', ''))
+    else:
+        # 读取年度总结中该用户的个人数据
+        with open(os.path.join(base_dir, 'summary2025.json'), 'r', encoding='utf-8') as f:
+            infos.update(json.load(f)[request.user.username])
+
+        infos.update(home_Sname = infos['Sname'])
+
+        # 读取年度总结中该用户的排名数据
+        with open(os.path.join(base_dir, 'rank2025.json'), 'r', encoding='utf-8') as f:
+            infos.update(json.load(f)[request.user.username])
+    
+    # 读取年度总结中所有用户的总体数据
+    with open(os.path.join(base_dir, 'summary_overall_2025.json'), 'r', encoding='utf-8') as f:
+        infos.update(json.load(f))
+
+    # 将数据中缺少的项利用template中的默认值补齐
+    with open(os.path.join(base_dir, 'template.json'), 'r', encoding='utf-8') as f:
+        template = json.load(f)
+        for key, value in template.items():
+            if key not in infos.keys():
+                infos[key] = value
+    # 计算用户自注册起至今过去的天数（2025 days己计算）
+
+    # 将导出数据中iosformat的日期转化为只包含年、月、日的文字date_joined"# 注册日期（2025update)
+    start_date = infos["longest_underground_usage"]["longest_continuous_start_date"]
+    end_date = infos["longest_underground_usage"]["longest_continuous_end_date"]
+    if infos.get('date_joined'): # None or ''
+        date_joined = datetime.fromisoformat(infos['date_joined'])
+        infos['date_joined'] = date_joined.strftime("%Y年%m月%d日")
+    if start_date:
+        start_date = datetime.fromisoformat(start_date)
+        infos["longest_underground_usage"]["longest_continuous_start_date"] = start_date.strftime("%Y年%m月%d日")
+    if end_date:
+        end_date = datetime.fromisoformat(end_date)
+        infos["longest_underground_usage"]["longest_continuous_end_date"] = end_date.strftime("%Y年%m月%d日")
+
+    # 对最长研讨室/功能室预约的小时数向下取整
+    if infos.get('Discuss_appoint_longest_duration'):
+        Discuss_appoint_longest_day_hours = infos['Discuss_appoint_longest_duration'].split('小时')[0]
+        infos.update(Discuss_appoint_longest_day_hours = Discuss_appoint_longest_day_hours)
+    else:
+        infos.update(Discuss_appoint_longest_day_hours = 0)
+
+    if infos.get('Function_appoint_longest_duration'):
+        Function_appoint_longest_day_hours = infos['Function_appoint_longest_duration'].split('小时')[0]
+        infos.update(Function_appoint_longest_day_hours = Function_appoint_longest_day_hours)
+    else:
+        infos.update(Function_appoint_longest_day_hours = 0)
+
+
+    #2025新特性
+    #根据刷卡/预约记录总天数超越百分比显示文字
+    underground_usage_percentile=infos.get('underground_usage_percentile')
+    if underground_usage_percentile<=50:
+        infos.update(underground_usage_percentile_name='新的一年，期待着和你遇见！');
+    elif underground_usage_percentile<=85:
+        infos.update(underground_usage_percentile_name='新的一年，我依然在这里等你。');
+    else:
+        infos.update(underground_usage_percentile_name='我宣布，没有人比你更了解地下室！');
+    # 如果该用户刷卡/预约记录为0，则下面三部分不保留
+    record_is_zero=(infos.get('underground_usage_days')==0)
+    infos.update(record_is_zero=record_is_zero)
+    #用户在统计周期内刷卡/预约记录的最早日期自习室研讨室类型？
+    study_room_list = ['B108', 'B112', 'B118', 'B106', 'B119', 'B114']
+    room = infos.get("first_underground_record", {}).get("room")
+    first_room_study = False
+    last_room_study = False
+    if room in study_room_list:
+        first_room_study=True
+    room= infos.get("last_underground_record", {}).get("room")
+    if room in study_room_list:
+        last_room_study=True
+    infos.update(first_room_study=first_room_study)
+    infos.update(last_room_study=last_room_study)
+    #研讨室/功能室预约时长最长的日期的参与人数分类前端?
+    #房间预约-“最期待”中的数字和单位问题
+    average_diff = infos.get("appoint_habit", {}).get('average_diff')
+    max_diff = infos.get("appoint_habit", {}).get('max_diff')
+    average_diff_time='小时'
+    max_diff_time='小时'
+    if isinstance(average_diff, (int, float)) and average_diff > 0:
+        if average_diff>24:
+            average_diff_time='天'
+            average_diff=average_diff//24
+    else:
+        average_diff = 0  # None/非数值兜底为0
+
+    if isinstance(max_diff, (int, float)) and max_diff > 0:
+        if max_diff and max_diff>24:
+            max_diff_time='天'
+            max_diff=max_diff//24
+    else:
+        max_diff = 0 
+    infos.update(average_diff_time=average_diff_time,max_diff_time=max_diff_time)
+    infos['appoint_habit']['average_diff'] = average_diff
+    infos['appoint_habit']['max_diff'] = max_diff
+
+    #个人/集体预约分类
+
+    #如果担任职务小组数量为0，则该行不保留
+    org_reserved=True
+    if infos["org_usage"]['org_num']:
+        org_name_list = infos["org_usage"]['org_name_list']
+        if len(org_name_list) ==0:
+            org_reserved=False
+    infos.update(org_reserved=org_reserved)
+
+    # 处理用户担任admin职务的小组数过多的情况(2025变量名org_name_list_str)
+    org_name_list = infos["org_usage"]['org_name_list']
+    admin_org_num=len(org_name_list)
+    if admin_org_num:
+        if admin_org_num > 3:
+            org_name_list = org_name_list[:3]
+            infos.update(org_name_list_str='，'.join(org_name_list) + '等')
+        else:
+            infos.update(org_name_list_str='，'.join(org_name_list))
+    else:
+        infos.update(org_name_list_str='')
+    
+    return render(request, 'Appointment/summary2025.html', infos)
