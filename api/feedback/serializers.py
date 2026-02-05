@@ -8,6 +8,38 @@ from app.models import Organization, OrganizationType
 from feedback.models import FeedbackType, Feedback
 
 
+class OrganizationTypeSerializer(serializers.ModelSerializer):
+    """Serializer for OrganizationType."""
+
+    class Meta:
+        model = OrganizationType
+        fields = [
+            "otype_id",
+            "otype_name",
+        ]
+        read_only_fields = fields
+
+
+class OrganizationSerializer(serializers.ModelSerializer):
+    """Serializer for Organization."""
+
+    otype_id = serializers.IntegerField(source="otype.otype_id", read_only=True)
+    otype_name = serializers.CharField(source="otype.otype_name", read_only=True)
+    organization_id = serializers.IntegerField(
+        source="organization_id.id", read_only=True, help_text="组织用户ID"
+    )
+
+    class Meta:
+        model = Organization
+        fields = [
+            "organization_id",
+            "oname",
+            "otype_id",
+            "otype_name",
+        ]
+        read_only_fields = fields
+
+
 class FeedbackTypeSerializer(serializers.ModelSerializer):
     """Serializer for FeedbackType (list options)."""
 
@@ -200,12 +232,14 @@ class FeedbackCreateSerializer(serializers.Serializer):
             Organization.objects.get(oname=org) if org else None
         )
 
-        if org_type and org_type.incharge == me:
-            raise serializers.ValidationError(
-                "老师您好，本系统暂不支持给您管理的小组发送反馈！抱歉。"
-            )
-
         post_type = validated_data["post_type"]
+        
+        # 仅在提交反馈时检查（与 feedback_utils.py 第 97-98 行逻辑一致）
+        if post_type == "directly_submit":
+            if org_type and org_type.incharge == me:
+                raise serializers.ValidationError(
+                    "老师您好，本系统暂不支持给您管理的小组发送反馈！抱歉。"
+                )
         issue_status = (
             Feedback.IssueStatus.DRAFTED
             if post_type == "save"
@@ -386,4 +420,17 @@ class FeedbackListQuerySerializer(serializers.Serializer):
         default="-feedback_time",
         required=False,
         help_text="排序字段",
+    )
+
+
+class OrganizationTypeMappingSerializer(serializers.Serializer):
+    """Serializer for organization type and organization mapping data."""
+
+    org_types = OrganizationTypeSerializer(many=True, help_text="所有组织类型列表")
+    organizations = OrganizationSerializer(many=True, help_text="所有组织列表")
+    org_type_to_orgs = serializers.DictField(
+        help_text="组织类型到组织的映射，key为otype_name，value为该类型下的组织列表（oname数组）"
+    )
+    feedback_type_mappings = serializers.DictField(
+        help_text="反馈类型到组织类型/组织的默认映射，key为反馈类型name，value包含org_type_name和org_name（可能为null）"
     )
