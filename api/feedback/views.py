@@ -17,6 +17,7 @@ from drf_spectacular.utils import (
 from drf_spectacular.types import OpenApiTypes
 
 from app.utils import get_person_or_org
+from app.models import OrganizationType, Organization
 from feedback.models import FeedbackType, Feedback
 from feedback.feedback_utils import make_relevant_notification
 from api.authentication import WxJWTAuthentication
@@ -26,6 +27,9 @@ from api.feedback.serializers import (
     FeedbackCreateSerializer,
     FeedbackUpdateSerializer,
     FeedbackListQuerySerializer,
+    OrganizationTypeSerializer,
+    OrganizationSerializer,
+    OrganizationTypeMappingSerializer,
 )
 
 
@@ -504,3 +508,83 @@ class FeedbackViewSet(viewsets.ViewSet):
             queryset, many=True, context={"request": request}
         )
         return Response(serializer.data)
+
+    @extend_schema(
+        description="获取接收小组类型、接收小组及其映射关系\n\n"
+        "返回数据包括：\n"
+        "- 所有组织类型列表\n"
+        "- 所有组织列表\n"
+        "- 组织类型到组织的映射关系\n"
+        "- 反馈类型到组织类型/组织的默认映射关系",
+        responses={
+            200: OpenApiResponse(
+                response=OrganizationTypeMappingSerializer,
+                description="组织类型和组织映射数据",
+            ),
+        },
+        tags=["反馈"],
+    )
+    @action(detail=False, methods=["get"], url_path="org-mapping")
+    def org_mapping(self, request):
+        """
+        获取接收小组类型、接收小组及其映射关系。
+
+        返回结构：
+        {
+            "org_types": [...],  # 所有组织类型
+            "organizations": [...],  # 所有组织
+            "org_type_to_orgs": {  # 组织类型 -> 组织列表的映射
+                "类型名": ["组织1", "组织2", ...],
+                ...
+            },
+            "feedback_type_mappings": {  # 反馈类型 -> 默认组织类型/组织的映射
+                "反馈类型名": {
+                    "org_type_name": "组织类型名" | null,
+                    "org_name": "组织名" | null
+                },
+                ...
+            }
+        }
+        """
+        # 获取所有组织类型
+        org_types = OrganizationType.objects.all().order_by("otype_id")
+        org_types_data = OrganizationTypeSerializer(org_types, many=True).data
+
+        # 获取所有组织（只返回激活的）
+        organizations = (
+            Organization.objects.activated()
+            .select_related("otype", "organization_id")
+            .order_by("oname")
+        )
+        organizations_data = OrganizationSerializer(organizations, many=True).data
+
+        # 构建组织类型到组织的映射
+        org_type_to_orgs = {}
+        for org_type in org_types:
+            orgs_in_type = (
+                Organization.objects.activated()
+                .filter(otype=org_type)
+                .order_by("oname")
+            )
+            org_type_to_orgs[org_type.otype_name] = [org.oname for org in orgs_in_type]
+
+        # 构建反馈类型到组织类型/组织的默认映射
+        feedback_types = FeedbackType.objects.all().select_related("org_type", "org")
+        feedback_type_mappings = {}
+        for fb_type in feedback_types:
+            feedback_type_mappings[fb_type.name] = {
+                "org_type_name": (
+                    fb_type.org_type.otype_name if fb_type.org_type else None
+                ),
+                "org_name": fb_type.org.oname if fb_type.org else None,
+            }
+
+        response_data = {
+            "org_types": org_types_data,
+            "organizations": organizations_data,
+            "org_type_to_orgs": org_type_to_orgs,
+            "feedback_type_mappings": feedback_type_mappings,
+        }
+
+        serializer = OrganizationTypeMappingSerializer(response_data)
+        return Response(serializer.data, status=status.HTTP_200_OK)
