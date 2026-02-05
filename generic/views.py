@@ -1,6 +1,11 @@
 from typing import cast
 
 from django.contrib import auth
+from django.contrib.auth import login
+from django.shortcuts import redirect
+from rest_framework.exceptions import AuthenticationFailed
+
+from api.authentication import TicketAuthentication
 from utils.http.dependency import HttpRequest, HttpResponse, UserRequest
 
 from generic.models import User
@@ -79,7 +84,8 @@ class Index(SecureTemplateView):
 
     def login(self) -> HttpResponse:
         # Try login
-        userinfo = auth.authenticate(username=self.username, password=self.password)
+        userinfo = auth.authenticate(
+            username=self.username, password=self.password)
         if userinfo is None:
             return self.wrong('密码错误')
 
@@ -129,3 +135,21 @@ def healthcheck(request: HttpRequest) -> HttpResponse:
         return HttpResponse('healthy', status=200)
     else:
         return HttpResponse('unhealthy', status=500)
+
+
+def redirect_to_webview(request: HttpRequest) -> HttpResponse:
+    '''
+    使用一次性 ticket 鉴权并重定向到目标 URL。
+    用于微信 webview 跳板，避免在 URL 中传递 JWT。
+    ticket 通过 POST /api/auth/ticket/ 用 JWT 换取，鉴权后立即失效。
+    '''
+    to = request.GET.get('to', '/')
+    try:
+        auth_tuple = TicketAuthentication().authenticate(request)
+    except AuthenticationFailed:
+        return HttpResponse('invalid or expired ticket', status=401)
+    if auth_tuple is None:
+        return HttpResponse('ticket is required', status=400)
+    user, _ = auth_tuple
+    login(request, user)
+    return redirect(to)

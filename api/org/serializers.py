@@ -2,6 +2,8 @@
 Serializers for group (organization) subscription API.
 """
 from rest_framework import serializers
+from drf_spectacular.utils import extend_schema_field
+from drf_spectacular.types import OpenApiTypes
 from app.models import Organization, OrganizationType
 
 
@@ -51,6 +53,7 @@ class OrganizationSerializer(serializers.ModelSerializer):
             'avatar_url',
         ]
     
+    @extend_schema_field(OpenApiTypes.URI)
     def get_avatar_url(self, obj):
         return obj.get_user_ava()
 
@@ -65,6 +68,7 @@ class OrganizationWithSubscribeSerializer(OrganizationSerializer):
     class Meta(OrganizationSerializer.Meta):
         fields = OrganizationSerializer.Meta.fields + ['subscribed']
     
+    @extend_schema_field(serializers.BooleanField())
     def get_subscribed(self, obj):
         request = self.context.get('request')
         if not request or not request.user.is_person():

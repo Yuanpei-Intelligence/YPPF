@@ -1,4 +1,4 @@
-﻿"""
+"""
 REST APIs for YQpools.
 """
 from rest_framework import status, viewsets
@@ -51,9 +51,12 @@ class PoolsViewSet(viewsets.ViewSet):
 
         get_pools_and_items(pool_type, user, frontend_dict)
 
-        raw = {'pools_info': frontend_dict.get('pools_info', [])}
+        pools_info_dicts = frontend_dict.get('pools_info', [])
 
-        return PoolListSerializer(raw).data
+        # Serialize dictionaries directly - PoolSerializer handles dicts in to_representation
+        serializer = PoolSerializer(pools_info_dicts, many=True)
+
+        return {'pools_info': serializer.data}
 
     @extend_schema(
         summary="获取兑换奖池列表",
@@ -163,7 +166,10 @@ class PoolsViewSet(viewsets.ViewSet):
 
     @extend_schema(
         summary="获取单个奖池信息",
-        description="根据ID获取单个特定奖池的详细信息，包括所有奖品、用户参与情况等。如果奖池有关联活动，用户必须已参加该活动才能查看。",
+        description="""
+        根据ID获取单个特定奖池的详细信息，包括所有奖品、用户参与情况等。如果奖池有关联活动，用户必须已参加该活动才能查看。
+        另外，此方法应当从所有奖池中获取对应id的奖池。因此在应用get_pools_and_items无法收到奖池数据(被过滤了)后，根据其代码手动构造奖池数据。
+        """,
         responses={
             200: OpenApiResponse(
                 response=PoolSerializer,
@@ -184,17 +190,105 @@ class PoolsViewSet(viewsets.ViewSet):
 
         user: User = request.user
         pool_type: CharField = pool.type
+
+        # Check if user has access (activity participation requirement)
+        from app.models import Participation
+        if pool.activity_id:
+            has_participated = Participation.objects.filter(
+                activity=pool.activity_id,
+                person=user.naturalperson,
+                status=Participation.AttendStatus.ATTENDED
+            ).exists()
+            if not has_participated:
+                raise NotFound("奖池不存在")
+
+        # Try to get pool from filtered results first
         frontend_dict = {}
         get_pools_and_items(Pool.Type(pool_type), user, frontend_dict)
-
-        # 从结果中找到特定奖池
         pools_info = frontend_dict.get('pools_info', [])
         pool_data = next((p for p in pools_info if p['id'] == pk), None)
 
+        # If not in filtered results, manually construct pool data
         if pool_data is None:
-            raise NotFound("奖池不存在")
+            from django.forms.models import model_to_dict
+            from datetime import datetime
+            from app.models import PoolRecord, PoolItem
 
-        return Response(PoolSerializer(pool_data).data)
+            pool_data = model_to_dict(pool)
+            if pool.start <= datetime.now() and (pool.end is None or pool.end >= datetime.now()):
+                pool_data["status"] = 0
+            else:
+                pool_data["status"] = 1
+
+            pool_data["capacity"] = pool.get_capacity()
+            pool_items = list(pool.items.filter(prize__isnull=False).values(
+                "id", "origin_num", "consumed_num", "exchange_price",
+                "exchange_limit", "is_big_prize",
+                "prize__name", "prize__more_info", "prize__stock",
+                "prize__reference_price", "prize__image", "prize__id", "exchange_attributes",
+            ))
+            for item in pool_items:
+                item["remain_num"] = item["origin_num"] - item["consumed_num"]
+            pool_data["items"] = sorted(
+                pool_items, key=lambda x: -x["remain_num"])
+
+            if pool_type != Pool.Type.EXCHANGE:
+                pool_data["my_entry_time"] = PoolRecord.objects.filter(
+                    user=user, pool=pool).count()
+                pool_data["records_num"] = PoolRecord.objects.filter(
+                    pool=pool).count()
+                if pool_type == Pool.Type.RANDOM:
+                    for item in pool_items:
+                        percent = (
+                            100 * item["origin_num"] / pool_data["capacity"])
+                        if percent == int(percent):
+                            percent = int(percent)
+                        elif round(percent, 1) != 0:
+                            percent = round(percent, 1)
+                        item["probability"] = percent
+            else:
+                for item in pool_items:
+                    item["my_exchange_time"] = PoolRecord.objects.filter(
+                        user=user, pool=pool, prize=item["prize__id"]).count()
+
+            # Add results for ended lottery pools
+            if pool_data["status"] == 1 and pool_type == Pool.Type.LOTTERY:
+                big_prize_items = PoolItem.objects.filter(
+                    pool=pool, is_big_prize=True).order_by("-prize__reference_price")
+                normal_prize_items = PoolItem.objects.filter(
+                    pool=pool, is_big_prize=False).order_by("-prize__reference_price")
+                big_prizes_and_winners = []
+                normal_prizes_and_winners = []
+
+                for big_prize_item in big_prize_items:
+                    big_prizes_and_winners.append({
+                        "prize_name": big_prize_item.prize.name,
+                        "prize_image": str(big_prize_item.prize.image) if big_prize_item.prize.image else ""
+                    })
+                    winner_names = list(PoolRecord.objects.filter(
+                        pool=pool, prize=big_prize_item.prize).values_list("user__name", flat=True))
+                    big_prizes_and_winners[-1]["winners"] = winner_names
+
+                for normal_prize_item in normal_prize_items:
+                    if normal_prize_item.is_empty:
+                        continue
+                    normal_prizes_and_winners.append({
+                        "prize_name": normal_prize_item.prize.name,
+                        "prize_image": str(normal_prize_item.prize.image) if normal_prize_item.prize.image else ""
+                    })
+                    winner_names = list(PoolRecord.objects.filter(
+                        pool=pool, prize=normal_prize_item.prize).values_list("user__name", flat=True))
+                    normal_prizes_and_winners[-1]["winners"] = winner_names
+
+                pool_data["results"] = {
+                    "big_prize_results": big_prizes_and_winners,
+                    "normal_prize_results": normal_prizes_and_winners
+                }
+
+        # Serialize the pool data (dict or instance)
+        # Pass instance=pool_data to treat it as validated data
+        serializer = PoolSerializer(instance=pool_data)
+        return Response(serializer.data)
 
     @extend_schema(
         summary="兑换奖品",

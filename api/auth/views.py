@@ -2,16 +2,52 @@
 REST APIs for WeChat mini program login/binding.
 
 逻辑是：
-每个微信只能绑定一个主用户，这个主用户可能是个人账户，也可能是组织账户
-如果是个人账户，可能还是一些组织的管理员，那么这个用户可以登录这些组织
+每个微信只能绑定一个主用户，主用户必须是个人用户（小组必须通过个人登录，因为不可能给小组专门搞一个微信号）
+个人账户，可能还是一些小组的管理员，那么这个用户可以登录这些小组
 
-登录时，用一个wx open id，确定主用户，如果没给username参数，就登录主用户
+## 登录时
+用一个wx open id，确定主用户，如果没给username参数，就登录主用户
 否则，检查username是否在主用户的可登录账户列表中，如果在，就登录该账户，否则返回错误
+wx.login() → code → 后端用 code 向微信换 openid
+                         ↓
+              查 UserWechatProfile(openid → user)
+                         ↓
+        ┌────────────────┴────────────────┐
+        │ 已绑定                           │ 未绑定
+        ↓                                 ↓
+   main_user = profile.user           返回 signed_openid
+        ↓                              （供后续绑定用）
+   ┌────┴─────────┐
+   │ 无 username  │ 有 username 
+   ↓              ↓
+ 用 main_user   检查 username 是否在 main_user 的
+ 签发 JWT       「可登录账户列表」中
+                    ↓
+              在 → 用 target_user 签发 JWT（account_id 仍是 main_user）
+              不在 → 403
+
+## 绑定时
+signed_openid（上一步返回）+ username + password
+        ↓
+验证 signed_openid（防伪造、有时效）
+        ↓
+authenticate(username, password)
+        ↓
+user 必须是个人账户（不能是组织）
+        ↓
+检查：该 openid 是否已绑定其他用户 → 是则 400
+        ↓
+创建 UserWechatProfile(user, openid)
+        ↓
+返回 JWT （account id为user）
+
+## 切换账号时
+只需要重新调用login API，username设置为要切换的账户username即可
 
 返回的jwt token中，包含以下字段
 ```
 token["sub"] = str(user.pk) # 用户ID （可能是个人账户ID，也可能是组织账户ID）
-token["username"] = user.username # 用户名
+token["username"] = user.username # 用户名（主账户或者管理的小组）
 token["name"] = user.name # 用户姓名
 token["account_id"] = account_id # 主账号 username
 token["iat"] = int(now.timestamp()) # 签发时间
@@ -41,6 +77,7 @@ from rest_framework.views import APIView
 
 from api.config import CONFIG
 from api.auth.serializers import WxBindSerializer, WxCodeSerializer
+from api.auth.ticket import WEBVIEW_TICKET_TTL, create_webview_ticket
 from api.authentication import WxJWTAuthentication
 from generic.models import UserWechatProfile, User
 from app.utils import get_person_or_org
@@ -132,30 +169,18 @@ def _get_account_id(user: User) -> str | None:
     """
     获取主账号 account_id（username）。
     如果是个人账户，返回 user.username。
-    如果是组织账户，返回管理该组织的个人账户的 username（取第一个管理员）。
-    如果找不到管理员，返回 None。
+    如果是小组账户，返回None
     """
     if user.is_person():
         return user.username
-    elif user.is_org():
-        try:
-            org = Organization.objects.get_by_user(user, activate=True)
-            # 找到管理该组织的个人账户（取第一个管理员）
-            positions = Position.objects.activated().filter(
-                org=org, is_admin=True
-            )
-            if positions.exists():
-                person = positions.first().person
-                return person.person_id.username
-        except Exception:
-            logger.warning(f"无法找到组织 {user.username} 的管理员")
-    return None
+    else:
+        return None
 
 
 def _get_loginable_accounts(account_id: str) -> list[dict]:
     """
     获取 account_id（username）对应的主账号可以登录的所有账户列表。
-    返回格式: [{"username": str, "name": str, "type": str}, ...]
+    返回格式: [{"username": str, "name": str, "type": str, "avatar": str}, ...]
     """
     try:
         main_user = User.objects.get(username=account_id)
@@ -166,10 +191,12 @@ def _get_loginable_accounts(account_id: str) -> list[dict]:
 
     # 添加主账号（个人账户）
     if main_user.is_person():
+        classified = get_person_or_org(main_user)
         accounts.append({
             "username": main_user.username,
             "name": main_user.name,
-            "type": "person"
+            "type": "person",
+            "avatar": classified.get_user_ava(),
         })
 
         # 获取该个人账户管理的所有组织账户
@@ -185,7 +212,8 @@ def _get_loginable_accounts(account_id: str) -> list[dict]:
                 accounts.append({
                     "username": org_user.username,
                     "name": org.oname,
-                    "type": "org"
+                    "type": "org",
+                    "avatar": org.get_user_ava(),
                 })
         except Exception as exc:
             logger.warning(f"获取个人账户 {account_id} 管理的组织时出错: {exc}")
@@ -368,12 +396,13 @@ class WxBindView(APIView):
         username = serializer.validated_data["username"]
         password = serializer.validated_data["password"]
         user = authenticate(username=username, password=password)
+
         if user is None:
             raise AuthenticationFailed("账号或密码错误")
-        try:
-            classified = get_person_or_org(user)
-        except AssertionError:
-            raise ValidationError({"signed_openid": "该用户类型无法绑定微信"})
+        if user.is_org():
+            raise ValidationError({"username": "请使用小组管理员的个人账户绑定"})
+        if not user.is_person():
+            raise ValidationError({"username": "该类型账户暂时不支持微信小程序"})
 
         with transaction.atomic():
             if (
@@ -405,6 +434,29 @@ class WxBindView(APIView):
         )
 
 
+class WxUnbindView(APIView):
+    permission_classes = [IsAuthenticated]
+    authentication_classes = [WxJWTAuthentication]
+
+    @extend_schema(
+        summary="解除微信账号绑定",
+        description="使用 JWT 解除微信账号绑定",
+        responses={
+            200: OpenApiResponse(description="成功响应"),
+        },
+        tags=["微信小程序认证"],
+    )
+    def post(self, request):
+        user = request.user
+        if not user or not user.is_authenticated:
+            return Response(
+                {"detail": "未登录"},
+                status=status.HTTP_401_UNAUTHORIZED,
+            )
+        UserWechatProfile.objects.filter(user=user).delete()
+
+        return Response(status=status.HTTP_200_OK)
+
 class GetMyAccountsView(APIView):
     """
     获取当前 account_id 的所有可以登录的用户列表。
@@ -432,6 +484,7 @@ class GetMyAccountsView(APIView):
                                     "username": {"type": "string"},
                                     "name": {"type": "string"},
                                     "type": {"type": "string", "enum": ["person", "org"]},
+                                    "avatar": {"type": "string", "description": "头像 URL"},
                                 },
                             },
                         },
@@ -466,4 +519,81 @@ class GetMyAccountsView(APIView):
         return Response({
             "account_id": account_id,
             "accounts": accounts,
+        })
+
+
+class CheckLoginView(APIView):
+    """
+    Check if the user is logged in.
+    """
+
+    permission_classes = [IsAuthenticated]
+    authentication_classes = [WxJWTAuthentication]
+
+    @extend_schema(
+        summary="检查是否登录",
+        description="检查当前用户是否登录，如果登录则返回用户信息",
+        responses={
+            200: OpenApiResponse(description="成功响应", response={
+                "type": "object",
+                "properties": {
+                    "is_login": {"type": "boolean"},
+                    "username": {"type": "string"},
+                    "name": {"type": "string"},
+                    "type": {"type": "string", "enum": ["person", "org"]},
+                },
+            }),
+            401: OpenApiResponse(description="未登录"),
+        },
+        tags=["微信小程序认证"],
+    )
+    def get(self, request):
+        if not request.user.is_authenticated:
+            return Response(status=status.HTTP_401_UNAUTHORIZED)
+        return Response({
+            "is_login": True,
+            "username": request.user.username,
+            "name": request.user.name,
+            "type": "person" if request.user.is_person() else "org",
+        })
+
+
+class ExchangeTicketView(APIView):
+    """
+    用 JWT 换取一次性 ticket，用于 webview 跳转登录。
+    ticket 在 /redirect/?ticket=xxx 使用一次后立即失效，提高安全性。
+    """
+
+    permission_classes = [IsAuthenticated]
+    authentication_classes = [WxJWTAuthentication]
+
+    @extend_schema(
+        summary="JWT 换取 ticket",
+        description="使用 JWT 换取一次性 ticket，用于 webview 跳转。",
+        responses={
+            200: OpenApiResponse(
+                description="成功",
+                response={
+                    "type": "object",
+                    "properties": {
+                        "ticket": {"type": "string", "description": "一次性 ticket"},
+                        "expires_in": {"type": "integer", "description": "有效秒数"},
+                    },
+                },
+            ),
+            401: OpenApiResponse(description="未提供或无效的 JWT"),
+        },
+        tags=["微信小程序认证"],
+    )
+    def post(self, request):
+        user = request.user
+        if not user or not user.is_authenticated:
+            return Response(
+                {"detail": "未认证"},
+                status=status.HTTP_401_UNAUTHORIZED,
+            )
+        ticket = create_webview_ticket(user.pk)
+        return Response({
+            "ticket": ticket,
+            "expires_in": WEBVIEW_TICKET_TTL,
         })
