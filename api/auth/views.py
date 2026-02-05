@@ -180,7 +180,7 @@ def _get_account_id(user: User) -> str | None:
 def _get_loginable_accounts(account_id: str) -> list[dict]:
     """
     获取 account_id（username）对应的主账号可以登录的所有账户列表。
-    返回格式: [{"username": str, "name": str, "type": str}, ...]
+    返回格式: [{"username": str, "name": str, "type": str, "avatar": str}, ...]
     """
     try:
         main_user = User.objects.get(username=account_id)
@@ -191,10 +191,12 @@ def _get_loginable_accounts(account_id: str) -> list[dict]:
 
     # 添加主账号（个人账户）
     if main_user.is_person():
+        classified = get_person_or_org(main_user)
         accounts.append({
             "username": main_user.username,
             "name": main_user.name,
-            "type": "person"
+            "type": "person",
+            "avatar": classified.get_user_ava(),
         })
 
         # 获取该个人账户管理的所有组织账户
@@ -210,7 +212,8 @@ def _get_loginable_accounts(account_id: str) -> list[dict]:
                 accounts.append({
                     "username": org_user.username,
                     "name": org.oname,
-                    "type": "org"
+                    "type": "org",
+                    "avatar": org.get_user_ava(),
                 })
         except Exception as exc:
             logger.warning(f"获取个人账户 {account_id} 管理的组织时出错: {exc}")
@@ -481,6 +484,7 @@ class GetMyAccountsView(APIView):
                                     "username": {"type": "string"},
                                     "name": {"type": "string"},
                                     "type": {"type": "string", "enum": ["person", "org"]},
+                                    "avatar": {"type": "string", "description": "头像 URL"},
                                 },
                             },
                         },
