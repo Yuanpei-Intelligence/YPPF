@@ -266,7 +266,6 @@ class FeedbackViewSet(viewsets.ViewSet):
             feedback = Feedback.objects.activated().get(id=pk)
         except (Feedback.DoesNotExist, ValueError):
             raise NotFound("反馈不存在")
-
         me = self._get_me(request)
         if not request.user.is_person():
             return Response(
@@ -284,6 +283,152 @@ class FeedbackViewSet(viewsets.ViewSet):
         feedback.issue_status = Feedback.IssueStatus.DELETED
         feedback.save(update_fields=["issue_status"])
         return Response(status=status.HTTP_204_NO_CONTENT)
+
+    @extend_schema(
+        description="获取当前用户「进行中」的反馈列表\n\n"
+        "分类规则：issue_status=已发布，且解决状态为【解决中】或【未标记】。",
+        parameters=[
+            OpenApiParameter(
+                name="ordering",
+                description="排序字段（默认 -feedback_time）",
+                required=False,
+                type=OpenApiTypes.STR,
+                enum=[
+                    "feedback_time",
+                    "-feedback_time",
+                    "time",
+                    "-time",
+                    "modify_time",
+                    "-modify_time",
+                ],
+            ),
+        ],
+        responses={
+            200: OpenApiResponse(
+                response=FeedbackSerializer(many=True),
+                description="进行中的反馈列表",
+            ),
+            403: OpenApiResponse(description="仅个人账号可访问"),
+        },
+        tags=["反馈"],
+    )
+    @action(detail=False, methods=["get"], url_path="in-progress")
+    def in_progress(self, request):
+        """
+        获取当前用户「进行中」的反馈列表。
+
+        规则：
+        - 仅个人账号可访问
+        - 仅返回当前登录用户发出的反馈
+        - issue_status=已发布
+        - solve_status 为【解决中】或【未标记】
+        """
+        if not request.user.is_person():
+            return Response(
+                {"detail": "仅个人账号可查看进行中的反馈列表"},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
+        me = self._get_me(request)
+        queryset = (
+            Feedback.objects.activated()
+            .filter(person=me)
+            .filter(issue_status=Feedback.IssueStatus.ISSUED)
+            .filter(
+                Q(solve_status=Feedback.SolveStatus.SOLVING)
+                | Q(solve_status=Feedback.SolveStatus.UNMARKED)
+            )
+        )
+
+        ordering = request.query_params.get("ordering", "-feedback_time")
+        allowed = {
+            "feedback_time",
+            "-feedback_time",
+            "time",
+            "-time",
+            "modify_time",
+            "-modify_time",
+        }
+        if ordering in allowed:
+            queryset = queryset.order_by(ordering)
+
+        serializer = FeedbackSerializer(
+            queryset, many=True, context={"request": request}
+        )
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+    @extend_schema(
+        description="获取当前用户「已结束」的反馈列表\n\n"
+        "分类规则：issue_status=已发布，且解决状态为【已解决】或【无法解决】。",
+        parameters=[
+            OpenApiParameter(
+                name="ordering",
+                description="排序字段（默认 -feedback_time）",
+                required=False,
+                type=OpenApiTypes.STR,
+                enum=[
+                    "feedback_time",
+                    "-feedback_time",
+                    "time",
+                    "-time",
+                    "modify_time",
+                    "-modify_time",
+                ],
+            ),
+        ],
+        responses={
+            200: OpenApiResponse(
+                response=FeedbackSerializer(many=True),
+                description="已结束的反馈列表",
+            ),
+            403: OpenApiResponse(description="仅个人账号可访问"),
+        },
+        tags=["反馈"],
+    )
+    @action(detail=False, methods=["get"], url_path="done")
+    def done(self, request):
+        """
+        获取当前用户「已结束」的反馈列表。
+
+        规则：
+        - 仅个人账号可访问
+        - 仅返回当前登录用户发出的反馈
+        - issue_status=已发布
+        - solve_status 为【已解决】或【无法解决】
+        """
+        if not request.user.is_person():
+            return Response(
+                {"detail": "仅个人账号可查看已结束的反馈列表"},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
+        me = self._get_me(request)
+        queryset = (
+            Feedback.objects.activated()
+            .filter(person=me)
+            .filter(issue_status=Feedback.IssueStatus.ISSUED)
+            .filter(
+                Q(solve_status=Feedback.SolveStatus.SOLVED)
+                | Q(solve_status=Feedback.SolveStatus.UNSOLVABLE)
+            )
+        )
+
+        ordering = request.query_params.get("ordering", "-feedback_time")
+        allowed = {
+            "feedback_time",
+            "-feedback_time",
+            "time",
+            "-time",
+            "modify_time",
+            "-modify_time",
+        }
+        if ordering in allowed:
+            queryset = queryset.order_by(ordering)
+
+        serializer = FeedbackSerializer(
+            queryset, many=True, context={"request": request}
+        )
+        return Response(serializer.data, status=status.HTTP_200_OK)
 
     @extend_schema(
         description="获取所有反馈类型（表单选项）",
