@@ -406,6 +406,28 @@ class WxBindView(APIView):
         )
 
 
+class WxUnbindView(APIView):
+    permission_classes = [IsAuthenticated]
+    authentication_classes = [WxJWTAuthentication]
+
+    @extend_schema(
+        summary="解除微信账号绑定",
+        description="使用 JWT 解除微信账号绑定",
+        responses={
+            200: OpenApiResponse(description="成功响应"),
+        },
+    )
+    def post(self, request):
+        user = request.user
+        if not user or not user.is_authenticated:
+            return Response(
+                {"detail": "未登录"},
+                status=status.HTTP_401_UNAUTHORIZED,
+            )
+        UserWechatProfile.objects.filter(user=user).delete()
+
+        return Response(status=status.HTTP_200_OK)
+
 class GetMyAccountsView(APIView):
     """
     获取当前 account_id 的所有可以登录的用户列表。
