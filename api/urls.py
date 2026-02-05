@@ -41,6 +41,7 @@ urlpatterns = [
     path("v2/library/", include("api.library.urls")),
     path("v2/YQpools/", include("api.YQpools.urls")),
     path("v2/org/", include("api.org.urls")),
+    path("v2/generic/", include("api.generic.urls")),
 ]
 
 if settings.DEBUG:
