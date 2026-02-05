@@ -38,6 +38,7 @@ urlpatterns = [
     path("v2/notification/", include("api.notification.urls")),
     path("v2/feedback/", include("api.feedback.urls")),
     path("v2/appoint/", include("api.appoint.urls")),
+    path("v2/activity/", include("api.activity.urls")),
     path("v2/library/", include("api.library.urls")),
     path("v2/YQpools/", include("api.YQpools.urls")),
     path("v2/org/", include("api.org.urls")),

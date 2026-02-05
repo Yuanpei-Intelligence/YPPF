@@ -441,6 +441,7 @@ class WxUnbindView(APIView):
         responses={
             200: OpenApiResponse(description="成功响应"),
         },
+        tags=["微信小程序认证"],
     )
     def post(self, request):
         user = request.user
