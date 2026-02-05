@@ -2,16 +2,52 @@
 REST APIs for WeChat mini program login/binding.
 
 逻辑是：
-每个微信只能绑定一个主用户，这个主用户可能是个人账户，也可能是组织账户
-如果是个人账户，可能还是一些组织的管理员，那么这个用户可以登录这些组织
+每个微信只能绑定一个主用户，主用户必须是个人用户（小组必须通过个人登录，因为不可能给小组专门搞一个微信号）
+个人账户，可能还是一些小组的管理员，那么这个用户可以登录这些小组
 
-登录时，用一个wx open id，确定主用户，如果没给username参数，就登录主用户
+## 登录时
+用一个wx open id，确定主用户，如果没给username参数，就登录主用户
 否则，检查username是否在主用户的可登录账户列表中，如果在，就登录该账户，否则返回错误
+wx.login() → code → 后端用 code 向微信换 openid
+                         ↓
+              查 UserWechatProfile(openid → user)
+                         ↓
+        ┌────────────────┴────────────────┐
+        │ 已绑定                           │ 未绑定
+        ↓                                 ↓
+   main_user = profile.user           返回 signed_openid
+        ↓                              （供后续绑定用）
+   ┌────┴─────────┐
+   │ 无 username  │ 有 username 
+   ↓              ↓
+ 用 main_user   检查 username 是否在 main_user 的
+ 签发 JWT       「可登录账户列表」中
+                    ↓
+              在 → 用 target_user 签发 JWT（account_id 仍是 main_user）
+              不在 → 403
+
+## 绑定时
+signed_openid（上一步返回）+ username + password
+        ↓
+验证 signed_openid（防伪造、有时效）
+        ↓
+authenticate(username, password)
+        ↓
+user 必须是个人账户（不能是组织）
+        ↓
+检查：该 openid 是否已绑定其他用户 → 是则 400
+        ↓
+创建 UserWechatProfile(user, openid)
+        ↓
+返回 JWT （account id为user）
+
+## 切换账号时
+只需要重新调用login API，username设置为要切换的账户username即可
 
 返回的jwt token中，包含以下字段
 ```
 token["sub"] = str(user.pk) # 用户ID （可能是个人账户ID，也可能是组织账户ID）
-token["username"] = user.username # 用户名
+token["username"] = user.username # 用户名（主账户或者管理的小组）
 token["name"] = user.name # 用户姓名
 token["account_id"] = account_id # 主账号 username
 token["iat"] = int(now.timestamp()) # 签发时间
@@ -133,24 +169,12 @@ def _get_account_id(user: User) -> str | None:
     """
     获取主账号 account_id（username）。
     如果是个人账户，返回 user.username。
-    如果是组织账户，返回管理该组织的个人账户的 username（取第一个管理员）。
-    如果找不到管理员，返回 None。
+    如果是小组账户，返回None
     """
     if user.is_person():
         return user.username
-    elif user.is_org():
-        try:
-            org = Organization.objects.get_by_user(user, activate=True)
-            # 找到管理该组织的个人账户（取第一个管理员）
-            positions = Position.objects.activated().filter(
-                org=org, is_admin=True
-            )
-            if positions.exists():
-                person = positions.first().person
-                return person.person_id.username
-        except Exception:
-            logger.warning(f"无法找到组织 {user.username} 的管理员")
-    return None
+    else:
+        return None
 
 
 def _get_loginable_accounts(account_id: str) -> list[dict]:
@@ -369,12 +393,13 @@ class WxBindView(APIView):
         username = serializer.validated_data["username"]
         password = serializer.validated_data["password"]
         user = authenticate(username=username, password=password)
+
         if user is None:
             raise AuthenticationFailed("账号或密码错误")
-        try:
-            classified = get_person_or_org(user)
-        except AssertionError:
-            raise ValidationError({"signed_openid": "该用户类型无法绑定微信"})
+        if user.is_org():
+            raise ValidationError({"username": "请使用小组管理员的个人账户绑定"})
+        if not user.is_person():
+            raise ValidationError({"username": "该类型账户暂时不支持微信小程序"})
 
         with transaction.atomic():
             if (
