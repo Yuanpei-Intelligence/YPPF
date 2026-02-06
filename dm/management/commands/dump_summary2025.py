@@ -986,7 +986,7 @@ def calculate_most_frequent_co_appoint():
 
     方法：
     1. 获取时间段内所有预约记录
-    2. 根据预约申请者(major_student.Sid.utype)判断是个人账户预约还是小组账户预约
+    2. 根据预约申请者(major_student.Sid.utype)判断是个人账户预约还是小组账户预约：utype == Type.ORG 算作小组预约，其他一律算作个人预约
     3. 对于每个参与者，遍历除了自己以外的其他参与者来更新自己的键值对表
     4. 每个用户分别维护键值对，记录其他人和自己一起出现在预约中的次数
     5. 对每个用户的键值对表排序得到结果
@@ -1019,7 +1019,8 @@ def calculate_most_frequent_co_appoint():
         if appointer_user is None:
             continue
 
-        is_personal = appointer_user.utype == User.Type.PERSON
+        # utype == Type.ORG 算作小组预约，其他一律算作个人预约
+        is_personal = appointer_user.utype != User.Type.ORG
 
         # 获取所有参与者
         participants = appoint.students.all()
@@ -1083,6 +1084,20 @@ def calculate_most_frequent_co_appoint():
                 'co_name': None,
                 'count': 0,
             }
+
+    # 统计有数据的条目数
+    personal_with_data = sum(1 for v in result_personal.values() if v.get('co_name') is not None and v.get('count', 0) > 0)
+    org_with_data = sum(1 for v in result_org.values() if v.get('co_name') is not None and v.get('count', 0) > 0)
+    
+    import sys
+    output = sys.stdout
+    output.write(f"\n=== 共同预约统计调试信息 ===\n")
+    output.write(f"有个人预约共同预约最多次数的条目数: {personal_with_data}\n")
+    output.write(f"有小组共同预约最多次数的条目数: {org_with_data}\n")
+    output.write(f"个人预约总条目数: {len(result_personal)}\n")
+    output.write(f"小组预约总条目数: {len(result_org)}\n")
+    output.write("=" * 50 + "\n\n")
+    output.flush()
 
     return {
         'personal': result_personal,
