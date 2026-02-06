@@ -290,7 +290,8 @@ class FeedbackViewSet(viewsets.ViewSet):
 
     @extend_schema(
         description="获取当前用户「进行中」的反馈列表\n\n"
-        "分类规则：issue_status=已发布，且解决状态为【解决中】或【未标记】。",
+        "分类规则：issue_status=已发布，且解决状态为【解决中】或【未标记】。\n"
+        "个人：我发出的反馈；小组：收到的反馈。",
         parameters=[
             OpenApiParameter(
                 name="ordering",
@@ -312,7 +313,6 @@ class FeedbackViewSet(viewsets.ViewSet):
                 response=FeedbackSerializer(many=True),
                 description="进行中的反馈列表",
             ),
-            403: OpenApiResponse(description="仅个人账号可访问"),
         },
         tags=["反馈"],
     )
@@ -322,27 +322,22 @@ class FeedbackViewSet(viewsets.ViewSet):
         获取当前用户「进行中」的反馈列表。
 
         规则：
-        - 仅个人账号可访问
-        - 仅返回当前登录用户发出的反馈
+        - 个人：返回我发出的反馈
+        - 小组：返回收到的反馈
         - issue_status=已发布
         - solve_status 为【解决中】或【未标记】
         """
-        if not request.user.is_person():
-            return Response(
-                {"detail": "仅个人账号可查看进行中的反馈列表"},
-                status=status.HTTP_403_FORBIDDEN,
-            )
-
         me = self._get_me(request)
-        queryset = (
-            Feedback.objects.activated()
-            .filter(person=me)
-            .filter(issue_status=Feedback.IssueStatus.ISSUED)
-            .filter(
-                Q(solve_status=Feedback.SolveStatus.SOLVING)
-                | Q(solve_status=Feedback.SolveStatus.UNMARKED)
-            )
+        base_qs = Feedback.objects.activated().filter(
+            issue_status=Feedback.IssueStatus.ISSUED
+        ).filter(
+            Q(solve_status=Feedback.SolveStatus.SOLVING)
+            | Q(solve_status=Feedback.SolveStatus.UNMARKED)
         )
+        if request.user.is_person():
+            queryset = base_qs.filter(person=me)
+        else:
+            queryset = base_qs.filter(org=me)
 
         ordering = request.query_params.get("ordering", "-feedback_time")
         allowed = {
@@ -363,7 +358,8 @@ class FeedbackViewSet(viewsets.ViewSet):
 
     @extend_schema(
         description="获取当前用户「已结束」的反馈列表\n\n"
-        "分类规则：issue_status=已发布，且解决状态为【已解决】或【无法解决】。",
+        "分类规则：issue_status=已发布，且解决状态为【已解决】或【无法解决】。\n"
+        "个人：我发出的反馈；小组：收到的反馈。",
         parameters=[
             OpenApiParameter(
                 name="ordering",
@@ -385,7 +381,6 @@ class FeedbackViewSet(viewsets.ViewSet):
                 response=FeedbackSerializer(many=True),
                 description="已结束的反馈列表",
             ),
-            403: OpenApiResponse(description="仅个人账号可访问"),
         },
         tags=["反馈"],
     )
@@ -395,27 +390,22 @@ class FeedbackViewSet(viewsets.ViewSet):
         获取当前用户「已结束」的反馈列表。
 
         规则：
-        - 仅个人账号可访问
-        - 仅返回当前登录用户发出的反馈
+        - 个人：返回我发出的反馈
+        - 小组：返回收到的反馈
         - issue_status=已发布
         - solve_status 为【已解决】或【无法解决】
         """
-        if not request.user.is_person():
-            return Response(
-                {"detail": "仅个人账号可查看已结束的反馈列表"},
-                status=status.HTTP_403_FORBIDDEN,
-            )
-
         me = self._get_me(request)
-        queryset = (
-            Feedback.objects.activated()
-            .filter(person=me)
-            .filter(issue_status=Feedback.IssueStatus.ISSUED)
-            .filter(
-                Q(solve_status=Feedback.SolveStatus.SOLVED)
-                | Q(solve_status=Feedback.SolveStatus.UNSOLVABLE)
-            )
+        base_qs = Feedback.objects.activated().filter(
+            issue_status=Feedback.IssueStatus.ISSUED
+        ).filter(
+            Q(solve_status=Feedback.SolveStatus.SOLVED)
+            | Q(solve_status=Feedback.SolveStatus.UNSOLVABLE)
         )
+        if request.user.is_person():
+            queryset = base_qs.filter(person=me)
+        else:
+            queryset = base_qs.filter(org=me)
 
         ordering = request.query_params.get("ordering", "-feedback_time")
         allowed = {
