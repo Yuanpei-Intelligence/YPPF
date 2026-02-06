@@ -49,7 +49,6 @@
 <script src={% static "assets/js/event_tracking.js" %}></script>
 <!-- <body> -->
 <body onload="PageTrackFunction(0)" onbeforeunload="PageTrackFunction(1)">
-    
 
     <!--  BEGIN NAVBAR  -->
     <div class="header-container fixed-top">
@@ -404,6 +403,33 @@
     <script src={% static "assets/js/custom.js" %}></script>
     <!-- END GLOBAL MANDATORY SCRIPTS -->
     {% endblock %}
+
+    {% if html_display.warn_code == 2 %}
+    <script>
+        // 业务完成后，若在小程序内嵌的 webview 中，提示用户返回小程序主页
+        // 等待 wx/miniProgram 加载完成后再执行
+        (function () {
+            function onReady() {
+                if (!window.wx || !wx.miniProgram) return;
+
+                wx.miniProgram.getEnv(function (res) {
+                    if (res.miniprogram) {
+                        if (confirm('操作成功，是否返回主页？')) {
+                            wx.miniProgram.redirectTo({
+                                url: '/pages/generic/callback'
+                            });
+                        }
+                    }
+                });
+            }
+
+            var s = document.createElement('script');
+            s.src = 'https://res.wx.qq.com/open/js/jweixin-1.6.0.js';
+            s.onload = onReady;
+            document.head.appendChild(s);
+        })();
+    </script>
+    {% endif %}
 
     {% block add_js_file %}
 
