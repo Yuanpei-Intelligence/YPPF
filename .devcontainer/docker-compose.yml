@@ -38,12 +38,15 @@ services:
         condition: service_healthy
     working_dir: /workspace
     environment:
+      - YPPF_DEBUG=true
       - DB_HOST=mysql
       - DB_USER=root
       - DB_PASSWORD=secret
       - DB_DATABASE=yppf
     volumes:
       - ../:/workspace
+    ports:
+      - "8000:8000"
 
 volumes:
   yppf-mysql-data:

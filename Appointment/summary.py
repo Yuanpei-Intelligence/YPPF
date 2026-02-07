@@ -639,37 +639,57 @@ def summary2025(request: HttpRequest):
     # 2025年度总结
     base_dir = 'static/Appointment/assets/summary_data/summary2025'
     logged_in = request.user.is_authenticated
+    infos = {}
     if logged_in:
         username = request.session.get("NP", "")
         if username:
             from app.utils import update_related_account_in_session
             update_related_account_in_session(request, username, shift=True)
 
-
-    infos.update(logged_in=logged_in, user_accept=user_accept, user_cancel=user_cancel)
     user_accept = request.GET.get('accept') == 'true'
     user_cancel = request.GET.get('cancel') == 'true'
-    infos = {}
 
     infos.update(logged_in=logged_in, user_accept=user_accept, user_cancel=user_cancel)
     if not user_accept or not logged_in or user_cancel:
         # 新生/不接受协议/未登录 展示样例
         example_file = os.path.join(base_dir, 'template.json')
         with open(example_file ,encoding='utf-8') as f:
-            infos.update(json.load(f))
+            template_data = json.load(f)
+            # template.json 结构是 {"2300000000": {...}}，需要提取第一个用户的数据
+            if template_data:
+                first_key = list(template_data.keys())[0]
+                infos.update(template_data[first_key])
         if logged_in:
             with open(os.path.join(base_dir, 'summary2025.json'), 'r', encoding='utf-8') as f:
-                infos.update(home_Sname=json.load(f)[request.user.username].get('Sname', ''))
+                user_data = json.load(f).get(request.user.username, {})
+                infos.update(home_Sname=user_data.get('Sname', ''))
     else:
         # 读取年度总结中该用户的个人数据
         with open(os.path.join(base_dir, 'summary2025.json'), 'r', encoding='utf-8') as f:
-            infos.update(json.load(f)[request.user.username])
+            user_data = json.load(f).get(request.user.username, {})
+            if user_data:
+                infos.update(user_data)
+            else:
+                # 用户不在数据中，使用模板
+                with open(os.path.join(base_dir, 'template.json'), 'r', encoding='utf-8') as tf:
+                    template_data = json.load(tf)
+                    if template_data:
+                        first_key = list(template_data.keys())[0]
+                        infos.update(template_data[first_key])
 
-        infos.update(home_Sname = infos['Sname'])
+        infos.update(home_Sname=infos.get('Sname', infos.get('name', '')))
 
         # 读取年度总结中该用户的排名数据
         with open(os.path.join(base_dir, 'rank2025.json'), 'r', encoding='utf-8') as f:
-            infos.update(json.load(f)[request.user.username])
+            rank_data = json.load(f).get(request.user.username, {})
+            if rank_data:
+                infos.update(rank_data)
+                print(f"[DEBUG] 用户 {request.user.username} 的排名数据加载成功")
+                print(
+                    f"[DEBUG] personal_most_frequent_co_appoint: {rank_data.get('personal_most_frequent_co_appoint')}")
+            else:
+                print(
+                    f"[DEBUG] 用户 {request.user.username} 不在 rank2025.json 中，将使用模板默认值")
     
     # 读取年度总结中所有用户的总体数据
     with open(os.path.join(base_dir, 'summary_overall_2025.json'), 'r', encoding='utf-8') as f:
@@ -678,22 +698,103 @@ def summary2025(request: HttpRequest):
     # 将数据中缺少的项利用template中的默认值补齐
     with open(os.path.join(base_dir, 'template.json'), 'r', encoding='utf-8') as f:
         template = json.load(f)
-        for key, value in template.items():
-            if key not in infos.keys():
-                infos[key] = value
+        # template.json 结构是 {"2300000000": {...}}，需要提取第一个用户的数据
+        if template:
+            first_key = list(template.keys())[0]
+            template = template[first_key]
+
+        # 递归填充缺失或为null的字段
+        def fill_null_fields(data_dict, template_dict):
+            for key, template_value in template_dict.items():
+                if key not in data_dict or data_dict[key] is None:
+                    data_dict[key] = template_value
+                elif isinstance(template_value, dict) and isinstance(data_dict.get(key), dict):
+                    fill_null_fields(data_dict[key], template_value)
+
+        fill_null_fields(infos, template)
+
+    # 字段名兼容：如果没有 personal_most_frequent_co_appoint 但有 organization_most_frequent_co_appoint，则复制
+    # 这个逻辑必须在 fill_rank_null_fields 之前执行，否则会被 rank-template 的默认值覆盖
+    if 'personal_most_frequent_co_appoint' not in infos or not infos.get('personal_most_frequent_co_appoint'):
+        if infos.get('organization_most_frequent_co_appoint'):
+            infos['personal_most_frequent_co_appoint'] = infos['organization_most_frequent_co_appoint']
+            print(
+                f"[DEBUG] 使用 organization_most_frequent_co_appoint 作为 personal_most_frequent_co_appoint: {infos['personal_most_frequent_co_appoint']}")
+
+    # 将 rank 数据中缺少的项利用 rank-template 中的默认值补齐
+    with open(os.path.join(base_dir, 'rank-template.json'), 'r', encoding='utf-8') as f:
+        rank_template = json.load(f)
+        # rank-template.json 结构也是 {"2300000000": {...}}
+        if rank_template:
+            first_key = list(rank_template.keys())[0]
+            rank_template = rank_template[first_key]
+
+        # 递归填充缺失或为null的字段（但跳过已经存在且有值的字段）
+        def fill_rank_null_fields(data_dict, template_dict):
+            for key, template_value in template_dict.items():
+                # 跳过 personal_most_frequent_co_appoint，如果没有真实数据就让它保持为空
+                if key == 'personal_most_frequent_co_appoint':
+                    continue
+                if key not in data_dict or data_dict[key] is None:
+                    data_dict[key] = template_value
+                elif isinstance(template_value, dict) and isinstance(data_dict.get(key), dict):
+                    fill_rank_null_fields(data_dict[key], template_value)
+
+        fill_rank_null_fields(infos, rank_template)
+
+    # 处理空字符串的 usage 字段
+    def fix_empty_usage(data_dict, parent_key=''):
+        """递归将空字符串的 usage 字段替换为合理默认值"""
+        if isinstance(data_dict, dict):
+            # 如果当前字典有 usage 字段且值为空字符串，则替换
+            if 'usage' in data_dict and data_dict['usage'] == '':
+                # 根据父键设置合理的默认值
+                if 'underground' in parent_key or 'study' in parent_key:
+                    data_dict['usage'] = '自习'
+                elif 'talk' in parent_key or 'func' in parent_key:
+                    data_dict['usage'] = '小组讨论'
+                else:
+                    data_dict['usage'] = '预约活动'
+                print(f"[DEBUG] 修复了 {parent_key}.usage: {data_dict['usage']}")
+
+            # 递归处理嵌套字典
+            for key, value in data_dict.items():
+                if isinstance(value, dict):
+                    fix_empty_usage(
+                        value, parent_key=f"{parent_key}.{key}" if parent_key else key)
+
+    fix_empty_usage(infos)
+
+    # 判断用户是否为新用户（2025年注册）
+    date_joined_str = infos.get('date_joined')
+    is_new_user = False
+    if date_joined_str:
+        try:
+            date_joined_obj = datetime.fromisoformat(date_joined_str) if isinstance(
+                date_joined_str, str) else date_joined_str
+            is_new_user = date_joined_obj.year >= 2025
+        except:
+            is_new_user = False
+    infos['is_new_user'] = is_new_user
+
     # 计算用户自注册起至今过去的天数（2025 days己计算）
 
     # 将导出数据中iosformat的日期转化为只包含年、月、日的文字date_joined"# 注册日期（2025update)
-    start_date = infos["longest_underground_usage"]["longest_continuous_start_date"]
-    end_date = infos["longest_underground_usage"]["longest_continuous_end_date"]
+    longest_usage = infos.get("longest_underground_usage", {})
+    start_date = longest_usage.get("longest_continuous_start_date")
+    end_date = longest_usage.get("longest_continuous_end_date")
     if infos.get('date_joined'): # None or ''
         date_joined = datetime.fromisoformat(infos['date_joined'])
         infos['date_joined'] = date_joined.strftime("%Y年%m月%d日")
     if start_date:
         start_date = datetime.fromisoformat(start_date)
+        if "longest_underground_usage" not in infos:
+            infos["longest_underground_usage"] = {}
         infos["longest_underground_usage"]["longest_continuous_start_date"] = start_date.strftime("%Y年%m月%d日")
     if end_date:
         end_date = datetime.fromisoformat(end_date)
+        if "longest_underground_usage" not in infos:
+            infos["longest_underground_usage"] = {}
         infos["longest_underground_usage"]["longest_continuous_end_date"] = end_date.strftime("%Y年%m月%d日")
 
     # 对最长研讨室/功能室预约的小时数向下取整
@@ -712,7 +813,9 @@ def summary2025(request: HttpRequest):
 
     #2025新特性
     #根据刷卡/预约记录总天数超越百分比显示文字
-    underground_usage_percentile=infos.get('underground_usage_percentile')
+    underground_usage_percentile = infos.get('underground_usage_percentile', 0)
+    if underground_usage_percentile is None:
+        underground_usage_percentile = 0
     if underground_usage_percentile<=50:
         infos.update(underground_usage_percentile_name='新的一年，期待着和你遇见！');
     elif underground_usage_percentile<=85:
@@ -720,7 +823,7 @@ def summary2025(request: HttpRequest):
     else:
         infos.update(underground_usage_percentile_name='我宣布，没有人比你更了解地下室！');
     # 如果该用户刷卡/预约记录为0，则下面三部分不保留
-    record_is_zero=(infos.get('underground_usage_days')==0)
+    record_is_zero = (infos.get('underground_usage_days', 0) == 0)
     infos.update(record_is_zero=record_is_zero)
     #用户在统计周期内刷卡/预约记录的最早日期自习室研讨室类型？
     study_room_list = ['B108', 'B112', 'B118', 'B106', 'B119', 'B114']
@@ -754,21 +857,37 @@ def summary2025(request: HttpRequest):
     else:
         max_diff = 0 
     infos.update(average_diff_time=average_diff_time,max_diff_time=max_diff_time)
+    # 确保 appoint_habit 是字典
+    if not isinstance(infos.get("appoint_habit"), dict):
+        infos['appoint_habit'] = {}
     infos['appoint_habit']['average_diff'] = average_diff
     infos['appoint_habit']['max_diff'] = max_diff
+
+    # 为talk_and_func_room_longest_record添加participant_num字段
+    # 如果原数据没有，则用talk_room_average_participant_num判断
+    talk_and_func_record = infos.get('talk_and_func_room_usage', {}).get(
+        'talk_and_func_room_longest_record')
+    if talk_and_func_record and isinstance(talk_and_func_record, dict):
+        if 'participant_num' not in talk_and_func_record:
+            # 使用平均参与人数作为判断依据
+            avg_participant = infos.get('talk_and_func_room_usage', {}).get(
+                'talk_room_average_participant_num', 2)
+            # 如果平均人数<=1，认为是个人使用；否则认为是多人使用
+            talk_and_func_record['participant_num'] = 1 if avg_participant <= 1 else 2
 
     #个人/集体预约分类
 
     #如果担任职务小组数量为0，则该行不保留
     org_reserved=True
-    if infos["org_usage"]['org_num']:
-        org_name_list = infos["org_usage"]['org_name_list']
+    org_usage = infos.get("org_usage", {})
+    if org_usage and org_usage.get('org_num'):
+        org_name_list = org_usage.get('org_name_list', [])
         if len(org_name_list) ==0:
             org_reserved=False
     infos.update(org_reserved=org_reserved)
 
     # 处理用户担任admin职务的小组数过多的情况(2025变量名org_name_list_str)
-    org_name_list = infos["org_usage"]['org_name_list']
+    org_name_list = infos.get("org_usage", {}).get('org_name_list', [])
     admin_org_num=len(org_name_list)
     if admin_org_num:
         if admin_org_num > 3:
@@ -778,5 +897,15 @@ def summary2025(request: HttpRequest):
             infos.update(org_name_list_str='，'.join(org_name_list))
     else:
         infos.update(org_name_list_str='')
-    
+
+    # 计算已选修书院课程种类数
+    course_type_str = infos.get('course_usage', {}).get('course_type_str', '')
+    if course_type_str:
+        course_type_list = course_type_str.split()
+        infos['course_type_count'] = len(course_type_list)
+        infos['course_type_str_formatted'] = '、'.join(course_type_list)
+    else:
+        infos['course_type_count'] = 0
+        infos['course_type_str_formatted'] = ''
+
     return render(request, 'Appointment/summary2025.html', infos)
