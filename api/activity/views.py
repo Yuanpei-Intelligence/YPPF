@@ -9,11 +9,11 @@ from rest_framework import status, viewsets
 from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
-from rest_framework.exceptions import PermissionDenied, ValidationError
+from rest_framework.exceptions import PermissionDenied, ValidationError, NotFound
 from drf_spectacular.utils import extend_schema, OpenApiResponse
 
 from api.authentication import WxJWTAuthentication
-from api.activity.serializers import ActivityHomepageSerializer
+from api.activity.serializers import ActivityHomepageSerializer, ActivitySummarySerializer
 from app.models import Activity
 from app.utils import get_person_or_org
 from api.activity.checkin import do_checkin
@@ -93,6 +93,32 @@ class ActivityViewSet(viewsets.ViewSet):
         }
 
         serializer = ActivityHomepageSerializer(response_data)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+    @extend_schema(
+        summary="获取活动详情",
+        description="获取指定活动的摘要信息，用于签到页等前端展示。",
+        responses={
+            200: OpenApiResponse(
+                description="活动详情",
+                response=ActivitySummarySerializer,
+            ),
+            404: OpenApiResponse(description="活动不存在"),
+        },
+        tags=['活动'],
+    )
+    @action(detail=False, methods=['get'], url_path=r'(?P<aid>\d+)')
+    def retrieve_by_id(self, request, aid=None):
+        """Get activity summary by ID for check-in page display."""
+        try:
+            aid = int(aid)
+        except (ValueError, TypeError):
+            raise ValidationError({"aid": "活动 ID 格式错误"})
+        try:
+            activity = Activity.objects.select_related('organization_id').get(id=aid)
+        except Activity.DoesNotExist:
+            raise NotFound("活动不存在")
+        serializer = ActivitySummarySerializer(activity)
         return Response(serializer.data, status=status.HTTP_200_OK)
 
     @extend_schema(
