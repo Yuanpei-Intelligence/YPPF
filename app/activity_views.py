@@ -407,7 +407,7 @@ def getActivityInfo(request: HttpRequest):
         payload = {
             "scene": f"qd_{activity.id}",
             "page": "pages/activity/checkin",
-            "check_path": True,
+            "check_path": False,
         }
         response = requests.post(
             "https://api.weixin.qq.com/wxa/getwxacodeunlimit",

@@ -15,9 +15,7 @@ import random
 from typing import Iterable
 from datetime import datetime, timedelta
 
-import qrcode
-
-from utils.http.utils import build_full_url
+import requests
 import utils.models.query as SQ
 from generic.models import User, YQPointRecord
 from scheduler.adder import ScheduleAdder
@@ -43,6 +41,7 @@ from app.notification_utils import (
 )
 from app.extern.wechat import WechatApp, WechatMessageLevel
 from app.log import logger
+from api.auth.wechat_api import get_wechat_access_token
 
 
 __all__ = [
@@ -316,21 +315,29 @@ def notifyActivity(aid: int, msg_type: str, msg=""):
 
 
 def get_activity_QRcode(activity):
-    auth_code = GLOBAL_CONFIG.hasher.encode(str(activity.id))
-    url = build_full_url(f'checkinActivity/{activity.id}?auth={auth_code}')
-    qr = qrcode.QRCode(
-        version=2,
-        error_correction=qrcode.constants.ERROR_CORRECT_L,
-        box_size=5,
-        border=5,
+    """
+    获取活动签到的小程序码（base64 data URL，供前端 img src 使用）。
+    """
+    access_token = get_wechat_access_token()
+    payload = {
+        "scene": f"qd_{activity.id}",
+        "page": "pages/activity/checkin",
+        "check_path": False,
+    }
+    response = requests.post(
+        "https://api.weixin.qq.com/wxa/getwxacodeunlimit",
+        params={"access_token": access_token},
+        json=payload,
+        headers={"Content-Type": "application/json"},
+        timeout=10,
     )
-    qr.add_data(url)
-    qr.make(fit=True)
-    img = qr.make_image()
-    io_buffer = io.BytesIO()
-    img.save(io_buffer, "png")
-    data = base64.encodebytes(io_buffer.getvalue()).decode()
-    return "data:image/png;base64," + str(data)
+    response.raise_for_status()
+    content_type = response.headers.get("Content-Type", "")
+    if "application/json" in content_type or response.content[:1] == b"{":
+        err = response.json()
+        raise ValueError(f"获取小程序码失败: {err.get('errmsg', err)}")
+    data = base64.encodebytes(response.content).decode()
+    return "data:image/jpeg;base64," + data
 
 
 class ActivityException(Exception):
