@@ -9,11 +9,14 @@ from rest_framework import status, viewsets
 from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
+from rest_framework.exceptions import PermissionDenied, ValidationError
 from drf_spectacular.utils import extend_schema, OpenApiResponse
 
 from api.authentication import WxJWTAuthentication
 from api.activity.serializers import ActivityHomepageSerializer
 from app.models import Activity
+from app.utils import get_person_or_org
+from api.activity.checkin import do_checkin
 
 
 class ActivityViewSet(viewsets.ViewSet):
@@ -91,3 +94,58 @@ class ActivityViewSet(viewsets.ViewSet):
 
         serializer = ActivityHomepageSerializer(response_data)
         return Response(serializer.data, status=status.HTTP_200_OK)
+
+    @extend_schema(
+        summary="活动签到",
+        description="对指定活动进行签到。需要个人账号，且已报名该活动。",
+        request={
+            "application/json": {
+                "type": "object",
+                "required": ["aid"],
+                "properties": {
+                    "aid": {"type": "integer", "description": "活动 ID"},
+                },
+            },
+            "application/x-www-form-urlencoded": {
+                "type": "object",
+                "required": ["aid"],
+                "properties": {
+                    "aid": {"type": "integer", "description": "活动 ID"},
+                },
+            },
+        },
+        responses={
+            200: OpenApiResponse(
+                description="签到成功",
+                response={
+                    "type": "object",
+                    "properties": {
+                        "message": {"type": "string", "description": "提示信息"},
+                    },
+                },
+            ),
+            400: OpenApiResponse(description="请求参数错误或业务校验失败"),
+            403: OpenApiResponse(description="需使用个人账号"),
+        },
+        tags=['活动'],
+    )
+    @action(detail=False, methods=['post'], url_path='checkin')
+    def checkin(self, request):
+        """Submit activity check-in."""
+        if not request.user.is_person():
+            raise PermissionDenied("请使用个人账号签到")
+
+        aid = request.data.get("aid") or request.query_params.get("aid")
+        if aid is None:
+            raise ValidationError({"aid": "缺少活动 ID"})
+        try:
+            aid = int(aid)
+        except (ValueError, TypeError):
+            raise ValidationError({"aid": "活动 ID 格式错误"})
+
+        person = get_person_or_org(request.user)
+        success, message = do_checkin(person, aid)
+        if not success:
+            raise ValidationError(message)
+
+        return Response({"message": message}, status=status.HTTP_200_OK)

@@ -7,7 +7,8 @@ from typing import Literal
 from django.db import transaction
 from django.db.models import F
 import csv
-import qrcode
+import json
+import requests
 
 from generic.models import User
 from generic.utils import to_search_indices
@@ -42,12 +43,14 @@ from app.utils import (
     get_person_or_org,
     escape_for_templates,
 )
+from api.auth.wechat_api import get_wechat_access_token
 
 __all__ = [
     'viewActivity', 'getActivityInfo', 'checkinActivity',
     'addActivity', 'activityCenter', 'examineActivity',
     'offlineCheckinActivity', 'finishedActivityCenter', 'activitySummary',
     'WeeklyActivitySummary',
+    'debugActivityQrcode',
 ]
 
 
@@ -388,17 +391,40 @@ def getActivityInfo(request: HttpRequest):
     elif info_type == "qrcode":
         # checkin begins 1 hour ahead
         assert datetime.now() > activity.start - timedelta(hours=1), "签到未开始"
-        checkin_url = f"/checkinActivity?activityid={activity.id}"
-        origin_url = request.scheme + "://" + request.META["HTTP_HOST"]
-        checkin_url = urllib.parse.urljoin(
-            origin_url, checkin_url)  # require full path
+        # checkin_url = f"/checkinActivity?activityid={activity.id}"
+        # origin_url = request.scheme + "://" + request.META["HTTP_HOST"]
+        # checkin_url = urllib.parse.urljoin(
+        #     origin_url, checkin_url)  # require full path
 
-        buffer = io.BytesIO()
-        qr = qrcode.QRCode(version=1, box_size=10, border=5)
-        qr.add_data(checkin_url), qr.make(fit=True)
-        img = qr.make_image(fill_color="black", back_color="white")
-        img.save(buffer, "jpeg"), buffer.seek(0)
-        return HttpResponse(buffer, content_type="img/jpeg")
+        # buffer = io.BytesIO()
+        # qr = qrcode.QRCode(version=1, box_size=10, border=5)
+        # qr.add_data(checkin_url), qr.make(fit=True)
+        # img = qr.make_image(fill_color="black", back_color="white")
+        # img.save(buffer, "jpeg"), buffer.seek(0)
+
+        # 将QRcode改为小程序码
+        access_token = get_wechat_access_token()
+        payload = {
+            "scene": f"qd_{activity.id}",
+            "page": "pages/activity/checkin",
+            "check_path": True,
+        }
+        response = requests.post(
+            "https://api.weixin.qq.com/wxa/getwxacodeunlimit",
+            params={"access_token": access_token},
+            json=payload,
+            headers={"Content-Type": "application/json"},
+            timeout=10,
+        )
+        response.raise_for_status()
+        # 微信API成功返回图片二进制，失败返回 JSON
+        content_type = response.headers.get("Content-Type", "")
+        if "application/json" in content_type or response.content[:1] == b"{":
+            err = response.json()
+            raise ValueError(
+                f"获取小程序码失败: {err.get('errmsg', err)}"
+            )
+        return HttpResponse(response.content, content_type="image/jpeg")
 
 
 @login_required(redirect_field_name="origin")
