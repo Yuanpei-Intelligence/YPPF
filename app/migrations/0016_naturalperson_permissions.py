@@ -39,7 +39,7 @@ def initialize_permissions(apps, schema_editor):
 class Migration(migrations.Migration):
 
     dependencies = [
-        ("app", "0014_alter_naturalperson_status"),
+        ("app", "0015_alter_course_type_add_other"),
     ]
 
     operations = [
