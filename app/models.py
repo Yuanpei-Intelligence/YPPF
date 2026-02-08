@@ -1547,6 +1547,20 @@ class Course(models.Model):
         PHYSICAL = (2, "体")
         AESTHETICS = (3, "美")
         LABOUR = (4, "劳")
+        OTHER = (5, "其他")
+
+        @classmethod
+        def get_achievement_name(cls, course_type: int) -> str:
+            """获取课程类型对应的成就名称，用于解锁成就"""
+            achievement_names = {
+                cls.MORAL: '德育',
+                cls.INTELLECTUAL: '智育',
+                cls.PHYSICAL: '体育',
+                cls.AESTHETICS: '美育',
+                cls.LABOUR: '劳动教育',
+                cls.OTHER: '其他',
+            }
+            return achievement_names.get(course_type, '未知')
 
     type = models.SmallIntegerField("课程类型", choices=CourseType.choices)
 

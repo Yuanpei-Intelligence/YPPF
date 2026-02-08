@@ -652,12 +652,13 @@ def addCourse(request: HttpRequest, cid=None):
     html_display["applicant_name"] = me.oname
     html_display["app_avatar_path"] = me.get_user_ava()
     html_display["today"] = datetime.now().strftime("%Y-%m-%d")
+    # 书院课助教发起选课页面：仅允许德智体美劳五类，不允许助教设置课程为"其他"类型
     course_type_all = [
-       ["德" , Course.CourseType.MORAL] ,
-       ["智" , Course.CourseType.INTELLECTUAL] ,
-       ["体" , Course.CourseType.PHYSICAL] ,
-       ["美" , Course.CourseType.AESTHETICS],
-       ["劳" , Course.CourseType.LABOUR],
+        ["德", Course.CourseType.MORAL],
+        ["智", Course.CourseType.INTELLECTUAL],
+        ["体", Course.CourseType.PHYSICAL],
+        ["美", Course.CourseType.AESTHETICS],
+        ["劳", Course.CourseType.LABOUR],
     ]
     defaultpics = [{"src": f"/static/assets/img/announcepics/{i+1}.JPG", "id": f"picture{i+1}"} for i in range(5)]
 
