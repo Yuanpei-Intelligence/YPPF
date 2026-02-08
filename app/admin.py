@@ -2,12 +2,14 @@ from datetime import datetime
 
 from django.contrib import admin
 from django.db.models import F, QuerySet
+from django.forms import ModelForm, BooleanField
 from django.utils.safestring import mark_safe
 
 from utils.http.dependency import HttpRequest
 from utils.models.query import sfilter, f
 from utils.admin_utils import *
 from app.models import *
+from app.config import PERMISSION_CONFIG
 from scheduler.cancel import remove_job
 from app.YQPoint_utils import run_lottery
 from app.org_utils import accept_modifyorg_submit
@@ -42,9 +44,38 @@ class CourseParticipantInline(admin.TabularInline):
     show_change_link = True
 
 
+# 自定义表单用于权限编辑
+class NaturalPersonForm(ModelForm):
+    class Meta:
+        model = NaturalPerson
+        fields = '__all__'
+    
+    select_course = BooleanField(label='选课权限', required=False)
+    underground_appointment = BooleanField(label='地下室权限', required=False)
+    gain_credit = BooleanField(label='获得书院课学时权限', required=False)
+    
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        if self.instance.pk:
+            # 如果是编辑模式，设置初始值
+            self.fields['select_course'].initial = self.instance.has_permission('select_course')
+            self.fields['underground_appointment'].initial = self.instance.has_permission('underground_appointment')
+            self.fields['gain_credit'].initial = self.instance.has_permission('gain_credit')
+    
+    def save(self, commit=True):
+        instance = super().save(commit=False)
+        # 更新权限字段
+        instance.set_permission('select_course', self.cleaned_data['select_course'])
+        instance.set_permission('underground_appointment', self.cleaned_data['underground_appointment'])
+        instance.set_permission('gain_credit', self.cleaned_data['gain_credit'])
+        if commit:
+            instance.save()
+        return instance
+
 # 后台模型
 @admin.register(NaturalPerson)
 class NaturalPersonAdmin(admin.ModelAdmin):
+    form = NaturalPersonForm
     _m = NaturalPerson
     list_display = [
         f(_m.person_id),
@@ -62,12 +93,6 @@ class NaturalPersonAdmin(admin.ModelAdmin):
 
     inlines = [PositionInline, ParticipationInline, CourseParticipantInline]
 
-    PERMISSION_CONFIG = [
-        {'key': 'select_course', 'name': '选课权限'},
-        {'key': 'underground_appointment', 'name': '地下室权限'},
-        {'key': 'gain_credit', 'name': '获得书院课学时权限'},
-    ]
-
     def _show_by_option(self, obj: NaturalPerson | None, option: str, detail: str):
         if obj is None or getattr(obj, option):
             return option, detail
@@ -75,8 +100,8 @@ class NaturalPersonAdmin(admin.ModelAdmin):
 
     def _get_permission_display(self, obj: NaturalPerson | None, perm_key: str):
         if obj is None:
-            return f'permissions.{perm_key}'
-        return f'permissions.{perm_key}'
+            return perm_key
+        return perm_key
 
     def get_normal_fields(self, request, obj: NaturalPerson = None):
         _m = NaturalPerson
@@ -90,7 +115,7 @@ class NaturalPersonAdmin(admin.ModelAdmin):
             f(_m.wechat_receive_level),
             f(_m.accept_promote), f(_m.active_score),
         ])
-        for perm_config in self.PERMISSION_CONFIG:
+        for perm_config in PERMISSION_CONFIG:
             fields.append(self._get_permission_display(obj, perm_config['key']))
         return fields
 
@@ -125,7 +150,7 @@ class NaturalPersonAdmin(admin.ModelAdmin):
 
     def get_actions(self, request):
         actions = super().get_actions(request)
-        for perm_config in self.PERMISSION_CONFIG:
+        for perm_config in PERMISSION_CONFIG:
             grant_action = f'grant_{perm_config["key"]}'
             revoke_action = f'revoke_{perm_config["key"]}'
             actions[grant_action] = (getattr(self.__class__, grant_action), grant_action, f'赋予 {perm_config["name"]}')
@@ -233,7 +258,7 @@ class NaturalPersonAdmin(admin.ModelAdmin):
 
     # 权限操作方法
     def _handle_permission(self, request, queryset, perm_key, grant):
-        perm_config = next((pc for pc in self.PERMISSION_CONFIG if pc['key'] == perm_key), None)
+        perm_config = next((pc for pc in PERMISSION_CONFIG if pc['key'] == perm_key), None)
         if not perm_config:
             return self.message_user(request=request, message='权限配置不存在!', level='error')
         
@@ -247,7 +272,7 @@ class NaturalPersonAdmin(admin.ModelAdmin):
         return self.message_user(request=request, message=f'修改成功!已{action}{perm_config["name"]}!')
 
 # 为每个权限创建grant和revoke方法
-for perm_config in NaturalPersonAdmin.PERMISSION_CONFIG:
+for perm_config in PERMISSION_CONFIG:
     perm_key = perm_config['key']
     
     def grant_method(self, request, queryset, key=perm_key):

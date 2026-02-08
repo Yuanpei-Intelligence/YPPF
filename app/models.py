@@ -411,9 +411,7 @@ class NaturalPerson(models.Model):
 
     # 初始化本模型的某个权限字段（仅当该权限不存在时设置）
     def init_permission(self, perm_name: str, default_value: bool = False) -> bool:
-        # 所有权限列表，增加新权限时要在此处添加，都则会报错。
-        permissions_list = ['select_course', 'gain_credit', 'underground_appointment']
-        if perm_name not in permissions_list:
+        if perm_name not in PERMISSIONS_LIST:
             raise KeyError(f"用户模型不存在权限字段{perm_name}")
         if perm_name == 'select_course' or perm_name == 'underground_appointment':
             # 老师、住宿辅导员、在读、延毕学生有选课权限和地下室预约权限
