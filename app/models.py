@@ -462,9 +462,6 @@ class NaturalPerson(models.Model):
             self.stu_id_dbonly = self.person_id.username
         else:
             assert self.stu_id_dbonly == self.person_id.username, "学号不匹配！"
-        
-
-        
         super().save(*args, **kwargs)
 
 

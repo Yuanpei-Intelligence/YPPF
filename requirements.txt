@@ -12,7 +12,7 @@ pymysql
 openpyxl
 xlwt
 pandas
-numpy<1.24.0
+numpy
 tqdm
 typing-extensions
 
