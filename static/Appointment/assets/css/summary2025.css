@@ -124,6 +124,187 @@ button {
     opacity: 0.8;
 }
 
+/* 启动页样式 */
+.splash-page {
+    background: transparent;
+}
+
+.splash-bg {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    z-index: 1;
+}
+
+.splash-content {
+    position: relative;
+    z-index: 2;
+    width: 100%;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-start;
+    /* 改为从上排，让中间内容自然下落，footer沉底 */
+    align-items: center;
+    padding: 20px;
+}
+
+/* 移除旧的 splash-decorations 相关 */
+
+.splash-logo {
+    position: absolute;
+    top: 30px;
+    right: 20px;
+    width: 80px;
+    height: auto;
+    animation: fade-in 1s ease forwards;
+    z-index: 10;
+}
+
+.splash-photos {
+    position: absolute;
+    top: -20px;
+    left: -30px;
+    width: 260px;
+    /* 左上角装饰大小 */
+    height: auto;
+    transform: rotate(-15deg);
+    animation: slide-down 1.4s ease forwards;
+    pointer-events: none;
+    /* 防止遮挡点击 */
+}
+
+.splash-centered-info {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    margin-top: 25vh;
+    /* 距离顶部位置 */
+    position: relative;
+    z-index: 5;
+}
+
+.splash-title {
+    width: 85%;
+    max-width: 500px;
+    height: auto;
+    animation: fade-in 1.2s ease forwards;
+    margin: 0;
+}
+
+.splash-user-greeting {
+    font-family: "GenWanMin2TC-R", "Siyuan SongTi regular", serif;
+    font-size: 28px;
+    color: #ffffff;
+    text-shadow: 0 2px 8px rgba(0, 74, 173, 0.3);
+    /* 蓝色阴影，增加对比度 */
+    letter-spacing: 2px;
+    opacity: 0;
+    animation: fade-in-up 1.5s ease forwards 0.5s;
+    /* 延迟出现 */
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+}
+
+.user-name {
+    font-size: 32px;
+    font-weight: bold;
+    border-bottom: 2px solid rgba(255, 255, 255, 0.6);
+    padding-bottom: 5px;
+}
+
+.greeting-text {
+    font-size: 24px;
+    opacity: 0.9;
+}
+
+.splash-footer {
+    width: 100%;
+    max-width: 400px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 20px;
+    margin-top: auto;
+    /* Push to bottom */
+    margin-bottom: 60px;
+    /* Bottom padding */
+}
+
+@keyframes slide-down {
+    from {
+        opacity: 0;
+        transform: translate(-20px, -40px) rotate(-20deg);
+    }
+
+    to {
+        opacity: 1;
+        transform: translate(0, 0) rotate(-15deg);
+    }
+}
+
+@keyframes fade-in-up {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.splash-button-img {
+    width: 200px;
+    height: auto;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    opacity: 0.5;
+    filter: grayscale(100%);
+}
+
+.splash-button-img.active {
+    opacity: 1;
+    filter: grayscale(0%);
+    animation: pulse 1.5s ease-in-out infinite;
+}
+
+.splash-button-img:hover {
+    transform: scale(1.05);
+}
+
+@keyframes fade-in {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes pulse {
+
+    0%,
+    100% {
+        transform: scale(1);
+    }
+
+    50% {
+        transform: scale(1.05);
+    }
+}
+
 /* 全局数据样式 - 所有number, name, room, date, yppf, org等强调类 */
 [class*="-number"],
 [class*="-name"],
@@ -152,6 +333,8 @@ button {
 .p12-stat:first-of-type::first-letter {
     font-size: 40px;
     font-weight: bold;
+    line-height: 1; /* 避免首字过大撑开行高 */
+    margin-right: 2px;
 }
 
 .content {
@@ -273,11 +456,11 @@ button {
 
 .p1-question {
     font-family: "Siyuan SongTi regular", serif;
-    font-size: 32px;
+    font-size: 16px;
     font-weight: 700;
     color: #000000;
-    margin-bottom: 15px;
-    line-height: 1.5;
+    margin: 0;
+    line-height: 2.2;
 }
 
 .p1-subtitle {
@@ -289,8 +472,8 @@ button {
     font-family: "Siyuan SongTi regular", serif;
     font-size: 16px;
     color: #000000;
-    line-height: 2;
-    margin: 5px 0;
+    line-height: 2.2;
+    margin: 0;
 }
 
 .p1-divider {
@@ -298,15 +481,15 @@ button {
     font-size: 16px;
     color: #000000;
     margin: 25px 0 15px 0;
-    line-height: 2;
+    line-height: 2.2;
 }
 
 .p1-stat {
     font-family: "Siyuan SongTi regular", serif;
     font-size: 16px;
     color: #000000;
-    line-height: 2;
-    margin: 5px 0;
+    line-height: 2.2;
+    margin: 0;
 }
 
 .p1-number {
@@ -355,11 +538,11 @@ button {
 
 .p2-greeting {
     font-family: "Siyuan SongTi regular", serif;
-    font-size: 28px;
+    font-size: 18px;
     font-weight: 700;
     color: #000000;
-    line-height: 1.8;
-    margin-bottom: 10px;
+    line-height: 2.2;
+    margin: 0;
 }
 
 .p2-name {
@@ -371,8 +554,8 @@ button {
     font-family: "Siyuan SongTi regular", serif;
     font-size: 18px;
     color: #000000;
-    line-height: 2;
-    margin: 5px 0;
+    line-height: 2.2;
+    margin: 0;
 }
 
 /* P3: 地下室使用情况样式 */
@@ -404,19 +587,19 @@ button {
 
 .p3-title {
     font-family: "Siyuan SongTi regular", serif;
-    font-size: 20px;
+    font-size: 16px;
     font-weight: 700;
     color: #000000;
-    margin-bottom: 15px;
-    line-height: 1.8;
+    margin: 0;
+    line-height: 2.2;
 }
 
 .p3-stat {
     font-family: "Siyuan SongTi regular", serif;
     font-size: 16px;
     color: #000000;
-    line-height: 2;
-    margin: 5px 0;
+    line-height: 2.2;
+    margin: 0;
 }
 
 .p3-number {
@@ -431,7 +614,7 @@ button {
     font-size: 23px;
     color: #000000;
     font-weight: 600;
-    line-height: 2;
+    line-height: 2.2;
     margin: 15px 0;
 }
 
@@ -440,7 +623,7 @@ button {
     font-size: 16px;
     color: #000000;
     margin: 25px 0 10px 0;
-    line-height: 2;
+    line-height: 2.2;
 }
 
 .p3-date {
@@ -448,16 +631,16 @@ button {
     font-size: 16px;
     color: #ff5050;
     font-weight: 700;
-    line-height: 2;
-    margin: 5px 0;
+    line-height: 2.2;
+    margin: 0;
 }
 
 .p3-detail {
     font-family: "Siyuan SongTi regular", serif;
     font-size: 16px;
     color: #000000;
-    line-height: 2;
-    margin: 5px 0;
+    line-height: 2.2;
+    margin: 0;
 }
 
 .p3-room {
@@ -481,11 +664,11 @@ button {
 
 .p4-title {
     font-family: "Siyuan SongTi regular", serif;
-    font-size: 20px;
+    font-size: 16px;
     font-weight: 700;
     color: #000000;
-    line-height: 2;
-    margin: 5px 0;
+    line-height: 2.2;
+    margin: 0;
 }
 
 .p4-date {
@@ -493,8 +676,8 @@ button {
     font-size: 23px;
     color: #ff5050;
     font-weight: 700;
-    line-height: 2;
-    margin: 5px 0;
+    line-height: 2.2;
+    margin: 0;
 }
 
 .p4-detail,
@@ -502,8 +685,8 @@ button {
     font-family: "Siyuan SongTi regular", serif;
     font-size: 16px;
     color: #000000;
-    line-height: 2;
-    margin: 5px 0;
+    line-height: 2.2;
+    margin: 0;
 }
 
 .p4-room,
@@ -512,16 +695,16 @@ button {
     font-size: 18px;
     color: #ff5050;
     font-weight: 700;
-    line-height: 2;
-    margin: 5px 0;
+    line-height: 2.2;
+    margin: 0;
 }
 
 .p4-stat {
     font-family: "Siyuan SongTi regular", serif;
     font-size: 16px;
     color: #000000;
-    line-height: 2;
-    margin: 5px 0;
+    line-height: 2.2;
+    margin: 0;
 }
 
 .p4-number {
@@ -540,15 +723,15 @@ button {
     font-family: "Siyuan SongTi regular", serif;
     font-size: 16px;
     color: #000000;
-    line-height: 2;
-    margin: 5px 0;
+    line-height: 2.2;
+    margin: 0;
 }
 
 .p4-message {
     font-family: "Siyuan SongTi regular", serif;
     font-size: 16px;
     color: #000000;
-    line-height: 2;
+    line-height: 2.2;
     margin: 15px 0 5px 0;
 }
 
@@ -573,19 +756,19 @@ button {
 
 .p5-title {
     font-family: "Siyuan SongTi regular", serif;
-    font-size: 20px;
+    font-size: 16px;
     font-weight: 700;
     color: #000000;
-    line-height: 2;
-    margin-bottom: 20px;
+    line-height: 2.2;
+    margin: 0;
 }
 
 .p5-stat {
     font-family: "Siyuan SongTi regular", serif;
     font-size: 16px;
     color: #000000;
-    line-height: 2;
-    margin: 5px 0;
+    line-height: 2.2;
+    margin: 0;
 }
 
 .p5-number {
@@ -599,8 +782,8 @@ button {
     font-family: "Siyuan SongTi regular", serif;
     font-size: 16px;
     color: #000000;
-    line-height: 2;
-    margin: 5px 0;
+    line-height: 2.2;
+    margin: 0;
 }
 
 .p5-room {
@@ -608,24 +791,24 @@ button {
     font-size: 18px;
     color: #ff5050;
     font-weight: 700;
-    line-height: 2;
-    margin: 5px 0;
+    line-height: 2.2;
+    margin: 0;
 }
 
 .p5-detail {
     font-family: "Siyuan SongTi regular", serif;
     font-size: 16px;
     color: #000000;
-    line-height: 2;
-    margin: 5px 0;
+    line-height: 2.2;
+    margin: 0;
 }
 
 .p5-share {
     font-family: "Siyuan SongTi regular", serif;
     font-size: 16px;
     color: #000000;
-    line-height: 2;
-    margin: 5px 0;
+    line-height: 2.2;
+    margin: 0;
 }
 
 /* P6: 研讨室和功能室样式 */
@@ -646,19 +829,19 @@ button {
 
 .p6-title {
     font-family: "Siyuan SongTi regular", serif;
-    font-size: 20px;
+    font-size: 16px;
     font-weight: 700;
     color: #000000;
-    line-height: 2;
-    margin-bottom: 10px;
+    line-height: 2.2;
+    margin: 0;
 }
 
 .p6-stat {
     font-family: "Siyuan SongTi regular", serif;
     font-size: 16px;
     color: #000000;
-    line-height: 2;
-    margin: 5px 0;
+    line-height: 2.2;
+    margin: 0;
 }
 
 .p6-number {
@@ -672,16 +855,16 @@ button {
     font-family: "Siyuan SongTi regular", serif;
     font-size: 16px;
     color: #000000;
-    line-height: 2;
-    margin: 5px 0;
+    line-height: 2.2;
+    margin: 0;
 }
 
 .p6-memory {
     font-family: "Siyuan SongTi regular", serif;
     font-size: 16px;
     color: #000000;
-    line-height: 2;
-    margin: 5px 0;
+    line-height: 2.2;
+    margin: 0;
 }
 
 .p6-date {
@@ -693,8 +876,8 @@ button {
     font-family: "Siyuan SongTi regular", serif;
     font-size: 16px;
     color: #000000;
-    line-height: 2;
-    margin: 5px 0;
+    line-height: 2.2;
+    margin: 0;
 }
 
 .p6-room {
@@ -706,8 +889,8 @@ button {
     font-family: "Siyuan SongTi regular", serif;
     font-size: 16px;
     color: #000000;
-    line-height: 2;
-    margin: 5px 0;
+    line-height: 2.2;
+    margin: 0;
 }
 
 .p6-yppf {
@@ -715,8 +898,8 @@ button {
     font-size: 18px;
     color: #ff5050;
     font-weight: 700;
-    line-height: 2;
-    margin: 5px 0;
+    line-height: 2.2;
+    margin: 0;
 }
 
 /* P7: 预约习惯样式 */
@@ -737,19 +920,19 @@ button {
 
 .p7-section-title {
     font-family: "Siyuan SongTi regular", serif;
-    font-size: 20px;
+    font-size: 16px;
     font-weight: 700;
     color: #000000;
-    line-height: 2;
-    margin: 15px 0 10px 0;
+    line-height: 2.2;
+    margin: 0;
 }
 
 .p7-stat {
     font-family: "Siyuan SongTi regular", serif;
     font-size: 16px;
     color: #000000;
-    line-height: 2;
-    margin: 5px 0;
+    line-height: 2.2;
+    margin: 0;
 }
 
 .p7-number {
@@ -763,8 +946,8 @@ button {
     font-family: "Siyuan SongTi regular", serif;
     font-size: 16px;
     color: #000000;
-    line-height: 2;
-    margin: 5px 0;
+    line-height: 2.2;
+    margin: 0;
 }
 
 .p7-yppf {
@@ -781,7 +964,7 @@ button {
     font-family: "Siyuan SongTi regular", serif;
     font-size: 16px;
     color: #000000;
-    line-height: 2;
+    line-height: 2.2;
     margin: 10px 0 5px 0;
 }
 
@@ -803,19 +986,19 @@ button {
 
 .p8-section-title {
     font-family: "Siyuan SongTi regular", serif;
-    font-size: 20px;
+    font-size: 16px;
     font-weight: 700;
     color: #000000;
-    line-height: 2;
-    margin: 15px 0 10px 0;
+    line-height: 2.2;
+    margin: 0;
 }
 
 .p8-stat {
     font-family: "Siyuan SongTi regular", serif;
     font-size: 16px;
     color: #000000;
-    line-height: 2;
-    margin: 5px 0;
+    line-height: 2.2;
+    margin: 0;
 }
 
 .p8-number {
@@ -829,8 +1012,8 @@ button {
     font-family: "Siyuan SongTi regular", serif;
     font-size: 16px;
     color: #000000;
-    line-height: 2;
-    margin: 5px 0;
+    line-height: 2.2;
+    margin: 0;
 }
 
 .p8-date {
@@ -838,8 +1021,8 @@ button {
     font-size: 16px;
     color: #ff5050;
     font-weight: 700;
-    line-height: 2;
-    margin: 5px 0;
+    line-height: 2.2;
+    margin: 0;
 }
 
 .p8-room {
@@ -847,8 +1030,8 @@ button {
     font-size: 18px;
     color: #ff5050;
     font-weight: 700;
-    line-height: 2;
-    margin: 5px 0;
+    line-height: 2.2;
+    margin: 0;
 }
 
 .p8-witness,
@@ -856,8 +1039,8 @@ button {
     font-family: "Siyuan SongTi regular", serif;
     font-size: 16px;
     color: #000000;
-    line-height: 2;
-    margin: 5px 0;
+    line-height: 2.2;
+    margin: 0;
 }
 
 .p8-yppf {
@@ -870,7 +1053,7 @@ button {
     font-size: 16px;
     color: #000000;
     font-weight: 600;
-    line-height: 2;
+    line-height: 2.2;
     margin: 10px 0 5px 0;
 }
 
@@ -892,19 +1075,19 @@ button {
 
 .p9-section-title {
     font-family: "Siyuan SongTi regular", serif;
-    font-size: 20px;
+    font-size: 16px;
     font-weight: 700;
     color: #000000;
-    line-height: 2;
-    margin: 15px 0 10px 0;
+    line-height: 2.2;
+    margin: 0;
 }
 
 .p9-stat {
     font-family: "Siyuan SongTi regular", serif;
     font-size: 16px;
     color: #000000;
-    line-height: 2;
-    margin: 5px 0;
+    line-height: 2.2;
+    margin: 0;
 }
 
 .p9-number {
@@ -923,8 +1106,8 @@ button {
     font-family: "Siyuan SongTi regular", serif;
     font-size: 16px;
     color: #000000;
-    line-height: 2;
-    margin: 5px 0;
+    line-height: 2.2;
+    margin: 0;
 }
 
 /* P10: 书院总体总结样式 */
@@ -950,17 +1133,17 @@ button {
 
 .p10-title {
     font-family: "Siyuan SongTi regular", serif;
-    font-size: 20px;
+    font-size: 18px;
     color: #000000;
-    line-height: 2;
-    margin-bottom: 20px;
+    line-height: 2.2;
+    margin: 0;
 }
 
 .p10-poem {
     font-family: "Siyuan SongTi regular", serif;
     font-size: 16px;
     color: #000000;
-    line-height: 2;
+    line-height: 2.2;
     margin: 3px 0;
 }
 
@@ -968,8 +1151,8 @@ button {
     font-family: "Siyuan SongTi regular", serif;
     font-size: 18px;
     color: #000000;
-    line-height: 2;
-    margin: 5px 0;
+    line-height: 2.2;
+    margin: 0;
 }
 
 .p10-number {
@@ -983,7 +1166,7 @@ button {
     font-family: "Siyuan SongTi regular", serif;
     font-size: 16px;
     color: #000000;
-    line-height: 2;
+    line-height: 2.2;
 }
 
 .p10-wish {
@@ -991,7 +1174,7 @@ button {
     font-size: 18px;
     color: #000000;
     font-weight: 600;
-    line-height: 2;
+    line-height: 2.2;
 }
 
 /* P11: 首次相遇样式 */
@@ -1011,19 +1194,19 @@ button {
 
 .p11-date {
     font-family: "Siyuan SongTi regular", serif;
-    font-size: 24px;
+    font-size: 18px;
     color: #ff5050;
     font-weight: 700;
-    line-height: 2;
-    margin-bottom: 15px;
+    line-height: 2.2;
+    margin: 0;
 }
 
 .p11-poem {
     font-family: "Siyuan SongTi regular", serif;
     font-size: 18px;
     color: #000000;
-    line-height: 2;
-    margin: 5px 0;
+    line-height: 2.2;
+    margin: 0;
 }
 
 .p11-number {
@@ -1038,22 +1221,22 @@ button {
     font-size: 20px;
     color: #000000;
     font-weight: 600;
-    line-height: 2;
+    line-height: 2.2;
 }
 
 .p11-stat {
     font-family: "Siyuan SongTi regular", serif;
     font-size: 18px;
     color: #000000;
-    line-height: 2;
-    margin: 10px 0;
+    line-height: 2.2;
+    margin: 0;
 }
 
 .p11-wish {
     font-family: "Siyuan SongTi regular", serif;
     font-size: 18px;
     color: #000000;
-    line-height: 2;
+    line-height: 2.2;
     margin-top: 20px;
     font-weight: 600;
 }
@@ -1077,8 +1260,8 @@ button {
     font-family: "Siyuan SongTi regular", serif;
     font-size: 18px;
     color: #000000;
-    line-height: 2;
-    margin: 5px 0;
+    line-height: 2.2;
+    margin: 0;
 }
 
 .p12-number {
@@ -1098,15 +1281,15 @@ button {
     font-family: "Siyuan SongTi regular", serif;
     font-size: 18px;
     color: #000000;
-    line-height: 2;
+    line-height: 2.2;
 }
 
 .p12-poem {
     font-family: "Siyuan SongTi regular", serif;
     font-size: 18px;
     color: #000000;
-    line-height: 2;
-    margin: 5px 0;
+    line-height: 2.2;
+    margin: 0;
 }
 
 .p12-title {
@@ -1114,7 +1297,7 @@ button {
     font-size: 20px;
     color: #000000;
     font-weight: 600;
-    line-height: 2;
+    line-height: 2.2;
 }
 
 .p12-message {
@@ -1122,7 +1305,7 @@ button {
     font-size: 18px;
     color: #000000;
     font-weight: 600;
-    line-height: 2;
+    line-height: 2.2;
     margin-top: 20px;
 }
 
@@ -1220,7 +1403,7 @@ button {
     font-size: 22px;
     font-weight: 700;
     color: #2c5f5d;
-    margin-bottom: 20px;
+    margin: 0;
     text-align: center;
 }
 
@@ -1228,7 +1411,7 @@ button {
     font-size: 14px;
     line-height: 1.8;
     color: #000000;
-    margin-bottom: 15px;
+    margin: 0;
 }
 
 .rule-content ol {
@@ -1279,7 +1462,7 @@ button {
 .intro-text {
     font-family: "Siyuan SongTi regular", serif;
     font-size: clamp(16px, 3vw, 22px);
-    line-height: 2;
+    line-height: 2.2;
     color: #000000;
     margin: 8px 0;
     text-align: center;

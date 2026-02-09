@@ -70,27 +70,36 @@
       </script>
     </div>
     <div id="app">
-      <!-- P1: 首页 - 时光理解 -->
-      <section id="page-home" class="section page">
-        <img class="bg-image" 
-             src="{% static 'Appointment/assets/img/summary2025/P1.png' %}"
-             alt="背景图" />
-        <div class="content p1-content">
-          <div class="p1-text-box">
-            <p class="p1-question">我 <span class="p1-subtitle">们该如何理解时间？</span></p>
-            <p class="p1-poem">有人说，光阴像日夜不息的流水</p>
-            <p class="p1-poem">有人说，四季是流转轮回的风车</p>
-            <p class="p1-divider mt-35">在刹那与永恒的交替里</p>
-            <p class="p1-stat">自习室的<span class="p1-number">{{ study_room_num }}</span>次推门而入</p>
-            <p class="p1-stat">研讨室里<span class="p1-number">{{ talk_room_num }}</span>回思维碰撞</p>
-            <p class="p1-stat">功能房中<span class="p1-number">{{ func_room_num }}</span>场热情飞扬</p>
-            <p class="p1-poem mt-35">都是你我在岁月长河中相伴而行的注脚</p>
-            <p class="p1-year">2025，我们又一次共同走过</p>
+      <!-- 启动页 -->
+      <section id="page-splash" class="section page splash-page">
+        <img class="splash-bg" 
+             src="{% static 'Appointment/assets/img/summary2025/1_底图.png' %}"
+             alt="启动页背景" />
+        <div class="splash-content">
+          <!-- 绝对定位元素 -->
+          <img class="splash-logo" 
+               src="{% static 'Appointment/assets/img/summary2025/4_YPPFlogo透明版.png' %}"
+               alt="YPPF Logo" />
+          <img class="splash-photos" 
+               src="{% static 'Appointment/assets/img/summary2025/5_相片元素.png' %}"
+               alt="相片元素" />
+          
+          <!-- 中间主体内容 -->
+          <div class="splash-centered-info">
+            <img class="splash-title" 
+                 src="{% static 'Appointment/assets/img/summary2025/2_标题.png' %}"
+                 alt="时光流淌 2025" />
+            <div class="splash-user-greeting">
+              <span class="user-name">{{ home_Sname }}</span>
+              <span class="greeting-text">亲启</span>
+            </div>
           </div>
-          <footer class="home-footer">
-            <button id="continue-button" type="button" title="开启旅程">
-              <span>开启旅程</span>
-            </button>
+
+          <footer class="splash-footer">
+            <img class="splash-button-img" 
+                 src="{% static 'Appointment/assets/img/summary2025/3_点击开启按钮.png' %}"
+                 id="splash-start-btn"
+                 alt="点击开启" />
             <label for="agree-rule" class="agree-rule-label">
               <input type="checkbox" id="agree-rule" />
               <p>
@@ -126,6 +135,26 @@
           e.stopPropagation();
         });
         </script>
+      </section>
+
+      <!-- P1: 首页 - 时光理解 -->
+      <section id="page-home" class="section page">
+        <img class="bg-image" 
+             src="{% static 'Appointment/assets/img/summary2025/P1.png' %}"
+             alt="背景图" />
+        <div class="content p1-content">
+          <div class="p1-text-box">
+            <p class="p1-question">我 <span class="p1-subtitle">们该如何理解时间？</span></p>
+            <p class="p1-poem">有人说，光阴像日夜不息的流水</p>
+            <p class="p1-poem">有人说，四季是流转轮回的风车</p>
+            <p class="p1-divider mt-35">在刹那与永恒的交替里</p>
+            <p class="p1-stat">自习室的<span class="p1-number">{{ study_room_num }}</span>次推门而入</p>
+            <p class="p1-stat">研讨室里<span class="p1-number">{{ talk_room_num }}</span>回思维碰撞</p>
+            <p class="p1-stat">功能房中<span class="p1-number">{{ func_room_num }}</span>场热情飞扬</p>
+            <p class="p1-poem mt-35">都是你我在岁月长河中相伴而行的注脚</p>
+            <p class="p1-year">2025，我们又一次共同走过</p>
+          </div>
+        </div>
       </section>
 
       <!-- P2: 欢迎页面 -->

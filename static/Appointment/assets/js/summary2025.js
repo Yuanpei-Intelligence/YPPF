@@ -16,7 +16,7 @@ $(document).ready(function () {
     showActiveTooltip: false,
     slidesNavigation: false,
     controlArrows: false,
-    anchors: ['home', 'page2', 'page3', 'page4', 'page5', 'page6', 'page7', 'page8', 'page9', 'page10', 'page11', 'page12', 'page13', 'page14', 'page15', 'page16', 'page17'],
+    anchors: ['splash', 'home', 'page2', 'page3', 'page4', 'page5', 'page6', 'page7', 'page8', 'page9', 'page10', 'page11', 'page12', 'page13', 'page14', 'page15', 'page16', 'page17'],
     afterLoad: function (anchorLink, index) {
       // 页面加载后的动画逻辑
       console.log('Loaded section:', 'anchor:', anchorLink, 'index:', index);
@@ -26,9 +26,9 @@ $(document).ready(function () {
     },
     onLeave: function (index, nextIndex, direction) {
       console.log('onLeave 触发:', 'from index', index, 'to', nextIndex, 'direction:', direction, 'isAgreed:', isAgreed);
-      // 如果在第一页（index=1）且未同意协议，禁止离开
+      // 如果在启动页（index=1）且未同意协议，禁止离开
       if (index === 1 && !isAgreed) {
-        console.log('❌ 阻止离开第一页 - 未同意协议');
+        console.log('❌ 阻止离开启动页 - 未同意协议');
         return false;
       }
 
@@ -41,21 +41,43 @@ $(document).ready(function () {
   const audio = document.querySelector('audio');
 
   // 检查复选框状态，控制按钮是否可用
-  const continueButton = document.getElementById('continue-button');
+  const splashButton = document.getElementById('splash-start-btn');
   const agreeCheckbox = document.getElementById('agree-rule');
+  const urlParams = new URLSearchParams(window.location.search);
+  const hasAccepted = urlParams.get('accept') === 'true';
 
-  continueButton.disabled = true;
+  if (hasAccepted && agreeCheckbox) {
+    agreeCheckbox.checked = true;
+    if (splashButton) {
+      splashButton.classList.add('active');
+    }
+    isAgreed = true;
+  }
 
+  // 复选框状态改变时更新按钮样式
   agreeCheckbox.addEventListener('change', function () {
-    continueButton.disabled = !this.checked;
-    isAgreed = this.checked;
+    if (this.checked) {
+      splashButton.classList.add('active');
+      isAgreed = true;
+    } else {
+      splashButton.classList.remove('active');
+      isAgreed = false;
+    }
     console.log('复选框状态改变:', 'checked:', this.checked, 'isAgreed:', isAgreed);
   });
 
   // 点击"开启旅程"按钮
-  continueButton.addEventListener('click', function () {
+  splashButton.addEventListener('click', function () {
     if (agreeCheckbox.checked) {
       isAgreed = true;
+
+      if (!hasAccepted) {
+        const nextParams = new URLSearchParams(window.location.search);
+        nextParams.set('accept', 'true');
+        nextParams.delete('cancel');
+        window.location.search = nextParams.toString();
+        return;
+      }
 
       // 播放音乐
       audio.play();
