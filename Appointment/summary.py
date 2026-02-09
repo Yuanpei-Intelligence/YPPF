@@ -679,7 +679,21 @@ def summary2025(request: HttpRequest):
 
         infos.update(home_Sname=infos.get('Sname', infos.get('name', '')))
 
-        # 读取年度总结中该用户的排名数据
+    if show_real_data:
+        # 读取年度总结中该用户的个人数据
+        with open(os.path.join(base_dir, 'summary2025.json'), 'r', encoding='utf-8') as f:
+            user_data = json.load(f).get(request.user.username, {})
+            if user_data:
+                infos.update(user_data)
+            else:
+                # 用户不在数据中，使用模板保底
+                with open(os.path.join(base_dir, 'template.json'), 'r', encoding='utf-8') as tf:
+                    template_data = json.load(tf)
+                    if template_data:
+                        first_key = list(template_data.keys())[0]
+                        infos.update(template_data[first_key])
+
+        # 读取该用户的排名数据
         with open(os.path.join(base_dir, 'rank2025.json'), 'r', encoding='utf-8') as f:
             rank_data = json.load(f).get(request.user.username, {})
             if rank_data:
