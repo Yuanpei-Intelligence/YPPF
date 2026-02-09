@@ -648,6 +648,8 @@ def summary2025(request: HttpRequest):
 
     user_accept = request.GET.get('accept') == 'true'
     user_cancel = request.GET.get('cancel') == 'true'
+    # 已登录且接受协议且未取消时，视为展示真实数据
+    show_real_data = logged_in and user_accept and not user_cancel
 
     infos.update(logged_in=logged_in, user_accept=user_accept, user_cancel=user_cancel)
     if not user_accept or not logged_in or user_cancel:
