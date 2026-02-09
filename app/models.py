@@ -409,6 +409,35 @@ class NaturalPerson(models.Model):
     # def get_permissions(self) -> dict:
     #     return self.permissions if self.permissions is not None else {}
 
+    # 初始化本模型的某个权限字段（仅当该权限不存在时设置）
+    def init_permission(self, perm_name: str, default_value: bool = False) -> bool:
+        if perm_name not in PERMISSIONS_LIST:
+            raise KeyError(f"用户模型不存在权限字段{perm_name}")
+        if perm_name == 'select_course' or perm_name == 'underground_appointment':
+            # 老师、住宿辅导员、在读、延毕学生有选课权限和地下室预约权限
+            has_permission = (
+                self.identity == NaturalPerson.Identity.TEACHER or
+                (self.identity == NaturalPerson.Identity.STUDENT and 
+                 self.status in [NaturalPerson.GraduateStatus.UNDERGRADUATED, 
+                                NaturalPerson.GraduateStatus.POSTPONED, 
+                                NaturalPerson.GraduateStatus.INSTRUCTOR])
+            )
+            self.permissions[perm_name] = has_permission
+            self.save(update_fields=['permissions'])
+        elif perm_name == 'gain_credit':
+            # 在读、延毕学生有获得书院课学时权限
+            has_permission = (
+                self.identity == NaturalPerson.Identity.STUDENT and 
+                self.status in [NaturalPerson.GraduateStatus.UNDERGRADUATED, 
+                               NaturalPerson.GraduateStatus.POSTPONED]
+            )
+            self.permissions[perm_name] = has_permission
+            self.save(update_fields=['permissions'])
+        else:
+            self.permissions[perm_name] = default_value
+            self.save(update_fields=['permissions'])
+        return self.permissions[perm_name]
+
     # 检查本模型是否有该权限
     def has_permission(self, perm_name: str) -> bool:
         if perm_name not in self.permissions:
