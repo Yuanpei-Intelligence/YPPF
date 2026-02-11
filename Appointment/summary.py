@@ -691,8 +691,8 @@ def summary2025(request: HttpRequest):
 
     user_accept = request.GET.get('accept') == 'true'
     user_cancel = request.GET.get('cancel') == 'true'
-    # 已登录且接受协议且未取消时，视为展示真实数据
-    show_real_data = logged_in and user_accept and not user_cancel
+    # 已登录且未取消时，视为展示真实数据（前端通过遮罩控制协议同意流程，避免刷新闪烁）
+    show_real_data = logged_in and not user_cancel
 
     infos.update(logged_in=logged_in, user_accept=user_accept,
                  user_cancel=user_cancel)
