@@ -5,6 +5,7 @@ from datetime import datetime
 from django.http import HttpRequest
 from django.shortcuts import render, redirect
 from django.urls import reverse
+from django.contrib import auth
 
 from Appointment.models import Room
 from Appointment.utils.identity import identity_check
@@ -672,6 +673,15 @@ def summary2024(request: HttpRequest):
 def summary2025(request: HttpRequest):
     # 2025年度总结
     base_dir = 'static/Appointment/assets/summary_data/summary2025'
+
+    # 先展示入口页，让用户选择“登录查看”或“访客查看”
+    view_mode = request.GET.get('view', '')
+    if view_mode not in ['login', 'guest']:
+        return render(request, 'Appointment/summary2025_entry.html', {
+            'logged_in': request.user.is_authenticated,
+            'login_failed': request.GET.get('login_failed') == '1',
+        })
+
     logged_in = request.user.is_authenticated
     infos = {}
     # 获取用户真实姓名
@@ -690,7 +700,7 @@ def summary2025(request: HttpRequest):
             update_related_account_in_session(request, username, shift=True)
 
     user_accept = request.GET.get('accept') == 'true'
-    user_cancel = request.GET.get('cancel') == 'true'
+    user_cancel = request.GET.get('cancel') == 'true' or view_mode == 'guest'
     # 已登录且未取消时，视为展示真实数据（前端通过遮罩控制协议同意流程，避免刷新闪烁）
     show_real_data = logged_in and not user_cancel
 
@@ -706,7 +716,8 @@ def summary2025(request: HttpRequest):
             if template_data:
                 first_key = list(template_data.keys())[0]
                 infos.update(template_data[first_key])
-        if logged_in:
+        # 如果是访客模式，不要读取真实用户数据，即使已登录
+        if logged_in and view_mode != 'guest':
             with open(os.path.join(base_dir, 'summary2025.json'), 'r', encoding='utf-8') as f:
                 user_data = json.load(f).get(request.user.username, {})
                 infos.update(home_Sname=user_data.get('Sname', ''))
@@ -743,10 +754,14 @@ def summary2025(request: HttpRequest):
     if display_name == "虚拟人":
         display_name = real_name
 
+    # 如果是访客模式，强制显示为“访客”
+    if view_mode == 'guest':
+        display_name = "访客"
+
     infos.update(home_Sname=display_name)
-    if not infos.get('name') or infos.get('name') == "虚拟人":
+    if not infos.get('name') or infos.get('name') == "虚拟人" or view_mode == 'guest':
         infos['name'] = display_name
-    if not infos.get('Sname') or infos.get('Sname') == "虚拟人":
+    if not infos.get('Sname') or infos.get('Sname') == "虚拟人" or view_mode == 'guest':
         infos['Sname'] = display_name
 
     # 读取年度总结中所有用户的总体数据
@@ -973,3 +988,21 @@ def summary2025(request: HttpRequest):
         infos['course_type_str_formatted'] = ''
 
     return render(request, 'Appointment/summary2025.html', infos)
+
+
+def summary2025_login(request: HttpRequest):
+    if request.method != 'POST':
+        return redirect(reverse('Appointment:summary2025'))
+
+    username = (request.POST.get('username') or '').strip()
+    password = request.POST.get('password') or ''
+
+    if not username or not password:
+        return redirect(f"{reverse('Appointment:summary2025')}?login_failed=1")
+
+    user = auth.authenticate(username=username, password=password)
+    if user is None:
+        return redirect(f"{reverse('Appointment:summary2025')}?login_failed=1")
+
+    auth.login(request, user)
+    return redirect(f"{reverse('Appointment:summary2025')}?view=login")
