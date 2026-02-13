@@ -11,8 +11,12 @@
     "remoteUser": "vscode",
     // Dev container is used for development, so the YPPF_DEBUG environment variable should be set
     "containerEnv": {
-        "YPPF_DEBUG": "true"
-    },
+        "YPPF_DEBUG": "true",
+   
+       
+        "HTTPS_PROXY": "http://host.docker.internal:7897",
+        "NO_PROXY": "localhost,127.0.0.1,.local"
+  },
     "customizations": {
         "vscode": {
             "settings": {

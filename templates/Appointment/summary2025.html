@@ -147,12 +147,12 @@
             <p class="p1-question">我 <span class="p1-subtitle">们该如何理解时间？</span></p>
             <p class="p1-poem">有人说，光阴像日夜不息的流水</p>
             <p class="p1-poem">有人说，四季是流转轮回的风车</p>
-            <p class="p1-divider mt-35">在刹那与永恒的交替里</p>
+            <p class="p1-stat mt-35">在刹那与永恒的交替里</p>
             <p class="p1-stat">自习室的<span class="p1-number">{{ study_room_num }}</span>次推门而入</p>
             <p class="p1-stat">研讨室里<span class="p1-number">{{ talk_room_num }}</span>回思维碰撞</p>
             <p class="p1-stat">功能房中<span class="p1-number">{{ func_room_num }}</span>场热情飞扬</p>
-            <p class="p1-poem mt-35">都是你我在岁月长河中相伴而行的注脚</p>
-            <p class="p1-year">2025，我们又一次共同走过</p>
+            <p class="p1-poem">都是你我在岁月长河中相伴而行的注脚</p>
+            <p class="p1-year mt-35">2025，我们又一次共同走过</p>
           </div>
         </div>
       </section>
@@ -354,7 +354,7 @@
             <p class="p8-detail">在活动当天预约房间</p>
             {% endif %}
             {% if appoint_habit.day_appoint_min_diff_record %}
-            <p class="p8-detail">最极限的一次是在</p>
+            <p class="p8-detail mt-35">最极限的一次是在</p>
             <p class="p8-date">{{ appoint_habit.day_appoint_min_diff_record.date }}</p>
             <p class="p8-detail">你在活动开始前</p>
             <p class="p8-stat"><span class="p8-number">{{ appoint_habit.day_appoint_min_diff }}</span> 小时预约了</p>
@@ -411,7 +411,7 @@
             <p class="p10-stat"><span class="p10-number">{{ org_usage.act_num }}</span> 次活动</p>
             <p class="p10-stat">以及 <span class="p10-number">{{ course_usage.course_num }}</span> 门书院课程</p>
             
-            <p class="p10-witness mt-35">是 “化孤独为共同” 的无言见证</p>
+            <p class="p10-witness">是 “化孤独为共同” 的无言见证</p>
             <p class="p10-wish mt-50">你好，我是智慧书院！</p>
           </div>
         </div>
@@ -429,9 +429,9 @@
             <p class="p11-poem">时间过得真快</p>
             <p class="p11-poem">我们已经走过 <span class="p11-number">{{ days }}</span> 天了</p>
             
-            <p class="p11-title mt-35">这一年里</p>
+            <p class="p11-title mt-35-no-bold">这一年里</p>
             <p class="p11-stat">你曾经 <span class="p11-number">{{ login_days }}</span> 次回到智慧书院系统</p>
-            <p class="p11-wish">感谢你的一路相随！</p>
+            <p class="p11-wish">感谢你的一路相陪！</p>
           </div>
         </div>
       </section>
@@ -509,7 +509,7 @@
             <p class="intro-text">累计学时 <span class="fc-rose">{{ course_usage.valid_hours }}</span></p>
             <p class="intro-text mt-35">在所有类别的课程中</p>
             <p class="intro-text">你已经选修了</p>
-            <p class="intro-text"><span class="fc-rose">{{ course_usage.course_type_str }}</span> 类课程</p>
+            <p class="intro-text mt-35"><span class="fc-rose">{{ course_usage.course_type_str }}</span> 类课程</p>
           </div>
         </div>
       </section>
@@ -551,9 +551,9 @@
              alt="背景图" />
         <div class="content text-content">
           <div class="text-box">
-            <p class="intro-text"><span class="fs-36b">这</span> 一年里</p>
-            <p class="intro-text">你总共获得了 <span class="fc-rose">{{ yqpoint_income }}</span> 点元气值</p>
-            <p class="intro-text mt-50">在共同生活的日子里</p>
+            <p class="intro-text">这一年里</p>
+            <p class="intro-text mt-35">你总共获得了 <span class="fc-rose">{{ yqpoint_income }}</span> 点元气值</p>
+            <p class="intro-text mt-35">在共同生活的日子里</p>
             <p class="intro-text">总有人为我们注入元气</p>
           </div>
         </div>
@@ -571,17 +571,17 @@
             <p class="intro-text">2025年的时光相册已经翻到了尾页</p>
             <p class="intro-text">又到了说再见的时候了</p>
 
-            <p class="intro-text mt-35">喜怒哀乐 酸甜苦辣</p>
+            <p class="intro-text mt-50">喜怒哀乐 酸甜苦辣</p>
             <p class="intro-text">我们的生活如何变化</p>
             <p class="intro-text">似乎都逃不开这八个字</p>
 
-            <p class="intro-text mt-35">但岁月里定格的每一帧画面</p>
+            <p class="intro-text mt-50">但岁月里定格的每一帧画面</p>
             <p class="intro-text">都记录着独一无二的场景</p>
             <p class="intro-text">35楼与你的每一次重逢</p>
             <p class="intro-text">都是难以复制的瞬间</p>
 
-            <p class="intro-text mt-35">新的一年</p>
-            <p class="intro-text">期待着与你共同迎接新的生活百态！</p>
+            <p class="intro-text mt-50"><b>新的一年</b></p>
+            <p class="intro-text"><b>期待着与你共同迎接新的生活百态！</b></p>
           </div>
         </div>
       </section>

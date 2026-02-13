@@ -71,7 +71,7 @@ p {
     color: rgb(60, 60, 60);
     font-family: "Siyuan SongTi regular", "SimSun", "宋体", STSong, serif;
     font-size: 23px;
-    line-height: 1.8;
+    line-height: 2.2;
     text-align: center;
 }
 
@@ -458,12 +458,8 @@ button {
 }
 
 .p1-question {
-    font-family: "Siyuan SongTi regular", serif;
     font-size: 16px;
     font-weight: 700;
-    color: #000000;
-    margin: 0;
-    line-height: 2.2;
 }
 
 .p1-subtitle {
@@ -472,43 +468,23 @@ button {
 }
 
 .p1-poem {
-    font-family: "Siyuan SongTi regular", serif;
     font-size: 16px;
-    color: #000000;
-    line-height: 2.2;
-    margin: 0;
-}
-
-.p1-divider {
-    font-family: "Siyuan SongTi regular", serif;
-    font-size: 16px;
-    color: #000000;
-    margin: 25px 0 15px 0;
-    line-height: 2.2;
 }
 
 .p1-stat {
-    font-family: "Siyuan SongTi regular", serif;
     font-size: 16px;
-    color: #000000;
-    line-height: 2.2;
-    margin: 0;
 }
 
 .p1-number {
     color: #ff5050;
     font-weight: 700;
     font-size: 20px;
-    margin: 0 3px;
+    padding: 0 3px;
 }
 
 .p1-year {
-    font-family: "Siyuan SongTi regular", serif;
     font-size: 18px;
-    color: #000000;
     font-weight: 600;
-    margin-top: 30px;
-    line-height: 1.8;
 }
 
 /* P2: 欢迎页面样式 */
@@ -1560,34 +1536,33 @@ button {
    统一排版基线（字号/行距/段间距）
    ==================== */
 
-/* 统一各页文本容器中的正文排版 */
-#app .content [class*="-text-box"]>p:not(.p7-section-title):not(.p8-section-title):not(.p9-section-title),
-#app .content .text-box>p:not(.p7-section-title):not(.p8-section-title):not(.p9-section-title) {
-    font-size: 17px !important;
-    line-height: 1.8 !important;
-}
+/* ====================
+   全局段间距统一控制
+   ==================== */
 
-/* 第一个段落上边距为0 */
-#app .content [class*="-text-box"]>p:first-of-type,
-#app .content .text-box>p:first-of-type {
+/* 第一个段落无上边距 */
+#app .content p:first-child {
     margin-top: 0 !important;
 }
 
-/* 段与段之间保持稳定间距，形成明显分段 */
-#app .content [class*="-text-box"]>p+p,
-#app .content .text-box>p+p {
+/* 相邻段落统一12px间距 */
+#app .content p + p {
     margin-top: 12px !important;
 }
 
-/* 保留模板中的显式分段间距（避免被统一 margin:0 覆盖） */
-#app .content [class*="-text-box"]>p.mt-35,
-#app .content .text-box>p.mt-35 {
+/* 明显分段标记：35px间距 */
+#app .content p.mt-35 {
     margin-top: 35px !important;
 }
 
-#app .content [class*="-text-box"]>p.mt-50,
-#app .content .text-box>p.mt-50 {
+/* 明显分段标记：50px间距 */
+#app .content p.mt-50 {
     margin-top: 50px !important;
+}
+
+/* 统一正文字号为17px（P1除外） */
+#app .content p:not([class*="p1-"]) {
+    font-size: 17px !important;
 }
 
 /* 仅对非第一段的分段起始行（mt-35/mt-50）做首行加粗 */
