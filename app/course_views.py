@@ -378,6 +378,7 @@ def showCourseRecord(request: UserRequest) -> HttpResponse:
                 "grade": person.stu_grade,
                 "avatar": person.get_user_ava(),
                 "times": convert_dict[person.id],   # 参与次数
+                "has_credit_permission": person.has_permission('gain_credit'),  # 学时权限
             } for person in participant_list
         ]
 
@@ -408,7 +409,8 @@ def showCourseRecord(request: UserRequest) -> HttpResponse:
                     "avatar": record.person.get_user_ava(),
                     "times": record.attend_times,
                     "bonus_hours": record.bonus_hours,
-                    "total_hours": record.total_hours
+                    "total_hours": record.total_hours,
+                    "has_credit_permission": record.person.has_permission('gain_credit'),
                 })
             CourseRecord.objects.bulk_update(record_search, ["attend_times", "total_hours"])
             # 如果点击提交学时按钮，修改数据库之后，跳转至已结束的活动界面
@@ -453,6 +455,10 @@ def selectCourse(request: HttpRequest):
 
     if request.user.is_org():
         return redirect(message_url(wrong("组织账号无法访问书院选课页面。如需选课，请切换至个人账号；如需查看您发起的书院课程，请点击【我的课程】。")))
+
+    # 检查选课权限
+    if not me.has_permission('select_course'):
+        return redirect(message_url(wrong("您没有选课权限，无法访问选课页面。")))
 
     is_student = (me.identity == NaturalPerson.Identity.STUDENT)
 
@@ -646,12 +652,13 @@ def addCourse(request: HttpRequest, cid=None):
     html_display["applicant_name"] = me.oname
     html_display["app_avatar_path"] = me.get_user_ava()
     html_display["today"] = datetime.now().strftime("%Y-%m-%d")
+    # 书院课助教发起选课页面：仅允许德智体美劳五类，不允许助教设置课程为"其他"类型
     course_type_all = [
-       ["德" , Course.CourseType.MORAL] ,
-       ["智" , Course.CourseType.INTELLECTUAL] ,
-       ["体" , Course.CourseType.PHYSICAL] ,
-       ["美" , Course.CourseType.AESTHETICS],
-       ["劳" , Course.CourseType.LABOUR],
+        ["德", Course.CourseType.MORAL],
+        ["智", Course.CourseType.INTELLECTUAL],
+        ["体", Course.CourseType.PHYSICAL],
+        ["美", Course.CourseType.AESTHETICS],
+        ["劳", Course.CourseType.LABOUR],
     ]
     defaultpics = [{"src": f"/static/assets/img/announcepics/{i+1}.JPG", "id": f"picture{i+1}"} for i in range(5)]
 

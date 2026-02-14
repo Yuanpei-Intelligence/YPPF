@@ -19,6 +19,7 @@ from Appointment.models import User, Participant
 from Appointment.config import appointment_config as CONFIG
 from utils.global_messages import wrong, succeed, message_url
 from app import API
+from app.models import NaturalPerson
 
 __all__ = [
     'get_participant',
@@ -132,6 +133,7 @@ def identity_check(
     auth_func: AuthFunction = _authenticate,
     redirect_field_name: str = 'origin',
     allow_create: bool = True,
+    check_underground: bool = True,
 ) -> Callable[[ViewFunction[UserRequest, P]], ViewFunction[HttpRequest, P]]:
     def decorator(view_function: ViewFunction[UserRequest, P]) -> ViewFunction[HttpRequest, P]:
         @login_required(redirect_field_name=redirect_field_name)
@@ -163,6 +165,19 @@ def identity_check(
                 elif not _allow_create:
                     warn_message = ('本页面暂不支持地下室账户创建，您可以先查看实时人数。')
                     wrong(warn_message, context)
+
+            if check_underground and request.user.is_person():
+                try:
+                    natural_person = NaturalPerson.objects.get(person_id=request.user)
+                    if not natural_person.has_permission('underground_appointment'):
+                        warn_message = ('您没有地下室权限，无法访问地下室相关页面。')
+                        wrong(warn_message, context)
+                        # 没有地下室权限时返回到成长档案主页面（若返回underground下的任何路径均可能会触发无限重定向）
+                        return redirect(message_url(context, reverse('welcome')))
+                except NaturalPerson.DoesNotExist:
+                    warn_message = ('您的个人信息不存在，无法访问地下室相关页面。')
+                    wrong(warn_message, context)
+                    return redirect(message_url(context, reverse('welcome')))
 
             if context:
                 return redirect(message_url(context, reverse('Appointment:index')))

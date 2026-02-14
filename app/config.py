@@ -32,6 +32,9 @@ __all__ = [
     'WRONG', 'SUCCEED',
     # 本应用的常量
     'UTYPE_ORG',
+    # 权限配置
+    'PERMISSION_CONFIG',
+    'PERMISSIONS_LIST',
     # 本应用的CONFIG
     'CONFIG', 'GLOBAL_CONFIG'
 ]
@@ -39,6 +42,15 @@ __all__ = [
 
 # 本应用的常量
 UTYPE_ORG: str = User.Type.ORG.value
+
+# 权限配置
+PERMISSION_CONFIG = [
+    {'key': 'select_course', 'name': '选课权限'},
+    {'key': 'underground_appointment', 'name': '地下室权限'},
+    {'key': 'gain_credit', 'name': '获得书院课学时权限'},
+]
+
+PERMISSIONS_LIST = [perm['key'] for perm in PERMISSION_CONFIG]
 
 
 class ProfileConfig(Config):
