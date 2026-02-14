@@ -672,7 +672,7 @@ def summary2024(request: HttpRequest):
 
 def summary2025(request: HttpRequest):
     # 2025年度总结
-    base_dir = 'static/Appointment/assets/summary_data/summary2025'
+    base_dir = 'raw_data/summary2025'
 
     # 先展示入口页，让用户选择“登录查看”或“访客查看”
     view_mode = request.GET.get('view', '')
