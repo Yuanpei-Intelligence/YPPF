@@ -407,9 +407,9 @@
             <p class="p10-poem">总有一些共同生活的点滴</p>
             <p class="p10-poem">我会为你珍藏——</p>
             
-            <p class="p10-stat mt-35"><span class="p10-number">{{ org_usage.org_num }}</span> 个小组</p>
-            <p class="p10-stat"><span class="p10-number">{{ org_usage.act_num }}</span> 次活动</p>
-            <p class="p10-stat">以及 <span class="p10-number">{{ course_usage.course_num }}</span> 门书院课程</p>
+            <p class="p10-stat mt-35"><span class="p10-number">{{ org_num }}</span> 个小组</p>
+            <p class="p10-stat"><span class="p10-number">{{ act_num }}</span> 次活动</p>
+            <p class="p10-stat">以及 <span class="p10-number">{{ course_num }}</span> 门书院课程</p>
             
             <p class="p10-witness">是 “化孤独为共同” 的无言见证</p>
             <p class="p10-wish mt-50">你好，我是智慧书院！</p>
@@ -456,7 +456,7 @@
             <p class="p12-stat">累计活动时长 <span class="p12-number">{{ org_usage.act_hour }}</span> 小时</p>
             
             {% if org_usage.org_top %}
-            <p class="p12-org mt-35">{{ org_usage.org_top }} <span class="p12-detail">似乎是你的最爱</span></p>
+            <p class="p12-fav-line mt-35"><span class="p12-fav-main">{{ org_usage.org_top }}</span><span class="p12-fav-suffix"> 似乎是你的最爱</span></p>
             <p class="p12-detail">一年里</p>
             <p class="p12-stat">你 <span class="p12-number">{{ org_usage.org_top_num }}</span> 次参加了</p>
             <p class="p12-detail">这个小组的活动</p>
@@ -551,10 +551,12 @@
              alt="背景图" />
         <div class="content text-content">
           <div class="text-box">
-            <p class="intro-text">这一年里</p>
-            <p class="intro-text mt-35">你总共获得了 <span class="fc-rose">{{ yqpoint_income }}</span> 点元气值</p>
-            <p class="intro-text mt-35">在共同生活的日子里</p>
-            <p class="intro-text">总有人为我们注入元气</p>
+            <div class="p16-yq-block">
+              <p class="p16-yq-line">这一年里</p>
+              <p class="p16-yq-line">你总共获得了 <span class="fc-rose">{{ yqpoint_income }}</span> 点元气值</p>
+              <p class="p16-yq-line">在共同生活的日子里</p>
+              <p class="p16-yq-line">总有人为我们注入元气</p>
+            </div>
           </div>
         </div>
       </section>

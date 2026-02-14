@@ -1312,6 +1312,25 @@ button {
     margin-top: 20px;
 }
 
+.p12-fav-line {
+    margin: 0;
+}
+
+.p12-fav-main,
+.p12-fav-suffix {
+    font-family: "Siyuan SongTi regular", serif;
+    font-size: 18px !important;
+    font-weight: 700 !important;
+    line-height: 2.2;
+}
+
+.p12-fav-main {
+    color: #ff5050;
+}
+
+.p12-fav-suffix {
+    color: #000000;
+}
 /* 底部按钮区域 */
 .home-footer {
     width: 100%;
@@ -1599,14 +1618,14 @@ button {
 }
 
 /* 全局兜底：所有页面第一段第一行不加粗 */
-#app .content [class*="-text-box"]>p:not(.p7-section-title):not(.p8-section-title):not(.p9-section-title):first-of-type::first-line,
-#app .content .text-box>p:not(.p7-section-title):not(.p8-section-title):not(.p9-section-title):first-of-type::first-line {
+#app .content [class*="-text-box"]>p:not(.p7-section-title):not(.p8-section-title):not(.p9-section-title):not(.p11-date):not(.p12-org):first-of-type::first-line,
+#app .content .text-box>p:not(.p7-section-title):not(.p8-section-title):not(.p9-section-title):not(.p11-date):not(.p12-org):first-of-type::first-line {
     font-weight: 400 !important;
 }
 
 /* 第一段首字保留放大，但不额外加粗 */
-#app .content [class*="-text-box"]>p:not(.p7-section-title):not(.p8-section-title):not(.p9-section-title):first-of-type::first-letter,
-#app .content .text-box>p:not(.p7-section-title):not(.p8-section-title):not(.p9-section-title):first-of-type::first-letter {
+#app .content [class*="-text-box"]>p:not(.p7-section-title):not(.p8-section-title):not(.p9-section-title):not(.p11-date):not(.p12-org):first-of-type::first-letter,
+#app .content .text-box>p:not(.p7-section-title):not(.p8-section-title):not(.p9-section-title):not(.p11-date):not(.p12-org):first-of-type::first-letter {
     font-weight: 400 !important;
 }
 
@@ -1688,7 +1707,7 @@ button {
 [class*="-date"],
 .p1-year {
     font-size: 17px !important;
-    font-weight: 400 !important;
+    font-weight: 700 !important;
 }
 
 /* 特殊超大字号适度收敛，保证跨页一致性 */
@@ -1792,4 +1811,25 @@ button {
 #page-16 .text-box {
     text-align: center !important;
     align-items: center !important;
+}
+#page-16 .p16-yq-block {
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+}
+
+#page-16 .p16-yq-line {
+    font-family: "Siyuan SongTi regular", serif;
+    font-size: clamp(16px, 3vw, 22px);
+    color: #000000;
+    line-height: 1.45 !important;
+    margin: 0;
+    text-align: center;
+}
+
+/* 页面特定例外规则 - 必须放在最后以覆盖通用规则 */
+p.p11-date,
+#page-11 p.p11-date {
+    font-size: 18px !important;
+    font-weight: 700 !important;
 }
