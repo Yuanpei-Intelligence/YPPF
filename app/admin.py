@@ -98,10 +98,18 @@ class NaturalPersonAdmin(admin.ModelAdmin):
             return option, detail
         return option
 
-    def _get_permission_display(self, obj: NaturalPerson | None, perm_key: str):
-        # 在编辑/新增表单(obj is None)时返回表单字段名；在展示已存在对象时返回用于显示权限状态的方法名
+    def _get_permission_display(self, request, obj: NaturalPerson | None, perm_key: str):
+        # 在新增表单(obj is None)时返回表单字段名；
+        # 在展示已存在对象时：如果当前用户有编辑权限则返回表单字段名，
+        # 否则返回只读展示方法名 `perm_<key>`。
         if obj is None:
             return perm_key
+        try:
+            if self.has_change_permission(request, obj):
+                return perm_key
+        except Exception:
+            # 如果调用方未传入 request 或出现异常，降级为只读展示
+            pass
         return f'perm_{perm_key}'
 
     def get_normal_fields(self, request, obj: NaturalPerson = None):
@@ -117,7 +125,8 @@ class NaturalPersonAdmin(admin.ModelAdmin):
             f(_m.accept_promote), f(_m.active_score),
         ])
         for perm_config in PERMISSION_CONFIG:
-            fields.append(self._get_permission_display(obj, perm_config['key']))
+            fields.append(self._get_permission_display(
+                request, obj, perm_config['key']))
         return fields
 
     def get_student_fields(self, request, obj: NaturalPerson = None):
@@ -309,7 +318,7 @@ for perm_config in PERMISSION_CONFIG:
 
     setattr(NaturalPersonAdmin, f'grant_{perm_key}', grant_method)
     setattr(NaturalPersonAdmin, f'revoke_{perm_key}', revoke_method)
-    # 为每个权限创建只读显示方法，确保在只有查看权限时也能正确展示
+    # 为每个权限创建只读显示方法
     def _perm_display(self, obj, key=perm_key):
         try:
             return bool(obj.has_permission(key))
