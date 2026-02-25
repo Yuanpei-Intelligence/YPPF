@@ -1,0 +1,239 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport"
+          content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <title>2025年度回忆 - 进入方式</title>
+    <style>
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        min-height: 100svh;
+        position: relative;
+        overflow: hidden;
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+        color: #3e2f2f;
+      }
+      .entry-bg {
+        position: fixed;
+        inset: 0;
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        z-index: 0;
+      }
+      .bg-mask {
+        position: fixed;
+        inset: 0;
+        z-index: 0;
+        background: linear-gradient(180deg, rgba(255, 255, 255, 0.16) 0%, rgba(255, 255, 255, 0.34) 100%);
+      }
+      .entry-main {
+        position: relative;
+        z-index: 1;
+        min-height: 100svh;
+        padding: 26px 18px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+      }
+      .header-wrap {
+        position: relative;
+        width: min(88vw, 390px);
+        margin-bottom: 24px;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+      }
+      /* 
+       * 根据 summary2025.css 的 .splash-logo 与 .splash-photos 定义：
+       * .splash-logo: top: 30px, right: 20px (右上角)
+       * .splash-photos: top: -20px, left: -30px (左上角)
+       * 
+       * 这里为了适配 entry 页面的居中卡片布局，我们将这两个元素相对 header-wrap 进行定位。
+       * 
+       */
+      .title-img {
+        width: 100%;
+        display: block;
+        position: relative;
+        z-index: 2;
+      }
+      .deco-top-left {
+        position: fixed;
+        left: -20px;
+        top: -10px;
+        width: min(45vw, 180px);
+        z-index: 10;
+        transform: rotate(-15deg);
+        opacity: 0.9;
+      }
+      .deco-top-right {
+        position: fixed;
+        right: 20px;
+        top: 20px;
+        width: min(22vw, 80px);
+        z-index: 10;
+        transform: rotate(5deg);
+      }
+      .entry-panel {
+        width: min(92vw, 380px);
+        background: rgba(255, 255, 255, 0.92);
+        border-radius: 20px;
+        padding: 30px 24px 20px;
+        border: 1px solid rgba(255, 255, 255, 0.8);
+        box-shadow: 0 20px 40px rgba(28, 64, 108, 0.15);
+        backdrop-filter: blur(4px);
+      }
+      .form-group {
+        margin-bottom: 16px;
+      }
+      .input {
+        width: 100%;
+        height: 46px;
+        margin-bottom: 0;
+        border: 1px solid #dcdfe6;
+        border-radius: 12px;
+        padding: 0 16px;
+        font-size: 15px;
+        background: #fff;
+        transition: all 0.2s;
+        outline: none;
+      }
+      .input:focus {
+        border-color: #5b99db;
+        box-shadow: 0 0 0 3px rgba(91, 153, 219, 0.15);
+      }
+      .btn-submit {
+        width: 100%;
+        height: 48px;
+        border: none;
+        background: linear-gradient(135deg, #6aafe6 0%, #4a8cd6 100%);
+        border-radius: 12px;
+        color: #fff;
+        font-size: 17px;
+        font-weight: 600;
+        cursor: pointer;
+        margin-top: 10px;
+        box-shadow: 0 6px 16px rgba(74, 140, 214, 0.25);
+        transition: transform 0.1s;
+      }
+      .btn-submit:active {
+        transform: scale(0.98);
+      }
+      .guest-entry {
+        margin-top: 20px;
+        text-align: center;
+        border-top: 1px solid rgba(0,0,0,0.06);
+        padding-top: 16px;
+      }
+      .btn-guest {
+        background: transparent;
+        border: none;
+        color: #798da3;
+        font-size: 14px;
+        cursor: pointer;
+        padding: 8px 16px;
+        border-radius: 20px;
+        transition: color 0.2s;
+      }
+      .btn-guest:hover {
+        color: #4a8cd6;
+        background: rgba(74, 140, 214, 0.05);
+      }
+      .error {
+        margin: 0 0 16px;
+        color: #f56c6c;
+        font-size: 13px;
+        background: #fef0f0;
+        padding: 8px 12px;
+        border-radius: 6px;
+        display: flex;
+        align-items: center;
+      }
+      .tip {
+        margin-top: 10px;
+        text-align: center;
+        font-size: 12px;
+        color: #6d7d92;
+      }
+    </style>
+  </head>
+  <body>
+    <img class="entry-bg"
+         src="{% static 'Appointment/assets/img/summary2025/1_底图.png' %}"
+         alt="背景" />
+    <div class="bg-mask"></div>
+
+    <img class="deco-top-left"
+         src="{% static 'Appointment/assets/img/summary2025/5_相片元素.png' %}"
+         alt="相片元素" />
+    <img class="deco-top-right"
+         src="{% static 'Appointment/assets/img/summary2025/4_YPPFlogo透明版.png' %}"
+         alt="YPPF logo" />
+
+    <main class="entry-main">
+      <div class="header-wrap">
+        <img class="title-img"
+             src="{% static 'Appointment/assets/img/summary2025/2_标题.png' %}"
+             alt="时光流淌 2025" />
+      </div>
+
+      <section class="entry-panel">
+        <form id="login-form"
+              class="login-form-block"
+              method="post"
+              action="{% url 'Appointment:summary2025_login' %}">
+          {% csrf_token %}
+          {% if login_failed %}
+            <div class="error">
+              <span style="margin-right: 6px">⚠️</span> 账号或密码错误，请重试
+            </div>
+          {% endif %}
+          
+          <div class="form-group">
+            <input class="input"
+                   type="text"
+                   name="username"
+                   placeholder="请输入账号"
+                   autocomplete="username"
+                   required />
+          </div>
+          
+          <div class="form-group">
+            <input class="input"
+                   type="password"
+                   name="password"
+                   placeholder="请输入密码"
+                   autocomplete="current-password"
+                   required />
+          </div>
+
+          <button class="btn-submit" type="submit" aria-label="开启记忆">开启记忆</button>
+        </form>
+
+        <div class="guest-entry">
+            <button type="button" id="go-guest" class="btn-guest">
+               我是访客，直接查看示例 &gt;
+            </button>
+        </div>
+      </section>
+    </main>
+
+    <script>
+      (function () {
+        const guestBtn = document.getElementById('go-guest');
+        if (guestBtn) {
+            guestBtn.addEventListener('click', function () {
+              window.location.href = "{% url 'Appointment:summary2025' %}?view=guest";
+            });
+        }
+      })();
+    </script>
+  </body>
+</html>

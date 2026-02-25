@@ -1,0 +1,15 @@
+{
+  "2300000000": {
+    "underground_usage_percentile": 50.0,
+    "same_study_room_top_count": 10,
+    "same_most_hours_course_count": 5,
+    "personal_most_frequent_co_appoint": {
+      "co_name": "张三",
+      "count": 25
+    },
+    "organization_most_frequent_co_appoint": {
+      "co_name": "李四",
+      "count": 15
+    }
+  }
+}

@@ -1,0 +1,597 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <title>时光流淌</title>
+    <meta name="description" content="时光流淌" />
+    <meta name="keywords" />
+    <link type="image/x-icon"
+          href="{% static 'Appointment/assets/img/yp_favicon.png' %} "
+          rel="icon" />
+    <meta name="theme-color" content="#f00" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport"
+          content="width=device-width, user-scalable=no, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0, minimal-ui">
+    <meta name="full-screen" content="yes" />
+    <meta name="browsermode" content="application" />
+    <meta name="x5-fullscreen" content="true" />
+    <meta name="x5-page-mode" content="app" />
+    <meta name="apple-mobile-web-app-status-bar-style"
+          content="black-translucent" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="format-detection" content="telephone=no, email=no" />
+    <link rel="stylesheet"
+          href="{% static 'Appointment/assets/css/jquery.fullpage.css' %}?v=20260207a" />
+    <link rel="stylesheet"
+          href="{% static 'Appointment/assets/css/summary2025.css' %}?v=20260207_final_v1" />
+  </head>
+  <body>
+    <audio loop src="{% static 'Appointment/assets/bgm/一只影子YZYZ - 甘露.mp3' %}">不支持播放音乐</audio>
+    <div id="music-container">
+      <button id="play-music" type="button" title="播放/暂停音乐">
+        <div id="playing">
+          <svg xmlns="http://www.w3.org/2000/svg"
+               width="30"
+               height="30"
+               fill="currentColor"
+               class="bi bi-music-note-beamed"
+               viewBox="0 0 16 16">
+            <path d="M6 13c0 1.105-1.12 2-2.5 2S1 14.105 1 13c0-1.104 1.12-2 2.5-2s2.5.896 2.5 2zm9-2c0 1.105-1.12 2-2.5 2s-2.5-.895-2.5-2 1.12-2 2.5-2 2.5.895 2.5 2z" />
+            <path fill-rule="evenodd" d="M14 11V2h1v9h-1zM6 3v10H5V3h1z" />
+            <path d="M5 2.905a1 1 0 0 1 .9-.995l8-.8a1 1 0 0 1 1.1.995V3L5 4V2.905z" />
+          </svg>
+        </div>
+        <div id="paused">
+          <svg xmlns="http://www.w3.org/2000/svg"
+               width="30"
+               height="30"
+               fill="currentColor"
+               class="bi bi-volume-mute-fill"
+               viewBox="0 0 16 16">
+            <path d="M6.717 3.55A.5.5 0 0 1 7 4v8a.5.5 0 0 1-.812.39L3.825 10.5H1.5A.5.5 0 0 1 1 10V6a.5.5 0 0 1 .5-.5h2.325l2.363-1.89a.5.5 0 0 1 .529-.06zm7.137 2.096a.5.5 0 0 1 0 .708L12.207 8l1.647 1.646a.5.5 0 0 1-.708.708L11.5 8.707l-1.646 1.647a.5.5 0 0 1-.708-.708L10.793 8 9.146 6.354a.5.5 0 1 1 .708-.708L11.5 7.293l1.646-1.647a.5.5 0 0 1 .708 0z" />
+          </svg>
+        </div>
+      </button>
+      <script>
+      var button = document.querySelector("button#play-music");
+      button.addEventListener("click", () => {
+        const audio = document.querySelector("audio");
+        if (audio.paused) {
+          audio.play();
+          document.querySelector("div#playing").style.setProperty("display", "block");
+          document.querySelector("div#paused").style.setProperty("display", "none");
+        } else {
+          audio.pause();
+          document.querySelector("div#playing").style.setProperty("display", "none");
+          document.querySelector("div#paused").style.setProperty("display", "block");
+        }
+      });
+      </script>
+    </div>
+    <div id="app">
+      <!-- 启动页 -->
+      <section id="page-splash" class="section page splash-page">
+        <img class="splash-bg" 
+             src="{% static 'Appointment/assets/img/summary2025/1_底图.png' %}"
+             alt="启动页背景" />
+        <div class="splash-content">
+          <!-- 绝对定位元素 -->
+          <img class="splash-logo" 
+               src="{% static 'Appointment/assets/img/summary2025/4_YPPFlogo透明版.png' %}"
+               alt="YPPF Logo" />
+          <img class="splash-photos" 
+               src="{% static 'Appointment/assets/img/summary2025/5_相片元素.png' %}"
+               alt="相片元素" />
+          
+          <!-- 中间主体内容 -->
+          <div class="splash-centered-info">
+            <img class="splash-title" 
+                 src="{% static 'Appointment/assets/img/summary2025/2_标题.png' %}"
+                 alt="时光流淌 2025" />
+            <div class="splash-user-greeting">
+              <span class="user-name">{{ home_Sname }}</span>
+              <span class="greeting-text">亲启</span>
+            </div>
+          </div>
+
+          <footer class="splash-footer">
+            <img class="splash-button-img" 
+                 src="{% static 'Appointment/assets/img/summary2025/3_点击开启按钮.png' %}"
+                 id="splash-start-btn"
+                 alt="点击开启" />
+            <label for="agree-rule" class="agree-rule-label">
+              <input type="checkbox" id="agree-rule" />
+              <p>
+                同意<a href="#" id="rule-link">《智慧书院2025年度回忆授权协议》</a>并查看报告
+              </p>
+            </label>
+          </footer>
+          <div id="rule">
+            <div class="rule-wrapper">
+              <h1 class="rule-title">智慧书院2025年度回忆授权协议</h1>
+              <p class="rule-content">
+                感谢您阅读《智慧书院2025年度回忆授权协议》！在正式使用智慧书院2025年度回忆功能之前，您应仔细阅读并充分理解本协议中的全部内容，并通过本页面点击确认的方式同意使用该功能，如您不同意本协议中的任何条款，请勿点击确认授权。您使用智慧书院2025年度回忆功能的行为将被视为已经仔细阅读、充分理解并毫无保留地接受本协议所有条款。
+              </p>
+              <ol class="rule-content">
+                <li>
+                  为了生成您的2025年度回忆，您同意授权智慧校园项目组查询您的姓名、年级等个人基本信息以及在2025自然年度（2025.1.19-2026.1.19）的智慧书院使用数据（包括系统登录记录、地下室使用记录、加入小组记录、书院课程参与记录、活动参与记录、元气值使用记录、学术地图使用记录等）并进行汇总统计分析，以用于年度回忆页面向您进行个性化专属展示。
+                </li>
+                <li>您的2025年度回忆为根据算法自动生成，可能与实际情况存在偏差，敬请理解。</li>
+                <li>请您确认，您的2025年度回忆包含您的个人信息，您有权自行处理您的个人信息，包括但不限于使用、保存及对外共享给他人等行为，您将承担由您的操作或行为导致的个人信息安全风险。</li>
+                <li>除以上声明的目的外，智慧校园项目组不会对本次查询的信息以及产生的分析结果作其他任何处理。</li>
+                <li>如您对本次2025年度回忆有任何疑问，您可通过YPPF反馈中心联系智慧校园项目组。</li>
+              </ol>
+              <button id="rule-button">我知道啦</button>
+            </div>
+          </div>
+        </div>
+        <script>
+        document.querySelector('#rule').addEventListener('touchmove', function (e) {
+          e.stopPropagation();
+        });
+
+        document.querySelector('#rule').addEventListener('wheel', function (e) {
+          e.stopPropagation();
+        });
+        </script>
+      </section>
+
+      <!-- P1: 首页 - 时光理解 -->
+      <section id="page-home" class="section page">
+        <img class="bg-image" 
+             src="{% static 'Appointment/assets/img/summary2025/P1.png' %}"
+             alt="背景图" />
+        <div class="content p1-content">
+          <div class="p1-text-box">
+            <p class="p1-question">我 <span class="p1-subtitle">们该如何理解时间？</span></p>
+            <p class="p1-poem">有人说，光阴像日夜不息的流水</p>
+            <p class="p1-poem">有人说，四季是流转轮回的风车</p>
+            <p class="p1-stat mt-35">在刹那与永恒的交替里</p>
+            <p class="p1-stat">自习室的<span class="p1-number">{{ study_room_num }}</span>次推门而入</p>
+            <p class="p1-stat">研讨室里<span class="p1-number">{{ talk_room_num }}</span>回思维碰撞</p>
+            <p class="p1-stat">功能房中<span class="p1-number">{{ func_room_num }}</span>场热情飞扬</p>
+            <p class="p1-poem">都是你我在岁月长河中相伴而行的注脚</p>
+            <p class="p1-year mt-35">2025，我们又一次共同走过</p>
+          </div>
+        </div>
+      </section>
+
+      <!-- P2: 欢迎页面 -->
+      <section id="page-2" class="section page">
+        <img class="bg-image" 
+             src="{% static 'Appointment/assets/img/summary2025/P2.png' %}"
+             alt="背景图" />
+        <div class="content p2-content">
+          <div class="p2-text-box">
+            <p class="p2-greeting">你好，<span class="p2-name">{{ home_Sname }}</span></p>
+            <p class="p2-intro">我是35楼地下室</p>
+            <p class="p2-intro">欢迎翻开这一本</p>
+            <p class="p2-intro">我和你的2025时光相册！</p>
+          </div>
+        </div>
+      </section>
+
+      <!-- P3: 地下室使用概况与首次记录 -->
+      <section id="page-3" class="section page">
+        <img class="bg-image" 
+             src="{% static 'Appointment/assets/img/summary2025/P3.png' %}"
+             alt="背景图" />
+        <div class="content p3-content">
+          {% if not record_is_zero %}
+          <div class="p3-text-box">
+            <p class="p3-title">这一年里</p>
+            <p class="p3-stat">你有 <span class="p3-number">{{ underground_usage_days }}</span> 天走进地下室</p>
+            <p class="p3-stat">超过了 <span class="p3-number">{{ underground_usage_percentile }}</span> %的同学</p>
+            <p class="p3-msg">{{ underground_usage_percentile_name }}</p>
+            {% if first_underground_record %}
+            <p class="p3-divider mt-35">这段旅程最早开始于</p>
+            <p class="p3-date">{{ first_underground_record.date }}</p>
+            <p class="p3-detail">那一天</p>
+            {% if first_room_study %}
+            <p class="p3-detail">你在 <span class="p3-room">{{ first_underground_record.room }}</span>自习室</p>
+            <p class="p3-detail">开启了新一段思想的远征</p>
+            {% else %}
+            <p class="p3-detail">你在 <span class="p3-room">{{ first_underground_record.room }}</span></p>
+            <p class="p3-detail">进行了"<span class="p3-usage">{{ first_underground_record.usage }}</span>"</p>
+            {% endif %}
+            {% endif %}
+          </div>
+          {% else %}
+          <div class="p3-text-box">
+            <p class="p3-title">这一年里</p>
+            <p class="p3-stat">你还没有来地下室看过我</p>
+            <p class="p3-msg mt-35">新的一年，期待着和你遇见！</p>
+          </div>
+          {% endif %}
+        </div>
+      </section>
+
+      <!-- P4: 最长连续使用 -->
+      {% if not record_is_zero and longest_underground_usage.longest_continuous_days > 0 %}
+      <section id="page-4" class="section page">
+        <img class="bg-image" 
+             src="{% static 'Appointment/assets/img/summary2025/P4.png' %}"
+             alt="背景图" />
+        <div class="content p4-content">
+          <div class="p4-text-box">
+            <p class="p4-title">这一年，我和你暂别于</p>
+            <p class="p4-date">{{ last_underground_record.date }}</p>
+            <p class="p4-detail">那一天</p>
+            {% if last_room_study %}
+            <p class="p4-detail">你在 <span class="p4-room">{{ last_underground_record.room }}</span>自习室</p>
+            <p class="p4-detail">写下与我的告别</p>
+            {% else %}
+            <p class="p4-room">{{ last_underground_record.room }}</p>
+            <p class="p4-detail">是</p>
+            <p class="p4-witness">"<span class="p4-yppf">{{ last_underground_record.usage }}</span>" 的见证</p>
+            {% endif %}
+            <p class="p4-stat mt-35">你最长连续 <span class="p4-number">{{ longest_underground_usage.longest_continuous_days }}</span> 天来到这里</p>
+            <p class="p4-date">{{ longest_underground_usage.longest_continuous_start_date }}</p>
+            <p class="p4-to">到</p>
+            <p class="p4-date">{{ longest_underground_usage.longest_continuous_end_date }}</p>
+            <p class="p4-message">一定是一段很难忘的时光吧！</p>
+          </div>
+        </div>
+      </section>
+      {% endif %}
+
+      <!-- P5: 自习室使用 -->
+      {% if not record_is_zero %}
+      <section id="page-5" class="section page">
+        <img class="bg-image" 
+             src="{% static 'Appointment/assets/img/summary2025/P5.png' %}"
+             alt="背景图" />
+        <div class="content p5-content">
+          <div class="p5-text-box">
+            <p class="p5-title">这一年里</p>
+            <p class="p5-stat">你曾经 <span class="p5-number">{{ study_room_usage.study_room_num }}</span> 次走进自习室</p>
+            <p class="p5-poem">那些沉思与顿悟的瞬间</p>
+            <p class="p5-poem">是专属于你我的回忆</p>
+            {% if study_room_usage.study_room_num > 0 and study_room_usage.study_room_top %}
+            <p class="p5-room mt-50">{{ study_room_usage.study_room_top }} 自习室</p>
+            <p class="p5-detail">是你最常走进的自习室</p>
+            <p class="p5-detail">你曾在那里度过 <span class="p5-number">{{ study_room_usage.study_room_top_num }}</span> 天的精神之旅</p>
+            {% endif %}
+            {% if same_study_room_top_count %}
+            <p class="p5-share mt-50">有 <span class="p5-number">{{ same_study_room_top_count }}</span> 人和你一样</p>
+            <p class="p5-share">格外喜欢这里</p>
+            <p class="p5-share">在一次次独自修习里 他们恰好在场</p>
+            {% endif %}
+          </div>
+        </div>
+      </section>
+      {% endif %}
+
+      <!-- P6: 研讨室和功能室使用 -->
+      {% if talk_and_func_room_usage.talk_room_num > 0 or talk_and_func_room_usage.func_room_num > 0 %}
+      <section id="page-6" class="section page">
+        <img class="bg-image" 
+             src="{% static 'Appointment/assets/img/summary2025/P6.png' %}"
+             alt="背景图" />
+        <div class="content p6-content">
+          <div class="p6-text-box">
+            {% if talk_and_func_room_usage.talk_room_num > 0 %}
+            <p class="p6-title">这一年里</p>
+            <p class="p6-stat">你预约了 <span class="p6-number">{{ talk_and_func_room_usage.talk_room_num }}</span> 次研讨室</p>
+            <p class="p6-stat">与伙伴们共同度过 <span class="p6-number">{{ talk_and_func_room_usage.talk_room_hour }}</span> 小时</p>
+            {% if talk_and_func_room_usage.talk_room_average_participant_num %}
+            <p class="p6-stat">平均每次有 <span class="p6-number">{{ talk_and_func_room_usage.talk_room_average_participant_num }}</span> 人参与</p>
+            {% endif %}
+            {% endif %}
+            {% if talk_and_func_room_usage.func_room_num > 0 %}
+            <p class="p6-title mt-35">这一年里</p>
+            <p class="p6-stat">你预约了 <span class="p6-number">{{ talk_and_func_room_usage.func_room_num }}</span> 次功能室</p>
+            <p class="p6-stat">生命中 <span class="p6-number">{{ talk_and_func_room_usage.func_room_hour }}</span> 小时的光阴</p>
+            <p class="p6-poem">有音乐、舞蹈、汗水和欢笑的点缀</p>
+            {% endif %}
+            {% if talk_and_func_room_usage.talk_and_func_room_longest_record %}
+            <p class="p6-memory mt-35">还记得 <span class="p6-date">{{ talk_and_func_room_usage.talk_and_func_room_longest_record.date }}</span> 吗？</p>
+            {% if talk_and_func_room_usage.talk_and_func_room_longest_record.participant_num == 1 %}
+            <p class="p6-detail">那一天，你在 <span class="p6-room">{{ talk_and_func_room_usage.talk_and_func_room_longest_record.room }}</span></p>
+            <p class="p6-detail">度过了 <span class="p6-number">{{ talk_and_func_room_usage.talk_and_func_room_longest_record.hour }}</span> 小时</p>
+            <p class="p6-wish">希望这段关于</p>
+            <p class="p6-wish">" <span class="p6-yppf">{{ talk_and_func_room_usage.talk_and_func_room_longest_record.usage }}</span> " 的记忆</p>
+            <p class="p6-wish">能给你带来滋养</p>
+            {% else %}
+            <p class="p6-detail">那一天</p>
+            <p class="p6-detail">你与伙伴们在 <span class="p6-room">{{ talk_and_func_room_usage.talk_and_func_room_longest_record.room }}</span></p>
+            <p class="p6-detail">一同度过了 <span class="p6-number">{{ talk_and_func_room_usage.talk_and_func_room_longest_record.hour }}</span> 小时的时光</p>
+            <p class="p6-wish">关于"<span class="p6-yppf">{{ talk_and_func_room_usage.talk_and_func_room_longest_record.usage }}</span>"的故事</p>
+            <p class="p6-wish">是否还历历在目？</p>
+            {% endif %}
+            {% endif %}
+          </div>
+        </div>
+      </section>
+      {% endif %}
+
+      <!-- P7: 预约习惯-最期待和最喜欢 -->
+      {% if appoint_habit.max_diff or appoint_habit.room_num_top %}
+      <section id="page-7" class="section page">
+        <img class="bg-image" 
+             src="{% static 'Appointment/assets/img/summary2025/P7.png' %}"
+             alt="背景图" />
+        <div class="content p7-content">
+          <div class="p7-text-box">
+            {% if appoint_habit.average_diff or appoint_habit.max_diff %}
+            <p class="p7-section-title">[ 最期待 ]</p>
+            {% if appoint_habit.average_diff %}
+            <p class="p7-stat">你习惯提前 <span class="p7-number">{{ appoint_habit.average_diff }}</span> {{ average_diff_time }}</p>
+            <p class="p7-detail">为活动预约房间</p>
+            {% endif %}
+            {% if appoint_habit.max_diff and appoint_habit.max_diff_record %}
+            <p class="p7-stat">最早提前了 <span class="p7-number">{{ appoint_habit.max_diff }}</span> {{ max_diff_time }}</p>
+            <p class="p7-detail">为 <span class="p7-yppf">{{ appoint_habit.max_diff_record.usage }}</span></p>
+            <p class="p7-detail">预约了 <span class="p7-room">{{ appoint_habit.max_diff_record.room }}</span></p>
+            <p class="p7-message">稳稳的 很安心</p>
+            {% endif %}
+            {% endif %}
+            {% if appoint_habit.room_num_top %}
+            <p class="p7-section-title mt-35">[ 最喜欢 ]</p>
+            <p class="p7-detail">这一年里，你预约次数</p>
+            <p class="p7-detail">最多的房间是</p>
+            <p class="p7-room">{{ appoint_habit.room_num_top }}</p>
+            <p class="p7-stat">共预约了 <span class="p7-number">{{ appoint_habit.room_num_top_num }}</span> 次</p>
+            <p class="p7-message">记下了 你最喜欢这里</p>
+            {% endif %}
+          </div>
+        </div>
+      </section>
+      {% endif %}
+
+      <!-- P8: 最极限-临时预约 -->
+      {% if appoint_habit.temporary_appoint_num or appoint_habit.day_appoint_min_diff_record %}
+      <section id="page-8" class="section page">
+        <img class="bg-image" 
+             src="{% static 'Appointment/assets/img/summary2025/P8.png' %}"
+             alt="背景图" />
+        <div class="content p8-content">
+          <div class="p8-text-box">
+            <p class="p8-section-title">[ 最极限 ]</p>
+            {% if appoint_habit.temporary_appoint_num %}
+            <p class="p8-stat">你曾经 <span class="p8-number">{{ appoint_habit.temporary_appoint_num }}</span> 次</p>
+            <p class="p8-detail">在活动当天预约房间</p>
+            {% endif %}
+            {% if appoint_habit.day_appoint_min_diff_record %}
+            <p class="p8-detail mt-35">最极限的一次是在</p>
+            <p class="p8-date">{{ appoint_habit.day_appoint_min_diff_record.date }}</p>
+            <p class="p8-detail">你在活动开始前</p>
+            <p class="p8-stat"><span class="p8-number">{{ appoint_habit.day_appoint_min_diff }}</span> 小时预约了</p>
+            <p class="p8-room">{{ appoint_habit.day_appoint_min_diff_record.room }}</p>
+            <p class="p8-detail">关键词为</p>
+            <p class="p8-yppf">{{ appoint_habit.day_appoint_min_diff_record.usage }}</p>
+            <p class="p8-message">主打一个随性和刺激！</p>
+            {% endif %}
+          </div>
+        </div>
+      </section>
+      {% endif %}
+
+      <!-- P9: 最投缘 -->
+      {% if personal_most_frequent_co_appoint.co_name or organization_most_frequent_co_appoint.co_name %}
+      <section id="page-9" class="section page">
+        <img class="bg-image" 
+             src="{% static 'Appointment/assets/img/summary2025/P9.png' %}"
+             alt="背景图" />
+        <div class="content p9-content">
+          <div class="p9-text-box">
+            <p class="p9-section-title">[ 最投缘 ]</p>
+            {% if personal_most_frequent_co_appoint.co_name %}
+            <p class="p9-detail">你最常和 <span class="p9-name">{{ personal_most_frequent_co_appoint.co_name }}</span> 作伴</p>
+            <p class="p9-detail">这一年</p>
+            <p class="p9-stat">你们共同预约过 <span class="p9-number">{{ personal_most_frequent_co_appoint.count }}</span> 次</p>
+            <p class="p9-detail">多幸运 有个我们</p>
+            {% endif %}
+            
+            {% if organization_most_frequent_co_appoint.co_name %}
+            <p class="p9-detail mt-35">在集体活动中</p>
+            <p class="p9-detail"><span class="p9-name">{{ organization_most_frequent_co_appoint.co_name }}</span> 是最常和你同行的人</p>
+            <p class="p9-detail">冥冥之中 你我的轨道也会偶有交叠</p>
+            {% endif %}
+          </div>
+        </div>
+      </section>
+      {% endif %}
+
+      <!-- P10: 书院集体生活总览 -->
+      <section id="page-10" class="section page">
+        <img class="bg-image" 
+             src="{% static 'Appointment/assets/img/summary2025/P10.png' %}"
+             alt="背景图" />
+        <div class="content p10-content">
+          <div class="p10-text-box">
+            <p class="p10-title"><span class="p10-large">在</span> 流动不居的时间里</p>
+            <p class="p10-poem">记忆的河道难免会迎来孤独的洪流</p>
+            <p class="p10-poem">别担心</p>
+            <p class="p10-poem">总有一些共同生活的点滴</p>
+            <p class="p10-poem">我会为你珍藏——</p>
+            
+            <p class="p10-stat mt-35"><span class="p10-number">{{ org_num }}</span> 个小组</p>
+            <p class="p10-stat"><span class="p10-number">{{ act_num }}</span> 次活动</p>
+            <p class="p10-stat">以及 <span class="p10-number">{{ course_num }}</span> 门书院课程</p>
+            
+            <p class="p10-witness">是 “化孤独为共同” 的无言见证</p>
+            <p class="p10-wish mt-50">你好，我是智慧书院！</p>
+          </div>
+        </div>
+      </section>
+
+      <!-- P11: 第一次相遇 -->
+      <section id="page-11" class="section page">
+        <img class="bg-image" 
+             src="{% static 'Appointment/assets/img/summary2025/P11.png' %}"
+             alt="背景图" />
+        <div class="content p11-content">
+          <div class="p11-text-box">
+            <p class="p11-date">{{ date_joined }}</p>
+            <p class="p11-poem">这是我和你的第一次相遇</p>
+            <p class="p11-poem">时间过得真快</p>
+            <p class="p11-poem">我们已经走过 <span class="p11-number">{{ days }}</span> 天了</p>
+            
+            <p class="p11-title mt-35-no-bold">这一年里</p>
+            <p class="p11-stat">你曾经 <span class="p11-number">{{ login_days }}</span> 次回到智慧书院系统</p>
+            <p class="p11-wish">感谢你的一路相陪！</p>
+          </div>
+        </div>
+      </section>
+
+      <!-- P12: 小组参与情况 -->
+      {% if org_usage.org_num > 0 or org_usage.act_num > 0 %}
+      <section id="page-12" class="section page">
+        <img class="bg-image" 
+             src="{% static 'Appointment/assets/img/summary2025/P12.png' %}"
+             alt="背景图" />
+        <div class="content p12-content">
+          <div class="p12-text-box">
+            <p class="p12-stat">你加入了 <span class="p12-number">{{ org_usage.org_num }}</span> 个小组</p>
+            {% if org_reserved and org_name_list_str %}
+            <p class="p12-detail">是 <span class="p12-org">{{ org_name_list_str }}</span> 的中坚力量</p>
+            {% endif %}
+            <p class="p12-poem">感谢有你</p>
+            <p class="p12-poem">让 “一路相随” 有了鲜活的诠释</p>
+            
+            <p class="p12-title mt-35">这一年</p>
+            <p class="p12-stat">你参与了 <span class="p12-number">{{ org_usage.act_num }}</span> 场小组活动</p>
+            <p class="p12-stat">累计活动时长 <span class="p12-number">{{ org_usage.act_hour }}</span> 小时</p>
+            
+            {% if org_usage.org_top %}
+            <p class="p12-fav-line mt-35"><span class="p12-fav-main">{{ org_usage.org_top }}</span><span class="p12-fav-suffix"> 似乎是你的最爱</span></p>
+            <p class="p12-detail">一年里</p>
+            <p class="p12-stat">你 <span class="p12-number">{{ org_usage.org_top_num }}</span> 次参加了</p>
+            <p class="p12-detail">这个小组的活动</p>
+            <p class="p12-message">有没有什么趣事值得分享？</p>
+            {% endif %}
+          </div>
+        </div>
+      </section>
+      {% endif %}
+
+      <!-- P13: 小组活动 -->
+      {% if org_usage.earliest_act_record or org_usage.latest_act_record %}
+      <section id="page-13" class="section page">
+        <img class="bg-image" 
+             src="{% static 'Appointment/assets/img/summary2025/P13.png' %}"
+             alt="背景图" />
+        <div class="content text-content">
+          <div class="text-box">
+            {% if org_usage.earliest_act_record %}
+            <p class="intro-text"><span class="fc-rose">{{ org_usage.earliest_act_record.date }}</span></p>
+            <p class="intro-text">你在 <span class="fc-rose">{{ org_usage.earliest_act_record.time }}</span></p>
+            <p class="intro-text">就参与了 <span class="fc-rose">{{ org_usage.earliest_act_record.name }}</span></p>
+            {% endif %}
+
+            {% if org_usage.latest_act_record %}
+            <p class="intro-text mt-35"><span class="fc-rose">{{ org_usage.latest_act_record.date }}</span></p>
+            <p class="intro-text">你在 <span class="fc-rose">{{ org_usage.latest_act_record.time }}</span></p>
+            <p class="intro-text">才从 <span class="fc-rose">{{ org_usage.latest_act_record.name }}</span> 离开</p>
+            {% endif %}
+
+            {% if org_usage.window_top %}
+            <p class="intro-text mt-35">你最常在 <span class="fc-rose">{{ org_usage.window_top }}点</span> 参加活动</p>
+            <p class="intro-text">这些时点 你还记得吗？</p>
+            {% endif %}
+          </div>
+        </div>
+      </section>
+      {% endif %}
+
+      <!-- P14: 书院课程概况 -->
+      {% if course_usage.course_num > 0 %}
+      <section id="page-14" class="section page">
+        <img class="bg-image" 
+             src="{% static 'Appointment/assets/img/summary2025/P14.png' %}"
+             alt="背景图" />
+        <div class="content text-content">
+          <div class="text-box">
+            <p class="intro-text">截 至 <span class="fc-rose">2025</span> 年底</p>
+            <p class="intro-text">你已经选修了 <span class="fc-rose">{{ course_usage.course_num }}</span> 门书院课程</p>
+            <p class="intro-text">累计学时 <span class="fc-rose">{{ course_usage.valid_hours }}</span></p>
+            <p class="intro-text mt-35">在所有类别的课程中</p>
+            <p class="intro-text">你已经选修了</p>
+            <p class="intro-text mt-35"><span class="fc-rose">{{ course_usage.course_type_str }}</span> 类课程</p>
+          </div>
+        </div>
+      </section>
+      {% endif %}
+
+      <!-- P15: 书院课程详情 -->
+      {% if course_usage.most_hours_course or course_usage.highest_ratio_course %}
+      <section id="page-15" class="section page">
+        <img class="bg-image" 
+             src="{% static 'Appointment/assets/img/summary2025/P15.png' %}"
+             alt="背景图" />
+        <div class="content text-content">
+          <div class="text-box">
+            {% if course_usage.most_hours_course %}
+            <p class="intro-text">在这些课程里</p>
+            <p class="intro-text">你在 <span class="fc-rose">{{ course_usage.most_hours_course }}</span> 中投入了很多心力</p>
+            <p class="intro-text">获得了 <span class="fc-rose">{{ course_usage.most_hours }}</span> 个学时</p>
+            <p class="intro-text">还有 <span class="fc-rose">{{ same_most_hours_course_count }}</span> 位同学和你一样</p>
+            <p class="intro-text">对这门书院课情有独钟</p>
+            <p class="intro-text">愿它装点你的世界</p>
+            {% endif %}
+
+            {% if course_usage.highest_ratio_course %}
+            <p class="intro-text mt-35">这一年里</p>
+            <p class="intro-text">你从 <span class="fc-rose">{{ course_usage.highest_ratio_course.total_participants }}</span> 人中被幸运之神选中</p>
+            <p class="intro-text">成功选上 <span class="fc-rose">{{ course_usage.highest_ratio_course.name }}</span></p>
+            <p class="intro-text">新的一年 好运也要常相伴！</p>
+            {% endif %}
+          </div>
+        </div>
+      </section>
+      {% endif %}
+
+      <!-- P16: 元气值 -->
+      {% if yqpoint_income > 0 %}
+      <section id="page-16" class="section page">
+        <img class="bg-image" 
+             src="{% static 'Appointment/assets/img/summary2025/P16.png' %}"
+             alt="背景图" />
+        <div class="content text-content">
+          <div class="text-box">
+            <div class="p16-yq-block">
+              <p class="p16-yq-line">这一年里</p>
+              <p class="p16-yq-line">你总共获得了 <span class="fc-rose">{{ yqpoint_income }}</span> 点元气值</p>
+              <p class="p16-yq-line">在共同生活的日子里</p>
+              <p class="p16-yq-line">总有人为我们注入元气</p>
+            </div>
+          </div>
+        </div>
+      </section>
+      {% endif %}
+
+      <!-- P17: 结束页 -->
+      <section id="page-17" class="section page">
+        <img class="bg-image" 
+             src="{% static 'Appointment/assets/img/summary2025/P17.png' %}"
+             alt="背景图" />
+        <div class="content text-content">
+          <div class="text-box">
+            <p class="intro-text">一眨眼</p>
+            <p class="intro-text">2025年的时光相册已经翻到了尾页</p>
+            <p class="intro-text">又到了说再见的时候了</p>
+
+            <p class="intro-text mt-50">喜怒哀乐 酸甜苦辣</p>
+            <p class="intro-text">我们的生活如何变化</p>
+            <p class="intro-text">似乎都逃不开这八个字</p>
+
+            <p class="intro-text mt-50">但岁月里定格的每一帧画面</p>
+            <p class="intro-text">都记录着独一无二的场景</p>
+            <p class="intro-text">35楼与你的每一次重逢</p>
+            <p class="intro-text">都是难以复制的瞬间</p>
+
+            <p class="intro-text mt-50"><b>新的一年</b></p>
+            <p class="intro-text"><b>期待着与你共同迎接新的生活百态！</b></p>
+          </div>
+        </div>
+      </section>
+
+    </div>
+
+    <script src="{% static 'Appointment/assets/js/jquery.min.js' %}"></script>
+    <script src="{% static 'Appointment/assets/js/jquery.fullpage.js' %}"></script>
+    <script src="{% static 'Appointment/assets/js/summary2025.js' %}?v=20260210a"></script>
+  </body>
+</html>

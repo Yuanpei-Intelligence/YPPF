@@ -1,0 +1,64 @@
+{
+  "2500000000": {
+    "date_joined": "2020-09-01",
+    "days": 0,
+    "underground_usage_days": 0,
+    "first_underground_record": null,
+    "last_underground_record": null,
+    "longest_underground_usage": {
+      "longest_continuous_days": 0,
+      "longest_continuous_start_date": null,
+      "longest_continuous_end_date": null
+    },
+    "study_room_usage": {
+      "study_room_num": 0,
+      "study_room_top": null,
+      "study_room_top_num": 0,
+      "last_year_study_room_top": null,
+      "last_year_study_room_top_num": 0,
+      "is_same_as_last_year": true
+    },
+    "talk_and_func_room_usage": {
+      "talk_room_num": 0,
+      "talk_room_hour": 0.0,
+      "talk_room_average_participant_num": 0,
+      "func_room_num": 0,
+      "func_room_hour": 0.0,
+      "talk_and_func_room_longest_record": null
+    },
+    "appoint_habit": {
+      "average_diff": null,
+      "max_diff": null,
+      "max_diff_record": null,
+      "room_num_top": null,
+      "room_num_top_num": null,
+      "day_appoint_num": 0,
+      "temporary_appoint_num": 0,
+      "day_appoint_min_diff": null,
+      "day_appoint_min_diff_record": null
+    },
+    "login_days": 0,
+    "org_usage": {
+      "org_num": 0,
+      "org_name_list": [],
+      "act_num": 0,
+      "act_hour": 0.0,
+      "org_top": null,
+      "org_top_num": 0,
+      "earliest_act_record": null,
+      "latest_act_record": null,
+      "window_top": null,
+      "window_top_num": 0
+    },
+    "course_usage": {
+      "course_num": 0,
+      "valid_hours": 0,
+      "course_type_str": "",
+      "most_hours_course": null,
+      "most_hours": 0,
+      "highest_ratio_course": null
+    },
+    "yqpoint_income": 0,
+    "name": ""
+  }
+}

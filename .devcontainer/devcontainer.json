@@ -12,7 +12,7 @@
     // Dev container is used for development, so the YPPF_DEBUG environment variable should be set
     "containerEnv": {
         "YPPF_DEBUG": "true"
-    },
+  },
     "customizations": {
         "vscode": {
             "settings": {
