@@ -1,0 +1,99 @@
+{
+  "2300000000": {
+    "date_joined": "2020-09-01",
+    "days": 1593,
+    "underground_usage_days": 100,
+    "first_underground_record": {
+      "date": "2025年01月20日",
+      "room": "B114",
+      "usage": "自习"
+    },
+    "last_underground_record": {
+      "date": "2025年12月31日",
+      "room": "B104",
+      "usage": "自习"
+    },
+    "longest_underground_usage": {
+      "longest_continuous_days": 30,
+      "longest_continuous_start_date": "2025-05-01",
+      "longest_continuous_end_date": "2025-05-30"
+    },
+    "study_room_usage": {
+      "study_room_num": 150,
+      "study_room_top": "B114",
+      "study_room_top_num": 50,
+      "last_year_study_room_top": "B104",
+      "last_year_study_room_top_num": 45,
+      "is_same_as_last_year": false
+    },
+    "talk_and_func_room_usage": {
+      "talk_room_num": 20,
+      "talk_room_hour": 50.0,
+      "talk_room_average_participant_num": 3.5,
+      "func_room_num": 15,
+      "func_room_hour": 30.0,
+      "talk_and_func_room_longest_record": {
+        "date": "2025年06月15日",
+        "room": "B104",
+        "hour": 3.0,
+        "usage": "小组讨论"
+      }
+    },
+    "appoint_habit": {
+      "average_diff": 24.5,
+      "max_diff": 168.0,
+      "max_diff_record": {
+        "date": "2025年03月10日",
+        "room": "B107A",
+        "usage": "例会"
+      },
+      "room_num_top": "B104",
+      "room_num_top_num": 30,
+      "day_appoint_num": 50,
+      "temporary_appoint_num": 10,
+      "day_appoint_min_diff": 0.5,
+      "day_appoint_min_diff_record": {
+        "date": "2025年04月20日",
+        "room": "B107B",
+        "usage": "临时会议"
+      }
+    },
+    "login_days": 200,
+    "org_usage": {
+      "org_num": 2,
+      "org_name_list": [
+        "元培学院",
+        "内联权益部"
+      ],
+      "act_num": 15,
+      "act_hour": 45.0,
+      "org_top": "元培学院",
+      "org_top_num": 10,
+      "earliest_act_record": {
+        "date": "2025年02月15日",
+        "name": "春季开学活动",
+        "time": "09:00"
+      },
+      "latest_act_record": {
+        "date": "2025年12月20日",
+        "name": "新年晚会",
+        "time": "19:00"
+      },
+      "window_top": 18,
+      "window_top_num": 5
+    },
+    "course_usage": {
+      "course_num": 5,
+      "valid_hours": 32.0,
+      "course_type_str": "智 体 美",
+      "most_hours_course": "健身类课程",
+      "most_hours": 16.0,
+      "highest_ratio_course": {
+        "name": "热门课程",
+        "total_participants": 50
+      }
+    },
+    "yqpoint_income": 100,
+    "name": "虚拟人"
+  }
+}

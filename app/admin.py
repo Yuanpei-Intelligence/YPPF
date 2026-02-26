@@ -2,12 +2,14 @@ from datetime import datetime
 
 from django.contrib import admin
 from django.db.models import F, QuerySet
+from django.forms import ModelForm, BooleanField
 from django.utils.safestring import mark_safe
 
 from utils.http.dependency import HttpRequest
 from utils.models.query import sfilter, f
 from utils.admin_utils import *
 from app.models import *
+from app.config import PERMISSION_CONFIG
 from scheduler.cancel import remove_job
 from app.YQPoint_utils import run_lottery
 from app.org_utils import accept_modifyorg_submit
@@ -42,9 +44,38 @@ class CourseParticipantInline(admin.TabularInline):
     show_change_link = True
 
 
+# 自定义表单用于权限编辑
+class NaturalPersonForm(ModelForm):
+    class Meta:
+        model = NaturalPerson
+        fields = '__all__'
+    
+    select_course = BooleanField(label='选课权限', required=False)
+    underground_appointment = BooleanField(label='地下室权限', required=False)
+    gain_credit = BooleanField(label='获得书院课学时权限', required=False)
+    
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        if self.instance.pk:
+            # 如果是编辑模式，设置初始值
+            self.fields['select_course'].initial = self.instance.has_permission('select_course')
+            self.fields['underground_appointment'].initial = self.instance.has_permission('underground_appointment')
+            self.fields['gain_credit'].initial = self.instance.has_permission('gain_credit')
+    
+    def save(self, commit=True):
+        instance = super().save(commit=False)
+        # 更新权限字段
+        instance.set_permission('select_course', self.cleaned_data['select_course'])
+        instance.set_permission('underground_appointment', self.cleaned_data['underground_appointment'])
+        instance.set_permission('gain_credit', self.cleaned_data['gain_credit'])
+        if commit:
+            instance.save()
+        return instance
+
 # 后台模型
 @admin.register(NaturalPerson)
 class NaturalPersonAdmin(admin.ModelAdmin):
+    form = NaturalPersonForm
     _m = NaturalPerson
     list_display = [
         f(_m.person_id),
@@ -67,6 +98,20 @@ class NaturalPersonAdmin(admin.ModelAdmin):
             return option, detail
         return option
 
+    def _get_permission_display(self, request, obj: NaturalPerson | None, perm_key: str):
+        # 在新增表单(obj is None)时返回表单字段名；
+        # 在展示已存在对象时：如果当前用户有编辑权限则返回表单字段名，
+        # 否则返回只读展示方法名 `perm_<key>`。
+        if obj is None:
+            return perm_key
+        try:
+            if self.has_change_permission(request, obj):
+                return perm_key
+        except Exception:
+            # 如果调用方未传入 request 或出现异常，降级为只读展示
+            pass
+        return f'perm_{perm_key}'
+
     def get_normal_fields(self, request, obj: NaturalPerson = None):
         _m = NaturalPerson
         fields = []
@@ -79,6 +124,9 @@ class NaturalPersonAdmin(admin.ModelAdmin):
             f(_m.wechat_receive_level),
             f(_m.accept_promote), f(_m.active_score),
         ])
+        for perm_config in PERMISSION_CONFIG:
+            fields.append(self._get_permission_display(
+                request, obj, perm_config['key']))
         return fields
 
     def get_student_fields(self, request, obj: NaturalPerson = None):
@@ -110,12 +158,21 @@ class NaturalPersonAdmin(admin.ModelAdmin):
     def view_on_site(self, obj: NaturalPerson):
         return obj.get_absolute_url()
 
+    def get_actions(self, request):
+        actions = super().get_actions(request)
+        for perm_config in PERMISSION_CONFIG:
+            grant_action = f'grant_{perm_config["key"]}'
+            revoke_action = f'revoke_{perm_config["key"]}'
+            actions[grant_action] = (getattr(self.__class__, grant_action), grant_action, f'赋予 {perm_config["name"]}')
+            actions[revoke_action] = (getattr(self.__class__, revoke_action), revoke_action, f'收回 {perm_config["name"]}')
+        return actions
+
     actions = [
         'set_student', 'set_teacher',
         'set_graduate', 'set_ungraduate',
         'set_instructor', 'set_leave', 'set_postpone',
         'all_subscribe', 'all_unsubscribe',
-        ]
+    ]
 
     @as_action("设为 学生", update=True)
     def set_student(self, request, queryset):
@@ -208,6 +265,68 @@ class NaturalPersonAdmin(admin.ModelAdmin):
             person.save()
         return self.message_user(request=request,
                                  message='修改成功!已经取消所有非官方组织的订阅!')
+
+    # 权限操作方法
+    def _handle_permission(self, request, queryset, perm_key, grant):
+        perm_config = next((pc for pc in PERMISSION_CONFIG if pc['key'] == perm_key), None)
+        if not perm_config:
+            return self.message_user(request=request, message='权限配置不存在!', level='error')
+        
+        # 检查操作者是否有对应的权限检查方法或为超级用户
+        checker_name = f'has_{perm_key}_permission'
+        has_perm_fn = getattr(self, checker_name, None)
+        if has_perm_fn is None:
+            # 若未定义专门的权限检查，则仅允许超级用户操作
+            if not request.user.is_superuser:
+                return self.message_user(request=request,
+                                         message='操作失败,没有权限,请联系老师!',
+                                         level='warning')
+        else:
+            try:
+                if not has_perm_fn(request):
+                    return self.message_user(request=request,
+                                             message='操作失败,没有权限,请联系老师!',
+                                             level='warning')
+            except TypeError:
+                # 兼容 has_*_permission 可能接受 (request, obj) 两种签名
+                if not has_perm_fn(request, None):
+                    return self.message_user(request=request,
+                                             message='操作失败,没有权限,请联系老师!',
+                                             level='warning')
+
+        for person in queryset:
+            if grant:
+                person.grant_permission(perm_key)
+            else:
+                person.revoke_permission(perm_key)
+        
+        action = '赋予' if grant else '收回'
+        return self.message_user(request=request, message=f'修改成功!已{action}{perm_config["name"]}!')
+
+# 为每个权限创建grant和revoke方法，并为动作添加权限检查与描述
+for perm_config in PERMISSION_CONFIG:
+    perm_key = perm_config['key']
+    perm_name = perm_config.get('name', perm_key)
+
+    @as_action(f'赋予 {perm_name}', permissions=perm_key)
+    def grant_method(self, request, queryset, key=perm_key):
+        return self._handle_permission(request, queryset, key, True)
+
+    @as_action(f'收回 {perm_name}', permissions=perm_key)
+    def revoke_method(self, request, queryset, key=perm_key):
+        return self._handle_permission(request, queryset, key, False)
+
+    setattr(NaturalPersonAdmin, f'grant_{perm_key}', grant_method)
+    setattr(NaturalPersonAdmin, f'revoke_{perm_key}', revoke_method)
+    # 为每个权限创建只读显示方法
+    def _perm_display(self, obj, key=perm_key):
+        try:
+            return bool(obj.has_permission(key))
+        except Exception:
+            return False
+    _perm_display.short_description = perm_name
+    _perm_display.boolean = True
+    setattr(NaturalPersonAdmin, f'perm_{perm_key}', _perm_display)
 
 @admin.register(Freshman)
 class FreshmanAdmin(admin.ModelAdmin):

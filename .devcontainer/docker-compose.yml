@@ -6,26 +6,12 @@ services:
     volumes:
       - yppf-mysql-data:/var/lib/mysql
       - yppf-mysql-config:/etc/mysql
-    command:
-      [
-        "mysqld",
-        "--character-set-server=utf8mb4",
-        "--collation-server=utf8mb4_bin"
-      ]
+    command: [ "mysqld", "--character-set-server=utf8mb4", "--collation-server=utf8mb4_bin" ]
     environment:
       MYSQL_ROOT_PASSWORD: secret
       MYSQL_DATABASE: yppf
     healthcheck:
-      test:
-        [
-          "CMD",
-          "mysqladmin",
-          "ping",
-          "-h",
-          "localhost",
-          "-uroot",
-          "-psecret"
-        ]
+      test: [ "CMD", "mysqladmin", "ping", "-h", "localhost", "-uroot", "-psecret" ]
       interval: 5s
       timeout: 5s
       retries: 100
@@ -38,6 +24,7 @@ services:
         condition: service_healthy
     working_dir: /workspace
     environment:
+      - YPPF_DEBUG=true
       - DB_HOST=mysql
       - DB_USER=root
       - DB_PASSWORD=secret

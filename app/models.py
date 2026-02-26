@@ -367,6 +367,7 @@ class NaturalPerson(models.Model):
 
     accept_promote = models.BooleanField(default=True)    # 是否接受推广消息
     active_score = models.FloatField("活跃度", default=0)  # 用户活跃度
+    permissions = models.JSONField(default=dict)  # 权限字典，记录此用户有无该权限
 
     def __str__(self):
         return str(self.name)
@@ -403,6 +404,58 @@ class NaturalPerson(models.Model):
 
     def get_accept_promote_display(self):
         return "是" if self.accept_promote else "否"
+
+    # 获取本模型的权限字典（返回的字典中权限字段不一定存在）
+    # def get_permissions(self) -> dict:
+    #     return self.permissions if self.permissions is not None else {}
+
+    # 初始化本模型的某个权限字段（仅当该权限不存在时设置）
+    def init_permission(self, perm_name: str, default_value: bool = False) -> bool:
+        if perm_name not in PERMISSIONS_LIST:
+            raise KeyError(f"用户模型不存在权限字段{perm_name}")
+        if perm_name == 'select_course' or perm_name == 'underground_appointment':
+            # 老师、住宿辅导员、在读、延毕学生有选课权限和地下室预约权限
+            has_permission = (
+                self.identity == NaturalPerson.Identity.TEACHER or
+                (self.identity == NaturalPerson.Identity.STUDENT and 
+                 self.status in [NaturalPerson.GraduateStatus.UNDERGRADUATED, 
+                                NaturalPerson.GraduateStatus.POSTPONED, 
+                                NaturalPerson.GraduateStatus.INSTRUCTOR])
+            )
+            self.permissions[perm_name] = has_permission
+            self.save(update_fields=['permissions'])
+        elif perm_name == 'gain_credit':
+            # 在读、延毕学生有获得书院课学时权限
+            has_permission = (
+                self.identity == NaturalPerson.Identity.STUDENT and 
+                self.status in [NaturalPerson.GraduateStatus.UNDERGRADUATED, 
+                               NaturalPerson.GraduateStatus.POSTPONED]
+            )
+            self.permissions[perm_name] = has_permission
+            self.save(update_fields=['permissions'])
+        else:
+            self.permissions[perm_name] = default_value
+            self.save(update_fields=['permissions'])
+        return self.permissions[perm_name]
+
+    # 检查本模型是否有该权限
+    def has_permission(self, perm_name: str) -> bool:
+        if perm_name not in self.permissions:
+            return self.init_permission(perm_name)
+        return self.permissions.get(perm_name, False)
+
+    # 设置本模型的权限字典中某个权限字段为value
+    def set_permission(self, perm_name: str, value: bool):
+        self.permissions[perm_name] = value
+        self.save(update_fields=['permissions'])
+
+    # 授予本模型某个权限字段
+    def grant_permission(self, perm_name: str):
+        self.set_permission(perm_name, True)
+
+    # 撤销本模型某个权限字段
+    def revoke_permission(self, perm_name: str):
+        self.set_permission(perm_name, False)
 
     def show_info(self):
         """
@@ -1523,6 +1576,20 @@ class Course(models.Model):
         PHYSICAL = (2, "体")
         AESTHETICS = (3, "美")
         LABOUR = (4, "劳")
+        OTHER = (5, "其他")
+
+        @classmethod
+        def get_achievement_name(cls, course_type: int) -> str:
+            """获取课程类型对应的成就名称，用于解锁成就"""
+            achievement_names = {
+                cls.MORAL: '德育',
+                cls.INTELLECTUAL: '智育',
+                cls.PHYSICAL: '体育',
+                cls.AESTHETICS: '美育',
+                cls.LABOUR: '劳动教育',
+                cls.OTHER: '其他',
+            }
+            return achievement_names.get(course_type, '未知')
 
     type = models.SmallIntegerField("课程类型", choices=CourseType.choices)
 

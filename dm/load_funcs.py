@@ -486,13 +486,8 @@ def load_course_record(filepath: str, output_func: Callable=None, html:bool=Fals
     semester = courserecord_file['info'].iloc[2,1]
     semester = Semester.get(semester)
 
-    course_type_all = {
-       "德" : Course.CourseType.MORAL ,
-       "智" : Course.CourseType.INTELLECTUAL ,
-       "体" : Course.CourseType.PHYSICAL ,
-       "美" : Course.CourseType.AESTHETICS,
-       "劳" : Course.CourseType.LABOUR,
-    }
+    # 从 CourseType 枚举动态生成课程类型映射，避免硬编码
+    course_type_all = {label: value for value, label in Course.CourseType.choices}
     course_info = courserecord_file['info'] #info这个sheet
     info_height, info_width = course_info.shape
     # ---- 以下为读取info里面的课程信息并自动注册course ------

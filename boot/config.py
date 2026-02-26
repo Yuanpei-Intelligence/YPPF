@@ -32,7 +32,7 @@ __all__ = [
 ]
 
 
-DEBUG = 'DEBUG' in os.environ and os.environ['DEBUG'].lower() == 'true'
+DEBUG = 'YPPF_DEBUG' in os.environ and os.environ['YPPF_DEBUG'].lower() == 'true'
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 

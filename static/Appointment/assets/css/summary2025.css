@@ -1,0 +1,1835 @@
+/* 字体定义 */
+@font-face {
+    font-family: "Siyuan SongTi regular";
+    src: url("../fonts/Siyuan-SongTi-regular.ttf") format("truetype");
+}
+
+@font-face {
+    font-family: "GenWanMin2TC-R";
+    src: url("../fonts/GenWanMin2TC-R.otf") format("otf");
+}
+
+/* PREFLIGHT */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+h1,
+h2,
+h3,
+p {
+    margin: 0;
+    padding: 0;
+}
+
+/* UTILITIES */
+.mt-35 {
+    margin-top: 35px;
+}
+
+.mt-50 {
+    margin-top: 50px;
+}
+
+.mt-35-no-bold {
+    margin-top: 35px;
+}
+.fs-36b {
+    font-size: 36px;
+    font-weight: bold;
+}
+
+.fc-blue {
+    color: #004AAD;
+}
+
+.fc-rose {
+    font-weight: 900;
+    color: #ff5050;
+    font-size: 22px;
+    padding: 0 0.2em;
+}
+
+/* BODY */
+body {
+    font-family: "Siyuan SongTi regular", "SimSun", "宋体", STSong, serif;
+    font-size: 23px;
+    line-height: 1.5;
+    -webkit-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
+    user-select: none;
+    -webkit-font-smoothing: subpixel-antialiased;
+    overflow: hidden;
+}
+
+p {
+    margin: 10px 0 0 0;
+    padding: 0;
+    color: rgb(60, 60, 60);
+    font-family: "Siyuan SongTi regular", "SimSun", "宋体", STSong, serif;
+    font-size: 23px;
+    line-height: 1.8;
+    text-align: center;
+}
+
+button {
+    cursor: pointer;
+    border: none;
+    background: transparent;
+}
+
+/* 音乐播放器 */
+#music-container {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    z-index: 1000;
+}
+
+#play-music {
+    background: rgba(255, 255, 255, 0.8);
+    border-radius: 50%;
+    width: 50px;
+    height: 50px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+}
+
+#playing {
+    display: block;
+}
+
+#paused {
+    display: none;
+}
+
+/* 页面通用样式 */
+.section.page {
+    position: relative;
+    width: 100vw;
+    height: 100vh;
+    overflow: hidden;
+}
+
+.bg-image {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    z-index: 1;
+    opacity: 0.8;
+}
+
+/* 启动页样式 */
+.splash-page {
+    background: transparent;
+}
+
+.splash-bg {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    z-index: 1;
+}
+
+.splash-content {
+    position: relative;
+    z-index: 2;
+    width: 100%;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-start;
+    /* 改为从上排，让中间内容自然下落，footer沉底 */
+    align-items: center;
+    padding: 20px;
+}
+
+/* 移除旧的 splash-decorations 相关 */
+
+.splash-logo {
+    position: absolute;
+    top: 30px;
+    right: 20px;
+    width: 80px;
+    height: auto;
+    animation: fade-in 1s ease forwards;
+    z-index: 10;
+}
+
+.splash-photos {
+    position: absolute;
+    top: -20px;
+    left: -30px;
+    width: 260px;
+    /* 左上角装饰大小 */
+    height: auto;
+    transform: rotate(-15deg);
+    animation: slide-down 1.4s ease forwards;
+    pointer-events: none;
+    /* 防止遮挡点击 */
+}
+
+.splash-centered-info {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    margin-top: 25vh;
+    /* 距离顶部位置 */
+    position: relative;
+    z-index: 5;
+}
+
+.splash-title {
+    width: 85%;
+    max-width: 500px;
+    height: auto;
+    animation: fade-in 1.2s ease forwards;
+    margin: 0;
+}
+
+.splash-user-greeting {
+    font-family: "GenWanMin2TC-R", "Siyuan SongTi regular", serif;
+    font-size: 28px;
+    color: #ffffff;
+    text-shadow: 0 2px 8px rgba(0, 74, 173, 0.3);
+    /* 蓝色阴影，增加对比度 */
+    letter-spacing: 2px;
+    opacity: 0;
+    animation: fade-in-up 1.5s ease forwards 0.5s;
+    /* 延迟出现 */
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+}
+
+.user-name {
+    font-size: 32px;
+    font-weight: bold;
+    border-bottom: 2px solid rgba(255, 255, 255, 0.6);
+    padding-bottom: 5px;
+}
+
+.greeting-text {
+    font-size: 24px;
+    opacity: 0.9;
+}
+
+.splash-footer {
+    width: 100%;
+    max-width: 400px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 20px;
+    margin-top: auto;
+    /* Push to bottom */
+    margin-bottom: 60px;
+    /* Bottom padding */
+}
+
+@keyframes slide-down {
+    from {
+        opacity: 0;
+        transform: translate(-20px, -40px) rotate(-20deg);
+    }
+
+    to {
+        opacity: 1;
+        transform: translate(0, 0) rotate(-15deg);
+    }
+}
+
+@keyframes fade-in-up {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.splash-button-img {
+    width: 200px;
+    height: auto;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    opacity: 0.5;
+    filter: grayscale(100%);
+}
+
+.splash-button-img.active {
+    opacity: 1;
+    filter: grayscale(0%);
+    animation: pulse 1.5s ease-in-out infinite;
+}
+
+.splash-button-img:hover {
+    transform: scale(1.05);
+}
+
+@keyframes fade-in {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes pulse {
+
+    0%,
+    100% {
+        transform: scale(1);
+    }
+
+    50% {
+        transform: scale(1.05);
+    }
+}
+
+/* 全局数据样式 - 所有number, name, room, date, yppf, org等强调类 */
+[class*="-number"],
+[class*="-name"],
+[class*="-room"],
+[class*="-date"],
+[class*="-yppf"],
+[class*="-org"] {
+    color: #ff5050;
+    font-size: 20px;
+    font-weight: 700;
+    padding: 0 0.1em;
+}
+
+/* 每页首字放大样式 */
+.p1-question::first-letter,
+.p2-greeting::first-letter,
+.p3-title::first-letter,
+.p4-title::first-letter,
+.p5-title::first-letter,
+.p6-title:not(.mt-35)::first-letter,
+.p7-section-title:first-child::first-letter,
+.p8-section-title:first-child::first-letter,
+.p9-section-title:first-child::first-letter,
+.p10-title::first-letter,
+.p12-stat:first-of-type::first-letter,
+.text-box>p:first-child::first-letter {
+    font-size: 24px;
+    font-weight: bold;
+    line-height: 1.1;
+    margin-right: 2px;
+}
+
+.content {
+    position: relative;
+    z-index: 2;
+    width: 100%;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 5vh 5vw;
+    overflow-y: auto;
+}
+
+/* 页面对齐方式设定 */
+
+/* 居中对齐页面 (强制完全居中) */
+#page-home .content,
+#page-4 .content,
+#page-6 .content,
+#page-7 .content,
+#page-8 .content,
+#page-9 .content,
+#page-12 .content,
+#page-14 .content,
+#page-15 .content,
+#page-16 .content {
+    align-items: center !important;
+    justify-content: center !important;
+}
+
+#page-home .content [class*="-text-box"],
+#page-4 .content [class*="-text-box"],
+#page-6 .content [class*="-text-box"],
+#page-7 .content [class*="-text-box"],
+#page-8 .content [class*="-text-box"],
+#page-9 .content [class*="-text-box"],
+#page-12 .content [class*="-text-box"],
+#page-14 .content [class*="-text-box"],
+#page-15 .content [class*="-text-box"],
+#page-16 .content [class*="-text-box"] {
+    text-align: center !important;
+    align-items: center !important;
+    max-width: 90% !important;
+    display: flex !important;
+    flex-direction: column !important;
+    margin: 0 auto !important;
+}
+
+#page-home .content p,
+#page-4 .content p,
+#page-6 .content p,
+#page-7 .content p,
+#page-8 .content p,
+#page-9 .content p,
+#page-12 .content p,
+#page-14 .content p,
+#page-15 .content p,
+#page-16 .content p {
+    text-align: center !important;
+    margin-left: auto !important;
+    margin-right: auto !important;
+}
+
+/* 左对齐页面 */
+#page-2 .content,
+#page-3 .content,
+#page-10 .content {
+    align-items: flex-start !important;
+    padding-left: 15vw !important;
+}
+
+#page-2 .content p,
+#page-3 .content p,
+#page-10 .content p {
+    text-align: left !important;
+}
+
+/* 右对齐页面 */
+#page-5 .content,
+#page-11 .content,
+#page-13 .content,
+#page-17 .content {
+    align-items: flex-end !important;
+    padding-right: 15vw !important;
+}
+
+#page-5 .content p,
+#page-11 .content p,
+#page-13 .content p,
+#page-17 .content p {
+    text-align: right !important;
+}
+
+/* P1: 首页样式 - 诗意文案 */
+#page-home {
+    background: transparent;
+}
+
+.p1-content {
+    justify-content: center;
+    align-items: center;
+    padding: 60px 40px 80px 40px;
+}
+
+.p1-text-box {
+    text-align: center;
+    max-width: 90%;
+    opacity: 0;
+    transform: translateY(30px);
+}
+
+.p1-text-box.animate-in {
+    animation: fade-in-up 0.8s ease forwards;
+    opacity: 1;
+    transform: translateY(0);
+}
+
+.p1-question {
+    font-family: "Siyuan SongTi regular", serif;
+    font-size: 16px;
+    font-weight: 700;
+    color: #000000;
+    margin: 0;
+    line-height: 2.2;
+}
+
+.p1-subtitle {
+    font-size: 18px;
+    font-weight: 400;
+}
+
+.p1-poem {
+    font-family: "Siyuan SongTi regular", serif;
+    font-size: 16px;
+    color: #000000;
+    line-height: 2.2;
+    margin: 0;
+}
+
+.p1-divider {
+    font-family: "Siyuan SongTi regular", serif;
+    font-size: 16px;
+    color: #000000;
+    margin: 25px 0 15px 0;
+    line-height: 2.2;
+}
+
+.p1-stat {
+    font-family: "Siyuan SongTi regular", serif;
+    font-size: 16px;
+    color: #000000;
+    line-height: 2.2;
+    margin: 0;
+}
+
+.p1-number {
+    color: #ff5050;
+    font-weight: 700;
+    font-size: 20px;
+    margin: 0 3px;
+}
+
+.p1-year {
+    font-family: "Siyuan SongTi regular", serif;
+    font-size: 18px;
+    color: #000000;
+    font-weight: 600;
+    margin-top: 30px;
+    line-height: 1.8;
+}
+
+/* P2: 欢迎页面样式 */
+#page-2 {
+    background: transparent;
+}
+
+.p2-content {
+    justify-content: center;
+    align-items: center;
+    padding: 80px 40px;
+}
+
+.p2-text-box {
+    text-align: left;
+    max-width: 90%;
+    opacity: 0;
+    transform: translateY(30px);
+}
+
+.p2-text-box p {
+    text-align: left;
+}
+
+.p2-text-box.animate-in {
+    animation: fade-in-up 0.8s ease forwards;
+    opacity: 1;
+    transform: translateY(0);
+}
+
+.p2-greeting {
+    font-family: "Siyuan SongTi regular", serif;
+    font-size: 18px;
+    font-weight: 700;
+    color: #000000;
+    line-height: 2.2;
+    margin: 0;
+}
+
+.p2-name {
+    color: #ff5050;
+    font-size: 28px;
+}
+
+.p2-intro {
+    font-family: "Siyuan SongTi regular", serif;
+    font-size: 18px;
+    color: #000000;
+    line-height: 2.2;
+    margin: 0;
+}
+
+/* P3: 地下室使用情况样式 */
+#page-3 {
+    background: transparent;
+}
+
+.p3-content {
+    justify-content: center;
+    align-items: center;
+}
+
+.p3-text-box {
+    text-align: left;
+    max-width: 90%;
+    opacity: 0;
+    transform: translateY(30px);
+}
+
+.p3-text-box p {
+    text-align: left;
+}
+
+.p3-text-box.animate-in {
+    animation: fade-in-up 0.8s ease forwards;
+    opacity: 1;
+    transform: translateY(0);
+}
+
+.p3-title {
+    font-family: "Siyuan SongTi regular", serif;
+    font-size: 16px;
+    font-weight: 700;
+    color: #000000;
+    margin: 0;
+    line-height: 2.2;
+}
+
+.p3-stat {
+    font-family: "Siyuan SongTi regular", serif;
+    font-size: 16px;
+    color: #000000;
+    line-height: 2.2;
+    margin: 0;
+}
+
+.p3-number {
+    color: #ff5050;
+    font-weight: 700;
+    font-size: 28px;
+    margin: 0 3px;
+}
+
+.p3-msg {
+    font-family: "Siyuan SongTi regular", serif;
+    font-size: 23px;
+    color: #000000;
+    font-weight: 600;
+    line-height: 2.2;
+    margin: 15px 0;
+}
+
+.p3-divider {
+    font-family: "Siyuan SongTi regular", serif;
+    font-size: 16px;
+    color: #000000;
+    margin: 25px 0 10px 0;
+    line-height: 2.2;
+}
+
+.p3-date {
+    font-family: "Siyuan SongTi regular", serif;
+    font-size: 16px;
+    color: #ff5050;
+    font-weight: 700;
+    line-height: 2.2;
+    margin: 0;
+}
+
+.p3-detail {
+    font-family: "Siyuan SongTi regular", serif;
+    font-size: 16px;
+    color: #000000;
+    line-height: 2.2;
+    margin: 0;
+}
+
+.p3-room {
+    color: #ff5050;
+    font-weight: 700;
+}
+
+/* P4: 最长连续使用样式 */
+#page-4 {
+    background: transparent;
+}
+
+.p4-text-box {
+    text-align: left;
+    max-width: 90%;
+}
+
+.p4-text-box p {
+    text-align: left;
+}
+
+.p4-title {
+    font-family: "Siyuan SongTi regular", serif;
+    font-size: 16px;
+    font-weight: 700;
+    color: #000000;
+    line-height: 2.2;
+    margin: 0;
+}
+
+.p4-date {
+    font-family: "Siyuan SongTi regular", serif;
+    font-size: 23px;
+    color: #ff5050;
+    font-weight: 700;
+    line-height: 2.2;
+    margin: 0;
+}
+
+.p4-detail,
+.p4-witness {
+    font-family: "Siyuan SongTi regular", serif;
+    font-size: 16px;
+    color: #000000;
+    line-height: 2.2;
+    margin: 0;
+}
+
+.p4-room,
+.p4-usage {
+    font-family: "Siyuan SongTi regular", serif;
+    font-size: 18px;
+    color: #ff5050;
+    font-weight: 700;
+    line-height: 2.2;
+    margin: 0;
+}
+
+.p4-stat {
+    font-family: "Siyuan SongTi regular", serif;
+    font-size: 16px;
+    color: #000000;
+    line-height: 2.2;
+    margin: 0;
+}
+
+.p4-number {
+    color: #ff5050;
+    font-weight: 700;
+    font-size: 20px;
+    margin: 0 3px;
+}
+
+.p4-yppf {
+    color: #ff5050;
+    font-weight: 700;
+}
+
+.p4-to {
+    font-family: "Siyuan SongTi regular", serif;
+    font-size: 16px;
+    color: #000000;
+    line-height: 2.2;
+    margin: 0;
+}
+
+.p4-message {
+    font-family: "Siyuan SongTi regular", serif;
+    font-size: 16px;
+    color: #000000;
+    line-height: 2.2;
+    margin: 15px 0 5px 0;
+}
+
+/* P5: 自习室使用样式 */
+#page-5 {
+    background: transparent;
+}
+
+.p5-content {
+    justify-content: center;
+    align-items: center;
+}
+
+.p5-text-box {
+    text-align: left;
+    max-width: 90%;
+}
+
+.p5-text-box p {
+    text-align: left;
+}
+
+.p5-title {
+    font-family: "Siyuan SongTi regular", serif;
+    font-size: 16px;
+    font-weight: 700;
+    color: #000000;
+    line-height: 2.2;
+    margin: 0;
+}
+
+.p5-stat {
+    font-family: "Siyuan SongTi regular", serif;
+    font-size: 16px;
+    color: #000000;
+    line-height: 2.2;
+    margin: 0;
+}
+
+.p5-number {
+    color: #ff5050;
+    font-weight: 700;
+    font-size: 20px;
+    margin: 0 3px;
+}
+
+.p5-poem {
+    font-family: "Siyuan SongTi regular", serif;
+    font-size: 16px;
+    color: #000000;
+    line-height: 2.2;
+    margin: 0;
+}
+
+.p5-room {
+    font-family: "Siyuan SongTi regular", serif;
+    font-size: 18px;
+    color: #ff5050;
+    font-weight: 700;
+    line-height: 2.2;
+    margin: 0;
+}
+
+.p5-detail {
+    font-family: "Siyuan SongTi regular", serif;
+    font-size: 16px;
+    color: #000000;
+    line-height: 2.2;
+    margin: 0;
+}
+
+.p5-share {
+    font-family: "Siyuan SongTi regular", serif;
+    font-size: 16px;
+    color: #000000;
+    line-height: 2.2;
+    margin: 0;
+}
+
+/* P6: 研讨室和功能室样式 */
+#page-6 {
+    background: transparent;
+}
+
+.p6-content {
+    justify-content: center;
+    align-items: center;
+    padding: 80px 40px;
+}
+
+.p6-text-box {
+    text-align: left;
+    max-width: 400px;
+}
+
+.p6-title {
+    font-family: "Siyuan SongTi regular", serif;
+    font-size: 16px;
+    font-weight: 700;
+    color: #000000;
+    line-height: 2.2;
+    margin: 0;
+}
+
+.p6-stat {
+    font-family: "Siyuan SongTi regular", serif;
+    font-size: 16px;
+    color: #000000;
+    line-height: 2.2;
+    margin: 0;
+}
+
+.p6-number {
+    color: #ff5050;
+    font-weight: 700;
+    font-size: 20px;
+    margin: 0 3px;
+}
+
+.p6-poem {
+    font-family: "Siyuan SongTi regular", serif;
+    font-size: 16px;
+    color: #000000;
+    line-height: 2.2;
+    margin: 0;
+}
+
+.p6-memory {
+    font-family: "Siyuan SongTi regular", serif;
+    font-size: 16px;
+    color: #000000;
+    line-height: 2.2;
+    margin: 0;
+}
+
+.p6-date {
+    color: #ff5050;
+    font-weight: 700;
+}
+
+.p6-detail {
+    font-family: "Siyuan SongTi regular", serif;
+    font-size: 16px;
+    color: #000000;
+    line-height: 2.2;
+    margin: 0;
+}
+
+.p6-room {
+    color: #ff5050;
+    font-weight: 700;
+}
+
+.p6-wish {
+    font-family: "Siyuan SongTi regular", serif;
+    font-size: 16px;
+    color: #000000;
+    line-height: 2.2;
+    margin: 0;
+}
+
+.p6-yppf {
+    font-family: "Siyuan SongTi regular", serif;
+    font-size: 18px;
+    color: #ff5050;
+    font-weight: 700;
+    line-height: 2.2;
+    margin: 0;
+}
+
+/* P7: 预约习惯样式 */
+#page-7 {
+    background: transparent;
+}
+
+.p7-content {
+    justify-content: center;
+    align-items: center;
+    padding: 80px 40px;
+}
+
+.p7-text-box {
+    text-align: left;
+    max-width: 400px;
+}
+
+.p7-section-title {
+    font-family: "Siyuan SongTi regular", serif;
+    font-size: 21px;
+    font-weight: 700;
+    color: #000000;
+    line-height: 2.2;
+    margin: 0;
+}
+
+.p7-stat {
+    font-family: "Siyuan SongTi regular", serif;
+    font-size: 16px;
+    color: #000000;
+    line-height: 2.2;
+    margin: 0;
+}
+
+.p7-number {
+    color: #ff5050;
+    font-weight: 700;
+    font-size: 20px;
+    margin: 0 3px;
+}
+
+.p7-detail {
+    font-family: "Siyuan SongTi regular", serif;
+    font-size: 16px;
+    color: #000000;
+    line-height: 2.2;
+    margin: 0;
+}
+
+.p7-yppf {
+    color: #ff5050;
+    font-weight: 700;
+}
+
+.p7-room {
+    color: #ff5050;
+    font-weight: 700;
+}
+
+.p7-message {
+    font-family: "Siyuan SongTi regular", serif;
+    font-size: 16px;
+    color: #000000;
+    line-height: 2.2;
+    margin: 10px 0 5px 0;
+}
+
+/* P8: 最极限样式 */
+#page-8 {
+    background: transparent;
+}
+
+.p8-content {
+    justify-content: center;
+    align-items: center;
+    padding: 80px 40px;
+}
+
+.p8-text-box {
+    text-align: left;
+    max-width: 400px;
+}
+
+.p8-section-title {
+    font-family: "Siyuan SongTi regular", serif;
+    font-size: 21px;
+    font-weight: 700;
+    color: #000000;
+    line-height: 2.2;
+    margin: 0;
+}
+
+.p8-stat {
+    font-family: "Siyuan SongTi regular", serif;
+    font-size: 16px;
+    color: #000000;
+    line-height: 2.2;
+    margin: 0;
+}
+
+.p8-number {
+    color: #ff5050;
+    font-weight: 700;
+    font-size: 20px;
+    margin: 0 3px;
+}
+
+.p8-detail {
+    font-family: "Siyuan SongTi regular", serif;
+    font-size: 16px;
+    color: #000000;
+    line-height: 2.2;
+    margin: 0;
+}
+
+.p8-date {
+    font-family: "Siyuan SongTi regular", serif;
+    font-size: 16px;
+    color: #ff5050;
+    font-weight: 700;
+    line-height: 2.2;
+    margin: 0;
+}
+
+.p8-room {
+    font-family: "Siyuan SongTi regular", serif;
+    font-size: 18px;
+    color: #ff5050;
+    font-weight: 700;
+    line-height: 2.2;
+    margin: 0;
+}
+
+.p8-witness,
+.p8-yppf {
+    font-family: "Siyuan SongTi regular", serif;
+    font-size: 16px;
+    color: #000000;
+    line-height: 2.2;
+    margin: 0;
+}
+
+.p8-yppf {
+    font-weight: 700;
+    color: #ff5050;
+}
+
+.p8-message {
+    font-family: "Siyuan SongTi regular", serif;
+    font-size: 16px;
+    color: #000000;
+    font-weight: 600;
+    line-height: 2.2;
+    margin: 10px 0 5px 0;
+}
+
+/* P9: 最投缘样式 */
+#page-9 {
+    background: transparent;
+}
+
+.p9-content {
+    justify-content: center;
+    align-items: center;
+    padding: 80px 40px;
+}
+
+.p9-text-box {
+    text-align: left;
+    max-width: 400px;
+}
+
+.p9-section-title {
+    font-family: "Siyuan SongTi regular", serif;
+    font-size: 21px;
+    font-weight: 700;
+    color: #000000;
+    line-height: 2.2;
+    margin: 0;
+}
+
+.p9-stat {
+    font-family: "Siyuan SongTi regular", serif;
+    font-size: 16px;
+    color: #000000;
+    line-height: 2.2;
+    margin: 0;
+}
+
+.p9-number {
+    color: #ff5050;
+    font-weight: 700;
+    font-size: 20px;
+    margin: 0 3px;
+}
+
+.p9-name {
+    color: #ff5050;
+    font-weight: 700;
+}
+
+.p9-detail {
+    font-family: "Siyuan SongTi regular", serif;
+    font-size: 16px;
+    color: #000000;
+    line-height: 2.2;
+    margin: 0;
+}
+
+/* P10: 书院总体总结样式 */
+#page-10 {
+    background: transparent;
+}
+
+.p10-content {
+    justify-content: center;
+    align-items: center;
+    padding: 80px 40px;
+}
+
+.p10-text-box {
+    text-align: left;
+    max-width: 400px;
+}
+
+.p10-large {
+    font-size: 32px;
+    font-weight: 700;
+}
+
+.p10-title {
+    font-family: "Siyuan SongTi regular", serif;
+    font-size: 18px;
+    color: #000000;
+    line-height: 2.2;
+    margin: 0;
+}
+
+.p10-poem {
+    font-family: "Siyuan SongTi regular", serif;
+    font-size: 16px;
+    color: #000000;
+    line-height: 2.2;
+    margin: 3px 0;
+}
+
+.p10-stat {
+    font-family: "Siyuan SongTi regular", serif;
+    font-size: 18px;
+    color: #000000;
+    line-height: 2.2;
+    margin: 0;
+}
+
+.p10-number {
+    color: #ff5050;
+    font-weight: 700;
+    font-size: 22px;
+    margin-right: 5px;
+}
+
+.p10-witness {
+    font-family: "Siyuan SongTi regular", serif;
+    font-size: 16px;
+    color: #000000;
+    line-height: 2.2;
+}
+
+.p10-wish {
+    font-family: "Siyuan SongTi regular", serif;
+    font-size: 18px;
+    color: #000000;
+    font-weight: 600;
+    line-height: 2.2;
+}
+
+/* P11: 首次相遇样式 */
+#page-11 {
+    background: transparent;
+}
+
+.p11-content {
+    justify-content: center;
+    align-items: center;
+    padding: 100px 20px;
+}
+
+.p11-text-box {
+    text-align: center;
+}
+
+.p11-date {
+    font-family: "Siyuan SongTi regular", serif;
+    font-size: 18px;
+    color: #ff5050;
+    font-weight: 700;
+    line-height: 2.2;
+    margin: 0;
+}
+
+.p11-poem {
+    font-family: "Siyuan SongTi regular", serif;
+    font-size: 18px;
+    color: #000000;
+    line-height: 2.2;
+    margin: 0;
+}
+
+.p11-number {
+    color: #ff5050;
+    font-weight: 700;
+    font-size: 24px;
+    margin: 0 5px;
+}
+
+.p11-title {
+    font-family: "Siyuan SongTi regular", serif;
+    font-size: 20px;
+    color: #000000;
+    font-weight: 600;
+    line-height: 2.2;
+}
+
+.p11-stat {
+    font-family: "Siyuan SongTi regular", serif;
+    font-size: 18px;
+    color: #000000;
+    line-height: 2.2;
+    margin: 0;
+}
+
+.p11-wish {
+    font-family: "Siyuan SongTi regular", serif;
+    font-size: 18px;
+    color: #000000;
+    line-height: 2.2;
+    margin-top: 20px;
+    font-weight: 600;
+}
+
+/* P12: 小组参与详情样式 */
+#page-12 {
+    background: transparent;
+}
+
+.p12-content {
+    justify-content: center;
+    align-items: center;
+    padding: 80px 20px;
+}
+
+.p12-text-box {
+    text-align: center;
+}
+
+.p12-stat {
+    font-family: "Siyuan SongTi regular", serif;
+    font-size: 18px;
+    color: #000000;
+    line-height: 2.2;
+    margin: 0;
+}
+
+.p12-number {
+    color: #ff5050;
+    font-weight: 700;
+    font-size: 24px;
+    margin: 0 5px;
+}
+
+.p12-org {
+    color: #ff5050;
+    font-weight: 700;
+    font-size: 20px;
+}
+
+.p12-detail {
+    font-family: "Siyuan SongTi regular", serif;
+    font-size: 18px;
+    color: #000000;
+    line-height: 2.2;
+}
+
+.p12-poem {
+    font-family: "Siyuan SongTi regular", serif;
+    font-size: 18px;
+    color: #000000;
+    line-height: 2.2;
+    margin: 0;
+}
+
+.p12-title {
+    font-family: "Siyuan SongTi regular", serif;
+    font-size: 20px;
+    color: #000000;
+    font-weight: 600;
+    line-height: 2.2;
+}
+
+.p12-message {
+    font-family: "Siyuan SongTi regular", serif;
+    font-size: 18px;
+    color: #000000;
+    font-weight: 600;
+    line-height: 2.2;
+    margin-top: 20px;
+}
+
+.p12-fav-line {
+    margin: 0;
+}
+
+.p12-fav-main,
+.p12-fav-suffix {
+    font-family: "Siyuan SongTi regular", serif;
+    font-size: 18px !important;
+    font-weight: 700 !important;
+    line-height: 2.2;
+}
+
+.p12-fav-main {
+    color: #ff5050;
+}
+
+.p12-fav-suffix {
+    color: #000000;
+}
+/* 底部按钮区域 */
+.home-footer {
+    width: 100%;
+    max-width: 400px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 20px;
+    margin-top: auto;
+}
+
+#continue-button {
+    background: linear-gradient(135deg, #f9d89c 0%, #e8b86d 100%);
+    border: none;
+    border-radius: 30px;
+    padding: 15px 50px;
+    font-size: 20px;
+    font-weight: 600;
+    color: #5a4a3a;
+    box-shadow: 0 4px 15px rgba(232, 184, 109, 0.4);
+    transition: all 0.3s ease;
+    cursor: pointer;
+}
+
+#continue-button:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(232, 184, 109, 0.5);
+}
+
+#continue-button:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.agree-rule-label {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 14px;
+    color: #000000;
+    cursor: pointer;
+}
+
+.agree-rule-label input[type="checkbox"] {
+    width: 18px;
+    height: 18px;
+    cursor: pointer;
+}
+
+.agree-rule-label p {
+    margin: 0;
+    font-size: 14px;
+    line-height: 1.5;
+    color: #000000;
+}
+
+.agree-rule-label a {
+    color: #5a8a87;
+    text-decoration: underline;
+}
+
+/* 协议弹窗 */
+#rule {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.5);
+    z-index: 9999;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+}
+
+#rule.show {
+    display: flex;
+}
+
+.rule-wrapper {
+    background: white;
+    border-radius: 15px;
+    padding: 30px;
+    max-width: 600px;
+    max-height: 80vh;
+    overflow-y: auto;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+}
+
+.rule-title {
+    font-size: 22px;
+    font-weight: 700;
+    color: #2c5f5d;
+    margin: 0;
+    text-align: center;
+}
+
+.rule-content {
+    font-size: 14px;
+    line-height: 1.8;
+    color: #000000;
+    margin: 0;
+}
+
+.rule-content ol {
+    padding-left: 20px;
+}
+
+.rule-content li {
+    margin-bottom: 12px;
+}
+
+#rule-button {
+    background: linear-gradient(135deg, #f9d89c 0%, #e8b86d 100%);
+    border: none;
+    border-radius: 25px;
+    padding: 12px 40px;
+    font-size: 16px;
+    font-weight: 600;
+    color: #5a4a3a;
+    cursor: pointer;
+    display: block;
+    margin: 20px auto 0;
+    box-shadow: 0 4px 10px rgba(232, 184, 109, 0.3);
+    transition: all 0.3s ease;
+}
+
+#rule-button:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 15px rgba(232, 184, 109, 0.4);
+}
+
+/* 通用文本内容页面样式 */
+.text-content {
+    justify-content: center;
+    align-items: center;
+    padding: 60px 40px;
+}
+
+.text-box {
+    max-width: 90%;
+    width: 100%;
+    text-align: right;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    justify-content: center;
+}
+
+.intro-text {
+    font-family: "Siyuan SongTi regular", serif;
+    font-size: clamp(16px, 3vw, 22px);
+    line-height: 2.2;
+    color: #000000;
+    margin: 8px 0;
+    text-align: center;
+}
+
+.highlight {
+    color: #d4a574;
+    font-weight: 700;
+    font-size: 26px;
+}
+
+.highlight-large {
+    color: #d4a574;
+    font-weight: 900;
+    font-size: 42px;
+    display: inline-block;
+    margin: 0 8px;
+}
+
+/* P2-P17 页面特定样式 */
+#page-2,
+#page-3,
+#page-4,
+#page-5,
+#page-6,
+#page-7,
+#page-8,
+#page-9,
+#page-10,
+#page-11,
+#page-12,
+#page-13,
+#page-14,
+#page-15,
+#page-16,
+#page-17 {
+    background: #fff;
+}
+
+/* 动画效果 */
+@keyframes fade-in-up {
+    from {
+        opacity: 0;
+        transform: translateY(30px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* 为所有内容框添加初始隐藏状态和动画效果 */
+.text-box,
+.home-title-container,
+.p1-text-box,
+.p2-text-box,
+.p3-text-box,
+.p4-text-box,
+.p5-text-box,
+.p6-text-box,
+.p7-text-box,
+.p8-text-box,
+.p9-text-box,
+.p10-text-box,
+.p11-text-box,
+.p12-text-box {
+    opacity: 0;
+    transform: translateY(30px);
+}
+
+.text-box.animate-in,
+.home-title-container.animate-in,
+.p1-text-box.animate-in,
+.p2-text-box.animate-in,
+.p3-text-box.animate-in,
+.p4-text-box.animate-in,
+.p5-text-box.animate-in,
+.p6-text-box.animate-in,
+.p7-text-box.animate-in,
+.p8-text-box.animate-in,
+.p9-text-box.animate-in,
+.p10-text-box.animate-in,
+.p11-text-box.animate-in,
+.p12-text-box.animate-in {
+    animation: fade-in-up 0.8s ease forwards;
+    opacity: 1;
+    transform: translateY(0);
+}
+
+/* ====================
+   统一排版基线（字号/行距/段间距）
+   ==================== */
+
+/* 统一各页文本容器中的正文排版 */
+#app .content [class*="-text-box"]>p:not(.p7-section-title):not(.p8-section-title):not(.p9-section-title),
+#app .content .text-box>p:not(.p7-section-title):not(.p8-section-title):not(.p9-section-title) {
+    font-size: 17px !important;
+    line-height: 1.8 !important;
+}
+
+/* 第一个段落上边距为0 */
+#app .content [class*="-text-box"]>p:first-of-type,
+#app .content .text-box>p:first-of-type {
+    margin-top: 0 !important;
+}
+
+/* 段与段之间保持稳定间距，形成明显分段 */
+#app .content [class*="-text-box"]>p+p,
+#app .content .text-box>p+p {
+    margin-top: 12px !important;
+}
+
+/* 保留模板中的显式分段间距（避免被统一 margin:0 覆盖） */
+#app .content [class*="-text-box"]>p.mt-35,
+#app .content .text-box>p.mt-35 {
+    margin-top: 35px !important;
+}
+
+#app .content [class*="-text-box"]>p.mt-50,
+#app .content .text-box>p.mt-50 {
+    margin-top: 50px !important;
+}
+
+/* 仅对非第一段的分段起始行（mt-35/mt-50）做首行加粗 */
+#app .content [class*="-text-box"]>p.mt-35:not(:first-of-type)::first-line,
+#app .content [class*="-text-box"]>p.mt-50:not(:first-of-type)::first-line,
+#app .content .text-box>p.mt-35:not(:first-of-type)::first-line,
+#app .content .text-box>p.mt-50:not(:first-of-type)::first-line {
+    font-weight: 600;
+}
+
+/* 全局兜底：所有页面第一段第一行不加粗 */
+#app .content [class*="-text-box"]>p:not(.p7-section-title):not(.p8-section-title):not(.p9-section-title):not(.p11-date):not(.p12-org):first-of-type::first-line,
+#app .content .text-box>p:not(.p7-section-title):not(.p8-section-title):not(.p9-section-title):not(.p11-date):not(.p12-org):first-of-type::first-line {
+    font-weight: 400 !important;
+}
+
+/* 第一段首字保留放大，但不额外加粗 */
+#app .content [class*="-text-box"]>p:not(.p7-section-title):not(.p8-section-title):not(.p9-section-title):not(.p11-date):not(.p12-org):first-of-type::first-letter,
+#app .content .text-box>p:not(.p7-section-title):not(.p8-section-title):not(.p9-section-title):not(.p11-date):not(.p12-org):first-of-type::first-letter {
+    font-weight: 400 !important;
+}
+
+/* p4-p10：统一用户数据字号并降低偏大观感 */
+#page-4 [class*="-number"],
+#page-4 [class*="-name"],
+#page-4 [class*="-room"],
+#page-4 [class*="-date"],
+#page-4 [class*="-yppf"],
+#page-4 [class*="-org"],
+#page-5 [class*="-number"],
+#page-5 [class*="-name"],
+#page-5 [class*="-room"],
+#page-5 [class*="-date"],
+#page-5 [class*="-yppf"],
+#page-5 [class*="-org"],
+#page-7 [class*="-number"],
+#page-7 [class*="-name"],
+#page-7 [class*="-room"],
+#page-7 [class*="-date"],
+#page-7 [class*="-yppf"],
+#page-7 [class*="-org"],
+#page-8 [class*="-number"],
+#page-8 [class*="-name"],
+#page-8 [class*="-room"],
+#page-8 [class*="-date"],
+#page-8 [class*="-yppf"],
+#page-8 [class*="-org"],
+#page-9 [class*="-number"],
+#page-9 [class*="-name"],
+#page-9 [class*="-room"],
+#page-9 [class*="-date"],
+#page-9 [class*="-yppf"],
+#page-9 [class*="-org"],
+#page-10 [class*="-number"],
+#page-10 [class*="-name"],
+#page-10 [class*="-room"],
+#page-10 [class*="-date"],
+#page-10 [class*="-yppf"],
+#page-10 [class*="-org"] {
+    font-size: 20px !important;
+    line-height: inherit;
+}
+
+/* p5 第一行不加粗, p11 第二段不加粗 */
+#page-5 .p5-title,
+#page-11 .p11-title {
+    font-weight: 400 !important;
+}
+
+/* p7/p8/p9 小标题比正文略大，且不做首字放大 */
+#page-7 .p7-section-title,
+#page-8 .p8-section-title,
+#page-9 .p9-section-title {
+    font-size: 21px !important;
+    font-weight: 600 !important;
+    line-height: 1.75 !important;
+}
+
+/* 显式保证第一段是标题时也能加粗 (覆盖全局第一段不加粗规则) */
+#page-7 .p7-section-title::first-line,
+#page-8 .p8-section-title::first-line,
+#page-9 .p9-section-title::first-line {
+    font-weight: 600 !important;
+}
+
+/* 统一数据高亮字号，避免忽大忽小 */
+[class*="-number"],
+[class*="-name"],
+[class*="-room"],
+[class*="-yppf"],
+[class*="-org"],
+.fc-rose {
+    font-size: 20px !important;
+    line-height: inherit;
+}
+
+/* 日期/年份回归正文字号，避免过于突兀 */
+[class*="-date"],
+.p1-year {
+    font-size: 17px !important;
+    font-weight: 700 !important;
+}
+
+/* 特殊超大字号适度收敛，保证跨页一致性 */
+.p10-large,
+.highlight-large,
+.fs-36b {
+    font-size: 28px !important;
+}
+
+.highlight {
+    font-size: 20px !important;
+}
+/* 响应式设计 */
+@media (max-width: 768px) {
+    .home-main-title {
+        font-size: 42px;
+    }
+
+    .home-subtitle {
+        font-size: 20px;
+    }
+
+    .home-name {
+        font-size: 24px;
+    }
+
+    .intro-text {
+        font-size: 18px;
+        line-height: 1.8;
+    }
+
+    .highlight {
+        font-size: 22px;
+    }
+
+    .highlight-large {
+        font-size: 36px;
+    }
+
+    .text-content {
+        padding: 40px 20px;
+    }
+}
+
+@media (max-width: 480px) {
+    .home-main-title {
+        font-size: 36px;
+    }
+
+    .home-subtitle {
+        font-size: 18px;
+    }
+
+    .intro-text {
+        font-size: 16px;
+    }
+
+    .highlight {
+        font-size: 20px;
+    }
+
+    .highlight-large {
+        font-size: 30px;
+    }
+}
+/* ====================
+   针对部分页面的行距/间距微调
+   ==================== */
+
+/* p10 统计行间距收紧 */
+#page-10 .p10-stat+.p10-stat {
+    margin-top: 6px !important;
+}
+
+/* p11 日期与正文行距统一，且不放大首字 */
+#page-11 .p11-date::first-letter {
+    font-size: inherit !important;
+    font-weight: inherit !important;
+    margin-right: 0 !important;
+}
+
+/* p12/p13 以及 intro-text 段落内行距微调 (增加精致感) */
+#page-12 .p12-text-box>p,
+#app .content .text-box>p.intro-text {
+    line-height: 1.75 !important;
+}
+
+/* 确保所有数据高亮在 17px 背景下依然清晰且不过大 */
+[class*="-number"] {
+    font-size: 20px !important;
+}
+
+/* 统一 fc-rose (课程数据) */
+.fc-rose {
+    font-size: 20px !important;
+    font-weight: 700 !important;
+    line-height: inherit !important;
+}
+
+#page-15 .text-box,
+#page-16 .text-box {
+    text-align: center !important;
+    align-items: center !important;
+}
+#page-16 .p16-yq-block {
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+}
+
+#page-16 .p16-yq-line {
+    font-family: "Siyuan SongTi regular", serif;
+    font-size: clamp(16px, 3vw, 22px);
+    color: #000000;
+    line-height: 1.45 !important;
+    margin: 0;
+    text-align: center;
+}
+
+/* 页面特定例外规则 - 必须放在最后以覆盖通用规则 */
+p.p11-date,
+#page-11 p.p11-date {
+    font-size: 18px !important;
+    font-weight: 700 !important;
+}

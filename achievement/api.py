@@ -85,15 +85,9 @@ def unlock_course_achievements(user: User) -> None:
 
     # 德智体美劳检验
     course_types = set(SQ.qsvlist(records, CourseRecord.course, Course.type))
-    COURSE_DICT = {
-        Course.CourseType.MORAL: '德育',
-        Course.CourseType.INTELLECTUAL: '智育',
-        Course.CourseType.PHYSICAL: '体育',
-        Course.CourseType.AESTHETICS: '美育',
-        Course.CourseType.LABOUR: '劳动教育',
-    }
     for course_type in course_types:
-        unlock_achievement(user, '首次修习' + COURSE_DICT[course_type] + '课程')
+        achievement_name = Course.CourseType.get_achievement_name(course_type)
+        unlock_achievement(user, '首次修习' + achievement_name + '课程')
 
 
 ''' 志同道合 '''
