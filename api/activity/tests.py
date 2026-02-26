@@ -16,12 +16,12 @@ from api.activity.serializers import (
 class ActivityURLTestCase(SimpleTestCase):
     """Test URL routing for activity API."""
 
-    def test_homepage_url_resolves(self):
-        """Test homepage URL resolves correctly."""
-        url = '/api/v2/activity/homepage/'
+    def test_overview_url_resolves(self):
+        """Test overview URL resolves correctly."""
+        url = '/api/v2/activity/overview/'
         resolver = resolve(url)
         self.assertEqual(resolver.func.cls, ActivityViewSet)
-        self.assertEqual(resolver.func.actions['get'], 'homepage')
+        self.assertEqual(resolver.func.actions['get'], 'overview')
 
 
 class SerializerFieldsTestCase(SimpleTestCase):
@@ -95,7 +95,7 @@ class ViewSetConfigTestCase(SimpleTestCase):
         self.assertIn(WxJWTAuthentication,
                       ActivityViewSet.authentication_classes)
 
-    def test_viewset_has_homepage_action(self):
-        """Test ActivityViewSet has homepage action."""
-        self.assertTrue(hasattr(ActivityViewSet, 'homepage'))
-        self.assertTrue(callable(getattr(ActivityViewSet, 'homepage')))
+    def test_viewset_has_overview_action(self):
+        """Test ActivityViewSet has overview action."""
+        self.assertTrue(hasattr(ActivityViewSet, 'overview'))
+        self.assertTrue(callable(getattr(ActivityViewSet, 'overview')))

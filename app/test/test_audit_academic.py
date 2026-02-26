@@ -151,8 +151,8 @@ class GetWaitAuditStudentsTestCase(TestCase):
     def test_result(self):
         result = get_wait_audit_student()
         self.assertEqual(len(result), 4)
-        id_set = set([person.get_user().id for person in result])
-        self.assertEqual(id_set, set([1, 2, 4, 5]))
+        name_set = set(person.name for person in result)
+        self.assertEqual(name_set, {"1", "2", "4", "5"})
 
     def test_result_after_status_change(self):
         entry1 = AcademicTextEntry.objects.select_for_update().get(content="数学物理方法qwq")
@@ -174,5 +174,5 @@ class GetWaitAuditStudentsTestCase(TestCase):
 
         result = get_wait_audit_student()
         self.assertEqual(len(result), 3)
-        id_set = set([person.get_user().id for person in result])
-        self.assertEqual(id_set, set([2, 4, 5]))
+        name_set = set(person.name for person in result)
+        self.assertEqual(name_set, {"2", "4", "5"})
