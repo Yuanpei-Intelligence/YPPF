@@ -48,7 +48,7 @@ import openpyxl
 import openpyxl.worksheet.worksheet
 from random import sample
 from urllib.parse import quote
-from collections import Counter
+from collections import Counter, defaultdict
 from datetime import datetime, timedelta
 from typing import Tuple, List
 
@@ -1218,7 +1218,7 @@ def cal_participate_num(course: Course) -> dict:
         .filter(SQ.mq(Participation.activity, IN=activities),
                 SQ.mq(Participation.person, IN=members)),
         Participation.person)
-    participate_num = dict(Counter(all_participants))
+    participate_num = defaultdict(int, Counter(all_participants))
     # 没有参加的参与次数设置为0
     participate_num.update(
         {id: 0 for id in members if id not in participate_num})
