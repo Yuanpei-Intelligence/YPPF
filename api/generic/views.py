@@ -28,26 +28,27 @@ class CarouselView(APIView):
         ]
 
         # 活动总结图：每活动取一张（有图的活动），最多补足到与首页图合计 9 张
-        all_photo_display = ActivityPhoto.objects.filter(
-            type=ActivityPhoto.PhotoType.SUMMARY
-        ).order_by('-time')
-        seen_activity_ids = set()
-        count = 9 - len(homepage_image)
+        # 不再显示这一部分
+        # all_photo_display = ActivityPhoto.objects.filter(
+        #     type=ActivityPhoto.PhotoType.SUMMARY
+        # ).order_by('-time')
+        # seen_activity_ids = set()
+        # count = 9 - len(homepage_image)
         photo_display = []
-        for photo in all_photo_display:
-            if photo.activity_id not in seen_activity_ids and photo.image:
-                photo_display.append({
-                    "image": media_url + str(photo.image),
-                    "redirect_url": "",
-                })
-                seen_activity_ids.add(photo.activity_id)
-                count -= 1
-                if count <= 0:
-                    break
+        # for photo in all_photo_display:
+        #     if photo.activity_id not in seen_activity_ids and photo.image:
+        #         photo_display.append({
+        #             "image": media_url + str(photo.image),
+        #             "redirect_url": "",
+        #         })
+        #         seen_activity_ids.add(photo.activity_id)
+        #         count -= 1
+        #         if count <= 0:
+        #             break
 
-        if photo_display:
-            # 有活动图时去掉第一张首页图（仅作封面）
-            homepage_image = homepage_image[1:]
+        # if photo_display:
+        #     # 有活动图时去掉第一张首页图（仅作封面）
+        #     homepage_image = homepage_image[1:]
 
         items = homepage_image + photo_display
         # 如果没有活动图和首页图，则采用默认图
