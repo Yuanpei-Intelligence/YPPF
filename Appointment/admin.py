@@ -31,21 +31,22 @@ class College_AnnouncementAdmin(admin.ModelAdmin):
 class ParticipantAdmin(admin.ModelAdmin):
     actions_on_top = True
     actions_on_bottom = True
-    search_fields = ('Sid__username', 'Sid__name', 'Sid__pinyin', 'Sid__acronym')
+    search_fields = ('Sid__username', 'Sid__name',
+                     'Sid__pinyin', 'Sid__acronym')
     list_display = ('Sid_id', 'name', 'credit', 'longterm', 'hidden')
     list_display_links = ('Sid_id', 'name')
 
     class AgreeFilter(admin.SimpleListFilter):
         title = '签署状态'
         parameter_name = 'Agree'
-    
+
         def lookups(self, request, model_admin):
             '''针对字段值设置过滤器的显示效果'''
             return (
                 ('true', "已签署"),
                 ('false', "未签署"),
             )
-        
+
         def queryset(self, request, queryset):
             '''定义过滤器的过滤动作'''
             if self.value() == 'true':
@@ -71,10 +72,10 @@ class ParticipantAdmin(admin.ModelAdmin):
         ]
         show_change_link = True
         # 可申诉的范围只有一周，筛选两周内范围的即可
+
         def get_queryset(self, request):
             return super().get_queryset(request).filter(
                 Astart__gte=datetime.now().date() - timedelta(days=14))
-
 
     inlines = [AppointInline]
 
@@ -116,7 +117,8 @@ class RoomAdmin(admin.ModelAdmin):
                     'RneedAgree',
                     )
     list_display_links = ('Rid', )
-    list_editable = ('Rtitle', 'Rmin', 'Rmax', 'Rstart', 'Rfinish', 'RneedAgree')
+    list_editable = ('Rtitle', 'Rmin', 'Rmax',
+                     'Rstart', 'Rfinish', 'RneedAgree')
     search_fields = ('Rid', 'Rtitle')
     list_filter = ('Rstatus', 'RIsAllNight', 'RneedAgree')
 
@@ -140,7 +142,7 @@ class AppointAdmin(admin.ModelAdmin):
     LETTERS = set(string.digits + string.ascii_letters + string.punctuation)
     search_fields = ('Room__Rtitle', 'Room__Rid',
                      'major_student__name', "students__name",
-                     'major_student__pinyin', # 仅发起者缩写，方便搜索者区分发起者和参与者
+                     'major_student__pinyin',  # 仅发起者缩写，方便搜索者区分发起者和参与者
                      )
     list_display = (
         'Aid',
@@ -169,16 +171,16 @@ class AppointAdmin(admin.ModelAdmin):
     readonly_fields = ('Atime', )
 
     class ActivateFilter(admin.SimpleListFilter):
-        title = '有效状态' # 过滤标题显示为"以 有效状态"
-        parameter_name = 'Activate' # 过滤器使用的过滤字段
-    
+        title = '有效状态'  # 过滤标题显示为"以 有效状态"
+        parameter_name = 'Activate'  # 过滤器使用的过滤字段
+
         def lookups(self, request, model_admin):
             '''针对字段值设置过滤器的显示效果'''
             return (
                 ('true', "有效"),
                 ('false', "无效"),
             )
-        
+
         def queryset(self, request, queryset):
             '''定义过滤器的过滤动作'''
             if self.value() == 'true':
@@ -200,7 +202,8 @@ class AppointAdmin(admin.ModelAdmin):
         if ' ' not in search_term:
             # 判断时需要增加exists，否则会报错，似乎是QuerySet的缓存问题？
             if str.isascii(search_term) and str.isalpha(search_term):
-                pinyin_result = queryset.filter(major_student__pinyin__icontains=search_term)
+                pinyin_result = queryset.filter(
+                    major_student__pinyin__icontains=search_term)
                 if pinyin_result.exists():
                     return pinyin_result, False
             elif str.isascii(search_term) and str.isalnum(search_term):
@@ -208,7 +211,8 @@ class AppointAdmin(admin.ModelAdmin):
                 if room_result.exists():
                     return room_result, False
             else:
-                room_result = queryset.filter(Room__Rtitle__icontains=search_term)
+                room_result = queryset.filter(
+                    Room__Rtitle__icontains=search_term)
                 if room_result.exists():
                     return room_result, False
         return super().get_search_results(request, queryset, search_term)
@@ -232,7 +236,8 @@ class AppointAdmin(admin.ModelAdmin):
             usage = obj.Ausage
         else:
             usage = obj.Ausage[:half_len] + '...' + obj.Ausage[3-half_len:]
-        usage = '<br/>'.join([usage[i:i+batch] for i in range(0, len(usage), batch)])
+        usage = '<br/>'.join([usage[i:i+batch]
+                             for i in range(0, len(usage), batch)])
         return mark_safe(usage)
 
     @as_display('通过率')
@@ -275,7 +280,6 @@ class AppointAdmin(admin.ModelAdmin):
                        students_id=[appoint.get_major_id()], admin=True)
         logger.info(f"{appoint.Aid}号预约被管理员通过，发起人：{_appointor(appoint)}")
 
-
     def _violated2judged(self, appoint: Appoint):
         appoint.Astatus = Appoint.Status.JUDGED
         appoint.save()
@@ -283,7 +287,6 @@ class AppointAdmin(admin.ModelAdmin):
         notify_appoint(appoint, MessageType.APPEAL_APPROVED, appoint.get_status(),
                        students_id=[appoint.get_major_id()], admin=True)
         logger.info(f"{appoint.Aid}号预约被管理员通过，发起人：{_appointor(appoint)}")
-
 
     @as_action('所选条目 通过', actions, 'change', update=True)
     def confirm(self, request, queryset: QuerySet[Appoint]):  # 确认通过
@@ -303,18 +306,18 @@ class AppointAdmin(admin.ModelAdmin):
         message = f'部分成功!但{invalid}状态不为等待、违约，不允许更改!'
         return self.message_user(request, message, messages.WARNING)
 
-
     @as_action('所选条目 违约', actions, 'change', update=True)
     def violate(self, request, queryset: QuerySet[Appoint]):  # 确认违约
         for appoint in queryset:
             if (appoint.Astatus == Appoint.Status.VIOLATED
-                and appoint.Areason == Appoint.Reason.R_ELSE):
+                    and appoint.Areason == Appoint.Reason.R_ELSE):
                 return self.message_user(
                     request, '操作失败!只允许对未审核的条目操作!', messages.WARNING)
             ori_status = appoint.get_status()
             if appoint.Astatus != Appoint.Status.VIOLATED:
                 appoint.Astatus = Appoint.Status.VIOLATED
-                User.objects.modify_credit(appoint.get_major_id(), -1, '地下室：后台')
+                User.objects.modify_credit(
+                    appoint.get_major_id(), -1, '地下室：后台')
             appoint.Areason = Appoint.Reason.R_ELSE
             appoint.save()
 
@@ -326,7 +329,6 @@ class AppointAdmin(admin.ModelAdmin):
 
         return self.message_user(request, "设为违约成功!")
 
-    
     @as_action('更新定时任务', actions, ['add', 'change'])
     def refresh_scheduler(self, request, queryset):
         '''
@@ -339,8 +341,8 @@ class AppointAdmin(admin.ModelAdmin):
                 start = appoint.Astart
                 finish = appoint.Afinish
                 if start > finish:
-                    return self.message_user(request, 
-                        f'操作失败,预约{aid}开始和结束时间冲突!请勿篡改数据!', messages.WARNING)
+                    return self.message_user(request,
+                                             f'操作失败,预约{aid}开始和结束时间冲突!请勿篡改数据!', messages.WARNING)
                 cancel_scheduler(aid)    # 注销原有定时任务 无异常
                 set_scheduler(appoint)   # 开始时进入进行中 结束后判定
                 set_appoint_reminder(appoint)
@@ -348,7 +350,6 @@ class AppointAdmin(admin.ModelAdmin):
                 logger.error(f"定时任务失败更新: {e}")
                 return self.message_user(request, str(e), messages.WARNING)
         return self.message_user(request, '定时任务更新成功!')
-
 
     def longterm_wk(self, request, queryset, times, interval_week=1):
         new_appoints = {}
@@ -365,7 +366,8 @@ class AppointAdmin(admin.ModelAdmin):
                 longterm_info = jobs.get_longterm_display(times, interval_week)
                 notify_appoint(appoint, MessageType.LONGTERM_CREATED,
                                f'新增了{longterm_info}同时段预约', admin=True)
-                new_appoints[appoint.pk] = list(appoints.values_list('pk', flat=True))
+                new_appoints[appoint.pk] = list(
+                    appoints.values_list('pk', flat=True))
             except Exception as e:
                 return self.message_user(request, f'长线化失败!', messages.WARNING)
         new_infos = []
@@ -377,8 +379,8 @@ class AppointAdmin(admin.ModelAdmin):
                 new_infos.append(f'{appoint}->{new_appoint_ids}')
         return self.message_user(request, f'长线化成功!生成预约{";".join(new_appoints)}')
 
-
     # @as_action('增加一周本预约', actions, 'add', single=True)
+
     def longterm1(self, request, queryset):
         return self.longterm_wk(request, queryset, 1)
 
@@ -418,7 +420,7 @@ class CardCheckInfoAdmin(admin.ModelAdmin):
         'Cardtime', 'CardStatus',
         ('Cardroom', admin.EmptyFieldListFilter),
     ]
-    
+
     @as_display('刷卡者', except_value='-')
     def student_display(self, obj):
         return obj.Cardstudent.name
@@ -433,3 +435,29 @@ class LongTermAppointAdmin(admin.ModelAdmin):
 
     def view_on_site(self, obj: LongTermAppoint):
         return f'/underground/review?Lid={obj.pk}'
+
+
+@admin.register(AI_Inspection_Info)
+class AI_Inspection_InfoAdmin(admin.ModelAdmin):
+    list_display = ['id', 'Iperson', 'Iroom', 'Ireason_truncated',
+                    'Iresult', 'Itimestamp', 'Idetail_truncated']
+    list_select_related = ['Iperson', 'Iroom']
+    search_fields = ['Iperson__name', 'Iperson__Sid__username',
+                     'Iroom__Rtitle', 'Ireason', 'Idetail']
+    list_filter = ['Iresult', 'Itimestamp']
+    readonly_fields = ['Iperson', 'Iroom',
+                       'Ireason', 'Iresult', 'Itimestamp', 'Idetail']
+
+    @as_display('事由')
+    def Ireason_truncated(self, obj):
+        if len(obj.Ireason) > 30:
+            return obj.Ireason[:27] + '...'
+        return obj.Ireason
+
+    @as_display('详情')
+    def Idetail_truncated(self, obj):
+        if not obj.Idetail:
+            return '-'
+        if len(obj.Idetail) > 30:
+            return obj.Idetail[:27] + '...'
+        return obj.Idetail

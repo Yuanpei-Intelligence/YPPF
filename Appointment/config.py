@@ -49,4 +49,18 @@ class AppointmentConfig(Config):
     # 是否允许单人同一时段预约两个房间
     allow_overlap = False
 
+    # AI 审核功能开启与否，使用的 API 地址和密钥
+    AI_Inspection_Enabled = LazySetting('AI_Inspection/enabled', type=bool)
+    AI_Inspection_Method = LazySetting(
+        'AI_Inspection/method', type=str, default="Ollama")  # "Ollama" or "GLM"
+
+    # Ollama 参数
+    Ollama_ADDR = LazySetting('AI_Inspection/Ollama_ADDR', type=str)
+
+    # GLM 参数
+    GLM_API_KEY = LazySetting('AI_Inspection/GLM_API_Key', type=str)
+    GLM_Timeout = LazySetting(
+        'AI_Inspection/GLM_Timeout', type=int, default=30)
+
+
 appointment_config = AppointmentConfig(ROOT_CONFIG, 'underground')
