@@ -600,9 +600,26 @@
                         </div>
 
                         <div class="widget-content widget-content-area">
-                            <img class="d-block w-100" id="qrcode" src="{{ aQRcode }}" alt="check-in QR code">
+                            <div class="rounded h-70 text-center">
+                                <img
+                                    class="d-block w-100 qr-code-image"
+                                    src="/getActivityInfo/?activityid={{ aid }}&infotype=qrcode&version=new"
+                                    alt="new check-in QR code"
+                                    loading="lazy"
+                                    onerror="handleQrCodeError(this)">
+                                <p class="qr-code-error text-danger small mt-2 mb-0 d-none">二维码加载失败，请稍后重试。</p>
+                                <p class="text-sm pt-2">欢迎使用微信小程序</p>
+                            </div>
+                            <div class="rounded h-100 text-center">
+                                <img
+                                    class="d-block w-100 qr-code-image"
+                                    src="/getActivityInfo/?activityid={{ aid }}&infotype=qrcode&version=old"
+                                    alt="legacy check-in QR code"
+                                    loading="lazy"
+                                    onerror="handleQrCodeError(this)">
+                                <p class="qr-code-error text-danger small mt-2 mb-0 d-none">二维码加载失败，请稍后重试。</p>
+                            </div>
                         </div>
-
                     </div>
                 </div>
                 <!--  END QR CODE  -->
@@ -617,6 +634,14 @@
 </div>
 
 <script type="text/javascript">
+    function handleQrCodeError(img) {
+        img.classList.add("d-none");
+        const error = img.parentElement.querySelector(".qr-code-error");
+        if (error) {
+            error.classList.remove("d-none");
+        }
+    }
+
     function showFilenameLocal(files) {
         var text = "";
         for (i = 0; i < files.length; i++) {

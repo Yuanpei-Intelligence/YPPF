@@ -12,9 +12,11 @@ scheduler_func 依赖于 wechat_send 依赖于 utils
 import io
 import base64
 import random
+import urllib.parse
 from typing import Iterable
 from datetime import datetime, timedelta
 
+import qrcode
 import requests
 import utils.models.query as SQ
 from generic.models import User, YQPointRecord
@@ -55,6 +57,10 @@ __all__ = [
     'apply_activity',
     'cancel_activity',
     'withdraw_activity',
+    'can_access_checkin_qrcode',
+    'build_legacy_checkin_url',
+    'generate_legacy_checkin_qrcode',
+    'fetch_miniprogram_checkin_qrcode',
     'get_activity_QRcode',
     'create_participate_infos',
     'modify_participants',
@@ -314,10 +320,40 @@ def notifyActivity(aid: int, msg_type: str, msg=""):
     assert success, "批量创建通知并发送时失败"
 
 
-def get_activity_QRcode(activity):
-    """
-    获取活动签到的小程序码（base64 data URL，供前端 img src 使用）。
-    """
+def can_access_checkin_qrcode(activity: Activity, now: datetime | None = None) -> bool:
+    """Return whether the activity's check-in QR codes should be available now."""
+    now = now or datetime.now()
+    if not activity.need_checkin:
+        return False
+    if activity.status not in [
+        Activity.Status.APPLYING,
+        Activity.Status.WAITING,
+        Activity.Status.PROGRESSING,
+    ]:
+        return False
+    return now >= activity.start - timedelta(hours=1)
+
+
+def build_legacy_checkin_url(request, activity: Activity) -> str:
+    """Build the absolute legacy web check-in URL used by the old QR code."""
+    auth = GLOBAL_CONFIG.hasher.encode(str(activity.id))
+    query = urllib.parse.urlencode({"auth": auth})
+    return request.build_absolute_uri(f"/checkinActivity/{activity.id}?{query}")
+
+
+def generate_legacy_checkin_qrcode(request, activity: Activity) -> tuple[bytes, str]:
+    """Generate the legacy web check-in QR code locally."""
+    buffer = io.BytesIO()
+    qr = qrcode.QRCode(version=1, box_size=10, border=5)
+    qr.add_data(build_legacy_checkin_url(request, activity))
+    qr.make(fit=True)
+    img = qr.make_image(fill_color="black", back_color="white")
+    img.save(buffer, "PNG")
+    return buffer.getvalue(), "image/png"
+
+
+def fetch_miniprogram_checkin_qrcode(activity: Activity) -> tuple[bytes, str]:
+    """Fetch the mini-program QR code from WeChat."""
     access_token = get_wechat_access_token()
     payload = {
         "scene": f"qd_{activity.id}",
@@ -336,7 +372,15 @@ def get_activity_QRcode(activity):
     if "application/json" in content_type or response.content[:1] == b"{":
         err = response.json()
         raise ValueError(f"获取小程序码失败: {err.get('errmsg', err)}")
-    data = base64.encodebytes(response.content).decode()
+    return response.content, content_type or "image/jpeg"
+
+
+def get_activity_QRcode(activity):
+    """
+    获取活动签到的小程序码（base64 data URL，供前端 img src 使用）。
+    """
+    content, _ = fetch_miniprogram_checkin_qrcode(activity)
+    data = base64.b64encode(content).decode()
     return "data:image/jpeg;base64," + data
 
 
