@@ -161,16 +161,15 @@ class ActivityQrcodeViewTestCase(TestCase):
     def test_get_activity_info_non_owner_is_rejected(self):
         self.client.force_login(self.other_user)
 
-        response = self.client.get(
-            "/getActivityInfo/",
-            {
-                "activityid": self.activity.id,
-                "infotype": "qrcode",
-                "version": "old",
-            },
-        )
-
-        self.assertEqual(response.status_code, 302)
+        with self.assertRaisesMessage(AssertionError, "不是活动的组织者"):
+            self.client.get(
+                "/getActivityInfo/",
+                {
+                    "activityid": self.activity.id,
+                    "infotype": "qrcode",
+                    "version": "old",
+                },
+            )
 
     def test_view_activity_contains_both_qrcode_urls(self):
         self.client.force_login(self.owner_user)
