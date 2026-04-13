@@ -109,9 +109,11 @@ TEMPLATES = [
 
 
 # Cache (used for one-time webview tickets, etc.)
+# shared across processes
 CACHES = {
     "default": {
-        "BACKEND": "django.core.cache.backends.locmem.LocMemCache",
+        "BACKEND": "django.core.cache.backends.filebased.FileBasedCache",
+        "LOCATION": "/var/tmp/django_cache",
     }
 }
 
