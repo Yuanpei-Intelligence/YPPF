@@ -2,8 +2,6 @@
 # Django
 django>=5.2,<6.0
 djangorestframework
-djangorestframework-simplejwt
-drf-spectacular
 
 # 数据库
 django_mysql

@@ -1,3 +1,0 @@
-"""
-Notification API module.
-"""

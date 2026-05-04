@@ -9,5 +9,4 @@ urlpatterns = [
     path('login/', views.Index.as_view(), name='login'),
     path('logout/', views.Logout.as_view(), name='logout'),
     path('healthcheck/', views.healthcheck, name='healthcheck'),
-    path('redirect/', views.redirect_to_webview, name='redirect-to-webview'),
 ]
