@@ -29,10 +29,7 @@ __all__ = [
     'BASE_DIR',
     'ROOT_CONFIG',
     'GLOBAL_CONFIG',
-    'shihannet',
-    'shihannet_username',
-    'shihannet_password',
-    'shihannet_url',
+    'SHIHANNET_CONFIG',
 ]
 
 
@@ -84,7 +81,4 @@ class ShihannetConfig(Config):
     url = LazySetting('url', type=str)
 
 
-shihannet = ShihannetConfig(ROOT_CONFIG, 'shihannet')
-shihannet_username = shihannet.username
-shihannet_password = shihannet.password
-shihannet_url = shihannet.url
+SHIHANNET_CONFIG = ShihannetConfig(ROOT_CONFIG, 'shihannet')
