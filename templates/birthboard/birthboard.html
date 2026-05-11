@@ -190,7 +190,7 @@ $(document).ready(function(){
     const todayReminders = todayReminderScript ? JSON.parse(todayReminderScript.textContent) : {};
     const dateRuleScript = document.getElementById('birthboard-date-rule-data');
     const dateRule = dateRuleScript ? JSON.parse(dateRuleScript.textContent) : {};
-    const reminderUserId = "{{ request.user.username }}";
+    const reminderUserId = "{{ request.user.username|escapejs }}";
     const reminderDate = todayReminders.today || '';
     const reminderStoragePrefix = 'birthboard_today_reminder:' + reminderUserId + ':' + reminderDate + ':';
     const reminderQueue = [];
@@ -247,13 +247,13 @@ $(document).ready(function(){
     }
         // 创建隐藏input用于提交receiver（如select2被禁用时）
         if ($('#real-receiver').length === 0) {
-            $('<input type="hidden" id="real-receiver" name="receiver" />').appendTo('#birthboard-form');
+            $('<input type="hidden" id="real-receiver" name="receiver_pk" />').appendTo('#birthboard-form');
         }
     const CONTEXT = JSON.parse(document.getElementById('context-data').textContent);
     // 当前用户 id
-    const currentUserId = "{{ request.user.username }}";
+    const currentUserId = "{{ request.user.username|escapejs }}";
     // 当前用户姓名
-    const currentUserName = "{{ request.user.get_full_name|default:request.user.username }}";
+    const currentUserName = "{{ request.user.get_full_name|default:request.user.username|escapejs }}";
     // 用户列表
     const userInfos = CONTEXT.user_infos;
     // console.log(currentUserId);
@@ -431,8 +431,6 @@ $(document).ready(function(){
         senderPks.forEach(pk => {
             $('<input type="hidden" name="senders" value="'+pk+'" />').appendTo('#birthboard-form');
         });
-        // select2控件的选中值也同步为pk
-        $('#senders').val(senderPks.map(String));
         // 打印所有隐藏input
         let debugInputs = [];
         $("input[name='senders'][type='hidden']").each(function(){ debugInputs.push($(this).val()); });

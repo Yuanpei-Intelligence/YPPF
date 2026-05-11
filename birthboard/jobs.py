@@ -15,6 +15,8 @@ from scheduler.periodic import periodical
 
 from playwright.sync_api import sync_playwright
 
+from boot.config import shihannet
+
 logger = logging.getLogger(__name__)
 
 _BB_UPDATE_LOCK_KEY = "birthboard:update_in_progress"
@@ -450,9 +452,9 @@ def birthboard_nightly_update_2345():
 
         # After commits, call update_list for each path (do not roll back on update_list failure)
         try:
-            url = "http://192.168.8.2/admin/index/logon/"
-            username = "admin"
-            password = "abc123456"
+            url = shihannet.url
+            username = shihannet.username
+            password = shihannet.password
             # for p in to_start:
             #     try:
             #         update_list(p)

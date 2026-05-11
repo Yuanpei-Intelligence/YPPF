@@ -160,91 +160,92 @@
                         }
                         </script>
                     {% endif %}
-                    <div id="rejectModal" class="modal" tabindex="-1" style="display:none; position:fixed; z-index:1050; left:0; top:0; width:100vw; height:100vh; background:rgba(0,0,0,0.4);">
-                        <div class="modal-dialog" style="margin:10vh auto; max-width:400px;">
-                            <div class="modal-content">
-                                <div class="modal-header">
-                                    <h5 class="modal-title">确认拒绝</h5>
-                                    <button type="button" class="close" onclick="hideRejectModal()">&times;</button>
-                                </div>
-                                <div class="modal-body">
-                                    <p>确定要拒绝该祝福投放吗？此操作不可撤销。</p>
-                                </div>
-                                <div class="modal-footer">
-                                    <form id="rejectForm" method="post" style="display:inline;">
-                                        {% csrf_token %}
-                                        <input type="hidden" name="tab" value="received">
-                                        <input type="hidden" name="reject_id" id="reject_id_input">
-                                        <button type="submit" class="btn btn-danger">确定拒绝</button>
-                                    </form>
-                                    <button type="button" class="btn btn-secondary" onclick="hideRejectModal()">取消</button>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    <div id="revokeModal" style="display:none; position:fixed; z-index:9999; left:0; top:0; width:100vw; height:100vh; background:rgba(0,0,0,0.4);">
-                        <div style="background:#fff; max-width:350px; margin:15vh auto; padding:24px 20px; text-align:center;">
-                            <div style="margin-bottom:18px;">确定要撤销此投放活动吗？（不会退款）</div>
-                            <button id="revoke-cancel-btn" style="margin-right:18px;">取消</button>
-                            <button id="revoke-confirm-btn">确定撤销</button>
-                        </div>
-                    </div>
-                    <script>
-                    const receivedTab = 'received';
-                    let receivedPendingRevokeRecordId = null;
-
-                    function showRejectModal(id) {
-                        document.getElementById('reject_id_input').value = id;
-                        document.getElementById('rejectModal').style.display = 'block';
-                    }
-                    function hideRejectModal() {
-                        document.getElementById('rejectModal').style.display = 'none';
-                    }
-                    document.getElementById('rejectModal').addEventListener('click', function(e) {
-                        if (e.target === this) hideRejectModal();
-                    });
-
-                    function showRevokeModal(recordId) {
-                        receivedPendingRevokeRecordId = recordId;
-                        document.getElementById('revokeModal').style.display = 'block';
-                    }
-                    function hideRevokeModal() {
-                        document.getElementById('revokeModal').style.display = 'none';
-                        receivedPendingRevokeRecordId = null;
-                    }
-                    document.getElementById('revoke-confirm-btn').addEventListener('click', function() {
-                        if (receivedPendingRevokeRecordId) {
-                            const form = document.createElement('form');
-                            form.method = 'post';
-                            form.innerHTML = '<input type="hidden" name="tab" value="' + receivedTab + '"><input type="hidden" name="revoke_id" value="' + receivedPendingRevokeRecordId + '"><input type="hidden" name="csrfmiddlewaretoken" value="' + getCookie('csrftoken') + '">';
-                            document.body.appendChild(form);
-                            form.submit();
-                        }
-                    });
-                    document.getElementById('revoke-cancel-btn').addEventListener('click', function() {
-                        hideRevokeModal();
-                    });
-                    document.getElementById('revokeModal').addEventListener('click', function(e) {
-                        if (e.target === this) hideRevokeModal();
-                    });
-                    function getCookie(name) {
-                        let cookieValue = null;
-                        if (document.cookie && document.cookie !== '') {
-                            const cookies = document.cookie.split(';');
-                            for (let i = 0; i < cookies.length; i++) {
-                                const cookie = cookies[i].trim();
-                                if (cookie.substring(0, name.length + 1) === (name + '=')) {
-                                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
-                                    break;
-                                }
-                            }
-                        }
-                        return cookieValue;
-                    }
-                    </script>
                 </div>
             </div>
             {% endfor %}
+            <div id="rejectModal" class="modal" tabindex="-1" style="display:none; position:fixed; z-index:1050; left:0; top:0; width:100vw; height:100vh; background:rgba(0,0,0,0.4);">
+                <div class="modal-dialog" style="margin:10vh auto; max-width:400px;">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h5 class="modal-title">确认拒绝</h5>
+                            <button type="button" class="close" data-action="cancel">&times;</button>
+                        </div>
+                        <div class="modal-body">
+                            <p>确定要拒绝该祝福投放吗？此操作不可撤销。</p>
+                        </div>
+                        <div class="modal-footer">
+                            <form id="rejectForm" method="post" style="display:inline;">
+                                {% csrf_token %}
+                                <input type="hidden" name="tab" value="received">
+                                <input type="hidden" name="reject_id" id="reject_id_input">
+                                <button type="submit" class="btn btn-danger">确定拒绝</button>
+                            </form>
+                            <button type="button" class="btn btn-secondary" data-action="cancel">取消</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div id="revokeModal" style="display:none; position:fixed; z-index:9999; left:0; top:0; width:100vw; height:100vh; background:rgba(0,0,0,0.4);">
+                <div style="background:#fff; max-width:350px; margin:15vh auto; padding:24px 20px; text-align:center;">
+                    <div style="margin-bottom:18px;">确定要撤销此投放活动吗？（不会退款）</div>
+                    <button type="button" data-action="cancel" style="margin-right:18px;">取消</button>
+                    <button type="button" data-action="confirm">确定撤销</button>
+                </div>
+            </div>
+            <script>
+            const receivedTab = 'received';
+            let receivedPendingRevokeRecordId = null;
+
+            function showRejectModal(id) {
+                document.getElementById('reject_id_input').value = id;
+                document.getElementById('rejectModal').style.display = 'block';
+            }
+            function hideRejectModal() {
+                document.getElementById('rejectModal').style.display = 'none';
+            }
+            const receivedRejectModal = document.getElementById('rejectModal');
+            const receivedRevokeModal = document.getElementById('revokeModal');
+
+            receivedRejectModal.addEventListener('click', function(e) {
+                if (e.target === this || e.target.dataset.action === 'cancel') hideRejectModal();
+            });
+
+            function showRevokeModal(recordId) {
+                receivedPendingRevokeRecordId = recordId;
+                document.getElementById('revokeModal').style.display = 'block';
+            }
+            function hideRevokeModal() {
+                document.getElementById('revokeModal').style.display = 'none';
+                receivedPendingRevokeRecordId = null;
+            }
+            receivedRevokeModal.addEventListener('click', function(e) {
+                if (e.target === this || e.target.dataset.action === 'cancel') {
+                    hideRevokeModal();
+                    return;
+                }
+                if (e.target.dataset.action === 'confirm' && receivedPendingRevokeRecordId) {
+                    const form = document.createElement('form');
+                    form.method = 'post';
+                    form.innerHTML = '<input type="hidden" name="tab" value="' + receivedTab + '"><input type="hidden" name="revoke_id" value="' + receivedPendingRevokeRecordId + '"><input type="hidden" name="csrfmiddlewaretoken" value="' + getCookie('csrftoken') + '">';
+                    document.body.appendChild(form);
+                    form.submit();
+                }
+            });
+            function getCookie(name) {
+                let cookieValue = null;
+                if (document.cookie && document.cookie !== '') {
+                    const cookies = document.cookie.split(';');
+                    for (let i = 0; i < cookies.length; i++) {
+                        const cookie = cookies[i].trim();
+                        if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                            cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                            break;
+                        }
+                    }
+                }
+                return cookieValue;
+            }
+            </script>
         {% else %}
             <div class="alert alert-info text-center">暂无待你确认的祝福。</div>
         {% endif %}
@@ -343,21 +344,21 @@
         <div id="revokeModal" style="display:none; position:fixed; z-index:9999; left:0; top:0; width:100vw; height:100vh; background:rgba(0,0,0,0.4);">
             <div style="background:#fff; max-width:350px; margin:15vh auto; padding:24px 20px; text-align:center;">
                 <div style="margin-bottom:18px;">确定要撤销此投放活动吗？（不会退款）</div>
-                <button id="revoke-cancel-btn" style="margin-right:18px;">取消</button>
-                <button id="revoke-confirm-btn">确定撤销</button>
+                <button type="button" data-action="cancel" style="margin-right:18px;">取消</button>
+                <button type="button" data-action="confirm">确定撤销</button>
             </div>
         </div>
         <div id="insufficientBalanceModal" style="display:none; position:fixed; z-index:9999; left:0; top:0; width:100vw; height:100vh; background:rgba(0,0,0,0.4);">
             <div style="background:#fff; max-width:350px; margin:15vh auto; padding:24px 20px; text-align:center;">
                 <div id="insufficient-balance-text" style="margin-bottom:18px;">当前余额为0，余额不足。</div>
-                <button id="insufficient-balance-confirm-btn">确认</button>
+                <button type="button" data-action="confirm">确认</button>
             </div>
         </div>
         <div id="confirmChargeModal" style="display:none; position:fixed; z-index:9999; left:0; top:0; width:100vw; height:100vh; background:rgba(0,0,0,0.4);">
             <div style="background:#fff; max-width:350px; margin:15vh auto; padding:24px 20px; text-align:center;">
                 <div style="margin-bottom:18px;">确认要支付并参与祝福投放吗？（提交后不可撤销）</div>
-                <button id="confirm-modal-cancel-btn" style="margin-right:18px;">取消</button>
-                <button id="confirm-modal-confirm-charge-btn">确认支付</button>
+                <button type="button" data-action="cancel" style="margin-right:18px;">取消</button>
+                <button type="button" data-action="confirm">确认支付</button>
             </div>
         </div>
         <div id="rejectModal" class="modal" tabindex="-1" style="display:none; position:fixed; z-index:1050; left:0; top:0; width:100vw; height:100vh; background:rgba(0,0,0,0.4);">
@@ -365,7 +366,7 @@
                 <div class="modal-content">
                     <div class="modal-header">
                         <h5 class="modal-title">确认拒绝</h5>
-                        <button type="button" class="close" onclick="hideRejectModal()">&times;</button>
+                        <button type="button" class="close" data-action="cancel">&times;</button>
                     </div>
                     <div class="modal-body">
                         <p>确定要拒绝该祝福投放吗？此操作不可撤销。</p>
@@ -377,7 +378,7 @@
                             <input type="hidden" name="reject_id" id="reject_id_input">
                             <button type="submit" class="btn btn-danger">确定拒绝</button>
                         </form>
-                        <button type="button" class="btn btn-secondary" onclick="hideRejectModal()">取消</button>
+                            <button type="button" class="btn btn-secondary" data-action="cancel">取消</button>
                     </div>
                 </div>
             </div>
@@ -385,8 +386,8 @@
         <div id="abortModal" style="display:none; position:fixed; z-index:9999; left:0; top:0; width:100vw; height:100vh; background:rgba(0,0,0,0.4);">
             <div style="background:#fff; max-width:350px; margin:15vh auto; padding:24px 20px; text-align:center;">
                 <div style="margin-bottom:18px;">确定要中止投放并退款吗？此操作不可撤销。</div>
-                <button id="abort-cancel-btn" style="margin-right:18px;">取消</button>
-                <button id="abort-confirm-btn">确定中止</button>
+                <button type="button" data-action="cancel" style="margin-right:18px;">取消</button>
+                <button type="button" data-action="confirm">确定中止</button>
             </div>
         </div>
         <script>
@@ -437,13 +438,6 @@
                 openConfirmChargeModal(recordId);
             }).catch(() => showInsufficientBalanceModal(0));
         }
-        document.getElementById('confirm-modal-confirm-charge-btn').addEventListener('click', function() {
-            if (pendingConfirmRecordId) {
-                document.getElementById('confirm-form-' + pendingConfirmRecordId).submit();
-            }
-        });
-        document.getElementById('confirm-modal-cancel-btn').addEventListener('click', closeConfirmChargeModal);
-        document.getElementById('insufficient-balance-confirm-btn').addEventListener('click', hideInsufficientBalanceModal);
         function showRevokeModal(recordId) {
             participationPendingRevokeRecordId = recordId;
             document.getElementById('revokeModal').style.display = 'block';
@@ -452,8 +446,18 @@
             document.getElementById('revokeModal').style.display = 'none';
             participationPendingRevokeRecordId = null;
         }
-        document.getElementById('revoke-confirm-btn').addEventListener('click', function() {
-            if (participationPendingRevokeRecordId) {
+        const participationRevokeModal = document.getElementById('revokeModal');
+        const participationConfirmChargeModal = document.getElementById('confirmChargeModal');
+        const participationRejectModal = document.getElementById('rejectModal');
+        const participationAbortModal = document.getElementById('abortModal');
+        const participationInsufficientBalanceModal = document.getElementById('insufficientBalanceModal');
+
+        participationRevokeModal.addEventListener('click', function(e) {
+            if (e.target === this || e.target.dataset.action === 'cancel') {
+                hideRevokeModal();
+                return;
+            }
+            if (e.target.dataset.action === 'confirm' && participationPendingRevokeRecordId) {
                 const form = document.createElement('form');
                 form.method = 'post';
                 form.innerHTML = '<input type="hidden" name="tab" value="' + participationTab + '"><input type="hidden" name="revoke_id" value="' + participationPendingRevokeRecordId + '"><input type="hidden" name="csrfmiddlewaretoken" value="' + getCookie('csrftoken') + '">';
@@ -461,8 +465,6 @@
                 form.submit();
             }
         });
-        document.getElementById('revoke-cancel-btn').addEventListener('click', hideRevokeModal);
-        document.getElementById('revokeModal').addEventListener('click', function(e) { if (e.target === this) hideRevokeModal(); });
         function showAbortModal(recordId) {
             participationPendingAbortRecordId = recordId;
             document.getElementById('abortModal').style.display = 'block';
@@ -471,8 +473,12 @@
             document.getElementById('abortModal').style.display = 'none';
             participationPendingAbortRecordId = null;
         }
-        document.getElementById('abort-confirm-btn').addEventListener('click', function() {
-            if (participationPendingAbortRecordId) {
+        participationAbortModal.addEventListener('click', function(e) {
+            if (e.target === this || e.target.dataset.action === 'cancel') {
+                hideAbortModal();
+                return;
+            }
+            if (e.target.dataset.action === 'confirm' && participationPendingAbortRecordId) {
                 const form = document.createElement('form');
                 form.method = 'post';
                 form.innerHTML = '<input type="hidden" name="tab" value="' + participationTab + '"><input type="hidden" name="abort_id" value="' + participationPendingAbortRecordId + '"><input type="hidden" name="csrfmiddlewaretoken" value="' + getCookie('csrftoken') + '">';
@@ -480,8 +486,6 @@
                 form.submit();
             }
         });
-        document.getElementById('abort-cancel-btn').addEventListener('click', hideAbortModal);
-        document.getElementById('abortModal').addEventListener('click', function(e) { if (e.target === this) hideAbortModal(); });
         function showRejectModal(id) {
             document.getElementById('reject_id_input').value = id;
             document.getElementById('rejectModal').style.display = 'block';
@@ -489,9 +493,17 @@
         function hideRejectModal() {
             document.getElementById('rejectModal').style.display = 'none';
         }
-        document.getElementById('rejectModal').addEventListener('click', function(e) { if (e.target === this) hideRejectModal(); });
-        document.getElementById('confirmChargeModal').addEventListener('click', function(e) { if (e.target === this) closeConfirmChargeModal(); });
-        document.getElementById('insufficientBalanceModal').addEventListener('click', function(e) { if (e.target === this) hideInsufficientBalanceModal(); });
+        participationRejectModal.addEventListener('click', function(e) { if (e.target === this || e.target.dataset.action === 'cancel') hideRejectModal(); });
+        participationConfirmChargeModal.addEventListener('click', function(e) {
+            if (e.target === this || e.target.dataset.action === 'cancel') {
+                closeConfirmChargeModal();
+                return;
+            }
+            if (e.target.dataset.action === 'confirm' && pendingConfirmRecordId) {
+                document.getElementById('confirm-form-' + pendingConfirmRecordId).submit();
+            }
+        });
+        participationInsufficientBalanceModal.addEventListener('click', function(e) { if (e.target === this || e.target.dataset.action === 'confirm') hideInsufficientBalanceModal(); });
         </script>
     {% endif %}
 

@@ -9,6 +9,7 @@ from pathlib import Path
 import sys
 from typing import Any
 from time import perf_counter
+from boot.config import shihannet
 
 def _step_result(ok, retryable=False, pending=None, result=None, error=None):
     return {
@@ -1245,9 +1246,9 @@ def _run_update_cycle(playwright, browser, page, url, username, password, up_ima
 
 def main():
     # 按需修改这些参数
-    url = "http://192.168.8.2/admin/index/logon/"
-    username = "admin"
-    password = "abc123456"
+    url = shihannet.url
+    username = shihannet.username
+    password = shihannet.password
 
     up_image_path = ["E:\\desktop\\Birth\\2026041701null.png", "E:\\desktop\\Birth\\1.png", "E:\\desktop\\Birth\\2026041705uewit.png"]
     # ,"E:\\desktop\\Birth\\2026041701null.png", "E:\\desktop\\Birth\\1.png"

@@ -39,6 +39,8 @@ from birthboard.web_controller import open_and_login, _run_update_cycle
 from birthboard.jobs import _get_abs_image_path
 from playwright.sync_api import sync_playwright
 
+from boot.config import shihannet
+
 _BB_UPDATE_LOCK_KEY = "birthboard:update_in_progress"
 logger = logging.getLogger(__name__)
 
@@ -65,9 +67,9 @@ def _handle_revoke(revoke_id: str, actor=None) -> None:
                     img_path = _get_abs_image_path(record.image)
                     if img_path:
                         try:
-                            url = "http://192.168.8.2/admin/index/logon/"
-                            username = "admin"
-                            password = "abc123456"
+                            url = shihannet.url
+                            username = shihannet.username
+                            password = shihannet.password
                             with sync_playwright() as p:
                                 browser = None
                                 page = None
@@ -145,16 +147,13 @@ def _build_activity_base(record: BirthboardRecord):
 def _deduct_and_mark_paid(user, part: BirthboardParticipant, amount: int, set_action_time: bool = True) -> bool:
     from generic.models import YQPointRecord
 
-    if user.YQpoint < amount:
+    # Use the atomic manager method to modify user's YQpoint and record the change.
+    # This ensures select_for_update and transaction.atomic are used consistently.
+    try:
+        User.objects.modify_YQPoint(user, -amount, source="birthboard", source_type=getattr(YQPointRecord.SourceType, 'BIRTHBOARD', 0))
+    except AssertionError:
+        # insufficient funds
         return False
-    user.YQpoint -= amount
-    user.save(update_fields=["YQpoint"])
-    YQPointRecord.objects.create(
-        user=user,
-        delta=-amount,
-        source="birthboard",
-        source_type=getattr(YQPointRecord.SourceType, 'BIRTHBOARD', 0),
-    )
     part.status = BirthboardParticipant.Status.PAID
     update_fields = ["status"]
     if set_action_time:
@@ -347,7 +346,13 @@ def birthboard(request):
     initial = request.session.pop('birthboard_resubmit_initial', None)
 
     if request.method == "POST":
-        form = BirthboardForm(request.POST, request.FILES)
+        # If client provided receiver_pk (hidden field), map it to 'receiver' before form binding.
+        post_data = request.POST
+        if 'receiver_pk' in request.POST:
+            post_data = request.POST.copy()
+            # set 'receiver' to the pk so BirthboardForm.ModelChoiceField can resolve it
+            post_data['receiver'] = post_data.get('receiver_pk')
+        form = BirthboardForm(post_data, request.FILES)
         if form.is_valid():
             receiver = form.cleaned_data['receiver']
             senders = form.cleaned_data['senders']
@@ -430,16 +435,15 @@ def birthboard(request):
                             status=status,
                         )
                         if is_initiator:
-                            if sender.YQpoint < per:
+                            try:
+                                User.objects.modify_YQPoint(
+                                    sender,
+                                    -per,
+                                    source="birthboard",
+                                    source_type=getattr(YQPointRecord.SourceType, 'BIRTHBOARD', 0),
+                                )
+                            except AssertionError:
                                 raise Exception("发起者元气值不足，无法扣款")
-                            sender.YQpoint -= per
-                            sender.save(update_fields=["YQpoint"])
-                            YQPointRecord.objects.create(
-                                user=sender,
-                                delta=-per,
-                                source="birthboard",
-                                source_type=getattr(YQPointRecord.SourceType, 'BIRTHBOARD', 0),
-                            )
                     # 创建寿星参与记录
                     BirthboardParticipant.objects.create(
                         record=record,

@@ -29,8 +29,8 @@ _configurables = SettingConfig(config.ROOT_CONFIG, 'django')
 
 # SECURITY
 # WARNING: don't run with debug turned on in production!
-# DEBUG = config.DEBUG
-DEBUG = True
+DEBUG = config.DEBUG
+# DEBUG = True
 SECRET_KEY = _configurables.secret_key
 ALLOWED_HOSTS = ["*"]
 AUTH_USER_MODEL = 'generic.User'
