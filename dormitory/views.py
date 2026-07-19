@@ -68,15 +68,27 @@ class DormitoryRoutineQAView(ProfileTemplateView):
         survey = self.get_survey()
         assert not AnswerSheet.objects.filter(creator=self.request.user,
                                               survey=survey).exists()
+
+        def _normalize_answer(question):
+            key = str(question.order)
+            if question.type == 'MULTIPLE':
+                values = [value for value in self.request.POST.getlist(key) if value]
+                return ','.join(values)
+            value = (self.request.POST.get(key) or '').strip()
+            if question.type in ['SINGLE', 'RANKING']:
+                return value
+            if question.type == 'TEXT':
+                return value
+            return value
+
         with transaction.atomic():
             sheet = AnswerSheet.objects.create(creator=self.request.user,
                                                survey=survey)
             for question in survey.questions.order_by('order'):
-                # Use getlist to get all the choices for MULTIPLE questions.
-                answer = self.request.POST.getlist(str(question.order))
-                answer = ','.join(answer)
-                if answer is None:
-                    assert not question.required, f"必填题{question.order}未作答"
+                answer = _normalize_answer(question)
+                if not answer:
+                    if question.required:
+                        raise ValueError(f'必填题{question.order}未作答')
                     continue
                 AnswerText.objects.create(question=question,
                                           answersheet=sheet,
