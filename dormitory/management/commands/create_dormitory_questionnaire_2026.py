@@ -626,6 +626,8 @@ class Command(BaseCommand):
             topic="请在以下选项中，勾选出你认为优秀大学生应当具备的6项最重要特质",
             type=Question.Type.MULTIPLE,
             description="限选6项",
+            min_choices=6,
+            max_choices=6,
         )
         question31.save()
 
