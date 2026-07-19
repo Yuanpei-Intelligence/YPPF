@@ -531,7 +531,9 @@ Every model change requires a checked-in migration. Never edit, renumber, or
 delete a migration already present on the shared `develop` history; create a
 new migration that moves the schema or data forward. Review generated
 migrations rather than accepting them blindly, especially column removal,
-type conversion, defaults, indexes, and constraint names.
+type conversion, defaults, indexes, and constraint names. The ultimate purpose 
+is to prevent overwriting an executed migration file. Therefore, you can only
+merge migration files when they are not commited yet.
 
 Use historical models from `apps.get_model()` inside `RunPython`; do not
 import current application models. Make data migrations deterministic and
