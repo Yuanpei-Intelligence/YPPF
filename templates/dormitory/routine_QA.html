@@ -177,6 +177,17 @@ var required_multiple_questions = [
     {% endif %}{% endfor %}
 ]
 
+var multiple_choice_limits = {
+    {% for question, choice in survey_iter %}
+        {% if question.type == 'MULTIPLE' %}
+            "{{ question.order }}": {
+                min: {{ question.min_choices|default:1 }},
+                max: {{ question.max_choices|default:'null' }}
+            },
+        {% endif %}
+    {% endfor %}
+}
+
 function syncRankingInput(order) {
     var list = document.querySelector('.ranking-list[data-question-order="' + order + '"]');
     if (!list) {
@@ -233,6 +244,26 @@ const check_input = () => {
     });
     if (!multiple_ok) {
         return false;
+    }
+
+    // Validate min/max choices for all MULTIPLE questions
+    for (var order in multiple_choice_limits) {
+        if (!multiple_choice_limits.hasOwnProperty(order)) continue;
+        var boxes = document.querySelectorAll('input[name="' + order + '"]:checked');
+        var count = boxes.length;
+        var limits = multiple_choice_limits[order];
+        if (limits.min > 0 && count < limits.min) {
+            document.getElementById("error-message").innerHTML =
+                '<a href="#survey-question-' + order + '" style="color:blue;">第' + order + '题</a>'
+                + '至少需要选择 ' + limits.min + ' 个选项！';
+            return false;
+        }
+        if (limits.max !== null && count > limits.max) {
+            document.getElementById("error-message").innerHTML =
+                '<a href="#survey-question-' + order + '" style="color:blue;">第' + order + '题</a>'
+                + '最多只能选择 ' + limits.max + ' 个选项！';
+            return false;
+        }
     }
     document.querySelectorAll('.ranking-list').forEach(list => {
         syncRankingInput(list.dataset.questionOrder);

@@ -80,6 +80,14 @@ class AnswerTextSerializer(serializers.ModelSerializer):
         if question.type == Question.Type.SINGLE and len(parsed_orders) != 1:
             raise serializers.ValidationError('单选题必须且只能选择一个选项！')
 
+        if question.type == Question.Type.MULTIPLE:
+            if question.min_choices is not None and len(parsed_orders) < question.min_choices:
+                raise serializers.ValidationError(
+                    f'多选题至少需要选择 {question.min_choices} 个选项！')
+            if question.max_choices is not None and len(parsed_orders) > question.max_choices:
+                raise serializers.ValidationError(
+                    f'多选题最多只能选择 {question.max_choices} 个选项！')
+
         if question.type == Question.Type.RANKING:
             if len(parsed_orders) != len(order_set):
                 raise serializers.ValidationError('排序题不允许重复选项！')
