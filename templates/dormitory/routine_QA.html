@@ -79,6 +79,9 @@
                                                     {{ question.order }}. {{ question.topic }}
                                                     {% if question.required %}<span class="req">*</span>{% endif %}
                                                 </h6>
+                                                {% if question.description %}
+                                                    <p class="text-muted mb-2">{{ question.description }}</p>
+                                                {% endif %}
                                                 {% if question.type == 'TEXT' %}
                                                     <input type="text"
                                                            id="{{ question.order }}"
@@ -86,7 +89,6 @@
                                                            class="form-control"
                                                            aria-label="Default"
                                                            {% if question.required %}required{% endif %}
-                                                           placeholder="{{ question.description }}"
                                                            maxlength="200">
                                                 {% elif question.type == 'SINGLE' %}
                                                     {% for choice in choices %}
