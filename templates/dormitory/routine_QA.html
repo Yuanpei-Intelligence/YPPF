@@ -246,12 +246,13 @@ const check_input = () => {
         return false;
     }
 
-    // Validate min/max choices for all MULTIPLE questions
+    // Validate min/max choices for MULTIPLE questions that have selections
     for (var order in multiple_choice_limits) {
         if (!multiple_choice_limits.hasOwnProperty(order)) continue;
         var boxes = document.querySelectorAll('input[name="' + order + '"]:checked');
         var count = boxes.length;
         var limits = multiple_choice_limits[order];
+        if (count === 0) continue; // Skip unanswered non-required questions
         if (limits.min > 0 && count < limits.min) {
             document.getElementById("error-message").innerHTML =
                 '<a href="#survey-question-' + order + '" style="color:blue;">第' + order + '题</a>'

@@ -11,7 +11,7 @@ from dormitory.models import Dormitory, DormitoryAssignment, Agreement
 from dormitory.serializers import (
     DormitoryAssignmentSerializer, DormitorySerializer,
     AgreementSerializerFixme, AgreementSerializer)
-from questionnaire.models import AnswerSheet, AnswerText, Survey
+from questionnaire.models import AnswerSheet, AnswerText, Question, Survey
 from django.http import HttpResponse
 from openpyxl import Workbook
 
@@ -80,6 +80,39 @@ class DormitoryRoutineQAView(ProfileTemplateView):
             if question.type == 'TEXT':
                 return value
             return value
+
+        # Validate that the "学号" answer matches the current user's username
+        sid_question = survey.questions.filter(topic='学号', type=Question.Type.TEXT).first()
+        if sid_question:
+            sid_answer = _normalize_answer(sid_question)
+            if sid_answer != self.request.user.username:
+                return self.render(
+                    html_display=dict(
+                        warn_code=1,
+                        warn_message='学号与当前登录账号不匹配，请重新填写！'
+                    ),
+                    survey_iter=[
+                        (question, question.choices.order_by('order'))
+                        for question in survey.questions.order_by('order')
+                    ],
+                )
+
+        # Validate that the "姓名" answer matches the user's registered name
+        name_question = survey.questions.filter(topic='姓名', type=Question.Type.TEXT).first()
+        if name_question:
+            name_answer = _normalize_answer(name_question)
+            if name_answer != self.request.user.name:
+                return self.render(
+                    html_display=dict(
+                        warn_code=1,
+                        warn_message='填写的姓名与系统中信息不一致。'
+                        '如姓名录入有误，请联系管理员修改。'
+                    ),
+                    survey_iter=[
+                        (question, question.choices.order_by('order'))
+                        for question in survey.questions.order_by('order')
+                    ],
+                )
 
         with transaction.atomic():
             sheet = AnswerSheet.objects.create(creator=self.request.user,
