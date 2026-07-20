@@ -1,6 +1,7 @@
 {% extends "base.html" %}
 
 {% load static %}
+{% load dormitory_filters %}
 
 {% block add_css_file %}
 <link href="{% static "datetimepicker/css/bootstrap-datetimepicker-standalone.css" %}" rel="stylesheet" type="text/css" />
@@ -73,7 +74,7 @@
                                           method="POST"
                                           enctype="multipart/form-data"
                                           onsubmit="return check_input()">
-                                        {% for question, choices in survey_iter %}
+                                        {% for question, choices, submitted_val in survey_iter %}
                                             <div class="form-group mb-3 mx-5">
                                                 <h6 id="survey-question-{{ question.order }}">
                                                     {{ question.order }}. {{ question.topic }}
@@ -89,7 +90,8 @@
                                                            class="form-control"
                                                            aria-label="Default"
                                                            {% if question.required %}required{% endif %}
-                                                           maxlength="200">
+                                                           maxlength="200"
+                                                           value="{{ submitted_val }}">
                                                 {% elif question.type == 'SINGLE' %}
                                                     {% for choice in choices %}
                                                         <div class="form-check mb-1">
@@ -98,7 +100,8 @@
                                                                    {% if question.required %}required{% endif %}
                                                                    id="{{ question.order }}-{{ choice.order }}"
                                                                    name="{{ question.order }}"
-                                                                   value="{{ choice.order }}">
+                                                                   value="{{ choice.order }}"
+                                                                   {% if submitted_val == choice.order|slugify %}checked{% endif %}>
                                                             <label class="form-check-label"
                                                                    for="{{ question.order }}-{{ choice.order }}">
                                                                 {{ choice.text }}
@@ -112,7 +115,8 @@
                                                                    class="form-check-input"
                                                                    id="{{ question.order }}-{{ choice.order }}"
                                                                    name="{{ question.order }}"
-                                                                   value="{{ choice.order }}">
+                                                                   value="{{ choice.order }}"
+                                                                   {% if submitted_val|contains:choice.order %}checked{% endif %}>
                                                             <label class="form-check-label"
                                                                    for="{{ question.order }}-{{ choice.order }}">
                                                                 {{ choice.text }}
@@ -139,7 +143,8 @@
                                                     <input type="hidden"
                                                            id="ranking-{{ question.order }}"
                                                            name="{{ question.order }}"
-                                                           {% if question.required %}required{% endif %}>
+                                                           {% if question.required %}required{% endif %}
+                                                           value="{{ submitted_val }}">
                                                 {% endif %}
                                             </div>
                                         {% endfor %}
@@ -172,20 +177,20 @@
 <script src={% static "datetimepicker/js/bootstrap-datetimepicker.min.js" %}></script>
 <script>
 var required_multiple_questions = [
-    {% for question, choice in survey_iter %}{% if question.type == 'MULTIPLE' and question.required %}
+    {% for item in survey_iter %}{% with question=item.0 %}{% if question.type == 'MULTIPLE' and question.required %}
         "{{ question.order }}",
-    {% endif %}{% endfor %}
+    {% endif %}{% endwith %}{% endfor %}
 ]
 
 var multiple_choice_limits = {
-    {% for question, choice in survey_iter %}
+    {% for item in survey_iter %}{% with question=item.0 %}
         {% if question.type == 'MULTIPLE' %}
             "{{ question.order }}": {
                 min: {{ question.min_choices|default:1 }},
                 max: {{ question.max_choices|default:'null' }}
             },
         {% endif %}
-    {% endfor %}
+    {% endwith %}{% endfor %}
 }
 
 function syncRankingInput(order) {
@@ -202,9 +207,24 @@ function syncRankingInput(order) {
     }
 }
 
+function restoreRankingOrder(list, order) {
+    var input = document.getElementById('ranking-' + order);
+    if (!input || !input.value) return;
+    var saved = input.value.split(',').map(s => s.trim()).filter(s => s);
+    if (saved.length === 0) return;
+    var items = Array.from(list.querySelectorAll('.ranking-item'));
+    var itemMap = {};
+    items.forEach(item => { itemMap[item.dataset.choiceOrder] = item; });
+    saved.forEach(function(choiceOrder) {
+        var item = itemMap[choiceOrder];
+        if (item) list.appendChild(item);
+    });
+}
+
 function initRankingLists() {
     document.querySelectorAll('.ranking-list').forEach(list => {
         var order = list.dataset.questionOrder;
+        restoreRankingOrder(list, order);
         syncRankingInput(order);
         list.addEventListener('click', function(event) {
             var button = event.target.closest('button');

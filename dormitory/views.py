@@ -54,53 +54,68 @@ class DormitoryRoutineQAView(ProfileTemplateView):
     def get_survey(self):
         return Survey.objects.get(title=CONFIG.routine_qa_survey_title)
 
+    def _build_survey_iter(self, survey):
+        """Build survey_iter with (question, choices, submitted_value) tuples."""
+        return [
+            (question, question.choices.order_by('order'),
+             self._normalize_answer(question))
+            for question in survey.questions.order_by('order')
+        ]
+
+    def _normalize_answer(self, question):
+        """Extract and normalize the submitted answer for a question."""
+        key = str(question.order)
+        if question.type == 'MULTIPLE':
+            values = [v for v in self.request.POST.getlist(key) if v]
+            return ','.join(values)
+        value = (self.request.POST.get(key) or '').strip()
+        return value
+
     def get(self):
         survey = self.get_survey()
         if AnswerSheet.objects.filter(creator=self.request.user,
                                       survey=survey).exists():
             return self.render(submitted=True)
-        return self.render(survey_iter=[
-            (question, question.choices.order_by('order'))
+        survey_iter = [
+            (question, question.choices.order_by('order'), '')
             for question in survey.questions.order_by('order')
-        ])
+        ]
+        return self.render(survey_iter=survey_iter)
 
     def post(self):
         survey = self.get_survey()
         assert not AnswerSheet.objects.filter(creator=self.request.user,
                                               survey=survey).exists()
 
-        def _normalize_answer(question):
-            key = str(question.order)
-            if question.type == 'MULTIPLE':
-                values = [value for value in self.request.POST.getlist(key) if value]
-                return ','.join(values)
-            value = (self.request.POST.get(key) or '').strip()
-            if question.type in ['SINGLE', 'RANKING']:
-                return value
-            if question.type == 'TEXT':
-                return value
-            return value
+        # Collect submitted answers for repopulation on validation failure
+        submitted = {
+            str(q.order): self._normalize_answer(q)
+            for q in survey.questions.order_by('order')
+        }
+        survey_iter = [
+            (question, question.choices.order_by('order'),
+             submitted.get(str(question.order), ''))
+            for question in survey.questions.order_by('order')
+        ]
+        render_kwargs = dict(survey_iter=survey_iter)
 
         # Validate that the "学号" answer matches the current user's username
         sid_question = survey.questions.filter(topic='学号', type=Question.Type.TEXT).first()
         if sid_question:
-            sid_answer = _normalize_answer(sid_question)
+            sid_answer = submitted.get(str(sid_question.order), '')
             if sid_answer != self.request.user.username:
                 return self.render(
                     html_display=dict(
                         warn_code=1,
                         warn_message='学号与当前登录账号不匹配，请重新填写！'
                     ),
-                    survey_iter=[
-                        (question, question.choices.order_by('order'))
-                        for question in survey.questions.order_by('order')
-                    ],
+                    **render_kwargs,
                 )
 
         # Validate that the "姓名" answer matches the user's registered name
         name_question = survey.questions.filter(topic='姓名', type=Question.Type.TEXT).first()
         if name_question:
-            name_answer = _normalize_answer(name_question)
+            name_answer = submitted.get(str(name_question.order), '')
             if name_answer != self.request.user.name:
                 return self.render(
                     html_display=dict(
@@ -108,10 +123,7 @@ class DormitoryRoutineQAView(ProfileTemplateView):
                         warn_message='填写的姓名与系统中信息不一致。'
                         '如姓名录入有误，请联系管理员修改。'
                     ),
-                    survey_iter=[
-                        (question, question.choices.order_by('order'))
-                        for question in survey.questions.order_by('order')
-                    ],
+                    **render_kwargs,
                 )
 
         with transaction.atomic():
