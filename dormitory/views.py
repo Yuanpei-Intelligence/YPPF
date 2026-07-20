@@ -130,7 +130,7 @@ class DormitoryRoutineQAView(ProfileTemplateView):
             sheet = AnswerSheet.objects.create(creator=self.request.user,
                                                survey=survey)
             for question in survey.questions.order_by('order'):
-                answer = _normalize_answer(question)
+                answer = self._normalize_answer(question)
                 if not answer:
                     if question.required:
                         raise ValueError(f'必填题{question.order}未作答')
