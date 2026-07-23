@@ -1,0 +1,141 @@
+{% load static %}
+<!doctype html>
+<html lang="zh-CN">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no" />
+    <title>用户协议 - 生日祝福投放板</title>
+    <style>
+        html, body {
+            margin: 0;
+            background: #181818;
+            color: #ffffff;
+            font-family: "Microsoft YaHei", "Arial", sans-serif;
+        }
+        .contract-container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 60px 40px;
+        }
+        h1 {
+            text-align: center;
+            font-size: 28px;
+            margin-bottom: 40px;
+            letter-spacing: 4px;
+        }
+        .contract-content {
+            background: #222;
+            padding: 32px;
+            border-radius: 8px;
+            line-height: 2;
+            font-size: 15px;
+            color: #ccc;
+            margin-bottom: 40px;
+        }
+        .contract-content p {
+            margin: 0 0 16px 0;
+        }
+        .contract-content h3 {
+            color: #fff;
+            margin-top: 24px;
+            margin-bottom: 12px;
+        }
+        .btn-row {
+            text-align: center;
+        }
+        #sign-btn {
+            display: inline-block;
+            padding: 14px 60px;
+            font-size: 18px;
+            color: #fff;
+            background: #c0392b;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            letter-spacing: 3px;
+            transition: background 0.2s;
+        }
+        #sign-btn:hover {
+            background: #e74c3c;
+        }
+        #sign-btn:disabled {
+            background: #555;
+            cursor: not-allowed;
+        }
+        .signed-hint {
+            text-align: center;
+            color: #27ae60;
+            font-size: 16px;
+            margin-top: 20px;
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="contract-container">
+        <h1>生日祝福投放板 · 用户协议</h1>
+        <div class="contract-content">
+            <p>欢迎使用生日祝福投放板。在使用本服务前，请仔细阅读以下条款：</p>
+
+            <h3>一、服务说明</h3>
+            <p>生日祝福投放板是用于向同学生日当天投放祝福图片的平台。用户可选择被祝福对象、邀请其他同学共同参与，并使用元气值支付投放费用。</p>
+
+            <h3>二、用户责任</h3>
+            <p>用户承诺上传的图片内容健康、积极，不包含任何违法、违规、侵犯他人权益的内容。用户需对投放内容的真实性、合法性承担全部责任。</p>
+
+            <h3>三、费用规则</h3>
+            <p>投放将消耗元气值，具体费用根据投放模式和参与人数计算。确认提交后将扣除相应元气值，投放结束后不予退还（投放被撤销或驳回的情况除外）。</p>
+
+            <h3>四、投放规则</h3>
+            <p>投放将按照选定日期进行展示。用户可在投放前撤销，在等待确认阶段可拒绝参与。超时未确认的参与者将被自动拒绝。</p>
+
+            <h3>五、隐私保护</h3>
+            <p>用户可选择匿名投放。我们将保护用户隐私，不会在未经授权的情况下公开用户信息。</p>
+
+            <h3>六、免责声明</h3>
+            <p>因不可抗力、系统故障等原因导致投放未能按时展示的，平台不承担责任，但将退还已扣除的元气值。</p>
+
+            <p style="margin-top:24px;">点击下方按钮即表示您已阅读并同意以上条款。</p>
+        </div>
+        <div class="btn-row">
+            <button id="sign-btn">同意协议并进入</button>
+        </div>
+        <div class="signed-hint" id="signed-hint">✓ 协议签署成功，正在跳转...</div>
+
+        <!-- 返回首页链接 -->
+        <div style="text-align:center; margin-top:30px;">
+            <a href="/welcome/" style="color:#888; text-decoration:none; font-size:14px;">返回首页</a>
+        </div>
+    </div>
+
+    <script src="{% static 'Appointment/assets/js/jquery.min.js' %}"></script>
+    <script>
+        $('#sign-btn').on('click', function() {
+            var $btn = $(this);
+            $btn.prop('disabled', true).text('正在提交...');
+
+            $.ajax({
+                url: '/birthboard/api/sign_contract/',
+                method: 'POST',
+                headers: {'X-CSRFToken': '{{ csrf_token }}'},
+                success: function(resp) {
+                    if (resp.ok) {
+                        $btn.hide();
+                        $('#signed-hint').show();
+                        setTimeout(function() {
+                            window.location.href = '/birthboard/';
+                        }, 1000);
+                    } else {
+                        $btn.prop('disabled', false).text('同意协议并进入');
+                        alert('签署失败，请重试');
+                    }
+                },
+                error: function() {
+                    $btn.prop('disabled', false).text('同意协议并进入');
+                    alert('网络错误，请重试');
+                }
+            });
+        });
+    </script>
+</body>
+</html>

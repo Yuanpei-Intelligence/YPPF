@@ -225,25 +225,40 @@ class LockUiIntegrationTests(TestCase):
 		# clean
 		cache.delete("birthboard:update_in_progress")
 
-	def test_approve_page_shows_disabled_revoke_when_locked(self):
+	def test_approve_page_shows_only_one_pending_request(self):
 		self.client.login(username="approver", password="test")
-		img = SimpleUploadedFile("img2.jpg", b"img2", content_type="image/jpeg")
-		rec = BirthboardRecord.objects.create(
-			receiver_username="someone",
-			receiver_name="someone",
+		img1 = SimpleUploadedFile("img2.jpg", b"img2", content_type="image/jpeg")
+		img2 = SimpleUploadedFile("img3.jpg", b"img3", content_type="image/jpeg")
+		rec1 = BirthboardRecord.objects.create(
+			receiver_username="someone1",
+			receiver_name="someone1",
 			date=timezone.now().date(),
 			mode=0,
 			per_cost=1,
-			image=img,
+			image=img1,
 			status=BirthboardRecord.Status.READY,
 		)
-		from django.core.cache import cache
-		cache.set("birthboard:update_in_progress", True, timeout=300)
+		BirthboardRecord.objects.filter(pk=rec1.pk).update(created_at=timezone.now() - timedelta(minutes=5))
+		rec2 = BirthboardRecord.objects.create(
+			receiver_username="someone2",
+			receiver_name="someone2",
+			date=timezone.now().date(),
+			mode=0,
+			per_cost=1,
+			image=img2,
+			status=BirthboardRecord.Status.READY,
+		)
 		resp = self.client.get(reverse('birthboard_approve'))
 		content = resp.content.decode('utf-8')
-		self.assertIn('23点45-24点系统同步中，无法操作', content)
-		self.assertIn('disabled', content)
-		cache.delete("birthboard:update_in_progress")
+		self.assertIn('someone2', content)
+		self.assertNotIn('someone1', content)
+		self.assertIn('初审通过', content)
+
+	def test_approve_page_shows_empty_state_when_no_pending(self):
+		self.client.login(username="approver", password="test")
+		resp = self.client.get(reverse('birthboard_approve'))
+		content = resp.content.decode('utf-8')
+		self.assertIn('无需燕牌 暂德清闲', content)
 
 
 class BirthboardNightlySimulationCommandTests(TestCase):

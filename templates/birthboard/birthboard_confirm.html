@@ -1,10 +1,201 @@
+{% load static %}
+<!doctype html>
+<html lang="zh-CN">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <!-- <title>生日祝福投放</title> -->
+    <style>
+        html,body {
+            margin: 0;
+            padding: 0;
+            color:#000000;
+        }
+        html {
+            width: 100%;
+            overflow-y: auto;
+            overflow-x: hidden;
+        }
+        body {
+            width: 100%;
+            text-align: center;
+            overflow-x: hidden;
+        }
+        @font-face {
+            font-family: 'MyfontT';
+            src: url('{% static "birthboard/fonts/SourceHanSansSC-VF.otf.woff2" %}') format('woff2');
+            font-weight: 300;
+            font-style: normal;
+            unicode-range: U+4E00-9FFF; /* 汉字范围 */
+            display: swap;
+        }
+        @font-face {
+            font-family: 'MyfontTE';
+            src: url('{% static "birthboard/fonts/SourceHanSansSC-VF.otf.woff2" %}') format('woff2');
+            font-weight: 300;
+            font-style: normal;
+            display: swap;
+        }
+        @font-face {
+            font-family: 'MyfontLB';
+            src: url('{% static "birthboard/fonts/SourceHanSansSC-VF.otf.woff2" %}') format('woff2');
+            font-weight: 400;
+            font-style: normal;
+            unicode-range: U+4E00-9FFF; /* 汉字范围 */
+            display: swap;
+        }
+        @font-face {
+            font-family: 'MyfontB';
+            src: url('{% static "birthboard/fonts/SourceHanSansSC-VF.otf.woff2" %}') format('woff2');
+            font-weight: 700;
+            font-style: normal;
+            unicode-range: U+4E00-9FFF; /* 汉字范围 */
+            display: swap;
+        }
+        @font-face {
+            font-family: 'MyfontE';
+            src: url('{% static "birthboard/fonts/FiraCode-Light.woff2" %}') format('woff2');
+            /* src: local('Courier New'), local('Courier New'), local('Courier'), local('monospace'); */
+            font-weight: 400;
+            font-style: normal;
+            unicode-range: U+0000-007F; 
+            /* letter-spacing: 0;  */
+        }
+        @font-face {
+            font-family: 'Numbers';
+            src: local('Georgia');
+            /* src: local('Courier New'), local('Courier New'), local('Courier'), local('monospace'); */
+            font-weight: 400;
+            font-style: normal;
+            /* font-size: 40px; */
+            /* color:#9a2d2d; */
+            unicode-range: U+0000-007F; /* 英文和数字范围 */
+        }
+        a {
+            text-decoration: none;
+            color: inherit;
+        }
+        a:hover {
+            text-decoration: none;
+        }
+        .prettyNumbers{
+            position: relative;
+            /* top: -4px; */
+            color:#000000; 
+            font-family:'Numbers'; 
+            font-size:20px; 
+            pointer-events:none; 
+            border-bottom: #d20000 10px solid; 
+            display: inline-block; 
+            line-height: 0.3;
+        }
+        .boardcard{
+            margin: 0 auto 100px auto;
+            display:flex;
+            flex-direction:column;
+            align-items:center;
+            width: 740px;
+        }
+        .textLb{
+            font-family: 'MyfontLB', 'MyfontE', 'Microsoft YaHei', 'Arial', sans-serif;
+            font-size: 16px;
+        }
+        .textN{
+            font-family: 'MyfontT', 'MyfontE', 'Microsoft YaHei', 'Arial', sans-serif;
+            font-size: 16px;
+        }
+        .textNE{
+            font-family: 'MyfontTE', 'MyfontE', 'Microsoft YaHei', 'Arial', sans-serif;
+            font-size: 16px;
+        }
+        .textB{
+            font-family: 'MyfontB', 'MyfontE', 'Microsoft YaHei', 'Arial', sans-serif;
+            font-size: 16px;
+        }
+        .lddq{
+            /* margin-bottom: 18px; */
+            width: 100%;
+            text-align: justify;
+            text-align-last: justify;
+            text-justify: inter-ideograph;
+            /* display: flex; */
+            /* justify-content: space-between; */
+            /* align-items: center; */
+        }
+        .lddq::after{
+            content: '';
+            display: none;
+            width: 100%;
+            height: 0;
+        }
+        .headbtn {
+            display: block;
+            padding-bottom: 5px;
+            background: linear-gradient(to right, #ffffff00, #ffffff00) no-repeat bottom left / 0 2px;
+            background-origin: content-box;
+            transition: background-size 0.25s ease;
+        }
+        .headbtn img {
+            display: block;
+        }
+        .btn-primary .headbtn {
+            opacity: 1;
+            background: linear-gradient(to right, #000000, #000000) no-repeat bottom left / 100% 2px;
+        }
+        .headbtn:hover {
+            background: linear-gradient(to right, #00000030, #00000030) no-repeat bottom left / 100% 2px;
+        }
+        .btn-primary .headbtn:hover {
+            background: linear-gradient(to right, #000000, #000000) no-repeat bottom left / 100% 2px;
+        }
+        .downbtn {
+            display: block;
+            border: none;
+            border-top: 1px solid #000000;
+            padding: 0;
+            padding-bottom: 3px;
+            margin: 0;
+            width: 100%;
+            cursor: pointer;
+            background: linear-gradient(to right, #ffffff00, #ffffff00) no-repeat bottom left / 0 1px;
+            background-origin: content-box;
+            transition: background-size 0.25s ease;
+        }
+        .downbtn:hover {
+            background: linear-gradient(to right, #000000, #000000) no-repeat bottom left / 100% 1px;
+        }
+        .status-red { color: #c00000; }
+        .status-yellow { color: #137bc0; }
+        .status-green { color: #00ba35; }
+        .jt {
+            display: inline;
+            position: relative;
+            top: -2px;
+        }
+    </style>
+</head>
+<body>
 <!-- 独立页面，无模板继承 -->
-<div class="container mt-4">
-    <h2 class="mb-4 text-center">生日祝福投放</h2>
-    <div class="text-center mb-4">
-        <a href="{% url 'birthboard_confirm' %}?tab=participation&mark_seen=1" class="btn mr-2 {% if active_tab == 'participation' %}btn-primary{% else %}btn-outline-primary{% endif %}">参与的{% if tab_change_counts.participation %}({{ tab_change_counts.participation }}){% endif %}</a>
-        <a href="{% url 'birthboard_confirm' %}?tab=received&mark_seen=1" class="btn mr-2 {% if active_tab == 'received' %}btn-primary{% else %}btn-outline-primary{% endif %}">被祝福的{% if tab_change_counts.received %}({{ tab_change_counts.received }}){% endif %}</a>
-        <a href="{% url 'birthboard_confirm' %}?tab=finished&mark_seen=1" class="btn {% if active_tab == 'finished' %}btn-primary{% else %}btn-outline-primary{% endif %}">结束的{% if tab_change_counts.finished %}({{ tab_change_counts.finished }}){% endif %}</a>
+<div class="hello">
+    <!-- <div class="text-center" style="font-family: 'MyfontT', 'Microsoft YaHei', 'Arial', sans-serif;">生日祝福投放</div>
+    <div class="text-center" style="font-family: 'MyfontLB', 'Microsoft YaHei', 'Arial', sans-serif;">生日祝福投放</div>
+    <div class="text-center" style="font-family: 'MyfontB', 'Microsoft YaHei', 'Arial', sans-serif;">生日祝福投放</div> -->
+    <div style="display:flex; flex-direction:column; align-items:center; width: 100%; margin-bottom: 150px;">
+        <img src="{{ MEDIA_URL }}birthboard/tfmb.png" alt="投放面板" style="width: 400px; opacity: 0.2;">
+        <div style="display:flex; margin-top:-29px; position:relative; z-index:1; width: 400px;">
+            <a href="{% url 'birthboard_confirm' %}?tab=participation&mark_seen=1" class="btn mr-2 {% if active_tab == 'participation' %}btn-primary{% else %}btn-outline-primary{% endif %}" style="position: relative; left: 1%;">
+                <span class="headbtn"><img src="{{ MEDIA_URL }}birthboard/participate.png" alt="参与" style="width: 55px; vertical-align: middle;"></span>  
+                <span class="prettyNumbers" style="position: absolute; left: 60px; top:4px;">{% if tab_change_counts.participation %} {{ tab_change_counts.participation }}{% endif %}</span>
+            </a>
+            <a href="{% url 'birthboard_confirm' %}?tab=received&mark_seen=1" class="btn mr-2 {% if active_tab == 'received' %}btn-primary{% else %}btn-outline-primary{% endif %}" style="position: relative; left: 115px;">
+                <span class="headbtn"><img src="{{ MEDIA_URL }}birthboard/receive.png" alt="收到" style="width: 60px; vertical-align: middle;"></span>
+                <span class="prettyNumbers" style="position: absolute; left: 60px; top:4px;">{% if tab_change_counts.received %} {{ tab_change_counts.received }}{% endif %}</span>
+            </a>
+            <a href="{% url 'birthboard_confirm' %}?tab=finished&mark_seen=1" class="btn {% if active_tab == 'finished' %}btn-primary{% else %}btn-outline-primary{% endif %}" style="position: relative; left: 230px;">
+                <span class="headbtn"><img src="{{ MEDIA_URL }}birthboard/history.png" alt="历史" style="width: 55px; vertical-align: middle;"></span>
+                <span class="prettyNumbers" style="position: absolute; left: 60px; top:4px;">{% if tab_change_counts.finished %}{{ tab_change_counts.finished }}{% endif %}</span>
+            </a>
+        </div>
     </div>
     {% if message %}
         <div class="alert alert-info">{{ message }}</div>
@@ -13,156 +204,234 @@
     {% if active_tab == 'finished' %}
         {% if finished_activity_list %}
             {% for activity in finished_activity_list %}
-            <div class="card mb-4">
-                <div class="card-header">
-                    <strong>投放日期：</strong> {{ activity.date }}
-                    {% if activity.is_sender %}
-                        <span class="ml-3"><strong>被祝福人：</strong>{{ activity.receiver_name }}</span>
-                        <span class="ml-3"><strong>元气值开销：</strong>{{ activity.per_cost }}</span>
-                    {% endif %}
-                    {% if activity.is_receiver and not activity.is_anonymous %}
-                        <span class="ml-3"><strong>送出人：</strong>
-                            {% for sender in activity.senders %}{{ sender.user.get_full_name|default:sender.user.username }}{% if not forloop.last %}、{% endif %}{% endfor %}
-                        </span>
-                    {% endif %}
-                    <span class="ml-3"><strong>流程状态：</strong>{% if activity.is_changed %}<strong>{{ activity.record_status }}</strong>{% else %}{{ activity.record_status }}{% endif %}</span>
+            <div class="boardcard" {% if activity.is_changed %} style="background-color: #00000010;"{% endif %}>
+                <div style="margin-bottom: 18px; width: 100%; display:flex; justify-content: space-between; align-items: center;">
+                {% if activity.is_sender %}
+                    <span>
+                        <span class="textLb">送给{{ activity.receiver_name }}</span>&emsp;
+                        <span class="textN">{{ activity.date|date:"Y" }}&thinsp;年&thinsp;{{ activity.date|date:"n" }}&thinsp;月&thinsp;{{ activity.date|date:"j" }}&thinsp;日{% if activity.end_date %}&thinsp;～&thinsp;{{ activity.end_date|date:"Y" }}&thinsp;年&thinsp;{{ activity.end_date|date:"n" }}&thinsp;月&thinsp;{{ activity.end_date|date:"j" }}&thinsp;日{% endif %}</span>
+                    </span>
+                    <span class="textN">
+                    {% if activity.before_status %}<span class="{{ activity.before_status_class }}">{{ activity.before_status }}</span><span class="textN jt">&emsp;→&emsp;</span>{% endif %}{% if activity.after_status %}<span class="textB {{ activity.after_status_class }}">{{ activity.after_status }}&thinsp;</span>{% endif %}
+                    </span>
+                {% endif %}
+                {% if activity.is_receiver %}
+                    <span>
+                        <span class="textLb">收到灯牌</span>&emsp;
+                        <span class="textN">{{ activity.date|date:"Y" }}&thinsp;年&thinsp;{{ activity.date|date:"n" }}&thinsp;月&thinsp;{{ activity.date|date:"j" }}&thinsp;日{% if activity.end_date %}&thinsp;～&thinsp;{{ activity.end_date|date:"Y" }}&thinsp;年&thinsp;{{ activity.end_date|date:"n" }}&thinsp;月&thinsp;{{ activity.end_date|date:"j" }}&thinsp;日{% endif %}</span>
+                    </span>
+                    <span class="textN">
+                    {% if activity.before_status %}<span class="{{ activity.before_status_class }}">{{ activity.before_status }}</span><span class="textN jt">&emsp;→&emsp;</span>{% endif %}{% if activity.after_status %}<span class="textB {{ activity.after_status_class }}">{{ activity.after_status }}&thinsp;</span>{% endif %}
+                    </span>
+                    <!-- <span class="ml-3"><strong>送出人：</strong>
+                        {% for sender in activity.senders %}{{ sender.user.get_full_name|default:sender.user.username }}{% if not forloop.last %}、{% endif %}{% endfor %}
+                    </span> -->
+                {% endif %}
                 </div>
-                <div class="card-body">
-                    {% if activity.image %}
-                    <img src="{{ activity.image }}" alt="祝福图片" class="img-fluid mb-3" style="max-width: 400px; cursor: pointer;" onclick="showFullscreenImage(this.src)">
-                    {% endif %}
-                    <div class="mt-2 text-secondary">
-                        {% if activity.record_status == 'terminated' %}
-                            已终止
-                        {% elif activity.record_status == 'canceled' %}
-                            已撤销
-                        {% elif activity.record_status == 'finished' %}
-                            已完成
-                        {% elif activity.record_status == 'terminated_by_admin' %}
-                            已被管理员驳回
-                            {% if activity.rejected_reasons or activity.rejected_detail %}
-                                <div class="alert alert-danger mt-2">
-                                    <div><strong>驳回原因：</strong>
-                                        {% if activity.rejected_reasons %}
-                                            {{ activity.rejected_reasons|join:'，' }}
-                                        {% endif %}
-                                    </div>
-                                    <div><strong>详细说明：</strong> {{ activity.rejected_detail }}</div>
-                                </div>
-                            {% endif %}
-                            {% if activity.is_sender and activity.senders.0.user.id == current_user.id %}
-                                <form method="post" action="{% url 'birthboard_confirm' %}" style="display:inline;">
-                                    {% csrf_token %}
-                                    <input type="hidden" name="tab" value="finished">
-                                    <input type="hidden" name="resubmit_id" value="{{ activity.id }}">
-                                    <button type="submit" class="btn btn-primary mt-2">重新提交</button>
-                                </form>
-                            {% endif %}
+                <img src="{{ MEDIA_URL }}birthboard/bb.png" alt="框" style="height: 140px; width: 740px; z-index: 5; position: relative; pointer-events: none;">
+                {% if activity.image %}
+                <div style="margin-top: -136px; margin-bottom: 18px; display:flex; flex-direction: row; align-items:center; gap:13px; z-index: 1;">
+                    <img src="{{ activity.thumbnail_url }}" alt="祝福图片" loading="lazy" style="width: 237px; cursor: pointer;" onclick="showFullscreenImage('{{ activity.image }}')">
+                    <img src="{{ activity.thumbnail_url }}" alt="祝福图片" loading="lazy" style="width: 237px; cursor: pointer;" onclick="showFullscreenImage('{{ activity.image }}')">
+                    <img src="{{ activity.thumbnail_url }}" alt="祝福图片" loading="lazy" style="width: 237px; cursor: pointer;" onclick="showFullscreenImage('{{ activity.image }}')">
+                </div>
+                {% endif %}
+                {% if activity.is_sender %}
+                <div  class="lddq textN" style="margin-bottom: 9px;">
+                    <span class="textLb">发起人</span>&thinsp;{{ activity.senders.0.user.get_full_name|default:activity.senders.0.user.username }}&thinsp;<span class="textLb">人均元气值</span>&thinsp;{{ activity.per_cost }}&thinsp;<span class="textLb">{% if activity.is_anonymous %}匿名{% else %}实名{% endif %}</span>
+                </div>
+                {% endif %}
+                {% if activity.is_receiver and not activity.is_anonymous or activity.senders %}
+                <table class="lddq" style="width:100%; border-collapse:collapse;">
+                    <colgroup>
+                        <col style="width: 30%;">
+                        <col style="width: 20%;">
+                        <col style="width: 30%;">
+                    </colgroup>
+                    {% for sender in activity.senders %}
+                    <tr>
+                        <td class="textLb" style="text-align:left;">{{ sender.user.get_full_name|default:sender.user.username }}</td>
+                        <td style="text-align:right;"></td>
+                        <td style="text-align:right;"></td>
+                    </tr>
+                    {% endfor %}
+                </table>
+                {% endif %}
+                <div class="textN" style="width: 740px; text-align: left; align-self: flex-end; line-height: 1.7; background-color: #00000010; margin-top: 27px;">
+                    {% if activity.record_status == 'terminated_by_admin' %}
+                        <span class="textB" style="color: #c00000; ">已被管理员驳回</span>
+                        {% if activity.rejected_reasons or activity.rejected_detail %}
+                            <div class="alert alert-danger mt-2">
+                                <div><span class="textLb">驳回原因：</span>{{ activity.rejected_reasons|join:'，' }}</div>
+                                <div><span class="textLb">详细说明：</span>{{ activity.rejected_detail }}</div>
+                            </div>
                         {% endif %}
-                    </div>
+                        {% if activity.is_sender and activity.senders.0.user.id == current_user.id %}
+                            <table class="lddq" style="width:100%; border-collapse:collapse; margin-top: 18px;">
+                                <colgroup>
+                                    <col style="width: 30%;">
+                                    <col style="width: 20%;">
+                                    <col style="width: 30%;">
+                                </colgroup>
+                                <tr>
+                                    <td class="textLb" style="text-align:left;">
+                                        <button type="button" class="downbtn textN" style="margin-top: 18px;" data-receiver="{{ activity.receiver_username|escapejs }}" data-senders="{% for s in activity.senders %}{{ s.user.username|escapejs }}{% if not forloop.last %},{% endif %}{% endfor %}" data-date="{{ activity.date|date:'Y-m-d' }}" data-mode="{{ activity.mode }}" data-anonymous="{{ activity.is_anonymous|lower }}" onclick="resubmitFromButton(this)">重新提交</button>
+                                    </td>
+                                    <td style="text-align:right;"></td>
+                                    <td style="text-align:right;"></td>
+                                </tr>
+                            </table>
+                        {% endif %}
+                    {% endif %}
                 </div>
             </div>
             {% endfor %}
+            <img src="{{ MEDIA_URL }}birthboard/skt.png" alt="skull" style="width: 50px; margin-top: 500px; margin-bottom: 30px;">
+            <div class="textN" style="margin-bottom: 1000px;">世界的尽头 哈哈哈 你也可以再往下翻翻看</div>
         {% else %}
-            <div class="alert alert-info text-center">暂无已结束的投放记录。</div>
+            <img src="{{ MEDIA_URL }}birthboard/skt.png" alt="skull" style="width: 50px; margin-top: 100px; margin-bottom: 30px;">
+            <div class="textN">暂无已结束的投放记录</div>
         {% endif %}
     {% elif active_tab == 'received' %}
         {% if received_activity_list %}
             {% for activity in received_activity_list %}
-            <div class="card mb-4">
-                <div class="card-header">
-                    <strong>投放日期：</strong> {{ activity.date }}
-                    {% if not activity.is_anonymous %}
-                        <span class="ml-3"><strong>送出人：</strong>
-                            {% for user in activity.senders %}{{ user.get_full_name|default:user.username }}{% if not forloop.last %}、{% endif %}{% endfor %}
-                        </span>
-                    {% endif %}
-                    <span class="ml-3"><strong>流程状态：</strong>{% if activity.is_changed %}<strong>{{ activity.record_status }}</strong>{% else %}{{ activity.record_status }}{% endif %}</span>
+            <div class="boardcard" {% if activity.is_changed %} style="background-color: #00000010;"{% endif %}>
+                <div style="margin-bottom: 18px; width: 100%; display:flex; justify-content: space-between; align-items: center;">
+                    <span>
+                        <span class="textN">{{ activity.date|date:"Y" }}&thinsp;年&thinsp;{{ activity.date|date:"n" }}&thinsp;月&thinsp;{{ activity.date|date:"j" }}&thinsp;日{% if activity.end_date %}&thinsp;～&thinsp;{{ activity.end_date|date:"Y" }}&thinsp;年&thinsp;{{ activity.end_date|date:"n" }}&thinsp;月&thinsp;{{ activity.end_date|date:"j" }}&thinsp;日{% endif %}</span>
+                    </span>
+                    <span class="textN">
+                    {% if activity.before_status %}<span class="{{ activity.before_status_class }}">{{ activity.before_status }}</span><span class="textN jt">&emsp;→&emsp;</span>{% endif %}{% if activity.after_status %}<span class="textB {{ activity.after_status_class }}">{{ activity.after_status }}&thinsp;</span>{% endif %}
+                    </span>
                 </div>
-                <div class="card-body">
-                    <div class="mb-3">送你神秘大礼！</div>
-                    {% if activity.record_status == 'terminated' %}
-                        <div class="mt-2 text-secondary">已终止</div>
-                    {% elif activity.record_status == 'canceled' %}
-                        <div class="mt-2 text-secondary">已撤销</div>
-                    {% elif activity.record_status == 'terminated_by_admin' %}
-                        <div class="mt-2 text-danger font-weight-bold">已被管理员驳回</div>
-                        {% if activity.rejected_reasons or activity.rejected_detail %}
-                            <div class="alert alert-danger mt-2">
-                                <div><strong>驳回原因：</strong>
-                                    {% if activity.rejected_reasons %}
-                                        {{ activity.rejected_reasons|join:'，' }}
-                                    {% endif %}
-                                </div>
-                                <div><strong>详细说明：</strong> {{ activity.rejected_detail }}</div>
-                            </div>
-                        {% endif %}
-                    {% elif activity.record_status == 'ready' or activity.record_status == 'ongoing' %}
-                        {% if birthboard_update_in_progress %}
-                            <button type="button" class="btn btn-warning mt-3" disabled>撤销</button>
-                            <div class="text-muted small mt-1">23点45-24点系统同步中，无法操作</div>
-                        {% else %}
-                            <button type="button" class="btn btn-warning mt-3" onclick="showRevokeModal('{{ activity.id }}')" title="撤销此投放活动（不会退款）">撤销</button>
-                        {% endif %}
-                    {% elif activity.receiver_status == 'confirmed' %}
-                        <div class="mt-2 text-success">已确认</div>
-                    {% elif activity.receiver_status == 'rejected' %}
-                        <div class="mt-2 text-danger">已拒绝</div>
-                    {% elif activity.receiver_status == 'wait' %}
-                        <div id="preview-choice-{{ activity.id }}">
-                            <label class="mr-2">是否想过目投放图片？</label>
-                            <button type="button" class="btn btn-outline-primary btn-sm mr-2" onclick="showPreviewConfirmModal('{{ activity.id }}')">想过目</button>
-                            <button type="button" class="btn btn-outline-secondary btn-sm" onclick="showPreviewAndButtons('{{ activity.id }}', false)">不需要</button>
-                        </div>
-                        <div id="preview-confirm-modal-{{ activity.id }}" style="display:none; position:fixed; z-index:9999; left:0; top:0; width:100vw; height:100vh; background:rgba(0,0,0,0.4);">
-                            <div style="background:#fff; max-width:350px; margin:15vh auto; padding:24px 20px; text-align:center;">
-                                <div style="margin-bottom:18px;">真的吗？人家还想给你一个惊喜呢~</div>
-                                <button class="btn btn-primary mr-2" onclick="confirmPreview('{{ activity.id }}')">确认过目</button>
-                                <button class="btn btn-secondary" onclick="cancelPreview('{{ activity.id }}')">算了</button>
-                            </div>
-                        </div>
-                        <div id="preview-img-{{ activity.id }}" style="display:none;">
-                            {% if activity.image %}
-                                <img src="{{ activity.image }}" alt="祝福图片" class="img-fluid mb-3" style="max-width: 400px; cursor: pointer;" onclick="showFullscreenImage(this.src)">
-                            {% endif %}
-                        </div>
-                        <div id="action-btns-{{ activity.id }}" style="display:none;">
-                            <form method="post" class="d-inline-block">
-                                {% csrf_token %}
-                                <input type="hidden" name="tab" value="received">
-                                <input type="hidden" name="record_id" value="{{ activity.id }}">
-                                <button type="submit" class="btn btn-success">确认</button>
-                            </form>
-                            <button type="button" class="btn btn-danger ml-2" onclick="showRejectModal('{{ activity.id }}')">拒绝</button>
-                            {% if activity.image %}
-                                <button type="button" id="preview-btn-{{ activity.id }}" class="btn btn-outline-primary ml-2" onclick="showPreviewConfirmModal('{{ activity.id }}')">想过目</button>
-                            {% endif %}
-                        </div>
-                        <script>
-                        function showPreviewConfirmModal(id) {
-                            document.getElementById('preview-confirm-modal-' + id).style.display = '';
-                        }
-                        function confirmPreview(id) {
-                            document.getElementById('preview-confirm-modal-' + id).style.display = 'none';
-                            showPreviewAndButtons(id, true);
-                        }
-                        function cancelPreview(id) {
-                            document.getElementById('preview-confirm-modal-' + id).style.display = 'none';
-                        }
-                        function showPreviewAndButtons(id, wantPreview) {
-                            document.getElementById('preview-choice-' + id).style.display = 'none';
-                            document.getElementById('preview-img-' + id).style.display = wantPreview ? '' : 'none';
-                            document.getElementById('action-btns-' + id).style.display = '';
-                            if (wantPreview) {
-                                const previewBtn = document.getElementById('preview-btn-' + id);
-                                if (previewBtn) previewBtn.style.display = 'none';
-                            }
-                        }
-                        </script>
+                <img src="{{ MEDIA_URL }}birthboard/bb.png" alt="框" style="height: 140px; width: 740px; z-index: 5; position: relative; pointer-events: none;">
+                <div id="preview-imgs-{{ activity.id }}" style="margin-top: -136px; margin-bottom: 18px; display:none; flex-direction: row; align-items:center; gap:13px; z-index: 1;">
+                    {% if activity.image %}
+                        <img src="{{ activity.thumbnail_url }}" alt="祝福图片" loading="lazy" style="width: 237px; cursor: pointer;" onclick="showFullscreenImage('{{ activity.image }}')">
+                        <img src="{{ activity.thumbnail_url }}" alt="祝福图片" loading="lazy" style="width: 237px; cursor: pointer;" onclick="showFullscreenImage('{{ activity.image }}')">
+                        <img src="{{ activity.thumbnail_url }}" alt="祝福图片" loading="lazy" style="width: 237px; cursor: pointer;" onclick="showFullscreenImage('{{ activity.image }}')">
                     {% endif %}
                 </div>
+                <div id="default-imgs-{{ activity.id }}" style="margin-top: -136px; margin-bottom: 18px; display:flex; flex-direction: row; align-items:center; gap:13px; z-index: 1;">
+                    <img src="{{ MEDIA_URL }}birthboard/default.png" alt="祝福图片" style="width: 237px; height: 135px; cursor: pointer;" onclick="showPreviewConfirmModal('{{ activity.id }}')">
+                    <img src="{{ MEDIA_URL }}birthboard/default.png" alt="祝福图片" style="width: 237px; height: 135px; cursor: pointer;" onclick="showPreviewConfirmModal('{{ activity.id }}')">
+                    <img src="{{ MEDIA_URL }}birthboard/default.png" alt="祝福图片" style="width: 237px; height: 135px; cursor: pointer;" onclick="showPreviewConfirmModal('{{ activity.id }}')">
+                </div>
+                {% if not activity.is_anonymous %}
+                    <table class="lddq" style="width:100%; border-collapse:collapse;">
+                        <colgroup>
+                            <col style="width: 30%;">
+                            <col style="width: 20%;">
+                            <col style="width: 30%;">
+                        </colgroup>
+                        {% for user in activity.senders %}
+                        <tr>
+                            <td class="textLb" style="text-align:left;">{{ user.get_full_name|default:user.username }}</td>
+                            <td style="text-align:right;"></td>
+                            <td style="text-align:right;"></td>
+                        </tr>
+                        {% endfor %}
+                    </table>
+                    <!-- <span class="ml-3">送出人：
+                        {% for user in activity.senders %}{{ user.get_full_name|default:user.username }}{% if not forloop.last %}、{% endif %}{% endfor %}
+                    </span> -->
+                {% else %}
+                    <span class="textN lddq" style="margin-bottom: 18px;">祝福者选择了匿名</span>
+                {% endif %}
+                {% if activity.record_status == 'ready' or activity.record_status == 'ongoing' %}
+                    {% if birthboard_update_in_progress %}
+                        <!-- <button type="button" class="btn btn-warning mt-3" disabled>撤销投放</button> -->
+                        <div class="text-muted small mt-1">23点45-24点系统同步中，无法操作</div>
+                    {% else %}
+
+                    <table class="lddq" style="width:100%; border-collapse:collapse; margin-top: 18px;">
+                        <colgroup>
+                            <col style="width: 30%;">
+                            <col style="width: 20%;">
+                            <col style="width: 30%;">
+                        </colgroup>
+                        <tr>
+                            <td class="textLb" style="text-align:left;">
+                                <button type="button" class="downbtn lddq textN" onclick="showRevokeModal('{{ activity.id }}')" title="撤销此投放活动（不会退款）">撤销投放</button>
+                            </td>
+                            <td style="text-align:right;"></td>
+                            <td style="text-align:right;"></td>
+                        </tr>
+                    </table>
+                        <!-- <button type="button" class="btn btn-warning mt-3" onclick="showRevokeModal('{{ activity.id }}')" title="撤销此投放活动（不会退款）">撤销投放</button> -->
+                    {% endif %}
+                {% elif activity.record_status == 'waiting_approve' %}
+                    {% if birthboard_update_in_progress %}
+                        <div class="text-muted small mt-1">23点45-24点系统同步中，无法操作</div>
+                    {% else %}
+                    <table class="lddq" style="width:100%; border-collapse:collapse; margin-top: 18px;">
+                        <colgroup>
+                            <col style="width: 30%;">
+                            <col style="width: 20%;">
+                            <col style="width: 30%;">
+                        </colgroup>
+                        <tr>
+                            <td class="textLb" style="text-align:left;">
+                                <button type="button" class="downbtn lddq textN" onclick="showAbortModal('{{ activity.id }}')" title="中止此投放活动并退款">中止投放</button>
+                            </td>
+                            <td style="text-align:right;"></td>
+                            <td style="text-align:right;"></td>
+                        </tr>
+                    </table>
+                    {% endif %}
+                {% elif activity.receiver_status == 'rejected' %}
+                    <div class="mt-2 text-danger">已拒绝</div>
+                {% elif activity.receiver_status == 'wait' %}
+                    <table class="lddq" style="width:100%; border-collapse:collapse; margin-top: 18px;">
+                        <colgroup>
+                            <col style="width: 30%;">
+                            <col style="width: 20%;">
+                            <col style="width: 30%;">
+                        </colgroup>
+                        <tr>
+                            <td class="textLb" style="text-align:left;">
+                                <form method="post" class="d-inline-block">
+                                    {% csrf_token %}
+                                    <input type="hidden" name="tab" value="received">
+                                    <input type="hidden" name="record_id" value="{{ activity.id }}">
+                                    <button type="submit" class="downbtn textN">接收灯牌</button>
+                                </form>
+                            </td>
+                            <td style="text-align:right;"></td>
+                            <td style="text-align:right;">
+                                <button type="button" class="downbtn textN" onclick="showRejectModal('{{ activity.id }}')">拒绝灯牌</button>
+                            </td>
+                        </tr>
+                    </table>
+                    
+                {% endif %}
+                <div id="preview-confirm-modal-{{ activity.id }}" style="display:none; position:fixed; z-index:9999; left:0; top:0; width:100vw; height:100vh; background:rgba(0,0,0,0.4);">
+                    <div style="background:#fff; max-width:350px; margin:15vh auto; padding:24px 20px; text-align:center;">
+                        <div style="margin-bottom:18px;">真的吗？人家还想给你一个惊喜呢~</div>
+                        <button class="btn btn-primary mr-2" onclick="confirmPreview('{{ activity.id }}')">确认过目</button>
+                        <button class="btn btn-secondary" onclick="cancelPreview('{{ activity.id }}')">算了</button>
+                    </div>
+                </div>
+                <script>
+                    function showPreviewConfirmModal(id) {
+                        document.getElementById('preview-confirm-modal-' + id).style.display = '';
+                    }
+                    function confirmPreview(id) {
+                        document.getElementById('preview-confirm-modal-' + id).style.display = 'none';
+                        showPreviewAndButtons(id, true);
+                    }
+                    function cancelPreview(id) {
+                        document.getElementById('preview-confirm-modal-' + id).style.display = 'none';
+                    }
+                    function showPreviewAndButtons(id, wantPreview) {
+                        document.getElementById('default-imgs-' + id).style.display = wantPreview ? 'none' : 'flex';
+                        document.getElementById('preview-imgs-' + id).style.display = wantPreview ? 'flex' : 'none';
+                    }
+                </script>
             </div>
             {% endfor %}
+            <img src="{{ MEDIA_URL }}birthboard/skt.png" alt="skull" style="width: 50px; margin-top: 500px; margin-bottom: 30px;">
+            <div class="textN" style="margin-bottom: 1000px;">世界的尽头 哈哈哈 你也可以再往下翻翻看</div>
             <div id="rejectModal" class="modal" tabindex="-1" style="display:none; position:fixed; z-index:1050; left:0; top:0; width:100vw; height:100vh; background:rgba(0,0,0,0.4);">
                 <div class="modal-dialog" style="margin:10vh auto; max-width:400px;">
                     <div class="modal-content">
@@ -192,9 +461,17 @@
                     <button type="button" data-action="confirm">确定撤销</button>
                 </div>
             </div>
+            <div id="abortModal" style="display:none; position:fixed; z-index:9999; left:0; top:0; width:100vw; height:100vh; background:rgba(0,0,0,0.4);">
+                <div style="background:#fff; max-width:350px; margin:15vh auto; padding:24px 20px; text-align:center;">
+                    <div style="margin-bottom:18px;">确定要中止投放并退款吗？此操作不可撤销。</div>
+                    <button type="button" data-action="cancel" style="margin-right:18px;">取消</button>
+                    <button type="button" data-action="confirm">确定中止</button>
+                </div>
+            </div>
             <script>
             const receivedTab = 'received';
             let receivedPendingRevokeRecordId = null;
+            let receivedPendingAbortRecordId = null;
 
             function showRejectModal(id) {
                 document.getElementById('reject_id_input').value = id;
@@ -205,9 +482,32 @@
             }
             const receivedRejectModal = document.getElementById('rejectModal');
             const receivedRevokeModal = document.getElementById('revokeModal');
+            const receivedAbortModal = document.getElementById('abortModal');
 
             receivedRejectModal.addEventListener('click', function(e) {
                 if (e.target === this || e.target.dataset.action === 'cancel') hideRejectModal();
+            });
+
+            function showAbortModal(recordId) {
+                receivedPendingAbortRecordId = recordId;
+                document.getElementById('abortModal').style.display = 'block';
+            }
+            function hideAbortModal() {
+                document.getElementById('abortModal').style.display = 'none';
+                receivedPendingAbortRecordId = null;
+            }
+            receivedAbortModal.addEventListener('click', function(e) {
+                if (e.target === this || e.target.dataset.action === 'cancel') {
+                    hideAbortModal();
+                    return;
+                }
+                if (e.target.dataset.action === 'confirm' && receivedPendingAbortRecordId) {
+                    const form = document.createElement('form');
+                    form.method = 'post';
+                    form.innerHTML = '<input type="hidden" name="tab" value="participation"><input type="hidden" name="abort_id" value="' + receivedPendingAbortRecordId + '"><input type="hidden" name="csrfmiddlewaretoken" value="' + getCookie('csrftoken') + '">';
+                    document.body.appendChild(form);
+                    form.submit();
+                }
             });
 
             function showRevokeModal(recordId) {
@@ -247,98 +547,127 @@
             }
             </script>
         {% else %}
-            <div class="alert alert-info text-center">暂无待你确认的祝福。</div>
+        <div style="margin-bottom: 300px;">
+            <img src="{{ MEDIA_URL }}birthboard/blt.png" alt="balloon" style="width: 40px; margin-bottom: 30px;">
+            <div class="textN">暂无待你确认的祝福</div>
+        </div>
         {% endif %}
     {% else %}
         {% if participation_activity_list %}
             {% for activity in participation_activity_list %}
-            <div class="card mb-4">
-                <div class="card-header">
-                    <strong>投放日期：</strong> {{ activity.date }}
-                    <span class="ml-3"><strong>被祝福人：</strong>{{ activity.receiver_name }}</span>
-                    <span class="ml-3"><strong>元气值开销：</strong>{{ activity.per_cost }}</span>
-                    <span class="ml-3"><strong>匿名：</strong>{% if activity.is_anonymous %}是{% else %}否{% endif %}</span>
-                    <span class="ml-3"><strong>投放方式：</strong>{{ activity.mode }}</span>
-                    <span class="ml-3"><strong>流程状态：</strong>{% if activity.is_changed %}<strong>{{ activity.record_status }}</strong>{% else %}{{ activity.record_status }}{% endif %}</span>
+            <div class="boardcard" {% if activity.is_changed %} style="background-color: #00000010;"{% endif %}>
+                <div style="margin-bottom: 18px; width: 100%; display:flex; justify-content: space-between; align-items: center;">
+                    <span>
+                        <span class="textLb">送给{{ activity.receiver_name }}</span>&emsp;
+                        <span class="textN">{{ activity.date|date:"Y" }}&thinsp;年&thinsp;{{ activity.date|date:"n" }}&thinsp;月&thinsp;{{ activity.date|date:"j" }}&thinsp;日{% if activity.end_date %}&thinsp;～&thinsp;{{ activity.end_date|date:"Y" }}&thinsp;年&thinsp;{{ activity.end_date|date:"n" }}&thinsp;月&thinsp;{{ activity.end_date|date:"j" }}&thinsp;日{% endif %}</span>
+                    </span>
+                    <span class="textN">
+                    {% if activity.before_status %}<span class="{{ activity.before_status_class }}">{{ activity.before_status }}</span><span class="textN jt">&emsp;→&emsp;</span>{% endif %}{% if activity.after_status %}<span class="textB {{ activity.after_status_class }}">{{ activity.after_status }}&thinsp;</span>{% endif %}
+                    </span>
                 </div>
-                <div class="card-body">
-                    {% if activity.image %}
-                    <img src="{{ activity.image }}" alt="祝福图片" class="img-fluid mb-3" style="max-width: 400px; cursor: pointer;" onclick="showFullscreenImage(this.src)">
-                    {% endif %}
-                    {% if not activity.terminated and activity.record_status != 'canceled' %}
-                    <h5>参与送出人：</h5>
-                    <ul class="list-group">
-                        {% for sender in activity.senders %}
-                        <li class="list-group-item d-flex justify-content-between align-items-center">
-                            {{ sender.user.get_full_name|default:sender.user.username }}
-                            {% if sender.user.id in activity.paid_ids %}
-                            <span class="badge badge-info">已支付</span>
-                            {% elif sender.user.id in activity.confirmed_ids %}
-                            <span class="badge badge-success">已确认</span>
-                            {% else %}
-                            <span class="badge badge-warning">待确认</span>
-                            {% endif %}
-                        </li>
-                        {% endfor %}
-                    </ul>
-                    {% endif %}
-                    {% if activity.terminated or activity.record_status == 'canceled' %}
-                        <div class="mt-3 text-danger font-weight-bold">已终止</div>
-                    {% elif activity.terminated_by_admin %}
-                        <div class="mt-3 text-danger font-weight-bold">已被管理员驳回</div>
-                        {% if activity.rejected_reasons or activity.rejected_detail %}
-                            <div class="alert alert-danger mt-2">
-                                <div><strong>驳回原因：</strong>
-                                    {% if activity.rejected_reasons %}
-                                        {{ activity.rejected_reasons|join:'，' }}
-                                    {% endif %}
-                                </div>
-                                <div><strong>详细说明：</strong> {{ activity.rejected_detail }}</div>
-                            </div>
-                        {% endif %}
-                        {% if activity.senders.0.user.id == current_user.id %}
-                            <form method="post" action="{% url 'birthboard_confirm' %}" style="display:inline;">
-                                {% csrf_token %}
-                                <input type="hidden" name="tab" value="participation">
-                                <input type="hidden" name="resubmit_id" value="{{ activity.id }}">
-                                <button type="submit" class="btn btn-primary">重新提交</button>
-                            </form>
-                        {% endif %}
-                    {% elif activity.is_rejected %}
-                        <div class="mt-3 text-danger font-weight-bold">已拒绝</div>
-                    {% elif activity.record_status == 'ready' or activity.record_status == 'ongoing' %}
-                        {% if birthboard_update_in_progress %}
-                            <button type="button" class="btn btn-warning mt-3" disabled>撤销</button>
-                            <div class="text-muted small mt-1">23点45-24点系统同步中，无法操作</div>
+                <img src="{{ MEDIA_URL }}birthboard/bb.png" alt="框" style="height: 140px; width: 740px; z-index: 5; position: relative; pointer-events: none;">
+                {% if activity.image %}
+                <div style="margin-top: -136px; margin-bottom: 18px; display:flex; flex-direction: row; align-items:center; gap:13px; z-index: 1;">
+                    <img src="{{ activity.thumbnail_url }}" alt="祝福图片" loading="lazy" style="width: 237px; cursor: pointer;" onclick="showFullscreenImage('{{ activity.image }}')">
+                    <img src="{{ activity.thumbnail_url }}" alt="祝福图片" loading="lazy" style="width: 237px; cursor: pointer;" onclick="showFullscreenImage('{{ activity.image }}')">
+                    <img src="{{ activity.thumbnail_url }}" alt="祝福图片" loading="lazy" style="width: 237px; cursor: pointer;" onclick="showFullscreenImage('{{ activity.image }}')">
+                </div>
+                {% endif %}
+                <div  class="lddq textN" style="margin-bottom: 9px;">
+                    <span class="textLb">发起人</span>&thinsp;{{ activity.senders.0.user.get_full_name|default:activity.senders.0.user.username }}&thinsp;<span class="textLb">人均元气值</span>&thinsp;{{ activity.per_cost }}&thinsp;<span class="textLb">{% if activity.is_anonymous %}匿名{% else %}实名{% endif %}</span>
+                </div>
+                <table class="lddq" style="width:100%; border-collapse:collapse; margin-bottom: 18px;">
+                    <colgroup>
+                        <col style="width: 30%;">
+                        <col style="width: 20%;">
+                        <col style="width: 30%;">
+                    </colgroup>
+                    {% for sender in activity.senders %}
+                    <tr>
+                        <td class="textLb" style="text-align:left;">{{ sender.user.get_full_name|default:sender.user.username }}</td>
+                        <td style="text-align:right;"></td>
+                        <td style="text-align:right;">
+                        {% if sender.user.id in activity.paid_ids %}
+                        <span class="textN">已支付</span>
                         {% else %}
-                            <button type="button" class="btn btn-warning mt-3" onclick="showRevokeModal('{{ activity.id }}')" title="撤销此投放活动（不会退款）">撤销</button>
+                        <span class="textN">待确认</span>
                         {% endif %}
-                    {% elif activity.is_initiator and not activity.terminated and not activity.terminated_by_admin %}
-                        <button type="button" class="btn btn-danger mt-3" onclick="showAbortModal('{{ activity.id }}')" title="中止投放并退款">中止投放</button>
-                    {% elif activity.has_paid %}
-                        <div class="mt-3 text-info font-weight-bold">你已支付</div>
-                    {% elif not activity.has_confirmed %}
-                        <form method="post" class="mt-3 d-inline" id="confirm-form-{{ activity.id }}">
-                            {% csrf_token %}
-                            <input type="hidden" name="tab" value="participation">
-                            <input type="hidden" name="record_id" value="{{ activity.id }}">
-                            <button type="button" class="btn btn-primary" onclick="checkBalanceBeforeConfirm('{{ activity.id }}')">确认</button>
-                        </form>
-                        <button type="button" class="btn btn-danger ml-2 mt-3 d-inline" onclick="showRejectModal('{{ activity.id }}')">拒绝</button>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </table>
+                {% if activity.is_rejected %}
+                    <div class="mt-3 text-danger font-weight-bold">已拒绝</div>
+                {% elif activity.record_status == 'ready' or activity.record_status == 'ongoing' %}
+                    {% if birthboard_update_in_progress %}
+                        <div class="lddq textB">23点45-24点系统同步中，无法操作</div>
                     {% else %}
-                        <div class="mt-3 text-success">你已确认</div>
+                    <table class="lddq" style="width:100%; border-collapse:collapse; margin-top: 18px;">
+                        <colgroup>
+                            <col style="width: 30%;">
+                            <col style="width: 20%;">
+                            <col style="width: 30%;">
+                        </colgroup>
+                        <tr>
+                            <td class="textLb" style="text-align:left;">
+                                <button type="button" class="downbtn lddq textN" onclick="showRevokeModal('{{ activity.id }}')" title="撤销此投放活动（不会退款）">撤销投放</button>
+                            </td>
+                            <td style="text-align:right;"></td>
+                            <td style="text-align:right;"></td>
+                        </tr>
+                    </table>
+                        
                     {% endif %}
-                    {% if activity.waiting_accept %}
-                    <div class="mt-2 alert alert-warning">等待{{ activity.waiting_accept_name }}确认中。</div>
-                    {% endif %}
-                    {% if activity.is_charged %}
-                    <div class="mt-2 text-info">已扣款</div>
-                    {% endif %}
-                </div>
+                {% elif activity.is_initiator %}
+                    <table class="lddq" style="width:100%; border-collapse:collapse; margin-top: 18px;">
+                        <colgroup>
+                            <col style="width: 30%;">
+                            <col style="width: 20%;">
+                            <col style="width: 30%;">
+                        </colgroup>
+                        <tr>
+                            <td class="textLb" style="text-align:left;">
+                                <button type="button" class="downbtn textN lddq" onclick="showAbortModal('{{ activity.id }}')" title="中止投放并退款">中止投放</button>
+                            </td>
+                            <td style="text-align:right;"></td>
+                            <td style="text-align:right;"></td>
+                        </tr>
+                    </table>
+                    
+                {% elif activity.has_paid %}
+                {% else %}
+                    <table class="lddq" style="width:100%; border-collapse:collapse; margin-top: 18px;">
+                        <colgroup>
+                            <col style="width: 30%;">
+                            <col style="width: 20%;">
+                            <col style="width: 30%;">
+                        </colgroup>
+                        <tr>
+                            <td class="textLb" style="text-align:left;">
+                                <form method="post" class="mt-3 d-inline" id="confirm-form-{{ activity.id }}">
+                                    <input type="hidden" name="tab" value="participation">
+                                    <input type="hidden" name="record_id" value="{{ activity.id }}">
+                                    <button type="button" class="downbtn textN" style="width: 100%;" onclick="checkBalanceBeforeConfirm('{{ activity.id }}')">确认扣款</button>
+                                </form>
+                            </td>
+                            <td style="text-align:right;"></td>
+                            <td style="text-align:right;">
+                                <button type="button" class="downbtn textN" style="width: 100%;" onclick="showRejectModal('{{ activity.id }}')">拒绝邀请</button>
+                            </td>
+                        </tr>
+                    </table>
+                        
+                        
+                {% endif %}
             </div>
             {% endfor %}
+            <img src="{{ MEDIA_URL }}birthboard/skt.png" alt="skull" style="width: 50px; margin-top: 500px; margin-bottom: 30px;">
+            <div class="textN" style="margin-bottom: 1000px;">世界的尽头 哈哈哈 你也可以再往下翻翻看</div>
         {% else %}
-            <div class="alert alert-info text-center">暂无你参与的祝福投放记录。</div>
+        <div style="margin-bottom: 300px;">
+            <img src="{{ MEDIA_URL }}birthboard/lob.png" alt="boy" style="width: 40px; margin-top: 100px; margin-bottom: 20px;">
+            <div class="textN">暂无你参与的祝福投放记录</div>
+        </div>
         {% endif %}
 
         <div id="revokeModal" style="display:none; position:fixed; z-index:9999; left:0; top:0; width:100vw; height:100vh; background:rgba(0,0,0,0.4);">
@@ -514,19 +843,198 @@
         </div>
     </div>
     <script>
-    function showFullscreenImage(imageSrc) {
-        document.getElementById('fullscreenImageContent').src = imageSrc;
-        document.getElementById('fullscreenImageModal').style.display = 'block';
-    }
-    function hideFullscreenImage() {
-        document.getElementById('fullscreenImageModal').style.display = 'none';
-    }
-    document.getElementById('fullscreenImageModal').addEventListener('click', function(e) {
-        if (e.target === this) hideFullscreenImage();
-    });
+        function setScale() {
+            const designWidth = 1000;  // 设计稿宽度
+            const currentWidth = window.innerWidth;
+            const scale = currentWidth / designWidth;
+            
+            document.body.style.transform = `scale(${scale})`;
+            document.body.style.transformOrigin = 'top left';
+            document.body.style.width = `${100 / scale}%`;
+        }
+
+        // 初始执行
+        setScale();
+
+        // 窗口变化时重新计算
+        window.addEventListener('resize', setScale);
+        function showFullscreenImage(imageSrc) {
+            document.getElementById('fullscreenImageContent').src = imageSrc;
+            document.getElementById('fullscreenImageModal').style.display = 'block';
+        }
+        function hideFullscreenImage() {
+            document.getElementById('fullscreenImageModal').style.display = 'none';
+        }
+        document.getElementById('fullscreenImageModal').addEventListener('click', function(e) {
+            if (e.target === this) hideFullscreenImage();
+        });
     </script>
 
-    <div class="mt-4 text-center">
+    <!-- <div class="mt-4 text-center">
         <a href="/birthboard/" class="btn btn-secondary">返回</a>
-    </div>
+    </div> -->
 </div>
+
+{% if not is_standalone %}<script>
+// 嵌入 iframe 时，弹窗通过 postMessage 委托给父页面
+(function() {
+    if (window.parent === window) return; // 非 iframe 模式，不覆盖
+
+    var activeTab = '{{ active_tab|escapejs }}';
+
+    // 覆盖弹窗函数 → postMessage
+    window.showRejectModal = function(id) {
+        window.parent.postMessage({type:'showReject', recordId:id, tab:activeTab}, '*');
+    };
+    window.showRevokeModal = function(id) {
+        window.parent.postMessage({type:'showRevoke', recordId:id, tab:activeTab}, '*');
+    };
+    window.showAbortModal = function(id) {
+        window.parent.postMessage({type:'showAbort', recordId:id}, '*');
+    };
+    window.showFullscreenImage = function(src) {
+        window.parent.postMessage({type:'showFullscreen', src:src}, '*');
+    };
+    window.showPreviewConfirmModal = function(id) {
+        window.parent.postMessage({type:'showPreviewConfirm', recordId:id}, '*');
+    };
+
+    // 重新提交：从按钮 data 属性读取数据，通知父页面
+    window.resubmitFromButton = function(button) {
+        var receiver = button.getAttribute('data-receiver');
+        var senders = button.getAttribute('data-senders').split(',').filter(function(s) { return s.length > 0; });
+        var date = button.getAttribute('data-date');
+        var mode = parseInt(button.getAttribute('data-mode')) || 0;
+        var isAnonymous = button.getAttribute('data-anonymous') === 'true';
+        window.parent.postMessage({
+            type: 'resubmitBirthboard',
+            receiver: receiver,
+            senders: senders,
+            date: date,
+            mode: mode,
+            is_anonymous: isAnonymous
+        }, '*');
+    };
+
+    // 覆盖余额检查 → postMessage
+    var origCheckBalance = window.checkBalanceBeforeConfirm;
+    if (typeof origCheckBalance === 'function') {
+        window.checkBalanceBeforeConfirm = function(recordId) {
+            var csrf = getCookie('csrftoken') || '';
+            fetch('/birthboard/api/check_yqpoint/', {
+                method: 'POST',
+                headers: {'Content-Type':'application/json','X-CSRFToken':csrf},
+                body: JSON.stringify({senders:[currentUsername], record_id:recordId})
+            }).then(function(r){return r.json()}).then(function(data){
+                if (!data.ok || !data.result || !data.result[currentUsername]) {
+                    window.parent.postMessage({type:'showInsufficientBalance', balance:0}, '*');
+                    return;
+                }
+                var info = data.result[currentUsername];
+                if (!info.enough) {
+                    window.parent.postMessage({type:'showInsufficientBalance', balance:info.balance}, '*');
+                    return;
+                }
+                window.parent.postMessage({type:'showConfirmCharge', recordId:recordId}, '*');
+            }).catch(function(){
+                window.parent.postMessage({type:'showInsufficientBalance', balance:0}, '*');
+            });
+        };
+    }
+
+    // 监听父页面的确认消息
+    window.addEventListener('message', function(e) {
+        var d = e.data;
+        if (!d || !d.type) return;
+
+        var csrf = getCookie('csrftoken') || '';
+        var form;
+
+        switch(d.type) {
+            case 'rejectConfirmed':
+                window.parent.postMessage({type:'refresh-count'}, '*');
+                form = document.createElement('form');
+                form.method = 'post';
+                form.action = '{% url "birthboard_confirm" %}';
+                form.innerHTML = '<input type="hidden" name="csrfmiddlewaretoken" value="'+csrf+'"><input type="hidden" name="tab" value="'+d.tab+'"><input type="hidden" name="reject_id" value="'+d.recordId+'">';
+                document.body.appendChild(form);
+                form.submit();
+                break;
+            case 'revokeConfirmed':
+                window.parent.postMessage({type:'refresh-count'}, '*');
+                form = document.createElement('form');
+                form.method = 'post';
+                form.action = '{% url "birthboard_confirm" %}';
+                form.innerHTML = '<input type="hidden" name="csrfmiddlewaretoken" value="'+csrf+'"><input type="hidden" name="tab" value="'+d.tab+'"><input type="hidden" name="revoke_id" value="'+d.recordId+'">';
+                document.body.appendChild(form);
+                form.submit();
+                break;
+            case 'abortConfirmed':
+                window.parent.postMessage({type:'refresh-count'}, '*');
+                form = document.createElement('form');
+                form.method = 'post';
+                form.action = '{% url "birthboard_confirm" %}';
+                form.innerHTML = '<input type="hidden" name="csrfmiddlewaretoken" value="'+csrf+'"><input type="hidden" name="tab" value="participation"><input type="hidden" name="abort_id" value="'+d.recordId+'">';
+                document.body.appendChild(form);
+                form.submit();
+                break;
+            case 'confirmChargeConfirmed':
+                window.parent.postMessage({type:'refresh-count'}, '*');
+                var confirmForm = document.getElementById('confirm-form-' + d.recordId);
+                if (confirmForm) confirmForm.submit();
+                break;
+            case 'previewConfirmed':
+                document.getElementById('preview-confirm-modal-' + d.recordId).style.display = 'none';
+                showPreviewAndButtons(d.recordId, true);
+                break;
+            case 'previewCancelled':
+                document.getElementById('preview-confirm-modal-' + d.recordId).style.display = 'none';
+                break;
+        }
+    });
+
+    function getCookie(name) {
+        var v = document.cookie.match('(^|;)\\s*'+name+'\\s*=\\s*([^;]+)');
+        return v ? v.pop() : '';
+    }
+
+    // 通知父页面调整 iframe 高度（使用 scale 后的视觉高度）
+    var resizeRaf = null;
+    function notifyResize() {
+        resizeRaf = null;
+        var h = document.body.getBoundingClientRect().height;
+        if (window.parent && window.parent !== window) {
+            window.parent.postMessage({type: 'resize-iframe', height: h}, '*');
+        }
+    }
+    function scheduleResize() {
+        if (resizeRaf !== null) return;
+        resizeRaf = window.requestAnimationFrame(notifyResize);
+    }
+    // 页面加载后立即发送
+    if (document.readyState === 'complete') {
+        scheduleResize();
+    } else {
+        window.addEventListener('load', scheduleResize);
+    }
+    // 视口尺寸变化会导致内容重新换行，必须重新测量
+    window.addEventListener('resize', scheduleResize);
+    // 图片加载后重新发送（图片可能延迟加载改变高度）
+    document.querySelectorAll('img').forEach(function(img) {
+        img.addEventListener('load', scheduleResize);
+        img.addEventListener('error', scheduleResize);
+    });
+    // DOM 或布局变化时也重新检测（兜底）
+    var resizeObserver = new ResizeObserver(function() {
+        scheduleResize();
+    });
+    resizeObserver.observe(document.body);
+    resizeObserver.observe(document.documentElement);
+    var mutationObserver = new MutationObserver(function() {
+        scheduleResize();
+    });
+    mutationObserver.observe(document.body, {childList: true, subtree: true, attributes: true, characterData: true});
+})();
+</script>{% endif %}
+</body>
+</html>

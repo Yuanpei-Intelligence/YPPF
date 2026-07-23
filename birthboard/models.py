@@ -1,3 +1,5 @@
+from datetime import datetime
+
 from django.db import models
 from generic.models import User
 
@@ -6,6 +8,8 @@ __all__ = [
     'BirthboardRecord',
     'ChangeRecord',
     'BirthboardParticipant',
+    'BirthboardContract',
+    'BirthboardConfirmSeen',
 ]
 
 # Create your models here.
@@ -17,6 +21,7 @@ class BirthboardRecord(models.Model):
     mode = models.IntegerField()
     per_cost = models.IntegerField()
     image = models.ImageField(upload_to='birthboard_images/')
+    thumbnail = models.ImageField(upload_to='birthboard_thumbnails/', null=True, blank=True)
     is_anonymous = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
     class Status(models.TextChoices):
@@ -148,6 +153,38 @@ class BirthboardApprover(models.Model):
 
     def __str__(self):
         return f"审核员: {self.user.get_full_name() or self.user.username} ({'有效' if self.is_active else '禁用'})"
+
+# 用户协议签署记录
+class BirthboardContract(models.Model):
+    user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='birthboard_contract')
+    signed = models.BooleanField('已签署', default=False)
+    signed_at = models.DateTimeField('签署时间', null=True, blank=True)
+
+    def __str__(self):
+        return f"{self.user.username} contract={'✓' if self.signed else '✗'}"
+
+# 确认页面已读时间记录（持久化到DB，跨浏览器同步）
+class BirthboardConfirmSeen(models.Model):
+    user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='birthboard_confirm_seen')
+    participation_seen = models.DateTimeField(default=datetime.fromtimestamp(0))
+    received_seen = models.DateTimeField(default=datetime.fromtimestamp(0))
+    finished_seen = models.DateTimeField(default=datetime.fromtimestamp(0))
+
+    def __str__(self):
+        return f"{self.user.username} confirm_seen"
+
+    @classmethod
+    def get_seen_dt(cls, user, tab: str):
+        """获取用户某tab的最后查看时间，无记录则返回epoch"""
+        obj, _ = cls.objects.get_or_create(user=user)
+        return getattr(obj, f'{tab}_seen', datetime.fromtimestamp(0))
+
+    @classmethod
+    def mark_seen(cls, user, tab: str):
+        """标记用户某tab为已读（设为当前时间）"""
+        obj, _ = cls.objects.get_or_create(user=user)
+        setattr(obj, f'{tab}_seen', datetime.now())
+        obj.save()
 
 # 工具函数：录入指定用户为审核员（可用于shell或临时脚本）
 def add_birthboard_approver_by_username(username):

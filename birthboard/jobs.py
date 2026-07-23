@@ -1,5 +1,4 @@
 from datetime import timedelta, datetime
-import logging
 import os
 
 from django.db import transaction
@@ -7,17 +6,22 @@ from django.utils import timezone
 from django.core.cache import cache
 from django.conf import settings
 
-from birthboard.web_controller import open_and_login, _run_update_cycle
+from record.log.utils import get_logger as bb_get_logger
 
 from birthboard.models import BirthboardRecord, BirthboardParticipant, ChangeRecord
 from generic.models import YQPointRecord, User
 from scheduler.periodic import periodical
 
-from playwright.sync_api import sync_playwright
+from birthboard.notify import (
+    notify_waiting_reminder,
+    notify_auto_reject_refund,
+    notify_broadcast_starting_tomorrow,
+    notify_broadcast_started,
+    notify_broadcast_ended,
+    notify_broadcast_ending_soon,
+)
 
-from boot.config import shihannet
-
-logger = logging.getLogger(__name__)
+logger = bb_get_logger(__name__)
 
 _BB_UPDATE_LOCK_KEY = "birthboard:update_in_progress"
 
@@ -98,66 +102,8 @@ def _today_local_date():
 
 
 def _send_waiting_reminder(participant: BirthboardParticipant):
-    """Send reminder via the existing enterprise-WeChat channel.
-
-    Note: current codebase has no SMS gateway utility; this uses the existing
-    message channel that is already integrated in project.
-    """
-    record = participant.record
-    # logger.debug(
-    #     "[birthboard.jobs] _send_waiting_reminder: participant_id=%s user=%s role=%s record_id=%s record_status=%s record_date=%s",
-    #     participant.id,
-    #     participant.user.username,
-    #     participant.role,
-    #     record.id,
-    #     record.status,
-    #     record.date,
-    # )
-    if participant.role == BirthboardParticipant.Role.SENDER:
-        title = "生日祝福待确认提醒"
-        content = (
-            f"你参与的生日祝福投放（寿星：{record.receiver_name}，投放日期：{record.date}）"
-            "距投放还有3天，当前仍待你确认，请尽快处理。"
-        )
-        url = "/birthboard/confirm?tab=participation"
-    else:
-        title = "生日祝福待确认提醒"
-        content = (
-            f"你收到的生日祝福投放（投放日期：{record.date}）"
-            "距投放还有3天，当前仍待你确认，请尽快处理。"
-        )
-        url = "/birthboard/confirm?tab=received"
-
-    try:
-        from extern.wechat import send_wechat
-
-        # logger.debug(
-        #     "[birthboard.jobs] _send_waiting_reminder: sending wechat user=%s title=%s url=%s",
-        #     participant.user.username,
-        #     title,
-        #     url,
-        # )
-        send_wechat(
-            [participant.user.username],
-            title,
-            content,
-            url=url,
-            btntxt="去处理",
-        )
-        logger.info(
-            "[birthboard.jobs] _send_waiting_reminder: sent user=%s participant_id=%s record_id=%s",
-            participant.user.username,
-            participant.id,
-            record.id,
-        )
-    except Exception:
-        # Keep the scheduled task resilient; failures are non-blocking.
-        logger.exception(
-            "[birthboard.jobs] _send_waiting_reminder: failed user=%s participant_id=%s record_id=%s",
-            participant.user.username,
-            participant.id,
-            record.id,
-        )
+    """Send reminder via the existing enterprise-WeChat channel."""
+    notify_waiting_reminder(participant)
 
 
 @transaction.atomic
@@ -179,6 +125,7 @@ def _refund_paid_participants_and_terminate(record: BirthboardRecord):
     #     len(paid_parts),
     #     record.id,
     # )
+    paid_users = {}
     if paid_parts:
         paid_user_ids = [p.user_id for p in paid_parts]
         paid_users = {
@@ -224,6 +171,7 @@ def _refund_paid_participants_and_terminate(record: BirthboardRecord):
         record.id,
         record.status,
     )
+    notify_auto_reject_refund(record, paid_users)
 
 
 @periodical(
@@ -394,12 +342,23 @@ def birthboard_nightly_update_2345():
     target_date = today + timedelta(days=1)
     logger.info("[birthboard.jobs] nightly_update_2345: start target_date=%s", target_date)
 
+    # lazy imports for playright-dependent modules
+    from playwright.sync_api import sync_playwright
+    from birthboard.web_controller import open_and_login, _run_update_cycle
+    from boot.config import shihannet
+
     to_start = []
     to_stop = []
 
     # Acquire lock (cache key) to notify views
     _set_update_lock(True)
     try:
+        tomorrow_records = BirthboardRecord.objects.filter(
+            status=BirthboardRecord.Status.READY, date=target_date
+        )
+        for rec in tomorrow_records:
+            notify_broadcast_starting_tomorrow(rec, target_date)
+
         # START: READY -> ONGOING
         with transaction.atomic():
             starts = list(
@@ -420,6 +379,7 @@ def birthboard_nightly_update_2345():
                     after_status=rec.status,
                     detail={"scope": "nightly_start", "date": str(target_date)},
                 )
+                notify_broadcast_started(rec)
                 img_path = _get_abs_image_path(rec.image)
                 if img_path:
                     to_start.append(img_path)
@@ -446,9 +406,12 @@ def birthboard_nightly_update_2345():
                         after_status=rec.status,
                         detail={"scope": "nightly_finish", "date": str(target_date), "duration_days": dur},
                     )
+                    notify_broadcast_ended(rec, end_date)
                     img_path = _get_abs_image_path(rec.image)
                     if img_path:
                         to_stop.append(img_path)
+                elif dur > 1 and end_date - timedelta(days=1) == target_date:
+                    notify_broadcast_ending_soon(rec, end_date)
 
         # After commits, call update_list for each path (do not roll back on update_list failure)
         try:

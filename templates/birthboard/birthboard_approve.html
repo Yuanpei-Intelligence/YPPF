@@ -1,141 +1,998 @@
 {% load static %}
+<!doctype html>
+<html lang="zh-CN">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>生日祝福投放审核</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=ZCOOL+XiaoWei&display=swap');
+
+        body {
+            margin: 0;
+            min-width: 1200px;
+            min-height: 100vh;
+            overflow-y: auto;
+            overflow-x: hidden;
+            background: url('{{ MEDIA_URL }}birthboard/background.jpeg') no-repeat top center / 100vw auto;
+            background-color: #ffffff;
+        }
+
+        .container {
+            text-align: center;
+            width: min(100%, 1440px);
+            margin: 0 auto;
+            padding: clamp(16px, 3vw, 32px) clamp(12px, 2vw, 24px) clamp(20px, 4vw, 40px);
+            /* background: rgba(255, 255, 255, 0.18); */
+            min-height: 100vh;
+            box-sizing: border-box;
+        }
+
+        .title-block {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: clamp(8px, 1.5vw, 12px);
+            margin-bottom: clamp(16px, 3vw, 28px);
+        }
+
+        .title-strip {
+            display: flex;
+            justify-content: center;
+            gap: clamp(8px, 1.5vw, 18px);
+            flex-wrap: wrap;
+        }
+
+        .title-subtitle {
+            margin-top: 2rem;
+            font-size: clamp(24px, 4.2vw, 48px);
+            font-weight: 700;
+            font-family: "ZCOOL XiaoWei", "LiSu", "STLiSu", "Hannotate SC", "KaiTi", serif;
+            color: #ff3b30;
+            text-shadow:
+                0 0 8px rgba(255, 59, 48, 0.95),
+                0 0 18px rgba(255, 215, 0, 0.65),
+                0 0 28px rgba(0, 122, 255, 0.45),
+                0 0 20px rgba(67, 233, 123, 0.65),
+                0 5px 0 rgba(0, 0, 0, 0.65);
+            animation: title-led 0.42s steps(1, end) infinite;
+        }
+
+        @keyframes title-led {
+            0%, 100% {
+                color: #ff3b30;
+                text-shadow:
+                    0 0 8px rgba(255, 59, 48, 0.95),
+                    0 0 18px rgba(255, 215, 0, 0.65),
+                    0 0 28px rgba(0, 122, 255, 0.45),
+                    0 0 20px rgba(67, 233, 123, 0.65),
+                    0 5px 0 rgba(0, 0, 0, 0.65);
+            }
+            25% {
+                color: #ffd400;
+                text-shadow:
+                    0 0 8px rgba(255, 212, 0, 0.95),
+                    0 0 18px rgba(255, 59, 48, 0.55),
+                    0 0 28px rgba(0, 122, 255, 0.45),
+                    0 0 20px rgba(67, 233, 123, 0.65),
+                    0 5px 0 rgba(0, 0, 0, 0.65);
+            }
+            50% {
+                color: #1e90ff;
+                text-shadow:
+                    0 0 8px rgba(30, 144, 255, 0.95),
+                    0 0 18px rgba(255, 59, 48, 0.55),
+                    0 0 28px rgba(255, 212, 0, 0.45),
+                    0 0 20px rgba(67, 233, 123, 0.85),
+                    0 5px 0 rgba(0, 0, 0, 0.65);
+            }
+            75% {
+                color: #43e97b;
+                text-shadow:
+                    0 0 8px rgba(67, 233, 123, 0.95),
+                    0 0 18px rgba(255, 59, 48, 0.55),
+                    0 0 28px rgba(255, 212, 0, 0.45),
+                    0 0 20px rgba(30, 144, 255, 0.65),
+                    0 5px 0 rgba(0, 0, 0, 0.65);
+            }
+        }
+
+        .approval-card {
+            /* background: rgba(255, 255, 255, 0.92); */
+            width: min(100%, 1200px);
+            margin: 0 auto;
+            border-radius: clamp(12px, 1.8vw, 16px);
+            overflow: visible;
+            /* box-shadow: 0 12px 30px rgba(0, 0, 0, 0.18); */
+        }
+
+
+        .modal-content {
+            padding: 30px;
+            text-align: center;
+            width: 300px;
+        }
+            .p-3 {
+                /* padding: clamp(12px, 2vw, 24px) !important; */
+                background: rgb(171, 0, 0) !important;
+                /* position: fixed !important; */
+                align-items: center !important;
+            }
+
+        .card-header span {
+            display: inline-block;
+            margin-top: 0.25rem;
+            white-space: normal;
+        }
+
+        .approval-info-table {
+            width: 100%;
+            max-width: 1280px;
+            margin: 0 auto;
+            border-collapse: collapse;
+            /* background: rgba(255, 255, 255, 0.82); */
+            border-radius: 12px;
+            overflow: hidden;
+            table-layout: fixed;
+        }
+
+        .approval-info-table th,
+        .approval-info-table td {
+            padding: clamp(8px, 1.2vw, 14px) clamp(10px, 1.8vw, 18px);
+            border: 1px solid rgb(255, 255, 255);
+            text-align: left;
+            vertical-align: top;
+            word-break: break-word;
+        }
+
+        .approval-info-table th {
+            width: 7.5rem;
+            color: #ffffff;
+            font-weight: 700;
+            white-space: nowrap;
+        }
+
+        .info-stack {
+            display: flex;
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 0.35rem;
+        }
+
+        .info-stack .info-label {
+            font-size: 0.92em;
+            font-weight: 700;
+            color: #ffffff;
+            line-height: 1.1;
+        }
+
+        .info-stack .info-value {
+            font-size: 1.02em;
+            line-height: 1.35;
+            color: #ffffff;
+            word-break: break-word;
+        }
+
+        .approval-info-table tr:first-child th,
+        .approval-info-table tr:first-child td {
+            border-top: 0;
+        }
+
+        .approval-info-table tr:last-child th,
+        .approval-info-table tr:last-child td {
+            border-bottom: 0;
+        }
+
+        .approval-info-table tr th:first-child,
+        .approval-info-table tr td:first-child {
+            border-left: 0;
+        }
+
+        .approval-info-table tr th:last-child,
+        .approval-info-table tr td:last-child {
+            border-right: 0;
+        }
+
+        .card-body img {
+            display: block;
+            margin-top: 1rem;
+            margin-left: auto;
+            margin-right: auto;
+            width: min(100%, 300px);
+            height: auto;
+        }
+
+            .approval-image-row {
+                display: flex;
+                justify-content: center;
+                align-items: center;
+                gap: clamp(8px, 1.5vw, 18px);
+                flex-wrap: nowrap;
+                width: 100vw;
+                margin-left: calc(50% - 50vw);
+                margin-top: 1rem;
+                margin-bottom: 1rem;
+                overflow: visible;
+            }
+
+            .approval-image-row img {
+                width: clamp(280px, 34vw, 560px);
+                max-width: none;
+                flex: 0 0 auto;
+            }
+
+        .approval-actions {
+            display: flex;
+            justify-content: center;
+            gap: 200px;
+            flex-wrap: wrap;
+        }
+
+        .image-action-button {
+            border: 0;
+            background: transparent;
+            padding: 0;
+            cursor: pointer;
+            line-height: 0;
+        }
+
+        .image-action-button img {
+            display: block;
+            width: clamp(120px, 7vw, 180px);
+            max-width: 42vw;
+            height: auto;
+        }
+
+        .image-action-button:disabled {
+            cursor: not-allowed;
+            opacity: 0.65;
+        }
+
+        .empty-state-image {
+            width: clamp(220px, 55vw, 320px);
+            height: auto;
+            display: block;
+            margin: 0 auto;
+        }
+
+        .modal-footer {
+            justify-content: center;
+        }
+
+        form.d-inline-block {
+            display: inline-block !important;
+        }
+
+        .back-link {
+            margin-top: 2rem;
+            display: block;
+            margin-left: auto;
+            margin-right: auto;
+            padding: clamp(4px, 1.2vw, 5px) clamp(18px, 2.4vw, 26px);
+            /* background: #ffffff00; */
+            color: #b90000;
+            border-radius: 999px;
+            text-decoration: none;
+            font-size: clamp(20px, 3vw, 28px);
+            font-weight: bold;
+            border: 3px solid #b90000;
+            box-shadow: 0 6px 18px rgba(0, 0, 0, 0.14);
+            width: 100px;
+        }
+
+        .back-link:hover,
+        .back-link:focus {
+            text-decoration: none;
+            color: #b90000;
+        }
+
+        /* 全屏图片预览遮罩 */
+        .image-fullscreen-overlay {
+            display: none;
+            position: fixed;
+            z-index: 99999;
+            left: 0;
+            top: 0;
+            width: 100vw;
+            height: 100vh;
+            background: rgba(0, 0, 0, 0.501);
+            cursor: pointer;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .image-fullscreen-overlay.active {
+            display: flex;
+        }
+
+        .image-fullscreen-overlay img {
+            max-width: 95vw;
+            max-height: 95vh;
+            object-fit: contain;
+            box-shadow: 0 0 40px rgba(0, 0, 0, 0.5);
+        }
+
+        /* ---- confirm 页卡片样式 ---- */
+        @font-face {
+            font-family: 'MyfontT';
+            src: url('{% static "birthboard/fonts/SourceHanSansSC-VF.otf.woff2" %}') format('woff2');
+            font-weight: 300;
+            font-style: normal;
+            unicode-range: U+4E00-9FFF;
+            display: swap;
+        }
+        @font-face {
+            font-family: 'MyfontTE';
+            src: url('{% static "birthboard/fonts/SourceHanSansSC-VF.otf.woff2" %}') format('woff2');
+            font-weight: 300;
+            font-style: normal;
+            display: swap;
+        }
+        @font-face {
+            font-family: 'MyfontLB';
+            src: url('{% static "birthboard/fonts/SourceHanSansSC-VF.otf.woff2" %}') format('woff2');
+            font-weight: 400;
+            font-style: normal;
+            unicode-range: U+4E00-9FFF;
+            display: swap;
+        }
+        @font-face {
+            font-family: 'MyfontB';
+            src: url('{% static "birthboard/fonts/SourceHanSansSC-VF.otf.woff2" %}') format('woff2');
+            font-weight: 700;
+            font-style: normal;
+            unicode-range: U+4E00-9FFF;
+            display: swap;
+        }
+        @font-face {
+            font-family: 'MyfontE';
+            src: url('{% static "birthboard/fonts/FiraCode-Light.woff2" %}') format('woff2');
+            font-weight: 400;
+            font-style: normal;
+            unicode-range: U+0000-007F;
+        }
+        @font-face {
+            font-family: 'Numbers';
+            src: local('Georgia');
+            font-weight: 400;
+            font-style: normal;
+            unicode-range: U+0000-007F;
+        }
+        .boardcard {
+            margin-bottom: 100px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        .textLb {
+            font-family: 'MyfontLB', 'MyfontE', 'Microsoft YaHei', 'Arial', sans-serif;
+            font-size: 16px;
+        }
+        .textN {
+            font-family: 'MyfontT', 'MyfontE', 'Microsoft YaHei', 'Arial', sans-serif;
+            font-size: 16px;
+        }
+        .textNE {
+            font-family: 'MyfontTE', 'MyfontE', 'Microsoft YaHei', 'Arial', sans-serif;
+            font-size: 16px;
+        }
+        .textB {
+            font-family: 'MyfontB', 'MyfontE', 'Microsoft YaHei', 'Arial', sans-serif;
+            font-size: 16px;
+        }
+        .textE {
+            font-family: 'MyfontE', 'Microsoft YaHei', 'Arial', sans-serif;
+            font-size: 16px;
+        }
+        .lddq {
+            width: 100%;
+            text-align: justify;
+            /* text-align-last: justify; */
+            /* text-justify: inter-ideograph; */
+        }
+        /* .lddq::after {
+            content: '';
+            display: none;
+            width: 100%;
+            height: 0;
+        } */
+        .downbtn {
+            display: block;
+            border: none;
+            border-top: 1px solid #000000;
+            padding: 0;
+            padding-bottom: 3px;
+            margin: 0;
+            width: 100%;
+            cursor: pointer;
+            background: linear-gradient(to right, #ffffff00, #ffffff00) no-repeat bottom left / 0 1px;
+            background-origin: content-box;
+            transition: background-size 0.25s ease;
+        }
+        .downbtn:hover {
+            background: linear-gradient(to right, #000000, #000000) no-repeat bottom left / 100% 1px;
+        }
+        .downbtn:disabled {
+            cursor: not-allowed;
+            opacity: 0.4;
+        }
+        .jt {
+            display: inline;
+            position: relative;
+            top: -2px;
+        }
+        .status-red { color: #c00000; }
+        .status-yellow { color: #137bc0; }
+        .status-green { color: #00ba35; }
+        .approve-btn-row {
+            display: flex;
+            justify-content: center;
+            gap: 200px;
+            margin-top: 18px;
+            flex-wrap: wrap;
+        }
+        /* ---- 控制面板 ---- */
+        .filter-panel {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            justify-content: center;
+            gap: 12px 18px;
+            margin-bottom: 24px;
+            padding: 16px 20px;
+            background: #f8f9fa;
+            border-radius: 10px;
+            border: 1px solid #dee2e6;
+        }
+        .filter-panel .filter-group {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            flex-wrap: wrap;
+        }
+        .filter-panel .filter-label {
+            font-family: 'MyfontLB', 'Microsoft YaHei', sans-serif;
+            font-size: 14px;
+            font-weight: 700;
+            color: #333;
+            white-space: nowrap;
+            margin-right: 2px;
+        }
+        .filter-chip {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 999px;
+            font-size: 13px;
+            cursor: pointer;
+            user-select: none;
+            border: 1.5px solid #ccc;
+            background: #fff;
+            color: #666;
+            transition: all 0.2s;
+            white-space: nowrap;
+        }
+        .filter-chip:hover {
+            border-color: #999;
+            color: #333;
+        }
+        .filter-chip.active {
+            background: #333;
+            color: #fff;
+            border-color: #333;
+        }
+        .filter-search {
+            padding: 4px 12px;
+            border: 1.5px solid #ccc;
+            border-radius: 999px;
+            font-size: 13px;
+            outline: none;
+            width: 160px;
+            transition: border-color 0.2s;
+        }
+        .filter-search:focus {
+            border-color: #333;
+        }
+        .filter-clear {
+            font-size: 13px;
+            cursor: pointer;
+            color: #c00000;
+            border: none;
+            background: none;
+            padding: 2px 8px;
+            text-decoration: underline;
+        }
+        .filter-clear:hover {
+            color: #900;
+        }
+        .filter-count {
+            font-size: 13px;
+            color: #888;
+            margin-left: 8px;
+        }
+    </style>
+</head>
+<body>
 <div class="container mt-4">
-    <h2 class="mb-4 text-center">生日祝福投放审核</h2>
-    {% if activity_list %}
-        {% for item in activity_list %}
-        {% with record=item.record is_related=item.is_related %}
-        {% if is_related %}
-        <div class="card mb-4">
-            <div class="card-body">
-                <div class="alert alert-warning mt-3 mb-0">此投放活动与你有关，你不能参与审核。</div>
-            </div>
+    <div class="title-block">
+        <div class="title-strip" aria-label="审核控制板">
+            <img src="{{ MEDIA_URL }}birthboard/wyypsrdp.gif" alt="生日祝福投放审核" style="width: 1000px;">
         </div>
-        {% else %}
-        <div class="card mb-4">
+    </div>
+    {% if current_activity %}
+        {% with record=current_activity.record %}
+        <div class="card mb-4 approval-card">
             <div class="card-header">
-                <strong>提交时间：</strong> {{ record.created_at }}
-                <span class="ml-3"><strong>被祝福人：</strong>{{ record.receiver_name }}</span>
-                <span class="ml-3"><strong>元气值开销：</strong>{{ record.per_cost }}</span>
-                <span class="ml-3"><strong>匿名：</strong>{% if record.is_anonymous %}是{% else %}否{% endif %}</span>
-                <span class="ml-3"><strong>投放方式：</strong>{{ record.mode }}</span>
-                <span class="ml-3"><strong>流程状态：</strong>{{ record.get_status_display }}</span>
+                <table class="approval-info-table" aria-label="投放活动信息">
+                    <tbody>
+                        <tr>
+                            <td>
+                                <div class="info-stack">
+                                    <div class="info-label">发起人</div>
+                                    <div class="info-value">{% if current_activity.initiator_name %}{{ current_activity.initiator_name }}{% else %}无{% endif %}</div>
+                                </div>
+                            </td>
+                            <td>
+                                <div class="info-stack">
+                                    <div class="info-label">投放人</div>
+                                    <div class="info-value">{% if current_activity.sender_names %}{{ current_activity.sender_names|join:'、' }}{% else %}未知{% endif %}</div>
+                                </div>
+                            </td>
+                            <td>
+                                <div class="info-stack">
+                                    <div class="info-label">被祝福人</div>
+                                    <div class="info-value">{{ record.receiver_name }}</div>
+                                </div>
+                            </td>
+                            <td>
+                                <div class="info-stack">
+                                    <div class="info-label">投放时间</div>
+                                    <div class="info-value">{{ record.date }}</div>
+                                </div>
+                            </td>
+                            <td>
+                                <div class="info-stack">
+                                    <div class="info-label">匿名</div>
+                                    <div class="info-value">{% if record.is_anonymous %}是{% else %}否{% endif %}</div>
+                                </div>
+                            </td>
+                            <td>
+                                <div class="info-stack">
+                                    <div class="info-label">投放方式</div>
+                                    <div class="info-value">
+                                        {% if record.mode == 0 %}35元气值/1天{% elif record.mode == 1 %}60元气值/3天{% elif record.mode == 2 %}1000元气值/1年{% else %}未知模式{% endif %}
+                                    </div>
+                                </div>
+                            </td>
+                            <td>
+                                <div class="info-stack">
+                                    <div class="info-label">流程状态</div>
+                                    <div class="info-value">{{ record.get_status_display }}</div>
+                                </div>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
             </div>
             <div class="card-body">
-                    {% if record.image %}
-                    <img src="{{ record.image.url }}" alt="祝福图片" class="img-fluid mb-3" style="max-width: 400px;">
+                {% if record.image %}
+                    <div class="approval-image-row">
+                        <img src="{{ record.image.url }}" alt="祝福图片 1" class="img-fluid">
+                        <img src="{{ record.image.url }}" alt="祝福图片 2" class="img-fluid">
+                        <img src="{{ record.image.url }}" alt="祝福图片 3" class="img-fluid">
+                    </div>
+                {% endif %}
+                <div class="mb-2 approval-actions">
+                    {% if is_first and not record.first_approved %}
+                        <form method="post" class="d-inline-block mr-2" style="vertical-align:middle;">
+                            {% csrf_token %}
+                            <input type="hidden" name="action" value="approve">
+                            <input type="hidden" name="record_id" value="{{ record.id }}">
+                            <button type="submit" class="image-action-button" title="初审通过" aria-label="初审通过">
+                                <img src="{{ MEDIA_URL }}birthboard/pmywt.jpeg" alt="初审通过">
+                            </button>
+                        </form>
+
+                        <div>
+                            <a href="{% url 'birthboard' %}" class="back-link">返回</a>
+                        </div>
+                        <button type="button" class="image-action-button" onclick="showRejectModal('{{ record.id }}')" title="驳回" aria-label="驳回">
+                            <img src="{{ MEDIA_URL }}birthboard/pywt.jpeg" alt="驳回">
+                        </button>
+                    {% elif is_second and record.first_approved %}
+                        <form method="post" class="d-inline-block mr-2" style="vertical-align:middle;">
+                            {% csrf_token %}
+                            <input type="hidden" name="action" value="approve">
+                            <input type="hidden" name="record_id" value="{{ record.id }}">
+                            <button type="submit" class="image-action-button" title="终审通过" aria-label="终审通过">
+                                <img src="{{ MEDIA_URL }}birthboard/pmywt.jpeg" alt="终审通过">
+                            </button>
+                        </form>
+                        <div>
+                            <a href="{% url 'birthboard' %}" class="back-link">返回</a>
+                        </div>
+                        <button type="button" class="image-action-button" onclick="showRejectModal('{{ record.id }}')" title="驳回" aria-label="驳回">
+                            <img src="{{ MEDIA_URL }}birthboard/pywt.jpeg" alt="驳回">
+                        </button>
                     {% endif %}
-                    {% if record.status == 'canceled' %}
-                    <div class="mt-2 text-secondary">已撤销</div>
-                    {% endif %}
-                    {% if record.status == 'ready' or record.status == 'ongoing' %}
-                    {% if birthboard_update_in_progress %}
-                        <button type="button" class="btn btn-warning mt-3" disabled>撤销</button>
-                        <div class="text-muted small mt-1">23点45-24点系统同步中，无法操作</div>
-                    {% else %}
-                        <button type="button" class="btn btn-warning mt-3" onclick="showRevokeModal('{{ record.id }}')" title="撤销此投放活动（不会退款）">撤销</button>
-                    {% endif %}
-                    <!-- 撤销确认弹窗 -->
-                    <div id="revokeModal-{{ record.id }}" class="modal" tabindex="-1" style="display:none; position:fixed; z-index:1050; left:0; top:0; width:100vw; height:100vh; background:rgba(0,0,0,0.4);">
-                        <div class="modal-dialog" style="margin:10vh auto; max-width:400px;">
-                            <div class="modal-content p-3">
-                                <div class="modal-header">
-                                    <h5 class="modal-title">确认撤销</h5>
-                                    <button type="button" class="close" onclick="hideRevokeModal('{{ record.id }}')">&times;</button>
+                </div>
+                <div id="rejectModal-{{ record.id }}" class="modal" tabindex="-1" style="display:none; position:fixed; z-index:1050; left:0; top:0; width:100vw; height:100vh; align-items:center; justify-content:center; margin:0; padding:0; background:rgba(0,0,0,0.4);">
+                    <div class="modal-dialog" style="width:auto; height: auto; align-items: center; justify-content: center; margin:0;">
+                        <div class="modal-content p-3" >
+                                <div class="modal-title" style="font-size: 2.5rem; font-weight: bold;">驳回原因</div>
+                                <!-- <button type="button" class="close" onclick="hideRejectModal('{{ record.id }}')">&times;</button> -->
+                            <form method="post">
+                                {% csrf_token %}
+                                <input type="hidden" name="action" value="reject">
+                                <input type="hidden" name="record_id" value="{{ record.id }}">
+                                <div class="form-group" style="margin-bottom:24px; width:100%;">
+                                    <label for="reasons-{{ record.id }}" style="font-size:1.1rem; font-weight:600; margin-bottom:8px; display:block;"><br><br>违规类型<br>（按住Ctrl/Command可多选）</label>
+                                    <select class="form-control" name="reasons" id="reasons-{{ record.id }}" multiple required style="height:auto; font-size:1rem; width:100%;">
+                                        <option value="低俗恶搞">低俗恶搞</option>
+                                        <option value="暴力色情恐怖">暴力色情恐怖</option>
+                                        <option value="诋毁侮辱隐私">诋毁侮辱隐私</option>
+                                        <option value="敏感引战">敏感引战</option>
+                                    </select>
                                 </div>
-                                <div class="modal-body">
-                                    <p>确定要撤销此投放活动吗？（不会退款）</p>
+                                <div class="form-group" style="margin-bottom:24px;">
+                                    <label for="detail-{{ record.id }}" style="font-size:1.1rem; font-weight:600; margin-bottom:8px; display:block;">具体违规内容（必填）</label>
+                                    <textarea class="form-control" name="detail" id="detail-{{ record.id }}" required style="height:120px; width:100%; font-size:1rem; resize:vertical;"></textarea>
                                 </div>
-                                <div class="modal-footer">
-                                    <form method="post" style="display:inline;">
-                                        {% csrf_token %}
-                                        <input type="hidden" name="revoke_id" value="{{ record.id }}">
-                                        <button type="submit" class="btn btn-warning">确定撤销</button>
-                                    </form>
-                                    <button type="button" class="btn btn-secondary" onclick="hideRevokeModal('{{ record.id }}')">取消</button>
+                                <div class="modal-footer" style="padding-top:16px; display:flex; justify-content:space-between; gap:12px;">
+                                    <button type="button" class="btn btn-secondary btn-lg" onclick="hideRejectModal('{{ record.id }}')">取消</button>
+                                    <button type="submit" class="btn btn-danger btn-lg">确认驳回</button>
                                 </div>
-                            </div>
+                            </form>
                         </div>
                     </div>
-                    <script>
-                    function showRevokeModal(id) {
-                        document.getElementById('revokeModal-' + id).style.display = 'block';
-                    }
-                    function hideRevokeModal(id) {
-                        document.getElementById('revokeModal-' + id).style.display = 'none';
-                    }
-                    </script>
-                    {% endif %}
-                    {% if record.status == 'waiting_approve' %}
-                    <div class="mb-2">
-                        {% if is_first and not record.first_approved %}
-                            <form method="post" class="d-inline-block mr-2" style="vertical-align:middle;">
-                                {% csrf_token %}
-                                <input type="hidden" name="action" value="approve">
-                                <input type="hidden" name="record_id" value="{{ record.id }}">
-                                <button type="submit" class="btn btn-success">初审通过</button>
-                            </form>
-                            <button type="button" class="btn btn-danger" onclick="showRejectModal('{{ record.id }}')">驳回</button>
-                        {% elif is_second and record.first_approved %}
-                            <form method="post" class="d-inline-block mr-2" style="vertical-align:middle;">
-                                {% csrf_token %}
-                                <input type="hidden" name="action" value="approve">
-                                <input type="hidden" name="record_id" value="{{ record.id }}">
-                                <button type="submit" class="btn btn-success">终审通过</button>
-                            </form>
-                            <button type="button" class="btn btn-danger" onclick="showRejectModal('{{ record.id }}')">驳回</button>
-                        {% endif %}
-                    </div>
-                    <!-- 驳回弹窗 -->
-                    <div id="rejectModal-{{ record.id }}" class="modal" tabindex="-1" style="display:none; position:fixed; z-index:1050; left:0; top:0; width:100vw; height:100vh; background:rgba(0,0,0,0.4);">
-                        <div class="modal-dialog" style="margin:10vh auto; max-width:400px;">
-                            <div class="modal-content p-3">
-                                <div class="modal-header">
-                                    <h5 class="modal-title">驳回原因</h5>
-                                    <button type="button" class="close" onclick="hideRejectModal('{{ record.id }}')">&times;</button>
-                                </div>
-                                <form method="post">
-                                    {% csrf_token %}
-                                    <input type="hidden" name="action" value="reject">
-                                    <input type="hidden" name="record_id" value="{{ record.id }}">
-                                    <div class="form-group">
-                                        <label>违规类型（可多选，必选）</label>
-                                        <select class="form-control" name="reasons" id="reasons-{{ record.id }}" multiple required>
-                                            <option value="低俗恶搞">低俗恶搞</option>
-                                            <option value="暴力色情恐怖">暴力色情恐怖</option>
-                                            <option value="诋毁侮辱隐私">诋毁侮辱隐私</option>
-                                            <option value="敏感引战">敏感引战</option>
-                                        </select>
-                                    </div>
-                                    <div class="form-group">
-                                        <label>具体违规内容（必填）</label>
-                                        <textarea class="form-control" name="detail" required></textarea>
-                                    </div>
-                                    <div class="modal-footer">
-                                        <button type="button" class="btn btn-secondary" onclick="hideRejectModal('{{ record.id }}')">取消</button>
-                                        <button type="submit" class="btn btn-danger">确认驳回</button>
-                                    </div>
-                                </form>
-                            </div>
-                        </div>
-                    </div>
-                    <script>
-                    function showRejectModal(id) {
-                        document.getElementById('rejectModal-' + id).style.display = 'block';
-                    }
-                    function hideRejectModal(id) {
-                        document.getElementById('rejectModal-' + id).style.display = 'none';
-                    }
-                    </script>
-                    {% endif %}
+                </div>
+                <script>
+                function showRejectModal(id) {
+                    document.getElementById('rejectModal-' + id).style.display = 'flex';
+                }
+                function hideRejectModal(id) {
+                    document.getElementById('rejectModal-' + id).style.display = 'none';
+                }
+                </script>
             </div>
         </div>
-        {% endif %}
+        
         {% endwith %}
-        {% endfor %}
     {% else %}
-        <div class="alert alert-info text-center">暂无待审核的祝福。</div>
+        <div class="alert alert-info text-center">
+            <img class="empty-state-image" src="{{ MEDIA_URL }}birthboard/wpxyzdqx.gif" alt="无需燕牌 暂德清闲" style="width: 1300px; margin-top: 10rem; margin-bottom: 8rem;">
+            <a href="{% url 'birthboard' %}" class="back-link">返回</a>
+        </div>
     {% endif %}
     <div class="mt-4 text-center">
-        <a href="{% url 'birthboard' %}" class="btn btn-secondary">返回</a>
+        <div class="title-subtitle">横扫PKU 驰名中外 号称从未输过的元培赌神 {{ request.user.name }}</div>
+    </div>
+    <div class="container mt-4" style="color: black;">
+        <br><br><br><br><br><br><br><br><br><br><br><br>
+
+        <!-- 控制面板 -->
+        <div class="filter-panel" id="filterPanel" style="margin-bottom: 100px;">
+            <span class="filter-label">状态：</span>
+            <div class="filter-group" id="statusFilters">
+                <span class="filter-chip active" data-status="waiting_approve">待审核</span>
+                <span class="filter-chip active" data-status="ready">等待投放</span>
+                <span class="filter-chip active" data-status="ongoing">投放中</span>
+                <span class="filter-chip" data-status="finished">已完成</span>
+                <span class="filter-chip" data-status="terminated">已终止</span>
+                <span class="filter-chip" data-status="terminated_by_admin">已驳回</span>
+                <span class="filter-chip" data-status="canceled">已撤销</span>
+            </div>
+            <span class="filter-label" style="margin-left:12px;">搜索：</span>
+            <input type="text" class="filter-search" id="filterSearch" placeholder="被祝福人 / 投放人…">
+            <span class="filter-chip" id="filterRelated" data-related="1" style="margin-left:4px;">与你有关</span>
+            <button type="button" class="filter-clear" id="filterClear">清除筛选</button>
+            <span class="filter-count" id="filterCount"></span>
+        </div>
+
+        {% if activity_list %}
+            {% for item in activity_list %}
+            {% if item.is_related %}
+            <div class="boardcard" data-status="{{ item.record_status }}" data-related="1" data-receiver="{{ item.receiver_name }}" data-senders="{{ item.sender_names|join:',' }}" data-search="{{ item.search_text }}">
+                <div class="textN" style="width: 740px; text-align: center; line-height: 1.7; background-color: #00000010; padding: 12px;">
+                    <span class="textB" style="color: #c00000;">此投放活动与您有关，您不能参与审核。</span>
+                </div>
+            </div>
+            {% else %}
+            <div class="boardcard" data-status="{{ item.record_status }}" data-related="0" data-receiver="{{ item.receiver_name }}" data-senders="{{ item.sender_names|join:',' }}" data-search="{{ item.search_text }}">
+                <!-- 头部：日期 + 状态过渡 -->
+                <div style="margin-bottom: 18px; width: 740px; display:flex; justify-content: space-between; align-items: center;">
+                    <span>
+                        <span class="textLb">被祝福人&thinsp;{{ item.receiver_name }}</span>&emsp;
+                        <span class="textN">{{ item.date|date:"Y" }}&thinsp;年&thinsp;{{ item.date|date:"n" }}&thinsp;月&thinsp;{{ item.date|date:"j" }}&thinsp;日{% if item.end_date %}&thinsp;～&thinsp;{{ item.end_date|date:"Y" }}&thinsp;年&thinsp;{{ item.end_date|date:"n" }}&thinsp;月&thinsp;{{ item.end_date|date:"j" }}&thinsp;日{% endif %}</span>
+                    </span>
+                    <span class="textN">
+                    {% if item.before_status %}<span class="{{ item.before_status_class }}">{{ item.before_status }}</span><span class="textN jt">&emsp;→&emsp;</span>{% endif %}{% if item.after_status %}<span class="textB {{ item.after_status_class }}">{{ item.after_status }}</span>{% endif %}
+                    </span>
+                </div>
+                <!-- 框 -->
+                <img src="{{ MEDIA_URL }}birthboard/bb.png" alt="框" style="height: 140px; width: 740px; z-index: 5; position: relative; pointer-events: none;">
+                <!-- 图片 -->
+                {% if item.image %}
+                <div style="margin-top: -136px; margin-bottom: 18px; display:flex; flex-direction: row; align-items:center; gap:13px; z-index: 1;">
+                    <img src="{{ item.thumbnail_url }}" alt="祝福图片" style="width: 237px; cursor: pointer;" onclick="showFullscreenImage('{{ item.image }}')">
+                    <img src="{{ item.thumbnail_url }}" alt="祝福图片" style="width: 237px; cursor: pointer;" onclick="showFullscreenImage('{{ item.image }}')">
+                    <img src="{{ item.thumbnail_url }}" alt="祝福图片" style="width: 237px; cursor: pointer;" onclick="showFullscreenImage('{{ item.image }}')">
+                </div>
+                {% endif %}
+                <!-- 信息行 -->
+                <div class="lddq textN" style="margin-bottom: 9px; width: 740px;">
+                    <span class="textLb">发起人</span>&thinsp;{{ item.initiator_name }}&thinsp;<span class="textLb">人均元气值</span>&thinsp;{{ item.per_cost }}&thinsp;<span class="textLb">{% if item.is_anonymous %}匿名{% else %}实名{% endif %}</span>
+                </div>
+                <!-- 投放人列表 -->
+                {% if item.sender_names %}
+                <table class="lddq" style="width:740px; border-collapse:collapse;">
+                    <colgroup>
+                        <col style="width: 30%;">
+                        <col style="width: 20%;">
+                        <col style="width: 30%;">
+                    </colgroup>
+                    {% for sender_name in item.sender_names %}
+                    <tr>
+                        <td class="textLb" style="text-align:left;">{{ sender_name }}</td>
+                        <td style="text-align:right;"></td>
+                        <td style="text-align:right;"></td>
+                    </tr>
+                    {% endfor %}
+                </table>
+                {% endif %}
+                <!-- 状态相关操作 -->
+                {% if item.record_status == 'terminated_by_admin' %}
+                <div class="textN" style="width: 740px; text-align: center; line-height: 1.7; background-color: #00000010; margin-top: 9px; padding: 9px;">
+                    <span class="textB" style="color: #c00000;">已被管理员驳回</span>
+                    {% if item.rejected_reasons or item.rejected_detail %}
+                        <div class="alert alert-danger mt-2">
+                            <div><span class="textLb">驳回原因：</span>{{ item.rejected_reasons|join:'，' }}</div>
+                            <div><span class="textLb">详细说明：</span>{{ item.rejected_detail }}</div>
+                        </div>
+                    {% endif %}
+                </div>
+                {% elif item.record_status == 'canceled' %}
+                <div class="textN" style="width: 740px; text-align: center; line-height: 1.7; background-color: #00000010; margin-top: 9px; padding: 9px;">
+                    <span class="textB" style="color: #888;">已撤销</span>
+                </div>
+                {% elif item.record_status == 'finished' %}
+                <div class="textN" style="width: 740px; text-align: center; line-height: 1.7; background-color: #00000010; margin-top: 9px; padding: 9px;">
+                    <span class="textB" style="color: #888;">投放已完成</span>
+                </div>
+                {% elif item.record_status == 'terminated' %}
+                <div class="textN" style="width: 740px; text-align: center; line-height: 1.7; background-color: #00000010; margin-top: 9px; padding: 9px;">
+                    <span class="textB" style="color: #888;">已终止</span>
+                </div>
+                {% elif item.record_status == 'ready' or item.record_status == 'ongoing' %}
+                <div class="approve-btn-row">
+                    {% if birthboard_update_in_progress %}
+                        <button type="button" class="image-action-button" disabled title="同步中，无法操作">
+                            <span style="display:inline-block; padding:12px 28px; border:3px solid #999; border-radius:12px; color:#999; font-family:'MyfontB','MyfontE','Microsoft YaHei',sans-serif; font-size:20px;">驳回</span>
+                        </button>
+                    {% else %}
+                        <button type="button" class="image-action-button" onclick="showRejectModal('{{ item.id }}')" title="驳回" aria-label="驳回">
+                            <span style="display:inline-block; padding:12px 28px; border:3px solid #b90000; border-radius:12px; color:#b90000; font-family:'MyfontB','MyfontE','Microsoft YaHei',sans-serif; font-size:20px;">驳回</span>
+                        </button>
+                    {% endif %}
+                </div>
+                <!-- 驳回弹窗（ready/ongoing） -->
+                <div id="rejectModal-{{ item.id }}" class="modal" tabindex="-1" style="display:none; position:fixed; z-index:1050; left:0; top:0; width:100vw; height:100vh; align-items:center; justify-content:center; margin:0; padding:0; background:rgba(0,0,0,0.4);">
+                    <div class="modal-dialog" style="width:auto; height: auto; align-items: center; justify-content: center; margin:0;">
+                        <div class="modal-content p-3" >
+                                <div class="modal-title" style="font-size: 2.5rem; font-weight: bold;">驳回原因</div>
+                            <form method="post">
+                                {% csrf_token %}
+                                <input type="hidden" name="action" value="reject">
+                                <input type="hidden" name="record_id" value="{{ item.id }}">
+                                <div class="form-group" style="margin-bottom:24px; width:100%;">
+                                    <label for="reasons-{{ item.id }}" style="font-size:1.1rem; font-weight:600; margin-bottom:8px; display:block;"><br><br>违规类型<br>（按住Ctrl/Command可多选）</label>
+                                    <select class="form-control" name="reasons" id="reasons-{{ item.id }}" multiple required style="height:auto; font-size:1rem; width:100%;">
+                                        <option value="低俗恶搞">低俗恶搞</option>
+                                        <option value="暴力色情恐怖">暴力色情恐怖</option>
+                                        <option value="诋毁侮辱隐私">诋毁侮辱隐私</option>
+                                        <option value="敏感引战">敏感引战</option>
+                                    </select>
+                                </div>
+                                <div class="form-group" style="margin-bottom:24px;">
+                                    <label for="detail-{{ item.id }}" style="font-size:1.1rem; font-weight:600; margin-bottom:8px; display:block;">具体违规内容（必填）</label>
+                                    <textarea class="form-control" name="detail" id="detail-{{ item.id }}" required style="height:120px; width:100%; font-size:1rem; resize:vertical;"></textarea>
+                                </div>
+                                <div class="modal-footer" style="padding-top:16px; display:flex; justify-content:space-between; gap:12px;">
+                                    <button type="button" class="btn btn-secondary btn-lg" onclick="hideRejectModal('{{ item.id }}')">取消</button>
+                                    <button type="submit" class="btn btn-danger btn-lg">确认驳回</button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+                <script>
+                function showRejectModal(id) {
+                    document.getElementById('rejectModal-' + id).style.display = 'flex';
+                }
+                function hideRejectModal(id) {
+                    document.getElementById('rejectModal-' + id).style.display = 'none';
+                }
+                </script>
+                {% elif item.record_status == 'waiting_approve' %}
+                <div class="approve-btn-row">
+                    {% if is_first and not item.first_approved %}
+                        <form method="post" style="display:inline;">
+                            {% csrf_token %}
+                            <input type="hidden" name="action" value="approve">
+                            <input type="hidden" name="record_id" value="{{ item.id }}">
+                            <button type="submit" class="image-action-button" title="初审通过" aria-label="初审通过">
+                                <span style="display:inline-block; padding:12px 28px; border:3px solid #28a745; border-radius:12px; color:#28a745; font-family:'MyfontB','MyfontE','Microsoft YaHei',sans-serif; font-size:20px;">初审通过</span>
+                            </button>
+                        </form>
+                        <button type="button" class="image-action-button" onclick="showRejectModal('{{ item.id }}')" title="驳回" aria-label="驳回">
+                            <span style="display:inline-block; padding:12px 28px; border:3px solid #b90000; border-radius:12px; color:#b90000; font-family:'MyfontB','MyfontE','Microsoft YaHei',sans-serif; font-size:20px;">驳回</span>
+                        </button>
+                    {% elif is_second and item.first_approved %}
+                        <form method="post" style="display:inline;">
+                            {% csrf_token %}
+                            <input type="hidden" name="action" value="approve">
+                            <input type="hidden" name="record_id" value="{{ item.id }}">
+                            <button type="submit" class="image-action-button" title="终审通过" aria-label="终审通过">
+                                <span style="display:inline-block; padding:12px 28px; border:3px solid #28a745; border-radius:12px; color:#28a745; font-family:'MyfontB','MyfontE','Microsoft YaHei',sans-serif; font-size:20px;">终审通过</span>
+                            </button>
+                        </form>
+                        <button type="button" class="image-action-button" onclick="showRejectModal('{{ item.id }}')" title="驳回" aria-label="驳回">
+                            <span style="display:inline-block; padding:12px 28px; border:3px solid #b90000; border-radius:12px; color:#b90000; font-family:'MyfontB','MyfontE','Microsoft YaHei',sans-serif; font-size:20px;">驳回</span>
+                        </button>
+                    {% endif %}
+                </div>
+                <!-- 驳回弹窗 -->
+                <div id="rejectModal-{{ item.id }}" class="modal" tabindex="-1" style="display:none; position:fixed; z-index:1050; left:0; top:0; width:100vw; height:100vh; align-items:center; justify-content:center; background:rgba(0,0,0,0.4);">
+                    <div class="modal-dialog" style="margin:0 auto; max-width:400px;">
+                        <div class="modal-content p-3">
+                            <div class="modal-header">
+                                <h5 class="modal-title">驳回原因</h5>
+                                <button type="button" class="close" onclick="hideRejectModal('{{ item.id }}')">&times;</button>
+                            </div>
+                            <form method="post">
+                                {% csrf_token %}
+                                <input type="hidden" name="action" value="reject">
+                                <input type="hidden" name="record_id" value="{{ item.id }}">
+                                <div class="form-group">
+                                    <label for="reasons2-{{ item.id }}">违规类型（可多选，必选）</label>
+                                    <select class="form-control" name="reasons" id="reasons2-{{ item.id }}" multiple required>
+                                        <option value="低俗恶搞">低俗恶搞</option>
+                                        <option value="暴力色情恐怖">暴力色情恐怖</option>
+                                        <option value="诋毁侮辱隐私">诋毁侮辱隐私</option>
+                                        <option value="敏感引战">敏感引战</option>
+                                    </select>
+                                </div>
+                                <div class="form-group">
+                                    <label for="detail2-{{ item.id }}">具体违规内容（必填）</label>
+                                    <textarea class="form-control" name="detail" id="detail2-{{ item.id }}" required></textarea>
+                                </div>
+                                <div class="modal-footer">
+                                    <button type="button" class="btn btn-secondary" onclick="hideRejectModal('{{ item.id }}')">取消</button>
+                                    <button type="submit" class="btn btn-danger">确认驳回</button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+                <script>
+                function showRejectModal(id) {
+                    document.getElementById('rejectModal-' + id).style.display = 'flex';
+                }
+                function hideRejectModal(id) {
+                    document.getElementById('rejectModal-' + id).style.display = 'none';
+                }
+                </script>
+                {% endif %}
+            </div>
+            {% endif %}
+            {% endfor %}
+        {% else %}
+            <div class="alert alert-info text-center">暂无记录。</div>
+        {% endif %}
+        <div class="mt-4 text-center">
+            <a href="{% url 'birthboard' %}" class="btn btn-secondary">什么都没有了，回家吃饭吧。</a>
+        </div>
     </div>
 </div>
+
+<!-- 全屏图片预览 -->
+<div id="imageFullscreenOverlay" class="image-fullscreen-overlay" onclick="this.classList.remove('active')">
+    <img id="imageFullscreenImg" src="" alt="全屏预览" />
+</div>
+
+<script>
+function showFullscreenImage(src) {
+    var overlay = document.getElementById('imageFullscreenOverlay');
+    var img = document.getElementById('imageFullscreenImg');
+    img.src = src;
+    overlay.classList.add('active');
+}
+
+document.querySelectorAll('.approval-image-row img').forEach(function(el) {
+        el.style.cursor = 'pointer';
+        el.addEventListener('click', function(e) {
+            e.stopPropagation();
+            showFullscreenImage(this.src);
+        });
+    });
+
+    // ---- 控制面板筛选 ----
+    var chips = document.querySelectorAll('#statusFilters .filter-chip');
+    var relatedChip = document.getElementById('filterRelated');
+    var searchInput = document.getElementById('filterSearch');
+    var clearBtn = document.getElementById('filterClear');
+    var countEl = document.getElementById('filterCount');
+    var cards = document.querySelectorAll('.boardcard');
+
+    function getActiveStatuses() {
+        var active = [];
+        chips.forEach(function(c) {
+            if (c.classList.contains('active')) active.push(c.getAttribute('data-status'));
+        });
+        return active;
+    }
+
+    function applyFilter() {
+        var activeStatuses = getActiveStatuses();
+        var query = searchInput.value.trim().toLowerCase();
+        var showRelated = relatedChip.classList.contains('active');
+        var visibleCount = 0;
+
+        cards.forEach(function(card) {
+            var status = card.getAttribute('data-status');
+            var isRelated = card.getAttribute('data-related') === '1';
+            var receiver = (card.getAttribute('data-receiver') || '').toLowerCase();
+            var senders = (card.getAttribute('data-senders') || '').toLowerCase();
+            var searchText = (card.getAttribute('data-search') || '').toLowerCase();
+
+            var matchRelated = showRelated || !isRelated;
+            var matchStatus = activeStatuses.indexOf(status) !== -1;
+            var matchSearch = true;
+            if (query) {
+                matchSearch = receiver.indexOf(query) !== -1 || senders.indexOf(query) !== -1 || searchText.indexOf(query) !== -1;
+            }
+
+            if (matchRelated && matchStatus && matchSearch) {
+                card.style.display = '';
+                visibleCount++;
+            } else {
+                card.style.display = 'none';
+            }
+        });
+
+        countEl.textContent = '显示 ' + visibleCount ;
+    }
+
+    chips.forEach(function(chip) {
+        chip.addEventListener('click', function() {
+            this.classList.toggle('active');
+            applyFilter();
+        });
+    });
+
+    relatedChip.addEventListener('click', function() {
+        this.classList.toggle('active');
+        applyFilter();
+    });
+
+    searchInput.addEventListener('input', applyFilter);
+
+    clearBtn.addEventListener('click', function() {
+        chips.forEach(function(c) {
+            var status = c.getAttribute('data-status');
+            // 默认只选前三个：待审核、等待投放、投放中
+            if (status === 'waiting_approve' || status === 'ready' || status === 'ongoing') {
+                c.classList.add('active');
+            } else {
+                c.classList.remove('active');
+            }
+        });
+        relatedChip.classList.remove('active');
+        searchInput.value = '';
+        applyFilter();
+    });
+
+    // 初始计数
+    applyFilter();
+</script>
+</body>
+</html>

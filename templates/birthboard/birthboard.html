@@ -1,584 +1,2994 @@
 {% load static %}
-<div class="container mt-4">
-    <h2 class="mb-4 text-center">欢迎来到生日祝福投放板</h2>
-    <div class="mb-2 text-center text-info">当前登录用户：<strong>{{ request.user.get_full_name|default:request.user.username }}</strong></div>
-    <!-- <p>用户数：{{ users|length }}</p> -->
-    
-    <!-- 调试：输出用户数量和姓名 -->
-    <!-- <ul>
-    {% for user in users %}
-        <li>{{ user.id }} - {{ user.username }} - {% if user.naturalperson %}{{ user.naturalperson.name }}{% else %}无自然人{% endif %}</li>
-    {% endfor %}
-    </ul> -->
-    
-    <!-- 下拉框选项 -->
-   
-    
-    <!-- {% for user in users %}
-    {% if user.naturalperson %}{{ user.naturalperson.name }}{% else %}无自然人{% endif %}
-    {% endfor %} -->
-    
-    <!-- {% for user in users %}
-    <p>{{ user.username }}</p>
-    {% endfor %} -->
-    <form id="birthboard-form" method="post" enctype="multipart/form-data">
-        {% csrf_token %}
-        <!-- 2. 单选被祝福用户 -->
-        <div class="form-group" id="receiver-group">
-            <label for="receiver">请选择被祝福用户</label>
-            <select class="form-control" id="receiver" name="receiver" style="width:100%"></select>
-            <div class="invalid-feedback text-danger" id="receiver-error" style="display:none;"></div>
+<!doctype html>
+<html lang="zh-CN">
+<!-- 
+██████╗ ██╗██████╗ ████████╗██╗  ██╗██████╗  ██████╗  █████╗ ██████╗ ██████╗ 
+██╔══██╗██║██╔══██╗╚══██╔══╝██║  ██║██╔══██╗██╔═══██╗██╔══██╗██╔══██╗██╔══██╗
+██████╔╝██║██████╔╝   ██║   ███████║██████╔╝██║   ██║███████║██████╔╝██║  ██║
+██╔══██╗██║██╔══██╗   ██║   ██╔══██║██╔══██╗██║   ██║██╔══██║██╔══██╗██║  ██║
+██████╔╝██║██║  ██║   ██║   ██║  ██║██████╔╝╚██████╔╝██║  ██║██║  ██║██████╔╝
+╚═════╝ ╚═╝╚═╝  ╚═╝   ╚═╝   ╚═╝  ╚═╝╚═════╝  ╚═════╝ ╚═╝  ╚═╝╚═╝  ╚═╝╚═════╝ 
+
+你先把程序框架写好，剩下的我填进去，然后exit等button是整个都要改，干脆新建一批好了。然后这个变换的时间逻辑是不是要改一下，这样手机打开就可以直接加载phone的图片而不用加载small图片了
+-->
+
+  <head>
+    <meta charset="utf-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1, shrink-to-fit=no"
+    />
+    <title>生日祝福投放板</title>
+    <style>
+        html {
+            scroll-behavior: smooth;
+        }
+        html, body {
+            margin: 0;
+            /* font-weight: var(--bs-body-font-weight); */
+            /* letter-spacing: 1px; */
+            scrollbar-width: none;
+            overflow-x: hidden;
+            background: #181818;
+            z-index: 0; /* 建立根层叠上下文，让 fixed 弹窗的 z-index 正常比较 */
+        }
+        @font-face {
+            font-family: 'MyfontC';
+            src: url('{% static "birthboard/fonts/SourceHanSansSC-VF.otf.woff2" %}') format('woff2');
+            font-weight: 300;
+            /* letter-spacing: 3px; */
+            font-style: normal;
+            unicode-range: U+4E00-9FFF; /* 汉字范围 */
+            display: swap;
+        }
+        @font-face {
+            font-family: 'MyfontE';
+            src: url('{% static "birthboard/fonts/FiraCode-Light.woff2" %}') format('woff2');
+            /* src: local('Courier New'), local('Courier New'), local('Courier'), local('monospace'); */
+            font-weight: 400;
+            font-style: normal;
+            unicode-range: U+0000-007F; 
+            /* letter-spacing: 0;  */
+        }
+        @font-face {
+            font-family: 'Numbers';
+            src: local('Georgia'), url('{% static "birthboard/fonts/georgia.woff" %}') format('woff');
+            /* src: local('Courier New'), local('Courier New'), local('Courier'), local('monospace'); */
+            font-weight: 400;
+            font-style: normal;
+            /* font-size: 40px; */
+            /* color:#9a2d2d; */
+            unicode-range: U+0000-007F; /* 英文和数字范围 */
+        }
+
+        :root {
+            --bs-body-font-family: 'MyfontC', 'MyfontE', "Microsoft YaHei", "Arial", sans-serif;
+            --bs-body-font-size: 48px;
+            --bs-sup-font-size: 28px;
+            --bs-color: #ffffff;
+            --bs-hover-color: rgb(237, 225, 164);
+            /* --bs-body-font-weight: auto; */
+            --bs-body-letter-spacing: 5px;
+
+            /* ===== 弹窗按钮定位变量 ===== */
+            --popup-btn-left: 18%;
+            --popup-btn-right: 18%;
+            --popup-btn-bottom: 12%;
+            --popup-btn-width: 28%;
+            --popup-btn-height: 14%;
+            --popup-margin-top: 15vh;
+            --popup-img-max-w: 40vw;
+            --popup-img-max-h: 40vh;
+
+            /* ===== 表单组件定位变量（px @ 1920 设计基准，自动缩放） ===== */
+            --pos-receiver-top: 2075px;
+            --pos-receiver-left: 200px;
+            --pos-date-top: 2325px;
+            --pos-date-left: 200px;
+            --pos-date-calendar-width: 840px;
+            --pos-senders-top: 3525px;
+            --pos-senders-left: 200px;
+            --pos-cost-top: 4025px;
+            --pos-cost-left: 200px;
+            --pos-image-top: 4607px;
+            --pos-image-left: 160px;
+            --pos-image-width: 415px;
+            --pos-image-height: 233px;
+            --pos-img-gap: 7px;
+            --pos-anonymous-top: 5185px;
+            --pos-anonymous-left: 200px;
+            --pos-submit-top: 5785px;
+            --pos-submit-left: 191px;
+            --pos-mode-top: 3240px;
+            --pos-mode-left: 200px;
+            --pos-mode-dropdown: 20px;
+            --pos-dropdown-width: 500px;
+            --pos-dropdown-height: 250px;
+        }
+        /* 定义你的自定义主题容器类 */
+        .select2-container--my-custom-theme {
+            color: var(--bs-color);
+            font-family: 'MyfontC', 'MyfontE', "Microsoft YaHei", "Arial", sans-serif;
+            /* font-weight: var(--bs-body-font-weight); */
+            letter-spacing: auto;
+            font-size: var(--bs-body-font-size);
+            border: none;
+        }
+
+        /* 自定义选中项（selection）的样式 */
+        .select2-container--my-custom-theme .select2-selection--multiple {
+            /* background-color: #490eb6; */
+            border: none;
+            /* border-radius: 8px; */
+            min-height: 25px;
+            width: 1000px;
+            margin: auto;
+            /* line-height: 20px; 让文字垂直居中 */
+            cursor: text;
+        }
+        .select2-container--my-custom-theme .select2-selection--single {
+            border: none;
+            min-height: 60px;
+            min-width: 400px;
+            cursor: pointer;
+            margin: auto;
+            /* border: 2px solid #7d1d1d; */
+        }
+        .select2-container--my-custom-theme .select2-selection--single .select2-selection__rendered {
+            color: var(--bs-color);
+            line-height: 1.4;
+            padding: 0;
+        }
+        .select2-container--my-custom-theme .select2-selection--single .select2-selection__arrow {
+            display: none;
+        }
+        .select2-container--my-custom-theme .select2-selection--single .select2-search__field::placeholder {
+            color: var(--bs-color);
+            font-size: var(--bs-body-font-size);
+            /* font-weight: var(--bs-body-font-weight); */
+            font-family: 'MyfontC', 'MyfontE', "Microsoft YaHei", "Arial", sans-serif;
+            /* margin: none; */
+        }
+
+        .select2-container--my-custom-theme .select2-selection--multiple .select2-selection__choice {
+            color: var(--bs-color);
+            /* border: 1px solid #193505; */
+            display: inline-block;
+            font-size: var(--bs-body-font-size);
+            margin-left: 9px;
+            /* font-weight: var(--bs-body-font-weight); */
+            cursor: default;
+        }
+
+        /* .select2-container--my-custom-theme .select2-selection--multiple .select2-selection__choice:hover {
+            color: var(--bs-hover-color);
+            transition: 0.5s;
+        } */
+
+        /* ===== 4. 标签删除按钮 ===== */
+        .select2-container--my-custom-theme .select2-selection--multiple .select2-selection__choice__remove {
+            color: rgb(255, 255, 255);
+            cursor: pointer;
+            display: block;
+            /* font-weight: bold; */
+            font-size: var(--bs-body-font-size);
+            background: transparent;
+            border: none;
+            margin-left: 1px;
+            margin-top: 9px;
+            float: right;
+        }
+
+        .select2-container--my-custom-theme .select2-selection--multiple .select2-selection__choice__remove:hover {
+            color: var(--bs-hover-color);
+            transition: 0.5s;
+        }
+
+        /* receiver-group 隐藏删除按钮 */
+        #receiver-group .select2-selection__choice__remove {
+            display: none !important;
+        }
+
+        .select2-container--my-custom-theme .select2-selection--multiple .select2-selection__rendered {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 4px;
+            /* border: 2px solid #c10303; */
+        }
+
+        .select2-container--my-custom-theme .select2-selection--multiple .select2-search--inline {
+            border: none;
+            /* border: 2px solid #c10303; */
+            /* margin: none !important; */
+            width: auto;
+        }
+            
+        .select2-container--my-custom-theme .select2-selection--multiple .select2-search__field {
+            background: transparent !important;
+            border: none !important;
+            outline: none !important;
+            box-shadow: none !important;
+            padding: none !important;
+            margin: none !important;
+            min-width: 60px;
+            font-size: var(--bs-body-font-size);
+            /* font-weight: var(--bs-body-font-weight); */
+            font-family: 'MyfontC', 'MyfontE', "Microsoft YaHei", "Arial", sans-serif;
+            color: var(--bs-color);
+            box-sizing: border-box;
+        }
+
+        .select2-container--my-custom-theme .select2-selection--multiple .select2-search__field::placeholder {
+            color: var(--bs-color);
+            font-size: var(--bs-body-font-size);
+            /* font-weight: var(--bs-body-font-weight); */
+            font-family: 'MyfontC', 'MyfontE', "Microsoft YaHei", "Arial", sans-serif;
+            /* margin: none; */
+        }
+
+        .select2-container--my-custom-theme .select2-selection--multiple .select2-search__field:hover::placeholder {
+            color: var(--bs-hover-color);
+            transition: 0.5s;
+        }
+
+        .select2-container--my-custom-theme .select2-selection--multiple .select2-selection__clear {
+            font-size: 0 !important;
+        }
+
+        .select2-container--my-custom-theme .select2-selection--multiple .select2-selection__clear::before {
+            content: '清除';
+            display: inline-block;
+            font-size: calc(var(--bs-body-font-size) - 20px);
+            font-family: 'MyfontC', 'MyfontE', "Microsoft YaHei", "Arial", sans-serif;
+            color: var(--bs-color);
+            cursor: pointer;
+            /* writing-mode: vertical-rl; */
+            letter-spacing: 1px;
+            position: relative;
+            top: -5px;
+            /* left: -50px; */
+            padding: 2px 6px 4px 5px;
+            /* margin: 0 4px; */
+            border: 2px solid var(--bs-color);
+        }
+
+        .select2-container--my-custom-theme .select2-selection--multiple .select2-selection__clear:hover::before {
+            color: var(--bs-hover-color);
+            border-color: var(--bs-hover-color);
+            transition: 0.5s;
+        }
+        /* 自定义下拉框（dropdown）的样式 */
+        .select2-container--my-custom-theme .select2-dropdown {
+            border-color: #ff000000;
+            width: var(--pos-dropdown-width) !important;
+            margin-top: 16px;
+            margin-bottom: 16px;
+            height: var(--pos-dropdown-height) !important;
+            overflow: auto;
+            scrollbar-width: none;
+            background-color: #00000000;
+            color:var(--bs-color);
+            animation: dropdownIn 0.25s ease-out;
+        }
+        @keyframes dropdownIn {
+            from {
+                opacity: 0;
+                transform: translateY(-10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        /* 自定义下拉选项（options）的样式，包括悬停和选中状态 */
+        .select2-container--my-custom-theme .select2-results__option {
+            color: var(--bs-color);
+            border: 3px solid #ffffff00;
+            /* font-weight: var(--bs-body-font-weight); */
+        }
+
+        .select2-container--my-custom-theme .select2-results__option--highlighted {
+            /* background-color: #e5ff00; */
+            /* outline: 1px solid var(--bs-color); */
+            border: 3px solid var(--bs-color);
+            /* color: rgb(50, 9, 161); */
+        }
+
+        .select2-container--my-custom-theme .select2-results__option--selected {
+            /* background-color: var(--bs-color); */
+            border: 3px solid var(--bs-color);
+            /* color: #fefefe00; */
+        }
+
+        /* ===== 自定义日期选择器 ===== */
+        .custom-date-picker {
+            position: relative;
+            display: inline-block;
+            font-family: 'MyfontC', 'MyfontE', "Microsoft YaHei", "Arial", sans-serif;
+            font-size: var(--bs-body-font-size);
+            /* font-weight: var(--bs-body-font-weight); */
+        }
+        .date-display {
+            width: 100%;
+            min-width: 280px;
+            padding: 12px 16px;
+            font-family: 'MyfontC', 'MyfontE', "Microsoft YaHei", "Arial", sans-serif;
+            font-size: var(--bs-body-font-size);
+            /* font-weight: var(--bs-body-font-weight); */
+            letter-spacing: auto;
+            color: var(--bs-color);
+            background-color: #ffffff00;
+            border: none;
+            outline: none;
+            box-shadow: none !important;
+            cursor: pointer;
+        }
+        .date-display::placeholder {
+            color: var(--bs-color);
+            font-family: 'MyfontC', 'MyfontE', "Microsoft YaHei", "Arial", sans-serif;
+            /* font-weight: var(--bs-body-font-weight); */
+            font-size: var(--bs-body-font-size);
+            /* letter-spacing: var(--bs-body-letter-spacing); */
+            box-shadow: none !important;
+        }
+        .date-display:hover::placeholder {
+            color: var(--bs-hover-color);
+            transition: 0.5s;
+        }
+        .date-display:hover{
+            color: var(--bs-hover-color);
+            transition: 0.5s;
+        }
+        /* .date-display:hover { 
+            border-color: #94a3b8;
+        } */
+        .date-display:focus, .date-display.active {
+            outline: none;
+            box-shadow: none !important;
+            /* border-color: #6366f1; */
+            /* box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.15); */
+            /* background-color: #fafaff; */
+        }
+        .date-display.is-invalid {
+            color: #dc3545 !important;
+            /* box-shadow: 0 0 0 4px rgba(220,53,69,0.15) !important; */
+        }
+        .date-dropdown {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            margin-top: 4px;
+            background: #ffffff00;
+            padding: 8px;
+            /* min-width: 320px; */
+            width: var(--pos-date-calendar-width);
+            animation: dropdownIn 0.25s ease-out;
+        }
+        .date-calendar {
+            width: 100%;
+            table-layout: fixed;
+            border-collapse: collapse;
+            font-family: 'MyfontC', 'MyfontE', "Microsoft YaHei", "Arial", sans-serif;
+            /* font-weight: var(--bs-body-font-weight); */
+            letter-spacing: auto;
+            font-size: var(--bs-body-font-size);
+            text-align: center;
+        }
+        .date-calendar th {
+            color: var(--bs-color);
+            /* font-weight: normal; */
+            padding: 20px 0;
+            font-size: calc(var(--bs-body-font-size) - 10px);
+            height: 50px;
+        }
+        .date-calendar td {
+            height: 80px;
+            padding: 20px 0;
+            cursor: default;
+            color: #ccc;
+            vertical-align: middle;
+        }
+        .date-calendar td.selectable {
+            color: var(--bs-color);
+            cursor: pointer;
+        }
+        .date-calendar td.selectable:hover {
+            outline: 2px solid var(--bs-color);
+            outline-offset: -1px;
+        }
+        .date-calendar td.selected {
+            /* background-color: #d308a7 !important; */
+            color: var(--bs-color) !important;
+            outline: 2px solid var(--bs-color);
+            outline-offset: -1px;
+        }
+        .date-calendar td sup {
+            font-size: var(--bs-sup-font-size);
+            color: var(--bs-color);
+            line-height: 1;
+            display: block;
+            text-align: center;
+            height: calc(var(--bs-body-font-size) - 15px);
+        }
+        .date-calendar td sup.inv {
+            visibility: hidden;
+        }
+
+        .date-calendar td.touming {
+            color:#00000000
+        }
+
+        .date-calendar td.empty {
+            cursor: default;
+            color: transparent;
+        }
+        .parallax-layer {
+            /* 告诉浏览器这个元素会频繁变化，提前准备 GPU 加速 */
+            will-change: transform;
+            
+            /* 确保图片铺满容器 */
+            width: 100%;
+            display: block;
+            user-select: none;
+            pointer-events: none;  /* 禁止鼠标事件 */
+            /* 让过渡更平滑（但这里用 JS 控制，不设 transition） */
+            transition: none;
+            margin:auto;
+        }
+        .parallax-toplayer{
+            user-select: none;
+            pointer-events: none;  /* 禁止鼠标事件 */
+            margin:auto;
+        }
+
+        /* ===== 表单组件定位（使用 CSS 变量） ===== */
+        #receiver-group {
+            position: absolute;
+            top: var(--pos-receiver-top);
+            left: var(--pos-receiver-left);
+            /* transform: translateX(-50%); */
+            width: auto;
+            margin: 0;
+        }
+        #senders-group {
+            position: absolute;
+            top: var(--pos-senders-top);
+            left: var(--pos-senders-left);
+            /* transform: translateX(-50%); */
+        }
+        #date-group {
+            position: absolute;
+            top: var(--pos-date-top);
+            left: var(--pos-date-left);
+            /* transform: translateX(-50%); */
+        }
+        #image-group {
+            position: absolute;
+            top: var(--pos-image-top);
+            left: var(--pos-image-left);
+        }
+        #cost-group {
+            position: absolute;
+            top: var(--pos-cost-top);
+            left: var(--pos-cost-left);
+        }
+        #anonymous-group {
+            position: absolute;
+            top: var(--pos-anonymous-top);
+            left: var(--pos-anonymous-left);
+            user-select: none;
+        }
+        .anon-toggle {
+            display: inline-block;
+            position: relative;
+            overflow: hidden;
+            /* border: 2px solid var(--bs-color); */
+            font-family: 'MyfontC', 'MyfontE', "Microsoft YaHei", sans-serif;
+            font-size: var(--bs-body-font-size);
+            color: var(--bs-color);
+            cursor: pointer;
+            user-select: none;
+            line-height: 1.4;
+            height: calc(1.4em + 12px);
+        }
+        .anon-track {
+            transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        .anon-option {
+            display: block;
+            padding: 6px 0;
+            text-align: center;
+            line-height: 1.4;
+        }
+        .anon-toggle:hover {
+            /* border-color: var(--bs-color); */
+            color:var(--bs-hover-color);
+            transition: 0.5s;
+        }
+        .anon-toggle.right .anon-track {
+            transform: translateY(-50%);
+        }
+        #submit-group {
+            position: absolute;
+            top: var(--pos-submit-top);
+            left: var(--pos-submit-left);
+        }
+        #submit-btn {
+            display: inline-block;
+            padding: 0 200px 3px 5px;
+            font-family: 'MyfontC', 'MyfontE', "Microsoft YaHei", sans-serif;
+            font-size: var(--bs-body-font-size);
+            color: var(--bs-color);
+            background: transparent;
+            border: 2px solid #00000000;
+            cursor: pointer;
+            /* letter-spacing: 6px; */
+            transition: 0.25s;
+        }
+        #submit-btn:hover {
+            /* border-color: var(--bs-color); */
+            color:var(--bs-hover-color);
+            transition: 0.5s;
+        }
+        #submit-btn:active {
+            color:var(--bs-hover-color);
+        }
+        #mode-group {
+            position: absolute;
+            top: var(--pos-mode-top);
+            left: var(--pos-mode-left);
+            /* width: auto; */
+            /* height: auto; */
+            /* border: 2px solid #ffffff; */
+            /* transform: translateX(-50%); */
+        }
+        #mode-group:hover .select2-container--my-custom-theme .select2-selection--single .select2-selection__rendered{
+            color:var(--bs-hover-color);
+            transition: 0.5s;
+        }
+        #mode-group .select2-dropdown {
+            margin-top: var(--pos-mode-dropdown);
+        }
+        #cost-per-user{
+            color: var(--bs-color);
+            font-family: 'MyfontC', 'Numbers', "Microsoft YaHei", "Arial", sans-serif;
+            font-size: var(--bs-body-font-size);
+
+        }
+        .cost-num {
+            font-size: calc(var(--bs-body-font-size) + 70px);
+            color: rgb(255, 166, 0);
+        }
+        .image-preview{
+            width: var(--pos-image-width);
+            height: var(--pos-image-height);
+            margin: 8px;
+            background-color: rgb(255, 166, 0);;
+        }
+        .invalid-feedback {
+            color: #dc3545;
+            font-size: calc(var(--bs-body-font-size) - 20px);
+            margin-top: 4px;
+            margin-left: 10px;
+        }
+        /* Safari 兼容：dvh 动态视口高度，排除地址栏 */
+        .fullscreen-overlay {
+            height: 100vh;
+            height: 100dvh;
+        }
+
+        /* ===== 页面加载遮罩 ===== */
+        #page-loading {
+            position: fixed;
+            z-index: 100000;
+            left: 0; top: 0;
+            width: 100vw;
+            height: 100vh;
+            height: 100dvh;
+            background: #181818;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-direction: column;
+            transition: opacity 3s ease-out;
+            touch-action: none;
+        }
+        #page-loading.hidden {
+            opacity: 0;
+            pointer-events: none;
+        }
+        #page-loading .spinner {
+            width: 200px;
+            transition: opacity 0.5s ease-out;
+        }
+        #page-loading .spinner.hidden {
+            opacity: 0;
+        }
+        #next-page-wrapper {
+          position: fixed;
+          left: 50%;
+          bottom: 5%;
+          z-index: 2;
+          transform: translateX(-50%) scale(var(--form-scale,1));
+          transform-origin: center bottom;
+          transition: opacity 0.2s ease, transform 0.2s ease;
+          pointer-events: auto;
+        }
+        #next-page-btn {
+          width: auto;
+          height: auto;
+          padding: 0;
+          border: none;
+          background: transparent;
+          cursor: pointer;
+          display: block;
+          transition: transform 0.15s ease;
+        }
+        #next-page-btn:hover {
+          transform: translateY(-3px);
+        }
+        #next-page-btn:active {
+          transform: translateY(1px);
+        }
+        #next-page-btn img {
+          display: block;
+          width: 9vw;
+          max-width: 96px;
+          height: auto;
+          border: none;
+          pointer-events: none;
+          filter: drop-shadow(0 0 8px rgba(0, 0, 0, 0.253));
+        }
+    </style>
+  </head>
+
+  <body>
+    <!-- 页面加载遮罩 -->
+    <div id="page-loading">
+        <img src="{{ MEDIA_URL }}birthboard/loading.gif" alt="Loading..." class="spinner" />
+        <!-- <div class="loading-text">加载中...</div> -->
+    </div>
+    <main>
+        <div id="parallax-container" style="display: grid; width: 200%; max-width: 1650px; margin: auto; ">
+            <!-- ===== 桌面版视差图层 ===== -->
+            <picture id="desktop-layer-tree" style="grid-area: 1/1; width:100%; display:block; z-index: 8; position: relative; pointer-events:none; background: linear-gradient(to top, #eee1a5 0, #eee1a5 100px, transparent 100px, transparent 100%);">
+                <img src="{{ MEDIA_URL }}birthboard/tree_small.webp" alt="tree" class="parallax-toplayer" decoding="async" style="width:100%; display:block; user-select:none; pointer-events:none;">
+            </picture>
+            <picture id="desktop-layer-words" style="grid-area: 1/1; width:100%; display:block; z-index: 6; pointer-events:none;">
+                <img src="{{ MEDIA_URL }}birthboard/words_small.webp" alt="words" class="parallax-layer" decoding="async" style="width:100%; display:block; position:fixed; left:0; right:0; user-select:none; pointer-events:none; margin:auto;">
+            </picture>
+            <picture id="desktop-layer-stars" style="grid-area: 1/1; width:100%; display:block; z-index: 4; pointer-events:none;">
+                <source media="(max-aspect-ratio: 3/4)" srcset="{{ MEDIA_URL }}birthboard/stars_phone.webp" type="image/webp">
+                <img src="{{ MEDIA_URL }}birthboard/stars_small.webp" alt="stars" class="parallax-layer" decoding="async" style="width:100%; display:block; position:fixed; left:0; right:0; user-select:none; pointer-events:none; margin:auto;">
+            </picture>
+            <picture id="desktop-layer-sky" style="grid-area: 1/1; width:100%; display:block; z-index: 3; pointer-events:none;">
+                <source media="(max-aspect-ratio: 3/4)" srcset="{{ MEDIA_URL }}birthboard/sky12_small.webp" type="image/webp">
+                <img src="{{ MEDIA_URL }}birthboard/sky_small.webp" alt="sky" class="parallax-layer" decoding="async" style="width:100%; display:block; position:fixed; left:0; right:0; user-select:none; pointer-events:none; margin:auto;">
+            </picture>
+            <img id="desktop-layer-lines" src="{{ MEDIA_URL }}birthboard/lines_small.webp" alt="lines" decoding="async" style="grid-area: 1/1; width:100%; display:block; z-index: 7; position: absolute; top:0; left:0; transform-origin:0 0; width: 1920px; pointer-events: none;" class="wid-control">
+            <!-- ===== 手机版静态图层（初始隐藏） ===== -->
+            <img id="phone-layer-back" src="{{ MEDIA_URL }}birthboard/phone/phone_back.webp" alt="phoneback" decoding="async" style="grid-area: 1/1; width:100%; display:none; z-index: 3; position:relative; pointer-events:none; user-select:none;">
+            <img id="phone-layer-word" src="{{ MEDIA_URL }}birthboard/phone/phone_word.webp" alt="phoneword" decoding="async" style="grid-area: 1/1; width:100%; display:none; z-index: 8; position:relative; pointer-events:none; user-select:none;">
+            <img id="phone-layer-tree" src="{{ MEDIA_URL }}birthboard/phone/phone_tree.webp" alt="phonetree" decoding="async" style="grid-area: 1/1; width:100%; display:none; z-index: 10; position:relative; pointer-events:none; user-select:none;">
+            <img id="phone-layer-lines" src="{{ MEDIA_URL }}birthboard/phone/phone_line.webp" alt="phonelines" decoding="async" style="grid-area: 1/1; width:100%; display:none; z-index: 9; position:relative; pointer-events:none; user-select:none;">
         </div>
-        <!-- 3. 多选送出用户 -->
-        <div class="form-group" id="senders-group">
-            <label for="senders">请选择送出祝福的用户（可多选）</label>
-            <select class="form-control" id="senders" name="senders" multiple style="width:100%"></select>
-            <div class="invalid-feedback text-danger" id="senders-error" style="display:none;"></div>
-            <div class="mt-2">
+        <form id="birthboard-form" class="wid-control" method="post" enctype="multipart/form-data" target="birthboard-submit-target" style="position:absolute; top:0; left:0; width:1920px; transform-origin:0 0; z-index:5; overflow:hidden;">
+            <a href="/birthboard/approve/" style="position:absolute; top:656px; right:740px; width:40px; height:40px; background:#ffffff; cursor:pointer; display:block; z-index:100;" title="审核管理"></a>
+            {% csrf_token %}
+            <div class="form-group overlay-select" id="receiver-group">
+                <select class="form-control" id="receiver" name="receiver"></select>
+                <div
+                class="invalid-feedback"
+                id="receiver-error"
+                style="display: none"
+                ></div>
+            </div>
+            <div class="form-group overlay-select" id="senders-group">
+                <select
+                class="form-control"
+                id="senders"
+                name="senders"
+                style="width: 100%"
+                ></select>
+                <!-- <div
+                class="invalid-feedback"
+                id="senders-error"
+                style="display: none"
+                ></div>
+                <div class="mt-2">
                 <strong>已选择：</strong><span id="selected-senders-list">无</span>
+                </div> -->
             </div>
-        </div>
-        <!-- 4. 图片、时间、模式选择 -->
-        <div class="form-row">
-            <div class="form-group col-md-3">
-                <label for="date">投放日期</label>
-                <input type="date" class="form-control" id="date" name="date">
-            </div>
-            <div class="form-group col-md-3">
-                <label for="mode">投放模式</label>
+            <div class="form-group overlay-select" id="mode-group">
+            <!-- <label for="mode">投放模式</label> -->
                 <select class="form-control" id="mode" name="mode">
-                    <option value="0">35元气值/1天</option>
-                    <option value="1">60元气值/3天</option>
-                    <option value="2">1000元气值/1年</option>
+                    <!-- <option value=""></option> -->
+                    <option value="0">35&thinsp;元气值&thinsp;->&thinsp;1&thinsp;天</option>
+                    <option value="1">60&thinsp;元气值&thinsp;->&thinsp;3&thinsp;天</option>
+                    <option value="2">10000&thinsp;元气值&thinsp;->&thinsp;1&thinsp;年</option>
                 </select>
             </div>
-            <div class="form-group col-md-6" id="image-group">
-                <label for="image">上传图片（1920x1080, 72/96dpi）</label>
-                <input type="file" class="form-control-file" id="image" name="image" accept="image/*">
-                <div class="invalid-feedback text-danger" id="image-error" style="display:none;"></div>
-            </div>
-        </div>
-        <!-- 5. 消耗、匿名、提交 -->
-        <div class="form-row align-items-center">
-            <div class="col-md-4">
-                <label>每人消耗元气值：</label>
-                <span id="cost-per-user">-</span>
-            </div>
-            <div class="col-md-4">
-                <div class="form-check">
-                    <input class="form-check-input" type="checkbox" id="is_anonymous" name="is_anonymous">
-                    <label class="form-check-label" for="is_anonymous">匿名（默认不匿名）</label>
+            <div class="form-group" id="date-group">
+                <!-- <label for="date">投放日期</label> -->
+                <div class="custom-date-picker">
+                    <input type="text" class="date-display" id="birthdate-display" placeholder="XXXX&#8201;年&#8201;XX&#8201;月&#8201;XX&#8201;日" autocomplete="off" />
+                    <input type="hidden" id="birthdate" name="date" />
+                    <div class="date-dropdown" id="date-dropdown" style="display:none;">
+                        <table class="date-calendar" id="date-calendar">
+                            <thead>
+                                <tr>
+                                    <th>日</th><th>一</th><th>二</th><th>三</th><th>四</th><th>五</th><th>六</th>
+                                </tr>
+                            </thead>
+                            <tbody id="calendar-body">
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
             </div>
-            <div class="col-md-4 text-right">
-                <button type="submit" class="btn btn-primary">确认提交</button>
-                <a href="/birthboard/confirm/" class="btn btn-outline-info ml-2">查看确认页面{% if confirm_tab_total_count %}({{ confirm_tab_total_count }}){% endif %}</a>
+            <div id="image-group">
+                <input
+                    type="file"
+                    class="form-control-file"
+                    id="image"
+                    name="image"
+                    accept=".png,.jpg,.jpeg"
+                    style="display:none;"
+                />
+                <div style="display:flex; flex-wrap:nowrap; gap:var(--pos-img-gap); width:max-content; overflow:hidden; cursor:pointer;" onclick="document.getElementById('image').click();">
+                    <img class="image-preview" src="{{ MEDIA_URL }}birthboard/replace.png" alt="预览"/>
+                    <img class="image-preview" src="{{ MEDIA_URL }}birthboard/replace.png" alt="预览"/>
+                    <img class="image-preview" src="{{ MEDIA_URL }}birthboard/replace.png" alt="预览"/>
+                </div>
+                <div
+                    class="invalid-feedback"
+                    id="image-error"
+                    style="display: none; margin-top: 105px;"
+                ></div>
             </div>
-        </div>
-    </form>
+            <div id="cost-group">
+                <span id="cost-per-user">-</span>
+            </div>
+            <div id="anonymous-group">
+                <div class="anon-toggle" id="anon-toggle" onclick="toggleAnon()">
+                    <div class="anon-track">
+                        <span class="anon-option">实名</span>
+                        <span class="anon-option">匿名</span>
+                    </div>
+                </div>
+                <input type="checkbox" id="is_anonymous" name="is_anonymous" style="display:none;">
+            </div>
+            <div id="submit-group">
+                <button type="submit" id="submit-btn">
+                    上传
+                </button>
+            </div>
+            <!-- <div style="width: 100%; height: 1000px; background-color: #078bbb;">
 
-<!-- 纯HTML自定义确认扣款弹窗 -->
-<div id="confirmChargeModal" style="display:none; position:fixed; z-index:9999; left:0; top:0; width:100vw; height:100vh; background:rgba(0,0,0,0.4);">
-    <div style="background:#fff; max-width:350px; margin:15vh auto; padding:24px 20px; text-align:center;">
-        <div style="margin-bottom:18px;">确认要提交并立即扣除您的元气值吗？（提交后不可撤销）</div>
-        <button id="modal-cancel-btn" style="margin-right:18px;">取消</button>
-        <button id="modal-confirm-charge-btn">确认扣款</button>
+            </div> -->
+        </form>
+    </main>
+
+    <!-- 查看确认页面按钮（移出 form，避免层叠上下文限制） -->
+    <a href="/welcome/" id="desktop-exit-btn" style="position:fixed; left:12px; top:14%; transform:translateY(-50%) scale(var(--form-scale,1)); transform-origin:left center; z-index:1; transition: transform 0.15s ease;" onmouseover="this.style.transform='translateY(-50%) translateX(-2%) scale(var(--form-scale,1))'" onmouseout="this.style.transform='translateY(-50%) scale(var(--form-scale,1))'">
+        <img src="{{ MEDIA_URL }}birthboard/button/exitleft.webp" alt="返回首页" style="display:block; border:none; cursor:pointer; max-width: 7vw;">
+    </a>
+    <a href="javascript:void(0)" id="desktop-confirm-count-link" onclick="document.getElementById('confirm-section').scrollIntoView({behavior:'smooth'});" style="position:fixed; left:16px; top:30%; transform:translateY(-50%) scale(var(--form-scale,1)); transform-origin:left center; z-index:1; text-decoration:none; transition: transform 0.15s ease;" onmouseover="this.style.transform='translateY(-50%) translateX(-2%) scale(var(--form-scale,1))'" onmouseout="this.style.transform='translateY(-50%) scale(var(--form-scale,1))'">
+        <img src="{{ MEDIA_URL }}birthboard/button/wddpleft.webp" alt="查看确认页面" style="display:block; border:none; cursor:pointer; max-width: 8vw;">
+        <span id="confirm-count-badge" style="position:absolute; right:98% ; top:20%; transform:translateY(-50%); color:#ffffff; font-family:'Numbers','MyfontC'; font-size:28px; pointer-events:none; border-bottom: #b60000 15px solid; display: inline-block; line-height: 0.3;">{% if confirm_tab_total_count %}{{confirm_tab_total_count}}{% endif %}</span>
+    </a>
+    <span id="desktop-back-to-top-wrapper" style="position:fixed; bottom:1%; z-index:1; opacity:0; pointer-events:none; transition: opacity 0.3s ease, transform 0.3s ease; transform:translateY(-50%) translateX(40px) scale(var(--form-scale,1)); transform-origin:left center;">
+        <a href="javascript:void(0)" id="desktop-back-to-top-btn" style="display:block; transition:transform 0.15s ease;" onmouseover="this.style.transform='translateX(-2%)'" onmouseout="this.style.transform=''">
+            <img src="{{ MEDIA_URL }}birthboard/button/topleft.webp" alt="返回顶部" style="display:block; border:none; cursor:pointer; max-width: 9vw;">
+        </a>
+    </span>
+
+<!-- 手机版手机版手机版手机版手机版手机版手机版 -->
+
+    <a href="/welcome/" id="phone-exit-btn" style="display:none; position:fixed; left:12px; top:14%; transform:translateY(-50%) scale(var(--form-scale,1)); transform-origin:left center; z-index:9999; transition: transform 0.15s ease;" onmouseover="this.style.transform='translateY(-50%) translateX(2%) scale(var(--form-scale,1))'" onmouseout="this.style.transform='translateY(-50%) scale(var(--form-scale,1))'">
+        <img src="{{ MEDIA_URL }}birthboard/button/exitright.webp" alt="返回首页" style="display:block; border:none; cursor:pointer; max-width: 7vw;">
+    </a>
+    <a href="javascript:void(0)" id="phone-confirm-count-link" onclick="document.getElementById('confirm-section').scrollIntoView({behavior:'smooth'});" style="display:none; position:fixed; left:16px; top:30%; transform:translateY(-50%) scale(var(--form-scale,1)); transform-origin:left center; z-index:9999; text-decoration:none; transition: transform 0.15s ease;" onmouseover="this.style.transform='translateY(-50%) translateX(2%) scale(var(--form-scale,1))'" onmouseout="this.style.transform='translateY(-50%) scale(var(--form-scale,1))'">
+        <span id="phone-confirm-count-badge" style="position:absolute; left:98% ; top:20%; transform:translateY(-50%); color:#ffffff; font-family:'Numbers','MyfontC'; font-size:28px; pointer-events:none; border-bottom: #b60000 15px solid; display: inline-block; line-height: 0.3;">{% if confirm_tab_total_count %}{{confirm_tab_total_count}}{% endif %}</span>
+        <img src="{{ MEDIA_URL }}birthboard/button/wddpright.webp" alt="查看确认页面" style="display:block; border:none; cursor:pointer; max-width: 8vw;">
+    </a>
+    <span id="phone-back-to-top-wrapper" style="display:none; position:fixed; bottom:1%; z-index:9999; opacity:0; pointer-events:none; transition: opacity 0.3s ease, transform 0.3s ease; transform:translateY(-50%) translateX(-40px) scale(var(--form-scale,1)); transform-origin:left center;">
+        <a href="javascript:void(0)" id="phone-back-to-top-btn" style="display:block; transition:transform 0.15s ease;" onmouseover="this.style.transform='translateX(2%)'" onmouseout="this.style.transform=''">
+            <img src="{{ MEDIA_URL }}birthboard/button/topright.webp" alt="返回顶部" style="display:block; border:none; cursor:pointer; max-width: 9vw;">
+        </a>
+    </span>
+
+    <span id="next-page-wrapper" style="z-index: 10000;">
+      <button type="button" id="next-page-btn" aria-label="向下翻页">
+        <img src="{{ MEDIA_URL }}birthboard/next.png" alt="向下翻页" style="width: 70px;">
+      </button>
+    </span>
+    
+
+    <!-- 隐藏提交目标iframe，用于接收表单POST后的跳转 -->
+    <iframe name="birthboard-submit-target" style="display:none;" onload="onSubmitTargetLoaded()"></iframe>
+
+    <!-- 嵌入确认页面 -->
+    <div class="wid-control" id="confirm-section" style="background-color: #eee1a5; position:relative; z-index:10; ">
+        <!-- <img src="{{ MEDIA_URL }}birthboard/b2w.png" alt="trans" style="width:100%; height:auto; margin:0 auto;"> -->
+        <iframe id="confirm-iframe" src="/birthboard/confirm/" style="width: 100%; height: 200px; border: none;" scrolling="no"></iframe>
+      <div>
+        thisisbottom!!!!!!!!!!!!
+      </div>
     </div>
-</div>
 
-<!-- 余额不足提示弹窗 -->
-<div id="insufficientBalanceModal" style="display:none; position:fixed; z-index:9999; left:0; top:0; width:100vw; height:100vh; background:rgba(0,0,0,0.4);">
-    <div style="background:#fff; max-width:350px; margin:15vh auto; padding:24px 20px; text-align:center;">
-        <div id="insufficient-balance-text" style="margin-bottom:18px;">当前余额为0，余额不足。</div>
-        <button id="insufficient-balance-confirm-btn">确认</button>
+    <!-- 纯HTML自定义确认扣款弹窗 -->
+    <div
+      id="confirmChargeModal"
+      class="fullscreen-overlay"
+      style="
+        display: none;
+        position: fixed;
+        z-index: 10001;
+        left: 0;
+        top: 0;
+        width: 100vw;
+        background: rgba(0, 0, 0, 0.4);
+      "
+    >
+      <div style="position:relative; display:inline-block; margin:var(--popup-margin-top) auto; left:50%; transform:translateX(-50%);">
+        <img src="{{ MEDIA_URL }}birthboard/popup/checkback.webp" style="display:block; max-width:var(--popup-img-max-w); max-height:var(--popup-img-max-h); width:auto; height:auto;">
+        <button id="modal-cancel-btn" style="
+          position:absolute; left:var(--popup-btn-left); bottom:var(--popup-btn-bottom); width:var(--popup-btn-width); height:var(--popup-btn-height);
+          background:url('{{ MEDIA_URL }}birthboard/popup/checkrightlight.webp') no-repeat center/100% 100%;
+          border:none; cursor:pointer;
+        " onmouseover="this.style.backgroundImage='url({{ MEDIA_URL }}birthboard/popup/checkrightdark.webp)'" onmouseout="this.style.backgroundImage='url({{ MEDIA_URL }}birthboard/popup/checkrightlight.webp)'"></button>
+        <button id="modal-confirm-charge-btn" style="
+          position:absolute; right:var(--popup-btn-right); bottom:var(--popup-btn-bottom); width:var(--popup-btn-width); height:var(--popup-btn-height);
+          background:url('{{ MEDIA_URL }}birthboard/popup/checkleftlight.webp') no-repeat center/100% 100%;
+          border:none; cursor:pointer;
+        " onmouseover="this.style.backgroundImage='url({{ MEDIA_URL }}birthboard/popup/checkleftdark.webp)'" onmouseout="this.style.backgroundImage='url({{ MEDIA_URL }}birthboard/popup/checkleftlight.webp)'"></button>
+      </div>
     </div>
-</div>
 
-<!-- 今日生日提醒弹窗 -->
-<div id="todayReminderModal" style="display:none; position:fixed; z-index:10000; left:0; top:0; width:100vw; height:100vh; background:rgba(0,0,0,0.4);">
-    <div style="background:#fff; max-width:380px; margin:15vh auto; padding:24px 20px; text-align:center;">
-        <div id="today-reminder-text" style="margin-bottom:18px;"></div>
+    <!-- 余额不足提示弹窗 -->
+    <div
+      id="insufficientBalanceModal"
+      class="fullscreen-overlay"
+      style="
+        display: none;
+        position: fixed;
+        z-index: 10001;
+        left: 0;
+        top: 0;
+        width: 100vw;
+        background: rgba(0, 0, 0, 0.4);
+      "
+    >
+      <div style="position:relative; display:inline-block; margin:var(--popup-margin-top) auto; left:50%; transform:translateX(-50%);">
+        <img src="{{ MEDIA_URL }}birthboard/popup/outback.webp" style="display:block; max-width:var(--popup-img-max-w); max-height:var(--popup-img-max-h); width:auto; height:auto;">
+        <div id="insufficient-balance-text" style="
+          position:absolute; left:10%; top:36%; width:80%; height:50%;
+          display:flex; align-items:center; justify-content:center;
+          text-align:center; color:#9a0000; font-family: 'Numbers', 'MyfontC'; font-size: 35px; line-height:1.5;
+        "><span style="font-size: 20px; color:#000000; margin-top: 8px;">仅有&ensp;</span>0<span style="font-size: 20px; color:#000000; margin-top: 8px;">&ensp;元气值</span></div>
+        <button class="insufficient-balance-confirm-btn" style="
+          position:absolute; left:var(--popup-btn-left); bottom:var(--popup-btn-bottom); width:var(--popup-btn-width); height:var(--popup-btn-height);
+          background:url('{{ MEDIA_URL }}birthboard/popup/outleftlight.webp') no-repeat center/100% 100%;
+          border:none; cursor:pointer;
+        " onmouseover="this.style.backgroundImage='url({{ MEDIA_URL }}birthboard/popup/outleftdark.webp)'" onmouseout="this.style.backgroundImage='url({{ MEDIA_URL }}birthboard/popup/outleftlight.webp)'"></button>
+        <button class="insufficient-balance-confirm-btn" style="
+          position:absolute; right:var(--popup-btn-right); bottom:var(--popup-btn-bottom); width:var(--popup-btn-width); height:var(--popup-btn-height);
+          background:url('{{ MEDIA_URL }}birthboard/popup/outrightlight.webp') no-repeat center/100% 100%;
+          border:none; cursor:pointer;
+        " onmouseover="this.style.backgroundImage='url({{ MEDIA_URL }}birthboard/popup/outrightdark.webp)'" onmouseout="this.style.backgroundImage='url({{ MEDIA_URL }}birthboard/popup/outrightlight.webp)'"></button>
+      </div>
+    </div>
+
+    <!-- 今日生日提醒弹窗 -->
+    <div
+      id="todayReminderModal"
+      class="fullscreen-overlay"
+      style="
+        display: none;
+        position: fixed;
+        z-index: 10001;
+        left: 0;
+        top: 0;
+        width: 100vw;
+        background: rgba(0, 0, 0, 0.4);
+      ">
+      <div
+        style="
+          background: var(--bs-color);
+          max-width: 380px;
+          margin: 15vh auto;
+          padding: 24px 20px;
+          text-align: center;
+        ">
+        <div id="today-reminder-text" style="margin-bottom: 18px"></div>
         <button id="today-reminder-confirm-btn">确定</button>
+      </div>
     </div>
-</div>
 
+    <!-- ===== 确认页面弹窗（从 iframe 提升到父页面） ===== -->
+    <!-- 被祝福者拒绝弹窗 -->
+    <div id="confirm-reject-received-modal" class="fullscreen-overlay" style="display:none; position:fixed; z-index:10000; left:0; top:0; width:100vw; background:rgba(0,0,0,0.4);">
+      <div style="position:relative; display:inline-block; margin:var(--popup-margin-top) auto; left:50%; transform:translateX(-50%);">
+        <img src="{{ MEDIA_URL }}birthboard/popup/rejectback.webp" style="display:block; max-width:var(--popup-img-max-w); max-height:var(--popup-img-max-h); width:auto; height:auto;">
+        <button data-action="cancel" style="
+          position:absolute; left:var(--popup-btn-left); bottom:var(--popup-btn-bottom); width:var(--popup-btn-width); height:var(--popup-btn-height);
+          background:url('{{ MEDIA_URL }}birthboard/popup/rejectleftlight.webp') no-repeat center/100% 100%;
+          border:none; cursor:pointer;
+        " onmouseover="this.style.backgroundImage='url({{ MEDIA_URL }}birthboard/popup/rejectleftdark.webp)'" onmouseout="this.style.backgroundImage='url({{ MEDIA_URL }}birthboard/popup/rejectleftlight.webp)'"></button>
+        <button data-action="confirm" style="
+          position:absolute; right:var(--popup-btn-right); bottom:var(--popup-btn-bottom); width:var(--popup-btn-width); height:var(--popup-btn-height);
+          background:url('{{ MEDIA_URL }}birthboard/popup/rejectrightlight.webp') no-repeat center/100% 100%;
+          border:none; cursor:pointer;
+        " onmouseover="this.style.backgroundImage='url({{ MEDIA_URL }}birthboard/popup/rejectrightdark.webp)'" onmouseout="this.style.backgroundImage='url({{ MEDIA_URL }}birthboard/popup/rejectrightlight.webp)'"></button>
+      </div>
+    </div>
+    <!-- 参与者拒绝弹窗 -->
+    <div id="confirm-reject-participation-modal" class="fullscreen-overlay" style="display:none; position:fixed; z-index:10000; left:0; top:0; width:100vw; background:rgba(0,0,0,0.4);">
+      <div style="position:relative; display:inline-block; margin:var(--popup-margin-top) auto; left:50%; transform:translateX(-50%);">
+        <img src="{{ MEDIA_URL }}birthboard/popup/denyback.webp" style="display:block; max-width:var(--popup-img-max-w); max-height:var(--popup-img-max-h); width:auto; height:auto;">
+        <button data-action="cancel" style="
+          position:absolute; left:var(--popup-btn-left); bottom:var(--popup-btn-bottom); width:var(--popup-btn-width); height:var(--popup-btn-height);
+          background:url('{{ MEDIA_URL }}birthboard/popup/denyleftlight.webp') no-repeat center/100% 100%;
+          border:none; cursor:pointer;
+        " onmouseover="this.style.backgroundImage='url({{ MEDIA_URL }}birthboard/popup/denyleftdark.webp)'" onmouseout="this.style.backgroundImage='url({{ MEDIA_URL }}birthboard/popup/denyleftlight.webp)'"></button>
+        <button data-action="confirm" style="
+          position:absolute; right:var(--popup-btn-right); bottom:var(--popup-btn-bottom); width:var(--popup-btn-width); height:var(--popup-btn-height);
+          background:url('{{ MEDIA_URL }}birthboard/popup/denyrightlight.webp') no-repeat center/100% 100%;
+          border:none; cursor:pointer;
+        " onmouseover="this.style.backgroundImage='url({{ MEDIA_URL }}birthboard/popup/denyrightdark.webp)'" onmouseout="this.style.backgroundImage='url({{ MEDIA_URL }}birthboard/popup/denyrightlight.webp)'"></button>
+      </div>
+    </div>
+    <!-- 撤销确认弹窗 -->
+    <div id="confirm-revoke-modal" class="fullscreen-overlay" style="display:none; position:fixed; z-index:10000; left:0; top:0; width:100vw; background:rgba(0,0,0,0.4);">
+      <div style="position:relative; display:inline-block; margin:var(--popup-margin-top) auto; left:50%; transform:translateX(-50%);">
+        <img src="{{ MEDIA_URL }}birthboard/popup/cancelback.webp" style="display:block; max-width:var(--popup-img-max-w); max-height:var(--popup-img-max-h); width:auto; height:auto;">
+        <button data-action="cancel" style="
+          position:absolute; left:var(--popup-btn-left); bottom:var(--popup-btn-bottom); width:var(--popup-btn-width); height:var(--popup-btn-height);
+          background:url('{{ MEDIA_URL }}birthboard/popup/cancelleftlight.webp') no-repeat center/100% 100%;
+          border:none; cursor:pointer;
+        " onmouseover="this.style.backgroundImage='url({{ MEDIA_URL }}birthboard/popup/cancelleftdark.webp)'" onmouseout="this.style.backgroundImage='url({{ MEDIA_URL }}birthboard/popup/cancelleftlight.webp)'"></button>
+        <button data-action="confirm" style="
+          position:absolute; right:var(--popup-btn-right); bottom:var(--popup-btn-bottom); width:var(--popup-btn-width); height:var(--popup-btn-height);
+          background:url('{{ MEDIA_URL }}birthboard/popup/cancelrightlight.webp') no-repeat center/100% 100%;
+          border:none; cursor:pointer;
+        " onmouseover="this.style.backgroundImage='url({{ MEDIA_URL }}birthboard/popup/cancelrightdark.webp)'" onmouseout="this.style.backgroundImage='url({{ MEDIA_URL }}birthboard/popup/cancelrightlight.webp)'"></button>
+      </div>
+    </div>
+    <!-- 中止投放弹窗 -->
+    <div id="confirm-abort-modal" class="fullscreen-overlay" style="display:none; position:fixed; z-index:10000; left:0; top:0; width:100vw; background:rgba(0,0,0,0.4);">
+      <div style="position:relative; display:inline-block; margin:var(--popup-margin-top) auto; left:50%; transform:translateX(-50%);">
+        <img src="{{ MEDIA_URL }}birthboard/popup/pullbackback.webp" style="display:block; max-width:var(--popup-img-max-w); max-height:var(--popup-img-max-h); width:auto; height:auto;">
+        <button data-action="cancel" style="
+          position:absolute; left:var(--popup-btn-left); bottom:var(--popup-btn-bottom); width:var(--popup-btn-width); height:var(--popup-btn-height);
+          background:url('{{ MEDIA_URL }}birthboard/popup/pullbackleftlight.webp') no-repeat center/100% 100%;
+          border:none; cursor:pointer;
+        " onmouseover="this.style.backgroundImage='url({{ MEDIA_URL }}birthboard/popup/pullbackleftdark.webp)'" onmouseout="this.style.backgroundImage='url({{ MEDIA_URL }}birthboard/popup/pullbackleftlight.webp)'"></button>
+        <button data-action="confirm" style="
+          position:absolute; right:var(--popup-btn-right); bottom:var(--popup-btn-bottom); width:var(--popup-btn-width); height:var(--popup-btn-height);
+          background:url('{{ MEDIA_URL }}birthboard/popup/pullbackrightlight.webp') no-repeat center/100% 100%;
+          border:none; cursor:pointer;
+        " onmouseover="this.style.backgroundImage='url({{ MEDIA_URL }}birthboard/popup/pullbackrightdark.webp)'" onmouseout="this.style.backgroundImage='url({{ MEDIA_URL }}birthboard/popup/pullbackrightlight.webp)'"></button>
+      </div>
+    </div>
+    <!-- 全屏图片弹窗 -->
+    <div id="confirm-fullscreen-modal" class="fullscreen-overlay" style="display:none; position:fixed; z-index:10000; left:0; top:0; width:100vw; background:rgba(0,0,0,0.9);">
+        <div style="width:100%; height:100%; display:flex; align-items:center; justify-content:center;">
+            <img id="confirm-fullscreen-img" style="max-width:90vw; max-height:90vh; cursor:pointer;" onclick="document.getElementById('confirm-fullscreen-modal').style.display='none'">
+            <button style="position:absolute; top:20px; right:20px; background:none; border:none; color:white; font-size:32px; cursor:pointer;" onclick="document.getElementById('confirm-fullscreen-modal').style.display='none'">&times;</button>
+        </div>
+    </div>
+    <!-- 想过目确认弹窗 -->
+    <div id="confirm-preview-modal" class="fullscreen-overlay" style="display:none; position:fixed; z-index:10000; left:0; top:0; width:100vw; background:rgba(0,0,0,0.4);">
+      <div style="position:relative; display:inline-block; margin:var(--popup-margin-top) auto; left:50%; transform:translateX(-50%);">
+        <img src="{{ MEDIA_URL }}birthboard/popup/revealback.webp" style="display:block; max-width:var(--popup-img-max-w); max-height:var(--popup-img-max-h); width:auto; height:auto;">
+        <button data-action="confirm" style="
+          position:absolute; left:var(--popup-btn-left); bottom:var(--popup-btn-bottom); width:var(--popup-btn-width); height:var(--popup-btn-height);
+          background:url('{{ MEDIA_URL }}birthboard/popup/revealleftlight.webp') no-repeat center/100% 100%;
+          border:none; cursor:pointer;
+        " onmouseover="this.style.backgroundImage='url({{ MEDIA_URL }}birthboard/popup/revealleftdark.webp)'" onmouseout="this.style.backgroundImage='url({{ MEDIA_URL }}birthboard/popup/revealleftlight.webp)'"></button>
+        <button data-action="cancel" style="
+          position:absolute; right:var(--popup-btn-right); bottom:var(--popup-btn-bottom); width:var(--popup-btn-width); height:var(--popup-btn-height);
+          background:url('{{ MEDIA_URL }}birthboard/popup/revealrightlight.webp') no-repeat center/100% 100%;
+          border:none; cursor:pointer;
+        " onmouseover="this.style.backgroundImage='url({{ MEDIA_URL }}birthboard/popup/revealrightdark.webp)'" onmouseout="this.style.backgroundImage='url({{ MEDIA_URL }}birthboard/popup/revealrightlight.webp)'"></button>
+      </div>
+    </div>
 
-<!-- jQuery 必须在 select2 之前引入 -->
-<script src="{% static 'Appointment/assets/js/jquery.min.js' %}"></script>
-<link href="{% static 'Appointment/assets/select2/css/select2.min.css' %}" rel="stylesheet" />
-<script src="{% static 'Appointment/assets/select2/js/select2.min.js' %}"></script>
-<script src="{% static 'assets/js/select2/user-matcher.js' %}"></script>
+    <!-- jQuery 必须在 select2 之前引入 -->
+    <script src="{% static 'Appointment/assets/js/jquery.min.js' %}"></script>
+    <link
+      href="{% static 'Appointment/assets/select2/css/select2.min.css' %}"
+      rel="stylesheet"
+    />
+    <script src="{% static 'Appointment/assets/select2/js/select2.min.js' %}"></script>
+    <script src="{% static 'assets/js/select2/user-matcher.js' %}"></script>
 
-{{ json_context | json_script:'context-data' }}
-{% if birthboard_initial %}
-<script id="birthboard-initial-data" type="application/json">{{ birthboard_initial|safe }}</script>
-{% endif %}
-{{ insufficient_balance|default:''|json_script:'insufficient-balance-data' }}
-{{ today_entry_reminders|default:''|json_script:'today-entry-reminders-data' }}
-{{ birthboard_date_rule|default:''|json_script:'birthboard-date-rule-data' }}
-<script>
-// 投放模式消耗
-const modeCost = [35, 60, 1000];
+    {{ json_context | json_script:'context-data' }} {% if birthboard_initial %}
+    <script id="birthboard-initial-data" type="application/json">
+      {{ birthboard_initial|safe }}
+    </script>
+    {% endif %} {{insufficient_balance|default:''|json_script:'insufficient-balance-data' }}
+    {{ today_entry_reminders|default:''|json_script:'today-entry-reminders-data'}} {{birthboard_date_rule|default:''|json_script:'birthboard-date-rule-data' }}
+    <script>
+        const container = document.getElementById('parallax-container');
+        const layers = document.querySelectorAll('.parallax-layer');
 
-$(document).ready(function(){
-    // 自动预填逻辑
-    var initialData = null;
-    var initialScript = document.getElementById('birthboard-initial-data');
-    if (initialScript) {
-        try {
+        let ticking = false;
+        // UA检测是否为手机设备（软键盘不影响），用于切换手机版静态图层
+        var _isMobileUA = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini|Mobile/i.test(navigator.userAgent);
+        var _isiPhone = /iPhone/i.test(navigator.userAgent);
+        var _isPhoneMode = _isMobileUA;
+
+        function initPhoneLayers() {
+            if (_isMobileUA) {
+                document.getElementById('desktop-layer-tree').style.display = 'none';
+                document.getElementById('desktop-layer-words').style.display = 'none';
+                document.getElementById('desktop-layer-stars').style.display = 'none';
+                document.getElementById('desktop-layer-sky').style.display = 'none';
+                document.getElementById('desktop-layer-lines').style.display = 'none';
+                document.getElementById('phone-layer-back').style.display = 'block';
+                document.getElementById('phone-layer-word').style.display = 'block';
+                document.getElementById('phone-layer-tree').style.display = 'block';
+                document.getElementById('phone-layer-lines').style.display = 'block';
+                document.querySelector('a[href="/birthboard/approve/"]').style.display = 'none';
+                document.documentElement.style.setProperty('--bs-body-font-size', '84px');
+                document.documentElement.style.setProperty('--bs-sup-font-size', '48px');
+                // 手机版表单定位（在此修改数值）
+                document.documentElement.style.setProperty('--pos-dropdown-width', '900px');
+                document.documentElement.style.setProperty('--pos-dropdown-height', '500px');
+                document.documentElement.style.setProperty('--pos-receiver-top', '4460px');
+                document.documentElement.style.setProperty('--pos-receiver-left', '400px');
+                document.documentElement.style.setProperty('--pos-date-top', '4860px');
+                document.documentElement.style.setProperty('--pos-date-left', '380px');
+                document.documentElement.style.setProperty('--pos-date-calendar-width', '1200px');
+                document.documentElement.style.setProperty('--pos-senders-top', '6350px');
+                document.documentElement.style.setProperty('--pos-senders-left', '400px');
+                document.documentElement.style.setProperty('--pos-cost-top', '7395px');
+                document.documentElement.style.setProperty('--pos-cost-left', '400px');
+                document.documentElement.style.setProperty('--pos-image-top', '8342px');
+                document.documentElement.style.setProperty('--pos-image-left', '-344px');
+                document.documentElement.style.setProperty('--pos-image-width', '770px');
+                document.documentElement.style.setProperty('--pos-image-height', '433px');
+                document.documentElement.style.setProperty('--pos-img-gap', '30px');
+                document.getElementById('image-error').style.marginTop = '110px';
+                document.getElementById('image-error').style.marginLeft = '950px';
+                document.documentElement.style.setProperty('--pos-anonymous-top', '9520px');
+                document.documentElement.style.setProperty('--pos-anonymous-left', '400px');
+                document.documentElement.style.setProperty('--pos-submit-top', '10385px');
+                document.documentElement.style.setProperty('--pos-submit-left', '391px');
+                document.documentElement.style.setProperty('--pos-mode-top', '5900px');
+                document.documentElement.style.setProperty('--pos-mode-left', '400px');
+                document.documentElement.style.setProperty('--pos-mode-dropdown', '80px');
+                // 手机版弹窗定位（在此修改数值）
+                document.documentElement.style.setProperty('--popup-btn-left', '18%');
+                document.documentElement.style.setProperty('--popup-btn-right', '18%');
+                document.documentElement.style.setProperty('--popup-btn-bottom', '12%');
+                document.documentElement.style.setProperty('--popup-btn-width', '28%');
+                document.documentElement.style.setProperty('--popup-btn-height', '14%');
+                document.documentElement.style.setProperty('--popup-margin-top', '15vh');
+                document.documentElement.style.setProperty('--popup-img-max-w', '70vw');
+                document.documentElement.style.setProperty('--popup-img-max-h', '70vh');
+                layers.forEach(function(layer) { layer.style.transform = ''; });
+            }
+            if(_isiPhone){
+                document.documentElement.style.setProperty('--bs-body-font-size', '80px');
+            }
+        }
+
+        function checkRatio() {
+            // Safari 兼容：用 clientHeight 替代 innerHeight，避免地址栏干扰
+            const vh = document.documentElement.clientHeight;
+            const vw = document.documentElement.clientWidth;
+            const ratio = vw / vh;
+            const dpr = window.devicePixelRatio || 1;
+            // console.log(`${window.innerWidth}, ${window.innerHeight}`);
+            // console.log(`宽高比: ${ratio.toFixed(4)}  (${vw}×${vh})`);
+            // console.log(`设备像素比: ${dpr}`);
+
+            // DEBUG: 显示实际渲染字体
+            // var testEl = document.querySelector('.date-display') || document.body;
+            // var computedFont = window.getComputedStyle(testEl).fontFamily;
+            // console.log('实际渲染字体:', computedFont);
+            // 如果宽高比大于 4:3，调整宽度
+            if (window.innerWidth < 600){
+                document.querySelector('a[href="/birthboard/approve/"]').style.display = 'none';
+                document.querySelector('#next-page-btn').style.display = 'none';
+                document.querySelector('#phone-exit-btn img').style.maxWidth = '140px';
+                document.querySelector('#phone-confirm-count-link img').style.maxWidth = '140px';
+                document.querySelector('#phone-back-to-top-btn img').style.maxWidth = '140px';
+            }
+            else{
+                document.querySelector('a[href="/birthboard/approve/"]').style.display = 'block';
+                document.querySelector('#next-page-btn').style.display = 'block';
+                document.querySelector('#phone-exit-btn img').style.maxWidth = '';
+                document.querySelector('#phone-confirm-count-link img').style.maxWidth = '';
+                document.querySelector('#phone-back-to-top-btn img').style.maxWidth = '';
+            }
+            if (ratio < 1.5){
+                document.querySelector('#desktop-exit-btn').style.display = 'none';
+                document.querySelector('#desktop-confirm-count-link').style.display = 'none';
+                document.querySelector('#desktop-back-to-top-wrapper').style.display = 'none';
+                document.querySelector('#phone-exit-btn').style.display = 'block';
+                document.querySelector('#phone-confirm-count-link').style.display = 'block';
+                document.querySelector('#phone-back-to-top-wrapper').style.display = 'block';
+            }
+            else{
+                document.querySelector('#desktop-exit-btn').style.display = 'block';
+                document.querySelector('#desktop-confirm-count-link').style.display = 'block';
+                document.querySelector('#desktop-back-to-top-wrapper').style.display = 'block';
+                document.querySelector('#phone-exit-btn').style.display = 'none';
+                document.querySelector('#phone-confirm-count-link').style.display = 'none';
+                document.querySelector('#phone-back-to-top-wrapper').style.display = 'none';
+            }
+            if (ratio > 1.333) {
+                const newWidth = vh * 1.333;
+                document.getElementById('parallax-container').style.width = newWidth + 'px';
+                document.querySelectorAll('.parallax-layer').forEach(el => {
+                    el.style.width = newWidth + 'px';
+                });
+                document.querySelectorAll('.wid-control').forEach(el => {
+                    if (el.id === 'birthboard-form') return;
+                    el.style.width = newWidth + 'px';
+                    el.style.left = '0';
+                    el.style.right = '0';
+                    el.style.margin = '0 auto';
+                });
+            } else {
+                if (ratio < 0.5) { // 如果宽高比小于 9:16，调整高度
+                const newWidth = vh * 0.5;
+                // console.log(`调整宽度为: ${newWidth}px`);
+                document.getElementById('parallax-container').style.width = newWidth + 'px';
+                document.querySelectorAll('.parallax-layer').forEach(el => {
+                    el.style.width = newWidth + 'px';
+                });
+                document.querySelectorAll('.wid-control').forEach(el => {
+                    if (el.id === 'birthboard-form') return;
+                    el.style.width = newWidth + 'px';
+                    el.style.left = '0';
+                    el.style.right = '0';
+                    el.style.margin = '0 auto';
+                });
+                } else {
+                    // 恢复默认（可选）
+                    document.getElementById('parallax-container').style.width = '100%';
+                    document.querySelectorAll('.parallax-layer').forEach(el => {
+                        el.style.width = '100%';
+                    });
+                    document.querySelectorAll('.wid-control').forEach(el => {
+                        if (el.id === 'birthboard-form') return;
+                        el.style.width = '100%';
+                        el.style.left = '0';
+                        el.style.right = '';
+                        el.style.margin = '';
+                    });
+                }
+            }
+            // 同步 form 缩放（1920 设计基准 → 实际宽度）并居中
+            // 原图宽度都是1920，用容器实际像素宽度 / 1920 得到缩放比
+            var containerH = container.offsetHeight;
+            var containerRect = container.getBoundingClientRect();
+            var formEl = document.getElementById('birthboard-form');
+            var formWidth = 1920; // 设计基准
+            var phoneFormWidth = 1080; // 手机设计基准
+            var maxFormWidth = 1650; // 最大显示宽度，超过此值 scale 不再增大
+            var actualW = containerRect.width;
+            var displayW = Math.min(actualW, maxFormWidth);
+            var scale = displayW / formWidth;
+            var phoneScale = displayW / phoneFormWidth;
+            formEl.style.left = containerRect.left + 'px';
+            formEl.style.transform = 'scale(' + scale + ')';
+            if (containerH > 0) {
+                formEl.style.height = (containerH / scale) + 'px';
+            }
+            // 同步所有固定按钮的缩放
+            if (ratio < 0.75) {
+                document.documentElement.style.setProperty('--form-scale', phoneScale);
+            } else {
+                document.documentElement.style.setProperty('--form-scale', scale);
+            }
+            // console.log('[birthboard] scale=', scale, 'containerW=', actualW);
+            // 同步退出按钮的水平位置（放在 form 左侧，不低于 0）
+            var DexitBtn = document.getElementById('desktop-exit-btn');
+
+            if (DexitBtn) {
+                var exitW = DexitBtn.offsetWidth * 0.9 * scale;
+                var exitLeft = containerRect.left - exitW;
+                DexitBtn.style.left = Math.max(0, exitLeft) + 'px';
+            }
+
+            var PexitBtn = document.getElementById('phone-exit-btn');
+
+            if (PexitBtn) {
+                var exitW = PexitBtn.offsetWidth * 0.1 * scale;
+                var exitLeft = containerRect.left - exitW;
+                PexitBtn.style.left = Math.max(0, exitLeft) + 'px';
+            }
+            // 同步确认页按钮的水平位置（放在 form 左侧，不低于 0）
+            var DconfirmLink = document.getElementById('desktop-confirm-count-link');
+            if (DconfirmLink) {
+                var linkW = DconfirmLink.offsetWidth * 0.9 * scale;
+                var linkLeft = containerRect.left - linkW;
+                DconfirmLink.style.left = Math.max(0, linkLeft) + 'px';
+            }
+
+            var PconfirmLink = document.getElementById('phone-confirm-count-link');
+            if (PconfirmLink) {
+                var linkW = PconfirmLink.offsetWidth * 0.1 * scale;
+                var linkLeft = containerRect.left - linkW;
+                PconfirmLink.style.left = Math.max(0, linkLeft) + 'px';
+            }
+            // 同步返回顶部按钮的水平位置（放在 form 左侧，不低于 0）
+            var DbackToTopWrapper = document.getElementById('desktop-back-to-top-wrapper');
+            if (DbackToTopWrapper) {
+                var topW = DbackToTopWrapper.offsetWidth * 0.9 * scale;
+                var topLeft = containerRect.left - topW;
+                DbackToTopWrapper.style.left = Math.max(0, topLeft) + 'px';
+            }
+            var PbackToTopWrapper = document.getElementById('phone-back-to-top-wrapper');
+            if (PbackToTopWrapper) {
+                var topW = PbackToTopWrapper.offsetWidth * 0.1 * scale;
+                var topLeft = containerRect.left - topW;
+                PbackToTopWrapper.style.left = Math.max(0, topLeft) + 'px';
+            }
+        }
+        document.addEventListener('touchmove', function (e) {
+            // 只在固定元素上阻止默认行为
+            if (e.target.closest('.parallax-layer')) {
+                e.preventDefault();
+            }
+        }, { passive: false });
+
+        // 或者直接阻止整个页面的弹性滚动
+        document.body.addEventListener('touchstart', function (e) {
+            if (e.target.closest('.parallax-layer')) {
+                e.preventDefault();
+            }
+        }, { passive: false });
+        window.addEventListener('resize', checkRatio);
+        initPhoneLayers();   // UA检测，一次性切换手机/桌面图层
+        checkRatio();        // 初始执行一次
+        updateParallax();    // 立即计算视差位置
+
+        // 页面资源全部加载完毕后隐藏加载遮罩（带兜底超时）
+        (function(){
+            var loadingEl = document.getElementById('page-loading');
+            if (!loadingEl) return;
+            // 阻止 loading 遮罩上的触摸事件穿透到背后页面
+            loadingEl.addEventListener('touchmove', function(e) {
+                e.preventDefault();
+            }, { passive: false });
+            // loading 期间锁定 body 滚动
+            var _bodyOrigOverflow = document.body.style.overflow;
+            document.body.style.overflow = 'hidden';
+            var done = false;
+            function hideLoading() {
+                if (done) return;
+                done = true;
+                // 恢复 body 滚动
+                document.body.style.overflow = _bodyOrigOverflow;
+                // 先隐藏 spinner
+                var spinner = loadingEl.querySelector('.spinner');
+                if (spinner) spinner.classList.add('hidden');
+                // 等 spinner 淡出后再隐藏遮罩
+                setTimeout(function() {
+                    loadingEl.classList.add('hidden');
+                    setTimeout(function() {
+                        if (loadingEl.parentNode) loadingEl.parentNode.removeChild(loadingEl);
+                    }, 5000);
+                }, 500);
+            }
+            window.addEventListener('load', function() {
+                // load 事件在全部资源（含图片）加载完后触发
+                // 图片加载后重新计算（此时容器高度已确定）
+                checkRatio();
+                updateParallax();
+                // 再加 300ms 缓冲确保渲染完成
+                setTimeout(hideLoading, 1300);
+            });
+            // 兜底：8 秒后无论如何隐藏
+            setTimeout(hideLoading, 100000);
+        })();
+
+        window.addEventListener('scroll', function () {
+          // console.log('[birthboard] scrollY=', window.scrollY);
+            // 如果当前没有等待执行的帧，就请求一帧
+            if (!ticking) {
+                window.requestAnimationFrame(function () {
+                    // 执行真正的更新逻辑
+                    updateParallax();
+                    // 执行完后重置标志
+                    ticking = false;
+                });
+                // 标记已请求，避免重复
+                ticking = true;
+            }
+        });
+
+        function updateParallax() {
+            // 手机版静态图层模式，跳过视差动画
+            if (_isPhoneMode) return;
+            // 1. 获取容器在视口中的位置信息
+            const rect = container.getBoundingClientRect();
+            const containerTop = rect.top;        // 容器顶部到视口顶部的距离
+            const containerHeight = rect.height;  // 容器自身高度
+            const windowHeight = document.documentElement.clientHeight;
+
+            // 2. 计算容器滚动的总行程
+            const totalScrollDistance = containerHeight - windowHeight;
+            // 3. 计算当前已经滚动了多少
+            const scrolled = containerTop*(-1);
+            // 4. 计算滚动进度（0 ~ 1）
+            const progress = scrolled / totalScrollDistance;
+            // 5. 对每一层应用不同的偏移
+            layers.forEach(function (layer) {
+                const layerHeight = layer.offsetHeight;
+                const offset = progress * (layerHeight - windowHeight) * (-1);
+                layer.style.transform = 'translateY(' + offset + 'px)';
+            });
+        }
+      // 投放模式消耗
+      const modeCost = [35, 60, 10000];
+
+      // 在中英文、数字之间自动添加四分之一空格 (U+2005)
+      function addCJKSpace(text) {
+          if (!text) return text;
+          // CJK字符后接英文/数字
+          text = text.replace(/([\u4e00-\u9fff\u3400-\u4dbf\uf900-\ufaff])([a-zA-Z0-9])/g, '$1\u2005$2');
+          // 英文/数字后接CJK字符
+          text = text.replace(/([a-zA-Z0-9])([\u4e00-\u9fff\u3400-\u4dbf\uf900-\ufaff])/g, '$1\u2005$2');
+          return text;
+      }
+
+      // 表单通过隐藏iframe提交后，滚动到确认区并刷新iframe
+      var _formSubmitted = false;
+
+      // 匿名开关
+      function toggleAnon() {
+          var $toggle = $('#anon-toggle');
+          var $cb = $('#is_anonymous');
+          if ($toggle.hasClass('right')) {
+              $toggle.removeClass('right');
+              $cb.prop('checked', false);
+          } else {
+              $toggle.addClass('right');
+              $cb.prop('checked', true);
+          }
+      }
+
+      function refreshConfirmCount() {
+          $.get('/birthboard/api/confirm_count/', function(resp) {
+              var count = resp.total || 0;
+              var $badge = $('#confirm-count-badge');
+              var $pbadge = $('#phone-confirm-count-badge');
+              if (count > 0) {
+                  $badge.text(count).show();
+                  $pbadge.text(count).show();
+              } else {
+                  $badge.hide();
+                  $pbadge.hide();
+              }
+          });
+      }
+
+      // 监听 iframe postMessage 高度调整
+      window.addEventListener('message', function(e) {
+          if (e.data && e.data.type === 'refresh-count') {
+              // console.log('[birthboard] refresh-count msg received');
+              refreshConfirmCount();
+              return;
+          }
+          if (e.data && e.data.type === 'resize-iframe') {
+              var iframe = document.getElementById('confirm-iframe');
+              if (iframe && e.data.height) {
+                  // console.log('[parent] set iframe height:', e.data.height);
+                  iframe.style.height = e.data.height + 'px';
+              }
+          }
+      });
+
+      // iframe 重新加载（切换 tab / 表单提交后）也刷新计数
+      document.getElementById('confirm-iframe').addEventListener('load', function() {
+          // console.log('[birthboard] iframe loaded, refreshing count');
+          refreshConfirmCount();
+      });
+
+      // 匿名开关
+      function toggleAnon() {
+          var $toggle = $('#anon-toggle');
+          var $cb = $('#is_anonymous');
+          if ($toggle.hasClass('right')) {
+              $toggle.removeClass('right');
+              $cb.prop('checked', false);
+          } else {
+              $toggle.addClass('right');
+              $cb.prop('checked', true);
+          }
+      }
+
+        function getNextPageTargetY() {
+          var currentY = window.scrollY || window.pageYOffset || 0;
+          var scale = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--form-scale')) || 1;
+          var targets = [1500, 2900, 4200, 5260, 9200];
+          var maxScrollY = Math.max(0, document.documentElement.scrollHeight - document.documentElement.clientHeight);
+          for (var i = 0; i < targets.length; i++) {
+            if (currentY < Math.round(targets[i] * scale)) return Math.round(targets[i] * scale);
+          }
+          return maxScrollY;
+        }
+
+        // 返回顶部按钮：滚动到 confirm-section 时滑入/滑出
+      var $DbackToTopWrapper = $('#desktop-back-to-top-wrapper');
+      var $PbackToTopWrapper = $('#phone-back-to-top-wrapper');
+      var $DbackToTop = $('#desktop-back-to-top-btn');
+      $DbackToTop.on('click', function() {
+          window.scrollTo({top: 0, behavior: 'smooth'});
+      });
+      var $PbackToTop = $('#phone-back-to-top-btn');
+      $PbackToTop.on('click', function() {
+          window.scrollTo({top: 0, behavior: 'smooth'});
+      });
+      var $nextPageBtn = $('#next-page-btn');
+      $nextPageBtn.on('click', function() {
+        window.scrollTo({top: getNextPageTargetY(), behavior: 'smooth'});
+      });
+      $(window).on('scroll', function() {
+          var scrollY = window.scrollY || window.pageYOffset || 0;
+          var maxScrollY = Math.max(0, document.documentElement.scrollHeight - document.documentElement.clientHeight);
+          var atBottom = scrollY >= maxScrollY - 300;
+          $nextPageBtn.closest('#next-page-wrapper').css({
+              'opacity': atBottom ? '0' : '1',
+              'pointer-events': atBottom ? 'none' : 'auto'
+          });
+          var confirmSection = document.getElementById('confirm-section');
+          if (confirmSection) {
+              var rect = confirmSection.getBoundingClientRect();
+              if (rect.top <= document.documentElement.clientHeight) {
+                  $DbackToTopWrapper.css({
+                      'opacity': '1',
+                      'pointer-events': 'auto',
+                      'transform': 'translateY(-50%) translateX(0) scale(var(--form-scale,1))'
+                  });
+                  $PbackToTopWrapper.css({
+                      'opacity': '1',
+                      'pointer-events': 'auto',
+                      'transform': 'translateY(-50%) translateX(0) scale(var(--form-scale,1))'
+                  });
+              } else {
+                  $DbackToTopWrapper.css({
+                      'opacity': '0',
+                      'pointer-events': 'none',
+                      'transform': 'translateY(-50%) translateX(40px) scale(var(--form-scale,1))'
+                  });
+                  $PbackToTopWrapper.css({
+                      'opacity': '0',
+                      'pointer-events': 'none',
+                      'transform': 'translateY(-50%) translateX(-40px) scale(var(--form-scale,1))'
+                  });
+              }
+          }
+      });
+
+      function onSubmitTargetLoaded() {
+          if (_formSubmitted) {
+              _formSubmitted = false;
+              $('html').css('scroll-behavior', 'auto');
+              $('html, body').animate({
+                  scrollTop: $('#confirm-section').offset().top - 270
+              }, 10000, 'swing', function() {
+                  $('html').css('scroll-behavior', 'smooth');
+              });
+              var confirmIframe = document.getElementById('confirm-iframe');
+              if (confirmIframe) {
+                  confirmIframe.src = confirmIframe.src;
+              }
+              
+              // 等滚动动画完成后再重置表单
+              setTimeout(function() {
+                  $('#receiver').val(null).trigger('change');
+                  $('#mode').val('0').trigger('change');
+                  // date: 清空显示值、隐藏值和日历选中
+                  $('#birthdate').val('');
+                  $('#birthdate-display').val('').removeClass('is-invalid');
+                  $('#birthdate-error').hide();
+                  $('.date-calendar td').removeClass('selected');
+                  // image: 清空文件、恢复默认预览图
+                  $('#image').val('');
+                  $('.image-preview').attr('src', '{{ MEDIA_URL }}birthboard/replace.png');
+                  $('#image-error').hide();
+                  // anonymous: 回到实名 + 清空复选框
+                  $('#is_anonymous').prop('checked', false);
+                  $('#anon-toggle').removeClass('right');
+                  // 刷新确认计数
+                  setTimeout(refreshConfirmCount, 500);
+              }, 3000);
+          }
+      }
+
+      /*
+             * 此函数定义后从未被调用，且请求的 /birthboard/birthboard_confirm.html 并非有效端点
+            async function loadPage(){
+                try {
+                    const response = await fetch('/birthboard/birthboard_confirm.html');
+                    if (!response.ok) {
+                        throw new Error('Network response was not ok');
+                    }
+                    const htmlString = await response.text();
+                    document.body.insertAdjacentHTML('beforeend', htmlString);
+                } catch (error) {
+                    console.error('Error loading the page:', error);
+                }
+            };
+            */
+
+      $(document).ready(function () {
+        // 自动预填逻辑
+        var initialData = null;
+        var initialScript = document.getElementById("birthboard-initial-data");
+        if (initialScript) {
+          try {
             initialData = JSON.parse(initialScript.textContent);
             // console.log('[DEBUG] birthboard页面获取到预填数据:', initialData);
-        } catch (e) { /* console.log('[DEBUG] birthboard页面预填数据解析失败', e); */ }
-    }
-    if (initialData) {
-        if (initialData.receiver) {
-            $('#receiver').val(initialData.receiver).trigger('change');
+          } catch (e) {
+            /* console.log('[DEBUG] birthboard页面预填数据解析失败', e); */
+          }
         }
-        if (initialData.senders) {
-            $('#senders').val(initialData.senders).trigger('change');
-        }
-        if (initialData.date) {
-            $('#date').val(initialData.date);
-        }
-        if (typeof initialData.mode !== 'undefined') {
-            $('#mode').val(initialData.mode.toString());
-        }
-        if (typeof initialData.is_anonymous !== 'undefined') {
-            $('#is_anonymous').prop('checked', initialData.is_anonymous);
-        }
-    }
-    // 纯JS自定义弹窗逻辑，合并校验和弹窗拦截
-    let pendingSubmit = false;
-    // $('#birthboard-form').on('submit', function(e){
-        
-    // });
-    $('#modal-cancel-btn').on('click', function(){
-        $('#confirmChargeModal').hide();
-        // console.log('点击取消，弹窗关闭');
-    });
-    $('#modal-confirm-charge-btn').on('click', function(){
-        pendingSubmit = true;
-        $('#confirmChargeModal').hide();
-        // console.log('点击确认扣款，pendingSubmit设为true，重新触发submit');
-        // $('#birthboard-form').trigger('submit');
-        $('#birthboard-form')[0].submit();
-    });
-    function showInsufficientBalanceModal(balance) {
-        $('#insufficient-balance-text').text('当前余额为' + balance + '，余额不足。');
-        $('#insufficientBalanceModal').show();
-    }
-    $('#insufficient-balance-confirm-btn').on('click', function(){
-        $('#insufficientBalanceModal').hide();
-    });
-    $('#insufficientBalanceModal').on('click', function(e){
-        if (e.target === this) {
-            $('#insufficientBalanceModal').hide();
-        }
-    });
-    const insufficientBalanceScript = document.getElementById('insufficient-balance-data');
-    if (insufficientBalanceScript) {
-        try {
-            const serverInsufficientBalance = JSON.parse(insufficientBalanceScript.textContent);
-            if (serverInsufficientBalance !== null && serverInsufficientBalance !== '') {
-                showInsufficientBalanceModal(serverInsufficientBalance);
+        if (initialData) {
+          if (initialData.receiver) {
+            $("#receiver").val([initialData.receiver]).trigger("change");
+          }
+          if (initialData.senders) {
+            $("#senders").val(initialData.senders).trigger("change");
+          }
+          if (initialData.date) {
+            var parts = initialData.date.split('-');
+            $('#birthdate').val(initialData.date);
+            $('#birthdate-display').val(parts[0] + '\u2009年\u2009' + parts[1] + '\u2009月\u2009' + parts[2] + '\u2009日');
+            $('.date-calendar td').removeClass('selected');
+            $('.date-calendar td[data-date="' + initialData.date + '"]').addClass('selected');
+          }
+          if (typeof initialData.mode !== "undefined") {
+            $("#mode").val(initialData.mode.toString()).trigger("change");
+          }
+          if (typeof initialData.is_anonymous !== "undefined") {
+            $("#is_anonymous").prop("checked", initialData.is_anonymous);
+            if (initialData.is_anonymous) {
+              $('#anon-toggle').addClass('right');
             }
-        } catch (e) {
-            // console.log('[DEBUG] insufficient-balance-data parse failed', e);
+          }
         }
-    }
-    const todayReminderScript = document.getElementById('today-entry-reminders-data');
-    const todayReminders = todayReminderScript ? JSON.parse(todayReminderScript.textContent) : {};
-    const dateRuleScript = document.getElementById('birthboard-date-rule-data');
-    const dateRule = dateRuleScript ? JSON.parse(dateRuleScript.textContent) : {};
-    const reminderUserId = "{{ request.user.username|escapejs }}";
-    const reminderDate = todayReminders.today || '';
-    const reminderStoragePrefix = 'birthboard_today_reminder:' + reminderUserId + ':' + reminderDate + ':';
-    const reminderQueue = [];
-    let happyDismissed = false;
-    let blessDismissed = false;
-    try {
-        happyDismissed = localStorage.getItem(reminderStoragePrefix + 'happy') === '1';
-        blessDismissed = localStorage.getItem(reminderStoragePrefix + 'bless') === '1';
-    } catch (e) {
-        // console.log('[DEBUG] localStorage unavailable for reminder state', e);
-    }
-    const receiverNames = Array.isArray(todayReminders.receiver_names) ? todayReminders.receiver_names.filter(Boolean) : [];
-    const senderNames = Array.isArray(todayReminders.sender_names) ? todayReminders.sender_names.filter(Boolean) : [];
-    if (receiverNames.length > 0 && !happyDismissed) {
-        reminderQueue.push('happy');
-    }
-    if (senderNames.length > 0 && !blessDismissed) {
-        reminderQueue.push('bless');
-    }
-    let currentReminderType = null;
+        // 纯JS自定义弹窗逻辑，合并校验和弹窗拦截
+        let pendingSubmit = false;
+        // $('#birthboard-form').on('submit', function(e){
 
-    function showNextTodayReminder() {
-        if (reminderQueue.length === 0) {
+        // });
+        $("#modal-cancel-btn").on("click", function () {
+          $("#confirmChargeModal").hide();
+          _confirmPending = null;
+        });
+        $("#modal-confirm-charge-btn").on("click", function () {
+          // console.log('[DEBUG] modal-confirm-charge-btn clicked, _resizedImageBlob:', _resizedImageBlob ? 'present (' + _resizedImageBlob.size + ' bytes)' : 'null');
+          // console.log('[DEBUG] image input file:', $("#image")[0].files[0] ? $("#image")[0].files[0].name : 'none');
+          $("#confirmChargeModal").hide();
+          if (_confirmPending && _confirmPending.type === 'confirmCharge') {
+              var w = document.getElementById('confirm-iframe').contentWindow;
+              w.postMessage({type:'confirmChargeConfirmed', recordId:_confirmPending.recordId}, '*');
+              _confirmPending = null;
+              return;
+          }
+          // 如果已有预缩放缓存，替换文件 input（在用户手势中同步完成）
+          if (_resizedImageBlob) {
+              var origFile = $("#image")[0].files[0];
+              var baseName = origFile ? origFile.name.replace(/\.[^.]+$/, '') : 'image';
+              var resizedFile = new File([_resizedImageBlob], baseName + '_1920x1080.png', { type: 'image/png' });
+              // console.log('[DEBUG] replacing file with resized:', resizedFile.name, resizedFile.size, 'bytes');
+              var dt = new DataTransfer();
+              dt.items.add(resizedFile);
+              $("#image")[0].files = dt.files;
+              // console.log('[DEBUG] file input after replace:', $("#image")[0].files[0] ? $("#image")[0].files[0].name : 'none');
+              _resizedImageBlob = null;
+          }
+          // console.log('[DEBUG] about to call form.submit(), pendingSubmit=true');
+          pendingSubmit = true;
+          _formSubmitted = true;
+          $("#birthboard-form")[0].submit();
+        });
+        function showInsufficientBalanceModal(balance) {
+          $("#insufficient-balance-text").html(
+            "<span style='font-size: 20px; color:#000000; margin-top: 8px;'>仅有&ensp;</span>" + balance + "<span style='font-size: 20px; color:#000000; margin-top: 8px;'>&ensp;元气值</span>",
+          );
+          $("#insufficientBalanceModal").show();
+        }
+        window.showInsufficientBalanceModal = showInsufficientBalanceModal;
+        $(".insufficient-balance-confirm-btn").on("click", function () {
+          $("#insufficientBalanceModal").hide();
+        });
+        $("#insufficientBalanceModal").on("click", function (e) {
+          if (e.target === this) {
+            $("#insufficientBalanceModal").hide();
+          }
+        });
+        const insufficientBalanceScript = document.getElementById(
+          "insufficient-balance-data",
+        );
+        if (insufficientBalanceScript) {
+          try {
+            const serverInsufficientBalance = JSON.parse(
+              insufficientBalanceScript.textContent,
+            );
+            if (
+              serverInsufficientBalance !== null &&
+              serverInsufficientBalance !== ""
+            ) {
+              showInsufficientBalanceModal(serverInsufficientBalance);
+            }
+          } catch (e) {
+            // console.log('[DEBUG] insufficient-balance-data parse failed', e);
+          }
+        }
+        const todayReminderScript = document.getElementById(
+          "today-entry-reminders-data",
+        );
+        const todayReminders = todayReminderScript
+          ? JSON.parse(todayReminderScript.textContent)
+          : {};
+        const dateRuleScript = document.getElementById(
+          "birthboard-date-rule-data",
+        );
+        // TODO: 临时模拟 7月27日，测试完删除下面这行
+        // const dateRule = {min_date:"2026-07-01", max_date:"2026-08-16", message:"仅可提交下一周周一到下下周周日的投放。"};
+        
+        const dateRule = dateRuleScript
+          ? JSON.parse(dateRuleScript.textContent)
+          : {};
+        
+        const reminderUserId = "{{ request.user.username|escapejs }}";
+        const reminderDate = todayReminders.today || "";
+        const reminderStoragePrefix =
+          "birthboard_today_reminder:" +
+          reminderUserId +
+          ":" +
+          reminderDate +
+          ":";
+        const reminderQueue = [];
+        let happyDismissed = false;
+        let blessDismissed = false;
+        try {
+          happyDismissed =
+            localStorage.getItem(reminderStoragePrefix + "happy") === "1";
+          blessDismissed =
+            localStorage.getItem(reminderStoragePrefix + "bless") === "1";
+        } catch (e) {
+          // console.log('[DEBUG] localStorage unavailable for reminder state', e);
+        }
+        const receiverNames = Array.isArray(todayReminders.receiver_names)
+          ? todayReminders.receiver_names.filter(Boolean)
+          : [];
+        const senderNames = Array.isArray(todayReminders.sender_names)
+          ? todayReminders.sender_names.filter(Boolean)
+          : [];
+        if (receiverNames.length > 0 && !happyDismissed) {
+          reminderQueue.push("happy");
+        }
+        if (senderNames.length > 0 && !blessDismissed) {
+          reminderQueue.push("bless");
+        }
+        let currentReminderType = null;
+
+        function showNextTodayReminder() {
+          if (reminderQueue.length === 0) {
             currentReminderType = null;
             return;
+          }
+          const nextType = reminderQueue.shift();
+          currentReminderType = nextType;
+          if (nextType === "happy") {
+            $("#today-reminder-text").text(
+              "生日快乐！今天是你的生日投放日，祝你今天开心顺利！",
+            );
+          } else {
+            $("#today-reminder-text").text(
+              "今天有你参与的生日投放，请记得送上祝福：" +
+                senderNames.join("、") +
+                " 生日快乐！",
+            );
+          }
+          $("#todayReminderModal").show();
         }
-        const nextType = reminderQueue.shift();
-        currentReminderType = nextType;
-        if (nextType === 'happy') {
-            $('#today-reminder-text').text('生日快乐！今天是你的生日投放日，祝你今天开心顺利！');
-        } else {
-            $('#today-reminder-text').text('今天有你参与的生日投放，请记得送上祝福：' + senderNames.join('、') + ' 生日快乐！');
-        }
-        $('#todayReminderModal').show();
-    }
 
-    $('#today-reminder-confirm-btn').on('click', function() {
-        $('#todayReminderModal').hide();
-        if (currentReminderType) {
+        $("#today-reminder-confirm-btn").on("click", function () {
+          $("#todayReminderModal").hide();
+          if (currentReminderType) {
             try {
-                localStorage.setItem(reminderStoragePrefix + currentReminderType, '1');
+              localStorage.setItem(
+                reminderStoragePrefix + currentReminderType,
+                "1",
+              );
             } catch (e) {
-                // console.log('[DEBUG] localStorage write failed for reminder state', e);
+              // console.log('[DEBUG] localStorage write failed for reminder state', e);
+            }
+          }
+          showNextTodayReminder();
+        });
+        showNextTodayReminder();
+        // ===== 自定义日期选择器逻辑 =====
+        function setBirthdate(dateStr) {
+            $('#birthdate').val(dateStr);
+            if (dateStr) {
+                var parts = dateStr.split('-');
+                $('#birthdate-display').val(parts[0] + '\u2009年\u2009' + parts[1] + '\u2009月\u2009' + parts[2] + '\u2009日');
+            } else {
+                $('#birthdate-display').val('');
+                $('.date-calendar td').removeClass('selected');
             }
         }
-        showNextTodayReminder();
-    });
-    showNextTodayReminder();
-    if (dateRule.min_date) {
-        $('#date').attr('min', dateRule.min_date);
-    }
-    if (dateRule.max_date) {
-        $('#date').attr('max', dateRule.max_date);
-    }
+
+        function buildCalendar() {
+            if (!dateRule.min_date || !dateRule.max_date) return;
+            var minDate = new Date(dateRule.min_date + 'T00:00:00');
+            var maxDate = new Date(dateRule.max_date + 'T00:00:00');
+            var tbody = $('#calendar-body');
+            tbody.empty();
+
+            var current = new Date(minDate);
+            var dates = [];
+            while (current <= maxDate) {
+                dates.push(new Date(current));
+                current.setDate(current.getDate() + 1);
+            }
+
+            var row = $('<tr></tr>');
+            var lastMonth = null;
+            var firstDow = dates[0].getDay();
+            var currentVal = $('#birthdate').val();
+
+            for (var i = 0; i < firstDow; i++) {
+                row.append('<td class="empty"></td>');
+            }
+
+            var MONTH_ABBRS = ['1月','2月','3月','4月','5月','6月','7月','8月','9月','10月','11月','12月'];
+
+            for (var i = 0; i < dates.length; i++) {
+                var d = dates[i];
+                var month = d.getMonth() + 1;
+                var monthAbbr = MONTH_ABBRS[d.getMonth()];
+                var day = d.getDate();
+                var dow = d.getDay();
+                var dateStr = d.getFullYear() + '-' + String(month).padStart(2,'0') + '-' + String(day).padStart(2,'0');
+
+                var cellContent = '';
+                if (month !== lastMonth) {
+                    cellContent = '<sup>' + monthAbbr + '</sup>' + day;
+                    lastMonth = month;
+                } else {
+                    cellContent = '<sup class="inv">' + monthAbbr + '</sup>' + day;
+                }
+
+                var cell = $('<td></td>')
+                    .html(cellContent)
+                    .addClass('selectable')
+                    .attr('data-date', dateStr)
+                    .on('click', function() {
+                        var sd = $(this).attr('data-date');
+                        setBirthdate(sd);
+                        $('.date-calendar td').removeClass('selected');
+                        $(this).addClass('selected');
+                        $('#date-dropdown').hide();
+                        $('#birthdate-display').removeClass('active').removeClass('is-invalid');
+                        $('#birthdate-error').hide();
+                        if ($('.select2-container--open').length === 0) {
+                            $('#phone-layer-lines, #phone-layer-word').css({
+                                'mask-image': '',
+                                'mask-size': '',
+                                'mask-position': '',
+                                'mask-repeat': '',
+                                'mask-composite': ''
+                            });
+                        }
+                    });
+
+                if (dateStr === currentVal) {
+                    cell.addClass('selected');
+                }
+
+                row.append(cell);
+
+                if (dow === 6 || i === dates.length - 1) {
+                    tbody.append(row);
+                    row = $('<tr></tr>');
+                }
+            }
+        }
+
+        buildCalendar();
+
+        $('#birthdate-display').on('click', function(e) {
+            e.stopPropagation();
+            buildCalendar();
+            var wasHidden = $('#date-dropdown').is(':hidden');
+            $('#date-dropdown').toggle();
+            $(this).toggleClass('active');
+            // select2 打开时不干扰其 mask
+            var hasSelect2Open = $('.select2-container--open').length > 0;
+            if (wasHidden && !hasSelect2Open) {
+                // 打开日历 → 给 phone 图层加 mask（挖空下拉区域）
+                var $phoneLine = $('#phone-layer-lines');
+                var $phoneWord = $('#phone-layer-word');
+                var dRect = document.getElementById('date-dropdown').getBoundingClientRect();
+                var dwidth = dRect.width + 20;
+                var dheight = dRect.height + 20;
+                if ($phoneLine.is(':visible')) {
+                    var pRect = $phoneLine[0].getBoundingClientRect();
+                    var Pleft = dRect.left - pRect.left - 10;
+                    var Ptop = dRect.top - pRect.top - 10;
+                    $phoneLine.css({
+                        'mask-image': 'linear-gradient(black, black), linear-gradient(black, black)',
+                        'mask-size': '100% 100%, ' + dwidth + 'px ' + dheight + 'px',
+                        'mask-position': '0 0, ' + Pleft + 'px ' + Ptop + 'px',
+                        'mask-repeat': 'no-repeat, no-repeat',
+                        'mask-composite': 'exclude'
+                    });
+                }
+                if ($phoneWord.is(':visible')) {
+                    var wdRect = $phoneWord[0].getBoundingClientRect();
+                    var Wdleft = dRect.left - wdRect.left - 10;
+                    var Wdtop = dRect.top - wdRect.top - 10;
+                    $phoneWord.css({
+                        'mask-image': 'linear-gradient(black, black), linear-gradient(black, black)',
+                        'mask-size': '100% 100%, ' + dwidth + 'px ' + dheight + 'px',
+                        'mask-position': '0 0, ' + Wdleft + 'px ' + Wdtop + 'px',
+                        'mask-repeat': 'no-repeat, no-repeat',
+                        'mask-composite': 'exclude'
+                    });
+                }
+            } else if (!wasHidden && !hasSelect2Open) {
+                // 关闭日历 → 清 mask（select2 打开时不清理）
+                $('#phone-layer-lines, #phone-layer-word').css({
+                    'mask-image': '',
+                    'mask-size': '',
+                    'mask-position': '',
+                    'mask-repeat': '',
+                    'mask-composite': ''
+                });
+            }
+        });
+
+        $(document).on('click', function(e) {
+            if (!$(e.target).closest('.custom-date-picker').length) {
+                $('#date-dropdown').hide();
+                $('#birthdate-display').removeClass('active');
+                if ($('.select2-container--open').length === 0) {
+                    $('#phone-layer-lines, #phone-layer-word').css({
+                        'mask-image': '',
+                        'mask-size': '',
+                        'mask-position': '',
+                        'mask-repeat': '',
+                        'mask-composite': ''
+                    });
+                }
+            }
+        });
+
+        // 键盘输入日期解析
+        function parseInputDate(input) {
+            var cleaned = input.replace(/\u2009/g, '').replace(/\s/g, '');
+            // 2026年7月10日
+            var match = cleaned.match(/^(\d{4})年(\d{1,2})月(\d{1,2})日$/);
+            if (match) return match[1] + '-' + match[2].padStart(2,'0') + '-' + match[3].padStart(2,'0');
+            // 2026-07-10 or 2026/7/10
+            match = cleaned.match(/^(\d{4})[-/.](\d{1,2})[-/.](\d{1,2})$/);
+            if (match) return match[1] + '-' + match[2].padStart(2,'0') + '-' + match[3].padStart(2,'0');
+            // 20260710
+            match = cleaned.match(/^(\d{4})(\d{2})(\d{2})$/);
+            if (match) return match[1] + '-' + match[2] + '-' + match[3];
+            return null;
+        }
+
+        $('#birthdate-display').on('blur', function() {
+            var input = $(this).val();
+            if (!input) {
+                setBirthdate('');
+                $(this).removeClass('is-invalid');
+                $('#birthdate-error').hide();
+                return;
+            }
+            var parsed = parseInputDate(input);
+            if (parsed && dateRule.min_date && dateRule.max_date && parsed >= dateRule.min_date && parsed <= dateRule.max_date) {
+                setBirthdate(parsed);
+                $(this).removeClass('is-invalid');
+                $('#birthdate-error').hide();
+                // 同步日历选中
+                $('.date-calendar td').removeClass('selected');
+                $('.date-calendar td[data-date="' + parsed + '"]').addClass('selected');
+            } else {
+                $(this).addClass('is-invalid');
+                if ($('#birthdate-error').length === 0) {
+                    $('<div class="invalid-feedback" id="birthdate-error" style="display:block;"></div>').insertAfter('.custom-date-picker');
+                }
+                if (parsed && (parsed < dateRule.min_date || parsed > dateRule.max_date)) {
+                    $('#birthdate-error').show().text(dateRule.message || '日期不在允许范围内');
+                } else {
+                    $('#birthdate-error').show().text('日期格式不正确');
+                }
+                // 回退到之前的值
+                var currentVal = $('#birthdate').val();
+                if (currentVal) {
+                    setBirthdate(currentVal);
+                } else {
+                    $(this).val('');
+                }
+            }
+        });
+
+        $('#birthdate-display').on('keydown', function(e) {
+            if (e.key === 'Enter') {
+                $(this).blur();
+            }
+        });
         // 创建隐藏input用于提交receiver（如select2被禁用时）
-        if ($('#real-receiver').length === 0) {
-            $('<input type="hidden" id="real-receiver" name="receiver_pk" />').appendTo('#birthboard-form');
+        if ($("#real-receiver").length === 0) {
+          $(
+            '<input type="hidden" id="real-receiver" name="receiver_pk" />',
+          ).appendTo("#birthboard-form");
         }
-    const CONTEXT = JSON.parse(document.getElementById('context-data').textContent);
-    // 当前用户 id
-    const currentUserId = "{{ request.user.username|escapejs }}";
-    // 当前用户姓名
-    const currentUserName = "{{ request.user.get_full_name|default:request.user.username|escapejs }}";
-    // 用户列表
-    const userInfos = CONTEXT.user_infos;
-    // console.log(currentUserId);
-    // console.log(currentUserName);
-    // 初始化被祝福用户下拉框（排除自己）
+        const CONTEXT = JSON.parse(
+          document.getElementById("context-data").textContent,
+        );
+        // 当前用户 id
+        const currentUserId = "{{ request.user.username|escapejs }}";
+        // 当前用户姓名
+        const currentUserName =
+          "{{ request.user.get_full_name|default:request.user.username|escapejs }}";
+        // 用户列表
+        const userInfos = CONTEXT.user_infos;
+        // console.log(currentUserId);
+        // console.log(currentUserName);
+        // 初始化被祝福用户下拉框（排除自己）
 
-    function initReceiverSelect() {
-        let filtered = userInfos.filter(u => String(u.id) !== currentUserId);
-        $('#receiver').removeAttr('required'); // 禁用select2自带校验
-        $('#receiver').empty().select2({
-            theme: "classic",
-            placeholder: "请选择被祝福用户",
+        function initReceiverSelect() {
+        //   let filtered = userInfos.filter(
+        //     (u) => String(u.id) !== currentUserId,
+        //   );
+        //   $("#receiver").removeAttr("required"); // 禁用select2自带校验
+        //   $("#receiver")
+        //     .empty()
+        //     .select2({
+        //     //   theme: "classic",
+        //       placeholder: "Please select",
+        //     //   allowClear: true,
+        //       data: filtered,
+        //       matcher: matchUser,
+        //       multiple: false,
+        //       // 使用元素自身的 style 控制宽度，确保只影响此控件
+        //       width: "style",
+        //       // 将下拉挂到控件容器，避免被 document.body 或其他 portal 遮挡
+        //       dropdownParent: $("#receiver-group"),
+        //     });
+        //   $("#receiver").val(null).trigger("change");
+        //   updateReceiverAsciiLabel();
+            let filtered = userInfos.filter(u => String(u.id) !== currentUserId);
+            // $('#receiver').removeAttr('required'); // 禁用select2自带校验
+            $('#receiver').empty().select2({
+                theme: "my-custom-theme",
+                placeholder: "请选择",
+                allowClear: false,
+                data: filtered,
+                matcher: matchUser,
+                multiple: true,
+                width:"100%",
+                closeOnSelect: true,
+                dropdownParent: $('#receiver-group'),
+                templateResult: function(item) {
+                    if (!item.id) return item.text;
+                    return addCJKSpace(item.text);
+                },
+                templateSelection: function(item) {
+                    if (!item.id) return item.text;
+                    return addCJKSpace(item.text);
+                },
+                // tags: false,
+                // createTag: function (params) {
+                //     // 禁止创建新标签
+                //     return null;
+                // },
+                // dropdownParent: $('#receiver-group')
+            }).on('select2:select', function (e) {
+                var data = $(this).select
+                if(data.length > 1){
+                    $(this).val([e.params.data.id]).trigger('change');
+                }
+            });
+            $('#receiver').val(null).trigger('change');
+        }
+
+        function updateReceiverAsciiLabel() {
+          $("#receiver-group").toggleClass(
+            "has-value",
+            Boolean($("#receiver").val()),
+          );
+        }
+
+        // 刷新送出祝福人多选框（排除自己和被祝福用户）
+        function refreshSendersSelect() {
+          let receiverId = $("#receiver").val();
+          if (Array.isArray(receiverId)) receiverId = receiverId[0] || "";
+          let filtered = userInfos.filter(
+            (u) =>
+              String(u.id) !== currentUserId &&
+              String(u.id) !== String(receiverId),
+          );
+          $("#senders").removeAttr("required"); // 禁用select2自带校验
+          $("#senders").empty().select2({
+            theme: "my-custom-theme",
+            placeholder: "请选择",
             allowClear: true,
             data: filtered,
             matcher: matchUser,
-            multiple: false
-        });
-        $('#receiver').val(null).trigger('change');
-    }
-
-    // 刷新送出祝福人多选框（排除自己和被祝福用户）
-    function refreshSendersSelect() {
-        let receiverId = $('#receiver').val();
-        let filtered = userInfos.filter(u => String(u.id) !== currentUserId && String(u.id) !== String(receiverId));
-        $('#senders').removeAttr('required'); // 禁用select2自带校验
-        $('#senders').empty().select2({
-            theme: "classic",
-            placeholder: "请选择送出祝福的用户（可多选，默认只有自己）",
-            allowClear: true,
-            data: filtered,
-            matcher: matchUser,
-            multiple: true
-        });
-        // 默认无选中项
-        $('#senders').val([]).trigger('change.select2');
-        updateSelectedSenders();
-        updateCost();
-        $('#senders').prop('disabled', false);
-    }
-
-    // “已选择”一行逻辑：始终显示自己（姓名+（我）），多选框选中的用户也显示
-    function updateSelectedSenders() {
-        let selectedIds = ($('#senders').val() || []).map(String);
-        let names = [];
-        names.push(currentUserName + '（我）');
-        for (let i = 0; i < selectedIds.length; ++i) {
-            let user = userInfos.find(u => String(u.id) === selectedIds[i]);
-            if (user) names.push(user.text);
+            multiple: true,
+            dropdownParent: $('#senders-group'),
+            templateResult: function(item) {
+                if (!item.id) return item.text;
+                return addCJKSpace(item.text);
+            },
+            templateSelection: function(item) {
+                if (!item.id) return item.text;
+                return addCJKSpace(item.text);
+            },
+          });
+          // 默认无选中项
+          $("#senders").val([]).trigger("change.select2");
+        //   updateSelectedSenders();
+          updateCost();
+          $("#senders").prop("disabled", false);
         }
-        $('#selected-senders-list').text(names.join('，'));
-    }
 
-    // 价格平分逻辑
-    function updateCost() {
-        let selected = ($('#senders').val() || []).map(String);
-        let mode = parseInt($('#mode').val());
-        let total = modeCost[isNaN(mode) ? 0 : mode];
-        let count = 1 + selected.length;
-        if (selected.length === 0) {
-            $('#cost-per-user').text('全部由自己承担（' + total + '元气值）');
-        } else {
-            let per = Math.floor(total / count);
-            $('#cost-per-user').text('均分，每人' + per + '元气值');
+        function initModeSelect() {
+            $('#mode').select2({
+                theme: "my-custom-theme",
+                placeholder: "请选择",
+                allowClear: false,
+                minimumResultsForSearch: -1,
+                dropdownParent: $('#mode-group'),
+                width: "100%",
+            });
+            $('#mode').val('0').trigger('change');
         }
-    }
 
-    // 初始化（带预填）
-    if (initialData) {
-        // 先初始化receiver并选中
-        let receiverId = initialData.receiver || null;
-        initReceiverSelect();
-        if (receiverId) {
-            $('#receiver').val(receiverId).trigger('change');
+        // “已选择”一行逻辑：始终显示自己（姓名+（我）），多选框选中的用户也显示
+        // function updateSelectedSenders() {
+        //   let selectedIds = ($("#senders").val() || []).map(String);
+        //   let names = [];
+        //   names.push(currentUserName + "（我）");
+        //   for (let i = 0; i < selectedIds.length; ++i) {
+        //     let user = userInfos.find((u) => String(u.id) === selectedIds[i]);
+        //     if (user) names.push(user.text);
+        //   }
+        //   $("#selected-senders-list").text(names.join("，"));
+        // }
+
+        // 价格平分逻辑
+        function updateCost() {
+          let selected = ($("#senders").val() || []).map(String);
+          let mode = parseInt($("#mode").val());
+          let total = modeCost[isNaN(mode) ? 0 : mode];
+          let count = 1 + selected.length;
+          let per = Math.floor(total / count);
+          $("#cost-per-user").html('<span class="cost-num">' + count + '</span> 人，每人 <span class="cost-num">' + per + '</span> 元气值');
         }
-        // 再刷新senders并选中
-        setTimeout(function() {
+
+        // 初始化（带预填）
+        if (initialData) {
+          // 先初始化receiver并选中
+          let receiverId = initialData.receiver || null;
+          initReceiverSelect();
+          initModeSelect();
+          if (receiverId) {
+            $("#receiver").val([receiverId]).trigger("change");
+          }
+          // 再刷新senders并选中
+          setTimeout(function () {
             refreshSendersSelect();
             if (initialData.senders && initialData.senders.length > 0) {
-                $('#senders').val(initialData.senders.map(String)).trigger('change.select2');
+              $("#senders")
+                .val(initialData.senders.map(String))
+                .trigger("change.select2");
             }
-        }, 0);
-        // 其他字段
-        if (initialData.date) {
-            $('#date').val(initialData.date);
+          }, 0);
+          // 其他字段
+          if (initialData.date) {
+            var parts = initialData.date.split('-');
+            $('#birthdate').val(initialData.date);
+            $('#birthdate-display').val(parts[0] + '\u2009年\u2009' + parts[1] + '\u2009月\u2009' + parts[2] + '\u2009日');
+            $('.date-calendar td').removeClass('selected');
+            $('.date-calendar td[data-date="' + initialData.date + '"]').addClass('selected');
+          }
+          if (typeof initialData.mode !== "undefined") {
+            $("#mode").val(initialData.mode.toString()).trigger("change");
+          }
+          if (typeof initialData.is_anonymous !== "undefined") {
+            $("#is_anonymous").prop("checked", initialData.is_anonymous);
+            if (initialData.is_anonymous) {
+              $('#anon-toggle').addClass('right');
+            }
+          }
+        } else {
+          initReceiverSelect();
+          initModeSelect();
+          refreshSendersSelect();
         }
-        if (typeof initialData.mode !== 'undefined') {
-            $('#mode').val(initialData.mode.toString());
-        }
-        if (typeof initialData.is_anonymous !== 'undefined') {
-            $('#is_anonymous').prop('checked', initialData.is_anonymous);
-        }
-    } else {
-        initReceiverSelect();
-        refreshSendersSelect();
-    }
+        updateReceiverAsciiLabel();
 
-    // 监听被祝福用户变化，刷新送出用户选择框
-    $('#receiver').on('change', function(){
-        refreshSendersSelect();
-    });
-    // 监听送出用户变化
-    $('#senders').on('change', function(){
+        // 监听被祝福用户变化，刷新送出用户选择框
+        $("#receiver").on("change", function () {
+          refreshSendersSelect();
+          updateReceiverAsciiLabel();
+        });
+        // 监听送出用户变化
+        $("#senders").on("change", function () {
+          updateCost();
+        //   updateSelectedSenders();
+        });
+        // 当 Select2 下拉打开时，临时禁用页面 scroll-snap，并把触摸滚动转发给下拉列表
+        (function () {
+          let activeDropdown = null;
+          let lastY = null;
+          function onTouchStart(e) {
+            if (!e.touches || e.touches.length === 0) return;
+            lastY = e.touches[0].clientY;
+          }
+          function onTouchMove(e) {
+            if (!lastY) return;
+            if (!activeDropdown || activeDropdown.length === 0) return;
+            let y = e.touches && e.touches.length ? e.touches[0].clientY : null;
+            if (y === null) return;
+            let dy = lastY - y;
+            lastY = y;
+            // 将滚动投递到下拉面板
+            activeDropdown[0].scrollTop += dy;
+            e.preventDefault();
+          }
+
+          $(document).on("select2:open", function (e) {
+            let $t = $(e.target);
+            if ($t.is("#receiver") || $t.is("#senders") || $t.is("#mode")) {
+              // 强制下拉始终出现在下方——hook 实例的 _positionDropdown（滚动/缩放时也会被调用）
+              var sel = $t.data('select2');
+              if (sel && sel.dropdown && !sel.dropdown._forceBelowHooked) {
+                var _orig = sel.dropdown._positionDropdown.bind(sel.dropdown);
+                sel.dropdown._positionDropdown = function () {
+                  _orig();
+                  sel.$container.removeClass('select2-dropdown--above').addClass('select2-dropdown--below');
+                  sel.$dropdown.css({ top: '100%', bottom: 'auto' });
+                };
+                sel.dropdown._forceBelowHooked = true;
+              }
+              // 本次打开也立即强制
+              sel.$container.removeClass('select2-dropdown--above').addClass('select2-dropdown--below');
+              sel.$dropdown.css({ top: '100%', bottom: 'auto' });
+              // 禁用 snap 并禁止主容器滚动
+              $("main.scroll-container")
+                .addClass("disable-snap")
+                .css("overflow-y", "hidden");
+              // 优先从控件容器查找下拉面板
+              activeDropdown = $t
+                .closest(".overlay-select")
+                .find(".select2-dropdown:visible");
+              if (!activeDropdown || activeDropdown.length === 0) {
+                activeDropdown = $(
+                  ".select2-container--open .select2-dropdown",
+                ).first();
+              }
+              if (activeDropdown && activeDropdown.length) {
+                activeDropdown.css({ "-webkit-overflow-scrolling": "touch" });
+                var dRect = activeDropdown[0].getBoundingClientRect();
+                var $phoneLine = $('#phone-layer-lines');
+                var $phoneWord = $('#phone-layer-word');
+                var dwidth = dRect.width + 20;
+                var dheight = dRect.height + 20;
+                // 桌面版图层 mask（仅桌面模式）
+                var $words = $('img[alt="words"]');
+                var $lines = $('img[alt="lines"]');
+                if ($words.is(':visible') && $words.length) {
+                    var wRect = $words[0].getBoundingClientRect();
+                    var maskLeft = dRect.left - wRect.left - 10;
+                    var maskTop = dRect.top - wRect.top - 10;
+                    $words.css({
+                      'mask-image': 'linear-gradient(black, black), linear-gradient(black, black)',
+                      'mask-size': '100% 100%, ' + dwidth + 'px ' + dheight + 'px',
+                      'mask-position': '0 0, ' + maskLeft + 'px ' + maskTop + 'px',
+                      'mask-repeat': 'no-repeat, no-repeat',
+                      'mask-composite': 'exclude'
+                    });
+                }
+                if ($lines.is(':visible') && $lines.length) {
+                    var lRect = $lines[0].getBoundingClientRect();
+                    var lLeft = dRect.left - lRect.left - 10;
+                    var lTop = dRect.top - lRect.top - 10;
+                    $lines.css({
+                      'mask-image': 'linear-gradient(black, black), linear-gradient(black, black)',
+                      'mask-size': '100% 100%, ' + dwidth + 'px ' + dheight + 'px',
+                      'mask-position': '0 0, ' + lLeft + 'px ' + lTop + 'px',
+                      'mask-repeat': 'no-repeat, no-repeat',
+                      'mask-composite': 'exclude'
+                    });
+                }
+                // 手机版 phone 图层可见时才做 mask
+                if ($phoneLine.is(':visible')) {
+                    var pRect = $phoneLine[0].getBoundingClientRect();
+                    var Pleft = dRect.left - pRect.left - 10;
+                    var Ptop = dRect.top - pRect.top - 10;
+                    $phoneLine.css({
+                      'mask-image': 'linear-gradient(black, black), linear-gradient(black, black)',
+                      'mask-size': '100% 100%, ' + dwidth + 'px ' + dheight + 'px',
+                      'mask-position': '0 0, ' + Pleft + 'px ' + Ptop + 'px',
+                      'mask-repeat': 'no-repeat, no-repeat',
+                      'mask-composite': 'exclude'
+                    });
+                }
+                if ($phoneWord.is(':visible')) {
+                    var wdRect = $phoneWord[0].getBoundingClientRect();
+                    var Wdleft = dRect.left - wdRect.left - 10;
+                    var Wdtop = dRect.top - wdRect.top - 10;
+                    $phoneWord.css({
+                      'mask-image': 'linear-gradient(black, black), linear-gradient(black, black)',
+                      'mask-size': '100% 100%, ' + dwidth + 'px ' + dheight + 'px',
+                      'mask-position': '0 0, ' + Wdleft + 'px ' + Wdtop + 'px',
+                      'mask-repeat': 'no-repeat, no-repeat',
+                      'mask-composite': 'exclude'
+                    });
+                }
+              }
+              document.addEventListener("touchstart", onTouchStart, {
+                passive: false,
+              });
+              document.addEventListener("touchmove", onTouchMove, {
+                passive: false,
+              });
+            }
+          });
+
+          $(document).on("select2:close", function (e) {
+            let $t = $(e.target);
+            if ($t.is("#receiver") || $t.is("#senders") || $t.is("#mode")) {
+              $("main.scroll-container")
+                .removeClass("disable-snap")
+                .css("overflow-y", "auto");
+              activeDropdown = null;
+              lastY = null;
+            //   $('.dropdown-debug-overlay').remove();
+              $('img[alt="words"]').css({
+                'mask-image': '',
+                'mask-size': '',
+                'mask-position': '',
+                'mask-repeat': '',
+                'mask-composite': ''
+              });
+              $('img[alt="lines"]').css({
+                'mask-image': '',
+                'mask-size': '',
+                'mask-position': '',
+                'mask-repeat': '',
+                'mask-composite': ''
+              });
+              $('#phone-layer-lines').css({
+                'mask-image': '',
+                'mask-size': '',
+                'mask-position': '',
+                'mask-repeat': '',
+                'mask-composite': ''
+              });
+              $('#phone-layer-word').css({
+                'mask-image': '',
+                'mask-size': '',
+                'mask-position': '',
+                'mask-repeat': '',
+                'mask-composite': ''
+              });
+              try {
+                document.removeEventListener("touchstart", onTouchStart, {
+                  passive: false,
+                });
+              } catch (err) {}
+              try {
+                document.removeEventListener("touchmove", onTouchMove, {
+                  passive: false,
+                });
+              } catch (err) {}
+            }
+          });
+        
+            $(document).on("select2:open", "#receiver-group", function (e) {
+                let $t = $(e.target);
+                if ($t.is("#receiver") || $t.is("#senders") || $t.is("#mode")) {
+                // 强制下拉始终出现在下方——hook 实例的 _positionDropdown（滚动/缩放时也会被调用）
+                var sel = $t.data('select2');
+                if (sel && sel.dropdown && !sel.dropdown._forceBelowHooked) {
+                    var _orig = sel.dropdown._positionDropdown.bind(sel.dropdown);
+                    sel.dropdown._positionDropdown = function () {
+                    _orig();
+                    sel.$container.removeClass('select2-dropdown--above').addClass('select2-dropdown--below');
+                    sel.$dropdown.css({ top: '100%', bottom: 'auto' });
+                    };
+                    sel.dropdown._forceBelowHooked = true;
+                }
+                // 本次打开也立即强制
+                sel.$container.removeClass('select2-dropdown--above').addClass('select2-dropdown--below');
+                sel.$dropdown.css({ top: '100%', bottom: 'auto' });
+                // 禁用 snap 并禁止主容器滚动
+                $("main.scroll-container")
+                    .addClass("disable-snap")
+                    .css("overflow-y", "hidden");
+                // 优先从控件容器查找下拉面板
+                activeDropdown = $t
+                    .closest(".overlay-select")
+                    .find(".select2-dropdown:visible");
+                if (!activeDropdown || activeDropdown.length === 0) {
+                    activeDropdown = $(
+                    ".select2-container--open .select2-dropdown",
+                    ).first();
+                }
+                if (activeDropdown && activeDropdown.length) {
+                    activeDropdown.css({ "-webkit-overflow-scrolling": "touch" });
+                    var dRect = activeDropdown[0].getBoundingClientRect();
+                    var dwidth = dRect.width + 20;
+                    var dheight = dRect.height + 20;
+                    // 给 form 图层也加 mask，挖掉 dropdown 区域
+                    var $date = $('#date-group');
+                    var fRect = $date[0].getBoundingClientRect();
+                    var fmaskLeft = dRect.left - fRect.left - 10;
+                    var fmaskTop = dRect.top - fRect.top - 10;
+                    var dscale = container.getBoundingClientRect().width / 1920;
+                    $date.css({
+                    'mask-image': 'linear-gradient(black, black), linear-gradient(black, black)',
+                    'mask-size': '100% 100%, ' + dwidth / dscale + 'px ' + dheight / dscale + 'px',
+                    'mask-position': '0 0, ' + fmaskLeft / dscale + 'px ' + fmaskTop / dscale + 'px',
+                    'mask-repeat': 'no-repeat, no-repeat',
+                    'mask-composite': 'exclude'
+                    });
+                }
+                document.addEventListener("touchstart", onTouchStart, {
+                    passive: false,
+                });
+                document.addEventListener("touchmove", onTouchMove, {
+                    passive: false,
+                });
+                }
+            });
+
+          $(document).on("select2:close", "#receiver-group", function (e) {
+            let $t = $(e.target);
+            if ($t.is("#receiver") || $t.is("#senders") || $t.is("#mode")) {
+              $("main.scroll-container")
+                .removeClass("disable-snap")
+                .css("overflow-y", "auto");
+              activeDropdown = null;
+              lastY = null;
+            //   $('.dropdown-debug-overlay').remove();
+              $('#date-group').css({
+                'mask-image': '',
+                'mask-size': '',
+                'mask-position': '',
+                'mask-repeat': '',
+                'mask-composite': ''
+              });
+              try {
+                document.removeEventListener("touchstart", onTouchStart, {
+                  passive: false,
+                });
+              } catch (err) {}
+              try {
+                document.removeEventListener("touchmove", onTouchMove, {
+                  passive: false,
+                });
+              } catch (err) {}
+            }
+          });
+            $(document).on("select2:open", "#mode-group", function (e) {
+                let $t = $(e.target);
+                if ($t.is("#receiver") || $t.is("#senders") || $t.is("#mode")) {
+                // 强制下拉始终出现在下方——hook 实例的 _positionDropdown（滚动/缩放时也会被调用）
+                var sel = $t.data('select2');
+                if (sel && sel.dropdown && !sel.dropdown._forceBelowHooked) {
+                    var _orig = sel.dropdown._positionDropdown.bind(sel.dropdown);
+                    sel.dropdown._positionDropdown = function () {
+                    _orig();
+                    sel.$container.removeClass('select2-dropdown--above').addClass('select2-dropdown--below');
+                    sel.$dropdown.css({ top: '100%', bottom: 'auto' });
+                    };
+                    sel.dropdown._forceBelowHooked = true;
+                }
+                // 本次打开也立即强制
+                sel.$container.removeClass('select2-dropdown--above').addClass('select2-dropdown--below');
+                sel.$dropdown.css({ top: '100%', bottom: 'auto' });
+                // 禁用 snap 并禁止主容器滚动
+                $("main.scroll-container")
+                    .addClass("disable-snap")
+                    .css("overflow-y", "hidden");
+                // 优先从控件容器查找下拉面板
+                activeDropdown = $t
+                    .closest(".overlay-select")
+                    .find(".select2-dropdown:visible");
+                if (!activeDropdown || activeDropdown.length === 0) {
+                    activeDropdown = $(
+                    ".select2-container--open .select2-dropdown",
+                    ).first();
+                }
+                if (activeDropdown && activeDropdown.length) {
+                    activeDropdown.css({ "-webkit-overflow-scrolling": "touch" });
+                    var dRect = activeDropdown[0].getBoundingClientRect();
+                    var dwidth = dRect.width + 20;
+                    var dheight = dRect.height + 20;
+                    var $sender = $('#senders-group');
+                    var sRect = $sender[0].getBoundingClientRect();
+                    var smaskLeft = dRect.left - sRect.left - 10;
+                    var smaskTop = dRect.top - sRect.top - 10;
+                    var dscale = container.getBoundingClientRect().width / 1920;
+                    $sender.css({
+                    'mask-image': 'linear-gradient(black, black), linear-gradient(black, black)',
+                    'mask-size': '100% 100%, ' + dwidth / dscale + 'px ' + dheight / dscale + 'px',
+                    'mask-position': '0 0, ' + smaskLeft / dscale + 'px ' + smaskTop / dscale + 'px',
+                    'mask-repeat': 'no-repeat, no-repeat',
+                    'mask-composite': 'exclude'
+                    });
+                }
+                document.addEventListener("touchstart", onTouchStart, {
+                    passive: false,
+                });
+                document.addEventListener("touchmove", onTouchMove, {
+                    passive: false,
+                });
+                }
+            });
+
+          $(document).on("select2:close", "#mode-group", function (e) {
+            let $t = $(e.target);
+            if ($t.is("#receiver") || $t.is("#senders") || $t.is("#mode")) {
+              $("main.scroll-container")
+                .removeClass("disable-snap")
+                .css("overflow-y", "auto");
+              activeDropdown = null;
+              lastY = null;
+            //   $('.dropdown-debug-overlay').remove();
+              $('#senders-group').css({
+                'mask-image': '',
+                'mask-size': '',
+                'mask-position': '',
+                'mask-repeat': '',
+                'mask-composite': ''
+              });
+              try {
+                document.removeEventListener("touchstart", onTouchStart, {
+                  passive: false,
+                });
+              } catch (err) {}
+              try {
+                document.removeEventListener("touchmove", onTouchMove, {
+                  passive: false,
+                });
+              } catch (err) {}
+            }
+          });
+
+            $(document).on("select2:open", "#senders-group", function (e) {
+                let $t = $(e.target);
+                if ($t.is("#receiver") || $t.is("#senders") || $t.is("#mode")) {
+                // 强制下拉始终出现在下方——hook 实例的 _positionDropdown（滚动/缩放时也会被调用）
+                var sel = $t.data('select2');
+                if (sel && sel.dropdown && !sel.dropdown._forceBelowHooked) {
+                    var _orig = sel.dropdown._positionDropdown.bind(sel.dropdown);
+                    sel.dropdown._positionDropdown = function () {
+                    _orig();
+                    sel.$container.removeClass('select2-dropdown--above').addClass('select2-dropdown--below');
+                    sel.$dropdown.css({ top: '100%', bottom: 'auto' });
+                    };
+                    sel.dropdown._forceBelowHooked = true;
+                }
+                // 本次打开也立即强制
+                sel.$container.removeClass('select2-dropdown--above').addClass('select2-dropdown--below');
+                sel.$dropdown.css({ top: '100%', bottom: 'auto' });
+                // 禁用 snap 并禁止主容器滚动
+                $("main.scroll-container")
+                    .addClass("disable-snap")
+                    .css("overflow-y", "hidden");
+                // 优先从控件容器查找下拉面板
+                activeDropdown = $t
+                    .closest(".overlay-select")
+                    .find(".select2-dropdown:visible");
+                if (!activeDropdown || activeDropdown.length === 0) {
+                    activeDropdown = $(
+                    ".select2-container--open .select2-dropdown",
+                    ).first();
+                }
+                if (activeDropdown && activeDropdown.length) {
+                    activeDropdown.css({ "-webkit-overflow-scrolling": "touch" });
+                    var dRect = activeDropdown[0].getBoundingClientRect();
+                    var dwidth = dRect.width + 20;
+                    var dheight = dRect.height + 20;
+                    var $cost = $('#cost-group');
+                    var cRect = $cost[0].getBoundingClientRect();
+                    var cmaskLeft = dRect.left - cRect.left - 10;
+                    var cmaskTop = dRect.top - cRect.top - 10;
+                    var dscale = container.getBoundingClientRect().width / 1920;
+                    $cost.css({
+                    'mask-image': 'linear-gradient(black, black), linear-gradient(black, black)',
+                    'mask-size': '100% 100%, ' + dwidth / dscale + 'px ' + dheight / dscale + 'px',
+                    'mask-position': '0 0, ' + cmaskLeft / dscale + 'px ' + cmaskTop / dscale + 'px',
+                    'mask-repeat': 'no-repeat, no-repeat',
+                    'mask-composite': 'exclude'
+                    });
+                }
+                document.addEventListener("touchstart", onTouchStart, {
+                    passive: false,
+                });
+                document.addEventListener("touchmove", onTouchMove, {
+                    passive: false,
+                });
+                }
+            });
+
+          $(document).on("select2:close", "#senders-group", function (e) {
+            let $t = $(e.target);
+            if ($t.is("#receiver") || $t.is("#senders") || $t.is("#mode")) {
+              $("main.scroll-container")
+                .removeClass("disable-snap")
+                .css("overflow-y", "auto");
+              activeDropdown = null;
+              lastY = null;
+            //   $('.dropdown-debug-overlay').remove();
+              $('#cost-group').css({
+                'mask-image': '',
+                'mask-size': '',
+                'mask-position': '',
+                'mask-repeat': '',
+                'mask-composite': ''
+              });
+              try {
+                document.removeEventListener("touchstart", onTouchStart, {
+                  passive: false,
+                });
+              } catch (err) {}
+              try {
+                document.removeEventListener("touchmove", onTouchMove, {
+                  passive: false,
+                });
+              } catch (err) {}
+            }
+          });
+        
+        })();
+        // 监听模式变化
+        $("#mode").on("change", updateCost);
+
+        // 缓存预缩放后的图片 blob，确保提交时在用户手势链路中
+        var _resizedImageBlob = null;
+
+        // 图片选择后显示缩略图预览（非 1920×1080 即刻预缩放并提示警告）
+        $("#image").on("change", function () {
+            var file = this.files[0];
+            _resizedImageBlob = null;
+            // console.log('[DEBUG] image change, file:', file ? file.name + ' ' + file.type : 'none');
+            if (file) {
+                var reader = new FileReader();
+                reader.onload = function (e) {
+                    $(".image-preview").attr("src", e.target.result);
+                };
+                reader.readAsDataURL(file);
+                // 异步检查尺寸，非 1920×1080 即刻预缩放并缓存
+                var img = new Image();
+                var objUrl = URL.createObjectURL(file);
+                var $imgInput = $(this);
+                img.onload = function () {
+                    console.log('[DEBUG] image loaded:', img.width + 'x' + img.height);
+                    URL.revokeObjectURL(objUrl);
+                    if (img.width !== 1920 || img.height !== 1080) {
+                        $imgInput.addClass("is-invalid");
+                        $("#image-error").show().text("图片尺寸不佳，建议使用 1920×1080 的图片");
+                        console.log('[DEBUG] resizing to 1920x1080...');
+                        // 预缩放并缓存
+                        var canvas = document.createElement('canvas');
+                        canvas.width = 1920;
+                        canvas.height = 1080;
+                        var ctx = canvas.getContext('2d');
+                        ctx.drawImage(img, 0, 0, 1920, 1080);
+                        canvas.toBlob(function (blob) {
+                            _resizedImageBlob = blob;
+                            console.log('[DEBUG] resized blob cached, size:', blob ? blob.size : 'null');
+                        }, 'image/png');
+                    } else {
+                        $imgInput.removeClass("is-invalid");
+                        $("#image-error").hide();
+                        console.log('[DEBUG] image size OK, no resize needed');
+                    }
+                };
+                img.onerror = function () {
+                    $imgInput.addClass("is-invalid");
+                    $("#image-error").show().text("图片加载失败");
+                    URL.revokeObjectURL(objUrl);
+                    console.log('[DEBUG] image load error');
+                };
+                img.src = objUrl;
+            } else {
+                $("#image").removeClass("is-invalid");
+                $("#image-error").hide();
+                $(".image-preview").attr("src", '{{ MEDIA_URL }}birthboard/replace.png');
+            }
+        });
+
+        // 初始化“已选择”与费用
+        // updateSelectedSenders();
         updateCost();
-        updateSelectedSenders();
-    });
-    // 监听模式变化
-    $('#mode').on('change', updateCost);
 
-    // 初始化“已选择”与费用
-    updateSelectedSenders();
-    updateCost();
-
-    function checkCurrentUserBalance(senderUsernamesForCheck, mode, senderCountForCheck) {
-        return $.ajax({
-            url: '/birthboard/api/check_yqpoint/',
-            method: 'POST',
-            contentType: 'application/json',
+        function checkCurrentUserBalance(
+          senderUsernamesForCheck,
+          mode,
+          senderCountForCheck,
+        ) {
+          return $.ajax({
+            url: "/birthboard/api/check_yqpoint/",
+            method: "POST",
+            contentType: "application/json",
             data: JSON.stringify({
-                senders: senderUsernamesForCheck,
-                mode: mode,
-                sender_count: senderCountForCheck
-            })
-        }).then(function(resp) {
-            // console.log('【DEBUG】余额校验AJAX返回:', resp);
-            if (resp.ok) {
+              senders: senderUsernamesForCheck,
+              mode: mode,
+              sender_count: senderCountForCheck,
+            }),
+          })
+            .then(function (resp) {
+              // console.log('【DEBUG】余额校验AJAX返回:', resp);
+              if (resp.ok) {
                 let insufficient = [];
                 // console.log('元气值余额校验:');
                 for (let uid in resp.result) {
-                    let info = resp.result[uid];
-                    // console.log(`用户: ${uid}，余额: ${info.balance}，所需: ${info.need}，足够: ${info.enough}`);
-                    if (!info.enough) insufficient.push(uid);
+                  let info = resp.result[uid];
+                  // console.log(`用户: ${uid}，余额: ${info.balance}，所需: ${info.need}，足够: ${info.enough}`);
+                  if (!info.enough) insufficient.push(uid);
                 }
-                $('#senders option').css('color', '');
+                $("#senders option").css("color", "");
                 if (insufficient.length > 0) {
-                    const currentInfo = resp.result[currentUserId] || {balance: 0};
-                    showInsufficientBalanceModal(currentInfo.balance);
-                    return false;
+                  const currentInfo = resp.result[currentUserId] || {
+                    balance: 0,
+                  };
+                  showInsufficientBalanceModal(currentInfo.balance);
+                  return false;
                 }
                 return true;
-            }
-            showInsufficientBalanceModal(0);
-            return false;
-        }).catch(function() {
-            // console.log('【DEBUG】余额校验AJAX异常');
-            showInsufficientBalanceModal(0);
-            return false;
-        });
-    }
+              }
+              showInsufficientBalanceModal(0);
+              return false;
+            })
+            .catch(function () {
+              // console.log('【DEBUG】余额校验AJAX异常');
+              showInsufficientBalanceModal(0);
+              return false;
+            });
+        }
 
-    // 表单提交时自定义校验
-    $('#birthboard-form').on('submit', async function(e){
-        e.preventDefault();
-        // 调试：打印实际提交内容
-        // console.log('【DEBUG】receiver(username):', $('#receiver').val());
-        // console.log('【DEBUG】senders(username):', $('#senders').val());
-        // --- 提交前将username转为pk，仅提交内容变更 ---
-        // receiver
-        let receiverUsername = $('#receiver').val();
-        let receiverObj = userInfos.find(u => u.id === receiverUsername);
-        let receiverPk = receiverObj ? receiverObj.pk : '';
-        $('#real-receiver').val(receiverPk);
-        // senders
-        let senderUsernames = ($('#senders').val() || []);
-        if (!senderUsernames.includes(currentUserId)) senderUsernames.unshift(currentUserId);
-        // console.log('【DEBUG】senderUsernames(含自己):', senderUsernames);
-        // 直接用pk数组
-        let senderPks = senderUsernames.map(un => {
-            let u = userInfos.find(x => x.id === un);
-            return u ? u.pk : null;
-        }).filter(x => x !== null);
-        // console.log('【DEBUG】senderPks(含自己):', senderPks);
-        // 先移除所有旧的隐藏input
-        $("input[name='senders'][type='hidden']").remove();
-        // 动态添加每个pk为一个input
-        senderPks.forEach(pk => {
-            $('<input type="hidden" name="senders" value="'+pk+'" />').appendTo('#birthboard-form');
-        });
-        // 打印所有隐藏input
-        let debugInputs = [];
-        $("input[name='senders'][type='hidden']").each(function(){ debugInputs.push($(this).val()); });
-        // console.log('【DEBUG】所有隐藏input[name=senders] value:', debugInputs);
-        // 余额校验仅检查本人，不检查受邀者
-        let senderUsernamesForCheck = [currentUserId];
-        let hasError = false;
-        let firstErrorTop = null;
-        // 清除旧的错误样式和提示
-        $('#receiver').removeClass('is-invalid');
-        $('#receiver-error').hide().text('');
-        $('#senders').removeClass('is-invalid');
-        $('#senders-error').hide().text('');
-        $('#image').removeClass('is-invalid');
-        $('#image-error').hide().text('');
-        $('#date').removeClass('is-invalid');
-        $('#date-error').hide().text('');
+        // 表单提交时自定义校验
+        $("#birthboard-form").on("submit", async function (e) {
+          e.preventDefault();
+          // 调试：打印实际提交内容
+          // console.log('【DEBUG】receiver(username):', $('#receiver').val());
+          // console.log('【DEBUG】senders(username):', $('#senders').val());
+          // --- 提交前将username转为pk，仅提交内容变更 ---
+          // receiver
+          let receiverUsername = $("#receiver").val();
+          if (Array.isArray(receiverUsername)) receiverUsername = receiverUsername[0] || "";
+          let receiverObj = userInfos.find((u) => u.id === receiverUsername);
+          let receiverPk = receiverObj ? receiverObj.pk : "";
+          $("#real-receiver").val(receiverPk);
+          // senders
+          let senderUsernames = $("#senders").val() || [];
+          if (!senderUsernames.includes(currentUserId))
+            senderUsernames.unshift(currentUserId);
+          // console.log('【DEBUG】senderUsernames(含自己):', senderUsernames);
+          // 直接用pk数组
+          let senderPks = senderUsernames
+            .map((un) => {
+              let u = userInfos.find((x) => x.id === un);
+              return u ? u.pk : null;
+            })
+            .filter((x) => x !== null);
+          // console.log('【DEBUG】senderPks(含自己):', senderPks);
+          // 先移除所有旧的隐藏input
+          $("input[name='senders'][type='hidden']").remove();
+          // 动态添加每个pk为一个input
+          senderPks.forEach((pk) => {
+            $(
+              '<input type="hidden" name="senders" value="' + pk + '" />',
+            ).appendTo("#birthboard-form");
+          });
+          // select2控件的选中值也同步为pk
+          $("#senders").val(senderPks.map(String));
+          // 打印所有隐藏input
+          let debugInputs = [];
+          $("input[name='senders'][type='hidden']").each(function () {
+            debugInputs.push($(this).val());
+          });
+          // console.log('【DEBUG】所有隐藏input[name=senders] value:', debugInputs);
+          // 余额校验仅检查本人，不检查受邀者
+          let senderUsernamesForCheck = [currentUserId];
+          let hasError = false;
+          let firstErrorTop = null;
+          // 清除旧的错误样式和提示
+          $("#receiver").removeClass("is-invalid");
+          $("#receiver-error").hide().text("");
+          $("#senders").removeClass("is-invalid");
+          $("#senders-error").hide().text("");
+          $("#image").removeClass("is-invalid");
+          $("#image-error").hide().text("");
+          $("#birthdate-display").removeClass("is-invalid");
+          $("#birthdate-error").hide().text("");
 
-        // 1. 检查被祝福用户
-        let receiver = $('#receiver').val();
-        if (!receiver) {
-            $('#receiver').addClass('is-invalid');
-            $('#receiver-error').show().text('没有输入');
+          // 1. 检查被祝福用户
+          let receiver = $("#receiver").val();
+          if (Array.isArray(receiver)) receiver = receiver[0] || "";
+          if (!receiver) {
+            $("#receiver").addClass("is-invalid");
+            $("#receiver-error").show().text("没有输入");
             hasError = true;
-            firstErrorTop = $('#receiver-group').offset().top;
-        }
+            firstErrorTop = $("#receiver-group").offset().top;
+          }
 
-        // 2. 检查送出用户余额（后端实时查询）
-        // 余额校验时用 senderUsernamesForCheck（username列表），不要用select2控件的值
-        let mode = parseInt($('#mode').val());
-        let senderCountForCheck = senderUsernames.length;
-        // console.log('【DEBUG】余额校验AJAX参数 senders:', senderUsernamesForCheck, 'mode:', mode);
-        const balanceOk = await checkCurrentUserBalance(senderUsernamesForCheck, mode, senderCountForCheck);
-        if (!balanceOk) {
+          // 2. 检查送出用户余额（后端实时查询）
+          // 余额校验时用 senderUsernamesForCheck（username列表），不要用select2控件的值
+          let mode = parseInt($("#mode").val());
+          let senderCountForCheck = senderUsernames.length;
+          // console.log('【DEBUG】余额校验AJAX参数 senders:', senderUsernamesForCheck, 'mode:', mode);
+          const balanceOk = await checkCurrentUserBalance(
+            senderUsernamesForCheck,
+            mode,
+            senderCountForCheck,
+          );
+          if (!balanceOk) {
             return false;
-        }
+          }
 
-        // 3. 检查图片（未上传属于同步错误，尺寸异步）
-        let imageInput = $('#image')[0];
-        let imageFile = imageInput.files[0];
-        let imageNeedCheckSize = false;
-        if (!imageFile) {
-            $('#image').addClass('is-invalid');
-            $('#image-error').show().text('没有上传图片');
+          // 3. 检查图片是否已选择（尺寸在最终提交时自动缩放）
+          let imageInput = $("#image")[0];
+          let imageFile = imageInput.files[0];
+          if (!imageFile) {
+            $("#image").addClass("is-invalid");
+            $("#image-error").show().text("没有上传图片");
             hasError = true;
-            if (!firstErrorTop) firstErrorTop = $('#image-group').offset().top;
-        } else {
-            imageNeedCheckSize = true;
-        }
+            if (!firstErrorTop) firstErrorTop = $("#image-group").offset().top;
+          }
 
-        // 4. 检查日期
-        let dateInput = $('#date');
-        let dateVal = dateInput.val();
-        let dateOk = true;
-        if (!dateVal) {
-            dateInput.addClass('is-invalid');
-            if (dateInput.next('.invalid-feedback').length === 0) {
-                $('<div class="invalid-feedback text-danger" id="date-error" style="display:block;">日期没写</div>').insertAfter(dateInput);
+          // 4. 检查日期
+          let dateVal = $("#birthdate").val();
+          let dateOk = true;
+          if (!dateVal) {
+            $("#birthdate-display").addClass("is-invalid");
+            if ($("#birthdate-error").length === 0) {
+              $(
+                '<div class="invalid-feedback" id="birthdate-error" style="display:block;">日期没写</div>',
+              ).insertAfter(".custom-date-picker");
             } else {
-                $('#date-error').show().text('日期没写');
+              $("#birthdate-error").show().text("日期没写");
             }
             hasError = true;
-            if (!firstErrorTop) firstErrorTop = dateInput.closest('.form-group, .form-row').offset().top;
+            if (!firstErrorTop)
+              firstErrorTop = $(".custom-date-picker")
+                .closest(".form-group, .form-row")
+                .offset().top;
             dateOk = false;
-        } else {
+          } else {
             let inputDate = new Date(dateVal);
-            inputDate.setHours(0,0,0,0);
+            inputDate.setHours(0, 0, 0, 0);
             let invalidByRule = false;
             if (isNaN(inputDate.getTime())) {
-                invalidByRule = true;
+              invalidByRule = true;
             } else {
-                let y = inputDate.getFullYear();
-                let m = String(inputDate.getMonth() + 1).padStart(2, '0');
-                let d = String(inputDate.getDate()).padStart(2, '0');
-                let selectedISO = y + '-' + m + '-' + d;
-                invalidByRule = selectedISO < dateRule.min_date || selectedISO > dateRule.max_date;
+              let y = inputDate.getFullYear();
+              let m = String(inputDate.getMonth() + 1).padStart(2, "0");
+              let d = String(inputDate.getDate()).padStart(2, "0");
+              let selectedISO = y + "-" + m + "-" + d;
+              invalidByRule =
+                selectedISO < dateRule.min_date ||
+                selectedISO > dateRule.max_date;
             }
             if (invalidByRule) {
-                dateInput.addClass('is-invalid');
-                if (dateInput.next('.invalid-feedback').length === 0) {
-                    $('<div class="invalid-feedback text-danger" id="date-error" style="display:block;"></div>').insertAfter(dateInput);
-                    $('#date-error').show().text(dateRule.message || '日期不在允许范围内');
-                } else {
-                    $('#date-error').show().text(dateRule.message || '日期不在允许范围内');
-                }
-                hasError = true;
-                if (!firstErrorTop) firstErrorTop = dateInput.closest('.form-group, .form-row').offset().top;
-                dateOk = false;
+              $("#birthdate-display").addClass("is-invalid");
+              if ($("#birthdate-error").length === 0) {
+                $(
+                  '<div class="invalid-feedback" id="birthdate-error" style="display:block;"></div>',
+                ).insertAfter(".custom-date-picker");
+                $("#birthdate-error")
+                  .show()
+                  .text(dateRule.message || "日期不在允许范围内");
+              } else {
+                $("#birthdate-error")
+                  .show()
+                  .text(dateRule.message || "日期不在允许范围内");
+              }
+              hasError = true;
+              if (!firstErrorTop)
+                firstErrorTop = $(".custom-date-picker")
+                  .closest(".form-group, .form-row")
+                  .offset().top;
+              dateOk = false;
             } else {
-                $('#date-error').hide();
+              $("#birthdate-error").hide();
             }
-        }
+          }
 
-        // 滚动到第一个错误
-        if (firstErrorTop) {
-            $('html, body').animate({scrollTop: firstErrorTop - 100}, 300);
-        }
+          // 滚动到第一个错误
+          if (firstErrorTop) {
+            $("html, body").animate({ scrollTop: firstErrorTop - 100 }, 300);
+          }
 
-        // 如果有同步错误，阻止提交，所有错误会同时显示
-        if (hasError || !dateOk) {
+          // 如果有同步错误，阻止提交，所有错误会同时显示
+          if (hasError || !dateOk) {
             return false;
-        }
+          }
 
-        // 所有同步校验通过后，异步校验图片尺寸
-        if (imageNeedCheckSize) {
-            let img = new Image();
-            let objectUrl = URL.createObjectURL(imageFile);
-            img.onload = function() {
-                if (img.width !== 1920 || img.height !== 1080) {
-                    $('#image').addClass('is-invalid');
-                    $('#image-error').show().text('图片不符合要求');
-                    $('html, body').animate({scrollTop: $('#image-group').offset().top - 100}, 300);
-                } else {
-                    $('#image-error').hide();
-                    // 所有校验通过，提交
-                    $('#confirmChargeModal').show();
-                    // console.log('弹窗已显示，阻止默认提交');
-                    // $('#birthboard-form')[0].submit();
-                }
-                URL.revokeObjectURL(objectUrl);
-            };
-            img.onerror = function() {
-                $('#image').addClass('is-invalid');
-                $('#image-error').show().text('图片加载失败');
-                $('html, body').animate({scrollTop: $('#image-group').offset().top - 100}, 300);
-                URL.revokeObjectURL(objectUrl);
-            };
-            img.src = objectUrl;
+          // 所有同步校验通过
+          console.log('[DEBUG] submit handler: validations passed, pendingSubmit=', pendingSubmit);
+          if (!pendingSubmit) {
+            // 首次提交：弹出确认扣款弹窗
+            console.log('[DEBUG] first submit, showing confirmChargeModal');
+            $("#confirmChargeModal").show();
             return false;
-        }
-        // 没有图片需要异步校验，直接提交
-        // console.log('表单submit事件触发，pendingSubmit=', pendingSubmit);
-        if (!pendingSubmit) {
-            $('#confirmChargeModal').show();
-            // console.log('弹窗已显示，阻止默认提交');
-            return false;
-        }
-        pendingSubmit = false; // 重置
-        // console.log('通过pendingSubmit，继续校验和提交');
-        // 继续执行后续校验和提交逻辑（原有校验代码在这里）
-        // ...（原有校验代码无需变动）...
+          }
+          pendingSubmit = false; // 重置，这是弹窗确认后的第二次提交
+          console.log('[DEBUG] second submit, disables selects, about to this.submit()');
+          console.log('[DEBUG] image file at submit:', $("#image")[0].files[0] ? $("#image")[0].files[0].name + ' ' + $("#image")[0].files[0].size : 'none');
 
-        // 禁用receiver select，防止提交错误
-        $('#receiver').prop('disabled', true);
-        // 禁用senders select，防止重复提交
-        $('#senders').prop('disabled', true);
-        this.submit();
-    });
-});
-</script>
+          // 禁用 receiver / senders，防止重复提交
+          $("#receiver").prop("disabled", true);
+          $("#senders").prop("disabled", true);
+          var _form = this;
+          console.log('[DEBUG] calling form.submit() now');
+          _form.submit();
+        });
+      });
 
+      // ===== 监听确认 iframe 的 postMessage，显示父页面弹窗 =====
+      var _confirmPending = null;
+      window.addEventListener('message', function(e) {
+          var data = e.data;
+          if (!data || !data.type) return;
+          var iframe = document.getElementById('confirm-iframe');
+          var iframeWin = iframe && iframe.contentWindow;
+
+          switch (data.type) {
+              case 'showReject':
+                  _confirmPending = {type:'reject', recordId:data.recordId, tab:data.tab};
+                  if (data.tab === 'participation') {
+                      document.getElementById('confirm-reject-participation-modal').style.display = 'block';
+                  } else {
+                      document.getElementById('confirm-reject-received-modal').style.display = 'block';
+                  }
+                  break;
+              case 'showRevoke':
+                  _confirmPending = {type:'revoke', recordId:data.recordId, tab:data.tab};
+                  document.getElementById('confirm-revoke-modal').style.display = 'block';
+                  break;
+              case 'showAbort':
+                  _confirmPending = {type:'abort', recordId:data.recordId};
+                  document.getElementById('confirm-abort-modal').style.display = 'block';
+                  break;
+              case 'showFullscreen':
+                  document.getElementById('confirm-fullscreen-img').src = data.src;
+                  document.getElementById('confirm-fullscreen-modal').style.display = 'block';
+                  break;
+              case 'showInsufficientBalance':
+                  showInsufficientBalanceModal(data.balance);
+                  break;
+              case 'showConfirmCharge':
+                  _confirmPending = {type:'confirmCharge', recordId:data.recordId};
+                  $('#confirmChargeModal').show();
+                  break;
+              case 'showPreviewConfirm':
+                  _confirmPending = {type:'previewConfirm', recordId:data.recordId};
+                  document.getElementById('confirm-preview-modal').style.display = 'block';
+                  break;
+              case 'resubmitBirthboard':
+                  // 填入预填数据并回到顶部
+                  if (data.receiver) {
+                      $('#receiver').val([data.receiver]).trigger('change');
+                  }
+                  setTimeout(function() {
+                      if (data.senders && data.senders.length > 0) {
+                          $('#senders').val(data.senders).trigger('change.select2');
+                      }
+                      if (data.date) {
+                          var parts = data.date.split('-');
+                          $('#birthdate').val(data.date);
+                          $('#birthdate-display').val(parts[0] + '\u2009年\u2009' + parts[1] + '\u2009月\u2009' + parts[2] + '\u2009日');
+                          $('.date-calendar td').removeClass('selected');
+                          $('.date-calendar td[data-date="' + data.date + '"]').addClass('selected');
+                      }
+                      if (typeof data.mode !== 'undefined') {
+                          $('#mode').val(data.mode.toString()).trigger('change');
+                      }
+                      if (data.is_anonymous) {
+                          $('#is_anonymous').prop('checked', true);
+                          $('#anon-toggle').addClass('right');
+                      } else {
+                          $('#is_anonymous').prop('checked', false);
+                          $('#anon-toggle').removeClass('right');
+                      }
+                  }, 100);
+                  window.scrollTo({top: 0, behavior: 'smooth'});
+                  break;
+          }
+      });
+
+      // 被祝福者拒绝弹窗按钮
+      document.getElementById('confirm-reject-received-modal').addEventListener('click', function(e) {
+          if (e.target.dataset.action === 'cancel' || e.target === this) {
+              this.style.display = 'none';
+              _confirmPending = null;
+          }
+          if (e.target.dataset.action === 'confirm' && _confirmPending && _confirmPending.type === 'reject') {
+              this.style.display = 'none';
+              var w = document.getElementById('confirm-iframe').contentWindow;
+              w.postMessage({type:'rejectConfirmed', recordId:_confirmPending.recordId, tab:_confirmPending.tab}, '*');
+              _confirmPending = null;
+          }
+      });
+      // 参与者拒绝弹窗按钮
+      document.getElementById('confirm-reject-participation-modal').addEventListener('click', function(e) {
+          if (e.target.dataset.action === 'cancel' || e.target === this) {
+              this.style.display = 'none';
+              _confirmPending = null;
+          }
+          if (e.target.dataset.action === 'confirm' && _confirmPending && _confirmPending.type === 'reject') {
+              this.style.display = 'none';
+              var w = document.getElementById('confirm-iframe').contentWindow;
+              w.postMessage({type:'rejectConfirmed', recordId:_confirmPending.recordId, tab:_confirmPending.tab}, '*');
+              _confirmPending = null;
+          }
+      });
+      // 撤销弹窗按钮
+      document.getElementById('confirm-revoke-modal').addEventListener('click', function(e) {
+          if (e.target.dataset.action === 'cancel' || e.target === this) {
+              this.style.display = 'none';
+              _confirmPending = null;
+          }
+          if (e.target.dataset.action === 'confirm' && _confirmPending && _confirmPending.type === 'revoke') {
+              this.style.display = 'none';
+              var w = document.getElementById('confirm-iframe').contentWindow;
+              w.postMessage({type:'revokeConfirmed', recordId:_confirmPending.recordId, tab:_confirmPending.tab}, '*');
+              _confirmPending = null;
+          }
+      });
+      // 中止弹窗按钮
+      document.getElementById('confirm-abort-modal').addEventListener('click', function(e) {
+          if (e.target.dataset.action === 'cancel' || e.target === this) {
+              this.style.display = 'none';
+              _confirmPending = null;
+          }
+          if (e.target.dataset.action === 'confirm' && _confirmPending && _confirmPending.type === 'abort') {
+              this.style.display = 'none';
+              var w = document.getElementById('confirm-iframe').contentWindow;
+              w.postMessage({type:'abortConfirmed', recordId:_confirmPending.recordId}, '*');
+              _confirmPending = null;
+          }
+      });
+      // 想过目弹窗按钮
+      document.getElementById('confirm-preview-modal').addEventListener('click', function(e) {
+          if (e.target.dataset.action === 'cancel' || e.target === this) {
+              this.style.display = 'none';
+              if (_confirmPending && _confirmPending.type === 'previewConfirm') {
+                  var w = document.getElementById('confirm-iframe').contentWindow;
+                  w.postMessage({type:'previewCancelled', recordId:_confirmPending.recordId}, '*');
+              }
+              _confirmPending = null;
+          }
+          if (e.target.dataset.action === 'confirm' && _confirmPending && _confirmPending.type === 'previewConfirm') {
+              this.style.display = 'none';
+              var w = document.getElementById('confirm-iframe').contentWindow;
+              w.postMessage({type:'previewConfirmed', recordId:_confirmPending.recordId}, '*');
+              _confirmPending = null;
+          }
+      });
+      // 余额不足弹窗（confirm 页面也复用）
+      // 全屏图片点击背景关闭
+      document.getElementById('confirm-fullscreen-modal').addEventListener('click', function(e) {
+          if (e.target === this) this.style.display = 'none';
+      });
+    </script>
+  </body>
+</html>
