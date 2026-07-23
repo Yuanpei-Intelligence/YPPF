@@ -9,6 +9,8 @@ from django.db.models.functions import Coalesce
 from django.core.files.images import get_image_dimensions
 from django.contrib import messages
 
+from django.views.decorators.clickjacking import xframe_options_exempt
+
 from app.views_dependency import *
 from birthboard.models import (
     BirthboardRecord,
@@ -850,6 +852,7 @@ def confirm_tab_count_api(request):
 
 @login_required(redirect_field_name="origin")
 @require_contract
+@xframe_options_exempt
 def birthboard_confirm(request):
     # 禁止直接通过网页访问，必须从 birthboard 页面进入（含 iframe）
     if request.method == "GET":
