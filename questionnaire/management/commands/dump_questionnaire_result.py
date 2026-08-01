@@ -2,7 +2,7 @@ from openpyxl import Workbook
 from django.core.management.base import BaseCommand, CommandParser
 from tqdm import tqdm
 
-from questionnaire.models import Survey, AnswerSheet
+from questionnaire.models import Survey, AnswerSheet, Choice
 import os
 
 
@@ -10,12 +10,17 @@ class Command(BaseCommand):
     help = 'Dumps the result of a questionnaire to raw_data/result.xlsx'
 
     @staticmethod
-    def _decode_choice_text(question, body):
+    def _decode_choice_text(question, body, choice_text_by_key):
         choice_orders = [segment.strip() for segment in body.split(',') if segment.strip()]
-        return [
-            question.choices.get(order=int(order)).text
-            for order in choice_orders
-        ]
+        try:
+            return [
+                choice_text_by_key[(question.id, int(order))]
+                for order in choice_orders
+            ]
+        except KeyError as error:
+            raise ValueError(
+                f'Choice {error.args[0][1]} does not exist for question {question.id}'
+            ) from error
 
     def add_arguments(self, parser: CommandParser) -> None:
         parser.add_argument('questionnaire_title', type=str,
@@ -31,6 +36,12 @@ class Command(BaseCommand):
 
         survey = Survey.objects.get(title=options['questionnaire_title'])
         questions = survey.questions.order_by('order').all()
+        choice_text_by_key = {
+            (question_id, order): text
+            for question_id, order, text in Choice.objects.filter(
+                question__survey=survey,
+            ).values_list('question_id', 'order', 'text')
+        }
 
         # 若没有该文件，自动创建
         if not os.path.exists(options['output_file']):
@@ -61,15 +72,18 @@ class Command(BaseCommand):
                     if question.type == 'TEXT':
                         value = answer.body
                     elif question.type == 'SINGLE':
-                        t = list(question.choices.filter(order=int(answer.body)))
-                        if len(t) != 1:
-                            raise ValueError(t)
-                        value = question.choices.get(order=int(answer.body)).text
+                        value = self._decode_choice_text(
+                            question, answer.body, choice_text_by_key,
+                        )[0]
                     elif question.type == 'MULTIPLE':
-                        choices_texts = self._decode_choice_text(question, answer.body)
+                        choices_texts = self._decode_choice_text(
+                            question, answer.body, choice_text_by_key,
+                        )
                         value = ', '.join(choices_texts)
                     elif question.type == 'RANKING':
-                        choices_texts = self._decode_choice_text(question, answer.body)
+                        choices_texts = self._decode_choice_text(
+                            question, answer.body, choice_text_by_key,
+                        )
                         ranking_lines = [
                             f'{rank}. {text}'
                             for rank, text in enumerate(choices_texts, start=1)

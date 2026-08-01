@@ -10,6 +10,7 @@ from openpyxl import load_workbook
 from generic.models import User
 from questionnaire.models import AnswerSheet, AnswerText, Choice, Question, Survey
 from questionnaire.serializers import AnswerTextSerializer
+from questionnaire.management.commands.dump_questionnaire_result import Command
 
 
 class RankingQuestionTests(TestCase):
@@ -82,3 +83,17 @@ class RankingQuestionTests(TestCase):
                 for row_index in range(2, ws.max_row + 1)
             ]
             self.assertIn('1. Beta; 2. Alpha; 3. Gamma', values)
+
+    def test_decode_choice_text_uses_in_memory_map(self):
+        choice_text_by_key = {
+            (self.question.id, 1): 'Alpha',
+            (self.question.id, 2): 'Beta',
+            (self.question.id, 3): 'Gamma',
+        }
+
+        with self.assertNumQueries(0):
+            texts = Command._decode_choice_text(
+                self.question, '2, 1,3', choice_text_by_key,
+            )
+
+        self.assertEqual(texts, ['Beta', 'Alpha', 'Gamma'])
