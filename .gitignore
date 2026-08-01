@@ -24,6 +24,7 @@
 ######################
 *.log
 *.sql
+!dev_sample.sql
 *.sqlite
 
 # OS generated files #

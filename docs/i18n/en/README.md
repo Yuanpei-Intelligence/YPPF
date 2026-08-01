@@ -29,6 +29,21 @@ vscode ➜ /workspace
 
 At this point, the devcontainer is equivalent to a configured Python environment, and MySQL does not need to be configured by yourself.
 
+On **first container create**, `postCreateCommand` automatically:
+
+1. Installs optional Dev Container packages (`.devcontainer/dev_requirements.txt`)
+2. Creates a Compose-default `config.json` when missing (`yppf` / host `mysql` / password `secret`)
+3. Runs `python manage.py migrate`
+4. Imports repository-root [`dev_sample.sql`](../../../dev_sample.sql) (skipped if users already exist)
+
+All sample account passwords are `test` (usernames like `S000001` / `P000001` / `O000001`). Then:
+
+```shell
+python manage.py runserver 0.0.0.0:8000
+```
+
+For manual re-import, reset, or regenerating the sample dump, see the Chinese README section [样例数据库](../../../README.md#样例数据库).
+
 ### Build Local Environment
 
 1. Install Python and start the terminal in the project root directory

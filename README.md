@@ -28,6 +28,126 @@ vscode ➜ /workspace
 
 至此，devcontainer 中相当于一个配置好的 Python 环境，并且无需自行配置 MySQL。
 
+容器**首次创建**时，`postCreateCommand` 会自动完成：
+
+1. 安装可选开发依赖（`.devcontainer/dev_requirements.txt`）
+2. 若不存在则生成 Compose 默认 `config.json`（库名 `yppf`，主机 `mysql`，密码 `secret`）
+3. 执行 `python manage.py migrate`
+4. 导入仓库根目录的 [`dev_sample.sql`](dev_sample.sql)（库中已有用户时会跳过）
+
+样例账号密码均为 `test`（用户名形如 `S000001` / `P000001` / `O000001`）。导入完成后可直接：
+
+```shell
+python manage.py runserver 0.0.0.0:8000
+```
+
+手动重新导入、重置或导出样例库，见下文 [样例数据库](#样例数据库)。
+
+### 样例数据库
+
+仓库根目录的 [`dev_sample.sql`](dev_sample.sql) 是脱敏后的开发样例数据（INSERT-only）。
+Dev Container 首次创建时会自动导入；多数情况下无需再操作。
+
+**约定：** 导入顺序必须是 **空库 → migrate → 导入 SQL**。顺序颠倒会导致
+migration / schema 冲突。样例文件路径在容器内为 `/workspace/dev_sample.sql`。
+
+#### 样例账号
+
+| 账号形态 | 示例 | 登录入口 | 密码 |
+| --- | --- | --- | --- |
+| 学生 / 自然人 / 组织 | `S000001`、`P000001`、`O000001` | 网站首页 | `test` |
+| 特殊账号 | `X******` | `/admin/` | `test` |
+
+首次登录改密流程已在导出时关闭（`is_newuser=false`）。
+
+#### 开发容器内手动导入
+
+在 Dev Container 终端（`vscode ➜ /workspace`）执行：
+
+```shell
+test -f config.json || bash scripts/default_config.sh
+python manage.py migrate --noinput
+python scripts/import_dev_sample.py
+```
+
+- 默认读取根目录 `dev_sample.sql`
+- 若 `generic_user` 已有数据则跳过；确认要覆盖时加 `--force`（建议先重置数据库）
+- 连接参数默认读取 `DB_HOST` / `DB_USER` / `DB_PASSWORD` / `DB_DATABASE`
+  （Compose 下为 `mysql` / `root` / `secret` / `yppf`）
+
+指定其它 SQL 文件：
+
+```shell
+python scripts/import_dev_sample.py --sql /workspace/path/to/other.sql --force
+```
+
+#### 重置数据库后再导入
+
+在**宿主机**项目根目录清空库：
+
+Linux / macOS：
+
+```shell
+docker compose -f .devcontainer/docker-compose.yml exec -T mysql \
+  mysql -uroot -psecret -e \
+  "DROP DATABASE IF EXISTS yppf; \
+   CREATE DATABASE yppf CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci;"
+```
+
+Windows PowerShell：
+
+```powershell
+docker compose -f .devcontainer/docker-compose.yml exec -T mysql `
+  mysql -uroot -psecret -e `
+  "DROP DATABASE IF EXISTS yppf; CREATE DATABASE yppf CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci;"
+```
+
+然后在**开发容器**内：
+
+```shell
+python manage.py migrate --noinput
+python scripts/import_dev_sample.py --force
+```
+
+#### 备选：宿主机用 mysql 客户端导入
+
+migrate 完成后，在宿主机导入根目录文件。
+
+Linux / macOS：
+
+```shell
+docker compose -f .devcontainer/docker-compose.yml exec -T mysql \
+  mysql -uroot -psecret yppf < dev_sample.sql
+```
+
+Windows PowerShell：
+
+```powershell
+Get-Content .\dev_sample.sql -Raw -Encoding UTF8 | `
+  docker compose -f .devcontainer/docker-compose.yml exec -T mysql `
+  mysql -uroot -psecret yppf
+```
+
+#### 命令执行位置
+
+| 步骤 | 执行位置 |
+| --- | --- |
+| `docker compose` / 清空数据库 | 宿主机 |
+| `migrate` / `import_dev_sample.py` | 开发容器 |
+| 宿主机重定向 `< dev_sample.sql` | 宿主机 |
+
+#### 生成脱敏样例 SQL
+
+在含真实数据的库上（开发容器内）采样导出，再覆盖根目录样例文件：
+
+```shell
+python manage.py export_sample_db --ratio 0.1 --seed 42 --outdir .
+# 将生成的 dev_sample_YYYYMMDD_HHMMSS.sql 复制/重命名为根目录 dev_sample.sql
+```
+
+实现见 [`dm/management/commands/export_sample_db.py`](dm/management/commands/export_sample_db.py)
+与 [`dm/sample_db_export.py`](dm/sample_db_export.py)。请勿对已脱敏样例库再采样后当作正式样例提交。
+
 ### 本地环境搭建
 
 1. 安装Python，在项目根目录启动终端
@@ -195,6 +315,20 @@ python manage.py runserver ip:port
 - 缺少字段：`Unknown column 'xx.xxx' in 'field list'`
 
     未执行迁移或模型变动未检出，请参考[更新和迁移](#更新和迁移)。必要时可以删库重建。
+
+- 样例库：先导入 SQL 再 migrate 报错，或导入时报 `Table already exists`
+
+    请按 [样例数据库](#样例数据库) 清空库后执行 **migrate → 导入**。根目录
+    `dev_sample.sql` 应为 INSERT-only。
+
+- `import_dev_sample` 提示 Skip import
+
+    库中已有用户。确认后加 `--force`，或先按上文重置数据库。
+
+- Dev Container 内无法连接 MySQL
+
+    确认 `mysql` 服务为 `healthy`；容器内主机应为 `mysql`
+    （环境变量 `DB_HOST` 或 `config.json`）。
 
 ## 加入我们
 
