@@ -686,4 +686,4 @@ class Command(BaseCommand):
         question34.save()
 
         # Finished message
-        print("2026问卷创建完成！请在管理后台查看。")
+        self.stdout.write(self.style.SUCCESS('2026问卷创建完成！请在管理后台查看。'))
