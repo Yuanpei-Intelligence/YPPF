@@ -6,6 +6,7 @@
     // ],
     "dockerComposeFile": "docker-compose.yml",
     "postCreateCommand": "bash scripts/devcontainer_post_create.sh",
+    "postStartCommand": "bash scripts/devcontainer_post_start.sh",
     "service": "yppf",
     "workspaceFolder": "/workspace",
     "remoteUser": "vscode",

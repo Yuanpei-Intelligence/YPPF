@@ -1,11 +1,8 @@
 #!/usr/bin/env bash
-# Dev Container post-create: deps, config, migrate, sample DB import.
+# Dev Container post-create: deps, config, reset DB + sample import.
 set -euo pipefail
 
 cd /workspace
-
-echo '[postCreate] Install optional Dev Container Python packages...'
-pip install -r .devcontainer/dev_requirements.txt --resume-retries 5
 
 if [ ! -f config.json ]; then
     echo '[postCreate] Create default config.json for Compose MySQL...'
@@ -14,10 +11,10 @@ else
     echo '[postCreate] Keep existing config.json.'
 fi
 
-echo '[postCreate] Apply migrations...'
-python manage.py migrate --noinput
+echo '[postCreate] Reset development database and import sample dump...'
+bash scripts/devcontainer_reset_sample_db.sh
 
-echo '[postCreate] Import repository-root dev_sample.sql (skip if populated)...'
-python scripts/import_dev_sample.py
+echo '[postCreate] Install optional Dev Container Python packages...'
+pip install -r .devcontainer/dev_requirements.txt --resume-retries 5
 
 echo '[postCreate] Finished.'

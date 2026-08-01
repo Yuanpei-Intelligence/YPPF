@@ -2,14 +2,18 @@
 """Import repository-root ``dev_sample.sql`` into the development database.
 
 Intended for Dev Container post-create and manual local setup. Expects schema
-to already exist (run ``python manage.py migrate`` first). By default skips
-import when ``generic_user`` already has rows; pass ``--force`` to reload.
+to already exist (run ``python manage.py migrate`` first) before importing.
+
+By default skips import when ``generic_user`` already has rows; pass
+``--force`` to reload. Pass ``--drop-database`` alone to DROP and recreate
+the target database (then migrate before importing).
 """
 
 from __future__ import annotations
 
 import argparse
 import os
+import re
 import sys
 from pathlib import Path
 
@@ -18,6 +22,7 @@ import pymysql
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_SQL = REPO_ROOT / 'dev_sample.sql'
+_DB_NAME_RE = re.compile(r'^[A-Za-z0-9_]+$')
 
 
 def _split_sql_statements(sql: str) -> list[str]:
@@ -97,6 +102,40 @@ def _connect(args: argparse.Namespace) -> pymysql.Connection:
     )
 
 
+def _validate_database_name(name: str) -> str:
+    if not _DB_NAME_RE.fullmatch(name):
+        raise ValueError(
+            f'Invalid database name {name!r}; '
+            'expected letters, digits, or underscore only.',
+        )
+    return name
+
+
+def drop_and_recreate_database(args: argparse.Namespace) -> None:
+    """DROP and recreate the target database (destructive).
+
+    Connects without selecting the target schema so DROP is allowed.
+    """
+    db_name = _validate_database_name(args.database)
+    conn = pymysql.connect(
+        host=args.host,
+        port=args.port,
+        user=args.user,
+        password=args.password,
+        charset='utf8mb4',
+        autocommit=True,
+    )
+    try:
+        with conn.cursor() as cursor:
+            cursor.execute(f'DROP DATABASE IF EXISTS `{db_name}`')
+            cursor.execute(
+                f'CREATE DATABASE `{db_name}` '
+                f'CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci',
+            )
+    finally:
+        conn.close()
+
+
 def _user_count(conn: pymysql.Connection) -> int | None:
     with conn.cursor() as cursor:
         try:
@@ -135,6 +174,14 @@ def build_parser() -> argparse.ArgumentParser:
         help='Import even when generic_user already has rows.',
     )
     parser.add_argument(
+        '--drop-database',
+        action='store_true',
+        help=(
+            'Drop and recreate the target database, then exit. '
+            'Run migrate before importing.'
+        ),
+    )
+    parser.add_argument(
         '--host',
         default=os.getenv('DB_HOST', 'mysql'),
     )
@@ -160,6 +207,23 @@ def build_parser() -> argparse.ArgumentParser:
 
 def main(argv: list[str] | None = None) -> int:
     args = build_parser().parse_args(argv)
+
+    if args.drop_database:
+        print(
+            f'[import_dev_sample] Dropping and recreating database '
+            f'{args.database!r} on {args.host}:{args.port} ...',
+        )
+        try:
+            drop_and_recreate_database(args)
+        except Exception as exc:
+            print(f'[import_dev_sample] Failed: {exc}', file=sys.stderr)
+            return 1
+        print(
+            '[import_dev_sample] Database recreated. '
+            'Run migrate, then import without --drop-database.',
+        )
+        return 0
+
     sql_path: Path = args.sql.resolve()
 
     if not sql_path.is_file():

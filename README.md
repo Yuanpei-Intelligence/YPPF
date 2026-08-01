@@ -28,12 +28,26 @@ vscode ➜ /workspace
 
 至此，devcontainer 中相当于一个配置好的 Python 环境，并且无需自行配置 MySQL。
 
-容器**首次创建**时，`postCreateCommand` 会自动完成：
+容器**创建或重建**时会自动完成：
 
-1. 安装可选开发依赖（`.devcontainer/dev_requirements.txt`）
-2. 若不存在则生成 Compose 默认 `config.json`（库名 `yppf`，主机 `mysql`，密码 `secret`）
+1. 若不存在则生成 Compose 默认 `config.json`（库名 `yppf`，主机 `mysql`，密码 `secret`）
+2. **清空并重建**开发数据库 `yppf`（`DROP DATABASE` + `CREATE DATABASE`）
 3. 执行 `python manage.py migrate`
-4. 导入仓库根目录的 [`dev_sample.sql`](dev_sample.sql)（库中已有用户时会跳过）
+4. 导入仓库根目录的 [`dev_sample.sql`](dev_sample.sql)
+5. 创建开发超级管理员：用户名 `admin`，密码 `secret`（用于 `/admin/`）
+6. 安装可选开发依赖（`.devcontainer/dev_requirements.txt`，仅 `postCreate`）
+
+上述清库导入由 `postCreateCommand` 与 `postStartCommand` 共同保证：
+部分环境下“重建”可能跳过 `postCreate`，此时只要 **app 容器被重建**
+（容器内 `/tmp` 标记消失），`postStart` 仍会清库并导入。
+仅 **Restart Container（重启）** 会保留 `/tmp` 标记，因而**不会**清库。
+
+> **注意：** 创建/重建 app 容器时 **默认会删除 Compose MySQL 卷中已有的 `yppf` 库数据**，
+> 再导入样例库。本地调试数据、手工写入的记录都会丢失。
+> 若需保留自建数据，请先自行备份，或只重启、不要 Rebuild；
+> 仅执行宿主机 `docker compose ... up --build` **不会**跑上述钩子。
+> 需要手动清库导入时，在容器内执行：
+> `bash scripts/devcontainer_reset_sample_db.sh`
 
 样例账号密码均为 `test`（用户名形如 `S000001` / `P000001` / `O000001`）。导入完成后可直接：
 
@@ -46,7 +60,7 @@ python manage.py runserver 0.0.0.0:8000
 ### 样例数据库
 
 仓库根目录的 [`dev_sample.sql`](dev_sample.sql) 是脱敏后的开发样例数据（INSERT-only）。
-Dev Container 首次创建时会自动导入；多数情况下无需再操作。
+Dev Container 创建/重建时会**清空数据库并自动导入**；多数情况下无需再操作。
 
 **约定：** 导入顺序必须是 **空库 → migrate → 导入 SQL**。顺序颠倒会导致
 migration / schema 冲突。样例文件路径在容器内为 `/workspace/dev_sample.sql`。
@@ -55,23 +69,27 @@ migration / schema 冲突。样例文件路径在容器内为 `/workspace/dev_sa
 
 | 账号形态 | 示例 | 登录入口 | 密码 |
 | --- | --- | --- | --- |
+| 开发超级管理员 | `admin` | `/admin/` | `secret` |
 | 学生 / 自然人 / 组织 | `S000001`、`P000001`、`O000001` | 网站首页 | `test` |
-| 特殊账号 | `X******` | `/admin/` | `test` |
+| 特殊账号（样例内） | `X******` | `/admin/` | `test` |
 
 首次登录改密流程已在导出时关闭（`is_newuser=false`）。
 
 #### 开发容器内手动导入
 
-在 Dev Container 终端（`vscode ➜ /workspace`）执行：
+在 Dev Container 终端（`vscode ➜ /workspace`）执行（与 post-create 相同流程）：
 
 ```shell
 test -f config.json || bash scripts/default_config.sh
+python scripts/import_dev_sample.py --drop-database
 python manage.py migrate --noinput
-python scripts/import_dev_sample.py
+python scripts/import_dev_sample.py --force
+python scripts/create_dev_superuser.py
 ```
 
-- 默认读取根目录 `dev_sample.sql`
-- 若 `generic_user` 已有数据则跳过；确认要覆盖时加 `--force`（建议先重置数据库）
+- `--drop-database`：清空并重建目标库后退出（**会删除已有数据**）
+- 默认读取根目录 `dev_sample.sql`；仅导入且库中已有用户时会跳过，加 `--force` 覆盖
+- `create_dev_superuser.py` 默认创建/更新 `admin` / `secret`（可用参数覆盖）
 - 连接参数默认读取 `DB_HOST` / `DB_USER` / `DB_PASSWORD` / `DB_DATABASE`
   （Compose 下为 `mysql` / `root` / `secret` / `yppf`）
 
@@ -83,7 +101,16 @@ python scripts/import_dev_sample.py --sql /workspace/path/to/other.sql --force
 
 #### 重置数据库后再导入
 
-在**宿主机**项目根目录清空库：
+推荐在**开发容器**内用脚本清空：
+
+```shell
+python scripts/import_dev_sample.py --drop-database
+python manage.py migrate --noinput
+python scripts/import_dev_sample.py --force
+python scripts/create_dev_superuser.py
+```
+
+也可在**宿主机**项目根目录用 mysql 客户端清空库：
 
 Linux / macOS：
 
@@ -107,6 +134,7 @@ docker compose -f .devcontainer/docker-compose.yml exec -T mysql `
 ```shell
 python manage.py migrate --noinput
 python scripts/import_dev_sample.py --force
+python scripts/create_dev_superuser.py
 ```
 
 #### 备选：宿主机用 mysql 客户端导入
@@ -133,7 +161,7 @@ Get-Content .\dev_sample.sql -Raw -Encoding UTF8 | `
 | 步骤 | 执行位置 |
 | --- | --- |
 | `docker compose` / 清空数据库 | 宿主机 |
-| `migrate` / `import_dev_sample.py` | 开发容器 |
+| `migrate` / `import_dev_sample.py` / `create_dev_superuser.py` | 开发容器 |
 | 宿主机重定向 `< dev_sample.sql` | 宿主机 |
 
 #### 生成脱敏样例 SQL
@@ -323,7 +351,9 @@ python manage.py runserver ip:port
 
 - `import_dev_sample` 提示 Skip import
 
-    库中已有用户。确认后加 `--force`，或先按上文重置数据库。
+    库中已有用户。确认后加 `--force`，或先按上文
+    `--drop-database` 重置后再导入。注意：Dev Container 重建时
+    post-create 会自动清库并导入，无需手动处理。
 
 - Dev Container 内无法连接 MySQL
 

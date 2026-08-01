@@ -29,12 +29,25 @@ vscode ➜ /workspace
 
 At this point, the devcontainer is equivalent to a configured Python environment, and MySQL does not need to be configured by yourself.
 
-On **first container create**, `postCreateCommand` automatically:
+On container **create or rebuild**, setup automatically:
 
-1. Installs optional Dev Container packages (`.devcontainer/dev_requirements.txt`)
-2. Creates a Compose-default `config.json` when missing (`yppf` / host `mysql` / password `secret`)
+1. Creates a Compose-default `config.json` when missing (`yppf` / host `mysql` / password `secret`)
+2. **Drops and recreates** the development database `yppf`
 3. Runs `python manage.py migrate`
-4. Imports repository-root [`dev_sample.sql`](../../../dev_sample.sql) (skipped if users already exist)
+4. Imports repository-root [`dev_sample.sql`](../../../dev_sample.sql)
+5. Creates the development superuser `admin` / `secret` (for `/admin/`)
+6. Installs optional Dev Container packages (`.devcontainer/dev_requirements.txt`, postCreate only)
+
+`postCreateCommand` and `postStartCommand` both participate: some rebuild paths
+skip postCreate, but recreating the app container clears a `/tmp` marker so
+postStart still wipes and re-imports. A plain **Restart Container** keeps the
+marker and does **not** wipe the database.
+
+> **Warning:** Creating/rebuilding the app container **wipes existing `yppf`
+> data** in the Compose MySQL volume, then loads the sample dump.
+> Host-only `docker compose ... up --build` does **not** run these hooks.
+> Manual reset inside the container:
+> `bash scripts/devcontainer_reset_sample_db.sh`
 
 All sample account passwords are `test` (usernames like `S000001` / `P000001` / `O000001`). Then:
 
