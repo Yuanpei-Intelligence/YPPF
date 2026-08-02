@@ -12,6 +12,8 @@ from dormitory.serializers import (
     DormitoryAssignmentSerializer, DormitorySerializer,
     AgreementSerializerFixme, AgreementSerializer)
 from questionnaire.models import AnswerSheet, AnswerText, Question, Survey
+from questionnaire.validators import validate_answer_body
+from django.core.exceptions import ValidationError
 from django.http import HttpResponse
 from openpyxl import Workbook
 
@@ -99,6 +101,29 @@ class DormitoryRoutineQAView(ProfileTemplateView):
         ]
         render_kwargs = dict(survey_iter=survey_iter)
 
+        for question in survey.questions.order_by('order'):
+            answer = submitted[str(question.order)]
+            if not answer:
+                if question.required:
+                    return self.render(
+                        html_display=dict(
+                            warn_code=1,
+                            warn_message=f'必填题{question.order}未作答',
+                        ),
+                        **render_kwargs,
+                    )
+                continue
+            try:
+                validate_answer_body(question, answer)
+            except ValidationError as exc:
+                return self.render(
+                    html_display=dict(
+                        warn_code=1,
+                        warn_message=f'第{question.order}题：{exc.messages[0]}',
+                    ),
+                    **render_kwargs,
+                )
+
         # Validate that the "学号" answer matches the current user's username
         sid_question = survey.questions.filter(topic='学号', type=Question.Type.TEXT).first()
         if sid_question:
@@ -130,10 +155,8 @@ class DormitoryRoutineQAView(ProfileTemplateView):
             sheet = AnswerSheet.objects.create(creator=self.request.user,
                                                survey=survey)
             for question in survey.questions.order_by('order'):
-                answer = self._normalize_answer(question)
+                answer = submitted[str(question.order)]
                 if not answer:
-                    if question.required:
-                        raise ValueError(f'必填题{question.order}未作答')
                     continue
                 AnswerText.objects.create(question=question,
                                           answersheet=sheet,
