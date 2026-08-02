@@ -1,4 +1,5 @@
 from django.core.management.base import BaseCommand
+from django.db import transaction
 from questionnaire.models import Survey, Question, Choice
 
 
@@ -6,6 +7,7 @@ from questionnaire.models import Survey, Question, Choice
 class Command(BaseCommand):
     help = "Create dormitory questionnaire."
 
+    @transaction.atomic
     def handle(self, *args, **options):
         # 检查是否已存在同名问卷，避免重复创建
         if Survey.objects.filter(title="宿舍生活习惯调研-2026").exists():
@@ -483,19 +485,19 @@ class Command(BaseCommand):
         choice24_1 = Choice.objects.create(
             question=question24,
             order=1,
-            text='内向型（与他人相处时精力充沛；易于\u201c读\u201d和了解，随意地分享个人情况；高度热情地社交。）',
+            text='内向型：独处时精力充沛；更封闭，更愿意在经挑选的小群体中分享个人的情况；不把兴奋说出来。',
         )
         choice24_1.save()
         choice24_2 = Choice.objects.create(
             question=question24,
             order=2,
-            text='适中型（介于二者之间，能够在内外向之间切换，在人群中乐意与人交谈结交朋友，同时也享受独处。）',
+            text='适中型：介于二者之间，能够在内外向之间切换，在人群中乐意与人交谈结交朋友，同时也享受独处。',
         )
         choice24_2.save()
         choice24_3 = Choice.objects.create(
             question=question24,
             order=3,
-            text='外向型（独处时精力充沛；更封闭，更愿意在经挑选的小群体中分享个人的情况；不把兴奋说出来。）',
+            text='外向型：与他人相处时精力充沛；易于“读”和了解，随意地分享个人情况；高度热情地社交。',
         )
         choice24_3.save()
 
