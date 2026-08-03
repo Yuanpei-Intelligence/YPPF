@@ -1,6 +1,7 @@
 {% extends "base.html" %}
 
 {% load static %}
+{% load dormitory_filters %}
 
 {% block add_css_file %}
 <link href="{% static "datetimepicker/css/bootstrap-datetimepicker-standalone.css" %}" rel="stylesheet" type="text/css" />
@@ -12,6 +13,32 @@
 <style>
 .req {
     color: #FF4040;
+}
+
+.ranking-list {
+    list-style: none;
+    padding-left: 0;
+}
+
+.ranking-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    border: 1px solid #e3e3e3;
+    border-radius: 8px;
+    padding: 8px 10px;
+    margin-bottom: 8px;
+    background: #fff;
+}
+
+.ranking-label {
+    margin-right: 12px;
+}
+
+.ranking-actions button {
+    width: 32px;
+    height: 32px;
+    line-height: 1;
 }
 </style>
 <!--  BEGIN CONTENT AREA  -->
@@ -47,12 +74,15 @@
                                           method="POST"
                                           enctype="multipart/form-data"
                                           onsubmit="return check_input()">
-                                        {% for question, choices in survey_iter %}
+                                        {% for question, choices, submitted_val in survey_iter %}
                                             <div class="form-group mb-3 mx-5">
                                                 <h6 id="survey-question-{{ question.order }}">
                                                     {{ question.order }}. {{ question.topic }}
                                                     {% if question.required %}<span class="req">*</span>{% endif %}
                                                 </h6>
+                                                {% if question.description %}
+                                                    <p class="text-muted mb-2">{{ question.description }}</p>
+                                                {% endif %}
                                                 {% if question.type == 'TEXT' %}
                                                     <input type="text"
                                                            id="{{ question.order }}"
@@ -60,8 +90,8 @@
                                                            class="form-control"
                                                            aria-label="Default"
                                                            {% if question.required %}required{% endif %}
-                                                           placeholder="{{ question.description }}"
-                                                           maxlength="200">
+                                                           maxlength="200"
+                                                           value="{{ submitted_val }}">
                                                 {% elif question.type == 'SINGLE' %}
                                                     {% for choice in choices %}
                                                         <div class="form-check mb-1">
@@ -70,7 +100,8 @@
                                                                    {% if question.required %}required{% endif %}
                                                                    id="{{ question.order }}-{{ choice.order }}"
                                                                    name="{{ question.order }}"
-                                                                   value="{{ choice.order }}">
+                                                                   value="{{ choice.order }}"
+                                                                   {% if submitted_val == choice.order|slugify %}checked{% endif %}>
                                                             <label class="form-check-label"
                                                                    for="{{ question.order }}-{{ choice.order }}">
                                                                 {{ choice.text }}
@@ -84,13 +115,36 @@
                                                                    class="form-check-input"
                                                                    id="{{ question.order }}-{{ choice.order }}"
                                                                    name="{{ question.order }}"
-                                                                   value="{{ choice.order }}">
+                                                                   value="{{ choice.order }}"
+                                                                   {% if submitted_val|contains:choice.order %}checked{% endif %}>
                                                             <label class="form-check-label"
                                                                    for="{{ question.order }}-{{ choice.order }}">
                                                                 {{ choice.text }}
                                                             </label>
                                                         </div>
                                                     {% endfor %}
+                                                {% elif question.type == 'RANKING' %}
+                                                    <p class="text-muted mb-2">请按偏好顺序排列（最上方为最高优先级）。</p>
+                                                    <ul class="ranking-list" data-question-order="{{ question.order }}">
+                                                        {% for choice in choices %}
+                                                            <li class="ranking-item" data-choice-order="{{ choice.order }}">
+                                                                <span class="ranking-label">{{ choice.text }}</span>
+                                                                <div class="ranking-actions">
+                                                                    <button type="button"
+                                                                            class="btn btn-outline-secondary btn-sm rank-up"
+                                                                            aria-label="上移">↑</button>
+                                                                    <button type="button"
+                                                                            class="btn btn-outline-secondary btn-sm rank-down"
+                                                                            aria-label="下移">↓</button>
+                                                                </div>
+                                                            </li>
+                                                        {% endfor %}
+                                                    </ul>
+                                                    <input type="hidden"
+                                                           id="ranking-{{ question.order }}"
+                                                           name="{{ question.order }}"
+                                                           {% if question.required %}required{% endif %}
+                                                           value="{{ submitted_val }}">
                                                 {% endif %}
                                             </div>
                                         {% endfor %}
@@ -123,12 +177,83 @@
 <script src={% static "datetimepicker/js/bootstrap-datetimepicker.min.js" %}></script>
 <script>
 var required_multiple_questions = [
-    {% for question, choice in survey_iter %}{% if question.type == 'MULTIPLE' and question.required %}
+    {% for item in survey_iter %}{% with question=item.0 %}{% if question.type == 'MULTIPLE' and question.required %}
         "{{ question.order }}",
-    {% endif %}{% endfor %}
+    {% endif %}{% endwith %}{% endfor %}
 ]
+
+var multiple_choice_limits = {
+    {% for item in survey_iter %}{% with question=item.0 %}
+        {% if question.type == 'MULTIPLE' %}
+            "{{ question.order }}": {
+                min: {{ question.min_choices|default:1 }},
+                max: {{ question.max_choices|default:'null' }}
+            },
+        {% endif %}
+    {% endwith %}{% endfor %}
+}
+
+function syncRankingInput(order) {
+    var list = document.querySelector('.ranking-list[data-question-order="' + order + '"]');
+    if (!list) {
+        return;
+    }
+    var values = Array.from(list.querySelectorAll('.ranking-item'))
+        .map(item => item.dataset.choiceOrder)
+        .join(',');
+    var input = document.getElementById('ranking-' + order);
+    if (input) {
+        input.value = values;
+    }
+}
+
+function restoreRankingOrder(list, order) {
+    var input = document.getElementById('ranking-' + order);
+    if (!input || !input.value) return;
+    var saved = input.value.split(',').map(s => s.trim()).filter(s => s);
+    if (saved.length === 0) return;
+    var items = Array.from(list.querySelectorAll('.ranking-item'));
+    var itemMap = {};
+    items.forEach(item => { itemMap[item.dataset.choiceOrder] = item; });
+    saved.forEach(function(choiceOrder) {
+        var item = itemMap[choiceOrder];
+        if (item) list.appendChild(item);
+    });
+}
+
+function initRankingLists() {
+    document.querySelectorAll('.ranking-list').forEach(list => {
+        var order = list.dataset.questionOrder;
+        restoreRankingOrder(list, order);
+        syncRankingInput(order);
+        list.addEventListener('click', function(event) {
+            var button = event.target.closest('button');
+            if (!button) {
+                return;
+            }
+            var item = button.closest('.ranking-item');
+            if (!item) {
+                return;
+            }
+            if (button.classList.contains('rank-up')) {
+                var prev = item.previousElementSibling;
+                if (prev) {
+                    list.insertBefore(item, prev);
+                }
+            }
+            if (button.classList.contains('rank-down')) {
+                var next = item.nextElementSibling;
+                if (next) {
+                    list.insertBefore(next, item);
+                }
+            }
+            syncRankingInput(order);
+        });
+    });
+}
+
 const check_input = () => {
-    return required_multiple_questions.every(order => {
+    var multiple_ok = required_multiple_questions.every(order => {
         var boxes = document.querySelectorAll('input[name="' + order + '"]:checked');
         if (boxes.length === 0) {
             document.getElementById("error-message").innerHTML = '您还未作答<a href="#survey-question-'
@@ -136,7 +261,37 @@ const check_input = () => {
             return false;
         }
         return true;
-    }) && confirm('确认提交？提交后将不能修改，请确认信息无误后再提交。');
+    });
+    if (!multiple_ok) {
+        return false;
+    }
+
+    // Validate min/max choices for MULTIPLE questions that have selections
+    for (var order in multiple_choice_limits) {
+        if (!multiple_choice_limits.hasOwnProperty(order)) continue;
+        var boxes = document.querySelectorAll('input[name="' + order + '"]:checked');
+        var count = boxes.length;
+        var limits = multiple_choice_limits[order];
+        if (count === 0) continue; // Skip unanswered non-required questions
+        if (limits.min > 0 && count < limits.min) {
+            document.getElementById("error-message").innerHTML =
+                '<a href="#survey-question-' + order + '" style="color:blue;">第' + order + '题</a>'
+                + '至少需要选择 ' + limits.min + ' 个选项！';
+            return false;
+        }
+        if (limits.max !== null && count > limits.max) {
+            document.getElementById("error-message").innerHTML =
+                '<a href="#survey-question-' + order + '" style="color:blue;">第' + order + '题</a>'
+                + '最多只能选择 ' + limits.max + ' 个选项！';
+            return false;
+        }
+    }
+    document.querySelectorAll('.ranking-list').forEach(list => {
+        syncRankingInput(list.dataset.questionOrder);
+    });
+    return confirm('确认提交？提交后将不能修改，请确认信息无误后再提交。');
 }
+
+initRankingLists();
 </script>
 {% endblock add_js_file %}

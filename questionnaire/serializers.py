@@ -1,6 +1,8 @@
+from django.core.exceptions import ValidationError as DjangoValidationError
 from rest_framework import serializers
 
 from questionnaire.models import Survey, Question, Choice, AnswerText, AnswerSheet
+from questionnaire.validators import validate_answer_body
 
 __all__ = [
     'ChoiceSerializer',
@@ -50,6 +52,19 @@ class AnswerTextSerializer(serializers.ModelSerializer):
         fields = '__all__'
 
     def validate(self, attrs):
-        if attrs['question'].survey != attrs['answersheet'].survey:
+        question = attrs['question']
+        answersheet = attrs['answersheet']
+        body = (attrs.get('body') or '').strip()
+
+        if question.survey != answersheet.survey:
             raise serializers.ValidationError("问题与答卷不属于同一问卷！")
+
+        if not body:
+            raise serializers.ValidationError('答案不能为空！')
+
+        try:
+            validate_answer_body(question, body)
+        except DjangoValidationError as exc:
+            raise serializers.ValidationError(exc.messages) from exc
+
         return attrs
