@@ -4,9 +4,10 @@
 Intended for Dev Container post-create and manual local setup. Expects schema
 to already exist (run ``python manage.py migrate`` first) before importing.
 
-By default skips import when ``generic_user`` already has rows; pass
-``--force`` to reload. Pass ``--drop-database`` alone to DROP and recreate
-the target database (then migrate before importing).
+By default skips import when ``generic_user`` already has rows. Pass
+``--force`` to truncate tables present in the dump and reload. Pass
+``--drop-database`` alone to DROP and recreate the target database (then
+migrate before importing).
 """
 
 from __future__ import annotations
@@ -16,6 +17,7 @@ import os
 import re
 import sys
 from pathlib import Path
+from typing import Sequence
 
 import pymysql
 
@@ -23,6 +25,10 @@ import pymysql
 REPO_ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_SQL = REPO_ROOT / 'dev_sample.sql'
 _DB_NAME_RE = re.compile(r'^[A-Za-z0-9_]+$')
+_INSERT_TABLE_RE = re.compile(
+    r'^\s*INSERT\s+INTO\s+`([^`]+)`',
+    re.IGNORECASE | re.MULTILINE,
+)
 
 
 def _split_sql_statements(sql: str) -> list[str]:
@@ -146,6 +152,43 @@ def _user_count(conn: pymysql.Connection) -> int | None:
     return int(row[0]) if row is not None else 0
 
 
+def _tables_in_sql(sql: str) -> list[str]:
+    """Return unique table names targeted by INSERT statements, in order."""
+    seen: set[str] = set()
+    tables: list[str] = []
+    for match in _INSERT_TABLE_RE.finditer(sql):
+        table = match.group(1)
+        if table not in seen:
+            seen.add(table)
+            tables.append(table)
+    return tables
+
+
+def _existing_tables(conn: pymysql.Connection, tables: Sequence[str]) -> list[str]:
+    if not tables:
+        return []
+    with conn.cursor() as cursor:
+        cursor.execute('SHOW TABLES')
+        present = {row[0] for row in cursor.fetchall()}
+    return [table for table in tables if table in present]
+
+
+def truncate_tables(conn: pymysql.Connection, tables: Sequence[str]) -> int:
+    """Truncate existing tables with foreign-key checks disabled."""
+    targets = _existing_tables(conn, tables)
+    if not targets:
+        return 0
+    with conn.cursor() as cursor:
+        cursor.execute('SET FOREIGN_KEY_CHECKS=0')
+        try:
+            for table in targets:
+                cursor.execute(f'TRUNCATE TABLE `{table}`')
+        finally:
+            cursor.execute('SET FOREIGN_KEY_CHECKS=1')
+    conn.commit()
+    return len(targets)
+
+
 def import_sql(conn: pymysql.Connection, sql_path: Path) -> int:
     sql = sql_path.read_text(encoding='utf-8')
     statements = _split_sql_statements(sql)
@@ -171,7 +214,10 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         '--force',
         action='store_true',
-        help='Import even when generic_user already has rows.',
+        help=(
+            'Reload sample data: truncate tables present in the SQL dump, '
+            'then import (keeps schema and other tables).'
+        ),
     )
     parser.add_argument(
         '--drop-database',
@@ -248,6 +294,15 @@ def main(argv: list[str] | None = None) -> int:
                 f'has {count} row(s). Use --force to reload.',
             )
             return 0
+
+        if args.force and count > 0:
+            sql_text = sql_path.read_text(encoding='utf-8')
+            tables = _tables_in_sql(sql_text)
+            cleared = truncate_tables(conn, tables)
+            print(
+                f'[import_dev_sample] --force: truncated {cleared} '
+                f'table(s) from dump before import.',
+            )
 
         print(f'[import_dev_sample] Importing {sql_path} ...')
         executed = import_sql(conn, sql_path)

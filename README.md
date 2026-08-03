@@ -88,7 +88,8 @@ python scripts/create_dev_superuser.py
 ```
 
 - `--drop-database`：清空并重建目标库后退出（**会删除已有数据**）
-- 默认读取根目录 `dev_sample.sql`；仅导入且库中已有用户时会跳过，加 `--force` 覆盖
+- 默认读取根目录 `dev_sample.sql`；库中已有用户时会跳过；加 `--force` 会先
+  TRUNCATE 转储中出现的表再导入（保留 schema，无需先 `--drop-database`）
 - `create_dev_superuser.py` 默认创建/更新 `admin` / `secret`（可用参数覆盖）
 - 连接参数默认读取 `DB_HOST` / `DB_USER` / `DB_PASSWORD` / `DB_DATABASE`
   （Compose 下为 `mysql` / `root` / `secret` / `yppf`）
@@ -175,6 +176,13 @@ python manage.py export_sample_db --ratio 0.1 --seed 42 --outdir .
 
 实现见 [`dm/management/commands/export_sample_db.py`](dm/management/commands/export_sample_db.py)
 与 [`dm/sample_db_export.py`](dm/sample_db_export.py)。请勿对已脱敏样例库再采样后当作正式样例提交。
+
+约定摘要（与导出脚本一致）：
+
+- 活动/反馈相关 URL 一律清空；活动简介与地点为 `[redacted]`
+- `FeedbackType` / `Feedback` 中未纳入样本的默认 `org_id` 置为 `NULL`（并校正 `flexible`）
+- 住宿协议仅保留样本用户的签订记录
+
 
 ### 本地环境搭建
 
@@ -351,8 +359,8 @@ python manage.py runserver ip:port
 
 - `import_dev_sample` 提示 Skip import
 
-    库中已有用户。确认后加 `--force`，或先按上文
-    `--drop-database` 重置后再导入。注意：Dev Container 重建时
+    库中已有用户。直接加 `--force` 会清空转储涉及的表后重载；或先
+    `--drop-database` 再 migrate 后导入。Dev Container 重建时
     post-create 会自动清库并导入，无需手动处理。
 
 - Dev Container 内无法连接 MySQL

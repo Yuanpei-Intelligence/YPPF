@@ -44,7 +44,7 @@ FULL_TABLES: list[str] = [
     'app_organizationtype',
     'Appointment_room',
     'dormitory_dormitory',
-    'feedback_feedbacktype',
+    # feedback_feedbacktype: written separately to null dangling org defaults.
     'app_academictag',
     'achievement_achievementtype',
     'achievement_achievement',
@@ -840,6 +840,25 @@ def _write_all_tables(fh, ctx: SampleContext) -> None:
             fixed.append(tuple(data[c] for c in columns))
         _write_inserts(fh, 'app_organizationtype', columns, fixed)
 
+    # Feedback types: keep all rows, but null org defaults not in the sample.
+    if _table_exists('feedback_feedbacktype'):
+        columns = _table_columns('feedback_feedbacktype')
+        rows = _fetch_rows('feedback_feedbacktype', columns)
+        out = []
+        for row in rows:
+            data = dict(zip(columns, row))
+            org_id = data.get('org_id')
+            if org_id is not None and int(org_id) not in ctx.org_ids:
+                data['org_id'] = None
+                # ALL_DEFAULT(2) claims both org and org_type defaults.
+                if int(data.get('flexible') or 0) == 2:
+                    if data.get('org_type_id') is not None:
+                        data['flexible'] = 1  # ORG_TYPE_DEFAULT
+                    else:
+                        data['flexible'] = 0  # NO_DEFAULT
+            out.append(tuple(data[c] for c in columns))
+        _write_inserts(fh, 'feedback_feedbacktype', columns, out)
+
     # College announcements: keep rows, redact message body.
     if _table_exists('Appointment_college_announcement'):
         columns = _table_columns('Appointment_college_announcement')
@@ -1061,6 +1080,8 @@ def _write_all_tables(fh, ctx: SampleContext) -> None:
                 data['location'] = REDACTED
             if 'QRcode' in data:
                 data['QRcode'] = ''
+            if 'URL' in data:
+                data['URL'] = ''
             out.append(tuple(data[c] for c in columns))
         _write_inserts(fh, 'app_activity', columns, out)
 
@@ -1217,6 +1238,11 @@ def _write_all_tables(fh, ctx: SampleContext) -> None:
             for key in ('title', 'content'):
                 if key in data and data[key] not in (None, ''):
                     data[key] = REDACTED
+            if 'url' in data:
+                data['url'] = ''
+            org_id = data.get('org_id')
+            if org_id is not None and int(org_id) not in ctx.org_ids:
+                data['org_id'] = None
             out.append(tuple(data[c] for c in columns))
         _write_inserts(fh, 'feedback_feedback', columns, out)
 
@@ -1378,9 +1404,17 @@ def _write_all_tables(fh, ctx: SampleContext) -> None:
             ),
         )
 
-    # Dormitory agreement (full small table) already? Existing exports full-ish.
-    if _table_exists('dormitory_agreement'):
-        _write_full_table(fh, 'dormitory_agreement')
+    # Dormitory agreements only for retained users.
+    if ctx.user_ids and _table_exists('dormitory_agreement'):
+        ph, params = _in_clause(list(ctx.user_ids))
+        columns = _table_columns('dormitory_agreement')
+        rows = _fetch_rows(
+            'dormitory_agreement',
+            columns,
+            f'user_id IN ({ph})',
+            params,
+        )
+        _write_inserts(fh, 'dormitory_agreement', columns, rows)
 
     if ctx.user_ids and _table_exists('dormitory_dormitoryassignment'):
         ph, params = _in_clause(list(ctx.user_ids))
