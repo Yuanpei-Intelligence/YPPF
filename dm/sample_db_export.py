@@ -132,6 +132,9 @@ def export_sample_database(
         fh.write('SET UNIQUE_CHECKS=0;\n')
         fh.write('\n')
         _write_all_tables(fh, ctx)
+        fh.write('\n')
+        fh.write('SET UNIQUE_CHECKS=1;\n')
+        fh.write('SET FOREIGN_KEY_CHECKS=1;\n')
 
     return {
         'ratio': ratio,
@@ -459,6 +462,40 @@ def _collect_feedback_comments_notifications(ctx: SampleContext) -> None:
             f'WHERE org_id IN ({ph})',
             params,
         )
+    # Org-sourced feedback may reference persons outside the user sample.
+    # Leaf-include those persons (and their User rows) so person_id FKs stay
+    # valid; Feedback.person is NOT NULL and cannot be nulled at write time.
+    if ctx.feedback_ids and _table_exists('feedback_feedback'):
+        ph, params = _in_clause(list(ctx.feedback_ids))
+        feedback_persons = _fetch_ids(
+            f'SELECT DISTINCT person_id FROM feedback_feedback '
+            f'WHERE commentbase_ptr_id IN ({ph})',
+            params,
+        )
+        if feedback_persons:
+            ctx.person_ids |= feedback_persons
+            ph2, params2 = _in_clause(list(feedback_persons))
+            _ensure_user_ids(
+                ctx,
+                _fetch_ids(
+                    f'SELECT person_id_id FROM app_naturalperson '
+                    f'WHERE id IN ({ph2})',
+                    params2,
+                ),
+            )
+        # Drop feedback whose person still cannot be exported.
+        if ctx.person_ids:
+            ph_p, params_p = _in_clause(list(ctx.person_ids))
+            valid = _fetch_ids(
+                f'SELECT commentbase_ptr_id FROM feedback_feedback '
+                f'WHERE commentbase_ptr_id IN ({ph}) '
+                f'AND person_id IN ({ph_p})',
+                params + params_p,
+            )
+        else:
+            valid = set()
+        drop = ctx.feedback_ids - valid
+        ctx.feedback_ids -= drop
     ctx.commentbase_ids |= ctx.feedback_ids
     # Notifications are not exported (content often still contains PII).
 
@@ -1125,6 +1162,14 @@ def _write_all_tables(fh, ctx: SampleContext) -> None:
         for row in rows:
             data = dict(zip(columns, row))
             data['title'] = f'奖池{pool_index[int(data["id"])]}'
+            # Pools may be kept via pool records while the linked activity
+            # was not sampled; null dangling FKs so import stays consistent.
+            activity_id = data.get('activity_id')
+            if (
+                activity_id is not None
+                and int(activity_id) not in ctx.activity_ids
+            ):
+                data['activity_id'] = None
             out.append(tuple(data[c] for c in columns))
         _write_inserts(fh, 'app_pool', columns, out)
 
@@ -1235,6 +1280,10 @@ def _write_all_tables(fh, ctx: SampleContext) -> None:
         out = []
         for row in rows:
             data = dict(zip(columns, row))
+            person_id = data.get('person_id')
+            # NOT NULL FK: skip rather than null when the person was not sampled.
+            if person_id is None or int(person_id) not in ctx.person_ids:
+                continue
             for key in ('title', 'content'):
                 if key in data and data[key] not in (None, ''):
                     data[key] = REDACTED

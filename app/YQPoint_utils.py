@@ -9,6 +9,7 @@ from generic.models import User, YQPointRecord
 from app.config import CONFIG
 from app.utils_dependency import *
 from app.models import (
+    Activity,
     Pool,
     PoolItem,
     PoolRecord,
@@ -289,16 +290,25 @@ def check_user_pool(user: User, pool: Pool) -> None | str:
     if not user.active:
         return '您已毕业！'
 
-    # 检查用户是否参加了相关的活动
-    if pool.activity is not None:
+    # 检查用户是否参加了相关的活动。
+    # Use activity_id so a dangling FK (e.g. incomplete sample dump) does not
+    # raise Activity.DoesNotExist when resolving pool.activity.
+    if pool.activity_id is not None:
         assert hasattr(user, 'naturalperson'), "非个人用户发起了奖池兑换请求"
+        try:
+            activity = pool.activity
+        except Activity.DoesNotExist:
+            return None
         participates = Participation.objects.filter(
-            activity = pool.activity,
-            person = user.naturalperson,
-            status = Participation.AttendStatus.ATTENDED,
+            activity=activity,
+            person=user.naturalperson,
+            status=Participation.AttendStatus.ATTENDED,
         )
         if not participates.exists():
-            return '该奖池为"' + str(pool.activity) + '"活动限定奖池，请先参加再来购买！'
+            return (
+                '该奖池为"' + str(activity)
+                + '"活动限定奖池，请先参加再来购买！'
+            )
 
     return None
 

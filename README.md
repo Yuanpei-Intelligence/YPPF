@@ -60,6 +60,11 @@ python manage.py runserver 0.0.0.0:8000
 仓库根目录的 [`dev_sample.sql`](dev_sample.sql) 是脱敏后的开发样例数据（INSERT-only）。
 Dev Container 在**空库**时会自动导入；已有数据时沿用原库，不会自动清库。
 
+**拉取更新后的 `dev_sample.sql` 时：** Compose MySQL 卷仍保留旧数据，
+`ensure_db` **不会**自动重导入。需要吃到上游样例修复时，在容器内执行
+`bash scripts/devcontainer_reset_sample_db.sh`。维护/修改 dump 后建议跑：
+`python manage.py test dm.test.test_sample_sql_integrity`。
+
 **约定：** 导入顺序必须是 **空库 → migrate → 导入 SQL**。顺序颠倒会导致
 migration / schema 冲突。样例文件路径在容器内为 `/workspace/dev_sample.sql`。
 
@@ -363,6 +368,7 @@ python manage.py runserver ip:port
     库中已有用户。确认后加 `--force`，或执行
     `bash scripts/devcontainer_reset_sample_db.sh` 清库后重新导入。
     Dev Container 创建/重建默认沿用已有数据库，不会自动清库。
+    `git pull` 只更新了 `dev_sample.sql` 时同样需要手动 reset 才能刷新本地库。
 
 - Dev Container 内无法连接 MySQL
 

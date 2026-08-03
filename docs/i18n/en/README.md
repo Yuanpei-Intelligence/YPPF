@@ -46,7 +46,11 @@ On container **create or rebuild**, setup automatically:
 > the Compose MySQL volume by default. To wipe and reload the sample dump,
 > run manually inside the container:
 > `bash scripts/devcontainer_reset_sample_db.sh`
+> The same reset is required after `git pull` updates `dev_sample.sql`, because
+> `ensure_db` will not re-import into a populated volume.
 > Host-only `docker compose ... up --build` does **not** run these hooks.
+> After changing the dump, run
+> `python manage.py test dm.test.test_sample_sql_integrity`.
 
 All sample account passwords are `test` (usernames like `S000001` / `P000001` / `O000001`). Then:
 

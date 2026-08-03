@@ -8,6 +8,14 @@ set -euo pipefail
 
 cd /workspace
 
+# Mirror postCreate: migrate/import need config.json (gitignored).
+if [ ! -f config.json ]; then
+    echo '[postStart] Create default config.json for Compose MySQL...'
+    bash scripts/default_config.sh
+else
+    echo '[postStart] Keep existing config.json.'
+fi
+
 echo '[postStart] Ensure development database (keep existing if present)...'
 bash scripts/devcontainer_ensure_db.sh
 

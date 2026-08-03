@@ -6,6 +6,12 @@ set -euo pipefail
 
 cd /workspace
 
+# migrate needs boot.config -> ./config.json (gitignored).
+if [ ! -f config.json ]; then
+    echo '[resetSampleDb] Create default config.json for Compose MySQL...'
+    bash scripts/default_config.sh
+fi
+
 DB_HOST="${DB_HOST:-mysql}"
 DB_PORT="${DB_PORT:-3306}"
 DB_USER="${DB_USER:-root}"

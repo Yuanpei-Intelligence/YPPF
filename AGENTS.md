@@ -27,6 +27,26 @@ Compose database defaults (`yppf`, `root`, `secret`, and host `mysql`):
 test -f config.json || bash scripts/default_config.sh
 ```
 
+When using the VS Code / Cursor Dev Container (`.devcontainer/`),
+`postCreateCommand` / `postStartCommand` run
+`scripts/devcontainer_ensure_db.sh` after ensuring `config.json` exists:
+
+- Empty database: `migrate` → import repository-root `dev_sample.sql` →
+  create development superuser `admin` / `secret`.
+- Populated database: keep existing data (no DROP); only `migrate` and
+  ensure the `admin` superuser exists.
+
+Website sample accounts in the dump use password `test` (for example
+`S000001`). To wipe and reload the sample dump after a dump fix or when the
+MySQL volume still holds old data, run inside the app container:
+
+```bash
+bash scripts/devcontainer_reset_sample_db.sh
+```
+
+Host-only `docker compose ... up --build` does **not** run those hooks; use
+the commands below (or open the Dev Container) instead.
+
 Build and start the development containers, then run Django commands inside
 the `yppf` service:
 
