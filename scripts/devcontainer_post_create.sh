@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Dev Container post-create: deps, config, reset DB + sample import.
+# Dev Container post-create: deps, config, ensure DB (keep existing).
 set -euo pipefail
 
 cd /workspace
@@ -11,8 +11,8 @@ else
     echo '[postCreate] Keep existing config.json.'
 fi
 
-echo '[postCreate] Reset development database and import sample dump...'
-bash scripts/devcontainer_reset_sample_db.sh
+echo '[postCreate] Ensure development database (keep existing if present)...'
+bash scripts/devcontainer_ensure_db.sh
 
 echo '[postCreate] Install optional Dev Container Python packages...'
 pip install -r .devcontainer/dev_requirements.txt --resume-retries 5

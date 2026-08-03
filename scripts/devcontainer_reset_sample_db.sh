@@ -1,11 +1,11 @@
 #!/usr/bin/env bash
 # Drop development DB, migrate, and import repository-root dev_sample.sql.
-# Used by Dev Container postCreate / postStart. Destructive to yppf data.
+# Manual/destructive reset only. postCreate/postStart use
+# scripts/devcontainer_ensure_db.sh and do not call this script.
 set -euo pipefail
 
 cd /workspace
 
-MARKER="${YPPF_SAMPLE_DB_MARKER:-/tmp/yppf_sample_db.initialized}"
 DB_HOST="${DB_HOST:-mysql}"
 DB_PORT="${DB_PORT:-3306}"
 DB_USER="${DB_USER:-root}"
@@ -99,5 +99,4 @@ print(
 )
 PY
 
-touch "$MARKER"
-echo "[resetSampleDb] Finished (marker: ${MARKER})."
+echo "[resetSampleDb] Finished."

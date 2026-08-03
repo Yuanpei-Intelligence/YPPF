@@ -32,22 +32,21 @@ At this point, the devcontainer is equivalent to a configured Python environment
 On container **create or rebuild**, setup automatically:
 
 1. Creates a Compose-default `config.json` when missing (`yppf` / host `mysql` / password `secret`)
-2. **Drops and recreates** the development database `yppf`
-3. Runs `python manage.py migrate`
-4. Imports repository-root [`dev_sample.sql`](../../../dev_sample.sql)
-5. Creates the development superuser `admin` / `secret` (for `/admin/`)
-6. Installs optional Dev Container packages (`.devcontainer/dev_requirements.txt`, postCreate only)
+2. **Ensures** the development database is usable (see below)
+3. Installs optional Dev Container packages (`.devcontainer/dev_requirements.txt`, postCreate only)
 
-`postCreateCommand` and `postStartCommand` both participate: some rebuild paths
-skip postCreate, but recreating the app container clears a `/tmp` marker so
-postStart still wipes and re-imports. A plain **Restart Container** keeps the
-marker and does **not** wipe the database.
+`postCreateCommand` / `postStartCommand` call `scripts/devcontainer_ensure_db.sh`:
 
-> **Warning:** Creating/rebuilding the app container **wipes existing `yppf`
-> data** in the Compose MySQL volume, then loads the sample dump.
-> Host-only `docker compose ... up --build` does **not** run these hooks.
-> Manual reset inside the container:
+- **Populated database:** keep existing data (no DROP / no sample re-import);
+  run `migrate` and ensure superuser `admin` / `secret` exists
+- **Empty database:** `migrate` → import [`dev_sample.sql`](../../../dev_sample.sql)
+  → create `admin` / `secret`
+
+> **Note:** Creating/rebuilding the container **keeps** existing `yppf` data in
+> the Compose MySQL volume by default. To wipe and reload the sample dump,
+> run manually inside the container:
 > `bash scripts/devcontainer_reset_sample_db.sh`
+> Host-only `docker compose ... up --build` does **not** run these hooks.
 
 All sample account passwords are `test` (usernames like `S000001` / `P000001` / `O000001`). Then:
 
