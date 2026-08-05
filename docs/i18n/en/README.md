@@ -38,9 +38,9 @@ On container **create or rebuild**, setup automatically:
 `postCreateCommand` / `postStartCommand` call `scripts/devcontainer_ensure_db.sh`:
 
 - **Populated database:** keep existing data (no DROP / no sample re-import);
-  run `migrate` and ensure superuser `admin` / `secret` exists
+  run `migrate` only
 - **Empty database:** `migrate` → import [`dev_sample.sql`](../../../dev_sample.sql)
-  → create `admin` / `secret`
+- Superuser is **not** created automatically
 
 > **Note:** Creating/rebuilding the container **keeps** existing `yppf` data in
 > the Compose MySQL volume by default. To wipe and reload the sample dump,
@@ -52,11 +52,17 @@ On container **create or rebuild**, setup automatically:
 > After changing the dump, run
 > `python manage.py test dm.test.test_sample_sql_integrity`.
 
-All sample account passwords are `test` (usernames like `S000001` / `P000001` / `O000001`). Then:
+Useful commands inside the Dev Container:
 
 ```shell
 python manage.py runserver 0.0.0.0:8000
+python scripts/create_dev_superuser.py   # optional; default admin/secret
+# or: python manage.py createsuperuser
+python manage.py migrate --noinput
+bash scripts/devcontainer_reset_sample_db.sh
 ```
+
+All sample account passwords are `test` (usernames like `S000001` / `P000001` / `O000001`).
 
 For manual re-import, reset, or regenerating the sample dump, see the Chinese README section [样例数据库](../../../README.md#样例数据库).
 

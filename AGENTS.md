@@ -31,10 +31,11 @@ When using the VS Code / Cursor Dev Container (`.devcontainer/`),
 `postCreateCommand` / `postStartCommand` run
 `scripts/devcontainer_ensure_db.sh` after ensuring `config.json` exists:
 
-- Empty database: `migrate` → import repository-root `dev_sample.sql` →
-  create development superuser `admin` / `secret`.
-- Populated database: keep existing data (no DROP); only `migrate` and
-  ensure the `admin` superuser exists.
+- Empty database: `migrate` → import repository-root `dev_sample.sql`.
+- Populated database: keep existing data (no DROP); only `migrate`.
+- Superusers are **not** created automatically; create one manually when
+  `/admin/` is needed (`python scripts/create_dev_superuser.py` or
+  `python manage.py createsuperuser`).
 
 Website sample accounts in the dump use password `test` (for example
 `S000001`). To wipe and reload the sample dump after a dump fix or when the

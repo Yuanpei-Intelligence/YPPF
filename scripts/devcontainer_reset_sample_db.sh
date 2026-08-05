@@ -62,9 +62,6 @@ python manage.py migrate --noinput
 echo '[resetSampleDb] Import repository-root dev_sample.sql...'
 python scripts/import_dev_sample.py --force
 
-echo '[resetSampleDb] Create development superuser admin...'
-python scripts/create_dev_superuser.py --username admin --password secret --name admin
-
 echo '[resetSampleDb] Verify sample data...'
 python - <<'PY'
 import os
@@ -83,26 +80,21 @@ try:
     with conn.cursor() as cursor:
         cursor.execute('SELECT COUNT(*) FROM `generic_user`')
         count = int(cursor.fetchone()[0])
-        cursor.execute(
-            'SELECT is_superuser, is_staff FROM `generic_user` '
-            'WHERE username=%s',
-            ('admin',),
-        )
-        row = cursor.fetchone()
 finally:
     conn.close()
 
 if count <= 0:
     print('[resetSampleDb] generic_user is empty after import.', file=sys.stderr)
     sys.exit(1)
-if row is None or not (row[0] and row[1]):
-    print('[resetSampleDb] admin superuser missing after setup.', file=sys.stderr)
-    sys.exit(1)
 
-print(
-    f'[resetSampleDb] OK: generic_user has {count} row(s); '
-    'admin is superuser.',
-)
+print(f'[resetSampleDb] OK: generic_user has {count} row(s).')
 PY
+
+echo '[resetSampleDb] Superuser is not created automatically.'
+echo '[resetSampleDb] To access /admin/, create one manually, for example:'
+echo '[resetSampleDb]   python scripts/create_dev_superuser.py'
+echo '[resetSampleDb]   # default: username=admin password=secret'
+echo '[resetSampleDb] or:'
+echo '[resetSampleDb]   python manage.py createsuperuser'
 
 echo "[resetSampleDb] Finished."

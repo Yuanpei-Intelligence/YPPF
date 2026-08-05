@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
 """Ensure the development database is usable without wiping existing data.
 
-- Empty / missing schema: migrate, import sample dump, create admin.
-- Already populated: keep data, apply migrations, ensure admin exists.
+- Empty / missing schema: migrate, then import sample dump.
+- Already populated: keep data and apply migrations.
+- Does not create a Django superuser; print a manual-create hint instead.
 
 Destructive reset remains:
 ``bash scripts/devcontainer_reset_sample_db.sh``
@@ -85,23 +86,21 @@ def verify_sample_db() -> None:
         with conn.cursor() as cursor:
             cursor.execute('SELECT COUNT(*) FROM `generic_user`')
             count = int(cursor.fetchone()[0])
-            cursor.execute(
-                'SELECT is_superuser, is_staff FROM `generic_user` '
-                'WHERE username=%s',
-                ('admin',),
-            )
-            row = cursor.fetchone()
     finally:
         conn.close()
 
     if count <= 0:
         raise RuntimeError('generic_user is empty after import.')
-    if row is None or not (row[0] and row[1]):
-        raise RuntimeError('admin superuser missing after setup.')
-    print(
-        f'[ensureDb] OK: generic_user has {count} row(s); '
-        'admin is superuser.',
-    )
+    print(f'[ensureDb] OK: generic_user has {count} row(s).')
+
+
+def _hint_create_superuser() -> None:
+    print('[ensureDb] Superuser is not created automatically.')
+    print('[ensureDb] To access /admin/, create one manually, for example:')
+    print('[ensureDb]   python scripts/create_dev_superuser.py')
+    print('[ensureDb]   # default: username=admin password=secret')
+    print('[ensureDb] or:')
+    print('[ensureDb]   python manage.py createsuperuser')
 
 
 def ensure_existing() -> None:
@@ -112,13 +111,7 @@ def ensure_existing() -> None:
     print('[ensureDb]   bash scripts/devcontainer_reset_sample_db.sh')
     print('[ensureDb] Apply pending migrations...')
     run(['python', 'manage.py', 'migrate', '--noinput'])
-    print('[ensureDb] Ensure development superuser admin exists...')
-    run([
-        'python', 'scripts/create_dev_superuser.py',
-        '--username', 'admin',
-        '--password', 'secret',
-        '--name', 'admin',
-    ])
+    _hint_create_superuser()
     print('[ensureDb] Finished (reused existing database).')
 
 
@@ -128,15 +121,9 @@ def ensure_empty() -> None:
     run(['python', 'manage.py', 'migrate', '--noinput'])
     print('[ensureDb] Import repository-root dev_sample.sql...')
     run(['python', 'scripts/import_dev_sample.py', '--force'])
-    print('[ensureDb] Create development superuser admin...')
-    run([
-        'python', 'scripts/create_dev_superuser.py',
-        '--username', 'admin',
-        '--password', 'secret',
-        '--name', 'admin',
-    ])
     print('[ensureDb] Verify sample data...')
     verify_sample_db()
+    _hint_create_superuser()
     print('[ensureDb] Finished (initialized from sample dump).')
 
 

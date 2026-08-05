@@ -38,21 +38,36 @@ vscode ➜ /workspace
 `scripts/devcontainer_ensure_db.sh`：
 
 - **库中已有用户数据**：提示沿用原有数据库，**不会** `DROP` 或重新导入样例；
-  仅执行 `migrate`，并确保超级管理员 `admin` / `secret` 存在
+  仅执行 `migrate`
 - **空库 / 尚无表**：执行 `migrate` → 导入 [`dev_sample.sql`](dev_sample.sql)
-  → 创建 `admin` / `secret`
+- **不会**自动创建 Django 超级管理员；需要访问 `/admin/` 时请自行创建（见下）
 
 > **注意：** 创建/重建容器**默认保留** Compose MySQL 卷中已有的 `yppf` 数据。
 > 若需清空并恢复为样例库，请在容器内**手动**执行：
 > `bash scripts/devcontainer_reset_sample_db.sh`
 > 仅执行宿主机 `docker compose ... up --build` **不会**跑上述钩子。
 
-样例账号密码均为 `test`（用户名形如 `S000001` / `P000001` / `O000001`）。准备就绪后可直接：
+开发容器内常用命令：
 
 ```shell
+# 启动网站（须绑定 0.0.0.0 以便宿主机访问）
 python manage.py runserver 0.0.0.0:8000
+
+# 需要 Django Admin（/admin/）时，手动创建超级用户（二选一）
+python scripts/create_dev_superuser.py
+# 默认用户名 admin、密码 secret、显示名 admin；可用参数覆盖：
+# python scripts/create_dev_superuser.py --username admin --password secret --name admin
+# 或交互式：
+python manage.py createsuperuser
+
+# 应用代码迁移（git pull 后如有模型变更）
+python manage.py migrate --noinput
+
+# 清空并重新导入样例库（会删除已有数据）
+bash scripts/devcontainer_reset_sample_db.sh
 ```
 
+样例账号密码均为 `test`（用户名形如 `S000001` / `P000001` / `O000001`）。
 手动重新导入、重置或导出样例库，见下文 [样例数据库](#样例数据库)。
 
 ### 样例数据库
@@ -72,11 +87,12 @@ migration / schema 冲突。样例文件路径在容器内为 `/workspace/dev_sa
 
 | 账号形态 | 示例 | 登录入口 | 密码 |
 | --- | --- | --- | --- |
-| 开发超级管理员 | `admin` | `/admin/` | `secret` |
 | 学生 / 自然人 / 组织 | `S000001`、`P000001`、`O000001` | 网站首页 | `test` |
-| 特殊账号（样例内） | `X******` | `/admin/` | `test` |
+| 特殊账号（样例内） | `X000001` 等 | `/admin/` | `test` |
+| 开发超级管理员（需手动创建） | 如 `admin` | `/admin/` | 自定（脚本默认 `secret`） |
 
 首次登录改密流程已在导出时关闭（`is_newuser=false`）。
+超级管理员**不在**样例 SQL 中，也不由容器钩子创建；见上文「开发容器内常用命令」。
 
 #### 开发容器内确保数据库（与 post-create 相同，不清库）
 
@@ -85,7 +101,7 @@ test -f config.json || bash scripts/default_config.sh
 bash scripts/devcontainer_ensure_db.sh
 ```
 
-已有数据时只会 migrate 并确保 `admin` 存在；空库才会导入样例。
+已有数据时只会 migrate；空库才会导入样例。不会创建超级用户。
 
 #### 重置为样例数据库（会删除已有数据）
 
@@ -101,8 +117,10 @@ bash scripts/devcontainer_reset_sample_db.sh
 python scripts/import_dev_sample.py --drop-database
 python manage.py migrate --noinput
 python scripts/import_dev_sample.py --force
-python scripts/create_dev_superuser.py
 ```
+
+重置后如需 `/admin/`，再手动执行 `python scripts/create_dev_superuser.py`
+或 `python manage.py createsuperuser`。
 
 - `--drop-database`：清空并重建目标库后退出（**会删除已有数据**）
 - 默认读取根目录 `dev_sample.sql`；库中已有用户时会跳过；加 `--force` 会先
@@ -141,7 +159,7 @@ docker compose -f .devcontainer/docker-compose.yml exec -T mysql `
 ```shell
 python manage.py migrate --noinput
 python scripts/import_dev_sample.py --force
-python scripts/create_dev_superuser.py
+# 可选：python scripts/create_dev_superuser.py
 ```
 
 #### 备选：宿主机用 mysql 客户端导入
@@ -313,9 +331,11 @@ python manage.py runserver ip:port
 
 - 管理员
 
-    运行`python manage.py createsuperuser`，根据指示创建管理员账号。
-
-    管理员账号可用于登录后台`/admin`，试着访问<http://localhost:8000/admin>吧。
+    Dev Container **不会**自动创建超级用户。在容器内运行
+    `python scripts/create_dev_superuser.py`（默认 `admin` / `secret`）
+    或 `python manage.py createsuperuser`，再访问
+    <http://localhost:8000/admin>。样例库内也有特殊账号（如 `X000001` /
+    `test`）可用于部分后台场景。
 
 - 交互式执行（Django终端）
 
