@@ -91,6 +91,12 @@ class Question(models.Model):
     type = models.CharField("类型", max_length=10,
                             choices=Type.choices, default=Type.SINGLE)
     required = models.BooleanField("必填", default=True)
+    min_choices = models.PositiveIntegerField(
+        "最少选择数", default=1,
+        help_text="仅多选题有效：回答此题至少需要选择的选项数")
+    max_choices = models.PositiveIntegerField(
+        "最多选择数", null=True, blank=True,
+        help_text="仅多选题有效：回答此题最多可以选择的选项数，留空表示无上限")
 
     choices: models.manager.BaseManager['Choice']
 
