@@ -21,6 +21,9 @@ FK_CHECKS: list[tuple[str, str, str, str]] = [
     ('app_participation', 'person_id', 'app_naturalperson', 'id'),
     ('app_poolrecord', 'pool_id', 'app_pool', 'id'),
     ('app_poolrecord', 'user_id', 'generic_user', 'id'),
+    ('app_courserecord', 'course_id', 'app_course', 'id'),
+    ('app_courserecord', 'person_id', 'app_naturalperson', 'id'),
+    ('yp_library_lendrecord', 'reader_id_id', 'yp_library_reader', 'id'),
 ]
 
 
@@ -161,3 +164,35 @@ class SampleSqlIntegrityTests(SimpleTestCase):
                         f'not in {ref_table}.{ref_pk}'
                     )
         self.assertEqual(dangling, [], '\n'.join(dangling))
+
+    def test_library_reader_ids_are_remapped(self):
+        """External library reader/lend PKs must not appear in the dump."""
+        if 'INSERT INTO `yp_library_reader`' not in self.sql:
+            self.skipTest('no library readers in dump')
+        reader_ids = sorted(_ids_from_inserts(self.sql, 'yp_library_reader'))
+        self.assertEqual(
+            reader_ids,
+            list(range(1, len(reader_ids) + 1)),
+            'yp_library_reader.id must be remapped to 1..N',
+        )
+        if 'INSERT INTO `yp_library_lendrecord`' not in self.sql:
+            return
+        lend_ids = sorted(_ids_from_inserts(self.sql, 'yp_library_lendrecord'))
+        self.assertEqual(
+            lend_ids,
+            list(range(1, len(lend_ids) + 1)),
+            'yp_library_lendrecord.id must be remapped to 1..N',
+        )
+        match = re.search(
+            r'INSERT INTO `yp_library_lendrecord` \(([^)]+)\)',
+            self.sql,
+        )
+        self.assertIsNotNone(match)
+        cols = [c.strip().strip('`') for c in match.group(1).split(',')]
+        reader_fk_col = (
+            'reader_id_id' if 'reader_id_id' in cols else 'reader_id'
+        )
+        for _, fk_val in _fk_refs(
+            self.sql, 'yp_library_lendrecord', reader_fk_col
+        ):
+            self.assertIn(fk_val, set(reader_ids))

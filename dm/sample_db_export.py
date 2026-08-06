@@ -1253,8 +1253,9 @@ def _write_all_tables(fh, ctx: SampleContext) -> None:
         rows = _fetch_rows(
             'app_courserecord', columns, f'person_id IN ({ph})', params
         )
-        # Optionally require course in sample when set
-        if ctx.course_ids and 'course_id' in columns:
+        # Always filter course_id when the column exists. An empty
+        # ctx.course_ids means keep only NULL (no sampled courses written).
+        if 'course_id' in columns:
             idx = columns.index('course_id')
             rows = [
                 r for r in rows
@@ -1631,28 +1632,73 @@ def _write_all_tables(fh, ctx: SampleContext) -> None:
     # Library
     if ctx.reader_ids and _table_exists('yp_library_reader'):
         ph, params = _in_clause(list(ctx.reader_ids))
-        _write_filtered(
-            fh,
+        reader_columns = _table_columns('yp_library_reader')
+        reader_rows = _fetch_rows(
             'yp_library_reader',
+            reader_columns,
             f'id IN ({ph})',
             params,
-            lambda cols, row: _generic_username_fields_transform(
-                ctx, cols, row, ['student_id']
-            ),
         )
-        if _table_exists('yp_library_lendrecord'):
-            columns = _table_columns('yp_library_lendrecord')
-            # FK column names: reader_id_id / book_id_id from sample
-            reader_col = (
-                'reader_id_id' if 'reader_id_id' in columns else 'reader_id'
+        # Production reader.id values come from the external library DB and
+        # must not appear in committed sample dumps. Remap to 1..N by old id.
+        reader_index = {
+            int(dict(zip(reader_columns, row))['id']): i
+            for i, row in enumerate(
+                sorted(
+                    reader_rows,
+                    key=lambda r: int(dict(zip(reader_columns, r))['id']),
+                ),
+                start=1,
             )
-            rows = _fetch_rows(
+        }
+        reader_out = []
+        for row in reader_rows:
+            transformed = _generic_username_fields_transform(
+                ctx, reader_columns, row, ['student_id']
+            )
+            if transformed is None:
+                continue
+            data = dict(zip(reader_columns, transformed))
+            old_id = int(dict(zip(reader_columns, row))['id'])
+            if old_id not in reader_index:
+                continue
+            data['id'] = reader_index[old_id]
+            reader_out.append(tuple(data[c] for c in reader_columns))
+        _write_inserts(fh, 'yp_library_reader', reader_columns, reader_out)
+
+        if _table_exists('yp_library_lendrecord'):
+            lend_columns = _table_columns('yp_library_lendrecord')
+            # FK column names: reader_id_id / book_id_id from Django.
+            reader_col = (
+                'reader_id_id' if 'reader_id_id' in lend_columns
+                else 'reader_id'
+            )
+            lend_rows = _fetch_rows(
                 'yp_library_lendrecord',
-                columns,
+                lend_columns,
                 f'{_quote_ident(reader_col)} IN ({ph})',
                 params,
             )
-            _write_inserts(fh, 'yp_library_lendrecord', columns, rows)
+            lend_data_rows: list[dict[str, Any]] = []
+            for row in lend_rows:
+                data = dict(zip(lend_columns, row))
+                old_reader = data.get(reader_col)
+                if (
+                    old_reader is None
+                    or int(old_reader) not in reader_index
+                ):
+                    continue
+                data[reader_col] = reader_index[int(old_reader)]
+                lend_data_rows.append(data)
+            # Remap lendrecord PKs so external library record IDs are not kept.
+            lend_data_rows.sort(key=lambda d: int(d['id']))
+            lend_out = []
+            for i, data in enumerate(lend_data_rows, start=1):
+                data['id'] = i
+                lend_out.append(tuple(data[c] for c in lend_columns))
+            _write_inserts(
+                fh, 'yp_library_lendrecord', lend_columns, lend_out
+            )
 
     # Page/module tracking logs are omitted: they are bulky access trails and
     # may contain client fingerprint fields (platform / browser version).
