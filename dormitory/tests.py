@@ -98,3 +98,33 @@ class DormitoryMajorScoringTests(TestCase):
         mixed = self.make_dorm([0, 1, 2, 3], ["mixed"] * 4)
 
         self.assertGreater(mixed.check_better(), same.check_better())
+
+    def test_roommate_personality_preference_rewards_matching_roommates(self):
+        matching = self.make_dorm([0, 1, 2, 3], ["either"] * 4)
+        mismatching = self.make_dorm([0, 1, 2, 3], ["either"] * 4)
+        for student in matching.stu:
+            student.data.update(
+                personality=2,
+                roommate_personality_preference=2,
+            )
+        for student in mismatching.stu:
+            student.data.update(
+                personality=0,
+                roommate_personality_preference=2,
+            )
+
+        # Account for the pre-existing penalty for rooms with >2 introverts.
+        self.assertGreater(
+            matching.check_better(),
+            mismatching.check_better() + 600,
+        )
+
+    def test_roommate_expectation_rewards_matching_roommates(self):
+        matching = self.make_dorm([0, 1, 2, 3], ["either"] * 4)
+        mismatching = self.make_dorm([0, 1, 2, 3], ["either"] * 4)
+        for student in matching.stu:
+            student.data.update(expectation=1, roommate_expectation=1)
+        for student in mismatching.stu:
+            student.data.update(expectation=0, roommate_expectation=1)
+
+        self.assertGreater(matching.check_better(), mismatching.check_better())

@@ -24,6 +24,17 @@ MAJOR_COMPOSITION_PREFERENCE_MAP = {
     "都可以": "either",
 }
 
+ROOMMATE_PERSONALITY_PREFERENCE_MAP = {
+    "内向型": 0,
+    "适中型": 1,
+    "外向型": 2,
+}
+
+EXPECTATION_MAP = {
+    "专注学习": 0,
+    "全面发展": 1,
+}
+
 '''
 有关reference文件夹的说明：
 reference文件夹用于存放宿舍分配时的参考信息。
@@ -71,6 +82,24 @@ class Dormitory:
             if hs[0] == hs[1]:
                 return False
         return True
+
+    def roommate_preference_score(self, preference_key: str, attribute_key: str):
+        """Score how well each student's roommates match an explicit preference."""
+        if len(self.stu) <= 1:
+            return 0
+
+        score = 0
+        for student in self.stu:
+            preferred_value = student.data.get(preference_key)
+            if preferred_value is None:
+                continue
+            roommates = [roommate for roommate in self.stu if roommate is not student]
+            match_ratio = sum(
+                roommate.data[attribute_key] == preferred_value
+                for roommate in roommates
+            ) / len(roommates)
+            score += 100 * (match_ratio - 0.5)
+        return score
 
     def check_better(self):
         '''
@@ -128,6 +157,9 @@ class Dormitory:
 
         if len([s for s in self.stu if s.data['personality'] == 0]) > 2:
             score -= 600
+        score += self.roommate_preference_score(
+            'roommate_personality_preference', 'personality'
+        )
 
         # score += 8 * np.prod([s.data['international'] for s in self.stu])
 
@@ -157,6 +189,9 @@ class Dormitory:
 
         if len(set(s.data['expectation'] for s in self.stu)) == 1:
             score -= 200
+        score += self.roommate_preference_score(
+            'roommate_expectation', 'expectation'
+        )
 
         stu_cnt_map = {4: 1200,
                        3: 800,
@@ -192,9 +227,11 @@ def read_info() -> list[Freshman]:
         data['ac_temp'] = stu["夏天能接受的最低空调温度"]
         data['all_night_ac'] = stu["是否接受夏天整晚开空调"]
         data['personality'] = stu["你的性格"]
+        data['roommate_personality_preference'] = stu["你希望室友的性格"]
         data['sleep_quality'] = stu["你的睡眠质量是"]
         data['environment'] = stu["你希望你的宿舍环境是"]
         data['expectation'] = stu["你本人更希望大学生活是"]
+        data['roommate_expectation'] = stu["你对于室友的期待是"]
 
         # 在info表格中，根据学号找到对应行，读取生源地和生源高中信息，保证信息准确
         try:
@@ -248,6 +285,11 @@ def read_info() -> list[Freshman]:
                            "适中型：介于二者之间，能够在内外向之间切换，在人群中乐意与人交谈结交朋友，同时也享受独处。": 1,
                            "外向型：与他人相处时精力充沛；易于“读”和了解，随意地分享个人情况；高度热情地社交。": 2, }
         data['personality'] = personality_map[data['personality']]
+        data['roommate_personality_preference'] = (
+            ROOMMATE_PERSONALITY_PREFERENCE_MAP[
+                data['roommate_personality_preference']
+            ]
+        )
 
         sleep_quality_map = {"浅眠型（易受声、光影响）": 0,
                              "酣睡型（较少受影响，一觉到天亮）": 1, }
@@ -256,8 +298,10 @@ def read_info() -> list[Freshman]:
         environment_map = {"整洁条理": 0, "随性就好": 1, }
         data['environment'] = environment_map[data['environment']]
 
-        expectation_map = {"专注学习": 0, "全面发展": 1}
-        data['expectation'] = expectation_map[data['expectation']]
+        data['expectation'] = EXPECTATION_MAP[data['expectation']]
+        data['roommate_expectation'] = EXPECTATION_MAP[
+            data['roommate_expectation']
+        ]
 
         freshman_data = dict(data)
         freshman = Freshman(freshman_data)
@@ -474,9 +518,19 @@ def out_as_excel(
                 "夏天能接受的最低空调温度": stu.data['ac_temp'],
                 "是否接受夏天整夜开空调": ac_list[stu.data['all_night_ac']],
                 "性格": personality_list[stu.data['personality']],
+                "希望室友的性格": (
+                    personality_list[stu.data['roommate_personality_preference']]
+                    if 'roommate_personality_preference' in stu.data
+                    else ""
+                ),
                 "睡眠质量": sleep_quality_list[stu.data['sleep_quality']],
                 "希望宿舍环境": environment_list[stu.data['environment']],
                 "对大学生活期待": expectation_list[stu.data['expectation']],
+                "对于室友的期待": (
+                    expectation_list[stu.data['roommate_expectation']]
+                    if 'roommate_expectation' in stu.data
+                    else ""
+                ),
                 "得分": dorm.check_better(),
             }
             temp_df = pd.DataFrame(data, index=[0])
