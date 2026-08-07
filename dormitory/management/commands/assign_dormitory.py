@@ -173,13 +173,13 @@ class Dormitory:
         score -= ac_score
 
         wake_score = np.var([s.data['wake'] for s in self.stu], ddof = 0)
-        score -= 30 * wake_score
+        score -= 50 * wake_score
 
         sleep_score = np.var([s.data['sleep'] for s in self.stu], ddof = 0)
-        score -= 30 * sleep_score
+        score -= 50 * sleep_score
 
         if self.noisy and any(s.data['sleep_quality'] == 0 for s in self.stu):
-            score -= 300
+            score -= 500
 
         env_score = sum(s.data['environment'] for s in self.stu)
         if env_score == 2:
