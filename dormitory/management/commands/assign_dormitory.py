@@ -8,6 +8,22 @@ import pandas as pd
 from django.core.management.base import BaseCommand
 from tqdm import tqdm, trange
 
+
+MAJOR_LABELS = (
+    "数理（数学、物理等）",
+    "生化（化学、生物、整合科学等）",
+    "信工（人工智能、信息科学技术、工学各专业、数据科学等）",
+    "文科（人文、社科、经管）",
+    "待定",
+)
+MAJOR_MAP = {label: index for index, label in enumerate(MAJOR_LABELS)}
+
+MAJOR_COMPOSITION_PREFERENCE_MAP = {
+    "与我专业意向相同或相近（便于学业交流）": "similar",
+    "跨学科混合（接触不同专业背景同学）": "mixed",
+    "都可以": "either",
+}
+
 '''
 有关reference文件夹的说明：
 reference文件夹用于存放宿舍分配时的参考信息。
@@ -61,7 +77,7 @@ class Dormitory:
         计算宿舍得分，应用于交换优化场景。
         宿舍计分项包括：
         存在来自同一省份的同学减分，并针对北京地区特别操作
-        专业是否平均分配：2文2理 > 4文/4理 > 文理1:3
+        专业类别是否均衡，以及每位同学对相近专业/跨学科混住的偏好
         性格分配是否合理：尽量一个寝室不要多于两个内向
         竞赛生人数尽量不超过2个
         衡量能接受的最低空调温度接近程度，计算方差，特别计算能否接受整夜开空调的统一程度
@@ -84,11 +100,31 @@ class Dormitory:
         if len(beijing) >= 2:
             score -= 700
 
-        major_score = sum([s.data['major'] for s in self.stu])
-        if major_score == 2:
-            score += 1200
-        elif major_score == 0 or major_score == 4:
+        major_counts = defaultdict(int)
+        for student in self.stu:
+            major_counts[student.data['major']] += 1
+        if len(major_counts) == 1:
+            # 保留原算法对专业相同宿舍的次优奖励。
             score += 800
+        elif max(major_counts.values()) - min(major_counts.values()) <= 1:
+            # 专业类别均衡，包括 2+2、2+1+1 和四种专业各一人。
+            score += 1200
+
+        # 每人的偏好只与其室友比较。“都可以”不影响分数。将匹配比例
+        # 以 50% 为中点，避免偏好本身给所有宿舍无条件加分。
+        if len(self.stu) > 1:
+            for student in self.stu:
+                preference = student.data.get('major_composition_preference', 'either')
+                if preference == 'either':
+                    continue
+                roommate_majors = [
+                    roommate.data['major']
+                    for roommate in self.stu
+                    if roommate is not student
+                ]
+                same_ratio = roommate_majors.count(student.data['major']) / len(roommate_majors)
+                match_ratio = same_ratio if preference == 'similar' else 1 - same_ratio
+                score += 100 * (match_ratio - 0.5)
 
         if len([s for s in self.stu if s.data['personality'] == 0]) > 2:
             score -= 600
@@ -148,6 +184,7 @@ def read_info() -> list[Freshman]:
         data['origin'] = stu["生源地"]
         data['high_school'] = stu["生源高中"]
         data['major'] = stu["意向专业大类"]
+        data['major_composition_preference'] = stu["你希望宿舍成员的专业构成是"]
         data['weight'] = stu["体重"]
         data['international'] = stu["是否愿意与留学生住一个宿舍"]
         data['wake'] = stu["你预期的大学生活起床时间"]
@@ -173,12 +210,10 @@ def read_info() -> list[Freshman]:
             sys.exit(1)
 
         # 注意此处 map 的值要和 out_as_excel() 中对应
-        major_map = {"文科（人文、社科、经管）": 0,
-                     "待定": 0,
-                     "数理（数学、物理等）": 1,
-                     "生化（化学、生物、整合科学等）": 1,
-                     "信工（人工智能、信息科学技术、工学各专业、数据科学等）": 1 }
-        data['major'] = major_map[data['major']]
+        data['major'] = MAJOR_MAP[data['major']]
+        data['major_composition_preference'] = MAJOR_COMPOSITION_PREFERENCE_MAP[
+            data['major_composition_preference']
+        ]
 
         data['weight'] = float(str(data['weight']).replace("kg", ""))
 
@@ -203,7 +238,7 @@ def read_info() -> list[Freshman]:
         data['sleep'] = sleep_map[data['sleep']]
 
         # Find first two digits in the string, e.g. "26℃" -> "26"
-        data['ac_temp'] = re.search(r'\d\d', str(data['ac_temp'])).group()
+        data['ac_temp'] = int(re.search(r'\d\d', str(data['ac_temp'])).group())
 
         ac_map = {"是": 1,
                   "否": 0, }
@@ -405,7 +440,10 @@ def out_as_excel(
     '''将结果导出为excel文件，存储在reference/dorm_assigned.xlsx下'''
     df = pd.DataFrame()
 
-    major_list = ["人文社科/其他", "理工类"]
+    major_list = MAJOR_LABELS
+    major_composition_preference_list = {
+        value: label for label, value in MAJOR_COMPOSITION_PREFERENCE_MAP.items()
+    }
     international_list = ["不愿意", "都可以", "愿意"]
     wake_list = ["7点前", "7~8点", "8~9点", "9-10点", "10-11点", "11点后"]
     sleep_list = ["23点前", "23-24点", "24-1点", "1-2点", "2点后"]
@@ -426,6 +464,9 @@ def out_as_excel(
                 "生源高中": stu.data['high_school'],
                 "是否竞赛生": stu.data['olympiad'],
                 "意向专业方向": major_list[stu.data['major']],
+                "希望宿舍成员的专业构成": major_composition_preference_list[
+                    stu.data.get('major_composition_preference', 'either')
+                ],
                 "体重": stu.data['weight'],
                 "是否愿意与留学生住在同一间宿舍?": international_list[stu.data['international'] % 3],
                 "起床时间": wake_list[stu.data['wake']],

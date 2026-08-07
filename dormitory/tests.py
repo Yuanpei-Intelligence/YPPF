@@ -3,6 +3,7 @@ from unittest.mock import patch
 from django.core.management import call_command
 from django.test import RequestFactory, TestCase
 
+from dormitory.management.commands.assign_dormitory import Dormitory, Freshman
 from dormitory.views import DormitoryRoutineQAView
 from generic.models import User
 from questionnaire.models import AnswerSheet, Choice, Question, Survey
@@ -55,3 +56,45 @@ class DormitoryRoutineQAValidationTests(TestCase):
 
         self.assertIs(view.post(), response)
         self.assertFalse(AnswerSheet.objects.filter(survey=survey).exists())
+
+
+class DormitoryMajorScoringTests(TestCase):
+    @staticmethod
+    def make_dorm(majors, preferences):
+        dorm = Dormitory(101, 4, False)
+        for major, preference in zip(majors, preferences):
+            dorm.add(Freshman({
+                "major": major,
+                "major_composition_preference": preference,
+                "origin": "省份",
+                "personality": 1,
+                "olympiad": 0,
+                "ac_temp": 26,
+                "all_night_ac": 1,
+                "wake": 1,
+                "sleep": 1,
+                "sleep_quality": 1,
+                "environment": 0,
+                "expectation": 0,
+            }))
+        return dorm
+
+    def test_distinct_major_categories_are_scored_as_a_balanced_mix(self):
+        diverse = self.make_dorm([0, 1, 2, 3], ["either"] * 4)
+        uneven = self.make_dorm([0, 0, 0, 1], ["either"] * 4)
+
+        self.assertGreater(diverse.check_better(), uneven.check_better())
+
+    def test_similar_preference_rewards_same_major_roommates(self):
+        same = self.make_dorm([0, 0, 0, 0], ["similar"] * 4)
+        mixed = self.make_dorm([0, 1, 2, 3], ["similar"] * 4)
+
+        # Compare only the preference effect; the structural composition bonus
+        # differs by 400 between these two rooms.
+        self.assertGreater(same.check_better() + 400, mixed.check_better())
+
+    def test_mixed_preference_rewards_cross_discipline_roommates(self):
+        same = self.make_dorm([0, 0, 0, 0], ["mixed"] * 4)
+        mixed = self.make_dorm([0, 1, 2, 3], ["mixed"] * 4)
+
+        self.assertGreater(mixed.check_better(), same.check_better())
