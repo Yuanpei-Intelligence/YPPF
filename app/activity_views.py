@@ -5,6 +5,7 @@ from typing import Literal
 
 from django.db import transaction
 from django.db.models import F
+from django.views.decorators.csrf import ensure_csrf_cookie
 import csv
 import json
 
@@ -39,6 +40,7 @@ from app.activity_utils import (
     available_participants,
 )
 from app.comment_utils import addComment, showComment
+from app.profile_utils import build_activity_story_page
 from app.utils import (
     get_person_or_org,
     escape_for_templates,
@@ -53,6 +55,7 @@ __all__ = [
 ]
 
 
+@ensure_csrf_cookie
 @login_required(redirect_field_name="origin")
 @utils.check_user_access(redirect_url="/logout/")
 @logger.secure_view()
@@ -298,6 +301,15 @@ def viewActivity(request: HttpRequest, aid=None):
     # 补充一些呈现信息
     # bar_display["title_name"] = "活动信息"
     # bar_display["navbar_name"] = "活动信息"
+
+    # 同一活动下的公开个人上传记录，和社区看板、个人主页共用同一数据。
+    activity_story_page = build_activity_story_page(
+        viewer_person=me if request.user.is_person() else None,
+        page_number=request.GET.get("story_page", 1),
+        activity=activity,
+    )
+    activity_story_return_path = request.get_full_path()
+    activity_story_message = request.session.pop("profile_album_message", "")
 
     # 浏览次数，必须在render之前
     # 为了防止发生错误的存储，让数据库直接更新浏览次数，并且不再显示包含本次浏览的数据
