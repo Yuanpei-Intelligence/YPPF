@@ -202,8 +202,8 @@ def read_info() -> list[Freshman]:
                      "2点后": 4, }
         data['sleep'] = sleep_map[data['sleep']]
 
-        if isinstance(data['ac_temp'], str):
-            data['ac_temp'] = int(data['ac_temp'][:2])
+        # Find first two digits in the string, e.g. "26℃" -> "26"
+        data['ac_temp'] = re.search(r'\d\d', str(data['ac_temp'])).group()
 
         ac_map = {"是": 1,
                   "否": 0, }
@@ -405,7 +405,7 @@ def out_as_excel(
     '''将结果导出为excel文件，存储在reference/dorm_assigned.xlsx下'''
     df = pd.DataFrame()
 
-    major_list = ["人文社科", "理工类"]
+    major_list = ["人文社科/其他", "理工类"]
     international_list = ["不愿意", "都可以", "愿意"]
     wake_list = ["7点前", "7~8点", "8~9点", "9-10点", "10-11点", "11点后"]
     sleep_list = ["23点前", "23-24点", "24-1点", "1-2点", "2点后"]
