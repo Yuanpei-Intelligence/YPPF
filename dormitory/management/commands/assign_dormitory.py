@@ -129,16 +129,6 @@ class Dormitory:
         if len(beijing) >= 2:
             score -= 700
 
-        major_counts = defaultdict(int)
-        for student in self.stu:
-            major_counts[student.data['major']] += 1
-        if len(major_counts) == 1:
-            # 保留原算法对专业相同宿舍的次优奖励。
-            score += 800
-        elif max(major_counts.values()) - min(major_counts.values()) <= 1:
-            # 专业类别均衡，包括 2+2、2+1+1 和四种专业各一人。
-            score += 1200
-
         # 每人的偏好只与其室友比较。“都可以”不影响分数。将匹配比例
         # 以 50% 为中点，避免偏好本身给所有宿舍无条件加分。
         if len(self.stu) > 1:
