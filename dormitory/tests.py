@@ -58,7 +58,7 @@ class DormitoryRoutineQAValidationTests(TestCase):
         self.assertFalse(AnswerSheet.objects.filter(survey=survey).exists())
 
 
-class DormitoryMajorScoringTests(TestCase):
+class DormitoryMajorPreferenceScoringTests(TestCase):
     @staticmethod
     def make_dorm(majors, preferences):
         dorm = Dormitory(101, 4, False)
@@ -79,19 +79,19 @@ class DormitoryMajorScoringTests(TestCase):
             }))
         return dorm
 
-    def test_distinct_major_categories_are_scored_as_a_balanced_mix(self):
+    def test_major_composition_has_no_room_level_score_without_preferences(self):
         diverse = self.make_dorm([0, 1, 2, 3], ["either"] * 4)
         uneven = self.make_dorm([0, 0, 0, 1], ["either"] * 4)
+        same = self.make_dorm([0, 0, 0, 0], ["either"] * 4)
 
-        self.assertGreater(diverse.check_better(), uneven.check_better())
+        self.assertEqual(diverse.check_better(), uneven.check_better())
+        self.assertEqual(diverse.check_better(), same.check_better())
 
     def test_similar_preference_rewards_same_major_roommates(self):
         same = self.make_dorm([0, 0, 0, 0], ["similar"] * 4)
         mixed = self.make_dorm([0, 1, 2, 3], ["similar"] * 4)
 
-        # Compare only the preference effect; the structural composition bonus
-        # differs by 400 between these two rooms.
-        self.assertGreater(same.check_better() + 400, mixed.check_better())
+        self.assertGreater(same.check_better(), mixed.check_better())
 
     def test_mixed_preference_rewards_cross_discipline_roommates(self):
         same = self.make_dorm([0, 0, 0, 0], ["mixed"] * 4)

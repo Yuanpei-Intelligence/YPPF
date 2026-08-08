@@ -183,8 +183,8 @@ class Dormitory:
             'roommate_expectation', 'expectation'
         )
 
-        stu_cnt_map = {4: 1200,
-                       3: 800,
+        stu_cnt_map = {4: 2000,
+                       3: 1000,
                        2: 0,
                        1: 0,
                        0: 0, }
@@ -367,7 +367,7 @@ def assign_dorm(freshmen=None, dormitories=None) -> list[Dormitory]:
     # 随机交换
     print('\033[36mProcessing male dormitories...\033[0m')
     epsilon = 0.3
-    for episode in trange(250000):
+    for episode in trange(500000):
 
         rid1 = random.randint(0, len(male_dorm) - 1)
         rid2 = random.randint(0, len(male_dorm) - 1)
@@ -414,7 +414,7 @@ def assign_dorm(freshmen=None, dormitories=None) -> list[Dormitory]:
             male_dorm.append(room2)
 
     print("\033[35mProcessing female dormitories...\033[0m")
-    for episode in trange(250000):
+    for episode in trange(500000):
 
         rid1 = random.randint(0, len(female_dorm) - 1)
         rid2 = random.randint(0, len(female_dorm) - 1)
