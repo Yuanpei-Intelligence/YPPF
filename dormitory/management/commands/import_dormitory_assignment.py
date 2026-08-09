@@ -1,57 +1,140 @@
-import pandas as pd
-from django.core.management.base import BaseCommand
-from tqdm import tqdm
+"""Import dormitory assignments from the university submission workbook."""
+
+import re
+from pathlib import Path
+
+import openpyxl
+from django.core.management.base import BaseCommand, CommandError
+from django.db import transaction
 
 from dormitory.models import Dormitory, DormitoryAssignment
 from generic.models import User
 
 
-# 导入宿舍信息，包括宿舍号、容量（4）、性别。
+EXPECTED_HEADERS = ("学工号", "姓名", "住宿地址")
+ADDRESS_PATTERN = re.compile(r"-(?P<room>\d+)-(?P<bed>\d+)号床\s*$")
+
+
 class Command(BaseCommand):
-    help = 'Imports dormitory data'
+    help = "Import dormitory assignments from a university submission workbook"
 
     def add_arguments(self, parser):
-        parser.add_argument('excel_file', type=str,
-                            help='Path to the Excel file')
+        parser.add_argument("excel_file", type=Path, help="Path to the Excel file")
         parser.add_argument(
-            '--dry-run',
-            action='store_true',
-            help='Show what would be done without actually making changes',
+            "--dry-run",
+            action="store_true",
+            help="Validate the workbook without making database changes",
         )
 
     def handle(self, *args, **options):
-        dry_run = options['dry_run']
+        excel_file = options["excel_file"]
+        assignments = self._read_assignments(excel_file)
 
-        if dry_run:
-            self.stdout.write(self.style.WARNING(
-                'DRY RUN MODE - No changes will be made'))
+        with transaction.atomic():
+            for row_number, student_id, student_name, room_id, bed_id in assignments:
+                try:
+                    dormitory = Dormitory.objects.get(pk=room_id)
+                except Dormitory.DoesNotExist as exc:
+                    raise CommandError(
+                        f"Row {row_number}: dormitory {room_id} does not exist"
+                    ) from exc
+                if not 1 <= bed_id <= dormitory.capacity:
+                    raise CommandError(
+                        f"Row {row_number}: bed {bed_id} is outside dormitory "
+                        f"{room_id}'s capacity ({dormitory.capacity})"
+                    )
 
-        excel_file = options['excel_file']
+                try:
+                    user = User.objects.get(username=student_id)
+                except User.DoesNotExist as exc:
+                    raise CommandError(
+                        f"Row {row_number}: user {student_id} does not exist"
+                    ) from exc
+                if user.name != student_name:
+                    raise CommandError(
+                        f"Row {row_number}: name mismatch for {student_id}: "
+                        f"workbook has {student_name!r}, database has {user.name!r}"
+                    )
 
-        try:
-            df_raw = pd.read_excel(excel_file)
-        except Exception as e:
-            self.stdout.write(self.style.ERROR(
-                f'Error reading Excel file: {e}'))
-            return
-
-        df_dorms = df_raw.groupby('宿舍号')
-
-        for dorm_id, df in tqdm(df_dorms):
-            dormitory = Dormitory.objects.get(id=dorm_id)
-            for i in range(len(df)):
-                user = User.objects.get(username=df.iloc[i]["学号"])
-                bed_id = int(df.iloc[i]["床位"][:1])
-
-                if dry_run:
-                    self.stdout.write(
-                        f'DRY RUN: Would create DormitoryAssignment for Dormitory {dormitory.id}, User {user.username}, Bed ID {bed_id}')
-                    continue
                 _, created = DormitoryAssignment.objects.get_or_create(
                     dormitory=dormitory,
                     user=user,
-                    bed_id=bed_id
+                    bed_id=bed_id,
                 )
                 if not created:
-                    self.stdout.write(self.style.ERROR(
-                        f"This dormitory assignment entity already exists. Info: Dormitory id {dormitory.id}, user {user}, bed id {bed_id}."))
+                    self.stdout.write(
+                        self.style.WARNING(
+                            f"Assignment already exists: room {room_id}, "
+                            f"user {student_id}, bed {bed_id}"
+                        )
+                    )
+
+            if options["dry_run"]:
+                transaction.set_rollback(True)
+                self.stdout.write(
+                    self.style.WARNING(
+                        f"Dry run validated {len(assignments)} assignments; "
+                        "no changes were made."
+                    )
+                )
+            else:
+                self.stdout.write(
+                    self.style.SUCCESS(f"Imported {len(assignments)} assignments.")
+                )
+
+    def _read_assignments(self, path):
+        try:
+            workbook = openpyxl.load_workbook(path, read_only=True, data_only=True)
+        except (OSError, ValueError, KeyError) as exc:
+            raise CommandError(f"Could not read workbook {path}: {exc}") from exc
+
+        try:
+            sheet = workbook.active
+            headers = tuple(sheet.cell(1, column).value for column in (1, 2, 6))
+            if headers != EXPECTED_HEADERS:
+                raise CommandError(
+                    f"Unexpected workbook format in {path}: columns A, B, and F "
+                    f"must be {EXPECTED_HEADERS}, got {headers}"
+                )
+
+            assignments = []
+            seen_students = set()
+            seen_beds = set()
+            for row_number, row in enumerate(
+                sheet.iter_rows(min_row=2, min_col=1, max_col=6, values_only=True),
+                start=2,
+            ):
+                raw_student_id, student_name, *_, address = row
+                if all(value is None for value in row):
+                    continue
+                try:
+                    student_id = str(int(raw_student_id))
+                except (TypeError, ValueError) as exc:
+                    raise CommandError(
+                        f"Row {row_number}: invalid student ID {raw_student_id!r}"
+                    ) from exc
+                if not isinstance(student_name, str) or not student_name.strip():
+                    raise CommandError(f"Row {row_number}: missing student name")
+                match = ADDRESS_PATTERN.search(str(address))
+                if match is None:
+                    raise CommandError(
+                        f"Row {row_number}: invalid accommodation address {address!r}"
+                    )
+                room_id = int(match.group("room"))
+                bed_id = int(match.group("bed"))
+                if student_id in seen_students:
+                    raise CommandError(
+                        f"Row {row_number}: duplicate student ID {student_id}"
+                    )
+                if (room_id, bed_id) in seen_beds:
+                    raise CommandError(
+                        f"Row {row_number}: duplicate bed {room_id}-{bed_id}"
+                    )
+                seen_students.add(student_id)
+                seen_beds.add((room_id, bed_id))
+                assignments.append(
+                    (row_number, student_id, student_name.strip(), room_id, bed_id)
+                )
+            return assignments
+        finally:
+            workbook.close()
