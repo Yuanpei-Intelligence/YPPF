@@ -1,7 +1,7 @@
 """
 activity_utils.py
 
-这个文件应该只被 ./activity_views.py, ./scheduler_func.py 依赖
+这个文件只供活动网页视图、活动 API 和调度逻辑复用
 依赖于 ./utils.py, ./wechat_send.py, ./notification_utils.py
 
 scheduler_func 依赖于 wechat_send 依赖于 utils
@@ -55,8 +55,10 @@ __all__ = [
     'accept_activity',
     'reject_activity',
     'apply_activity',
+    'apply_activity_for_person',
     'cancel_activity',
     'withdraw_activity',
+    'withdraw_activity_for_person',
     'can_access_checkin_qrcode',
     'build_legacy_checkin_url',
     'generate_legacy_checkin_qrcode',
@@ -840,20 +842,16 @@ def reject_activity(request, activity):
 
 
 # 调用的时候用 try
-def apply_activity(request, activity: Activity):
-    '''这个函数在正常情况下只应该抛出提示错误信息的ActivityException'''
-    context = dict()
-    context["success"] = False
-
-    payer = Person.objects.get_by_user(request.user)
-
+def apply_activity_for_person(payer: Person, activity: Activity):
+    '''为个人报名活动，仅抛出可向用户展示的 ActivityException。'''
     if activity.inner:
         position = Position.objects.activated().filter(
             person=payer, org=activity.organization_id)
         if len(position) == 0:
             # 按理说这里也是走不到的，前端会限制
             raise ActivityException(
-                f"该活动是{activity.organization_id}内部活动，暂不开放对外报名。")
+                f"该活动是{activity.organization_id}内部活动，"
+                "暂不开放对外报名。")
 
     try:
         participant = Participation.objects.select_for_update().get(
@@ -861,7 +859,7 @@ def apply_activity(request, activity: Activity):
             SQ.sq(Participation.person, payer),
         )
         participated = True
-    except:
+    except Participation.DoesNotExist:
         participated = False
     if participated:
         if (
@@ -870,7 +868,8 @@ def apply_activity(request, activity: Activity):
         ):
             raise ActivityException("您已报名该活动。")
         elif participant.status != Participation.AttendStatus.CANCELED:
-            raise ActivityException(f"您的报名状态异常，当前状态为：{participant.status}")
+            raise ActivityException(
+                f"您的报名状态异常，当前状态为：{participant.status}")
 
     if not activity.bidding:
         if activity.current_participants < activity.capacity:
@@ -892,6 +891,13 @@ def apply_activity(request, activity: Activity):
 
     participant.save()
     activity.save()
+    return participant
+
+
+def apply_activity(request, activity: Activity):
+    '''兼容网页端请求对象的活动报名入口。'''
+    payer = Person.objects.get_by_user(request.user)
+    return apply_activity_for_person(payer, activity)
 
 
 def cancel_activity(request, activity):
@@ -935,19 +941,20 @@ def cancel_activity(request, activity):
     activity.save()
 
 
-def withdraw_activity(request, activity: Activity):
-
-    np = Person.objects.get_by_user(request.user)
-    participant = Participation.objects.select_for_update().get(
-        SQ.sq(Participation.activity, activity),
-        SQ.sq(Participation.person, np),
-        status__in=[
-            Activity.Status.WAITING,
-            Participation.AttendStatus.APPLYING,
-            Participation.AttendStatus.APPLYSUCCESS,
-            Participation.AttendStatus.CANCELED,
-        ],
-    )
+def withdraw_activity_for_person(person: Person, activity: Activity):
+    '''取消个人报名，仅抛出可向用户展示的 ActivityException。'''
+    try:
+        participant = Participation.objects.select_for_update().get(
+            SQ.sq(Participation.activity, activity),
+            SQ.sq(Participation.person, person),
+            status__in=[
+                Participation.AttendStatus.APPLYING,
+                Participation.AttendStatus.APPLYSUCCESS,
+                Participation.AttendStatus.CANCELED,
+            ],
+        )
+    except Participation.DoesNotExist as exc:
+        raise ActivityException("您尚未报名该活动。") from exc
     if participant.status == Participation.AttendStatus.CANCELED:
         raise ActivityException("已退出活动。")
     participant.status = Participation.AttendStatus.CANCELED
@@ -955,6 +962,13 @@ def withdraw_activity(request, activity: Activity):
 
     participant.save()
     activity.save()
+    return participant
+
+
+def withdraw_activity(request, activity: Activity):
+    '''兼容网页端请求对象的取消活动报名入口。'''
+    person = Person.objects.get_by_user(request.user)
+    return withdraw_activity_for_person(person, activity)
 
 
 @transaction.atomic

@@ -31,6 +31,9 @@ def do_checkin(person: NaturalPerson, aid: int) -> tuple[bool, str]:
     except (Activity.DoesNotExist, ValueError, TypeError):
         return False, "签到失败!"
 
+    if not activity.need_checkin:
+        return False, "该活动无需签到。"
+
     if activity.status == Activity.Status.END:
         return False, "活动已结束，不再开放签到。"
 

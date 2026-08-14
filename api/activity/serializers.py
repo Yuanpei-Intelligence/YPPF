@@ -2,8 +2,10 @@
 Serializers for activity API.
 """
 from rest_framework import serializers
+from drf_spectacular.utils import extend_schema_field
 
-from app.models import Activity
+from app.models import Activity, Participation
+from app.utils import get_person_or_org
 
 
 class ActivitySummarySerializer(serializers.ModelSerializer):
@@ -76,6 +78,77 @@ class ActivitySummarySerializer(serializers.ModelSerializer):
     def get_popular_level(self, obj: Activity) -> int:
         """Get popularity level of the activity."""
         return obj.popular_level()
+
+
+class ActivityDetailSerializer(ActivitySummarySerializer):
+    """Activity detail including the selected person's signup status."""
+
+    participation_status = serializers.SerializerMethodField(
+        help_text="Current person's signup/check-in status, or null",
+    )
+
+    class Meta(ActivitySummarySerializer.Meta):
+        fields = ActivitySummarySerializer.Meta.fields + [
+            'participation_status',
+        ]
+        read_only_fields = fields
+
+    @extend_schema_field(
+        serializers.ChoiceField(
+            choices=Participation.AttendStatus.choices,
+            allow_null=True,
+        ),
+    )
+    def get_participation_status(self, obj: Activity) -> str | None:
+        """Return the participation status for the authenticated person."""
+        request = self.context.get('request')
+        if request is None or not request.user.is_person():
+            return None
+        person = get_person_or_org(request.user)
+        return Participation.objects.filter(
+            activity=obj,
+            person=person,
+        ).values_list('status', flat=True).first()
+
+
+class ActivityActionResultSerializer(serializers.Serializer):
+    """Response after signing up for or withdrawing from an activity."""
+
+    message = serializers.CharField(help_text="User-facing result message")
+    participation_status = serializers.ChoiceField(
+        choices=Participation.AttendStatus.choices,
+        help_text="Updated signup/check-in status",
+    )
+    current_participants = serializers.IntegerField(
+        min_value=0,
+        help_text="Updated number of registered participants",
+    )
+
+
+class ActivityCheckinRequestSerializer(serializers.Serializer):
+    """Request body for checking in to an activity."""
+
+    aid = serializers.IntegerField(
+        min_value=1,
+        help_text="Activity ID",
+    )
+
+
+class ActivityMessageSerializer(serializers.Serializer):
+    """Simple successful activity operation response."""
+
+    message = serializers.CharField(help_text="User-facing result message")
+
+
+class ActivityErrorSerializer(serializers.Serializer):
+    """Canonical error response for activity mini-program endpoints."""
+
+    code = serializers.CharField(help_text="Stable machine-readable error code")
+    message = serializers.CharField(help_text="Concise user-facing message")
+    errors = serializers.DictField(
+        child=serializers.ListField(child=serializers.CharField()),
+        help_text="Field errors; empty when the error is not field-specific",
+    )
 
 
 class TodayActivitySerializer(serializers.Serializer):
