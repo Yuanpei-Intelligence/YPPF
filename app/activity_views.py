@@ -30,7 +30,6 @@ from app.activity_utils import (
     apply_activity,
     cancel_activity,
     withdraw_activity,
-    can_access_checkin_qrcode,
     fetch_miniprogram_checkin_qrcode,
     generate_legacy_checkin_qrcode,
     create_participate_infos,
@@ -255,7 +254,6 @@ def viewActivity(request: HttpRequest, aid=None):
 
     # 签到
     need_checkin = activity.need_checkin
-    show_QRcode = can_access_checkin_qrcode(activity)
 
     if activity.inner and request.user.is_person():
         position = Position.objects.activated().filter(
@@ -384,7 +382,7 @@ def getActivityInfo(request: HttpRequest):
             return response  # downloadable
 
     elif info_type == "qrcode":
-        assert can_access_checkin_qrcode(activity), "签到二维码暂不可用"
+        assert activity.need_checkin, "该活动无需签到"
 
         version = request.GET.get("version", "new")
         assert version in ["new", "old"], "不支持的二维码版本"

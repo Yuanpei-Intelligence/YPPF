@@ -27,27 +27,29 @@ def do_checkin(person: NaturalPerson, aid: int) -> tuple[bool, str]:
         (success, message): 是否成功及提示信息
     """
     try:
-        activity = Activity.objects.get(id=aid)
-    except (Activity.DoesNotExist, ValueError, TypeError):
+        aid = int(aid)
+    except (ValueError, TypeError):
         return False, "签到失败!"
-
-    if not activity.need_checkin:
-        return False, "该活动无需签到。"
-
-    if activity.status == Activity.Status.END:
-        return False, "活动已结束，不再开放签到。"
-
-    if not (
-        activity.status == Activity.Status.PROGRESSING
-        or (
-            activity.status == Activity.Status.WAITING
-            and datetime.now() + timedelta(hours=1) >= activity.start
-        )
-    ):
-        return False, "活动开始前一小时开放签到，请耐心等待!"
 
     try:
         with transaction.atomic():
+            activity = Activity.objects.select_for_update().get(id=aid)
+
+            if not activity.need_checkin:
+                return False, "该活动无需签到。"
+
+            if activity.status == Activity.Status.END:
+                return False, "活动已结束，不再开放签到。"
+
+            if not (
+                activity.status == Activity.Status.PROGRESSING
+                or (
+                    activity.status == Activity.Status.WAITING
+                    and datetime.now() + timedelta(hours=1) >= activity.start
+                )
+            ):
+                return False, "活动开始前一小时开放签到，请耐心等待!"
+
             participant = Participation.objects.select_for_update().get(
                 SQ.sq(Participation.activity, activity),
                 SQ.sq(Participation.person, person),
@@ -62,5 +64,7 @@ def do_checkin(person: NaturalPerson, aid: int) -> tuple[bool, str]:
             participant.status = Participation.AttendStatus.ATTENDED
             participant.save()
             return True, "签到成功!"
+    except Activity.DoesNotExist:
+        return False, "签到失败!"
     except Participation.DoesNotExist:
         return False, "您尚未报名该活动!"

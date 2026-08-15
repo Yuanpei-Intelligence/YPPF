@@ -59,7 +59,6 @@ __all__ = [
     'cancel_activity',
     'withdraw_activity',
     'withdraw_activity_for_person',
-    'can_access_checkin_qrcode',
     'build_legacy_checkin_url',
     'generate_legacy_checkin_qrcode',
     'fetch_miniprogram_checkin_qrcode',
@@ -320,20 +319,6 @@ def notifyActivity(aid: int, msg_type: str, msg=""):
         to_wechat=publish_kws,
     )
     assert success, "批量创建通知并发送时失败"
-
-
-def can_access_checkin_qrcode(activity: Activity, now: datetime | None = None) -> bool:
-    """Return whether the activity's check-in QR codes should be available now."""
-    now = now or datetime.now()
-    if not activity.need_checkin:
-        return False
-    if activity.status not in [
-        Activity.Status.APPLYING,
-        Activity.Status.WAITING,
-        Activity.Status.PROGRESSING,
-    ]:
-        return False
-    return now >= activity.start - timedelta(hours=1)
 
 
 def build_legacy_checkin_url(request, activity: Activity) -> str:

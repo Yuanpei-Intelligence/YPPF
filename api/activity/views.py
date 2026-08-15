@@ -40,6 +40,7 @@ from app.activity_utils import (
 )
 from app.models import Activity, Position
 from app.utils import get_person_or_org
+from generic.models import User
 
 
 __all__ = ['ActivityViewSet']
@@ -292,16 +293,26 @@ class ActivityViewSet(viewsets.ViewSet):
         """Sign up for an activity or withdraw the current signup."""
         if not request.user.is_person():
             raise PermissionDenied("请使用个人账号报名活动。")
-        if request.method == 'POST' and not request.user.active:
-            raise PermissionDenied("当前账号状态不允许报名活动。")
 
-        person = get_person_or_org(request.user)
         try:
             activity_id = int(aid)
         except (ValueError, TypeError):
             raise ValidationError({'aid': '活动 ID 格式错误'})
 
         with transaction.atomic():
+            try:
+                user = User.objects.select_for_update().get(
+                    pk=request.user.pk,
+                )
+            except User.DoesNotExist:
+                raise AuthenticationFailed("登录状态无效或已过期。")
+
+            if not user.is_person():
+                raise PermissionDenied("请使用个人账号报名活动。")
+            if request.method == 'POST' and not user.active:
+                raise PermissionDenied("当前账号状态不允许报名活动。")
+
+            person = get_person_or_org(user)
             try:
                 activity = Activity.objects.select_for_update().get(
                     id=activity_id,

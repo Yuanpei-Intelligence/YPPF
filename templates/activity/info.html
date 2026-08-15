@@ -558,7 +558,7 @@
 
             </div>
 
-            {% if introduction or ownership and show_QRcode %}
+            {% if introduction or ownership and need_checkin %}
             <!--  BEGIN RELAVENT INFORMATION  -->
             <div class="col-md-3 col-sm-12 px-1">
 
@@ -586,7 +586,7 @@
                 <!--  END INTRODUCTION  -->
                 {% endif %}
 
-                {% if ownership and show_QRcode %}
+                {% if ownership and need_checkin %}
                 <!--  BEGIN QR CODE  -->
                 <div class="container w-100 px-0 layout-top-spacing">
                     <div class="statbox widget box box-shadow">

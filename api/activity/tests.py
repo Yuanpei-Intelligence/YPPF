@@ -311,10 +311,11 @@ class ActivitySignupAPITestCase(APITestCase):
         self.assertIsNone(response.data['participation_status'])
 
     def test_inactive_person_cannot_signup(self):
-        """A business-inactive person cannot create a new signup."""
-        self.person_user.active = False
-        self.person_user.save(update_fields=['active'])
+        """Signup reloads and locks business-active account state."""
         self.client.force_authenticate(user=self.person_user)
+        User.objects.filter(pk=self.person_user.pk).update(active=False)
+
+        self.assertTrue(self.person_user.active)
 
         response = self.client.post(self.signup_url(), format='json')
 

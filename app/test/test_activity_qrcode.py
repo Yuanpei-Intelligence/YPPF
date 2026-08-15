@@ -4,10 +4,7 @@ from unittest.mock import patch
 
 from django.test import RequestFactory, SimpleTestCase, TestCase
 
-from app.activity_utils import (
-    build_legacy_checkin_url,
-    can_access_checkin_qrcode,
-)
+from app.activity_utils import build_legacy_checkin_url
 from app.models import (
     Activity,
     ActivityPhoto,
@@ -19,32 +16,6 @@ from app.models import (
 
 
 class ActivityQrcodeHelperTestCase(SimpleTestCase):
-    def test_can_access_checkin_qrcode_time_window(self):
-        start = datetime.now() + timedelta(hours=1)
-        activity = SimpleNamespace(
-            need_checkin=True,
-            status=Activity.Status.WAITING,
-            start=start,
-        )
-
-        self.assertFalse(
-            can_access_checkin_qrcode(activity, start - timedelta(hours=1, minutes=1))
-        )
-        self.assertTrue(
-            can_access_checkin_qrcode(activity, start - timedelta(hours=1))
-        )
-        self.assertTrue(
-            can_access_checkin_qrcode(activity, start + timedelta(minutes=30))
-        )
-
-    def test_can_access_checkin_qrcode_rejects_end_status(self):
-        activity = SimpleNamespace(
-            need_checkin=True,
-            status=Activity.Status.END,
-            start=datetime.now() - timedelta(hours=2),
-        )
-        self.assertFalse(can_access_checkin_qrcode(activity))
-
     def test_build_legacy_checkin_url_contains_auth(self):
         request = RequestFactory().get("/fake")
         activity = SimpleNamespace(id=42)
@@ -106,8 +77,8 @@ class ActivityQrcodeViewTestCase(TestCase):
         cls.activity = Activity.objects.create(
             title="二维码测试活动",
             organization_id=cls.owner_org,
-            start=datetime.now() + timedelta(minutes=30),
-            end=datetime.now() + timedelta(hours=2),
+            start=datetime.now() + timedelta(hours=2),
+            end=datetime.now() + timedelta(hours=3),
             apply_end=datetime.now() + timedelta(minutes=10),
             location="测试地点",
             introduction="测试简介",
