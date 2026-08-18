@@ -2,6 +2,7 @@ import json
 import html
 from datetime import datetime, timedelta, date
 
+from django.views.decorators.csrf import csrf_protect
 from django.views.decorators.http import require_POST
 from django.shortcuts import render, redirect
 from django.urls import reverse
@@ -694,22 +695,15 @@ def _get_content_students(contents: dict):
     assert len(students) == len(students_id), '预约人信息有误，请检查后重新发起预约！'
     return students
 
-def _add_appoint(contents: dict, start: datetime, finish: datetime, non_yp_num: int,
-               type: Appoint.Type = Appoint.Type.NORMAL,
-               notify_create: bool = True) -> tuple[Appoint | None, str]:
+def _add_appoint(
+    contents: dict, start: datetime, finish: datetime, non_yp_num: int,
+    applicant: Participant, type: Appoint.Type = Appoint.Type.NORMAL,
+    notify_create: bool = True,
+) -> tuple[Appoint | None, str]:
     '''
-    创建一个预约，检查各种条件，屎山函数
+    创建一个预约，检查各种条件。
 
-    :param contents: 屎山，只知道Sid: arg for `get_participant`
-    :type contents: dict
-    :param type: 预约类型, defaults to Appoint.Type.NORMAL
-    :type type: Appoint.Type, optional
-    :param check_contents: 是否检查参数，暂未启用, defaults to True
-    :type check_contents: bool, optional
-    :param notify_create: 是否通知参与者创建了新预约, defaults to True
-    :type notify_create: bool, optional
-    :return: (预约, 错误信息)
-    :rtype: tuple[Appoint | None, str]
+    发起人必须由调用方传入当前会话对应的 Participant，不得从 contents 读取。
     '''
     from Appointment.appoint.manage import _error
 
@@ -744,13 +738,8 @@ def _add_appoint(contents: dict, start: datetime, finish: datetime, non_yp_num: 
     except:
         return _error('非法的预约信息！')
 
-    # 获取预约发起者,确认预约状态
-    major_student = get_participant(contents['Sid'])
-    if major_student is None:
-        return _error('发起人信息不存在！')
-
     return create_appoint(
-        appointer=major_student,
+        appointer=applicant,
         students=students,
         room=room, start=start, finish=finish,
         usage=usage, announce=announcement,
@@ -760,10 +749,14 @@ def _add_appoint(contents: dict, start: datetime, finish: datetime, non_yp_num: 
     )
 
 
+@csrf_protect
 @identity_check(redirect_field_name='origin')
 def checkout_appoint(request: UserRequest):
     """
-    提交预约表单，检查合法性，进行预约
+    结算页：GET 渲染预约表单，POST 创建预约。
+
+    发起人始终为当前登录会话对应的 Participant，忽略表单 Sid/Sname。
+    仅已登录且通过 identity_check（含地下室权限）的账号可写入。
     """
     stu_list = []
     json_context = {}
@@ -906,6 +899,9 @@ def checkout_appoint(request: UserRequest):
                 contents[key] = contents[key][0]
                 if key in {'year', 'month', 'day'}:
                     contents[key] = int(contents[key])
+        # 发起人只绑定当前会话，忽略客户端提交的身份字段
+        contents.pop('Sid', None)
+        contents.pop('Sname', None)
         # 处理外院人数
         if contents['non_yp_num'] == "":
             contents['non_yp_num'] = 0
@@ -917,11 +913,12 @@ def checkout_appoint(request: UserRequest):
         # 检查是否未填写房间用途
         if not contents['Ausage']:
             wrong("请输入房间用途!", render_context)
-        # 处理单人预约
+        # 处理单人预约：参与人必须包含当前会话用户
+        applicant_id = applicant.get_id()
         if "students" not in contents.keys():
-            contents['students'] = [contents['Sid']]
+            contents['students'] = [applicant_id]
         else:
-            contents['students'].append(contents['Sid'])
+            contents['students'].append(applicant_id)
         
         # 不允许用非活跃用户凑数
         # 虽然在生成搜索列表时已经排除了非活跃用户，但这里再检查一次，以防万一
@@ -971,10 +968,16 @@ def checkout_appoint(request: UserRequest):
         if not applicant.Sid.active:
             wrong('您已毕业，不能预约地下室', render_context)
 
-        start_time = datetime(contents['year'], contents['month'], contents['day'],
-                              *map(int, contents['starttime'].split(":")))
-        end_time = datetime(contents['year'], contents['month'], contents['day'],
-                            *map(int, contents['endtime'].split(":")))
+        start_time = datetime(
+            appoint_params['year'], appoint_params['month'],
+            appoint_params['day'],
+            *map(int, appoint_params['starttime'].split(':')),
+        )
+        end_time = datetime(
+            appoint_params['year'], appoint_params['month'],
+            appoint_params['day'],
+            *map(int, appoint_params['endtime'].split(':')),
+        )
         # TODO: 隔周预约的处理可优化，根据start_week调整实际预约时间
         start_time += timedelta(weeks=start_week)
         end_time += timedelta(weeks=start_week)
@@ -1007,8 +1010,10 @@ def checkout_appoint(request: UserRequest):
                 _notify = False
             elif is_interview:
                 appoint_type = Appoint.Type.INTERVIEW
-            response = _add_appoint(contents, start_time, end_time, non_yp_num=non_yp_num,
-                                    type=appoint_type, notify_create=_notify)
+            response = _add_appoint(
+                contents, start_time, end_time, non_yp_num=non_yp_num,
+                applicant=applicant, type=appoint_type,
+                notify_create=_notify)
             appoint, err_msg = response
             if appoint is not None and not is_longterm:
                 # 成功预约且非长期

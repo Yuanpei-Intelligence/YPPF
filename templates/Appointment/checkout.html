@@ -246,7 +246,7 @@
                                             </div>
                                             {% endif %}
                                             {% for k,v in appoint_params.items %}
-                                                {% if k != "longterm" and k != "start_week" %}<input type="hidden" name="{{ k }}" value="{{ v }}"/>{% endif %}
+                                                {% if k != "longterm" and k != "start_week" and k != "Sid" and k != "Sname" %}<input type="hidden" name="{{ k }}" value="{{ v }}"/>{% endif %}
                                             {% endfor %}
                                         </div>
                                         <!-- /Personal Information -->
