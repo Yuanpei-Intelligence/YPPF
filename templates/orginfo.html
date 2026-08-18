@@ -691,9 +691,17 @@
     }
     async function save_show_position_status(status) {
         const { success } = await fetch(`/saveShowPositionStatus`, {
-            headers: { "Content-Type": `text/plain` },
-            method: `POST`,
-            body: JSON.stringify({ id: '{{my_position.id}}', status }),
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': (document.cookie.split('; ').find(
+                    (row) => row.startsWith('csrftoken=')) || '').split('=')[1] || '',
+            },
+            method: 'POST',
+            credentials: 'same-origin',
+            body: JSON.stringify({
+                id: {{ my_position.id|default:0 }},
+                status,
+            }),
         })
             .then((res) => res.json())
             .catch(() => { success: false });

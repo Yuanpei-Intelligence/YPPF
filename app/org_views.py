@@ -19,9 +19,13 @@ from app.comment_utils import addComment, showComment
 from app.utils import (
     get_person_or_org,
 )
+from app.org_forms import ShowPositionStatusForm
 
 import json
 from django.db import transaction
+from django.http import JsonResponse
+from django.views.decorators.csrf import csrf_protect
+from django.views.decorators.http import require_POST
 
 __all__ = [
     'showNewOrganization',
@@ -251,27 +255,44 @@ def showPosition(request: HttpRequest):
     return render(request, 'showPosition.html', locals() | dict(user=request.user))
 
 
+@csrf_protect
 @login_required(redirect_field_name="origin")
 @utils.check_user_access(redirect_url="/logout/")
+@require_POST
 @logger.secure_view()
 def saveShowPositionStatus(request: HttpRequest):
-    params = json.loads(request.body.decode("utf-8"))
+    """个人切换自己当前有效普通职务的展示状态。
 
+    仅已登录、完成基础账户流程的自然人可调用。对象必须属于当前个人、当前学期
+    且非管理员；组织账号与他人职务一律拒绝。
+    """
+    if not request.user.is_person():
+        return JsonResponse({"success": False}, status=403)
+    try:
+        raw = json.loads(request.body.decode("utf-8"))
+    except (UnicodeDecodeError, json.JSONDecodeError):
+        return JsonResponse({"success": False}, status=400)
+    if not isinstance(raw, dict):
+        return JsonResponse({"success": False}, status=400)
+    form = ShowPositionStatusForm(raw)
+    if not form.is_valid():
+        return JsonResponse({"success": False}, status=400)
+
+    me = get_person_or_org(request.user)
+    position_id = form.cleaned_data["id"]
+    show_post = form.cleaned_data["status"]
     with transaction.atomic():
         try:
-            position = Position.objects.select_for_update().get(id=params["id"])
-        except:
-            return JsonResponse({"success":False})
-        if params["status"]:
-            position.show_post = True
-        else:
-            org = position.org
-            if len(Position.objects.filter(
-                    is_admin=True,
-                    org=org)) == 1 and position.pos == 0:  # 非法前端量修改
-                return JsonResponse({"success": False})
-            position.show_post = False
-        position.save()
+            position = (
+                Position.objects.activated()
+                .select_for_update()
+                .get(id=position_id, person=me, is_admin=False)
+            )
+        except Position.DoesNotExist:
+            return JsonResponse({"success": False}, status=404)
+        if position.show_post != show_post:
+            position.show_post = show_post
+            position.save(update_fields=["show_post"])
     return JsonResponse({"success": True})
 
 
