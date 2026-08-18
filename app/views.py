@@ -4,6 +4,7 @@ import requests
 from datetime import datetime, timedelta
 from typing import cast, List, Tuple
 
+from django.views.decorators.csrf import ensure_csrf_cookie
 from django.contrib import auth
 from django.db import transaction
 from django.db.models import Q, F, Sum, QuerySet
@@ -621,6 +622,7 @@ def requestLoginOrg(request: UserRequest):
     return redirect(message_url(succeed(f'成功切换到{org}的账号!'), '/orginfo/'))
 
 
+@ensure_csrf_cookie
 @login_required(redirect_field_name="origin")
 @utils.check_user_access(redirect_url="/logout/")
 @logger.secure_view()
