@@ -166,7 +166,8 @@ def identity_check(
             context = {}
 
             if not request.user.is_valid():
-                _allow_create = False
+                wrong('您的账号无权访问地下室功能。', context)
+                return redirect(message_url(context, reverse('welcome')))
 
             cur_part = get_participant(request.user)
 

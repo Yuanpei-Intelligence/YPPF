@@ -220,6 +220,20 @@ class CheckoutSidIdorTest(TestCase):
         self.assertEqual(response.status_code, 302)
         self.assertEqual(Appoint.objects.count(), 0)
 
+    def test_invalid_account_creates_nothing(self):
+        for invalid_type in (User.Type.SPECIAL, User.Type.UNAUTHORIZED):
+            with self.subTest(invalid_type=invalid_type):
+                self.attacker_user.utype = invalid_type
+                self.attacker_user.save(update_fields=['utype'])
+                self.client.force_login(self.attacker_user)
+                response = self._post(
+                    Sid=self.victim.get_id(), Sname=self.victim.name,
+                )
+                self.assertEqual(response.status_code, 302)
+                self.assertEqual(Appoint.objects.count(), 0)
+                for side_effect_mock in self.mocks:
+                    side_effect_mock.assert_not_called()
+
     def test_csrf_rejected_without_or_with_bad_token(self):
         csrf_client = Client(enforce_csrf_checks=True)
         csrf_client.force_login(self.attacker_user)
