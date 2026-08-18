@@ -9,6 +9,7 @@ from django.urls import reverse
 from app.models import NaturalPerson, Organization, OrganizationType
 from Appointment.models import Appoint, LongTermAppoint, Participant, Room, User
 from Appointment.utils.web_func import get_hour_time
+from Appointment.views import _add_appoint
 
 
 def _frozen_datetime(frozen_now: datetime):
@@ -189,6 +190,44 @@ class CheckoutSidIdorTest(TestCase):
         )
         self._assert_success_redirect(response)
         self._assert_only_attacker_appoint()
+
+    def test_add_appoint_defensively_removes_identity_fields(self):
+        contents = {
+            'Rid': self.room.Rid,
+            'students': [self.attacker.get_id()],
+            'Ausage': 'V19 helper 测试',
+            'announcement': '',
+            'Sid': self.victim.get_id(),
+            'Sname': self.victim.name,
+        }
+
+        def assert_sanitized(value):
+            self.assertNotIn('Sid', value)
+            self.assertNotIn('Sname', value)
+
+        start = datetime.now() + timedelta(days=2)
+        finish = start + timedelta(minutes=30)
+        with (
+            patch('Appointment.views._get_content_room') as get_room,
+            patch('Appointment.views._get_content_students') as get_students,
+            patch('Appointment.views.create_appoint') as create,
+        ):
+            get_room.side_effect = lambda value: (
+                assert_sanitized(value) or self.room
+            )
+            get_students.side_effect = lambda value: (
+                assert_sanitized(value) or [self.attacker]
+            )
+            create.return_value = (None, 'mocked')
+            _add_appoint(
+                contents, start, finish, non_yp_num=0,
+                applicant=self.attacker,
+            )
+
+        create.assert_called_once()
+        self.assertEqual(create.call_args.kwargs['appointer'], self.attacker)
+        self.assertEqual(contents['Sid'], self.victim.get_id())
+        self.assertEqual(contents['Sname'], self.victim.name)
 
     def test_get_does_not_create_appointment(self):
         self.client.force_login(self.attacker_user)

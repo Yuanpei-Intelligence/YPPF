@@ -750,6 +750,12 @@ def _add_appoint(
     '''
     from Appointment.appoint.manage import _error
 
+    # 在函数边界移除客户端身份字段，避免后续维护时意外将其作为权威来源。
+    # 复制后再清理，防止修改调用方持有的字典。
+    contents = contents.copy()
+    contents.pop('Sid', None)
+    contents.pop('Sname', None)
+
     try:
         room = _get_content_room(contents)
         students = _get_content_students(contents)
