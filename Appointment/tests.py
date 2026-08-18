@@ -1,4 +1,5 @@
-from datetime import datetime, timedelta, time
+from contextlib import ExitStack
+from datetime import datetime, timedelta, time, date
 from unittest.mock import patch
 from urllib.parse import unquote
 
@@ -8,6 +9,30 @@ from django.urls import reverse
 from app.models import NaturalPerson, Organization, OrganizationType
 from Appointment.models import Appoint, LongTermAppoint, Participant, Room, User
 from Appointment.utils.web_func import get_hour_time
+
+
+def _frozen_datetime(frozen_now: datetime):
+    class FrozenDateTime(datetime):
+        @classmethod
+        def now(cls, tz=None):
+            return frozen_now
+
+        @classmethod
+        def today(cls):
+            return frozen_now.replace(
+                hour=0, minute=0, second=0, microsecond=0,
+            )
+
+    return FrozenDateTime
+
+
+def _freeze_now(when: datetime):
+    frozen = _frozen_datetime(when)
+    stack = ExitStack()
+    stack.enter_context(patch('Appointment.views.datetime', frozen))
+    stack.enter_context(patch('Appointment.utils.web_func.datetime', frozen))
+    stack.enter_context(patch('Appointment.appoint.manage.datetime', frozen))
+    return stack
 
 
 def _person(username: str, name: str, *, grant_underground: bool = True):
@@ -268,3 +293,80 @@ class CheckoutSidIdorTest(TestCase):
         )
         appoint = Appoint.objects.get()
         self.assertEqual(appoint.major_student_id, org_part.pk)
+
+    def test_stale_same_day_after_midnight_is_rejected(self):
+        """跨午夜不得把表单 weekday 重映射到下一周。"""
+        monday = date(2026, 8, 17)
+        self.assertEqual(monday.strftime('%a'), 'Mon')
+        after_midnight = datetime(2026, 8, 18, 0, 15)
+        next_monday = datetime(2026, 8, 24, 20, 0)
+        self.client.force_login(self.attacker_user)
+        with _freeze_now(after_midnight):
+            response = self._post(
+                weekday='Mon',
+                year=str(monday.year),
+                month=str(monday.month),
+                day=str(monday.day),
+            )
+        self.assertEqual(response.status_code, 302)
+        self.assertIn('过期', unquote(response.url))
+        self.assertEqual(Appoint.objects.count(), 0)
+        self.assertFalse(
+            Appoint.objects.filter(Astart=next_monday).exists(),
+        )
+
+    def test_far_future_same_weekday_is_rejected(self):
+        self.client.force_login(self.attacker_user)
+        now = datetime(2026, 8, 18, 10, 0)
+        far_monday = date(2026, 9, 14)
+        self.assertEqual(far_monday.strftime('%a'), 'Mon')
+        with _freeze_now(now):
+            response = self._post(
+                weekday='Mon',
+                year=str(far_monday.year),
+                month=str(far_monday.month),
+                day=str(far_monday.day),
+            )
+        self.assertEqual(response.status_code, 302)
+        self.assertIn('过期', unquote(response.url))
+        self.assertEqual(Appoint.objects.count(), 0)
+
+    def test_weekday_date_mismatch_is_rejected(self):
+        self.client.force_login(self.attacker_user)
+        now = datetime(2026, 8, 18, 10, 0)
+        wednesday = date(2026, 8, 19)
+        self.assertEqual(wednesday.strftime('%a'), 'Wed')
+        with _freeze_now(now):
+            response = self._post(
+                weekday='Mon',
+                year=str(wednesday.year),
+                month=str(wednesday.month),
+                day=str(wednesday.day),
+            )
+        self.assertEqual(response.status_code, 302)
+        self.assertIn('不一致', unquote(response.url))
+        self.assertEqual(Appoint.objects.count(), 0)
+
+    def test_missing_absolute_date_is_rejected(self):
+        self.client.force_login(self.attacker_user)
+        data = dict(self.base_form)
+        data.pop('year')
+        response = self.client.post(self.checkout_url, data=data)
+        self.assertEqual(response.status_code, 302)
+        self.assertIn('无效', unquote(response.url))
+        self.assertEqual(Appoint.objects.count(), 0)
+
+    def test_in_window_absolute_date_still_succeeds(self):
+        self.client.force_login(self.attacker_user)
+        now = datetime(2026, 8, 18, 10, 0)
+        slot_day = date(2026, 8, 20)
+        with _freeze_now(now):
+            response = self._post(
+                weekday=slot_day.strftime('%a'),
+                year=str(slot_day.year),
+                month=str(slot_day.month),
+                day=str(slot_day.day),
+            )
+            self._assert_success_redirect(response)
+            appoint = Appoint.objects.get()
+        self.assertEqual(appoint.Astart.date(), slot_day)

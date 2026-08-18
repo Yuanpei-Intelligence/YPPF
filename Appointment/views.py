@@ -695,6 +695,49 @@ def _get_content_students(contents: dict):
     assert len(students) == len(students_id), '预约人信息有误，请检查后重新发起预约！'
     return students
 
+def _checkout_slot_fields(
+    room: Room, weekday: str, startid: int, endid: int, start_week: int,
+    posted_date: date | None,
+) -> dict:
+    """解析结算页时段。POST 必须携带 GET 时的绝对日期，不得按 weekday 重映射。"""
+    starttime, valid = web_func.get_hour_time(room, startid)
+    assert valid is True
+    endtime, valid = web_func.get_hour_time(room, endid + 1)
+    assert valid is True
+    dayrange_list = web_func.get_dayrange(day_offset=0)[0]
+    allowed = {
+        date(day['year'], day['month'], day['day']): day
+        for day in dayrange_list
+    }
+    if posted_date is not None:
+        if wklist[posted_date.weekday()] != weekday:
+            raise ValueError('预约日期与星期不一致，请重新选择时间')
+        if posted_date not in allowed:
+            raise ValueError('预约时段已过期，请重新选择时间')
+        slot_date = posted_date
+        day = allowed[slot_date]
+    else:
+        day = next(
+            (item for item in dayrange_list if item['weekday'] == weekday),
+            None,
+        )
+        if day is None:
+            raise ValueError('预约时段不合法，请重新选择时间')
+        slot_date = date(day['year'], day['month'], day['day'])
+    rmin = room.Rmin
+    if start_week == 0 and datetime.now().date() == slot_date:
+        rmin = min(CONFIG.today_min, room.Rmin)
+    return {
+        'date': day['date'],
+        'starttime': starttime,
+        'endtime': endtime,
+        'year': slot_date.year,
+        'month': slot_date.month,
+        'day': slot_date.day,
+        'Rmin': rmin,
+    }
+
+
 def _add_appoint(
     contents: dict, start: datetime, finish: datetime, non_yp_num: int,
     applicant: Participant, type: Appoint.Type = Appoint.Type.NORMAL,
@@ -846,27 +889,38 @@ def checkout_appoint(request: UserRequest):
         'longterm': is_longterm,
         'start_week': start_week,
     }
-    # 表单参数都统一为可预约的第一周，具体预约哪周根据POST的start_week判断
-    dayrange_list = web_func.get_dayrange(day_offset=0)[0]
-    for day in dayrange_list:
-        if day['weekday'] == appoint_params['weekday']:
-            appoint_params['date'] = day['date']
-            appoint_params['starttime'], valid = web_func.get_hour_time(
-                room, appoint_params['startid'])
-            assert valid is True
-            appoint_params['endtime'], valid = web_func.get_hour_time(
-                room, appoint_params['endid'] + 1)
-            assert valid is True
-            appoint_params['year'] = day['year']
-            appoint_params['month'] = day['month']
-            appoint_params['day'] = day['day']
-            # 最小人数下限控制
-            appoint_params['Rmin'] = room.Rmin
-            if start_week == 0 and datetime.now().strftime(
-                    "%a") == appoint_params['weekday']:
-                appoint_params['Rmin'] = min(CONFIG.today_min,
-                                             room.Rmin)
-            break
+    posted_date = None
+    if request.method == 'POST':
+        try:
+            posted_date = date(
+                int(request.POST.get('year')),
+                int(request.POST.get('month')),
+                int(request.POST.get('day')),
+            )
+        except (TypeError, ValueError):
+            redirect_url = (
+                f'/underground/arrange_time?Rid={Rid}'
+                f'&start_week={safe_start_week}'
+            )
+            if is_longterm:
+                redirect_url += '&longterm=on'
+            return redirect(message_url(
+                wrong('预约时段无效，请重新选择时间'), redirect_url,
+            ))
+    try:
+        appoint_params.update(_checkout_slot_fields(
+            room, weekday, startid, endid, start_week,
+            posted_date=posted_date,
+        ))
+    except (AssertionError, ValueError) as exc:
+        redirect_url = (
+            f'/underground/arrange_time?Rid={Rid}'
+            f'&start_week={safe_start_week}'
+        )
+        if is_longterm:
+            redirect_url += '&longterm=on'
+        message = str(exc) if isinstance(exc, ValueError) else '预约时段不合法'
+        return redirect(message_url(wrong(message), redirect_url))
     appoint_params['Sid'] = applicant.get_id()
     appoint_params['Sname'] = applicant.name
 
