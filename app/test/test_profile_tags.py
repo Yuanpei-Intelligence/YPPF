@@ -512,6 +512,43 @@ class ProfileTagFeatureTestCase(TestCase):
         self.assertFalse(PersonProfileTagImage.objects.filter(pk=first.pk).exists())
         self.assertTrue(PersonProfileTagImage.objects.filter(pk=second.pk).exists())
 
+    def test_tag_story_image_only_upload_and_delete_update_timestamp(self):
+        selection = PersonProfileTag.objects.create(
+            person=self.person,
+            tag=self.official_tag,
+            kind=PersonProfileTag.Kind.INTEREST,
+        )
+        old_time = datetime.now() - timedelta(days=2)
+        PersonProfileTag.objects.filter(pk=selection.pk).update(updated_at=old_time)
+        self.client.force_login(self.user)
+
+        upload_response = self.client.post(
+            f"/profile/tags/{selection.pk}/story/",
+            {"images": [self._image_file("timestamp-upload.png")]},
+        )
+
+        self.assertEqual(upload_response.status_code, 302)
+        selection.refresh_from_db()
+        self.assertGreater(selection.updated_at, old_time)
+        uploaded_image = selection.images.get()
+
+        delete_old_time = datetime.now() - timedelta(days=1)
+        PersonProfileTag.objects.filter(pk=selection.pk).update(
+            updated_at=delete_old_time
+        )
+        with self.captureOnCommitCallbacks(execute=True):
+            delete_response = self.client.post(
+                f"/profile/tags/{selection.pk}/story/",
+                {"delete_images": [str(uploaded_image.pk)]},
+            )
+
+        self.assertEqual(delete_response.status_code, 302)
+        selection.refresh_from_db()
+        self.assertGreater(selection.updated_at, delete_old_time)
+        self.assertFalse(
+            PersonProfileTagImage.objects.filter(pk=uploaded_image.pk).exists()
+        )
+
     def test_story_endpoints_are_post_only_and_csrf_protected(self):
         selection = PersonProfileTag.objects.create(
             person=self.person,
@@ -810,6 +847,80 @@ class ProfileTagFeatureTestCase(TestCase):
         self.assertContains(skill_response, "技能 · 图像处理")
         self.assertContains(skill_response, "兴趣 · 摄影")
         self.assertContains(skill_response, "还没有添加图文说明")
+
+    def test_community_hides_moderated_tag_text_but_keeps_public_image(self):
+        selection = PersonProfileTag.objects.create(
+            person=self.person,
+            tag=self.skill_only_tag,
+            kind=PersonProfileTag.Kind.SKILL,
+            description="技能社区不应泄露的隐藏文字",
+            description_status=PersonProfileTag.ContentStatus.HIDDEN,
+        )
+        visible_image = PersonProfileTagImage.objects.create(
+            selection=selection,
+            image=self._image_file("public-skill-image.png"),
+        )
+        self.client.force_login(self.visitor_user)
+
+        response = self.client.get("/community/skills/")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertNotContains(response, "技能社区不应泄露的隐藏文字")
+        self.assertContains(response, visible_image.image.url)
+
+    def test_activity_feeds_hide_moderated_text_but_keep_public_image(self):
+        participation = self._create_activity_participation(
+            "隐藏文字公开图片活动", Participation.AttendStatus.ATTENDED
+        )
+        story = ParticipationStory.objects.create(
+            participation=participation,
+            description="活动社区和详情不应泄露的隐藏文字",
+            description_status=ParticipationStory.ContentStatus.HIDDEN,
+        )
+        visible_image = ParticipationStoryImage.objects.create(
+            story=story,
+            image=self._image_file("public-activity-image.png"),
+        )
+        participation.activity.status = Activity.Status.END
+        participation.activity.save(update_fields=["status"])
+        ActivityPhoto.objects.create(
+            activity=participation.activity,
+            type=ActivityPhoto.PhotoType.ANNOUNCE,
+            image="assets/img/announcepics/1.JPG",
+        )
+        self.client.force_login(self.visitor_user)
+
+        community_response = self.client.get("/community/activities/")
+        detail_response = self.client.get(
+            f"/viewActivity/{participation.activity_id}"
+        )
+
+        for response in (community_response, detail_response):
+            self.assertEqual(response.status_code, 200)
+            self.assertNotContains(
+                response, "活动社区和详情不应泄露的隐藏文字"
+            )
+            self.assertContains(response, visible_image.image.url)
+
+    def test_inactive_parent_category_hides_child_tag_from_community(self):
+        selection = PersonProfileTag.objects.create(
+            person=self.person,
+            tag=self.skill_only_tag,
+            kind=PersonProfileTag.Kind.SKILL,
+            description="停用父分类后不可见的技能故事",
+        )
+        self.root.is_active = False
+        self.root.save(update_fields=["is_active"])
+        self.client.force_login(self.visitor_user)
+
+        response = self.client.get("/community/skills/")
+        like_response = self.client.post(
+            f"/profile/skill-stories/{selection.pk}/like/"
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertNotContains(response, "停用父分类后不可见的技能故事")
+        self.assertEqual(like_response.status_code, 403)
 
     def test_interest_story_uses_shared_board_like_and_comment_data(self):
         selection = PersonProfileTag.objects.create(

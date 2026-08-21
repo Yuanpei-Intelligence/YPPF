@@ -322,10 +322,11 @@ def activity_story_is_public(story: ParticipationStory):
 def tag_story_is_public(selection: PersonProfileTag):
     """Return whether an interest or skill selection is publicly visible."""
 
+    _, active_category_ids = _active_category_tree()
     return bool(
         selection.kind in PersonProfileTag.Kind.values
         and selection.tag.status == ProfileTag.Status.VISIBLE
-        and selection.tag.category.is_active
+        and selection.tag.category_id in active_category_ids
     )
 
 
@@ -377,7 +378,11 @@ def build_activity_story_page(*, viewer_person, page_number=1, activity=None):
     )
     page = Paginator(stories, 10).get_page(page_number)
     for story in page.object_list:
-        story.display_description = story.description
+        story.display_description = (
+            story.description
+            if story.description_status == ParticipationStory.ContentStatus.VISIBLE
+            else ""
+        )
         story.display_images = story.visible_images
         story.display_comments = story.visible_comments
         story.like_count = len(story.likes.all())
@@ -392,11 +397,12 @@ def build_activity_story_page(*, viewer_person, page_number=1, activity=None):
 def build_skill_story_page(*, viewer_person, page_number=1):
     """Build a newest-first page of public interest and skill selections."""
 
+    _, active_category_ids = _active_category_tree()
     selections = (
         PersonProfileTag.objects.filter(
             kind__in=PersonProfileTag.Kind.values,
             tag__status=ProfileTag.Status.VISIBLE,
-            tag__category__is_active=True,
+            tag__category_id__in=active_category_ids,
         )
         .select_related("person", "person__person_id", "tag", "tag__category")
         .prefetch_related(
@@ -421,7 +427,11 @@ def build_skill_story_page(*, viewer_person, page_number=1):
     )
     page = Paginator(selections, 10).get_page(page_number)
     for selection in page.object_list:
-        selection.display_description = selection.description
+        selection.display_description = (
+            selection.description
+            if selection.description_status == PersonProfileTag.ContentStatus.VISIBLE
+            else ""
+        )
         selection.display_images = selection.visible_images
         selection.display_comments = selection.visible_comments
         selection.like_count = len(selection.likes.all())
@@ -615,6 +625,7 @@ def update_tag_story(
                 raise ValidationError("该标签当前不可编辑。")
             images = PersonProfileTagImage.objects.filter(selection=locked_selection)
             to_delete = images.filter(pk__in=delete_image_ids)
+            deleted_count = to_delete.count()
             deleted_names = list(
                 to_delete.exclude(image="").values_list("image", flat=True)
             )
@@ -623,13 +634,18 @@ def update_tag_story(
                 raise ValidationError(f"每个标签最多保留 {MAX_STORY_IMAGES} 张图片。")
             to_delete.delete()
 
-            if locked_selection.description != description:
+            description_changed = locked_selection.description != description
+            if description_changed:
                 locked_selection.description = description
                 locked_selection.description_status = (
                     PersonProfileTag.ContentStatus.VISIBLE
                 )
+            if description_changed or deleted_count or stored_names:
+                update_fields = ["updated_at"]
+                if description_changed:
+                    update_fields.extend(["description", "description_status"])
                 locked_selection.save(
-                    update_fields=["description", "description_status", "updated_at"]
+                    update_fields=update_fields
                 )
             next_order = remaining_count
             PersonProfileTagImage.objects.bulk_create(
