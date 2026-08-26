@@ -12,7 +12,7 @@ class DormitorySerializer(serializers.ModelSerializer):
 class DormitoryAssignmentSerializer(serializers.ModelSerializer):
     class Meta:
         model = DormitoryAssignment
-        fields = '__all__'
+        fields = ['id', 'dormitory', 'bed_id']
 
 
 class AgreementSerializerFixme(serializers.ModelSerializer):
@@ -22,10 +22,7 @@ class AgreementSerializerFixme(serializers.ModelSerializer):
 
 
 class AgreementSerializer(serializers.ModelSerializer):
-
-    user = serializers.StringRelatedField()
-
     class Meta:
         model = Agreement
-        fields = ['user', 'sign_time']
-        read_only_fields = ['user', 'sign_time']
+        fields = ['id', 'sign_time']
+        read_only_fields = fields
