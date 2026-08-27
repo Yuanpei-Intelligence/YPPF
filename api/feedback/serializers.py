@@ -176,7 +176,10 @@ class FeedbackCreateSerializer(serializers.Serializer):
         try:
             return FeedbackType.objects.get(name=value)
         except FeedbackType.DoesNotExist:
-            raise serializers.ValidationError("数据库没有对应反馈类型，请联系管理员！")
+            raise serializers.ValidationError(
+                "反馈类型不存在，请重新选择。",
+                code="does_not_exist",
+            )
 
     def validate_otype(self, value):
         if not value:
@@ -185,7 +188,10 @@ class FeedbackCreateSerializer(serializers.Serializer):
             OrganizationType.objects.get(otype_name=value)
             return value
         except OrganizationType.DoesNotExist:
-            raise serializers.ValidationError("数据库没有对应小组类型，请联系管理员！")
+            raise serializers.ValidationError(
+                "接收小组类型不存在，请重新选择。",
+                code="does_not_exist",
+            )
 
     def validate_org(self, value):
         if not value:
@@ -194,25 +200,27 @@ class FeedbackCreateSerializer(serializers.Serializer):
             Organization.objects.get(oname=value)
             return value
         except Organization.DoesNotExist:
-            raise serializers.ValidationError("数据库没有对应小组，请联系管理员！")
+            raise serializers.ValidationError(
+                "接收小组不存在，请重新选择。",
+                code="does_not_exist",
+            )
 
     def validate(self, attrs):
         post_type = attrs.get("post_type", "directly_submit")
         if post_type == "directly_submit":
-            if len(attrs["title"]) >= 30:
-                raise serializers.ValidationError({"title": "标题不能超过30字哦！"})
-            if not attrs["title"].strip():
-                raise serializers.ValidationError({"title": "标题不能为空哦！"})
+            errors = {}
             if not attrs.get("otype"):
-                raise serializers.ValidationError(
-                    {"otype": "不能不选择接收小组的类型哦！"}
+                errors["otype"] = serializers.ErrorDetail(
+                    "请选择接收小组类型。",
+                    code="required",
                 )
             if not attrs.get("org"):
-                raise serializers.ValidationError(
-                    {"org": "不选择接收小组就没有小组收到你的反馈了哦！请选择接收小组~"}
+                errors["org"] = serializers.ErrorDetail(
+                    "请选择接收小组。",
+                    code="required",
                 )
-            if not attrs.get("content", "").strip():
-                raise serializers.ValidationError({"content": "反馈内容不能为空哦！"})
+            if errors:
+                raise serializers.ValidationError(errors)
         return attrs
 
     def create(self, validated_data):
@@ -238,7 +246,8 @@ class FeedbackCreateSerializer(serializers.Serializer):
         if post_type == "directly_submit":
             if org_type and org_type.incharge == me:
                 raise serializers.ValidationError(
-                    "老师您好，本系统暂不支持给您管理的小组发送反馈！抱歉。"
+                    "暂不支持向您负责的小组发送反馈。",
+                    code="recipient_managed_by_sender",
                 )
         issue_status = (
             Feedback.IssueStatus.DRAFTED
@@ -294,7 +303,10 @@ class FeedbackUpdateSerializer(serializers.Serializer):
         try:
             return FeedbackType.objects.get(name=value)
         except FeedbackType.DoesNotExist:
-            raise serializers.ValidationError("数据库没有对应反馈类型，请联系管理员！")
+            raise serializers.ValidationError(
+                "反馈类型不存在，请重新选择。",
+                code="does_not_exist",
+            )
 
     def validate_otype(self, value):
         if not value:
@@ -303,7 +315,10 @@ class FeedbackUpdateSerializer(serializers.Serializer):
             OrganizationType.objects.get(otype_name=value)
             return value
         except OrganizationType.DoesNotExist:
-            raise serializers.ValidationError("数据库没有对应小组类型，请联系管理员！")
+            raise serializers.ValidationError(
+                "接收小组类型不存在，请重新选择。",
+                code="does_not_exist",
+            )
 
     def validate_org(self, value):
         if not value:
@@ -312,7 +327,10 @@ class FeedbackUpdateSerializer(serializers.Serializer):
             Organization.objects.get(oname=value)
             return value
         except Organization.DoesNotExist:
-            raise serializers.ValidationError("数据库没有对应小组，请联系管理员！")
+            raise serializers.ValidationError(
+                "接收小组不存在，请重新选择。",
+                code="does_not_exist",
+            )
 
     def validate(self, attrs):
         post_type = attrs.get("post_type")
@@ -325,20 +343,34 @@ class FeedbackUpdateSerializer(serializers.Serializer):
             )
             otype = attrs.get("otype", "")
             org = attrs.get("org", "")
-            if len(title) >= 30:
-                raise serializers.ValidationError({"title": "标题不能超过30字哦！"})
-            if not str(title).strip():
-                raise serializers.ValidationError({"title": "标题不能为空哦！"})
+            errors = {}
+            if len(title) > 30:
+                errors["title"] = serializers.ErrorDetail(
+                    "标题不能超过30字。",
+                    code="max_length",
+                )
+            elif not str(title).strip():
+                errors["title"] = serializers.ErrorDetail(
+                    "标题不能为空。",
+                    code="blank",
+                )
             if not otype:
-                raise serializers.ValidationError(
-                    {"otype": "不能不选择接收小组的类型哦！"}
+                errors["otype"] = serializers.ErrorDetail(
+                    "请选择接收小组类型。",
+                    code="required",
                 )
             if not org:
-                raise serializers.ValidationError(
-                    {"org": "不选择接收小组就没有小组收到你的反馈了哦！请选择接收小组~"}
+                errors["org"] = serializers.ErrorDetail(
+                    "请选择接收小组。",
+                    code="required",
                 )
             if not str(content).strip():
-                raise serializers.ValidationError({"content": "反馈内容不能为空哦！"})
+                errors["content"] = serializers.ErrorDetail(
+                    "反馈内容不能为空。",
+                    code="blank",
+                )
+            if errors:
+                raise serializers.ValidationError(errors)
         return attrs
 
     def update(self, instance, validated_data):
@@ -373,7 +405,8 @@ class FeedbackUpdateSerializer(serializers.Serializer):
         if post_type == "submit_draft":
             if org_type and org_type.incharge == me:
                 raise serializers.ValidationError(
-                    "老师您好，本系统暂不支持给您管理的小组发送反馈！抱歉。"
+                    "暂不支持向您负责的小组发送反馈。",
+                    code="recipient_managed_by_sender",
                 )
 
         with transaction.atomic():

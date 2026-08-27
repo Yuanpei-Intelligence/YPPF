@@ -92,11 +92,23 @@ class FeedbackAPITestCase(APITestCase):
             issue_status=Feedback.IssueStatus.ISSUED,
         )
 
+    def assert_error(self, response, expected_status, expected_code):
+        self.assertEqual(response.status_code, expected_status)
+        self.assertEqual(set(response.data), {"code", "message", "errors"})
+        self.assertEqual(response.data["code"], expected_code)
+        self.assertIsInstance(response.data["message"], str)
+        self.assertIsInstance(response.data["errors"], dict)
+
     def test_list_feedback_unauthenticated(self):
         """未认证用户不能访问列表."""
         url = reverse("api:feedback:feedback-list")
         response = self.client.get(url)
-        self.assertEqual(response.status_code, http_status.HTTP_401_UNAUTHORIZED)
+        self.assert_error(
+            response,
+            http_status.HTTP_401_UNAUTHORIZED,
+            "invalid_token",
+        )
+        self.assertEqual(response.data["errors"], {})
 
     def test_list_feedback_as_person(self):
         """个人用户看到自己发出的反馈列表."""
@@ -139,6 +151,23 @@ class FeedbackAPITestCase(APITestCase):
         self.assertEqual(response.status_code, http_status.HTTP_200_OK)
         self.assertGreaterEqual(len(response.data), 1)
 
+    def test_list_feedback_invalid_filter_uses_standard_error(self):
+        """非法筛选值返回可供表单消费的新错误格式."""
+        self.client.force_authenticate(user=self.person_user)
+        url = reverse("api:feedback:feedback-list")
+
+        response = self.client.get(url, {"issue_status": "unknown"})
+
+        self.assert_error(
+            response,
+            http_status.HTTP_400_BAD_REQUEST,
+            "validation_error",
+        )
+        self.assertEqual(
+            response.data["errors"]["issue_status"][0]["code"],
+            "invalid_choice",
+        )
+
     def test_types_list(self):
         """获取反馈类型列表."""
         self.client.force_authenticate(user=self.person_user)
@@ -156,7 +185,11 @@ class FeedbackAPITestCase(APITestCase):
         """未认证不能访问类型列表."""
         url = reverse("api:feedback:feedback-types")
         response = self.client.get(url)
-        self.assertEqual(response.status_code, http_status.HTTP_401_UNAUTHORIZED)
+        self.assert_error(
+            response,
+            http_status.HTTP_401_UNAUTHORIZED,
+            "invalid_token",
+        )
 
     def test_create_feedback_draft(self):
         """创建草稿反馈."""
@@ -212,7 +245,12 @@ class FeedbackAPITestCase(APITestCase):
             "post_type": "save",
         }
         response = self.client.post(url, payload, format="json")
-        self.assertEqual(response.status_code, http_status.HTTP_403_FORBIDDEN)
+        self.assert_error(
+            response,
+            http_status.HTTP_403_FORBIDDEN,
+            "permission_denied",
+        )
+        self.assertEqual(response.data["message"], "仅个人账号可提交反馈！")
 
     def test_create_feedback_invalid_type(self):
         """无效反馈类型返回 400."""
@@ -228,7 +266,15 @@ class FeedbackAPITestCase(APITestCase):
             "post_type": "save",
         }
         response = self.client.post(url, payload, format="json")
-        self.assertEqual(response.status_code, http_status.HTTP_400_BAD_REQUEST)
+        self.assert_error(
+            response,
+            http_status.HTTP_400_BAD_REQUEST,
+            "validation_error",
+        )
+        self.assertEqual(
+            response.data["errors"]["type"],
+            [{"code": "does_not_exist", "message": "反馈类型不存在，请重新选择。"}],
+        )
 
     def test_create_direct_submit_requires_org(self):
         """直接提交时必须填写 otype 和 org."""
@@ -244,7 +290,18 @@ class FeedbackAPITestCase(APITestCase):
             "post_type": "directly_submit",
         }
         response = self.client.post(url, payload, format="json")
-        self.assertEqual(response.status_code, http_status.HTTP_400_BAD_REQUEST)
+        self.assert_error(
+            response,
+            http_status.HTTP_400_BAD_REQUEST,
+            "validation_error",
+        )
+        self.assertEqual(
+            response.data["errors"],
+            {
+                "otype": [{"code": "required", "message": "请选择接收小组类型。"}],
+                "org": [{"code": "required", "message": "请选择接收小组。"}],
+            },
+        )
 
     def test_retrieve_feedback_as_publisher(self):
         """发布者可查看自己的反馈详情."""
@@ -276,7 +333,12 @@ class FeedbackAPITestCase(APITestCase):
             kwargs={"pk": 99999},
         )
         response = self.client.get(url)
-        self.assertEqual(response.status_code, http_status.HTTP_404_NOT_FOUND)
+        self.assert_error(
+            response,
+            http_status.HTTP_404_NOT_FOUND,
+            "not_found",
+        )
+        self.assertEqual(response.data["message"], "反馈不存在")
 
     def test_partial_update_draft_modify(self):
         """修改草稿内容."""
@@ -334,7 +396,11 @@ class FeedbackAPITestCase(APITestCase):
             "post_type": "modify",
         }
         response = self.client.patch(url, payload, format="json")
-        self.assertEqual(response.status_code, http_status.HTTP_400_BAD_REQUEST)
+        self.assert_error(
+            response,
+            http_status.HTTP_409_CONFLICT,
+            "feedback.not_draft",
+        )
 
     def test_partial_update_other_person_forbidden(self):
         """不能修改他人反馈."""
@@ -352,7 +418,11 @@ class FeedbackAPITestCase(APITestCase):
         )
         payload = {"title": "篡改", "post_type": "modify"}
         response = self.client.patch(url, payload, format="json")
-        self.assertEqual(response.status_code, http_status.HTTP_403_FORBIDDEN)
+        self.assert_error(
+            response,
+            http_status.HTTP_403_FORBIDDEN,
+            "permission_denied",
+        )
 
     def test_destroy_draft(self):
         """删除草稿."""
@@ -376,7 +446,11 @@ class FeedbackAPITestCase(APITestCase):
             kwargs={"pk": self.issued_feedback.id},
         )
         response = self.client.delete(url)
-        self.assertEqual(response.status_code, http_status.HTTP_403_FORBIDDEN)
+        self.assert_error(
+            response,
+            http_status.HTTP_409_CONFLICT,
+            "feedback.not_draft",
+        )
 
     def test_destroy_other_person_forbidden(self):
         """不能删除他人反馈."""
@@ -393,7 +467,11 @@ class FeedbackAPITestCase(APITestCase):
             kwargs={"pk": self.draft_feedback.id},
         )
         response = self.client.delete(url)
-        self.assertEqual(response.status_code, http_status.HTTP_403_FORBIDDEN)
+        self.assert_error(
+            response,
+            http_status.HTTP_403_FORBIDDEN,
+            "permission_denied",
+        )
 
     def test_serializer_fields(self):
         """列表/详情包含预期字段."""

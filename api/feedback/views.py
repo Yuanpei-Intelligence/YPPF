@@ -3,12 +3,14 @@ REST APIs for feedback (反馈) management.
 """
 from __future__ import annotations
 
+import logging
+
 from django.db.models import Q
 from rest_framework import status, viewsets
 from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
-from rest_framework.exceptions import NotFound, PermissionDenied, ValidationError
+from rest_framework.exceptions import NotFound, PermissionDenied
 from drf_spectacular.utils import (
     extend_schema,
     OpenApiResponse,
@@ -21,6 +23,11 @@ from app.models import OrganizationType, Organization
 from feedback.models import FeedbackType, Feedback
 from feedback.feedback_utils import make_relevant_notification
 from api.authentication import WxJWTAuthentication
+from api.exceptions import (
+    APIError,
+    APIErrorResponseSerializer,
+    StandardizedExceptionHandlerMixin,
+)
 from api.feedback.serializers import (
     FeedbackTypeSerializer,
     FeedbackSerializer,
@@ -33,7 +40,17 @@ from api.feedback.serializers import (
 )
 
 
-class FeedbackViewSet(viewsets.ViewSet):
+logger = logging.getLogger(__name__)
+
+
+def error_response(description):
+    return OpenApiResponse(
+        response=APIErrorResponseSerializer,
+        description=description,
+    )
+
+
+class FeedbackViewSet(StandardizedExceptionHandlerMixin, viewsets.ViewSet):
     """
     ViewSet for feedback.
 
@@ -56,6 +73,12 @@ class FeedbackViewSet(viewsets.ViewSet):
         if request.user.is_person():
             return qs.filter(person=me)
         return qs.filter(org=me)
+
+    @staticmethod
+    def _get_list_params(request):
+        serializer = FeedbackListQuerySerializer(data=request.query_params)
+        serializer.is_valid(raise_exception=True)
+        return serializer.validated_data
 
     @extend_schema(
         description="列表：个人为「我发出的反馈」，组织为「收到的反馈」",
@@ -94,37 +117,24 @@ class FeedbackViewSet(viewsets.ViewSet):
                 response=FeedbackSerializer(many=True),
                 description="反馈列表",
             ),
+            400: error_response("筛选或排序参数有误"),
+            401: error_response("未认证或令牌无效"),
         },
         tags=["反馈"],
     )
     def list(self, request):
         queryset = self._get_queryset(request)
 
-        issue_status = request.query_params.get("issue_status")
+        params = self._get_list_params(request)
+        issue_status = params.get("issue_status")
         if issue_status is not None:
-            try:
-                queryset = queryset.filter(issue_status=int(issue_status))
-            except ValueError:
-                pass
+            queryset = queryset.filter(issue_status=issue_status)
 
-        solve_status = request.query_params.get("solve_status")
+        solve_status = params.get("solve_status")
         if solve_status is not None:
-            try:
-                queryset = queryset.filter(solve_status=int(solve_status))
-            except ValueError:
-                pass
+            queryset = queryset.filter(solve_status=solve_status)
 
-        ordering = request.query_params.get("ordering", "-feedback_time")
-        allowed = {
-            "feedback_time",
-            "-feedback_time",
-            "time",
-            "-time",
-            "modify_time",
-            "-modify_time",
-        }
-        if ordering in allowed:
-            queryset = queryset.order_by(ordering)
+        queryset = queryset.order_by(params["ordering"])
 
         serializer = FeedbackSerializer(
             queryset, many=True, context={"request": request}
@@ -139,17 +149,15 @@ class FeedbackViewSet(viewsets.ViewSet):
                 response=FeedbackSerializer,
                 description="创建成功",
             ),
-            400: OpenApiResponse(description="参数错误"),
-            403: OpenApiResponse(description="仅个人可提交反馈"),
+            400: error_response("参数错误"),
+            401: error_response("未认证或令牌无效"),
+            403: error_response("仅个人可提交反馈"),
         },
         tags=["反馈"],
     )
     def create(self, request):
         if not request.user.is_person():
-            return Response(
-                {"detail": "仅个人账号可提交反馈！"},
-                status=status.HTTP_403_FORBIDDEN,
-            )
+            raise PermissionDenied("仅个人账号可提交反馈！")
         serializer = FeedbackCreateSerializer(
             data=request.data, context={"request": request}
         )
@@ -166,7 +174,7 @@ class FeedbackViewSet(viewsets.ViewSet):
                 }
                 make_relevant_notification(feedback, info, me)
             except Exception:
-                pass
+                logger.exception("创建反馈后的通知发送失败", extra={"feedback_id": feedback.id})
 
         out = FeedbackSerializer(
             feedback, context={"request": request}
@@ -177,8 +185,9 @@ class FeedbackViewSet(viewsets.ViewSet):
         description="获取单条反馈详情（需有访问权限）",
         responses={
             200: FeedbackSerializer,
-            404: OpenApiResponse(description="反馈不存在"),
-            403: OpenApiResponse(description="无权限访问"),
+            401: error_response("未认证或令牌无效"),
+            403: error_response("无权限访问"),
+            404: error_response("反馈不存在"),
         },
         tags=["反馈"],
     )
@@ -209,9 +218,11 @@ class FeedbackViewSet(viewsets.ViewSet):
         request=FeedbackUpdateSerializer,
         responses={
             200: FeedbackSerializer,
-            400: OpenApiResponse(description="参数错误或状态不允许"),
-            403: OpenApiResponse(description="无权限"),
-            404: OpenApiResponse(description="反馈不存在"),
+            400: error_response("参数错误"),
+            401: error_response("未认证或令牌无效"),
+            403: error_response("无权限"),
+            404: error_response("反馈不存在"),
+            409: error_response("反馈状态不允许修改"),
         },
         tags=["反馈"],
     )
@@ -225,7 +236,11 @@ class FeedbackViewSet(viewsets.ViewSet):
         if feedback.person != me:
             raise PermissionDenied("只能修改自己发出的反馈")
         if feedback.issue_status != Feedback.IssueStatus.DRAFTED:
-            raise ValidationError("只能修改草稿状态的反馈")
+            raise APIError(
+                code="feedback.not_draft",
+                message="只能修改草稿状态的反馈。",
+                status_code=status.HTTP_409_CONFLICT,
+            )
 
         serializer = FeedbackUpdateSerializer(
             feedback,
@@ -249,7 +264,7 @@ class FeedbackViewSet(viewsets.ViewSet):
                 }
                 make_relevant_notification(feedback, info, me)
             except Exception:
-                pass
+                logger.exception("提交反馈后的通知发送失败", extra={"feedback_id": feedback.id})
 
         out = FeedbackSerializer(
             feedback, context={"request": request}
@@ -260,8 +275,10 @@ class FeedbackViewSet(viewsets.ViewSet):
         description="删除草稿（仅发布者对草稿可删）",
         responses={
             204: OpenApiResponse(description="已删除"),
-            403: OpenApiResponse(description="无权限或非草稿"),
-            404: OpenApiResponse(description="反馈不存在"),
+            401: error_response("未认证或令牌无效"),
+            403: error_response("无权限"),
+            404: error_response("反馈不存在"),
+            409: error_response("反馈不是草稿状态"),
         },
         tags=["反馈"],
     )
@@ -272,16 +289,14 @@ class FeedbackViewSet(viewsets.ViewSet):
             raise NotFound("反馈不存在")
         me = self._get_me(request)
         if not request.user.is_person():
-            return Response(
-                {"detail": "仅个人可删除反馈"},
-                status=status.HTTP_403_FORBIDDEN,
-            )
+            raise PermissionDenied("仅个人可删除反馈")
         if feedback.person != me:
             raise PermissionDenied("只能删除自己发出的反馈")
         if feedback.issue_status != Feedback.IssueStatus.DRAFTED:
-            return Response(
-                {"detail": "只能删除草稿状态的反馈"},
-                status=status.HTTP_403_FORBIDDEN,
+            raise APIError(
+                code="feedback.not_draft",
+                message="只能删除草稿状态的反馈。",
+                status_code=status.HTTP_409_CONFLICT,
             )
 
         feedback.issue_status = Feedback.IssueStatus.DELETED
@@ -313,6 +328,8 @@ class FeedbackViewSet(viewsets.ViewSet):
                 response=FeedbackSerializer(many=True),
                 description="进行中的反馈列表",
             ),
+            400: error_response("排序参数有误"),
+            401: error_response("未认证或令牌无效"),
         },
         tags=["反馈"],
     )
@@ -339,17 +356,8 @@ class FeedbackViewSet(viewsets.ViewSet):
         else:
             queryset = base_qs.filter(org=me)
 
-        ordering = request.query_params.get("ordering", "-feedback_time")
-        allowed = {
-            "feedback_time",
-            "-feedback_time",
-            "time",
-            "-time",
-            "modify_time",
-            "-modify_time",
-        }
-        if ordering in allowed:
-            queryset = queryset.order_by(ordering)
+        params = self._get_list_params(request)
+        queryset = queryset.order_by(params["ordering"])
 
         serializer = FeedbackSerializer(
             queryset, many=True, context={"request": request}
@@ -381,6 +389,8 @@ class FeedbackViewSet(viewsets.ViewSet):
                 response=FeedbackSerializer(many=True),
                 description="已结束的反馈列表",
             ),
+            400: error_response("排序参数有误"),
+            401: error_response("未认证或令牌无效"),
         },
         tags=["反馈"],
     )
@@ -407,17 +417,8 @@ class FeedbackViewSet(viewsets.ViewSet):
         else:
             queryset = base_qs.filter(org=me)
 
-        ordering = request.query_params.get("ordering", "-feedback_time")
-        allowed = {
-            "feedback_time",
-            "-feedback_time",
-            "time",
-            "-time",
-            "modify_time",
-            "-modify_time",
-        }
-        if ordering in allowed:
-            queryset = queryset.order_by(ordering)
+        params = self._get_list_params(request)
+        queryset = queryset.order_by(params["ordering"])
 
         serializer = FeedbackSerializer(
             queryset, many=True, context={"request": request}
@@ -431,6 +432,7 @@ class FeedbackViewSet(viewsets.ViewSet):
                 response=FeedbackTypeSerializer(many=True),
                 description="反馈类型列表",
             ),
+            401: error_response("未认证或令牌无效"),
         },
         tags=["反馈"],
     )
@@ -463,6 +465,8 @@ class FeedbackViewSet(viewsets.ViewSet):
                 response=FeedbackSerializer(many=True),
                 description="公开反馈列表",
             ),
+            400: error_response("排序参数有误"),
+            401: error_response("未认证或令牌无效"),
         },
         tags=["反馈"],
     )
@@ -482,17 +486,8 @@ class FeedbackViewSet(viewsets.ViewSet):
             )
         )
 
-        ordering = request.query_params.get("ordering", "-feedback_time")
-        allowed = {
-            "feedback_time",
-            "-feedback_time",
-            "time",
-            "-time",
-            "modify_time",
-            "-modify_time",
-        }
-        if ordering in allowed:
-            queryset = queryset.order_by(ordering)
+        params = self._get_list_params(request)
+        queryset = queryset.order_by(params["ordering"])
 
         serializer = FeedbackSerializer(
             queryset, many=True, context={"request": request}
@@ -511,6 +506,7 @@ class FeedbackViewSet(viewsets.ViewSet):
                 response=OrganizationTypeMappingSerializer,
                 description="组织类型和组织映射数据",
             ),
+            401: error_response("未认证或令牌无效"),
         },
         tags=["反馈"],
     )
