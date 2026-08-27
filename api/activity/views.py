@@ -12,7 +12,6 @@ from rest_framework.exceptions import (
     AuthenticationFailed,
     NotFound,
     PermissionDenied,
-    Throttled,
     ValidationError,
 )
 from rest_framework.permissions import IsAuthenticated
@@ -23,16 +22,27 @@ from drf_spectacular.utils import (
     extend_schema,
 )
 
-from api.activity.checkin import do_checkin
+from api.activity.checkin import (
+    CheckinActivityNotFound,
+    CheckinClosed,
+    CheckinNotOpen,
+    CheckinNotRequired,
+    CheckinParticipationNotFound,
+    do_checkin,
+)
 from api.activity.serializers import (
     ActivityActionResultSerializer,
     ActivityCheckinRequestSerializer,
     ActivityDetailSerializer,
-    ActivityErrorSerializer,
     ActivityHomepageSerializer,
     ActivityMessageSerializer,
 )
 from api.authentication import WxJWTAuthentication
+from api.exceptions import (
+    APIError,
+    APIErrorResponseSerializer,
+    StandardizedExceptionHandlerMixin,
+)
 from app.activity_utils import (
     ActivityException,
     apply_activity_for_person,
@@ -46,84 +56,21 @@ from generic.models import User
 __all__ = ['ActivityViewSet']
 
 
-def _first_error(detail) -> str:
-    """Return the first human-readable message from a DRF error detail."""
-    if isinstance(detail, dict):
-        for value in detail.values():
-            return _first_error(value)
-        return ''
-    if isinstance(detail, (list, tuple)):
-        return _first_error(detail[0]) if detail else ''
-    return str(detail)
+def error_response(description: str) -> OpenApiResponse:
+    """Document a standardized activity API error response."""
+
+    return OpenApiResponse(
+        response=APIErrorResponseSerializer,
+        description=description,
+    )
 
 
-def _field_errors(detail) -> dict[str, list[str]]:
-    """Convert DRF field errors to the canonical string-list mapping."""
-    if not isinstance(detail, dict):
-        return {}
-    errors: dict[str, list[str]] = {}
-    for field, value in detail.items():
-        if field == 'detail':
-            continue
-        values = value if isinstance(value, (list, tuple)) else [value]
-        errors[str(field)] = [str(item) for item in values]
-    return errors
-
-
-class ActivityViewSet(viewsets.ViewSet):
+class ActivityViewSet(StandardizedExceptionHandlerMixin, viewsets.ViewSet):
     """
     ViewSet for activity homepage data.
     """
     permission_classes = [IsAuthenticated]
     authentication_classes = [WxJWTAuthentication]
-
-    def handle_exception(self, exc):
-        """Normalize errors from all activity endpoints."""
-        response = super().handle_exception(exc)
-        if isinstance(exc, AuthenticationFailed):
-            raw_message = _first_error(response.data)
-            missing = raw_message == (
-                'Authentication credentials were not provided'
-            )
-            code = 'not_authenticated' if missing else 'invalid_token'
-            message = (
-                '请先登录。' if missing else '登录状态无效或已过期。'
-            )
-        elif isinstance(exc, PermissionDenied):
-            code = 'permission_denied'
-            message = _first_error(response.data) or '无权执行此操作。'
-        elif isinstance(exc, NotFound):
-            code = 'not_found'
-            message = _first_error(response.data) or '请求的内容不存在。'
-        elif isinstance(exc, ValidationError):
-            code = 'validation_error'
-            message = _first_error(response.data) or '请求参数有误。'
-        elif isinstance(exc, Throttled):
-            code = 'throttled'
-            message = _first_error(response.data) or '请求过于频繁。'
-        else:
-            code = (
-                'internal_error'
-                if response.status_code >= status.HTTP_500_INTERNAL_SERVER_ERROR
-                else 'validation_error'
-            )
-            message = _first_error(response.data) or '请求失败。'
-        response.data = {
-            'code': code,
-            'message': message,
-            'errors': _field_errors(response.data),
-        }
-        return response
-
-    @staticmethod
-    def error_response(code, message, status_code, errors=None):
-        """Build a canonical activity API error response."""
-        serializer = ActivityErrorSerializer({
-            'code': code,
-            'message': message,
-            'errors': errors or {},
-        })
-        return Response(serializer.data, status=status_code)
 
     @extend_schema(
         summary="获取活动首页数据",
@@ -140,8 +87,8 @@ class ActivityViewSet(viewsets.ViewSet):
                 description="活动首页数据",
                 response=ActivityHomepageSerializer,
             ),
-            401: OpenApiResponse(description="未登录"),
-            403: OpenApiResponse(description="无权限"),
+            401: error_response("未认证或令牌无效"),
+            403: error_response("当前账号无权限"),
         },
         tags=['活动'],
     )
@@ -212,14 +159,9 @@ class ActivityViewSet(viewsets.ViewSet):
                 description="活动详情",
                 response=ActivityDetailSerializer,
             ),
-            401: OpenApiResponse(
-                description="未登录",
-                response=ActivityErrorSerializer,
-            ),
-            404: OpenApiResponse(
-                description="活动不存在",
-                response=ActivityErrorSerializer,
-            ),
+            400: error_response("活动 ID 格式错误"),
+            401: error_response("未认证或令牌无效"),
+            404: error_response("活动不存在"),
         },
         tags=['活动'],
     )
@@ -255,10 +197,11 @@ class ActivityViewSet(viewsets.ViewSet):
         ],
         responses={
             200: ActivityActionResultSerializer,
-            401: ActivityErrorSerializer,
-            403: ActivityErrorSerializer,
-            404: ActivityErrorSerializer,
-            409: ActivityErrorSerializer,
+            400: error_response("报名请求未通过"),
+            401: error_response("未认证或令牌无效"),
+            403: error_response("当前账号无报名权限"),
+            404: error_response("活动不存在"),
+            409: error_response("活动状态或名额冲突"),
         },
         tags=['活动'],
     )
@@ -277,10 +220,11 @@ class ActivityViewSet(viewsets.ViewSet):
         ],
         responses={
             200: ActivityActionResultSerializer,
-            401: ActivityErrorSerializer,
-            403: ActivityErrorSerializer,
-            404: ActivityErrorSerializer,
-            409: ActivityErrorSerializer,
+            400: error_response("取消报名请求未通过"),
+            401: error_response("未认证或令牌无效"),
+            403: error_response("当前账号无权限"),
+            404: error_response("活动不存在"),
+            409: error_response("活动状态冲突"),
         },
         tags=['活动'],
     )
@@ -322,16 +266,16 @@ class ActivityViewSet(viewsets.ViewSet):
 
             if request.method == 'POST':
                 if not activity.need_apply:
-                    return self.error_response(
-                        'conflict',
-                        '该活动无需报名。',
-                        status.HTTP_409_CONFLICT,
+                    raise APIError(
+                        code='activity.signup_not_required',
+                        message='该活动无需报名。',
+                        status_code=status.HTTP_409_CONFLICT,
                     )
                 if activity.status != Activity.Status.APPLYING:
-                    return self.error_response(
-                        'conflict',
-                        '活动报名暂未开放或已经截止。',
-                        status.HTTP_409_CONFLICT,
+                    raise APIError(
+                        code='activity.signup_closed',
+                        message='活动报名暂未开放或已经截止。',
+                        status_code=status.HTTP_409_CONFLICT,
                     )
                 if (
                     activity.inner
@@ -340,10 +284,10 @@ class ActivityViewSet(viewsets.ViewSet):
                         org=activity.organization_id,
                     ).exists()
                 ):
-                    return self.error_response(
-                        'permission_denied',
-                        f'该活动仅面向{activity.organization_id}内部成员。',
-                        status.HTTP_403_FORBIDDEN,
+                    raise APIError(
+                        code='activity.members_only',
+                        message=f'该活动仅面向{activity.organization_id}内部成员。',
+                        status_code=status.HTTP_403_FORBIDDEN,
                     )
                 try:
                     participation = apply_activity_for_person(
@@ -351,11 +295,11 @@ class ActivityViewSet(viewsets.ViewSet):
                         activity,
                     )
                 except ActivityException as exc:
-                    return self.error_response(
-                        'conflict',
-                        str(exc),
-                        status.HTTP_409_CONFLICT,
-                    )
+                    raise APIError(
+                        code='activity.signup_rejected',
+                        message=str(exc),
+                        status_code=status.HTTP_409_CONFLICT,
+                    ) from exc
                 message = (
                     '活动申请已提交，请等待报名结果。'
                     if activity.bidding
@@ -366,10 +310,10 @@ class ActivityViewSet(viewsets.ViewSet):
                     Activity.Status.APPLYING,
                     Activity.Status.WAITING,
                 ]:
-                    return self.error_response(
-                        'conflict',
-                        '当前状态不允许取消报名。',
-                        status.HTTP_409_CONFLICT,
+                    raise APIError(
+                        code='activity.withdrawal_closed',
+                        message='当前状态不允许取消报名。',
+                        status_code=status.HTTP_409_CONFLICT,
                     )
                 try:
                     participation = withdraw_activity_for_person(
@@ -377,11 +321,11 @@ class ActivityViewSet(viewsets.ViewSet):
                         activity,
                     )
                 except ActivityException as exc:
-                    return self.error_response(
-                        'conflict',
-                        str(exc),
-                        status.HTTP_409_CONFLICT,
-                    )
+                    raise APIError(
+                        code='activity.withdrawal_rejected',
+                        message=str(exc),
+                        status_code=status.HTTP_409_CONFLICT,
+                    ) from exc
                 message = (
                     '已取消申请。' if activity.bidding else '已取消报名。'
                 )
@@ -404,18 +348,11 @@ class ActivityViewSet(viewsets.ViewSet):
                 description="签到成功",
                 response=ActivityMessageSerializer,
             ),
-            400: OpenApiResponse(
-                description="请求参数错误或业务校验失败",
-                response=ActivityErrorSerializer,
-            ),
-            401: OpenApiResponse(
-                description="未登录",
-                response=ActivityErrorSerializer,
-            ),
-            403: OpenApiResponse(
-                description="需使用个人账号",
-                response=ActivityErrorSerializer,
-            ),
+            400: error_response("请求参数错误或签到条件不满足"),
+            401: error_response("未认证或令牌无效"),
+            403: error_response("当前账号无签到权限"),
+            404: error_response("活动不存在"),
+            409: error_response("签到窗口已关闭"),
         },
         tags=['活动'],
     )
@@ -433,8 +370,31 @@ class ActivityViewSet(viewsets.ViewSet):
         aid = request_serializer.validated_data['aid']
 
         person = get_person_or_org(request.user)
-        success, message = do_checkin(person, aid)
-        if not success:
-            raise ValidationError(message)
+        try:
+            message = do_checkin(person, aid)
+        except CheckinActivityNotFound as exc:
+            raise NotFound(str(exc)) from exc
+        except CheckinNotRequired as exc:
+            raise APIError(
+                code='activity.checkin_not_required',
+                message=str(exc),
+            ) from exc
+        except CheckinParticipationNotFound as exc:
+            raise APIError(
+                code='activity.not_registered',
+                message=str(exc),
+            ) from exc
+        except CheckinClosed as exc:
+            raise APIError(
+                code='activity.checkin_closed',
+                message=str(exc),
+                status_code=status.HTTP_409_CONFLICT,
+            ) from exc
+        except CheckinNotOpen as exc:
+            raise APIError(
+                code='activity.checkin_not_open',
+                message=str(exc),
+                status_code=status.HTTP_409_CONFLICT,
+            ) from exc
 
         return Response({"message": message}, status=status.HTTP_200_OK)

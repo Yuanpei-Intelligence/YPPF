@@ -222,6 +222,12 @@ class ActivitySignupAPITestCase(APITestCase):
         self.assertEqual(response.data['code'], expected_code)
         self.assertIsInstance(response.data['message'], str)
         self.assertIsInstance(response.data['errors'], dict)
+        for field_errors in response.data['errors'].values():
+            self.assertIsInstance(field_errors, list)
+            for item in field_errors:
+                self.assertEqual(set(item.keys()), {'code', 'message'})
+                self.assertIsInstance(item['code'], str)
+                self.assertIsInstance(item['message'], str)
 
     def test_detail_returns_null_participation_before_signup(self):
         """A person who has not signed up sees a null status."""
@@ -236,7 +242,7 @@ class ActivitySignupAPITestCase(APITestCase):
         self.assert_api_error(
             response,
             status.HTTP_401_UNAUTHORIZED,
-            'not_authenticated',
+            'invalid_token',
         )
 
     def test_signup_requires_person_account(self):
@@ -347,7 +353,7 @@ class ActivitySignupAPITestCase(APITestCase):
         self.assert_api_error(
             response,
             status.HTTP_409_CONFLICT,
-            'conflict',
+            'activity.signup_rejected',
         )
         self.activity.refresh_from_db()
         self.assertEqual(self.activity.current_participants, 1)
@@ -363,7 +369,7 @@ class ActivitySignupAPITestCase(APITestCase):
         self.assert_api_error(
             response,
             status.HTTP_409_CONFLICT,
-            'conflict',
+            'activity.signup_rejected',
         )
         self.assertFalse(
             Participation.objects.filter(
@@ -383,7 +389,7 @@ class ActivitySignupAPITestCase(APITestCase):
         self.assert_api_error(
             response,
             status.HTTP_409_CONFLICT,
-            'conflict',
+            'activity.signup_closed',
         )
 
     def test_signup_unknown_activity_returns_not_found(self):
@@ -410,7 +416,7 @@ class ActivitySignupAPITestCase(APITestCase):
         self.assert_api_error(
             response,
             status.HTTP_403_FORBIDDEN,
-            'permission_denied',
+            'activity.members_only',
         )
 
     def test_bidding_signup_creates_pending_application(self):
@@ -460,7 +466,7 @@ class ActivitySignupAPITestCase(APITestCase):
         self.assert_api_error(
             response,
             status.HTTP_409_CONFLICT,
-            'conflict',
+            'activity.withdrawal_rejected',
         )
 
     def test_withdraw_after_activity_starts_returns_conflict(self):
@@ -479,7 +485,7 @@ class ActivitySignupAPITestCase(APITestCase):
         self.assert_api_error(
             response,
             status.HTTP_409_CONFLICT,
-            'conflict',
+            'activity.withdrawal_closed',
         )
 
     def test_checkin_after_signup_updates_participation(self):
@@ -521,6 +527,10 @@ class ActivitySignupAPITestCase(APITestCase):
             'validation_error',
         )
         self.assertIn('aid', response.data['errors'])
+        self.assertEqual(
+            response.data['errors']['aid'][0]['code'],
+            'required',
+        )
 
     def test_checkin_rejects_activity_without_checkin(self):
         """The API cannot check users into an activity that needs no check-in."""
@@ -544,5 +554,5 @@ class ActivitySignupAPITestCase(APITestCase):
         self.assert_api_error(
             response,
             status.HTTP_400_BAD_REQUEST,
-            'validation_error',
+            'activity.checkin_not_required',
         )

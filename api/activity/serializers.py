@@ -140,17 +140,6 @@ class ActivityMessageSerializer(serializers.Serializer):
     message = serializers.CharField(help_text="User-facing result message")
 
 
-class ActivityErrorSerializer(serializers.Serializer):
-    """Canonical error response for activity mini-program endpoints."""
-
-    code = serializers.CharField(help_text="Stable machine-readable error code")
-    message = serializers.CharField(help_text="Concise user-facing message")
-    errors = serializers.DictField(
-        child=serializers.ListField(child=serializers.CharField()),
-        help_text="Field errors; empty when the error is not field-specific",
-    )
-
-
 class TodayActivitySerializer(serializers.Serializer):
     """Serializer for today's activity item."""
 

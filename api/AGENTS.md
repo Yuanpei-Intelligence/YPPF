@@ -284,11 +284,10 @@ New mini-program endpoints use one error contract. The same contract is the
 default for a new error branch in an existing endpoint and for an endpoint
 whose exception handling is substantially changed. An untouched legacy
 endpoint may retain its documented response for compatibility, but legacy
-shapes are exceptions, not examples to copy. In particular, the activity
-ViewSet currently has its own three-field normalizer whose `errors` values are
-string lists; it remains a legacy exception until that whole ViewSet is moved
-to the shared handler below. Unless a route or schema explicitly documents a
-compatibility exception, implement the new contract first.
+shapes are exceptions, not examples to copy. The activity ViewSet uses the
+shared handler; its former string-list field-error format is no longer a
+supported compatibility contract. Unless a route or schema explicitly
+documents a compatibility exception, implement the new contract first.
 
 Successful responses keep their endpoint-specific body. Do not wrap them in a
 new `data`, `code`, or `success` envelope. Every error from an opted-in view has
