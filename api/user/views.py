@@ -4,28 +4,29 @@ User profile APIs.
 
 from __future__ import annotations
 
+from datetime import datetime
+
+from django.db import transaction
 from drf_spectacular.utils import OpenApiResponse, extend_schema
+from rest_framework import status
+from rest_framework.exceptions import PermissionDenied
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
-from rest_framework.exceptions import PermissionDenied
-from rest_framework import serializers
 
 from api.authentication import WxJWTAuthentication
-
-
-class DailyLoginResponseSerializer(serializers.Serializer):
-    """Response serializer for daily login (sign-in) endpoint."""
-
-    message = serializers.CharField(
-        help_text="Sign-in result or status message")
-from app.models import NaturalPerson
-from app.utils import get_user_wallpaper, get_person_or_org
-from generic.models import User
-
+from api.exceptions import (
+    APIErrorResponseSerializer,
+    StandardizedExceptionHandlerMixin,
+)
+from api.user.serializers import (
+    DailyLoginResponseSerializer,
+    MeResponseSerializer,
+)
 from app.YQPoint_utils import add_signin_point
-from django.db import transaction
-from datetime import datetime
+from app.models import NaturalPerson
+from app.utils import get_person_or_org, get_user_wallpaper
+from generic.models import User
 
 
 def _serialize_me(user: User) -> dict:
@@ -35,11 +36,9 @@ def _serialize_me(user: User) -> dict:
     This endpoint is meant for "my profile" so we can return more fields than
     public profile pages, but we still keep the payload stable and minimal.
     """
-    try:
-        classified = get_person_or_org(user)
-    except AssertionError:
-        raise PermissionDenied("不存在对应的自然人或组织，该账号不可登录小程序")
-
+    if not user.is_valid():
+        raise PermissionDenied("该账号不可登录小程序。")
+    classified = get_person_or_org(user)
 
     base = {
         "id": user.pk,
@@ -94,7 +93,14 @@ def _serialize_me(user: User) -> dict:
     return base
 
 
-class MeView(APIView):
+def error_response(description: str) -> OpenApiResponse:
+    return OpenApiResponse(
+        response=APIErrorResponseSerializer,
+        description=description,
+    )
+
+
+class MeView(StandardizedExceptionHandlerMixin, APIView):
     """
     Return the current authenticated user's own profile info.
     """
@@ -106,27 +112,11 @@ class MeView(APIView):
         summary="获取本人信息",
         description="返回当前登录用户（本人）的个人信息/小组信息",
         responses={
-            200: OpenApiResponse(
-                description="本人信息",
-                response={
-                    "type": "object",
-                    "properties": {
-                        "id": {"type": "integer"},
-                        "username": {"type": "string"},
-                        "name": {"type": "string"},
-                        "utype": {"type": "string"},
-                        "active": {"type": "boolean"},
-                        "is_staff": {"type": "boolean"},
-                        "is_person": {"type": "boolean"},
-                        "is_org": {"type": "boolean"},
-                        "avatar_url": {"type": "string"},
-                        "wallpaper_url": {"type": "string"},
-                        "absolute_url": {"type": "string"},
-                        "profile": {"type": "object"},
-                    },
-                },
-            ),
-            403: OpenApiResponse(description="未登录或无权限"),
+            200: MeResponseSerializer,
+            401: error_response("未认证或令牌无效"),
+            403: error_response("当前账号不支持小程序登录"),
+            405: error_response("请求方法不受支持"),
+            500: error_response("服务器暂时无法处理请求"),
         },
         tags=["用户"],
     )
@@ -134,7 +124,7 @@ class MeView(APIView):
         return Response(_serialize_me(request.user))
 
 
-class DailyLoginView(APIView):
+class DailyLoginView(StandardizedExceptionHandlerMixin, APIView):
     """
     Daily login, add YQPoint for user if not logged in today
     """
@@ -148,7 +138,9 @@ class DailyLoginView(APIView):
         description="每日登录，如果用户今天未登录，则添加 YQPoint",
         responses={
             200: DailyLoginResponseSerializer,
-            401: OpenApiResponse(description="未登录"),
+            401: error_response("未认证或令牌无效"),
+            405: error_response("请求方法不受支持"),
+            500: error_response("服务器暂时无法处理请求"),
         },
         tags=["用户"],
     )
@@ -159,9 +151,18 @@ class DailyLoginView(APIView):
             with transaction.atomic():
                 np = NaturalPerson.objects.get_by_user(
                     request.user, update=True)
-                if np.last_time_login is None or np.last_time_login.date() != nowtime.date():
+                if (
+                    np.last_time_login is None
+                    or np.last_time_login.date() != nowtime.date()
+                ):
                     np.last_time_login = nowtime
-                    np.save()
-                    n, notice = add_signin_point(request.user)
-                    return Response({"message": notice}, status=200)
-        return Response({"message": "今日已登录"}, status=200)
+                    np.save(update_fields=["last_time_login"])
+                    _points, notice = add_signin_point(request.user)
+                    return Response(
+                        {"message": notice},
+                        status=status.HTTP_200_OK,
+                    )
+        return Response(
+            {"message": "今日已登录"},
+            status=status.HTTP_200_OK,
+        )
