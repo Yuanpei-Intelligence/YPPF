@@ -36,6 +36,22 @@ urlpatterns = [
 ]
 
 
+def assert_api_error(testcase, response, expected_status, expected_code):
+    """Assert the shared mini-program API error contract."""
+
+    testcase.assertEqual(response.status_code, expected_status)
+    payload = response.json()
+    testcase.assertEqual(set(payload), {'code', 'message', 'errors'})
+    testcase.assertEqual(payload['code'], expected_code)
+    testcase.assertIsInstance(payload['message'], str)
+    testcase.assertIsInstance(payload['errors'], dict)
+    for field_errors in payload['errors'].values():
+        testcase.assertIsInstance(field_errors, list)
+        for item in field_errors:
+            testcase.assertEqual(set(item), {'code', 'message'})
+    return payload
+
+
 def concurrent_bind(barrier, payload):
     close_old_connections()
     try:
@@ -243,7 +259,12 @@ class WechatBindingApiTestCase(TestCase):
         })
 
     def test_forged_credential_is_rejected(self):
-        self.assertEqual(self.bind("forged").status_code, 400)
+        assert_api_error(
+            self,
+            self.bind("forged"),
+            400,
+            'auth.binding_rejected',
+        )
 
     def test_wrong_purpose_credential_is_rejected(self):
         nonce = "wrong-purpose-v18-nonce"
@@ -364,7 +385,14 @@ class WechatBindingApiTestCase(TestCase):
         credential = self.issue()
         for attempt in range(5):
             response = self.bind(credential, password="wrong-password")
-            self.assertEqual(response.status_code, 401, attempt)
+            payload = assert_api_error(
+                self,
+                response,
+                401,
+                'auth.invalid_credentials',
+            )
+            self.assertIn('username', payload['errors'], attempt)
+            self.assertIn('password', payload['errors'], attempt)
         pending = PendingWechatBinding.objects.get()
         self.assertEqual(pending.failed_attempts, 5)
         self.assertEqual(self.bind(credential).status_code, 400)
@@ -455,8 +483,13 @@ class WechatBindingApiTestCase(TestCase):
             credential,
             username=organization_user.username,
         )
-        self.assertEqual(response.status_code, 400)
-        self.assertIn("username", response.json())
+        payload = assert_api_error(
+            self,
+            response,
+            400,
+            'auth.binding_rejected',
+        )
+        self.assertIn("username", payload['errors'])
         self.assertTrue(PendingWechatBinding.objects.exists())
         self.assertFalse(UserWechatProfile.objects.exists())
 
@@ -473,8 +506,13 @@ class WechatBindingApiTestCase(TestCase):
             credential,
             username=unsupported_user.username,
         )
-        self.assertEqual(response.status_code, 400)
-        self.assertIn("username", response.json())
+        payload = assert_api_error(
+            self,
+            response,
+            400,
+            'auth.binding_rejected',
+        )
+        self.assertIn("username", payload['errors'])
         self.assertTrue(PendingWechatBinding.objects.exists())
         self.assertFalse(UserWechatProfile.objects.exists())
 

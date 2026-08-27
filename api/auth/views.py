@@ -70,7 +70,7 @@ import requests
 from django.conf import settings
 from drf_spectacular.utils import extend_schema, OpenApiResponse
 from rest_framework import status
-from rest_framework.exceptions import ValidationError
+from rest_framework.exceptions import NotFound, PermissionDenied
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -86,11 +86,25 @@ from api.auth.binding import (
 from api.auth.serializers import WxBindSerializer, WxCodeSerializer
 from api.auth.ticket import WEBVIEW_TICKET_TTL, create_webview_ticket
 from api.authentication import WxJWTAuthentication
+from api.exceptions import (
+    APIError,
+    APIErrorResponseSerializer,
+    StandardizedExceptionHandlerMixin,
+)
 from generic.models import UserWechatProfile, User
 from app.utils import get_person_or_org
 from app.models import NaturalPerson, Organization, Position
 
 logger = logging.getLogger(__name__)
+
+
+def error_response(description: str) -> OpenApiResponse:
+    """Document the shared authentication error envelope."""
+
+    return OpenApiResponse(
+        response=APIErrorResponseSerializer,
+        description=description,
+    )
 
 
 def _fetch_openid_from_wechat(code: str) -> Tuple[str | None, str | None]:
@@ -102,8 +116,8 @@ def _fetch_openid_from_wechat(code: str) -> Tuple[str | None, str | None]:
     try:
         appid = CONFIG.appid
         secret = CONFIG.secret
-    except Exception as exc:  # noqa: BLE001 - config loading issues
-        logger.error("wx_miniapp appid/secret is not configured: %s", exc)
+    except (AttributeError, KeyError, TypeError, ValueError) as exc:
+        logger.error("wx_miniapp appid/secret is not configured", exc_info=exc)
         return None, "服务器未配置微信登录能力"
 
     params = {
@@ -116,13 +130,16 @@ def _fetch_openid_from_wechat(code: str) -> Tuple[str | None, str | None]:
         resp = requests.get(CONFIG.jscode2session_url, params=params, timeout=5)
         resp.raise_for_status()
         payload = resp.json()
-    except Exception as exc:  # noqa: BLE001 - we want to surface network issues
-        logger.warning("jscode2session request failed: %s", exc)
+    except (requests.RequestException, ValueError) as exc:
+        logger.warning("jscode2session request failed", exc_info=exc)
         return None, "无法访问微信登录服务"
 
     if payload.get("errcode"):
-        logger.info("jscode2session returned error: %s", payload)
-        return None, payload.get("errmsg") or "微信登录失败"
+        logger.info(
+            "jscode2session rejected login code: errcode=%s",
+            payload.get("errcode"),
+        )
+        return None, "微信登录凭证无效或已过期"
 
     openid = payload.get("openid")
     if not openid:
@@ -204,8 +221,8 @@ def _get_loginable_accounts(account_id: str) -> list[dict]:
                     "type": "org",
                     "avatar": org.get_user_ava(),
                 })
-        except Exception as exc:
-            logger.warning(f"获取个人账户 {account_id} 管理的组织时出错: {exc}")
+        except NaturalPerson.DoesNotExist:
+            return accounts
 
     return accounts
 
@@ -218,7 +235,7 @@ def _check_user_in_accounts(username: str, account_id: str) -> bool:
     return any(acc["username"] == username for acc in accounts)
 
 
-class WxCodeLoginView(APIView):
+class WxCodeLoginView(StandardizedExceptionHandlerMixin, APIView):
     """
     Accepts the temporary code from ``wx.login`` and returns either a JWT
     (for already-bound users) or an opaque one-time ``signed_openid`` binding
@@ -262,7 +279,10 @@ class WxCodeLoginView(APIView):
                     },
                 },
             ),
-            400: OpenApiResponse(description="请求错误，如 code 无效或微信服务异常"),
+            400: error_response("微信登录凭证或目标账号有误"),
+            403: error_response("无权登录目标账号"),
+            404: error_response("目标账号不存在"),
+            503: error_response("微信登录服务暂时不可用"),
         },
         tags=["微信小程序认证"],
     )
@@ -274,7 +294,23 @@ class WxCodeLoginView(APIView):
 
         openid, error = _fetch_openid_from_wechat(code)
         if error:
-            return Response({"detail": error}, status=status.HTTP_400_BAD_REQUEST)
+            if error == "服务器未配置微信登录能力":
+                raise APIError(
+                    code='auth.wechat_not_configured',
+                    message='服务器暂未配置微信登录能力。',
+                    status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                )
+            if error == "无法访问微信登录服务":
+                raise APIError(
+                    code='auth.wechat_unavailable',
+                    message='微信登录服务暂时不可用，请稍后重试。',
+                    status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                )
+            raise APIError(
+                code='auth.wechat_code_rejected',
+                message='微信登录凭证无效或已过期，请重试。',
+                errors={'code': [{'code': 'invalid', 'message': '请重新获取微信登录凭证。'}]},
+            )
 
         profile = (
             UserWechatProfile.objects.select_related("user")
@@ -291,26 +327,20 @@ class WxCodeLoginView(APIView):
                 # 获取主账号的 account_id
                 main_account_id = _get_account_id(main_user)
                 if main_account_id is None:
-                    return Response(
-                        {"detail": "无法确定主账号"},
-                        status=status.HTTP_400_BAD_REQUEST
+                    raise APIError(
+                        code='auth.main_account_unavailable',
+                        message='无法确定主账号。',
                     )
 
                 # 检查 username 是否在可登录账户列表中
                 if not _check_user_in_accounts(username, main_account_id):
-                    return Response(
-                        {"detail": "没有登录到该账户的权限"},
-                        status=status.HTTP_403_FORBIDDEN
-                    )
+                    raise PermissionDenied('没有登录到该账户的权限。')
 
                 # 获取要登录的用户
                 try:
                     target_user = User.objects.get(username=username)
-                except User.DoesNotExist:
-                    return Response(
-                        {"detail": "指定的用户不存在"},
-                        status=status.HTTP_400_BAD_REQUEST
-                    )
+                except User.DoesNotExist as exc:
+                    raise NotFound('指定的用户不存在。') from exc
 
                 # 使用目标用户签发 JWT，但 account_id 仍然是主账号的
                 token = _issue_jwt_for_user(
@@ -346,10 +376,11 @@ class WxCodeLoginView(APIView):
         try:
             signed_openid = issue_binding_credential(openid)
         except WechatBindingAttemptLimitError as exc:
-            return Response(
-                {"detail": str(exc)},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
+            raise APIError(
+                code='auth.binding_attempts_exhausted',
+                message=str(exc),
+                errors={exc.field: [{'code': 'attempts_exhausted', 'message': str(exc)}]},
+            ) from exc
 
         return Response(
             {
@@ -360,7 +391,7 @@ class WxCodeLoginView(APIView):
         )
 
 
-class WxBindView(APIView):
+class WxBindView(StandardizedExceptionHandlerMixin, APIView):
     """
     Redeem an opaque one-time ``signed_openid`` with username/password to bind
     its openid to a Django user and return a JWT. It expires after
@@ -397,8 +428,8 @@ class WxBindView(APIView):
                     },
                 },
             ),
-            400: OpenApiResponse(description="请求错误，如 signed_openid 无效、已使用、已过期或已耗尽"),
-            401: OpenApiResponse(description="认证失败，账号或密码错误；达到默认 5 次失败后凭据失效"),
+            400: error_response("绑定凭据或账号不符合绑定条件"),
+            401: error_response("账号或密码错误"),
         },
         tags=["微信小程序认证"],
     )
@@ -413,12 +444,21 @@ class WxBindView(APIView):
                 password=serializer.validated_data["password"],
             )
         except WechatBindingAuthenticationError as exc:
-            return Response(
-                {"detail": str(exc)},
-                status=status.HTTP_401_UNAUTHORIZED,
-            )
+            raise APIError(
+                code='auth.invalid_credentials',
+                message='用户名或密码错误。',
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                errors={
+                    'username': [{'code': 'invalid_credentials', 'message': '请检查用户名。'}],
+                    'password': [{'code': 'invalid_credentials', 'message': '请检查密码。'}],
+                },
+            ) from exc
         except WechatBindingError as exc:
-            raise ValidationError({exc.field: str(exc)}) from exc
+            raise APIError(
+                code='auth.binding_rejected',
+                message=str(exc),
+                errors={exc.field: [{'code': 'invalid', 'message': str(exc)}]},
+            ) from exc
 
         account_id = _get_account_id(user)
         token = _issue_jwt_for_user(user, account_id=account_id)
@@ -434,7 +474,7 @@ class WxBindView(APIView):
         )
 
 
-class WxUnbindView(APIView):
+class WxUnbindView(StandardizedExceptionHandlerMixin, APIView):
     permission_classes = [IsAuthenticated]
     authentication_classes = [WxJWTAuthentication]
 
@@ -443,21 +483,16 @@ class WxUnbindView(APIView):
         description="使用 JWT 解除微信账号绑定",
         responses={
             200: OpenApiResponse(description="成功响应"),
+            401: error_response("未认证或令牌无效"),
         },
         tags=["微信小程序认证"],
     )
     def post(self, request):
-        user = request.user
-        if not user or not user.is_authenticated:
-            return Response(
-                {"detail": "未登录"},
-                status=status.HTTP_401_UNAUTHORIZED,
-            )
-        UserWechatProfile.objects.filter(user=user).delete()
+        UserWechatProfile.objects.filter(user=request.user).delete()
 
         return Response(status=status.HTTP_200_OK)
 
-class GetMyAccountsView(APIView):
+class GetMyAccountsView(StandardizedExceptionHandlerMixin, APIView):
     """
     获取当前 account_id 的所有可以登录的用户列表。
     需要 JWT 认证。
@@ -491,7 +526,8 @@ class GetMyAccountsView(APIView):
                     },
                 },
             ),
-            400: OpenApiResponse(description="请求错误，如无法确定主账号"),
+            400: error_response("无法确定主账号"),
+            401: error_response("未认证或令牌无效"),
         },
         tags=["微信小程序认证"],
     )
@@ -510,9 +546,9 @@ class GetMyAccountsView(APIView):
             account_id = _get_account_id(request.user)
 
         if account_id is None:
-            return Response(
-                {"detail": "无法确定主账号"},
-                status=status.HTTP_400_BAD_REQUEST
+            raise APIError(
+                code='auth.main_account_unavailable',
+                message='无法确定主账号。',
             )
 
         accounts = _get_loginable_accounts(account_id)
@@ -522,7 +558,7 @@ class GetMyAccountsView(APIView):
         })
 
 
-class CheckLoginView(APIView):
+class CheckLoginView(StandardizedExceptionHandlerMixin, APIView):
     """
     Check if the user is logged in.
     """
@@ -543,13 +579,11 @@ class CheckLoginView(APIView):
                     "type": {"type": "string", "enum": ["person", "org"]},
                 },
             }),
-            401: OpenApiResponse(description="未登录"),
+            401: error_response("未认证或令牌无效"),
         },
         tags=["微信小程序认证"],
     )
     def get(self, request):
-        if not request.user.is_authenticated:
-            return Response(status=status.HTTP_401_UNAUTHORIZED)
         return Response({
             "is_login": True,
             "username": request.user.username,
@@ -558,7 +592,7 @@ class CheckLoginView(APIView):
         })
 
 
-class ExchangeTicketView(APIView):
+class ExchangeTicketView(StandardizedExceptionHandlerMixin, APIView):
     """
     用 JWT 换取一次性 ticket，用于 webview 跳转登录。
     ticket 在 /redirect/?ticket=xxx 使用一次后立即失效，提高安全性。
@@ -581,18 +615,12 @@ class ExchangeTicketView(APIView):
                     },
                 },
             ),
-            401: OpenApiResponse(description="未提供或无效的 JWT"),
+            401: error_response("未提供或无效的 JWT"),
         },
         tags=["微信小程序认证"],
     )
     def post(self, request):
-        user = request.user
-        if not user or not user.is_authenticated:
-            return Response(
-                {"detail": "未认证"},
-                status=status.HTTP_401_UNAUTHORIZED,
-            )
-        ticket = create_webview_ticket(user.pk)
+        ticket = create_webview_ticket(request.user.pk)
         return Response({
             "ticket": ticket,
             "expires_in": WEBVIEW_TICKET_TTL,
