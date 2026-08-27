@@ -3,7 +3,11 @@ from django.core.exceptions import ValidationError
 from questionnaire.models import Question
 
 
-def validate_answer_body(question: Question, body: str) -> None:
+def validate_answer_body(
+    question: Question,
+    body: str,
+    valid_choice_orders=None,
+) -> None:
     """Validate a non-empty answer against its question's choice rules."""
     if question.type == Question.Type.TEXT:
         return
@@ -17,7 +21,9 @@ def validate_answer_body(question: Question, body: str) -> None:
     except ValueError as exc:
         raise ValidationError('选项答案格式错误！') from exc
 
-    valid_choice_orders = set(question.choices.values_list('order', flat=True))
+    if valid_choice_orders is None:
+        valid_choice_orders = question.choices.values_list('order', flat=True)
+    valid_choice_orders = set(valid_choice_orders)
     order_set = set(parsed_orders)
     if not order_set.issubset(valid_choice_orders):
         raise ValidationError('选项答案超出有效范围！')

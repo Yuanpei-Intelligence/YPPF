@@ -53,7 +53,14 @@ class Command(BaseCommand):
         for col_num, column_title in enumerate(headers, 1):
             ws.cell(row=1, column=col_num, value=column_title)
 
-        answer_sheets = AnswerSheet.objects.filter(survey=survey)
+        answer_sheets = (
+            AnswerSheet.objects
+            .filter(
+                survey=survey,
+                status=AnswerSheet.Status.SUBMITTED,
+            )
+            .prefetch_related('answertext_set')
+        )
 
         # Iterate through the AnswerSheet objects
         for row_num, answer_sheet in tqdm(

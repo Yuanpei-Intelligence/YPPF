@@ -1,5 +1,7 @@
 from rest_framework import permissions
 
+from questionnaire.models import AnswerSheet
+
 __all__ = [
     'IsTextOwnerOrAsker',
     'IsSheetOwnerOrAsker',
@@ -8,23 +10,64 @@ __all__ = [
     'IsChoiceOwnerOrReadOnly',
 ]
 
-
-def check_owner_or_asker(request, owner, asker):
-    return request.user.is_staff or request.user == owner or request.user == asker
-
-
 class IsTextOwnerOrAsker(permissions.BasePermission):
+    allowed_actions = {
+        'answer_owner',
+        'create',
+        'destroy',
+        'metadata',
+        'partial_update',
+        'retrieve',
+        'survey_owner',
+        'update',
+    }
+
+    def has_permission(self, request, view):
+        return view.action in self.allowed_actions
+
     def has_object_permission(self, request, view, obj):
-        owner = obj.answersheet.creator
-        asker = obj.question.survey.creator
-        return check_owner_or_asker(request, owner, asker)
+        sheet = obj.answersheet
+        if request.user == sheet.creator:
+            return (
+                request.method in permissions.SAFE_METHODS
+                or sheet.status == AnswerSheet.Status.DRAFT
+            )
+        return (
+            request.method in permissions.SAFE_METHODS
+            and sheet.status == AnswerSheet.Status.SUBMITTED
+            and request.user == sheet.survey.creator
+        )
 
 
 class IsSheetOwnerOrAsker(permissions.BasePermission):
+    allowed_actions = {
+        'answer_owner',
+        'create',
+        'destroy',
+        'metadata',
+        'partial_update',
+        'retrieve',
+        'submit',
+        'survey_owner',
+        'update',
+    }
+
+    def has_permission(self, request, view):
+        return view.action in self.allowed_actions
+
     def has_object_permission(self, request, view, obj):
-        owner = obj.creator
-        asker = obj.survey.creator
-        return check_owner_or_asker(request, owner, asker)
+        if request.user == obj.creator:
+            if (
+                request.method in permissions.SAFE_METHODS
+                or view.action == 'submit'
+            ):
+                return True
+            return obj.status == AnswerSheet.Status.DRAFT
+        return (
+            request.method in permissions.SAFE_METHODS
+            and obj.status == AnswerSheet.Status.SUBMITTED
+            and request.user == obj.survey.creator
+        )
 
 
 def check_owner_or_read_only(request, owner):

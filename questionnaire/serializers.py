@@ -43,7 +43,8 @@ class AnswerSheetSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = AnswerSheet
-        fields = '__all__'
+        fields = ['id', 'survey', 'creator', 'create_time', 'status']
+        read_only_fields = ['id', 'create_time', 'status']
 
 
 class AnswerTextSerializer(serializers.ModelSerializer):
@@ -52,9 +53,22 @@ class AnswerTextSerializer(serializers.ModelSerializer):
         fields = '__all__'
 
     def validate(self, attrs):
-        question = attrs['question']
-        answersheet = attrs['answersheet']
-        body = (attrs.get('body') or '').strip()
+        instance = getattr(self, 'instance', None)
+        question = attrs.get(
+            'question',
+            instance.question if instance is not None else None,
+        )
+        answersheet = attrs.get(
+            'answersheet',
+            instance.answersheet if instance is not None else None,
+        )
+        body = (
+            attrs.get(
+                'body',
+                instance.body if instance is not None else '',
+            )
+            or ''
+        ).strip()
 
         if question.survey != answersheet.survey:
             raise serializers.ValidationError("问题与答卷不属于同一问卷！")

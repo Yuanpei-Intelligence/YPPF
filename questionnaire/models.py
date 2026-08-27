@@ -47,6 +47,12 @@ class AnswerSheet(models.Model):
     class Meta:
         verbose_name = "答卷"
         verbose_name_plural = verbose_name
+        constraints = [
+            models.UniqueConstraint(
+                fields=['creator', 'survey'],
+                name='unique_answersheet_creator_survey',
+            ),
+        ]
 
     class Status(models.IntegerChoices):
         DRAFT = choice(0, "存为草稿")

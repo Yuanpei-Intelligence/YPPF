@@ -68,10 +68,25 @@ class RankingQuestionTests(TestCase):
         self.assertIn('排序题不允许重复选项', str(serializer.errors))
 
     def test_export_command_outputs_ranking_text(self):
+        self.sheet.status = AnswerSheet.Status.SUBMITTED
+        self.sheet.save(update_fields=['status'])
         AnswerText.objects.create(
             question=self.question,
             answersheet=self.sheet,
             body='2,1,3',
+        )
+        draft_owner = User.objects.create_user(
+            username='draft-export-owner',
+            name='Draft Export Owner',
+        )
+        draft_sheet = AnswerSheet.objects.create(
+            survey=self.survey,
+            creator=draft_owner,
+        )
+        AnswerText.objects.create(
+            question=self.question,
+            answersheet=draft_sheet,
+            body='1,2,3',
         )
 
         with tempfile.TemporaryDirectory() as tmp_dir:
@@ -84,7 +99,7 @@ class RankingQuestionTests(TestCase):
                 ws.cell(row=row_index, column=1).value
                 for row_index in range(2, ws.max_row + 1)
             ]
-            self.assertIn('1. Beta; 2. Alpha; 3. Gamma', values)
+            self.assertEqual(values, ['1. Beta; 2. Alpha; 3. Gamma'])
 
     def test_decode_choice_text_uses_in_memory_map(self):
         choice_text_by_key = {

@@ -196,3 +196,17 @@ class SampleSqlIntegrityTests(SimpleTestCase):
             self.sql, 'yp_library_lendrecord', reader_fk_col
         ):
             self.assertIn(fk_val, set(reader_ids))
+
+    def test_questionnaire_sample_sheets_use_submitted_status(self):
+        """Completed sample responses must not be imported as mutable drafts."""
+        if 'INSERT INTO `questionnaire_answersheet`' not in self.sql:
+            self.skipTest('no questionnaire answer sheets in dump')
+        statuses = {
+            status
+            for _, status in _fk_refs(
+                self.sql,
+                'questionnaire_answersheet',
+                'status',
+            )
+        }
+        self.assertEqual(statuses, {1})

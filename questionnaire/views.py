@@ -1,13 +1,20 @@
+from django.db import transaction
 from django.db.models import Q
 from rest_framework import viewsets
 from rest_framework.authentication import SessionAuthentication
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.decorators import action
+from rest_framework.exceptions import NotFound, ValidationError
 from rest_framework.response import Response
 
 from questionnaire.models import *
 from questionnaire.serializers import *
 from questionnaire.permissions import *
+from questionnaire.utils import (
+    create_answersheet,
+    lock_draft_answersheet,
+    submit_answersheet,
+)
 
 
 # 用viewsets
@@ -83,35 +90,82 @@ class AnswerTextViewSet(viewsets.ModelViewSet):
     permission_classes = [IsAuthenticated, IsTextOwnerOrAsker]
     serializer_class = AnswerTextSerializer
 
-    # debug时可以注释掉
-    def list(self, request, *args, **kwargs):
-        raise PermissionError("禁止直接查看所有答案！")
+    def get_queryset(self):
+        texts = AnswerText.objects.select_related(
+            'answersheet__survey',
+            'question__survey',
+        )
+        if self.action in ('update', 'partial_update', 'destroy'):
+            return texts.filter(answersheet__creator=self.request.user)
+        if self.action == 'retrieve':
+            return texts.filter(
+                Q(answersheet__creator=self.request.user)
+                | Q(
+                    answersheet__survey__creator=self.request.user,
+                    answersheet__status=AnswerSheet.Status.SUBMITTED,
+                )
+            )
+        return texts.filter(answersheet__creator=self.request.user)
 
     def perform_create(self, serializer: AnswerTextSerializer):
         answersheet = serializer.validated_data['answersheet']
         question = serializer.validated_data['question']
-        if answersheet.creator != self.request.user:
-            raise PermissionError("只有答卷创始人才能添加答案！")
-        elif AnswerText.objects.filter(answersheet=answersheet, question=question).exists():
-            raise PermissionError("禁止重复提交答案！")
-        elif answersheet.survey.status != Survey.Status.PUBLISHED:
-            raise PermissionError("只能创建已发布问卷的答案！")
-        else:
-            serializer.save()
+        with transaction.atomic():
+            locked_sheet = lock_draft_answersheet(
+                answersheet.pk,
+                self.request.user,
+            )
+            if question.survey_id != locked_sheet.survey_id:
+                raise ValidationError("问题与答卷不属于同一问卷！")
+            if AnswerText.objects.filter(
+                answersheet=locked_sheet,
+                question=question,
+            ).exists():
+                raise ValidationError("禁止重复提交答案！")
+            if locked_sheet.survey.status != Survey.Status.PUBLISHED:
+                raise ValidationError("只能创建已发布问卷的答案！")
+            serializer.save(answersheet=locked_sheet)
 
     def perform_update(self, serializer: AnswerTextSerializer):
         answersheet = serializer.instance.answersheet
         question = serializer.instance.question
-        if answersheet.status == AnswerSheet.Status.DRAFT:
-            if answersheet.creator != self.request.user:
-                raise PermissionError("只有答卷创始人才能修改答案！")
-            if answersheet != serializer.validated_data['answersheet']:
-                raise PermissionError("禁止修改答案所属答卷！")
-            if question != serializer.validated_data['question']:
-                raise PermissionError("禁止修改答案所属问题！")
-            serializer.save()
-        else:
-            raise PermissionError("禁止修改答案！")
+        validated_sheet = serializer.validated_data.get(
+            'answersheet',
+            answersheet,
+        )
+        validated_question = serializer.validated_data.get(
+            'question',
+            question,
+        )
+        with transaction.atomic():
+            locked_sheet = lock_draft_answersheet(
+                answersheet.pk,
+                self.request.user,
+            )
+            try:
+                locked_answer = AnswerText.objects.select_for_update().get(
+                    pk=serializer.instance.pk,
+                    answersheet=locked_sheet,
+                )
+            except AnswerText.DoesNotExist as exc:
+                raise NotFound("答案不存在或已被删除！") from exc
+            if locked_sheet.pk != validated_sheet.pk:
+                raise ValidationError("禁止修改答案所属答卷！")
+            if locked_answer.question_id != validated_question.pk:
+                raise ValidationError("禁止修改答案所属问题！")
+            serializer.instance = locked_answer
+            serializer.save(answersheet=locked_sheet)
+
+    def perform_destroy(self, instance):
+        with transaction.atomic():
+            locked_sheet = lock_draft_answersheet(
+                instance.answersheet_id,
+                self.request.user,
+            )
+            AnswerText.objects.filter(
+                pk=instance.pk,
+                answersheet=locked_sheet,
+            ).delete()
 
     @action(detail=False, methods=['GET'])
     def answer_owner(self, request):
@@ -122,7 +176,9 @@ class AnswerTextViewSet(viewsets.ModelViewSet):
     @action(detail=False, methods=['GET'])
     def survey_owner(self, request):
         text = AnswerText.objects.filter(
-            question__survey__creator=request.user)
+            answersheet__survey__creator=request.user,
+            answersheet__status=AnswerSheet.Status.SUBMITTED,
+        )
         serializer = AnswerTextSerializer(text, many=True)
         return Response(serializer.data)
 
@@ -132,30 +188,40 @@ class AnswerSheetViewSet(viewsets.ModelViewSet):
     authentication_classes = [SessionAuthentication]
     permission_classes = [IsAuthenticated, IsSheetOwnerOrAsker]
     serializer_class = AnswerSheetSerializer
+    http_method_names = ['get', 'post', 'delete', 'head', 'options']
 
-    # debug时可以注释掉
-    def list(self, request, *args, **kwargs):
-        raise PermissionError("禁止直接查看所有答卷！")
+    def get_queryset(self):
+        sheets = AnswerSheet.objects.select_related('survey')
+        if self.action == 'retrieve':
+            return sheets.filter(
+                Q(creator=self.request.user)
+                | Q(
+                    survey__creator=self.request.user,
+                    status=AnswerSheet.Status.SUBMITTED,
+                )
+            )
+        return sheets.filter(creator=self.request.user)
 
     def perform_create(self, serializer: AnswerSheetSerializer):
-        creator = serializer.validated_data['creator']
         survey = serializer.validated_data['survey']
-        if survey.status != Survey.Status.PUBLISHED:  # 问卷必须处于发布状态才能创建答卷
-            raise PermissionError("只能创建已发布问卷的答案！")
-        elif AnswerSheet.objects.filter(creator=creator, survey=survey).exists():
-            raise PermissionError("禁止重复创建答卷！")
-        else:
-            serializer.save()
+        serializer.instance = create_answersheet(
+            survey.pk,
+            self.request.user,
+        )
 
-    def perform_update(self, serializer: AnswerSheetSerializer):
-        sheet_status = serializer.instance.status
-        if sheet_status == AnswerSheet.Status.DRAFT:
-            survey = serializer.instance.survey
-            if survey != serializer.validated_data['survey']:
-                raise PermissionError("禁止修改答卷所属问卷！")
-            serializer.save()  # 此部分中只能修改提交状态
-        else:
-            raise PermissionError("禁止修改答卷！")
+    def perform_destroy(self, instance):
+        with transaction.atomic():
+            locked_sheet = lock_draft_answersheet(
+                instance.pk,
+                self.request.user,
+            )
+            locked_sheet.delete()
+
+    @action(detail=True, methods=['POST'])
+    def submit(self, request, *args, **kwargs):
+        sheet = self.get_object()
+        submitted = submit_answersheet(sheet.pk, request.user)
+        return Response(self.get_serializer(submitted).data)
 
     @action(detail=False, methods=['GET'])
     def answer_owner(self, request):
@@ -165,6 +231,9 @@ class AnswerSheetViewSet(viewsets.ModelViewSet):
 
     @action(detail=False, methods=['GET'])
     def survey_owner(self, request):
-        sheet = AnswerSheet.objects.filter(survey__creator=request.user)
+        sheet = AnswerSheet.objects.filter(
+            survey__creator=request.user,
+            status=AnswerSheet.Status.SUBMITTED,
+        )
         serializer = AnswerSheetSerializer(sheet, many=True)
         return Response(serializer.data)

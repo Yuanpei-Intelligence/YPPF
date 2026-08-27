@@ -1,12 +1,14 @@
+from datetime import datetime, timedelta
 from unittest.mock import patch
 
 from django.core.management import call_command
-from django.test import RequestFactory, TestCase
+from django.test import Client, RequestFactory, TestCase
 from django.urls import reverse
 from rest_framework import status
 from rest_framework.test import APIClient
 from rest_framework_simplejwt.tokens import AccessToken
 
+from app.models import NaturalPerson
 from dormitory.management.commands.assign_dormitory import (
     Dormitory as ScoringDormitory,
     Freshman,
@@ -18,7 +20,13 @@ from dormitory.views import (
     DormitoryRoutineQAView,
 )
 from generic.models import User
-from questionnaire.models import AnswerSheet, Choice, Question, Survey
+from questionnaire.models import (
+    AnswerSheet,
+    AnswerText,
+    Choice,
+    Question,
+    Survey,
+)
 
 
 class CreateDormitoryQuestionnaire2026Tests(TestCase):
@@ -43,6 +51,167 @@ class CreateDormitoryQuestionnaire2026Tests(TestCase):
 
 
 class DormitoryRoutineQAValidationTests(TestCase):
+    def test_session_submission_requires_csrf(self):
+        creator = User.objects.create_user(
+            username="dormitory_csrf_creator",
+            name="Dormitory CSRF Creator",
+        )
+        student = User.objects.create_user(
+            username="dormitory_csrf_student",
+            name="Dormitory CSRF Student",
+        )
+        now = datetime.now()
+        survey = Survey.objects.create(
+            title="Dormitory CSRF survey",
+            creator=creator,
+            status=Survey.Status.PUBLISHED,
+            start_time=now - timedelta(days=1),
+            end_time=now + timedelta(days=1),
+        )
+        question = Question.objects.create(
+            survey=survey,
+            order=1,
+            topic="Required text",
+            type=Question.Type.TEXT,
+            required=True,
+        )
+        client = Client(enforce_csrf_checks=True)
+        client.force_login(student)
+
+        with patch.object(
+            DormitoryRoutineQAView,
+            'get_survey',
+            return_value=survey,
+        ):
+            response = client.post(
+                reverse('dormitory-routine-QA'),
+                {str(question.order): 'forged response'},
+            )
+
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+        self.assertFalse(
+            AnswerSheet.objects.filter(
+                creator=student,
+                survey=survey,
+            ).exists()
+        )
+
+    def test_form_sets_csrf_cookie_and_accepts_valid_token(self):
+        creator = User.objects.create_user(
+            username="dormitory_csrf_form_creator",
+            name="Dormitory CSRF Form Creator",
+        )
+        student = User.objects.create_user(
+            username="dormitory_csrf_form_student",
+            name="Dormitory CSRF Form Student",
+            utype=User.Type.STUDENT,
+            is_newuser=False,
+        )
+        NaturalPerson.objects.create(student, name='CSRF')
+        now = datetime.now()
+        survey = Survey.objects.create(
+            title="Dormitory CSRF form survey",
+            creator=creator,
+            status=Survey.Status.PUBLISHED,
+            start_time=now - timedelta(days=1),
+            end_time=now + timedelta(days=1),
+        )
+        question = Question.objects.create(
+            survey=survey,
+            order=1,
+            topic="Required text",
+            type=Question.Type.TEXT,
+            required=True,
+        )
+        client = Client(enforce_csrf_checks=True)
+        client.force_login(student)
+
+        with patch.object(
+            DormitoryRoutineQAView,
+            'get_survey',
+            return_value=survey,
+        ):
+            form_response = client.get(reverse('dormitory-routine-QA'))
+            csrf_token = client.cookies['csrftoken'].value
+            submit_response = client.post(
+                reverse('dormitory-routine-QA'),
+                {
+                    str(question.order): 'valid response',
+                    'csrfmiddlewaretoken': csrf_token,
+                },
+            )
+
+        self.assertEqual(form_response.status_code, status.HTTP_200_OK)
+        self.assertContains(form_response, 'csrfmiddlewaretoken')
+        self.assertRegex(
+            form_response.content,
+            br'name="csrfmiddlewaretoken" value="[^"]+"',
+        )
+        self.assertEqual(submit_response.status_code, status.HTTP_200_OK)
+        sheet = AnswerSheet.objects.get(creator=student, survey=survey)
+        self.assertEqual(sheet.status, AnswerSheet.Status.SUBMITTED)
+
+    def assert_submission_rejection_preserves_input(
+        self,
+        *,
+        survey_status,
+        start_time,
+        end_time,
+        expected_warning,
+    ):
+        creator = User.objects.create_user(
+            username="dormitory_rejection_creator",
+            name="Dormitory Rejection Creator",
+        )
+        student = User.objects.create_user(
+            username="dormitory_rejection_student",
+            name="Dormitory Rejection Student",
+        )
+        survey = Survey.objects.create(
+            title="Dormitory rejected survey",
+            creator=creator,
+            status=survey_status,
+            start_time=start_time,
+            end_time=end_time,
+        )
+        question = Question.objects.create(
+            survey=survey,
+            order=1,
+            topic="Required text",
+            type=Question.Type.TEXT,
+            required=True,
+        )
+        submitted_value = "preserve this response"
+
+        view = DormitoryRoutineQAView()
+        view.request = RequestFactory().post(
+            "/dormitory/routine-QA/",
+            {"1": submitted_value},
+        )
+        view.request.user = student
+        view.get_survey = lambda: survey
+        response = object()
+        rendered = {}
+
+        def capture_render(**kwargs):
+            rendered.update(kwargs)
+            return response
+
+        view.render = capture_render
+
+        self.assertIs(view.post(), response)
+        self.assertEqual(
+            rendered["html_display"],
+            {"warn_code": 1, "warn_message": expected_warning},
+        )
+        rendered_question, _, rendered_value = rendered["survey_iter"][0]
+        self.assertEqual(rendered_question, question)
+        self.assertEqual(rendered_value, submitted_value)
+        self.assertFalse(
+            AnswerSheet.objects.filter(survey=survey, creator=student).exists()
+        )
+        self.assertFalse(AnswerText.objects.filter(question=question).exists())
+
     def test_invalid_choice_is_rejected_before_answer_sheet_creation(self):
         user = User.objects.create_user(username="student", name="Student")
         survey = Survey.objects.create(
@@ -69,6 +238,134 @@ class DormitoryRoutineQAValidationTests(TestCase):
         self.assertIs(view.post(), response)
         self.assertFalse(AnswerSheet.objects.filter(survey=survey).exists())
 
+    def test_valid_response_is_submitted_and_visible_to_survey_creator(self):
+        creator = User.objects.create_user(
+            username="dormitory_creator",
+            name="Dormitory Creator",
+        )
+        student = User.objects.create_user(
+            username="dormitory_student",
+            name="Dormitory Student",
+        )
+        now = datetime.now()
+        survey = Survey.objects.create(
+            title="Dormitory published survey",
+            creator=creator,
+            status=Survey.Status.PUBLISHED,
+            start_time=now - timedelta(days=1),
+            end_time=now + timedelta(days=1),
+        )
+        question = Question.objects.create(
+            survey=survey,
+            order=1,
+            topic="Required text",
+            type=Question.Type.TEXT,
+            required=True,
+        )
+
+        view = DormitoryRoutineQAView()
+        view.request = RequestFactory().post(
+            "/dormitory/routine-QA/",
+            {"1": "valid response"},
+        )
+        view.request.user = student
+        view.get_survey = lambda: survey
+        response = object()
+        view.render = lambda **kwargs: response
+
+        self.assertIs(view.post(), response)
+
+        sheet = AnswerSheet.objects.get(survey=survey, creator=student)
+        self.assertEqual(sheet.status, AnswerSheet.Status.SUBMITTED)
+        self.assertEqual(
+            AnswerText.objects.get(
+                answersheet=sheet,
+                question=question,
+            ).body,
+            "valid response",
+        )
+
+        client = APIClient()
+        client.force_login(creator)
+        result_response = client.get(reverse("answersheet-survey-owner"))
+
+        self.assertEqual(result_response.status_code, status.HTTP_200_OK)
+        self.assertEqual(
+            [row["id"] for row in result_response.data],
+            [sheet.pk],
+        )
+
+    def test_unpublished_survey_rejection_preserves_entered_values(self):
+        now = datetime.now()
+        self.assert_submission_rejection_preserves_input(
+            survey_status=Survey.Status.ENDED,
+            start_time=now - timedelta(days=1),
+            end_time=now + timedelta(days=1),
+            expected_warning="只能提交已发布的问卷！",
+        )
+
+    def test_expired_survey_rejection_preserves_entered_values(self):
+        now = datetime.now()
+        self.assert_submission_rejection_preserves_input(
+            survey_status=Survey.Status.PUBLISHED,
+            start_time=now - timedelta(days=2),
+            end_time=now - timedelta(days=1),
+            expected_warning="当前不在问卷提交时间内！",
+        )
+
+    def test_duplicate_submission_returns_warning_without_new_sheet(self):
+        creator = User.objects.create_user(
+            username="dormitory_duplicate_creator",
+            name="Dormitory Duplicate Creator",
+        )
+        student = User.objects.create_user(
+            username="dormitory_duplicate_student",
+            name="Dormitory Duplicate Student",
+        )
+        now = datetime.now()
+        survey = Survey.objects.create(
+            title="Dormitory duplicate survey",
+            creator=creator,
+            status=Survey.Status.PUBLISHED,
+            start_time=now - timedelta(days=1),
+            end_time=now + timedelta(days=1),
+        )
+        question = Question.objects.create(
+            survey=survey,
+            order=1,
+            topic="Required text",
+            type=Question.Type.TEXT,
+            required=True,
+        )
+        AnswerSheet.objects.create(creator=student, survey=survey)
+        view = DormitoryRoutineQAView()
+        view.request = RequestFactory().post(
+            "/dormitory/routine-QA/",
+            {str(question.order): "duplicate response"},
+        )
+        view.request.user = student
+        view.get_survey = lambda: survey
+        response = object()
+        rendered = {}
+
+        def capture_render(**kwargs):
+            rendered.update(kwargs)
+            return response
+
+        view.render = capture_render
+
+        self.assertIs(view.post(), response)
+        self.assertEqual(
+            rendered["html_display"],
+            {"warn_code": 1, "warn_message": "禁止重复创建答卷！"},
+        )
+        self.assertEqual(
+            AnswerSheet.objects.filter(
+                creator=student,
+                survey=survey,
+            ).count(),
+            1,
+        )
 
 class DormitoryReadApiSecurityTests(TestCase):
     @classmethod

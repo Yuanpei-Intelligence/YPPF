@@ -74,6 +74,7 @@
                                           method="POST"
                                           enctype="multipart/form-data"
                                           onsubmit="return check_input()">
+                                        {% csrf_token %}
                                         {% for question, choices, submitted_val in survey_iter %}
                                             <div class="form-group mb-3 mx-5">
                                                 <h6 id="survey-question-{{ question.order }}">
