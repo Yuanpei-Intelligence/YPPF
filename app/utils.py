@@ -926,36 +926,91 @@ def record_modify_with_session(request: UserRequest, info=""):
         pass
 
 
-def update_related_account_in_session(request, username, shift=False, oname=""):
-    """
-    外层保证 username 是一个自然人的 username 并且合法
+def update_related_account_in_session(
+    request,
+    username,
+    shift=False,
+    org_id=None,
+):
+    """Refresh related accounts and optionally switch the session principal.
 
-    登录时 shift 为 false，切换时为 True，并设置request.user
-    切换到某个组织时 oname 不为空，否则都是空
+    ``username`` identifies the natural-person account saved in the session.
+    ``org_id`` is the stable primary key of a target organization; ``None``
+    selects the natural-person account.  Authorization is always rebuilt from
+    current, active administrator positions before a session switch.
     """
+
+    if shift and request.method != "POST":
+        return False
 
     try:
-        np = NaturalPerson.objects.activated().get(
-            SQ.mq(NaturalPerson.person_id, username=username))
-    except:
+        target_org_id = None if org_id in (None, "") else int(org_id)
+    except (TypeError, ValueError):
         return False
-    orgs = list(Position.objects.activated().filter(
-        is_admin=True, person=np).values_list("org__oname", flat=True))
 
-    if oname:
-        if oname not in orgs:
-            return False
-        orgs.remove(oname)
-        user = Organization.objects.get(oname=oname).get_user()
-    else:
-        user = np.get_user()
+    try:
+        with transaction.atomic():
+            person_user = User.objects.select_for_update().get(
+                username=username,
+                active=True,
+            )
+            if not person_user.is_person():
+                return False
+            person = NaturalPerson.objects.get_by_user(
+                person_user,
+                update=True,
+                activate=True,
+            )
+            positions = list(
+                Position.objects.activated()
+                .select_for_update()
+                .filter(
+                    is_admin=True,
+                    person=person,
+                    org__status=True,
+                    org__organization_id__active=True,
+                )
+                .select_related("org", "org__organization_id")
+                .order_by("pk")
+            )
 
-    if shift:
-        auth.logout(request)
-        auth.login(request, user)
+            accounts = [
+                {"id": position.org_id, "name": position.org.oname}
+                for position in positions
+            ]
+            if target_org_id is None:
+                target_user = person_user
+            else:
+                target_position = next(
+                    (
+                        position
+                        for position in positions
+                        if position.org_id == target_org_id
+                    ),
+                    None,
+                )
+                if target_position is None:
+                    return False
+                target_user = target_position.org.get_user()
+                accounts = [
+                    account
+                    for account in accounts
+                    if account["id"] != target_org_id
+                ]
 
-    request.session["Incharge"] = orgs
-    request.session["NP"] = username
+            if shift:
+                auth.logout(request)
+                auth.login(request, target_user)
+
+            # Keep the historical names for read-only compatibility, while
+            # all new switch commands use stable organization primary keys.
+            request.session["Incharge"] = [
+                account["name"] for account in accounts
+            ]
+            request.session["InchargeAccounts"] = accounts
+            request.session["NP"] = username
+    except (User.DoesNotExist, NaturalPerson.DoesNotExist):
+        return False
 
     return True
 
@@ -963,26 +1018,28 @@ def update_related_account_in_session(request, username, shift=False, oname=""):
 @logger.secure_func(raise_exc=True)
 def user_login_org(request: UserRequest, org: Organization) -> MESSAGECONTEXT:
     '''
-    令人疑惑的函数，需要整改
-    尝试从用户登录到org指定的组织，如果不满足权限，则会返回wrong
-    返回wrong或succeed，并更新request.user
+    尝试从个人账号切换到指定组织。
+
+    只有已通过 CSRF 校验的 POST 调用可以改变 Session；GET 页面应提示用户
+    使用侧栏账户切换表单。实际授权和切换由统一入口再次完成。
     '''
+    if (
+        request.method != "POST"
+        or not getattr(request, "csrf_processing_done", False)
+    ):
+        return wrong("请先通过账户切换菜单切换到对应小组账号。")
+
     user = request.user
     try:
         assert user.is_person()
-        me = NaturalPerson.objects.get_by_user(user, activate=True)
     except:
         return wrong("您没有权限访问该网址！请用对应小组账号登陆。")
-    # 是小组一把手
-    try:
-        position = Position.objects.activated().filter(org=org, person=me)
-        assert len(position) == 1
-        position = position[0]
-        assert position.is_admin
-    except:
+
+    if not update_related_account_in_session(
+        request,
+        user.username,
+        shift=True,
+        org_id=org.pk,
+    ):
         return wrong("没有登录到该小组账户的权限!")
-    # 到这里, 是本人小组并且有权限登录
-    auth.logout(request)
-    auth.login(request, org.get_user())  # 切换到小组账号
-    update_related_account_in_session(request, user.username, oname=org.oname)
     return succeed("成功切换到小组账号处理该事务，建议事务处理完成后退出小组账号。")

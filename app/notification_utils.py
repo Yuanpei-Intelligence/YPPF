@@ -19,10 +19,40 @@ hasher = MySHA256Hasher("")
 
 __all__ = [
     'notification_status_change',
+    'mark_all_notifications_read',
+    'delete_all_read_notifications',
     'notification_create',
     'bulk_notification_create',
     'notification2Display',
 ]
+
+
+def mark_all_notifications_read(
+    receiver: User,
+    *,
+    now: datetime | None = None,
+) -> int:
+    """Mark this receiver's unread informational notifications as read."""
+
+    now = now or datetime.now()
+    return Notification.objects.filter(
+        receiver=receiver,
+        typename=Notification.Type.NEEDREAD,
+        status=Notification.Status.UNDONE,
+    ).update(
+        status=Notification.Status.DONE,
+        finish_time=now,
+    )
+
+
+def delete_all_read_notifications(receiver: User) -> int:
+    """Soft-delete this receiver's read informational notifications."""
+
+    return Notification.objects.filter(
+        receiver=receiver,
+        typename=Notification.Type.NEEDREAD,
+        status=Notification.Status.DONE,
+    ).update(status=Notification.Status.DELETE)
 
 
 def get_default_sender() -> User:

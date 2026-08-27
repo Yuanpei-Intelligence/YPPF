@@ -2,6 +2,7 @@ from urllib.parse import urlencode
 
 from django.conf import settings
 from django.middleware.csrf import get_token
+from django.contrib.sessions.middleware import SessionMiddleware
 from django.shortcuts import render
 from django.template.loader import render_to_string
 from django.test import (
@@ -18,6 +19,7 @@ from app.models import (
     OrganizationType,
     Position,
 )
+from app.utils import update_related_account_in_session, user_login_org
 from generic.models import User
 from utils.hasher import MyMD5Hasher
 
@@ -77,6 +79,9 @@ class LegacyMiniLoginRemovalTestCase(TestCase):
         session = client.session
         session["NP"] = self.user.username
         session["Incharge"] = [self.organization.oname]
+        session["InchargeAccounts"] = [
+            {"id": self.organization.pk, "name": self.organization.oname},
+        ]
         session.save()
         return client
 
@@ -155,7 +160,7 @@ class LegacyMiniLoginRemovalTestCase(TestCase):
 
         response = self.client.get(
             "/shiftAccount/",
-            {"oname": self.organization.oname},
+            {"org_id": self.organization.pk},
         )
 
         self.assertEqual(response.status_code, 405)
@@ -164,12 +169,34 @@ class LegacyMiniLoginRemovalTestCase(TestCase):
             str(self.user.pk),
         )
 
+    def test_switch_helper_rejects_safe_http_methods(self):
+        for method in ("get", "head"):
+            with self.subTest(method=method):
+                request = getattr(RequestFactory(), method)("/annual-summary/")
+                SessionMiddleware(lambda req: None).process_request(request)
+                request.user = self.user
+                request.session["NP"] = self.user.username
+
+                switched = update_related_account_in_session(
+                    request,
+                    self.user.username,
+                    shift=True,
+                    org_id=self.organization.pk,
+                )
+
+                self.assertFalse(switched)
+                self.assertNotIn("_auth_user_id", request.session)
+
+                context = user_login_org(request, self.organization)
+                self.assertEqual(context["warn_code"], 1)
+                self.assertNotIn("_auth_user_id", request.session)
+
     def test_account_switch_rejects_post_without_csrf(self):
         client = self.login_person(Client(enforce_csrf_checks=True))
 
         response = client.post(
             "/shiftAccount/",
-            {"oname": self.organization.oname},
+            {"org_id": self.organization.pk},
         )
 
         self.assertEqual(response.status_code, 403)
@@ -181,7 +208,7 @@ class LegacyMiniLoginRemovalTestCase(TestCase):
         response = client.post(
             "/shiftAccount/",
             {
-                "oname": self.organization.oname,
+                "org_id": self.organization.pk,
                 "origin": "/inside",
                 "csrfmiddlewaretoken": token,
             },
@@ -194,26 +221,86 @@ class LegacyMiniLoginRemovalTestCase(TestCase):
             str(self.organization_user.pk),
         )
 
+    def test_account_switch_rejects_invalid_stable_identifier(self):
+        self.login_person()
+
+        response = self.client.post(
+            "/shiftAccount/",
+            {"org_id": "not-an-integer"},
+        )
+
+        self.assertEqual(response.status_code, 400)
+        self.assertEqual(self.client.session["_auth_user_id"], str(self.user.pk))
+
+    def test_account_switch_rechecks_current_admin_position(self):
+        Position.objects.filter(
+            person=self.person,
+            org=self.organization,
+        ).update(is_admin=False)
+        self.login_person()
+
+        response = self.client.post(
+            "/shiftAccount/",
+            {"org_id": self.organization.pk},
+        )
+
+        self.assertEqual(response.status_code, 403)
+        self.assertEqual(self.client.session["_auth_user_id"], str(self.user.pk))
+
+    def test_account_switch_rejects_inactive_organization(self):
+        self.organization.status = False
+        self.organization.save(update_fields=["status"])
+        self.login_person()
+
+        response = self.client.post(
+            "/shiftAccount/",
+            {"org_id": self.organization.pk},
+        )
+
+        self.assertEqual(response.status_code, 403)
+        self.assertEqual(self.client.session["_auth_user_id"], str(self.user.pk))
+
+    def test_account_switch_rejects_inactive_organization_account(self):
+        self.organization_user.active = False
+        self.organization_user.save(update_fields=["active"])
+        self.login_person()
+
+        response = self.client.post(
+            "/shiftAccount/",
+            {"org_id": self.organization.pk},
+        )
+
+        self.assertEqual(response.status_code, 403)
+        self.assertEqual(self.client.session["_auth_user_id"], str(self.user.pk))
+
     def test_sidebars_render_account_switches_as_csrf_post_forms(self):
         user_sidebar = self.render_sidebar(
             "user_left_navbar.html",
-            {"Incharge": [self.organization.oname]},
+            {
+                "Incharge": [self.organization.oname],
+                "InchargeAccounts": [
+                    {"id": self.organization.pk, "name": self.organization.oname},
+                ],
+            },
         )
         organization_sidebar = self.render_sidebar(
             "org_left_navbar.html",
             {
                 "NP": self.user.username,
                 "Incharge": [self.organization.oname],
+                "InchargeAccounts": [
+                    {"id": self.organization.pk, "name": self.organization.oname},
+                ],
             },
         )
 
         self.assertEqual(user_sidebar.count('action="/shiftAccount/"'), 1)
         self.assertEqual(organization_sidebar.count('action="/shiftAccount/"'), 2)
         for sidebar in (user_sidebar, organization_sidebar):
-            self.assertNotIn("/shiftAccount/?oname=", sidebar)
+            self.assertNotIn("/shiftAccount/?", sidebar)
             self.assertIn('method="post"', sidebar)
             self.assertIn('name="csrfmiddlewaretoken"', sidebar)
             self.assertIn(
-                f'name="oname" value="{self.organization.oname}"',
+                f'name="org_id" value="{self.organization.pk}"',
                 sidebar,
             )

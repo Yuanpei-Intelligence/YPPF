@@ -19,6 +19,7 @@ from datetime import datetime, timedelta
 import qrcode
 import requests
 import utils.models.query as SQ
+from django.utils.crypto import constant_time_compare
 from generic.models import User, YQPointRecord
 from scheduler.adder import ScheduleAdder
 from scheduler.cancel import remove_job
@@ -59,6 +60,8 @@ __all__ = [
     'cancel_activity',
     'withdraw_activity',
     'withdraw_activity_for_person',
+    'checkin_activity',
+    'valid_activity_checkin_verifier',
     'build_legacy_checkin_url',
     'generate_legacy_checkin_qrcode',
     'fetch_miniprogram_checkin_qrcode',
@@ -377,6 +380,83 @@ class ActivityException(Exception):
 
     def __str__(self):
         return self.msg
+
+
+def valid_activity_checkin_verifier(activity_id: int, verifier: str) -> bool:
+    """Return whether a legacy web check-in verifier matches an activity."""
+
+    if not verifier:
+        return False
+    expected = GLOBAL_CONFIG.hasher.encode(str(activity_id))
+    return constant_time_compare(verifier, expected)
+
+
+@transaction.atomic
+def checkin_activity(
+    person: Person,
+    activity_id: int,
+    verifier: str,
+    *,
+    now: datetime | None = None,
+) -> bool:
+    """Atomically check a registered person into an eligible activity.
+
+    Returns ``True`` when this call changes the participation and ``False``
+    when it was already checked in.  Rejected business preconditions raise
+    ``ActivityException`` without changing state.
+    """
+
+    now = now or datetime.now()
+    try:
+        activity = Activity.objects.select_for_update().get(pk=activity_id)
+    except Activity.DoesNotExist as exc:
+        raise ActivityException("签到失败：活动不存在。") from exc
+
+    try:
+        person = (
+            Person.objects.activated()
+            .select_for_update()
+            .get(pk=person.pk, person_id__active=True)
+        )
+    except Person.DoesNotExist as exc:
+        raise ActivityException("签到失败：个人账号当前不可用。") from exc
+
+    if not valid_activity_checkin_verifier(activity.pk, verifier):
+        raise ActivityException("签到失败：活动校验码不匹配。")
+    if not activity.valid or not activity.need_checkin:
+        raise ActivityException("签到失败：该活动未开放签到。")
+    if activity.status == Activity.Status.END:
+        raise ActivityException("活动已结束，不再开放签到。")
+    if not (
+        activity.status == Activity.Status.PROGRESSING
+        or (
+            activity.status == Activity.Status.WAITING
+            and now + timedelta(hours=1) >= activity.start
+        )
+    ):
+        raise ActivityException("活动开始前一小时开放签到，请耐心等待。")
+
+    participant = (
+        Participation.objects.select_for_update()
+        .filter(
+            activity=activity,
+            person=person,
+            status__in=[
+                Participation.AttendStatus.UNATTENDED,
+                Participation.AttendStatus.APPLYSUCCESS,
+                Participation.AttendStatus.ATTENDED,
+            ],
+        )
+        .first()
+    )
+    if participant is None:
+        raise ActivityException("签到失败：您尚未报名该活动。")
+    if participant.status == Participation.AttendStatus.ATTENDED:
+        return False
+
+    participant.status = Participation.AttendStatus.ATTENDED
+    participant.save(update_fields=["status"])
+    return True
 
 
 # 时间合法性的检查，检查时间是否在当前时间的一个月以内，并且检查开始的时间是否早于结束的时间，

@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+
+{% block mainpage %}
+<div id="content" class="main-content">
+    <div class="container">
+        <div class="row layout-top-spacing justify-content-center">
+            <div class="col-lg-8 col-12">
+                <div class="widget-content widget-content-area text-center p-4">
+                    <h3>确认活动签到</h3>
+                    <p class="mt-3">活动：{{ activity.title }}</p>
+                    <p>地点：{{ activity.location }}</p>
+                    <p>时间：{{ activity.start }} 至 {{ activity.end }}</p>
+                    <form method="post" action="{% url 'checkinActivity' activity.id %}">
+                        {% csrf_token %}
+                        <input type="hidden" name="auth" value="{{ auth }}">
+                        <button type="submit" class="btn btn-primary">确认签到</button>
+                        <a class="btn btn-light" href="{% url 'viewActivity' activity.id %}">取消</a>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
