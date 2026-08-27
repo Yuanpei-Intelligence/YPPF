@@ -155,6 +155,46 @@ class BookSearchQuerySerializer(serializers.Serializer):
     )
 
 
+class LibraryRecordsQuerySerializer(serializers.Serializer):
+    """Serializer for borrow-record query parameters."""
+
+    returned = serializers.ChoiceField(
+        choices=["true", "false", "all"],
+        default="all",
+        required=False,
+        help_text="Filter by returned status",
+    )
+
+
+class LibraryActivitiesQuerySerializer(serializers.Serializer):
+    """Serializer for library activity query parameters."""
+
+    num = serializers.IntegerField(
+        default=3,
+        min_value=1,
+        max_value=50,
+        required=False,
+        help_text="Maximum number of activities",
+    )
+
+
+class LibraryRecommendationsQuerySerializer(serializers.Serializer):
+    """Serializer for recommendation query parameters."""
+
+    num = serializers.IntegerField(
+        default=5,
+        min_value=1,
+        max_value=50,
+        required=False,
+        help_text="Maximum number of books",
+    )
+    newest = serializers.BooleanField(
+        default=False,
+        required=False,
+        help_text="Return newest books instead of random recommendations",
+    )
+
+
 class LibraryConfigSerializer(serializers.Serializer):
     """Serializer for library configuration."""
 

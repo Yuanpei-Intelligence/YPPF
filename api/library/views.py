@@ -5,13 +5,16 @@ from __future__ import annotations
 
 from rest_framework import status, viewsets
 from rest_framework.decorators import action
+from rest_framework.exceptions import PermissionDenied
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
-from rest_framework.exceptions import ValidationError
 from drf_spectacular.utils import extend_schema, OpenApiResponse, OpenApiParameter
 from drf_spectacular.types import OpenApiTypes
 
 from yp_library.utils import (
+    PersonalAccountRequired,
+    ReaderAccountError,
+    ReaderAccountMissing,
     get_readers_by_user,
     search_books,
     get_lendinfo_by_readers,
@@ -21,12 +24,21 @@ from yp_library.utils import (
 from yp_library.config import library_config as CONFIG
 from achievement.api import unlock_achievement
 from api.authentication import WxJWTAuthentication
+from api.exceptions import (
+    APIError,
+    APIErrorResponseSerializer,
+    StandardizedExceptionHandlerMixin,
+)
 from api.library.serializers import (
+    BookSearchQuerySerializer,
     BookSerializer,
     LendRecordListSerializer,
     ActivitySerializer,
+    LibraryActivitiesQuerySerializer,
     LibraryWelcomeSerializer,
     LibraryConfigSerializer,
+    LibraryRecommendationsQuerySerializer,
+    LibraryRecordsQuerySerializer,
 )
 
 
@@ -35,7 +47,14 @@ DISPLAY_ACTIVITY_NUM = 3  # Number of activities displayed on the homepage
 DISPLAY_RECOMMENDATION_NUM = 5
 
 
-class LibraryViewSet(viewsets.ViewSet):
+def error_response(description: str) -> OpenApiResponse:
+    return OpenApiResponse(
+        response=APIErrorResponseSerializer,
+        description=description,
+    )
+
+
+class LibraryViewSet(StandardizedExceptionHandlerMixin, viewsets.ViewSet):
     """
     ViewSet for library operations.
 
@@ -52,6 +71,7 @@ class LibraryViewSet(viewsets.ViewSet):
         description="Get library welcome page data including activities, opening time, borrow records, and recommendations",
         responses={
             200: LibraryWelcomeSerializer,
+            401: error_response("Authentication required or token invalid"),
         },
         tags=['书房']
     )
@@ -73,7 +93,7 @@ class LibraryViewSet(viewsets.ViewSet):
             unreturned_records_list, returned_records_list = get_lendinfo_by_readers(
                 readers)
             records_list = unreturned_records_list + returned_records_list
-        except AssertionError:
+        except ReaderAccountError:
             records_list = []
 
         data = {
@@ -132,6 +152,8 @@ class LibraryViewSet(viewsets.ViewSet):
                 response=BookSerializer(many=True),
                 description="List of matching books"
             ),
+            400: error_response("Invalid search parameters"),
+            401: error_response("Authentication required or token invalid"),
         },
         tags=['书房']
     )
@@ -148,23 +170,9 @@ class LibraryViewSet(viewsets.ViewSet):
         - publisher: Partial match
         - returned: Filter by returned status
         """
-        query_dict = {}
-
-        # Extract query parameters
-        for field in ['keywords', 'identity_code', 'title', 'author', 'publisher']:
-            value = request.query_params.get(field, '')
-            if value:
-                query_dict[field] = value
-
-        # Handle returned parameter
-        returned = request.query_params.get('returned')
-        if returned is not None:
-            if returned.lower() == 'true':
-                query_dict['returned'] = True
-            elif returned.lower() == 'false':
-                query_dict['returned'] = False
-
-        search_results = search_books(**query_dict)
+        query_serializer = BookSearchQuerySerializer(data=request.query_params)
+        query_serializer.is_valid(raise_exception=True)
+        search_results = search_books(**query_serializer.validated_data)
 
         # Unlock achievement for using library search
         unlock_achievement(request.user, "使用一次元培书房查询")
@@ -187,7 +195,9 @@ class LibraryViewSet(viewsets.ViewSet):
                 response=LendRecordListSerializer(many=True),
                 description="List of borrow records"
             ),
-            400: OpenApiResponse(description="User is not a person or has no library account"),
+            400: error_response("The person has no linked library account"),
+            401: error_response("Authentication required or token invalid"),
+            403: error_response("Only person accounts can view borrow records"),
         },
         tags=['书房']
     )
@@ -202,15 +212,27 @@ class LibraryViewSet(viewsets.ViewSet):
           - 'false': Only unreturned records
           - 'all' or not specified: All records
         """
+        query_serializer = LibraryRecordsQuerySerializer(
+            data=request.query_params
+        )
+        query_serializer.is_valid(raise_exception=True)
+        returned_filter = query_serializer.validated_data["returned"]
+
         try:
             readers = get_readers_by_user(request.user)
-        except AssertionError as e:
-            raise ValidationError(str(e))
+        except PersonalAccountRequired as exc:
+            raise PermissionDenied(
+                "请切换至个人账号后查询借阅记录。"
+            ) from exc
+        except ReaderAccountMissing as exc:
+            raise APIError(
+                code="library.reader_account_missing",
+                message="您的学号尚未关联书房账号。",
+                status_code=status.HTTP_400_BAD_REQUEST,
+            ) from exc
 
         unreturned_records_list, returned_records_list = get_lendinfo_by_readers(
             readers)
-
-        returned_filter = request.query_params.get('returned', 'all')
 
         if returned_filter == 'true':
             records_list = returned_records_list
@@ -236,6 +258,8 @@ class LibraryViewSet(viewsets.ViewSet):
                 response=ActivitySerializer(many=True),
                 description="List of library activities"
             ),
+            400: error_response("Invalid activity query parameters"),
+            401: error_response("Authentication required or token invalid"),
         },
         tags=['书房']
     )
@@ -247,10 +271,11 @@ class LibraryViewSet(viewsets.ViewSet):
         Query parameters:
         - num: Maximum number of activities to return (default: 3)
         """
-        try:
-            num = int(request.query_params.get('num', DISPLAY_ACTIVITY_NUM))
-        except ValueError:
-            num = DISPLAY_ACTIVITY_NUM
+        query_serializer = LibraryActivitiesQuerySerializer(
+            data=request.query_params
+        )
+        query_serializer.is_valid(raise_exception=True)
+        num = query_serializer.validated_data["num"]
 
         activities = get_library_activity(num=num)
         return Response(list(activities), status=status.HTTP_200_OK)
@@ -276,6 +301,8 @@ class LibraryViewSet(viewsets.ViewSet):
                 response=BookSerializer(many=True),
                 description="List of recommended/newest books"
             ),
+            400: error_response("Invalid recommendation query parameters"),
+            401: error_response("Authentication required or token invalid"),
         },
         tags=['书房']
     )
@@ -288,13 +315,12 @@ class LibraryViewSet(viewsets.ViewSet):
         - num: Maximum number of books to return (default: 5)
         - newest: If true, return newest books instead of random recommendations
         """
-        try:
-            num = int(request.query_params.get(
-                'num', DISPLAY_RECOMMENDATION_NUM))
-        except ValueError:
-            num = DISPLAY_RECOMMENDATION_NUM
-
-        newest = request.query_params.get('newest', '').lower() == 'true'
+        query_serializer = LibraryRecommendationsQuerySerializer(
+            data=request.query_params
+        )
+        query_serializer.is_valid(raise_exception=True)
+        num = query_serializer.validated_data["num"]
+        newest = query_serializer.validated_data["newest"]
 
         books = get_recommended_or_newest_books(num=num, newest=newest)
         return Response(list(books), status=status.HTTP_200_OK)
@@ -303,6 +329,7 @@ class LibraryViewSet(viewsets.ViewSet):
         description="Get library configuration (opening hours, etc.)",
         responses={
             200: LibraryConfigSerializer,
+            401: error_response("Authentication required or token invalid"),
         },
         tags=['书房']
     )

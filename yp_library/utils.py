@@ -18,10 +18,23 @@ from yp_library.config import library_config as CONFIG
 from achievement.models import AchievementUnlock, Achievement
 
 __all__ = [
+    'ReaderAccountError', 'PersonalAccountRequired', 'ReaderAccountMissing',
     'get_readers_by_user', 'search_books',
     'get_query_dict', 'get_my_records', 'get_lendinfo_by_readers',
     'get_library_activity', 'get_recommended_or_newest_books', 'to_feedback_url',
 ]
+
+
+class ReaderAccountError(Exception):
+    """Base error for a user that cannot resolve a library reader account."""
+
+
+class PersonalAccountRequired(ReaderAccountError):
+    """The current account is not a natural-person account."""
+
+
+class ReaderAccountMissing(ReaderAccountError):
+    """The current person's student ID has no linked library reader."""
 
 
 def days_reminder(days: int, alert_msg: str):
@@ -94,21 +107,21 @@ def _send_remind_notification(receivers: QuerySet[User], content: str):
 
 def get_readers_by_user(user: User) -> QuerySet[Reader]:
     """
-    根据学号寻找与user关联的reader，要求必须为个人账号且账号必须通过学号关联至少一个reader，否则抛出AssertionError
+    根据学号寻找与 user 关联的 reader，要求必须为个人账号且账号必须通过学号关联至少一个 reader。
 
     :param user: HttpRequest的User
     :type user: User
-    :raises AssertionError: 只允许个人账户登录
-    :raises AssertionError: user的学号没有关联任何书房账号
+    :raises PersonalAccountRequired: 只允许个人账户登录
+    :raises ReaderAccountMissing: user 的学号没有关联任何书房账号
     :return: 与user关联的所有reader
     :rtype: QuerySet[Reader]
     """
     if not user.is_person():
-        raise AssertionError('您目前使用非个人账号登录，如要查询借阅记录，请使用个人账号。')
+        raise PersonalAccountRequired
     # 获取与当前user的学号对应的所有readers
     readers = Reader.objects.filter(student_id=user.username)
-    if len(readers) == 0:
-        raise AssertionError('您的学号没有关联任何书房账号，如有借书需要，请前往书房开通账号。')
+    if not readers.exists():
+        raise ReaderAccountMissing
     return readers
 
 

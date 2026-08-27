@@ -1,6 +1,7 @@
 from app.views_dependency import ProfileTemplateView
 from utils.global_messages import transfer_message_context
 from yp_library.utils import (
+    ReaderAccountError,
     get_readers_by_user,
     search_books,
     get_query_dict,
@@ -30,7 +31,7 @@ class WelcomeView(ProfileTemplateView):
         # 借阅记录
         try:
             readers = get_readers_by_user(self.request.user)
-        except AssertionError as e:
+        except ReaderAccountError:
             records_list = []
         else:
             unreturned_records_list, returned_records_list = get_lendinfo_by_readers(

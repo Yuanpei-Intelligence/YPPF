@@ -1,9 +1,14 @@
 """
 Tests for library API.
-Basic tests that don't require database connection.
 """
+from unittest import mock
+
 from django.test import SimpleTestCase
-from django.urls import reverse, resolve
+from django.urls import resolve
+from rest_framework import status as http_status
+from rest_framework.test import APIClient, APITestCase
+
+from generic.models import User
 
 from api.library.views import LibraryViewSet
 from api.library.serializers import (
@@ -11,6 +16,9 @@ from api.library.serializers import (
     LibraryWelcomeSerializer,
     BookSearchQuerySerializer,
     LibraryConfigSerializer,
+    LibraryActivitiesQuerySerializer,
+    LibraryRecommendationsQuerySerializer,
+    LibraryRecordsQuerySerializer,
 )
 
 
@@ -90,6 +98,185 @@ class SerializerFieldsTestCase(SimpleTestCase):
         expected_fields = ['activities', 'opening_time_start', 'opening_time_end',
                            'records_list', 'recommendation']
         self.assertEqual(set(serializer.fields.keys()), set(expected_fields))
+
+    def test_library_query_serializer_fields(self):
+        """Endpoint-specific query serializers expose their public fields."""
+        self.assertEqual(
+            set(LibraryRecordsQuerySerializer().fields),
+            {"returned"},
+        )
+        self.assertEqual(
+            set(LibraryActivitiesQuerySerializer().fields),
+            {"num"},
+        )
+        self.assertEqual(
+            set(LibraryRecommendationsQuerySerializer().fields),
+            {"num", "newest"},
+        )
+
+
+class LibraryAPITestCase(APITestCase):
+    """Exercise the standardized library API error contract."""
+
+    def setUp(self):
+        self.client = APIClient()
+        self.person = User.objects.create_user(
+            username="S000001",
+            password="testpass123",
+            name="Library Person",
+            usertype=User.Type.STUDENT,
+        )
+        self.organization = User.objects.create_user(
+            username="ORG001",
+            password="testpass123",
+            name="Library Organization",
+            usertype=User.Type.ORG,
+        )
+
+    def assert_error(self, response, expected_status, expected_code):
+        self.assertEqual(response.status_code, expected_status)
+        self.assertEqual(set(response.data), {"code", "message", "errors"})
+        self.assertEqual(response.data["code"], expected_code)
+        self.assertIsInstance(response.data["message"], str)
+        self.assertIsInstance(response.data["errors"], dict)
+
+    def authenticate(self, user=None):
+        self.client.force_authenticate(user=user or self.person)
+
+    def test_config_requires_authentication(self):
+        response = self.client.get("/api/v2/library/config/")
+
+        self.assert_error(
+            response,
+            http_status.HTTP_401_UNAUTHORIZED,
+            "invalid_token",
+        )
+        self.assertEqual(response.data["errors"], {})
+
+    def test_search_rejects_invalid_returned_filter(self):
+        self.authenticate()
+
+        response = self.client.get(
+            "/api/v2/library/search/",
+            {"returned": "maybe"},
+        )
+
+        self.assert_error(
+            response,
+            http_status.HTTP_400_BAD_REQUEST,
+            "validation_error",
+        )
+        self.assertEqual(
+            response.data["errors"]["returned"][0]["code"],
+            "invalid",
+        )
+
+    def test_records_rejects_invalid_returned_filter(self):
+        self.authenticate()
+
+        response = self.client.get(
+            "/api/v2/library/records/",
+            {"returned": "maybe"},
+        )
+
+        self.assert_error(
+            response,
+            http_status.HTTP_400_BAD_REQUEST,
+            "validation_error",
+        )
+        self.assertEqual(
+            response.data["errors"]["returned"][0]["code"],
+            "invalid_choice",
+        )
+
+    def test_records_reports_missing_reader_account(self):
+        self.authenticate()
+
+        response = self.client.get("/api/v2/library/records/")
+
+        self.assert_error(
+            response,
+            http_status.HTTP_400_BAD_REQUEST,
+            "library.reader_account_missing",
+        )
+        self.assertEqual(response.data["errors"], {})
+
+    def test_records_rejects_organization_account(self):
+        self.authenticate(self.organization)
+
+        response = self.client.get("/api/v2/library/records/")
+
+        self.assert_error(
+            response,
+            http_status.HTTP_403_FORBIDDEN,
+            "permission_denied",
+        )
+        self.assertEqual(response.data["errors"], {})
+
+    def test_activities_rejects_out_of_range_num(self):
+        self.authenticate()
+
+        response = self.client.get(
+            "/api/v2/library/activities/",
+            {"num": 0},
+        )
+
+        self.assert_error(
+            response,
+            http_status.HTTP_400_BAD_REQUEST,
+            "validation_error",
+        )
+        self.assertEqual(
+            response.data["errors"]["num"][0]["code"],
+            "min_value",
+        )
+
+    def test_recommendations_rejects_invalid_query(self):
+        self.authenticate()
+
+        response = self.client.get(
+            "/api/v2/library/recommendations/",
+            {"num": 51, "newest": "maybe"},
+        )
+
+        self.assert_error(
+            response,
+            http_status.HTTP_400_BAD_REQUEST,
+            "validation_error",
+        )
+        self.assertEqual(
+            response.data["errors"]["num"][0]["code"],
+            "max_value",
+        )
+        self.assertEqual(
+            response.data["errors"]["newest"][0]["code"],
+            "invalid",
+        )
+
+    @mock.patch("api.library.views.unlock_achievement")
+    @mock.patch("api.library.views.search_books", return_value=[])
+    def test_search_passes_validated_query_values(
+        self,
+        search_books_mock,
+        unlock_achievement_mock,
+    ):
+        self.authenticate()
+
+        response = self.client.get(
+            "/api/v2/library/search/",
+            {"keywords": "history", "returned": "true"},
+        )
+
+        self.assertEqual(response.status_code, http_status.HTTP_200_OK)
+        self.assertEqual(response.data, [])
+        search_books_mock.assert_called_once_with(
+            keywords="history",
+            returned=True,
+        )
+        unlock_achievement_mock.assert_called_once_with(
+            self.person,
+            "使用一次元培书房查询",
+        )
 
 
 class ViewSetConfigTestCase(SimpleTestCase):
