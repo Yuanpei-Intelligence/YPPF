@@ -8,10 +8,15 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 from drf_spectacular.utils import extend_schema, OpenApiResponse
 
-from app.models import HomepageImage, ActivityPhoto
+from app.models import HomepageImage
+from api.exceptions import (
+    APIErrorResponseSerializer,
+    StandardizedExceptionHandlerMixin,
+)
+from api.generic.serializers import CarouselResponseSerializer
 
 
-class CarouselView(APIView):
+class CarouselView(StandardizedExceptionHandlerMixin, APIView):
     """
     首页轮播图数据。
     返回配置的首页图与活动总结图（每活动一张），不足时用 fallback 图。
@@ -61,23 +66,14 @@ class CarouselView(APIView):
         summary="首页轮播图",
         description="获取首页轮播图展示的图片列表（首页配置图 + 活动总结图），每项含 image、redirect_url。",
         responses={
-            200: OpenApiResponse(
-                description="图片列表",
-                response={
-                    "type": "object",
-                    "properties": {
-                        "items": {
-                            "type": "array",
-                            "items": {
-                                "type": "object",
-                                "properties": {
-                                    "image": {"type": "string", "description": "图片 URL"},
-                                    "redirect_url": {"type": "string", "description": "点击跳转 URL"},
-                                },
-                            },
-                        },
-                    },
-                },
+            200: CarouselResponseSerializer,
+            405: OpenApiResponse(
+                response=APIErrorResponseSerializer,
+                description="请求方法不受支持",
+            ),
+            500: OpenApiResponse(
+                response=APIErrorResponseSerializer,
+                description="服务器暂时无法处理请求",
             ),
         },
         tags=["通用"],
