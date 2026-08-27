@@ -9,22 +9,33 @@ from rest_framework import status
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
-from rest_framework.exceptions import PermissionDenied, ValidationError
+from rest_framework.exceptions import NotFound, PermissionDenied
 from drf_spectacular.utils import extend_schema, OpenApiResponse
 from django.db import transaction
 
 from api.authentication import WxJWTAuthentication
+from api.exceptions import (
+    APIErrorResponseSerializer,
+    StandardizedExceptionHandlerMixin,
+)
 from api.org.serializers import (
     SubscriptionListResponseSerializer,
     SubscribeStatusUpdateSerializer,
-    OrganizationTypeWithOrgsSerializer,
     OrganizationWithSubscribeSerializer,
+    SubscriptionUpdateResponseSerializer,
 )
 from app.models import Organization, OrganizationType
 from app.utils import get_person_or_org
 
 
-class SubscriptionListView(APIView):
+def error_response(description: str) -> OpenApiResponse:
+    return OpenApiResponse(
+        response=APIErrorResponseSerializer,
+        description=description,
+    )
+
+
+class SubscriptionListView(StandardizedExceptionHandlerMixin, APIView):
     """
     List all organizations grouped by type with subscription status.
 
@@ -43,7 +54,9 @@ class SubscriptionListView(APIView):
                 response=SubscriptionListResponseSerializer,
                 description="小组订阅列表"
             ),
-            403: OpenApiResponse(description="未登录或无权限"),
+            401: error_response("未认证或令牌无效"),
+            405: error_response("请求方法不受支持"),
+            500: error_response("服务器暂时无法处理请求"),
         },
         tags=["小组"],
     )
@@ -111,7 +124,7 @@ class SubscriptionListView(APIView):
         })
 
 
-class SubscriptionUpdateView(APIView):
+class SubscriptionUpdateView(StandardizedExceptionHandlerMixin, APIView):
     """
     Update subscription status for an organization or organization type.
 
@@ -133,16 +146,14 @@ class SubscriptionUpdateView(APIView):
         responses={
             200: OpenApiResponse(
                 description="订阅状态更新成功",
-                response={
-                    "type": "object",
-                    "properties": {
-                        "success": {"type": "boolean"},
-                        "message": {"type": "string"},
-                    },
-                },
+                response=SubscriptionUpdateResponseSerializer,
             ),
-            400: OpenApiResponse(description="请求参数错误"),
-            403: OpenApiResponse(description="小组账号不支持订阅"),
+            400: error_response("请求参数错误"),
+            401: error_response("未认证或令牌无效"),
+            403: error_response("当前账号不支持该订阅操作"),
+            404: error_response("小组或小组类型不存在"),
+            405: error_response("请求方法不受支持"),
+            500: error_response("服务器暂时无法处理请求"),
         },
         tags=["小组"],
     )
@@ -154,26 +165,27 @@ class SubscriptionUpdateView(APIView):
         serializer.is_valid(raise_exception=True)
         data = serializer.validated_data
 
-        me = get_person_or_org(request.user)
         subscribe = data['status']  # True = subscribe, False = unsubscribe
 
         with transaction.atomic():
+            me = get_person_or_org(request.user, update=True)
+
             if 'id' in data:
                 # Subscribe/unsubscribe a single organization
                 org_username = data['id']
                 try:
-                    org = Organization.objects.get(
+                    org = Organization.objects.select_for_update().get(
                         organization_id__username=org_username
                     )
-                except Organization.DoesNotExist:
-                    raise ValidationError({"id": "小组不存在"})
+                except Organization.DoesNotExist as exc:
+                    raise NotFound("小组不存在。") from exc
 
                 if subscribe:
                     me.unsubscribe_list.remove(org)
                     message = f"成功订阅 {org.oname}"
                 else:
                     if not org.otype.allow_unsubscribe:
-                        raise PermissionDenied("该类型的小组不允许取消订阅")
+                        raise PermissionDenied("该类型的小组不允许取消订阅。")
                     me.unsubscribe_list.add(org)
                     message = f"成功取消订阅 {org.oname}"
 
@@ -181,9 +193,11 @@ class SubscriptionUpdateView(APIView):
                 # Subscribe/unsubscribe all organizations of a type
                 otype_id = data['otype']
                 try:
-                    otype = OrganizationType.objects.get(otype_id=otype_id)
-                except OrganizationType.DoesNotExist:
-                    raise ValidationError({"otype": "小组类型不存在"})
+                    otype = OrganizationType.objects.select_for_update().get(
+                        otype_id=otype_id
+                    )
+                except OrganizationType.DoesNotExist as exc:
+                    raise NotFound("小组类型不存在。") from exc
 
                 org_list = Organization.objects.filter(
                     otype__otype_id=otype_id)
@@ -198,13 +212,11 @@ class SubscriptionUpdateView(APIView):
                     message = f"成功订阅所有 {otype.otype_name} 类型的小组"
                 else:
                     if not otype.allow_unsubscribe:
-                        raise PermissionDenied("该类型的小组不允许取消订阅")
+                        raise PermissionDenied("该类型的小组不允许取消订阅。")
                     # Add all organizations of this type to unsubscribe list
                     for org in org_list:
                         me.unsubscribe_list.add(org)
                     message = f"成功取消订阅所有 {otype.otype_name} 类型的小组"
-
-            me.save()
 
         return Response({
             "success": True,

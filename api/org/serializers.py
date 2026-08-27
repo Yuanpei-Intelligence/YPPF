@@ -108,6 +108,7 @@ class SubscribeStatusUpdateSerializer(serializers.Serializer):
     )
     otype = serializers.IntegerField(
         required=False,
+        min_value=1,
         help_text="Organization type ID for batch subscribe/unsubscribe"
     )
     status = serializers.BooleanField(
@@ -117,10 +118,17 @@ class SubscribeStatusUpdateSerializer(serializers.Serializer):
     def validate(self, data):
         if 'id' not in data and 'otype' not in data:
             raise serializers.ValidationError(
-                "Either 'id' (organization username) or 'otype' (type ID) is required"
+                "必须指定小组账号或小组类型。"
             )
         if 'id' in data and 'otype' in data:
             raise serializers.ValidationError(
-                "Cannot specify both 'id' and 'otype'"
+                "小组账号和小组类型不能同时指定。"
             )
         return data
+
+
+class SubscriptionUpdateResponseSerializer(serializers.Serializer):
+    """Serializer for a successful subscription update."""
+
+    success = serializers.BooleanField()
+    message = serializers.CharField()

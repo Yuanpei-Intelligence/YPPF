@@ -12,7 +12,16 @@ from app.models import NaturalPerson, Organization, OrganizationType
 from generic.models import User
 
 
-class SubscriptionListViewTest(APITestCase):
+class ErrorContractAssertions:
+    def assert_error(self, response, expected_status, expected_code):
+        self.assertEqual(response.status_code, expected_status)
+        self.assertEqual(set(response.data), {"code", "message", "errors"})
+        self.assertEqual(response.data["code"], expected_code)
+        self.assertIsInstance(response.data["message"], str)
+        self.assertIsInstance(response.data["errors"], dict)
+
+
+class SubscriptionListViewTest(ErrorContractAssertions, APITestCase):
     """Tests for GET /api/v2/org/subscriptions/ (SubscriptionListView)."""
 
     def setUp(self):
@@ -50,7 +59,12 @@ class SubscriptionListViewTest(APITestCase):
     def test_subscription_list_requires_auth(self):
         """Unauthenticated request returns 401."""
         response = self.client.get(self._url())
-        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+        self.assert_error(
+            response,
+            status.HTTP_401_UNAUTHORIZED,
+            "invalid_token",
+        )
+        self.assertEqual(response.data["errors"], {})
 
     def test_subscription_list_person_returns_200(self):
         """Authenticated person gets 200 and correct structure."""
@@ -89,7 +103,7 @@ class SubscriptionListViewTest(APITestCase):
                 self.assertIn("subscribed", org)
 
 
-class SubscriptionUpdateViewTest(APITestCase):
+class SubscriptionUpdateViewTest(ErrorContractAssertions, APITestCase):
     """Tests for POST /api/v2/org/subscriptions/update/ (SubscriptionUpdateView)."""
 
     def setUp(self):
@@ -131,7 +145,12 @@ class SubscriptionUpdateViewTest(APITestCase):
             {"id": self.org.organization_id.username, "status": True},
             format="json",
         )
-        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+        self.assert_error(
+            response,
+            status.HTTP_401_UNAUTHORIZED,
+            "invalid_token",
+        )
+        self.assertEqual(response.data["errors"], {})
 
     def test_subscription_update_org_forbidden(self):
         """Organization account gets 403 (only person can update)."""
@@ -141,7 +160,12 @@ class SubscriptionUpdateViewTest(APITestCase):
             {"id": self.org.organization_id.username, "status": True},
             format="json",
         )
-        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+        self.assert_error(
+            response,
+            status.HTTP_403_FORBIDDEN,
+            "permission_denied",
+        )
+        self.assertEqual(response.data["errors"], {})
 
     def test_subscription_update_validation_neither_id_nor_otype(self):
         """400 when neither id nor otype is provided."""
@@ -151,7 +175,15 @@ class SubscriptionUpdateViewTest(APITestCase):
             {"status": True},
             format="json",
         )
-        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assert_error(
+            response,
+            status.HTTP_400_BAD_REQUEST,
+            "validation_error",
+        )
+        self.assertEqual(
+            response.data["errors"]["non_field_errors"][0]["code"],
+            "invalid",
+        )
 
     def test_subscription_update_validation_both_id_and_otype(self):
         """400 when both id and otype are provided."""
@@ -161,7 +193,35 @@ class SubscriptionUpdateViewTest(APITestCase):
             {"id": "org2", "otype": 2, "status": True},
             format="json",
         )
-        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assert_error(
+            response,
+            status.HTTP_400_BAD_REQUEST,
+            "validation_error",
+        )
+        self.assertEqual(
+            response.data["errors"]["non_field_errors"][0]["code"],
+            "invalid",
+        )
+
+    def test_subscription_update_requires_status(self):
+        """Missing status retains the serializer's required field code."""
+        self.client.force_authenticate(user=self.person_user)
+
+        response = self.client.post(
+            self._url(),
+            {"id": self.org.organization_id.username},
+            format="json",
+        )
+
+        self.assert_error(
+            response,
+            status.HTTP_400_BAD_REQUEST,
+            "validation_error",
+        )
+        self.assertEqual(
+            response.data["errors"]["status"][0]["code"],
+            "required",
+        )
 
     def test_subscription_update_single_org_subscribe(self):
         """Person can subscribe to a single org (remove from unsubscribe_list)."""
@@ -195,14 +255,20 @@ class SubscriptionUpdateViewTest(APITestCase):
         self.assertIn(self.org, self.me.unsubscribe_list.all())
 
     def test_subscription_update_single_org_nonexistent(self):
-        """400 when id references non-existent organization."""
+        """404 when id references non-existent organization."""
         self.client.force_authenticate(user=self.person_user)
         response = self.client.post(
             self._url(),
             {"id": "nonexistent_org", "status": True},
             format="json",
         )
-        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assert_error(
+            response,
+            status.HTTP_404_NOT_FOUND,
+            "not_found",
+        )
+        self.assertEqual(response.data["message"], "小组不存在。")
+        self.assertEqual(response.data["errors"], {})
 
     def test_subscription_update_by_otype_subscribe(self):
         """Person can subscribe to all orgs of a type."""
@@ -244,7 +310,12 @@ class SubscriptionUpdateViewTest(APITestCase):
             {"id": self.org.organization_id.username, "status": False},
             format="json",
         )
-        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+        self.assert_error(
+            response,
+            status.HTTP_403_FORBIDDEN,
+            "permission_denied",
+        )
+        self.assertEqual(response.data["errors"], {})
 
     def test_subscription_update_unsubscribe_not_allowed_by_otype(self):
         """403 when unsubscribing by otype and type has allow_unsubscribe=False."""
@@ -256,14 +327,25 @@ class SubscriptionUpdateViewTest(APITestCase):
             {"otype": self.otype.otype_id, "status": False},
             format="json",
         )
-        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+        self.assert_error(
+            response,
+            status.HTTP_403_FORBIDDEN,
+            "permission_denied",
+        )
+        self.assertEqual(response.data["errors"], {})
 
     def test_subscription_update_otype_nonexistent(self):
-        """400 when otype references non-existent organization type."""
+        """404 when otype references non-existent organization type."""
         self.client.force_authenticate(user=self.person_user)
         response = self.client.post(
             self._url(),
             {"otype": 99999, "status": True},
             format="json",
         )
-        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assert_error(
+            response,
+            status.HTTP_404_NOT_FOUND,
+            "not_found",
+        )
+        self.assertEqual(response.data["message"], "小组类型不存在。")
+        self.assertEqual(response.data["errors"], {})
