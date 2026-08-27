@@ -59,14 +59,14 @@ interchangeable:
 | --- | --- | --- | --- | --- |
 | `signed_openid` | Proves the WeChat identity only during first-time account binding. It is not an API login credential. | `issue_binding_credential()` in `api/auth/binding.py` after an unbound `wx.login` exchange. | `signed_openid_ttl_minutes` (10 minutes by default). Its versioned, purpose-bound signed random nonce is returned only to the client; one `PendingWechatBinding` per openid stores the digest, expiry, and shared failed-attempt count. Reissuance rotates the nonce without resetting failures. Success deletes the row; exhaustion retains a locked tombstone until expiry. | JSON body of `POST /api/v2/auth/wx/bind/`. |
 | JWT access token | Authenticates normal mini-program API requests and identifies the currently selected person or organization account. | `_issue_jwt_for_user()` after login or binding. | `token_expire_minutes` (120 minutes by default). The client stores it and obtains a new token by logging in again; there is currently no refresh-token endpoint. | `Authorization: Bearer <token>`. Never place it in a URL. |
-| WebView ticket | Converts an authenticated mini-program identity into a Django session for a website WebView without exposing the JWT in the URL. | `POST /api/v2/auth/ticket/`, which requires a valid JWT. | `ticket_ttl_seconds` (60 seconds by default). Stored in Django cache and deleted when consumed. | Query parameter to `/redirect/?ticket=<ticket>&to=<path>`. |
+| WebView ticket | Converts an authenticated mini-program identity into a Django session for a website WebView without exposing the JWT in the URL. | `POST /api/v2/auth/ticket/`, which requires a valid JWT. | `ticket_ttl_seconds` (60 seconds by default). Only a digest, user, purpose, and expiry are stored in `PendingWebviewTicket`; redemption locks and deletes the database row atomically. | Query parameter to `/redirect/?ticket=<ticket>&to=<path>`. |
 
 The relevant implementation is split across `api/auth/views.py` (flows and
 JWT issuance), `api/auth/binding.py` (digest-only pending credential issuance
 and atomic one-time redemption), `api/auth/ticket.py` (ticket
 creation/consumption), `api/authentication.py` (DRF authenticators),
-`generic/models.py` (`UserWechatProfile` and `PendingWechatBinding`), and
-`generic/views.py` (the WebView redirect bridge).
+`generic/models.py` (`UserWechatProfile`, `PendingWechatBinding`, and
+`PendingWebviewTicket`), and `generic/views.py` (the WebView redirect bridge).
 
 ### First-time binding
 
@@ -140,20 +140,19 @@ or a token accepted from the mini-program client.
 1. An authenticated client sends `POST /api/v2/auth/ticket/` with its bearer
    JWT.
 2. `create_webview_ticket()` creates a cryptographically random token and
-   caches the selected user's primary key under a short TTL.
+   stores only its digest, selected user, `webview_login` purpose, and expiry
+   in the shared database.
 3. The client opens `/redirect/?ticket=<ticket>&to=<path>` in the WebView.
-4. `TicketAuthentication` consumes and deletes the cache entry, loads the
-   user, and `redirect_to_webview()` establishes a normal Django session
-   before redirecting to `to`.
+4. `TicketAuthentication` locks and atomically deletes the database row,
+   loads the user, and `redirect_to_webview()` establishes a normal Django
+   session before redirecting to the validated local `to` path.
 
 A ticket is single-purpose, short-lived, and intended for one use. Never use
-`TicketAuthentication` on ordinary API endpoints, persist tickets, retry a
-consumed ticket, or send it to another host. Ticket creation and redirect
-consumption must share the same Django cache; a multi-host deployment needs a
-cache backend shared by all participating processes. The current redirect
-handler passes `to` to Django without validating that it is local, so callers
-must supply an internal path and any new redirect implementation must reject
-external, protocol-relative, or otherwise unsafe destinations.
+`TicketAuthentication` on ordinary API endpoints, persist raw tickets, retry
+a consumed ticket, or send it to another host. Ticket creation and redirect
+consumption must use the same database. Redirect targets are restricted to
+single-slash local paths; absolute, protocol-relative, backslash, and other
+unsafe destinations fall back to a fixed local path.
 
 ### Embedded WebView navigation patch
 

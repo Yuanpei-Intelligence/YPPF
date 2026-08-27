@@ -10,10 +10,12 @@ from django.db import transaction
 from django.db.models import Q, F, Sum, QuerySet
 from django.contrib.auth.password_validation import CommonPasswordValidator, NumericPasswordValidator
 from django.core.exceptions import ValidationError
+from django.views.decorators.csrf import csrf_protect
+from django.views.decorators.http import require_POST
 
 from utils.config.cast import str_to_time
+from utils.http.utils import safe_local_redirect_target
 from utils.marker import deprecated
-from utils.hasher import MyMD5Hasher
 from app.views_dependency import *
 from app.models import (
     NaturalPerson,
@@ -67,58 +69,27 @@ from semester.api import current_semester
 
 
 
+@csrf_protect
 @login_required(redirect_field_name="origin")
+@require_POST
 @logger.secure_view()
 def shiftAccount(request: HttpRequest):
+    """Switch the current person session to an authorized related account."""
 
     username = request.session.get("NP")
     if not username:
         return redirect(message_url(wrong('没有可切换的账户信息，请重新登录!')))
 
-    oname = ""
-    if request.method == "GET" and request.GET.get("oname"):
-        oname = request.GET["oname"]
+    oname = request.POST.get("oname", "")
 
     # 不一定更新成功，但无所谓
     update_related_account_in_session(
         request, username, shift=True, oname=oname)
 
-    if request.method == "GET" and request.GET.get("origin"):
-        arg_url = request.GET["origin"]
-        if arg_url.startswith('/'):  # 暂时只允许内部链接
-            return redirect(arg_url)
-    return redirect("/welcome/")
-
-
-# Return content
-# Sname 姓名 Succeed 成功与否
-wechat_login_coder = MyMD5Hasher("wechat_login")
-
-
-@logger.secure_view()
-def miniLogin(request: HttpRequest):
-    try:
-        assert request.method == "POST"
-        username = request.POST["username"]
-        password = request.POST["password"]
-        secret_token = request.POST["secret_token"]
-        assert wechat_login_coder.verify(username, secret_token) == True
-        user = User.objects.get(username=username)
-
-        userinfo = auth.authenticate(username=username, password=password)
-
-        if userinfo:
-
-            auth.login(request, userinfo)
-
-            # request.session["username"] = username 已废弃
-            en_pw = GLOBAL_CONFIG.hasher.encode(username)
-            user_account = NaturalPerson.objects.get_by_user(username)
-            return JsonResponse({"Sname": user_account.name, "Succeed": 1}, status=200)
-        else:
-            return JsonResponse({"Sname": username, "Succeed": 0}, status=400)
-    except:
-        return JsonResponse({"Sname": "", "Succeed": 0}, status=400)
+    origin = safe_local_redirect_target(
+        request, request.POST.get("origin"), "/welcome/"
+    )
+    return redirect(origin)
 
 
 @login_required(redirect_field_name="origin")

@@ -33,7 +33,8 @@ class WxJWTAuthentication(JWTAuthentication):
 class TicketAuthentication(BaseAuthentication):
     """
     One-time ticket authentication for webview redirect.
-    Reads ticket from query param `ticket`, validates and consumes it (deletes from cache).
+    Reads ticket from query param `ticket`, validates it, and atomically
+    consumes its digest-only database row.
     Used by /redirect/?ticket=xxx&to=... to avoid passing JWT in URL.
     """
 

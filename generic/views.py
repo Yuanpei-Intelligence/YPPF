@@ -7,6 +7,7 @@ from rest_framework.exceptions import AuthenticationFailed
 
 from api.authentication import TicketAuthentication
 from utils.http.dependency import HttpRequest, HttpResponse, UserRequest
+from utils.http.utils import safe_local_redirect_target
 
 from generic.models import User
 import utils.models.query as SQ
@@ -102,17 +103,10 @@ class Index(SecureTemplateView):
         # When login as np, related org accout is also available
         update_related_account_in_session(self.request, self.username)
 
-        # If origin is present and valid, redirect
-        # Otherwise, redirect to welcome page
-        origin = self.request.GET.get('origin')
-        if origin and self._is_origin_safe(self.request, origin):
-            return self.redirect(origin)
-        else:
-            return self.redirect('welcome')
-
-    def _is_origin_safe(self, request: HttpRequest,
-                        origin: str | None = None) -> bool:
-        return origin is None or origin.startswith('/')
+        origin = safe_local_redirect_target(
+            self.request, self.request.GET.get("origin"), "welcome"
+        )
+        return self.redirect(origin)
 
 
 class Logout(SecureView):
@@ -143,7 +137,6 @@ def redirect_to_webview(request: HttpRequest) -> HttpResponse:
     用于微信 webview 跳板，避免在 URL 中传递 JWT。
     ticket 通过 POST /api/auth/ticket/ 用 JWT 换取，鉴权后立即失效。
     '''
-    to = request.GET.get('to', '/')
     try:
         auth_tuple = TicketAuthentication().authenticate(request)
     except AuthenticationFailed:
@@ -152,4 +145,5 @@ def redirect_to_webview(request: HttpRequest) -> HttpResponse:
         return HttpResponse('ticket is required', status=400)
     user, _ = auth_tuple
     login(request, user)
+    to = safe_local_redirect_target(request, request.GET.get("to"), "/")
     return redirect(to)

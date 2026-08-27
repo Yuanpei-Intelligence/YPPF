@@ -885,7 +885,8 @@ code { color: #e7515a; }
 #sidebar ul.menu-categories li.menu > a span:not(.badge) {
     vertical-align: middle;
 }
-#sidebar ul.menu-categories ul.submenu > li a {
+#sidebar ul.menu-categories ul.submenu > li a,
+#sidebar ul.menu-categories ul.submenu > li .account-switch-button {
     position: relative;
     display: flex;
     justify-content: space-between;
@@ -895,7 +896,20 @@ code { color: #e7515a; }
     font-size: 13px;
     color: #515365;
 }
-#sidebar ul.menu-categories li.menu ul.submenu > li a:before {
+#sidebar ul.menu-categories ul.submenu > li .account-switch-form {
+    margin: 0;
+}
+#sidebar ul.menu-categories ul.submenu > li .account-switch-button {
+    width: calc(100% - 36px);
+    border: 0;
+    background: transparent;
+    font-family: inherit;
+    line-height: inherit;
+    text-align: left;
+    cursor: pointer;
+}
+#sidebar ul.menu-categories li.menu ul.submenu > li a:before,
+#sidebar ul.menu-categories li.menu ul.submenu > li .account-switch-button:before {
     content: '';
     background-color: #d3d3d3;
     position: absolute;
@@ -913,10 +927,12 @@ code { color: #e7515a; }
 }
 #sidebar ul.menu-categories li.menu ul.submenu > li.active a:before { background-color: #1b55e2; }
 #sidebar ul.menu-categories ul.submenu > li.active { position: relative; }
-#sidebar ul.menu-categories ul.submenu > li a:hover {
+#sidebar ul.menu-categories ul.submenu > li a:hover,
+#sidebar ul.menu-categories ul.submenu > li .account-switch-button:hover {
     color: #1b55e2;
 }
-#sidebar ul.menu-categories ul.submenu > li a:hover:before {
+#sidebar ul.menu-categories ul.submenu > li a:hover:before,
+#sidebar ul.menu-categories ul.submenu > li .account-switch-button:hover:before {
     background-color: #1b55e2!important;
 }
 #sidebar ul.menu-categories ul.submenu > li a i {

@@ -1,43 +1,73 @@
-"""
-One-time ticket for webview redirect.
-Ticket is stored in cache and invalidated after first use.
-"""
+"""Database-backed, atomic one-time tickets for WebView login."""
+
+import hashlib
 import secrets
+from datetime import datetime, timedelta
 
-from django.core.cache import cache
+from django.db import transaction
+
 from api.config import CONFIG
+from generic.models import PendingWebviewTicket
 
-WEBVIEW_TICKET_KEY_PREFIX = "wx_webview_ticket:"
 WEBVIEW_TICKET_TTL = CONFIG.ticket_ttl_seconds
+_EXPIRED_TICKET_CLEANUP_BATCH_SIZE = 100
+
+
+def _ticket_digest(ticket: str) -> str:
+    return hashlib.sha256(ticket.encode()).hexdigest()
 
 
 def create_webview_ticket(user_id: int) -> str:
-    """
-    Create a one-time ticket for webview redirect.
-    Ticket is stored in cache and invalidated after first use.
-    """
+    """Create a random ticket while storing only its digest and purpose."""
+    now = datetime.now()
     ticket = secrets.token_urlsafe(32)
-    cache.set(
-        f"{WEBVIEW_TICKET_KEY_PREFIX}{ticket}",
-        str(user_id),
-        timeout=WEBVIEW_TICKET_TTL,
-    )
+    with transaction.atomic():
+        expired_digests = list(
+            PendingWebviewTicket.objects.filter(expires_at__lte=now)
+            .order_by("token_digest")
+            .values_list("token_digest", flat=True)[
+                :_EXPIRED_TICKET_CLEANUP_BATCH_SIZE
+            ]
+        )
+        for token_digest in expired_digests:
+            try:
+                expired = (
+                    PendingWebviewTicket.objects.select_for_update().get(
+                        token_digest=token_digest
+                    )
+                )
+            except PendingWebviewTicket.DoesNotExist:
+                continue
+            if expired.expires_at <= now:
+                expired.delete()
+        PendingWebviewTicket.objects.create(
+            token_digest=_ticket_digest(ticket),
+            user_id=user_id,
+            purpose=PendingWebviewTicket.Purpose.WEBVIEW_LOGIN,
+            expires_at=now + timedelta(seconds=WEBVIEW_TICKET_TTL),
+        )
     return ticket
 
 
 def consume_webview_ticket(ticket: str) -> int | None:
-    """
-    Validate ticket and return user_id if valid. Deletes ticket from cache (one-time use).
-    Returns None if ticket is invalid or already used.
-    """
-    if not ticket:
+    """Atomically consume a valid WebView-login ticket and return its user ID."""
+    if not isinstance(ticket, str) or not ticket:
         return None
-    key = f"{WEBVIEW_TICKET_KEY_PREFIX}{ticket}"
-    user_id_str = cache.get(key)
-    if user_id_str is None:
-        return None
-    cache.delete(key)
-    try:
-        return int(user_id_str)
-    except (ValueError, TypeError):
-        return None
+    now = datetime.now()
+    with transaction.atomic():
+        try:
+            pending = PendingWebviewTicket.objects.select_for_update().get(
+                token_digest=_ticket_digest(ticket)
+            )
+        except PendingWebviewTicket.DoesNotExist:
+            return None
+        if (
+            pending.expires_at <= now
+            or pending.purpose
+            != PendingWebviewTicket.Purpose.WEBVIEW_LOGIN
+        ):
+            pending.delete()
+            return None
+        user_id = pending.user_id
+        pending.delete()
+    return user_id

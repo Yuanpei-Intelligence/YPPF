@@ -80,7 +80,8 @@ MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
-    # 'django.middleware.csrf.CsrfViewMiddleware',
+    # Request validation remains explicit on each mutating website view.
+    "utils.http.middleware.CsrfCookieMiddleware",
     "django.contrib.auth.middleware.AuthenticationMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
@@ -108,8 +109,7 @@ TEMPLATES = [
 ]
 
 
-# Cache (used for one-time webview tickets, etc.)
-# shared across processes
+# Cache for non-authentication data such as the WeChat API access token.
 CACHES = {
     "default": {
         "BACKEND": "django.core.cache.backends.filebased.FileBasedCache",
