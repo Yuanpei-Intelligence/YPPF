@@ -40,6 +40,7 @@ from app.notification_utils import (
     bulk_notification_create,
     notification_create,
 )
+from app.utils import cleanup_password_reset_state
 from app.extern.wechat import WechatApp, WechatMessageLevel
 from app.log import logger
 from app.config import *
@@ -55,7 +56,13 @@ __all__ = [
     'longterm_launch_course',
     'happy_birthday',
     'weekly_activity_summary_reminder',
+    'cleanup_password_reset_state_per_day',
 ]
+
+
+@periodical('cron', 'password_reset_state_cleanup', hour=2)
+def cleanup_password_reset_state_per_day():
+    cleanup_password_reset_state()
 
 
 def send_to_persons(title, message, url='/index/'):

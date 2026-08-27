@@ -1,6 +1,7 @@
 import string
 import random
 import urllib.parse
+import uuid
 from io import BytesIO
 from datetime import datetime, timedelta
 from functools import wraps
@@ -8,8 +9,13 @@ from typing import cast, overload, Literal
 
 import xlwt
 import imghdr
+from django.conf import settings
 from django.contrib import auth
+from django.contrib.auth.password_validation import validate_password
+from django.core import signing
+from django.db.models import Q
 from django.shortcuts import redirect
+from django.utils.crypto import constant_time_compare, salted_hmac
 from utils.http.dependency import HttpResponse, HttpRequest, UserRequest
 
 from utils.http.utils import get_ip
@@ -24,7 +30,344 @@ from app.models import (
     Help,
     Participation,
     ModifyRecord,
+    PasswordResetChallenge,
+    PasswordResetThrottle,
 )
+
+
+PASSWORD_RESET_PURPOSE = 'password-reset'
+PASSWORD_RESET_SIGNING_SALT = 'app.password-reset.token'
+PASSWORD_RESET_TOKEN_SECONDS = CONFIG.password_reset_token_seconds
+PASSWORD_RESET_TOKEN_ATTEMPTS = CONFIG.password_reset_token_attempts
+PASSWORD_RESET_WINDOW = timedelta(
+    seconds=CONFIG.password_reset_window_seconds)
+PASSWORD_RESET_LOCK = timedelta(
+    seconds=CONFIG.password_reset_lock_seconds)
+PASSWORD_RESET_RETENTION = timedelta(
+    seconds=CONFIG.password_reset_retention_seconds)
+PASSWORD_RESET_REQUEST_LIMITS = {
+    PasswordResetThrottle.Scope.REQUEST_ACCOUNT:
+        CONFIG.password_reset_request_limits['account'],
+    PasswordResetThrottle.Scope.REQUEST_DEVICE:
+        CONFIG.password_reset_request_limits['device'],
+    PasswordResetThrottle.Scope.REQUEST_IP:
+        CONFIG.password_reset_request_limits['ip'],
+}
+PASSWORD_RESET_VERIFY_LIMITS = {
+    PasswordResetThrottle.Scope.VERIFY_ACCOUNT:
+        CONFIG.password_reset_verify_limits['account'],
+    PasswordResetThrottle.Scope.VERIFY_DEVICE:
+        CONFIG.password_reset_verify_limits['device'],
+    PasswordResetThrottle.Scope.VERIFY_IP:
+        CONFIG.password_reset_verify_limits['ip'],
+}
+
+
+class _PasswordResetRateLimited(Exception):
+    pass
+
+
+def _password_reset_digest(value: str, *, salt: str) -> str:
+    return salted_hmac(salt, value).hexdigest()
+
+
+def _canonical_password_reset_username(username: str) -> str:
+    normalized = User.normalize_username(username.strip())
+    return (
+        User.objects.filter(username__iexact=normalized)
+        .values_list('username', flat=True)
+        .first()
+        or normalized
+    )
+
+
+def _password_reset_client_ip(request: HttpRequest) -> str:
+    """Use the direct peer address unless trusted proxies are configured."""
+    return request.META.get('REMOTE_ADDR') or 'unknown'
+
+
+def _password_reset_device_identifier(request: HttpRequest) -> str:
+    csrf_cookie = (
+        request.META.get('CSRF_COOKIE')
+        or request.COOKIES.get(settings.CSRF_COOKIE_NAME)
+    )
+    if csrf_cookie:
+        return f'csrf:{csrf_cookie}'
+    session_key = request.session.session_key
+    if session_key is not None:
+        return f'session:{session_key}'
+    return f'ip:{_password_reset_client_ip(request)}'
+
+
+def _password_reset_context(request: HttpRequest, username: str):
+    return (
+        _canonical_password_reset_username(username),
+        _password_reset_client_ip(request),
+        _password_reset_device_identifier(request),
+    )
+
+
+def _consume_password_reset_limits(
+    identifiers: dict[PasswordResetThrottle.Scope, str],
+    limits: dict[PasswordResetThrottle.Scope, int],
+    now: datetime,
+) -> bool:
+    rows: list[tuple[PasswordResetThrottle, int]] = []
+    try:
+        with transaction.atomic():
+            for scope in sorted(identifiers, key=str):
+                identifier_digest = _password_reset_digest(
+                    identifiers[scope],
+                    salt=f'app.password-reset.throttle.{scope}',
+                )
+                row, _ = (
+                    PasswordResetThrottle.objects.select_for_update()
+                    .get_or_create(
+                        scope=scope,
+                        identifier_digest=identifier_digest,
+                        defaults={'window_started_at': now},
+                    )
+                )
+                if (row.locked_until is not None
+                        and now < row.locked_until):
+                    raise _PasswordResetRateLimited
+                if now >= row.window_started_at + PASSWORD_RESET_WINDOW:
+                    row.window_started_at = now
+                    row.attempts = 0
+                    row.locked_until = None
+                rows.append((row, limits[scope]))
+
+            for row, limit in rows:
+                row.attempts += 1
+                if row.attempts >= limit:
+                    row.locked_until = now + PASSWORD_RESET_LOCK
+                row.save(update_fields=[
+                    'window_started_at',
+                    'attempts',
+                    'locked_until',
+                ])
+    except _PasswordResetRateLimited:
+        return False
+    return True
+
+
+def cleanup_password_reset_state(
+    *,
+    now: datetime | None = None,
+) -> None:
+    now = now or datetime.now()
+    cutoff = now - PASSWORD_RESET_RETENTION
+    with transaction.atomic():
+        PasswordResetChallenge.objects.filter(
+            expires_at__lt=cutoff).delete()
+        PasswordResetThrottle.objects.filter(
+            Q(locked_until__isnull=True) | Q(locked_until__lte=now),
+            window_started_at__lt=cutoff,
+        ).delete()
+
+
+def _lock_password_reset_limits(
+    identifiers: dict[PasswordResetThrottle.Scope, str],
+    now: datetime,
+) -> None:
+    with transaction.atomic():
+        for scope in sorted(identifiers, key=str):
+            identifier_digest = _password_reset_digest(
+                identifiers[scope],
+                salt=f'app.password-reset.throttle.{scope}',
+            )
+            row, _ = (
+                PasswordResetThrottle.objects.select_for_update()
+                .get_or_create(
+                    scope=scope,
+                    identifier_digest=identifier_digest,
+                    defaults={'window_started_at': now},
+                )
+            )
+            row.locked_until = now + PASSWORD_RESET_LOCK
+            row.save(update_fields=['locked_until'])
+
+
+def _password_reset_verification_identifiers(
+    username: str,
+    ip_address: str,
+    device_identifier: str,
+) -> dict[PasswordResetThrottle.Scope, str]:
+    return {
+        PasswordResetThrottle.Scope.VERIFY_ACCOUNT: username,
+        PasswordResetThrottle.Scope.VERIFY_DEVICE: device_identifier,
+        PasswordResetThrottle.Scope.VERIFY_IP: ip_address,
+    }
+
+
+def check_password_reset_request_rate(
+    request: HttpRequest,
+    username: str,
+    *,
+    now: datetime | None = None,
+) -> bool:
+    now = now or datetime.now()
+    username, ip_address, device_identifier = _password_reset_context(
+        request, username)
+    return _consume_password_reset_limits(
+        {
+            PasswordResetThrottle.Scope.REQUEST_ACCOUNT: username,
+            PasswordResetThrottle.Scope.REQUEST_DEVICE: device_identifier,
+            PasswordResetThrottle.Scope.REQUEST_IP: ip_address,
+        },
+        PASSWORD_RESET_REQUEST_LIMITS,
+        now,
+    )
+
+
+def create_password_reset_token(
+    request: HttpRequest,
+    user: User,
+    *,
+    now: datetime | None = None,
+) -> str:
+    now = now or datetime.now()
+    _, ip_address, device_identifier = _password_reset_context(
+        request, user.username)
+    challenge_id = uuid.uuid4()
+    signed_value = signing.dumps(
+        {
+            'challenge': str(challenge_id),
+            'user': user.pk,
+            'purpose': PASSWORD_RESET_PURPOSE,
+        },
+        salt=PASSWORD_RESET_SIGNING_SALT,
+        compress=True,
+    )
+    token = f'{challenge_id}.{signed_value}'
+
+    with transaction.atomic():
+        locked_user = User.objects.select_for_update().get(pk=user.pk)
+        PasswordResetChallenge.objects.create(
+            id=challenge_id,
+            user=locked_user,
+            token_digest=_password_reset_digest(
+                token, salt='app.password-reset.token-digest'),
+            password_digest=_password_reset_digest(
+                locked_user.password,
+                salt='app.password-reset.password-state',
+            ),
+            device_digest=_password_reset_digest(
+                device_identifier, salt='app.password-reset.device'),
+            ip_digest=_password_reset_digest(
+                ip_address, salt='app.password-reset.ip'),
+            created_at=now,
+            expires_at=now + timedelta(seconds=PASSWORD_RESET_TOKEN_SECONDS),
+        )
+    return token
+
+
+def _record_password_reset_failure(
+    challenge: PasswordResetChallenge,
+    now: datetime,
+) -> bool:
+    if challenge.consumed_at is not None or challenge.invalidated_at is not None:
+        return False
+    challenge.failed_attempts += 1
+    update_fields = ['failed_attempts']
+    invalidated = False
+    if challenge.failed_attempts >= PASSWORD_RESET_TOKEN_ATTEMPTS:
+        challenge.invalidated_at = now
+        update_fields.append('invalidated_at')
+        invalidated = True
+    challenge.save(update_fields=update_fields)
+    return invalidated
+
+
+def reset_password_from_token(
+    request: HttpRequest,
+    username: str,
+    token: str,
+    new_password: str,
+    *,
+    now: datetime | None = None,
+) -> bool:
+    now = now or datetime.now()
+    username, ip_address, device_identifier = _password_reset_context(
+        request, username)
+    identifiers = _password_reset_verification_identifiers(
+        username, ip_address, device_identifier)
+    if not _consume_password_reset_limits(
+        identifiers, PASSWORD_RESET_VERIFY_LIMITS, now):
+        return False
+    with transaction.atomic():
+        try:
+            challenge_prefix, signed_value = token.split('.', 1)
+            challenge_id = uuid.UUID(challenge_prefix)
+        except (AttributeError, TypeError, ValueError):
+            return False
+
+        challenge_user = PasswordResetChallenge.objects.filter(
+            pk=challenge_id).values('user_id').first()
+        if challenge_user is None:
+            return False
+        user = User.objects.select_for_update().get(
+            pk=challenge_user['user_id'])
+        challenge = PasswordResetChallenge.objects.select_for_update().get(
+            pk=challenge_id)
+        challenge_identifiers = {
+            **identifiers,
+            PasswordResetThrottle.Scope.VERIFY_ACCOUNT: user.username,
+        }
+        try:
+            payload = signing.loads(
+                signed_value,
+                salt=PASSWORD_RESET_SIGNING_SALT,
+                max_age=PASSWORD_RESET_TOKEN_SECONDS,
+            )
+        except signing.BadSignature:
+            if _record_password_reset_failure(challenge, now):
+                _lock_password_reset_limits(challenge_identifiers, now)
+            return False
+
+        valid = (
+            payload.get('purpose') == PASSWORD_RESET_PURPOSE
+            and payload.get('challenge') == str(challenge.id)
+            and payload.get('user') == user.pk
+            and User.objects.filter(
+                pk=user.pk, username__iexact=username).exists()
+            and challenge.consumed_at is None
+            and challenge.invalidated_at is None
+            and now <= challenge.expires_at
+            and constant_time_compare(
+                challenge.token_digest,
+                _password_reset_digest(
+                    token, salt='app.password-reset.token-digest'),
+            )
+            and constant_time_compare(
+                challenge.password_digest,
+                _password_reset_digest(
+                    user.password,
+                    salt='app.password-reset.password-state',
+                ),
+            )
+            and constant_time_compare(
+                challenge.device_digest,
+                _password_reset_digest(
+                    device_identifier, salt='app.password-reset.device'),
+            )
+            and constant_time_compare(
+                challenge.ip_digest,
+                _password_reset_digest(
+                    ip_address, salt='app.password-reset.ip'),
+            )
+        )
+        if not valid:
+            if _record_password_reset_failure(challenge, now):
+                _lock_password_reset_limits(challenge_identifiers, now)
+            return False
+
+        validate_password(new_password, user)
+        user.set_password(new_password)
+        user.save(update_fields=['password'])
+        challenge.consumed_at = now
+        challenge.save(update_fields=['consumed_at'])
+        return True
 
 
 def check_user_access(redirect_url="/logout/", is_modpw=False):
@@ -379,50 +722,6 @@ def random_code_init(seed):
     random.seed(seed)
     password = ''.join(random.choices(b, k=6))
     return password
-
-
-def get_captcha(request, username, valid_seconds=None, more_info=False):
-    '''
-    noexcept
-    - username: 学号/小组号, 不一定对应request.user(此时应尚未登录)
-    - valid_seconds: float or None, None表示不设置有效期
-    ->captcha: str | (captcha, expired, old) if more_info
-    '''
-    expired = False
-    captcha = request.session.get("captcha", "")
-    old = captcha
-    received_user = request.session.get("received_user", "")
-    valid_from = request.session.get("captcha_create_time", "")
-    if len(captcha) != 6 or username != received_user:
-        old = ""
-        expired = True
-    elif valid_seconds is not None:
-        try:
-            valid_from = datetime.strptime(valid_from, "%Y-%m-%d %H:%M:%S")
-            assert datetime.utcnow() <= valid_from + timedelta(seconds=valid_seconds)
-        except:
-            expired = True
-    if expired:
-        # randint包含端点，randrange不包含
-        captcha = random.randrange(1000000)
-        captcha = f"{captcha:06}"
-    return (captcha, expired, old) if more_info else captcha
-
-
-def set_captcha_session(request, username, captcha):
-    '''noexcept'''
-    utcnow = datetime.utcnow()
-    request.session["received_user"] = username
-    request.session["captcha_create_time"] = utcnow.strftime(
-        "%Y-%m-%d %H:%M:%S")
-    request.session["captcha"] = captcha
-
-
-def clear_captcha_session(request):
-    '''noexcept'''
-    request.session.pop("captcha", None)
-    request.session.pop("captcha_create_time", None)  # 验证码只能登录一次
-    request.session.pop("received_user", None)        # 成功登录后不再保留
 
 
 def check_account_setting(request: UserRequest):

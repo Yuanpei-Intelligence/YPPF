@@ -64,6 +64,26 @@ class ProfileConfig(Config):
     max_inform_rank = LazySetting('max_inform_rank', default={}, type=dict[str, int])
     help_message = LazySetting('help_messages', default={}, type=dict[str, str])
     weather_api_key = LazySetting('weather/api_key', type=str)
+    password_reset_token_seconds = LazySetting(
+        'password_reset/token_seconds', int, default=600)
+    password_reset_token_attempts = LazySetting(
+        'password_reset/token_attempts', int, default=5)
+    password_reset_window_seconds = LazySetting(
+        'password_reset/window_seconds', int, default=900)
+    password_reset_lock_seconds = LazySetting(
+        'password_reset/lock_seconds', int, default=900)
+    password_reset_retention_seconds = LazySetting(
+        'password_reset/retention_seconds', int, default=86400)
+    password_reset_request_limits = LazySetting(
+        'password_reset/request_limits',
+        default={'account': 3, 'device': 5, 'ip': 10},
+        type=dict[str, int],
+    )
+    password_reset_verify_limits = LazySetting(
+        'password_reset/verify_limits',
+        default={'account': 10, 'device': 10, 'ip': 10},
+        type=dict[str, int],
+    )
 
 
 class YQPointConfig(Config):

@@ -37,6 +37,7 @@ models.py
 @Date 2022-03-11
 '''
 import random
+import uuid
 from math import ceil
 from datetime import datetime, timedelta
 from typing import TypeAlias
@@ -94,6 +95,8 @@ __all__ = [
     'PoolRecord',
     'ActivitySummary',
     'HomepageImage',
+    'PasswordResetChallenge',
+    'PasswordResetThrottle',
 ]
 
 
@@ -2054,3 +2057,45 @@ class HomepageImage(models.Model):
         return self.image.name + ' ' + self.description
 
     objects: HomepageImageManager = HomepageImageManager()
+
+
+class PasswordResetChallenge(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    user = models.ForeignKey(
+        User,
+        on_delete=models.CASCADE,
+        related_name='password_reset_challenges',
+    )
+    token_digest = models.CharField(max_length=64, unique=True)
+    password_digest = models.CharField(max_length=64)
+    device_digest = models.CharField(max_length=64)
+    ip_digest = models.CharField(max_length=64)
+    created_at = models.DateTimeField()
+    expires_at = models.DateTimeField(db_index=True)
+    failed_attempts = models.PositiveSmallIntegerField(default=0)
+    consumed_at = models.DateTimeField(null=True, blank=True)
+    invalidated_at = models.DateTimeField(null=True, blank=True)
+
+
+class PasswordResetThrottle(models.Model):
+    class Scope(models.TextChoices):
+        REQUEST_ACCOUNT = 'request_account', 'Request account'
+        REQUEST_IP = 'request_ip', 'Request IP'
+        REQUEST_DEVICE = 'request_device', 'Request device'
+        VERIFY_ACCOUNT = 'verify_account', 'Verify account'
+        VERIFY_IP = 'verify_ip', 'Verify IP'
+        VERIFY_DEVICE = 'verify_device', 'Verify device'
+
+    scope = models.CharField(max_length=20, choices=Scope.choices)
+    identifier_digest = models.CharField(max_length=64)
+    window_started_at = models.DateTimeField(db_index=True)
+    attempts = models.PositiveSmallIntegerField(default=0)
+    locked_until = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=('scope', 'identifier_digest'),
+                name='unique_password_reset_throttle_scope',
+            ),
+        ]

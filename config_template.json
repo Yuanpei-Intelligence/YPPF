@@ -59,6 +59,23 @@
         "url": "",
         "salt": "debug_hasher_salt"
     },
+    "password_reset": {
+        "token_seconds": 600,
+        "token_attempts": 5,
+        "window_seconds": 900,
+        "lock_seconds": 900,
+        "retention_seconds": 86400,
+        "request_limits": {
+            "account": 3,
+            "device": 5,
+            "ip": 10
+        },
+        "verify_limits": {
+            "account": 10,
+            "device": 10,
+            "ip": 10
+        }
+    },
     "underground": {
         "token": {
             "display": "$TOKEN$"
