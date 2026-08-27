@@ -56,6 +56,8 @@ def assert_api_error(testcase, response, expected_status, expected_code):
         for item in field_errors:
             testcase.assertEqual(set(item), {'code', 'message'})
     return payload
+
+
 def concurrent_consume(barrier, ticket):
     close_old_connections()
     try:
