@@ -15,7 +15,7 @@ from rest_framework.exceptions import NotFound, PermissionDenied, ValidationErro
 from drf_spectacular.utils import extend_schema, OpenApiResponse, OpenApiParameter
 from drf_spectacular.types import OpenApiTypes
 from django.db import transaction
-from django.db.models import QuerySet
+from django.db.models import Q, QuerySet
 
 from Appointment.models import (
     Appoint,
@@ -26,7 +26,7 @@ from Appointment.models import (
 )
 from Appointment.extern.wechat import MessageType, notify_appoint
 from Appointment.utils.utils import get_conflict_appoints, get_total_appoint_time, get_overlap_appoints
-from Appointment.utils.log import logger, get_user_logger
+from Appointment.utils.log import get_user_logger
 import Appointment.utils.web_func as web_func
 from Appointment.utils.identity import get_auditor_ids, get_avatar, get_or_create_participant
 from Appointment.utils.identity import get_member_ids
@@ -34,6 +34,11 @@ from Appointment.appoint.manage import cancel_appoint, create_appoint, create_re
 from Appointment import jobs
 from Appointment.config import appointment_config as CONFIG
 from api.authentication import WxJWTAuthentication
+from api.exceptions import (
+    APIError,
+    APIErrorResponseSerializer,
+    StandardizedExceptionHandlerMixin,
+)
 from api.appoint.serializers import (
     CancelAppointSerializer,
     RenewLongtermAppointSerializer,
@@ -62,13 +67,21 @@ from api.appoint.utils import (
     get_content_students,
 )
 from generic.models import User
-from Appointment.models import Participant
-from django.db.models import QuerySet, Q
+
 # 一些固定值
 WEEKDAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
 
 
-class AppointViewSet(viewsets.ViewSet):
+def error_response(description: str) -> OpenApiResponse:
+    """Document the shared appointment error envelope."""
+
+    return OpenApiResponse(
+        response=APIErrorResponseSerializer,
+        description=description,
+    )
+
+
+class AppointViewSet(StandardizedExceptionHandlerMixin, viewsets.ViewSet):
     """
     ViewSet for managing appointments.
     """
@@ -89,8 +102,11 @@ class AppointViewSet(viewsets.ViewSet):
                     },
                 },
             ),
-            400: OpenApiResponse(description="Invalid request or appointment not found"),
-            403: OpenApiResponse(description="Permission denied"),
+            400: error_response("请求参数错误或取消条件不满足"),
+            401: error_response("未认证或令牌无效"),
+            403: error_response("当前账号无权取消该预约"),
+            404: error_response("预约不存在"),
+            409: error_response("预约状态不允许取消"),
         },
         tags=['预约'],
     )
@@ -106,24 +122,25 @@ class AppointViewSet(viewsets.ViewSet):
         if cancel_type == "longterm":
             try:
                 longterm_appoint = LongTermAppoint.objects.get(pk=pk)
-                assert longterm_appoint.status in [
-                    LongTermAppoint.Status.REVIEWING,
-                    LongTermAppoint.Status.APPROVED,
-                ]
-                assert longterm_appoint.get_applicant_id() == request.user.username
-                assert longterm_appoint.sub_appoints().filter(
-                    Astatus=Appoint.Status.APPOINTED).exists()
-            except:
-                raise ValidationError("长期预约不存在或没有权限取消!")
+            except LongTermAppoint.DoesNotExist as exc:
+                raise NotFound("长期预约不存在。") from exc
+            if longterm_appoint.get_applicant_id() != request.user.username:
+                raise PermissionDenied("无权取消该长期预约。")
+            if longterm_appoint.status not in [
+                LongTermAppoint.Status.REVIEWING,
+                LongTermAppoint.Status.APPROVED,
+            ] or not longterm_appoint.sub_appoints().filter(
+                Astatus=Appoint.Status.APPOINTED,
+            ).exists():
+                raise APIError(
+                    code='appoint.cancellation_closed',
+                    message='该长期预约当前无法取消。',
+                    status_code=status.HTTP_409_CONFLICT,
+                )
 
-            try:
-                with transaction.atomic():
-                    longterm_appoint: LongTermAppoint = (
-                        LongTermAppoint.objects.select_for_update().get(pk=pk))
-                    count = longterm_appoint.cancel()
-            except:
-                logger.exception(f"取消长期预约{pk}意外失败")
-                raise ValidationError("未能取消长期预约!")
+            with transaction.atomic():
+                longterm_appoint = LongTermAppoint.objects.select_for_update().get(pk=pk)
+                count = longterm_appoint.cancel()
 
             get_user_logger(longterm_appoint).info(
                 f"成功取消长期预约{pk}及{count}条未开始的预约")
@@ -136,20 +153,22 @@ class AppointViewSet(viewsets.ViewSet):
 
         # Regular appointment cancellation
         try:
-            assert cancel_type == 'appoint'
-            appoints = Appoint.objects.filter(Astatus=Appoint.Status.APPOINTED)
-            appoint: Appoint = appoints.get(pk=pk)
-        except:
-            raise NotFound("预约不存在、已经开始或者已取消!")
+            appoint = Appoint.objects.filter(
+                Astatus=Appoint.Status.APPOINTED,
+            ).get(pk=pk)
+        except Appoint.DoesNotExist as exc:
+            raise NotFound("预约不存在、已经开始或者已取消。") from exc
 
-        try:
-            assert appoint.get_major_id() == request.user.username
-        except:
-            raise PermissionDenied("请不要尝试取消不是自己发起的预约!")
+        if appoint.get_major_id() != request.user.username:
+            raise PermissionDenied("无权取消不是自己发起的预约。")
 
         if (CONFIG.restrict_cancel_time
                 and appoint.Astart < datetime.now() + timedelta(minutes=30)):
-            raise ValidationError("不能取消开始时间在30分钟之内的预约!")
+            raise APIError(
+                code='appoint.cancellation_too_late',
+                message='不能取消开始时间在 30 分钟之内的预约。',
+                status_code=status.HTTP_409_CONFLICT,
+            )
 
         cancel_appoint(appoint, record=True, lock=True)
         notify_appoint(appoint, MessageType.CANCELED)
@@ -172,8 +191,11 @@ class AppointViewSet(viewsets.ViewSet):
                     },
                 },
             ),
-            400: OpenApiResponse(description="Invalid request or renewal failed"),
-            403: OpenApiResponse(description="Permission denied"),
+            400: error_response("请求参数错误或续约条件不满足"),
+            401: error_response("未认证或令牌无效"),
+            403: error_response("当前账号无权续约"),
+            404: error_response("长期预约不存在"),
+            409: error_response("续约时间冲突"),
         },
         tags=['预约'],
     )
@@ -187,18 +209,31 @@ class AppointViewSet(viewsets.ViewSet):
         times = serializer.validated_data['times']
 
         try:
-            longterm_appoint: LongTermAppoint = LongTermAppoint.objects.get(
-                pk=pk)
-            assert longterm_appoint.get_applicant_id() == request.user.username
-            assert longterm_appoint.status == LongTermAppoint.Status.APPROVED
-        except:
-            raise ValidationError("长期预约不存在或不符合续约要求!")
+            longterm_appoint = LongTermAppoint.objects.get(pk=pk)
+        except LongTermAppoint.DoesNotExist as exc:
+            raise NotFound("长期预约不存在。") from exc
+        if longterm_appoint.get_applicant_id() != request.user.username:
+            raise PermissionDenied("无权续约该长期预约。")
+        if longterm_appoint.status != LongTermAppoint.Status.APPROVED:
+            raise APIError(
+                code='appoint.renewal_unavailable',
+                message='该长期预约当前不符合续约要求。',
+                status_code=status.HTTP_409_CONFLICT,
+            )
 
         total_times = longterm_appoint.times + times
         if total_times > CONFIG.longterm_max_time:
-            raise ValidationError(f"总周数不能超过{CONFIG.longterm_max_time}周!")
+            raise APIError(
+                code='appoint.renewal_limit_exceeded',
+                message=f"总次数不能超过 {CONFIG.longterm_max_time} 次。",
+                errors={'times': [{'code': 'max_value', 'message': '续约次数超过上限。'}]},
+            )
         if total_times * longterm_appoint.interval > CONFIG.longterm_max_week:
-            raise ValidationError(f"总周数不能超过{CONFIG.longterm_max_week}周!")
+            raise APIError(
+                code='appoint.renewal_limit_exceeded',
+                message=f"总周期不能超过 {CONFIG.longterm_max_week} 周。",
+                errors={'times': [{'code': 'max_value', 'message': '续约周期超过上限。'}]},
+            )
 
         conflict, conflict_appoints = longterm_appoint.renew(times)
         if conflict is None:
@@ -208,10 +243,14 @@ class AppointViewSet(viewsets.ViewSet):
                 "room_name": str(longterm_appoint.appoint.Room),
             }, status=status.HTTP_200_OK)
         else:
-            raise ValidationError(f"续约第{conflict}次失败，后续时间段存在预约冲突!")
+            raise APIError(
+                code='appoint.renewal_conflict',
+                message=f"续约第 {conflict} 次失败，后续时间段存在预约冲突。",
+                status_code=status.HTTP_409_CONFLICT,
+            )
 
 
-class MyAppointmentsView(APIView):
+class MyAppointmentsView(StandardizedExceptionHandlerMixin, APIView):
     """
     Get user's appointment information.
     """
@@ -223,7 +262,7 @@ class MyAppointmentsView(APIView):
         description="返回当前用户的预约信息，包括未来预约、过去预约和长期预约",
         responses={
             200: AccountResponseSerializer,
-            403: OpenApiResponse(description="未登录或无权限"),
+            401: error_response("未认证或令牌无效"),
         },
         tags=['预约'],
     )
@@ -300,7 +339,7 @@ class MyAppointmentsView(APIView):
         return Response(serializer.data, status=status.HTTP_200_OK)
 
 
-class MyViolationsView(APIView):
+class MyViolationsView(StandardizedExceptionHandlerMixin, APIView):
     """
     Get user's violation records.
     """
@@ -312,7 +351,7 @@ class MyViolationsView(APIView):
         description="返回当前用户的违约记录",
         responses={
             200: CreditResponseSerializer,
-            403: OpenApiResponse(description="未登录或无权限"),
+            401: error_response("未认证或令牌无效"),
         },
         tags=['预约'],
     )
@@ -343,7 +382,7 @@ class MyViolationsView(APIView):
         return Response(serializer.data, status=status.HTTP_200_OK)
 
 
-class StatusView(APIView):
+class StatusView(StandardizedExceptionHandlerMixin, APIView):
     """
     Get index page information including room status and announcements.
     """
@@ -355,7 +394,7 @@ class StatusView(APIView):
         description="返回主页信息，包括房间状态、公告等",
         responses={
             200: IndexResponseSerializer,
-            403: OpenApiResponse(description="未登录或无权限"),
+            401: error_response("未认证或令牌无效"),
         },
         tags=['预约'],
     )
@@ -423,7 +462,7 @@ class StatusView(APIView):
         return Response(serializer.data, status=status.HTTP_200_OK)
 
 
-class AgreementView(APIView):
+class AgreementView(StandardizedExceptionHandlerMixin, APIView):
     """
     Handle agreement signing.
     """
@@ -435,7 +474,7 @@ class AgreementView(APIView):
         description="返回用户的协议签署信息",
         responses={
             200: AgreementResponseSerializer,
-            403: OpenApiResponse(description="未登录或无权限"),
+            401: error_response("未认证或令牌无效"),
         },
         tags=['预约'],
     )
@@ -465,27 +504,23 @@ class AgreementView(APIView):
                     },
                 },
             ),
-            400: OpenApiResponse(description="签署失败"),
-            403: OpenApiResponse(description="未登录或无权限"),
+            401: error_response("未认证或令牌无效"),
         },
         tags=['预约'],
     )
     def post(self, request):
         """Sign the agreement."""
-        try:
-            participant = get_or_create_participant(request)
-            with transaction.atomic():
-                participant = Participant.objects.select_for_update().get(pk=participant.pk)
-                participant.agree_time = datetime.now().date()
-                participant.save()
-            return Response({
-                "message": "协议签署成功!",
-            }, status=status.HTTP_200_OK)
-        except:
-            raise ValidationError("签署失败，请重试！")
+        participant = get_or_create_participant(request)
+        with transaction.atomic():
+            participant = Participant.objects.select_for_update().get(pk=participant.pk)
+            participant.agree_time = datetime.now().date()
+            participant.save(update_fields=['agree_time'])
+        return Response({
+            "message": "协议签署成功。",
+        }, status=status.HTTP_200_OK)
 
 
-class ArrangeTimeView(APIView):
+class ArrangeTimeView(StandardizedExceptionHandlerMixin, APIView):
     """
     Get appointment time arrangement for a room.
     """
@@ -512,8 +547,10 @@ class ArrangeTimeView(APIView):
         ],
         responses={
             200: ArrangeTimeResponseSerializer,
-            400: OpenApiResponse(description="Invalid room ID or parameters"),
-            403: OpenApiResponse(description="未登录或无权限"),
+            400: error_response("房间或周次参数错误"),
+            401: error_response("未认证或令牌无效"),
+            404: error_response("房间不存在"),
+            409: error_response("房间当前不可预约"),
         },
         tags=['预约'],
     )
@@ -527,7 +564,7 @@ class ArrangeTimeView(APIView):
         # 获取房间编号
         Rid = request.query_params.get('Rid')
         if not Rid:
-            raise ValidationError("房间号不能为空!")
+            raise ValidationError({'Rid': '房间号不能为空。'}, code='required')
 
         try:
             room: Room = Room.objects.get(Rid=Rid)
@@ -535,10 +572,11 @@ class ArrangeTimeView(APIView):
             raise NotFound(f"房间号{Rid}不存在!")
 
         if room.Rstatus == Room.Status.FORBIDDEN:
-            return Response({
-                "error": "房间已被禁用",
-                "room": RoomSerializer(room).data,
-            }, status=status.HTTP_400_BAD_REQUEST)
+            raise APIError(
+                code='appoint.room_unavailable',
+                message='房间已被禁用。',
+                status_code=status.HTTP_409_CONFLICT,
+            )
 
         # start_week=0代表查看本周，start_week=1代表查看下周
         start_week = request.query_params.get('start_week')
@@ -549,10 +587,12 @@ class ArrangeTimeView(APIView):
             is_longterm = True
         try:
             start_week = int(start_week)
-            assert start_week == 0 or start_week == 1
-            assert has_longterm_permission or not is_longterm
-        except:
-            raise ValidationError("Invalid start_week parameter")
+        except (TypeError, ValueError) as exc:
+            raise ValidationError({'start_week': '开始周次格式错误。'}) from exc
+        if start_week not in (0, 1):
+            raise ValidationError({'start_week': '开始周次只能为 0 或 1。'})
+        if is_longterm and not has_longterm_permission:
+            raise PermissionDenied('当前账号没有长期预约权限。')
 
         dayrange_list, start_day, end_next_day = web_func.get_dayrange(
             day_offset=start_week * 7)
@@ -675,7 +715,7 @@ class ArrangeTimeView(APIView):
         return Response(serializer.data, status=status.HTTP_200_OK)
 
 
-class ArrangeTalkRoomView(APIView):
+class ArrangeTalkRoomView(StandardizedExceptionHandlerMixin, APIView):
     """
     Get talk room arrangement for a specific date.
     """
@@ -714,25 +754,45 @@ class ArrangeTalkRoomView(APIView):
         ],
         responses={
             200: ArrangeTalkRoomResponseSerializer,
-            400: OpenApiResponse(description="Invalid date or parameters"),
-            403: OpenApiResponse(description="未登录或无权限"),
+            400: error_response("日期或房间类型参数错误"),
+            401: error_response("未认证或令牌无效"),
         },
         tags=['预约'],
     )
     def get(self, request):
         """Get talk room arrangement for a specific date."""
+        raw_date = {
+            field: request.query_params.get(field)
+            for field in ('year', 'month', 'day')
+        }
+        missing = {
+            field: '该字段为必填项。'
+            for field, value in raw_date.items()
+            if value is None
+        }
+        check_type = request.query_params.get('type')
+        if check_type is None:
+            missing['type'] = '该字段为必填项。'
+        if missing:
+            raise ValidationError(missing, code='required')
+        if check_type not in {'russ', 'talk'}:
+            raise ValidationError({'type': '房间类型只能为 talk 或 russ。'})
         try:
-            year = int(request.query_params.get("year"))
-            month = int(request.query_params.get("month"))
-            day = int(request.query_params.get("day"))
-            check_type = str(request.query_params.get("type"))
-            assert check_type in {"russ", "talk"}
+            year = int(raw_date['year'])
+            month = int(raw_date['month'])
+            day = int(raw_date['day'])
             re_time = datetime(year, month, day)
-            if (re_time.date() < datetime.now().date()
-                    or re_time.date() - datetime.now().date() > timedelta(days=6)):
-                raise ValidationError("日期超出允许范围!")
-        except (ValueError, AssertionError, TypeError) as e:
-            raise ValidationError(f"Invalid parameters: {str(e)}")
+        except (TypeError, ValueError) as exc:
+            raise ValidationError({'day': '日期格式错误。'}) from exc
+        if (
+            re_time.date() < datetime.now().date()
+            or re_time.date() - datetime.now().date() > timedelta(days=6)
+        ):
+            raise APIError(
+                code='appoint.date_out_of_range',
+                message='日期超出允许预约的范围。',
+                errors={'day': [{'code': 'out_of_range', 'message': '请选择未来 7 天内的日期。'}]},
+            )
 
         is_today = False
         show_min = None
@@ -825,7 +885,7 @@ class ArrangeTalkRoomView(APIView):
         return Response(serializer.data, status=status.HTTP_200_OK)
 
 
-class CheckoutAppointView(APIView):
+class CheckoutAppointView(StandardizedExceptionHandlerMixin, APIView):
     """
     Handle appointment checkout (form submission and appointment creation).
     """
@@ -899,8 +959,10 @@ class CheckoutAppointView(APIView):
                     },
                 },
             ),
-            400: OpenApiResponse(description="Invalid parameters"),
-            403: OpenApiResponse(description="未登录或无权限"),
+            400: error_response("预约表单参数错误"),
+            401: error_response("未认证或令牌无效"),
+            404: error_response("房间不存在"),
+            409: error_response("房间当前不可预约"),
         },
         tags=['预约'],
     )
@@ -910,17 +972,26 @@ class CheckoutAppointView(APIView):
         weekday = request.query_params.get('weekday')
         startid = request.query_params.get('startid')
         endid = request.query_params.get('endid')
-        start_week = int(request.query_params.get('start_week', 0))
+        try:
+            start_week = int(request.query_params.get('start_week', 0))
+        except (TypeError, ValueError) as exc:
+            raise ValidationError({'start_week': '开始周次格式错误。'}) from exc
+        if start_week not in (0, 1):
+            raise ValidationError({'start_week': '开始周次只能为 0 或 1。'})
 
         if not Rid:
-            raise ValidationError("房间号不能为空")
+            raise ValidationError({'Rid': '房间号不能为空。'}, code='required')
 
         try:
             room = Room.objects.get(Rid=Rid)
             if room.Rstatus != Room.Status.PERMITTED:
-                raise ValidationError(f'房间{Rid}不可预约')
-        except Room.DoesNotExist:
-            raise NotFound(f"房间号{Rid}不存在")
+                raise APIError(
+                    code='appoint.room_unavailable',
+                    message=f'房间 {Rid} 当前不可预约。',
+                    status_code=status.HTTP_409_CONFLICT,
+                )
+        except Room.DoesNotExist as exc:
+            raise NotFound(f"房间号 {Rid} 不存在。") from exc
 
         applicant = get_or_create_participant(request)
         has_longterm_permission = applicant.longterm
@@ -935,10 +1006,12 @@ class CheckoutAppointView(APIView):
                 # 原先是 [startid, endid]，现在变成了 [startid, endid), 所以得减1
                 startid = int(startid)
                 endid = int(endid) - 1
-                WEEKDAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
-                assert weekday in WEEKDAYS
-                assert startid >= 0 and endid >= 0
-                assert endid >= startid
+                if weekday not in WEEKDAYS:
+                    raise ValidationError({'weekday': '星期参数无效。'})
+                if startid < 0:
+                    raise ValidationError({'startid': '开始时间段无效。'})
+                if endid < startid:
+                    raise ValidationError({'endid': '结束时间必须晚于开始时间。'})
 
                 dayrange_list = web_func.get_dayrange(day_offset=0)[0]
                 for day in dayrange_list:
@@ -946,10 +1019,12 @@ class CheckoutAppointView(APIView):
                         appoint_params['date'] = day['date']
                         appoint_params['starttime'], valid = web_func.get_hour_time(
                             room, startid)
-                        assert valid is True
+                        if not valid:
+                            raise ValidationError({'startid': '开始时间段无效。'})
                         appoint_params['endtime'], valid = web_func.get_hour_time(
                             room, endid + 1)
-                        assert valid is True
+                        if not valid:
+                            raise ValidationError({'endid': '结束时间段无效。'})
                         appoint_params['year'] = day['year']
                         appoint_params['month'] = day['month']
                         appoint_params['day'] = day['day']
@@ -959,8 +1034,8 @@ class CheckoutAppointView(APIView):
                             appoint_params['Rmin'] = min(
                                 CONFIG.today_min, room.Rmin)
                         break
-            except (ValueError, AssertionError) as e:
-                raise ValidationError(f"参数错误: {str(e)}")
+            except (TypeError, ValueError) as exc:
+                raise ValidationError({'startid': '时间段格式错误。'}) from exc
 
         appoint_params.update({
             'Rid': Rid,
@@ -990,8 +1065,11 @@ class CheckoutAppointView(APIView):
         request=CheckoutAppointRequestSerializer,
         responses={
             200: CheckoutAppointResponseSerializer,
-            400: OpenApiResponse(description="Invalid request or validation failed"),
-            403: OpenApiResponse(description="未登录或无权限"),
+            400: error_response("预约表单或业务条件校验失败"),
+            401: error_response("未认证或令牌无效"),
+            403: error_response("当前账号没有相应预约权限"),
+            404: error_response("房间不存在"),
+            409: error_response("预约状态或时间冲突"),
         },
         tags=['预约'],
     )
@@ -1026,50 +1104,74 @@ class CheckoutAppointView(APIView):
         try:
             room = Room.objects.get(Rid=Rid)
             if room.Rstatus != Room.Status.PERMITTED:
-                raise ValidationError(f'房间{Rid}不可预约')
-        except Room.DoesNotExist:
-            raise NotFound(f"房间号{Rid}不存在")
+                raise APIError(
+                    code='appoint.room_unavailable',
+                    message=f'房间 {Rid} 当前不可预约。',
+                    status_code=status.HTTP_409_CONFLICT,
+                )
+        except Room.DoesNotExist as exc:
+            raise NotFound(f"房间号 {Rid} 不存在。") from exc
 
-        try:
-            if is_longterm and start_week not in [0, 1]:
-                raise ValidationError('预约周数必须为0或1')
-            assert weekday in WEEKDAYS, '星期几无效'
-            assert startid >= 0 and endid >= 0, '时间ID无效'
-            assert endid >= startid, '起始时间晚于结束时间'
-            assert has_longterm_permission or not is_longterm, '没有长期预约权限'
-        except AssertionError as e:
-            raise ValidationError(str(e))
+        if is_longterm and start_week not in (0, 1):
+            raise ValidationError({'start_week': '开始周次只能为 0 或 1。'})
+        if weekday not in WEEKDAYS:
+            raise ValidationError({'weekday': '星期参数无效。'})
+        if startid < 0:
+            raise ValidationError({'startid': '开始时间段无效。'})
+        if endid < startid:
+            raise ValidationError({'endid': '结束时间必须晚于开始时间。'})
+        if is_longterm and not has_longterm_permission:
+            raise PermissionDenied('当前账号没有长期预约权限。')
 
         # Check applicant active status
         if not applicant.Sid.active:
-            raise ValidationError('您现在不能预约地下室')
+            raise APIError(
+                code='appoint.account_inactive',
+                message='当前账号状态不允许预约地下室。',
+                status_code=status.HTTP_403_FORBIDDEN,
+            )
 
         # Check long-term appointment count
         if is_longterm and LongTermAppoint.objects.activated().filter(
                 applicant=applicant).count() >= CONFIG.longterm_max_num:
-            raise ValidationError("您的长期预约总数已超过上限")
+            raise APIError(
+                code='appoint.longterm_limit_reached',
+                message='长期预约总数已达到上限。',
+                status_code=status.HTTP_409_CONFLICT,
+            )
 
         # Check interview
         if is_interview and not has_interview_permission:
-            raise ValidationError('没有面试权限')
+            raise PermissionDenied('当前账号没有面试预约权限。')
         if is_interview and Appoint.objects.unfinished().filter(
                 major_student=applicant, Atype=Appoint.Type.INTERVIEW
         ).count() >= CONFIG.interview_max_num:
-            raise ValidationError('您预约的面试次数已达到上限，结束后方可继续预约')
+            raise APIError(
+                code='appoint.interview_limit_reached',
+                message='面试预约次数已达到上限，结束后方可继续预约。',
+                status_code=status.HTTP_409_CONFLICT,
+            )
 
         # Check appointment time
         try:
             start_time, end_time = calculate_appointment_datetime(
                 weekday, startid, endid, start_week, room
             )
-        except (ValueError, AssertionError) as e:
-            raise ValidationError(f"时间计算错误: {str(e)}")
+        except (ValueError, AssertionError) as exc:
+            raise ValidationError({
+                'startid': '开始时间段无效。',
+                'endid': '结束时间段无效。',
+            }) from exc
 
         if (
             applicant.Sid.is_person()
             and start_time + timedelta(hours=3) < end_time
         ):
-            raise ValidationError('预约时长不能超过3小时！')
+            raise APIError(
+                code='appoint.duration_exceeded',
+                message='预约时长不能超过 3 小时。',
+                errors={'endid': [{'code': 'duration_exceeded', 'message': '请选择不超过 3 小时的结束时间。'}]},
+            )
 
         # Check total appointment time
         if (
@@ -1078,7 +1180,11 @@ class CheckoutAppointView(APIView):
             and not is_interview
             and get_total_appoint_time(applicant, start_time.date()) + (end_time - start_time) > CONFIG.max_appoint_time
         ):
-            raise ValidationError('您预约的时长已超过每日最大预约时长')
+            raise APIError(
+                code='appoint.daily_duration_exceeded',
+                message='预约时长已超过每日上限。',
+                status_code=status.HTTP_409_CONFLICT,
+            )
 
         # Check for overlapping appointments
         if (
@@ -1088,11 +1194,15 @@ class CheckoutAppointView(APIView):
             and not is_interview
             and get_overlap_appoints(applicant, start_time, end_time).exists()
         ):
-            raise ValidationError('您在该时间段已经有预约')
+            raise APIError(
+                code='appoint.user_time_conflict',
+                message='您在该时间段已经有预约。',
+                status_code=status.HTTP_409_CONFLICT,
+            )
 
         # Validate usage
         if not Ausage:
-            raise ValidationError('请输入房间用途!')
+            raise ValidationError({'Ausage': '请输入房间用途。'})
 
         # Validate announcement (ensure it's a string)
         if not isinstance(announcement, str):
@@ -1104,15 +1214,15 @@ class CheckoutAppointView(APIView):
         else:
             students.append(applicant.get_id())
 
-        students = list(filter(
-            lambda sid: User.objects.get(username=sid).active,
-            students
-        ))
+        students = list(User.objects.filter(
+            username__in=students,
+            active=True,
+        ).values_list('username', flat=True))
 
         try:
             student_participants = get_content_students(students)
-        except AssertionError as e:
-            raise ValidationError(str(e))
+        except AssertionError as exc:
+            raise ValidationError({'students': str(exc)}) from exc
 
         # Determine appointment type
         appoint_type = Appoint.Type.NORMAL
@@ -1129,30 +1239,34 @@ class CheckoutAppointView(APIView):
         if not is_longterm:
             create_min = create_require_num(room, appoint_type)
             if 2 * len(student_participants) < create_min:
-                raise ValidationError('院内使用人数需要达到房间最小人数的一半！')
+                raise APIError(
+                    code='appoint.insufficient_participants',
+                    message='院内使用人数需要达到房间最小人数的一半。',
+                    errors={'students': [{'code': 'min_length', 'message': '院内参与人数不足。'}]},
+                )
 
         # ------------------------- Create appointment -------------------------
 
         # Create appointment directly, params are checked to be valid
         # but conflicts are possible, so we need to check for conflicts
-        try:
-            appoint, err_msg = create_appoint(
-                appointer=applicant,
-                students=student_participants,
-                room=room,
-                start=start_time,
-                finish=end_time,
-                usage=Ausage,
-                announce=announcement,
-                outer_num=non_yp_num,
-                type=appoint_type,
-                notify=_notify,
+        appoint, err_msg = create_appoint(
+            appointer=applicant,
+            students=student_participants,
+            room=room,
+            start=start_time,
+            finish=end_time,
+            usage=Ausage,
+            announce=announcement,
+            outer_num=non_yp_num,
+            type=appoint_type,
+            notify=_notify,
+        )
+        if appoint is None:
+            raise APIError(
+                code='appoint.creation_rejected',
+                message=err_msg or '创建预约失败。',
+                status_code=status.HTTP_409_CONFLICT,
             )
-            if appoint is None:
-                raise ValidationError(err_msg or "创建预约失败")
-        except Exception as e:
-            logger.exception("创建预约失败")
-            raise ValidationError(f"创建预约失败: {str(e)}")
 
         if not is_longterm:
             # Success for regular appointment
@@ -1199,19 +1313,26 @@ class CheckoutAppointView(APIView):
                 if conflict_appoints:
                     conflict_appoints = sorted(conflict_appoints,
                                                key=lambda x: (x.Astart, x.Afinish))
-                    raise ValidationError(
-                        f"与预约时间为{conflict_appoints[0].Astart}"
-                        f"-{conflict_appoints[0].Afinish}的预约发生冲突"
-                    )
-                raise ValidationError(str(e))
-            except Exception as e:
+                    raise APIError(
+                        code='appoint.room_time_conflict',
+                        message=(
+                            f"与 {conflict_appoints[0].Astart}-"
+                            f"{conflict_appoints[0].Afinish} 的预约发生冲突。"
+                        ),
+                        status_code=status.HTTP_409_CONFLICT,
+                    ) from e
+                raise APIError(
+                    code='appoint.longterm_creation_rejected',
+                    message='创建长期预约失败，请重新选择预约时间。',
+                    status_code=status.HTTP_409_CONFLICT,
+                ) from e
+            except Exception:
                 if appoint.pk:
                     appoint.delete()
-                logger.exception("创建长期预约失败")
-                raise ValidationError(f"创建长期预约失败: {str(e)}")
+                raise
 
 
-class SearchUsersView(APIView):
+class SearchUsersView(StandardizedExceptionHandlerMixin, APIView):
     """
     Search users for appointment participants.
     """
@@ -1250,7 +1371,7 @@ class SearchUsersView(APIView):
                     },
                 },
             ),
-            403: OpenApiResponse(description="未登录或无权限"),
+            401: error_response("未认证或令牌无效"),
         },
         tags=['预约'],
     )

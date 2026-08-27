@@ -9,7 +9,22 @@ from generic.models import User
 from app.models import NaturalPerson, Organization, OrganizationType
 
 
-class AppointAPITestCasePerson(APITestCase):
+class StandardErrorAssertionsMixin:
+    """Assertions for the shared mini-program error contract."""
+
+    def assert_api_error(self, response, expected_status, expected_code):
+        self.assertEqual(response.status_code, expected_status)
+        self.assertEqual(set(response.data), {'code', 'message', 'errors'})
+        self.assertEqual(response.data['code'], expected_code)
+        self.assertIsInstance(response.data['message'], str)
+        self.assertIsInstance(response.data['errors'], dict)
+        for field_errors in response.data['errors'].values():
+            self.assertIsInstance(field_errors, list)
+            for item in field_errors:
+                self.assertEqual(set(item), {'code', 'message'})
+
+
+class AppointAPITestCasePerson(StandardErrorAssertionsMixin, APITestCase):
     """Base test case for appointment API tests."""
 
     def setUp(self):
@@ -69,15 +84,23 @@ class AppointAPITestCasePerson(APITestCase):
     def test_arrange_by_room_endpoint_requires_rid(self):
         """Test arrange-by-room endpoint requires Rid parameter."""
         response = self.client.get('/api/v2/appoint/arrange-by-room/')
-        self.assertEqual(response.status_code,
-                         http_status.HTTP_400_BAD_REQUEST)
+        self.assert_api_error(
+            response,
+            http_status.HTTP_400_BAD_REQUEST,
+            'validation_error',
+        )
+        self.assertEqual(response.data['errors']['Rid'][0]['code'], 'required')
 
     def test_arrange_talk_room_by_time_endpoint_requires_params(self):
         """Test arrange-talk-room-by-time endpoint requires date parameters."""
         response = self.client.get(
             '/api/v2/appoint/arrange-talk-room-by-time/')
-        self.assertEqual(response.status_code,
-                         http_status.HTTP_400_BAD_REQUEST)
+        self.assert_api_error(
+            response,
+            http_status.HTTP_400_BAD_REQUEST,
+            'validation_error',
+        )
+        self.assertEqual(response.data['errors']['year'][0]['code'], 'required')
 
     def test_search_users_endpoint(self):
         """Test search-users endpoint returns matching users."""
@@ -131,26 +154,46 @@ class AppointAPITestCasePerson(APITestCase):
     def test_checkout_get_endpoint_requires_rid(self):
         """Test checkout GET endpoint requires Rid parameter."""
         response = self.client.get('/api/v2/appoint/checkout/')
-        self.assertEqual(response.status_code,
-                         http_status.HTTP_400_BAD_REQUEST)
+        self.assert_api_error(
+            response,
+            http_status.HTTP_400_BAD_REQUEST,
+            'validation_error',
+        )
+        self.assertEqual(response.data['errors']['Rid'][0]['code'], 'required')
+
+    def test_checkout_post_preserves_required_field_codes(self):
+        response = self.client.post('/api/v2/appoint/checkout/', {}, format='json')
+        self.assert_api_error(
+            response,
+            http_status.HTTP_400_BAD_REQUEST,
+            'validation_error',
+        )
+        self.assertEqual(response.data['errors']['Rid'][0]['code'], 'required')
+        self.assertEqual(response.data['errors']['Ausage'][0]['code'], 'required')
 
     def test_cancel_appointment_requires_auth(self):
         """Test cancel endpoint requires authentication."""
         self.client.force_authenticate(user=None)
         response = self.client.post('/api/v2/appoint/appointments/cancel/')
-        self.assertEqual(response.status_code,
-                         http_status.HTTP_401_UNAUTHORIZED)
+        self.assert_api_error(
+            response,
+            http_status.HTTP_401_UNAUTHORIZED,
+            'invalid_token',
+        )
 
     def test_renew_longterm_requires_auth(self):
         """Test renew-longterm endpoint requires authentication."""
         self.client.force_authenticate(user=None)
         response = self.client.post(
             '/api/v2/appoint/appointments/renew-longterm/')
-        self.assertEqual(response.status_code,
-                         http_status.HTTP_401_UNAUTHORIZED)
+        self.assert_api_error(
+            response,
+            http_status.HTTP_401_UNAUTHORIZED,
+            'invalid_token',
+        )
 
 
-class AppointAPITestCaseOrg(APITestCase):
+class AppointAPITestCaseOrg(StandardErrorAssertionsMixin, APITestCase):
     """Base test case for appointment API tests."""
 
     def setUp(self):
@@ -211,15 +254,21 @@ class AppointAPITestCaseOrg(APITestCase):
     def test_arrange_by_room_endpoint_requires_rid(self):
         """Test arrange-by-room endpoint requires Rid parameter."""
         response = self.client.get('/api/v2/appoint/arrange-by-room/')
-        self.assertEqual(response.status_code,
-                         http_status.HTTP_400_BAD_REQUEST)
+        self.assert_api_error(
+            response,
+            http_status.HTTP_400_BAD_REQUEST,
+            'validation_error',
+        )
 
     def test_arrange_talk_room_by_time_endpoint_requires_params(self):
         """Test arrange-talk-room-by-time endpoint requires date parameters."""
         response = self.client.get(
             '/api/v2/appoint/arrange-talk-room-by-time/')
-        self.assertEqual(response.status_code,
-                         http_status.HTTP_400_BAD_REQUEST)
+        self.assert_api_error(
+            response,
+            http_status.HTTP_400_BAD_REQUEST,
+            'validation_error',
+        )
 
     def test_search_users_endpoint(self):
         """Test search-users endpoint returns matching users."""
@@ -273,20 +322,29 @@ class AppointAPITestCaseOrg(APITestCase):
     def test_checkout_get_endpoint_requires_rid(self):
         """Test checkout GET endpoint requires Rid parameter."""
         response = self.client.get('/api/v2/appoint/checkout/')
-        self.assertEqual(response.status_code,
-                         http_status.HTTP_400_BAD_REQUEST)
+        self.assert_api_error(
+            response,
+            http_status.HTTP_400_BAD_REQUEST,
+            'validation_error',
+        )
 
     def test_cancel_appointment_requires_auth(self):
         """Test cancel endpoint requires authentication."""
         self.client.force_authenticate(user=None)
         response = self.client.post('/api/v2/appoint/appointments/cancel/')
-        self.assertEqual(response.status_code,
-                         http_status.HTTP_401_UNAUTHORIZED)
+        self.assert_api_error(
+            response,
+            http_status.HTTP_401_UNAUTHORIZED,
+            'invalid_token',
+        )
 
     def test_renew_longterm_requires_auth(self):
         """Test renew-longterm endpoint requires authentication."""
         self.client.force_authenticate(user=None)
         response = self.client.post(
             '/api/v2/appoint/appointments/renew-longterm/')
-        self.assertEqual(response.status_code,
-                         http_status.HTTP_401_UNAUTHORIZED)
+        self.assert_api_error(
+            response,
+            http_status.HTTP_401_UNAUTHORIZED,
+            'invalid_token',
+        )
