@@ -2,8 +2,8 @@
 Serializers for notification API.
 """
 from rest_framework import serializers
+
 from app.models import Notification
-from generic.models import User
 
 
 class NotificationSerializer(serializers.ModelSerializer):
@@ -107,4 +107,14 @@ class NotificationStatisticsSerializer(serializers.Serializer):
     )
     need_do = serializers.IntegerField(
         help_text="Number of need_do type notifications"
+    )
+
+
+class NotificationBulkOperationSerializer(serializers.Serializer):
+    """Response for a bulk notification state change."""
+
+    message = serializers.CharField(help_text="User-facing operation summary")
+    count = serializers.IntegerField(
+        min_value=0,
+        help_text="Number of notifications changed",
     )

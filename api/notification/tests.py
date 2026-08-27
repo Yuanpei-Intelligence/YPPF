@@ -1,15 +1,16 @@
 """
 Tests for notification API.
 """
-from datetime import datetime, timedelta
-from django.test import TestCase
-from django.urls import reverse
-from rest_framework.test import APITestCase, APIClient
-from rest_framework import status as http_status
+from datetime import datetime
+from unittest import mock
 
-from generic.models import User
+from django.urls import reverse
+from rest_framework import status as http_status
+from rest_framework.test import APITestCase, APIClient
+
 from app.models import Notification
-from app.notification_utils import notification_create
+from generic.models import User
+from utils.global_messages import wrong
 
 
 class NotificationAPITestCase(APITestCase):
@@ -63,11 +64,23 @@ class NotificationAPITestCase(APITestCase):
             status=Notification.Status.UNDONE
         )
 
+    def assert_error(self, response, expected_status, expected_code):
+        self.assertEqual(response.status_code, expected_status)
+        self.assertEqual(set(response.data), {"code", "message", "errors"})
+        self.assertEqual(response.data["code"], expected_code)
+        self.assertIsInstance(response.data["message"], str)
+        self.assertIsInstance(response.data["errors"], dict)
+
     def test_list_notifications_unauthenticated(self):
         """Test that unauthenticated users cannot list notifications."""
         url = reverse('api:notification:notification-list')
         response = self.client.get(url)
-        self.assertEqual(response.status_code, http_status.HTTP_401_UNAUTHORIZED)
+        self.assert_error(
+            response,
+            http_status.HTTP_401_UNAUTHORIZED,
+            "invalid_token",
+        )
+        self.assertEqual(response.data["errors"], {})
 
     def test_list_notifications_authenticated(self):
         """Test listing notifications for authenticated user."""
@@ -132,6 +145,30 @@ class NotificationAPITestCase(APITestCase):
                 time2 = datetime.fromisoformat(response.data[i + 1]['start_time'].replace(' ', 'T'))
                 self.assertGreaterEqual(time1, time2)
 
+    def test_list_notifications_rejects_invalid_query(self):
+        """Invalid filters use the standardized field-error contract."""
+        self.client.force_authenticate(user=self.user1)
+        url = reverse("api:notification:notification-list")
+
+        response = self.client.get(
+            url,
+            {"status": 999, "ordering": "receiver__password"},
+        )
+
+        self.assert_error(
+            response,
+            http_status.HTTP_400_BAD_REQUEST,
+            "validation_error",
+        )
+        self.assertEqual(
+            response.data["errors"]["status"][0]["code"],
+            "invalid_choice",
+        )
+        self.assertEqual(
+            response.data["errors"]["ordering"][0]["code"],
+            "invalid_choice",
+        )
+
     def test_retrieve_notification(self):
         """Test retrieving a specific notification."""
         self.client.force_authenticate(user=self.user1)
@@ -149,7 +186,12 @@ class NotificationAPITestCase(APITestCase):
         url = reverse('api:notification:notification-detail', kwargs={'pk': self.notification3.id})
         response = self.client.get(url)
         
-        self.assertEqual(response.status_code, http_status.HTTP_404_NOT_FOUND)
+        self.assert_error(
+            response,
+            http_status.HTTP_404_NOT_FOUND,
+            "not_found",
+        )
+        self.assertEqual(response.data["message"], "通知不存在。")
 
     def test_retrieve_notification_not_found(self):
         """Test retrieving a non-existent notification."""
@@ -157,7 +199,11 @@ class NotificationAPITestCase(APITestCase):
         url = reverse('api:notification:notification-detail', kwargs={'pk': 99999})
         response = self.client.get(url)
         
-        self.assertEqual(response.status_code, http_status.HTTP_404_NOT_FOUND)
+        self.assert_error(
+            response,
+            http_status.HTTP_404_NOT_FOUND,
+            "not_found",
+        )
 
     def test_update_notification_status(self):
         """Test updating notification status."""
@@ -192,7 +238,58 @@ class NotificationAPITestCase(APITestCase):
                      kwargs={'pk': self.notification1.id})
         
         response = self.client.patch(url, {'status': 999}, format='json')
-        self.assertEqual(response.status_code, http_status.HTTP_400_BAD_REQUEST)
+        self.assert_error(
+            response,
+            http_status.HTTP_400_BAD_REQUEST,
+            "validation_error",
+        )
+        self.assertEqual(
+            response.data["errors"]["status"][0]["code"],
+            "invalid_choice",
+        )
+
+    def test_update_notification_status_conflict(self):
+        """A failed domain transition becomes a stable 409 response."""
+        self.client.force_authenticate(user=self.user1)
+        url = reverse(
+            "api:notification:notification-update-status",
+            kwargs={"pk": self.notification1.id},
+        )
+
+        with mock.patch(
+            "api.notification.views.notification_status_change",
+            return_value=wrong("legacy internal detail"),
+        ):
+            response = self.client.patch(
+                url,
+                {"status": Notification.Status.DONE},
+                format="json",
+            )
+
+        self.assert_error(
+            response,
+            http_status.HTTP_409_CONFLICT,
+            "notification.state_conflict",
+        )
+        self.assertNotIn("legacy", response.data["message"])
+
+    def test_deleted_notification_is_hidden(self):
+        """Deleted notifications are not visible or mutable through the API."""
+        self.notification1.status = Notification.Status.DELETE
+        self.notification1.save(update_fields=["status"])
+        self.client.force_authenticate(user=self.user1)
+        url = reverse(
+            "api:notification:notification-detail",
+            kwargs={"pk": self.notification1.id},
+        )
+
+        response = self.client.get(url)
+
+        self.assert_error(
+            response,
+            http_status.HTTP_404_NOT_FOUND,
+            "not_found",
+        )
 
     def test_toggle_notification_status(self):
         """Test toggling notification status."""
@@ -228,6 +325,7 @@ class NotificationAPITestCase(APITestCase):
         
         self.assertEqual(response.status_code, http_status.HTTP_200_OK)
         self.assertEqual(response.data['count'], 1)
+        self.assertEqual(response.data["message"], "已将 1 条通知标记为已读。")
         
         # Verify all NEEDREAD notifications are now DONE
         self.assertEqual(
@@ -262,6 +360,10 @@ class NotificationAPITestCase(APITestCase):
         
         self.assertEqual(response.status_code, http_status.HTTP_200_OK)
         self.assertEqual(response.data['count'], initial_done_count)
+        self.assertEqual(
+            response.data["message"],
+            f"已删除 {initial_done_count} 条已读通知。",
+        )
 
     def test_statistics_endpoint(self):
         """Test the statistics endpoint."""

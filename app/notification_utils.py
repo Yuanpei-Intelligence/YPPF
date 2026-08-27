@@ -52,30 +52,22 @@ def notification_status_change(
     else:
         notification_id = notification_or_id
 
-    if to_status is None:  # 表示默认的状态翻转操作
-        if isinstance(notification_or_id, Notification):
-            now_status = notification_or_id.status
-        else:
-            try:
-                notification = Notification.objects.get(id=notification_id)
-                now_status = notification.status
-            except:
-                return wrong("该通知不存在！", context)
-        if now_status == Notification.Status.DONE:
-            to_status = Notification.Status.UNDONE
-        elif now_status == Notification.Status.UNDONE:
-            to_status = Notification.Status.DONE
-        else:
-            to_status = Notification.Status.DELETE
-            # context["warn_message"] = "已删除的通知无法翻转状态！"
-            # return context    # 暂时允许
-
     with transaction.atomic():
         try:
-            notification: Notification = \
-                Notification.objects.select_for_update().get(id=notification_id)
-        except:
+            notification = Notification.objects.select_for_update().get(
+                id=notification_id
+            )
+        except Notification.DoesNotExist:
             return wrong("该通知不存在！", context)
+
+        if to_status is None:
+            if notification.status == Notification.Status.DONE:
+                to_status = Notification.Status.UNDONE
+            elif notification.status == Notification.Status.UNDONE:
+                to_status = Notification.Status.DONE
+            else:
+                to_status = Notification.Status.DELETE
+
         if notification.status == to_status:
             return succeed("通知状态无需改变！", context)
         if (

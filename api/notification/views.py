@@ -4,27 +4,42 @@ REST APIs for notification management.
 from __future__ import annotations
 
 from datetime import datetime
+
+from django.db import transaction
 from rest_framework import status, viewsets
 from rest_framework.decorators import action
+from rest_framework.exceptions import NotFound
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
-from rest_framework.exceptions import NotFound, PermissionDenied
 from drf_spectacular.utils import extend_schema, OpenApiResponse, OpenApiParameter
 from drf_spectacular.types import OpenApiTypes
-from django.db import transaction
 
 from app.models import Notification
 from app.notification_utils import notification_status_change
+from api.authentication import WxJWTAuthentication
+from api.exceptions import (
+    APIError,
+    APIErrorResponseSerializer,
+    StandardizedExceptionHandlerMixin,
+)
 from api.notification.serializers import (
+    NotificationBulkOperationSerializer,
     NotificationSerializer,
     NotificationStatusUpdateSerializer,
     NotificationListQuerySerializer,
     NotificationStatisticsSerializer,
 )
-from api.authentication import WxJWTAuthentication
+from utils.global_messages import SUCCEED
 
 
-class NotificationViewSet(viewsets.ViewSet):
+def error_response(description: str) -> OpenApiResponse:
+    return OpenApiResponse(
+        response=APIErrorResponseSerializer,
+        description=description,
+    )
+
+
+class NotificationViewSet(StandardizedExceptionHandlerMixin, viewsets.ViewSet):
     """
     ViewSet for managing user notifications.
 
@@ -42,7 +57,37 @@ class NotificationViewSet(viewsets.ViewSet):
         """Get notifications for the current user."""
         return Notification.objects.activated().filter(
             receiver=self.request.user
-        ).select_related('sender')
+        ).select_related("sender")
+
+    def _get_notification(self, pk):
+        try:
+            return self.get_queryset().get(pk=pk)
+        except (Notification.DoesNotExist, TypeError, ValueError):
+            raise NotFound("通知不存在。")
+
+    @staticmethod
+    def _change_status(notification, to_status=None):
+        context = notification_status_change(notification, to_status)
+        if context.get("warn_code") != SUCCEED:
+            raise APIError(
+                code="notification.state_conflict",
+                message="通知状态已发生变化，请刷新后重试。",
+                status_code=status.HTTP_409_CONFLICT,
+            )
+
+    @staticmethod
+    def _bulk_update(queryset, **updates):
+        with transaction.atomic():
+            notification_ids = list(
+                queryset.select_for_update()
+                .order_by("pk")
+                .values_list("pk", flat=True)
+            )
+            if not notification_ids:
+                return 0
+            return Notification.objects.filter(
+                pk__in=notification_ids
+            ).update(**updates)
 
     @extend_schema(
         description="List all notifications for the authenticated user",
@@ -75,6 +120,8 @@ class NotificationViewSet(viewsets.ViewSet):
                 response=NotificationSerializer(many=True),
                 description="List of notifications"
             ),
+            400: error_response("Invalid filter or ordering parameter"),
+            401: error_response("Authentication required or token invalid"),
         },
         tags=['通知']
     )
@@ -82,18 +129,16 @@ class NotificationViewSet(viewsets.ViewSet):
         """List notifications with optional filtering and ordering."""
         queryset = self.get_queryset()
 
-        # Apply filters
-        status_param = request.query_params.get('status')
-        if status_param is not None:
-            queryset = queryset.filter(status=status_param)
-
-        typename_param = request.query_params.get('typename')
-        if typename_param is not None:
-            queryset = queryset.filter(typename=typename_param)
-
-        # Apply ordering
-        ordering = request.query_params.get('ordering', '-start_time')
-        queryset = queryset.order_by(ordering)
+        query_serializer = NotificationListQuerySerializer(
+            data=request.query_params
+        )
+        query_serializer.is_valid(raise_exception=True)
+        params = query_serializer.validated_data
+        if "status" in params:
+            queryset = queryset.filter(status=params["status"])
+        if "typename" in params:
+            queryset = queryset.filter(typename=params["typename"])
+        queryset = queryset.order_by(params["ordering"])
 
         serializer = NotificationSerializer(queryset, many=True)
         return Response(serializer.data)
@@ -102,18 +147,14 @@ class NotificationViewSet(viewsets.ViewSet):
         description="Retrieve a specific notification by ID",
         responses={
             200: NotificationSerializer,
-            404: OpenApiResponse(description="Notification not found"),
-            403: OpenApiResponse(description="Permission denied"),
+            401: error_response("Authentication required or token invalid"),
+            404: error_response("Notification not found or not visible"),
         },
         tags=['通知']
     )
     def retrieve(self, request, pk=None):
         """Get a specific notification."""
-        try:
-            notification = Notification.objects.get(
-                id=pk, receiver=request.user)
-        except Notification.DoesNotExist:
-            raise NotFound("Notification not found")
+        notification = self._get_notification(pk)
 
         serializer = NotificationSerializer(notification)
         return Response(serializer.data)
@@ -126,28 +167,23 @@ class NotificationViewSet(viewsets.ViewSet):
                 response=NotificationSerializer,
                 description="Notification updated successfully"
             ),
-            400: OpenApiResponse(description="Invalid status"),
-            404: OpenApiResponse(description="Notification not found"),
-            403: OpenApiResponse(description="Permission denied"),
+            400: error_response("Invalid status"),
+            401: error_response("Authentication required or token invalid"),
+            404: error_response("Notification not found or not visible"),
+            409: error_response("Notification state changed concurrently"),
         },
         tags=['通知']
     )
     @action(detail=True, methods=['patch'], url_path='update-status')
     def update_status(self, request, pk=None):
         """Update the status of a notification."""
-        try:
-            notification = Notification.objects.get(
-                id=pk, receiver=request.user)
-        except Notification.DoesNotExist:
-            raise NotFound("Notification not found")
+        notification = self._get_notification(pk)
 
         serializer = NotificationStatusUpdateSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
 
-        to_status = serializer.validated_data['status']
-
-        with transaction.atomic():
-            context = notification_status_change(notification, to_status)
+        to_status = serializer.validated_data["status"]
+        self._change_status(notification, to_status)
 
         # Refresh the notification from database
         notification.refresh_from_db()
@@ -161,22 +197,17 @@ class NotificationViewSet(viewsets.ViewSet):
                 response=NotificationSerializer,
                 description="Notification toggled successfully"
             ),
-            404: OpenApiResponse(description="Notification not found"),
-            403: OpenApiResponse(description="Permission denied"),
+            401: error_response("Authentication required or token invalid"),
+            404: error_response("Notification not found or not visible"),
+            409: error_response("Notification state changed concurrently"),
         },
         tags=['通知']
     )
     @action(detail=True, methods=['post'], url_path='toggle-status')
     def toggle_status(self, request, pk=None):
         """Toggle notification status between read and unread."""
-        try:
-            notification = Notification.objects.get(
-                id=pk, receiver=request.user)
-        except Notification.DoesNotExist:
-            raise NotFound("Notification not found")
-
-        with transaction.atomic():
-            context = notification_status_change(notification)
+        notification = self._get_notification(pk)
+        self._change_status(notification)
 
         # Refresh the notification from database
         notification.refresh_from_db()
@@ -186,7 +217,11 @@ class NotificationViewSet(viewsets.ViewSet):
     @extend_schema(
         description="Mark all unread notifications as read",
         responses={
-            200: OpenApiResponse(description="All notifications marked as read"),
+            200: OpenApiResponse(
+                response=NotificationBulkOperationSerializer,
+                description="All notifications marked as read",
+            ),
+            401: error_response("Authentication required or token invalid"),
         },
         tags=['通知']
     )
@@ -198,23 +233,25 @@ class NotificationViewSet(viewsets.ViewSet):
             typename=Notification.Type.NEEDREAD,
             status=Notification.Status.UNDONE
         )
-        count = notifications.count()
-
-        with transaction.atomic():
-            notifications.update(
-                status=Notification.Status.DONE,
-                finish_time=datetime.now()
-            )
+        count = self._bulk_update(
+            notifications,
+            status=Notification.Status.DONE,
+            finish_time=datetime.now(),
+        )
 
         return Response({
-            "message": f"Successfully marked {count} notifications as read",
-            "count": count
+            "message": f"已将 {count} 条通知标记为已读。",
+            "count": count,
         }, status=status.HTTP_200_OK)
 
     @extend_schema(
         description="Delete all read notifications",
         responses={
-            200: OpenApiResponse(description="All read notifications deleted"),
+            200: OpenApiResponse(
+                response=NotificationBulkOperationSerializer,
+                description="All read notifications deleted",
+            ),
+            401: error_response("Authentication required or token invalid"),
         },
         tags=['通知']
     )
@@ -226,20 +263,21 @@ class NotificationViewSet(viewsets.ViewSet):
             typename=Notification.Type.NEEDREAD,
             status=Notification.Status.DONE
         )
-        count = notifications.count()
-
-        with transaction.atomic():
-            notifications.update(status=Notification.Status.DELETE)
+        count = self._bulk_update(
+            notifications,
+            status=Notification.Status.DELETE,
+        )
 
         return Response({
-            "message": f"Successfully deleted {count} notifications",
-            "count": count
+            "message": f"已删除 {count} 条已读通知。",
+            "count": count,
         }, status=status.HTTP_200_OK)
 
     @extend_schema(
         description="Get notification statistics for the current user",
         responses={
             200: NotificationStatisticsSerializer,
+            401: error_response("Authentication required or token invalid"),
         },
         tags=['通知']
     )
