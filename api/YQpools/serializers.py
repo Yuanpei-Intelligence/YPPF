@@ -74,6 +74,12 @@ class PoolListSerializer(serializers.Serializer):
     pools_info = PoolSerializer(many=True)
 
 
+class AllPoolsResponseSerializer(serializers.Serializer):
+    exchange_pools = PoolListSerializer()
+    lottery_pools = PoolListSerializer()
+    random_pools = PoolListSerializer()
+
+
 class ExchangePurchaseSerializer(serializers.Serializer):
     """Serializer for exchange item purchase request."""
 
@@ -96,6 +102,21 @@ class RandomPurchaseSerializer(serializers.Serializer):
     """Serializer for random box purchase request."""
 
     pool_id = serializers.IntegerField(help_text="ID of the random pool")
+
+
+class PurchaseResponseSerializer(serializers.Serializer):
+    """Successful exchange or lottery purchase response."""
+
+    succeed = serializers.BooleanField()
+    message = serializers.CharField()
+
+
+class RandomPurchaseResponseSerializer(PurchaseResponseSerializer):
+    """Successful random-pool purchase response."""
+
+    prize_id = serializers.IntegerField(allow_null=True)
+    effect_code = serializers.ChoiceField(choices=[0, 1, 2])
+    compensate_YQPoint = serializers.IntegerField(min_value=0)
 
 
 class YQPointBalanceSerializer(serializers.Serializer):

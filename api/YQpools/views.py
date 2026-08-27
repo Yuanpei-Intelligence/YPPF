@@ -1,35 +1,111 @@
 """
 REST APIs for YQpools.
 """
+from datetime import datetime
+import re
+
+from django.db.models import CharField
+from django.forms.models import model_to_dict
 from rest_framework import status, viewsets
 from rest_framework.decorators import action
+from rest_framework.exceptions import NotFound, PermissionDenied
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
-from rest_framework.exceptions import NotFound
-from drf_spectacular.utils import extend_schema, OpenApiResponse, OpenApiParameter
-from drf_spectacular.types import OpenApiTypes
-from django.db.models import CharField
+from drf_spectacular.utils import extend_schema, OpenApiResponse
 
-from app.models import Pool
 from app.YQPoint_utils import (
     get_pools_and_items,
     buy_exchange_item,
     buy_lottery_pool,
     buy_random_pool,
 )
+from app.models import Participation, Pool, PoolItem, PoolRecord
 from generic.models import User
 from api.authentication import WxJWTAuthentication
+from api.exceptions import (
+    APIError,
+    APIErrorResponseSerializer,
+    StandardizedExceptionHandlerMixin,
+)
 from api.YQpools.serializers import (
+    AllPoolsResponseSerializer,
     PoolListSerializer,
     PoolSerializer,
     ExchangePurchaseSerializer,
     LotteryPurchaseSerializer,
     RandomPurchaseSerializer,
+    PurchaseResponseSerializer,
+    RandomPurchaseResponseSerializer,
     YQPointBalanceSerializer,
 )
 
 
-class PoolsViewSet(viewsets.ViewSet):
+def error_response(description: str) -> OpenApiResponse:
+    return OpenApiResponse(
+        response=APIErrorResponseSerializer,
+        description=description,
+    )
+
+
+def _raise_purchase_error(
+    message: str,
+    *,
+    missing_code: str,
+) -> None:
+    """Translate a legacy domain message into a stable API failure."""
+
+    if "不存在" in message:
+        code = missing_code
+        status_code = status.HTTP_404_NOT_FOUND
+        errors = None
+    elif "元气值不足" in message:
+        code = "yqpools.insufficient_balance"
+        status_code = status.HTTP_400_BAD_REQUEST
+        errors = None
+    elif "售罄" in message:
+        code = "yqpools.sold_out"
+        status_code = status.HTTP_409_CONFLICT
+        errors = None
+    elif "未开始" in message:
+        code = "yqpools.not_started"
+        status_code = status.HTTP_409_CONFLICT
+        errors = None
+    elif "已结束" in message:
+        code = "yqpools.ended"
+        status_code = status.HTTP_409_CONFLICT
+        errors = None
+    elif "次数" in message and "上限" in message:
+        code = "yqpools.limit_reached"
+        status_code = status.HTTP_400_BAD_REQUEST
+        errors = None
+    elif "兑换信息" in message:
+        code = "yqpools.invalid_attributes"
+        status_code = status.HTTP_400_BAD_REQUEST
+        errors = {
+            "attributes": [{"code": "invalid", "message": message}],
+        }
+    elif "已毕业" in message:
+        code = "yqpools.account_inactive"
+        status_code = status.HTTP_403_FORBIDDEN
+        errors = None
+    elif "活动限定" in message:
+        code = "yqpools.activity_required"
+        status_code = status.HTTP_403_FORBIDDEN
+        errors = None
+    else:
+        code = "yqpools.purchase_rejected"
+        status_code = status.HTTP_400_BAD_REQUEST
+        errors = None
+
+    raise APIError(
+        code=code,
+        message=message or "购买请求未通过。",
+        status_code=status_code,
+        errors=errors,
+    )
+
+
+class PoolsViewSet(StandardizedExceptionHandlerMixin, viewsets.ViewSet):
     """
     ViewSet for managing YQPoint Mall pools.
 
@@ -43,6 +119,11 @@ class PoolsViewSet(viewsets.ViewSet):
     permission_classes = [IsAuthenticated]
     authentication_classes = [WxJWTAuthentication]
     queryset = Pool.objects.all()
+
+    def initial(self, request, *args, **kwargs):
+        super().initial(request, *args, **kwargs)
+        if not request.user.is_person():
+            raise PermissionDenied("元气商城仅支持个人账号。")
 
     def _get_serialized_data(self, pool_type: Pool.Type):
         """Serialize pool data using the existing utility function."""
@@ -66,8 +147,9 @@ class PoolsViewSet(viewsets.ViewSet):
                 response=PoolListSerializer,
                 description="兑换奖池列表，包含每个奖池的详细信息、奖品列表、用户兑换次数等"
             ),
-            401: OpenApiResponse(description="未认证或token无效"),
-            403: OpenApiResponse(description="非个人账号或无权限访问"),
+            401: error_response("未认证或令牌无效"),
+            403: error_response("仅个人账号可访问元气商城"),
+            500: error_response("服务器暂时无法处理请求"),
         },
         tags=['元气商城'],
     )
@@ -84,8 +166,9 @@ class PoolsViewSet(viewsets.ViewSet):
                 response=PoolListSerializer,
                 description="抽奖奖池列表，包含每个奖池的详细信息、用户参与次数、总参与次数、抽奖结果（如已结束）等"
             ),
-            401: OpenApiResponse(description="未认证或token无效"),
-            403: OpenApiResponse(description="非个人账号或无权限访问"),
+            401: error_response("未认证或令牌无效"),
+            403: error_response("仅个人账号可访问元气商城"),
+            500: error_response("服务器暂时无法处理请求"),
         },
         tags=['元气商城'],
     )
@@ -102,8 +185,9 @@ class PoolsViewSet(viewsets.ViewSet):
                 response=PoolListSerializer,
                 description="盲盒奖池列表，包含每个奖池的详细信息、奖品列表及概率、容量、用户参与次数等"
             ),
-            401: OpenApiResponse(description="未认证或token无效"),
-            403: OpenApiResponse(description="非个人账号或无权限访问"),
+            401: error_response("未认证或令牌无效"),
+            403: error_response("仅个人账号可访问元气商城"),
+            500: error_response("服务器暂时无法处理请求"),
         },
         tags=['元气商城'],
     )
@@ -116,43 +200,10 @@ class PoolsViewSet(viewsets.ViewSet):
         summary="获取所有奖池",
         description="一次性获取所有类型的奖池（兑换、抽奖、盲盒）。返回三个独立的列表，每个列表包含对应类型的所有可用奖池。",
         responses={
-            200: OpenApiResponse(
-                description="所有奖池信息",
-                response={
-                    "type": "object",
-                    "properties": {
-                        "exchange_pools": {
-                            "type": "object",
-                            "properties": {
-                                "pools_info": {
-                                    "type": "array",
-                                    "items": {"type": "object"}
-                                }
-                            }
-                        },
-                        "lottery_pools": {
-                            "type": "object",
-                            "properties": {
-                                "pools_info": {
-                                    "type": "array",
-                                    "items": {"type": "object"}
-                                }
-                            }
-                        },
-                        "random_pools": {
-                            "type": "object",
-                            "properties": {
-                                "pools_info": {
-                                    "type": "array",
-                                    "items": {"type": "object"}
-                                }
-                            }
-                        },
-                    },
-                },
-            ),
-            401: OpenApiResponse(description="未认证或token无效"),
-            403: OpenApiResponse(description="非个人账号或无权限访问"),
+            200: AllPoolsResponseSerializer,
+            401: error_response("未认证或令牌无效"),
+            403: error_response("仅个人账号可访问元气商城"),
+            500: error_response("服务器暂时无法处理请求"),
         },
         tags=['元气商城'],
     )
@@ -175,9 +226,10 @@ class PoolsViewSet(viewsets.ViewSet):
                 response=PoolSerializer,
                 description="单个奖池的完整信息，包括所有字段和奖品列表"
             ),
-            401: OpenApiResponse(description="未认证或token无效"),
-            403: OpenApiResponse(description="非个人账号、无权限访问或未参加关联活动"),
-            404: OpenApiResponse(description="奖池不存在或已过期不可用"),
+            401: error_response("未认证或令牌无效"),
+            403: error_response("仅个人账号可访问元气商城"),
+            404: error_response("奖池不存在或对当前用户不可见"),
+            500: error_response("服务器暂时无法处理请求"),
         },
         tags=['元气商城'],
     )
@@ -185,14 +237,13 @@ class PoolsViewSet(viewsets.ViewSet):
         """Get a specific pool by ID."""
         try:
             pool = Pool.objects.get(id=pk)
-        except Pool.DoesNotExist:
-            raise NotFound("奖池不存在")
+        except Pool.DoesNotExist as exc:
+            raise NotFound("奖池不存在。") from exc
 
         user: User = request.user
         pool_type: CharField = pool.type
 
         # Check if user has access (activity participation requirement)
-        from app.models import Participation
         if pool.activity_id:
             has_participated = Participation.objects.filter(
                 activity=pool.activity_id,
@@ -200,7 +251,7 @@ class PoolsViewSet(viewsets.ViewSet):
                 status=Participation.AttendStatus.ATTENDED
             ).exists()
             if not has_participated:
-                raise NotFound("奖池不存在")
+                raise NotFound("奖池不存在。")
 
         # Try to get pool from filtered results first
         frontend_dict = {}
@@ -210,12 +261,9 @@ class PoolsViewSet(viewsets.ViewSet):
 
         # If not in filtered results, manually construct pool data
         if pool_data is None:
-            from django.forms.models import model_to_dict
-            from datetime import datetime
-            from app.models import PoolRecord, PoolItem
-
             pool_data = model_to_dict(pool)
-            if pool.start <= datetime.now() and (pool.end is None or pool.end >= datetime.now()):
+            now = datetime.now()
+            if pool.start <= now and (pool.end is None or pool.end >= now):
                 pool_data["status"] = 0
             else:
                 pool_data["status"] = 1
@@ -297,35 +345,14 @@ class PoolsViewSet(viewsets.ViewSet):
         responses={
             200: OpenApiResponse(
                 description="兑换成功",
-                response={
-                    "type": "object",
-                    "properties": {
-                        "succeed": {"type": "boolean", "description": "是否成功"},
-                        "message": {"type": "string", "description": "响应消息"},
-                    },
-                },
+                response=PurchaseResponseSerializer,
             ),
-            400: OpenApiResponse(
-                description="请求错误",
-                response={
-                    "type": "object",
-                    "properties": {
-                        "succeed": {"type": "boolean", "example": False},
-                        "message": {
-                            "type": "string",
-                            "examples": [
-                                "您的元气值不足，兑换失败!",
-                                "奖品已售罄!",
-                                "您兑换该奖品的次数已达上限!",
-                                "请填写完整的兑换信息!",
-                            ],
-                        },
-                    },
-                },
-            ),
-            401: OpenApiResponse(description="未认证或token无效"),
-            403: OpenApiResponse(description="非个人账号、无权限或未参加关联活动"),
-            404: OpenApiResponse(description="奖品不存在"),
+            400: error_response("参数错误或购买条件不满足"),
+            401: error_response("未认证或令牌无效"),
+            403: error_response("账号或活动资格不允许购买"),
+            404: error_response("奖品不存在"),
+            409: error_response("奖池状态冲突或奖品售罄"),
+            500: error_response("服务器暂时无法处理请求"),
         },
         tags=['元气商城'],
     )
@@ -340,16 +367,16 @@ class PoolsViewSet(viewsets.ViewSet):
 
         context = buy_exchange_item(request.user, poolitem_id, attributes)
 
-        # Convert MESSAGECONTEXT to API response
-        response_data = {
-            'succeed': context.get('warn_code', 0) == 2,
-            'message': context.get('warn_message', ''),
-        }
-
-        if response_data['succeed']:
-            return Response(response_data, status=status.HTTP_200_OK)
-        else:
-            return Response(response_data, status=status.HTTP_400_BAD_REQUEST)
+        message = str(context.get('warn_message', ''))
+        if context.get('warn_code', 0) != 2:
+            _raise_purchase_error(
+                message,
+                missing_code="yqpools.prize_not_found",
+            )
+        return Response(
+            {'succeed': True, 'message': message},
+            status=status.HTTP_200_OK,
+        )
 
     @extend_schema(
         summary="购买抽奖",
@@ -358,37 +385,14 @@ class PoolsViewSet(viewsets.ViewSet):
         responses={
             200: OpenApiResponse(
                 description="购买成功",
-                response={
-                    "type": "object",
-                    "properties": {
-                        "succeed": {"type": "boolean", "description": "是否成功"},
-                        "message": {
-                            "type": "string",
-                            "description": "响应消息，成功时提示可在抽奖结束后查看结果",
-                        },
-                    },
-                },
+                response=PurchaseResponseSerializer,
             ),
-            400: OpenApiResponse(
-                description="请求错误",
-                response={
-                    "type": "object",
-                    "properties": {
-                        "succeed": {"type": "boolean", "example": False},
-                        "message": {
-                            "type": "string",
-                            "examples": [
-                                "您的元气值不足，兑换失败!",
-                                "您在本奖池中抽奖的次数已达上限!",
-                                "抽奖已结束!",
-                            ],
-                        },
-                    },
-                },
-            ),
-            401: OpenApiResponse(description="未认证或token无效"),
-            403: OpenApiResponse(description="非个人账号、无权限或未参加关联活动"),
-            404: OpenApiResponse(description="奖池不存在"),
+            400: error_response("参数错误或购买条件不满足"),
+            401: error_response("未认证或令牌无效"),
+            403: error_response("账号或活动资格不允许购买"),
+            404: error_response("奖池不存在"),
+            409: error_response("奖池状态冲突"),
+            500: error_response("服务器暂时无法处理请求"),
         },
         tags=['元气商城'],
     )
@@ -402,15 +406,16 @@ class PoolsViewSet(viewsets.ViewSet):
 
         context = buy_lottery_pool(request.user, pool_id)
 
-        response_data = {
-            'succeed': context.get('warn_code', 0) == 2,
-            'message': context.get('warn_message', ''),
-        }
-
-        if response_data['succeed']:
-            return Response(response_data, status=status.HTTP_200_OK)
-        else:
-            return Response(response_data, status=status.HTTP_400_BAD_REQUEST)
+        message = str(context.get('warn_message', ''))
+        if context.get('warn_code', 0) != 2:
+            _raise_purchase_error(
+                message,
+                missing_code="yqpools.pool_not_found",
+            )
+        return Response(
+            {'succeed': True, 'message': message},
+            status=status.HTTP_200_OK,
+        )
 
     @extend_schema(
         summary="购买盲盒",
@@ -419,51 +424,14 @@ class PoolsViewSet(viewsets.ViewSet):
         responses={
             200: OpenApiResponse(
                 description="购买成功",
-                response={
-                    "type": "object",
-                    "properties": {
-                        "succeed": {"type": "boolean", "description": "是否成功"},
-                        "message": {"type": "string", "description": "响应消息"},
-                        "prize_id": {
-                            "type": "integer",
-                            "nullable": True,
-                            "description": "获得的奖品ID，空盒时为null",
-                        },
-                        "effect_code": {
-                            "type": "integer",
-                            "description": "效果代码：0=开出奖品，1=开出空盒，2=无效果",
-                            "enum": [0, 1, 2],
-                        },
-                        "compensate_YQPoint": {
-                            "type": "integer",
-                            "description": "空盒补偿的元气值，非空盒时为0",
-                        },
-                    },
-                },
+                response=RandomPurchaseResponseSerializer,
             ),
-            400: OpenApiResponse(
-                description="请求错误",
-                response={
-                    "type": "object",
-                    "properties": {
-                        "succeed": {"type": "boolean", "example": False},
-                        "message": {
-                            "type": "string",
-                            "examples": [
-                                "您的元气值不足，兑换失败!",
-                                "您兑换这款盲盒的次数已达上限!",
-                                "盲盒已售罄!",
-                            ],
-                        },
-                        "prize_id": {"type": "integer", "nullable": True, "example": None},
-                        "effect_code": {"type": "integer", "example": 2},
-                        "compensate_YQPoint": {"type": "integer", "example": 0},
-                    },
-                },
-            ),
-            401: OpenApiResponse(description="未认证或token无效"),
-            403: OpenApiResponse(description="非个人账号、无权限或未参加关联活动"),
-            404: OpenApiResponse(description="奖池不存在"),
+            400: error_response("参数错误或购买条件不满足"),
+            401: error_response("未认证或令牌无效"),
+            403: error_response("账号或活动资格不允许购买"),
+            404: error_response("奖池不存在"),
+            409: error_response("奖池状态冲突或盲盒售罄"),
+            500: error_response("服务器暂时无法处理请求"),
         },
         tags=['元气商城'],
     )
@@ -477,23 +445,26 @@ class PoolsViewSet(viewsets.ViewSet):
 
         context, prize_id, effect_code = buy_random_pool(request.user, pool_id)
 
+        message = str(context.get('warn_message', ''))
+        if context.get('warn_code', 0) != 2:
+            _raise_purchase_error(
+                message,
+                missing_code="yqpools.pool_not_found",
+            )
+
         response_data = {
-            'succeed': context.get('warn_code', 0) == 2,
-            'message': context.get('warn_message', ''),
+            'succeed': True,
+            'message': message,
             'prize_id': prize_id if prize_id != -1 else None,
             'effect_code': effect_code,
             'compensate_YQPoint': 0
         }
 
-        # 如果获得元气值补偿，则提取元气值补偿数值，并添加到响应数据中
-        if '获得' in response_data['message'] and '元气值补偿' in response_data['message']:
-            compen_str = response_data['message'][17:-7]
-            response_data['compensate_YQPoint'] = int(compen_str)
+        compensation = re.search(r"获得(\d+)点元气值补偿", message)
+        if compensation:
+            response_data['compensate_YQPoint'] = int(compensation.group(1))
 
-        if response_data['succeed']:
-            return Response(response_data, status=status.HTTP_200_OK)
-        else:
-            return Response(response_data, status=status.HTTP_400_BAD_REQUEST)
+        return Response(response_data, status=status.HTTP_200_OK)
 
     @extend_schema(
         summary="获取元气值余额",
@@ -503,7 +474,9 @@ class PoolsViewSet(viewsets.ViewSet):
                 response=YQPointBalanceSerializer,
                 description="用户的元气值余额"
             ),
-            401: OpenApiResponse(description="未认证或token无效"),
+            401: error_response("未认证或令牌无效"),
+            403: error_response("仅个人账号可访问元气商城"),
+            500: error_response("服务器暂时无法处理请求"),
         },
         tags=['元气商城'],
     )

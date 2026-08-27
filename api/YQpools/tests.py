@@ -196,12 +196,35 @@ class PoolsAPITestCase(APITestCase):
 
         self.client = APIClient()
 
+    def assert_error(self, response, expected_status, expected_code):
+        self.assertEqual(response.status_code, expected_status)
+        self.assertEqual(set(response.data), {"code", "message", "errors"})
+        self.assertEqual(response.data["code"], expected_code)
+        self.assertIsInstance(response.data["message"], str)
+        self.assertIsInstance(response.data["errors"], dict)
+
     def test_list_pools_requires_auth(self):
         """Test that listing pools requires authentication."""
         url = '/api/v2/YQpools/'
         response = self.client.get(url)
-        self.assertEqual(response.status_code,
-                         http_status.HTTP_401_UNAUTHORIZED)
+        self.assert_error(
+            response,
+            http_status.HTTP_401_UNAUTHORIZED,
+            "invalid_token",
+        )
+        self.assertEqual(response.data["errors"], {})
+
+    def test_list_pools_rejects_organization_account(self):
+        self.client.force_authenticate(user=self.org_user)
+
+        response = self.client.get('/api/v2/YQpools/')
+
+        self.assert_error(
+            response,
+            http_status.HTTP_403_FORBIDDEN,
+            "permission_denied",
+        )
+        self.assertEqual(response.data["errors"], {})
 
     def test_get_exchange_pools(self):
         """Test getting exchange pools."""
@@ -270,7 +293,12 @@ class PoolsAPITestCase(APITestCase):
         url = '/api/v2/YQpools/99999/'
         response = self.client.get(url)
 
-        self.assertEqual(response.status_code, http_status.HTTP_404_NOT_FOUND)
+        self.assert_error(
+            response,
+            http_status.HTTP_404_NOT_FOUND,
+            "not_found",
+        )
+        self.assertEqual(response.data["errors"], {})
 
     def test_get_balance(self):
         """Test getting user's YQPoint balance."""
@@ -356,9 +384,11 @@ class PoolsAPITestCase(APITestCase):
             format='json'
         )
 
-        self.assertEqual(response.status_code,
-                         http_status.HTTP_400_BAD_REQUEST)
-        self.assertFalse(response.data['succeed'])
+        self.assert_error(
+            response,
+            http_status.HTTP_400_BAD_REQUEST,
+            "yqpools.insufficient_balance",
+        )
         self.assertIn('元气值不足', response.data['message'])
 
     def test_purchase_exchange_sold_out(self):
@@ -378,9 +408,11 @@ class PoolsAPITestCase(APITestCase):
             format='json'
         )
 
-        self.assertEqual(response.status_code,
-                         http_status.HTTP_400_BAD_REQUEST)
-        self.assertFalse(response.data['succeed'])
+        self.assert_error(
+            response,
+            http_status.HTTP_409_CONFLICT,
+            "yqpools.sold_out",
+        )
         self.assertIn('售罄', response.data['message'])
 
     def test_purchase_exchange_limit_reached(self):
@@ -405,9 +437,11 @@ class PoolsAPITestCase(APITestCase):
             format='json'
         )
 
-        self.assertEqual(response.status_code,
-                         http_status.HTTP_400_BAD_REQUEST)
-        self.assertFalse(response.data['succeed'])
+        self.assert_error(
+            response,
+            http_status.HTTP_400_BAD_REQUEST,
+            "yqpools.limit_reached",
+        )
         self.assertIn('上限', response.data['message'])
 
     def test_purchase_exchange_missing_attributes(self):
@@ -427,10 +461,16 @@ class PoolsAPITestCase(APITestCase):
             format='json'
         )
 
-        self.assertEqual(response.status_code,
-                         http_status.HTTP_400_BAD_REQUEST)
-        self.assertFalse(response.data['succeed'])
+        self.assert_error(
+            response,
+            http_status.HTTP_400_BAD_REQUEST,
+            "yqpools.invalid_attributes",
+        )
         self.assertIn('兑换信息', response.data['message'])
+        self.assertEqual(
+            response.data['errors']['attributes'][0]['code'],
+            'invalid',
+        )
 
     def test_purchase_lottery_success(self):
         """Test successful lottery purchase."""
@@ -462,6 +502,41 @@ class PoolsAPITestCase(APITestCase):
             ).exists()
         )
 
+    def test_purchase_lottery_requires_pool_id(self):
+        self.client.force_authenticate(user=self.user)
+
+        response = self.client.post(
+            '/api/v2/YQpools/lottery/purchase/',
+            {},
+            format='json',
+        )
+
+        self.assert_error(
+            response,
+            http_status.HTTP_400_BAD_REQUEST,
+            'validation_error',
+        )
+        self.assertEqual(
+            response.data['errors']['pool_id'][0]['code'],
+            'required',
+        )
+
+    def test_purchase_lottery_pool_not_found(self):
+        self.client.force_authenticate(user=self.user)
+
+        response = self.client.post(
+            '/api/v2/YQpools/lottery/purchase/',
+            {'pool_id': 99999},
+            format='json',
+        )
+
+        self.assert_error(
+            response,
+            http_status.HTTP_404_NOT_FOUND,
+            'yqpools.pool_not_found',
+        )
+        self.assertEqual(response.data['errors'], {})
+
     def test_purchase_lottery_insufficient_points(self):
         """Test lottery purchase with insufficient YQPoints."""
         self.user.YQpoint = 20  # Less than ticket_price
@@ -476,9 +551,11 @@ class PoolsAPITestCase(APITestCase):
             format='json'
         )
 
-        self.assertEqual(response.status_code,
-                         http_status.HTTP_400_BAD_REQUEST)
-        self.assertFalse(response.data['succeed'])
+        self.assert_error(
+            response,
+            http_status.HTTP_400_BAD_REQUEST,
+            "yqpools.insufficient_balance",
+        )
 
     def test_purchase_lottery_limit_reached(self):
         """Test lottery purchase when entry limit is reached."""
@@ -499,9 +576,11 @@ class PoolsAPITestCase(APITestCase):
             format='json'
         )
 
-        self.assertEqual(response.status_code,
-                         http_status.HTTP_400_BAD_REQUEST)
-        self.assertFalse(response.data['succeed'])
+        self.assert_error(
+            response,
+            http_status.HTTP_400_BAD_REQUEST,
+            "yqpools.limit_reached",
+        )
         self.assertIn('上限', response.data['message'])
 
     def test_purchase_random_success(self):
@@ -583,9 +662,11 @@ class PoolsAPITestCase(APITestCase):
             format='json'
         )
 
-        self.assertEqual(response.status_code,
-                         http_status.HTTP_400_BAD_REQUEST)
-        self.assertFalse(response.data['succeed'])
+        self.assert_error(
+            response,
+            http_status.HTTP_400_BAD_REQUEST,
+            "yqpools.insufficient_balance",
+        )
 
     def test_purchase_random_limit_reached(self):
         """Test random purchase when entry limit is reached."""
@@ -607,9 +688,11 @@ class PoolsAPITestCase(APITestCase):
             format='json'
         )
 
-        self.assertEqual(response.status_code,
-                         http_status.HTTP_400_BAD_REQUEST)
-        self.assertFalse(response.data['succeed'])
+        self.assert_error(
+            response,
+            http_status.HTTP_400_BAD_REQUEST,
+            "yqpools.limit_reached",
+        )
         self.assertIn('上限', response.data['message'])
 
     def test_purchase_random_sold_out(self):
@@ -647,9 +730,11 @@ class PoolsAPITestCase(APITestCase):
             format='json'
         )
 
-        self.assertEqual(response.status_code,
-                         http_status.HTTP_400_BAD_REQUEST)
-        self.assertFalse(response.data['succeed'])
+        self.assert_error(
+            response,
+            http_status.HTTP_409_CONFLICT,
+            "yqpools.sold_out",
+        )
         self.assertIn('售罄', response.data['message'])
 
     def test_pool_expired_not_shown(self):
