@@ -24,8 +24,8 @@ def _load_from_csv(file_path):
     with open(file_path, 'r', encoding='utf-8') as f:
         reader = csv.reader(f)
         for row in reader:
-            if len(row) != 2:
-                raise CommandError('文件格式错误,每行应包含学号和状态两列,用逗号分隔: %s' % ','.join(row))
+            #if len(row) != 2:
+                #raise CommandError('文件格式错误,每行应包含学号和状态两列,用逗号分隔: %s' % ','.join(row))
             stu_id = row[0].strip()
             try:
                 status = int(row[1].strip())
