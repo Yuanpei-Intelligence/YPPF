@@ -50,9 +50,6 @@ urlpatterns = [
     path('display_getappoint', hardware_api.display_getappoint,
          name='display_getappoint'),
     path('summary', summary.summary, name='summary'),
-    path('summary/2021', summary.summary2021, name='summary2021'),
-    path('summary/2023', summary.summary2023, name='summary2023'),
-    path('summary/2024', summary.summary2024, name='summary2024'),
     path('summary/2025/login', summary.summary2025_login, name='summary2025_login'),
     path('summary/2025', summary.summary2025, name='summary2025')
 ]
