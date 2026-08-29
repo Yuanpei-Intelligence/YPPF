@@ -23,7 +23,7 @@ def get_ip(request: HttpRequest) -> str | None:
 def build_full_url(path: str, root: str | None = None) -> str:
     """
     Add protocol and domain for url.
-    Convert '/path/from/root' to 'protocol://domain/path/from/too'
+    Convert '/path/from/root' to 'protocol://domain/path/from/root'
     if path is already a full url, just return it.
     """
     if root is None:

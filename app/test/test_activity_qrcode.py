@@ -13,6 +13,7 @@ from app.models import (
     OrganizationType,
     User,
 )
+from boot.config import GLOBAL_CONFIG
 
 
 class ActivityQrcodeHelperTestCase(SimpleTestCase):
@@ -22,7 +23,7 @@ class ActivityQrcodeHelperTestCase(SimpleTestCase):
 
         url = build_legacy_checkin_url(request, activity)
 
-        self.assertIn("http://testserver/checkinActivity/42?auth=", url)
+        self.assertIn(f"{GLOBAL_CONFIG.base_url}/checkinActivity/42?auth=", url)
 
 
 class ActivityQrcodeViewTestCase(TestCase):
