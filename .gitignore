@@ -75,3 +75,6 @@ __pycache__/
 # Secret files
 raw_data/*
 dormitory/references/*
+
+# DM management commands
+dm/management/*

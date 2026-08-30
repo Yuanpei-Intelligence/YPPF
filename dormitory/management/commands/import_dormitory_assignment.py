@@ -47,9 +47,12 @@ class Command(BaseCommand):
                 try:
                     user = User.objects.get(username=student_id)
                 except User.DoesNotExist as exc:
-                    raise CommandError(
-                        f"Row {row_number}: user {student_id} does not exist"
-                    ) from exc
+                    self.stdout.write(
+                        self.style.WARNING(
+                            f"Row {row_number}: user {student_id} does not exist, skip"
+                        )
+                    )
+                    continue
                 if user.name != student_name:
                     raise CommandError(
                         f"Row {row_number}: name mismatch for {student_id}: "
@@ -105,7 +108,7 @@ class Command(BaseCommand):
                 start=2,
             ):
                 raw_student_id, student_name, *_, address = row
-                if all(value is None for value in row):
+                if raw_student_id is None and student_name is None:
                     continue
                 try:
                     student_id = str(int(raw_student_id))

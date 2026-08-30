@@ -44,6 +44,7 @@ from app.notification_utils import (
 from app.extern.wechat import WechatApp, WechatMessageLevel
 from app.log import logger
 from api.auth.wechat_api import get_wechat_access_token
+from utils.http.utils import build_full_url
 
 
 __all__ = [
@@ -325,7 +326,7 @@ def build_legacy_checkin_url(request, activity: Activity) -> str:
     """Build the absolute legacy web check-in URL used by the old QR code."""
     auth = GLOBAL_CONFIG.hasher.encode(str(activity.id))
     query = urllib.parse.urlencode({"auth": auth})
-    return request.build_absolute_uri(f"/checkinActivity/{activity.id}?{query}")
+    return build_full_url(f"/checkinActivity/{activity.id}?{query}")
 
 
 def generate_legacy_checkin_qrcode(request, activity: Activity) -> tuple[bytes, str]:
