@@ -59,6 +59,7 @@ from app.notification_utils import (
     notification_status_change,
     notification2Display,
 )
+from app.org_utils import set_default_subscription
 from app.YQPoint_utils import add_signin_point
 from app.academic_utils import (
     get_search_results,
@@ -1111,7 +1112,7 @@ def _create_freshman_account(sid: str, email: str = None):
                 password=password
             )
             current = "创建个人账号"
-            NaturalPerson.objects.create(
+            person = NaturalPerson.objects.create(
                 user,
                 stu_id_dbonly=sid,
                 name=name,
@@ -1120,6 +1121,8 @@ def _create_freshman_account(sid: str, email: str = None):
                 stu_grade=freshman.grade,
                 email=email,
             )
+            # 新账号默认只订阅学院机构与已加入小组，而非全部组织
+            set_default_subscription(person)
             current = "更新注册状态"
             freshman.status = Freshman.Status.REGISTERED
             freshman.save()

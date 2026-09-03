@@ -27,6 +27,7 @@ from app.models import (
     AcademicTag,
 )
 from app.utils import random_code_init
+from app.org_utils import set_default_subscription
 from feedback.models import (
     FeedbackType,
     Feedback,
@@ -81,6 +82,9 @@ def create_person(name, user, **defaults):
         user = user if isinstance(user, User) else User.objects.get(username=user)
         stage = 'create naturalperson'
         person, created = _get_or_create_np(user, name=name, defaults=defaults)
+        # 新账号默认只订阅学院机构与已加入小组，而非全部组织
+        if created:
+            set_default_subscription(person)
         return person
     except RuntimeError: raise
     except: raise RuntimeError(f'{stage} failed')
@@ -410,6 +414,11 @@ def load_stu(filepath: str, output_func: Callable=None, html=False):
             failed_list.append(username)
             continue
     NaturalPerson.objects.bulk_create(stu_list)
+    # 新导入账号默认只订阅学院机构与已加入小组，而非全部组织
+    if stu_list:
+        new_sids = [stu.stu_id_dbonly for stu in stu_list]
+        for np in NaturalPerson.objects.filter(stu_id_dbonly__in=new_sids):
+            set_default_subscription(np)
 
     msg = '<br/>'.join((
                 "导入学生信息成功！",

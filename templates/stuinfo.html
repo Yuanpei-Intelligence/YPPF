@@ -1602,7 +1602,11 @@
                             {% if forloop.counter0|divisibleby:"3" %}<box>{% endif %}
                                 <td>
                                     <a data-toggle="modal" data-target="#achievementModal-{{ atype.title }}">
+                                        {% if atype.badge %}
                                         <img src="{{ atype.badge.url }}" class="achievement-img">
+                                        {% else %}
+                                        <div class="achievement-img achievement-placeholder">无徽章</div>
+                                        {% endif %}
                                     </a>
                                     <center>
                                         <p>{{ atype.title }}</p>
@@ -1619,7 +1623,11 @@
                                                     <div class="widget-content widget-content-area">
                                                         <center>
                                                             <h2>{{ atype.title }}</h2>
+                                                            {% if atype.badge %}
                                                             <img src="{{ atype.badge.url }}" class="achievement-img">
+                                                            {% else %}
+                                                            <div class="achievement-img achievement-placeholder">无徽章</div>
+                                                            {% endif %}
                                                             <p>{{ atype.description }}</p>
                                                         </center>
                                                         <center>

@@ -1,0 +1,210 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block add_css_file %}
+<link rel="stylesheet" href="{% static 'plugins/fullcalendar/fullcalendar.css' %}">
+<link rel="stylesheet" href="{% static 'plugins/fullcalendar/custom-fullcalendar.advance.css' %}">
+{% endblock %}
+
+{% block mainpage %}
+<!--  BEGIN CONTENT AREA  -->
+<div id="content" class="main-content">
+    {% if html_display.warn_code == 1 %}
+    <div class="alert alert-warning text-center">{{ html_display.warn_message }}</div>
+    {% elif html_display.warn_code == 2 %}
+    <div class="alert alert-success text-center">{{ html_display.warn_message }}</div>
+    {% endif %}
+
+    <div class="container">
+        <div class="layout-top-spacing">
+            <div class="row layout-top-spacing">
+                <div class="col-xl-12 col-lg-12 col-md-12 col-sm-12 col-12 layout-spacing">
+                    <div class="widget statbox widget box box-shadow">
+                        <div class="widget-header">
+                            <h5 class="">我的日程表</h5>
+                        </div>
+                        <div class="widget-content-area">
+                            <div class="mb-3">
+                                <span class="badge" style="background-color:#4361ee;color:#fff;">书院课程</span>
+                                <span class="badge" style="background-color:#8ba3f0;color:#fff;">课表（未发布）</span>
+                                <span class="badge" style="background-color:#2ecc71;color:#fff;">报名活动</span>
+                                <span class="badge" style="background-color:#f39c12;color:#fff;">地下室预约</span>
+                                <span class="badge" style="background-color:#9b59b6;color:#fff;">教务课表</span>
+                                <span class="badge" style="background-color:#16a085;color:#fff;">手动日程</span>
+                                <a href="/importCourseTable/" class="badge badge-info" style="text-decoration:none;">导入教务课表</a>
+                                <a href="/schedule/manage/" class="badge badge-light" style="text-decoration:none;">管理我的日程</a>
+                                {% if html_display.warn_message %}
+                                <span class="badge {% if html_display.warn_code == 2 %}badge-success{% else %}badge-danger{% endif %}">{{ html_display.warn_message }}</span>
+                                {% endif %}
+                            </div>
+                            <div id="calendar" style="width: 100%;"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 当日待办面板 -->
+            <div class="row layout-top-spacing">
+                <div class="col-xl-12 col-lg-12 col-md-12 col-sm-12 col-12 layout-spacing">
+                    <div class="widget statbox widget box box-shadow">
+                        <div class="widget-header">
+                            <h5 class="">当日待办（{{ selected_date_str }}）</h5>
+                        </div>
+                        <div class="widget-content-area">
+                            {% if todos %}
+                            <ul class="list-group mb-3">
+                                {% for todo in todos %}
+                                <li class="list-group-item d-flex align-items-center justify-content-between">
+                                    <span class="{% if todo.done %}text-muted text-decoration-line-through{% endif %}">
+                                        {% if todo.done %}[已完成]{% else %}[待办]{% endif %}
+                                        {{ todo.title }}
+                                        {% if todo.location %}（{{ todo.location }}）{% endif %}
+                                        {% if todo.note %} - {{ todo.note }}{% endif %}
+                                    </span>
+                                    <span class="btn-group">
+                                        <form method="post" action="/schedule/toggleTodo/{{ todo.id }}/" style="margin:0;">
+                                            {% csrf_token %}
+                                            <button type="submit" class="btn btn-sm {% if todo.done %}btn-light{% else %}btn-success{% endif %}">
+                                                {% if todo.done %}撤销{% else %}完成{% endif %}
+                                            </button>
+                                        </form>
+                                        <form method="post" action="/schedule/deleteItem/{{ todo.id }}/" style="margin:0 0 0 4px;">
+                                            {% csrf_token %}
+                                            <button type="submit" class="btn btn-sm btn-outline-danger" onclick="return confirm('确认删除该待办？');">删除</button>
+                                        </form>
+                                    </span>
+                                </li>
+                                {% endfor %}
+                            </ul>
+                            {% else %}
+                            <p class="text-muted">这一天还没有待办。</p>
+                            {% endif %}
+
+                            <form method="post" action="/schedule/addItem/" class="form-inline mt-3">
+                                {% csrf_token %}
+                                <input type="hidden" name="category" value="2">
+                                <input type="hidden" name="date" value="{{ selected_date_str }}">
+                                <input type="text" name="title" class="form-control form-control-sm mr-2" placeholder="添加今日待办…" required>
+                                <button type="submit" class="btn btn-sm btn-warning">添加</button>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 快速添加手动日程/待办 -->
+            <div class="row layout-top-spacing">
+                <div class="col-xl-12 col-lg-12 col-md-12 col-sm-12 col-12 layout-spacing">
+                    <div class="statbox widget box box-shadow">
+                        <div class="widget-header">
+                            <h4>快速添加</h4>
+                        </div>
+                        <div class="widget-content-area">
+                            <form method="post" action="/schedule/addItem/">
+                                {% csrf_token %}
+                                <div class="form-row">
+                                    <div class="form-group col-md-4">
+                                        <label>标题</label>
+                                        {{ add_form.title }}
+                                    </div>
+                                    <div class="form-group col-md-2">
+                                        <label>类型</label>
+                                        {{ add_form.category }}
+                                    </div>
+                                    <div class="form-group col-md-2">
+                                        <label>日期</label>
+                                        {{ add_form.date }}
+                                    </div>
+                                    <div class="form-group col-md-2">
+                                        <label>开始</label>
+                                        {{ add_form.start_time }}
+                                    </div>
+                                    <div class="form-group col-md-2">
+                                        <label>结束</label>
+                                        {{ add_form.end_time }}
+                                    </div>
+                                </div>
+                                <div class="form-row">
+                                    <div class="form-group col-md-3">
+                                        <label>地点</label>
+                                        {{ add_form.location }}
+                                    </div>
+                                    <div class="form-group col-md-3">
+                                        <label>备注</label>
+                                        {{ add_form.note }}
+                                    </div>
+                                    <div class="form-group col-md-2">
+                                        <label>颜色</label>
+                                        {{ add_form.color }}
+                                    </div>
+                                    <div class="form-group col-md-2">
+                                        <label>重复</label>
+                                        {{ add_form.repeat }}
+                                    </div>
+                                    <div class="form-group col-md-2">
+                                        <label>重复结束</label>
+                                        {{ add_form.repeat_end }}
+                                    </div>
+                                </div>
+                                <button type="submit" class="btn btn-primary">添加</button>
+                            </form>
+                            <p class="text-muted small mt-2 mb-0">
+                                说明：待办无需填写开始/结束时间；重复项（每天/每周）会按「重复结束」日期展开为多条，可在「管理我的日程」中删除单条或整个系列。
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <!-- END MAIN CONTAINER -->
+</div>
+{{ schedule_events|json_script:"schedule-events" }}
+{% endblock %}
+
+{% block add_js_file %}
+<script src="{% static 'plugins/fullcalendar/moment.min.js' %}"></script>
+<script src="{% static 'plugins/fullcalendar/fullcalendar.min.js' %}"></script>
+<script>
+$(document).ready(function () {
+    var raw = document.getElementById('schedule-events').textContent;
+    var events = raw ? JSON.parse(raw) : [];
+    $('#calendar').fullCalendar({
+        header: {
+            left: 'prev,next today',
+            center: 'title',
+            right: 'month,agendaWeek,agendaDay'
+        },
+        defaultView: 'agendaWeek',
+        height: 650,
+        defaultDate: '{{ selected_date_str }}',
+        editable: false,
+        eventLimit: true,
+        timeFormat: 'HH:mm',
+        lang: 'zh-cn',
+        monthNames: ['一月','二月','三月','四月','五月','六月','七月','八月','九月','十月','十一月','十二月'],
+        monthNamesShort: ['1月','2月','3月','4月','5月','6月','7月','8月','9月','10月','11月','12月'],
+        dayNames: ['周日','周一','周二','周三','周四','周五','周六'],
+        dayNamesShort: ['日','一','二','三','四','五','六'],
+        buttonText: { today: '今天', month: '月', week: '周', day: '日' },
+        events: events,
+        eventRender: function (calEvent, element) {
+            var tip = calEvent.category || '';
+            if (calEvent.location) {
+                tip += ' | 地点：' + calEvent.location;
+            }
+            element.attr('title', tip);
+        },
+        eventClick: function (calEvent) {
+            if (calEvent.url) {
+                window.open(calEvent.url, '_blank');
+                return false;
+            }
+        },
+        dayClick: function (date) {
+            window.location.href = '/schedule/?date=' + date.format('YYYY-MM-DD');
+        }
+    });
+});
+</script>
+{% endblock %}

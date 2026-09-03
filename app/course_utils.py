@@ -43,6 +43,7 @@ from app.activity_utils import (
 )
 from app.extern.wechat import WechatApp, WechatMessageLevel
 from app.log import logger
+from app.org_utils import subscribe_org
 
 import openpyxl
 import openpyxl.worksheet.worksheet
@@ -512,6 +513,60 @@ def registration_status_check(course_status: Course.Status,
                     and to_status == CourseParticipant.Status.SUCCESS))
 
 
+def backfill_course_participation(user: NaturalPerson, course: Course) -> None:
+    """补选成功后，为已生成但尚未结束的课程活动补建签到记录(issue #973-2)。
+
+    课程活动在发布(建活动)时按当时选课名单一次性生成 Participation；补退选阶段
+    加入的同学不在快照中，导致首次课无法签到。此处按增量补齐，并同步活动人数，
+    使其能被正常签到与统计。
+    """
+    now = datetime.now()
+    activities = Activity.objects.filter(
+        course_time__course=course,
+        category=Activity.ActivityCategory.COURSE,
+        need_apply=False,
+        end__gt=now,
+    ).exclude(status__in=[
+        Activity.Status.CANCELED, Activity.Status.ABORT])
+    for act in activities:
+        initial = (Participation.AttendStatus.UNATTENDED
+                   if act.status == Activity.Status.PROGRESSING
+                   else Participation.AttendStatus.APPLYSUCCESS)
+        participation, created = Participation.objects.get_or_create(
+            activity=act, person=user, defaults={'status': initial})
+        if created:
+            Activity.objects.filter(id=act.id).update(
+                current_participants=F('current_participants') + 1,
+                capacity=F('capacity') + 1)
+        elif participation.status == Participation.AttendStatus.CANCELED:
+            participation.status = initial
+            participation.save(update_fields=['status'])
+
+
+def remove_course_participation(user: NaturalPerson, course: Course) -> None:
+    """退选后，移除该生在未结束课程活动上的签到记录(issue #973-2 对称清理)。"""
+    now = datetime.now()
+    activities = Activity.objects.filter(
+        course_time__course=course,
+        category=Activity.ActivityCategory.COURSE,
+        need_apply=False,
+        end__gt=now,
+    ).exclude(status__in=[
+        Activity.Status.CANCELED, Activity.Status.ABORT])
+    affected_ids = list(Participation.objects.filter(
+        activity__in=activities, person=user).values_list(
+        'activity_id', flat=True))
+    if not affected_ids:
+        return
+    Participation.objects.filter(
+        activity__in=activities, person=user).delete()
+    from django.db.models.functions import Greatest
+    for act_id in set(affected_ids):
+        Activity.objects.filter(id=act_id).update(
+            current_participants=Greatest(F('current_participants') - 1, 0),
+            capacity=Greatest(F('capacity') - 1, 0))
+
+
 def check_course_time_conflict(current_course: Course,
                                user: NaturalPerson) -> Tuple[bool, str]:
     """
@@ -672,6 +727,8 @@ def registration_status_change(course_id: int, user: NaturalPerson,
                     current_participants=F("current_participants") - 1)
                 CourseParticipant.objects.filter(course_id=course_id,
                                                  person=user).delete()
+                if course_status == Course.Status.STAGE2:
+                    remove_course_participation(user, course)
                 succeed("成功取消选课！", context)
             else:
                 # 处理并发问题
@@ -688,6 +745,9 @@ def registration_status_change(course_id: int, user: NaturalPerson,
                         person = user,
                         defaults = {"status": to_status}
                     )
+                    # 补选成功后补齐已生成课程活动的签到记录(issue #973-2)
+                    if course_status == Course.Status.STAGE2:
+                        backfill_course_participation(user, course)
                     succeed("选课成功！", context)
     except:
         return context
@@ -952,6 +1012,8 @@ def change_course_status(cur_status: Course.Status, to_status: Course.Status) ->
                                             semester=GLOBAL_CONFIG.semester)
 
                         positions.append(position)
+                    # 选课成功即视为加入课程组织，自动订阅该组织通知
+                    subscribe_org(participant.person, organization)
                 if positions:
                     with transaction.atomic():
                         Position.objects.bulk_create(positions)

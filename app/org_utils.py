@@ -41,7 +41,39 @@ __all__ = [
     'make_relevant_notification',
     'send_message_check',
     'get_tags',
+    'set_default_subscription',
+    'subscribe_org',
+    'unsubscribe_org',
 ]
+
+
+def set_default_subscription(person):
+    """新账号默认只订阅「学院机构」与「已加入的小组」，而非全部组织。
+
+    订阅通过反向黑名单 NaturalPerson.unsubscribe_list 实现：名单为空即视为
+    订阅全部组织。本函数为新账号计算「不应订阅」的组织集合并写入该名单，
+    使默认行为变为只订阅学院机构(allow_unsubscribe=False 的强制订阅类型)
+    与当前学期已加入的小组(active Position)。
+    """
+    joined_org_ids = Position.objects.activated().filter(
+        person=person).values_list('org_id', flat=True)
+    subscribed = Organization.objects.filter(
+        Q(otype__allow_unsubscribe=False) | Q(id__in=joined_org_ids))
+    person.unsubscribe_list.set(
+        Organization.objects.exclude(id__in=subscribed.values('id')))
+
+
+def subscribe_org(person, org):
+    """加入组织后自动订阅：从该人的不订阅名单中移除该组织。"""
+    if org.otype.allow_unsubscribe and person.unsubscribe_list.filter(
+            id=org.id).exists():
+        person.unsubscribe_list.remove(org)
+
+
+def unsubscribe_org(person, org):
+    """离开组织后自动退订：将该组织加入该人的不订阅名单。"""
+    if org.otype.allow_unsubscribe:
+        person.unsubscribe_list.add(org)
 
 
 def find_max_oname():

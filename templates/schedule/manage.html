@@ -1,0 +1,97 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block mainpage %}
+<!--  BEGIN CONTENT AREA  -->
+<div id="content" class="main-content">
+    {% if html_display.warn_code == 1 %}
+    <div class="alert alert-warning text-center">{{ html_display.warn_message }}</div>
+    {% elif html_display.warn_code == 2 %}
+    <div class="alert alert-success text-center">{{ html_display.warn_message }}</div>
+    {% endif %}
+
+    <div class="container">
+        <div class="layout-top-spacing">
+            <div class="row layout-top-spacing">
+                <div class="col-xl-12 col-lg-12 col-md-12 col-sm-12 col-12 layout-spacing">
+                    <div class="widget statbox widget box box-shadow">
+                        <div class="widget-header">
+                            <div class="row">
+                                <div class="col-xl-12 col-md-12 col-sm-12 col-12">
+                                    <h5>管理我的日程</h5>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="widget-content-area">
+                            {% if html_display.warn_message %}
+                            <div class="alert {% if html_display.warn_code == 2 %}alert-success{% else %}alert-danger{% endif %}">
+                                {{ html_display.warn_message }}
+                            </div>
+                            {% endif %}
+                            <p>
+                                <a href="/schedule/" class="btn btn-light btn-sm">返回日程表</a>
+                            </p>
+                            {% if items %}
+                            <div class="table-responsive">
+                                <table class="table table-hover">
+                                    <thead>
+                                        <tr>
+                                            <th>标题</th>
+                                            <th>类型</th>
+                                            <th>日期</th>
+                                            <th>时间</th>
+                                            <th>重复</th>
+                                            <th>状态</th>
+                                            <th>操作</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for it in items %}
+                                        <tr>
+                                            <td>{{ it.title }}{% if it.location %}<br><small class="text-muted">{{ it.location }}</small>{% endif %}</td>
+                                            <td>
+                                                {% if it.category == 1 %}<span class="badge badge-info">日程</span>
+                                                {% else %}<span class="badge badge-warning">待办</span>{% endif %}
+                                            </td>
+                                            <td>{{ it.date }}</td>
+                                            <td>
+                                                {% if it.category == 1 and it.start_time %}{{ it.start_time|time:"H:i" }}–{{ it.end_time|time:"H:i" }}
+                                                {% elif it.category == 1 %}全天
+                                                {% else %}—{% endif %}
+                                            </td>
+                                            <td>
+                                                {{ it.get_repeat_display }}
+                                                {% if it.series_id %}<span class="badge badge-secondary">系列</span>{% endif %}
+                                            </td>
+                                            <td>
+                                                {% if it.category == 2 %}
+                                                    {% if it.done %}<span class="text-success">已完成</span>{% else %}<span class="text-muted">未完成</span>{% endif %}
+                                                {% else %}—{% endif %}
+                                            </td>
+                                            <td>
+                                                <a href="/schedule/editItem/{{ it.id }}/" class="btn btn-sm btn-outline-primary">编辑</a>
+                                                <form method="post" action="/schedule/deleteItem/{{ it.id }}/" style="display:inline;">
+                                                    {% csrf_token %}
+                                                    {% if it.series_id %}
+                                                    <label class="mr-1"><input type="checkbox" name="delete_series" value="1"> 整系列</label>
+                                                    {% endif %}
+                                                    <button type="submit" class="btn btn-sm btn-outline-danger" onclick="return confirm('确认删除？');">删除</button>
+                                                </form>
+                                            </td>
+                                        </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+                            {% else %}
+                            <p class="text-muted">你还没有添加任何手动日程或待办。</p>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <!-- END MAIN CONTAINER -->
+</div>
+{% endblock %}

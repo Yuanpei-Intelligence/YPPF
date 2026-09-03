@@ -1,0 +1,76 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block mainpage %}
+<!--  BEGIN CONTENT AREA  -->
+<div id="content" class="main-content">
+    {% if html_display.warn_code == 1 %}
+    <div class="alert alert-warning text-center">{{ html_display.warn_message }}</div>
+    {% elif html_display.warn_code == 2 %}
+    <div class="alert alert-success text-center">{{ html_display.warn_message }}</div>
+    {% endif %}
+
+    <div class="container">
+        <div class="layout-top-spacing">
+            <div class="row layout-top-spacing">
+                <div class="col-xl-12 col-lg-12 col-md-12 col-sm-12 col-12 layout-spacing">
+                    <div class="widget statbox widget box box-shadow">
+                        <div class="widget-header">
+                            <div class="row">
+                                <div class="col-xl-12 col-md-12 col-sm-12 col-12">
+                                    <h5>导入教务课表</h5>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="widget-content-area">
+                            {% if html_display.warn_message %}
+                            <div class="alert {% if html_display.warn_code == 2 %}alert-success{% else %}alert-danger{% endif %}">
+                                {{ html_display.warn_message }}
+                            </div>
+                            {% endif %}
+
+                            <p class="text-muted">
+                                从北大门户「我的课表」页面（<code>portal.pku.edu.cn</code> → 我的课表）
+                                使用浏览器「网页另存为」保存为单个 <code>.html</code> 文件，上传即可。
+                                系统仅在内存中解析、绝不保存你的原始文件，也无需任何门户账号密码。
+                            </p>
+
+                            <form method="post" action="/importCourseTable/" enctype="multipart/form-data">
+                                {% csrf_token %}
+                                <div class="form-group mb-3">
+                                    <label for="course_html">课表 HTML 文件</label>
+                                    <input type="file" class="form-control" id="course_html"
+                                           name="course_html" accept=".html,.htm" required>
+                                </div>
+                                <div class="form-group mb-3">
+                                    <label for="semester_start">学期第 1 教学周对应的周一</label>
+                                    <input type="date" class="form-control" id="semester_start"
+                                           name="semester_start" required>
+                                    <small class="form-text text-muted">
+                                        用于把「第 N 周」换算成具体日期。可在校历或选课系统中查询本学期第一周周一的日期。
+                                    </small>
+                                </div>
+                                <div class="form-group mb-3">
+                                    <label for="term">学期标识（选填）</label>
+                                    <input type="text" class="form-control" id="term"
+                                           name="term" placeholder="如 2025-2026-2">
+                                </div>
+                                <button type="submit" class="btn btn-primary">解析并导入</button>
+                                <a href="/schedule/" class="btn btn-light">返回日程表</a>
+                            </form>
+
+                            <hr>
+                            <p class="text-muted small mb-0">
+                                说明：节次与时间的对应采用北大校本部 / 医学部标准
+                                （第1节 08:00–08:50，第2节 09:00–09:50，…，第12节 20:40–21:30，每节 50 分钟）。
+                                其他院系若节次时间不同，导入后时间可能略有偏差。
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <!-- END MAIN CONTAINER -->
+</div>
+{% endblock %}

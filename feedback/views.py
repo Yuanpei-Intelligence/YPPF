@@ -462,18 +462,18 @@ def feedbackWelcome(request: HttpRequest):
     )
     if is_teacher:
         for feedback in wait_public:
-            can_show = me.incharge.filter(otype_id=feedback.org.otype_id)
+            can_show = me.incharge.filter(otype_id=feedback.org.otype_id) if feedback.org else []
             if can_show.exists():
                 my_wait_public.append(feedback)
 
         for feedback in public_feedback:
-            can_show = me.incharge.filter(otype_id=feedback.org.otype_id)
+            can_show = me.incharge.filter(otype_id=feedback.org.otype_id) if feedback.org else []
             if can_show.exists():
                 my_public_feedback.append(feedback)
 
         # 获取我已处理列表
         for feedback in process_feedback:
-            can_show = me.incharge.filter(otype_id=feedback.org.otype_id)
+            can_show = me.incharge.filter(otype_id=feedback.org.otype_id) if feedback.org else []
             if can_show.exists():
                 my_process_feedback.append(feedback)
 

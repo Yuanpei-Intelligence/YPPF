@@ -19,6 +19,7 @@ from app import (
     academic_views,
     chat_api,
     YQPoint_views,
+    schedule_views,
 )
 
 # 尽量不使用<type:arg>, 不支持
@@ -114,4 +115,19 @@ urlpatterns = [
     path("myYQPoint/", YQPoint_views.myYQPoint.as_view(), name="myYQPoint"),
     path("showPools/", YQPoint_views.showPools, name="showPools"),
     path("myPrize/", YQPoint_views.myPrize.as_view(), name="myPrize"),
+] + [
+    # 日程表
+    path("schedule/", schedule_views.mySchedule.as_view(), name="schedule"),
+    path("importCourseTable/", schedule_views.importCourseTable.as_view(),
+         name="importCourseTable"),
+    path("schedule/addItem/", schedule_views.addScheduleItem.as_view(),
+         name="addScheduleItem"),
+    path("schedule/editItem/<int:pk>/", schedule_views.editScheduleItem.as_view(),
+         name="editScheduleItem"),
+    path("schedule/deleteItem/<int:pk>/", schedule_views.deleteScheduleItem.as_view(),
+         name="deleteScheduleItem"),
+    path("schedule/toggleTodo/<int:pk>/", schedule_views.toggleTodo.as_view(),
+         name="toggleTodo"),
+    path("schedule/manage/", schedule_views.manageSchedule.as_view(),
+         name="manageSchedule"),
 ]

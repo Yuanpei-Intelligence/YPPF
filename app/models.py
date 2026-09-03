@@ -1416,6 +1416,9 @@ class ModifyPosition(CommentBase):
             Position.objects.activated().filter(
                 org=self.org, person=self.person
             ).update(status=Position.Status.DEPART)
+            # 离开小组后自动退订该小组(加入不订阅名单)
+            if self.org.otype.allow_unsubscribe:
+                self.person.unsubscribe_list.add(self.org)
         elif self.apply_type == ModifyPosition.ApplyType.JOIN:
             # 尝试获取已有的position
             current_positions = Position.objects.current().filter(
@@ -1435,6 +1438,11 @@ class ModifyPosition(CommentBase):
                     is_admin=self.org.otype.default_is_admin(self.pos),
                     semester=self.org.otype.default_semester(),
                 )
+            # 加入小组后自动订阅该小组(从该人不订阅名单中移除)
+            if self.org.otype.allow_unsubscribe:
+                unsub = self.person.unsubscribe_list
+                if unsub.filter(id=self.org.id).exists():
+                    unsub.remove(self.org)
         else:   # 修改 则必定存在这个量
             Position.objects.activated().filter(
                 org=self.org, person=self.person).update(
@@ -2099,3 +2107,105 @@ class PasswordResetThrottle(models.Model):
                 name='unique_password_reset_throttle_scope',
             ),
         ]
+
+
+class AcademicCourse(models.Model):
+    """教务课表：同学上传门户课表 HTML 后解析得到的本人课程。
+
+    仅保存结构化课程信息（课名/时间/教室/教师），不保存任何门户凭证。
+    """
+
+    class Meta:
+        verbose_name = "5.教务课表"
+        verbose_name_plural = verbose_name
+        ordering = ['day_of_week', 'start_section']
+
+    class Weekday(models.IntegerChoices):
+        MON = 0, '周一'
+        TUE = 1, '周二'
+        WED = 2, '周三'
+        THU = 3, '周四'
+        FRI = 4, '周五'
+        SAT = 5, '周六'
+        SUN = 6, '周日'
+
+    class Parity(models.IntegerChoices):
+        ALL = 0, '每周'
+        ODD = 1, '单周'
+        EVEN = 2, '双周'
+
+    person = models.ForeignKey(
+        NaturalPerson, on_delete=models.CASCADE,
+        related_name='academic_courses', verbose_name='所属同学')
+    name = models.CharField('课程名称', max_length=80)
+    teacher = models.CharField('教师', max_length=80, blank=True, default='')
+    room = models.CharField('教室', max_length=60, blank=True, default='')
+    day_of_week = models.SmallIntegerField('星期几', choices=Weekday.choices)
+    start_section = models.SmallIntegerField('起始节次')
+    end_section = models.SmallIntegerField('结束节次')
+    start_time = models.TimeField('开始时间')
+    end_time = models.TimeField('结束时间')
+    week_start = models.SmallIntegerField('起始周')
+    week_end = models.SmallIntegerField('结束周')
+    parity = models.SmallIntegerField(
+        '单双周', choices=Parity.choices, default=Parity.ALL)
+    semester_start = models.DateField('学期第一周周一')
+    term = models.CharField('学期', max_length=20, blank=True, default='')
+    created_at = models.DateTimeField('导入时间', auto_now_add=True)
+
+    def __str__(self):
+        return f'{self.name}（{self.get_day_of_week_display()} {self.start_section}-{self.end_section}节）'
+
+
+class UserSchedule(models.Model):
+    """同学手动添加的日程/待办（日程表第5数据源）。
+
+    单一模型用 category 区分「日程 / 待办」：
+    - 日程(SCHEDULE)：有具体日期与可选起止时间，显示在 FullCalendar 日历上。
+    - 待办(TODO)：有截止日期，显示在「当日待办」面板，不进日历。
+    重复项在创建时按 repeat_end 实体化为多条独立行并共享 series_id，
+    每条可单独编辑/删除，待办的「完成」状态也各自独立。
+    """
+
+    class Category(models.IntegerChoices):
+        SCHEDULE = 1, '日程'
+        TODO = 2, '待办'
+
+    class Repeat(models.IntegerChoices):
+        NONE = 0, '不重复'
+        DAILY = 1, '每天'
+        WEEKLY = 2, '每周'
+
+    # 实体化时的次数上限，避免误填超大区间产生海量行
+    MAX_OCCURRENCES = 730
+
+    person = models.ForeignKey(
+        NaturalPerson, on_delete=models.CASCADE,
+        related_name='schedules', verbose_name='所属同学')
+    title = models.CharField('标题', max_length=100)
+    category = models.IntegerField(
+        '类型', choices=Category.choices, default=Category.SCHEDULE)
+    date = models.DateField('日期')
+    start_time = models.TimeField('开始时间', null=True, blank=True)
+    end_time = models.TimeField('结束时间', null=True, blank=True)
+    location = models.CharField('地点', max_length=100, blank=True, default='')
+    note = models.CharField('备注', max_length=300, blank=True, default='')
+    color = models.CharField('颜色', max_length=7, default='#16a085')
+    done = models.BooleanField('已完成', default=False)
+    repeat = models.IntegerField(
+        '重复', choices=Repeat.choices, default=Repeat.NONE)
+    repeat_end = models.DateField('重复结束日期', null=True, blank=True)
+    series_id = models.CharField('系列标识', max_length=32, blank=True, default='')
+    created_at = models.DateTimeField('创建时间', auto_now_add=True)
+
+    class Meta:
+        verbose_name = '手动日程'
+        verbose_name_plural = '手动日程'
+        ordering = ['date', 'start_time', 'id']
+
+    def __str__(self):
+        return f'{self.title}（{self.get_category_display()} {self.date}）'
+
+    @property
+    def is_recurring(self) -> bool:
+        return self.repeat != UserSchedule.Repeat.NONE

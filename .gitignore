@@ -78,3 +78,10 @@ dormitory/references/*
 
 # DM management commands
 dm/management/*
+
+# Privacy: 用户本人的门户课表导出文件，严禁入库（含姓名/课表/考试信息）
+北京大学校内信息门户.html
+北京大学校内信息门户_files/
+
+# 本地测试配置（SQLite，不入库）
+_local_test_settings.py
