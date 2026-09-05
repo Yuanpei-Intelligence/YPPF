@@ -127,5 +127,37 @@
     },
     "dormitory": {
         "routine_qa_survey_title": "default title"
+    },
+    "birthboard": {
+        "contact_email": "$BIRTHBOARD_CONTACT_EMAIL$",
+        "template_download_url": "$BIRTHBOARD_TEMPLATE_DOWNLOAD_URL$",
+        "max_image_bytes": 10485760,
+        "max_senders": 20,
+        "sender_username": "yppf_birthboard",
+        "sender_name": "生日灯牌",
+        "contributor_orgs": [
+            {
+                "name": "叁拾伍圆设计实验室",
+                "columns": [
+                    ["郑申越", "黄柯翰", "冯品嘉", "陈双本"],
+                    ["李明彦", "朱颖诺", "李佳镁", "汤家乐"],
+                    ["刘\u2003传", "景璧辉", "DeepSeek"]
+                ]
+            },
+            {
+                "name": "智慧书院",
+                "columns": [
+                    ["袁纳海", "张庭瑞", "高志远", "唐明川"]
+                ]
+            }
+        ]
+    },
+    "shihannet": {
+        "url": "$SHIHANNET_URL$",
+        "username": "$SHIHANNET_USERNAME$",
+        "password": "$SHIHANNET_PASSWORD$",
+        "headless": true,
+        "slow_mo_ms": 0,
+        "network_retry_seconds": 10
     }
 }

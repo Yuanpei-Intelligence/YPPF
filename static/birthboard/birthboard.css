@@ -1,0 +1,756 @@
+html {
+            scroll-behavior: smooth;
+        }
+        html, body {
+            margin: 0;
+            /* font-weight: var(--bs-body-font-weight); */
+            /* letter-spacing: 1px; */
+            scrollbar-width: none;
+            overflow-x: hidden;
+            background: #181818;
+            z-index: 0; /* 建立根层叠上下文，让 fixed 弹窗的 z-index 正常比较 */
+        }
+        /* @font-face 声明已抽取到 birthboard_fonts.css，避免与 confirm 页重复下载思源黑体 */
+
+        :root {
+            --bs-body-font-family: 'MyfontC', 'MyfontE', "Microsoft YaHei", "Arial", sans-serif;
+            --bs-body-font-size: 48px;
+            --bs-sup-font-size: 28px;
+            --bs-color: #ffffff;
+            --bs-hover-color: rgb(237, 225, 164);
+            /* --bs-body-font-weight: auto; */
+            --bs-body-letter-spacing: 5px;
+
+            /* ===== 弹窗按钮定位变量 ===== */
+            --popup-btn-left: 18%;
+            --popup-btn-right: 18%;
+            --popup-btn-bottom: 12%;
+            --popup-btn-width: 28%;
+            --popup-btn-height: 14%;
+            --popup-margin-top: 15vh;
+            --popup-img-max-w: 40vw;
+            --popup-img-max-h: 40vh;
+
+            /* ===== 表单组件定位变量（px @ 1920 设计基准，自动缩放） ===== */
+            --pos-receiver-top: 2073px;
+            --pos-receiver-left: 200px;
+            --pos-date-top: 2320px;
+            --pos-date-left: 200px;
+            --pos-date-calendar-width: 840px;
+            --pos-senders-top: 3535px;
+            --pos-senders-left: 200px;
+            --pos-cost-top: 4025px;
+            --pos-cost-left: 200px;
+            --pos-image-top: 4607px;
+            --pos-image-left: 160px;
+            --pos-image-width: 415px;
+            --pos-image-height: 233px;
+            --pos-img-gap: 7px;
+            --pos-anonymous-top: 5185px;
+            --pos-anonymous-left: 200px;
+            --pos-submit-top: 5785px;
+            --pos-submit-left: 191px;
+            --pos-mode-top: 3240px;
+            --pos-mode-left: 200px;
+            --pos-mode-dropdown: 20px;
+            --pos-dropdown-width: 500px;
+            --pos-dropdown-height: 250px;
+
+            /* ===== 今日提醒 hpbtd（寿星）专用数值（手机适配在 JS initPhoneLayers 中覆盖） ===== */
+            --hpbtd-back-width: 50vw;
+            --hpbtd-btn-left: 90%;
+            --hpbtd-btn-bottom: 10%;
+            --hpbtd-btn-width: 4vw;
+            --hpbtd-btn-ratio: 193 / 199;
+
+            /* ===== 制作名单弹窗（likeModal）名单排版（手机适配在 JS initPhoneLayers 中覆盖） ===== */
+            --bb-clist-top: 45%;
+            --bb-clist-title-font-size: 22px;
+            --bb-clist-font-size: 20px;
+            --bb-clist-title-mb: 10px;
+            --bb-clist-title-gap: 30px;
+            --bb-clist-line-height: 3.0;
+            --bb-clist-group-gap: 60px;
+            --bb-clist-col-gap: 60px;
+            --bb-clist-count-size: 44px;
+            --bb-clist-line-width: 350px;
+            --bb-clist-tip-font-size: 14px;
+            --bb-clist-tip-bottom: 40px;
+        }
+        /* 定义你的自定义主题容器类 */
+        .select2-container--my-custom-theme {
+            color: var(--bs-color);
+            font-family: 'MyfontC', 'MyfontE', "Microsoft YaHei", "Arial", sans-serif;
+            /* font-weight: var(--bs-body-font-weight); */
+            letter-spacing: auto;
+            font-size: var(--bs-body-font-size);
+            border: none;
+        }
+
+        /* 自定义选中项（selection）的样式 */
+        .select2-container--my-custom-theme .select2-selection--multiple {
+            /* background-color: #490eb6; */
+            border: none;
+            /* border-radius: 8px; */
+            min-height: 25px;
+            width: 1000px;
+            margin: auto;
+            /* 控制选项换行后的行距 */
+            line-height: 1.4;
+            cursor: text;
+        }
+        .select2-container--my-custom-theme .select2-selection--single {
+            border: none;
+            min-height: 120px;
+            min-width: 400px;
+            cursor: pointer;
+            margin: auto;
+            /* border: 2px solid #7d1d1d; */
+        }
+        .select2-container--my-custom-theme .select2-selection--single .select2-selection__rendered {
+            color: var(--bs-color);
+            line-height: calc(var(--bs-body-font-size) * 1.25);
+            padding: 0;
+        }
+        .select2-container--my-custom-theme .select2-selection--single .select2-selection__arrow {
+            display: none;
+        }
+        .select2-container--my-custom-theme .select2-selection--single .select2-search__field::placeholder {
+            color: var(--bs-color);
+            font-size: var(--bs-body-font-size);
+            /* font-weight: var(--bs-body-font-weight); */
+            font-family: 'MyfontC', 'MyfontE', "Microsoft YaHei", "Arial", sans-serif;
+            /* margin: none; */
+        }
+
+        .select2-container--my-custom-theme .select2-selection--multiple .select2-selection__choice {
+            color: var(--bs-color);
+            /* border: 1px solid #193505; */
+            display: inline-block;
+            font-size: var(--bs-body-font-size);
+            /* 1.24 等于该字体（MyfontC）的实际字形高度与字号的比值，
+               去掉 line-height: normal 引入的 line gap，使已选文字与
+               input 内 placeholder 的基线对齐。 */
+            line-height: 1.24;
+            margin-left: 9px;
+            /* font-weight: var(--bs-body-font-weight); */
+            cursor: default;
+        }
+
+        /* .select2-container--my-custom-theme .select2-selection--multiple .select2-selection__choice:hover {
+            color: var(--bs-hover-color);
+            transition: 0.5s;
+        } */
+
+        /* ===== 4. 标签删除按钮 ===== */
+        .select2-container--my-custom-theme .select2-selection--multiple .select2-selection__choice__remove {
+            color: rgb(255, 255, 255);
+            cursor: pointer;
+            display: block;
+            /* font-weight: bold; */
+            font-size: var(--bs-body-font-size);
+            background: transparent;
+            border: none;
+            margin-left: 1px;
+            float: right;
+        }
+
+        .select2-container--my-custom-theme .select2-selection--multiple .select2-selection__choice__remove:hover {
+            color: var(--bs-hover-color);
+            transition: 0.5s;
+        }
+
+        /* receiver-group 隐藏删除按钮 */
+        #receiver-group .select2-selection__choice__remove {
+            display: none !important;
+        }
+
+        .select2-container--my-custom-theme .select2-selection--multiple .select2-selection__rendered {
+            /* 用行内流，让选项和搜索框自然换行、互不挤压 */
+            display: inline;
+            margin: 0;
+            padding: 0;
+            list-style: none;
+            /* border: 2px solid #c10303; */
+        }
+
+        .select2-container--my-custom-theme .select2-selection--multiple .select2-search--inline {
+            border: none;
+            /* border: 2px solid #c10303; */
+            /* margin: none !important; */
+            width: auto;
+        }
+            
+        .select2-container--my-custom-theme .select2-selection--multiple .select2-search__field {
+            background: transparent !important;
+            border: none !important;
+            outline: none !important;
+            box-shadow: none !important;
+            padding: 0 !important;
+            margin: 0 !important;
+            display: inline;
+            min-width: 60px;
+            font-size: var(--bs-body-font-size);
+            /* font-weight: var(--bs-body-font-weight); */
+            font-family: 'MyfontC', 'MyfontE', "Microsoft YaHei", "Arial", sans-serif;
+            color: var(--bs-color);
+            box-sizing: border-box;
+        }
+
+        .select2-container--my-custom-theme .select2-selection--multiple .select2-search__field::placeholder {
+            color: var(--bs-color);
+            font-size: var(--bs-body-font-size);
+            /* font-weight: var(--bs-body-font-weight); */
+            font-family: 'MyfontC', 'MyfontE', "Microsoft YaHei", "Arial", sans-serif;
+            /* margin: none; */
+        }
+
+        .select2-container--my-custom-theme .select2-selection--multiple .select2-search__field:hover::placeholder {
+            color: var(--bs-hover-color);
+            transition: 0.5s;
+        }
+
+        .select2-container--my-custom-theme .select2-selection--multiple .select2-selection__clear {
+            font-size: 0 !important;
+            /* 浮到左侧，与第一行选项同行 */
+            float: left;
+        }
+
+        .select2-container--my-custom-theme .select2-selection--multiple .select2-selection__clear::before {
+            content: '清除';
+            display: inline-block;
+            font-size: calc(var(--bs-body-font-size) - 20px);
+            font-family: 'MyfontC', 'MyfontE', "Microsoft YaHei", "Arial", sans-serif;
+            color: var(--bs-color);
+            cursor: pointer;
+            /* writing-mode: vertical-rl; */
+            letter-spacing: 1px;
+            position: relative;
+            /* top: -1px; */
+            /* left: -50px; */
+            padding: 2px 10px 4px 10px;
+            /* margin: 0 4px; */
+            border: 2px solid var(--bs-color);
+        }
+
+        .select2-container--my-custom-theme .select2-selection--multiple .select2-selection__clear:hover::before {
+            color: var(--bs-hover-color);
+            border-color: var(--bs-hover-color);
+            transition: 0.5s;
+        }
+        /* 自定义下拉框（dropdown）的样式 */
+        .select2-container--my-custom-theme .select2-dropdown {
+            border-color: #ff000000;
+            width: var(--pos-dropdown-width) !important;
+            margin-top: 16px;
+            margin-bottom: 16px;
+            height: var(--pos-dropdown-height) !important;
+            overflow: auto;
+            scrollbar-width: none;
+            background-color: #00000000;
+            color:var(--bs-color);
+            animation: dropdownIn 0.25s ease-out;
+        }
+        @keyframes dropdownIn {
+            from {
+                opacity: 0;
+                transform: translateY(-10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        /* 自定义下拉选项（options）的样式，包括悬停和选中状态 */
+        .select2-container--my-custom-theme .select2-results__option {
+            color: var(--bs-color);
+            border: 3px solid #ffffff00;
+            /* font-weight: var(--bs-body-font-weight); */
+        }
+
+        .select2-container--my-custom-theme .select2-results__option--highlighted {
+            /* background-color: #e5ff00; */
+            /* outline: 1px solid var(--bs-color); */
+            border: 3px solid var(--bs-color);
+            /* color: rgb(50, 9, 161); */
+        }
+
+        .select2-container--my-custom-theme .select2-results__option--selected {
+            /* background-color: var(--bs-color); */
+            border: 3px solid var(--bs-color);
+            /* color: #fefefe00; */
+        }
+
+        /* ===== 自定义日期选择器 ===== */
+        .custom-date-picker {
+            position: relative;
+            display: inline-block;
+            font-family: 'MyfontC', 'MyfontE', "Microsoft YaHei", "Arial", sans-serif;
+            font-size: var(--bs-body-font-size);
+            /* font-weight: var(--bs-body-font-weight); */
+        }
+        .date-display {
+            width: 100%;
+            min-width: 280px;
+            padding: 12px 16px;
+            font-family: 'MyfontC', 'MyfontE', "Microsoft YaHei", "Arial", sans-serif;
+            font-size: var(--bs-body-font-size);
+            /* 与 select2 的 choice 保持一致：去掉 MyfontC 在
+               line-height: normal 下引入的 line gap，避免文字偏低 */
+            line-height: 1.24;
+            /* font-weight: var(--bs-body-font-weight); */
+            letter-spacing: auto;
+            color: var(--bs-color);
+            background-color: #ffffff00;
+            border: none;
+            outline: none;
+            box-shadow: none !important;
+            cursor: pointer;
+        }
+        .date-display::placeholder {
+            color: var(--bs-color);
+            font-family: 'MyfontC', 'MyfontE', "Microsoft YaHei", "Arial", sans-serif;
+            /* font-weight: var(--bs-body-font-weight); */
+            font-size: var(--bs-body-font-size);
+            /* letter-spacing: var(--bs-body-letter-spacing); */
+            box-shadow: none !important;
+        }
+        .date-display:hover::placeholder {
+            color: var(--bs-hover-color);
+            transition: 0.5s;
+        }
+        .date-display:hover{
+            color: var(--bs-hover-color);
+            transition: 0.5s;
+        }
+        /* .date-display:hover { 
+            border-color: #94a3b8;
+        } */
+        .date-display:focus, .date-display.active {
+            outline: none;
+            box-shadow: none !important;
+            /* border-color: #6366f1; */
+            /* box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.15); */
+            /* background-color: #fafaff; */
+        }
+        .date-display.is-invalid {
+            color: #dc3545 !important;
+            /* box-shadow: 0 0 0 4px rgba(220,53,69,0.15) !important; */
+        }
+        .date-dropdown {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            margin-top: 4px;
+            background: #ffffff00;
+            padding: 8px;
+            /* min-width: 320px; */
+            width: var(--pos-date-calendar-width);
+            animation: dropdownIn 0.25s ease-out;
+        }
+        .date-calendar {
+            width: 100%;
+            table-layout: fixed;
+            border-collapse: collapse;
+            font-family: 'MyfontC', 'MyfontE', "Microsoft YaHei", "Arial", sans-serif;
+            /* font-weight: var(--bs-body-font-weight); */
+            letter-spacing: auto;
+            font-size: var(--bs-body-font-size);
+            text-align: center;
+        }
+        .date-calendar th {
+            color: var(--bs-color);
+            /* font-weight: normal; */
+            padding: 20px 0;
+            font-size: calc(var(--bs-body-font-size) - 10px);
+            height: 50px;
+        }
+        .date-calendar td {
+            height: 80px;
+            padding: 20px 0;
+            cursor: default;
+            color: #ccc;
+            vertical-align: middle;
+        }
+        .date-calendar td.selectable {
+            color: var(--bs-color);
+            cursor: pointer;
+        }
+        .date-calendar td.selectable:hover {
+            outline: 2px solid var(--bs-color);
+            outline-offset: -1px;
+        }
+        .date-calendar td.selected {
+            /* background-color: #d308a7 !important; */
+            color: var(--bs-color) !important;
+            outline: 2px solid var(--bs-color);
+            outline-offset: -1px;
+        }
+        .date-calendar td sup {
+            font-size: var(--bs-sup-font-size);
+            color: var(--bs-color);
+            line-height: 1;
+            display: block;
+            text-align: center;
+            height: calc(var(--bs-body-font-size) - 15px);
+        }
+        .date-calendar td sup.inv {
+            visibility: hidden;
+        }
+
+        .date-calendar td.touming {
+            color:#00000000
+        }
+
+        .date-calendar td.empty {
+            cursor: default;
+            color: transparent;
+        }
+        .parallax-layer {
+            /* 告诉浏览器这个元素会频繁变化，提前准备 GPU 加速 */
+            will-change: transform;
+            
+            /* 确保图片铺满容器 */
+            width: 100%;
+            display: block;
+            user-select: none;
+            pointer-events: none;  /* 禁止鼠标事件 */
+            /* 让过渡更平滑（但这里用 JS 控制，不设 transition） */
+            transition: none;
+            margin:auto;
+        }
+        .parallax-toplayer{
+            user-select: none;
+            pointer-events: none;  /* 禁止鼠标事件 */
+            margin:auto;
+        }
+
+        /* ===== 表单组件定位（使用 CSS 变量） ===== */
+        #receiver-group {
+            position: absolute;
+            top: var(--pos-receiver-top);
+            left: var(--pos-receiver-left);
+            /* transform: translateX(-50%); */
+            width: auto;
+            margin: 0;
+        }
+        #senders-group {
+            position: absolute;
+            top: var(--pos-senders-top);
+            left: var(--pos-senders-left);
+            /* transform: translateX(-50%); */
+        }
+        #date-group {
+            position: absolute;
+            top: var(--pos-date-top);
+            left: var(--pos-date-left);
+            /* transform: translateX(-50%); */
+        }
+        #image-group {
+            position: absolute;
+            top: var(--pos-image-top);
+            left: var(--pos-image-left);
+        }
+        #cost-group {
+            position: absolute;
+            top: var(--pos-cost-top);
+            left: var(--pos-cost-left);
+        }
+        #anonymous-group {
+            position: absolute;
+            top: var(--pos-anonymous-top);
+            left: var(--pos-anonymous-left);
+            user-select: none;
+        }
+        .anon-toggle {
+            display: inline-block;
+            position: relative;
+            overflow: hidden;
+            /* border: 2px solid var(--bs-color); */
+            font-family: 'MyfontC', 'MyfontE', "Microsoft YaHei", sans-serif;
+            font-size: var(--bs-body-font-size);
+            color: var(--bs-color);
+            cursor: pointer;
+            user-select: none;
+            line-height: 1.4;
+            height: calc(1.4em + 12px);
+        }
+        .anon-track {
+            transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        .anon-option {
+            display: block;
+            padding: 6px 0;
+            text-align: center;
+            line-height: 1.4;
+        }
+        .anon-toggle:hover {
+            /* border-color: var(--bs-color); */
+            color:var(--bs-hover-color);
+            transition: 0.5s;
+        }
+        .anon-toggle.right .anon-track {
+            transform: translateY(-50%);
+        }
+        #submit-group {
+            position: absolute;
+            top: var(--pos-submit-top);
+            left: var(--pos-submit-left);
+        }
+        #submit-btn {
+            display: inline-block;
+            padding: 0 200px 3px 5px;
+            font-family: 'MyfontC', 'MyfontE', "Microsoft YaHei", sans-serif;
+            font-size: var(--bs-body-font-size);
+            color: var(--bs-color);
+            background: transparent;
+            border: 2px solid #00000000;
+            cursor: pointer;
+            /* letter-spacing: 6px; */
+            transition: 0.25s;
+        }
+        #submit-btn:hover {
+            /* border-color: var(--bs-color); */
+            color:var(--bs-hover-color);
+            transition: 0.5s;
+        }
+        #submit-btn:active {
+            color:var(--bs-hover-color);
+        }
+        #mode-group {
+            position: absolute;
+            top: var(--pos-mode-top);
+            left: var(--pos-mode-left);
+            /* width: auto; */
+            /* height: auto; */
+            /* border: 2px solid #ffffff; */
+            /* transform: translateX(-50%); */
+        }
+        #mode-group:hover .select2-container--my-custom-theme .select2-selection--single .select2-selection__rendered{
+            color:var(--bs-hover-color);
+            transition: 0.5s;
+        }
+        #mode-group .select2-dropdown {
+            margin-top: var(--pos-mode-dropdown);
+        }
+        #cost-per-user{
+            color: var(--bs-color);
+            font-family: 'MyfontC', 'Numbers', "Microsoft YaHei", "Arial", sans-serif;
+            font-size: var(--bs-body-font-size);
+            /* z-index: 10 !important; */
+        }
+        .cost-num {
+            /* position: relative; */
+            font-size: calc(var(--bs-body-font-size) + 70px);
+            color: rgb(255, 166, 0);
+            /* z-index: 10 !important; */
+        }
+        .image-preview{
+            width: var(--pos-image-width);
+            height: var(--pos-image-height);
+            margin: 8px;
+            background-color: rgb(255, 166, 0);;
+        }
+        .invalid-feedback {
+            color: rgb(255, 166, 0);
+            font-family: 'MyfontC', 'MyfontE', "Microsoft YaHei", sans-serif;
+            font-size: calc(var(--bs-body-font-size) - 20px);
+            margin-top: 4px;
+            margin-left: 10px;
+        }
+        /* Safari 兼容：dvh 动态视口高度，排除地址栏 */
+        .fullscreen-overlay {
+            height: 100vh;
+            height: 100dvh;
+        }
+
+        /* 弹窗图片按钮：hover 时颜色加深 20%（无需 dark 版图片） */
+        #today-reminder-confirm-btn,
+        .bb-popup-btn {
+            transition: filter 0.3s ease;
+        }
+        #today-reminder-confirm-btn:hover,
+        .bb-reminder-btn:hover,
+        .bb-popup-btn:hover {
+            filter: brightness(0.8);
+        }
+
+        /* 今日提醒弹窗背景图：参与者(tosender)与其他弹窗一致，寿星(hpbtd)用设计稿宽度 */
+        .bb-reminder-back {
+            max-width: var(--popup-img-max-w);
+            max-height: var(--popup-img-max-h);
+            width: auto;
+            height: auto;
+        }
+        .bb-reminder-back.hpbtd-size {
+            max-width: none;
+            max-height: none;
+            width: var(--hpbtd-back-width);
+            height: auto;
+        }
+
+        /* 今日提醒弹窗确认按钮：参与者(tosender)居中，寿星(hpbtd)用设计稿数值 */
+        .bb-reminder-btn {
+            position: absolute;
+            left: 50%;
+            bottom: var(--popup-btn-bottom);
+            transform: translateX(-50%);
+            width: var(--popup-btn-width);
+            height: var(--popup-btn-height);
+        }
+        .bb-reminder-btn.hpbtd-size {
+            left: var(--hpbtd-btn-left);
+            bottom: var(--hpbtd-btn-bottom);
+            width: var(--hpbtd-btn-width);
+            height: auto;
+            aspect-ratio: var(--hpbtd-btn-ratio);
+        }
+
+        /* ===== 页面加载遮罩 ===== */
+        #page-loading {
+            position: fixed;
+            z-index: 100000;
+            left: 0; top: 0;
+            width: 100vw;
+            height: 100vh;
+            height: 100dvh;
+            background: #181818;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-direction: column;
+            transition: opacity 3s ease-out;
+            touch-action: none;
+        }
+        #page-loading.hidden {
+            opacity: 0;
+            pointer-events: none;
+        }
+        #page-loading .spinner {
+            width: 200px;
+            transition: opacity 0.5s ease-out;
+        }
+        #page-loading .spinner.hidden {
+            opacity: 0;
+        }
+        #next-page-wrapper {
+          position: fixed;
+          left: 50%;
+          bottom: 5%;
+          z-index: 2;
+          transform: translateX(-50%) scale(var(--form-scale,1));
+          transform-origin: center bottom;
+          transition: opacity 0.2s ease, transform 0.2s ease;
+          pointer-events: auto;
+        }
+        #next-page-btn {
+          width: auto;
+          height: auto;
+          padding: 0;
+          border: none;
+          background: transparent;
+          cursor: pointer;
+          display: block;
+          transition: transform 0.15s ease;
+        }
+        #next-page-btn:hover {
+          transform: translateY(-3px);
+        }
+        #next-page-btn:active {
+          transform: translateY(1px);
+        }
+        #next-page-btn img {
+          display: block;
+          width: 9vw;
+          max-width: 96px;
+          height: auto;
+          border: none;
+          pointer-events: none;
+          filter: drop-shadow(0 0 8px rgba(0, 0, 0, 0.253));
+        }
+
+        /* ===== 点赞弹窗淡入淡出 ===== */
+        @keyframes bb-fade-in {
+          from { opacity: 0; }
+          to { opacity: 1; }
+        }
+        @keyframes bb-fade-out {
+          from { opacity: 1; }
+          to { opacity: 0; }
+        }
+
+        /* ===== 页脚链接（复刻 confirm 页面 .downbtn：置于 lddq 表格单元格内，块级整行 + 顶部黑线 + 悬停下划线从左展开） ===== */
+        .downbtn {
+          display: block;
+          position: relative;
+          z-index: 10001; /* 让按钮盖住滑出的卡片与遮罩（在同一 confirm-section 堆叠上下文内） */
+          border: none;
+          border-top: 1px solid #000000;
+          padding: 0;
+          padding-bottom: 3px;
+          margin: 0;
+          width: 100%;
+          font-family: inherit;
+          font-size: inherit;
+          text-align: inherit;
+          color: #000000;
+          background-color: transparent;
+          cursor: pointer;
+          background: linear-gradient(to right, #ffffff00, #ffffff00) no-repeat bottom left / 0 1px;
+          background-origin: content-box;
+          transition: background-size 0.25s ease;
+        }
+        .downbtn:hover {
+          color: #000000;
+          background: linear-gradient(to right, #000000, #000000) no-repeat bottom left / 100% 1px;
+        }
+
+        /* ===== 页脚按钮上方浮出的 4:3 提示卡片（由 JS 控制显示/隐藏与定位，抽屉式上下滑出） ===== */
+        .bb-footer-tip {
+          position: fixed;
+          z-index: 10;
+          width: 140px;
+          height: auto; /* 长宽比 4:3 */
+          overflow: hidden;
+          /* box-shadow: 0 4px 12px rgba(0, 0, 0, 0.18); */
+          /* 初始：卡片叠在按钮顶部（向下偏移一个卡片高度），像收起的抽屉 */
+          transform: translate(-50%, 120%);
+          visibility: hidden;
+          transition: transform 0.25s ease, visibility 0s linear 0.25s;
+          pointer-events: none;
+        }
+        .bb-footer-tip.visible {
+          /* 抽屉向上滑出，露出按钮上方的卡片 */
+          visibility: visible;
+          transform: translate(-50%, 0);
+          transition: transform 0.25s ease, visibility 0s;
+        }
+        .bb-footer-tip img {
+          display: block;
+          width: 100%;
+          height: 100%;
+          object-fit: cover;
+        }
+
+        /* ===== 抽屉遮罩：盖住按钮及以下区域，让卡片像从按钮后面抽出 ===== */
+        .bb-footer-mask {
+          position: fixed;
+          z-index: 15; /* 高于卡片(9999)，低于按钮(10001) */
+          background: #eee1a5; /* 与页脚背景同色，视觉上融合 */
+          pointer-events: none;
+          display: none;
+        }
+
+        /* ===== 页脚表格（复刻 confirm 页面的 .textN / .lddq） ===== */
+        .textN {
+          font-family: 'MyfontC', 'MyfontE', 'Microsoft YaHei', 'Arial', sans-serif;
+          font-size: var(--bb-footer-font-size, 16px);
+        }
+        .lddq {
+          width: 100%;
+          max-width: var(--bb-footer-max-w, 480px);
+          text-align: justify;
+          text-align-last: justify;
+          text-justify: inter-ideograph;
+        }

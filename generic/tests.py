@@ -3,6 +3,7 @@ from unittest.mock import patch
 
 from django.test import RequestFactory, SimpleTestCase, TestCase
 
+from boot.config import GLOBAL_CONFIG
 from api.auth.ticket import create_webview_ticket
 from generic.models import User
 from utils.http.utils import safe_local_redirect_target
@@ -10,7 +11,8 @@ from utils.http.utils import safe_local_redirect_target
 
 class SafeLocalRedirectTargetTestCase(SimpleTestCase):
     def setUp(self):
-        self.request = RequestFactory().get("/", HTTP_HOST="testserver")
+        self.factory = RequestFactory()
+        self.request = self.factory.get("/", HTTP_HOST="testserver")
 
     def test_accepts_local_paths(self):
         for target in ("/inside?x=1", "/inside#fragment"):
@@ -19,6 +21,25 @@ class SafeLocalRedirectTargetTestCase(SimpleTestCase):
                     safe_local_redirect_target(self.request, target, "/fallback/"),
                     target,
                 )
+
+    def test_accepts_absolute_url_on_configured_origin(self):
+        base = GLOBAL_CONFIG.base_url.rstrip("/")
+        target = f"{base}/inside?x=1"
+        self.assertEqual(
+            safe_local_redirect_target(self.request, target, "/fallback/"),
+            target,
+        )
+
+    def test_secure_request_rejects_absolute_http_downgrade(self):
+        base = GLOBAL_CONFIG.base_url.rstrip('/')
+        if not base.startswith('http://'):
+            self.skipTest('configured site origin is already HTTPS')
+        request = self.factory.get('/', secure=True)
+        target = f'{base}/inside'
+        self.assertEqual(
+            safe_local_redirect_target(request, target, '/fallback/'),
+            '/fallback/',
+        )
 
     def test_rejects_unsafe_or_ambiguous_targets(self):
         targets = (
@@ -99,6 +120,18 @@ class WebviewRedirectSafetyTestCase(TestCase):
                     int(self.client.session["_auth_user_id"]), self.user.pk
                 )
 
+    def test_webview_accepts_same_origin_absolute_target(self):
+        base = GLOBAL_CONFIG.base_url.rstrip("/")
+        target = f"{base}/inside?x=1"
+        query = urlencode({"ticket": "fresh", "to": target})
+        with patch(
+            "generic.views.TicketAuthentication.authenticate",
+            return_value=(self.user, None),
+        ):
+            response = self.client.get(f"/redirect/?{query}")
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(response["Location"], target)
+
     def test_real_ticket_creates_one_session_only(self):
         ticket = create_webview_ticket(self.user.pk)
         query = urlencode({"ticket": ticket, "to": "/inside"})
@@ -120,3 +153,21 @@ class WebviewRedirectSafetyTestCase(TestCase):
         response = self.client.get("/redirect/?to=/inside")
 
         self.assertEqual(response.status_code, 400)
+
+
+class LoginPageMiniProgramTestCase(TestCase):
+    def test_login_page_renders_for_normal_visitor(self):
+        response = self.client.get("/login/")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'id="username"')
+
+    def test_login_page_shows_expired_hint_for_miniprogram_ua(self):
+        response = self.client.get(
+            "/login/",
+            HTTP_USER_AGENT="Mozilla/5.0 (iPhone) WeChat miniProgram",
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "登录已过期")
+        self.assertNotContains(response, 'id="username"')

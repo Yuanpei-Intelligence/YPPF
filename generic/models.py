@@ -217,7 +217,10 @@ class UserManager(_UserManager['User']):
         '''
         update_user = self.get_user(user, update=True)
         update_user.YQpoint += delta
-        assert not (update_user.YQpoint < 0 and delta < 0), '元气值不足'
+        # Preserve the public AssertionError contract without relying on an
+        # ``assert`` statement, which Python can remove under optimization.
+        if update_user.YQpoint < 0 and delta < 0:
+            raise AssertionError('元气值不足')
         self._record_YQpoint_change(update_user, delta, source, source_type)
         update_user.save(update_fields=['YQpoint'])
         if isinstance(user, User):
@@ -505,6 +508,7 @@ class YQPointRecord(models.Model):
         QUESTIONNAIRE = (5, '填写问卷')
         CONSUMPTION = (6, '奖池花费')
         COMPENSATION = (7, '奖池补偿')
+        BIRTHBOARD = (8, '生日板投放')
 
     source_type = models.SmallIntegerField(
         '来源类型', choices=SourceType.choices, default=SourceType.SYSTEM)

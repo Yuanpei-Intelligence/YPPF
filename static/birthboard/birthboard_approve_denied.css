@@ -1,0 +1,124 @@
+@import url('https://fonts.googleapis.com/css2?family=ZCOOL+XiaoWei&display=swap');
+
+        body {
+            margin: 0;
+            min-height: 100vh;
+            overflow-y: auto;
+            background: url('/media/birthboard/background.jpeg') center center / cover no-repeat;
+        }
+
+        .container {
+            text-align: center;
+            width: min(100%, 1440px);
+            margin: 0 auto;
+            padding: clamp(16px, 3vw, 32px) clamp(12px, 2vw, 24px) clamp(20px, 4vw, 40px);
+            min-height: 100vh;
+            backdrop-filter: blur(2px);
+            box-sizing: border-box;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .denied-title {
+            font-size: clamp(28px, 5vw, 56px);
+            font-weight: 700;
+            font-family: "ZCOOL XiaoWei", "LiSu", "STLiSu", "Hannotate SC", "KaiTi", serif;
+            color: #ff3b30;
+            text-shadow:
+                0 0 8px rgba(255, 59, 48, 0.95),
+                0 0 18px rgba(255, 215, 0, 0.65),
+                0 0 28px rgba(0, 122, 255, 0.45),
+                0 5px 0 rgba(0, 0, 0, 0.65);
+            animation: title-led 0.42s steps(1, end) infinite;
+            margin-bottom: 1rem;
+        }
+        /* .title-subtitle {
+            margin-top: 2rem;
+            font-size: clamp(24px, 4.2vw, 48px);
+            font-weight: 700;
+            font-family: "ZCOOL XiaoWei", "LiSu", "STLiSu", "Hannotate SC", "KaiTi", serif;
+            color: #ff3b30;
+            text-shadow:
+                0 0 8px rgba(255, 59, 48, 0.95),
+                0 0 18px rgba(255, 215, 0, 0.65),
+                0 0 28px rgba(0, 122, 255, 0.45),
+                0 0 20px rgba(67, 233, 123, 0.65),
+                0 5px 0 rgba(0, 0, 0, 0.65);
+            animation: title-led 0.42s steps(1, end) infinite;
+        } */
+
+        @keyframes title-led {
+            0%, 100% {
+                color: #ff3b30;
+                text-shadow:
+                    0 0 8px rgba(255, 59, 48, 0.95),
+                    0 0 18px rgba(255, 215, 0, 0.65),
+                    0 0 28px rgba(0, 122, 255, 0.45),
+                    0 0 20px rgba(67, 233, 123, 0.65),
+                    0 5px 0 rgba(0, 0, 0, 0.65);
+            }
+            25% {
+                color: #ffd400;
+                text-shadow:
+                    0 0 8px rgba(255, 212, 0, 0.95),
+                    0 0 18px rgba(255, 59, 48, 0.55),
+                    0 0 28px rgba(0, 122, 255, 0.45),
+                    0 0 20px rgba(67, 233, 123, 0.65),
+                    0 5px 0 rgba(0, 0, 0, 0.65);
+            }
+            50% {
+                color: #1e90ff;
+                text-shadow:
+                    0 0 8px rgba(30, 144, 255, 0.95),
+                    0 0 18px rgba(255, 59, 48, 0.55),
+                    0 0 28px rgba(255, 212, 0, 0.45),
+                    0 0 20px rgba(67, 233, 123, 0.85),
+                    0 5px 0 rgba(0, 0, 0, 0.65);
+            }
+            75% {
+                color: #43e97b;
+                text-shadow:
+                    0 0 8px rgba(67, 233, 123, 0.95),
+                    0 0 18px rgba(255, 59, 48, 0.55),
+                    0 0 28px rgba(255, 212, 0, 0.45),
+                    0 0 20px rgba(30, 144, 255, 0.65),
+                    0 5px 0 rgba(0, 0, 0, 0.65);
+            }
+        }
+
+        .denied-subtitle {
+            font-size: clamp(18px, 2.5vw, 28px);
+            color: #ffffff;
+            text-shadow: 0 2px 6px rgba(0, 0, 0, 0.5);
+            margin-bottom: 2.5rem;
+            line-height: 1.6;
+        }
+
+        .denied-image {
+            width: clamp(200px, 50vw, 400px);
+            height: auto;
+            display: block;
+            margin: 0 auto 2rem;
+        }
+
+        .back-link {
+            margin-top: 2rem;
+            display: inline-block;
+            padding: clamp(4px, 1.2vw, 5px) clamp(18px, 2.4vw, 26px);
+            color: #b90000;
+            border-radius: 999px;
+            text-decoration: none;
+            font-size: clamp(20px, 3vw, 28px);
+            font-weight: bold;
+            border: 3px solid #b90000;
+            box-shadow: 0 6px 18px rgba(0, 0, 0, 0.14);
+        }
+
+        .back-link:hover,
+        .back-link:focus {
+            text-decoration: none;
+            color: #b90000;
+            background: rgba(185, 0, 0, 0.08);
+        }

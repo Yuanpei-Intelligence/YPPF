@@ -39,6 +39,10 @@ class Index(SecureTemplateView):
         # Seems that after modification, log out by default?
         if self.request.GET.get('modinfo') is not None:
             succeed("修改密码成功!", self.extra_context)
+        # 小程序 webview 内会话过期/未登录时，不展示网站登录表单，
+        # 而是提示返回小程序重新进入，避免用户在小程序里陷入登录死循环。
+        if 'miniProgram' in self.request.META.get('HTTP_USER_AGENT', ''):
+            self.template_name = 'webview_expired.html'
         return self.render()
 
     def user_get(self) -> HttpResponse:

@@ -1,0 +1,117 @@
+html,body {
+            margin: 0;
+            padding: 0;
+            color:#000000;
+        }
+        html {
+            width: 100%;
+            overflow-y: auto;
+            overflow-x: hidden;
+        }
+        body {
+            width: 100%;
+            text-align: center;
+            overflow-x: hidden;
+        }
+        /* @font-face 声明已抽取到 birthboard_fonts.css，MyfontT/TE/LB/B 统一改用 MyfontC */
+        a {
+            text-decoration: none;
+            color: inherit;
+        }
+        a:hover {
+            text-decoration: none;
+        }
+        .prettyNumbers{
+            position: relative;
+            /* top: -4px; */
+            color:#000000; 
+            font-family:'Numbers'; 
+            font-size:20px; 
+            pointer-events:none; 
+            border-bottom: #d20000 10px solid; 
+            display: inline-block; 
+            line-height: 0.3;
+        }
+        .boardcard{
+            margin: 0 auto 100px auto;
+            display:flex;
+            flex-direction:column;
+            align-items:center;
+            width: 740px;
+        }
+        .textLb{
+            font-family: 'MyfontLB', 'MyfontE', 'Microsoft YaHei', 'Arial', sans-serif;
+            font-size: 16px;
+        }
+        .textN{
+            font-family: 'MyfontT', 'MyfontE', 'Microsoft YaHei', 'Arial', sans-serif;
+            font-size: 16px;
+        }
+        .textNE{
+            font-family: 'MyfontTE', 'MyfontE', 'Microsoft YaHei', 'Arial', sans-serif;
+            font-size: 16px;
+        }
+        .textB{
+            font-family: 'MyfontB', 'MyfontE', 'Microsoft YaHei', 'Arial', sans-serif;
+            font-size: 16px;
+        }
+        .lddq{
+            /* margin-bottom: 18px; */
+            width: 100%;
+            text-align: justify;
+            text-align-last: justify;
+            text-justify: inter-ideograph;
+            /* display: flex; */
+            /* justify-content: space-between; */
+            /* align-items: center; */
+        }
+        .lddq::after{
+            content: '';
+            display: none;
+            width: 100%;
+            height: 0;
+        }
+        .headbtn {
+            display: block;
+            padding-bottom: 5px;
+            background: linear-gradient(to right, #ffffff00, #ffffff00) no-repeat bottom left / 0 2px;
+            background-origin: content-box;
+            transition: background-size 0.25s ease;
+        }
+        .headbtn img {
+            display: block;
+        }
+        .btn-primary .headbtn {
+            opacity: 1;
+            background: linear-gradient(to right, #000000, #000000) no-repeat bottom left / 100% 2px;
+        }
+        .headbtn:hover {
+            background: linear-gradient(to right, #00000030, #00000030) no-repeat bottom left / 100% 2px;
+        }
+        .btn-primary .headbtn:hover {
+            background: linear-gradient(to right, #000000, #000000) no-repeat bottom left / 100% 2px;
+        }
+        .downbtn {
+            display: block;
+            border: none;
+            border-top: 1px solid #000000;
+            padding: 0;
+            padding-bottom: 3px;
+            margin: 0;
+            width: 100%;
+            cursor: pointer;
+            background: linear-gradient(to right, #ffffff00, #ffffff00) no-repeat bottom left / 0 1px;
+            background-origin: content-box;
+            transition: background-size 0.25s ease;
+        }
+        .downbtn:hover {
+            background: linear-gradient(to right, #000000, #000000) no-repeat bottom left / 100% 1px;
+        }
+        .status-red { color: #c00000; }
+        .status-yellow { color: #137bc0; }
+        .status-green { color: #00ba35; }
+        .jt {
+            display: inline;
+            position: relative;
+            top: -2px;
+        }

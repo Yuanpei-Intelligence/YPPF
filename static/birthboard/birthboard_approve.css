@@ -1,0 +1,467 @@
+@import url('https://fonts.googleapis.com/css2?family=ZCOOL+XiaoWei&display=swap');
+
+        body {
+            margin: 0;
+            min-width: 1200px;
+            min-height: 100vh;
+            overflow-y: auto;
+            overflow-x: hidden;
+            background: url('/media/birthboard/background.jpeg') no-repeat top center / 100vw auto;
+            background-color: #ffffff;
+        }
+
+        .container {
+            text-align: center;
+            width: min(100%, 1440px);
+            margin: 0 auto;
+            padding: clamp(16px, 3vw, 32px) clamp(12px, 2vw, 24px) clamp(20px, 4vw, 40px);
+            /* background: rgba(255, 255, 255, 0.18); */
+            min-height: 100vh;
+            box-sizing: border-box;
+        }
+
+        .title-block {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: clamp(8px, 1.5vw, 12px);
+            margin-bottom: clamp(16px, 3vw, 28px);
+        }
+
+        .title-strip {
+            display: flex;
+            justify-content: center;
+            gap: clamp(8px, 1.5vw, 18px);
+            flex-wrap: wrap;
+        }
+
+        .title-subtitle {
+            margin-top: 2rem;
+            font-size: clamp(24px, 4.2vw, 48px);
+            font-weight: 700;
+            font-family: "ZCOOL XiaoWei", "LiSu", "STLiSu", "Hannotate SC", "KaiTi", serif;
+            color: #ff3b30;
+            text-shadow:
+                0 0 8px rgba(255, 59, 48, 0.95),
+                0 0 18px rgba(255, 215, 0, 0.65),
+                0 0 28px rgba(0, 122, 255, 0.45),
+                0 0 20px rgba(67, 233, 123, 0.65),
+                0 5px 0 rgba(0, 0, 0, 0.65);
+            animation: title-led 0.42s steps(1, end) infinite;
+        }
+
+        @keyframes title-led {
+            0%, 100% {
+                color: #ff3b30;
+                text-shadow:
+                    0 0 8px rgba(255, 59, 48, 0.95),
+                    0 0 18px rgba(255, 215, 0, 0.65),
+                    0 0 28px rgba(0, 122, 255, 0.45),
+                    0 0 20px rgba(67, 233, 123, 0.65),
+                    0 5px 0 rgba(0, 0, 0, 0.65);
+            }
+            25% {
+                color: #ffd400;
+                text-shadow:
+                    0 0 8px rgba(255, 212, 0, 0.95),
+                    0 0 18px rgba(255, 59, 48, 0.55),
+                    0 0 28px rgba(0, 122, 255, 0.45),
+                    0 0 20px rgba(67, 233, 123, 0.65),
+                    0 5px 0 rgba(0, 0, 0, 0.65);
+            }
+            50% {
+                color: #1e90ff;
+                text-shadow:
+                    0 0 8px rgba(30, 144, 255, 0.95),
+                    0 0 18px rgba(255, 59, 48, 0.55),
+                    0 0 28px rgba(255, 212, 0, 0.45),
+                    0 0 20px rgba(67, 233, 123, 0.85),
+                    0 5px 0 rgba(0, 0, 0, 0.65);
+            }
+            75% {
+                color: #43e97b;
+                text-shadow:
+                    0 0 8px rgba(67, 233, 123, 0.95),
+                    0 0 18px rgba(255, 59, 48, 0.55),
+                    0 0 28px rgba(255, 212, 0, 0.45),
+                    0 0 20px rgba(30, 144, 255, 0.65),
+                    0 5px 0 rgba(0, 0, 0, 0.65);
+            }
+        }
+
+        .approval-card {
+            /* background: rgba(255, 255, 255, 0.92); */
+            width: min(100%, 1200px);
+            margin: 0 auto;
+            border-radius: clamp(12px, 1.8vw, 16px);
+            overflow: visible;
+            /* box-shadow: 0 12px 30px rgba(0, 0, 0, 0.18); */
+        }
+
+
+        .modal-content {
+            padding: 30px;
+            text-align: center;
+            width: 300px;
+        }
+            .p-3 {
+                /* padding: clamp(12px, 2vw, 24px) !important; */
+                background: rgb(171, 0, 0) !important;
+                /* position: fixed !important; */
+                align-items: center !important;
+            }
+
+        .card-header span {
+            display: inline-block;
+            margin-top: 0.25rem;
+            white-space: normal;
+        }
+
+        .approval-info-table {
+            width: 100%;
+            max-width: 1280px;
+            margin: 0 auto;
+            border-collapse: collapse;
+            /* background: rgba(255, 255, 255, 0.82); */
+            border-radius: 12px;
+            overflow: hidden;
+            table-layout: fixed;
+        }
+
+        .approval-info-table th,
+        .approval-info-table td {
+            padding: clamp(8px, 1.2vw, 14px) clamp(10px, 1.8vw, 18px);
+            border: 1px solid rgb(255, 255, 255);
+            text-align: left;
+            vertical-align: top;
+            word-break: break-word;
+        }
+
+        .approval-info-table th {
+            width: 7.5rem;
+            color: #ffffff;
+            font-weight: 700;
+            white-space: nowrap;
+        }
+
+        .info-stack {
+            display: flex;
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 0.35rem;
+        }
+
+        .info-stack .info-label {
+            font-size: 0.92em;
+            font-weight: 700;
+            color: #ffffff;
+            line-height: 1.1;
+        }
+
+        .info-stack .info-value {
+            font-size: 1.02em;
+            line-height: 1.35;
+            color: #ffffff;
+            word-break: break-word;
+        }
+
+        .approval-info-table tr:first-child th,
+        .approval-info-table tr:first-child td {
+            border-top: 0;
+        }
+
+        .approval-info-table tr:last-child th,
+        .approval-info-table tr:last-child td {
+            border-bottom: 0;
+        }
+
+        .approval-info-table tr th:first-child,
+        .approval-info-table tr td:first-child {
+            border-left: 0;
+        }
+
+        .approval-info-table tr th:last-child,
+        .approval-info-table tr td:last-child {
+            border-right: 0;
+        }
+
+        .card-body img {
+            display: block;
+            margin-top: 1rem;
+            margin-left: auto;
+            margin-right: auto;
+            width: min(100%, 300px);
+            height: auto;
+        }
+
+            .approval-image-row {
+                display: flex;
+                justify-content: center;
+                align-items: center;
+                gap: clamp(8px, 1.5vw, 18px);
+                flex-wrap: nowrap;
+                width: 100vw;
+                margin-left: calc(50% - 50vw);
+                margin-top: 1rem;
+                margin-bottom: 1rem;
+                overflow: visible;
+            }
+
+            .approval-image-row img {
+                width: clamp(280px, 34vw, 560px);
+                max-width: none;
+                flex: 0 0 auto;
+            }
+
+        .approval-actions {
+            display: flex;
+            justify-content: center;
+            gap: 200px;
+            flex-wrap: wrap;
+        }
+
+        .image-action-button {
+            border: 0;
+            background: transparent;
+            padding: 0;
+            cursor: pointer;
+            line-height: 0;
+        }
+
+        .image-action-button img {
+            display: block;
+            width: clamp(120px, 7vw, 180px);
+            max-width: 42vw;
+            height: auto;
+        }
+
+        .image-action-button:disabled {
+            cursor: not-allowed;
+            opacity: 0.65;
+        }
+
+        .empty-state-image {
+            width: clamp(220px, 55vw, 320px);
+            height: auto;
+            display: block;
+            margin: 0 auto;
+        }
+
+        .modal-footer {
+            justify-content: center;
+        }
+
+        form.d-inline-block {
+            display: inline-block !important;
+        }
+
+        .back-link {
+            margin-top: 2rem;
+            display: block;
+            margin-left: auto;
+            margin-right: auto;
+            padding: clamp(4px, 1.2vw, 5px) clamp(18px, 2.4vw, 26px);
+            /* background: #ffffff00; */
+            color: #b90000;
+            border-radius: 999px;
+            text-decoration: none;
+            font-size: clamp(20px, 3vw, 28px);
+            font-weight: bold;
+            border: 3px solid #b90000;
+            box-shadow: 0 6px 18px rgba(0, 0, 0, 0.14);
+            width: 100px;
+        }
+
+        .back-link:hover,
+        .back-link:focus {
+            text-decoration: none;
+            color: #b90000;
+        }
+
+        /* 全屏图片预览遮罩 */
+        .image-fullscreen-overlay {
+            display: none;
+            position: fixed;
+            z-index: 99999;
+            left: 0;
+            top: 0;
+            width: 100vw;
+            height: 100vh;
+            background: rgba(0, 0, 0, 0.501);
+            cursor: pointer;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .image-fullscreen-overlay.active {
+            display: flex;
+        }
+
+        .image-fullscreen-overlay img {
+            max-width: 95vw;
+            max-height: 95vh;
+            object-fit: contain;
+            box-shadow: 0 0 40px rgba(0, 0, 0, 0.5);
+        }
+
+        /* ---- confirm 页卡片样式 ---- */
+        /* @font-face 声明已统一到 birthboard_fonts.css（页面 head 引入），
+           避免与主页面/确认页重复下载思源黑体与 FiraCode */
+        .boardcard {
+            margin-bottom: 100px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        .textLb {
+            font-family: 'MyfontLB', 'MyfontE', 'Microsoft YaHei', 'Arial', sans-serif;
+            font-size: 16px;
+        }
+        .textN {
+            font-family: 'MyfontT', 'MyfontE', 'Microsoft YaHei', 'Arial', sans-serif;
+            font-size: 16px;
+        }
+        .textNE {
+            font-family: 'MyfontTE', 'MyfontE', 'Microsoft YaHei', 'Arial', sans-serif;
+            font-size: 16px;
+        }
+        .textB {
+            font-family: 'MyfontB', 'MyfontE', 'Microsoft YaHei', 'Arial', sans-serif;
+            font-size: 16px;
+        }
+        .textE {
+            font-family: 'MyfontE', 'Microsoft YaHei', 'Arial', sans-serif;
+            font-size: 16px;
+        }
+        .lddq {
+            width: 100%;
+            text-align: justify;
+            /* text-align-last: justify; */
+            /* text-justify: inter-ideograph; */
+        }
+        /* .lddq::after {
+            content: '';
+            display: none;
+            width: 100%;
+            height: 0;
+        } */
+        .downbtn {
+            display: block;
+            border: none;
+            border-top: 1px solid #000000;
+            padding: 0;
+            padding-bottom: 3px;
+            margin: 0;
+            width: 100%;
+            cursor: pointer;
+            background: linear-gradient(to right, #ffffff00, #ffffff00) no-repeat bottom left / 0 1px;
+            background-origin: content-box;
+            transition: background-size 0.25s ease;
+        }
+        .downbtn:hover {
+            background: linear-gradient(to right, #000000, #000000) no-repeat bottom left / 100% 1px;
+        }
+        .downbtn:disabled {
+            cursor: not-allowed;
+            opacity: 0.4;
+        }
+        .jt {
+            display: inline;
+            position: relative;
+            top: -2px;
+        }
+        .status-red { color: #c00000; }
+        .status-yellow { color: #137bc0; }
+        .status-green { color: #00ba35; }
+        .approve-btn-row {
+            display: flex;
+            justify-content: center;
+            gap: 200px;
+            margin-top: 18px;
+            flex-wrap: wrap;
+        }
+        /* ---- 控制面板 ---- */
+        .filter-panel {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            justify-content: center;
+            gap: 12px 18px;
+            margin-bottom: 24px;
+            padding: 16px 20px;
+            background: #f8f9fa;
+            border-radius: 10px;
+            border: 1px solid #dee2e6;
+        }
+        .filter-panel .filter-group {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            flex-wrap: wrap;
+        }
+        .filter-panel .filter-label {
+            font-family: 'MyfontLB', 'Microsoft YaHei', sans-serif;
+            font-size: 14px;
+            font-weight: 700;
+            color: #333;
+            white-space: nowrap;
+            margin-right: 2px;
+        }
+        .filter-chip {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 999px;
+            font-size: 13px;
+            cursor: pointer;
+            user-select: none;
+            border: 1.5px solid #ccc;
+            background: #fff;
+            color: #666;
+            transition: all 0.2s;
+            white-space: nowrap;
+        }
+        .filter-chip:hover {
+            border-color: #999;
+            color: #333;
+        }
+        .filter-chip.active {
+            background: #333;
+            color: #fff;
+            border-color: #333;
+        }
+        .filter-search {
+            padding: 4px 12px;
+            border: 1.5px solid #ccc;
+            border-radius: 999px;
+            font-size: 13px;
+            outline: none;
+            width: 160px;
+            transition: border-color 0.2s;
+        }
+        .filter-search:focus {
+            border-color: #333;
+        }
+        .filter-clear {
+            font-size: 13px;
+            cursor: pointer;
+            color: #c00000;
+            border: none;
+            background: none;
+            padding: 2px 8px;
+            text-decoration: underline;
+        }
+        .filter-clear:hover {
+            color: #900;
+        }
+        .filter-count {
+            font-size: 13px;
+            color: #888;
+            margin-left: 8px;
+        }
+        #standardContent h2{
+            /* text-align: center; */
+            font-size: 18px;
+        }
+        #standardContent p{
+            text-indent: 2em;
+        }
