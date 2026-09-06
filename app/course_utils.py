@@ -563,16 +563,8 @@ def _remove_student_from_future_course_activities(
         course: Course, student: NaturalPerson,
         now: datetime) -> int:
     """将补退选学生移出未来自动报名的课程活动。"""
-    participation_activity_ids = Participation.objects.filter(
-        person=student,
-        status__in=[
-            Participation.AttendStatus.APPLYSUCCESS,
-            Participation.AttendStatus.CANCELED,
-        ],
-    ).values("activity_id")
     activities = list(
         Activity.objects.select_for_update().filter(
-            pk__in=participation_activity_ids,
             organization_id=course.organization,
             category=Activity.ActivityCategory.COURSE,
             need_apply=False,
