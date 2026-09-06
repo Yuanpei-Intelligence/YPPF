@@ -92,3 +92,19 @@ class CourseActivityLockingTests(CourseFixtures, TestCase):
         self.assertEqual(response.status_code, 200)
         activity.refresh_from_db()
         self.assertEqual(activity.location, "New room")
+
+    def test_cancel_all_requires_csrf(self):
+        activity = self.activity()
+        response = course_views.showCourseActivity(self.cancellation_request(activity, csrf=False))
+        self.assertEqual(response.status_code, 403)
+        activity.refresh_from_db()
+        self.assertEqual(activity.status, Activity.Status.UNPUBLISHED)
+
+    def test_cancel_all_rejects_standalone_activity(self):
+        activity = self.activity()
+        activity.course_time = None
+        activity.save(update_fields=["course_time"])
+        response = course_views.showCourseActivity(self.cancellation_request(activity))
+        self.assertEqual(response.status_code, 302)
+        activity.refresh_from_db()
+        self.assertEqual(activity.status, Activity.Status.UNPUBLISHED)

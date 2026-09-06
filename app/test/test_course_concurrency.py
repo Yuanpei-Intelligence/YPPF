@@ -115,6 +115,18 @@ class CourseConcurrencyTests(CourseFixtures, TransactionTestCase):
         self.assertEqual(results["second"].status_code, 200)
         self.assert_withdrawn()
 
+    def test_recurring_edit_overlaps_cancel_all(self):
+        activity = self.activity()
+        results = self.overlap(
+            lambda: course_views.editCourseActivity(self.request(activity), str(activity.pk)),
+            lambda: course_views.showCourseActivity(self.cancellation_request(activity)))
+        self.assertEqual(results["first"].status_code, 200)
+        self.assertEqual(results["second"].status_code, 200)
+        activity.refresh_from_db()
+        self.course_time.refresh_from_db()
+        self.assertEqual(activity.status, Activity.Status.CANCELED)
+        self.assertEqual(self.course_time.end_week, self.course_time.cur_week)
+
     def test_closing_overlaps_withdrawal(self):
         self.enroll()
         results = self.overlap(lambda: course_utils.change_course_status(

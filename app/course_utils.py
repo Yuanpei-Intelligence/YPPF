@@ -413,6 +413,9 @@ def cancel_course_activity(request: HttpRequest, activity: Activity, cancel_all:
     """
     取消课程活动，是cancel_activity的简化版，在聚合页面被调用
 
+    调用方须在同一事务内按 Course -> CourseTime -> Activity 锁定长期活动，
+    避免取消时段与编辑时段反向加锁；单次活动只需锁定 Activity。
+
     在聚合页面中，应确保activity是课程活动，并且应检查activity.status，
     如果不是WAITING或PROGRESSING，不应调用本函数
 
@@ -468,7 +471,7 @@ def cancel_course_activity(request: HttpRequest, activity: Activity, cancel_all:
     if cancel_all:
         # 设置结束 若cur_week >= end_week 则每周定时任务无需执行
         activity.course_time.end_week = activity.course_time.cur_week
-        activity.course_time.save()
+        activity.course_time.save(update_fields=["end_week"])
 
 
 def remaining_willingness_point(user: NaturalPerson) -> int:
