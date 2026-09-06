@@ -3,6 +3,14 @@ course_utils.py
 
 course_views.py的依赖函数
 
+课程工作流锁顺序（包括调用方持有的锁）：
+先锁全部需要的 Course，再锁学生或修改从属记录；同时需要 CourseTime 和
+Activity 时，按 Course -> CourseTime -> Activity 加锁。同类多行按主键升序
+锁定，并在进入下一步前求值。锁前查询仅用于定位，业务检查必须在锁后进行。
+Participation / Position 的外键校验也会隐式获取 NaturalPerson 共享锁，
+因此插入这些记录后不得再获取新的 Course 锁。此约定不覆盖所有活动业务，
+也不保证消除数据库内部的全部死锁。
+
 registration_status_check: 检查学生选课状态变化的合法性
 registration_status_change: 改变学生选课状态
 course_to_display: 把课程信息转换为方便前端呈现的形式
@@ -177,7 +185,7 @@ def create_single_course_activity(request: HttpRequest) -> Tuple[int, bool]:
 
     # 获取组织和课程
     org = get_person_or_org(request.user, UTYPE_ORG)
-    # 与补选名单同步共用课程行锁，避免并发生成不完整的名单快照。
+    # 先锁课程再创建活动/参与记录；参与记录的外键校验会隐式锁定学生。
     course = Course.objects.activated().select_for_update().get(
         organization=org)
 
@@ -629,7 +637,10 @@ def _notify_student_of_nearest_course_activity(
 def sync_course_member_to_future_activities(
         organization: Organization, student: NaturalPerson,
         now: datetime | None = None) -> int:
-    """将新加入课程组织的成员同步到未来自动报名的课程活动。"""
+    """将新加入课程组织的成员同步到未来自动报名的课程活动。
+
+    先获取全部课程锁，再插入参与记录或由调用方更新 Position；不得反向加锁。
+    """
     if now is None:
         now = datetime.now()
     courses = list(
@@ -736,17 +747,17 @@ def registration_status_change(course_id: int, user: NaturalPerson,
     context = wrong("在修改选课状态的过程中发生错误，请联系管理员！")
     now = datetime.now()
 
-    # 如果不把 user 锁起来，前面做的检查到后面更新数据库时可能已经无效了，会让用户选上超过6门或者时间冲突的课。
-    # 最后get是为了强制对QuerySet求值，起到上锁的效果
-    NaturalPerson.objects.select_for_update().get(id=user.id)
-
-    # 锁定课程状态和名额；课程活动创建也使用同一把锁，避免名单快照竞态。
+    # Course 必须先于学生锁：活动/成员批量插入会在持有课程锁时校验学生外键。
     course = Course.objects.select_for_update().get(id=course_id)
     course_status = course.status
 
     if (course_status != Course.Status.STAGE1
             and course_status != Course.Status.STAGE2):
         return wrong("在非选课阶段不能选课！")
+
+    # 保留学生锁直到提交，串行化同一学生跨课程的限额和时间冲突检查。
+    # 检查其他已选课程时只做普通读取，不再获取其他 Course 锁。
+    NaturalPerson.objects.select_for_update().get(id=user.id)
 
     if action == "select":
         if CourseParticipant.objects.filter(course_id=course_id,
@@ -948,14 +959,19 @@ def draw_lots():
     courses = Course.objects.activated().filter(status=Course.Status.DRAWING)
     for course in courses:
         with transaction.atomic():
-            participants = CourseParticipant.objects.filter(
-                course=course, status=CourseParticipant.Status.SELECT)
-
-            participants_num = participants.count()
+            # 候选列表可能已过期；按 Course -> CourseParticipant 锁定后重新检查。
+            course = Course.objects.select_for_update().get(pk=course.pk)
+            if course.status != Course.Status.DRAWING:
+                continue
+            participants_id = list(
+                CourseParticipant.objects.select_for_update().filter(
+                    course=course, status=CourseParticipant.Status.SELECT,
+                ).order_by("pk").values_list("pk", flat=True)
+            )
+            participants_num = len(participants_id)
             if participants_num <= 0:
                 continue
 
-            participants_id = list(participants.values_list("id", flat=True))
             capacity = course.capacity
 
             if participants_num <= capacity:
@@ -1064,6 +1080,7 @@ def change_course_status(cur_status: Course.Status, to_status: Course.Status) ->
     with transaction.atomic():
         # 在读取选课名单前锁定课程，避免阶段结束与最后一刻补选交错，
         # 导致学生已有选课和活动参与记录却没有课程 Position。
+        # 一次获取全部课程锁；后续 Position 插入会隐式锁定学生外键。
         courses = Course.objects.activated().select_for_update().filter(
             status=cur_status).order_by("pk")
         courses = list(courses)

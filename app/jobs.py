@@ -169,7 +169,8 @@ def add_week_course_activity(course_id: int, weektime_id: int, cur_week: int, co
     """
     # 发起活动，并设置报名
     with transaction.atomic():
-        # 与补选名单同步共用课程行锁，避免并发生成不完整的名单快照。
+        # 遵循 course_utils 的 Course -> CourseTime -> Activity 顺序。
+        # 课程锁先于参与记录插入时隐式获取的学生外键锁，避免与退选互锁。
         course: Course = Course.objects.select_for_update().get(id=course_id)
         examine_teacher = NaturalPerson.objects.get_teacher(
             CONFIG.course.audit_teachers[0])
