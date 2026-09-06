@@ -303,6 +303,9 @@ def modify_course_activity(request: HttpRequest, activity: Activity):
     修改单次课程活动信息，是modify_activity的简化版
     错误提示通过AssertionError抛出
 
+    调用方须在同一事务内锁定 Activity；长期活动须先按
+    Course -> CourseTime -> Activity 顺序锁定，并重新检查归属及状态。
+
     :param request: 修改单次课程活动的请求
     :type request: HttpRequest
     :param activity: 待修改的活动
@@ -363,8 +366,8 @@ def modify_course_activity(request: HttpRequest, activity: Activity):
         course.classroom = context["location"]
         course.need_apply = context["need_apply"]
         course.publish_day = context["publish_day"]
-        course.save()
-        course_time.save()
+        course.save(update_fields=["classroom", "need_apply", "publish_day"])
+        course_time.save(update_fields=["start", "end"])
     # 目前只要编辑了活动信息，无论活动处于什么状态，都通知全体选课同学
     # if activity.status != Activity.Status.APPLYING and activity.status != Activity.Status.WAITING:
     #     return

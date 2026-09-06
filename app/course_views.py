@@ -11,6 +11,7 @@ from app.models import (
     Activity,
     Course,
     CourseRecord,
+    CourseTime,
 )
 from app.course_utils import (
     cancel_course_activity,
@@ -30,6 +31,9 @@ from app.utils import get_person_or_org
 from datetime import datetime
 
 from django.db import transaction
+from django.http import HttpResponseForbidden
+from django.views.decorators.csrf import csrf_protect
+from django.views.decorators.http import require_http_methods
 
 from utils.config.cast import str_to_time
 
@@ -48,8 +52,10 @@ __all__ = [
 APP_CONFIG = CONFIG.course
 
 
+@csrf_protect
 @login_required(redirect_field_name="origin")
 @utils.check_user_access(redirect_url="/logout/")
+@require_http_methods(["GET", "POST"])
 @logger.secure_view()
 def editCourseActivity(request: HttpRequest, aid: int):
     """
@@ -65,7 +71,7 @@ def editCourseActivity(request: HttpRequest, aid: int):
     try:
         aid = int(aid)
         activity = Activity.objects.get(id=aid)
-    except:
+    except (ValueError, Activity.DoesNotExist):
         return redirect(message_url(wrong("活动不存在!")))
 
     # 检查用户身份
@@ -102,8 +108,27 @@ def editCourseActivity(request: HttpRequest, aid: int):
         try:
             # 只能修改自己的活动
             with transaction.atomic():
+                # 锁前仅定位；与每周生成任务共用 Course -> CourseTime -> Activity 顺序。
+                course_time_id = activity.course_time_id
+                if course_time_id is not None:
+                    course_id = CourseTime.objects.values_list(
+                        "course_id", flat=True).get(pk=course_time_id)
+                    course = Course.objects.select_for_update().get(pk=course_id)
+                    if course.organization_id != me.pk:
+                        return HttpResponseForbidden("无法修改其他课程小组的课程!")
+                    course_time = CourseTime.objects.select_for_update().get(
+                        pk=course_time_id)
+                    if course_time.course_id != course.pk:
+                        return redirect(message_url(
+                            wrong("课程时段已变更，请刷新后重试。"), request.path))
                 activity = Activity.objects.select_for_update().get(id=aid)
-                assert activity.organization_id == me, "无法修改其他课程小组的活动!"
+                if activity.organization_id_id != me.pk:
+                    return HttpResponseForbidden("无法修改其他课程小组的活动!")
+                if (activity.course_time_id != course_time_id
+                        or activity.category != Activity.ActivityCategory.COURSE
+                        or activity.status != Activity.Status.UNPUBLISHED):
+                    return redirect(message_url(
+                        wrong("课程活动已变更，请刷新后重试。"), request.path))
                 modify_course_activity(request, activity)
             succeed("修改成功。", html_display)
         except AssertionError as err_info:
@@ -131,7 +156,14 @@ def editCourseActivity(request: HttpRequest, aid: int):
     # 判断本活动是否为长期定时活动
     course_time_tag = (activity.course_time is not None)
 
-    return render(request, "course/lesson_add.html", locals())
+    context = {
+        "html_display": html_display, "bar_display": bar_display,
+        "title": title, "location": location, "start": start, "end": end,
+        "edit": edit, "publish_day": publish_day, "need_apply": need_apply,
+        "course_time_tag": course_time_tag,
+        "activity": activity,
+    }
+    return render(request, "course/lesson_add.html", context)
 
 
 @login_required(redirect_field_name="origin")
