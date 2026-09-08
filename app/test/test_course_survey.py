@@ -93,6 +93,31 @@ class CourseSurveyTests(TestCase):
         self.assertEqual(response.status_code, 302)
         self.assertTrue(has_completed_course_survey(self.user, self.survey))
 
+    def test_multiple_choice_draft_whitespace_preserves_selections(self):
+        multiple = Question.objects.create(
+            survey=self.survey, order=2, topic='Multiple', type=Question.Type.MULTIPLE,
+            min_choices=2)
+        for order in (1, 2, 3):
+            Choice.objects.create(question=multiple, order=order, text=f'Option {order}')
+        sheet = AnswerSheet.objects.create(survey=self.survey, creator=self.user)
+        answer = AnswerText.objects.create(answersheet=sheet, question=multiple, body='1, 2')
+
+        response = self.client.get('/selectCourse/')
+        field = response.context['form'][str(multiple.pk)]
+        selected = [choice.data['value'] for choice in field if choice.data['selected']]
+        self.assertEqual(selected, ['1', '2'])
+        for choice in field:
+            self.assertContains(response, choice.tag(), html=True)
+        answer.refresh_from_db()
+        self.assertEqual(answer.body, '1, 2')
+
+        response = self.client.post('/selectCourse/', {
+            'action': 'submit_survey', str(self.question.pk): 'Text', str(multiple.pk): selected})
+        self.assertRedirects(response, '/selectCourse/', fetch_redirect_response=False)
+        sheet.refresh_from_db()
+        self.assertEqual(sheet.status, AnswerSheet.Status.SUBMITTED)
+        self.assertEqual(AnswerText.objects.get(answersheet=sheet, question=multiple).body, '1,2')
+
     def test_other_user_submission_does_not_unlock(self):
         other = User.objects.create_user('other', 'Other', User.Type.STUDENT, password='pw')
         AnswerSheet.objects.create(survey=self.survey, creator=other, status=AnswerSheet.Status.SUBMITTED)

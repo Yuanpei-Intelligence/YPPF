@@ -519,7 +519,8 @@ def selectCourse(request: HttpRequest):
                 answersheet__creator=request.user, answersheet__survey=survey,
         ).select_related('question'):
             initial[str(answer.question_id)] = (
-                answer.body.split(',') if answer.question.type == Question.Type.MULTIPLE else answer.body)
+                [segment.strip() for segment in answer.body.split(',')]
+                if answer.question.type == Question.Type.MULTIPLE else answer.body)
         submitting = request.method == 'POST' and request.POST.get('action') == 'submit_survey'
         form = CourseSurveyForm(survey, request.POST if submitting else None, initial=initial)
         status = 200 if request.method != 'POST' else 403
