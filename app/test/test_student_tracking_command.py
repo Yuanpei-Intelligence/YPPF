@@ -1,3 +1,4 @@
+from copy import deepcopy
 from datetime import datetime
 from io import StringIO
 import json
@@ -19,7 +20,7 @@ class StudentTrackingCommandTests(TestCase):
     def setUp(self):
         # Use synthetic content so CI does not need the private questionnaire.
         data_dir = self.enterContext(TemporaryDirectory())
-        data_path = Path(data_dir) / 'survey.json'
+        data_path = self.data_path = Path(data_dir) / 'survey.json'
         self.data = {
             'description': 'Synthetic survey description',
             'questions': [
@@ -74,6 +75,54 @@ class StudentTrackingCommandTests(TestCase):
             with self.assertRaisesMessage(CommandError, 'raw_data/student_tracking_survey_2026.json'):
                 self.run_command()
         self.assertFalse(Survey.objects.exists())
+
+    def assert_invalid_data_creates_nothing(self, data, message):
+        self.data_path.write_text(json.dumps(data), encoding='utf-8')
+        with patch.object(Survey.objects, 'create', wraps=Survey.objects.create) as create:
+            with self.assertRaisesMessage(CommandError, message):
+                self.run_command(publish=True)
+            create.assert_not_called()
+        self.assertFalse(Survey.objects.exists())
+        self.assertFalse(Question.objects.exists())
+        self.assertFalse(Choice.objects.exists())
+        self.assertEqual(self.options['stdout'].getvalue(), '')
+
+    def test_wrong_question_count_rejected_before_creation(self):
+        for count in (0, 11, 20, 22):
+            data = deepcopy(self.data)
+            data['questions'] = (data['questions'] * 2)[:count]
+            with self.subTest(count=count):
+                self.assert_invalid_data_creates_nothing(data, '恰好 21')
+
+    def test_invalid_question_orders_rejected_before_creation(self):
+        for index, order in ((20, 20), (20, 22), (0, 0), (0, True), (0, 1.0), (0, '1')):
+            data = deepcopy(self.data)
+            data['questions'][index]['order'] = order
+            with self.subTest(index=index, order=order):
+                self.assert_invalid_data_creates_nothing(data, '题号')
+        data = deepcopy(self.data)
+        del data['questions'][-1]['order']
+        self.assert_invalid_data_creates_nothing(data, '题号')
+        data = deepcopy(self.data)
+        data['questions'][0], data['questions'][1] = data['questions'][1], data['questions'][0]
+        self.assert_invalid_data_creates_nothing(data, '题号')
+
+    def test_invalid_question_types_rejected_before_creation(self):
+        for index, question_type in ((0, Question.Type.MULTIPLE), (19, Question.Type.TEXT),
+                                     (20, Question.Type.SINGLE), (20, Question.Type.RANKING),
+                                     (20, 'UNKNOWN'), (20, None)):
+            data = deepcopy(self.data)
+            data['questions'][index]['type'] = question_type
+            with self.subTest(index=index, question_type=question_type):
+                self.assert_invalid_data_creates_nothing(data, '类型必须为')
+        data = deepcopy(self.data)
+        del data['questions'][-1]['type']
+        self.assert_invalid_data_creates_nothing(data, '类型必须为')
+
+    def test_invalid_question_structure_rejected_before_creation(self):
+        for data in ([], {}, {'questions': {}}, {'questions': [None] * 21}):
+            with self.subTest(data=data):
+                self.assert_invalid_data_creates_nothing(data, '追踪问卷')
 
     def test_publish_and_repeat_preserve_existing_records(self):
         self.run_command(publish=True)

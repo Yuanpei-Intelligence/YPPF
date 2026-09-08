@@ -17,6 +17,25 @@ DATA_PATH = Path(__file__).resolve().parent.parent / 'raw_data' / 'student_track
 LOCK_NAME = 'yppf:create_student_tracking_questionnaire_2026'
 
 
+def validate_tracking_survey_data(data):
+    """Require ordered questions 1–21: twenty SINGLEs followed by one MULTIPLE.
+
+    Validate the complete input before slicing out the freshman version, so an
+    invalid regular-version question cannot leave a valid-looking partial import.
+    """
+    questions = data.get('questions') if isinstance(data, dict) else None
+    if not isinstance(questions, list) or len(questions) != 21:
+        raise ValidationError('追踪问卷必须包含恰好 21 道题目。')
+    for order, spec in enumerate(questions, start=1):
+        if (not isinstance(spec, dict) or type(spec.get('order')) is not int
+                or spec['order'] != order):
+            raise ValidationError(
+                f'追踪问卷题号必须按 1–21 连续排列且不重复：第 {order} 项题号无效。')
+        expected_type = Question.Type.SINGLE if order <= 20 else Question.Type.MULTIPLE
+        if spec.get('type') != expected_type:
+            raise ValidationError(f'追踪问卷第 {order} 题类型必须为 {expected_type}。')
+
+
 def create_student_tracking_surveys(creator_username, start, end, *, publish=False):
     """Create missing surveys atomically; never overwrite existing surveys.
 
@@ -33,6 +52,7 @@ def create_student_tracking_surveys(creator_username, start, end, *, publish=Fal
         raise ValidationError(
             '请先提供问卷数据文件 raw_data/student_tracking_survey_2026.json（不纳入版本控制）。'
         ) from exc
+    validate_tracking_survey_data(data)
     if connection.vendor != 'mysql':
         raise ValidationError('此初始化命令需要项目的 MySQL 数据库。')
     with connection.cursor() as cursor:
