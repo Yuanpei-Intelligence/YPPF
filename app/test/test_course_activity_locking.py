@@ -8,6 +8,22 @@ from app.test.course_fixtures import CourseFixtures
 
 
 class CourseActivityLockingTests(CourseFixtures, TestCase):
+    def test_add_requires_csrf(self):
+        for token in (None, "b" * 32):
+            with self.subTest(token=token):
+                request = self.request(csrf=False)
+                request.COOKIES["csrftoken"] = "a" * 32
+                if token is not None:
+                    request.META["HTTP_X_CSRFTOKEN"] = token
+                with self.assertNumQueries(0):
+                    response = course_views.addSingleCourseActivity(request)
+                self.assertEqual(response.status_code, 403)
+
+    def test_add_rejects_other_methods(self):
+        request = self.request()
+        request.method = "PUT"
+        self.assertEqual(course_views.addSingleCourseActivity(request).status_code, 405)
+
     def test_edit_preserves_course_counters_and_renders_form(self):
         activity = self.activity()
         self.enroll()

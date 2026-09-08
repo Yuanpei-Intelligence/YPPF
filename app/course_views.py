@@ -155,8 +155,10 @@ def editCourseActivity(request: HttpRequest, aid: int):
     return render(request, "course/lesson_add.html", context)
 
 
+@csrf_protect
 @login_required(redirect_field_name="origin")
 @utils.check_user_access(redirect_url="/logout/")
+@require_http_methods(["GET", "POST"])
 @logger.secure_view()
 def addSingleCourseActivity(request: HttpRequest):
     """
