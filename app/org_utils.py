@@ -437,11 +437,22 @@ def update_pos_application(application: ModifyPosition, me: ClassifiedUser,
                     否则就不应该通过这条创建
                 '''
                 try:
+                    if application.apply_type == ModifyPosition.ApplyType.JOIN:
+                        from app.course_utils import (
+                            sync_course_member_to_future_activities,
+                        )
+                        sync_course_member_to_future_activities(
+                            application.org, application.person,
+                            now=datetime.now())
+                    # 课程同步先锁课程，再创建或恢复 Position；与课程阶段
+                    # 转换保持相同锁顺序，避免 course/position 互相等待。
                     application.accept_submit()
                     context = succeed("成功通过来自" + application.person.name + "的申请!")
                     context["application_id"] = application.id
                     return context
-                except:
+                except Exception:
+                    transaction.set_rollback(True)
+                    logger.exception("通过成员申请失败")
                     return wrong("出现系统意料之外的行为，请联系管理员处理!")
 
 

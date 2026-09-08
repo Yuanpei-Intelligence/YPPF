@@ -7,12 +7,15 @@ course_views.py
 from app.views_dependency import *
 from app.models import (
     NaturalPerson,
+    Organization,
     Semester,
     Activity,
     Course,
     CourseRecord,
+    CourseTime,
 )
 from app.course_utils import (
+    lock_course_activity as _lock_course_activity,
     cancel_course_activity,
     create_single_course_activity,
     modify_course_activity,
@@ -30,6 +33,10 @@ from app.utils import get_person_or_org
 from datetime import datetime
 
 from django.db import transaction
+from django.core.exceptions import PermissionDenied
+from django.http import HttpResponseForbidden
+from django.views.decorators.csrf import csrf_protect
+from django.views.decorators.http import require_http_methods
 
 from utils.config.cast import str_to_time
 
@@ -48,8 +55,10 @@ __all__ = [
 APP_CONFIG = CONFIG.course
 
 
+@csrf_protect
 @login_required(redirect_field_name="origin")
 @utils.check_user_access(redirect_url="/logout/")
+@require_http_methods(["GET", "POST"])
 @logger.secure_view()
 def editCourseActivity(request: HttpRequest, aid: int):
     """
@@ -65,7 +74,7 @@ def editCourseActivity(request: HttpRequest, aid: int):
     try:
         aid = int(aid)
         activity = Activity.objects.get(id=aid)
-    except:
+    except (ValueError, Activity.DoesNotExist):
         return redirect(message_url(wrong("活动不存在!")))
 
     # 检查用户身份
@@ -102,11 +111,16 @@ def editCourseActivity(request: HttpRequest, aid: int):
         try:
             # 只能修改自己的活动
             with transaction.atomic():
-                activity = Activity.objects.select_for_update().get(id=aid)
-                assert activity.organization_id == me, "无法修改其他课程小组的活动!"
+                activity = _lock_course_activity(activity, me)
+                if activity.status != Activity.Status.UNPUBLISHED:
+                    return redirect(message_url(
+                        wrong("课程活动已变更，请刷新后重试。"), request.path))
                 modify_course_activity(request, activity)
+                activity.refresh_from_db()
             succeed("修改成功。", html_display)
-        except AssertionError as err_info:
+        except PermissionDenied as err_info:
+            return HttpResponseForbidden(str(err_info))
+        except (AssertionError, ValueError) as err_info:
             return redirect(message_url(wrong(str(err_info)),
                                         request.get_full_path()))
         except Exception as e:
@@ -131,11 +145,20 @@ def editCourseActivity(request: HttpRequest, aid: int):
     # 判断本活动是否为长期定时活动
     course_time_tag = (activity.course_time is not None)
 
-    return render(request, "course/lesson_add.html", locals())
+    context = {
+        "html_display": html_display, "bar_display": bar_display,
+        "title": title, "location": location, "start": start, "end": end,
+        "edit": edit, "publish_day": publish_day, "need_apply": need_apply,
+        "course_time_tag": course_time_tag,
+        "activity": activity,
+    }
+    return render(request, "course/lesson_add.html", context)
 
 
+@csrf_protect
 @login_required(redirect_field_name="origin")
 @utils.check_user_access(redirect_url="/logout/")
+@require_http_methods(["GET", "POST"])
 @logger.secure_view()
 def addSingleCourseActivity(request: HttpRequest):
     """
@@ -194,8 +217,10 @@ def addSingleCourseActivity(request: HttpRequest):
     return render(request, "course/lesson_add.html", locals())
 
 
+@csrf_protect
 @login_required(redirect_field_name='origin')
 @utils.check_user_access(redirect_url="/logout/")
+@require_http_methods(["GET", "POST"])
 @logger.secure_view()
 def showCourseActivity(request: HttpRequest):
     """
@@ -271,15 +296,17 @@ def showCourseActivity(request: HttpRequest):
         ]:
             return redirect(message_url(wrong('该课程活动已结束，不可取消!'), request.path))
 
-        assert activity.status not in [
-            Activity.Status.REVIEWING,
-            # Activity.Status.APPLYING,
-        ], "课程活动状态非法"  # 课程活动不应出现审核状态
-
         # 取消活动
-        with transaction.atomic():
-            activity = Activity.objects.select_for_update().get(id=aid)
-            error = cancel_course_activity(request, activity, cancel_all)
+        try:
+            with transaction.atomic():
+                activity = _lock_course_activity(activity, me)
+                if cancel_all and activity.course_time_id is None:
+                    raise ValueError("单次活动没有可取消的长期课程时段。")
+                error = cancel_course_activity(request, activity, cancel_all)
+        except PermissionDenied as err_info:
+            return HttpResponseForbidden(str(err_info))
+        except ValueError as err_info:
+            return redirect(message_url(wrong(str(err_info)), request.path))
 
         # 无返回值表示取消成功，有则失败
         if error is None:
@@ -288,7 +315,12 @@ def showCourseActivity(request: HttpRequest):
         else:
             return redirect(message_url(wrong(error)), request.path)
 
-    return render(request, "course/show_course_activity.html", locals())
+    context = {
+        "html_display": html_display, "bar_display": bar_display,
+        "future_activity_list": future_activity_list,
+        "finished_activity_list": finished_activity_list,
+    }
+    return render(request, "course/show_course_activity.html", context)
 
 
 @login_required(redirect_field_name="origin")
