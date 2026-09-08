@@ -145,5 +145,7 @@ def redirect_to_webview(request: HttpRequest) -> HttpResponse:
         return HttpResponse('ticket is required', status=400)
     user, _ = auth_tuple
     login(request, user)
-    to = safe_local_redirect_target(request, request.GET.get("to"), "/")
+    to = safe_local_redirect_target(
+        request, request.GET.get("to"), "/", allow_site_absolute=True
+    )
     return redirect(to)

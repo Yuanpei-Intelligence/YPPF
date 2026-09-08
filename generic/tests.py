@@ -99,6 +99,30 @@ class WebviewRedirectSafetyTestCase(TestCase):
                     int(self.client.session["_auth_user_id"]), self.user.pk
                 )
 
+    @patch("utils.http.utils.GLOBAL_CONFIG")
+    def test_webview_accepts_only_configured_absolute_host(self, config):
+        config.base_url = "https://site.example:8443"
+        cases = (
+            ("/inside?x=1#part", "/inside?x=1#part"),
+            ("https://site.example:8443/inside?x=1#part",
+             "https://site.example:8443/inside?x=1#part"),
+            ("https://site.example/inside", "/"),
+            ("https://site.example:8443.evil.example/inside", "/"),
+            ("https://site.example:8443@evil.example/inside", "/"),
+            ("//site.example:8443/inside", "/"),
+            ("http://site.example:8443/inside", "/"),
+            ("https://evil.example/inside", "/"),
+        )
+        for target, expected in cases:
+            with self.subTest(target=target), patch(
+                "generic.views.TicketAuthentication.authenticate",
+                return_value=(self.user, None),
+            ):
+                query = urlencode({"ticket": "fresh", "to": target})
+                response = self.client.get(f"/redirect/?{query}", secure=True)
+                self.assertEqual(response.status_code, 302)
+                self.assertEqual(response["Location"], expected)
+
     def test_real_ticket_creates_one_session_only(self):
         ticket = create_webview_ticket(self.user.pk)
         query = urlencode({"ticket": ticket, "to": "/inside"})
