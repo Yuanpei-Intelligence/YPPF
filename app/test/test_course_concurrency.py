@@ -102,6 +102,20 @@ class CourseConcurrencyTests(CourseFixtures, TransactionTestCase):
         self.overlap(self.withdraw, withdraw_activity, table="app_activity")
         self.assert_withdrawn()
 
+    def test_single_creation_owns_transaction(self):
+        activity_id, created = course_utils.create_single_course_activity(self.request())
+        self.assertTrue(created)
+        self.assertTrue(Activity.objects.filter(pk=activity_id).exists())
+
+    def test_direct_edit_and_cancel_own_transactions(self):
+        activity = self.activity()
+        course_utils.modify_course_activity(self.request(activity), activity)
+        course_utils.cancel_course_activity(self.request(activity), activity, cancel_all=True)
+        activity.refresh_from_db()
+        self.course_time.refresh_from_db()
+        self.assertEqual(activity.status, Activity.Status.CANCELED)
+        self.assertEqual(self.course_time.end_week, self.course_time.cur_week)
+
     def test_weekly_creation_overlaps_withdrawal(self):
         self.enroll()
         results = self.overlap(self.weekly, self.withdraw)

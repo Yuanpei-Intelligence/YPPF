@@ -20,6 +20,9 @@ remaining_willingness_point（暂不启用）: 计算学生剩余的意愿点数
 process_time: 把datetime对象转换成人类可读的时间表示
 check_course_time_conflict: 检查当前选择的课是否与已选的课上课时间冲突
 """
+from functools import partial
+
+from django.core.exceptions import PermissionDenied
 from app.utils_dependency import *
 from app.models import (
     User,
@@ -78,6 +81,7 @@ __all__ = [
     'check_ac_time_course',
     'course_activity_base_check',
     'create_single_course_activity',
+    'lock_course_activity',
     'modify_course_activity',
     'cancel_course_activity',
     'registration_status_change',
@@ -171,10 +175,12 @@ def course_activity_base_check(request: HttpRequest) -> dict:
     return context
 
 
+@transaction.atomic
 def create_single_course_activity(request: HttpRequest) -> Tuple[int, bool]:
     """
     创建单次课程活动，是create_activity的简化版
     错误提示通过AssertionError抛出
+    函数自身建立事务，先锁课程；调度及微信发送在提交后执行。
 
     :param request: 发起单次课程活动的请求
     :type request: HttpRequest
@@ -257,26 +263,30 @@ def create_single_course_activity(request: HttpRequest) -> Tuple[int, bool]:
         activity.capacity = len(person_pos)
         activity.save()
 
-    # 在活动发布时通知参与成员,创建定时任务并修改活动状态
-    if activity.need_apply:
-        ScheduleAdder(changeActivityStatus, id=f"activity_{activity.id}_{Activity.Status.APPLYING}",
-                      run_time=activity.publish_time)(activity.id, Activity.Status.UNPUBLISHED, Activity.Status.APPLYING)  # OK
-        ScheduleAdder(changeActivityStatus, id=f"activity_{activity.id}_{Activity.Status.WAITING}",
-                      run_time=activity.start - timedelta(hours=1))(activity.id, Activity.Status.APPLYING, Activity.Status.WAITING)  # OK
-    else:
-        ScheduleAdder(changeActivityStatus, id=f"activity_{activity.id}_{Activity.Status.WAITING}",
-                      run_time=activity.publish_time)(activity.id, Activity.Status.UNPUBLISHED, Activity.Status.WAITING)  # OK
+    def schedule_activity():
+        # 在活动发布时通知参与成员,创建定时任务并修改活动状态
+        if activity.need_apply:
+            ScheduleAdder(changeActivityStatus, id=f"activity_{activity.id}_{Activity.Status.APPLYING}",
+                          run_time=activity.publish_time)(activity.id, Activity.Status.UNPUBLISHED, Activity.Status.APPLYING)  # OK
+            ScheduleAdder(changeActivityStatus, id=f"activity_{activity.id}_{Activity.Status.WAITING}",
+                          run_time=activity.start - timedelta(hours=1))(activity.id, Activity.Status.APPLYING, Activity.Status.WAITING)  # OK
+        else:
+            ScheduleAdder(changeActivityStatus, id=f"activity_{activity.id}_{Activity.Status.WAITING}",
+                          run_time=activity.publish_time)(activity.id, Activity.Status.UNPUBLISHED, Activity.Status.WAITING)  # OK
 
-    ScheduleAdder(notifyActivity, id=f"activity_{activity.id}_newCourseActivity",
-                  run_time=activity.publish_time)(activity.id, "newCourseActivity")  # OK
+        ScheduleAdder(notifyActivity, id=f"activity_{activity.id}_newCourseActivity",
+                      run_time=activity.publish_time)(activity.id, "newCourseActivity")  # OK
 
-    # 引入定时任务：提前15min提醒、活动状态由WAITING变PROGRESSING再变END
-    ScheduleAdder(notifyActivity, id=f"activity_{activity.id}_remind",
-                  run_time=activity.start - timedelta(minutes=15))(activity.id, "remind")  # OK
-    ScheduleAdder(changeActivityStatus, id=f"activity_{activity.id}_{Activity.Status.PROGRESSING}",
-                  run_time=activity.start)(activity.id, Activity.Status.WAITING, Activity.Status.PROGRESSING)
-    ScheduleAdder(changeActivityStatus, id=f"activity_{activity.id}_{Activity.Status.END}",
-                  run_time=activity.end)(activity.id, Activity.Status.PROGRESSING, Activity.Status.END)
+        # 引入定时任务：提前15min提醒、活动状态由WAITING变PROGRESSING再变END
+        ScheduleAdder(notifyActivity, id=f"activity_{activity.id}_remind",
+                      run_time=activity.start - timedelta(minutes=15))(activity.id, "remind")  # OK
+        ScheduleAdder(changeActivityStatus, id=f"activity_{activity.id}_{Activity.Status.PROGRESSING}",
+                      run_time=activity.start)(activity.id, Activity.Status.WAITING, Activity.Status.PROGRESSING)
+        ScheduleAdder(changeActivityStatus, id=f"activity_{activity.id}_{Activity.Status.END}",
+                      run_time=activity.end)(activity.id, Activity.Status.PROGRESSING, Activity.Status.END)
+
+    transaction.on_commit(schedule_activity)
+
     activity.save()
 
     # 设置活动照片
@@ -284,7 +294,7 @@ def create_single_course_activity(request: HttpRequest) -> Tuple[int, bool]:
         image=image, type=ActivityPhoto.PhotoType.ANNOUNCE, activity=activity)
 
     # 通知审核老师
-    notification_create(
+    notification = notification_create(
         receiver=examine_teacher.person_id,
         sender=request.user,
         typename=Notification.Type.NEEDDO,
@@ -292,28 +302,58 @@ def create_single_course_activity(request: HttpRequest) -> Tuple[int, bool]:
         content="您有一个单次课程活动待审批",
         URL=f"/examineActivity/{activity.id}",
         relate_instance=activity,
-        to_wechat=dict(app=WechatApp.AUDIT),
     )
+    transaction.on_commit(partial(
+        publish_notification, notification.pk, app=WechatApp.AUDIT))
 
     return activity.id, True
 
 
+def lock_course_activity(activity: Activity, organization: Organization) -> Activity:
+    """在调用方事务内按 Course -> CourseTime -> Activity 锁定并检查归属。
+
+    锁前的 activity 仅用于定位。编辑和取消长期活动共用此顺序，避免
+    一方持有 Activity 等待 CourseTime，而另一方反向等待。
+    """
+    course_time_id = activity.course_time_id
+    if course_time_id is not None:
+        course_id = CourseTime.objects.values_list(
+            "course_id", flat=True).get(pk=course_time_id)
+        course = Course.objects.select_for_update().get(pk=course_id)
+        if course.organization_id != organization.pk:
+            raise PermissionDenied("无法修改其他课程小组的课程!")
+        course_time = CourseTime.objects.select_for_update().get(pk=course_time_id)
+        if course_time.course_id != course.pk:
+            raise ValueError("课程时段已变更，请刷新后重试。")
+    locked_activity = Activity.objects.select_for_update().get(pk=activity.pk)
+    if locked_activity.organization_id_id != organization.pk:
+        raise PermissionDenied("无法修改其他课程小组的活动!")
+    if (locked_activity.course_time_id != course_time_id
+            or locked_activity.category != Activity.ActivityCategory.COURSE):
+        raise ValueError("课程活动已变更，请刷新后重试。")
+    return locked_activity
+
+
+@transaction.atomic
 def modify_course_activity(request: HttpRequest, activity: Activity):
     """
     修改单次课程活动信息，是modify_activity的简化版
     错误提示通过AssertionError抛出
 
-    调用方须在同一事务内锁定 Activity；长期活动须先按
-    Course -> CourseTime -> Activity 顺序锁定，并重新检查归属及状态。
+    本函数在事务内按 Course -> CourseTime -> Activity 锁定并检查归属。
+    调用方若已持锁，必须遵循同样的顺序。
 
     :param request: 修改单次课程活动的请求
     :type request: HttpRequest
     :param activity: 待修改的活动
     :type activity: Activity
     """
+    activity = lock_course_activity(
+        activity, get_person_or_org(request.user, UTYPE_ORG))
+
     # 课程活动仅在待发布状态下可以修改
-    assert activity.status == Activity.Status.UNPUBLISHED, \
-        "课程活动只有在待发布状态才能修改。"
+    if activity.status != Activity.Status.UNPUBLISHED:
+        raise ValueError("课程活动只有在待发布状态才能修改。")
 
     context = course_activity_base_check(request)
 
@@ -382,39 +422,43 @@ def modify_course_activity(request: HttpRequest, activity: Activity):
     #     to_participants.append(
     #         f"活动开始时间调整为{activity.start.strftime('%Y-%m-%d %H:%M')}")
 
-    # 更新定时任务
-    if old_need_apply:
-        # 删除报名中的状态阶段
-        remove_job(job_id=f"activity_{activity.id}_{Activity.Status.APPLYING}")
+    def schedule_activity():
+        # 更新定时任务
+        if old_need_apply:
+            # 删除报名中的状态阶段
+            remove_job(job_id=f"activity_{activity.id}_{Activity.Status.APPLYING}")
 
-    if activity.need_apply:
-        ScheduleAdder(changeActivityStatus, id=f"activity_{activity.id}_{Activity.Status.APPLYING}",
-                      run_time=activity.publish_time)(activity.id, Activity.Status.UNPUBLISHED, Activity.Status.APPLYING)  # OK
-        ScheduleAdder(changeActivityStatus, id=f"activity_{activity.id}_{Activity.Status.WAITING}",
-                      run_time=activity.start - timedelta(hours=1))(activity.id, Activity.Status.APPLYING, Activity.Status.WAITING)  # OK
-    else:
-        ScheduleAdder(changeActivityStatus, id=f"activity_{activity.id}_{Activity.Status.WAITING}",
-                      run_time=activity.publish_time)(activity.id, Activity.Status.UNPUBLISHED, Activity.Status.WAITING)  # OK
+        if activity.need_apply:
+            ScheduleAdder(changeActivityStatus, id=f"activity_{activity.id}_{Activity.Status.APPLYING}",
+                          run_time=activity.publish_time)(activity.id, Activity.Status.UNPUBLISHED, Activity.Status.APPLYING)  # OK
+            ScheduleAdder(changeActivityStatus, id=f"activity_{activity.id}_{Activity.Status.WAITING}",
+                          run_time=activity.start - timedelta(hours=1))(activity.id, Activity.Status.APPLYING, Activity.Status.WAITING)  # OK
+        else:
+            ScheduleAdder(changeActivityStatus, id=f"activity_{activity.id}_{Activity.Status.WAITING}",
+                          run_time=activity.publish_time)(activity.id, Activity.Status.UNPUBLISHED, Activity.Status.WAITING)  # OK
 
-    ScheduleAdder(notifyActivity, id=f"activity_{activity.id}_newCourseActivity",
-                  run_time=activity.publish_time)(activity.id, "newCourseActivity")  # OK
-    ScheduleAdder(notifyActivity, id=f"activity_{activity.id}_remind",
-                  run_time=activity.start - timedelta(minutes=15))(activity.id, "remind")  # OK
-    ScheduleAdder(changeActivityStatus, id=f"activity_{activity.id}_{Activity.Status.PROGRESSING}",
-                  run_time=activity.start)(activity.id, Activity.Status.WAITING, Activity.Status.PROGRESSING)  # OK
-    ScheduleAdder(changeActivityStatus, id=f"activity_{activity.id}_{Activity.Status.END}",
-                  run_time=activity.end)(activity.id, Activity.Status.PROGRESSING, Activity.Status.END)  # OK
+        ScheduleAdder(notifyActivity, id=f"activity_{activity.id}_newCourseActivity",
+                      run_time=activity.publish_time)(activity.id, "newCourseActivity")  # OK
+        ScheduleAdder(notifyActivity, id=f"activity_{activity.id}_remind",
+                      run_time=activity.start - timedelta(minutes=15))(activity.id, "remind")  # OK
+        ScheduleAdder(changeActivityStatus, id=f"activity_{activity.id}_{Activity.Status.PROGRESSING}",
+                      run_time=activity.start)(activity.id, Activity.Status.WAITING, Activity.Status.PROGRESSING)  # OK
+        ScheduleAdder(changeActivityStatus, id=f"activity_{activity.id}_{Activity.Status.END}",
+                      run_time=activity.end)(activity.id, Activity.Status.PROGRESSING, Activity.Status.END)  # OK
+
+    transaction.on_commit(schedule_activity)
 
     # 发通知
     # notifyActivity(activity.id, "modification_par", "\n".join(to_participants))
 
 
+@transaction.atomic
 def cancel_course_activity(request: HttpRequest, activity: Activity, cancel_all: bool = False):
     """
     取消课程活动，是cancel_activity的简化版，在聚合页面被调用
 
-    调用方须在同一事务内按 Course -> CourseTime -> Activity 锁定长期活动，
-    避免取消时段与编辑时段反向加锁；单次活动只需锁定 Activity。
+    本函数在事务内按 Course -> CourseTime -> Activity 锁定长期活动；
+    单次活动只需锁定 Activity。调用方若已持锁，必须遵循同样的顺序。
 
     在聚合页面中，应确保activity是课程活动，并且应检查activity.status，
     如果不是WAITING或PROGRESSING，不应调用本函数
@@ -431,6 +475,10 @@ def cancel_course_activity(request: HttpRequest, activity: Activity, cancel_all:
     :return: 取消失败的话返回错误信息
     :rtype: string
     """
+    activity = lock_course_activity(
+        activity, get_person_or_org(request.user, UTYPE_ORG))
+    now = datetime.now()
+
     # 只有UNPUBLISHED,WAITING和PROGRESSING允许取消
     if activity.status not in [
         Activity.Status.UNPUBLISHED,
@@ -441,14 +489,15 @@ def cancel_course_activity(request: HttpRequest, activity: Activity, cancel_all:
 
     # 课程活动已于一天前开始则不能取消，这一点也可以在聚合页面进行判断
     if activity.status == Activity.Status.PROGRESSING:
-        if activity.start.day != datetime.now().day:
+        if activity.start.day != now.day:
             return "课程活动已于一天前开始，不能取消。"
 
     # 取消活动
     activity.status = Activity.Status.CANCELED
     # 目前只要取消了活动信息，无论活动处于什么状态，都通知全体选课同学
-    notifyActivity(activity.id, "modification_par",
-                   f"您报名的书院课程活动{activity.title}已取消（活动原定开始于{activity.start.strftime('%Y-%m-%d %H:%M')}）。")
+    transaction.on_commit(partial(
+        notifyActivity, activity.id, "modification_par",
+        f"您报名的书院课程活动{activity.title}已取消（活动原定开始于{activity.start.strftime('%Y-%m-%d %H:%M')}）。"))
 
     # 删除老师的审核通知（如果有）
     notification = Notification.objects.get(
@@ -458,12 +507,12 @@ def cancel_course_activity(request: HttpRequest, activity: Activity, cancel_all:
     notification_status_change(notification, Notification.Status.DELETE)
 
     # 取消定时任务（需要先判断一下是否已经被执行了）
-    if activity.start - timedelta(minutes=15) > datetime.now():
-        remove_job(f"activity_{activity.id}_remind")
-    if activity.start > datetime.now():
-        remove_job(f"activity_{activity.id}_{Activity.Status.PROGRESSING}")
-    if activity.end > datetime.now():
-        remove_job(f"activity_{activity.id}_{Activity.Status.END}")
+    if activity.start - timedelta(minutes=15) > now:
+        transaction.on_commit(partial(remove_job, f"activity_{activity.id}_remind"))
+    if activity.start > now:
+        transaction.on_commit(partial(remove_job, f"activity_{activity.id}_{Activity.Status.PROGRESSING}"))
+    if activity.end > now:
+        transaction.on_commit(partial(remove_job, f"activity_{activity.id}_{Activity.Status.END}"))
 
     activity.save()
 
@@ -508,7 +557,7 @@ def registration_status_check(course_status: Course.Status,
     检查选课状态的变化是否合法
 
     1. 预选阶段允许的状态变化: SELECT <-> UNSELECT
-    2. 补退选阶段允许的状态变化: SUCCESS -> UNSELECT; FAILED -> SUCCESS; UNSELECT -> SUCCESS  
+    2. 补退选阶段允许的状态变化: SUCCESS -> UNSELECT; FAILED -> SUCCESS; UNSELECT -> SUCCESS
 
     异常: 抛出AssertionError，在调用处解决
 
@@ -913,7 +962,7 @@ def course_to_display(courses: QuerySet[Course],
         for time in course.time_set.all():
             course_time.append(process_time(time.start, time.end))
         course_info["time_set"] = course_time
-        
+
         def linebreak(str):
             from re import sub
             return sub("((\r|\\\)+n)|((\r|\\\)+\n)", "\n", str)
@@ -1050,8 +1099,8 @@ def change_course_status(cur_status: Course.Status, to_status: Course.Status) ->
     """
     作为定时任务，在课程设定的时间改变课程的选课阶段
 
-    example: 
-    scheduler.add_job(change_course_status, "date", 
+    example:
+    scheduler.add_job(change_course_status, "date",
                       id=f"course_{course_id}_{to_status}, run_date, args)
 
     :param cur_status: 课程的当前选课阶段
@@ -1603,8 +1652,8 @@ def download_course_record(course: Course = None, year: int = None, semester: Se
 
     for person in person_record.select_related(SQ.f(NaturalPerson.person_id)):
         line = [person.person_id.username, person.name,
-                person.record_hours or 0, 
-                person.invalid_hours or 0] 
+                person.record_hours or 0,
+                person.invalid_hours or 0]
         # 学生状态
         line.append(NaturalPerson.GraduateStatus.labels[person.status])
         valid_records = SQ.sfilter(CourseRecord.person, person).exclude(invalid=True)
@@ -1613,7 +1662,7 @@ def download_course_record(course: Course = None, year: int = None, semester: Se
             line.append(_sum_hours(valid_records.filter(course__type=course_type)))
         # 计算没有对应Course的学时
         line.append(_sum_hours(valid_records.filter(course__isnull=True)))
-       
+
         total_sheet.append(line)
 
     # 详细信息
@@ -1653,7 +1702,7 @@ def download_select_info(single_course: Course | None = None):
                       .values_list("person", flat=True)
         )
         for info in class_members.values_list(
-            SQ.f(NaturalPerson.name), 
+            SQ.f(NaturalPerson.name),
             SQ.f(NaturalPerson.person_id, User.username)
         ):
             person_info = [

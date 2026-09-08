@@ -15,6 +15,7 @@ from app.models import (
     CourseTime,
 )
 from app.course_utils import (
+    lock_course_activity as _lock_course_activity,
     cancel_course_activity,
     create_single_course_activity,
     modify_course_activity,
@@ -52,31 +53,6 @@ __all__ = [
 ]
 
 APP_CONFIG = CONFIG.course
-
-
-def _lock_course_activity(activity: Activity, organization: Organization) -> Activity:
-    """在调用方事务内按 Course -> CourseTime -> Activity 锁定并检查归属。
-
-    锁前的 activity 仅用于定位。编辑和取消长期活动共用此顺序，避免
-    一方持有 Activity 等待 CourseTime，而另一方反向等待。
-    """
-    course_time_id = activity.course_time_id
-    if course_time_id is not None:
-        course_id = CourseTime.objects.values_list(
-            "course_id", flat=True).get(pk=course_time_id)
-        course = Course.objects.select_for_update().get(pk=course_id)
-        if course.organization_id != organization.pk:
-            raise PermissionDenied("无法修改其他课程小组的课程!")
-        course_time = CourseTime.objects.select_for_update().get(pk=course_time_id)
-        if course_time.course_id != course.pk:
-            raise ValueError("课程时段已变更，请刷新后重试。")
-    locked_activity = Activity.objects.select_for_update().get(pk=activity.pk)
-    if locked_activity.organization_id_id != organization.pk:
-        raise PermissionDenied("无法修改其他课程小组的活动!")
-    if (locked_activity.course_time_id != course_time_id
-            or locked_activity.category != Activity.ActivityCategory.COURSE):
-        raise ValueError("课程活动已变更，请刷新后重试。")
-    return locked_activity
 
 
 @csrf_protect
@@ -140,6 +116,7 @@ def editCourseActivity(request: HttpRequest, aid: int):
                     return redirect(message_url(
                         wrong("课程活动已变更，请刷新后重试。"), request.path))
                 modify_course_activity(request, activity)
+                activity.refresh_from_db()
             succeed("修改成功。", html_display)
         except PermissionDenied as err_info:
             return HttpResponseForbidden(str(err_info))
