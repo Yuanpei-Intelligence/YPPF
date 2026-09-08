@@ -734,7 +734,7 @@ def check_course_time_conflict(current_course: Course,
     '''
 
 
-@logger.secure_func()
+@logger.secure_func(raise_exc=True)
 @transaction.atomic
 def registration_status_change(course_id: int, user: NaturalPerson,
                                action: str) -> MESSAGECONTEXT:
@@ -799,7 +799,7 @@ def registration_status_change(course_id: int, user: NaturalPerson,
             participant_info = CourseParticipant.objects.get(
                 course_id=course_id, person=user)
             cur_status = participant_info.status
-        except:
+        except CourseParticipant.DoesNotExist:
             return context
 
     # 检查当前选课状态、选课阶段和操作的一致性
@@ -813,42 +813,38 @@ def registration_status_change(course_id: int, user: NaturalPerson,
     #         and remaining_willingness_point(user) < course.bidding):
     #     context["warn_message"] = "剩余意愿点不足"
 
-    # 更新选课状态
-    try:
-        with transaction.atomic():
-            if to_status == CourseParticipant.Status.UNSELECT:
-                if course_status == Course.Status.STAGE2:
-                    _remove_student_from_future_course_activities(
-                        course, user, now)
-                Course.objects.filter(id=course_id).select_for_update().update(
-                    current_participants=F("current_participants") - 1)
-                CourseParticipant.objects.filter(course_id=course_id,
-                                                 person=user).delete()
-                succeed("成功取消选课！", context)
-            else:
-                # 处理并发问题
-                if (course_status == Course.Status.STAGE2
-                        and course.current_participants >= course.capacity):
-                    wrong("选课人数已满！", context)
-                else:
-                    course.current_participants += 1
-                    course.save()
+    # 锁、校验及名单同步属于同一事务，异常必须传播并回滚。
+    if to_status == CourseParticipant.Status.UNSELECT:
+        if course_status == Course.Status.STAGE2:
+            _remove_student_from_future_course_activities(
+                course, user, now)
+        Course.objects.filter(id=course_id).update(
+            current_participants=F("current_participants") - 1)
+        CourseParticipant.objects.filter(course_id=course_id,
+                                         person=user).delete()
+        succeed("成功取消选课！", context)
+    else:
+        # 处理并发问题
+        if (course_status == Course.Status.STAGE2
+                and course.current_participants >= course.capacity):
+            wrong("选课人数已满！", context)
+        else:
+            Course.objects.filter(pk=course.pk).update(
+                current_participants=F("current_participants") + 1)
 
-                    CourseParticipant.objects.update_or_create(
-                        course_id = course_id,
-                        person = user,
-                        defaults = {"status": to_status}
-                    )
-                    if course_status == Course.Status.STAGE2:
-                        created_activities = _add_student_to_future_course_activities(
-                            course, user, now)
-                        _notify_student_of_nearest_course_activity(
-                            user, created_activities)
-                    # 只有选课及活动名单同步全部成功后才解锁成就。
-                    unlock_achievement(user, '首次报名书院课程')
-                    succeed("选课成功！", context)
-    except:
-        return context
+            CourseParticipant.objects.update_or_create(
+                course_id = course_id,
+                person = user,
+                defaults = {"status": to_status}
+            )
+            if course_status == Course.Status.STAGE2:
+                created_activities = _add_student_to_future_course_activities(
+                    course, user, now)
+                _notify_student_of_nearest_course_activity(
+                    user, created_activities)
+            # 只有选课及活动名单同步全部成功后才解锁成就。
+            unlock_achievement(user, '首次报名书院课程')
+            succeed("选课成功！", context)
     return context
 
 
