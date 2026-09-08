@@ -22,6 +22,8 @@ def validate_tracking_survey_data(data):
 
     Validate the complete input before slicing out the freshman version, so an
     invalid regular-version question cannot leave a valid-looking partial import.
+    All questions are required with distinct nonblank choices; question 21 must
+    allow exactly six selections from at least six choices.
     """
     questions = data.get('questions') if isinstance(data, dict) else None
     if not isinstance(questions, list) or len(questions) != 21:
@@ -34,6 +36,20 @@ def validate_tracking_survey_data(data):
         expected_type = Question.Type.SINGLE if order <= 20 else Question.Type.MULTIPLE
         if spec.get('type') != expected_type:
             raise ValidationError(f'追踪问卷第 {order} 题类型必须为 {expected_type}。')
+        if spec.get('required') is not True:
+            raise ValidationError(f'追踪问卷第 {order} 题 required 必须为 true。')
+        choices = spec.get('choices')
+        if (not isinstance(choices, list) or not choices
+                or any(not isinstance(text, str) or not text.strip() for text in choices)):
+            raise ValidationError(f'追踪问卷第 {order} 题必须提供非空字符串选项列表。')
+        if len({text.strip() for text in choices}) != len(choices):
+            raise ValidationError(f'追踪问卷第 {order} 题选项不可重复（忽略首尾空白）。')
+        if order == 21:
+            if any(type(spec.get(bound)) is not int or spec[bound] != 6
+                   for bound in ('min_choices', 'max_choices')):
+                raise ValidationError('追踪问卷第 21 题 min_choices 和 max_choices 必须为整数 6。')
+            if len(choices) < 6:
+                raise ValidationError('追踪问卷第 21 题必须提供至少 6 个不同选项。')
 
 
 def create_student_tracking_surveys(creator_username, start, end, *, publish=False):

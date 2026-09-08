@@ -30,8 +30,8 @@ class StudentTrackingCommandTests(TestCase):
             ],
         }
         self.data['questions'][-1].update(
-            type=Question.Type.MULTIPLE, min_choices=2, max_choices=2,
-            choices=['Option C', 'Option A', 'Option B'])
+            type=Question.Type.MULTIPLE, min_choices=6, max_choices=6,
+            choices=[f'Option {index}' for index in range(7)])
         data_path.write_text(json.dumps(self.data), encoding='utf-8')
         self.enterContext(patch('app.student_tracking_survey.DATA_PATH', data_path))
         self.creator = User.objects.create_user('tracking_creator', 'Creator', password='pw')
@@ -50,7 +50,7 @@ class StudentTrackingCommandTests(TestCase):
                          [config['rules'][0]['survey'], config['fallback']])
         self.assertEqual(Survey.objects.count(), 2)
         self.assertEqual(Question.objects.count(), 32)
-        self.assertEqual(Choice.objects.count(), 65)
+        self.assertEqual(Choice.objects.count(), 69)
         for title, count in SURVEY_TITLES:
             survey = Survey.objects.get(title=title)
             self.assertEqual(survey.creator, self.creator)
@@ -68,7 +68,7 @@ class StudentTrackingCommandTests(TestCase):
         regular = Survey.objects.get(title=SURVEY_TITLES[1][0])
         multiple = regular.questions.get(order=21)
         self.assertEqual(multiple.type, Question.Type.MULTIPLE)
-        self.assertEqual((multiple.min_choices, multiple.max_choices), (2, 2))
+        self.assertEqual((multiple.min_choices, multiple.max_choices), (6, 6))
 
     def test_missing_data_reports_setup_instruction(self):
         with patch('app.student_tracking_survey.DATA_PATH', Path('/missing/survey.json')):
@@ -123,6 +123,51 @@ class StudentTrackingCommandTests(TestCase):
         for data in ([], {}, {'questions': {}}, {'questions': [None] * 21}):
             with self.subTest(data=data):
                 self.assert_invalid_data_creates_nothing(data, '追踪问卷')
+
+    def test_invalid_choices_rejected_before_creation(self):
+        for index in (0, 20):
+            for choices in (None, [], 'Option A', {}, [''], [' \t'], [1], [None],
+                            [['Option A']], ['Option A', 'Option A'], ['Option A', ' Option A ']):
+                data = deepcopy(self.data)
+                data['questions'][index]['choices'] = choices
+                with self.subTest(index=index, choices=choices):
+                    self.assert_invalid_data_creates_nothing(data, '选项')
+            data = deepcopy(self.data)
+            del data['questions'][index]['choices']
+            self.assert_invalid_data_creates_nothing(data, '选项')
+
+    def test_non_required_questions_rejected_before_creation(self):
+        for index in (0, 20):
+            for required in (False, None, 1, 'true'):
+                data = deepcopy(self.data)
+                data['questions'][index]['required'] = required
+                with self.subTest(index=index, required=required):
+                    self.assert_invalid_data_creates_nothing(data, 'required 必须为 true')
+            data = deepcopy(self.data)
+            del data['questions'][index]['required']
+            self.assert_invalid_data_creates_nothing(data, 'required 必须为 true')
+
+    def test_question_21_bounds_rejected_before_creation(self):
+        for bound in ('min_choices', 'max_choices'):
+            for value in (None, 0, -1, 5, 7, 6.0, '6', True):
+                data = deepcopy(self.data)
+                data['questions'][-1][bound] = value
+                with self.subTest(bound=bound, value=value):
+                    self.assert_invalid_data_creates_nothing(data, '必须为整数 6')
+            data = deepcopy(self.data)
+            del data['questions'][-1][bound]
+            self.assert_invalid_data_creates_nothing(data, '必须为整数 6')
+
+    def test_question_21_needs_enough_distinct_choices(self):
+        data = deepcopy(self.data)
+        data['questions'][-1]['choices'] = [f'Option {index}' for index in range(5)]
+        self.assert_invalid_data_creates_nothing(data, '至少 6 个不同选项')
+        data['questions'][-1]['choices'].append('Option 5')
+        self.data_path.write_text(json.dumps(data), encoding='utf-8')
+        self.run_command(publish=True)
+        multiple = Question.objects.get(survey__title=SURVEY_TITLES[1][0], order=21)
+        self.assertEqual(multiple.choices.count(), 6)
+        self.assertEqual((multiple.min_choices, multiple.max_choices), (6, 6))
 
     def test_publish_and_repeat_preserve_existing_records(self):
         self.run_command(publish=True)
