@@ -5,6 +5,7 @@ from django.db import close_old_connections, connection
 from django.test import TransactionTestCase
 
 from app import course_utils, course_views
+from app.activity_utils import ActivityException, withdraw_activity_for_person
 from app.models import Activity, Course, CourseParticipant, CourseTime, Participation, Position
 from app.test.course_fixtures import CourseFixtures
 
@@ -80,6 +81,25 @@ class CourseConcurrencyTests(CourseFixtures, TransactionTestCase):
         self.enroll()
         results = self.overlap(self.single, self.withdraw)
         self.assertEqual(results["second"]["warn_code"], 2)
+        self.assert_withdrawn()
+
+    def test_activity_withdrawal_overlaps_course_withdrawal(self):
+        activity = self.activity()
+        self.enroll()
+        self.overlap(
+            lambda: withdraw_activity_for_person(self.student, activity),
+            self.withdraw, table="app_activity")
+        self.assert_withdrawn()
+
+    def test_course_withdrawal_overlaps_activity_withdrawal(self):
+        activity = self.activity()
+        self.enroll()
+
+        def withdraw_activity():
+            with self.assertRaises(ActivityException):
+                withdraw_activity_for_person(self.student, activity)
+
+        self.overlap(self.withdraw, withdraw_activity, table="app_activity")
         self.assert_withdrawn()
 
     def test_weekly_creation_overlaps_withdrawal(self):

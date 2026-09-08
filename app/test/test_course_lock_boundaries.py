@@ -4,6 +4,7 @@ from unittest.mock import patch
 from django.test import TestCase
 
 from app import course_utils
+from app.activity_utils import ActivityException, withdraw_activity_for_person
 from app.models import Course, CourseParticipant, Participation
 from app.test.course_fixtures import CourseFixtures
 
@@ -33,3 +34,15 @@ class CourseLockBoundaryTests(CourseFixtures, TestCase):
         self.course.refresh_from_db()
         self.assertEqual(self.course.classroom, "Changed inside transaction")
         self.assertEqual(self.course.current_participants, 1)
+
+    def test_withdraw_uses_locked_activity_and_rejects_duplicate(self):
+        activity = self.activity()
+        self.enroll()
+        # Neither the write nor the caller's response may use a stale count.
+        activity.current_participants = 42
+        withdraw_activity_for_person(self.student, activity)
+        self.assertEqual(activity.current_participants, 0)
+        with self.assertRaises(ActivityException):
+            withdraw_activity_for_person(self.student, activity)
+        activity.refresh_from_db()
+        self.assertEqual(activity.current_participants, 0)
