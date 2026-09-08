@@ -88,7 +88,7 @@
         "prerequisite_survey": {
             "enabled": false,
             "rules": [
-                {"pattern": "26.+", "survey": "2026 秋元培在校生追踪问卷（新生版）"}
+                {"pattern": "^26000.+", "survey": "2026 秋元培在校生追踪问卷（新生版）"}
             ],
             "fallback": "2026 秋元培在校生追踪问卷"
         },
