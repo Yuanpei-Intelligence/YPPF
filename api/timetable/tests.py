@@ -10,7 +10,9 @@ from rest_framework import status
 from rest_framework.test import APIClient, APITestCase
 
 from generic.models import User
-from timetable.models import ImportLog, TimetableEntry, TimetableSettings
+from api.config import WXMiniappConfig
+from timetable import catalog
+from timetable.models import ImportLog, SubscribeQuota, TimetableEntry, TimetableSettings
 from timetable.tests.helpers import (
     make_entry, make_person, make_term, portal_payload, read_fixture,
 )
@@ -135,6 +137,9 @@ class AuthTests(TimetableAPITestCase):
             ('patch', self.url('settings')),
             ('get', self.url('ics')),
             ('post', self.url('ics-rotate')),
+            ('get', self.url('subscribe-templates')),
+            ('post', self.url('subscribe-grant')),
+            ('get', self.url('catalog')),
         ]
 
     def test_anonymous_gets_401(self):
@@ -577,3 +582,119 @@ class SettingsAndIcsTests(TimetableAPITestCase):
         settings = TimetableSettings.objects.create(person=self.person)
         feed_url = reverse('timetable:ics_feed', kwargs={'token': settings.ics_token})
         self.assertEqual(client.post(feed_url).status_code, status.HTTP_405_METHOD_NOT_ALLOWED)
+
+
+class SubscribeTests(TimetableAPITestCase):
+
+    def test_templates_null_when_unconfigured(self):
+        with patch.object(WXMiniappConfig, 'subscribe_templates', {}):
+            response = self.client.get(self.url('subscribe-templates'))
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data, {'class_reminder': {'template_id': None}})
+        with patch.object(WXMiniappConfig, 'subscribe_templates',
+                          {'class_reminder': {'id': '  ', 'page': 'pages/timetable/index'}}):
+            response = self.client.get(self.url('subscribe-templates'))
+        self.assertEqual(response.data, {'class_reminder': {'template_id': None}})
+
+    def test_templates_configured(self):
+        templates = {'class_reminder': {'id': 'TPL-1'}, 'other': {'id': ''}}
+        with patch.object(WXMiniappConfig, 'subscribe_templates', templates):
+            response = self.client.get(self.url('subscribe-templates'))
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data, {
+            'class_reminder': {'template_id': 'TPL-1'},
+            'other': {'template_id': None},
+        })
+
+    def test_grant_defaults_accumulates_and_caps(self):
+        with patch('timetable.reminders.CONFIG') as config:
+            config.subscribe_quota_cap = 5
+            response = self.client.post(self.url('subscribe-grant'),
+                                        {'template_key': 'class_reminder'}, format='json')
+            self.assertEqual(response.status_code, status.HTTP_200_OK, response.data)
+            self.assertEqual(response.data, {'template_key': 'class_reminder', 'count': 1})
+            response = self.client.post(self.url('subscribe-grant'),
+                                        {'template_key': 'class_reminder', 'count': 10},
+                                        format='json')
+            self.assertEqual(response.status_code, status.HTTP_200_OK, response.data)
+            self.assertEqual(response.data, {'template_key': 'class_reminder', 'count': 5})
+        quota = SubscribeQuota.objects.get(user=self.user, template_key='class_reminder')
+        self.assertEqual(quota.count, 5)
+        self.assertFalse(SubscribeQuota.objects.filter(user=self.other_user).exists())
+
+    def test_grant_validation(self):
+        cases = [{}, {'template_key': 'no-such'}, {'template_key': 'class_reminder', 'count': 0},
+                 {'template_key': 'class_reminder', 'count': 'x'}]
+        for body in cases:
+            with self.subTest(body=body):
+                response = self.client.post(self.url('subscribe-grant'), body, format='json')
+                self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+                self.assertEqual(response.data['code'], 'validation_error')
+        self.assertEqual(SubscribeQuota.objects.count(), 0)
+
+
+class CatalogTests(TimetableAPITestCase):
+
+    def setUp(self):
+        super().setUp()
+        catalog.upsert_catalog_rows(self.term, [
+            {'course_code': '00130201', 'name': '高等数学A（二）', 'class_no': '01',
+             'teacher': '张三', 'credits': '5', 'weeks_text': '1-16周',
+             'time_text': '周一1-2节 理教406;周三3-4节 理教406'},
+            {'course_code': '04831410', 'name': '程序设计实习', 'class_no': '1',
+             'teacher': '李四', 'weeks_text': '1-16', 'time_text': '周二3-4节 理教201'},
+        ])
+        catalog.upsert_catalog_rows(self.old_term, [
+            {'course_code': '00130202', 'name': '高等数学A（三）', 'class_no': '01'},
+        ])
+
+    def test_search_shape_and_filters(self):
+        response = self.client.get(self.url('catalog'), {'q': '高等'})
+        self.assertEqual(response.status_code, status.HTTP_200_OK, response.data)
+        self.assertEqual(len(response.data), 1)
+        row = response.data[0]
+        self.assertEqual(set(row), {'id', 'course_code', 'name', 'class_no', 'teacher',
+                                    'credits', 'time_text', 'slots'})
+        self.assertEqual(row['name'], '高等数学A（二）')
+        # credits is a JSON number (or null), never a string.
+        self.assertIsInstance(row['credits'], float)
+        self.assertEqual(row['credits'], 5.0)
+        self.assertEqual(row['time_text'], '周一1-2节 理教406;周三3-4节 理教406')
+        self.assertEqual(row['slots'], [
+            {'weekday': 1, 'start_section': 1, 'end_section': 2,
+             'week_start': 1, 'week_end': 16, 'parity': 0, 'room': '理教406'},
+            {'weekday': 3, 'start_section': 3, 'end_section': 4,
+             'week_start': 1, 'week_end': 16, 'parity': 0, 'room': '理教406'},
+        ])
+        # Every slot carries exactly the LessonBlock keys the entry form reads.
+        for slot in row['slots']:
+            self.assertEqual(set(slot), {'weekday', 'start_section', 'end_section',
+                                         'week_start', 'week_end', 'parity', 'room'})
+            self.assertTrue(1 <= slot['weekday'] <= 7)
+            self.assertIn(slot['parity'], (0, 1, 2))
+            self.assertIsInstance(slot['room'], str)
+            for key in ('start_section', 'end_section', 'week_start', 'week_end'):
+                self.assertIsInstance(slot[key], int)
+        by_teacher = self.client.get(self.url('catalog'), {'q': '李四'}).data
+        self.assertEqual([r['name'] for r in by_teacher], ['程序设计实习'])
+        self.assertIsNone(by_teacher[0]['credits'])
+        by_code = self.client.get(self.url('catalog'), {'q': '0483'}).data
+        self.assertEqual([r['course_code'] for r in by_code], ['04831410'])
+        other = self.client.get(self.url('catalog'), {'q': '高等', 'term': '25-26-2'}).data
+        self.assertEqual([r['name'] for r in other], ['高等数学A（三）'])
+
+    def test_blank_query_limit_and_errors(self):
+        self.assertEqual(self.client.get(self.url('catalog')).data, [])
+        self.assertEqual(self.client.get(self.url('catalog'), {'q': '  '}).data, [])
+        catalog.upsert_catalog_rows(self.term, [
+            {'course_code': f'{i:08d}', 'name': f'批量课程{i}', 'class_no': '01'}
+            for i in range(25)
+        ])
+        response = self.client.get(self.url('catalog'), {'q': '批量课程'})
+        self.assertEqual(len(response.data), 20)
+        response = self.client.get(self.url('catalog'), {'q': '高等', 'term': 'no-such'})
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+        self.assertEqual(response.data['code'], 'TERM_NOT_FOUND')
+        response = self.client.get(self.url('catalog'), {'q': 'x' * 65})
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(response.data['code'], 'validation_error')

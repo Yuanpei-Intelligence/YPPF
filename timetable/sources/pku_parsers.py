@@ -34,6 +34,8 @@ __all__ = [
     'parse_portal_course_json',
     'parse_portal_html',
     'parse_elective_table',
+    'parse_week_spec',
+    'parse_time_pieces',
     'parse_text',
     'detect_format',
     'external_key',
@@ -375,21 +377,60 @@ def parse_portal_html(html: str) -> list[LessonBlock]:
 # elective.pku.edu.cn 选课结果
 # ---------------------------------------------------------------------------
 
-def _elective_blocks(name: str, text: str, raw: str, *, teacher: str = '',
-                     class_no: str = '', course_code: str = '') -> list[LessonBlock]:
-    blocks: list[LessonBlock] = []
-    for match in _ELECTIVE_TIME_RE.finditer(text):
+def parse_week_spec(text: str) -> tuple[list[tuple[int, int]], int]:
+    """
+    Week ranges and parity written in ``text``: ``'1-16周'``,
+    ``'1~8周,10-16周'`` and ``'第5周'`` give ranges (a reversed range is
+    swapped); ``单周``/``双周`` give parity 1/2, anything else 0. Returns
+    ``([], 0)`` when no range is present.
+    """
+    text = text or ''
+    ranges: list[tuple[int, int]] = []
+    for start, end in _WEEK_RANGE_RE.findall(text):
+        week_start = int(start)
+        week_end = int(end) if end else week_start
+        if week_end < week_start:
+            week_start, week_end = week_end, week_start
+        ranges.append((week_start, week_end))
+    parity = 1 if '单周' in text else 2 if '双周' in text else 0
+    return ranges, parity
+
+
+def parse_time_pieces(text: str) -> list[dict[str, Any]]:
+    """
+    Every ``'1~16周 每周周二1~2节 理教306'`` piece of the elective time
+    format in ``text`` as a dict with ``weekday``, ``start_section``,
+    ``end_section``, ``week_start``, ``week_end``, ``parity`` and ``room``.
+    """
+    pieces: list[dict[str, Any]] = []
+    for match in _ELECTIVE_TIME_RE.finditer(text or ''):
         (week_start, week_end, parity_char, weekday_char,
          start_section, end_section, room) = match.groups()
-        blocks.append(LessonBlock(
-            name=name, teacher=teacher, room=room.strip(' ,，;；'),
+        pieces.append({
+            'weekday': _WEEKDAY_CHARS[weekday_char],
+            'start_section': int(start_section),
+            'end_section': int(end_section or start_section),
+            'week_start': int(week_start),
+            'week_end': int(week_end),
+            'parity': _PARITY_BY_CHAR[parity_char],
+            'room': room.strip(' ,，;；'),
+        })
+    return pieces
+
+
+def _elective_blocks(name: str, text: str, raw: str, *, teacher: str = '',
+                     class_no: str = '', course_code: str = '') -> list[LessonBlock]:
+    return [
+        LessonBlock(
+            name=name, teacher=teacher, room=piece['room'],
             course_code=course_code, class_no=class_no,
-            weekday=_WEEKDAY_CHARS[weekday_char],
-            start_section=int(start_section),
-            end_section=int(end_section or start_section),
-            week_start=int(week_start), week_end=int(week_end),
-            parity=_PARITY_BY_CHAR[parity_char], raw=raw))
-    return blocks
+            weekday=piece['weekday'],
+            start_section=piece['start_section'],
+            end_section=piece['end_section'],
+            week_start=piece['week_start'], week_end=piece['week_end'],
+            parity=piece['parity'], raw=raw)
+        for piece in parse_time_pieces(text)
+    ]
 
 
 def _parse_elective_html(html: str) -> list[LessonBlock]:

@@ -75,6 +75,7 @@ INSTALLED_APPS = [
     "achievement",
     "pku_account",
     "timetable",
+    "academic_record",
 ]
 
 

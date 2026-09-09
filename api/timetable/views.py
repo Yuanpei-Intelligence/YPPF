@@ -1,6 +1,7 @@
 """
 REST APIs of the timetable for the WeChat mini-program.
-Contract: ``timetable/README.md`` §4.6. Mounted at ``/api/v2/timetable/``.
+Contract: ``timetable/README.md`` §4.6 (§6.1 subscribe messages, §6.3
+course catalog). Mounted at ``/api/v2/timetable/``.
 
 Every endpoint requires a mini-program JWT (``WxJWTAuthentication`` +
 ``IsAuthenticated``) and a personal account; organization accounts get 403.
@@ -32,7 +33,10 @@ from rest_framework.views import APIView
 from utils.http.utils import build_full_url
 from app.models import NaturalPerson
 from api.authentication import WxJWTAuthentication
+from api.config import get_subscribe_template
 from api.timetable.serializers import (
+    CatalogEntrySerializer,
+    CatalogQuerySerializer,
     DryRunResponseSerializer,
     EntryInSerializer,
     EntrySerializer,
@@ -42,11 +46,14 @@ from api.timetable.serializers import (
     ImportPortalSerializer,
     ImportTextSerializer,
     SettingsSerializer,
+    SubscribeGrantOutSerializer,
+    SubscribeGrantSerializer,
+    SubscribeTemplatesSerializer,
     TermsResponseSerializer,
     WeekQuerySerializer,
     WeekViewSerializer,
 )
-from timetable import services
+from timetable import catalog, reminders, services
 from timetable.models import AcademicTerm, TimetableEntry
 
 __all__ = [
@@ -59,6 +66,9 @@ __all__ = [
     'SettingsView',
     'IcsView',
     'IcsRotateView',
+    'SubscribeTemplatesView',
+    'SubscribeGrantView',
+    'CatalogView',
 ]
 
 logger = logging.getLogger(__name__)
@@ -560,3 +570,76 @@ class IcsRotateView(TimetableAPIView):
         with transaction.atomic():
             settings.rotate_ics_token()
         return Response(IcsSerializer(_ics_payload(settings)).data)
+
+
+class SubscribeTemplatesView(TimetableAPIView):
+    """Subscribe-message template ids the client may request grants for."""
+
+    @extend_schema(
+        summary='订阅消息模板',
+        description='各模板的 template_id；未配置时为 null，'
+                    '此时客户端不应调用 wx.requestSubscribeMessage。',
+        responses={200: SubscribeTemplatesSerializer, **_ERROR_RESPONSES},
+        tags=TAGS,
+    )
+    def get(self, request):
+        self.get_person(request)
+        data = {}
+        for key in reminders.subscribe_template_keys():
+            template = get_subscribe_template(key)
+            data[key] = {'template_id': template['id'] if template else None}
+        return Response(data)
+
+
+class SubscribeGrantView(TimetableAPIView):
+    """Record accepted subscribe-message grants (``wx.requestSubscribeMessage``)."""
+
+    @extend_schema(
+        summary='登记订阅消息授权',
+        description='每次 wx.requestSubscribeMessage 返回 accept 后调用；'
+                    '服务端累计并按 subscribe_quota_cap 封顶，count 缺省为 1。',
+        request=SubscribeGrantSerializer,
+        responses={200: SubscribeGrantOutSerializer,
+                   400: OpenApiResponse(response=ErrorSerializer, description='参数错误'),
+                   **_ERROR_RESPONSES},
+        tags=TAGS,
+    )
+    def post(self, request):
+        self.get_person(request)
+        serializer = SubscribeGrantSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        data = serializer.validated_data
+        quota = reminders.grant_subscribe_quota(
+            request.user, data['template_key'], data['count'])
+        return Response(SubscribeGrantOutSerializer({
+            'template_key': quota.template_key,
+            'count': quota.count,
+        }).data)
+
+
+class CatalogView(TimetableAPIView):
+    """Search the university course catalog of a term (manual-entry prefill)."""
+
+    @extend_schema(
+        summary='课程目录检索',
+        description='按课程名 / 课程号 / 教师模糊匹配（icontains），最多 20 条；'
+                    'q 为空时返回空列表。term 缺省为当前学期。',
+        parameters=[
+            OpenApiParameter('term', str, OpenApiParameter.QUERY, required=False,
+                             description='学期代码'),
+            OpenApiParameter('q', str, OpenApiParameter.QUERY, required=False,
+                             description='关键词'),
+        ],
+        responses={200: CatalogEntrySerializer(many=True),
+                   400: OpenApiResponse(response=ErrorSerializer, description='参数错误'),
+                   404: OpenApiResponse(response=ErrorSerializer, description='学期不存在'),
+                   **_ERROR_RESPONSES},
+        tags=TAGS,
+    )
+    def get(self, request):
+        self.get_person(request)
+        query = CatalogQuerySerializer(data=request.query_params)
+        query.is_valid(raise_exception=True)
+        term = self.resolve_term(query.validated_data.get('term'))
+        entries = catalog.search_catalog(term, query.validated_data.get('q', ''))
+        return Response(CatalogEntrySerializer(entries, many=True).data)

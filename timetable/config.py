@@ -1,10 +1,12 @@
 """
 Configuration of the timetable app (``config.json`` section ``timetable``).
 
-See ``timetable/README.md`` §2. ``CONFIG.sources`` is the event source
-registry: every entry is the dotted path of an ``EventSource`` class and
-packaging a product means editing that list. Unknown or unimportable entries
-are logged and skipped by ``timetable.sources.base.load_sources``.
+See ``timetable/README.md`` §2 and §6.1. ``CONFIG.sources`` is the event
+source registry: every entry is the dotted path of an ``EventSource`` class
+and packaging a product means editing that list. Unknown or unimportable
+entries are logged and skipped by ``timetable.sources.base.load_sources``.
+The reminder settings complement ``wx_miniapp.subscribe_templates`` in
+``api.config``.
 """
 from boot.config import ROOT_CONFIG
 from utils.config import Config, LazySetting
@@ -30,6 +32,13 @@ class TimetableConfig(Config):
     # Default minutes-before-class of a newly created TimetableSettings row.
     reminder_default_minutes = LazySetting(
         'reminder_default_minutes', int, default=20)
+    # How far ahead reminders may be materialised (minutes). Reserved for a
+    # look-ahead scheduling mode; the current job only uses its own interval.
+    reminder_lookahead_minutes = LazySetting(
+        'reminder_lookahead_minutes', int, default=60)
+    # Maximum accepted-but-unused subscribe-message grants kept per user
+    # and template key (see timetable.reminders.grant_subscribe_quota).
+    subscribe_quota_cap = LazySetting('subscribe_quota_cap', int, default=50)
 
 
 CONFIG = TimetableConfig(ROOT_CONFIG, 'timetable')

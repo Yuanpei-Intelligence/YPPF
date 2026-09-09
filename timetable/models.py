@@ -1,6 +1,7 @@
 """
 Models of the timetable app: academic terms, stored timetable entries,
-import logs and per-person settings. Contract: ``timetable/README.md`` §4.1.
+import logs, per-person settings (``timetable/README.md`` §4.1), subscribe
+quotas and reminder logs (§6.1) and the course catalog (§6.3).
 
 Stored data is per ``(person, term)``. Entries of one import source are
 replaced as a set by ``timetable.services.upsert_entries``; other sources and
@@ -16,6 +17,7 @@ from django.db import models
 from django.db.models import Q
 
 from utils.models.semester import Semester
+from generic.models import User
 from app.models import NaturalPerson
 
 __all__ = [
@@ -24,6 +26,9 @@ __all__ = [
     'TimetableEntry',
     'ImportLog',
     'TimetableSettings',
+    'SubscribeQuota',
+    'ReminderLog',
+    'CourseCatalogEntry',
 ]
 
 
@@ -326,3 +331,117 @@ class TimetableSettings(models.Model):
         """Replace the ICS token, invalidating the previous feed URL."""
         self.ics_token = uuid4()
         self.save(update_fields=['ics_token'])
+
+
+class SubscribeQuota(models.Model):
+    """
+    Accepted-but-unused WeChat subscribe-message grants of a user, per
+    template key (``timetable/README.md`` §6.1).
+
+    The mini-program posts one grant for every ``accept`` returned by
+    ``wx.requestSubscribeMessage``; each subscribe message sent consumes
+    one. ``count`` is capped at ``timetable.subscribe_quota_cap`` when
+    granting and is only changed through ``timetable.reminders``.
+    """
+
+    class Meta:
+        verbose_name = '订阅消息配额'
+        verbose_name_plural = verbose_name
+        constraints = [
+            models.UniqueConstraint(
+                fields=['user', 'template_key'],
+                name='timetable_subscribe_quota_unique'),
+        ]
+
+    user = models.ForeignKey(
+        User, on_delete=models.CASCADE,
+        related_name='subscribe_quotas', verbose_name='用户')
+    template_key = models.CharField('模板键', max_length=32)
+    count = models.PositiveIntegerField('剩余次数', default=0)
+    updated_at = models.DateTimeField('更新时间', auto_now=True)
+
+    def __str__(self) -> str:
+        return f'{self.user.username} {self.template_key} x{self.count}'
+
+
+class ReminderLog(models.Model):
+    """
+    One row per ``(person, occurrence)`` ever reminded, whatever the
+    outcome, so a reminder is never sent twice. ``scheduled_for`` is the
+    moment the reminder was due (class start minus the person's
+    ``reminder_minutes``); ``sent_at`` is when it was actually handled and
+    ``detail`` records why a channel was (not) used.
+    """
+
+    class Channel(models.TextChoices):
+        SUBSCRIBE = 'subscribe', '订阅消息'
+        NOTIFICATION = 'notification', '站内通知'
+        SKIPPED = 'skipped', '未发送'
+
+    class Meta:
+        verbose_name = '上课提醒记录'
+        verbose_name_plural = verbose_name
+        ordering = ['-scheduled_for', '-id']
+        constraints = [
+            models.UniqueConstraint(
+                fields=['person', 'occurrence_id'],
+                name='timetable_reminder_log_unique'),
+        ]
+
+    person = models.ForeignKey(
+        NaturalPerson, on_delete=models.CASCADE,
+        related_name='reminder_logs', verbose_name='学生')
+    occurrence_id = models.CharField('事件标识', max_length=128)
+    channel = models.CharField('渠道', max_length=16, choices=Channel.choices)
+    scheduled_for = models.DateTimeField('计划提醒时间')
+    sent_at = models.DateTimeField('处理时间', auto_now_add=True)
+    detail = models.CharField('详情', max_length=128, blank=True)
+
+    def __str__(self) -> str:
+        return f'{self.person} {self.occurrence_id} {self.channel}'
+
+
+class CourseCatalogEntry(models.Model):
+    """
+    One class (课程号 + 班号) of the university course catalog in a term,
+    imported from the PKU-Course-Crawler workbook by the
+    ``import_course_catalog`` command (``timetable/README.md`` §6.3).
+
+    ``slots`` is the best-effort parse of ``weeks_text`` + ``time_text``
+    into ``LessonBlock``-like dicts (``weekday``, ``start_section``,
+    ``end_section``, ``week_start``, ``week_end``, ``parity``, ``room``)
+    used by the mini-program to prefill one manual entry per slot.
+    """
+
+    class Meta:
+        verbose_name = '课程目录'
+        verbose_name_plural = verbose_name
+        ordering = ['course_code', 'class_no', 'id']
+        constraints = [
+            models.UniqueConstraint(
+                fields=['term', 'course_code', 'class_no'],
+                name='timetable_catalog_entry_unique'),
+        ]
+
+    term = models.ForeignKey(
+        AcademicTerm, on_delete=models.CASCADE,
+        related_name='catalog_entries', verbose_name='学期')
+    department = models.CharField('院系', max_length=64, blank=True)
+    course_code = models.CharField('课程号', max_length=32)
+    name = models.CharField('课程名', max_length=80)
+    name_en = models.CharField('课程英文名', max_length=160, blank=True)
+    class_no = models.CharField('班号', max_length=8, blank=True)
+    audience = models.CharField('修读对象', max_length=32, blank=True)
+    category = models.CharField('课程类别', max_length=32, blank=True)
+    credits = models.DecimalField(
+        '参考学分', max_digits=4, decimal_places=1, null=True, blank=True)
+    hours_per_week = models.CharField('周学时', max_length=16, blank=True)
+    total_hours = models.CharField('总学时', max_length=16, blank=True)
+    teacher = models.CharField('授课教师', max_length=80, blank=True)
+    weeks_text = models.CharField('起止周', max_length=64, blank=True)
+    time_text = models.CharField('上课时间', max_length=200, blank=True)
+    note = models.CharField('备注', max_length=200, blank=True)
+    slots = models.JSONField('时段', default=list, blank=True)
+
+    def __str__(self) -> str:
+        return f'{self.course_code}-{self.class_no} {self.name} ({self.term.code})'

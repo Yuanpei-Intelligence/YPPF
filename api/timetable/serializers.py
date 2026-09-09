@@ -1,5 +1,6 @@
 """
-Serializers of the timetable mini-program API. Contract: ``timetable/README.md`` §4.6.
+Serializers of the timetable mini-program API. Contract: ``timetable/README.md`` §4.6
+(§6.1 subscribe messages, §6.3 course catalog).
 
 Response payloads for the week view are plain dicts produced by
 ``timetable.services``; the serializers below document their shape for the
@@ -11,7 +12,8 @@ from datetime import time
 
 from rest_framework import serializers
 
-from timetable.models import TimetableEntry, TimetableSettings
+from timetable import reminders
+from timetable.models import CourseCatalogEntry, TimetableEntry, TimetableSettings
 
 __all__ = [
     'TermSerializer',
@@ -29,6 +31,13 @@ __all__ = [
     'SettingsSerializer',
     'IcsSerializer',
     'ErrorSerializer',
+    'SubscribeTemplateSerializer',
+    'SubscribeTemplatesSerializer',
+    'SubscribeGrantSerializer',
+    'SubscribeGrantOutSerializer',
+    'CatalogQuerySerializer',
+    'CatalogSlotSerializer',
+    'CatalogEntrySerializer',
 ]
 
 TIME_INPUT_FORMATS = ['%H:%M', '%H:%M:%S']
@@ -266,3 +275,61 @@ class SettingsSerializer(serializers.ModelSerializer):
 class IcsSerializer(serializers.Serializer):
     url = serializers.URLField()
     token = serializers.CharField()
+
+
+class SubscribeTemplateSerializer(serializers.Serializer):
+    template_id = serializers.CharField(
+        allow_null=True, help_text='WeChat template id; null when not configured')
+
+
+class SubscribeTemplatesSerializer(serializers.Serializer):
+    """Template ids by key; the client only requests configured ones."""
+
+    class_reminder = SubscribeTemplateSerializer()
+
+
+class SubscribeGrantSerializer(serializers.Serializer):
+    template_key = serializers.CharField(max_length=32)
+    count = serializers.IntegerField(
+        required=False, default=1, min_value=1, max_value=1000,
+        help_text='Number of accepts to record (server caps the stored total)')
+
+    def validate_template_key(self, value: str) -> str:
+        if value not in reminders.subscribe_template_keys():
+            raise serializers.ValidationError('未知的订阅消息模板。')
+        return value
+
+
+class SubscribeGrantOutSerializer(serializers.Serializer):
+    template_key = serializers.CharField()
+    count = serializers.IntegerField(help_text='Unused grants now stored')
+
+
+class CatalogQuerySerializer(serializers.Serializer):
+    term = serializers.CharField(required=False, allow_blank=True,
+                                 help_text='Term code, default current term')
+    q = serializers.CharField(required=False, allow_blank=True, max_length=64,
+                              help_text='Matches name / code / teacher (icontains)')
+
+
+class CatalogSlotSerializer(serializers.Serializer):
+    weekday = serializers.IntegerField(required=False)
+    start_section = serializers.IntegerField(required=False)
+    end_section = serializers.IntegerField(required=False)
+    week_start = serializers.IntegerField(required=False)
+    week_end = serializers.IntegerField(required=False)
+    parity = serializers.IntegerField(required=False)
+    room = serializers.CharField(required=False, allow_blank=True)
+
+
+class CatalogEntrySerializer(serializers.ModelSerializer):
+    """Read shape of a course catalog row for the manual-entry form."""
+
+    credits = serializers.FloatField(allow_null=True, read_only=True)
+    slots = CatalogSlotSerializer(many=True, read_only=True)
+
+    class Meta:
+        model = CourseCatalogEntry
+        fields = ['id', 'course_code', 'name', 'class_no', 'teacher',
+                  'credits', 'time_text', 'slots']
+        read_only_fields = fields

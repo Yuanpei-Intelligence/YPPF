@@ -53,7 +53,19 @@
         "token_expire_minutes": 120,
         "signed_openid_ttl_minutes": 10,
         "binding_max_failed_attempts": 5,
-        "ticket_ttl_seconds": 60
+        "ticket_ttl_seconds": 60,
+        "subscribe_templates": {
+            "class_reminder": {
+                "id": "",
+                "fields": {
+                    "course": "thing1",
+                    "time": "time2",
+                    "location": "thing3",
+                    "note": "thing4"
+                },
+                "page": "pages/timetable/index"
+            }
+        }
     },
     "email": {
         "url": "",
@@ -149,6 +161,8 @@
             "timetable.sources.activity.ActivitySource",
             "timetable.sources.appoint.AppointSource"
         ],
-        "reminder_default_minutes": 20
+        "reminder_default_minutes": 20,
+        "reminder_lookahead_minutes": 60,
+        "subscribe_quota_cap": 50
     }
 }

@@ -1,13 +1,16 @@
-"""URL routes for the timetable mini-program API. Contract: timetable/README.md §4.6."""
+"""URL routes for the timetable mini-program API. Contract: timetable/README.md §4.6, §6."""
 from django.urls import path
 
 from api.timetable.views import (
+    CatalogView,
     EntryViewSet,
     IcsRotateView,
     IcsView,
     ImportPortalView,
     ImportTextView,
     SettingsView,
+    SubscribeGrantView,
+    SubscribeTemplatesView,
     TermsView,
     WeekView,
 )
@@ -27,4 +30,8 @@ urlpatterns = [
     path('settings/', SettingsView.as_view(), name='settings'),
     path('ics/', IcsView.as_view(), name='ics'),
     path('ics/rotate/', IcsRotateView.as_view(), name='ics-rotate'),
+    path('subscribe-templates/', SubscribeTemplatesView.as_view(),
+         name='subscribe-templates'),
+    path('subscribe-grant/', SubscribeGrantView.as_view(), name='subscribe-grant'),
+    path('catalog/', CatalogView.as_view(), name='catalog'),
 ]

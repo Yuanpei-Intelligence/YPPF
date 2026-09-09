@@ -45,6 +45,7 @@ urlpatterns = [
     path("v2/generic/", include("api.generic.urls")),
     path("v2/pku/", include("api.pku_account.urls")),
     path("v2/timetable/", include("api.timetable.urls")),
+    path("v2/grades/", include("api.academic_record.urls")),
 ]
 
 if settings.DEBUG:

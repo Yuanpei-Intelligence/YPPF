@@ -2,7 +2,10 @@ from django.contrib import admin
 
 from timetable.models import (
     AcademicTerm,
+    CourseCatalogEntry,
     ImportLog,
+    ReminderLog,
+    SubscribeQuota,
     TimetableEntry,
     TimetableSettings,
 )
@@ -49,3 +52,33 @@ class TimetableSettingsAdmin(admin.ModelAdmin):
     search_fields = ['person__name', 'person__person_id__username']
     raw_id_fields = ['person']
     readonly_fields = ['ics_token']
+
+
+@admin.register(SubscribeQuota)
+class SubscribeQuotaAdmin(admin.ModelAdmin):
+    list_display = ['user', 'template_key', 'count', 'updated_at']
+    list_filter = ['template_key']
+    search_fields = ['user__username', 'user__name']
+    raw_id_fields = ['user']
+    readonly_fields = ['updated_at']
+
+
+@admin.register(ReminderLog)
+class ReminderLogAdmin(admin.ModelAdmin):
+    list_display = ['person', 'occurrence_id', 'channel', 'scheduled_for',
+                    'sent_at', 'detail']
+    list_filter = ['channel']
+    search_fields = ['occurrence_id', 'person__name', 'person__person_id__username']
+    raw_id_fields = ['person']
+    readonly_fields = ['person', 'occurrence_id', 'channel', 'scheduled_for',
+                       'sent_at', 'detail']
+    date_hierarchy = 'scheduled_for'
+
+
+@admin.register(CourseCatalogEntry)
+class CourseCatalogEntryAdmin(admin.ModelAdmin):
+    list_display = ['term', 'course_code', 'class_no', 'name', 'teacher',
+                    'credits', 'weeks_text', 'time_text']
+    list_filter = ['term', 'category']
+    search_fields = ['course_code', 'name', 'name_en', 'teacher', 'department']
+    ordering = ['course_code', 'class_no']

@@ -543,6 +543,19 @@ user tap (the 提醒 switch) and on each timetable open once the switch is on
 (silent when "总是保持以上选择" was chosen), posting `subscribe-grant/` for
 every `accept`.
 
+Implementation notes (as built): `send_class_reminder` first inserts the
+`ReminderLog` row (channel `skipped`, detail `pending`) so the unique key
+makes concurrent jobs send at most once, then updates it; a quota unit is
+only consumed on a successful send (43101 zeroes the quota, other WeChat
+failures give the unit back) before falling back to the notification; the
+fallback content omits ` @location` when the location is empty; the due
+window is `(now − 5min, now]` shared with the job interval, so a scheduler
+outage longer than one interval skips that window (`reminder_lookahead_minutes`
+is reserved for a look-ahead mode). `subscribe-grant/` accepts only
+configured template keys (plus `class_reminder`), 400 otherwise. Jobs are
+discovered by `scheduler.management.commands.collect_jobs` importing
+`<app>.jobs` for every installed app — no registration list to edit.
+
 ### 6.2 Grades (`academic_record` app, `/api/v2/grades/`)
 
 Portal payload (`retrScores.do`): `{"cjxx": [{"xnd": "25-26", "xq": "1",
@@ -629,6 +642,14 @@ upserts by `(term, course_code, class_no)` (openpyxl, already a dependency);
 class_no, teacher, credits, time_text, slots}` matching name/code/teacher
 (`icontains`), used by `entry-form.vue` to prefill a manual entry (one
 `TimetableEntry` per slot).
+
+Implementation notes (as built): `slots` items use exactly the LessonBlock
+keys `weekday/start_section/end_section/week_start/week_end/parity/room`;
+`credits` is a JSON number or null; an empty `q` returns `[]` (max length 64).
+The import command routes each row by its 学年学期 column when that maps to
+an existing `AcademicTerm`, uses `--term` when the column is missing or
+unparseable, and skips (and reports) rows whose parsed term does not exist;
+numeric course codes are zero-padded to 8 digits and class numbers to 2.
 
 ## 7. Verification
 

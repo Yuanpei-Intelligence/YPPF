@@ -43,6 +43,9 @@ then be registered with `include()` in `api/urls.py`.
 | `YQpools/` | YQPoint balance, prize-pool listing, exchange, lottery, and random purchase. Preserve the directory and URL capitalization. | `/api/v2/YQpools/` (case-sensitive) |
 | `org/` | Organization subscription listing and subscription status updates. | `/api/v2/org/` |
 | `generic/` | Cross-feature mini-program data, currently the homepage carousel. | `/api/v2/generic/` |
+| `pku_account/` | PKU (IAAA) account binding: portal login with one-time credentials, binding status, consents, unbinding. Contract in `timetable/README.md` §3. | `/api/v2/pku/` |
+| `timetable/` | Personal timetable: terms, week view, stored entries, portal/text import, settings, ICS link, subscribe-message quota, course-catalog search. Contract in `timetable/README.md` §4 and §6. | `/api/v2/timetable/` |
+| `academic_record/` | Consent-gated grade records fetched through the PKU binding: stored grades, live sync, deletion. Contract in `timetable/README.md` §6.2. | `/api/v2/grades/` |
 
 Many modules use DRF `DefaultRouter`; routes generated from ViewSets and
 `@action` methods may therefore not appear as explicit `path()` entries. When
