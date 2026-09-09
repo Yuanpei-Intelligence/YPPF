@@ -275,6 +275,7 @@ class LessonBlock:
     weekday: int = 0                     # 1..7
     start_section: int = 0; end_section: int = 0
     week_start: int = 1; week_end: int = 16; parity: int = 0   # 0 all, 1 odd, 2 even
+    note: str = ''                       # portal 备注, stored in TimetableEntry.note
     raw: str = ''
 
 def parse_course_cell_text(text) -> list[dict]      # '课名(主)\n上课信息：1-16周 每周 理教201 教师：张三 备注：…\n考试信息：…'
@@ -282,8 +283,10 @@ def parse_portal_course_json(raw: dict) -> list[LessonBlock]   # getCourseInfo.d
 def parse_portal_html(html: str) -> list[LessonBlock]          # portal 我的课表 page, cells id="mon1".."sun12"
 def parse_elective_table(text: str) -> list[LessonBlock]       # elective.pku.edu.cn 选课结果 (HTML or plain text)
                                                                 # time regex: (\d+)~(\d+)周 (.)周周(.)(\d+)~(\d+)节\s*(\S*)
-def detect_format(text: str) -> str                             # 'portal_html' | 'elective' | 'unknown'
-def external_key(block: LessonBlock) -> str                     # sha1 over normalised fields
+def detect_format(text: str) -> str                             # 'portal_html' | 'portal_json' | 'elective' | 'unknown'
+def external_key(block: LessonBlock) -> str                     # sha1 over name/weekday/sections/week range/parity
+                                                                # (room and teacher excluded, so a room change is an
+                                                                #  update of the same entry, not delete + create)
 ```
 
 Merging rule (portal JSON/HTML): consecutive sections on the same weekday with
@@ -383,6 +386,18 @@ naive local (`YYYY-MM-DDTHH:MM:SS`, Asia/Shanghai — YPPF runs with
 | PATCH | `settings/` | partial `Settings` (not `ics_token`) | `Settings` |
 | GET | `ics/` | – | `{url, token}` (absolute URL via `utils.http.utils.build_full_url`) |
 | POST | `ics/rotate/` | – | `{url, token}` |
+
+Defaults and errors: the default term is `AcademicTerm.current()` or, before
+the first term starts, the nearest upcoming active term; with no usable term
+`terms/` returns `current: null` and the other endpoints answer 404
+`NO_CURRENT_TERM`; an unknown `term` code answers 404 `TERM_NOT_FOUND`. A
+portal payload with `success: false` or zero courses, and pasted text that
+yields no blocks, answer 400 `PARSE_FAILED` and leave existing entries
+untouched (a failed `ImportLog` is written); a dry run on unrecognised text
+answers 200 `{format: 'unknown', blocks: []}`. Hidden entries are excluded
+from `week/` and from the ICS feed but still listed by `entries/` so they can
+be un-hidden. Every error body is `{code, message}` (validation errors add
+`errors`).
 
 ```ts
 interface Term { code: string; name: string; week1_monday: string; total_weeks: number;
