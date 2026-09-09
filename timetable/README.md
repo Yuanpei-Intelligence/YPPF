@@ -810,6 +810,20 @@ Mini-program:
 - Export: the settings section explains that the ICS subscription follows
   the same four source toggles.
 
+Implementation notes (as built): sources gained an optional
+`occurrences_between(person, span: DateSpan, settings)`; `DateSpan`
+(`timetable/sources/base.py`) resolves the active terms for a date range
+once and is shared by all sources; term-based sources fall back to a default
+implementation. For dates outside any term `Occurrence.week` is counted
+relative to the latest started term (0 when there is none) while
+`AgendaDay.week` stays null. `days` above 14 is truncated (not an error);
+`days < 1`, non-integers and a malformed `from` answer 400; empty values
+mean "omitted"; with no term at all `agenda/` still answers 200 with
+`term: null` days. In date mode 书院课 are taken from every successful,
+non-aborted enrolment and selected by date (week mode still filters by the
+YPPF semester). `show_courses` also silences class reminders for school
+courses, like the other three toggles do for theirs.
+
 ## 7. Verification
 
 - Backend: `python manage.py test pku_account timetable api.pku_account api.timetable`
