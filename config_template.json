@@ -134,5 +134,21 @@
     },
     "dormitory": {
         "routine_qa_survey_title": "default title"
+    },
+    "pku_portal": {
+        "enabled": true,
+        "session_key": "",
+        "timeout": 15,
+        "max_login_failures": 5,
+        "lock_seconds": 900
+    },
+    "timetable": {
+        "sources": [
+            "timetable.sources.stored.StoredEntriesSource",
+            "timetable.sources.college.CollegeCourseSource",
+            "timetable.sources.activity.ActivitySource",
+            "timetable.sources.appoint.AppointSource"
+        ],
+        "reminder_default_minutes": 20
     }
 }

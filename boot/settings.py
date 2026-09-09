@@ -73,6 +73,8 @@ INSTALLED_APPS = [
     "dormitory",
     "feedback",
     "achievement",
+    "pku_account",
+    "timetable",
 ]
 
 
