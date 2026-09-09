@@ -13,6 +13,8 @@ from typing import Any, Iterable
 
 from django.db import transaction
 
+from app.models import NaturalPerson
+
 from timetable.config import CONFIG
 from timetable.models import (
     AcademicTerm,
@@ -135,12 +137,12 @@ def week_view(person, term: AcademicTerm, week: int, *,
 def detect_conflicts(occurrences: Iterable[Occurrence]) -> list[list[str]]:
     """
     Groups of ids of occurrences that overlap in time on the same date.
-    Hidden occurrences are ignored. Overlap is transitive within a group
+    Hidden and canceled occurrences are ignored. Overlap is transitive within a group
     (A–B and B–C overlapping put A, B, C in one group).
     """
     by_date: dict[date, list[Occurrence]] = {}
     for item in occurrences:
-        if item.hidden:
+        if item.hidden or item.status == 'canceled':
             continue
         by_date.setdefault(item.date, []).append(item)
     groups: list[list[str]] = []
@@ -223,6 +225,10 @@ def upsert_entries(person, term: AcademicTerm, source, blocks: Iterable[LessonBl
             continue
         prepared.setdefault(external_key(block), fields)
     with transaction.atomic():
+        # Serialize imports of one person: a first import has no entry rows
+        # to lock, so two concurrent imports would otherwise race on the
+        # unique key and surface an IntegrityError.
+        NaturalPerson.objects.select_for_update().get(pk=person.pk)
         existing = {
             entry.external_key: entry
             for entry in TimetableEntry.objects.select_for_update()

@@ -83,9 +83,14 @@ class CollegeCourseSource:
                 if activity is None:
                     continue
                 weeks_with_activity.add(week)
-                if activity.status in excluded_status:
-                    continue
                 on = activity.start.date()
+                if activity.status in excluded_status:
+                    # Keep the slot visible as 已取消 rather than silently empty.
+                    status = 'canceled'
+                elif activity.pk in attended:
+                    status = 'checked_in'
+                else:
+                    status = ''
                 result.append(Occurrence(
                     id=f'college:{course_time.pk}:{on.isoformat()}',
                     source='college', kind='college',
@@ -94,7 +99,7 @@ class CollegeCourseSource:
                     start=activity.start, end=activity.end,
                     date=on, week=week, weekday=on.isoweekday(),
                     color_key=course.name,
-                    status='checked_in' if activity.pk in attended else '',
+                    status=status,
                     ref={'course_id': course.pk, 'activity_id': activity.pk},
                 ))
             for k in range(course_time.cur_week, course_time.end_week):

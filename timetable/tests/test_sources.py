@@ -138,10 +138,12 @@ class CollegeCourseSourceTests(_AppFixtureMixin, TestCase):
 
     def test_generated_activities_and_expansion(self):
         occurrences = self.occurrences()
-        self.assertEqual(len(occurrences), 15)
+        self.assertEqual(len(occurrences), 16)
         by_week = {o.week: o for o in occurrences}
-        self.assertNotIn(3, by_week)          # canceled activity, no fallback
-        self.assertEqual(sorted(by_week), [1, 2] + list(range(4, 17)))
+        # canceled activity is kept as 已取消 (no fallback expansion for that week)
+        self.assertEqual(by_week[3].status, 'canceled')
+        self.assertEqual(by_week[3].ref['activity_id'], self.week3.pk)
+        self.assertEqual(sorted(by_week), list(range(1, 17)))
         first = by_week[1]
         self.assertEqual((first.source, first.kind), ('college', 'college'))
         self.assertEqual(first.title, '书院课测试')
@@ -165,11 +167,11 @@ class CollegeCourseSourceTests(_AppFixtureMixin, TestCase):
         self.assertEqual(by_week[16].date, date(2026, 12, 30))
 
     def test_week_range_and_settings(self):
-        self.assertEqual([o.week for o in self.occurrences(2, 4)], [2, 4])
+        self.assertEqual([o.week for o in self.occurrences(2, 4)], [2, 3, 4])
         self.assertEqual(self.occurrences(5, 2), [])
         self.settings.show_college = False
         self.assertEqual(self.occurrences(), [])
-        self.assertEqual(len(self.source.occurrences(self.person, self.term, 1, 16, None)), 15)
+        self.assertEqual(len(self.source.occurrences(self.person, self.term, 1, 16, None)), 16)
 
     def test_subtitle_falls_back_to_organization(self):
         self.course.teacher = ''

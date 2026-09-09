@@ -137,7 +137,7 @@ class TimetableAPIMixin:
     def get_person(self, request) -> NaturalPerson:
         """The caller's ``NaturalPerson``; 403 for organization accounts."""
         user = request.user
-        if not user.is_person():
+        if not (user.is_valid() and user.is_person()):
             raise PermissionDenied('请使用个人账号访问课表。')
         try:
             return NaturalPerson.objects.get_by_user(user)

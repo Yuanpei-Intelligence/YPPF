@@ -46,7 +46,7 @@ Rules:
 
 ```json
 "pku_portal": {
-    "enabled": true,
+    "enabled": false,          // safe default; set true per deployment (login answers PORTAL_DISABLED while false)
     "session_key": "",           // Fernet key (urlsafe base64, 32 bytes). Empty → derived from SECRET_KEY
     "timeout": 15,               // seconds per HTTP call
     "max_login_failures": 5,     // per binding, then locked for lock_seconds
