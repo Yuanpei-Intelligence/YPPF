@@ -1,0 +1,55 @@
+{% extends "dormitory/routine_QA.html" %}
+
+{% block add_css_file %}{% endblock %}
+{% block add_js_file %}{% endblock %}
+
+{% block survey_title %}选课前置问卷{% endblock %}
+
+{% block survey_content %}
+{% if unavailable %}
+    <div class="alert alert-warning text-center" role="alert">选课前置问卷暂不可用，请联系管理员。</div>
+{% else %}
+    <div class="col-md-12 text-center">
+        <p>请先完成并提交以下问卷，再进行书院课选课。</p>
+        <h5>{{ survey.title }}</h5>
+        {% if survey.description %}<p>{{ survey.description|linebreaksbr }}</p>{% endif %}
+        <p>标<span class="req">*</span>的为必填问题，其他问题可不填。</p>
+    </div>
+    <div class="container mt-4">
+        <form method="post">
+            {% csrf_token %}
+            <input type="hidden" name="action" value="submit_survey">
+            {% if form.errors %}
+                <div class="alert alert-warning mx-md-5" role="alert">
+                    请检查以下题目的填写内容。
+                    {% for error in form.non_field_errors %}<div>{{ error }}</div>{% endfor %}
+                </div>
+            {% endif %}
+            {% for field in form %}
+                <fieldset class="form-group mb-4 mx-md-5" id="survey-question-{{ forloop.counter }}">
+                    <legend class="h6">
+                        {{ forloop.counter }}. {{ field.label }}
+                        {% if field.field.required %}<span class="req" aria-label="必填">*</span>{% endif %}
+                    </legend>
+                    {% if field.help_text %}<p class="text-muted mb-2">{{ field.help_text|linebreaksbr }}</p>{% endif %}
+                    {% if field.widget_type == 'radioselect' or field.widget_type == 'checkboxselectmultiple' %}
+                        {% for choice in field %}
+                            <div class="form-check mb-1">
+                                {{ choice.tag }}
+                                <label class="form-check-label" for="{{ choice.id_for_label }}">{{ choice.choice_label }}</label>
+                            </div>
+                        {% endfor %}
+                    {% else %}
+                        <label class="sr-only" for="{{ field.id_for_label }}">{{ field.label }}</label>
+                        {{ field }}
+                    {% endif %}
+                    {% for error in field.errors %}<div class="text-danger mt-2" role="alert">{{ error }}</div>{% endfor %}
+                </fieldset>
+            {% endfor %}
+            <div class="mt-4 mx-md-5">
+                <button type="submit" class="btn btn-primary btn-block mb-3">提交问卷并进入选课</button>
+            </div>
+        </form>
+    </div>
+{% endif %}
+{% endblock survey_content %}
