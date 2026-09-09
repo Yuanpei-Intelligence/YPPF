@@ -102,15 +102,19 @@ def _first_error(detail) -> str:
     return str(detail)
 
 
-def _field_errors(detail) -> dict[str, list[str]]:
+def _field_errors(detail) -> dict[str, list[dict[str, str]]]:
+    """Canonical field errors: ``{field: [{code, message}]}`` (same shape as
+    the platform-wide envelope of ``api/exceptions.py``)."""
     if not isinstance(detail, dict):
         return {}
-    errors: dict[str, list[str]] = {}
+    errors: dict[str, list[dict[str, str]]] = {}
     for name, value in detail.items():
         if name == 'detail':
             continue
         values = value if isinstance(value, (list, tuple)) else [value]
-        errors[str(name)] = [str(item) for item in values]
+        errors[str(name)] = [
+            {'code': str(getattr(item, 'code', None) or 'invalid'), 'message': str(item)}
+            for item in values]
     return errors
 
 

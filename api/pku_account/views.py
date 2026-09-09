@@ -112,12 +112,25 @@ def _first_message(errors: Any) -> str:
     return str(errors)
 
 
+def _field_errors(errors: Any) -> dict[str, list[dict[str, str]]]:
+    # Canonical ``{field: [{code, message}]}`` shape shared with api/exceptions.py.
+    if not isinstance(errors, dict):
+        return {}
+    result: dict[str, list[dict[str, str]]] = {}
+    for name, value in errors.items():
+        values = value if isinstance(value, (list, tuple)) else [value]
+        result[str(name)] = [
+            {'code': str(getattr(item, 'code', None) or 'invalid'), 'message': str(item)}
+            for item in values]
+    return result
+
+
 def _invalid(errors: Any) -> Response:
     return Response(
         {
             'code': 'INVALID_INPUT',
             'message': _first_message(errors),
-            'errors': errors,
+            'errors': _field_errors(errors),
         },
         status=status.HTTP_400_BAD_REQUEST,
     )
