@@ -150,9 +150,12 @@ or a token accepted from the mini-program client.
 A ticket is single-purpose, short-lived, and intended for one use. Never use
 `TicketAuthentication` on ordinary API endpoints, persist raw tickets, retry
 a consumed ticket, or send it to another host. Ticket creation and redirect
-consumption must use the same database. Redirect targets are restricted to
-single-slash local paths; absolute, protocol-relative, backslash, and other
-unsafe destinations fall back to a fixed local path.
+consumption must use the same database. Redirect targets accept single-slash local paths and HTTP(S) absolute URLs
+whose host and port exactly match `global.base_url`, preserving compatibility
+with existing mini-program clients. HTTPS requests reject HTTP targets.
+Protocol-relative, backslash, untrusted-host, and other unsafe destinations
+fall back to a fixed local path. Configure `global.base_url` with the public
+website address; request Host headers do not expand the trusted host set.
 
 ### Embedded WebView navigation patch
 

@@ -60,12 +60,13 @@
                             <div class="widget-header">
                                 <div class="d-flex justify-content-center">
                                     <div>
-                                        <h3 class="mt-4 mb-3">宿舍生活习惯调研</h3>
+                                        <h3 class="mt-4 mb-3 text-center">{% block survey_title %}宿舍生活习惯调研{% endblock %}</h3>
                                     </div>
                                 </div>
                             </div>
                             <!--  BEGIN CONTENT AREA  -->
                             <div class="widget-content widget-content-area">
+                                {% block survey_content %}
                                 <div id="sent-empty" class="col-md-12">
                                     <p style="text-align: center;">标<span class="req">*</span>的为必填问题，其他问题可填“空”。</p>
                                 </div>
@@ -163,6 +164,7 @@
                                         {% endif %}
                                     </form>
                                 </div>
+                                {% endblock survey_content %}
                             </div>
                         </div>
                     </div>
