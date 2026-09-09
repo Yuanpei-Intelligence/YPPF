@@ -10,6 +10,7 @@ from rest_framework import status
 from rest_framework.test import APIClient, APITestCase
 
 from generic.models import User
+from semester.models import CalendarEvent
 from api.config import WXMiniappConfig
 from timetable import catalog
 from timetable.models import ImportLog, SubscribeQuota, TimetableEntry, TimetableSettings
@@ -177,7 +178,9 @@ class TermsAndWeekTests(TimetableAPITestCase):
         self.assertEqual(response.data['current']['current_week'], 2)
         self.assertEqual([t['code'] for t in response.data['terms']], ['26-27-1', '25-26-2'])
         self.assertEqual(set(response.data['current']), {
-            'code', 'name', 'week1_monday', 'total_weeks', 'current_week', 'section_times'})
+            'code', 'name', 'week1_monday', 'total_weeks', 'current_week', 'section_times',
+            'calendar'})
+        self.assertEqual(response.data['current']['calendar'], [])
 
     def test_terms_without_any_term(self):
         self.term.delete()
@@ -698,3 +701,64 @@ class CatalogTests(TimetableAPITestCase):
         response = self.client.get(self.url('catalog'), {'q': 'x' * 65})
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertEqual(response.data['code'], 'validation_error')
+
+
+class CalendarTests(TimetableAPITestCase):
+    """``calendar`` on terms and ``days`` on the week view (README §6.4)."""
+
+    def setUp(self):
+        super().setUp()
+        week2 = self.term.week_dates(2)      # this week
+        self.holiday = CalendarEvent.objects.create(
+            kind='holiday', start_date=week2[3], end_date=week2[4], name='假期')
+        self.swap = CalendarEvent.objects.create(
+            kind='swap', start_date=week2[5], end_date=week2[5],
+            name='按周一课表上课', follows_weekday=1)
+        CalendarEvent.objects.create(
+            kind='info', start_date=self.old_term.week1_monday,
+            end_date=self.old_term.week1_monday, name='上学期注册')
+        make_entry(self.person, self.term, name='周一课', weekday=1)
+        make_entry(self.person, self.term, name='周四课', weekday=4)
+        make_entry(self.person, self.term, name='周六课', weekday=6)
+
+    def test_terms_include_calendar(self):
+        response = self.client.get(self.url('terms'))
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        week2 = self.term.week_dates(2)
+        expected = [
+            {'kind': 'holiday', 'start': week2[3].isoformat(), 'end': week2[4].isoformat(),
+             'name': '假期', 'follows_weekday': None},
+            {'kind': 'swap', 'start': week2[5].isoformat(), 'end': week2[5].isoformat(),
+             'name': '按周一课表上课', 'follows_weekday': 1},
+        ]
+        self.assertEqual(response.data['current']['calendar'], expected)
+        by_code = {term['code']: term for term in response.data['terms']}
+        self.assertEqual(by_code['26-27-1']['calendar'], expected)
+        self.assertEqual(by_code['25-26-2']['calendar'], [{
+            'kind': 'info', 'start': self.old_term.week1_monday.isoformat(),
+            'end': self.old_term.week1_monday.isoformat(),
+            'name': '上学期注册', 'follows_weekday': None}])
+
+    def test_week_has_days_and_follows_the_calendar(self):
+        response = self.client.get(self.url('week'))
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        data = response.data
+        self.assertEqual(len(data['days']), 7)
+        self.assertEqual([day['date'] for day in data['days']], data['week_dates'])
+        self.assertEqual(data['days'][0], {
+            'date': data['week_dates'][0], 'weekday': 1, 'kind': None,
+            'label': None, 'follows_weekday': None})
+        self.assertEqual(data['days'][3], {
+            'date': data['week_dates'][3], 'weekday': 4, 'kind': 'holiday',
+            'label': '假期', 'follows_weekday': None})
+        self.assertEqual(data['days'][5], {
+            'date': data['week_dates'][5], 'weekday': 6, 'kind': 'swap',
+            'label': '按周一课表上课', 'follows_weekday': 1})
+        self.assertEqual([(o['title'], o['weekday']) for o in data['occurrences']],
+                         [('周一课', 1), ('周一课', 6)])
+        self.assertEqual(data['occurrences'][1]['date'], data['week_dates'][5])
+        self.assertEqual([e['name'] for e in data['term']['calendar']], ['假期', '按周一课表上课'])
+        response = self.client.get(self.url('week'), {'week': 3})
+        self.assertEqual([day['kind'] for day in response.data['days']], [None] * 7)
+        self.assertEqual([o['title'] for o in response.data['occurrences']],
+                         ['周一课', '周四课', '周六课'])

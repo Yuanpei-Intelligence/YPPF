@@ -54,6 +54,7 @@ from api.timetable.serializers import (
     WeekViewSerializer,
 )
 from timetable import catalog, reminders, services
+from timetable.calendar import calendar_for, calendars_for
 from timetable.models import AcademicTerm, TimetableEntry
 
 __all__ = [
@@ -191,10 +192,15 @@ class TermsView(TimetableAPIView):
     def get(self, request):
         self.get_person(request)
         current = services.default_term()
-        terms = AcademicTerm.objects.filter(is_active=True).order_by('-week1_monday')
+        terms = list(AcademicTerm.objects.filter(is_active=True).order_by('-week1_monday'))
+        calendars = calendars_for(terms)
+        if current is not None and current.code not in calendars:
+            calendars[current.code] = calendar_for(current)
         return Response({
-            'current': services.term_payload(current) if current is not None else None,
-            'terms': [services.term_payload(term) for term in terms],
+            'current': (services.term_payload(current, calendar=calendars[current.code])
+                        if current is not None else None),
+            'terms': [services.term_payload(term, calendar=calendars[term.code])
+                      for term in terms],
         })
 
 

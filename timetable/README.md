@@ -654,31 +654,46 @@ an existing `AcademicTerm`, uses `--term` when the column is missing or
 unparseable, and skips (and reports) rows whose parsed term does not exist;
 numeric course codes are zero-padded to 8 digits and class numbers to 2.
 
-### 6.4 Academic calendar (校历) — `TermCalendarEvent`, command `import_academic_calendar`
+### 6.4 Academic calendar (校历) — `semester.CalendarEvent`, command `import_academic_calendar`
 
 The university calendar decides which dates actually have classes. Source:
 the PDF 校历 published each year (e.g. 北京大学 2026—2027 学年校历); an admin
 transcribes it into one JSON file per term, imports it, and can edit the rows
-in Django admin at any time.
+in Django admin at any time. **The calendar changes** (调休, ad-hoc 停课), so
+it is one mutable, global table in the base app `semester` that every
+module reads at use time — never copied into other rows, never cached across
+requests, never hardcoded. Activities, 书院课 scheduling and anything else
+that needs "is this a class day / which weekday's timetable applies" must go
+through `semester.calendar`.
 
 ```python
-class TermCalendarEvent(models.Model):
+# semester/models.py — global, keyed by date (no FK to any term object)
+class CalendarEvent(models.Model):
     class Kind(TextChoices):
         HOLIDAY = 'holiday'   # 放假，全校停课 — no classes
         EXAM = 'exam'         # 停课复习考试 — no classes
         SWAP = 'swap'         # 调休：按 follows_weekday 的课表上课
         INFO = 'info'         # annotation only (公休但课程照常 / 运动会 / 注册日)
-    term = FK(AcademicTerm, related_name='calendar_events', on_delete=CASCADE)
     kind = CharField(choices=Kind); start_date = DateField(); end_date = DateField()   # inclusive
     name = CharField(64); follows_weekday = PositiveSmallIntegerField(null=True)      # 1..7, SWAP only
     note = CharField(200, blank=True)
     ordering = ['start_date', 'id']
+
+# semester/calendar.py — the read API for the whole platform (fresh DB query each call)
+def events_between(start, end) -> list[CalendarEvent]
+class AcademicCalendar:            # built for a date range
+    def kind_of(date) / event_of(date) / is_class_day(date) / effective_weekday(date) / label(date)
+def calendar_between(start, end) -> AcademicCalendar
+def is_class_day(date) -> bool; def effective_weekday(date) -> int
 ```
 
-Semantics (applied in `timetable.services.calendar_for(term)` and used by
-`expand_entries`, `week_view` and the ICS feed — every stored-entry source,
-i.e. portal/paste/manual; live sources such as 书院课 activities, applied
-activities and appointments are real events and are left untouched):
+`timetable/calendar.py` is a thin adapter (`calendar_for(term)` =
+`calendar_between(term.week1_monday, term.end_date())`, `day_info`).
+
+Semantics (used by `expand_entries`, `week_view` and the ICS feed — every
+stored-entry source, i.e. portal/paste/manual; live sources such as 书院课
+activities, applied activities and appointments are real events and are left
+untouched):
 
 - a date covered by `HOLIDAY` or `EXAM` produces **no** stored-entry
   occurrences (the mini-program shows the day label instead);
@@ -688,9 +703,11 @@ activities and appointments are real events and are left untouched):
 - `INFO` changes nothing, it is only surfaced as a label;
 - overlapping events: `HOLIDAY`/`EXAM` win over `SWAP`, which wins over `INFO`.
 
-JSON import format (`python manage.py import_academic_calendar <file>`;
-upserts the `AcademicTerm` from `term`/`name`/`week1_monday`/`total_weeks`
-and **replaces** that term's events; idempotent):
+JSON import format (`python manage.py import_academic_calendar <file>`, in
+`timetable`; upserts the `AcademicTerm` from `term`/`name`/`week1_monday`/
+`total_weeks` and **replaces** the `semester.CalendarEvent` rows that overlap
+that term's span with the file's events; events outside the span are kept;
+idempotent):
 
 ```json
 {
@@ -729,6 +746,22 @@ Mini-program: the date header shows `label` (red for holiday/exam, blue for
 swap "按周一", grey for info) and shades holiday/exam columns; the poster does
 the same; nothing else changes because the backend already omits the
 occurrences.
+
+Implementation notes (as built): `Term.calendar` lists the events overlapping
+the term's **teaching span** `[week1_monday, date_of(total_weeks, 7)]`, so an
+exam week or vacation after the last teaching week is not in it (it is still
+in the table and in `week/` for those dates). The import command replaces
+the events inside `[min(week1_monday, earliest event), max(end of teaching
+span, latest event)]` so re-running a file is idempotent even when its exam
+week / vacation lie outside the teaching weeks; the two seed files' windows
+touch without overlapping. Helpers: `timetable.calendar.day_info(on,
+calendar=None)`, `week_days(term, week, calendar=None)`, `calendars_for(terms)`
+(one query for `terms/`); `expand_entries(entries, term, week_from, week_to,
+calendar=None)`. Swap-day occurrences carry the real `date/weekday/week`.
+`AcademicCalendar.event_of` raises `ValueError` for dates outside the range
+it was built for. The JSON importer rejects unknown keys, a `week1_monday`
+that is not a Monday, duplicate events and events outside
+`week1_monday − 42d .. + 364d`.
 
 ## 7. Verification
 

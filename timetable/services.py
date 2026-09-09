@@ -14,7 +14,9 @@ from typing import Any, Iterable
 from django.db import transaction
 
 from app.models import NaturalPerson
+from semester.calendar import AcademicCalendar
 
+from timetable.calendar import calendar_for, calendar_payload, week_days
 from timetable.config import CONFIG
 from timetable.models import (
     AcademicTerm,
@@ -32,6 +34,7 @@ __all__ = [
     'TimetableImportError',
     'get_or_create_settings',
     'default_term',
+    'calendar_for',
     'term_payload',
     'week_view',
     'import_portal',
@@ -86,10 +89,17 @@ def default_term(on: date | None = None) -> AcademicTerm | None:
     return AcademicTerm.current(on) or AcademicTerm.upcoming(on)
 
 
-def term_payload(term: AcademicTerm, on: date | None = None) -> dict[str, Any]:
-    """JSON shape of ``Term`` in ``timetable/README.md`` §4.6."""
+def term_payload(term: AcademicTerm, on: date | None = None, *,
+                 calendar: AcademicCalendar | None = None) -> dict[str, Any]:
+    """
+    JSON shape of ``Term`` in ``timetable/README.md`` §4.6 (+ ``calendar``,
+    §6.4: the university calendar events overlapping the term's teaching
+    weeks). Pass the term's ``calendar`` (``calendar_for``) to save a query.
+    """
     if on is None:
         on = date.today()
+    if calendar is None:
+        calendar = calendar_for(term)
     week = term.week_of(on)
     return {
         'code': term.code,
@@ -98,6 +108,7 @@ def term_payload(term: AcademicTerm, on: date | None = None) -> dict[str, Any]:
         'total_weeks': term.total_weeks,
         'current_week': week if term.contains_week(week) else None,
         'section_times': term.section_times,
+        'calendar': calendar_payload(calendar),
     }
 
 
@@ -106,12 +117,16 @@ def week_view(person, term: AcademicTerm, week: int, *,
     """
     The ``WeekView`` payload of ``timetable/README.md`` §4.6 for one
     teaching week (clamped to ``1..total_weeks``): occurrences of every
-    enabled source, conflicts and the legend.
+    enabled source, conflicts, the legend and the calendar label of each
+    day (§6.4). Stored-entry sources already follow the calendar (no
+    occurrences on holiday/exam dates, swapped weekdays), live sources
+    are real events and are left as they are.
     """
     if today is None:
         today = date.today()
     week = term.clamp_week(week)
     settings = get_or_create_settings(person)
+    calendar = calendar_for(term)
     sources = load_sources()
     occurrences: list[Occurrence] = []
     for source in sources:
@@ -120,9 +135,10 @@ def week_view(person, term: AcademicTerm, week: int, *,
     occurrences.sort(key=occurrence_sort_key)
     today_week = term.week_of(today)
     return {
-        'term': term_payload(term, today),
+        'term': term_payload(term, today, calendar=calendar),
         'week': week,
         'week_dates': [day.isoformat() for day in term.week_dates(week)],
+        'days': week_days(term, week, calendar),
         'today': {
             'date': today.isoformat(),
             'weekday': today.isoweekday(),

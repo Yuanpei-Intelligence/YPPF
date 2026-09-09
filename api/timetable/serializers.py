@@ -12,10 +12,13 @@ from datetime import time
 
 from rest_framework import serializers
 
+from semester.models import CalendarEvent
 from timetable import reminders
 from timetable.models import CourseCatalogEntry, TimetableEntry, TimetableSettings
 
 __all__ = [
+    'CalendarEventSerializer',
+    'WeekDaySerializer',
     'TermSerializer',
     'TermsResponseSerializer',
     'WeekQuerySerializer',
@@ -43,6 +46,7 @@ __all__ = [
 TIME_INPUT_FORMATS = ['%H:%M', '%H:%M:%S']
 MAX_SECTION = 20
 MAX_WEEK = 30
+CALENDAR_KINDS = list(CalendarEvent.Kind.values)
 
 
 class ErrorSerializer(serializers.Serializer):
@@ -55,6 +59,27 @@ class ErrorSerializer(serializers.Serializer):
         required=False, help_text='Field errors of a validation failure')
 
 
+class CalendarEventSerializer(serializers.Serializer):
+    """One university calendar (校历) event, §6.4."""
+
+    kind = serializers.ChoiceField(choices=CALENDAR_KINDS)
+    start = serializers.DateField()
+    end = serializers.DateField(help_text='Inclusive')
+    name = serializers.CharField()
+    follows_weekday = serializers.IntegerField(
+        allow_null=True, help_text='swap only: weekday whose timetable applies, 1=Mon..7=Sun')
+
+
+class WeekDaySerializer(serializers.Serializer):
+    """Calendar label of one date of the week view, §6.4."""
+
+    date = serializers.DateField()
+    weekday = serializers.IntegerField()
+    kind = serializers.ChoiceField(choices=CALENDAR_KINDS, allow_null=True)
+    label = serializers.CharField(allow_null=True)
+    follows_weekday = serializers.IntegerField(allow_null=True)
+
+
 class TermSerializer(serializers.Serializer):
     code = serializers.CharField()
     name = serializers.CharField()
@@ -64,6 +89,8 @@ class TermSerializer(serializers.Serializer):
     section_times = serializers.DictField(
         child=serializers.ListField(child=serializers.CharField()),
         help_text='{"1": ["08:00", "08:50"], ...}')
+    calendar = CalendarEventSerializer(
+        many=True, help_text='Calendar events overlapping the teaching weeks, ordered')
 
 
 class TermsResponseSerializer(serializers.Serializer):
@@ -114,6 +141,7 @@ class WeekViewSerializer(serializers.Serializer):
     term = TermSerializer()
     week = serializers.IntegerField()
     week_dates = serializers.ListField(child=serializers.DateField())
+    days = WeekDaySerializer(many=True, help_text='One per week_dates entry')
     today = TodaySerializer()
     occurrences = OccurrenceSerializer(many=True)
     conflicts = serializers.ListField(
