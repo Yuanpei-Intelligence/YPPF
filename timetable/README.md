@@ -549,9 +549,12 @@ makes concurrent jobs send at most once, then updates it; a quota unit is
 only consumed on a successful send (43101 zeroes the quota, other WeChat
 failures give the unit back) before falling back to the notification; the
 fallback content omits ` @location` when the location is empty; the due
-window is `(now − 5min, now]` shared with the job interval, so a scheduler
-outage longer than one interval skips that window (`reminder_lookahead_minutes`
-is reserved for a look-ahead mode). `subscribe-grant/` accepts only
+window is `(now − 15min, now]` (three job intervals, so a short scheduler
+outage does not drop reminders; `ReminderLog` keeps re-scans idempotent) and
+a reminder is never sent once the class has started
+(`reminder_lookahead_minutes` is reserved for a look-ahead mode). Each job
+tick resolves the sources per enabled person (~10 queries each); fine for
+YPPF's scale, batch it before rolling out to thousands of users. `subscribe-grant/` accepts only
 configured template keys (plus `class_reminder`), 400 otherwise. Jobs are
 discovered by `scheduler.management.commands.collect_jobs` importing
 `<app>.jobs` for every installed app — no registration list to edit.
@@ -650,6 +653,82 @@ The import command routes each row by its 学年学期 column when that maps to
 an existing `AcademicTerm`, uses `--term` when the column is missing or
 unparseable, and skips (and reports) rows whose parsed term does not exist;
 numeric course codes are zero-padded to 8 digits and class numbers to 2.
+
+### 6.4 Academic calendar (校历) — `TermCalendarEvent`, command `import_academic_calendar`
+
+The university calendar decides which dates actually have classes. Source:
+the PDF 校历 published each year (e.g. 北京大学 2026—2027 学年校历); an admin
+transcribes it into one JSON file per term, imports it, and can edit the rows
+in Django admin at any time.
+
+```python
+class TermCalendarEvent(models.Model):
+    class Kind(TextChoices):
+        HOLIDAY = 'holiday'   # 放假，全校停课 — no classes
+        EXAM = 'exam'         # 停课复习考试 — no classes
+        SWAP = 'swap'         # 调休：按 follows_weekday 的课表上课
+        INFO = 'info'         # annotation only (公休但课程照常 / 运动会 / 注册日)
+    term = FK(AcademicTerm, related_name='calendar_events', on_delete=CASCADE)
+    kind = CharField(choices=Kind); start_date = DateField(); end_date = DateField()   # inclusive
+    name = CharField(64); follows_weekday = PositiveSmallIntegerField(null=True)      # 1..7, SWAP only
+    note = CharField(200, blank=True)
+    ordering = ['start_date', 'id']
+```
+
+Semantics (applied in `timetable.services.calendar_for(term)` and used by
+`expand_entries`, `week_view` and the ICS feed — every stored-entry source,
+i.e. portal/paste/manual; live sources such as 书院课 activities, applied
+activities and appointments are real events and are left untouched):
+
+- a date covered by `HOLIDAY` or `EXAM` produces **no** stored-entry
+  occurrences (the mini-program shows the day label instead);
+- a `SWAP` date produces the occurrences of entries whose `weekday ==
+  follows_weekday` (week range / parity checked against the swap date's own
+  week number) and none of the entries of the real weekday;
+- `INFO` changes nothing, it is only surfaced as a label;
+- overlapping events: `HOLIDAY`/`EXAM` win over `SWAP`, which wins over `INFO`.
+
+JSON import format (`python manage.py import_academic_calendar <file>`;
+upserts the `AcademicTerm` from `term`/`name`/`week1_monday`/`total_weeks`
+and **replaces** that term's events; idempotent):
+
+```json
+{
+  "term": "26-27-1", "name": "2026-2027学年秋季学期",
+  "week1_monday": "2026-09-07", "total_weeks": 18,
+  "events": [
+    {"kind": "holiday", "start": "2026-09-25", "end": "2026-09-25", "name": "中秋节放假"},
+    {"kind": "info",    "start": "2026-09-26", "end": "2026-09-27", "name": "公休，课程照常进行"},
+    {"kind": "info",    "start": "2026-09-30", "end": "2026-09-30", "name": "公休，课程照常进行"},
+    {"kind": "holiday", "start": "2026-10-01", "end": "2026-10-07", "name": "国庆节放假"},
+    {"kind": "info",    "start": "2026-10-10", "end": "2026-10-11", "name": "校本部秋季运动会"},
+    {"kind": "exam",    "start": "2027-01-11", "end": "2027-01-17", "name": "停课复习考试"},
+    {"kind": "holiday", "start": "2027-01-18", "end": "2027-02-21", "name": "寒假"}
+  ]
+}
+```
+
+`timetable/data/calendar_26-27-1.json` and `calendar_26-27-2.json` ship the
+2026-2027 calendar transcribed from the PDF (spring: `week1_monday`
+2027-02-22, 5/1–5/7 停课 (劳动节、调休、校庆), 5/8–5/9 公休课程照常 (info),
+6/14–6/27 停课复习考试, 6/28 起暑假; 元旦 2027 is unknown until the State
+Council publishes it — add it as a `HOLIDAY` row when known). A `swap` row
+looks like `{"kind": "swap", "start": "2026-10-10", "end": "2026-10-10",
+"name": "按周一课表上课", "follows_weekday": 1}`.
+
+API changes (both additive):
+
+```ts
+interface CalendarEvent { kind: 'holiday'|'exam'|'swap'|'info'; start: string; end: string; name: string; follows_weekday: number | null }
+interface Term { ...; calendar: CalendarEvent[] }                       // terms/ and week/.term
+interface WeekDay { date: string; weekday: number; kind: CalendarEvent['kind'] | null; label: string | null; follows_weekday: number | null }
+interface WeekView { ...; days: WeekDay[] }                              // one per week_dates entry
+```
+
+Mini-program: the date header shows `label` (red for holiday/exam, blue for
+swap "按周一", grey for info) and shades holiday/exam columns; the poster does
+the same; nothing else changes because the backend already omits the
+occurrences.
 
 ## 7. Verification
 

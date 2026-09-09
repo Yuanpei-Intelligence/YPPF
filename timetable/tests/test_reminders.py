@@ -83,11 +83,13 @@ class DueRemindersTests(ReminderTestCase):
         expected = [(self.person.pk, self.entry_id)]
         cases = [
             (datetime(2026, 9, 21, 7, 40), True),        # due moment itself
-            (datetime(2026, 9, 21, 7, 44, 59), True),    # inside the 5-minute window
-            (datetime(2026, 9, 21, 7, 45), False),       # exactly one window later: excluded
+            (datetime(2026, 9, 21, 7, 44, 59), True),    # inside the first job interval
+            (datetime(2026, 9, 21, 7, 45), True),        # a missed tick is caught up (15-minute look-back)
+            (datetime(2026, 9, 21, 7, 54, 59), True),    # still inside the look-back window
+            (datetime(2026, 9, 21, 7, 55), False),       # exactly one window later: excluded (left-open)
             (datetime(2026, 9, 21, 7, 39, 59), False),   # not due yet
             (datetime(2026, 9, 21, 7, 35), False),
-            (datetime(2026, 9, 21, 8, 0), False),
+            (datetime(2026, 9, 21, 8, 0), False),        # the class has started: never remind late
         ]
         for now, is_due in cases:
             with self.subTest(now=now):

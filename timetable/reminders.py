@@ -72,7 +72,10 @@ REMINDER_TITLE = '上课提醒'
 # Interval of the periodic job; the due window has the same width so that
 # consecutive runs cover the timeline without gaps or overlaps.
 JOB_INTERVAL_MINUTES = 5
-DUE_WINDOW = timedelta(minutes=JOB_INTERVAL_MINUTES)
+# Look back three job intervals so a short scheduler outage does not drop a
+# window; ReminderLog keeps re-scans idempotent and a reminder is never sent
+# once the class has started (see due_reminders).
+DUE_WINDOW = timedelta(minutes=3 * JOB_INTERVAL_MINUTES)
 TIME_FORMAT = '%Y年%m月%d日 %H:%M'
 DATE_FORMAT = '%Y年%m月%d日'
 LOCATION_FALLBACK = '待定'
@@ -262,7 +265,7 @@ def due_reminders(now: datetime | None = None) -> Iterator[tuple[Any, Occurrence
             logger.exception('class reminders: sources failed for person %s', person.pk)
             continue
         due = [item for item in occurrences
-               if now - DUE_WINDOW < item.start - lead <= now]
+               if now - DUE_WINDOW < item.start - lead <= now <= item.start]
         if not due:
             continue
         logged = set(ReminderLog.objects.filter(
