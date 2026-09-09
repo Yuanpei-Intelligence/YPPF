@@ -476,22 +476,159 @@ Pages (all behind login, `definePage` style like `pages/me/notifications.vue`):
 Error display uses the message returned by the API (`http.ts` already
 formats `{message}`); never echo passwords back.
 
-## 6. Sprint 2 (not in the first PR)
+## 6. Sprint 2 — reminders, grades, course catalog
 
-- `timetable/reminders.py` + `timetable/jobs.py`: a daily `@periodical`
-  job materialises next-day class reminders per user with
-  `reminder_enabled`; channel preference: WeChat mini-program subscribe
-  message (template ids from `config.json → wx_miniapp.subscribe_templates`,
-  quota collected by the client via `wx.requestSubscribeMessage` on each
-  timetable open and stored as `SubscribeQuota(user, template, count)`),
-  falling back to 站内通知 (`app.notification_utils.notification_create`) +
-  `extern.wechat.send_wechat`. Nothing in sprint 1 assumes a channel.
-- `academic_record` app: `GradeRecord(person, term_code, course_code, name,
-  credits, score, gpa, raw)` written only when `consent_grades` is true;
-  otherwise fetched-and-shown only. API `/api/v2/grades/` + page.
-- Course catalog import: management command consuming the xlsx produced by
-  ICUlizhi/PKU-Course-Crawler → `CourseCatalog` rows (per term), used to
-  autocomplete manual entries and, later, activity recommendation.
+Same rules as above: every piece is optional, switched by `config.json`, and
+depends only downwards (`academic_record` → `pku_account`; reminders → the
+notification system; nothing in `app/` learns about them).
+
+### 6.1 Class reminders (`timetable/reminders.py`, `timetable/jobs.py`, `extern/wx_miniapp.py`)
+
+Channel order: WeChat mini-program **subscribe message** when a template is
+configured and the user has quota, otherwise 站内通知 + the existing WeChat
+push (`app.notification_utils.notification_create(..., to_wechat=True)`).
+
+```json
+"wx_miniapp": {
+    ...,
+    "subscribe_templates": {
+        "class_reminder": {
+            "id": "",                                   // template id from mp.weixin.qq.com; empty → channel disabled
+            "fields": {"course": "thing1", "time": "time2", "location": "thing3", "note": "thing4"},
+            "page": "pages/timetable/index"
+        }
+    }
+},
+"timetable": { ..., "reminder_default_minutes": 20, "reminder_lookahead_minutes": 60, "subscribe_quota_cap": 50 }
+```
+
+Models (in `timetable/models.py`):
+
+```python
+class SubscribeQuota(models.Model):       # accepted-but-unused subscribe grants, per template key
+    user = FK(User); template_key = CharField(32); count = PositiveIntegerField(default=0); updated_at
+    unique_together = ('user', 'template_key')
+class ReminderLog(models.Model):          # one row per (person, occurrence) ever reminded → no duplicates
+    person = FK(NaturalPerson); occurrence_id = CharField(128); channel = CharField(16)  # 'subscribe' | 'notification' | 'skipped'
+    scheduled_for = DateTimeField(); sent_at = DateTimeField(auto_now_add=True); detail = CharField(128, blank=True)
+    unique_together = ('person', 'occurrence_id')
+```
+
+Job: `@periodical('interval', 'timetable_class_reminders', minutes=5)` →
+for every `TimetableSettings` with `reminder_enabled`, take today's
+`week_view` occurrences (not hidden, not canceled) whose `start -
+reminder_minutes` falls in `(now - 5min, now]`; skip ones already in
+`ReminderLog`; send. Sending = `reminders.send_class_reminder(person,
+occurrence)`: if `subscribe_templates.class_reminder.id` is set, the user has
+a `UserWechatProfile` (`user.wx_profile.openid`) and `SubscribeQuota.count >
+0` → `extern.wx_miniapp.send_subscribe_message(openid, template_id, page,
+data)` (uses `api.auth.wechat_api.get_wechat_access_token()`; `data` values
+are truncated to WeChat's limits: `thing*` 20 chars, `time*` formatted
+`YYYY年MM月DD日 HH:MM`); decrement the quota; WeChat errcode 43101 (user
+refused / no quota) → set quota 0 and fall through. Fallback:
+`notification_create(receiver=user, sender=None, typename=NEEDREAD,
+title='上课提醒', content='...', URL=None, to_wechat=True)` — `'上课提醒'` is
+used as a plain title string; do not extend `Notification.Title` (no `app`
+migration). Every outcome is logged in `ReminderLog.channel/detail`.
+
+API additions under `/api/v2/timetable/`:
+
+| Method | Path | Body | Response |
+|---|---|---|---|
+| GET | `subscribe-templates/` | – | `{class_reminder: {template_id: string \| null}}` (null when not configured → client never calls `wx.requestSubscribeMessage`) |
+| POST | `subscribe-grant/` | `{template_key: 'class_reminder', count?: number}` | `{template_key, count}` (server caps at `subscribe_quota_cap`; count defaults to 1) |
+
+The mini-program calls `wx.requestSubscribeMessage({tmplIds:[id]})` on a
+user tap (the 提醒 switch) and on each timetable open once the switch is on
+(silent when "总是保持以上选择" was chosen), posting `subscribe-grant/` for
+every `accept`.
+
+### 6.2 Grades (`academic_record` app, `/api/v2/grades/`)
+
+Portal payload (`retrScores.do`): `{"cjxx": [{"xnd": "25-26", "xq": "1",
+"list": [{"kcmc": 课程名, "kch": 课程号, "xf": 学分, "xqcj": 学期成绩, "jd": 绩点,
+...}]}]}` — field names beyond these five are kept in `raw`; the parser must
+tolerate missing/extra keys and non-numeric scores (`P`, `合格`, `W`).
+
+```python
+class GradeRecord(models.Model):
+    person = FK(NaturalPerson, related_name='grade_records')
+    term_code = CharField(16)        # f'{xnd}-{xq}' → '25-26-1'
+    course_code = CharField(32, blank=True); class_no = CharField(8, blank=True)
+    name = CharField(80); course_type = CharField(32, blank=True)
+    credits = DecimalField(4, 1, null=True); score = CharField(16, blank=True)   # raw text
+    score_numeric = FloatField(null=True); gpa = FloatField(null=True)
+    raw = JSONField(default=dict); fetched_at = DateTimeField()
+    unique_together = ('person', 'term_code', 'course_code', 'name')
+```
+
+Services: `fetch_scores(user) -> list[TermScores]` (via
+`pku_account.services.get_client(user).get_scores()`; `PortalSessionExpired`
+→ `invalidate_session` and re-raise), `store_scores(person, terms)` (upsert
+per term; only called when `consent_grades`), `summary(terms)` →
+`{credits, gpa}` with GPA = Σ(jd·xf)/Σxf over rows that have both, and the
+same per term. Consent revocation: `pku_account.services.update_consents`
+sends the Django signal `pku_account.signals.consent_changed(sender,
+account, field, granted)`; `academic_record` connects a receiver that deletes
+the person's `GradeRecord`s when `grades` is revoked (dependency stays
+academic_record → pku_account).
+
+| Method | Path | Body | Response |
+|---|---|---|---|
+| GET | `/api/v2/grades/` | – | `GradesOut` from stored rows; 403 `CONSENT_REQUIRED` if `consent_grades` is false |
+| POST | `/api/v2/grades/sync/` | – | fetch live; when consented also store; `GradesOut` with `stored: bool`. Errors: 409 `PKU_LOGIN_REQUIRED`, 503 `PORTAL_UNREACHABLE`, 404 `NOT_BOUND` |
+| DELETE | `/api/v2/grades/` | – | 204, wipes stored rows |
+
+```ts
+interface GradeRow { term_code: string; course_code: string; class_no: string; name: string; course_type: string;
+  credits: number | null; score: string; score_numeric: number | null; gpa: number | null }
+interface GradesOut { stored: boolean; fetched_at: string | null;
+  summary: { credits: number; gpa: number | null };
+  terms: { term_code: string; summary: { credits: number; gpa: number | null }; rows: GradeRow[] }[] }
+```
+
+Mini-program page `pages/timetable/grades.vue`: consent gate (explain,
+toggle → `PATCH /api/v2/pku/consents/ {grades: true}`), 同步 button,
+overall + per-term GPA, rows; entry from the timetable menu and 我的.
+
+Implementation notes (as built): `GET` answers 404 `NOT_BOUND` when there is
+no binding and 403 `CONSENT_REQUIRED` when bound without consent; its
+`stored` means "rows exist" and `fetched_at` is the newest stored row's
+timestamp (null when none). `POST sync/` adds 400 `PARSE_FAILED` (portal JSON
+without a `cjxx` list or `success: false`; the session is not marked ok) and
+503 `PORTAL_DISABLED`; `{"cjxx": []}` is a valid empty result. `terms` are
+ordered newest first, rows keep the portal order, rows lacking both `kcmc`
+and `kch` are dropped, duplicates within a term keep the first. `credits`
+and `summary.credits` are JSON numbers; GPA is rounded to 3 decimals.
+`consent_changed` fires for every explicitly passed flag (even unchanged),
+only after commit. Deleting a `PkuAccount` (unbind / user deletion) also
+deletes the person's stored grades (`academic_record.receivers`).
+
+### 6.3 Course catalog (`timetable/catalog.py`, command `import_course_catalog`)
+
+Source: the xlsx written by ICUlizhi/PKU-Course-Crawler (`课表信息汇总+.xlsx`),
+columns in order: 学年学期, 院系, 表格类型, 内部学期, 课程号, 课程名, 课程英文名,
+班号, 修读对象, 课程类别, 参考学分, 周学时, 总学时, 授课教师, 起止周, 上课时间, 备注.
+
+```python
+class CourseCatalogEntry(models.Model):
+    term = FK(AcademicTerm, on_delete=CASCADE); department = CharField(64, blank=True)
+    course_code = CharField(32); name = CharField(80); name_en = CharField(160, blank=True)
+    class_no = CharField(8, blank=True); audience = CharField(32, blank=True); category = CharField(32, blank=True)
+    credits = DecimalField(4, 1, null=True); hours_per_week = CharField(16, blank=True); total_hours = CharField(16, blank=True)
+    teacher = CharField(80, blank=True); weeks_text = CharField(64, blank=True); time_text = CharField(200, blank=True)
+    note = CharField(200, blank=True)
+    slots = JSONField(default=list)   # best-effort parse of 起止周 + 上课时间 into LessonBlock-like dicts (weekday/sections/weeks/parity/room)
+    unique_together = ('term', 'course_code', 'class_no')
+```
+
+`python manage.py import_course_catalog <xlsx> --term 26-27-1 [--sheet ...]`
+upserts by `(term, course_code, class_no)` (openpyxl, already a dependency);
+`--term` maps the 学年学期 column when it is absent/ambiguous. API:
+`GET /api/v2/timetable/catalog/?term=&q=` → up to 20 `{id, course_code, name,
+class_no, teacher, credits, time_text, slots}` matching name/code/teacher
+(`icontains`), used by `entry-form.vue` to prefill a manual entry (one
+`TimetableEntry` per slot).
 
 ## 7. Verification
 

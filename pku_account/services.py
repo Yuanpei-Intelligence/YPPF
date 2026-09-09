@@ -21,6 +21,7 @@ from pku_account.crypto import InvalidToken, decrypt_json, encrypt_json
 from pku_account.extern.iaaa import CaptchaRequired, IaaaError, OtpRequired
 from pku_account.extern.portal import PortalClient
 from pku_account.models import PkuAccount, PkuPortalSession
+from pku_account.signals import consent_changed
 
 __all__ = [
     'BindingError',
@@ -85,15 +86,34 @@ def _apply_consents(
     *,
     timetable: bool | None,
     grades: bool | None,
-) -> None:
+) -> list[tuple[str, bool]]:
     # ``None`` means "leave unchanged"; a timestamp is recorded whenever the
     # flag is explicitly set (granted or revoked) so audits see the decision.
+    # Returns the explicit decisions as ``(field, granted)`` pairs.
+    decisions: list[tuple[str, bool]] = []
     if timetable is not None:
         account.consent_timetable = bool(timetable)
         account.consent_timetable_at = now
+        decisions.append(('timetable', account.consent_timetable))
     if grades is not None:
         account.consent_grades = bool(grades)
         account.consent_grades_at = now
+        decisions.append(('grades', account.consent_grades))
+    return decisions
+
+
+def _notify_consents(
+    account: PkuAccount, decisions: list[tuple[str, bool]],
+) -> None:
+    # Consumers learn about a decision only once it is durable; call this
+    # inside the transaction that saved ``account``.
+    for field, granted in decisions:
+        transaction.on_commit(
+            lambda field=field, granted=granted: consent_changed.send(
+                sender=PkuAccount, account=account, field=field,
+                granted=granted,
+            )
+        )
 
 
 def _record_login_failure(user: User, now: datetime) -> None:
@@ -198,7 +218,7 @@ def login_and_bind(
         account.last_login_at = now
         account.login_failures = 0
         account.locked_until = None
-        _apply_consents(
+        decisions = _apply_consents(
             account, now, timetable=consent_timetable, grades=consent_grades,
         )
         try:
@@ -217,6 +237,7 @@ def login_and_bind(
                 'invalid_reason': '',
             },
         )
+        _notify_consents(account, decisions)
     logger.info('PKU binding stored for user #%s', user.pk)
     return account
 
@@ -306,6 +327,9 @@ def update_consents(
     """
     Set consent flags on the user's binding (``None`` = unchanged).
 
+    Every flag that is explicitly passed is announced through
+    ``pku_account.signals.consent_changed`` once the change is committed.
+
     Raises:
         NotBound: the user has no binding.
     """
@@ -316,11 +340,14 @@ def update_consents(
         )
         if account is None:
             raise NotBound('尚未绑定北大账号')
-        _apply_consents(account, now, timetable=timetable, grades=grades)
+        decisions = _apply_consents(
+            account, now, timetable=timetable, grades=grades,
+        )
         account.save(update_fields=[
             'consent_timetable', 'consent_timetable_at',
             'consent_grades', 'consent_grades_at',
         ])
+        _notify_consents(account, decisions)
     return account
 
 
