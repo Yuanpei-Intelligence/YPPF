@@ -763,6 +763,53 @@ it was built for. The JSON importer rejects unknown keys, a `week1_monday`
 that is not a Monday, duplicate events and events outside
 `week1_monday − 42d .. + 364d`.
 
+### 6.5 Home agenda, week picker, day view (product changes of 2026-09-09)
+
+Sources are now four, each switchable in settings and honoured everywhere
+(week view, agenda, ICS): 学校课表 (stored entries: portal/paste/manual)
+`show_courses`, 书院课 `show_college`, 我参与的活动 `show_activities`, 地下室预约
+`show_appointments`. `TimetableSettings.show_courses` (default true) is
+added; `build_ics(person)` and the ICS feed use the same four flags.
+
+Agenda API — `GET /api/v2/timetable/agenda/?from=<date>&days=<n>` (defaults:
+today, 7; max 14; auth as usual): consecutive days starting at `from`,
+spanning term boundaries (days outside any term have `term: null` and no
+stored-entry occurrences; live sources still apply), each day carrying its
+calendar label:
+
+```ts
+interface AgendaDay { date: string; weekday: number; term: string | null; week: number | null;
+  kind: CalendarEvent['kind'] | null; label: string | null; occurrences: Occurrence[] }
+interface AgendaOut { from: string; days: AgendaDay[]; sources: { key: string; label: string }[] }
+```
+
+Mini-program:
+
+- **Home** (`pages/index/index.vue`): the three activity tabs become two —
+  「我的日程」(default; the agenda for today + the next 6 days as a grouped
+  list: date header with calendar label, then occurrences with time,
+  title, location, kind badge; tap → the same detail actions as the
+  timetable page; a top-right button 「本周课表」 opens
+  `/pages/timetable/index`; an empty agenda shows the import CTA) and
+  「最新发布」(the external feed: newly released activities from
+  `getActivityOverview().newly_released_activities` plus the latest unread
+  notifications from `/api/v2/notification/`, merged by time; questionnaires
+  later). The old 「今日活动」 tab is removed. A small source-chip row on
+  the agenda (课表 / 书院课 / 活动 / 预约) toggles `show_*` via
+  `PATCH settings/`.
+- **Week picker** (`pages/timetable/index.vue`): the 第 N 周 label becomes a
+  button opening a `uv-popup` grid of all weeks (number + Mon–Sun dates,
+  current week highlighted, holiday weeks marked); tapping jumps to that
+  week. ‹ › stay.
+- **Day view**: tapping a date header (or a 「日」/「周」 segment control)
+  opens the day view for that date — a full-height list of that day's
+  occurrences with complete titles, time, location, teacher/subtitle and
+  status, swipe or ‹ › to move by day; same detail actions. Implemented as
+  `pages/timetable/day.vue?date=YYYY-MM-DD` (uses `agenda/` with `days=1`),
+  reachable from the week grid and from the home agenda's date headers.
+- Export: the settings section explains that the ICS subscription follows
+  the same four source toggles.
+
 ## 7. Verification
 
 - Backend: `python manage.py test pku_account timetable api.pku_account api.timetable`
