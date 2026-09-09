@@ -1,10 +1,10 @@
 """
 Serializers of the timetable mini-program API. Contract: ``timetable/README.md`` §4.6
-(§6.1 subscribe messages, §6.3 course catalog).
+(§6.1 subscribe messages, §6.3 course catalog, §6.5 agenda).
 
-Response payloads for the week view are plain dicts produced by
-``timetable.services``; the serializers below document their shape for the
-OpenAPI schema and validate request bodies.
+Response payloads for the week view and the agenda are plain dicts produced
+by ``timetable.services``; the serializers below document their shape for
+the OpenAPI schema and validate request bodies.
 """
 from __future__ import annotations
 
@@ -15,6 +15,7 @@ from rest_framework import serializers
 from semester.models import CalendarEvent
 from timetable import reminders
 from timetable.models import CourseCatalogEntry, TimetableEntry, TimetableSettings
+from timetable.services import AGENDA_MAX_DAYS
 
 __all__ = [
     'CalendarEventSerializer',
@@ -24,6 +25,9 @@ __all__ = [
     'WeekQuerySerializer',
     'OccurrenceSerializer',
     'WeekViewSerializer',
+    'AgendaQuerySerializer',
+    'AgendaDaySerializer',
+    'AgendaSerializer',
     'EntrySerializer',
     'EntryInSerializer',
     'ImportPortalSerializer',
@@ -146,6 +150,37 @@ class WeekViewSerializer(serializers.Serializer):
     occurrences = OccurrenceSerializer(many=True)
     conflicts = serializers.ListField(
         child=serializers.ListField(child=serializers.CharField()))
+    sources = SourceLegendSerializer(many=True)
+
+
+class AgendaQuerySerializer(serializers.Serializer):
+    """Query of ``agenda/``: ``from`` (default today) and ``days`` (default 7)."""
+
+    # ``from`` is a keyword, so the field is declared through the namespace.
+    locals()['from'] = serializers.DateField(
+        required=False, help_text='First day (YYYY-MM-DD), default today')
+    days = serializers.IntegerField(
+        required=False, default=7, min_value=1,
+        help_text=f'Number of days, default 7, capped at {AGENDA_MAX_DAYS}')
+
+
+class AgendaDaySerializer(serializers.Serializer):
+    """One date of the agenda, §6.5."""
+
+    date = serializers.DateField()
+    weekday = serializers.IntegerField()
+    term = serializers.CharField(allow_null=True, help_text='Term code; null outside every term')
+    week = serializers.IntegerField(allow_null=True)
+    kind = serializers.ChoiceField(choices=CALENDAR_KINDS, allow_null=True)
+    label = serializers.CharField(allow_null=True)
+    occurrences = OccurrenceSerializer(many=True)
+
+
+class AgendaSerializer(serializers.Serializer):
+    """``AgendaOut`` of §6.5."""
+
+    locals()['from'] = serializers.DateField()
+    days = AgendaDaySerializer(many=True)
     sources = SourceLegendSerializer(many=True)
 
 
@@ -295,7 +330,7 @@ class SettingsSerializer(serializers.ModelSerializer):
     class Meta:
         model = TimetableSettings
         fields = [
-            'reminder_enabled', 'reminder_minutes', 'show_college',
+            'reminder_enabled', 'reminder_minutes', 'show_courses', 'show_college',
             'show_activities', 'show_appointments', 'share_show_name',
         ]
 

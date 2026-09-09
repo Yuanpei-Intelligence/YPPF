@@ -128,6 +128,7 @@ class AuthTests(TimetableAPITestCase):
         return [
             ('get', self.url('terms')),
             ('get', self.url('week')),
+            ('get', self.url('agenda')),
             ('get', self.url('entry-list')),
             ('post', self.url('entry-list')),
             ('patch', self.url('entry-detail', pk=entry.pk)),
@@ -232,6 +233,83 @@ class TermsAndWeekTests(TimetableAPITestCase):
         response = self.client.get(self.url('week'))
         self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
         self.assertEqual(response.data['code'], 'NO_CURRENT_TERM')
+
+
+class AgendaTests(TimetableAPITestCase):
+    """``agenda/`` (README §6.5)."""
+
+    def test_defaults_to_today_and_seven_days(self):
+        today = date.today()
+        make_entry(self.person, self.term, name='今天的课', weekday=today.isoweekday())
+        make_entry(self.other_person, self.term, name='别人的课', weekday=today.isoweekday())
+        response = self.client.get(self.url('agenda'))
+        self.assertEqual(response.status_code, status.HTTP_200_OK, response.data)
+        data = response.data
+        self.assertEqual(set(data), {'from', 'days', 'sources'})
+        self.assertEqual(data['from'], today.isoformat())
+        self.assertEqual([day['date'] for day in data['days']],
+                         [(today + timedelta(days=i)).isoformat() for i in range(7)])
+        first = data['days'][0]
+        self.assertEqual(set(first), {'date', 'weekday', 'term', 'week', 'kind', 'label',
+                                      'occurrences'})
+        self.assertEqual((first['weekday'], first['term'], first['week'], first['kind'],
+                          first['label']), (today.isoweekday(), '26-27-1', 2, None, None))
+        self.assertEqual([o['title'] for o in first['occurrences']], ['今天的课'])
+        occurrence = first['occurrences'][0]
+        self.assertEqual((occurrence['kind'], occurrence['date'], occurrence['week']),
+                         ('course', today.isoformat(), 2))
+        self.assertIn({'key': 'stored', 'label': '课程'}, data['sources'])
+
+    def test_term_boundary_holiday_and_capping(self):
+        sunday = self.term.week1_monday - timedelta(days=1)
+        make_entry(self.person, self.term, name='周一课', weekday=1)
+        CalendarEvent.objects.create(kind='holiday', start_date=sunday, end_date=sunday,
+                                     name='开学前一天')
+        response = self.client.get(self.url('agenda'), {'from': sunday.isoformat(), 'days': 2})
+        self.assertEqual(response.status_code, status.HTTP_200_OK, response.data)
+        self.assertEqual(response.data['from'], sunday.isoformat())
+        self.assertEqual(response.data['days'][0], {
+            'date': sunday.isoformat(), 'weekday': 7, 'term': None, 'week': None,
+            'kind': 'holiday', 'label': '开学前一天', 'occurrences': []})
+        monday = response.data['days'][1]
+        self.assertEqual((monday['term'], monday['week'], monday['kind']), ('26-27-1', 1, None))
+        self.assertEqual([o['title'] for o in monday['occurrences']], ['周一课'])
+        response = self.client.get(self.url('agenda'), {'from': sunday.isoformat(), 'days': 99})
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(response.data['days']), 14)
+
+    def test_without_any_term(self):
+        self.term.delete()
+        self.old_term.delete()
+        response = self.client.get(self.url('agenda'), {'days': 1})
+        self.assertEqual(response.status_code, status.HTTP_200_OK, response.data)
+        self.assertEqual([(day['term'], day['week'], day['occurrences'])
+                          for day in response.data['days']], [(None, None, [])])
+
+    def test_show_courses_toggle(self):
+        today = date.today()
+        make_entry(self.person, self.term, name='今天的课', weekday=today.isoweekday())
+        response = self.client.patch(self.url('settings'), {'show_courses': False}, format='json')
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        response = self.client.get(self.url('agenda'), {'days': 1})
+        self.assertEqual(response.data['days'][0]['occurrences'], [])
+        self.assertIn({'key': 'stored', 'label': '课程'}, response.data['sources'])
+        self.assertEqual(self.client.get(self.url('week')).data['occurrences'], [])
+
+    def test_bad_input(self):
+        cases = [{'from': '2026-13-01'}, {'from': 'yesterday'}, {'from': '2026/09/14'},
+                 {'days': 0}, {'days': -1}, {'days': 'abc'}, {'days': '1.5'}]
+        for params in cases:
+            with self.subTest(params=params):
+                response = self.client.get(self.url('agenda'), params)
+                self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+                self.assertEqual(response.data['code'], 'validation_error')
+                self.assertIn(next(iter(params)), response.data['errors'])
+        # Empty query values count as omitted (today / 7 days).
+        response = self.client.get(self.url('agenda'), {'from': '', 'days': ''})
+        self.assertEqual(response.status_code, status.HTTP_200_OK, response.data)
+        self.assertEqual(response.data['from'], date.today().isoformat())
+        self.assertEqual(len(response.data['days']), 7)
 
 
 class EntryTests(TimetableAPITestCase):
@@ -532,19 +610,26 @@ class SettingsAndIcsTests(TimetableAPITestCase):
         response = self.client.get(self.url('settings'))
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(response.data, {
-            'reminder_enabled': False, 'reminder_minutes': 20, 'show_college': True,
-            'show_activities': True, 'show_appointments': True, 'share_show_name': True})
+            'reminder_enabled': False, 'reminder_minutes': 20, 'show_courses': True,
+            'show_college': True, 'show_activities': True, 'show_appointments': True,
+            'share_show_name': True})
         response = self.client.patch(
             self.url('settings'),
             {'reminder_enabled': True, 'reminder_minutes': 30, 'show_college': False,
+             'show_courses': False,
              'ics_token': '00000000-0000-0000-0000-000000000000'},
             format='json')
         self.assertEqual(response.status_code, status.HTTP_200_OK, response.data)
         self.assertEqual(response.data['reminder_minutes'], 30)
         self.assertFalse(response.data['show_college'])
+        self.assertFalse(response.data['show_courses'])
         self.assertNotIn('ics_token', response.data)
         settings = TimetableSettings.objects.get(person=self.person)
         self.assertTrue(settings.reminder_enabled)
+        self.assertFalse(settings.show_courses)
+        self.assertTrue(settings.show_activities)
+        response = self.client.patch(self.url('settings'), {'show_courses': True}, format='json')
+        self.assertTrue(response.data['show_courses'])
         self.assertNotEqual(str(settings.ics_token), '00000000-0000-0000-0000-000000000000')
         response = self.client.patch(self.url('settings'), {'reminder_minutes': 5000}, format='json')
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)

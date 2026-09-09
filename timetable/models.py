@@ -116,6 +116,10 @@ class AcademicTerm(models.Model):
         """Sunday of the last teaching week."""
         return self.date_of(max(int(self.total_weeks), 1), 7)
 
+    def covers(self, on: date) -> bool:
+        """Whether ``on`` lies in the teaching span ``week1_monday..end_date()``."""
+        return self.week1_monday <= on <= self.end_date()
+
     def contains_week(self, week: int) -> bool:
         """Whether ``week`` is a teaching week of this term."""
         return 1 <= week <= self.total_weeks
@@ -319,6 +323,7 @@ class TimetableSettings(models.Model):
     ics_token = models.UUIDField('ICS 令牌', default=uuid4, unique=True)
     reminder_enabled = models.BooleanField('上课提醒', default=False)
     reminder_minutes = models.PositiveSmallIntegerField('提前分钟数', default=20)
+    show_courses = models.BooleanField('显示学校课表', default=True)
     show_college = models.BooleanField('显示书院课', default=True)
     show_activities = models.BooleanField('显示活动', default=True)
     show_appointments = models.BooleanField('显示预约', default=True)

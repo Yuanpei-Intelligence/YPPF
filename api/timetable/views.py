@@ -1,7 +1,7 @@
 """
 REST APIs of the timetable for the WeChat mini-program.
 Contract: ``timetable/README.md`` §4.6 (§6.1 subscribe messages, §6.3
-course catalog). Mounted at ``/api/v2/timetable/``.
+course catalog, §6.5 agenda). Mounted at ``/api/v2/timetable/``.
 
 Every endpoint requires a mini-program JWT (``WxJWTAuthentication`` +
 ``IsAuthenticated``) and a personal account; organization accounts get 403.
@@ -12,10 +12,11 @@ conflict, 429 locked, 503 feature unavailable).
 from __future__ import annotations
 
 import logging
-from datetime import datetime
+from datetime import date, datetime
 
 from django.db import transaction
 from django.urls import reverse
+from drf_spectacular.types import OpenApiTypes
 from drf_spectacular.utils import OpenApiParameter, OpenApiResponse, extend_schema
 from rest_framework import status, viewsets
 from rest_framework.exceptions import (
@@ -35,6 +36,8 @@ from app.models import NaturalPerson
 from api.authentication import WxJWTAuthentication
 from api.config import get_subscribe_template
 from api.timetable.serializers import (
+    AgendaQuerySerializer,
+    AgendaSerializer,
     CatalogEntrySerializer,
     CatalogQuerySerializer,
     DryRunResponseSerializer,
@@ -61,6 +64,7 @@ __all__ = [
     'ApiError',
     'TermsView',
     'WeekView',
+    'AgendaView',
     'EntryViewSet',
     'ImportPortalView',
     'ImportTextView',
@@ -234,6 +238,37 @@ class WeekView(TimetableAPIView):
         if week is None:
             week = term.week_of(datetime.now().date())
         return Response(services.week_view(person, term, term.clamp_week(week)))
+
+
+class AgendaView(TimetableAPIView):
+    """Consecutive days of the merged timetable, across term boundaries."""
+
+    @extend_schema(
+        summary='日程',
+        description=(
+            f'从 from 起连续 days 天的日程（缺省今天起 7 天，最多 {services.AGENDA_MAX_DAYS} 天，'
+            '超出按上限截断）。跨学期：不在任何学期内的日期 term/week 为 null 且没有课表条目，'
+            '书院课 / 活动 / 预约照常显示；每天带校历标签。'
+        ),
+        parameters=[
+            OpenApiParameter('from', OpenApiTypes.DATE, OpenApiParameter.QUERY, required=False,
+                             description='起始日期 YYYY-MM-DD，缺省今天'),
+            OpenApiParameter('days', int, OpenApiParameter.QUERY, required=False,
+                             description=f'天数，缺省 7，最多 {services.AGENDA_MAX_DAYS}'),
+        ],
+        responses={
+            200: AgendaSerializer,
+            400: OpenApiResponse(response=ErrorSerializer, description='参数错误'),
+            **_ERROR_RESPONSES,
+        },
+        tags=TAGS,
+    )
+    def get(self, request):
+        person = self.get_person(request)
+        query = AgendaQuerySerializer(data=request.query_params)
+        query.is_valid(raise_exception=True)
+        start = query.validated_data.get('from') or date.today()
+        return Response(services.agenda(person, start, query.validated_data['days']))
 
 
 class EntryViewSet(TimetableAPIMixin, viewsets.ViewSet):

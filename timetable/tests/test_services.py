@@ -1,4 +1,4 @@
-"""Service tests: upsert/replace semantics, expansion, conflicts, week view, ICS."""
+"""Service tests: upsert/replace semantics, expansion, conflicts, week view, agenda, ICS."""
 import copy
 import re
 from datetime import date, datetime, time
@@ -6,14 +6,20 @@ from unittest.mock import patch
 
 from django.test import TestCase
 
+from app.models import Participation
+from semester.models import CalendarEvent
 from timetable import services
 from timetable.ics import build_ics
 from timetable.models import AcademicTerm, ImportLog, TimetableEntry, TimetableSettings
+from timetable.sources.activity import ActivitySource
+from timetable.sources.appoint import AppointSource
 from timetable.sources.base import Occurrence
+from timetable.sources.college import CollegeCourseSource
 from timetable.sources.pku_parsers import LessonBlock
 from timetable.sources.stored import StoredEntriesSource
 from timetable.tests.helpers import (
-    make_entry, make_person, make_term, portal_payload, read_fixture,
+    make_activity, make_appoint, make_college_course, make_entry,
+    make_organization, make_person, make_term, portal_payload, read_fixture,
 )
 
 
@@ -25,6 +31,24 @@ def _occurrence(id_, on, start, end, **extra):
     }
     fields.update(extra)
     return Occurrence(**fields)
+
+
+class _LiveSource:
+    """A date-based source answering with fixed occurrences (records its spans)."""
+
+    key = 'live'
+    label = '实时'
+
+    def __init__(self, occurrences):
+        self.items = list(occurrences)
+        self.calls = []
+
+    def occurrences(self, person, term, week_from, week_to, settings):
+        return []
+
+    def occurrences_between(self, person, span, settings):
+        self.calls.append((span.start, span.end))
+        return list(self.items)
 
 
 class UpsertEntriesTests(TestCase):
@@ -270,6 +294,177 @@ class WeekViewTests(TestCase):
             settings = services.get_or_create_settings(self.person)
         self.assertEqual(settings.reminder_minutes, 35)
         self.assertEqual(services.get_or_create_settings(self.person), settings)
+        self.assertTrue(settings.show_courses)
+
+
+class AgendaTests(TestCase):
+    """``services.agenda`` (README §6.5)."""
+
+    DAY_KEYS = {'date', 'weekday', 'term', 'week', 'kind', 'label', 'occurrences'}
+
+    def setUp(self):
+        self.term = make_term()                      # 2026-09-14 .. 2027-01-03
+        _, self.person = make_person()
+        make_entry(self.person, self.term, name='高数', weekday=1)
+        make_entry(self.person, self.term, name='英语', weekday=1, start_section=3, end_section=4)
+        make_entry(self.person, self.term, name='周三课', weekday=3)
+        make_entry(self.person, self.term, name='隐藏课', weekday=2, hidden=True)
+        _, other = make_person('tt_other', '别人')
+        make_entry(other, self.term, name='别人的课', weekday=1)
+        self.sources = [StoredEntriesSource()]
+        patcher = patch('timetable.services.load_sources', side_effect=lambda: list(self.sources))
+        patcher.start()
+        self.addCleanup(patcher.stop)
+
+    def test_term_boundary(self):
+        sunday = date(2026, 9, 13)
+        live = _LiveSource([_occurrence('迎新', sunday, time(19, 0), time(21, 0),
+                                        source='activity', kind='activity', week=0)])
+        self.sources.append(live)
+        view = services.agenda(self.person, sunday, 3)
+        self.assertEqual(set(view), {'from', 'days', 'sources'})
+        self.assertEqual(view['from'], '2026-09-13')
+        self.assertEqual([day['date'] for day in view['days']],
+                         ['2026-09-13', '2026-09-14', '2026-09-15'])
+        before, monday, tuesday = view['days']
+        self.assertEqual(set(before), self.DAY_KEYS)
+        self.assertEqual((before['weekday'], before['term'], before['week'], before['kind'],
+                          before['label']), (7, None, None, None, None))
+        # Outside every term only the live source answers.
+        self.assertEqual([o['title'] for o in before['occurrences']], ['迎新'])
+        self.assertEqual((monday['term'], monday['week']), ('26-27-1', 1))
+        self.assertEqual([o['title'] for o in monday['occurrences']], ['高数', '英语'])
+        first = monday['occurrences'][0]
+        self.assertEqual(set(first), {
+            'id', 'source', 'kind', 'title', 'subtitle', 'location', 'start', 'end',
+            'date', 'week', 'weekday', 'start_section', 'end_section', 'color_key',
+            'status', 'ref', 'hidden'})
+        self.assertEqual((first['start'], first['date'], first['week'], first['kind']),
+                         ('2026-09-14T08:00:00', '2026-09-14', 1, 'course'))
+        self.assertEqual(tuesday['occurrences'], [])            # hidden entry
+        self.assertEqual(view['sources'], [{'key': 'stored', 'label': '课程'},
+                                           {'key': 'live', 'label': '实时'}])
+        self.assertEqual(live.calls, [(sunday, date(2026, 9, 15))])
+        self.assertTrue(TimetableSettings.objects.filter(person=self.person).exists())
+
+    def test_end_of_term_and_overlapping_terms(self):
+        summer = make_term(code='26-27-3', week1_monday=date(2026, 12, 28), total_weeks=2)
+        make_entry(self.person, summer, name='夏季课', weekday=1, week_end=2)
+        view = services.agenda(self.person, date(2026, 12, 27), 3)
+        self.assertEqual([(day['term'], day['week']) for day in view['days']],
+                         [('26-27-1', 15), ('26-27-3', 1), ('26-27-3', 1)])
+        # 12-28 is also fall week 16, but the summer term owns the date.
+        self.assertEqual([o['title'] for o in view['days'][1]['occurrences']], ['夏季课'])
+        view = services.agenda(self.person, date(2027, 1, 10), 2)
+        self.assertEqual([(day['term'], day['week']) for day in view['days']],
+                         [('26-27-3', 2), (None, None)])
+        self.assertEqual([day['occurrences'] for day in view['days']], [[], []])
+
+    def test_calendar_labels(self):
+        CalendarEvent.objects.create(kind='holiday', start_date=date(2026, 9, 16),
+                                     end_date=date(2026, 9, 16), name='中秋节放假')
+        CalendarEvent.objects.create(kind='swap', start_date=date(2026, 9, 19),
+                                     end_date=date(2026, 9, 19), name='按周一课表上课',
+                                     follows_weekday=1)
+        CalendarEvent.objects.create(kind='info', start_date=date(2026, 9, 13),
+                                     end_date=date(2026, 9, 13), name='注册日')
+        view = services.agenda(self.person, date(2026, 9, 13), 7)
+        days = {day['date']: day for day in view['days']}
+        # Labels are attached whether or not the date is in a term.
+        self.assertEqual((days['2026-09-13']['term'], days['2026-09-13']['kind'],
+                          days['2026-09-13']['label']), (None, 'info', '注册日'))
+        self.assertEqual((days['2026-09-14']['kind'], days['2026-09-14']['label']), (None, None))
+        holiday = days['2026-09-16']
+        self.assertEqual((holiday['kind'], holiday['label'], holiday['occurrences']),
+                         ('holiday', '中秋节放假', []))
+        swap = days['2026-09-19']
+        self.assertEqual((swap['kind'], swap['label']), ('swap', '按周一课表上课'))
+        self.assertEqual([(o['title'], o['weekday']) for o in swap['occurrences']],
+                         [('高数', 6), ('英语', 6)])
+
+    def test_days_are_clamped_and_occurrences_sorted(self):
+        monday = date(2026, 9, 14)
+        live = _LiveSource([
+            _occurrence('晚活动', monday, time(19, 0), time(21, 0), source='activity', kind='activity'),
+            _occurrence('早活动', monday, time(7, 0), time(7, 30), source='activity', kind='activity'),
+            _occurrence('隐藏活动', monday, time(12, 0), time(13, 0), hidden=True),
+            _occurrence('范围外', date(2026, 10, 1), time(12, 0), time(13, 0)),
+        ])
+        self.sources.append(live)
+        view = services.agenda(self.person, monday, 30)
+        self.assertEqual(len(view['days']), services.AGENDA_MAX_DAYS)
+        self.assertEqual(view['days'][-1]['date'], '2026-09-27')
+        self.assertEqual([o['title'] for o in view['days'][0]['occurrences']],
+                         ['早活动', '高数', '英语', '晚活动'])
+        titles = [o['title'] for day in view['days'] for o in day['occurrences']]
+        self.assertNotIn('隐藏活动', titles)
+        self.assertNotIn('范围外', titles)
+        self.assertEqual(live.calls, [(monday, date(2026, 9, 27))])
+        self.assertEqual(len(services.agenda(self.person, monday, 0)['days']), 1)
+        self.assertEqual(len(services.agenda(self.person, monday, 14)['days']), 14)
+
+    def test_show_courses_hides_stored_entries(self):
+        settings = services.get_or_create_settings(self.person)
+        settings.show_courses = False
+        settings.save(update_fields=['show_courses'])
+        view = services.agenda(self.person, date(2026, 9, 14), 1)
+        self.assertEqual(view['days'][0]['occurrences'], [])
+        self.assertEqual(view['sources'], [{'key': 'stored', 'label': '课程'}])
+        week = services.week_view(self.person, self.term, 1, today=date(2026, 9, 14))
+        self.assertEqual(week['occurrences'], [])
+
+
+class IcsSourceToggleTests(TestCase):
+    """``build_ics`` honours the four source toggles (README §6.5)."""
+
+    SUMMARIES = {
+        'show_courses': 'SUMMARY:学校课',
+        'show_college': 'SUMMARY:书院课测试',
+        'show_activities': 'SUMMARY:报名活动',
+        'show_appointments': 'SUMMARY:地下室 B104 研讨/活动室',
+    }
+
+    def setUp(self):
+        self.term = make_term()
+        self.user, self.person = make_person()
+        org, teacher = make_organization()
+        make_entry(self.person, self.term, name='学校课', weekday=1, week_end=1)
+        make_college_course(org, self.person, datetime(2026, 9, 16, 14, 0))
+        activity = make_activity(org, teacher, datetime(2026, 9, 15, 19, 0), title='报名活动')
+        Participation.objects.create(activity=activity, person=self.person,
+                                     status=Participation.AttendStatus.APPLYSUCCESS)
+        make_appoint(self.user, datetime(2026, 9, 15, 20, 0), usage='讨论')
+        patcher = patch('timetable.ics.load_sources', return_value=[
+            StoredEntriesSource(), CollegeCourseSource(), ActivitySource(), AppointSource()])
+        patcher.start()
+        self.addCleanup(patcher.stop)
+        self.settings = services.get_or_create_settings(self.person)
+
+    def build(self) -> str:
+        return build_ics(self.person, today=date(2026, 9, 1), now=datetime(2026, 9, 1, 12))
+
+    def test_all_sources_by_default(self):
+        text = self.build()
+        for summary in self.SUMMARIES.values():
+            self.assertIn(summary, text)
+        self.assertEqual(text.count('BEGIN:VEVENT'), 1 + 16 + 1 + 1)
+        self.assertIn('DESCRIPTION:书院老师 · 书院课', text)
+        self.assertIn('CATEGORIES:预约', text)
+
+    def test_each_toggle_removes_only_its_source(self):
+        for flag, summary in self.SUMMARIES.items():
+            with self.subTest(flag=flag):
+                values = {name: True for name in self.SUMMARIES}
+                values[flag] = False
+                TimetableSettings.objects.filter(pk=self.settings.pk).update(**values)
+                text = self.build()
+                self.assertNotIn(summary, text)
+                for other_flag, other in self.SUMMARIES.items():
+                    if other_flag != flag:
+                        self.assertIn(other, text)
+        TimetableSettings.objects.filter(pk=self.settings.pk).update(
+            **{name: False for name in self.SUMMARIES})
+        self.assertEqual(self.build().count('BEGIN:VEVENT'), 0)
 
 
 class IcsTests(TestCase):

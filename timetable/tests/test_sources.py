@@ -1,4 +1,4 @@
-"""Source adapter tests: registry, 书院课, activities and appointments."""
+"""Source adapter tests: registry, 书院课, activities, appointments, date spans."""
 from datetime import date, datetime, time
 from unittest.mock import patch
 
@@ -21,9 +21,21 @@ from timetable.models import TimetableSettings
 from timetable.sources import base
 from timetable.sources.activity import ActivitySource
 from timetable.sources.appoint import AppointSource
+from timetable.sources.base import DateSpan, Occurrence
 from timetable.sources.college import CollegeCourseSource
 from timetable.sources.stored import StoredEntriesSource
 from timetable.tests.helpers import make_entry, make_person, make_term
+
+
+def _occurrence(id_, on, hour, **extra):
+    fields = {
+        'id': id_, 'source': 'fake', 'kind': 'activity', 'title': id_,
+        'start': datetime.combine(on, time(hour, 0)),
+        'end': datetime.combine(on, time(hour + 1, 0)),
+        'date': on, 'week': 1, 'weekday': on.isoweekday(),
+    }
+    fields.update(extra)
+    return Occurrence(**fields)
 
 
 class LoadSourcesTests(TestCase):
@@ -70,6 +82,87 @@ class LoadSourcesTests(TestCase):
         start, end = base.week_span(term, 2, 3)
         self.assertEqual(start, datetime(2026, 9, 21, 0, 0))
         self.assertEqual(end, datetime(2026, 10, 5, 0, 0))
+
+    def test_occurrences_between_dispatch(self):
+        """Date-based sources are asked directly, term-based ones via the default."""
+        term = make_term()
+        _, person = make_person()
+        settings = TimetableSettings(person=person)
+        calls = []
+        monday, tuesday = date(2026, 9, 14), date(2026, 9, 15)
+
+        class Direct:
+            key, label = 'direct', '直接'
+
+            def occurrences(self, person, term, week_from, week_to, settings):
+                calls.append(('occurrences', 'direct'))
+                return []
+
+            def occurrences_between(self, person, span, settings):
+                calls.append(('between', span.start, span.end))
+                return [_occurrence('late', tuesday, 20), _occurrence('early', tuesday, 8)]
+
+        class TermBased:
+            key, label = 'term', '学期'
+
+            def occurrences(self, person, term, week_from, week_to, settings):
+                calls.append(('occurrences', term.code, week_from, week_to))
+                return [_occurrence('in', tuesday, 9), _occurrence('out', date(2026, 9, 16), 9)]
+
+        span = DateSpan.load(monday, tuesday)
+        self.assertEqual([o.id for o in base.occurrences_between(Direct(), person, span, settings)],
+                         ['early', 'late'])
+        self.assertEqual([o.id for o in base.occurrences_between(TermBased(), person, span, settings)],
+                         ['in'])
+        self.assertEqual(calls, [('between', monday, tuesday), ('occurrences', term.code, 1, 1)])
+        # A span with no term gives a term-based source nothing to answer.
+        calls.clear()
+        span = DateSpan.load(date(2026, 9, 1), date(2026, 9, 13))
+        self.assertEqual(base.occurrences_between(TermBased(), person, span, settings), [])
+        self.assertEqual(calls, [])
+        # A reversed span is empty for both.
+        span = DateSpan.load(tuesday, monday)
+        self.assertEqual(base.occurrences_between(Direct(), person, span, settings), [])
+        self.assertEqual(calls, [])
+
+
+class DateSpanTests(TestCase):
+
+    def test_term_of_and_week_of(self):
+        fall = make_term()                                             # 2026-09-14 .. 2027-01-03
+        summer = make_term(code='26-27-3', week1_monday=date(2026, 12, 28), total_weeks=2)
+        make_term(code='25-26-2', week1_monday=date(2026, 2, 23), is_active=False)
+        with self.assertNumQueries(1):
+            span = DateSpan.load(date(2026, 9, 13), date(2026, 9, 15))
+        self.assertEqual([term.code for term in span.terms], ['26-27-3', '26-27-1'])
+        self.assertEqual(span.dates(), [date(2026, 9, 13), date(2026, 9, 14), date(2026, 9, 15)])
+        self.assertEqual(span.bounds(), (datetime(2026, 9, 13), datetime(2026, 9, 16)))
+        with self.assertNumQueries(0):
+            self.assertIsNone(span.term_of(date(2026, 9, 13)))
+            self.assertEqual(span.term_of(date(2026, 9, 14)), fall)
+            self.assertEqual(span.term_of(date(2026, 12, 27)), fall)
+            # Overlapping teaching spans: the latest-starting term wins.
+            self.assertEqual(span.term_of(date(2026, 12, 28)), summer)
+            self.assertEqual(span.term_of(date(2027, 1, 3)), summer)
+            self.assertEqual(span.term_of(date(2027, 1, 10)), summer)
+            self.assertIsNone(span.term_of(date(2027, 1, 11)))
+            self.assertIsNone(span.term_of(date(2026, 3, 1)))           # inactive term
+            self.assertEqual(span.week_of(date(2026, 9, 14)), 1)
+            self.assertEqual(span.week_of(date(2026, 12, 28)), 1)
+            self.assertEqual(span.week_of(date(2026, 12, 27)), 15)
+            # Outside every term: relative to the latest term that started …
+            self.assertEqual(span.week_of(date(2027, 1, 12)), 3)
+            # … or, before the first one, to that first term.
+            self.assertEqual(span.week_of(date(2026, 9, 13)), 0)
+            self.assertEqual(span.week_of(date(2026, 9, 6)), -1)
+
+    def test_without_terms(self):
+        make_term(is_active=False)
+        span = DateSpan.load(date(2026, 9, 14), date(2026, 9, 14))
+        self.assertEqual(span.terms, [])
+        self.assertIsNone(span.term_of(date(2026, 9, 14)))
+        self.assertEqual(span.week_of(date(2026, 9, 14)), 0)
+        self.assertEqual(DateSpan(date(2026, 9, 15), date(2026, 9, 14)).dates(), [])
 
 
 class _AppFixtureMixin:
@@ -195,6 +288,46 @@ class CollegeCourseSourceTests(_AppFixtureMixin, TestCase):
         self.course.save(update_fields=['status'])
         self.assertEqual(self.occurrences(), [])
 
+    def test_occurrences_between(self):
+        span = DateSpan.load(date(2026, 9, 14), date(2026, 9, 27))        # weeks 1-2
+        occurrences = self.source.occurrences_between(self.person, span, self.settings)
+        self.assertEqual([(o.week, o.date, o.status) for o in occurrences],
+                         [(1, date(2026, 9, 16), ''), (2, date(2026, 9, 23), 'checked_in')])
+        self.assertEqual([o.as_dict() for o in occurrences],
+                         [o.as_dict() for o in self.occurrences(1, 2)])
+        # Weeks 3 (canceled activity) and 4 (expanded): one lesson each.
+        span = DateSpan.load(date(2026, 9, 28), date(2026, 10, 7))
+        occurrences = self.source.occurrences_between(self.person, span, self.settings)
+        self.assertEqual([(o.date, o.week, o.status, o.ref['activity_id']) for o in occurrences],
+                         [(date(2026, 9, 30), 3, 'canceled', self.week3.pk),
+                          (date(2026, 10, 7), 4, '', None)])
+        # A generated lesson before week 1 is a real event: listed, week 0.
+        early = self.activity(datetime(2026, 9, 9, 14, 0),
+                              category=Activity.ActivityCategory.COURSE,
+                              course_time=self.course_time, title='书院课测试-第0次课')
+        span = DateSpan.load(date(2026, 9, 7), date(2026, 9, 13))
+        occurrences = self.source.occurrences_between(self.person, span, self.settings)
+        self.assertEqual([(o.date, o.week, o.ref['activity_id']) for o in occurrences],
+                         [(date(2026, 9, 9), 0, early.pk)])
+        self.settings.show_college = False
+        self.assertEqual(self.source.occurrences_between(self.person, span, self.settings), [])
+
+    def test_occurrences_between_lets_the_dates_decide_the_semester(self):
+        spring = Course.objects.create(
+            name='上学期书院课', organization=self.org, year=2025,
+            semester=Semester.SPRING, type=Course.CourseType.INTELLECTUAL,
+            status=Course.Status.END, classroom='Room D')
+        CourseTime.objects.create(
+            course=spring, start=datetime(2026, 9, 18, 10, 0),
+            end=datetime(2026, 9, 18, 11, 50), cur_week=0, end_week=1)
+        CourseParticipant.objects.create(
+            course=spring, person=self.person, status=CourseParticipant.Status.SUCCESS)
+        self.assertEqual([o.title for o in self.occurrences(1, 1)], ['书院课测试'])
+        span = DateSpan.load(date(2026, 9, 14), date(2026, 9, 20))
+        occurrences = self.source.occurrences_between(self.person, span, self.settings)
+        self.assertEqual([(o.title, o.date) for o in occurrences],
+                         [('书院课测试', date(2026, 9, 16)), ('上学期书院课', date(2026, 9, 18))])
+
 
 class ActivitySourceTests(_AppFixtureMixin, TestCase):
 
@@ -248,6 +381,25 @@ class ActivitySourceTests(_AppFixtureMixin, TestCase):
         self.settings.show_activities = False
         self.assertEqual(self.source.occurrences(self.person, self.term, 1, 16, self.settings), [])
 
+    def test_occurrences_between(self):
+        span = DateSpan.load(date(2026, 9, 15), date(2026, 9, 17))
+        occurrences = self.source.occurrences_between(self.person, span, self.settings)
+        self.assertEqual([(o.title, o.status, o.week) for o in occurrences],
+                         [('报名活动', 'applied', 1), ('签到活动', 'checked_in', 1)])
+        self.assertEqual(occurrences[0].as_dict(),
+                         self.source.occurrences(self.person, self.term, 1, 1, self.settings)[0].as_dict())
+        span = DateSpan.load(date(2026, 9, 16), date(2026, 9, 16))   # only the course activity
+        self.assertEqual(self.source.occurrences_between(self.person, span, self.settings), [])
+        early = self.activity(datetime(2026, 9, 5, 19, 0), title='开学前活动')
+        Participation.objects.create(activity=early, person=self.person,
+                                     status=Participation.AttendStatus.APPLYSUCCESS)
+        span = DateSpan.load(date(2026, 9, 1), date(2026, 9, 13))    # before the term
+        occurrences = self.source.occurrences_between(self.person, span, self.settings)
+        self.assertEqual([(o.title, o.date, o.week) for o in occurrences],
+                         [('开学前活动', date(2026, 9, 5), -1)])
+        self.settings.show_activities = False
+        self.assertEqual(self.source.occurrences_between(self.person, span, self.settings), [])
+
 
 class AppointSourceTests(TestCase):
 
@@ -299,6 +451,22 @@ class AppointSourceTests(TestCase):
         self.settings.show_appointments = False
         self.assertEqual(self.source.occurrences(self.person, self.term, 1, 16, self.settings), [])
 
+    def test_occurrences_between(self):
+        span = DateSpan.load(date(2026, 9, 15), date(2026, 9, 18))
+        occurrences = self.source.occurrences_between(self.person, span, self.settings)
+        self.assertEqual([o.ref['appoint_id'] for o in occurrences],
+                         [self.mine.Aid, self.joined.Aid])
+        self.assertEqual(occurrences[0].as_dict(),
+                         self.source.occurrences(self.person, self.term, 1, 1, self.settings)[0].as_dict())
+        span = DateSpan.load(date(2026, 9, 16), date(2026, 9, 17))   # canceled + someone else's
+        self.assertEqual(self.source.occurrences_between(self.person, span, self.settings), [])
+        span = DateSpan.load(date(2026, 9, 29), date(2026, 9, 29))
+        self.assertEqual([(o.ref['appoint_id'], o.week) for o in
+                          self.source.occurrences_between(self.person, span, self.settings)],
+                         [(self.week3.Aid, 3)])
+        self.settings.show_appointments = False
+        self.assertEqual(self.source.occurrences_between(self.person, span, self.settings), [])
+
 
 class StoredSourceTests(TestCase):
 
@@ -313,3 +481,38 @@ class StoredSourceTests(TestCase):
         occurrences = source.occurrences(person, term, 1, 2, TimetableSettings(person=person))
         self.assertEqual([o.title for o in occurrences], ['可见', '可见'])
         self.assertEqual((source.key, source.label), ('stored', '课程'))
+
+    def test_show_courses_toggle(self):
+        term = make_term()
+        _, person = make_person()
+        make_entry(person, term, name='可见', weekday=1)
+        source = StoredEntriesSource()
+        settings = TimetableSettings(person=person, show_courses=False)
+        self.assertEqual(source.occurrences(person, term, 1, 1, settings), [])
+        settings.show_courses = True
+        self.assertEqual([o.title for o in source.occurrences(person, term, 1, 1, settings)], ['可见'])
+        self.assertEqual([o.title for o in source.occurrences(person, term, 1, 1, None)], ['可见'])
+
+    def test_occurrences_between_follows_the_term_of_each_date(self):
+        fall = make_term()
+        summer = make_term(code='26-27-3', week1_monday=date(2026, 12, 28), total_weeks=2)
+        _, person = make_person()
+        make_entry(person, fall, name='秋季课', weekday=1)
+        make_entry(person, summer, name='夏季课', weekday=1, week_end=2)
+        source = StoredEntriesSource()
+        settings = TimetableSettings(person=person)
+        # Sat, Sun (no term), Mon (week 1), Tue.
+        span = DateSpan.load(date(2026, 9, 12), date(2026, 9, 15))
+        occurrences = base.occurrences_between(source, person, span, settings)
+        self.assertEqual([(o.title, o.date, o.week) for o in occurrences],
+                         [('秋季课', date(2026, 9, 14), 1)])
+        # 2026-12-28 is fall week 16 and summer week 1: the summer term owns it.
+        span = DateSpan.load(date(2026, 12, 21), date(2026, 12, 28))
+        occurrences = base.occurrences_between(source, person, span, settings)
+        self.assertEqual([(o.title, o.date, o.week) for o in occurrences],
+                         [('秋季课', date(2026, 12, 21), 15), ('夏季课', date(2026, 12, 28), 1)])
+        span = DateSpan.load(date(2026, 9, 1), date(2026, 9, 13))
+        self.assertEqual(base.occurrences_between(source, person, span, settings), [])
+        settings.show_courses = False
+        span = DateSpan.load(date(2026, 9, 14), date(2026, 9, 14))
+        self.assertEqual(base.occurrences_between(source, person, span, settings), [])

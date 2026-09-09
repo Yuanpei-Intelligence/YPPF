@@ -1,6 +1,7 @@
 """
-Domain operations of the timetable app: settings, week view, imports and
-conflict detection. Contract: ``timetable/README.md`` §4.4.
+Domain operations of the timetable app: settings, week view, agenda,
+imports and conflict detection. Contract: ``timetable/README.md`` §4.4 and
+§6.5.
 
 The API layer calls these functions; nothing here touches credentials — the
 portal payload is obtained by the caller through ``pku_account``.
@@ -8,15 +9,15 @@ portal payload is obtained by the caller through ``pku_account``.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import date
+from datetime import date, timedelta
 from typing import Any, Iterable
 
 from django.db import transaction
 
 from app.models import NaturalPerson
-from semester.calendar import AcademicCalendar
+from semester.calendar import AcademicCalendar, calendar_between
 
-from timetable.calendar import calendar_for, calendar_payload, week_days
+from timetable.calendar import calendar_for, calendar_payload, day_info, week_days
 from timetable.config import CONFIG
 from timetable.models import (
     AcademicTerm,
@@ -25,11 +26,18 @@ from timetable.models import (
     TimetableSettings,
 )
 from timetable.sources import pku_parsers
-from timetable.sources.base import Occurrence, load_sources, occurrence_sort_key
+from timetable.sources.base import (
+    DateSpan,
+    Occurrence,
+    load_sources,
+    occurrence_sort_key,
+    occurrences_between,
+)
 from timetable.sources.pku_parsers import LessonBlock, external_key
 from timetable.sources.stored import expand_entries
 
 __all__ = [
+    'AGENDA_MAX_DAYS',
     'ImportResult',
     'TimetableImportError',
     'get_or_create_settings',
@@ -37,6 +45,7 @@ __all__ = [
     'calendar_for',
     'term_payload',
     'week_view',
+    'agenda',
     'import_portal',
     'import_text',
     'parse_text',
@@ -44,6 +53,10 @@ __all__ = [
     'expand_entries',
     'detect_conflicts',
 ]
+
+
+# Longest agenda one call may return (``README`` §6.5).
+AGENDA_MAX_DAYS = 14
 
 
 class TimetableImportError(Exception):
@@ -146,6 +159,53 @@ def week_view(person, term: AcademicTerm, week: int, *,
         },
         'occurrences': [item.as_dict() for item in occurrences],
         'conflicts': detect_conflicts(occurrences),
+        'sources': [{'key': source.key, 'label': source.label} for source in sources],
+    }
+
+
+def agenda(person, start: date, days: int = 7) -> dict[str, Any]:
+    """
+    The ``AgendaOut`` payload of ``timetable/README.md`` §6.5: ``days``
+    consecutive dates from ``start`` (clamped to ``1..AGENDA_MAX_DAYS``),
+    each with the term it belongs to (the active term whose teaching span
+    covers it, the latest-starting one when several; ``None`` outside every
+    term), its teaching week, its calendar label and the visible occurrences
+    of every enabled source. Stored entries need a term and are absent on
+    term-less dates; live sources (书院课 activities, applied activities,
+    appointments) are date-based and still appear. The legend lists every
+    loaded source, as ``week_view`` does.
+    """
+    days = max(1, min(int(days), AGENDA_MAX_DAYS))
+    end = start + timedelta(days=days - 1)
+    settings = get_or_create_settings(person)
+    span = DateSpan.load(start, end)
+    calendar = calendar_between(start, end)
+    sources = load_sources()
+    occurrences: list[Occurrence] = []
+    for source in sources:
+        occurrences.extend(occurrences_between(source, person, span, settings))
+    occurrences = [item for item in occurrences
+                   if not item.hidden and start <= item.date <= end]
+    occurrences.sort(key=occurrence_sort_key)
+    by_date: dict[date, list[Occurrence]] = {}
+    for item in occurrences:
+        by_date.setdefault(item.date, []).append(item)
+    day_payloads: list[dict[str, Any]] = []
+    for on in span.dates():
+        term = span.term_of(on)
+        info = day_info(on, calendar)
+        day_payloads.append({
+            'date': on.isoformat(),
+            'weekday': on.isoweekday(),
+            'term': term.code if term is not None else None,
+            'week': term.week_of(on) if term is not None else None,
+            'kind': info['kind'],
+            'label': info['label'],
+            'occurrences': [item.as_dict() for item in by_date.get(on, [])],
+        })
+    return {
+        'from': start.isoformat(),
+        'days': day_payloads,
         'sources': [{'key': source.key, 'label': source.label} for source in sources],
     }
 

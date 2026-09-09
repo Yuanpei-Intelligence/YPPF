@@ -47,8 +47,8 @@ class ImportLogAdmin(admin.ModelAdmin):
 @admin.register(TimetableSettings)
 class TimetableSettingsAdmin(admin.ModelAdmin):
     list_display = ['person', 'reminder_enabled', 'reminder_minutes',
-                    'show_college', 'show_activities', 'show_appointments',
-                    'share_show_name']
+                    'show_courses', 'show_college', 'show_activities',
+                    'show_appointments', 'share_show_name']
     search_fields = ['person__name', 'person__person_id__username']
     raw_id_fields = ['person']
     readonly_fields = ['ics_token']

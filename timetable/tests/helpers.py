@@ -2,11 +2,21 @@
 from __future__ import annotations
 
 import json
-from datetime import date
+from datetime import date, datetime, time, timedelta
 from pathlib import Path
 
-from app.models import NaturalPerson
+from app.models import (
+    Activity,
+    Course,
+    CourseParticipant,
+    CourseTime,
+    NaturalPerson,
+    Organization,
+    OrganizationType,
+)
+from Appointment.models import Appoint, Participant, Room
 from generic.models import User
+from utils.models.semester import Semester
 from timetable.models import AcademicTerm, TimetableEntry
 
 FIXTURES = Path(__file__).resolve().parent / 'fixtures'
@@ -61,3 +71,73 @@ def make_entry(person, term, *, name='测试课', weekday=1, start_section=1,
     return TimetableEntry.objects.create(
         person=person, term=term, source=source,
         external_key=external_key or TimetableEntry.new_manual_key(), **fields)
+
+
+# --- fixtures of the live sources (书院课, activities, appointments) ---------
+
+def make_organization(username: str = 'tt_org', name: str = '课表测试小组',
+                      otype_id: int = 9301) -> tuple[Organization, NaturalPerson]:
+    """An organization with its type and the teacher in charge (the examiner)."""
+    teacher_user = User.objects.create_user(
+        f'{username}_teacher', '审核老师', User.Type.TEACHER, password='pw')
+    teacher = NaturalPerson.objects.create(
+        teacher_user, name='审核老师', identity=NaturalPerson.Identity.TEACHER)
+    org_type = OrganizationType.objects.create(
+        otype_id=otype_id, otype_name=f'{name}类型', incharge=teacher,
+        job_name_list=['负责人', '成员'])
+    org_user = User.objects.create_user(username, name, User.Type.ORG, password='pw')
+    org = Organization.objects.create(organization_id=org_user, oname=name, otype=org_type)
+    return org, teacher
+
+
+def make_activity(org: Organization, teacher: NaturalPerson, start: datetime,
+                  hours: int = 2, **overrides) -> Activity:
+    """A waiting activity of ``org`` starting at ``start`` (2026 fall by default)."""
+    fields = {
+        'title': f'活动 {start:%m%d}', 'organization_id': org,
+        'examine_teacher': teacher, 'year': 2026,
+        'semester': Semester.FALL, 'start': start,
+        'end': start + timedelta(hours=hours),
+        'location': 'Room A', 'status': Activity.Status.WAITING,
+        'publish_time': start, 'apply_end': start,
+    }
+    fields.update(overrides)
+    return Activity.objects.create(**fields)
+
+
+def make_college_course(org: Organization, person: NaturalPerson, start: datetime,
+                        *, name: str = '书院课测试', teacher: str = '书院老师',
+                        classroom: str = 'Room B', year: int = 2026,
+                        semester: Semester = Semester.FALL, cur_week: int = 0,
+                        end_week: int = 16) -> tuple[Course, CourseTime]:
+    """A 书院课 ``person`` selected successfully, with one weekly time from ``start``."""
+    course = Course.objects.create(
+        name=name, organization=org, year=year, semester=semester,
+        type=Course.CourseType.INTELLECTUAL, status=Course.Status.SELECT_END,
+        classroom=classroom, teacher=teacher)
+    course_time = CourseTime.objects.create(
+        course=course, start=start, end=start + timedelta(hours=1, minutes=50),
+        cur_week=cur_week, end_week=end_week)
+    CourseParticipant.objects.create(
+        course=course, person=person, status=CourseParticipant.Status.SUCCESS)
+    return course, course_time
+
+
+def make_room(rid: str = 'B104T', title: str = 'B104 研讨/活动室') -> Room:
+    return Room.objects.create(
+        Rid=rid, Rtitle=title, Rmin=0, Rmax=10,
+        Rstart=time(8, 0), Rfinish=time(22, 0), Rstatus=Room.Status.PERMITTED)
+
+
+def make_appoint(user: User, start: datetime, *, room: Room | None = None,
+                 usage: str = '', hours: int = 1,
+                 status: int = Appoint.Status.APPOINTED) -> Appoint:
+    """An appointment of ``user`` (as major student) starting at ``start``."""
+    participant, _ = Participant.objects.get_or_create(Sid=user)
+    if room is None:
+        room = Room.objects.filter(Rid='B104T').first() or make_room()
+    appoint = Appoint.objects.create(
+        Room=room, Astart=start, Afinish=start + timedelta(hours=hours),
+        Aneed_num=1, major_student=participant, Ausage=usage, Astatus=status)
+    appoint.students.add(participant)
+    return appoint

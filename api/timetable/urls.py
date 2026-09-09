@@ -2,6 +2,7 @@
 from django.urls import path
 
 from api.timetable.views import (
+    AgendaView,
     CatalogView,
     EntryViewSet,
     IcsRotateView,
@@ -23,6 +24,7 @@ entry_detail = EntryViewSet.as_view({'patch': 'partial_update', 'delete': 'destr
 urlpatterns = [
     path('terms/', TermsView.as_view(), name='terms'),
     path('week/', WeekView.as_view(), name='week'),
+    path('agenda/', AgendaView.as_view(), name='agenda'),
     path('entries/', entry_list, name='entry-list'),
     path('entries/<int:pk>/', entry_detail, name='entry-detail'),
     path('import/portal/', ImportPortalView.as_view(), name='import-portal'),

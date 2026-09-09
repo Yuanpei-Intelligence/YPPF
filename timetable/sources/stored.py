@@ -89,13 +89,19 @@ def _occurrence(entry: TimetableEntry, on: date, week: int) -> Occurrence:
 
 
 class StoredEntriesSource:
-    """School courses (portal/paste) and manual entries stored in YPPF."""
+    """
+    School courses (portal/paste) and manual entries stored in YPPF. Honours
+    ``settings.show_courses``. Term-based: date-span queries go through the
+    default ``timetable.sources.base.term_occurrences_between``.
+    """
 
     key = 'stored'
     label = '课程'
 
     def occurrences(self, person, term, week_from: int, week_to: int,
                     settings) -> list[Occurrence]:
+        if settings is not None and not settings.show_courses:
+            return []
         entries = TimetableEntry.objects.filter(
             person=person, term=term, hidden=False).order_by('id')
         return expand_entries(entries, term, week_from, week_to)
