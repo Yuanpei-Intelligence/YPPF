@@ -396,8 +396,12 @@ yields no blocks, answer 400 `PARSE_FAILED` and leave existing entries
 untouched (a failed `ImportLog` is written); a dry run on unrecognised text
 answers 200 `{format: 'unknown', blocks: []}`. Hidden entries are excluded
 from `week/` and from the ICS feed but still listed by `entries/` so they can
-be un-hidden. Every error body is `{code, message}` (validation errors add
-`errors`).
+be un-hidden. Every error body is `{code, message}`; validation errors add
+`errors: {field: [{code, message}]}` — the same item shape as the
+platform-wide envelope of `api/exceptions.py` (YPPF PR #1014) and of the
+mini-program's unified `RequestError` (YPPF-mini PR #10). Once #1014 is
+merged these modules should adopt `StandardizedExceptionHandlerMixin` /
+`APIError` instead of their local mixins (mechanical change; codes stay).
 
 ```ts
 interface Term { code: string; name: string; week1_monday: string; total_weeks: number;
