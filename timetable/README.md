@@ -1223,10 +1223,16 @@ errors use `errors.<field>`.
 
 ## 9. Deployment checklist
 
-`python manage.py timetable_check` prints every item below as an `[OK]` /
-`[WARN]` / `[FAIL]` line and exits non-zero on failures (`--warn-only`
-for a preflight that must not block). The order to follow on a fresh
-deployment:
+`python manage.py deploy_check` (the project-wide command; `--app timetable
+--app pku_account` narrows it, `--online` adds network probes) prints the
+checks as `[OK]` / `[WARN]` / `[FAIL]` lines and exits non-zero on failures
+(`--warn-only` for a preflight that must not block). This feature contributes
+two plugins: `timetable/deploy_checks.py` (sources, subscribe template, share
+assets, reminder job, current / upcoming term with calendar, exam weeks,
+catalog and exams; online: the poster's mini-program code) and
+`pku_account/deploy_checks.py` (feature switch, session key, bound accounts;
+online: IAAA reachability and whether the portal data endpoints still exist —
+they answered 404 on 2026-09-10). The order to follow on a fresh deployment:
 
 1. `config.json` (see `config_template.json`): `pku_portal.enabled: true`
    (optional `session_key`, else derived from `SECRET_KEY`);
