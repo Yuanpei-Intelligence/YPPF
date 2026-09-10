@@ -89,7 +89,9 @@ class LoginAndBindTests(ServiceTestCase):
         session = PkuPortalSession.objects.get(account=account)
         stored = bytes(session.cookies_encrypted)
         self.assertNotIn(b'portal-session', stored)
-        self.assertEqual(decrypt_json(stored), {'JSESSIONID': 'portal-session'})
+        # Stored with paths: publicQuery sets JSESSIONID at "/" and "/publicQuery".
+        self.assertEqual(decrypt_json(stored),
+                         [{'name': 'JSESSIONID', 'value': 'portal-session', 'path': '/'}])
         self.assertFalse(session.invalid)
         self.assertEqual(session.invalid_reason, '')
         self.assertIsNotNone(session.last_ok_at)
@@ -131,7 +133,7 @@ class LoginAndBindTests(ServiceTestCase):
         self.assertEqual(PkuPortalSession.objects.count(), 1)
         session = PkuPortalSession.objects.get(account=again)
         self.assertEqual(decrypt_json(session.cookies_encrypted),
-                         {'JSESSIONID': 'new'})
+                         [{'name': 'JSESSIONID', 'value': 'new', 'path': '/'}])
         self.assertFalse(session.invalid)
         self.assertEqual(session.invalid_reason, '')
         self.assertEqual(session.last_ok_at, second_time)

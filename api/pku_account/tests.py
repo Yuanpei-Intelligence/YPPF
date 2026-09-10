@@ -187,7 +187,7 @@ class PkuAccountApiTestCase(APITestCase):
         session = PkuPortalSession.objects.get(account=account)
         self.assertNotIn(b'portal-session', bytes(session.cookies_encrypted))
         self.assertEqual(decrypt_json(session.cookies_encrypted),
-                         {'JSESSIONID': 'portal-session'})
+                         [{'name': 'JSESSIONID', 'value': 'portal-session', 'path': '/'}])
 
     def test_login_relogin_updates_same_binding(self):
         first = self.bind()

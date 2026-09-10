@@ -82,22 +82,28 @@ tiles open the **publicQuery** application.
 
 ```
 GET  https://iaaa.pku.edu.cn/iaaa/isMobileAuthen.do?appId=portalPublicQuery&userName=<id>&_rand=<random>
-     → {"success": true, "authenMode": "否", ...}   # any other mode → OtpRequired, no password is posted
+     → {"success": true, "authenMode": "否", "isMobileAuthen": false, "isBind": true, "mobileMask": "…", ...}
+       # logged only, the login decides; portalPublicQuery, syllabus and portal2017 all answered 否 (2026-09-10)
 POST https://iaaa.pku.edu.cn/iaaa/oauthlogin.do
      form: appid=portalPublicQuery, userName, password, randCode='', smsCode='', otpCode='',
            redirUrl=https://portal.pku.edu.cn/publicQuery/ssoLogin.do
      headers: Referer=https://iaaa.pku.edu.cn/iaaa/oauth.jsp?appID=portalPublicQuery&appName=校内信息门户公共查询&redirectUrl=...
      → JSON {"success": true, "token": "..."}  |  {"success": false, "errors": {"code": "...", "msg": "..."}}
 GET  https://portal.pku.edu.cn/publicQuery/ssoLogin.do?_rand=<random>&token=<token>
-     → sets the session cookies on portal.pku.edu.cn (follow redirects; keep every Set-Cookie)
+     → sets JSESSIONID twice on portal.pku.edu.cn, at path "/" and at "/publicQuery" (seen 2026-09-10);
+       both are stored with their paths (a name-keyed dict would keep only one)
 GET  https://portal.pku.edu.cn/publicQuery/ctrl/topic/myCourseTable/getXndXqList.do
      → {"success": true, "nowXnxq": {"xndxq": "26-27-1", ...}, "xndxq": [{"xndxq": "..."}, ...]}
 GET  https://portal.pku.edu.cn/publicQuery/ctrl/topic/myCourseTable/getCourseInfo.do?xndxq=26-27-1
      → {"success": true, "remark": "...", "course": [ {"timeNum": "第一节",
           "mon": {"courseName": "...", "parity": "...", "sty": "..."}, "tue": {...}, ... "sun": {...}} , ... ]}
+     → a term without a timetable: {"success": true, "message": "获取个人课表信息失败"} with no "course":
+       an empty table (not a parse error), so the elective fallback applies
 GET  https://portal.pku.edu.cn/publicQuery/ctrl/topic/myScore/retrScores.do
      → {"success": true, "xslb": "bks"|"yjs", "jbxx": {...}, "cjxx": [...], "fscjxx": [...],
         "zjlcjxx": [...], "bylwcjxx": {...}, "scoreLists": [...], "grade": ..., "gpa": ...}   (§6.2)
+     graduate, seen 2026-09-10: {"success": true, "xslb": "yjs", "xh": ..., "xm": ..., "scoreLists": [{"yjscjbh",
+        "kch", "kcmc", "kclb", "xf", "cj", "hgbz", "khfsm", "cjjlfsm", "xnd", "xq"}]}; getGPAbyXh.do answers success false
 ```
 
 `courseName` is HTML: `<font color = 'red'><b>…</b></font>` marks a conflict,
@@ -207,7 +213,7 @@ class PkuAccount(models.Model):
 
 class PkuPortalSession(models.Model):
     account = OneToOneField(PkuAccount, related_name='portal_session')
-    cookies_encrypted = BinaryField()             # Fernet(json.dumps(cookies))
+    cookies_encrypted = BinaryField()             # Fernet(json.dumps([{name, value, path}, ...])); a legacy {name: value} restores at "/"
     created_at = DateTimeField(auto_now_add=True)
     last_ok_at = DateTimeField(null=True)
     last_checked_at = DateTimeField(null=True)
@@ -685,11 +691,16 @@ Treehole proxy flattens `cjxx` into rows carrying `xnd`/`xq`; both shapes parse.
 
 Graduate students (`"xslb": "yjs"`) get `scoreLists` instead. The page
 template binds `kcmc`, `xf`, `kclb`, `cj` and `hgbz`, so a row maps to name
-`kcmc`, credits `xf`, score `cj` (`xqcj` accepted), `course_type` `kclb`
-(then `kclbmc`), and `hgbz` (合格标志) stays in `raw`. The term keys of those
-rows are **not confirmed** (no graduate sample with rows yet): `xnd` + `xq`
-are used, then `xndxq` as given, and a row naming neither is filed under the
-term code `unknown` (listed first, as `terms` sort by code, newest first).
+`kcmc`, credits `xf`, score `cj` (`xqcj` accepted), `course_type` `kclbmc`
+when present, else `kclb`, and `hgbz` (合格标志) stays in `raw`. A real
+graduate account (2026-09-10) returned rows with `yjscjbh`, `kch`, `kcmc`,
+`kclb` (必修/选修), `xf`, `cj` (letter grades such as A+, so `score_numeric`
+stays null), `hgbz` (合格 or empty), `khfsm` (考试), `cjjlfsm` (等级制2017),
+`xnd` (`24-25`) and `xq` (`1`/`2`), next to top-level `xh`/`xm` that are never
+read. So `xnd` + `xq` give the term; `xndxq` is still accepted, and a row
+naming neither is filed under the term code `unknown` (listed first, as
+`terms` sort by code, newest first). Undergraduate `kclb` is a numeric code
+(`30`) whose name is `kclbmc`, hence the order.
 Rows nested under `list` like `cjxx` are accepted, and `cjxx` rows of a
 graduate payload are parsed as well; undergraduate payloads ignore
 `scoreLists`. The personal block `jbxx` is never read, stored or logged.

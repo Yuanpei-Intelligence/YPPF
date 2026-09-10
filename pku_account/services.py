@@ -200,7 +200,9 @@ def login_and_bind(
     except IaaaError:
         _record_login_failure(user, now)
         raise
-    cookies = client.cookies()
+    # Name, value and path: publicQuery sets two JSESSIONID cookies (paths
+    # "/" and "/publicQuery"), which a name-keyed dict would collapse.
+    cookies = client.export_cookies()
 
     with transaction.atomic():
         # Serialize concurrent logins of the same user on their User row.
@@ -280,7 +282,9 @@ def get_client(user: User) -> PortalClient:
         )
         invalidate_session(account, 'key_changed')
         raise SessionUnavailable(_SESSION_EXPIRED_MESSAGE)
-    if not isinstance(cookies, dict):
+    # A list of {name, value, path} since cookie paths are kept; a dict is a
+    # session stored before that (restored at path "/").
+    if not isinstance(cookies, (dict, list)):
         invalidate_session(account, 'corrupted')
         raise SessionUnavailable(_SESSION_EXPIRED_MESSAGE)
     return PortalClient.from_cookies(cookies)

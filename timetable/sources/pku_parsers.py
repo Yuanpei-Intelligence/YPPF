@@ -405,6 +405,11 @@ def parse_portal_course_json(raw: dict | str) -> list[LessonBlock]:
     rows = raw.get('course')
     if rows is None and isinstance(raw.get('data'), dict):
         rows = raw['data'].get('course')
+    if rows is None and raw.get('success') is True:
+        # publicQuery answers {"success": true, "message": "获取个人课表信息失败"}
+        # with no "course" list for a term without a timetable (courses not
+        # arranged yet, or a graduate without classes): an empty table.
+        return []
     if not isinstance(rows, list):
         raise ValueError('portal payload has no "course" list')
     cells: list[tuple[int, int, list[dict[str, Any]]]] = []

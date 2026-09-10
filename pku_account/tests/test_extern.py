@@ -320,6 +320,34 @@ class PortalClientTests(SimpleTestCase):
         cookies = {'JSESSIONID': 'abc', 'route': 'r1'}
         self.assertEqual(PortalClient.from_cookies(cookies).cookies(), cookies)
 
+    def test_export_keeps_cookie_paths(self):
+        # publicQuery's SSO leaves JSESSIONID at "/" and at "/publicQuery"
+        # (verified with a real account on 2026-09-10); both must survive.
+        client = PortalClient()
+        client._session.cookies.set('JSESSIONID', 'root-session', domain='portal.pku.edu.cn', path='/')
+        client._session.cookies.set('JSESSIONID', 'pq-session', domain='portal.pku.edu.cn',
+                                    path='/publicQuery')
+        client._session.cookies.set('iaaa_sid', 'x', domain='iaaa.pku.edu.cn', path='/')
+        exported = client.export_cookies()
+        self.assertEqual(
+            sorted((item['name'], item['value'], item['path']) for item in exported),
+            [('JSESSIONID', 'pq-session', '/publicQuery'), ('JSESSIONID', 'root-session', '/')])
+
+        restored = PortalClient.from_cookies(exported)
+        jar = restored._session.cookies
+        self.assertEqual(
+            sorted((cookie.value, cookie.path) for cookie in jar if cookie.name == 'JSESSIONID'),
+            [('pq-session', '/publicQuery'), ('root-session', '/')])
+        # A request to a publicQuery endpoint carries the publicQuery session.
+        request = requests.Request('GET', portal.PORTAL_COURSE_URL).prepare()
+        jar_header = requests.cookies.get_cookie_header(jar, request)
+        self.assertIn('JSESSIONID=pq-session', jar_header)
+
+    def test_from_cookies_skips_malformed_items(self):
+        restored = PortalClient.from_cookies([{'name': '', 'value': 'x'}, 'junk',
+                                              {'name': 'route', 'value': 'r1'}])
+        self.assertEqual(restored.cookies(), {'route': 'r1'})
+
     def _fetch(self, method, payload, *args):
         seen = {}
 

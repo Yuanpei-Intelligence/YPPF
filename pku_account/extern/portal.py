@@ -133,24 +133,51 @@ class PortalClient:
         return client
 
     @classmethod
-    def from_cookies(cls, cookies: dict[str, str]) -> 'PortalClient':
-        """Rebuild a client from a cookie mapping returned by :meth:`cookies`."""
+    def from_cookies(
+        cls, cookies: dict[str, str] | list[dict[str, str]],
+    ) -> 'PortalClient':
+        """
+        Rebuild a client from :meth:`export_cookies` output (a list of
+        ``{"name", "value", "path"}``) or from a legacy name → value mapping,
+        whose cookies are restored at path ``/``.
+        """
         client = cls()
-        for name, value in cookies.items():
+        if isinstance(cookies, dict):
+            items = [{'name': name, 'value': value, 'path': '/'}
+                     for name, value in cookies.items()]
+        else:
+            items = [item for item in cookies if isinstance(item, dict)]
+        for item in items:
+            name = str(item.get('name') or '')
+            if not name:
+                continue
             client._session.cookies.set(
-                str(name), str(value), domain=PORTAL_HOST, path='/',
+                name, str(item.get('value') or ''),
+                domain=PORTAL_HOST, path=str(item.get('path') or '/'),
             )
         return client
 
     # ---- session ----------------------------------------------------------
 
     def cookies(self) -> dict[str, str]:
-        """The portal cookies (name → value); IAAA's own cookies are dropped."""
+        """
+        The portal cookies (name → value); IAAA's own cookies are dropped.
+        publicQuery sets ``JSESSIONID`` at both ``/`` and ``/publicQuery``,
+        which collapse here: persist :meth:`export_cookies` instead.
+        """
         return {
             cookie.name: cookie.value
             for cookie in self._session.cookies
             if cookie_matches_host(cookie, PORTAL_HOST)
         }
+
+    def export_cookies(self) -> list[dict[str, str]]:
+        """The portal cookies with their paths, for storage; IAAA's own cookies are dropped."""
+        return [
+            {'name': cookie.name, 'value': cookie.value, 'path': cookie.path or '/'}
+            for cookie in self._session.cookies
+            if cookie_matches_host(cookie, PORTAL_HOST)
+        ]
 
     # ---- data -------------------------------------------------------------
 

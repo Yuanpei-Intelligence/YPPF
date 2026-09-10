@@ -313,6 +313,16 @@ class ElectiveFallbackTests(TestCase):
         self.assertTrue(services.elective_results_apply(self.next, vacation))
         self.assertFalse(services.elective_results_apply(self.later, vacation))
 
+    def test_success_without_course_list_falls_back_to_elective(self):
+        # What publicQuery answered for a term without a timetable (2026-09-10).
+        result = services.import_portal(
+            self.person, self.term, {'success': True, 'message': '获取个人课表信息失败'},
+            elective_results=self.results(read_fixture('elective_table.html')), today=self.TODAY)
+        self.assertEqual(self.calls, 1)
+        self.assertEqual(result.created, 4)
+        self.assertEqual(result.log.message,
+                         'no lessons in portal payload; imported from elective results')
+
     def test_empty_course_table_imports_elective_results(self):
         stale = make_entry(self.person, self.term, name='旧课')
         result = services.import_portal(
