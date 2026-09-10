@@ -1175,7 +1175,7 @@ class EntryDetailAndScopeTests(TimetableAPITestCase):
         response = self.client.get(self.url('entry-detail', pk=own.pk))
         self.assertEqual(response.data['exam'], {
             'id': None, 'start': '2027-01-12T14:00:00', 'end': '2027-01-12T16:00:00',
-            'room': '二教411', 'method': '', 'note': '时间以教务通知为准'})
+            'room': '二教411', 'method': '', 'note': '教务部统一考试时段'})
         # A matching CourseExam wins over the entry's own exam info.
         self.entry.exam_date = date(2027, 1, 20)
         self.entry.save()

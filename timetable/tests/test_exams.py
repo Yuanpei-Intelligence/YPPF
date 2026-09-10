@@ -19,7 +19,8 @@ from timetable.sources import base
 from timetable.sources.exam import ExamSource
 from timetable.tests.helpers import make_entry, make_person, make_term
 
-# The official fall term: week 1 = 2026-09-07, week 19 = 2027-01-11..17.
+# A synthetic 19-week term starting 2026-09-07 (week 19 = 2027-01-11..17); the
+# real 2026-2027 fall term has 18 weeks (calendar_26-27-1.json).
 FALL = AcademicTerm(code='26-27-1', name='fall', week1_monday=date(2026, 9, 7),
                     total_weeks=19, exam_week_start=17)
 
@@ -254,7 +255,7 @@ class OwnExamTests(TestCase):
         ])
         quantum = occurrences[0]
         self.assertEqual((quantum.source, quantum.kind, quantum.subtitle, quantum.location),
-                         ('exam', 'exam', '时间以教务通知为准', '二教411'))
+                         ('exam', 'exam', '教务部统一考试时段', '二教411'))
         self.assertEqual((quantum.start, quantum.end),
                          (datetime(2027, 1, 12, 8, 30), datetime(2027, 1, 12, 10, 30)))
         self.assertEqual((quantum.date, quantum.week, quantum.weekday), (date(2027, 1, 12), 19, 2))

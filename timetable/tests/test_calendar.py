@@ -34,8 +34,11 @@ from timetable.sources.stored import StoredEntriesSource, expand_entries
 from timetable.tests.helpers import make_entry, make_person, make_term
 
 DATA_DIR = Path(timetable.__file__).resolve().parent / 'data'
-# The official 2026-2027 fall calendar: week 1 starts Monday 2026-09-07,
+# Week numbers of the 2026-2027 fall term: week 1 starts Monday 2026-09-07,
 # week 18 is 2027-01-04..01-10, 国庆 (10-01..10-07) falls in weeks 4-5.
+# fall_events() is a synthetic calendar that puts its exam period and 寒假
+# after week 18 to exercise out-of-term events; the real 校本部 calendar is
+# timetable/data/calendar_26-27-1.json (停课复习考试 12-28..01-10, 寒假 from 01-11).
 FALL_WEEK1 = date(2026, 9, 7)
 
 
@@ -452,16 +455,16 @@ class ImportCommandTests(TestCase):
 
     def test_creates_term_and_events(self):
         output = self.run_command(self.write(self.fall))
-        self.assertIn('26-27-1 2026-2027学年秋季学期: week 1 from 2026-09-07, 19 week(s), '
+        self.assertIn('26-27-1 2026-2027学年秋季学期: week 1 from 2026-09-07, 18 week(s), '
                       'exam weeks from week 17 (new term)', output)
         self.assertIn('holiday  2026-10-01 .. 2026-10-07  weeks 4-5    国庆节放假', output)
-        self.assertIn('exam     2027-01-11 .. 2027-01-17  week 19      停课复习考试', output)
-        self.assertIn('holiday  2027-01-18 .. 2027-02-21  weeks 20-24  寒假', output)
+        self.assertIn('exam     2026-12-28 .. 2027-01-10  weeks 17-18  停课复习考试', output)
+        self.assertIn('holiday  2027-01-11 .. 2027-02-21  weeks 19-24  寒假', output)
         self.assertIn('done: created term 26-27-1, replaced 0 event(s) in '
                       '2026-09-07 .. 2027-02-21 with 8', output)
         term = AcademicTerm.objects.get(code='26-27-1')
         self.assertEqual((term.name, term.week1_monday, term.total_weeks, term.is_active),
-                         ('2026-2027学年秋季学期', date(2026, 9, 7), 19, True))
+                         ('2026-2027学年秋季学期', date(2026, 9, 7), 18, True))
         self.assertEqual((term.exam_week_start, term.teaching_weeks), (17, 16))
         self.assertEqual(term.section_times, default_section_times())
         self.assertEqual(CalendarEvent.objects.count(), 8)
@@ -480,12 +483,12 @@ class ImportCommandTests(TestCase):
         path = self.write(self.fall)
         output = self.run_command(path)
         self.assertIn('(existing term, name 旧名 -> 2026-2027学年秋季学期, '
-                      'week1_monday 2026-09-14 -> 2026-09-07, total_weeks 16 -> 19, '
+                      'week1_monday 2026-09-14 -> 2026-09-07, total_weeks 16 -> 18, '
                       'exam_week_start None -> 17)', output)
         self.assertIn('done: updated term 26-27-1, replaced 1 event(s)', output)
         term.refresh_from_db()
         self.assertEqual((term.name, term.week1_monday, term.total_weeks, term.exam_week_start),
-                         ('2026-2027学年秋季学期', date(2026, 9, 7), 19, 17))
+                         ('2026-2027学年秋季学期', date(2026, 9, 7), 18, 17))
         self.assertEqual(term.section_times, {'1': ['08:30', '09:20']})
         self.assertFalse(term.is_active)
         self.assertFalse(CalendarEvent.objects.filter(name='旧事件').exists())
@@ -544,21 +547,22 @@ class ImportCommandTests(TestCase):
         fall = AcademicTerm.objects.get(code='26-27-1')
         spring = AcademicTerm.objects.get(code='26-27-2')
         self.assertEqual((fall.name, fall.week1_monday, fall.total_weeks),
-                         ('2026-2027学年秋季学期', date(2026, 9, 7), 19))
+                         ('2026-2027学年秋季学期', date(2026, 9, 7), 18))
         self.assertEqual((spring.name, spring.week1_monday, spring.total_weeks),
                          ('2026-2027学年春季学期', date(2027, 2, 22), 18))
-        # Exam weeks (§8.4): 17-18 course exams, then the university exam
-        # period of the calendar — weeks 19 (fall) / 17-18 (spring).
+        # Exam weeks (§8.4): on the main campus the 停课复习考试 period is
+        # weeks 17-18 in both terms (fall 12-28..01-10, spring 06-14..06-27).
         self.assertEqual((fall.exam_week_start, fall.teaching_weeks), (17, 16))
         self.assertEqual((spring.exam_week_start, spring.teaching_weeks), (17, 16))
-        self.assertEqual(fall.end_date(), date(2027, 1, 17))
+        self.assertEqual(fall.end_date(), date(2027, 1, 10))
         self.assertEqual(spring.end_date(), date(2027, 6, 27))
-        self.assertEqual([fall.is_exam_week(week) for week in (16, 17, 19, 20)],
+        self.assertEqual([fall.is_exam_week(week) for week in (16, 17, 18, 19)],
                          [False, True, True, False])
-        self.assertEqual(fall.date_of(19, 1), date(2027, 1, 11))
+        self.assertEqual(fall.date_of(17, 1), date(2026, 12, 28))
+        self.assertEqual(fall.date_of(18, 7), date(2027, 1, 10))
         self.assertEqual(spring.date_of(17, 1), date(2027, 6, 14))
         self.assertEqual(spring.date_of(18, 7), date(2027, 6, 27))
-        self.assertEqual(CalendarEvent.objects.count(), 12)
+        self.assertEqual(CalendarEvent.objects.count(), 13)
         by_name = {event.name: event for event in CalendarEvent.objects.all()}
         self.assertEqual((by_name['中秋节放假'].start_date, by_name['中秋节放假'].end_date),
                          (date(2026, 9, 25), date(2026, 9, 25)))
@@ -568,30 +572,37 @@ class ImportCommandTests(TestCase):
                           by_name['校本部秋季运动会'].end_date),
                          ('info', date(2026, 10, 10), date(2026, 10, 11)))
         self.assertEqual((by_name['寒假'].start_date, by_name['寒假'].end_date),
-                         (date(2027, 1, 18), date(2027, 2, 21)))
+                         (date(2027, 1, 11), date(2027, 2, 21)))
+        self.assertEqual((by_name['校本部运动会'].kind, by_name['校本部运动会'].start_date,
+                          by_name['校本部运动会'].end_date),
+                         ('info', date(2027, 4, 23), date(2027, 4, 25)))
         self.assertEqual((by_name['劳动节、校庆放假'].start_date, by_name['劳动节、校庆放假'].end_date),
                          (date(2027, 5, 1), date(2027, 5, 7)))
         self.assertIn('校庆', by_name['劳动节、校庆放假'].note)
         self.assertEqual(by_name['暑假'].start_date, date(2027, 6, 28))
         exams = CalendarEvent.objects.filter(kind='exam').order_by('start_date')
         self.assertEqual([(e.start_date, e.end_date) for e in exams], [
-            (date(2027, 1, 11), date(2027, 1, 17)), (date(2027, 6, 14), date(2027, 6, 27))])
+            (date(2026, 12, 28), date(2027, 1, 10)), (date(2027, 6, 14), date(2027, 6, 27))])
         self.assertFalse(CalendarEvent.objects.filter(kind='swap').exists())
         # The fall window ends the day before spring week 1, so re-importing
         # one file leaves the other term's rows alone.
         self.run_command(str(DATA_DIR / 'calendar_26-27-1.json'))
-        self.assertEqual(CalendarEvent.objects.count(), 12)
+        self.assertEqual(CalendarEvent.objects.count(), 13)
         # Calendar semantics of a few well-known dates.
         calendar = calendar_for(fall)
         self.assertFalse(calendar.is_class_day(date(2026, 9, 25)))
         self.assertFalse(calendar.is_class_day(date(2026, 10, 1)))
-        self.assertTrue(calendar.is_class_day(date(2026, 9, 30)))
-        self.assertEqual(calendar.label(date(2026, 9, 30)), '公休，课程照常进行')
+        # 9/20 (a Sunday made a working day) and 9/26-27 run classes as usual.
+        self.assertTrue(calendar.is_class_day(date(2026, 9, 20)))
+        self.assertEqual(calendar.label(date(2026, 9, 20)), '公休，课程照常进行')
+        self.assertIsNone(calendar.label(date(2026, 9, 30)))
         self.assertEqual(calendar.label(date(2026, 10, 10)), '公休，课程照常进行')
         self.assertEqual(calendar.label(date(2026, 10, 11)), '校本部秋季运动会')
         self.assertEqual(calendar.effective_weekday(date(2026, 10, 10)), 6)
-        self.assertTrue(is_class_day(date(2027, 1, 8)))
-        self.assertFalse(is_class_day(date(2027, 1, 12)))
+        self.assertTrue(is_class_day(date(2026, 12, 25)))    # week 16
+        self.assertFalse(is_class_day(date(2027, 1, 8)))     # 停课复习考试, week 18
+        self.assertFalse(is_class_day(date(2027, 1, 12)))    # 寒假 from 01-11
+        self.assertTrue(is_class_day(date(2027, 4, 24)))     # 运动会 is a label only
         self.assertFalse(is_class_day(date(2027, 2, 1)))
         self.assertTrue(is_class_day(date(2027, 2, 22)))
         self.assertFalse(is_class_day(date(2027, 5, 4)))

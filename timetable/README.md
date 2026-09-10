@@ -870,20 +870,27 @@ idempotent):
   "events": [
     {"kind": "holiday", "start": "2026-09-25", "end": "2026-09-25", "name": "中秋节放假"},
     {"kind": "info",    "start": "2026-09-26", "end": "2026-09-27", "name": "公休，课程照常进行"},
-    {"kind": "info",    "start": "2026-09-30", "end": "2026-09-30", "name": "公休，课程照常进行"},
+    {"kind": "info",    "start": "2026-09-20", "end": "2026-09-20", "name": "公休，课程照常进行"},
     {"kind": "holiday", "start": "2026-10-01", "end": "2026-10-07", "name": "国庆节放假"},
     {"kind": "info",    "start": "2026-10-10", "end": "2026-10-11", "name": "校本部秋季运动会"},
-    {"kind": "exam",    "start": "2027-01-11", "end": "2027-01-17", "name": "停课复习考试"},
-    {"kind": "holiday", "start": "2027-01-18", "end": "2027-02-21", "name": "寒假"}
+    {"kind": "exam",    "start": "2026-12-28", "end": "2027-01-10", "name": "停课复习考试"},
+    {"kind": "holiday", "start": "2027-01-11", "end": "2027-02-21", "name": "寒假"}
   ]
 }
 ```
 
 `timetable/data/calendar_26-27-1.json` and `calendar_26-27-2.json` ship the
-2026-2027 calendar transcribed from the PDF (spring: `week1_monday`
-2027-02-22, 5/1–5/7 停课 (劳动节、调休、校庆), 5/8–5/9 公休课程照常 (info),
-6/14–6/27 停课复习考试, 6/28 起暑假; 元旦 2027 is unknown until the State
-Council publishes it — add it as a `HOLIDAY` row when known). A `swap` row
+2026-2027 calendar transcribed from the PDF, **校本部 rows only** (the PDF
+lists 医学部 and 深圳研究生院 dates next to them; on 2026-09-10 the first
+transcription had taken 深圳研究生院's fall exam and winter-break dates and
+a 9/30 instead of 9/20 — re-checked against a zoomed render). Fall: 18
+weeks from 2026-09-07, 9/25 中秋 停课, 9/20 and 9/26–27 公休课程照常,
+10/1–10/7 国庆 停课, 10/10 公休课程照常, 10/10–11 运动会 (info),
+12/28–1/10 停课复习考试 (weeks 17–18), 1/11 起寒假. Spring: `week1_monday`
+2027-02-22, 4/23–4/25 运动会 (info), 5/1–5/7 停课 (劳动节、调休、校庆),
+5/8–5/9 公休课程照常 (info), 6/14–6/27 停课复习考试 (weeks 17–18), 6/28
+起暑假. 元旦 2027 and 清明/端午 are unknown until the State Council publishes
+them — add them as `HOLIDAY` rows when known. A `swap` row
 looks like `{"kind": "swap", "start": "2026-10-10", "end": "2026-10-10",
 "name": "按周一课表上课", "follows_weekday": 1}`.
 
@@ -1222,10 +1229,12 @@ class AcademicTerm(models.Model):                  # addition
 `total_weeks` now spans the whole term **including** exam weeks (the
 official calendar numbers teaching weeks only; PKU practice is 16 teaching
 weeks + 17/18 course exams + the university 停课复习考试 period). Seeds:
-`calendar_26-27-1.json` → `total_weeks: 19, exam_week_start: 17` (weeks 17–18
-课程考试, week 19 = 停课复习考试 2027-01-11..17 already a calendar `exam`
-event); `calendar_26-27-2.json` → `total_weeks: 18, exam_week_start: 17`
-(6/14–6/27 exam period = weeks 17–18). `import_academic_calendar` reads the
+`calendar_26-27-1.json` → `total_weeks: 18, exam_week_start: 17` (weeks
+17–18 = 停课复习考试 12/28–1/10, a calendar `exam` event; 寒假 from 1/11);
+`calendar_26-27-2.json` → `total_weeks: 18, exam_week_start: 17` (6/14–6/27
+停课复习考试 = weeks 17–18). On PKU's main campus the 停课复习考试 weeks
+are the exam weeks: course exams fall inside them (an undergraduate's
+选课结果 showed 考试时间 on 2026-12-29). `import_academic_calendar` reads the
 optional `exam_week_start` key. `Term` payload adds `exam_week_start:
 number | null` and `teaching_weeks: number`; defaults for new manual
 entries and catalog slots without a week range use `teaching_weeks`.
@@ -1284,13 +1293,13 @@ with an `exam_date` in the span, one occurrence per `(name, exam_date)`
 unless an entry of that `(name, exam_date)` matches a `CourseExam` of the
 term, at any date (the schedule wins, so a moved exam is not shown twice):
 `id='exam:entry{entry.id}:{date}'`, `source='exam'`, `kind='exam'`,
-`title=f'{name} 考试'`, `subtitle='时间以教务通知为准'`, `location=exam_room`,
+`title=f'{name} 考试'`, `subtitle='教务部统一考试时段'`, `location=exam_room`,
 the assumed window of the period — 上午 08:30–10:30, 下午 14:00–16:00, 晚上
 18:30–20:30, a blank period uses the morning window
 (`timetable.exams.EXAM_PERIOD_WINDOWS`) — `start_section/end_section=None`,
 `color_key=name`, `ref={'entry_id'}`, `role=''`. `Entry.exam` falls back the
 same way: without a matching `CourseExam` it is `{"id": null, "start",
-"end", "room": exam_room, "method": "", "note": "时间以教务通知为准"}`, so
+"end", "room": exam_room, "method": "", "note": "教务部统一考试时段"}`, so
 `Entry.exam.id` is nullable.
 
 Implementation notes (as built): `teaching_weeks` is clamped into

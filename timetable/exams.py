@@ -30,15 +30,17 @@ __all__ = [
 
 # An exam without an end time lasts this long (README §8.4).
 DEFAULT_EXAM_HOURS = 2
-# Assumed window of an entry's own exam by its 考试信息 period (README §8.4);
-# a blank period uses the morning window.
+# Window of an entry's own exam by its 考试信息 / 考试时间 period: PKU's fixed
+# exam slots, 上午8:30－10:30、下午2:00－4:00、晚上6:30－8:30 (教务部 notice on
+# the 2025－2026 spring final exams, dean.pku.edu.cn/web/notice_details.php?id=743,
+# the same in earlier terms). A blank period uses the morning slot.
 EXAM_PERIOD_WINDOWS = {
     '上午': (time(8, 30), time(10, 30)),
     '下午': (time(14, 0), time(16, 0)),
     '晚上': (time(18, 30), time(20, 30)),
 }
-# Shown with such an exam, whose time is only assumed.
-ENTRY_EXAM_NOTE = '时间以教务通知为准'
+# Shown with such an exam: the clock times come from the fixed slots above.
+ENTRY_EXAM_NOTE = '教务部统一考试时段'
 # Month-day cells resolve their year inside this window around week 1.
 _BEFORE_WEEK1 = timedelta(days=42)
 _AFTER_WEEK1 = timedelta(days=364)

@@ -246,7 +246,7 @@ class EntryExamSerializer(serializers.ModelSerializer):
     The exam of an entry (``Entry.exam``, §8.4): the first matching
     ``CourseExam``, else the entry's own imported exam with ``id: null``,
     ``method: ''``, the assumed window of its period and the note
-    ``时间以教务通知为准``.
+    ``教务部统一考试时段``.
     """
 
     id = serializers.IntegerField(
