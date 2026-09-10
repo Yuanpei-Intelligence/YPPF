@@ -532,10 +532,30 @@ def _parse_elective_html(html: str) -> list[LessonBlock]:
                 continue
             time_text = candidates[0]
         course_code = cells[0] if _COURSE_CODE_RE.match(cells[0]) else ''
-        blocks.extend(_elective_blocks(
+        row_blocks = _elective_blocks(
             name, time_text, ' | '.join(cell for cell in cells if cell),
-            teacher=cells[5], class_no=cells[6], course_code=course_code))
+            teacher=cells[5], class_no=cells[6], course_code=course_code)
+        _apply_elective_exam_lines(row_blocks, time_text.split('\n'))
+        blocks.extend(row_blocks)
     return blocks
+
+
+def _apply_elective_exam_lines(blocks: list[LessonBlock], lines: list[str]) -> None:
+    # The 教室信息 cell of 选课结果 ends with the course's exam line (seen on
+    # 2026-09-10): "考试时间：20270112晚上；" with a date, or a remark without a
+    # date ("考试方式：…"). A dated line fills exam_date / exam_period of every
+    # block of the course; an undated one becomes the note when there is none.
+    for line in lines:
+        line = line.strip()
+        if not line.startswith('考试'):
+            continue
+        exam_date, exam_period, exam_room = parse_exam_info(line)
+        for block in blocks:
+            if exam_date:
+                block.exam_date, block.exam_period = exam_date, exam_period
+                block.exam_room = block.exam_room or exam_room
+            elif not block.note:
+                block.note = line.strip(' ;；')[:200]
 
 
 def _parse_elective_plain(text: str) -> list[LessonBlock]:
@@ -544,11 +564,18 @@ def _parse_elective_plain(text: str) -> list[LessonBlock]:
     # nearest preceding line that is neither a time piece nor a bare number.
     blocks: list[LessonBlock] = []
     previous_name = ''
+    last_blocks: list[LessonBlock] = []
     for line in normalize_text(text).split('\n'):
+        if line.strip().startswith('考试'):
+            # The course's exam line follows its time lines (see
+            # _apply_elective_exam_lines); it is never a course name.
+            _apply_elective_exam_lines(last_blocks, [line])
+            continue
         matches = list(_ELECTIVE_TIME_RE.finditer(line))
         if not matches:
             if not _NUMERIC_LINE_RE.match(line):
                 previous_name = line
+                last_blocks = []
             continue
         if '未选上' in line:
             continue
@@ -567,9 +594,15 @@ def _parse_elective_plain(text: str) -> list[LessonBlock]:
             name = clean_course_name(previous_name)
         if not name:
             continue
-        blocks.extend(_elective_blocks(
+        row_blocks = _elective_blocks(
             name, line[matches[0].start():], line,
-            teacher=teacher, class_no=class_no, course_code=course_code))
+            teacher=teacher, class_no=class_no, course_code=course_code)
+        blocks.extend(row_blocks)
+        # Consecutive time lines of one course share its exam line.
+        if last_blocks and last_blocks[0].name == name:
+            last_blocks = last_blocks + row_blocks
+        else:
+            last_blocks = row_blocks
     return blocks
 
 

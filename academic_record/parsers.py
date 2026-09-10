@@ -200,6 +200,23 @@ def has_score_list(raw: Any) -> bool:
     return is_graduate_payload(raw) and isinstance(raw.get('scoreLists'), list)
 
 
+# Keys of a portal row never kept in ``raw``: 授课教师 as "工号-姓名$院系$职称"
+# and the staff number — not needed and not ours to store.
+_RAW_DROP_KEYS = frozenset({'skjsxm', 'skjszgh'})
+
+
+def grade_point(score: float) -> float:
+    """
+    PKU's grade point of a 百分制 score: ``4 − 3·(100 − X)² / 1600`` for
+    ``60 ≤ X ≤ 100`` and 0 below 60. Over a real undergraduate record
+    (2026-09-10) the credit-weighted mean of this over every numeric score
+    reproduced the portal's official GPA to within 0.001.
+    """
+    if score >= 60:
+        return 4 - 3 * (100 - min(score, 100)) ** 2 / 1600
+    return 0.0
+
+
 def parse_row(row: Any, term_code: str | None = None) -> GradeRow | None:
     """
     One portal row → :class:`GradeRow`, or ``None`` when it is not a dict
@@ -243,6 +260,13 @@ def _parse_row(row: Any, term_code: str | None, *, graduate: bool) -> GradeRow |
             term_code = term_code_of(year, semester)
     if not name and not course_code:
         return None
+    score_numeric = _float(score_value)
+    if (gpa is None and not graduate and score_numeric is not None
+            and not any(key in row for key in _GPA_KEYS)):
+        # publicQuery rows carry no 绩点 column: derive it from the 百分制
+        # score. Rows that do carry one keep the portal's value; graduate
+        # letter grades have no documented conversion and stay None.
+        gpa = round(grade_point(score_numeric), 4)
     return GradeRow(
         term_code=term_code,
         name=name,
@@ -251,9 +275,10 @@ def _parse_row(row: Any, term_code: str | None, *, graduate: bool) -> GradeRow |
         course_type=course_type,
         credits=credits,
         score=_cut(score_value, 'score'),
-        score_numeric=_float(score_value),
+        score_numeric=score_numeric,
         gpa=gpa,
-        raw={key: value for key, value in row.items() if key not in consumed},
+        raw={key: value for key, value in row.items()
+             if key not in consumed and key not in _RAW_DROP_KEYS},
     )
 
 

@@ -153,9 +153,15 @@ GET  https://elective.pku.edu.cn/elective2008/edu/pku/stu/elective/controller/he
 GET  https://elective.pku.edu.cn/elective2008/edu/pku/stu/elective/controller/electiveWork/showResults.do
      headers: Referer=<the HelpController URL>
      → HTML, table.datagrid: 课程号 课程名 课程类别 学分 周学时 教师 班号 开课单位 教室信息 选课结果 IP地址 操作时间
+       (an undergraduate row had 13 cells; cells 5/6/8 are still 教师/班号/教室信息). 教室信息 holds one
+       "1~16周 每周周三7~8节 二教101" line per slot and ends with the course's exam line: "考试时间：
+       20270112晚上；" (→ exam_date / exam_period of every block of the course) or an undated remark
+       such as "考试方式：…" (→ the note). A course whose cell has only the exam line has no block.
 ```
 
-Verified with a real graduate account (login works; 0 rows that term). The
+Verified with a real graduate account (login works; 0 rows that term) and an
+undergraduate one on 2026-09-10 (7 rows → 10 blocks, weeks, parity and rooms
+correct; 3 courses with dated exam lines, 4 with remarks). The
 session is never stored. Errors mirror the portal client: network failures
 and 5xx are `PortalUnreachable`; 404 is `PortalEndpointMissing` (logged as
 `elective endpoint answered 404: <path>`); a final redirect to IAAA or to a
@@ -725,7 +731,12 @@ Services: `fetch_scores(user) -> list[TermScores]` (via
 → `invalidate_session` and re-raise), `store_scores(person, terms)` (upsert
 per term; only called when `consent_grades`), `summary(terms)` →
 `{credits, gpa}` with GPA = Σ(jd·xf)/Σxf over rows that have both, and the
-same per term. Consent revocation: `pku_account.services.update_consents`
+same per term. publicQuery rows carry no `jd`: a numeric `xqcj` then gets
+PKU's grade point `4 − 3·(100 − X)²/1600` (0 below 60); 合格制 and letter
+scores stay without one. On a real undergraduate record (2026-09-10) the
+credit-weighted mean over the numeric rows matched the portal's official
+`gpa.gpa` to within 0.001. The row keys `skjsxm` (teacher "工号-姓名$院系$职称")
+and `skjszgh` (staff number) are dropped instead of kept in `raw`. Consent revocation: `pku_account.services.update_consents`
 sends the Django signal `pku_account.signals.consent_changed(sender,
 account, field, granted)`; `academic_record` connects a receiver that deletes
 the person's `GradeRecord`s when `grades` is revoked (dependency stays
