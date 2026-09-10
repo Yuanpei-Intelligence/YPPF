@@ -125,11 +125,11 @@ class PasswordResetDomainTests(TestCase):
         self.assertTrue(self.user.check_password("old-password"))
         self.assertTrue(other_user.check_password("other-password"))
 
-    def test_token_rejects_a_different_browser_session(self):
+    def test_token_accepts_a_different_browser_session(self):
         token = utils.create_password_reset_token(
             self.request, self.user, now=self.now)
 
-        self.assertFalse(utils.reset_password_from_token(
+        self.assertTrue(utils.reset_password_from_token(
             self.make_request(),
             self.user.username,
             token,
@@ -137,14 +137,14 @@ class PasswordResetDomainTests(TestCase):
             now=self.now,
         ))
         self.user.refresh_from_db()
-        self.assertTrue(self.user.check_password("old-password"))
+        self.assertTrue(self.user.check_password("Secure-pass-123"))
 
-    def test_token_rejects_a_different_ip_address(self):
+    def test_token_accepts_a_different_ip_address(self):
         token = utils.create_password_reset_token(
             self.request, self.user, now=self.now)
         self.request.META["REMOTE_ADDR"] = "192.0.2.99"
 
-        self.assertFalse(utils.reset_password_from_token(
+        self.assertTrue(utils.reset_password_from_token(
             self.request,
             self.user.username,
             token,
@@ -152,7 +152,7 @@ class PasswordResetDomainTests(TestCase):
             now=self.now,
         ))
         self.user.refresh_from_db()
-        self.assertTrue(self.user.check_password("old-password"))
+        self.assertTrue(self.user.check_password("Secure-pass-123"))
 
     def test_token_ignores_untrusted_forwarded_for(self):
         self.request.META["HTTP_X_FORWARDED_FOR"] = "198.51.100.1"
@@ -962,6 +962,49 @@ class ForgetPasswordViewTests(TestCase):
 
         self.assertRedirects(
             response, reverse("index") + "?modinfo=success")
+
+    def test_wechat_token_works_in_another_browser_and_network(self):
+        source = Client(enforce_csrf_checks=True)
+        source.get(reverse("forgetpw"))
+        prepared = {}
+
+        def queue_delivery(prepare_args):
+            prepared["args"] = prepare_args()
+            return True
+
+        with patch(
+            "app.views.queue_prepared_password_reset_wechat",
+            side_effect=queue_delivery,
+        ):
+            source.post(reverse("forgetpw"), {
+                "action": "wechat",
+                "username": self.user.username,
+                "csrfmiddlewaretoken": source.cookies[
+                    settings.CSRF_COOKIE_NAME].value,
+            }, REMOTE_ADDR="192.0.2.10")
+        token = prepared["args"][1]
+
+        destination = Client(enforce_csrf_checks=True)
+        destination.get(reverse("forgetpw"))
+        self.assertNotEqual(
+            source.cookies[settings.CSRF_COOKIE_NAME].value,
+            destination.cookies[settings.CSRF_COOKIE_NAME].value,
+        )
+        response = destination.post(reverse("forgetpw"), {
+            "action": "reset",
+            "username": self.user.username,
+            "token": token,
+            "new_password": "Secure-pass-123",
+            "confirm_password": "Secure-pass-123",
+            "csrfmiddlewaretoken": destination.cookies[
+                settings.CSRF_COOKIE_NAME].value,
+        }, REMOTE_ADDR="192.0.2.99")
+
+        self.assertRedirects(
+            response, reverse("index") + "?modinfo=success")
+        self.user.refresh_from_db()
+        self.assertTrue(self.user.check_password("Secure-pass-123"))
+        self.assertNotIn("_auth_user_id", destination.session)
 
     def test_full_account_takeover_regression_requires_normal_login(self):
         _, token = self.send_email_token()

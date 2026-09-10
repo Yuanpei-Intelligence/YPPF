@@ -325,6 +325,8 @@ def reset_password_from_token(
                 _lock_password_reset_limits(challenge_identifiers, now)
             return False
 
+        # Recovery may continue in another browser or network; client
+        # identifiers remain part of throttling, not credential validity.
         valid = (
             payload.get('purpose') == PASSWORD_RESET_PURPOSE
             and payload.get('challenge') == str(challenge.id)
@@ -345,16 +347,6 @@ def reset_password_from_token(
                     user.password,
                     salt='app.password-reset.password-state',
                 ),
-            )
-            and constant_time_compare(
-                challenge.device_digest,
-                _password_reset_digest(
-                    device_identifier, salt='app.password-reset.device'),
-            )
-            and constant_time_compare(
-                challenge.ip_digest,
-                _password_reset_digest(
-                    ip_address, salt='app.password-reset.ip'),
             )
         )
         if not valid:
