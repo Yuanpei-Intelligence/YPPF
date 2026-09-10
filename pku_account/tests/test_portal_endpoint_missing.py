@@ -42,12 +42,12 @@ class PortalEndpointMissingTests(SimpleTestCase):
                 client.get_course_info('26-27-1')
             with self.assertRaises(PortalEndpointMissing):
                 client.get_scores()
-            self.assertFalse(client.ping('26-27-1'))
+            self.assertFalse(client.ping())
         self.assertNotIsInstance(ctx.exception, PortalSessionExpired)
         # Callers that handle PortalUnreachable keep the session and answer 503.
         self.assertIsInstance(ctx.exception, PortalUnreachable)
         self.assertIn('粘贴导入', str(ctx.exception))
-        self.assertTrue(any('portal endpoint answered 404: /portal2017/bizcenter/course/getCourseInfo.do'
+        self.assertTrue(any('portal endpoint answered 404: /publicQuery/ctrl/topic/myCourseTable/getCourseInfo.do'
                             in line for line in logs.output))
         self.assertFalse(any('live' in line for line in logs.output))
 

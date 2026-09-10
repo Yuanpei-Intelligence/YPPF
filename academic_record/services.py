@@ -33,6 +33,7 @@ from academic_record.models import GradeRecord
 from academic_record.parsers import (
     GradeRow,
     TermScores,
+    has_score_list,
     parse_scores,
     summary,
 )
@@ -70,12 +71,9 @@ def _iso(value: datetime | None) -> str | None:
 
 
 def _check_payload(raw: Any) -> None:
-    # A usable answer has a ``cjxx`` list and no explicit ``success: false``.
-    if (
-        isinstance(raw, dict)
-        and isinstance(raw.get('cjxx'), list)
-        and raw.get('success') is not False
-    ):
+    # A usable answer has a score list (``cjxx``, or a graduate's
+    # ``scoreLists``) and no explicit ``success: false``.
+    if has_score_list(raw) and raw.get('success') is not False:
         return
     message = ''
     if isinstance(raw, dict):

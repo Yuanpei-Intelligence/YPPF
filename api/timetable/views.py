@@ -15,6 +15,7 @@ from __future__ import annotations
 
 import logging
 from datetime import date, datetime
+from functools import partial
 from types import SimpleNamespace
 
 from django.db import transaction
@@ -518,7 +519,7 @@ def _edit_base(entry: TimetableEntry, scope: str, week: int | None) -> SimpleNam
 class _PkuBridge:
     """The names of the ``pku_account`` integration (``timetable/README.md`` §3)."""
 
-    def __init__(self, services_module, iaaa_module, portal_module):
+    def __init__(self, services_module, iaaa_module, portal_module, elective_module):
         self.login_and_bind = services_module.login_and_bind
         self.get_binding = services_module.get_binding
         self.get_client = services_module.get_client
@@ -534,13 +535,14 @@ class _PkuBridge:
         self.CaptchaRequired = iaaa_module.CaptchaRequired
         self.PortalUnreachable = iaaa_module.PortalUnreachable
         self.PortalSessionExpired = portal_module.PortalSessionExpired
+        self.ElectiveClient = elective_module.ElectiveClient
 
 
 def _load_pku() -> _PkuBridge:
     # Imported lazily: the pku_account app is optional and independent.
     from pku_account import services as pku_services
-    from pku_account.extern import iaaa, portal
-    return _PkuBridge(pku_services, iaaa, portal)
+    from pku_account.extern import elective, iaaa, portal
+    return _PkuBridge(pku_services, iaaa, portal, elective)
 
 
 def _error_message(exc: BaseException, default: str) -> str:
@@ -548,8 +550,31 @@ def _error_message(exc: BaseException, default: str) -> str:
     return str(message) if message else default
 
 
+def _elective_results(pku: _PkuBridge, username: str,
+                      password: str) -> tuple[str | None, str]:
+    """
+    The elective 选课结果 page for the fallback of ``services.import_portal``,
+    as ``(html or None, outcome)``. A failure (outside the selection period,
+    a second factor, a site change) never fails the import by itself: it is
+    logged by exception class only and named in the ``ImportLog`` message.
+    """
+    try:
+        client = pku.ElectiveClient.login(username, password)
+        return client.get_results_html(), 'ok'
+    except pku.IaaaError as exc:
+        outcome = f'{type(exc).__name__} {getattr(exc, "code", "")}'.strip()
+    except (pku.PortalUnreachable, pku.PortalSessionExpired) as exc:
+        outcome = type(exc).__name__
+    logger.warning('elective fallback failed: %s', outcome)
+    return None, outcome
+
+
 class ImportPortalView(TimetableAPIView):
-    """Fetch the term's timetable from the PKU portal and store it."""
+    """
+    Fetch the term's timetable from the PKU portal and store it. With
+    credentials, the elective 选课结果 page stands in for an empty course
+    table of the current or upcoming term (``services.import_portal``).
+    """
 
     @extend_schema(
         summary='从北大门户导入课表',
@@ -557,6 +582,9 @@ class ImportPortalView(TimetableAPIView):
             '给出 username+password 时先登录并绑定（隐含 consent_timetable），'
             '否则使用已有的门户会话。会话不可用时返回 409 PKU_LOGIN_REQUIRED；'
             '未同意使用课表数据时返回 403 CONSENT_REQUIRED；IAAA 错误码同 /api/v2/pku/。'
+            '给出 username+password 且当前（或即将开始的）学期门户课表为空时，改用同一账号'
+            '登录选课系统导入「选课结果」（来源仍为 portal，之后的门户课表导入会替换它）；'
+            '选课系统也取不到课程时与课表为空相同（400 PARSE_FAILED）。'
         ),
         request=ImportPortalSerializer,
         responses={
@@ -635,8 +663,13 @@ class ImportPortalView(TimetableAPIView):
                 pku.invalidate_session(account, 'expired')
             raise ApiError('PKU_LOGIN_REQUIRED', '门户登录状态已过期，请重新登录。',
                            status.HTTP_409_CONFLICT)
+        # With credentials the elective 选课结果 page may stand in for an
+        # empty course table; services.import_portal decides when.
+        elective_results = (partial(_elective_results, pku, username, password)
+                            if username and password else None)
         try:
-            result = services.import_portal(person, term, raw)
+            result = services.import_portal(person, term, raw,
+                                            elective_results=elective_results)
         except services.TimetableImportError as exc:
             raise ApiError(exc.code, exc.message, status.HTTP_400_BAD_REQUEST)
         # synced=True also records PkuAccount.last_sync_at.

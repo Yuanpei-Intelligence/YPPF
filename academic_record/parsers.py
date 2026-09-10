@@ -2,19 +2,33 @@
 Parser of the portal ``retrScores.do`` payload — pure functions, stdlib only.
 Contract: ``timetable/README.md`` §6.2.
 
-Two payload shapes are accepted:
+Undergraduate payloads (``"xslb": "bks"``) list scores under ``cjxx`` in one
+of two shapes:
 
 - nested (the portal itself): ``{"cjxx": [{"xnd": "25-26", "xq": "1",
   "list": [row, ...]}, ...]}``;
-- flattened (what pkuhelper-web-score produces from ``c.list``):
-  ``{"cjxx": [row, ...]}`` where every row carries its own ``xnd``/``xq``.
+- flattened (what pkuhelper-web-score and the Treehole produce from
+  ``c.list``): ``{"cjxx": [row, ...]}`` where every row carries its own
+  ``xnd``/``xq``.
 
 A row is a dict with ``kcmc`` (课程名), ``kch`` (课程号), ``xf`` (学分),
-``xqcj`` (学期成绩), ``jd`` (绩点) and whatever else the portal adds. Missing
-keys, numbers given as strings and non-numeric scores (``P``, ``合格``,
-``W``, empty) are all tolerated; keys without a column of their own are
-kept in :attr:`GradeRow.raw`. Values are cut to the column lengths of
-``GradeRecord`` so live and stored rows are identical.
+``xqcj`` (学期成绩), ``jd`` (绩点) and whatever else the portal adds.
+
+Graduate payloads (``"xslb": "yjs"``) list scores under ``scoreLists``:
+rows with ``kcmc``, ``xf``, ``cj`` (成绩; ``xqcj`` is accepted too),
+``kclb``/``kclbmc`` (课程类别) and ``hgbz`` (合格标志, kept in ``raw``).
+Their term keys are not confirmed: ``xnd`` + ``xq`` are read, then
+``xndxq``, and a row naming neither goes to the term ``unknown``. Rows may
+also come nested under ``list`` like ``cjxx``; ``cjxx`` rows of a graduate
+payload are parsed as well.
+
+Missing keys, numbers given as strings and non-numeric scores (``P``,
+``合格``, ``W``, empty) are all tolerated; keys without a column of their own
+are kept in :attr:`GradeRow.raw`. Values are cut to the column lengths of
+``GradeRecord`` so live and stored rows are identical. Nothing outside the
+score rows is read: the personal block ``jbxx`` never is, and the
+辅修/双学位 list ``fscjxx`` (its GPA is kept apart from the main degree's),
+the exchange list ``zjlcjxx`` and the thesis block are ignored.
 """
 from __future__ import annotations
 
@@ -26,7 +40,10 @@ from typing import Any, Iterable
 __all__ = [
     'GradeRow',
     'TermScores',
+    'UNKNOWN_TERM',
     'term_code_of',
+    'is_graduate_payload',
+    'has_score_list',
     'parse_row',
     'parse_scores',
     'summary',
@@ -42,17 +59,26 @@ MAX_LENGTHS = {
     'score': 16,
 }
 
+# Term code of a graduate row that names no term.
+UNKNOWN_TERM = 'unknown'
+# ``xslb`` of a graduate payload.
+_GRADUATE = 'yjs'
+
 # Portal keys of each attribute, in order of preference. Only the key that
 # was actually used is removed from ``raw``.
 _NAME_KEYS = ('kcmc',)
 _CODE_KEYS = ('kch',)
 _CLASS_KEYS = ('bjh', 'bh', 'skbjh')
-_TYPE_KEYS = ('kclb', 'kclbmc', 'kcxz')
+# ``kclbmc`` is the category name (任选, 通选课); undergraduate ``kclb`` is its
+# numeric code ("30") and only graduate rows carry a readable ``kclb``.
+_TYPE_KEYS = ('kclbmc', 'kclb', 'kcxz')
 _CREDIT_KEYS = ('xf',)
 _SCORE_KEYS = ('xqcj',)
+_GRADUATE_SCORE_KEYS = ('cj', 'xqcj')
 _GPA_KEYS = ('jd',)
 _YEAR_KEYS = ('xnd',)
 _SEMESTER_KEYS = ('xq',)
+_TERM_KEYS = ('xndxq',)
 
 # ``DecimalField(max_digits=4, decimal_places=1)``: |credits| < 1000.
 _CREDIT_LIMIT = Decimal(1000)
@@ -148,6 +174,32 @@ def term_code_of(year: Any, semester: Any) -> str:
     return '-'.join(parts)[:MAX_LENGTHS['term_code']]
 
 
+def _graduate_term(year: Any, semester: Any, combined: Any) -> str:
+    # xnd + xq, else xndxq, else the unknown term.
+    if _text(year) and _text(semester):
+        return term_code_of(year, semester)
+    if _text(combined):
+        return _cut(combined, 'term_code')
+    return UNKNOWN_TERM
+
+
+def is_graduate_payload(raw: Any) -> bool:
+    """Whether ``raw`` is a graduate score payload (``xslb`` is ``yjs``)."""
+    return isinstance(raw, dict) and _text(raw.get('xslb')) == _GRADUATE
+
+
+def has_score_list(raw: Any) -> bool:
+    """
+    Whether ``raw`` carries a score list at all: a ``cjxx`` list, or for a
+    graduate payload a ``scoreLists`` list. An empty list counts.
+    """
+    if not isinstance(raw, dict):
+        return False
+    if isinstance(raw.get('cjxx'), list):
+        return True
+    return is_graduate_payload(raw) and isinstance(raw.get('scoreLists'), list)
+
+
 def parse_row(row: Any, term_code: str | None = None) -> GradeRow | None:
     """
     One portal row → :class:`GradeRow`, or ``None`` when it is not a dict
@@ -157,6 +209,12 @@ def parse_row(row: Any, term_code: str | None = None) -> GradeRow | None:
     the row's own ``xnd``/``xq`` are used (flattened shape). Either way the
     row's ``xnd``/``xq`` never end up in ``raw``.
     """
+    return _parse_row(row, term_code, graduate=False)
+
+
+def _parse_row(row: Any, term_code: str | None, *, graduate: bool) -> GradeRow | None:
+    # ``parse_row`` for either payload kind; a graduate row takes its score
+    # from ``cj`` first and its term from xnd + xq, xndxq or ``unknown``.
     if not isinstance(row, dict):
         return None
     consumed: set[str] = set()
@@ -173,12 +231,16 @@ def parse_row(row: Any, term_code: str | None = None) -> GradeRow | None:
     class_no = _cut(take(_CLASS_KEYS), 'class_no')
     course_type = _cut(take(_TYPE_KEYS), 'course_type')
     credits = _credits(take(_CREDIT_KEYS))
-    score_value = take(_SCORE_KEYS)
+    score_value = take(_GRADUATE_SCORE_KEYS if graduate else _SCORE_KEYS)
     gpa = _float(take(_GPA_KEYS))
     year = take(_YEAR_KEYS)
     semester = take(_SEMESTER_KEYS)
+    combined = take(_TERM_KEYS) if graduate else None
     if term_code is None:
-        term_code = term_code_of(year, semester)
+        if graduate:
+            term_code = _graduate_term(year, semester, combined)
+        else:
+            term_code = term_code_of(year, semester)
     if not name and not course_code:
         return None
     return GradeRow(
@@ -198,13 +260,11 @@ def parse_row(row: Any, term_code: str | None = None) -> GradeRow | None:
 def parse_scores(raw: Any) -> list[TermScores]:
     """
     Every term of a ``retrScores.do`` payload, in the order the portal
-    lists them. Terms without a single usable row are omitted; a payload
-    without a ``cjxx`` list gives ``[]``.
+    lists them: the ``cjxx`` rows, then — for a graduate payload — the
+    ``scoreLists`` rows. Terms without a single usable row are omitted; a
+    payload without a score list gives ``[]``.
     """
     if not isinstance(raw, dict):
-        return []
-    blocks = raw.get('cjxx')
-    if not isinstance(blocks, list):
         return []
     terms: dict[str, TermScores] = {}
 
@@ -216,17 +276,31 @@ def parse_scores(raw: Any) -> list[TermScores]:
             term = terms[parsed.term_code] = TermScores(parsed.term_code)
         term.rows.append(parsed)
 
-    for block in blocks:
-        if not isinstance(block, dict):
-            continue
-        rows = block.get('list')
-        if isinstance(rows, list):
-            code = term_code_of(block.get('xnd'), block.get('xq'))
+    def add_blocks(blocks: Any, *, graduate: bool) -> None:
+        if not isinstance(blocks, list):
+            return
+        for block in blocks:
+            if not isinstance(block, dict):
+                continue
+            rows = block.get('list')
+            if not isinstance(rows, list):
+                # Flattened shape: the block is a row carrying its own term.
+                add(_parse_row(block, None, graduate=graduate))
+                continue
+            if graduate:
+                code = _graduate_term(block.get('xnd'), block.get('xq'),
+                                      block.get('xndxq'))
+                if code == UNKNOWN_TERM:
+                    # A block without a term: each row names its own.
+                    code = None
+            else:
+                code = term_code_of(block.get('xnd'), block.get('xq'))
             for row in rows:
-                add(parse_row(row, code))
-        else:
-            # Flattened shape: the block is a row carrying its own term.
-            add(parse_row(block))
+                add(_parse_row(row, code, graduate=graduate))
+
+    add_blocks(raw.get('cjxx'), graduate=False)
+    if is_graduate_payload(raw):
+        add_blocks(raw.get('scoreLists'), graduate=True)
     return list(terms.values())
 
 

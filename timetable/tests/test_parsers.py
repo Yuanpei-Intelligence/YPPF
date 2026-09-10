@@ -71,6 +71,42 @@ class CellTextTests(SimpleTestCase):
         self.assertEqual(info['room'], '二教107')
         self.assertEqual(info['week_start'], 2)
 
+    def test_several_courses_in_one_cell_keep_their_own_exam(self):
+        infos = parsers.parse_course_cell_text(
+            "<font color = 'red'><b>课程甲(主)<br>上课信息：1-15周 单周 二教411  教师：教师甲<br>"
+            '考试信息：20260618 星期四 上午 二教411<br>课程乙(主)<br>'
+            '上课信息：1-8周 双周 二教410  教师：教师乙<br>'
+            '上课信息：9-15周 每周 二教412  教师：教师乙<br>考试信息： </b></font>')
+        self.assertEqual([(i['name'], i['week_start'], i['parity'], i['room'], i['teacher'])
+                          for i in infos],
+                         [('课程甲', 1, 1, '二教411', '教师甲'),
+                          ('课程乙', 1, 2, '二教410', '教师乙'),
+                          ('课程乙', 9, 0, '二教412', '教师乙')])
+        self.assertEqual([(i['exam_date'], i['exam_period'], i['exam_room']) for i in infos],
+                         [('2026-06-18', '上午', '二教411'), ('', '', ''), ('', '', '')])
+
+    def test_exam_of_a_name_only_course_and_trailing_text(self):
+        (info,) = parsers.parse_course_cell_text(
+            '课程丙(主)\n上课信息：2-16周 每周 理教101\n考试信息：2027-01-12 周二 晚上 理教101\n'
+            '续行的说明')
+        self.assertEqual((info['name'], info['exam_date'], info['exam_period'], info['exam_room']),
+                         ('课程丙', '2027-01-12', '晚上', '理教101'))
+        (only,) = parsers.parse_course_cell_text('大学英语(双)\n考试信息：20260620 星期六 下午 ')
+        self.assertEqual((only['week_start'], only['week_end'], only['exam_date'],
+                          only['exam_period'], only['exam_room']),
+                         (1, 16, '2026-06-20', '下午', ''))
+
+    def test_parse_exam_info(self):
+        self.assertEqual(parsers.parse_exam_info('20260618 星期四 上午 二教411'),
+                         ('2026-06-18', '上午', '二教411'))
+        self.assertEqual(parsers.parse_exam_info('考试信息：20251229 星期一 下午 二教301,二教309'),
+                         ('2025-12-29', '下午', '二教301,二教309'))
+        self.assertEqual(parsers.parse_exam_info('20260621 星期七 晚上'), ('2026-06-21', '晚上', ''))
+        self.assertEqual(parsers.parse_exam_info('2027/1/12 周2 理教101'), ('2027-01-12', '', '理教101'))
+        for blank in ('', ' ', '考试信息： ', 'x', '20261340 上午 理教101'):
+            with self.subTest(blank=blank):
+                self.assertEqual(parsers.parse_exam_info(blank), ('', '', ''))
+
 
 class PortalJsonTests(SimpleTestCase):
 
@@ -114,6 +150,17 @@ class PortalJsonTests(SimpleTestCase):
         self.assertEqual(len(self.blocks), 7)
         self.assertEqual([b.weekday for b in self.blocks], sorted(b.weekday for b in self.blocks))
 
+    def test_exam_info_per_course(self):
+        (math,) = _by_name(self.blocks, '高等数学A（二）')
+        self.assertEqual((math.exam_date, math.exam_period, math.exam_room),
+                         ('2026-06-18', '上午', '理教306'))
+        (prog,) = _by_name(self.blocks, '程序设计实习')
+        self.assertEqual((prog.exam_date, prog.exam_period, prog.exam_room),
+                         ('2026-06-12', '下午', '理教203'))
+        for name in ('体适能', '线性代数', '大学英语'):
+            (block,) = _by_name(self.blocks, name)
+            self.assertEqual((block.exam_date, block.exam_period, block.exam_room), ('', '', ''))
+
     def test_accepts_json_string(self):
         blocks = parsers.parse_portal_course_json(read_fixture('portal_course.json'))
         self.assertEqual(len(blocks), 7)
@@ -136,6 +183,49 @@ class PortalJsonTests(SimpleTestCase):
         (block,) = parsers.parse_portal_course_json(payload)
         self.assertEqual((block.start_section, block.end_section), (1, 3))
         self.assertEqual(block.room, '五四操场')
+
+
+class PublicQueryCourseTableTests(SimpleTestCase):
+    """
+    ``publicQuery`` ``getCourseInfo.do`` with 考试信息 and a red conflict cell;
+    the fixture follows a public sample of that payload with teachers and
+    remarks replaced.
+    """
+
+    def setUp(self):
+        self.blocks = parsers.parse_portal_course_json(read_fixture('publicquery_course.json'))
+
+    def test_conflict_cell_keeps_each_course_with_its_own_exam(self):
+        tuesday = [b for b in self.blocks if (b.weekday, b.start_section) == (2, 1)]
+        self.assertEqual(
+            [(b.name, b.end_section, b.parity, b.room, b.teacher, b.note) for b in tuesday],
+            [('量子力学', 2, 1, '二教411', '教师甲', '示例备注一。'),
+             ('量子力学习题', 2, 2, '二教410', '教师甲', '示例备注二。')])
+        self.assertEqual([(b.exam_date, b.exam_period, b.exam_room) for b in tuesday],
+                         [('2026-06-18', '上午', '二教411'), ('', '', '')])
+        for block in self.blocks:
+            self.assertNotIn('<', block.name)
+            self.assertNotIn('font', block.raw)
+
+    def test_blank_exam_line_and_sunday_exam(self):
+        (relativity,) = _by_name(self.blocks, '广义相对论')
+        self.assertEqual((relativity.weekday, relativity.start_section, relativity.end_section),
+                         (2, 3, 4))
+        self.assertEqual((relativity.room, relativity.note), ('', '研本合上；上课地点：理教309'))
+        self.assertEqual((relativity.exam_date, relativity.exam_period, relativity.exam_room),
+                         ('', '', ''))
+        (solid,) = _by_name(self.blocks, '固体物理学')
+        self.assertEqual((solid.exam_date, solid.exam_period, solid.exam_room),
+                         ('2026-06-21', '下午', '二教505'))
+
+    def test_block_count_and_one_course_on_two_days(self):
+        self.assertEqual(len(self.blocks), 5)
+        quantum = _by_name(self.blocks, '量子力学')
+        self.assertEqual([(b.weekday, b.start_section, b.end_section, b.parity) for b in quantum],
+                         [(2, 1, 2, 1), (4, 3, 4, 0)])
+        self.assertEqual({b.exam_date for b in quantum}, {'2026-06-18'})
+        self.assertEqual(parsers.detect_format(read_fixture('publicquery_course.json')),
+                         'portal_json')
 
 
 class PortalHtmlTests(SimpleTestCase):

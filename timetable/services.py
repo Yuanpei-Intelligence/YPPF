@@ -1,16 +1,17 @@
 """
 Domain operations of the timetable app: settings, week view, agenda,
 imports, conflict detection, catalog quick-add and scoped entry edits.
-Contract: ``timetable/README.md`` §4.4, §6.5, §8.1–§8.3.
+Contract: ``timetable/README.md`` §4.4, §6.5, §8.1–§8.4.
 
 The API layer calls these functions; nothing here touches credentials — the
-portal payload is obtained by the caller through ``pku_account``.
+portal payload, and the elective 选课结果 page that stands in for an empty
+course table, are obtained by the caller through ``pku_account``.
 """
 from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import date, time, timedelta
-from typing import Any, Iterable
+from typing import Any, Callable, Iterable
 
 from django.db import transaction
 
@@ -58,6 +59,7 @@ __all__ = [
     'term_payload',
     'week_view',
     'agenda',
+    'elective_results_apply',
     'import_portal',
     'import_text',
     'parse_text',
@@ -360,6 +362,27 @@ def _entry_fields(term: AcademicTerm, block: LessonBlock) -> dict[str, Any] | No
         'parity': parity,
         'note': (block.note or '')[:NOTE_MAX_LENGTH],
         'raw_text': block.raw or '',
+        **_exam_fields(block),
+    }
+
+
+def _exam_fields(block: LessonBlock) -> dict[str, Any]:
+    # The block's 考试信息 as stored (README §8.4); all blank without a valid date.
+    exam_date = None
+    if block.exam_date:
+        try:
+            exam_date = date.fromisoformat(str(block.exam_date))
+        except ValueError:
+            exam_date = None
+    if exam_date is None:
+        return {'exam_date': None, 'exam_period': '', 'exam_room': ''}
+    period = str(block.exam_period or '')
+    if period not in TimetableEntry.ExamPeriod.values:
+        period = ''
+    return {
+        'exam_date': exam_date,
+        'exam_period': period,
+        'exam_room': str(block.exam_room or '')[:100],
     }
 
 
@@ -384,18 +407,20 @@ def _log_failure(person, term, source, message: str) -> ImportLog:
         status=ImportLog.Status.FAILED, entries_count=0, message=message[:1000])
 
 
-def upsert_entries(person, term: AcademicTerm, source, blocks: Iterable[LessonBlock]) -> ImportResult:
+def upsert_entries(person, term: AcademicTerm, source, blocks: Iterable[LessonBlock], *,
+                   note: str = '') -> ImportResult:
     """
     Replace the person's entries of ``source`` in ``term`` with ``blocks``:
     upsert on ``external_key`` and delete entries of that source that
     disappeared. The student's annotations — ``hidden``, ``color``,
     ``tag``, ``role``, ``category``, an existing ``catalog_entry`` and the
-    override rows — survive an update. Every block is matched against the
+    override rows — survive an update; imported fields, the exam info of
+    §8.4 included, are refreshed. Every block is matched against the
     course catalog (§8.1): a new entry, or one not linked yet, gets
     ``catalog_entry`` and blank teacher/course_code/class_no filled from
     the row. Other sources and other terms are untouched. Blocks that
     cannot be placed (bad weekday/sections) are skipped and counted in the
-    log.
+    log; ``note`` opens the log message.
     """
     source = TimetableEntry.Source(source)
     if source == TimetableEntry.Source.MANUAL:
@@ -449,33 +474,77 @@ def upsert_entries(person, term: AcademicTerm, source, blocks: Iterable[LessonBl
             _, deleted = TimetableEntry.objects.filter(
                 pk__in=[entry.pk for entry in existing.values()]).delete()
             removed = deleted.get(TimetableEntry._meta.label, 0)
-        message = f'skipped {skipped} block(s) that could not be placed' if skipped else ''
+        parts = [note] if note else []
+        if skipped:
+            parts.append(f'skipped {skipped} block(s) that could not be placed')
         log = ImportLog.objects.create(
             person=person, term=term, source=source,
             status=ImportLog.Status.OK, entries_count=len(entries),
-            message=message)
+            message='; '.join(parts))
     entries.sort(key=lambda entry: (
         entry.weekday, entry.start_section, entry.start_time, entry.pk))
     return ImportResult(created, updated, removed, entries, log)
 
 
-def import_portal(person, term: AcademicTerm, raw_json) -> ImportResult:
+def elective_results_apply(term: AcademicTerm, on: date | None = None) -> bool:
+    """
+    Whether the elective 选课结果 page may stand in for an empty portal
+    course table of ``term``: the term's span covers ``on`` (today by
+    default) or it is the next active term to start. The page shows the
+    selection in progress, which is never that of a finished term.
+    """
+    if on is None:
+        on = date.today()
+    if term.covers(on):
+        return True
+    upcoming = AcademicTerm.upcoming(on)
+    return upcoming is not None and upcoming.pk == term.pk
+
+
+def import_portal(person, term: AcademicTerm, raw_json, *,
+                  elective_results: Callable[[], tuple[str | None, str]] | None = None,
+                  today: date | None = None) -> ImportResult:
     """
     Parse a portal ``getCourseInfo.do`` payload and store it as source
-    ``portal``. Raises ``TimetableImportError`` (after writing a failed
-    ``ImportLog``) when the payload is not a course table or holds no
-    lessons; the stored entries are left untouched in that case.
+    ``portal``.
+
+    When the payload yields no lessons (an empty table, or no course table
+    at all) and ``elective_results`` is given for a term where
+    ``elective_results_apply(term, today)``, the callable is asked for the
+    elective 选课结果 page as ``(html or None, outcome)``; it does the
+    network I/O (no transaction is open) and ``outcome`` is a short tag of
+    what happened. The page's lessons are stored under the same source
+    ``portal``, so a later course-table import replaces them, and the
+    ``ImportLog`` message records the fallback.
+
+    Raises ``TimetableImportError`` (after writing a failed ``ImportLog``
+    that names the fallback outcome) when no lessons could be stored; the
+    stored entries are left untouched in that case.
     """
     source = TimetableEntry.Source.PORTAL
+    parse_error: ValueError | None = None
     try:
         blocks = pku_parsers.parse_portal_course_json(raw_json)
     except ValueError as exc:
-        _log_failure(person, term, source, f'parse error: {exc}')
-        raise TimetableImportError(f'门户课表解析失败：{exc}') from exc
-    if not blocks:
-        _log_failure(person, term, source, 'no lessons in portal payload')
-        raise TimetableImportError('门户未返回任何课程，本地课表未改动')
-    return upsert_entries(person, term, source, blocks)
+        parse_error = exc
+        blocks = []
+        problem = f'parse error: {exc}'
+        message = f'门户课表解析失败：{exc}'
+    else:
+        problem = 'no lessons in portal payload'
+        message = '门户未返回任何课程，本地课表未改动'
+    if blocks:
+        return upsert_entries(person, term, source, blocks)
+    if elective_results is not None and elective_results_apply(term, today):
+        html, outcome = elective_results()
+        fallback = pku_parsers.parse_elective_table(html) if html else []
+        if fallback:
+            return upsert_entries(person, term, source, fallback,
+                                  note=f'{problem}; imported from elective results')
+        detail = outcome if html is None else 'no lessons in elective results'
+        problem = f'{problem}; elective fallback: {detail}'
+    _log_failure(person, term, source, problem)
+    raise TimetableImportError(message) from parse_error
 
 
 def import_text(person, term: AcademicTerm, text: str, *,

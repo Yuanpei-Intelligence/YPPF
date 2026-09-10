@@ -11,7 +11,9 @@ from django.test import SimpleTestCase, TestCase
 from openpyxl import Workbook
 
 from timetable import catalog
-from timetable.exams import ExamIndex, exams_for_entries, match_exams, parse_exam_time
+from timetable.exams import (
+    ExamIndex, entry_exam_window, exams_for_entries, match_exams, parse_exam_time,
+)
 from timetable.models import AcademicTerm, CourseExam, TimetableEntry, TimetableSettings
 from timetable.sources import base
 from timetable.sources.exam import ExamSource
@@ -209,6 +211,92 @@ class ExamSourceTests(TestCase):
                          [(self.midterm.pk, self.math2.pk), (self.math_exam.pk, self.math2.pk)])
         index = ExamIndex([])
         self.assertEqual(index.match_entry(self.math1), [])
+
+
+class OwnExamTests(TestCase):
+    """The course table's own 考试信息 when no ``CourseExam`` covers the course (§8.4)."""
+
+    def setUp(self):
+        self.term = make_term(week1_monday=date(2026, 9, 7), total_weeks=19)
+        _, self.person = make_person()
+        self.settings = TimetableSettings.objects.create(person=self.person)
+        self.source = ExamSource()
+        own = {'exam_date': date(2027, 1, 12), 'exam_period': '上午', 'exam_room': '二教411'}
+        self.quantum1 = make_entry(self.person, self.term, name='量子力学', weekday=2, **own)
+        self.quantum2 = make_entry(self.person, self.term, name='量子力学', weekday=4, **own)
+        # In the exam schedule on another date: the schedule wins, no duplicate.
+        self.math = make_entry(self.person, self.term, name='高等数学A（二）', weekday=1,
+                               course_code='00130201', class_no='01',
+                               exam_date=date(2027, 1, 13), exam_period='下午',
+                               exam_room='理教101')
+        self.math_exam = CourseExam.objects.create(
+            term=self.term, course_code='00130201', class_no='01', name='高等数学A（二）',
+            start=datetime(2027, 1, 14, 8, 30), end=datetime(2027, 1, 14, 10, 30),
+            room='理教201')
+        self.solid = make_entry(self.person, self.term, name='固体物理学', weekday=5,
+                                exam_date=date(2027, 1, 17), exam_period='晚上')
+        make_entry(self.person, self.term, name='隐藏的课', weekday=3, hidden=True,
+                   exam_date=date(2027, 1, 12), exam_period='下午')
+        _, other = make_person('tt_other', '别人')
+        make_entry(other, self.term, name='别人的课', exam_date=date(2027, 1, 12),
+                   exam_period='上午')
+
+    def occurrences(self, week_from=1, week_to=19):
+        return self.source.occurrences(self.person, self.term, week_from, week_to,
+                                       self.settings)
+
+    def test_own_exam_once_per_course_and_date(self):
+        occurrences = self.occurrences()
+        self.assertEqual([(o.id, o.title) for o in occurrences], [
+            (f'exam:entry{self.quantum1.pk}:2027-01-12', '量子力学 考试'),
+            (f'exam:{self.math_exam.pk}:2027-01-14', '高等数学A（二） 考试'),
+            (f'exam:entry{self.solid.pk}:2027-01-17', '固体物理学 考试'),
+        ])
+        quantum = occurrences[0]
+        self.assertEqual((quantum.source, quantum.kind, quantum.subtitle, quantum.location),
+                         ('exam', 'exam', '时间以教务通知为准', '二教411'))
+        self.assertEqual((quantum.start, quantum.end),
+                         (datetime(2027, 1, 12, 8, 30), datetime(2027, 1, 12, 10, 30)))
+        self.assertEqual((quantum.date, quantum.week, quantum.weekday), (date(2027, 1, 12), 19, 2))
+        self.assertEqual((quantum.start_section, quantum.end_section, quantum.color_key),
+                         (None, None, '量子力学'))
+        self.assertEqual((quantum.ref, quantum.role, quantum.status, quantum.hidden),
+                         ({'entry_id': self.quantum1.pk}, '', '', False))
+        solid = occurrences[2]
+        self.assertEqual((solid.start, solid.end, solid.location),
+                         (datetime(2027, 1, 17, 18, 30), datetime(2027, 1, 17, 20, 30), ''))
+        # Another date of the same course is another exam.
+        make_entry(self.person, self.term, name='量子力学', weekday=5, start_section=3,
+                   end_section=4, exam_date=date(2027, 1, 15), exam_period='下午')
+        dated = [(o.title, o.date) for o in self.occurrences(19, 19)]
+        self.assertEqual(dated.count(('量子力学 考试', date(2027, 1, 12))), 1)
+        self.assertIn(('量子力学 考试', date(2027, 1, 15)), dated)
+
+    def test_span_settings_and_hidden_tags(self):
+        self.assertEqual(self.occurrences(1, 18), [])
+        self.assertEqual([o.title for o in self.occurrences(19, 19)],
+                         ['量子力学 考试', '高等数学A（二） 考试', '固体物理学 考试'])
+        self.settings.show_exams = False
+        self.assertEqual(self.occurrences(), [])
+        self.settings.show_exams = True
+        for entry in (self.quantum1, self.quantum2):
+            entry.tag = '不看'
+            entry.save()
+        self.settings.hidden_tags = ['不看']
+        self.assertEqual([o.title for o in self.occurrences()],
+                         ['高等数学A（二） 考试', '固体物理学 考试'])
+
+    def test_date_span_and_window_helper(self):
+        span = base.DateSpan.load(date(2027, 1, 12), date(2027, 1, 12))
+        self.assertEqual(
+            [o.id for o in base.occurrences_between(self.source, self.person, span, self.settings)],
+            [f'exam:entry{self.quantum1.pk}:2027-01-12'])
+        self.assertEqual(entry_exam_window(self.math),
+                         (datetime(2027, 1, 13, 14, 0), datetime(2027, 1, 13, 16, 0)))
+        self.solid.exam_period = ''
+        self.assertEqual(entry_exam_window(self.solid),
+                         (datetime(2027, 1, 17, 8, 30), datetime(2027, 1, 17, 10, 30)))
+        self.assertIsNone(entry_exam_window(make_entry(self.person, self.term, name='无考试')))
 
 
 HEADERS = ['课程号', '课程名', '班号', '教师', '考试时间', '考试地点', '考试方式', '备注']

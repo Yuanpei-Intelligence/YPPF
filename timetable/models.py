@@ -223,6 +223,11 @@ class TimetableEntry(models.Model):
     ``catalog_entry``, ``role``, ``category`` and ``tag`` (README §8.1, §8.3)
     are the student's own annotations: a re-import keeps them, like
     ``hidden``/``color`` and the ``TimetableEntryOverride`` rows (§8.2).
+
+    ``exam_date``/``exam_period``/``exam_room`` are the course's own
+    考试信息 from the portal course table (README §8.4). They are imported
+    fields, not annotations: every import sets them and a re-import updates
+    them; ``exam_date`` is null when the course has no exam yet.
     """
 
     class Source(models.TextChoices):
@@ -243,6 +248,11 @@ class TimetableEntry(models.Model):
         COURSE = 'course', '课程'
         EXAM = 'exam', '考试'
         OTHER = 'other', '其它'
+
+    class ExamPeriod(models.TextChoices):
+        MORNING = '上午', '上午'
+        AFTERNOON = '下午', '下午'
+        EVENING = '晚上', '晚上'
 
     # Occurrence ``kind`` by category (README §8.1).
     KIND_BY_CATEGORY = {'course': 'course', 'exam': 'exam', 'other': 'custom'}
@@ -301,6 +311,10 @@ class TimetableEntry(models.Model):
 
     note = models.TextField('备注', blank=True)
     raw_text = models.TextField('原始文本', blank=True)
+    exam_date = models.DateField('考试日期', null=True, blank=True)
+    exam_period = models.CharField(
+        '考试时段', max_length=8, choices=ExamPeriod.choices, blank=True)
+    exam_room = models.CharField('考场', max_length=100, blank=True)
     hidden = models.BooleanField('隐藏', default=False)
     color = models.CharField('颜色', max_length=7, blank=True)
 

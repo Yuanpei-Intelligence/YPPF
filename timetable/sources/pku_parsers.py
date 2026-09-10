@@ -10,10 +10,12 @@ Supported inputs:
 - the elective.pku.edu.cn 选课结果 table, as HTML or as plain text copied
   from a phone (``parse_elective_table``).
 
-Input handling is deliberately tolerant: HTML tags are stripped, ``<br>``
-becomes a newline, both ``1-16周`` and ``1~16周`` are accepted, course-name
-suffixes such as ``(主)`` are removed, and a cell may carry several 上课信息
-lines (different week ranges) which become several blocks.
+Input handling is deliberately tolerant: HTML tags (``<font>``/``<b>``
+wrappers included) are stripped, ``<br>`` becomes a newline, both ``1-16周``
+and ``1~16周`` are accepted, course-name suffixes such as ``(主)`` are
+removed, a cell may carry several 上课信息 lines (different week ranges)
+which become several blocks, and a cell may hold several courses (a
+conflict), each with its own 上课信息 and 考试信息 lines.
 """
 from __future__ import annotations
 
@@ -22,14 +24,17 @@ import html as html_lib
 import json
 import re
 from dataclasses import asdict, dataclass
+from datetime import date
 from typing import Any
 
 __all__ = [
     'LessonBlock',
     'WEEKDAY_KEYS',
+    'EXAM_PERIODS',
     'html_to_text',
     'normalize_text',
     'clean_course_name',
+    'parse_exam_info',
     'parse_course_cell_text',
     'parse_portal_course_json',
     'parse_portal_html',
@@ -43,6 +48,8 @@ __all__ = [
 
 
 WEEKDAY_KEYS = ('mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun')
+# Periods a 考试信息 line names after the date.
+EXAM_PERIODS = ('上午', '下午', '晚上')
 
 _WEEKDAY_CHARS = {
     '一': 1, '二': 2, '三': 3, '四': 4, '五': 5, '六': 6, '日': 7, '天': 7,
@@ -61,6 +68,12 @@ _SPACES_RE = re.compile(r'[ \t　\xa0]+')
 
 _INFO_PREFIX_RE = re.compile(r'^(?:上课信息|上课时间|时间地点)\s*[：:]\s*')
 _EXAM_PREFIX_RE = re.compile(r'^(?:考试信息|考试时间|考试安排|考试)\s*[：:]')
+# '20260618' (the portal) or '2026-06-18' / '2026/6/18' / '2026年6月18日'.
+_EXAM_COMPACT_DATE_RE = re.compile(r'(?<!\d)(\d{4})(\d{2})(\d{2})(?!\d)')
+_EXAM_DASHED_DATE_RE = re.compile(
+    r'(?<!\d)(\d{4})\s*[-/.年]\s*(\d{1,2})\s*[-/.月]\s*(\d{1,2})\s*日?(?!\d)')
+# '星期四', '星期七' (the portal's Sunday), '周4'.
+_EXAM_WEEKDAY_RE = re.compile(r'(?:星期|周)\s*[一二三四五六七日天1-7]')
 # '1-16周', '1~16周', '第5周', '16周'; the end of the range is optional.
 _WEEK_RANGE_RE = re.compile(
     r'(?<![\d])(\d{1,2})\s*(?:[-~～－—–至]\s*(\d{1,2}))?\s*周')
@@ -120,6 +133,9 @@ class LessonBlock:
     parity: int = 0                      # 0 all, 1 odd, 2 even
     raw: str = ''
     note: str = ''
+    exam_date: str = ''                  # the course's 考试信息 date, ISO; '' if none
+    exam_period: str = ''                # one of EXAM_PERIODS or ''
+    exam_room: str = ''
 
     def as_dict(self) -> dict[str, Any]:
         return asdict(self)
@@ -210,43 +226,95 @@ def _parse_info_line(name: str, info: str, raw: str) -> list[dict[str, Any]]:
     ]
 
 
+def parse_exam_info(text: str) -> tuple[str, str, str]:
+    """
+    ``(date, period, room)`` of a 考试信息 value such as
+    ``'20260618 星期四 上午 二教411'`` (a ``考试信息：`` prefix may be
+    included): the ISO date, one of ``EXAM_PERIODS`` or ``''``, and what
+    remains as the room (``'二教301,二教309'`` stays one value). Dates such
+    as ``2026-06-18`` are accepted too. A value without a valid date — the
+    blank ``考试信息：`` of a course without an exam included — gives
+    ``('', '', '')``.
+    """
+    text = _SPACES_RE.sub(' ', (text or '').replace('\n', ' ')).strip()
+    prefix = _EXAM_PREFIX_RE.match(text)
+    if prefix:
+        text = text[prefix.end():].strip()
+    match = _EXAM_COMPACT_DATE_RE.search(text) or _EXAM_DASHED_DATE_RE.search(text)
+    if match is None:
+        return '', '', ''
+    try:
+        exam_date = date(int(match.group(1)), int(match.group(2)), int(match.group(3)))
+    except ValueError:
+        return '', '', ''
+    rest = f'{text[:match.start()]} {text[match.end():]}'
+    rest = _EXAM_WEEKDAY_RE.sub(' ', rest)
+    period = next((item for item in EXAM_PERIODS if item in rest), '')
+    if period:
+        rest = rest.replace(period, ' ', 1)
+    room = _SPACES_RE.sub(' ', rest).strip(' ,，;；')
+    return exam_date.isoformat(), period, room
+
+
 def parse_course_cell_text(text: str) -> list[dict[str, Any]]:
     """
     Parse the text of one timetable cell, e.g.
     ``'课名(主)\\n上课信息：1-16周 每周 理教201 教师：张三 备注：…\\n考试信息：…'``.
 
+    A cell may hold several courses (the portal marks such a conflict in
+    red): after a course's 上课信息/考试信息 lines, the next line that is
+    neither starts the next course. Each course keeps its own 考试信息.
+
     Returns one dict per 上课信息 line with keys ``name``, ``teacher``,
-    ``room``, ``week_start``, ``week_end``, ``parity``, ``note`` and ``raw``.
-    A cell with a name but no 上课信息 line yields one dict covering weeks
-    1–16; an empty cell yields ``[]``.
+    ``room``, ``week_start``, ``week_end``, ``parity``, ``note``, ``raw``
+    and the course's ``exam_date``, ``exam_period`` and ``exam_room``
+    (``parse_exam_info``; blank without an exam). When the first course has
+    a name but no 上课信息 line it yields one dict covering weeks 1–16; a
+    later course without one is dropped; an empty cell yields ``[]``.
     """
     text = html_to_text(text)
-    name = ''
-    infos: list[str] = []
+    courses: list[dict[str, Any]] = []
+    current: dict[str, Any] | None = None
     for line in text.split('\n'):
-        if _EXAM_PREFIX_RE.match(line):
+        exam = _EXAM_PREFIX_RE.match(line)
+        prefix = None if exam else _INFO_PREFIX_RE.match(line)
+        # An unprefixed 上课信息 line after the course name counts as one.
+        unprefixed = (exam is None and prefix is None and current is not None
+                      and _WEEK_RANGE_RE.search(line) is not None)
+        if exam or prefix or unprefixed:
+            if current is None:
+                continue
+            current['detailed'] = True
+            if exam:
+                if not current['exam'][0]:
+                    current['exam'] = parse_exam_info(line[exam.end():])
+            else:
+                current['infos'].append(line[prefix.end():] if prefix else line)
             continue
-        prefix = _INFO_PREFIX_RE.match(line)
-        if prefix:
-            infos.append(line[prefix.end():])
+        if current is not None and not current['detailed']:
+            # Extra text between a course name and its details.
             continue
-        if name and _WEEK_RANGE_RE.search(line):
-            # An unprefixed 上课信息 line after the course name.
-            infos.append(line)
-            continue
-        if not name:
-            name = clean_course_name(line)
-    if not name:
-        return []
+        name = clean_course_name(line)
+        if name:
+            current = {'name': name, 'infos': [], 'exam': ('', '', ''),
+                       'detailed': False}
+            courses.append(current)
     results: list[dict[str, Any]] = []
-    for info in infos:
-        results.extend(_parse_info_line(name, info, text))
-    if not results:
-        results.append({
-            'name': name, 'teacher': '', 'room': '',
-            'week_start': 1, 'week_end': 16, 'parity': 0,
-            'note': '', 'raw': text,
-        })
+    for index, course in enumerate(courses):
+        dicts: list[dict[str, Any]] = []
+        for info in course['infos']:
+            dicts.extend(_parse_info_line(course['name'], info, text))
+        if not dicts and index == 0:
+            dicts.append({
+                'name': course['name'], 'teacher': '', 'room': '',
+                'week_start': 1, 'week_end': 16, 'parity': 0,
+                'note': '', 'raw': text,
+            })
+        exam_date, exam_period, exam_room = course['exam']
+        for data in dicts:
+            data.update(exam_date=exam_date, exam_period=exam_period,
+                        exam_room=exam_room)
+        results.extend(dicts)
     return results
 
 
@@ -305,7 +373,10 @@ def _merge_cells(cells: list[tuple[int, int, list[dict[str, Any]]]]) -> list[Les
                         start_section=section, end_section=section,
                         week_start=data['week_start'],
                         week_end=data['week_end'], parity=data['parity'],
-                        raw=data.get('raw', ''), note=data.get('note', ''))
+                        raw=data.get('raw', ''), note=data.get('note', ''),
+                        exam_date=data.get('exam_date', ''),
+                        exam_period=data.get('exam_period', ''),
+                        exam_room=data.get('exam_room', ''))
                     blocks.append(block)
                 next_open[key] = block
             open_blocks = next_open
@@ -561,8 +632,9 @@ def _normalize_key_part(value: str) -> str:
 def external_key(block: LessonBlock) -> str:
     """
     sha1 over the normalised identity of a block: name, weekday, sections,
-    week range and parity. Room and teacher are deliberately excluded so a
-    room change updates the stored entry instead of replacing it.
+    week range and parity. Room, teacher and the exam info are deliberately
+    excluded so a change of them updates the stored entry instead of
+    replacing it.
     """
     parts = [
         _normalize_key_part(block.name),

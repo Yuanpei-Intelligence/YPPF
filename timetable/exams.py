@@ -1,14 +1,16 @@
 """
 Exam schedule helpers (``timetable/README.md`` §8.4): the pure parser of
-the 教务部 exam-time cell and the matching of ``CourseExam`` rows to a
-person's course entries, shared by ``timetable.sources.exam.ExamSource``
-(one occurrence per exam) and the ``Entry.exam`` payload (first matching
-exam by time).
+the 教务部 exam-time cell, the matching of ``CourseExam`` rows to a
+person's course entries and the assumed window of an entry's own imported
+exam (the course table's 考试信息 names only a date and 上午/下午/晚上).
+Shared by ``timetable.sources.exam.ExamSource`` (one occurrence per exam)
+and the ``Entry.exam`` payload (first matching exam by time, else the
+entry's own exam).
 """
 from __future__ import annotations
 
 import re
-from datetime import date, datetime, timedelta
+from datetime import date, datetime, time, timedelta
 from typing import Any, Iterable
 
 from timetable.catalog import normalise_class_no, normalise_course_code, normalise_name
@@ -16,7 +18,10 @@ from timetable.models import AcademicTerm, CourseExam, TimetableEntry
 
 __all__ = [
     'DEFAULT_EXAM_HOURS',
+    'EXAM_PERIOD_WINDOWS',
+    'ENTRY_EXAM_NOTE',
     'parse_exam_time',
+    'entry_exam_window',
     'ExamIndex',
     'entry_exam_keys',
     'match_exams',
@@ -25,6 +30,15 @@ __all__ = [
 
 # An exam without an end time lasts this long (README §8.4).
 DEFAULT_EXAM_HOURS = 2
+# Assumed window of an entry's own exam by its 考试信息 period (README §8.4);
+# a blank period uses the morning window.
+EXAM_PERIOD_WINDOWS = {
+    '上午': (time(8, 30), time(10, 30)),
+    '下午': (time(14, 0), time(16, 0)),
+    '晚上': (time(18, 30), time(20, 30)),
+}
+# Shown with such an exam, whose time is only assumed.
+ENTRY_EXAM_NOTE = '时间以教务通知为准'
 # Month-day cells resolve their year inside this window around week 1.
 _BEFORE_WEEK1 = timedelta(days=42)
 _AFTER_WEEK1 = timedelta(days=364)
@@ -163,6 +177,20 @@ def parse_exam_time(text: Any, term: AcademicTerm, *, start_text: Any = '',
     if end is None or end <= start:
         end = start + timedelta(hours=DEFAULT_EXAM_HOURS)
     return start, end
+
+
+def entry_exam_window(entry: TimetableEntry) -> tuple[datetime, datetime] | None:
+    """
+    ``(start, end)`` assumed for the entry's own imported exam: its
+    ``exam_date`` with the ``EXAM_PERIOD_WINDOWS`` window of
+    ``exam_period`` (the morning window when blank); ``None`` without an
+    ``exam_date``.
+    """
+    if entry.exam_date is None:
+        return None
+    start, end = EXAM_PERIOD_WINDOWS.get(entry.exam_period, EXAM_PERIOD_WINDOWS['上午'])
+    return (datetime.combine(entry.exam_date, start),
+            datetime.combine(entry.exam_date, end))
 
 
 # ---------------------------------------------------------------------------

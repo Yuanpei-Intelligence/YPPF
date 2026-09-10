@@ -10,12 +10,13 @@ their shape for the OpenAPI schema and validate request bodies.
 from __future__ import annotations
 
 from datetime import time
+from types import SimpleNamespace
 
 from rest_framework import serializers
 
 from semester.models import CalendarEvent
 from timetable import reminders
-from timetable.exams import exams_for_entries
+from timetable.exams import ENTRY_EXAM_NOTE, entry_exam_window, exams_for_entries
 from timetable.models import (
     TAG_MAX_LENGTH,
     CourseCatalogEntry,
@@ -241,8 +242,16 @@ class EntryOverrideSerializer(serializers.ModelSerializer):
 
 
 class EntryExamSerializer(serializers.ModelSerializer):
-    """The first matching exam of an entry (``Entry.exam``, §8.4)."""
+    """
+    The exam of an entry (``Entry.exam``, §8.4): the first matching
+    ``CourseExam``, else the entry's own imported exam with ``id: null``,
+    ``method: ''``, the assumed window of its period and the note
+    ``时间以教务通知为准``.
+    """
 
+    id = serializers.IntegerField(
+        read_only=True, allow_null=True,
+        help_text="CourseExam id; null for the entry's own imported exam")
     start = serializers.DateTimeField(format=DATETIME_FORMAT, read_only=True)
     end = serializers.DateTimeField(format=DATETIME_FORMAT, read_only=True)
 
@@ -283,7 +292,14 @@ class EntrySerializer(serializers.ModelSerializer):
         if exams is None or entry.pk not in exams:
             exams = exams_for_entries(entry.term, [entry])
         matched = exams.get(entry.pk) or []
-        return EntryExamSerializer(matched[0]).data if matched else None
+        if matched:
+            return EntryExamSerializer(matched[0]).data
+        window = entry_exam_window(entry)
+        if window is None:
+            return None
+        own = SimpleNamespace(id=None, start=window[0], end=window[1],
+                              room=entry.exam_room, method='', note=ENTRY_EXAM_NOTE)
+        return EntryExamSerializer(own).data
 
 
 class EntryInSerializer(serializers.Serializer):
@@ -446,6 +462,11 @@ class LessonBlockSerializer(serializers.Serializer):
     parity = serializers.IntegerField()
     raw = serializers.CharField(allow_blank=True)
     note = serializers.CharField(allow_blank=True)
+    exam_date = serializers.CharField(
+        allow_blank=True, help_text="考试信息 date YYYY-MM-DD; '' when none")
+    exam_period = serializers.CharField(
+        allow_blank=True, help_text="'上午' | '下午' | '晚上' | ''")
+    exam_room = serializers.CharField(allow_blank=True)
 
 
 class DryRunResponseSerializer(serializers.Serializer):

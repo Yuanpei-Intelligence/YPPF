@@ -135,6 +135,20 @@ class FetchScoresTests(ServiceTestCase):
         account.refresh_from_db()
         self.assertIsNotNone(account.last_sync_at)
 
+    def test_graduate_payload(self):
+        bind(self.user)
+        payload = {'success': True, 'xslb': 'yjs', 'jbxx': {'xm': '研究生甲'},
+                   'scoreLists': [{'kcmc': '高等量子力学', 'xf': '4', 'cj': '91',
+                                   'xnd': '25-26', 'xq': '1'}]}
+        with patch.object(PortalClient, 'get_scores', return_value=payload):
+            terms, _ = services.fetch_scores(self.user)
+        self.assertEqual([(term.term_code, [row.name for row in term.rows]) for term in terms],
+                         [('25-26-1', ['高等量子力学'])])
+        with patch.object(PortalClient, 'get_scores',
+                          return_value={'success': True, 'xslb': 'yjs'}):
+            with self.assertRaises(services.ScoresUnavailable):
+                services.fetch_scores(self.user)
+
 
 class StoreScoresTests(ServiceTestCase):
 

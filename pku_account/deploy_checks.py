@@ -3,14 +3,18 @@ Deployment checks of the pku_account app, run by ``python manage.py deploy_check
 
 Offline: the feature switch, the key that encrypts stored portal sessions and
 the sync health of the last week — students who log in but never get a
-successful import point at a portal-side change (on 2026-09-10 the portal
-removed ``bizcenter/course/getCourseInfo.do`` and ``bizcenter/score/retrScores.do``;
-the client now reports that as ``PortalEndpointMissing`` and logs
-``portal endpoint answered 404``). Online: IAAA reachability.
+successful import point at a portal-side change. On 2026-09-10 the portal
+removed ``portal2017/bizcenter/course/getCourseInfo.do`` and
+``portal2017/bizcenter/score/retrScores.do``; the client now reads
+``publicQuery/ctrl/topic/myCourseTable/getCourseInfo.do`` and
+``publicQuery/ctrl/topic/myScore/retrScores.do`` and reports a removed endpoint
+as ``PortalEndpointMissing``, logging ``portal endpoint answered 404`` (the
+elective fallback logs ``elective endpoint answered 404``). Online: IAAA
+reachability.
 
 There is deliberately no unauthenticated probe of the portal data endpoints:
-without a session the portal answers 401 for every ``bizcenter`` path,
-removed or not, so such a probe cannot tell a live endpoint from a dead one.
+without a session the old ``bizcenter`` paths answered 401 whether removed or
+not, so such a probe cannot tell a live endpoint from a dead one.
 """
 from __future__ import annotations
 

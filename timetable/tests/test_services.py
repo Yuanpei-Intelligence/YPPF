@@ -201,6 +201,47 @@ class UpsertEntriesTests(TestCase):
         failed = ImportLog.objects.filter(person=self.person, status=ImportLog.Status.FAILED)
         self.assertEqual(failed.count(), 2)
 
+    def test_import_stores_exam_info_and_refreshes_it(self):
+        """README §8.4: 考试信息 is an imported field, set and updated by every import."""
+        services.import_portal(self.person, self.term, portal_payload())
+        entries = TimetableEntry.objects.filter(person=self.person, term=self.term)
+        math = entries.get(name='高等数学A（二）')
+        self.assertEqual((math.exam_date, math.exam_period, math.exam_room),
+                         (date(2026, 6, 18), '上午', '理教306'))
+        pe = entries.get(name='体适能')
+        self.assertEqual((pe.exam_date, pe.exam_period, pe.exam_room), (None, '', ''))
+        math.hidden = True
+        math.save()
+        payload = portal_payload()
+        for cell in self._math_cells(payload):
+            cell['courseName'] = cell['courseName'].replace(
+                '20260618 星期四 上午 理教306', '20260619 星期五 晚上 二教101')
+        result = services.import_portal(self.person, self.term, payload)
+        self.assertEqual((result.created, result.updated, result.removed), (0, 1, 0))
+        math.refresh_from_db()
+        self.assertEqual((math.exam_date, math.exam_period, math.exam_room),
+                         (date(2026, 6, 19), '晚上', '二教101'))
+        self.assertTrue(math.hidden)
+        for cell in self._math_cells(payload):
+            cell['courseName'] = cell['courseName'].split('<br>考试信息')[0] + '<br>考试信息：'
+        services.import_portal(self.person, self.term, payload)
+        math.refresh_from_db()
+        self.assertEqual((math.exam_date, math.exam_period, math.exam_room), (None, '', ''))
+
+    def test_upsert_normalises_exam_fields(self):
+        blocks = [
+            LessonBlock(name='甲', weekday=1, start_section=1, end_section=2,
+                        exam_date='2027-01-12', exam_period='中午', exam_room='x' * 150),
+            LessonBlock(name='乙', weekday=2, start_section=1, end_section=2,
+                        exam_date='not a date', exam_period='上午', exam_room='理教101'),
+        ]
+        services.upsert_entries(self.person, self.term, 'paste', blocks)
+        first = TimetableEntry.objects.get(person=self.person, name='甲')
+        self.assertEqual((first.exam_date, first.exam_period, len(first.exam_room)),
+                         (date(2027, 1, 12), '', 100))
+        second = TimetableEntry.objects.get(person=self.person, name='乙')
+        self.assertEqual((second.exam_date, second.exam_period, second.exam_room), (None, '', ''))
+
     def test_upsert_rejects_manual_source_and_skips_unplaceable_blocks(self):
         with self.assertRaises(ValueError):
             services.upsert_entries(self.person, self.term, TimetableEntry.Source.MANUAL, [])
@@ -240,6 +281,90 @@ class UpsertEntriesTests(TestCase):
         log = ImportLog.objects.get(person=self.person)
         self.assertEqual(log.status, ImportLog.Status.FAILED)
         self.assertEqual(log.source, TimetableEntry.Source.PASTE)
+
+
+class ElectiveFallbackTests(TestCase):
+    """README §4.4: the elective 选课结果 page stands in for an empty course table."""
+
+    TODAY = date(2026, 9, 20)       # week 1 of the default test term (2026-09-14)
+
+    def setUp(self):
+        self.term = make_term()
+        self.past = make_term(code='25-26-2', week1_monday=date(2026, 2, 23))
+        self.next = make_term(code='26-27-2', week1_monday=date(2027, 2, 22))
+        self.later = make_term(code='27-28-1', week1_monday=date(2027, 9, 13))
+        _, self.person = make_person()
+        self.calls = 0
+
+    def results(self, html, outcome='ok'):
+        def fetch():
+            self.calls += 1
+            return html, outcome
+        return fetch
+
+    def test_applies_to_the_covering_or_the_next_term_only(self):
+        self.assertTrue(services.elective_results_apply(self.term, self.TODAY))
+        self.assertTrue(services.elective_results_apply(self.next, self.TODAY))
+        for term in (self.past, self.later):
+            self.assertFalse(services.elective_results_apply(term, self.TODAY))
+        # Between terms the next one applies, the finished one does not.
+        vacation = date(2027, 2, 1)
+        self.assertFalse(services.elective_results_apply(self.term, vacation))
+        self.assertTrue(services.elective_results_apply(self.next, vacation))
+        self.assertFalse(services.elective_results_apply(self.later, vacation))
+
+    def test_empty_course_table_imports_elective_results(self):
+        stale = make_entry(self.person, self.term, name='旧课')
+        result = services.import_portal(
+            self.person, self.term, {'success': True, 'course': []},
+            elective_results=self.results(read_fixture('elective_table.html')), today=self.TODAY)
+        self.assertEqual(self.calls, 1)
+        self.assertEqual((result.created, result.removed), (4, 1))
+        entries = TimetableEntry.objects.filter(person=self.person, term=self.term)
+        self.assertEqual(set(entries.values_list('source', flat=True)), {'portal'})
+        self.assertFalse(entries.filter(pk=stale.pk).exists())
+        self.assertEqual(result.log.status, ImportLog.Status.OK)
+        self.assertEqual(result.log.message,
+                         'no lessons in portal payload; imported from elective results')
+        # A later course-table import replaces the stand-in entries.
+        result = services.import_portal(self.person, self.term, portal_payload(),
+                                        elective_results=self.results(None), today=self.TODAY)
+        self.assertEqual(self.calls, 1)
+        self.assertEqual(sorted({entry.name for entry in result.entries}),
+                         ['体适能', '大学英语', '概率统计', '程序设计实习', '线性代数', '高等数学A（二）'])
+        self.assertEqual(result.total, 7)
+
+    def test_not_asked_when_the_table_has_lessons_or_the_term_is_over(self):
+        services.import_portal(self.person, self.term, portal_payload(),
+                               elective_results=self.results(''), today=self.TODAY)
+        with self.assertRaises(services.TimetableImportError):
+            services.import_portal(self.person, self.past, {'success': True, 'course': []},
+                                   elective_results=self.results(read_fixture('elective_table.html')),
+                                   today=self.TODAY)
+        self.assertEqual(self.calls, 0)
+        self.assertFalse(TimetableEntry.objects.filter(term=self.past).exists())
+
+    def test_failed_fallback_keeps_entries_and_names_the_outcome(self):
+        services.import_portal(self.person, self.term, portal_payload())
+        cases = [
+            ({'success': True, 'course': []}, self.results(None, 'PortalUnreachable'),
+             '门户未返回任何课程，本地课表未改动',
+             'no lessons in portal payload; elective fallback: PortalUnreachable'),
+            ({'success': False, 'remark': '未登录'}, self.results('<table class="datagrid"></table>'),
+             '门户课表解析失败：未登录',
+             'parse error: 未登录; elective fallback: no lessons in elective results'),
+        ]
+        for payload, fetch, message, log_message in cases:
+            with self.subTest(log_message=log_message):
+                with self.assertRaises(services.TimetableImportError) as caught:
+                    services.import_portal(self.person, self.term, payload,
+                                           elective_results=fetch, today=self.TODAY)
+                self.assertEqual(caught.exception.message, message)
+                log = ImportLog.objects.filter(person=self.person,
+                                               status=ImportLog.Status.FAILED).latest('id')
+                self.assertEqual(log.message, log_message)
+        self.assertEqual(self.calls, 2)
+        self.assertEqual(TimetableEntry.objects.filter(person=self.person).count(), 7)
 
 
 class ExpandAndConflictTests(TestCase):

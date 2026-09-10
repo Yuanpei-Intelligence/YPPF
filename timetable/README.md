@@ -21,8 +21,8 @@ generic.User / app.NaturalPerson / semester          (existing YPPF core)
         ▲                       ▲
         │                       │
    pku_account ◄──────── timetable ◄──── api/timetable, timetable.reminders (S2)
-   (IAAA + portal client,   (terms, stored entries, sources,
-    binding, session vault)  week view, import, ICS)
+   (IAAA, portal + elective (terms, stored entries, sources,
+    clients, binding, vault) week view, import, ICS)
         ▲                       ▲
         │                       │ (live adapters, optional)
    academic_record (S2)     app.Course / app.Activity / Appointment.Appoint
@@ -74,64 +74,121 @@ never fatal.
 
 ### 3.1 External client (`pku_account/extern/`)
 
-Pure `requests` code, no Django models. Mirrors what public tools do
-(pkuhelper-web-score, Packup-Android):
+Pure `requests` code, no Django models. Mirrors what current public tools do
+(sshwy/pku3b, zhuozhiyongde/Grade-Huh-Moe, zyzhao-24/PKU-Course-Planning,
+PKU-Vincent/PKUStudyHelper) and the public front-end JS of
+`https://portal.pku.edu.cn/publicQuery/`: the portal's 我的课表 / 我的成绩
+tiles open the **publicQuery** application.
 
 ```
+GET  https://iaaa.pku.edu.cn/iaaa/isMobileAuthen.do?appId=portalPublicQuery&userName=<id>&_rand=<random>
+     → {"success": true, "authenMode": "否", ...}   # any other mode → OtpRequired, no password is posted
 POST https://iaaa.pku.edu.cn/iaaa/oauthlogin.do
-     form: appid=portal2017, userName, password,
-           redirUrl=https://portal.pku.edu.cn/portal2017/ssoLogin.do
-     headers: Referer=https://iaaa.pku.edu.cn/iaaa/oauth.jsp?appID=portal2017&...
+     form: appid=portalPublicQuery, userName, password, randCode='', smsCode='', otpCode='',
+           redirUrl=https://portal.pku.edu.cn/publicQuery/ssoLogin.do
+     headers: Referer=https://iaaa.pku.edu.cn/iaaa/oauth.jsp?appID=portalPublicQuery&appName=校内信息门户公共查询&redirectUrl=...
      → JSON {"success": true, "token": "..."}  |  {"success": false, "errors": {"code": "...", "msg": "..."}}
-GET  https://portal.pku.edu.cn/portal2017/ssoLogin.do?_rand=<random>&token=<token>
-     → sets portal session cookies (follow redirects; keep every Set-Cookie)
-GET  https://portal.pku.edu.cn/portal2017/bizcenter/course/getCourseInfo.do?xndxq=26-27-1
+GET  https://portal.pku.edu.cn/publicQuery/ssoLogin.do?_rand=<random>&token=<token>
+     → sets the session cookies on portal.pku.edu.cn (follow redirects; keep every Set-Cookie)
+GET  https://portal.pku.edu.cn/publicQuery/ctrl/topic/myCourseTable/getXndXqList.do
+     → {"success": true, "nowXnxq": {"xndxq": "26-27-1", ...}, "xndxq": [{"xndxq": "..."}, ...]}
+GET  https://portal.pku.edu.cn/publicQuery/ctrl/topic/myCourseTable/getCourseInfo.do?xndxq=26-27-1
      → {"success": true, "remark": "...", "course": [ {"timeNum": "第一节",
           "mon": {"courseName": "...", "parity": "...", "sty": "..."}, "tue": {...}, ... "sun": {...}} , ... ]}
-GET  https://portal.pku.edu.cn/portal2017/bizcenter/score/retrScores.do
-     → {"cjxx": [ {"xnd": "25-26", "xq": "1", "list": [ {"kcmc", "kch", "xf", "xqcj", "jd", ...} ]} ], ...}
+GET  https://portal.pku.edu.cn/publicQuery/ctrl/topic/myScore/retrScores.do
+     → {"success": true, "xslb": "bks"|"yjs", "jbxx": {...}, "cjxx": [...], "fscjxx": [...],
+        "zjlcjxx": [...], "bylwcjxx": {...}, "scoreLists": [...], "grade": ..., "gpa": ...}   (§6.2)
 ```
 
-**2026-09-10: both endpoints above answer 404 with a live session** (verified
-with a real account; IAAA login and `ssoLogin.do` still work). The portal now
-exposes services as business-center tiles (`account/retrBizCenterAll.do`,
-`util/getPortletURL.do`); the replacement data path is being probed (tiles and
-the elective 选课结果 page). Until it lands, the server-side import answers
-503 `PORTAL_UNREACHABLE` with a hint to use paste import.
+`courseName` is HTML: `<font color = 'red'><b>…</b></font>` marks a conflict,
+one cell may hold several courses, and each course is followed by its own
+`上课信息：…` and `考试信息：YYYYMMDD 星期X 上午|下午|晚上 <room>` line (blank
+when no exam is set yet); see §4.2 and §8.4.
+
+The old `portal2017` application (`appid=portal2017`, `portal2017/ssoLogin.do`,
+`bizcenter/course/getCourseInfo.do`, `bizcenter/score/retrScores.do`) answered
+404 for both data endpoints on 2026-09-10 (verified with a real account).
+Sessions stored from it are not publicQuery sessions: they fail as
+`PortalSessionExpired` and the student logs in again (no data migration).
 
 A 404 is `PortalEndpointMissing` (a `PortalUnreachable` subclass): the
 endpoint is gone, the session is fine, so it is never invalidated (doing so
 sent students into a re-login loop) and the client logs
 `portal endpoint answered 404: <path>`.
 
-The portal returns an HTML login page (not JSON) once the session is gone:
-treat "response is not JSON" as `PortalSessionExpired`. IAAA responses whose
-`errors.msg` mention 验证码 / OTP / 二次验证 map to `CaptchaRequired` /
-`OtpRequired` (both subclasses of `IaaaError`). Off-campus logins require OTP
-since 2026-03-30; the production server is on campus, so this is only an
-edge case to report cleanly, not to solve.
+The portal answers an HTML login page, a redirect to IAAA or HTTP 401 once
+the session is gone: a login page / any non-JSON 200, an IAAA redirect and a
+401 are `PortalSessionExpired`. IAAA responses whose `errors.msg` mention
+验证码 / OTP / 二次验证 map to `CaptchaRequired` / `OtpRequired` (both
+subclasses of `IaaaError`). Off-campus logins require OTP since 2026-03-30;
+the production server is on campus, so this is only an edge case to report
+cleanly, not to solve. Both clients ask `isMobileAuthen.do` first and log
+the `authenMode` (`否` = none). The pre-check is advisory, as in pku3b: what
+the other modes mean (an account setting or this network location) is not
+verified from the campus server yet, so the password is still posted and
+IAAA's own answer decides (`OtpRequired` when it names a second factor). A
+network failure or an unreadable answer is ignored.
+
+**Elective fallback (选课系统, `pku_account/extern/elective.py`).** While the
+portal course table of the current or upcoming term is still empty, the
+import view logs in to the course-selection system with the same credentials
+and reads 选课结果 (§4.4):
+
+```
+GET  https://iaaa.pku.edu.cn/iaaa/isMobileAuthen.do?appId=syllabus&userName=<id>&_rand=<random>
+POST https://iaaa.pku.edu.cn/iaaa/oauthlogin.do
+     form: appid=syllabus, …, redirUrl=http://elective.pku.edu.cn:80/elective2008/ssoLogin.do
+     headers: Referer=…/oauth.jsp?appID=syllabus&appName=学生选课系统&redirectUrl=…
+GET  https://elective.pku.edu.cn/elective2008/ssoLogin.do?_rand=<random>&token=<token>
+     headers: Referer=https://elective.pku.edu.cn/elective2008/
+     → a dual-degree student gets a chooser whose links carry ?sida=<32 hex>&sttp=bzx|bfx;
+       the client then requests ssoLogin.do?sida=<sida>&sttp=bzx (main degree)
+GET  https://elective.pku.edu.cn/elective2008/edu/pku/stu/elective/controller/help/HelpController.jpf
+GET  https://elective.pku.edu.cn/elective2008/edu/pku/stu/elective/controller/electiveWork/showResults.do
+     headers: Referer=<the HelpController URL>
+     → HTML, table.datagrid: 课程号 课程名 课程类别 学分 周学时 教师 班号 开课单位 教室信息 选课结果 IP地址 操作时间
+```
+
+Verified with a real graduate account (login works; 0 rows that term). The
+session is never stored. Errors mirror the portal client: network failures
+and 5xx are `PortalUnreachable`; 404 is `PortalEndpointMissing` (logged as
+`elective endpoint answered 404: <path>`); a final redirect to IAAA or to a
+login page, a 401, or the 尚未登录 / 会话超时 page without the results table
+is `PortalSessionExpired`. During `login`, an SSO that leaves no elective
+cookie, lands on a login page or reports `用户选课类别ERR` is
+`PortalUnreachable`.
 
 ```python
 # pku_account/extern/iaaa.py
 class IaaaError(Exception):      code: str; msg: str
 class OtpRequired(IaaaError): ...
 class CaptchaRequired(IaaaError): ...
-def iaaa_login(session, username, password, *, appid='portal2017', redir_url=PORTAL_SSO) -> str  # token
+def check_second_factor(session, appid, username, *, timeout=None) -> None   # raises OtpRequired
+def iaaa_login(session, username, password, *, appid=PORTAL_APP_ID, redir_url=PORTAL_SSO,
+               app_name=PORTAL_APP_NAME, timeout=None) -> str               # token
 
 # pku_account/extern/portal.py
 class PortalSessionExpired(Exception): ...
+class PortalEndpointMissing(PortalUnreachable): ...
 class PortalClient:
     @classmethod
     def login(cls, username, password) -> 'PortalClient'
     @classmethod
     def from_cookies(cls, cookies: dict[str, str]) -> 'PortalClient'
     def cookies(self) -> dict[str, str]
+    def get_terms(self) -> dict                       # getXndXqList.do
     def get_course_info(self, term_code: str) -> dict
     def get_scores(self) -> dict
-    def ping(self) -> bool            # cheap liveness probe, never raises
+    def ping(self) -> bool            # getXndXqList.do; cheap liveness probe, never raises
+
+# pku_account/extern/elective.py
+class ElectiveClient:
+    @classmethod
+    def login(cls, username, password) -> 'ElectiveClient'   # main degree for dual-degree students
+    def get_results_html(self) -> str                        # showResults.do
 ```
 
-Never log usernames+passwords, tokens or cookies. Timeouts from config.
+Never log usernames+passwords, tokens, cookies or page content. Timeouts from config.
 
 ### 3.2 Models
 
@@ -249,6 +306,8 @@ class TimetableEntry(models.Model):
     start_time, end_time = TimeField
     week_start, week_end = SmallInt; parity = SmallInt(choices=Parity, default=ALL)
     note = CharField(200, blank); raw_text = TextField(blank)
+    exam_date = DateField(null); exam_period = CharField(8, blank)   # 上午|下午|晚上; imported 考试信息, §8.4
+    exam_room = CharField(100, blank)
     hidden = BooleanField(default=False); color = CharField(7, blank)
     created_at / updated_at
     class Meta: unique_together = ('person', 'term', 'source', 'external_key'); ordering = ['weekday', 'start_section']
@@ -290,7 +349,9 @@ class LessonBlock:
     week_start: int = 1; week_end: int = 16; parity: int = 0   # 0 all, 1 odd, 2 even
     note: str = ''                       # portal 备注, stored in TimetableEntry.note
     raw: str = ''
+    exam_date: str = ''; exam_period: str = ''; exam_room: str = ''   # the course's 考试信息 (§8.4)
 
+def parse_exam_info(text) -> tuple[str, str, str]   # '20260618 星期四 上午 二教411' → ('2026-06-18', '上午', '二教411')
 def parse_course_cell_text(text) -> list[dict]      # '课名(主)\n上课信息：1-16周 每周 理教201 教师：张三 备注：…\n考试信息：…'
 def parse_portal_course_json(raw: dict) -> list[LessonBlock]   # getCourseInfo.do; merge consecutive sections
 def parse_portal_html(html: str) -> list[LessonBlock]          # portal 我的课表 page, cells id="mon1".."sun12"
@@ -298,14 +359,26 @@ def parse_elective_table(text: str) -> list[LessonBlock]       # elective.pku.ed
                                                                 # time regex: (\d+)~(\d+)周 (.)周周(.)(\d+)~(\d+)节\s*(\S*)
 def detect_format(text: str) -> str                             # 'portal_html' | 'portal_json' | 'elective' | 'unknown'
 def external_key(block: LessonBlock) -> str                     # sha1 over name/weekday/sections/week range/parity
-                                                                # (room and teacher excluded, so a room change is an
-                                                                #  update of the same entry, not delete + create)
+                                                                # (room, teacher and exam info excluded, so a change of
+                                                                #  them is an update of the same entry, not delete + create)
 ```
 
 Merging rule (portal JSON/HTML): consecutive sections on the same weekday with
 identical (name, week_start, week_end, parity, room, teacher) collapse into one
 block. A cell may carry several 上课信息 lines (different week ranges) →
 several blocks.
+
+Courses and exam info in one cell: `courseName` HTML becomes text (`<br>` →
+newline, `<font>`/`<b>` wrappers dropped). A cell may hold several courses —
+the portal colours such a conflict red — so once a course has had a
+上课信息 or 考试信息 line, the next line that is neither starts the next
+course, and each course keeps its own 考试信息. `考试信息：YYYYMMDD 星期X
+上午|下午|晚上 <room>` (Sunday is written `星期七`; `2026-06-18` is read too)
+becomes `exam_date` (ISO), `exam_period` and `exam_room` on every block of that
+course; a blank `考试信息：` means no exam yet and gives blanks. A first course
+without a 上课信息 line still yields one weeks 1–16 block; a later one without
+it (e.g. a remark wrapped onto its own line) is dropped. The dry-run `blocks`
+of `import/text/` carry the three exam keys too.
 
 ### 4.3 Sources (`timetable/sources/`)
 
@@ -356,9 +429,11 @@ def load_sources() -> list[EventSource]     # from CONFIG.sources, cached, impor
 ```python
 def get_or_create_settings(person) -> TimetableSettings
 def week_view(person, term, week) -> dict     # see API 4.6 for the shape
-def import_portal(person, term, raw_json) -> ImportResult          # parse + upsert source=PORTAL
+def import_portal(person, term, raw_json, *, elective_results=None, today=None) -> ImportResult
+                                                                   # parse + upsert source=PORTAL (+ elective fallback)
+def elective_results_apply(term, on=None) -> bool                  # term covers `on`, or is the next term to start
 def import_text(person, term, text, *, dry_run=False) -> ImportResult | list[LessonBlock]
-def upsert_entries(person, term, source, blocks) -> ImportResult   # shared by the two above
+def upsert_entries(person, term, source, blocks, *, note='') -> ImportResult   # shared by the two above
 def expand_entries(entries, term, week_from, week_to) -> list[Occurrence]
 def detect_conflicts(occurrences) -> list[list[str]]               # groups of overlapping occurrence ids (same date)
 def build_ics(person) -> str                                       # timetable/ics.py; current + future active terms
@@ -370,6 +445,29 @@ class ImportResult: created: int; updated: int; removed: int; entries: list[Time
 `import_portal` is called by the API after it obtained raw JSON through
 `pku_account.services.get_client(user).get_course_info(term.code)`; the
 timetable app never touches credentials.
+
+Elective fallback (as built, 2026-09-10): when `import/portal/` is called
+with `username` + `password`, the view passes `elective_results`, a callable
+that logs in to the course-selection system with the same credentials
+(`pku_account.extern.elective.ElectiveClient`, §3.1) and returns
+`(showResults.do HTML or None, outcome)`. `import_portal` calls it only when
+the course table yields no lessons (an empty table, or no course table at
+all) and `elective_results_apply(term)`: the term's span covers today, or it
+is `AcademicTerm.upcoming()`. The page goes through `parse_elective_table`
+(`未选上` rows skipped) and is stored under source `portal`, so the next
+course-table import replaces it. Without credentials only the stored
+publicQuery session is used and nothing falls back. The API contract is
+unchanged: success is the usual `ImportOut`, and a failed or empty fallback
+(elective unreachable, a second factor, a site change, no lessons) answers
+like an empty course table — 400 `PARSE_FAILED` 「门户未返回任何课程，本地课表未改动」,
+session not marked synced. The outcome is recorded only in the `ImportLog`
+message (`no lessons in portal payload; imported from elective results`, or
+`…; elective fallback: PortalUnreachable` / `OtpRequired` /
+`no lessons in elective results`), and a failure is logged as
+`elective fallback failed: <exception class>`. The term of the 选课结果 page
+itself is not checked (no sample naming it), so during the current term the
+page of the next term's selection round would be stored for whichever of the
+two terms is imported.
 
 ### 4.5 ICS feed
 
@@ -578,10 +676,26 @@ discovered by `scheduler.management.commands.collect_jobs` importing
 
 ### 6.2 Grades (`academic_record` app, `/api/v2/grades/`)
 
-Portal payload (`retrScores.do`): `{"cjxx": [{"xnd": "25-26", "xq": "1",
+Portal payload (`publicQuery/ctrl/topic/myScore/retrScores.do`, §3.1):
+`{"success": true, "xslb": "bks", "cjxx": [{"xnd": "25-26", "xq": "1",
 "list": [{"kcmc": 课程名, "kch": 课程号, "xf": 学分, "xqcj": 学期成绩, "jd": 绩点,
 ...}]}]}` — field names beyond these five are kept in `raw`; the parser must
-tolerate missing/extra keys and non-numeric scores (`P`, `合格`, `W`).
+tolerate missing/extra keys and non-numeric scores (`P`, `合格`, `W`). The
+Treehole proxy flattens `cjxx` into rows carrying `xnd`/`xq`; both shapes parse.
+
+Graduate students (`"xslb": "yjs"`) get `scoreLists` instead. The page
+template binds `kcmc`, `xf`, `kclb`, `cj` and `hgbz`, so a row maps to name
+`kcmc`, credits `xf`, score `cj` (`xqcj` accepted), `course_type` `kclb`
+(then `kclbmc`), and `hgbz` (合格标志) stays in `raw`. The term keys of those
+rows are **not confirmed** (no graduate sample with rows yet): `xnd` + `xq`
+are used, then `xndxq` as given, and a row naming neither is filed under the
+term code `unknown` (listed first, as `terms` sort by code, newest first).
+Rows nested under `list` like `cjxx` are accepted, and `cjxx` rows of a
+graduate payload are parsed as well; undergraduate payloads ignore
+`scoreLists`. The personal block `jbxx` is never read, stored or logged.
+`fscjxx` (辅修/双学位, whose GPA is kept apart from the main degree's),
+`zjlcjxx`, `bylwcjxx`, the top-level `grade`/`gpa` and `getGPAbyXh.do`
+(`{"success": true, "data": [{"xndxq", "gpa"}]}`) are not used.
 
 ```python
 class GradeRecord(models.Model):
@@ -628,7 +742,8 @@ Implementation notes (as built): `GET` answers 404 `NOT_BOUND` when there is
 no binding and 403 `CONSENT_REQUIRED` when bound without consent; its
 `stored` means "rows exist" and `fetched_at` is the newest stored row's
 timestamp (null when none). `POST sync/` adds 400 `PARSE_FAILED` (portal JSON
-without a `cjxx` list or `success: false`; the session is not marked ok) and
+without a `cjxx` list — for a graduate, without a `scoreLists` list — or with
+`success: false`; the session is not marked ok) and
 503 `PORTAL_DISABLED`; `{"cjxx": []}` is a valid empty result. `terms` are
 ordered newest first, rows keep the portal order, rows lacking both `kcmc`
 and `kch` are dropped, duplicates within a term keep the first. `credits`
@@ -1136,10 +1251,25 @@ end_section=None`, `color_key=name`, `ref={'exam_id', 'entry_id'}`,
 `role=''`. Honours `settings.show_exams`. Manual exams (entry-form 类别 =
 考试) are ordinary entries with `category='exam'`, `week_start == week_end`.
 
-The portal may expose the student's own exam list; that is not known yet
-(needs a real account — `pku_probe.py`), so no per-student import exists in
-this iteration. The import page explains that exams appear automatically
-once the term's schedule is loaded.
+Per-student exams (2026-09-10): the publicQuery course table carries each
+course's own 考试信息 (§4.2). Imports store it on the entry —
+`TimetableEntry.exam_date` (DateField, null), `exam_period` (`上午` / `下午` /
+`晚上` / blank) and `exam_room`, migration `timetable.0005_entry_exam_info` —
+as imported fields that every import sets and a re-import updates (they are
+not student annotations, and overrides do not touch them). `ExamSource`
+additionally emits, for the person's non-hidden `category='course'` entries
+with an `exam_date` in the span, one occurrence per `(name, exam_date)`
+unless an entry of that `(name, exam_date)` matches a `CourseExam` of the
+term, at any date (the schedule wins, so a moved exam is not shown twice):
+`id='exam:entry{entry.id}:{date}'`, `source='exam'`, `kind='exam'`,
+`title=f'{name} 考试'`, `subtitle='时间以教务通知为准'`, `location=exam_room`,
+the assumed window of the period — 上午 08:30–10:30, 下午 14:00–16:00, 晚上
+18:30–20:30, a blank period uses the morning window
+(`timetable.exams.EXAM_PERIOD_WINDOWS`) — `start_section/end_section=None`,
+`color_key=name`, `ref={'entry_id'}`, `role=''`. `Entry.exam` falls back the
+same way: without a matching `CourseExam` it is `{"id": null, "start",
+"end", "room": exam_room, "method": "", "note": "时间以教务通知为准"}`, so
+`Entry.exam.id` is nullable.
 
 Implementation notes (as built): `teaching_weeks` is clamped into
 `1..total_weeks`; `AcademicTerm.is_exam_week(week)` is the helper behind
@@ -1161,7 +1291,10 @@ each exam is emitted once (the lowest entry id keeps it) and code-only /
 name-only matches require every row of that key to belong to one class.
 Exam occurrences reach reminders and ICS like any other (`CATEGORIES:考试`,
 reminder title unchanged). `Entry.exam` uses the same matcher, first by
-time; `entries/` resolves all entries with one exam query.
+time, else the entry's own exam; `entries/` resolves all entries with one
+exam query. Without a `CourseExam` in the span, `ExamSource` reads only the
+entries whose `exam_date` lies in the span, and the term-wide `CourseExam`
+lookup of the own-exam rule runs only when such an entry exists.
 
 ### 8.5 Poster styles and share assets
 
@@ -1242,9 +1375,11 @@ checks as `[OK]` / `[WARN]` / `[FAIL]` lines and exits non-zero on failures
 two plugins: `timetable/deploy_checks.py` (sources, subscribe template, share
 assets, reminder job, current / upcoming term with calendar, exam weeks,
 catalog and exams; online: the poster's mini-program code) and
-`pku_account/deploy_checks.py` (feature switch, session key, bound accounts;
-online: IAAA reachability and whether the portal data endpoints still exist —
-they answered 404 on 2026-09-10). The order to follow on a fresh deployment:
+`pku_account/deploy_checks.py` (feature switch, session key, sync health of
+bound accounts; online: IAAA reachability — the portal data endpoints are not
+probed without a session; a removed one shows up as the server log line
+`portal endpoint answered 404` / `elective endpoint answered 404` and a
+sync-health warning). The order to follow on a fresh deployment:
 
 1. `config.json` (see `config_template.json`): `pku_portal.enabled: true`
    (optional `session_key`, else derived from `SECRET_KEY`);
@@ -1254,7 +1389,8 @@ they answered 404 on 2026-09-10). The order to follow on a fresh deployment:
    `/static/assets/img/yppf_official_qrcode.png` (a leading `/` means a
    site path joined with `global.base_url`, a bare name a file under
    `MEDIA_URL`); `global.base_url` must be the public host.
-2. `python manage.py migrate` (`timetable.0004` carries a data step).
+2. `python manage.py migrate` (`timetable.0004` carries a data step;
+   `timetable.0005` adds the entries' exam fields).
 3. `python manage.py import_academic_calendar timetable/data/calendar_26-27-1.json`
    (then `calendar_26-27-2.json`): creates or updates the `AcademicTerm`
    with `total_weeks` / `exam_week_start` and replaces the term's calendar
@@ -1269,6 +1405,8 @@ they answered 404 on 2026-09-10). The order to follow on a fresh deployment:
    loads the QR images from it), and a release whose `env_version`
    matches `wx_miniapp.share.env_version`.
 7. First real-account check from the server (campus network, no OTP
-   expected): `POST /api/v2/pku/login/` then `POST /api/v2/timetable/import/portal/`;
+   expected): `POST /api/v2/pku/login/` then `POST /api/v2/timetable/import/portal/`
+   (a session stored before the publicQuery switch answers 409
+   `PKU_LOGIN_REQUIRED` once; the student logs in again);
    the local probe `pku_probe.py` (kept outside the repository) shows the
    raw portal payloads when a parser needs adjusting.

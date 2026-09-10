@@ -3,8 +3,8 @@ Tests of the IAAA / portal clients. Every HTTP call is mocked at
 ``requests.Session.post`` / ``requests.Session.get``; nothing reaches
 pku.edu.cn.
 """
-from datetime import date
 from unittest.mock import patch
+from urllib.parse import urlencode
 
 import requests
 from django.test import SimpleTestCase
@@ -15,20 +15,24 @@ from pku_account.extern.iaaa import (
     IaaaError,
     OtpRequired,
     PortalUnreachable,
+    check_second_factor,
     classify_iaaa_error,
     iaaa_login,
 )
 from pku_account.extern.portal import (
     PORTAL_COURSE_URL,
     PORTAL_SCORE_URL,
+    PORTAL_TERMS_URL,
     PortalClient,
     PortalSessionExpired,
-    guess_term_code,
 )
 
 USERNAME = '2100010001'
 PASSWORD = 'S3cret-Pa55!'
 LOGIN_PAGE = '<html><title>北京大学统一身份认证</title></html>'
+NO_SECOND_FACTOR = {'success': True, 'authenMode': '否', 'isMobileAuthen': False}
+# The public-query application verified with a real account on 2026-09-10.
+PUBLIC_QUERY = 'https://portal.pku.edu.cn/publicQuery'
 
 
 class FakeResponse:
@@ -71,16 +75,41 @@ class IaaaLoginTests(SimpleTestCase):
 
         self.assertEqual(token, 'tok-1')
         self.assertEqual(seen['url'], iaaa.IAAA_LOGIN_URL)
-        self.assertEqual(seen['data']['appid'], 'portal2017')
+        self.assertEqual(seen['data']['appid'], 'portalPublicQuery')
         self.assertEqual(seen['data']['userName'], USERNAME)
         self.assertEqual(seen['data']['password'], PASSWORD)
-        self.assertEqual(seen['data']['redirUrl'], iaaa.PORTAL_SSO)
+        self.assertEqual(seen['data']['redirUrl'], f'{PUBLIC_QUERY}/ssoLogin.do')
+        self.assertEqual(iaaa.PORTAL_SSO, f'{PUBLIC_QUERY}/ssoLogin.do')
         self.assertEqual(seen['timeout'], 7)
         referer = seen['headers']['Referer']
         self.assertTrue(referer.startswith(iaaa.IAAA_OAUTH_URL + '?'))
-        self.assertIn('appID=portal2017', referer)
+        self.assertIn('appID=portalPublicQuery', referer)
+        self.assertIn(urlencode({'appName': '校内信息门户公共查询'}), referer)
         # Header values must stay latin-1 encodable.
         referer.encode('latin-1')
+
+    def test_another_application(self):
+        seen = {}
+
+        def fake_post(session, url, data=None, **kwargs):
+            seen.update(data=data, **kwargs)
+            return FakeResponse(json_data={'success': True, 'token': 'tok-2'})
+
+        redir = 'http://elective.pku.edu.cn:80/elective2008/ssoLogin.do'
+        with patch.object(
+            requests.Session, 'post', autospec=True, side_effect=fake_post,
+        ):
+            token = iaaa_login(iaaa.new_session(), USERNAME, PASSWORD,
+                               appid='syllabus', redir_url=redir,
+                               app_name='学生选课系统')
+
+        self.assertEqual(token, 'tok-2')
+        self.assertEqual((seen['data']['appid'], seen['data']['redirUrl']),
+                         ('syllabus', redir))
+        referer = seen['headers']['Referer']
+        self.assertIn('appID=syllabus', referer)
+        self.assertIn(urlencode({'appName': '学生选课系统'}), referer)
+        self.assertIn(urlencode({'redirectUrl': redir}), referer)
 
     def test_wrong_password_raises_iaaa_error_without_secrets(self):
         with patch.object(
@@ -157,34 +186,110 @@ class IaaaLoginTests(SimpleTestCase):
         self.assertEqual(ctx.exception.code, 'BAD_RESPONSE')
 
 
-class PortalClientTests(SimpleTestCase):
-    def test_login_establishes_portal_session(self):
+class SecondFactorPrecheckTests(SimpleTestCase):
+    def test_no_second_factor_passes_and_sends_expected_query(self):
         seen = {}
 
         def fake_get(session, url, **kwargs):
-            seen.update(url=url, params=kwargs.get('params'))
+            seen.update(url=url, params=kwargs.get('params'),
+                        timeout=kwargs.get('timeout'))
+            return FakeResponse(json_data=NO_SECOND_FACTOR)
+
+        with patch.object(
+            requests.Session, 'get', autospec=True, side_effect=fake_get,
+        ):
+            self.assertEqual(check_second_factor(
+                iaaa.new_session(), 'portalPublicQuery', USERNAME, timeout=3), '否')
+
+        self.assertEqual(seen['url'], 'https://iaaa.pku.edu.cn/iaaa/isMobileAuthen.do')
+        self.assertEqual(seen['params']['appId'], 'portalPublicQuery')
+        self.assertEqual(seen['params']['userName'], USERNAME)
+        self.assertIn('_rand', seen['params'])
+        self.assertEqual(seen['timeout'], 3)
+
+    def test_another_mode_is_logged_not_raised(self):
+        # Advisory until the meaning of the modes is verified from the campus
+        # server: the login request decides whether a second factor is needed.
+        with patch.object(
+            requests.Session, 'get', autospec=True,
+            return_value=FakeResponse(
+                json_data={'success': True, 'authenMode': 'OTP'}),
+        ):
+            with self.assertLogs('pku_account.extern.iaaa', level='INFO') as logs:
+                mode = check_second_factor(iaaa.new_session(), 'syllabus', USERNAME)
+        self.assertEqual(mode, 'OTP')
+        self.assertIn('second factor', '\n'.join(logs.output))
+        self.assertNotIn(USERNAME, '\n'.join(logs.output))
+
+    def test_unusable_answers_are_ignored(self):
+        answers = [
+            FakeResponse(text=LOGIN_PAGE),
+            FakeResponse(json_data={'success': True}),
+            FakeResponse(json_data={'success': True, 'authenMode': ' '}),
+            FakeResponse(json_data=['OTP']),
+            requests.ConnectionError('boom'),
+        ]
+        for answer in answers:
+            with self.subTest(answer=repr(getattr(answer, '_json', answer))):
+                if isinstance(answer, Exception):
+                    mocked = {'side_effect': answer}
+                else:
+                    mocked = {'return_value': answer}
+                with patch.object(requests.Session, 'get', autospec=True,
+                                  **mocked):
+                    self.assertIsNone(check_second_factor(
+                        iaaa.new_session(), 'portalPublicQuery', USERNAME))
+
+
+class PortalClientTests(SimpleTestCase):
+    def test_login_establishes_portal_session(self):
+        calls = []
+        posted = {}
+
+        def fake_post(session, url, data=None, **kwargs):
+            posted.update(data)
+            return FakeResponse(json_data={'success': True, 'token': 'tok-1'})
+
+        def fake_get(session, url, **kwargs):
+            calls.append((url, kwargs.get('params')))
+            if url == iaaa.IAAA_AUTHEN_MODE_URL:
+                return FakeResponse(json_data=NO_SECOND_FACTOR)
             # What the SSO redirect chain leaves behind: the portal session
             # plus IAAA's own cookie, which must not be persisted.
             session.cookies.set('JSESSIONID', 'portal-session',
                                 domain='portal.pku.edu.cn', path='/')
             session.cookies.set('iaaa_sid', 'iaaa-cookie',
                                 domain='iaaa.pku.edu.cn', path='/')
-            return FakeResponse(url=portal.PORTAL_BASE + '/index.jsp',
+            return FakeResponse(url=portal.PORTAL_BASE + '/',
                                 text='<html>portal</html>')
 
         with patch.object(
-            requests.Session, 'post', autospec=True,
-            return_value=FakeResponse(
-                json_data={'success': True, 'token': 'tok-1'}),
+            requests.Session, 'post', autospec=True, side_effect=fake_post,
         ), patch.object(
             requests.Session, 'get', autospec=True, side_effect=fake_get,
         ):
             client = PortalClient.login(USERNAME, PASSWORD)
 
-        self.assertEqual(seen['url'], iaaa.PORTAL_SSO)
-        self.assertEqual(seen['params']['token'], 'tok-1')
-        self.assertIn('_rand', seen['params'])
+        self.assertEqual([url for url, _ in calls],
+                         [iaaa.IAAA_AUTHEN_MODE_URL, f'{PUBLIC_QUERY}/ssoLogin.do'])
+        self.assertEqual(calls[0][1]['appId'], 'portalPublicQuery')
+        self.assertEqual(calls[1][1]['token'], 'tok-1')
+        self.assertIn('_rand', calls[1][1])
+        self.assertEqual(posted['appid'], 'portalPublicQuery')
         self.assertEqual(client.cookies(), {'JSESSIONID': 'portal-session'})
+
+    def test_precheck_second_factor_is_advisory_and_iaaa_decides(self):
+        with patch.object(
+            requests.Session, 'post', autospec=True,
+            return_value=_iaaa_failure('请输入手机令牌二次验证码'),
+        ) as post, patch.object(
+            requests.Session, 'get', autospec=True,
+            return_value=FakeResponse(
+                json_data={'success': True, 'authenMode': 'OTP'}),
+        ):
+            with self.assertRaises(OtpRequired):
+                PortalClient.login(USERNAME, PASSWORD)
+        post.assert_called_once()
 
     def test_login_without_portal_cookie_is_unreachable(self):
         with patch.object(
@@ -193,7 +298,7 @@ class PortalClientTests(SimpleTestCase):
                 json_data={'success': True, 'token': 'tok-1'}),
         ), patch.object(
             requests.Session, 'get', autospec=True,
-            return_value=FakeResponse(url=portal.PORTAL_BASE + '/index.jsp'),
+            return_value=FakeResponse(url=portal.PORTAL_BASE + '/'),
         ):
             with self.assertRaises(PortalUnreachable):
                 PortalClient.login(USERNAME, PASSWORD)
@@ -202,17 +307,20 @@ class PortalClientTests(SimpleTestCase):
         with patch.object(
             requests.Session, 'post', autospec=True,
             return_value=_iaaa_failure('用户名或密码错误'),
-        ), patch.object(requests.Session, 'get', autospec=True) as get:
+        ), patch.object(
+            requests.Session, 'get', autospec=True,
+            return_value=FakeResponse(json_data=NO_SECOND_FACTOR),
+        ) as get:
             with self.assertRaises(IaaaError):
                 PortalClient.login(USERNAME, PASSWORD)
-        get.assert_not_called()
+        self.assertEqual([call.args[1] for call in get.call_args_list],
+                         [iaaa.IAAA_AUTHEN_MODE_URL])
 
     def test_from_cookies_roundtrip(self):
         cookies = {'JSESSIONID': 'abc', 'route': 'r1'}
         self.assertEqual(PortalClient.from_cookies(cookies).cookies(), cookies)
 
-    def test_get_course_info_returns_json(self):
-        payload = {'success': True, 'remark': '', 'course': []}
+    def _fetch(self, method, payload, *args):
         seen = {}
 
         def fake_get(session, url, **kwargs):
@@ -223,24 +331,31 @@ class PortalClientTests(SimpleTestCase):
             requests.Session, 'get', autospec=True, side_effect=fake_get,
         ):
             client = PortalClient.from_cookies({'JSESSIONID': 'abc'})
-            self.assertEqual(client.get_course_info('26-27-1'), payload)
+            self.assertEqual(getattr(client, method)(*args), payload)
+        return seen
+
+    def test_get_terms_returns_json(self):
+        payload = {'success': True, 'nowXnxq': {'xndxq': '26-27-1'},
+                   'xndxq': [{'xndxq': '26-27-1'}, {'xndxq': '25-26-3'}]}
+        seen = self._fetch('get_terms', payload)
+        self.assertEqual(seen['url'], PORTAL_TERMS_URL)
+        self.assertEqual(seen['url'],
+                         f'{PUBLIC_QUERY}/ctrl/topic/myCourseTable/getXndXqList.do')
+        self.assertIsNone(seen['params'])
+
+    def test_get_course_info_returns_json(self):
+        payload = {'success': True, 'remark': '', 'course': []}
+        seen = self._fetch('get_course_info', payload, '26-27-1')
         self.assertEqual(seen['url'], PORTAL_COURSE_URL)
+        self.assertEqual(seen['url'],
+                         f'{PUBLIC_QUERY}/ctrl/topic/myCourseTable/getCourseInfo.do')
         self.assertEqual(seen['params'], {'xndxq': '26-27-1'})
 
     def test_get_scores_returns_json(self):
-        payload = {'cjxx': []}
-        seen = {}
-
-        def fake_get(session, url, **kwargs):
-            seen.update(url=url, params=kwargs.get('params'))
-            return FakeResponse(json_data=payload, url=url)
-
-        with patch.object(
-            requests.Session, 'get', autospec=True, side_effect=fake_get,
-        ):
-            client = PortalClient.from_cookies({'JSESSIONID': 'abc'})
-            self.assertEqual(client.get_scores(), payload)
+        payload = {'success': True, 'xslb': 'bks', 'cjxx': []}
+        seen = self._fetch('get_scores', payload)
         self.assertEqual(seen['url'], PORTAL_SCORE_URL)
+        self.assertEqual(seen['url'], f'{PUBLIC_QUERY}/ctrl/topic/myScore/retrScores.do')
         self.assertIsNone(seen['params'])
 
     def test_html_login_page_means_session_expired(self):
@@ -253,12 +368,26 @@ class PortalClientTests(SimpleTestCase):
                 client.get_course_info('26-27-1')
             with self.assertRaises(PortalSessionExpired):
                 client.get_scores()
-            self.assertFalse(client.ping('26-27-1'))
+            with self.assertRaises(PortalSessionExpired):
+                client.get_terms()
+            self.assertFalse(client.ping())
+
+    def test_401_means_session_expired(self):
+        with patch.object(
+            requests.Session, 'get', autospec=True,
+            return_value=FakeResponse(status_code=401,
+                                      json_data={'success': False},
+                                      url=PORTAL_COURSE_URL),
+        ):
+            client = PortalClient.from_cookies({'JSESSIONID': 'stale'})
+            with self.assertRaises(PortalSessionExpired):
+                client.get_course_info('26-27-1')
+            self.assertFalse(client.ping())
 
     def test_redirect_to_iaaa_means_session_expired(self):
         redirected = FakeResponse(
             json_data={'unexpected': True},
-            url='https://iaaa.pku.edu.cn/iaaa/oauth.jsp?appID=portal2017',
+            url='https://iaaa.pku.edu.cn/iaaa/oauth.jsp?appID=portalPublicQuery',
         )
         with patch.object(
             requests.Session, 'get', autospec=True, return_value=redirected,
@@ -286,17 +415,16 @@ class PortalClientTests(SimpleTestCase):
             with self.assertRaises(PortalUnreachable):
                 client.get_scores()
 
-    def test_ping_true_when_portal_answers_json(self):
+    def test_ping_asks_for_the_term_list(self):
+        seen = []
+
+        def fake_get(session, url, **kwargs):
+            seen.append(url)
+            return FakeResponse(json_data={'success': True}, url=url)
+
         with patch.object(
-            requests.Session, 'get', autospec=True,
-            return_value=FakeResponse(json_data={'success': True},
-                                      url=PORTAL_COURSE_URL),
+            requests.Session, 'get', autospec=True, side_effect=fake_get,
         ):
             client = PortalClient.from_cookies({'JSESSIONID': 'abc'})
             self.assertTrue(client.ping())
-
-    def test_guess_term_code(self):
-        self.assertEqual(guess_term_code(date(2026, 9, 9)), '26-27-1')
-        self.assertEqual(guess_term_code(date(2027, 1, 5)), '26-27-1')
-        self.assertEqual(guess_term_code(date(2027, 3, 1)), '26-27-2')
-        self.assertEqual(guess_term_code(date(2027, 7, 15)), '26-27-3')
+        self.assertEqual(seen, [PORTAL_TERMS_URL])

@@ -5,8 +5,11 @@ from decimal import Decimal
 from django.test import SimpleTestCase
 
 from academic_record.parsers import (
+    UNKNOWN_TERM,
     GradeRow,
     TermScores,
+    has_score_list,
+    is_graduate_payload,
     parse_row,
     parse_scores,
     summary,
@@ -98,12 +101,17 @@ class ParseScoresTests(SimpleTestCase):
         self.assertEqual((row.name, row.course_code), ('', '00000001'))
 
     def test_candidate_keys_and_raw(self):
-        row = parse_row({'kcmc': '课', 'bh': '02', 'kclbmc': '通选', 'kclb': '任选',
+        # Real undergraduate rows carry the category name in kclbmc and its
+        # numeric code in kclb (Treehole score_v2 sample: "任选" / "30").
+        row = parse_row({'kcmc': '课', 'bh': '02', 'kclbmc': '任选', 'kclb': '30',
                          'foo': 1, 'bar': [1, 2]}, 't')
         self.assertEqual(row.class_no, '02')
         self.assertEqual(row.course_type, '任选')
         # Only the key that was used leaves ``raw``.
-        self.assertEqual(row.raw, {'kclbmc': '通选', 'foo': 1, 'bar': [1, 2]})
+        self.assertEqual(row.raw, {'kclb': '30', 'foo': 1, 'bar': [1, 2]})
+        # Graduate rows only have a readable kclb.
+        graduate = parse_row({'kcmc': '课', 'kclb': '学位课'}, 't')
+        self.assertEqual(graduate.course_type, '学位课')
 
     def test_values_are_cut_to_column_lengths(self):
         row = parse_row({'kcmc': '名' * 100, 'kch': 'c' * 40, 'bjh': '1' * 12,
@@ -167,6 +175,74 @@ class ParseScoresTests(SimpleTestCase):
         self.assertNotIn('SENTINEL', json.dumps(data, ensure_ascii=False))
         self.assertIsNone(make_row(credits=None).as_dict()['credits'])
         self.assertEqual(row.key, ('25-26-1', '00000000', '课程'))
+
+
+class GraduateScoresTests(SimpleTestCase):
+    """``xslb == 'yjs'``: rows under ``scoreLists``; their term keys are not confirmed."""
+
+    @staticmethod
+    def payload():
+        return {
+            'success': True, 'xslb': 'yjs', 'grade': '2025', 'gpa': '3.9',
+            'jbxx': {'xm': '研究生甲', 'xh': '2500000000'},
+            'scoreLists': [
+                {'kcmc': '高等量子力学', 'xf': '4', 'cj': '91', 'kclb': '学位课', 'hgbz': '是',
+                 'xnd': '25-26', 'xq': '1'},
+                {'kcmc': '学术规范', 'xf': 1, 'cj': '合格', 'kclbmc': '必修环节', 'hgbz': '是',
+                 'xndxq': '25-26-2'},
+                {'kcmc': '专业英语', 'xf': '2', 'xqcj': '88', 'kclb': '选修课'},
+                {'kch': '', 'kcmc': '', 'cj': '90'},
+                'not a row',
+            ],
+        }
+
+    def test_score_lists_rows(self):
+        terms = parse_scores(self.payload())
+        self.assertEqual([term.term_code for term in terms], ['25-26-1', '25-26-2', UNKNOWN_TERM])
+        (quantum,), (ethics,), (english,) = (term.rows for term in terms)
+        self.assertEqual(quantum, GradeRow(
+            term_code='25-26-1', name='高等量子力学', course_type='学位课',
+            credits=Decimal('4.0'), score='91', score_numeric=91.0, gpa=None,
+            raw={'hgbz': '是'}))
+        self.assertEqual((ethics.course_type, ethics.credits, ethics.score, ethics.score_numeric,
+                          ethics.raw), ('必修环节', Decimal('1.0'), '合格', None, {'hgbz': '是'}))
+        self.assertEqual((english.term_code, english.score, english.raw), (UNKNOWN_TERM, '88', {}))
+        # The personal block is never read.
+        dumped = repr(terms)
+        self.assertNotIn('研究生甲', dumped)
+        self.assertNotIn('2500000000', dumped)
+
+    def test_nested_blocks_and_cjxx_rows_of_a_graduate(self):
+        payload = {
+            'xslb': 'yjs',
+            'cjxx': [{'kcmc': '本科课', 'xnd': '21-22', 'xq': '1', 'xqcj': '80'}],
+            'scoreLists': [
+                {'xnd': '25-26', 'xq': '1', 'list': [{'kcmc': '讨论班', 'cj': 'P'}]},
+                {'list': [{'kcmc': '自带学期', 'cj': '85', 'xndxq': '24-25-2'},
+                          {'kcmc': '无学期', 'cj': '86'}]},
+            ],
+        }
+        self.assertEqual(
+            [(term.term_code, [row.name for row in term.rows]) for term in parse_scores(payload)],
+            [('21-22-1', ['本科课']), ('25-26-1', ['讨论班']), ('24-25-2', ['自带学期']),
+             (UNKNOWN_TERM, ['无学期'])])
+
+    def test_undergraduate_payloads_ignore_score_lists(self):
+        payload = scores_payload()
+        payload.update(xslb='bks', scoreLists=[{'kcmc': '不该出现', 'cj': '90'}])
+        self.assertEqual(parse_scores(payload), parse_scores(scores_payload()))
+        self.assertEqual(parse_scores({'scoreLists': [{'kcmc': 'x', 'cj': '1'}]}), [])
+
+    def test_payload_kind_and_score_list_detection(self):
+        self.assertTrue(is_graduate_payload({'xslb': 'yjs'}))
+        self.assertFalse(is_graduate_payload({'xslb': 'bks'}))
+        self.assertFalse(is_graduate_payload(['yjs']))
+        self.assertTrue(has_score_list({'cjxx': []}))
+        self.assertTrue(has_score_list({'xslb': 'yjs', 'scoreLists': []}))
+        self.assertFalse(has_score_list({'xslb': 'bks', 'scoreLists': []}))
+        self.assertFalse(has_score_list({'xslb': 'yjs'}))
+        self.assertFalse(has_score_list({'xslb': 'yjs', 'scoreLists': 'x'}))
+        self.assertFalse(has_score_list(None))
 
 
 class SummaryTests(SimpleTestCase):

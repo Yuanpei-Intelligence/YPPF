@@ -48,6 +48,22 @@ def _this_monday() -> date:
     return today - timedelta(days=today.weekday())
 
 
+class _FakeElective:
+    """Stand-in for ``pku_account.extern.elective.ElectiveClient``."""
+
+    def __init__(self, pku):
+        self.pku = pku
+
+    def login(self, username, password):
+        self.pku.elective_logins.append(username)
+        if self.pku.elective_error is not None:
+            raise self.pku.elective_error
+        return self
+
+    def get_results_html(self):
+        return self.pku.elective_html
+
+
 class _FakePku:
     """Stand-in for the lazily imported ``pku_account`` integration."""
 
@@ -85,16 +101,21 @@ class _FakePku:
         pass
 
     def __init__(self, account=None, payload=None, login_error=None,
-                 client_error=None, fetch_error=None):
+                 client_error=None, fetch_error=None, elective_html=None,
+                 elective_error=None):
         self.account = account
         self.payload = payload
         self.login_error = login_error
         self.client_error = client_error
         self.fetch_error = fetch_error
+        self.elective_html = elective_html
+        self.elective_error = elective_error
         self.login_calls = []
         self.fetch_calls = []
+        self.elective_logins = []
         self.marked = []
         self.invalidated = []
+        self.ElectiveClient = _FakeElective(self)
 
     def login_and_bind(self, user, username, password, *, consent_timetable=None,
                        consent_grades=None):
@@ -517,7 +538,14 @@ class ImportTextTests(TimetableAPITestCase):
         self.assertEqual(len(response.data['blocks']), 4)
         self.assertEqual(set(response.data['blocks'][0]), {
             'name', 'teacher', 'room', 'course_code', 'class_no', 'weekday',
-            'start_section', 'end_section', 'week_start', 'week_end', 'parity', 'raw', 'note'})
+            'start_section', 'end_section', 'week_start', 'week_end', 'parity', 'raw', 'note',
+            'exam_date', 'exam_period', 'exam_room'})
+        response = self.client.post(
+            self.url('import-text'),
+            {'text': read_fixture('portal_page.html'), 'dry_run': True}, format='json')
+        math = [block for block in response.data['blocks'] if block['name'] == '高等数学A（二）']
+        self.assertEqual((math[0]['exam_date'], math[0]['exam_period'], math[0]['exam_room']),
+                         ('2026-06-18', '上午', '理教306'))
         self.assertEqual(TimetableEntry.objects.count(), 0)
         self.assertEqual(ImportLog.objects.count(), 0)
 
@@ -641,6 +669,59 @@ class ImportPortalTests(TimetableAPITestCase):
         self.assertEqual(response.data['code'], 'PARSE_FAILED')
         self.assertEqual(fake.marked, [])
         self.assertEqual(ImportLog.objects.filter(status=ImportLog.Status.FAILED).count(), 1)
+
+    def test_empty_course_table_falls_back_to_elective_results(self):
+        account = _account()
+        fake = _FakePku(account=account, payload={'success': True, 'course': []},
+                        elective_html=read_fixture('elective_table.html'))
+        with self.assertNoLogs('api.timetable', level='DEBUG'):
+            response = self.post(fake, {'username': '2300012345', 'password': 's3cret'})
+        self.assertEqual(response.status_code, status.HTTP_200_OK, response.data)
+        self.assertEqual(response.data, {
+            'term': '26-27-1', 'created': 4, 'updated': 0, 'removed': 0, 'total': 4})
+        self.assertEqual(fake.fetch_calls, ['26-27-1'])
+        self.assertEqual(fake.elective_logins, ['2300012345'])
+        self.assertEqual(fake.marked, [(account, True)])
+        entries = TimetableEntry.objects.filter(person=self.person, term=self.term)
+        self.assertEqual(set(entries.values_list('source', flat=True)), {'portal'})
+        log = ImportLog.objects.get(person=self.person)
+        self.assertEqual(log.message, 'no lessons in portal payload; imported from elective results')
+
+    def test_elective_fallback_needs_credentials_and_a_current_term(self):
+        fake = _FakePku(account=_account(), payload={'success': True, 'course': []},
+                        elective_html=read_fixture('elective_table.html'))
+        response = self.post(fake)
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(response.data['code'], 'PARSE_FAILED')
+        response = self.post(fake, {'username': 'u', 'password': 'p', 'term': '25-26-2'})
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(response.data['code'], 'PARSE_FAILED')
+        self.assertEqual(fake.elective_logins, [])
+        self.assertEqual(TimetableEntry.objects.count(), 0)
+
+    def test_failed_elective_fallback_answers_like_an_empty_table(self):
+        cases = [
+            (_FakePku.PortalUnreachable('连不上'), 'PortalUnreachable'),
+            (_FakePku.PortalSessionExpired(), 'PortalSessionExpired'),
+            (_FakePku.OtpRequired('AUTHEN_MODE', '需要二次验证'), 'OtpRequired AUTHEN_MODE'),
+        ]
+        for error, outcome in cases:
+            with self.subTest(outcome=outcome):
+                fake = _FakePku(account=_account(), payload={'success': True, 'course': []},
+                                elective_error=error)
+                with self.assertLogs('api.timetable.views', level='WARNING') as logs:
+                    response = self.post(fake, {'username': '2300012345', 'password': 's3cret'})
+                self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+                self.assertEqual(response.data, {'code': 'PARSE_FAILED',
+                                                 'message': '门户未返回任何课程，本地课表未改动'})
+                self.assertEqual(fake.marked, [])
+                shown = '\n'.join(logs.output)
+                self.assertIn(outcome, shown)
+                self.assertNotIn('s3cret', shown)
+                self.assertNotIn('2300012345', shown)
+                log = ImportLog.objects.filter(status=ImportLog.Status.FAILED).latest('id')
+                self.assertEqual(log.message,
+                                 f'no lessons in portal payload; elective fallback: {outcome}')
 
     def test_integration_unavailable(self):
         with patch('api.timetable.views._load_pku', side_effect=ImportError('no pku_account')), \
@@ -1086,6 +1167,26 @@ class EntryDetailAndScopeTests(TimetableAPITestCase):
             'room': '理教201', 'method': '闭卷', 'note': ''})
         listed = self.client.get(self.url('entry-list')).data
         self.assertEqual(listed[0]['exam']['id'], exam.pk)
+
+    def test_retrieve_with_own_imported_exam(self):
+        """README §8.4: without a matching CourseExam the entry's own 考试信息 is its exam."""
+        own = make_entry(self.person, self.term, name='量子力学', weekday=2,
+                         exam_date=date(2027, 1, 12), exam_period='下午', exam_room='二教411')
+        response = self.client.get(self.url('entry-detail', pk=own.pk))
+        self.assertEqual(response.data['exam'], {
+            'id': None, 'start': '2027-01-12T14:00:00', 'end': '2027-01-12T16:00:00',
+            'room': '二教411', 'method': '', 'note': '时间以教务通知为准'})
+        # A matching CourseExam wins over the entry's own exam info.
+        self.entry.exam_date = date(2027, 1, 20)
+        self.entry.save()
+        exam = CourseExam.objects.create(
+            term=self.term, course_code='00130201', class_no='01', name='高等数学A（二）',
+            start=datetime(2027, 1, 12, 8, 30), end=datetime(2027, 1, 12, 10, 30))
+        response = self.client.get(self.url('entry-detail', pk=self.entry.pk))
+        self.assertEqual(response.data['exam']['id'], exam.pk)
+        listed = {item['id']: item['exam'] for item in self.client.get(self.url('entry-list')).data}
+        self.assertIsNone(listed[own.pk]['id'])
+        self.assertEqual(listed[self.entry.pk]['id'], exam.pk)
 
     def test_create_with_catalog_role_category_tag(self):
         body = {'name': '高等数学A（二）', 'weekday': 1, 'start_section': 1, 'end_section': 2,
