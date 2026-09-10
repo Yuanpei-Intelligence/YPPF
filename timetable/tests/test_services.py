@@ -4,13 +4,22 @@ import re
 from datetime import date, datetime, time
 from unittest.mock import patch
 
+from django.db import connection
 from django.test import TestCase
+from django.test.utils import CaptureQueriesContext
 
 from app.models import Participation
 from semester.models import CalendarEvent
-from timetable import services
+from timetable import catalog, services
 from timetable.ics import build_ics
-from timetable.models import AcademicTerm, ImportLog, TimetableEntry, TimetableSettings
+from timetable.models import (
+    AcademicTerm,
+    CourseCatalogEntry,
+    ImportLog,
+    TimetableEntry,
+    TimetableEntryOverride,
+    TimetableSettings,
+)
 from timetable.sources.activity import ActivitySource
 from timetable.sources.appoint import AppointSource
 from timetable.sources.base import Occurrence
@@ -84,6 +93,67 @@ class UpsertEntriesTests(TestCase):
         self.assertEqual((result.created, result.updated, result.removed), (0, 0, 0))
         self.assertEqual(TimetableEntry.objects.filter(person=self.person).count(), 7)
         self.assertEqual(ImportLog.objects.filter(person=self.person).count(), 2)
+
+    def test_import_links_catalog_and_fills_blanks_only(self):
+        """README §8.1: link every block, fill blanks, never overwrite the student's values."""
+        catalog.upsert_catalog_rows(self.term, [
+            {'course_code': '00130201', 'name': '高等数学A（二）', 'class_no': '01',
+             'teacher': '束琳', 'time_text': '周一1-2节 理教406'},
+            {'course_code': '00130201', 'name': '高等数学A（二）', 'class_no': '02',
+             'teacher': '别的老师'},
+            {'course_code': '04831410', 'name': '程序设计实习', 'class_no': '01',
+             'teacher': '目录教师'},
+            {'course_code': '00130401', 'name': '概率统计', 'class_no': '01', 'teacher': 'A'},
+            {'course_code': '00130401', 'name': '概率统计', 'class_no': '02', 'teacher': 'B'},
+        ])
+        rows = {(row.course_code, row.class_no): row
+                for row in CourseCatalogEntry.objects.filter(term=self.term)}
+        with CaptureQueriesContext(connection) as context:
+            services.import_portal(self.person, self.term, portal_payload())
+        catalog_queries = [q for q in context.captured_queries
+                           if 'timetable_coursecatalogentry' in q['sql']]
+        self.assertEqual(len(catalog_queries), 1)
+        entries = TimetableEntry.objects.filter(person=self.person, term=self.term)
+        math = entries.get(name='高等数学A（二）')
+        # Name + teacher picked the class; blank code/class were filled, the
+        # student's teacher stayed.
+        self.assertEqual(math.catalog_entry, rows[('00130201', '01')])
+        self.assertEqual((math.course_code, math.class_no, math.teacher),
+                         ('00130201', '01', '束琳'))
+        # Two classes of 概率统计 without a teacher match → not linked.
+        for prob in entries.filter(name='概率统计'):
+            self.assertIsNone(prob.catalog_entry)
+            self.assertEqual(prob.course_code, '')
+        # A different teacher spelling does not block a unique name match.
+        programming = entries.get(catalog_entry=rows[('04831410', '01')])
+        self.assertEqual((programming.name, programming.teacher, programming.course_code),
+                         ('程序设计实习', '郭炜', '04831410'))
+        # The catalog changes its teacher: a re-import keeps the student's value.
+        row = rows[('00130201', '01')]
+        row.teacher = '新老师'
+        row.save()
+        services.import_portal(self.person, self.term, portal_payload())
+        math.refresh_from_db()
+        self.assertEqual((math.teacher, math.catalog_entry), ('束琳', row))
+        # A link the student changed survives a re-import; annotations too.
+        math.catalog_entry = rows[('00130201', '02')]
+        math.tag = '必修'
+        math.role = TimetableEntry.Role.AUDIT
+        math.category = TimetableEntry.Category.OTHER
+        math.save()
+        TimetableEntryOverride.objects.create(entry=math, week_start=3, week_end=3,
+                                              fields={'room': '改过的教室'})
+        result = services.import_portal(self.person, self.term, portal_payload())
+        self.assertEqual((result.created, result.updated, result.removed), (0, 0, 0))
+        math.refresh_from_db()
+        self.assertEqual((math.catalog_entry, math.tag, math.role, math.category),
+                         (rows[('00130201', '02')], '必修', 'audit', 'other'))
+        self.assertEqual(math.overrides.get().fields, {'room': '改过的教室'})
+        # Without a catalog nothing is linked and nothing breaks.
+        CourseCatalogEntry.objects.all().delete()
+        services.import_portal(self.other_person, self.term, portal_payload())
+        self.assertFalse(TimetableEntry.objects.filter(
+            person=self.other_person, catalog_entry__isnull=False).exists())
 
     def test_reimport_updates_changed_room_and_keeps_hidden(self):
         services.import_portal(self.person, self.term, portal_payload())
@@ -203,7 +273,8 @@ class ExpandAndConflictTests(TestCase):
         manual = make_entry(self.person, self.term, name='自习', weekday=7,
                             start_section=0, end_section=0,
                             start_time=time(21, 0), end_time=time(22, 30),
-                            source=TimetableEntry.Source.MANUAL, hidden=True)
+                            source=TimetableEntry.Source.MANUAL, hidden=True,
+                            category=TimetableEntry.Category.OTHER)
         occurrences = services.expand_entries([even, manual], self.term, 1, 4)
         even_weeks = [o.week for o in occurrences if o.title == '双周课']
         self.assertEqual(even_weeks, [2, 4])
@@ -267,7 +338,9 @@ class WeekViewTests(TestCase):
         self.assertEqual(set(first), {
             'id', 'source', 'kind', 'title', 'subtitle', 'location', 'start', 'end',
             'date', 'week', 'weekday', 'start_section', 'end_section', 'color_key',
-            'status', 'ref', 'hidden'})
+            'status', 'ref', 'hidden', 'role', 'tag', 'modified'})
+        self.assertEqual((first['role'], first['tag'], first['modified']),
+                         ('enrolled', '', False))
         self.assertEqual(first['start'], '2026-09-21T08:00:00')
         self.assertEqual(len(view['conflicts']), 1)
         self.assertEqual(set(view['conflicts'][0]), {o['id'] for o in view['occurrences']})
@@ -295,6 +368,42 @@ class WeekViewTests(TestCase):
         self.assertEqual(settings.reminder_minutes, 35)
         self.assertEqual(services.get_or_create_settings(self.person), settings)
         self.assertTrue(settings.show_courses)
+        self.assertTrue(settings.show_exams)
+        self.assertEqual(settings.hidden_tags, [])
+
+    def test_settings_payload_sources_and_tags(self):
+        """README §8.3: the legend with setting names and the person's tags."""
+        make_entry(self.person, self.term, name='b', weekday=3, tag='选修')
+        make_entry(self.person, self.term, name='c', weekday=4, tag='必修')
+        make_entry(self.person, make_term(code='25-26-2', week1_monday=date(2026, 2, 23)),
+                   name='d', weekday=4, tag='旧')
+        _, other = make_person('tt_other', '别人')
+        make_entry(other, self.term, name='e', weekday=4, tag='别人的')
+        settings = services.get_or_create_settings(self.person)
+        settings.hidden_tags = ['选修', '选修', '']
+        settings.show_exams = False
+        settings.save()
+        payload = services.settings_payload(self.person)
+        self.assertEqual(payload, {
+            'reminder_enabled': False, 'reminder_minutes': 20, 'show_courses': True,
+            'show_college': True, 'show_activities': True, 'show_appointments': True,
+            'show_exams': False, 'share_show_name': True, 'hidden_tags': ['选修'],
+            'sources': [{'key': 'stored', 'label': '课程', 'setting': 'show_courses'}],
+            'tags': ['必修', '旧', '选修'],
+        })
+        self.assertEqual(services.person_tags(other), ['别人的'])
+
+    def test_term_payload_exam_weeks(self):
+        payload = services.term_payload(self.term, date(2026, 9, 23))
+        self.assertEqual((payload['exam_week_start'], payload['teaching_weeks'],
+                          payload['total_weeks']), (None, 16, 16))
+        self.term.total_weeks = 19
+        self.term.exam_week_start = 17
+        payload = services.term_payload(self.term, date(2026, 9, 23))
+        self.assertEqual((payload['exam_week_start'], payload['teaching_weeks'],
+                          payload['total_weeks']), (17, 16, 19))
+        self.assertEqual(services.week_view(self.person, self.term, 18,
+                                            today=date(2026, 9, 23))['week'], 18)
 
 
 class AgendaTests(TestCase):
@@ -338,7 +447,7 @@ class AgendaTests(TestCase):
         self.assertEqual(set(first), {
             'id', 'source', 'kind', 'title', 'subtitle', 'location', 'start', 'end',
             'date', 'week', 'weekday', 'start_section', 'end_section', 'color_key',
-            'status', 'ref', 'hidden'})
+            'status', 'ref', 'hidden', 'role', 'tag', 'modified'})
         self.assertEqual((first['start'], first['date'], first['week'], first['kind']),
                          ('2026-09-14T08:00:00', '2026-09-14', 1, 'course'))
         self.assertEqual(tuesday['occurrences'], [])            # hidden entry

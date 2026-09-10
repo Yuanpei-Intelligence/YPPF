@@ -1,7 +1,7 @@
 """
 Domain operations of the timetable app: settings, week view, agenda,
-imports and conflict detection. Contract: ``timetable/README.md`` §4.4 and
-§6.5.
+imports, conflict detection, catalog quick-add and scoped entry edits.
+Contract: ``timetable/README.md`` §4.4, §6.5, §8.1–§8.3.
 
 The API layer calls these functions; nothing here touches credentials — the
 portal payload is obtained by the caller through ``pku_account``.
@@ -9,7 +9,7 @@ portal payload is obtained by the caller through ``pku_account``.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import date, timedelta
+from datetime import date, time, timedelta
 from typing import Any, Iterable
 
 from django.db import transaction
@@ -18,13 +18,18 @@ from app.models import NaturalPerson
 from semester.calendar import AcademicCalendar, calendar_between
 
 from timetable.calendar import calendar_for, calendar_payload, day_info, week_days
+from timetable.catalog import CatalogIndex
 from timetable.config import CONFIG
 from timetable.models import (
+    OVERRIDE_FIELD_KEYS,
     AcademicTerm,
+    CourseCatalogEntry,
     ImportLog,
     TimetableEntry,
+    TimetableEntryOverride,
     TimetableSettings,
 )
+from timetable.overrides import format_time
 from timetable.sources import pku_parsers
 from timetable.sources.base import (
     DateSpan,
@@ -38,9 +43,16 @@ from timetable.sources.stored import expand_entries
 
 __all__ = [
     'AGENDA_MAX_DAYS',
+    'ROW_ONLY_KEYS',
+    'ANNOTATION_KEYS',
+    'SCOPES',
     'ImportResult',
     'TimetableImportError',
+    'CatalogAddError',
     'get_or_create_settings',
+    'settings_payload',
+    'person_tags',
+    'source_legend',
     'default_term',
     'calendar_for',
     'term_payload',
@@ -52,11 +64,19 @@ __all__ = [
     'upsert_entries',
     'expand_entries',
     'detect_conflicts',
+    'quick_add_from_catalog',
+    'update_entry',
 ]
 
 
 # Longest agenda one call may return (``README`` §6.5).
 AGENDA_MAX_DAYS = 14
+# Entry keys that only ever live on the row and need ``scope='all'``
+# (README §8.2); ``catalog_entry`` is the model name of the API's ``catalog_id``.
+ROW_ONLY_KEYS = ('hidden', 'role', 'category', 'catalog_entry')
+# Student annotations updated on the row for entries of any source.
+ANNOTATION_KEYS = ('hidden', 'color', 'tag', 'role', 'category', 'catalog_entry')
+SCOPES = ('all', 'single', 'following')
 
 
 class TimetableImportError(Exception):
@@ -66,6 +86,18 @@ class TimetableImportError(Exception):
         super().__init__(message)
         self.message = message
         self.code = code
+
+
+class CatalogAddError(Exception):
+    """A catalog quick-add that cannot be applied (README §8.1 error codes)."""
+
+    ALREADY_ADDED = 'timetable.catalog_already_added'
+    NO_SLOTS = 'timetable.catalog_no_slots'
+
+    def __init__(self, code: str, message: str):
+        super().__init__(message)
+        self.code = code
+        self.message = message
 
 
 @dataclass
@@ -94,6 +126,54 @@ def get_or_create_settings(person) -> TimetableSettings:
     return settings
 
 
+def person_tags(person) -> list[str]:
+    """Distinct non-empty tags of the person's entries, all terms, sorted."""
+    tags = (TimetableEntry.objects.filter(person=person).exclude(tag='')
+            .values_list('tag', flat=True).distinct())
+    return sorted(set(tags))
+
+
+def source_legend(sources=None, *, with_setting: bool = False) -> list[dict[str, str]]:
+    """
+    The ``sources`` legend of the API: ``{key, label}`` per loaded source
+    (config order), plus ``setting`` — the ``TimetableSettings`` boolean
+    toggling the source — when ``with_setting`` (README §8.3).
+    """
+    if sources is None:
+        sources = load_sources()
+    legend = []
+    for source in sources:
+        item = {'key': source.key, 'label': source.label}
+        if with_setting:
+            item['setting'] = str(getattr(source, 'setting', '') or '')
+        legend.append(item)
+    return legend
+
+
+def settings_payload(person,
+                     settings: TimetableSettings | None = None) -> dict[str, Any]:
+    """
+    The ``Settings`` payload of README §4.6 + §8.3: the stored booleans,
+    ``hidden_tags``, the source legend with each source's setting name and
+    the person's tags.
+    """
+    if settings is None:
+        settings = get_or_create_settings(person)
+    return {
+        'reminder_enabled': settings.reminder_enabled,
+        'reminder_minutes': settings.reminder_minutes,
+        'show_courses': settings.show_courses,
+        'show_college': settings.show_college,
+        'show_activities': settings.show_activities,
+        'show_appointments': settings.show_appointments,
+        'show_exams': settings.show_exams,
+        'share_show_name': settings.share_show_name,
+        'hidden_tags': sorted(settings.hidden_tag_set()),
+        'sources': source_legend(with_setting=True),
+        'tags': person_tags(person),
+    }
+
+
 def default_term(on: date | None = None) -> AcademicTerm | None:
     """
     The term to show by default: the current term, or — before the first
@@ -119,6 +199,9 @@ def term_payload(term: AcademicTerm, on: date | None = None, *,
         'name': term.name,
         'week1_monday': term.week1_monday.isoformat(),
         'total_weeks': term.total_weeks,
+        'exam_week_start': (int(term.exam_week_start)
+                            if term.exam_week_start is not None else None),
+        'teaching_weeks': term.teaching_weeks,
         'current_week': week if term.contains_week(week) else None,
         'section_times': term.section_times,
         'calendar': calendar_payload(calendar),
@@ -159,7 +242,7 @@ def week_view(person, term: AcademicTerm, week: int, *,
         },
         'occurrences': [item.as_dict() for item in occurrences],
         'conflicts': detect_conflicts(occurrences),
-        'sources': [{'key': source.key, 'label': source.label} for source in sources],
+        'sources': source_legend(sources),
     }
 
 
@@ -206,7 +289,7 @@ def agenda(person, start: date, days: int = 7) -> dict[str, Any]:
     return {
         'from': start.isoformat(),
         'days': day_payloads,
-        'sources': [{'key': source.key, 'label': source.label} for source in sources],
+        'sources': source_legend(sources),
     }
 
 
@@ -237,6 +320,11 @@ def detect_conflicts(occurrences: Iterable[Occurrence]) -> list[list[str]]:
         if len(current) > 1:
             groups.append([member.id for member in current])
     return groups
+
+
+# Longest note stored from an import or the API (README §8.1).
+NOTE_MAX_LENGTH = 2000
+_CATALOG_FILL_KEYS = ('teacher', 'course_code', 'class_no')
 
 
 def _entry_fields(term: AcademicTerm, block: LessonBlock) -> dict[str, Any] | None:
@@ -270,9 +358,24 @@ def _entry_fields(term: AcademicTerm, block: LessonBlock) -> dict[str, Any] | No
         'week_start': week_start,
         'week_end': week_end,
         'parity': parity,
-        'note': (block.note or '')[:200],
+        'note': (block.note or '')[:NOTE_MAX_LENGTH],
         'raw_text': block.raw or '',
     }
+
+
+def _link_catalog(fields: dict[str, Any], index: CatalogIndex) -> None:
+    # Point the block at its catalog row (README §8.1) and fill blank
+    # teacher/course_code/class_no from it; the student's own non-blank
+    # values are never overwritten.
+    row = index.match(course_code=fields['course_code'], class_no=fields['class_no'],
+                      name=fields['name'], teacher=fields['teacher'])
+    fields['catalog_entry'] = row
+    if row is None:
+        return
+    for name in _CATALOG_FILL_KEYS:
+        if not fields[name]:
+            max_length = TimetableEntry._meta.get_field(name).max_length
+            fields[name] = (getattr(row, name) or '')[:max_length]
 
 
 def _log_failure(person, term, source, message: str) -> ImportLog:
@@ -284,21 +387,30 @@ def _log_failure(person, term, source, message: str) -> ImportLog:
 def upsert_entries(person, term: AcademicTerm, source, blocks: Iterable[LessonBlock]) -> ImportResult:
     """
     Replace the person's entries of ``source`` in ``term`` with ``blocks``:
-    upsert on ``external_key`` (user customisations ``hidden``/``color``
-    survive an update) and delete entries of that source that disappeared.
-    Other sources and other terms are untouched. Blocks that cannot be
-    placed (bad weekday/sections) are skipped and counted in the log.
+    upsert on ``external_key`` and delete entries of that source that
+    disappeared. The student's annotations — ``hidden``, ``color``,
+    ``tag``, ``role``, ``category``, an existing ``catalog_entry`` and the
+    override rows — survive an update. Every block is matched against the
+    course catalog (§8.1): a new entry, or one not linked yet, gets
+    ``catalog_entry`` and blank teacher/course_code/class_no filled from
+    the row. Other sources and other terms are untouched. Blocks that
+    cannot be placed (bad weekday/sections) are skipped and counted in the
+    log.
     """
     source = TimetableEntry.Source(source)
     if source == TimetableEntry.Source.MANUAL:
         raise ValueError('manual entries are not imported')
     prepared: dict[str, dict[str, Any]] = {}
     skipped = 0
+    index: CatalogIndex | None = None
     for block in blocks:
         fields = _entry_fields(term, block)
         if fields is None:
             skipped += 1
             continue
+        if index is None:
+            index = CatalogIndex.for_term(term)
+        _link_catalog(fields, index)
         prepared.setdefault(external_key(block), fields)
     with transaction.atomic():
         # Serialize imports of one person: a first import has no entry rows
@@ -320,6 +432,10 @@ def upsert_entries(person, term: AcademicTerm, source, blocks: Iterable[LessonBl
                     external_key=key, **fields)
                 created += 1
             else:
+                if entry.catalog_entry_id is not None:
+                    # Keep the link the student (or an earlier import) chose.
+                    fields = {name: value for name, value in fields.items()
+                              if name != 'catalog_entry'}
                 changed = [name for name, value in fields.items()
                            if getattr(entry, name) != value]
                 if changed:
@@ -381,3 +497,170 @@ def import_text(person, term: AcademicTerm, text: str, *,
         _log_failure(person, term, source, f'no lessons parsed ({fmt})')
         raise TimetableImportError('未从粘贴内容中解析到任何课程')
     return upsert_entries(person, term, source, blocks)
+
+
+# ---------------------------------------------------------------------------
+# catalog quick-add (README §8.1)
+# ---------------------------------------------------------------------------
+
+def _slot_fields(term: AcademicTerm, slot: Any) -> dict[str, Any] | None:
+    # Stored field values of one catalog slot, or None when it cannot be
+    # placed in ``term``.
+    if not isinstance(slot, dict):
+        return None
+    try:
+        weekday = int(slot.get('weekday', 0))
+        start_section = int(slot.get('start_section', 0))
+        end_section = int(slot.get('end_section', 0))
+        week_start = int(slot.get('week_start', 1))
+        week_end = int(slot.get('week_end', term.teaching_weeks))
+        parity = int(slot.get('parity', 0))
+    except (TypeError, ValueError):
+        return None
+    if not 1 <= weekday <= 7 or start_section < 1 or end_section < start_section:
+        return None
+    start = term.section_time(start_section)
+    end = term.section_time(end_section)
+    if start is None or end is None:
+        return None
+    week_end = max(1, min(week_end, int(term.total_weeks)))
+    week_start = max(1, min(week_start, week_end))
+    return {
+        'room': str(slot.get('room') or '')[:100],
+        'weekday': weekday,
+        'start_section': start_section,
+        'end_section': end_section,
+        'start_time': start[0],
+        'end_time': end[1],
+        'week_start': week_start,
+        'week_end': week_end,
+        'parity': parity if parity in (0, 1, 2) else 0,
+    }
+
+
+def quick_add_from_catalog(person, term: AcademicTerm, row: CourseCatalogEntry, *,
+                           role: str = TimetableEntry.Role.AUDIT,
+                           slot_indices: Iterable[int] | None = None,
+                           ) -> list[TimetableEntry]:
+    """
+    Add a catalog row to the person's timetable of ``term``: one manual
+    entry per selected slot (indices into ``row.slots``; all by default),
+    linked to the row, ``category='course'``, name/code/class/teacher and
+    the slot's room/weekday/sections/weeks/parity copied. Week ranges are
+    clamped to the term. Raises ``CatalogAddError`` (``ALREADY_ADDED`` when
+    the person already has an entry of the term linked to the row,
+    ``NO_SLOTS`` when no selected slot can be placed) and ``ValueError``
+    listing out-of-range indices. Atomic per person.
+    """
+    slots = row.slots if isinstance(row.slots, list) else []
+    if not slots:
+        raise CatalogAddError(CatalogAddError.NO_SLOTS, f'「{row.name}」没有可用的上课时间')
+    if slot_indices is None:
+        indices = list(range(len(slots)))
+    else:
+        indices = [int(index) for index in slot_indices]
+        bad = sorted({index for index in indices if not 0 <= index < len(slots)})
+        if bad:
+            raise ValueError(f'slot index out of range: {", ".join(map(str, bad))}')
+        indices = sorted(set(indices))
+    prepared = [fields for fields in (_slot_fields(term, slots[index])
+                                      for index in indices)
+                if fields is not None]
+    if not prepared:
+        raise CatalogAddError(CatalogAddError.NO_SLOTS, f'「{row.name}」没有可用的上课时间')
+    role = TimetableEntry.Role(role)
+    with transaction.atomic():
+        NaturalPerson.objects.select_for_update().get(pk=person.pk)
+        linked = TimetableEntry.objects.filter(
+            person=person, term=term, catalog_entry=row)
+        if linked.exists():
+            raise CatalogAddError(CatalogAddError.ALREADY_ADDED, f'「{row.name}」已经在课表中')
+        entries = [
+            TimetableEntry.objects.create(
+                person=person, term=term, source=TimetableEntry.Source.MANUAL,
+                external_key=TimetableEntry.new_manual_key(),
+                catalog_entry=row, role=role, category=TimetableEntry.Category.COURSE,
+                name=row.name[:100], course_code=row.course_code[:32],
+                class_no=row.class_no[:16], teacher=row.teacher[:100],
+                raw_text='', **fields)
+            for fields in prepared
+        ]
+    return entries
+
+
+# ---------------------------------------------------------------------------
+# scoped edits (README §8.2)
+# ---------------------------------------------------------------------------
+
+def _override_json(name: str, value: Any) -> Any:
+    # JSON value of an override field: times as 'HH:MM', the rest as given.
+    if isinstance(value, time):
+        return format_time(value)
+    if value is None:
+        return ''
+    return value
+
+
+def update_entry(entry: TimetableEntry, values: dict[str, Any], *,
+                 scope: str = 'all', week: int | None = None,
+                 canceled: bool | None = None) -> TimetableEntry:
+    """
+    Apply an edit to ``entry`` (README §8.2). ``values`` map model field
+    names (``catalog_entry`` for the API's ``catalog_id``) to validated
+    values.
+
+    - ``scope='all'``: a manual entry's row takes every value; for imported
+      entries the annotations (``ANNOTATION_KEYS``) go to the row and the
+      other override keys are merged into the whole-range override
+      (``week_start=week_end=None``, created on demand). ``canceled`` is
+      not allowed.
+    - ``scope='single'`` / ``'following'``: ``week`` must lie in the
+      entry's span; the override ``(week, week)`` / ``(week, None)`` is
+      upserted with the given override keys and ``canceled``.
+
+    ``ValueError`` names a key that is not allowed for the scope/source
+    (the API validates first and answers 400). Atomic; returns the entry.
+    """
+    if scope not in SCOPES:
+        raise ValueError(f'unknown scope {scope!r}')
+    if scope != 'all':
+        if week is None or not entry.contains_week(int(week)):
+            raise ValueError('week must lie in the entry\'s week range')
+        week = int(week)
+    elif canceled is not None:
+        raise ValueError('canceled needs scope single or following')
+    row_values: dict[str, Any] = {}
+    override_values: dict[str, Any] = {}
+    for name, value in values.items():
+        if scope == 'all' and (entry.is_manual() or name in ANNOTATION_KEYS):
+            row_values[name] = value
+        elif name in OVERRIDE_FIELD_KEYS:
+            override_values[name] = value
+        else:
+            raise ValueError(f'{name} cannot be changed with scope {scope!r}')
+    if scope == 'all':
+        bounds: tuple[int | None, int | None] = (None, None)
+    elif scope == 'single':
+        bounds = (week, week)
+    else:
+        bounds = (week, None)
+    with transaction.atomic():
+        if row_values:
+            for name, value in row_values.items():
+                setattr(entry, name, value)
+            entry.save(update_fields=list(row_values) + ['updated_at'])
+        if override_values or canceled is not None:
+            override = (TimetableEntryOverride.objects.select_for_update()
+                        .filter(entry=entry, week_start=bounds[0], week_end=bounds[1])
+                        .order_by('id').first())
+            if override is None:
+                override = TimetableEntryOverride(
+                    entry=entry, week_start=bounds[0], week_end=bounds[1])
+            fields = dict(override.fields) if isinstance(override.fields, dict) else {}
+            for name, value in override_values.items():
+                fields[name] = _override_json(name, value)
+            override.fields = fields
+            if canceled is not None:
+                override.canceled = bool(canceled)
+            override.save()
+    return entry

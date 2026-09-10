@@ -27,6 +27,7 @@ _KIND_LABELS = {
     'activity': '活动',
     'appoint': '预约',
     'custom': '自定义',
+    'exam': '考试',
 }
 _STATUS_LABELS = {
     'canceled': '已取消',

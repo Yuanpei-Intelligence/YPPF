@@ -44,7 +44,7 @@ then be registered with `include()` in `api/urls.py`.
 | `org/` | Organization subscription listing and subscription status updates. | `/api/v2/org/` |
 | `generic/` | Cross-feature mini-program data, currently the homepage carousel. | `/api/v2/generic/` |
 | `pku_account/` | PKU (IAAA) account binding: portal login with one-time credentials, binding status, consents, unbinding. Contract in `timetable/README.md` §3. | `/api/v2/pku/` |
-| `timetable/` | Personal timetable: terms, week view, stored entries, portal/text import, settings, ICS link, subscribe-message quota, course-catalog search. Contract in `timetable/README.md` §4 and §6. | `/api/v2/timetable/` |
+| `timetable/` | Personal timetable: terms, week view, agenda, stored entries with per-week overrides (scoped edits) and catalog links, catalog search and quick add (旁听), portal/text import, settings (source toggles, hidden tags), ICS link, subscribe-message quota, exam schedule source, poster share assets. Contract in `timetable/README.md` §4, §6 and §8. | `/api/v2/timetable/` |
 | `academic_record/` | Consent-gated grade records fetched through the PKU binding: stored grades, live sync, deletion. Contract in `timetable/README.md` §6.2. | `/api/v2/grades/` |
 
 Many modules use DRF `DefaultRouter`; routes generated from ViewSets and

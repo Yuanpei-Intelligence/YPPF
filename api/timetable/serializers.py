@@ -1,10 +1,11 @@
 """
 Serializers of the timetable mini-program API. Contract: ``timetable/README.md`` §4.6
-(§6.1 subscribe messages, §6.3 course catalog, §6.5 agenda).
+(§6.1 subscribe messages, §6.3 course catalog, §6.5 agenda, §8 catalog
+links, scoped edits, tags, exams and share assets).
 
-Response payloads for the week view and the agenda are plain dicts produced
-by ``timetable.services``; the serializers below document their shape for
-the OpenAPI schema and validate request bodies.
+Response payloads for the week view, the agenda and the settings are plain
+dicts produced by ``timetable.services``; the serializers below document
+their shape for the OpenAPI schema and validate request bodies.
 """
 from __future__ import annotations
 
@@ -14,8 +15,17 @@ from rest_framework import serializers
 
 from semester.models import CalendarEvent
 from timetable import reminders
-from timetable.models import CourseCatalogEntry, TimetableEntry, TimetableSettings
-from timetable.services import AGENDA_MAX_DAYS
+from timetable.exams import exams_for_entries
+from timetable.models import (
+    TAG_MAX_LENGTH,
+    CourseCatalogEntry,
+    CourseExam,
+    TimetableEntry,
+    TimetableEntryOverride,
+    TimetableSettings,
+)
+from timetable.services import AGENDA_MAX_DAYS, NOTE_MAX_LENGTH, SCOPES
+from timetable.sources.base import DATETIME_FORMAT
 
 __all__ = [
     'CalendarEventSerializer',
@@ -28,14 +38,19 @@ __all__ = [
     'AgendaQuerySerializer',
     'AgendaDaySerializer',
     'AgendaSerializer',
+    'EntryCatalogSerializer',
+    'EntryOverrideSerializer',
+    'EntryExamSerializer',
     'EntrySerializer',
     'EntryInSerializer',
+    'EntryScopeSerializer',
     'ImportPortalSerializer',
     'ImportTextSerializer',
     'LessonBlockSerializer',
     'DryRunResponseSerializer',
     'ImportOutSerializer',
     'SettingsSerializer',
+    'SettingsOutSerializer',
     'IcsSerializer',
     'ErrorSerializer',
     'SubscribeTemplateSerializer',
@@ -45,12 +60,15 @@ __all__ = [
     'CatalogQuerySerializer',
     'CatalogSlotSerializer',
     'CatalogEntrySerializer',
+    'CatalogAddSerializer',
+    'ShareAssetsSerializer',
 ]
 
 TIME_INPUT_FORMATS = ['%H:%M', '%H:%M:%S']
 MAX_SECTION = 20
 MAX_WEEK = 30
 CALENDAR_KINDS = list(CalendarEvent.Kind.values)
+OCCURRENCE_KINDS = ['course', 'college', 'activity', 'appoint', 'custom', 'exam']
 
 
 class ErrorSerializer(serializers.Serializer):
@@ -88,7 +106,11 @@ class TermSerializer(serializers.Serializer):
     code = serializers.CharField()
     name = serializers.CharField()
     week1_monday = serializers.DateField()
-    total_weeks = serializers.IntegerField()
+    total_weeks = serializers.IntegerField(help_text='Including exam weeks')
+    exam_week_start = serializers.IntegerField(
+        allow_null=True, help_text='First 考试周; null when the term has none (§8.4)')
+    teaching_weeks = serializers.IntegerField(
+        help_text='exam_week_start - 1 when set, else total_weeks')
     current_week = serializers.IntegerField(allow_null=True)
     section_times = serializers.DictField(
         child=serializers.ListField(child=serializers.CharField()),
@@ -118,8 +140,7 @@ class TodaySerializer(serializers.Serializer):
 class OccurrenceSerializer(serializers.Serializer):
     id = serializers.CharField()
     source = serializers.CharField()
-    kind = serializers.ChoiceField(
-        choices=['course', 'college', 'activity', 'appoint', 'custom'])
+    kind = serializers.ChoiceField(choices=OCCURRENCE_KINDS)
     title = serializers.CharField()
     subtitle = serializers.CharField(allow_blank=True)
     location = serializers.CharField(allow_blank=True)
@@ -134,11 +155,22 @@ class OccurrenceSerializer(serializers.Serializer):
     status = serializers.CharField(allow_blank=True)
     ref = serializers.DictField(child=serializers.IntegerField(allow_null=True))
     hidden = serializers.BooleanField()
+    role = serializers.CharField(
+        allow_blank=True,
+        help_text="'enrolled' | 'audit' | '' ('' for live sources, §8.2)")
+    tag = serializers.CharField(allow_blank=True, help_text='The entry tag (§8.3)')
+    modified = serializers.BooleanField(
+        help_text='At least one override applied to this occurrence (§8.2)')
 
 
 class SourceLegendSerializer(serializers.Serializer):
     key = serializers.CharField()
     label = serializers.CharField()
+
+
+class SourceSettingSerializer(SourceLegendSerializer):
+    setting = serializers.CharField(
+        allow_blank=True, help_text='The Settings boolean toggling the source')
 
 
 class WeekViewSerializer(serializers.Serializer):
@@ -184,12 +216,56 @@ class AgendaSerializer(serializers.Serializer):
     sources = SourceLegendSerializer(many=True)
 
 
+class EntryCatalogSerializer(serializers.ModelSerializer):
+    """The catalog row an entry is linked to (``Entry.catalog``, §8.1)."""
+
+    credits = serializers.FloatField(allow_null=True, read_only=True)
+
+    class Meta:
+        model = CourseCatalogEntry
+        fields = ['id', 'course_code', 'name', 'class_no', 'teacher', 'credits',
+                  'department', 'category', 'time_text', 'weeks_text', 'note']
+        read_only_fields = fields
+
+
+class EntryOverrideSerializer(serializers.ModelSerializer):
+    """One per-week-range override of an entry (``Entry.overrides``, §8.2)."""
+
+    fields = serializers.DictField(read_only=True)
+    updated_at = serializers.DateTimeField(format=DATETIME_FORMAT, read_only=True)
+
+    class Meta:
+        model = TimetableEntryOverride
+        fields = ['id', 'week_start', 'week_end', 'canceled', 'fields', 'updated_at']
+        read_only_fields = fields
+
+
+class EntryExamSerializer(serializers.ModelSerializer):
+    """The first matching exam of an entry (``Entry.exam``, §8.4)."""
+
+    start = serializers.DateTimeField(format=DATETIME_FORMAT, read_only=True)
+    end = serializers.DateTimeField(format=DATETIME_FORMAT, read_only=True)
+
+    class Meta:
+        model = CourseExam
+        fields = ['id', 'start', 'end', 'room', 'method', 'note']
+        read_only_fields = fields
+
+
 class EntrySerializer(serializers.ModelSerializer):
-    """Read shape of a stored entry."""
+    """
+    Read shape of a stored entry. Pass ``context['exams']`` (``{entry id:
+    [CourseExam]}`` from ``timetable.exams.exams_for_entries``) to serialize
+    a list without one exam query per entry.
+    """
 
     term = serializers.CharField(source='term.code', read_only=True)
     start_time = serializers.TimeField(format='%H:%M', read_only=True)
     end_time = serializers.TimeField(format='%H:%M', read_only=True)
+    catalog = EntryCatalogSerializer(
+        source='catalog_entry', read_only=True, allow_null=True)
+    overrides = EntryOverrideSerializer(many=True, read_only=True)
+    exam = serializers.SerializerMethodField()
 
     class Meta:
         model = TimetableEntry
@@ -197,17 +273,27 @@ class EntrySerializer(serializers.ModelSerializer):
             'id', 'term', 'source', 'name', 'course_code', 'class_no',
             'teacher', 'room', 'weekday', 'start_section', 'end_section',
             'start_time', 'end_time', 'week_start', 'week_end', 'parity',
-            'note', 'hidden', 'color',
+            'note', 'hidden', 'color', 'role', 'category', 'tag',
+            'catalog', 'overrides', 'exam',
         ]
         read_only_fields = fields
+
+    def get_exam(self, entry) -> dict | None:
+        exams = self.context.get('exams')
+        if exams is None or entry.pk not in exams:
+            exams = exams_for_entries(entry.term, [entry])
+        matched = exams.get(entry.pk) or []
+        return EntryExamSerializer(matched[0]).data if matched else None
 
 
 class EntryInSerializer(serializers.Serializer):
     """
-    Write shape of a manual entry. ``start_time``/``end_time`` may be omitted
+    Write shape of an entry. ``start_time``/``end_time`` may be omitted
     when sections are given (they are filled from the term's section table);
     ``start_section``/``end_section`` may be 0 when explicit times are given.
-    Pass the target ``AcademicTerm`` as ``context['term']``.
+    ``catalog_id`` (a catalog row of the same term, ``null`` unlinks) is
+    validated into ``catalog_entry``. Pass the target ``AcademicTerm`` as
+    ``context['term']``.
     """
 
     term = serializers.CharField(required=False, allow_blank=True, max_length=16)
@@ -226,16 +312,28 @@ class EntryInSerializer(serializers.Serializer):
     parity = serializers.ChoiceField(
         choices=TimetableEntry.Parity.choices, required=False,
         default=TimetableEntry.Parity.ALL)
-    note = serializers.CharField(required=False, allow_blank=True, max_length=200)
+    note = serializers.CharField(
+        required=False, allow_blank=True, max_length=NOTE_MAX_LENGTH)
     hidden = serializers.BooleanField(required=False)
     color = serializers.RegexField(
         r'^#[0-9a-fA-F]{6}$', required=False, allow_blank=True, max_length=7)
+    role = serializers.ChoiceField(choices=TimetableEntry.Role.choices, required=False)
+    category = serializers.ChoiceField(
+        choices=TimetableEntry.Category.choices, required=False)
+    tag = serializers.CharField(
+        required=False, allow_blank=True, max_length=TAG_MAX_LENGTH)
+    catalog_id = serializers.IntegerField(
+        required=False, allow_null=True,
+        help_text='Catalog row of the same term to link; null unlinks')
 
     _ENTRY_FIELDS = (
         'name', 'course_code', 'class_no', 'teacher', 'room', 'weekday',
         'start_section', 'end_section', 'start_time', 'end_time',
         'week_start', 'week_end', 'parity', 'note', 'hidden', 'color',
     )
+
+    def validate_tag(self, value: str) -> str:
+        return value.strip()
 
     def validate(self, attrs):
         # Cross-field rules are checked on the merged result so a partial
@@ -274,6 +372,48 @@ class EntryInSerializer(serializers.Serializer):
             raise serializers.ValidationError({'start_time': '时间格式错误'})
         if start_time >= end_time:
             raise serializers.ValidationError({'end_time': '结束时间必须晚于开始时间'})
+        if 'catalog_id' in attrs:
+            catalog_id = attrs.pop('catalog_id')
+            row = None
+            if catalog_id is not None:
+                if term is not None:
+                    row = CourseCatalogEntry.objects.filter(
+                        pk=catalog_id, term=term).first()
+                if row is None:
+                    raise serializers.ValidationError(
+                        {'catalog_id': '课程目录中没有该学期的这门课'})
+            attrs['catalog_entry'] = row
+        return attrs
+
+
+class EntryScopeSerializer(serializers.Serializer):
+    """
+    The scope part of ``PATCH entries/<id>/`` (§8.2): ``scope`` (default
+    ``all``), ``week`` (required for ``single``/``following``, inside the
+    entry's span — pass the entry as ``context['entry']``) and ``canceled``
+    (single/following only). The remaining keys of the body are entry
+    fields validated by ``EntryInSerializer``.
+    """
+
+    scope = serializers.ChoiceField(choices=list(SCOPES), required=False, default='all')
+    week = serializers.IntegerField(required=False, allow_null=True)
+    canceled = serializers.BooleanField(required=False, allow_null=True)
+
+    def validate(self, attrs):
+        scope = attrs.get('scope') or 'all'
+        week = attrs.get('week')
+        entry = self.context.get('entry')
+        if scope == 'all':
+            if attrs.get('canceled') is not None:
+                raise serializers.ValidationError(
+                    {'canceled': '整门课程不能标记停课，请隐藏或删除该条目'})
+            attrs['week'] = None
+            return attrs
+        if week is None:
+            raise serializers.ValidationError({'week': '按周修改时必须指定周次'})
+        if entry is not None and not entry.contains_week(int(week)):
+            raise serializers.ValidationError(
+                {'week': f'周次必须在 {entry.week_start}–{entry.week_end} 之间'})
         return attrs
 
 
@@ -323,16 +463,47 @@ class ImportOutSerializer(serializers.Serializer):
 
 
 class SettingsSerializer(serializers.ModelSerializer):
-    """Read/write shape of ``TimetableSettings`` (the ICS token is not exposed)."""
+    """
+    Write shape of ``TimetableSettings`` (the ICS token is not exposed).
+    ``hidden_tags`` is deduplicated, trimmed and limited to 24 characters
+    per tag (§8.3).
+    """
 
     reminder_minutes = serializers.IntegerField(min_value=0, max_value=1440, required=False)
+    hidden_tags = serializers.ListField(
+        child=serializers.CharField(max_length=TAG_MAX_LENGTH, allow_blank=True),
+        required=False, max_length=200,
+        help_text='Tags whose entries are hidden everywhere')
 
     class Meta:
         model = TimetableSettings
         fields = [
             'reminder_enabled', 'reminder_minutes', 'show_courses', 'show_college',
-            'show_activities', 'show_appointments', 'share_show_name',
+            'show_activities', 'show_appointments', 'show_exams', 'share_show_name',
+            'hidden_tags',
         ]
+
+    def validate_hidden_tags(self, value: list[str]) -> list[str]:
+        tags: list[str] = []
+        for tag in value:
+            tag = tag.strip()
+            if tag and tag not in tags:
+                tags.append(tag)
+        return tags
+
+
+class SettingsOutSerializer(SettingsSerializer):
+    """Read shape of the settings: the stored values plus the legend and tags."""
+
+    sources = SourceSettingSerializer(
+        many=True, read_only=True,
+        help_text='Registered sources in config order with their toggle setting')
+    tags = serializers.ListField(
+        child=serializers.CharField(), read_only=True,
+        help_text="Distinct tags of the person's entries, all terms, sorted")
+
+    class Meta(SettingsSerializer.Meta):
+        fields = SettingsSerializer.Meta.fields + ['sources', 'tags']
 
 
 class IcsSerializer(serializers.Serializer):
@@ -386,13 +557,47 @@ class CatalogSlotSerializer(serializers.Serializer):
 
 
 class CatalogEntrySerializer(serializers.ModelSerializer):
-    """Read shape of a course catalog row for the manual-entry form."""
+    """
+    Read shape of a course catalog row for the entry form and the quick-add
+    sheet (§6.3, §8.1). ``added`` reads ``context['added']`` — the ids of the
+    rows the person already has an entry linked to in the term.
+    """
 
     credits = serializers.FloatField(allow_null=True, read_only=True)
     slots = CatalogSlotSerializer(many=True, read_only=True)
+    added = serializers.SerializerMethodField()
 
     class Meta:
         model = CourseCatalogEntry
         fields = ['id', 'course_code', 'name', 'class_no', 'teacher',
-                  'credits', 'time_text', 'slots']
+                  'credits', 'time_text', 'slots', 'department', 'category',
+                  'audience', 'hours_per_week', 'weeks_text', 'note', 'added']
         read_only_fields = fields
+
+    def get_added(self, row) -> bool:
+        added = self.context.get('added')
+        return bool(added) and row.pk in added
+
+
+class CatalogAddSerializer(serializers.Serializer):
+    """Body of ``POST catalog/<id>/add/`` (§8.1)."""
+
+    role = serializers.ChoiceField(
+        choices=TimetableEntry.Role.choices, required=False,
+        default=TimetableEntry.Role.AUDIT)
+    slots = serializers.ListField(
+        child=serializers.IntegerField(min_value=0), required=False,
+        help_text='Indices into the catalog row slots; default all')
+    term = serializers.CharField(required=False, allow_blank=True, max_length=16)
+
+
+class ShareAssetsSerializer(serializers.Serializer):
+    """``GET share/assets/`` (§8.5)."""
+
+    miniapp_qrcode = serializers.URLField(
+        allow_null=True,
+        help_text='Absolute URL of the mini-program code image, or null')
+    official_qrcode = serializers.URLField(
+        allow_null=True,
+        help_text='Absolute URL of the official-account QR code, or null')
+    slogan = serializers.CharField()

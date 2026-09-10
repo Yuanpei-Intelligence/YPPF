@@ -1,7 +1,8 @@
 """
-Models of the timetable app: academic terms, stored timetable entries,
-import logs, per-person settings (``timetable/README.md`` §4.1), subscribe
-quotas and reminder logs (§6.1) and the course catalog (§6.3).
+Models of the timetable app: academic terms, stored timetable entries and
+their per-week overrides, import logs, per-person settings
+(``timetable/README.md`` §4.1, §8.2, §8.3), subscribe quotas and reminder
+logs (§6.1), the course catalog (§6.3) and the exam schedule (§8.4).
 
 Stored data is per ``(person, term)``. Entries of one import source are
 replaced as a set by ``timetable.services.upsert_entries``; other sources and
@@ -24,12 +25,25 @@ __all__ = [
     'default_section_times',
     'AcademicTerm',
     'TimetableEntry',
+    'TimetableEntryOverride',
+    'OVERRIDE_FIELD_KEYS',
+    'TAG_MAX_LENGTH',
     'ImportLog',
     'TimetableSettings',
     'SubscribeQuota',
     'ReminderLog',
     'CourseCatalogEntry',
+    'CourseExam',
 ]
+
+# Keys a ``TimetableEntryOverride.fields`` JSON may carry (README §8.2);
+# times are ``'HH:MM'`` strings. Order is the display order of the API.
+OVERRIDE_FIELD_KEYS = (
+    'name', 'teacher', 'room', 'weekday', 'start_section', 'end_section',
+    'start_time', 'end_time', 'note', 'tag', 'color',
+)
+# Longest tag of an entry and longest entry of ``TimetableSettings.hidden_tags``.
+TAG_MAX_LENGTH = 24
 
 
 def default_section_times() -> dict[str, list[str]]:
@@ -70,7 +84,11 @@ class AcademicTerm(models.Model):
     code = models.CharField('学期代码', max_length=16, unique=True)
     name = models.CharField('学期名称', max_length=32)
     week1_monday = models.DateField('第一教学周周一')
-    total_weeks = models.PositiveSmallIntegerField('总周数', default=16)
+    total_weeks = models.PositiveSmallIntegerField(
+        '总周数', default=16, help_text='含考试周')
+    exam_week_start = models.PositiveSmallIntegerField(
+        '考试周起始周', null=True, blank=True,
+        help_text='从该周起为考试周；留空表示没有考试周')
     section_times = models.JSONField(
         '节次时间表', default=default_section_times,
         help_text='{"1": ["08:00", "08:50"], ...}')
@@ -78,6 +96,23 @@ class AcademicTerm(models.Model):
 
     def __str__(self) -> str:
         return f'{self.name} ({self.code})'
+
+    @property
+    def teaching_weeks(self) -> int:
+        """
+        Number of teaching weeks: ``exam_week_start - 1`` when exam weeks
+        are configured (never below 1 nor above ``total_weeks``), otherwise
+        ``total_weeks`` (README §8.4).
+        """
+        total = max(int(self.total_weeks), 1)
+        if self.exam_week_start is None:
+            return total
+        return max(1, min(int(self.exam_week_start) - 1, total))
+
+    def is_exam_week(self, week: int) -> bool:
+        """Whether teaching week ``week`` is an exam week of this term."""
+        return (self.exam_week_start is not None
+                and int(self.exam_week_start) <= week <= int(self.total_weeks))
 
     @classmethod
     def current(cls, on: date | None = None) -> 'AcademicTerm | None':
@@ -184,6 +219,10 @@ class TimetableEntry(models.Model):
     portal/paste imports and a uuid4 hex for manual entries; it is what
     re-imports upsert on. ``start_section``/``end_section`` may be 0 for a
     manual entry with explicit times.
+
+    ``catalog_entry``, ``role``, ``category`` and ``tag`` (README §8.1, §8.3)
+    are the student's own annotations: a re-import keeps them, like
+    ``hidden``/``color`` and the ``TimetableEntryOverride`` rows (§8.2).
     """
 
     class Source(models.TextChoices):
@@ -195,6 +234,18 @@ class TimetableEntry(models.Model):
         ALL = 0, '每周'
         ODD = 1, '单周'
         EVEN = 2, '双周'
+
+    class Role(models.TextChoices):
+        ENROLLED = 'enrolled', '已选'
+        AUDIT = 'audit', '旁听'
+
+    class Category(models.TextChoices):
+        COURSE = 'course', '课程'
+        EXAM = 'exam', '考试'
+        OTHER = 'other', '其它'
+
+    # Occurrence ``kind`` by category (README §8.1).
+    KIND_BY_CATEGORY = {'course': 'course', 'exam': 'exam', 'other': 'custom'}
 
     class Meta:
         verbose_name = '课表条目'
@@ -223,6 +274,14 @@ class TimetableEntry(models.Model):
         related_name='entries', verbose_name='学期')
     source = models.CharField('来源', max_length=16, choices=Source.choices)
     external_key = models.CharField('外部键', max_length=64)
+    catalog_entry = models.ForeignKey(
+        'CourseCatalogEntry', on_delete=models.SET_NULL, null=True, blank=True,
+        related_name='timetable_entries', verbose_name='课程目录')
+    role = models.CharField(
+        '身份', max_length=16, choices=Role.choices, default=Role.ENROLLED)
+    category = models.CharField(
+        '类别', max_length=16, choices=Category.choices, default=Category.COURSE)
+    tag = models.CharField('标签', max_length=TAG_MAX_LENGTH, blank=True)
 
     name = models.CharField('课程名', max_length=100)
     course_code = models.CharField('课程号', max_length=32, blank=True)
@@ -240,7 +299,7 @@ class TimetableEntry(models.Model):
     parity = models.SmallIntegerField(
         '单双周', choices=Parity.choices, default=Parity.ALL)
 
-    note = models.CharField('备注', max_length=200, blank=True)
+    note = models.TextField('备注', blank=True)
     raw_text = models.TextField('原始文本', blank=True)
     hidden = models.BooleanField('隐藏', default=False)
     color = models.CharField('颜色', max_length=7, blank=True)
@@ -253,11 +312,18 @@ class TimetableEntry(models.Model):
 
     @property
     def kind(self) -> str:
-        """Occurrence kind: ``'custom'`` for manual entries, else ``'course'``."""
-        return 'custom' if self.source == self.Source.MANUAL else 'course'
+        """
+        Occurrence kind derived from ``category`` (README §8.1): ``'course'``,
+        ``'exam'`` or ``'custom'`` (category ``other``).
+        """
+        return self.KIND_BY_CATEGORY.get(str(self.category), 'course')
 
     def is_manual(self) -> bool:
         return self.source == self.Source.MANUAL
+
+    def contains_week(self, week: int) -> bool:
+        """Whether ``week`` lies in the entry's own ``week_start..week_end``."""
+        return self.week_start <= week <= self.week_end
 
     def occurs_in_week(self, week: int) -> bool:
         """Whether the entry has a lesson in teaching week ``week``."""
@@ -279,6 +345,62 @@ class TimetableEntry(models.Model):
     def new_manual_key() -> str:
         """External key of a manual entry."""
         return uuid4().hex
+
+
+# Module-level aliases for SPECTACULAR_SETTINGS['ENUM_NAME_OVERRIDES'] (the
+# override loader imports ``module.attribute`` paths only).
+ENTRY_ROLE_CHOICES = TimetableEntry.Role.choices
+ENTRY_CATEGORY_CHOICES = TimetableEntry.Category.choices
+
+
+class TimetableEntryOverride(models.Model):
+    """
+    A per-week-range modification of one entry (README §8.2): ``fields``
+    holds only the overridden keys (``OVERRIDE_FIELD_KEYS``; a present key
+    is the effective value, an absent key means "unchanged"), ``canceled``
+    drops the occurrences of the range. ``week_start``/``week_end`` of
+    ``None`` follow the entry's own first/last week, so a re-import that
+    moves the entry's span keeps "this and following" edits meaningful.
+
+    Overlapping ranges are resolved by ``timetable.overrides`` — descending
+    range width, then ascending id, so a narrower or newer override wins
+    for every key including ``canceled``.
+    """
+
+    class Meta:
+        verbose_name = '课表条目修改'
+        verbose_name_plural = verbose_name
+        ordering = ['id']
+
+    entry = models.ForeignKey(
+        TimetableEntry, on_delete=models.CASCADE,
+        related_name='overrides', verbose_name='条目')
+    week_start = models.SmallIntegerField(
+        '起始周', null=True, blank=True, help_text='留空 = 条目的起始周')
+    week_end = models.SmallIntegerField(
+        '结束周', null=True, blank=True, help_text='留空 = 条目的结束周')
+    canceled = models.BooleanField('停课', default=False)
+    fields = models.JSONField('修改的字段', default=dict, blank=True)
+    created_at = models.DateTimeField('创建时间', auto_now_add=True)
+    updated_at = models.DateTimeField('更新时间', auto_now=True)
+
+    def __str__(self) -> str:
+        span = f'{self.week_start or "*"}-{self.week_end or "*"}'
+        state = '停课' if self.canceled else ','.join(sorted(self.fields or {}))
+        return f'{self.entry_id} 周次{span} {state}'
+
+    def bounds(self, entry: TimetableEntry | None = None) -> tuple[int, int]:
+        """Effective ``(first, last)`` week, open bounds taken from ``entry``."""
+        if entry is None:
+            entry = self.entry
+        first = entry.week_start if self.week_start is None else int(self.week_start)
+        last = entry.week_end if self.week_end is None else int(self.week_end)
+        return first, last
+
+    def applies_to(self, week: int, entry: TimetableEntry | None = None) -> bool:
+        """Whether the override covers teaching week ``week``."""
+        first, last = self.bounds(entry)
+        return first <= week <= last
 
 
 class ImportLog(models.Model):
@@ -327,10 +449,20 @@ class TimetableSettings(models.Model):
     show_college = models.BooleanField('显示书院课', default=True)
     show_activities = models.BooleanField('显示活动', default=True)
     show_appointments = models.BooleanField('显示预约', default=True)
+    show_exams = models.BooleanField('显示考试', default=True)
+    hidden_tags = models.JSONField(
+        '隐藏的标签', default=list, blank=True,
+        help_text='带这些标签的条目不在课表中显示')
     share_show_name = models.BooleanField('海报显示姓名', default=True)
 
     def __str__(self) -> str:
         return f'{self.person} 的课表设置'
+
+    def hidden_tag_set(self) -> set[str]:
+        """The hidden tags as a set of strings (a malformed value is empty)."""
+        if not isinstance(self.hidden_tags, list):
+            return set()
+        return {str(tag) for tag in self.hidden_tags if str(tag)}
 
     def rotate_ics_token(self) -> None:
         """Replace the ICS token, invalidating the previous feed URL."""
@@ -450,3 +582,39 @@ class CourseCatalogEntry(models.Model):
 
     def __str__(self) -> str:
         return f'{self.course_code}-{self.class_no} {self.name} ({self.term.code})'
+
+
+class CourseExam(models.Model):
+    """
+    One exam sitting of the term's exam schedule (README §8.4), imported by
+    ``import_exam_schedule`` and matched to the person's course entries by
+    ``timetable.sources.exam.ExamSource``. ``raw_time`` keeps the source
+    cell so a parsing problem can be traced.
+    """
+
+    class Meta:
+        verbose_name = '考试安排'
+        verbose_name_plural = verbose_name
+        ordering = ['start', 'course_code', 'id']
+        constraints = [
+            models.UniqueConstraint(
+                fields=['term', 'course_code', 'class_no', 'start'],
+                name='timetable_course_exam_unique'),
+        ]
+
+    term = models.ForeignKey(
+        AcademicTerm, on_delete=models.CASCADE,
+        related_name='exams', verbose_name='学期')
+    course_code = models.CharField('课程号', max_length=32)
+    class_no = models.CharField('班号', max_length=8, blank=True)
+    name = models.CharField('课程名', max_length=100)
+    teacher = models.CharField('教师', max_length=80, blank=True)
+    start = models.DateTimeField('开始时间')
+    end = models.DateTimeField('结束时间')
+    room = models.CharField('考场', max_length=100, blank=True)
+    method = models.CharField('考试方式', max_length=32, blank=True)
+    note = models.CharField('备注', max_length=200, blank=True)
+    raw_time = models.CharField('原始时间文本', max_length=64, blank=True)
+
+    def __str__(self) -> str:
+        return f'{self.name} {self.start:%Y-%m-%d %H:%M} ({self.term.code})'

@@ -43,7 +43,9 @@ __all__ = [
 
 MAX_TOTAL_WEEKS = 30
 _TERM_CODE_RE = re.compile(r'^(\d{2}|\d{4})-(\d{2}|\d{4})-\d$')
-_SPEC_KEYS = frozenset({'term', 'name', 'week1_monday', 'total_weeks', 'events'})
+_SPEC_KEYS = frozenset({'term', 'name', 'week1_monday', 'total_weeks',
+                        'exam_week_start', 'events'})
+_SPEC_REQUIRED = frozenset({'term', 'name', 'week1_monday', 'total_weeks', 'events'})
 _EVENT_KEYS = frozenset({'kind', 'start', 'end', 'name', 'follows_weekday', 'note'})
 _EVENT_REQUIRED = ('kind', 'start', 'end', 'name')
 # Events must lie in this window around week 1 — it catches a wrong year.
@@ -158,6 +160,7 @@ class CalendarSpec:
     week1_monday: date
     total_weeks: int
     events: list[CalendarEventSpec] = field(default_factory=list)
+    exam_week_start: int | None = None      # weeks from here are 考试周 (§8.4)
 
     @property
     def end_date(self) -> date:
@@ -195,7 +198,7 @@ def parse_calendar_spec(data: Any) -> CalendarSpec:
     if not isinstance(data, dict):
         raise CalendarSpecError(['the document must be a JSON object'])
     problems: list[str] = []
-    _check_keys(data, _SPEC_KEYS, _SPEC_KEYS, 'document', problems)
+    _check_keys(data, _SPEC_KEYS, _SPEC_REQUIRED, 'document', problems)
     code = _text(data.get('term'), 'term', 16, problems)
     if code and not _TERM_CODE_RE.match(code):
         problems.append(f'term: {code!r} is not a term code like 26-27-1')
@@ -207,6 +210,13 @@ def parse_calendar_spec(data: Any) -> CalendarSpec:
     if not _is_int(total_weeks) or not 1 <= total_weeks <= MAX_TOTAL_WEEKS:
         problems.append(f'total_weeks: must be an integer between 1 and {MAX_TOTAL_WEEKS}')
         total_weeks = None
+    exam_week_start = data.get('exam_week_start')
+    if exam_week_start is not None:
+        upper = total_weeks if total_weeks is not None else MAX_TOTAL_WEEKS
+        if not _is_int(exam_week_start) or not 1 <= exam_week_start <= upper:
+            problems.append(f'exam_week_start: must be an integer between 1 and '
+                            f'total_weeks ({upper}), or absent')
+            exam_week_start = None
     events: list[CalendarEventSpec] = []
     raw_events = data.get('events')
     if not isinstance(raw_events, list):
@@ -232,7 +242,8 @@ def parse_calendar_spec(data: Any) -> CalendarSpec:
                     f'outside the term year {low}..{high} — wrong year?')
     if problems:
         raise CalendarSpecError(problems)
-    return CalendarSpec(code, name, week1_monday, total_weeks, events)
+    return CalendarSpec(code, name, week1_monday, total_weeks, events,
+                        exam_week_start=exam_week_start)
 
 
 def _parse_event(raw: Any, where: str, problems: list[str]) -> CalendarEventSpec | None:
@@ -318,16 +329,17 @@ def replacement_window(spec: CalendarSpec) -> tuple[date, date]:
 def apply_calendar_spec(spec: CalendarSpec, *, dry_run: bool = False) -> CalendarImportResult:
     """
     Upsert the ``AcademicTerm`` of ``spec`` (``name``, ``week1_monday``,
-    ``total_weeks``; ``section_times``/``is_active`` of an existing term are
-    kept) and replace the ``CalendarEvent`` rows overlapping
-    ``replacement_window(spec)`` with the file's events, in one
+    ``total_weeks``, ``exam_week_start``; ``section_times``/``is_active`` of
+    an existing term are kept) and replace the ``CalendarEvent`` rows
+    overlapping ``replacement_window(spec)`` with the file's events, in one
     transaction. Idempotent: a second run removes exactly the rows the
     first one wrote. With ``dry_run`` nothing is written and the result
     describes what would happen.
     """
     window = replacement_window(spec)
     fields = {'name': spec.name, 'week1_monday': spec.week1_monday,
-              'total_weeks': spec.total_weeks}
+              'total_weeks': spec.total_weeks,
+              'exam_week_start': spec.exam_week_start}
     with transaction.atomic():
         terms = AcademicTerm.objects.filter(code=spec.code)
         if not dry_run:

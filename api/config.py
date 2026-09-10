@@ -1,8 +1,9 @@
 """
 Configuration helpers for API layer.
 
-Covers the mini program (wx) login flow and the subscribe-message templates
-used by class reminders (``timetable/README.md`` §6.1).
+Covers the mini program (wx) login flow, the subscribe-message templates
+used by class reminders (``timetable/README.md`` §6.1) and the share
+assets of the timetable poster (§8.5).
 """
 from boot.config import ROOT_CONFIG
 from utils.config import Config, LazySetting
@@ -12,7 +13,10 @@ __all__ = [
     "CONFIG",
     "DEFAULT_SUBSCRIBE_FIELDS",
     "DEFAULT_SUBSCRIBE_PAGE",
+    "DEFAULT_SHARE_PAGE",
+    "DEFAULT_SHARE_SLOGAN",
     "get_subscribe_template",
+    "get_share_config",
 ]
 
 # Semantic field -> WeChat template key, used when a template omits "fields".
@@ -23,6 +27,8 @@ DEFAULT_SUBSCRIBE_FIELDS = {
     "note": "thing4",
 }
 DEFAULT_SUBSCRIBE_PAGE = "pages/timetable/index"
+DEFAULT_SHARE_PAGE = "pages/timetable/index"
+DEFAULT_SHARE_SLOGAN = "元培智慧书院 · YPPF"
 
 class WXMiniappConfig(Config):
     """
@@ -47,9 +53,32 @@ class WXMiniappConfig(Config):
     # Subscribe-message templates: {key: {"id", "fields", "page"}}. An empty
     # "id" disables that template (see get_subscribe_template).
     subscribe_templates = LazySetting("subscribe_templates", default={}, type=dict)
+    # Share assets of the timetable poster (timetable/README.md §8.5): the
+    # page the mini-program code opens, the code's env_version, the
+    # official-account QR code (absolute URL or a path under MEDIA_URL;
+    # empty → none) and the poster slogan.
+    share_miniapp_page = LazySetting(
+        "share/miniapp_page", default=DEFAULT_SHARE_PAGE, type=str)
+    share_env_version = LazySetting("share/env_version", default="release", type=str)
+    share_official_qrcode_url = LazySetting(
+        "share/official_qrcode_url", default="", type=str)
+    share_slogan = LazySetting("share/slogan", default=DEFAULT_SHARE_SLOGAN, type=str)
 
 
 CONFIG = WXMiniappConfig(ROOT_CONFIG, "wx_miniapp")
+
+
+def get_share_config() -> dict:
+    """
+    The ``wx_miniapp.share`` block with defaults filled in:
+    ``{"miniapp_page", "env_version", "official_qrcode_url", "slogan"}``.
+    """
+    return {
+        "miniapp_page": str(CONFIG.share_miniapp_page or DEFAULT_SHARE_PAGE).strip(),
+        "env_version": str(CONFIG.share_env_version or "release").strip(),
+        "official_qrcode_url": str(CONFIG.share_official_qrcode_url or "").strip(),
+        "slogan": str(CONFIG.share_slogan or DEFAULT_SHARE_SLOGAN).strip(),
+    }
 
 
 def get_subscribe_template(key: str) -> dict | None:

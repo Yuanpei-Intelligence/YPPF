@@ -120,3 +120,94 @@ class SendSubscribeMessageTests(SimpleTestCase):
             result = self.send()
         self.assertEqual(result, (False, -1, '服务器未配置微信小程序'))
         post.assert_not_called()
+
+
+def _image_response(content=b'\xff\xd8jpegdata', status_code=200,
+                    content_type='image/jpeg'):
+    response = MagicMock()
+    response.status_code = status_code
+    response.content = content
+    response.headers = {'Content-Type': content_type}
+    response.json.side_effect = ValueError('not json')
+    return response
+
+
+def _json_response(payload, status_code=200):
+    response = MagicMock()
+    response.status_code = status_code
+    response.content = b'{"errcode": 1}'
+    response.headers = {'Content-Type': 'application/json; encoding=utf-8'}
+    response.json.return_value = payload
+    return response
+
+
+class FetchMiniappCodeTests(SimpleTestCase):
+    """``fetch_miniapp_code`` (README §8.5) with HTTP mocked."""
+
+    def setUp(self):
+        patcher = patch('api.auth.wechat_api.get_wechat_access_token', return_value=TOKEN)
+        self.get_token = patcher.start()
+        self.addCleanup(patcher.stop)
+        cache.delete(WX_ACCESS_TOKEN_CACHE_KEY)
+        self.addCleanup(cache.delete, WX_ACCESS_TOKEN_CACHE_KEY)
+
+    def fetch(self, **kwargs):
+        return wx_miniapp.fetch_miniapp_code('timetable', 'pages/timetable/index', **kwargs)
+
+    def test_success_returns_image_bytes(self):
+        with patch('extern.wx_miniapp.requests.post', return_value=_image_response()) as post:
+            result = self.fetch()
+        self.assertEqual(result, b'\xff\xd8jpegdata')
+        args, kwargs = post.call_args
+        self.assertEqual(args[0], wx_miniapp.WXACODE_UNLIMITED_URL)
+        self.assertEqual(kwargs['params'], {'access_token': TOKEN})
+        self.assertEqual(kwargs['timeout'], wx_miniapp.CODE_REQUEST_TIMEOUT)
+        self.assertEqual(kwargs['json'], {
+            'scene': 'timetable', 'page': 'pages/timetable/index', 'check_path': False,
+            'env_version': 'release', 'width': 430})
+        with patch('extern.wx_miniapp.requests.post', return_value=_image_response()) as post:
+            self.fetch(env_version='trial', width=280, check_path=True)
+        self.assertEqual(post.call_args.kwargs['json']['env_version'], 'trial')
+        self.assertEqual(post.call_args.kwargs['json']['width'], 280)
+        self.assertTrue(post.call_args.kwargs['json']['check_path'])
+
+    def test_wechat_error_is_none_and_never_leaks_the_token(self):
+        with patch('extern.wx_miniapp.requests.post',
+                   return_value=_json_response({'errcode': 41030, 'errmsg': 'invalid page'})), \
+                self.assertLogs('extern.wx_miniapp', level='WARNING') as logs:
+            self.assertIsNone(self.fetch())
+        output = '\n'.join(logs.output)
+        self.assertIn('41030', output)
+        self.assertNotIn(TOKEN, output)
+        # A JSON body without a JSON content type is still recognised.
+        response = _image_response(content=b'{"errcode": 45009, "errmsg": "quota"}',
+                                   content_type='text/plain')
+        response.json.side_effect = None
+        response.json.return_value = {'errcode': 45009, 'errmsg': 'quota'}
+        with patch('extern.wx_miniapp.requests.post', return_value=response), \
+                self.assertLogs('extern.wx_miniapp', level='WARNING'):
+            self.assertIsNone(self.fetch())
+
+    def test_invalid_token_clears_cache(self):
+        cache.set(WX_ACCESS_TOKEN_CACHE_KEY, 'stale', 60)
+        with patch('extern.wx_miniapp.requests.post',
+                   return_value=_json_response({'errcode': 40001, 'errmsg': 'invalid'})), \
+                self.assertLogs('extern.wx_miniapp', level='WARNING'):
+            self.assertIsNone(self.fetch())
+        self.assertIsNone(cache.get(WX_ACCESS_TOKEN_CACHE_KEY))
+
+    def test_network_http_and_token_failures(self):
+        error = requests.ConnectionError(f'boom ?access_token={TOKEN}')
+        with patch('extern.wx_miniapp.requests.post', side_effect=error), \
+                self.assertLogs('extern.wx_miniapp', level='WARNING') as logs:
+            self.assertIsNone(self.fetch())
+        self.assertNotIn(TOKEN, '\n'.join(logs.output))
+        with patch('extern.wx_miniapp.requests.post',
+                   return_value=_image_response(content=b'', status_code=502)), \
+                self.assertLogs('extern.wx_miniapp', level='WARNING'):
+            self.assertIsNone(self.fetch())
+        self.get_token.side_effect = ValueError('服务器未配置微信小程序')
+        with patch('extern.wx_miniapp.requests.post') as post, \
+                self.assertLogs('extern.wx_miniapp', level='WARNING'):
+            self.assertIsNone(self.fetch())
+        post.assert_not_called()

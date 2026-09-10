@@ -1,10 +1,11 @@
 """
-WeChat mini-program server API: subscribe messages.
+WeChat mini-program server API: subscribe messages and mini-program codes.
 
-``send_subscribe_message`` posts to ``cgi-bin/message/subscribe/send`` with
-the server access token cached by ``api.auth.wechat_api``. It never raises
-for configuration, network or malformed-response problems (the caller gets
-``(False, -1, message)`` instead) and never logs the access token or the
+``send_subscribe_message`` posts to ``cgi-bin/message/subscribe/send`` and
+``fetch_miniapp_code`` to ``wxa/getwxacodeunlimit`` with the server access
+token cached by ``api.auth.wechat_api``. Neither raises for configuration,
+network or malformed-response problems (the caller gets ``(False, -1,
+message)`` / ``None`` instead) and neither logs the access token or the
 ``openid``. Known WeChat error codes are exported as constants.
 """
 from __future__ import annotations
@@ -17,7 +18,9 @@ from django.core.cache import cache
 
 __all__ = [
     'SUBSCRIBE_SEND_URL',
+    'WXACODE_UNLIMITED_URL',
     'REQUEST_TIMEOUT',
+    'CODE_REQUEST_TIMEOUT',
     'ERR_OK',
     'ERR_LOCAL',
     'ERR_ACCESS_TOKEN_INVALID',
@@ -28,12 +31,16 @@ __all__ = [
     'ERR_TEMPLATE_DATA_INVALID',
     'ACCESS_TOKEN_ERRCODES',
     'send_subscribe_message',
+    'fetch_miniapp_code',
 ]
 
 logger = logging.getLogger(__name__)
 
 SUBSCRIBE_SEND_URL = 'https://api.weixin.qq.com/cgi-bin/message/subscribe/send'
+WXACODE_UNLIMITED_URL = 'https://api.weixin.qq.com/wxa/getwxacodeunlimit'
 REQUEST_TIMEOUT = 5
+# Generating a code image is slower than a message; allow a little more.
+CODE_REQUEST_TIMEOUT = 10
 
 ERR_OK = 0
 # Not a WeChat code: configuration, network or response failure on our side.
@@ -119,3 +126,61 @@ def send_subscribe_message(openid: str, template_id: str, page: str,
     logger.log(level, 'subscribe message failed: errcode=%s errmsg=%s template=%s',
                errcode, errmsg, template_id)
     return False, errcode, errmsg
+
+
+def fetch_miniapp_code(scene: str, page: str, *, env_version: str = 'release',
+                       width: int = 430, check_path: bool = False) -> bytes | None:
+    """
+    The image bytes of an unlimited mini-program code (``wxacode.getUnlimited``)
+    for ``scene`` opening ``page``, or ``None`` when it cannot be produced
+    (no configuration, network failure, a WeChat error such as the quota or
+    an invalid page in a mock environment). Never raises; a failure is
+    logged as a warning without the access token. An invalid or expired
+    token clears the cached token so the next call fetches a fresh one.
+    """
+    from api.auth.wechat_api import WX_ACCESS_TOKEN_CACHE_KEY, get_wechat_access_token
+    try:
+        token = get_wechat_access_token()
+    except ValueError as exc:
+        logger.warning('mini-program code not fetched: %s', exc)
+        return None
+    payload: dict[str, Any] = {
+        'scene': str(scene)[:32],
+        'page': page,
+        'check_path': bool(check_path),
+        'env_version': env_version or 'release',
+        'width': int(width),
+    }
+    try:
+        response = requests.post(
+            WXACODE_UNLIMITED_URL, params={'access_token': token},
+            json=payload, timeout=CODE_REQUEST_TIMEOUT)
+    except requests.RequestException as exc:
+        # The exception text may embed the request URL (and so the access
+        # token); log the class only.
+        logger.warning('mini-program code request failed: %s', type(exc).__name__)
+        return None
+    content = response.content or b''
+    content_type = str(response.headers.get('Content-Type') or '').lower()
+    if 'json' in content_type or content[:1] in (b'{', b'['):
+        # WeChat answers JSON only on failure; an image otherwise.
+        try:
+            result = response.json()
+        except ValueError:
+            result = {}
+        errcode = result.get('errcode') if isinstance(result, dict) else None
+        errmsg = result.get('errmsg') if isinstance(result, dict) else None
+        try:
+            errcode = int(errcode or 0)
+        except (TypeError, ValueError):
+            errcode = ERR_LOCAL
+        if errcode in ACCESS_TOKEN_ERRCODES:
+            cache.delete(WX_ACCESS_TOKEN_CACHE_KEY)
+        logger.warning('mini-program code failed: errcode=%s errmsg=%s scene=%s',
+                       errcode, errmsg or '', scene)
+        return None
+    if response.status_code != 200 or not content:
+        logger.warning('mini-program code failed: HTTP %s, %d byte(s)',
+                       response.status_code, len(content))
+        return None
+    return bytes(content)

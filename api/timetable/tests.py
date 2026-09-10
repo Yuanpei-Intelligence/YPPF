@@ -1,10 +1,13 @@
 """Tests of the timetable mini-program API (``/api/v2/timetable/``)."""
+import tempfile
 from datetime import date, datetime, timedelta
 from importlib.util import find_spec
+from pathlib import Path
 from types import SimpleNamespace
 from unittest import skipUnless
 from unittest.mock import patch
 
+from django.test import override_settings
 from django.urls import reverse
 from rest_framework import status
 from rest_framework.test import APIClient, APITestCase
@@ -12,11 +15,32 @@ from rest_framework.test import APIClient, APITestCase
 from generic.models import User
 from semester.models import CalendarEvent
 from api.config import WXMiniappConfig
-from timetable import catalog
-from timetable.models import ImportLog, SubscribeQuota, TimetableEntry, TimetableSettings
+from timetable import catalog, services
+from timetable.models import (
+    CourseCatalogEntry,
+    CourseExam,
+    ImportLog,
+    SubscribeQuota,
+    TimetableEntry,
+    TimetableEntryOverride,
+    TimetableSettings,
+)
+from timetable.sources.exam import ExamSource
+from timetable.sources.stored import StoredEntriesSource
 from timetable.tests.helpers import (
     make_entry, make_person, make_term, portal_payload, read_fixture,
 )
+
+ENTRY_KEYS = {
+    'id', 'term', 'source', 'name', 'course_code', 'class_no', 'teacher', 'room',
+    'weekday', 'start_section', 'end_section', 'start_time', 'end_time',
+    'week_start', 'week_end', 'parity', 'note', 'hidden', 'color',
+    'role', 'category', 'tag', 'catalog', 'overrides', 'exam',
+}
+OVERRIDE_KEYS = {'id', 'week_start', 'week_end', 'canceled', 'fields', 'updated_at'}
+CATALOG_KEYS = {'id', 'course_code', 'name', 'class_no', 'teacher', 'credits', 'time_text',
+                'slots', 'department', 'category', 'audience', 'hours_per_week',
+                'weeks_text', 'note', 'added'}
 
 
 def _this_monday() -> date:
@@ -131,8 +155,11 @@ class AuthTests(TimetableAPITestCase):
             ('get', self.url('agenda')),
             ('get', self.url('entry-list')),
             ('post', self.url('entry-list')),
+            ('get', self.url('entry-detail', pk=entry.pk)),
             ('patch', self.url('entry-detail', pk=entry.pk)),
             ('delete', self.url('entry-detail', pk=entry.pk)),
+            ('delete', self.url('entry-overrides', pk=entry.pk)),
+            ('delete', self.url('entry-override-detail', pk=entry.pk, oid=1)),
             ('post', self.url('import-portal')),
             ('post', self.url('import-text')),
             ('get', self.url('settings')),
@@ -142,6 +169,8 @@ class AuthTests(TimetableAPITestCase):
             ('get', self.url('subscribe-templates')),
             ('post', self.url('subscribe-grant')),
             ('get', self.url('catalog')),
+            ('post', self.url('catalog-add', pk=1)),
+            ('get', self.url('share-assets')),
         ]
 
     def test_anonymous_gets_401(self):
@@ -179,9 +208,23 @@ class TermsAndWeekTests(TimetableAPITestCase):
         self.assertEqual(response.data['current']['current_week'], 2)
         self.assertEqual([t['code'] for t in response.data['terms']], ['26-27-1', '25-26-2'])
         self.assertEqual(set(response.data['current']), {
-            'code', 'name', 'week1_monday', 'total_weeks', 'current_week', 'section_times',
-            'calendar'})
+            'code', 'name', 'week1_monday', 'total_weeks', 'exam_week_start', 'teaching_weeks',
+            'current_week', 'section_times', 'calendar'})
         self.assertEqual(response.data['current']['calendar'], [])
+        self.assertIsNone(response.data['current']['exam_week_start'])
+        self.assertEqual(response.data['current']['teaching_weeks'], 16)
+
+    def test_terms_exam_weeks(self):
+        """``exam_week_start`` / ``teaching_weeks`` of §8.4 on the Term payload."""
+        self.term.total_weeks = 19
+        self.term.exam_week_start = 17
+        self.term.save()
+        response = self.client.get(self.url('terms'))
+        current = response.data['current']
+        self.assertEqual((current['total_weeks'], current['exam_week_start'],
+                          current['teaching_weeks']), (19, 17, 16))
+        week = self.client.get(self.url('week'), {'week': 19}).data
+        self.assertEqual((week['week'], week['term']['teaching_weeks']), (19, 16))
 
     def test_terms_without_any_term(self):
         self.term.delete()
@@ -335,10 +378,10 @@ class EntryTests(TimetableAPITestCase):
         self.assertEqual(entry['source'], 'portal')
         self.assertEqual(entry['start_time'], '08:00')
         self.assertEqual(entry['end_time'], '09:50')
-        self.assertEqual(set(entry), {
-            'id', 'term', 'source', 'name', 'course_code', 'class_no', 'teacher', 'room',
-            'weekday', 'start_section', 'end_section', 'start_time', 'end_time',
-            'week_start', 'week_end', 'parity', 'note', 'hidden', 'color'})
+        self.assertEqual(set(entry), ENTRY_KEYS)
+        self.assertEqual((entry['role'], entry['category'], entry['tag']),
+                         ('enrolled', 'course', ''))
+        self.assertEqual((entry['catalog'], entry['overrides'], entry['exam']), (None, [], None))
         response = self.client.get(self.url('entry-list'), {'term': '25-26-2'})
         self.assertEqual([e['name'] for e in response.data], ['旧课'])
 
@@ -402,20 +445,44 @@ class EntryTests(TimetableAPITestCase):
             format='json')
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
 
-    def test_patch_imported_entry_only_hidden(self):
+    def test_patch_imported_entry_annotations_and_whole_range_override(self):
+        """Imported entries: annotations on the row, other keys in the (None, None) override."""
         entry = make_entry(self.person, self.term, name='高数')
         response = self.client.patch(
             self.url('entry-detail', pk=entry.pk), {'hidden': True}, format='json')
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertTrue(response.data['hidden'])
         response = self.client.patch(
-            self.url('entry-detail', pk=entry.pk), {'name': '改名', 'hidden': False},
+            self.url('entry-detail', pk=entry.pk),
+            {'name': '改名', 'hidden': False, 'tag': '必修', 'color': '#112233',
+             'role': 'audit'},
             format='json')
-        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
-        self.assertEqual(response.data['code'], 'permission_denied')
+        self.assertEqual(response.status_code, status.HTTP_200_OK, response.data)
         entry.refresh_from_db()
-        self.assertEqual(entry.name, '高数')
-        self.assertTrue(entry.hidden)
+        self.assertEqual((entry.name, entry.hidden, entry.tag, entry.color, entry.role),
+                         ('高数', False, '必修', '#112233', 'audit'))
+        override = entry.overrides.get()
+        self.assertEqual((override.week_start, override.week_end, override.canceled,
+                          override.fields), (None, None, False, {'name': '改名'}))
+        self.assertEqual(response.data['name'], '高数')
+        self.assertEqual(len(response.data['overrides']), 1)
+        self.assertEqual(set(response.data['overrides'][0]), OVERRIDE_KEYS)
+        self.assertEqual(response.data['overrides'][0]['fields'], {'name': '改名'})
+        # Keys merge into the same override; recurrence keys stay off limits.
+        response = self.client.patch(
+            self.url('entry-detail', pk=entry.pk), {'room': '理教101'}, format='json')
+        self.assertEqual(response.status_code, status.HTTP_200_OK, response.data)
+        self.assertEqual(entry.overrides.get().fields, {'name': '改名', 'room': '理教101'})
+        for body in ({'week_start': 2}, {'parity': 1}, {'week_end': 10}):
+            with self.subTest(body=body):
+                response = self.client.patch(
+                    self.url('entry-detail', pk=entry.pk), body, format='json')
+                self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+                self.assertIn(next(iter(body)), response.data['errors'])
+        # The week view draws the override.
+        week = self.client.get(self.url('week')).data
+        self.assertEqual([(o['title'], o['location'], o['modified']) for o in week['occurrences']],
+                         [('改名', '理教101', True)])
 
     def test_delete_rules(self):
         manual = make_entry(self.person, self.term, source=TimetableEntry.Source.MANUAL)
@@ -609,10 +676,14 @@ class SettingsAndIcsTests(TimetableAPITestCase):
     def test_settings_get_and_patch(self):
         response = self.client.get(self.url('settings'))
         self.assertEqual(response.status_code, status.HTTP_200_OK)
+        sources = response.data.pop('sources')
         self.assertEqual(response.data, {
             'reminder_enabled': False, 'reminder_minutes': 20, 'show_courses': True,
             'show_college': True, 'show_activities': True, 'show_appointments': True,
-            'share_show_name': True})
+            'show_exams': True, 'share_show_name': True, 'hidden_tags': [], 'tags': []})
+        self.assertIn({'key': 'stored', 'label': '课程', 'setting': 'show_courses'}, sources)
+        for item in sources:
+            self.assertEqual(set(item), {'key', 'label', 'setting'})
         response = self.client.patch(
             self.url('settings'),
             {'reminder_enabled': True, 'reminder_minutes': 30, 'show_college': False,
@@ -741,9 +812,12 @@ class CatalogTests(TimetableAPITestCase):
         self.assertEqual(response.status_code, status.HTTP_200_OK, response.data)
         self.assertEqual(len(response.data), 1)
         row = response.data[0]
-        self.assertEqual(set(row), {'id', 'course_code', 'name', 'class_no', 'teacher',
-                                    'credits', 'time_text', 'slots'})
+        self.assertEqual(set(row), CATALOG_KEYS)
         self.assertEqual(row['name'], '高等数学A（二）')
+        self.assertFalse(row['added'])
+        self.assertEqual((row['department'], row['category'], row['audience'],
+                          row['hours_per_week'], row['weeks_text'], row['note']),
+                         ('', '', '', '', '1-16周', ''))
         # credits is a JSON number (or null), never a string.
         self.assertIsInstance(row['credits'], float)
         self.assertEqual(row['credits'], 5.0)
@@ -847,3 +921,486 @@ class CalendarTests(TimetableAPITestCase):
         self.assertEqual([day['kind'] for day in response.data['days']], [None] * 7)
         self.assertEqual([o['title'] for o in response.data['occurrences']],
                          ['周一课', '周四课', '周六课'])
+
+
+def _catalog_rows(term, old_term=None):
+    catalog.upsert_catalog_rows(term, [
+        {'course_code': '00130201', 'name': '高等数学A（二）', 'class_no': '01',
+         'teacher': '张三', 'credits': '5', 'weeks_text': '1-16周',
+         'time_text': '周一1-2节 理教406;周三3-4节 理教406', 'department': '数学科学学院'},
+        {'course_code': '04831410', 'name': '程序设计实习', 'class_no': '1',
+         'teacher': '李四', 'weeks_text': '1-16', 'time_text': '周二3-4节 理教201'},
+        {'course_code': '02330010', 'name': '无时间的课', 'class_no': '01', 'teacher': '王五'},
+    ])
+    if old_term is not None:
+        catalog.upsert_catalog_rows(old_term, [
+            {'course_code': '00130202', 'name': '高等数学A（三）', 'class_no': '01',
+             'time_text': '周一1-2节 理教406'},
+        ])
+
+
+class QuickAddTests(TimetableAPITestCase):
+    """``POST catalog/<id>/add/`` (README §8.1)."""
+
+    def setUp(self):
+        super().setUp()
+        _catalog_rows(self.term, self.old_term)
+        self.math = CourseCatalogEntry.objects.get(course_code='00130201', term=self.term)
+        self.programming = CourseCatalogEntry.objects.get(course_code='04831410')
+        self.no_slots = CourseCatalogEntry.objects.get(course_code='02330010')
+        self.old_math = CourseCatalogEntry.objects.get(course_code='00130202')
+
+    def add(self, row, body=None):
+        return self.client.post(self.url('catalog-add', pk=row.pk), body or {}, format='json')
+
+    def test_adds_one_entry_per_slot_as_audit(self):
+        response = self.add(self.math)
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED, response.data)
+        self.assertEqual(len(response.data), 2)
+        first, second = response.data
+        self.assertEqual(set(first), ENTRY_KEYS)
+        self.assertEqual((first['source'], first['role'], first['category'], first['term']),
+                         ('manual', 'audit', 'course', '26-27-1'))
+        self.assertEqual((first['name'], first['course_code'], first['class_no'],
+                          first['teacher'], first['room']),
+                         ('高等数学A（二）', '00130201', '01', '张三', '理教406'))
+        self.assertEqual((first['weekday'], first['start_section'], first['end_section'],
+                          first['start_time'], first['end_time'], first['week_start'],
+                          first['week_end'], first['parity']),
+                         (1, 1, 2, '08:00', '09:50', 1, 16, 0))
+        self.assertEqual((second['weekday'], second['start_section'], second['end_section']),
+                         (3, 3, 4))
+        self.assertEqual(first['catalog']['id'], self.math.pk)
+        self.assertEqual(first['catalog']['department'], '数学科学学院')
+        self.assertEqual(first['catalog']['credits'], 5.0)
+        entries = TimetableEntry.objects.filter(person=self.person, catalog_entry=self.math)
+        self.assertEqual(entries.count(), 2)
+        for entry in entries:
+            self.assertEqual(len(entry.external_key), 32)
+            self.assertEqual(entry.raw_text, '')
+        # The catalog now reports the row as added.
+        rows = self.client.get(self.url('catalog'), {'q': '高等'}).data
+        self.assertEqual([(row['name'], row['added']) for row in rows], [('高等数学A（二）', True)])
+        rows = self.client.get(self.url('catalog'), {'q': '程序'}).data
+        self.assertFalse(rows[0]['added'])
+        # The lessons show up in the week view as courses of an audit role.
+        week = self.client.get(self.url('week')).data
+        self.assertEqual([(o['title'], o['kind'], o['role']) for o in week['occurrences']],
+                         [('高等数学A（二）', 'course', 'audit'), ('高等数学A（二）', 'course', 'audit')])
+
+    def test_role_and_slot_selection(self):
+        response = self.add(self.math, {'role': 'enrolled', 'slots': [1]})
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED, response.data)
+        self.assertEqual([(e['role'], e['weekday']) for e in response.data], [('enrolled', 3)])
+
+    def test_already_added(self):
+        self.assertEqual(self.add(self.math).status_code, status.HTTP_201_CREATED)
+        response = self.add(self.math)
+        self.assertEqual(response.status_code, status.HTTP_409_CONFLICT)
+        self.assertEqual(response.data['code'], 'timetable.catalog_already_added')
+        self.assertIn('高等数学A（二）', response.data['message'])
+        # A manual entry linked through the entry form counts as added too.
+        response = self.client.post(self.url('entry-list'), {
+            'name': '程序设计实习', 'weekday': 2, 'start_section': 3, 'end_section': 4,
+            'week_start': 1, 'week_end': 16, 'catalog_id': self.programming.pk,
+        }, format='json')
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED, response.data)
+        self.assertEqual(self.add(self.programming).status_code, status.HTTP_409_CONFLICT)
+        # Another person is not affected.
+        self.client.force_authenticate(user=self.other_user)
+        self.assertEqual(self.add(self.math).status_code, status.HTTP_201_CREATED)
+
+    def test_not_found(self):
+        response = self.add(self.old_math)                       # row of another term
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+        self.assertEqual(response.data['code'], 'timetable.catalog_not_found')
+        response = self.add(self.math, {'term': '25-26-2'})
+        self.assertEqual(response.data['code'], 'timetable.catalog_not_found')
+        response = self.client.post(self.url('catalog-add', pk=999999), {}, format='json')
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+        response = self.add(self.math, {'term': 'no-such'})
+        self.assertEqual(response.data['code'], 'TERM_NOT_FOUND')
+        self.assertEqual(TimetableEntry.objects.count(), 0)
+
+    def test_no_slots_and_bad_indices(self):
+        response = self.add(self.no_slots)
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(response.data['code'], 'timetable.catalog_no_slots')
+        for body in ({'slots': [2]}, {'slots': [0, 5]}, {'slots': ['x']}, {'slots': [-1]}):
+            with self.subTest(body=body):
+                response = self.add(self.math, body)
+                self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+                self.assertEqual(response.data['code'], 'validation_error')
+                self.assertIn('slots', response.data['errors'])
+        response = self.add(self.math, {'role': 'teacher'})
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn('role', response.data['errors'])
+        self.assertEqual(TimetableEntry.objects.count(), 0)
+
+
+class EntryDetailAndScopeTests(TimetableAPITestCase):
+    """``GET entries/<id>/``, scoped ``PATCH`` and override deletion (README §8.2)."""
+
+    def setUp(self):
+        super().setUp()
+        _catalog_rows(self.term, self.old_term)
+        self.math = CourseCatalogEntry.objects.get(course_code='00130201', term=self.term)
+        self.entry = make_entry(self.person, self.term, name='高数', weekday=1,
+                                course_code='00130201', class_no='01', room='理教406')
+
+    def patch(self, body, entry=None):
+        entry = entry or self.entry
+        return self.client.patch(self.url('entry-detail', pk=entry.pk), body, format='json')
+
+    def week(self, week):
+        return self.client.get(self.url('week'), {'week': week}).data['occurrences']
+
+    def test_retrieve(self):
+        response = self.client.get(self.url('entry-detail', pk=self.entry.pk))
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(set(response.data), ENTRY_KEYS)
+        self.assertEqual(response.data['name'], '高数')
+        theirs = make_entry(self.other_person, self.term)
+        response = self.client.get(self.url('entry-detail', pk=theirs.pk))
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+        self.assertEqual(response.data['code'], 'not_found')
+
+    def test_retrieve_with_catalog_and_exam(self):
+        self.entry.catalog_entry = self.math
+        self.entry.save()
+        exam = CourseExam.objects.create(
+            term=self.term, course_code='00130201', class_no='01', name='高等数学A（二）',
+            start=datetime(2027, 1, 12, 8, 30), end=datetime(2027, 1, 12, 10, 30),
+            room='理教201', method='闭卷')
+        CourseExam.objects.create(
+            term=self.term, course_code='00130201', class_no='01', name='高等数学A（二）',
+            start=datetime(2027, 1, 20, 8, 30), end=datetime(2027, 1, 20, 10, 30))
+        response = self.client.get(self.url('entry-detail', pk=self.entry.pk))
+        self.assertEqual(response.data['catalog'], {
+            'id': self.math.pk, 'course_code': '00130201', 'name': '高等数学A（二）',
+            'class_no': '01', 'teacher': '张三', 'credits': 5.0, 'department': '数学科学学院',
+            'category': '', 'time_text': '周一1-2节 理教406;周三3-4节 理教406',
+            'weeks_text': '1-16周', 'note': ''})
+        self.assertEqual(response.data['exam'], {
+            'id': exam.pk, 'start': '2027-01-12T08:30:00', 'end': '2027-01-12T10:30:00',
+            'room': '理教201', 'method': '闭卷', 'note': ''})
+        listed = self.client.get(self.url('entry-list')).data
+        self.assertEqual(listed[0]['exam']['id'], exam.pk)
+
+    def test_create_with_catalog_role_category_tag(self):
+        body = {'name': '高等数学A（二）', 'weekday': 1, 'start_section': 1, 'end_section': 2,
+                'week_start': 1, 'week_end': 16, 'catalog_id': self.math.pk, 'role': 'audit',
+                'category': 'course', 'tag': '旁听课', 'note': 'n' * 2000}
+        response = self.client.post(self.url('entry-list'), body, format='json')
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED, response.data)
+        self.assertEqual((response.data['role'], response.data['category'], response.data['tag'],
+                          response.data['catalog']['id']), ('audit', 'course', '旁听课', self.math.pk))
+        entry = TimetableEntry.objects.get(pk=response.data['id'])
+        self.assertEqual((entry.catalog_entry, entry.role, entry.tag), (self.math, 'audit', '旁听课'))
+        # An exam-type manual entry renders as kind 'exam'.
+        body.update({'catalog_id': None, 'category': 'exam', 'name': '期中考试', 'weekday': 3,
+                     'week_start': 8, 'week_end': 8, 'note': ''})
+        response = self.client.post(self.url('entry-list'), body, format='json')
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED, response.data)
+        self.assertIsNone(response.data['catalog'])
+        kinds = {o['title']: o['kind'] for o in self.week(8)}
+        self.assertEqual(kinds['期中考试'], 'exam')
+        old_math = CourseCatalogEntry.objects.get(course_code='00130202')
+        cases = [
+            {'catalog_id': old_math.pk},        # other term
+            {'catalog_id': 999999},
+            {'tag': 'x' * 25},
+            {'note': 'n' * 2001},
+            {'role': 'teacher'},
+            {'category': 'holiday'},
+        ]
+        for extra in cases:
+            with self.subTest(extra=extra):
+                response = self.client.post(self.url('entry-list'), {**body, **extra},
+                                            format='json')
+                self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+                self.assertIn(next(iter(extra)), response.data['errors'])
+
+    def test_patch_all_annotations_and_unlink(self):
+        response = self.patch({'catalog_id': self.math.pk, 'tag': '必修', 'category': 'course'})
+        self.assertEqual(response.status_code, status.HTTP_200_OK, response.data)
+        self.assertEqual(response.data['catalog']['id'], self.math.pk)
+        response = self.patch({'catalog_id': None})
+        self.assertEqual(response.status_code, status.HTTP_200_OK, response.data)
+        self.assertIsNone(response.data['catalog'])
+        self.entry.refresh_from_db()
+        self.assertIsNone(self.entry.catalog_entry)
+        self.assertEqual(self.entry.overrides.count(), 0)
+
+    def test_single_following_and_resolution_order(self):
+        response = self.patch({'scope': 'single', 'week': 3, 'room': '理教101',
+                               'start_section': 3, 'end_section': 4})
+        self.assertEqual(response.status_code, status.HTTP_200_OK, response.data)
+        override = response.data['overrides'][0]
+        self.assertEqual((override['week_start'], override['week_end'], override['canceled']),
+                         (3, 3, False))
+        self.assertEqual(override['fields'], {'room': '理教101', 'start_section': 3,
+                                              'end_section': 4, 'start_time': '10:10',
+                                              'end_time': '12:00'})
+        self.entry.refresh_from_db()
+        self.assertEqual((self.entry.room, self.entry.start_section), ('理教406', 1))
+        week3 = self.week(3)
+        self.assertEqual([(o['location'], o['start_section'], o['start'][11:], o['modified'])
+                          for o in week3], [('理教101', 3, '10:10:00', True)])
+        self.assertEqual([(o['location'], o['modified']) for o in self.week(2)],
+                         [('理教406', False)])
+        # "This and following": canceled from week 5 on.
+        response = self.patch({'scope': 'following', 'week': 5, 'canceled': True})
+        self.assertEqual(response.status_code, status.HTTP_200_OK, response.data)
+        self.assertEqual([(o['week_start'], o['week_end'], o['canceled'])
+                          for o in response.data['overrides']],
+                         [(3, 3, False), (5, None, True)])
+        self.assertEqual(len(self.week(4)), 1)
+        self.assertEqual(self.week(5), [])
+        self.assertEqual(self.week(16), [])
+        # A single-week override inside the canceled range restores that week.
+        response = self.patch({'scope': 'single', 'week': 7, 'canceled': False, 'room': '补课教室'})
+        self.assertEqual(response.status_code, status.HTTP_200_OK, response.data)
+        self.assertEqual([(o['location'], o['modified']) for o in self.week(7)],
+                         [('补课教室', True)])
+        self.assertEqual(self.week(8), [])
+        # Same range → same override, keys merged.
+        response = self.patch({'scope': 'single', 'week': 7, 'teacher': '代课老师'})
+        self.assertEqual(response.status_code, status.HTTP_200_OK, response.data)
+        week7 = [o for o in response.data['overrides'] if o['week_start'] == 7]
+        self.assertEqual(len(week7), 1)
+        self.assertEqual(week7[0]['fields'], {'room': '补课教室', 'teacher': '代课老师'})
+        self.assertEqual(self.entry.overrides.count(), 3)
+
+    def test_weekday_move_and_whole_range_override_survives_reimport(self):
+        # A course imported from the portal, moved to Wednesday in week 2 only.
+        services.import_portal(self.person, self.term, portal_payload())
+        entry = TimetableEntry.objects.get(person=self.person, name='高等数学A（二）',
+                                           weekday=1, start_section=1)
+        response = self.patch({'scope': 'single', 'week': 2, 'weekday': 3}, entry)
+        self.assertEqual(response.status_code, status.HTTP_200_OK, response.data)
+        moved = [o for o in self.week(2) if o['ref']['entry_id'] == entry.pk]
+        self.assertEqual([(o['weekday'], o['week'], o['modified']) for o in moved], [(3, 2, True)])
+        self.assertEqual(moved[0]['date'], self.term.date_of(2, 3).isoformat())
+        # scope=all on an imported entry lands in the whole-range override …
+        response = self.patch({'room': '新教室', 'note': '换教室了'}, entry)
+        self.assertEqual(response.status_code, status.HTTP_200_OK, response.data)
+        entry.refresh_from_db()
+        self.assertEqual(entry.room, '理教406')
+        whole = entry.overrides.get(week_start=None, week_end=None)
+        self.assertEqual(whole.fields, {'room': '新教室', 'note': '换教室了'})
+        # … and survives a re-import that changes nothing else.
+        services.import_portal(self.person, self.term, portal_payload())
+        entry.refresh_from_db()
+        self.assertEqual([(o.week_start, o.week_end) for o in entry.overrides.order_by('id')],
+                         [(2, 2), (None, None)])
+        self.assertEqual([o['location'] for o in self.week(3)
+                          if o['ref']['entry_id'] == entry.pk], ['新教室'])
+        # A narrower override wins over the whole-range one, later ids win ties.
+        response = self.patch({'scope': 'single', 'week': 3, 'room': '单周教室'}, entry)
+        self.assertEqual([o['location'] for o in self.week(3)
+                          if o['ref']['entry_id'] == entry.pk], ['单周教室'])
+
+    def test_scope_validation(self):
+        cases = [
+            ({'scope': 'single', 'room': 'x'}, 'week'),                 # week missing
+            ({'scope': 'following', 'week': 0, 'room': 'x'}, 'week'),
+            ({'scope': 'single', 'week': 17, 'room': 'x'}, 'week'),
+            ({'scope': 'single', 'week': 'abc', 'room': 'x'}, 'week'),
+            ({'scope': 'weekly', 'week': 2}, 'scope'),
+            ({'scope': 'single', 'week': 2, 'hidden': True}, 'scope'),
+            ({'scope': 'following', 'week': 2, 'role': 'audit'}, 'scope'),
+            ({'scope': 'single', 'week': 2, 'category': 'other'}, 'scope'),
+            ({'scope': 'single', 'week': 2, 'catalog_id': None}, 'scope'),
+            ({'scope': 'single', 'week': 2, 'week_start': 1}, 'scope'),
+            ({'scope': 'following', 'week': 2, 'parity': 1}, 'scope'),
+            ({'canceled': True}, 'canceled'),
+            ({'scope': 'all', 'canceled': False, 'room': 'x'}, 'canceled'),
+            ({'scope': 'single', 'week': 2, 'color': 'red'}, 'color'),
+            ({'scope': 'single', 'week': 2, 'start_section': 5, 'end_section': 1}, 'end_section'),
+            ({'scope': 'single', 'week': 2, 'weekday': 8}, 'weekday'),
+        ]
+        for body, field in cases:
+            with self.subTest(body=body):
+                response = self.patch(body)
+                self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST, response.data)
+                self.assertEqual(response.data['code'], 'validation_error')
+                self.assertIn(field, response.data['errors'])
+        self.assertEqual(TimetableEntryOverride.objects.count(), 0)
+        # A manual entry accepts scoped edits too, and an empty patch is a no-op.
+        manual = make_entry(self.person, self.term, name='自习', source=TimetableEntry.Source.MANUAL)
+        response = self.patch({'scope': 'single', 'week': 2, 'canceled': True}, manual)
+        self.assertEqual(response.status_code, status.HTTP_200_OK, response.data)
+        self.assertEqual(response.data['overrides'][0]['canceled'], True)
+        response = self.patch({}, manual)
+        self.assertEqual(response.status_code, status.HTTP_200_OK, response.data)
+        self.assertEqual(len(response.data['overrides']), 1)
+
+    def test_delete_overrides(self):
+        self.patch({'scope': 'single', 'week': 2, 'room': 'a'})
+        self.patch({'scope': 'single', 'week': 3, 'room': 'b'})
+        self.patch({'scope': 'following', 'week': 4, 'canceled': True})
+        overrides = list(self.entry.overrides.order_by('id'))
+        self.assertEqual(len(overrides), 3)
+        response = self.client.delete(
+            self.url('entry-override-detail', pk=self.entry.pk, oid=overrides[0].pk))
+        self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
+        self.assertEqual(self.entry.overrides.count(), 2)
+        response = self.client.delete(
+            self.url('entry-override-detail', pk=self.entry.pk, oid=overrides[0].pk))
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+        self.assertEqual(response.data['code'], 'timetable.override_not_found')
+        # Another person cannot see or reset the overrides.
+        theirs = make_entry(self.other_person, self.term)
+        self.client.force_authenticate(user=self.other_user)
+        response = self.client.delete(
+            self.url('entry-override-detail', pk=self.entry.pk, oid=overrides[1].pk))
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+        self.assertEqual(response.data['code'], 'not_found')
+        response = self.client.delete(self.url('entry-overrides', pk=self.entry.pk))
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+        self.assertEqual(self.entry.overrides.count(), 2)
+        self.assertEqual(self.client.delete(self.url('entry-overrides', pk=theirs.pk)).status_code,
+                         status.HTTP_204_NO_CONTENT)
+        self.client.force_authenticate(user=self.user)
+        response = self.client.delete(self.url('entry-overrides', pk=self.entry.pk))
+        self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
+        self.assertEqual(self.entry.overrides.count(), 0)
+        self.assertEqual(len(self.week(5)), 1)
+
+
+class SettingsTagsTests(TimetableAPITestCase):
+    """``sources``/``tags``/``hidden_tags``/``show_exams`` of §8.3 and their effect."""
+
+    def setUp(self):
+        super().setUp()
+        sources = [StoredEntriesSource(), ExamSource()]
+        for target in ('timetable.services.load_sources', 'timetable.ics.load_sources'):
+            patcher = patch(target, return_value=list(sources))
+            patcher.start()
+            self.addCleanup(patcher.stop)
+        today = date.today()
+        self.required = make_entry(self.person, self.term, name='必修课',
+                                   weekday=today.isoweekday(), tag='必修',
+                                   course_code='00130201', class_no='01')
+        self.elective = make_entry(self.person, self.term, name='选修课',
+                                   weekday=today.isoweekday(), start_section=3,
+                                   end_section=4, tag='选修')
+        make_entry(self.person, self.old_term, name='旧课', weekday=1, tag='旧标签')
+        make_entry(self.other_person, self.term, name='别人的课', weekday=1, tag='别人的')
+        self.exam = CourseExam.objects.create(
+            term=self.term, course_code='00130201', class_no='01', name='必修课',
+            start=datetime.combine(self.term.date_of(2, today.isoweekday()), datetime.min.time())
+            .replace(hour=19), end=datetime.combine(
+                self.term.date_of(2, today.isoweekday()), datetime.min.time()).replace(hour=21),
+            room='考场A')
+
+    def titles(self, **params):
+        response = self.client.get(self.url('week'), params)
+        return [o['title'] for o in response.data['occurrences']]
+
+    def test_sources_and_tags(self):
+        response = self.client.get(self.url('settings'))
+        self.assertEqual(response.data['sources'], [
+            {'key': 'stored', 'label': '课程', 'setting': 'show_courses'},
+            {'key': 'exam', 'label': '考试', 'setting': 'show_exams'},
+        ])
+        self.assertEqual(response.data['tags'], ['必修', '旧标签', '选修'])
+        self.assertEqual(response.data['hidden_tags'], [])
+        self.assertTrue(response.data['show_exams'])
+
+    def test_hidden_tags_patch_and_effect(self):
+        response = self.client.patch(
+            self.url('settings'), {'hidden_tags': ['选修', ' 选修 ', '', '无此标签']}, format='json')
+        self.assertEqual(response.status_code, status.HTTP_200_OK, response.data)
+        self.assertEqual(response.data['hidden_tags'], ['无此标签', '选修'])
+        settings = TimetableSettings.objects.get(person=self.person)
+        self.assertEqual(settings.hidden_tags, ['选修', '无此标签'])
+        self.assertEqual(self.titles(), ['必修课', '必修课 考试'])
+        agenda = self.client.get(self.url('agenda'), {'days': 1}).data
+        self.assertEqual([o['title'] for o in agenda['days'][0]['occurrences']],
+                         ['必修课', '必修课 考试'])
+        feed = APIClient().get(reverse('timetable:ics_feed', kwargs={
+            'token': settings.ics_token})).content.decode('utf-8')
+        self.assertIn('SUMMARY:必修课', feed)
+        self.assertNotIn('SUMMARY:选修课', feed)
+        # Hiding the tag of the course hides its exam too.
+        response = self.client.patch(self.url('settings'), {'hidden_tags': ['必修']}, format='json')
+        self.assertEqual(self.titles(), ['选修课'])
+        # Entries stay listed so the tag can be un-hidden; the entry list is unfiltered.
+        listed = self.client.get(self.url('entry-list')).data
+        self.assertEqual({e['tag'] for e in listed}, {'必修', '选修'})
+        response = self.client.patch(self.url('settings'), {'hidden_tags': []}, format='json')
+        self.assertEqual(self.titles(), ['必修课', '选修课', '必修课 考试'])
+        for body in ({'hidden_tags': ['x' * 25]}, {'hidden_tags': 'abc'},
+                     {'hidden_tags': [['nested']]}, {'show_exams': 'maybe'}):
+            with self.subTest(body=body):
+                response = self.client.patch(self.url('settings'), body, format='json')
+                self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+                self.assertIn(next(iter(body)), response.data['errors'])
+
+    def test_show_exams_toggle(self):
+        exam = [o for o in self.client.get(self.url('week')).data['occurrences']
+                if o['kind'] == 'exam'][0]
+        self.assertEqual((exam['source'], exam['title'], exam['location'], exam['role'],
+                          exam['start_section'], exam['ref']),
+                         ('exam', '必修课 考试', '考场A', '', None,
+                          {'exam_id': self.exam.pk, 'entry_id': self.required.pk}))
+        response = self.client.patch(self.url('settings'), {'show_exams': False}, format='json')
+        self.assertEqual(response.status_code, status.HTTP_200_OK, response.data)
+        self.assertFalse(response.data['show_exams'])
+        self.assertEqual(self.titles(), ['必修课', '选修课'])
+
+
+class ShareAssetsTests(TimetableAPITestCase):
+    """``GET share/assets/`` (README §8.5) with WeChat mocked."""
+
+    def setUp(self):
+        super().setUp()
+        self.tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(self.tmp.cleanup)
+        settings = override_settings(MEDIA_ROOT=self.tmp.name, MEDIA_URL='/media/')
+        settings.enable()
+        self.addCleanup(settings.disable)
+
+    def test_assets_and_cache(self):
+        with patch('timetable.share.fetch_miniapp_code', return_value=b'\x89PNGdata') as fetch:
+            response = self.client.get(self.url('share-assets'))
+            self.assertEqual(response.status_code, status.HTTP_200_OK, response.data)
+            self.assertEqual(set(response.data), {'miniapp_qrcode', 'official_qrcode', 'slogan'})
+            self.assertTrue(response.data['miniapp_qrcode'].startswith('http'))
+            self.assertTrue(response.data['miniapp_qrcode'].endswith(
+                '/media/timetable/share/miniapp_timetable.png'))
+            self.assertIsNone(response.data['official_qrcode'])
+            self.assertEqual(response.data['slogan'], '元培智慧书院 · YPPF')
+            fetch.assert_called_once_with('timetable', 'pages/timetable/index',
+                                          env_version='release', width=430)
+            cached = Path(self.tmp.name) / 'timetable' / 'share' / 'miniapp_timetable.png'
+            self.assertEqual(cached.read_bytes(), b'\x89PNGdata')
+            # The second call is served from the cache.
+            self.client.get(self.url('share-assets'))
+            fetch.assert_called_once()
+
+    def test_failure_answers_null(self):
+        with patch('timetable.share.fetch_miniapp_code', return_value=None), \
+                self.assertNoLogs('timetable.share', level='ERROR'):
+            response = self.client.get(self.url('share-assets'))
+        self.assertEqual(response.status_code, status.HTTP_200_OK, response.data)
+        self.assertIsNone(response.data['miniapp_qrcode'])
+        self.assertIsNone(response.data['official_qrcode'])
+
+    def test_official_qrcode_configuration(self):
+        config = {'miniapp_page': 'pages/timetable/index', 'env_version': 'trial',
+                  'official_qrcode_url': 'https://cdn.example.com/oa.png', 'slogan': '口号'}
+        with patch('timetable.share.fetch_miniapp_code', return_value=None), \
+                patch('timetable.share.get_share_config', return_value=config):
+            response = self.client.get(self.url('share-assets'))
+        self.assertEqual(response.data['official_qrcode'], 'https://cdn.example.com/oa.png')
+        self.assertEqual(response.data['slogan'], '口号')
+        config['official_qrcode_url'] = 'timetable/share/official.png'
+        with patch('timetable.share.fetch_miniapp_code', return_value=None), \
+                patch('timetable.share.get_share_config', return_value=config):
+            response = self.client.get(self.url('share-assets'))
+        self.assertTrue(response.data['official_qrcode'].endswith(
+            '/media/timetable/share/official.png'))
+        self.assertTrue(response.data['official_qrcode'].startswith('http'))

@@ -42,8 +42,8 @@ class Occurrence:
     """One event on one date of the timetable."""
 
     id: str                 # stable: f'{source}:{key}:{date}'
-    source: str             # 'portal' | 'paste' | 'manual' | 'college' | 'activity' | 'appoint'
-    kind: str               # 'course' | 'college' | 'activity' | 'appoint' | 'custom'
+    source: str             # 'portal' | 'paste' | 'manual' | 'college' | 'activity' | 'appoint' | 'exam'
+    kind: str               # 'course' | 'college' | 'activity' | 'appoint' | 'custom' | 'exam'
     title: str
     subtitle: str = ''
     location: str = ''
@@ -58,9 +58,12 @@ class Occurrence:
     status: str = ''        # '' | 'canceled' | 'checked_in' | 'applied'
     ref: dict = field(default_factory=dict)
     hidden: bool = False
+    role: str = ''          # 'enrolled' | 'audit' | '' (live sources), README §8.2
+    tag: str = ''           # the entry's tag, README §8.3
+    modified: bool = False  # at least one override applied, README §8.2
 
     def as_dict(self) -> dict[str, Any]:
-        """JSON shape of ``Occurrence`` in ``timetable/README.md`` §4.6."""
+        """JSON shape of ``Occurrence`` in ``timetable/README.md`` §4.6 (+ §8.2)."""
         return {
             'id': self.id,
             'source': self.source,
@@ -79,6 +82,9 @@ class Occurrence:
             'status': self.status,
             'ref': dict(self.ref),
             'hidden': self.hidden,
+            'role': self.role,
+            'tag': self.tag,
+            'modified': self.modified,
         }
 
     def overlaps(self, other: 'Occurrence') -> bool:
@@ -161,6 +167,10 @@ class EventSource(Protocol):
 
     key: str
     label: str
+    # Name of the TimetableSettings boolean that toggles the source
+    # (README §8.3, ``GET settings/`` → ``sources[].setting``); '' when
+    # the source cannot be switched off by the person.
+    setting: str
 
     def occurrences(self, person, term, week_from: int, week_to: int,
                     settings) -> list[Occurrence]:
@@ -287,4 +297,6 @@ def _load_source(path: str) -> EventSource | None:
         return None
     if not isinstance(getattr(source, 'label', None), str):
         source.label = source.key
+    if not isinstance(getattr(source, 'setting', None), str):
+        source.setting = ''
     return source

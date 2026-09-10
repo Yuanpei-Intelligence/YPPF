@@ -1,9 +1,10 @@
 """
 ``import_academic_calendar <file> [--dry-run]``: load one term of the
 university calendar (校历) transcribed to JSON (``timetable/README.md``
-§6.4, examples in ``timetable/data/``) — upsert the ``AcademicTerm`` named
-by the file (``code``, ``name``, ``week1_monday``, ``total_weeks``;
-``section_times`` and ``is_active`` of an existing term are kept) and
+§6.4 and §8.4, examples in ``timetable/data/``) — upsert the
+``AcademicTerm`` named by the file (``code``, ``name``, ``week1_monday``,
+``total_weeks``, optional ``exam_week_start``; ``section_times`` and
+``is_active`` of an existing term are kept) and
 replace the ``semester.CalendarEvent`` rows of that term with the file's
 events.
 
@@ -71,8 +72,11 @@ class Command(BaseCommand):
                 for name, (old, new) in result.term_changes.items())
         else:
             state = 'existing term, unchanged'
+        exam_weeks = ''
+        if spec.exam_week_start is not None:
+            exam_weeks = f', exam weeks from week {spec.exam_week_start}'
         self.stdout.write(f'{spec.code} {spec.name}: week 1 from {spec.week1_monday}, '
-                          f'{spec.total_weeks} week(s) ({state})')
+                          f'{spec.total_weeks} week(s){exam_weeks} ({state})')
         for event in spec.events:
             self.stdout.write(f'  {event.kind:<8} {event.start} .. {event.end}  '
                               f'{_weeks_label(spec, event):<12} {event.name}')

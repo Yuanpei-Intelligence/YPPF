@@ -38,6 +38,7 @@ class CollegeCourseSource:
 
     key = 'college'
     label = '书院课'
+    setting = 'show_college'
 
     def occurrences(self, person, term, week_from: int, week_to: int,
                     settings) -> list[Occurrence]:

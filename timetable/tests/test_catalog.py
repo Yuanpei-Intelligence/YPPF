@@ -178,6 +178,73 @@ class UpsertAndSearchTests(TestCase):
         self.assertEqual(len(list(catalog.search_catalog(self.term, '批量课程', limit=999))), 25)
 
 
+class MatchCatalogTests(TestCase):
+    """``match_catalog`` / ``CatalogIndex`` (README §8.1): the three steps and ambiguity."""
+
+    def setUp(self):
+        self.term = make_term()
+        self.other_term = make_term(code='25-26-2', week1_monday=date(2026, 2, 23))
+        catalog.upsert_catalog_rows(self.term, [
+            {'course_code': '00130201', 'name': '高等数学A（二）', 'class_no': '01', 'teacher': '张三'},
+            {'course_code': '00130201', 'name': '高等数学A（二）', 'class_no': '02', 'teacher': '李四'},
+            {'course_code': '04831410', 'name': '程序设计实习', 'class_no': '01', 'teacher': '王五'},
+            {'course_code': '99999999', 'name': '独一无二 (英文)', 'class_no': '01', 'teacher': '赵六'},
+        ])
+        catalog.upsert_catalog_rows(self.other_term, [
+            {'course_code': '00130202', 'name': '高等数学A（三）', 'class_no': '01'},
+        ])
+        rows = CourseCatalogEntry.objects.filter(term=self.term)
+        self.math1 = rows.get(course_code='00130201', class_no='01')
+        self.math2 = rows.get(course_code='00130201', class_no='02')
+        self.programming = rows.get(course_code='04831410')
+        self.unique = rows.get(course_code='99999999')
+
+    def match(self, **kwargs):
+        return catalog.match_catalog(self.term, **kwargs)
+
+    def test_code_and_class(self):
+        self.assertEqual(self.match(course_code='00130201', class_no='02'), self.math2)
+        # Numeric codes are zero-padded like the import command does.
+        self.assertEqual(self.match(course_code='4831410', class_no='1'), self.programming)
+        self.assertIsNone(self.match(course_code='00130201', class_no='03'))
+        self.assertIsNone(self.match(course_code='00130202', class_no='01'))   # other term
+        # An exact key wins even when the name would be ambiguous.
+        self.assertEqual(self.match(course_code='00130201', class_no='01', name='高等数学A（二）'),
+                         self.math1)
+
+    def test_code_only_when_unique(self):
+        self.assertEqual(self.match(course_code='04831410'), self.programming)
+        self.assertEqual(self.match(course_code='4831410', name='别的名字'), self.programming)
+        self.assertIsNone(self.match(course_code='00130201'))          # two classes
+        self.assertIsNone(self.match(course_code='00000000'))
+
+    def test_name_and_teacher(self):
+        self.assertEqual(self.match(name='独一无二 (英文)'), self.unique)
+        self.assertEqual(self.match(name=' 独一无二（英文） '), self.unique)      # spaces, brackets
+        self.assertEqual(self.match(name='独一无二 (英文)', teacher='别人'), self.unique)
+        self.assertIsNone(self.match(name='高等数学A（二）'))                     # ambiguous
+        self.assertEqual(self.match(name='高等数学A（二）', teacher='李四'), self.math2)
+        self.assertEqual(self.match(name='高等数学a（二）', teacher=' 李四 '), self.math2)
+        self.assertIsNone(self.match(name='高等数学A（二）', teacher='无此人'))
+        self.assertIsNone(self.match(name='不存在的课'))
+        self.assertIsNone(self.match())
+        self.assertIsNone(self.match(class_no='01'))
+
+    def test_index_uses_one_query(self):
+        with self.assertNumQueries(1):
+            index = catalog.CatalogIndex.for_term(self.term)
+        with self.assertNumQueries(0):
+            self.assertEqual(index.match(course_code='00130201', class_no='01'), self.math1)
+            self.assertEqual(index.match(name='程序设计实习'), self.programming)
+        with self.assertNumQueries(1):
+            self.assertEqual(self.match(name='程序设计实习'), self.programming)
+        self.assertEqual(catalog.normalise_course_code(' 123 '), '00000123')
+        self.assertEqual(catalog.normalise_course_code('AB123'), 'AB123')
+        self.assertEqual(catalog.normalise_class_no(2), '02')
+        self.assertEqual(catalog.normalise_class_no('12'), '12')
+        self.assertEqual(catalog.normalise_name('A b（C）'), 'ab(c)')
+
+
 HEADERS = ['备注', '上课时间', '起止周', '授课教师', '课程名', '课程号', '班号',
            '参考学分', '学年学期', '院系', '课程英文名', '课程类别']
 

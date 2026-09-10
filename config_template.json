@@ -65,6 +65,12 @@
                 },
                 "page": "pages/timetable/index"
             }
+        },
+        "share": {
+            "miniapp_page": "pages/timetable/index",
+            "env_version": "release",
+            "official_qrcode_url": "",
+            "slogan": "元培智慧书院 · YPPF"
         }
     },
     "email": {
@@ -159,7 +165,8 @@
             "timetable.sources.stored.StoredEntriesSource",
             "timetable.sources.college.CollegeCourseSource",
             "timetable.sources.activity.ActivitySource",
-            "timetable.sources.appoint.AppointSource"
+            "timetable.sources.appoint.AppointSource",
+            "timetable.sources.exam.ExamSource"
         ],
         "reminder_default_minutes": 20,
         "reminder_lookahead_minutes": 60,

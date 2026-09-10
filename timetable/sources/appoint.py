@@ -28,6 +28,7 @@ class AppointSource:
 
     key = 'appoint'
     label = '预约'
+    setting = 'show_appointments'
 
     def occurrences(self, person, term, week_from: int, week_to: int,
                     settings) -> list[Occurrence]:

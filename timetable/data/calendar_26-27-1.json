@@ -2,7 +2,8 @@
   "term": "26-27-1",
   "name": "2026-2027学年秋季学期",
   "week1_monday": "2026-09-07",
-  "total_weeks": 18,
+  "total_weeks": 19,
+  "exam_week_start": 17,
   "events": [
     {"kind": "holiday", "start": "2026-09-25", "end": "2026-09-25", "name": "中秋节放假"},
     {"kind": "info", "start": "2026-09-26", "end": "2026-09-27", "name": "公休，课程照常进行"},

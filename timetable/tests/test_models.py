@@ -108,9 +108,15 @@ class TimetableEntryTests(TestCase):
         self.assertEqual(entry.kind, 'course')
         self.assertEqual(entry.start_time, time(10, 10))
         self.assertEqual(entry.end_time, time(12, 0))
+        # kind follows category, not the source (README §8.1).
         manual = make_entry(self.person, self.term, source=TimetableEntry.Source.MANUAL)
-        self.assertEqual(manual.kind, 'custom')
+        self.assertEqual((manual.category, manual.kind), ('course', 'course'))
         self.assertTrue(manual.is_manual())
+        manual.category = TimetableEntry.Category.OTHER
+        self.assertEqual(manual.kind, 'custom')
+        manual.category = TimetableEntry.Category.EXAM
+        self.assertEqual(manual.kind, 'exam')
+        self.assertEqual((manual.role, manual.tag, manual.catalog_entry), ('enrolled', '', None))
         self.assertEqual(entry.start_at(WEEK1_MONDAY).hour, 10)
 
     def test_unique_key_per_person_term_source(self):

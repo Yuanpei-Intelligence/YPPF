@@ -28,6 +28,7 @@ class ActivitySource:
 
     key = 'activity'
     label = '活动'
+    setting = 'show_activities'
 
     def occurrences(self, person, term, week_from: int, week_to: int,
                     settings) -> list[Occurrence]:

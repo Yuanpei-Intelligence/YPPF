@@ -57,7 +57,8 @@ Rules:
         "timetable.sources.stored.StoredEntriesSource",
         "timetable.sources.college.CollegeCourseSource",
         "timetable.sources.activity.ActivitySource",
-        "timetable.sources.appoint.AppointSource"
+        "timetable.sources.appoint.AppointSource",
+        "timetable.sources.exam.ExamSource"          // §8.4
     ],
     "reminder_default_minutes": 20
 }
@@ -840,3 +841,377 @@ courses, like the other three toggles do for theirs.
   mocked in tests.
 - Mini-program: `pnpm type-check`, `pnpm exec eslint <changed files>`,
   `pnpm build:mp` must pass; manual walkthrough in WeChat DevTools.
+
+## 8. Iteration 3 (2026-09-10) — catalog links & 旁听, scoped edits & details, tags & filter, exam weeks & exam schedule, poster styles
+
+Product asks behind this section (from the maintainer, 2026-09-10):
+
+1. 旁听: students can add any school course from the catalog to their
+   timetable even when not enrolled; imported courses that exist in the
+   catalog point at the catalog row instead of duplicating it, but the
+   student's own values always win.
+2. The home page's per-source buttons do not scale once tags multiply; the
+   entry to the full timetable should read 「完整课表」.
+3. Tapping a lesson lets the student edit it, choosing between this
+   occurrence only / this and following / every occurrence.
+4. A course can carry details (notes, code, teacher, credits…) that are not
+   drawn in the grid but shown on tap.
+5. Weeks 17/18 (course exams) and the university exam period are marked; a
+   term's exam schedule can be brought into the timetable without retyping.
+6. The poster must be worth sharing: preset styles, and the mini-program /
+   official-account QR codes attached by default (removable).
+
+Everything below is additive to §4–§6; unchanged fields keep their meaning.
+
+### 8.1 Catalog-linked entries and 旁听 (audit) courses
+
+```python
+class TimetableEntry(models.Model):                       # additions
+    class Role(TextChoices): ENROLLED = 'enrolled', '已选'; AUDIT = 'audit', '旁听'
+    class Category(TextChoices): COURSE = 'course', '课程'; EXAM = 'exam', '考试'; OTHER = 'other', '其它'
+    catalog_entry = FK(CourseCatalogEntry, null=True, blank=True, on_delete=SET_NULL, related_name='timetable_entries')
+    role = CharField(16, choices=Role, default=ENROLLED)
+    category = CharField(16, choices=Category, default=COURSE)
+    tag = CharField(24, blank=True)          # §8.3
+    note = TextField(blank=True)             # was CharField(200); API caps at 2000 chars
+```
+
+`kind` (and `Occurrence.kind`) is derived from `category`: `exam` → `'exam'`,
+`other` → `'custom'`, `course` → `'course'`. Migration: existing manual rows
+get `category='other'` (they were rendered as custom before), imported rows
+`'course'`; `role` defaults to `enrolled`.
+
+**Linking on import.** `timetable.catalog.match_catalog(term, *, course_code,
+class_no, name, teacher) -> CourseCatalogEntry | None` (pure lookup, one
+query per call is fine): (1) `course_code` and `class_no` both given → exact
+row of `(term, course_code, class_no)`; (2) only `course_code` → the row of
+that code when the term has exactly one; (3) otherwise the row whose `name`
+equals the block's name (whitespace/case-insensitive) — and `teacher` when
+the block has one — when exactly one matches; ambiguous → `None`. Numeric
+codes are zero-padded like the import command does. `upsert_entries` sets
+`catalog_entry` for every portal/paste block and fills **blank** `teacher`,
+`course_code`, `class_no` from the catalog; a non-blank value from the
+student's import is never overwritten. Re-imports keep `hidden`, `color`,
+`tag`, `role` and the overrides of §8.2 (they are not in `_entry_fields`).
+
+**Quick add from the catalog.** `POST /api/v2/timetable/catalog/<id>/add/`
+body `{role?: 'audit'|'enrolled' (default 'audit'), slots?: number[]
+(indices into CatalogEntry.slots; default all), term?: string}` → `201
+Entry[]`: one manual entry per selected slot, `catalog_entry` set,
+`category='course'`, `name/course_code/class_no/teacher` and the slot's
+`room/weekday/sections/weeks/parity` copied, `external_key` a fresh uuid,
+`raw_text=''`. Errors: 404 `timetable.catalog_not_found` (wrong term/id),
+409 `timetable.catalog_already_added` when the person already has an entry
+in that term linked to this catalog row (message names the course; the
+client refreshes), 400 `timetable.catalog_no_slots` when the row has no
+parsable slot (client falls back to the manual form prefilled with the
+catalog fields), 400 `errors.slots` on out-of-range indices.
+
+`POST entries/` (manual create) accepts `catalog_id?: number | null`
+(same-term catalog row → link) plus `role`, `category`, `tag`; `PATCH
+entries/<id>/` with `scope='all'` accepts `catalog_id` (`null` unlinks),
+`role`, `tag`, `category` for **any** source (they are the student's own
+annotations and survive re-import).
+
+`GET catalog/?term=&q=` items gain `department, category, audience,
+credits, hours_per_week, weeks_text, note` and `added: boolean` (the person
+already has an entry linked to the row in that term). `q` semantics
+unchanged (name / English name / code / teacher, `icontains`, ≤20 rows).
+
+Implementation notes (as built): matching lives in
+`timetable.catalog.CatalogIndex` (one query per import through
+`for_term`; `match_catalog` wraps it for single lookups). Names and
+teachers are compared with whitespace removed, case-folded and full-width
+brackets unified; numeric codes are zero-padded to 8 and class numbers to
+2. Step (3) narrows by teacher only when some row of that name carries
+that teacher — a name that is unique in the term links even when the
+teacher spelling differs (portal 束琳 vs catalog 束琳(教授)). A re-import
+sets `catalog_entry` on new entries and on entries not linked yet; an
+existing link (from an earlier import or the student's `catalog_id`) is
+kept, so an explicit unlink (`catalog_id: null`) is re-linked by the next
+import when the matcher finds a row — there is no "never link" flag.
+`note` is capped at 2000 characters for imports as well. New manual
+entries default to `category='course'` (kind `course`) unless the client
+sends `category`; only pre-existing manual rows were migrated to `other`.
+Quick add clamps a slot's week range into `1..total_weeks`, skips a slot
+that cannot be placed (all skipped → `timetable.catalog_no_slots`),
+collapses duplicate indices and is serialised per person (row lock), so
+two concurrent taps cannot add a course twice. `added` is computed for
+the ≤20 returned rows with one query.
+
+### 8.2 Scoped edits (this occurrence / following / all) and details
+
+```python
+class TimetableEntryOverride(models.Model):
+    entry = FK(TimetableEntry, on_delete=CASCADE, related_name='overrides')
+    week_start = SmallIntegerField(null=True)   # None = the entry's first week
+    week_end = SmallIntegerField(null=True)     # None = the entry's last week
+    canceled = BooleanField(default=False)      # occurrences in range are dropped
+    fields = JSONField(default=dict)            # only the overridden keys, see below
+    created_at / updated_at
+    class Meta: ordering = ['id']
+```
+
+`fields` keys ⊆ `{name, teacher, room, weekday, start_section, end_section,
+start_time, end_time, note, tag, color}`; times as `'HH:MM'`; a key that is
+present is the effective value, an absent key means "unchanged". Ranges may
+overlap; when expanding week *w*, the applicable overrides (`week_start ≤ w
+≤ week_end`, `None` bounds open) are applied in order of **descending range
+width, then ascending id**, so a narrower or newer override wins for every
+key, `canceled` included (the last applied override's value). `week_start`
+/`week_end` are validated against the entry's own week span.
+
+`PATCH /api/v2/timetable/entries/<id>/` gains `scope` (`'all'` default,
+`'single'`, `'following'`) and `week` (required for single/following, must
+lie in `week_start..week_end`, else 400 `errors.week`):
+
+- `all`: manual entries update the row as before. Any source: `hidden`,
+  `color`, `tag`, `role`, `category`, `catalog_id` update the row. For
+  portal/paste entries the other editable keys (`name, teacher, room,
+  weekday, start_section, end_section, start_time, end_time, note`) are
+  stored in the entry's whole-range override (`week_start=None,
+  week_end=None`; created on demand, keys merged) so they survive
+  re-import. `canceled` is rejected here (400) — hide or delete instead.
+- `single`: upsert the override with `(week, week)`, merging the given keys
+  into `fields`; `canceled: true|false` allowed ("本次停课").
+- `following`: upsert the override with `(week, None)` (so a later re-import
+  that shortens the entry still works); keys merged; `canceled` allowed.
+- `hidden`, `role`, `category`, `catalog_id` are rejected with a scope other
+  than `all` (400 `errors.scope`).
+- Sections given without times derive times from the term table as in
+  create; `weekday`/sections/times validated as for create.
+
+`GET entries/<id>/` (new retrieve) and every `Entry` payload gain:
+
+```ts
+role: 'enrolled' | 'audit'; category: 'course' | 'exam' | 'other'; tag: string
+catalog: { id, course_code, name, class_no, teacher, credits, department, category, time_text, weeks_text, note } | null
+overrides: { id: number; week_start: number | null; week_end: number | null; canceled: boolean;
+             fields: Partial<{ name, teacher, room, weekday, start_section, end_section, start_time, end_time, note, tag, color }>;
+             updated_at: string }[]
+exam: { id, start, end, room, method, note } | null      // §8.4, first matching CourseExam by time
+```
+
+`DELETE entries/<id>/overrides/<oid>/` → 204 (恢复该次/该段), `DELETE
+entries/<id>/overrides/` → 204 (恢复全部). Both 404 for another person's
+entry.
+
+`Occurrence` gains `role` (`'enrolled' | 'audit' | ''`; `''` for live
+sources), `tag` (string), `modified` (bool: at least one override applied
+to this occurrence) and `note` is **not** added (details are fetched via
+`GET entries/<id>/` when the sheet opens; the occurrence stays small).
+Expansion honours overrides: an overridden `weekday` moves the lesson to
+that weekday of the same teaching week (calendar rules of the target date
+apply), `canceled` drops it, `hidden`/`hidden_tags` (§8.3) filter as before.
+ICS and reminders consume occurrences and therefore follow automatically.
+
+Implementation notes (as built): resolution is `timetable/overrides.py`
+(`applicable_overrides`, `resolve_week`, pure over model instances);
+`expand_entries(..., overrides=None)` takes `{entry id: overrides}`, reads
+the `overrides` prefetch when present and otherwise costs one query for
+all entries (the stored source prefetches). `modified` is true whenever at
+least one override applies, even one that changes nothing. Override
+values are coerced: a weekday outside 1..7, a non-integer section or a
+malformed time is ignored; sections overridden without times take the
+times of `term.section_times`; a pair whose end does not follow its start
+falls back to the entry's own times. `PATCH` validates a body against the
+entry with the override of the same range applied (partial bodies are
+checked against what the student currently sees); `week_start`,
+`week_end` and `parity` of an imported entry answer 400 `errors.<field>`
+(no longer 403), with a scope other than `all` they answer 400
+`errors.scope` like `hidden`/`role`/`category`/`catalog_id`; `canceled`
+with scope `all` answers 400 `errors.canceled`; an empty body is a no-op
+200. Overrides of an entry removed by a re-import are deleted with it.
+`overrides[].updated_at` is `YYYY-MM-DDTHH:MM:SS`; `entries/` and the
+quick-add response use one query for catalog rows, overrides and exams
+each. OpenAPI: the two `DELETE …/overrides/` operations carry explicit
+operation ids and the entry enums are named through
+`SPECTACULAR_SETTINGS['ENUM_NAME_OVERRIDES']`.
+
+### 8.3 Tags, the filter sheet and the sources legend
+
+- `TimetableEntry.tag` (≤24 chars, any source) is shown as a small label in
+  the grid/list and is filterable. `TimetableSettings.hidden_tags =
+  JSONField(default=list)` lists tags whose entries are skipped by the
+  stored source (week view, agenda, ICS, reminders); `show_exams =
+  BooleanField(default=True)` toggles the exam source (§8.4).
+- `GET settings/` adds `hidden_tags: string[]`, `show_exams: boolean` and two
+  read-only lists: `sources: { key: string; label: string; setting: string }[]`
+  (the registered sources in config order, `setting` = the boolean that
+  toggles it: `show_courses` for `stored`, `show_college`, `show_activities`,
+  `show_appointments`, `show_exams`) and `tags: string[]` (distinct non-empty
+  tags of the person's entries, all terms, sorted). `PATCH settings/`
+  accepts `hidden_tags` (list of ≤24-char strings, deduplicated) and
+  `show_exams` in addition to the existing booleans.
+- Mini-program home: the chip row is replaced by one 「筛选」 button
+  (badge shows *enabled/total* when anything is off) opening a bottom sheet
+  built from `settings.sources` (switch per source) and `settings.tags`
+  (switch per tag, off when in `hidden_tags`); saving patches the settings
+  and reloads the agenda. The header link reads 「完整课表 ›」. The same
+  sheet is reachable from the timetable page's 设置 / import page.
+
+Implementation notes (as built): every source class declares a `setting`
+attribute (`'show_courses'`, …, `'show_exams'`); a third-party source
+without one is listed with `setting: ''`. `hidden_tags` filters on the
+*effective* tag of an occurrence (an override may re-tag one week), and
+the exam source skips the exams of courses whose tag is hidden. `GET`
+returns `hidden_tags` sorted; `PATCH` trims, drops blanks, deduplicates
+and accepts at most 200 tags; the entry list is never filtered by tags so
+a tag can be un-hidden. `services.settings_payload` builds the payload
+(`SettingsOutSerializer` documents it).
+
+### 8.4 Exam weeks and the exam schedule
+
+```python
+class AcademicTerm(models.Model):                  # addition
+    exam_week_start = PositiveSmallIntegerField(null=True, blank=True)   # weeks ≥ this are 考试周
+
+    @property
+    def teaching_weeks(self) -> int                # exam_week_start - 1 when set (≥1), else total_weeks
+```
+
+`total_weeks` now spans the whole term **including** exam weeks (the
+official calendar numbers teaching weeks only; PKU practice is 16 teaching
+weeks + 17/18 course exams + the university 停课复习考试 period). Seeds:
+`calendar_26-27-1.json` → `total_weeks: 19, exam_week_start: 17` (weeks 17–18
+课程考试, week 19 = 停课复习考试 2027-01-11..17 already a calendar `exam`
+event); `calendar_26-27-2.json` → `total_weeks: 18, exam_week_start: 17`
+(6/14–6/27 exam period = weeks 17–18). `import_academic_calendar` reads the
+optional `exam_week_start` key. `Term` payload adds `exam_week_start:
+number | null` and `teaching_weeks: number`; defaults for new manual
+entries and catalog slots without a week range use `teaching_weeks`.
+
+Week picker / week header: a week ≥ `exam_week_start` is labelled 考试周
+unless a calendar event already labels it (放假 / 停课复习考试 win);
+lessons still follow the entry's own week range (a 1–18 course keeps
+showing in weeks 17–18) — only the calendar's `exam` days suspend classes.
+
+```python
+class CourseExam(models.Model):
+    term = FK(AcademicTerm, on_delete=CASCADE, related_name='exams')
+    course_code = CharField(32); class_no = CharField(8, blank=True); name = CharField(100)
+    teacher = CharField(80, blank=True)
+    start = DateTimeField(); end = DateTimeField()
+    room = CharField(100, blank=True); method = CharField(32, blank=True)   # 考试方式
+    note = CharField(200, blank=True); raw_time = CharField(64, blank=True)
+    class Meta: unique_together = ('term', 'course_code', 'class_no', 'start'); ordering = ['start', 'course_code']
+```
+
+Command `import_exam_schedule <xlsx|csv> --term 26-27-1 [--sheet]` loads
+the 教务部 exam table with header matching like `import_course_catalog`
+(aliases: 课程号/课程编号, 课程名/课程名称, 班号, 教师/授课教师/任课教师,
+考试时间/考试日期时间/时间, 考试日期 + 开始时间/结束时间 as separate
+columns, 考试地点/教室/考场/地点, 考试方式, 备注, 学年学期 optional) and
+upserts on `(term, course_code, class_no, start)` (rows of other keys are
+kept; `--replace` deletes the term's rows first). Time parsing lives in
+`timetable/exams.py` as pure `parse_exam_time(text, term) -> (datetime,
+datetime) | None` accepting `2027-01-11 08:30-10:30`, `2027/1/11 8:30～10:30`,
+`2027年1月11日 08:30-10:30`, `1月11日（周一）8:30-10:30` (year from the term
+span), `第19周 周一 08:30-10:30` (resolved via `term.date_of`), and a
+date-only cell with separate start/end cells; missing end defaults to
+start + 2 h. Unparseable rows are skipped and reported.
+
+Source `timetable.sources.exam.ExamSource` (key `exam`, label `考试`,
+registered in `config.json → timetable.sources` and the template) emits,
+for the person's non-hidden `category='course'` entries of the term, one
+occurrence per matching `CourseExam`: match by `(course_code, class_no)`
+(catalog values when linked, else the entry's), then by `course_code`
+alone when unique, then by exact `name`; each exam is emitted once even if
+several entries (slots) match. Occurrence: `id='exam:{exam.id}:{date}'`,
+`source='exam'`, `kind='exam'`, `title=f'{name} 考试'`, `subtitle=method or
+teacher`, `location=room`, `start/end` from the row, `start_section/
+end_section=None`, `color_key=name`, `ref={'exam_id', 'entry_id'}`,
+`role=''`. Honours `settings.show_exams`. Manual exams (entry-form 类别 =
+考试) are ordinary entries with `category='exam'`, `week_start == week_end`.
+
+The portal may expose the student's own exam list; that is not known yet
+(needs a real account — `pku_probe.py`), so no per-student import exists in
+this iteration. The import page explains that exams appear automatically
+once the term's schedule is loaded.
+
+Implementation notes (as built): `teaching_weeks` is clamped into
+`1..total_weeks`; `AcademicTerm.is_exam_week(week)` is the helper behind
+the picker label. The calendar JSON accepts an optional integer
+`exam_week_start` in `1..total_weeks`; a file without it resets the term's
+value to null. Terms that already exist keep their old `total_weeks`
+until the seed files are re-imported (`import_academic_calendar
+timetable/data/calendar_26-27-1.json`, then `…-2.json`).
+`parse_exam_time(text, term, *, start_text='', end_text='')` also reads
+dotted dates (`2027.1.11`), `8点30分`/`8时30分`, 上午/下午/晚上 markers,
+`星期一`/`周1` tokens, workbook `datetime`/`date`/`time` cells, and takes
+the date from `start_text` when `text` is blank; an end at or before the
+start is replaced by start + 2 h. `import_exam_schedule` reads csv by
+extension (UTF-8 with or without BOM), skips and reports rows whose
+学年学期 names another term, refuses `--sheet` for csv and upserts with
+zero-padded codes; the summary lists every skipped row with its reason.
+`ExamSource` selects the term's exams by the week span of their `start`,
+each exam is emitted once (the lowest entry id keeps it) and code-only /
+name-only matches require every row of that key to belong to one class.
+Exam occurrences reach reminders and ICS like any other (`CATEGORIES:考试`,
+reminder title unchanged). `Entry.exam` uses the same matcher, first by
+time; `entries/` resolves all entries with one exam query.
+
+### 8.5 Poster styles and share assets
+
+`GET /api/v2/timetable/share/assets/` → `{ miniapp_qrcode: string | null,
+official_qrcode: string | null, slogan: string }` (absolute URLs). The
+mini-program code is produced with `wxacode.getUnlimited`
+(`POST https://api.weixin.qq.com/wxa/getwxacodeunlimit?access_token=`, body
+`{scene: 'timetable', page: CONFIG.share.miniapp_page, check_path: false,
+env_version: CONFIG.share.env_version, width: 430}`) through
+`extern.wx_miniapp.fetch_miniapp_code(scene, page) -> bytes | None`, using
+`api.auth.wechat_api.get_wechat_access_token`; the PNG is cached at
+`MEDIA_ROOT/timetable/share/miniapp_<scene>.png` for 30 days and served
+from `MEDIA_URL`. Failures (mock URL in dev, quota, network) log a warning
+and answer `null` — never an error. `official_qrcode` is
+`wx_miniapp.share.official_qrcode_url` (absolute URL or a path relative to
+`MEDIA_URL`; empty → `null`); `slogan` defaults to `元培智慧书院 · YPPF`.
+Config (`config_template.json`): `wx_miniapp.share = {"miniapp_page":
+"pages/timetable/index", "env_version": "release", "official_qrcode_url":
+"", "slogan": "元培智慧书院 · YPPF"}`. Production must whitelist the
+backend host as a `downloadFile` domain for the canvas to load the images.
+
+Mini-program poster (`pages/timetable/poster.vue`): four presets selectable
+above the canvas and remembered locally — `clean` 清爽 (white, cool grey
+grid, blue accent), `dark` 深夜 (deep navy, pastel blocks, light text),
+`paper` 暖纸 (cream paper, warm brown ink, serif-like headline), `pop` 活力
+(gradient header, chunky rounded blocks, bold numerals). Common layout:
+headline (name's 课表 / 我的课表), term + week + date range, weekday/date
+header with calendar labels, the grid, footer with the slogan and, when
+「附二维码」 is on (default on when assets exist), the two QR codes with
+captions 「小程序」「公众号」. Toggles: 附二维码, 显示姓名 (existing
+`share_show_name`). Save to album and `onShareAppMessage` as before.
+
+Implementation notes (as built): `extern.wx_miniapp.fetch_miniapp_code`
+treats any JSON body (by content type or a leading `{`) as a failure,
+clears the cached access token on 40001/42001 and logs only the error
+code, never the token; the config block is read through
+`api.config.get_share_config()` (defaults filled in) and the cache logic is
+`timetable/share.py`. WeChat returns JPEG bytes; they are stored under the
+contract's `miniapp_<scene>.png` name (image decoders sniff the content)
+and written atomically. When a refresh fails but a cached image exists,
+the stale image is still served (with a warning) — `null` only when no
+image was ever produced. URLs are built with `build_full_url` from
+`MEDIA_URL`, so `global.base_url` must be the public host and the media
+directory must be served (`boot/urls.py` does so in debug; production
+needs the web server to serve `MEDIA_ROOT`). A relative
+`official_qrcode_url` is resolved under `MEDIA_URL` (drop the file into
+`MEDIA_ROOT/timetable/share/` and configure `timetable/share/<name>.png`).
+
+### 8.6 API delta (routes)
+
+```
+GET    /api/v2/timetable/entries/<id>/                     retrieve (new)
+PATCH  /api/v2/timetable/entries/<id>/                     + scope, week, canceled, tag, role, category, catalog_id
+DELETE /api/v2/timetable/entries/<id>/overrides/           reset all overrides (new)
+DELETE /api/v2/timetable/entries/<id>/overrides/<oid>/     reset one (new)
+POST   /api/v2/timetable/catalog/<id>/add/                 quick add 旁听 (new)
+GET    /api/v2/timetable/catalog/                          + department, category, audience, credits, hours_per_week, weeks_text, note, added
+GET/PATCH /api/v2/timetable/settings/                      + show_exams, hidden_tags; read-only sources, tags
+GET    /api/v2/timetable/share/assets/                     poster QR assets (new)
+```
+
+Error codes follow the envelope of §4.6 (`{code, message, errors}`): new
+codes `timetable.catalog_not_found`, `timetable.catalog_already_added`,
+`timetable.catalog_no_slots`, `timetable.override_not_found`; validation
+errors use `errors.<field>`.

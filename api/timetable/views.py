@@ -1,7 +1,9 @@
 """
 REST APIs of the timetable for the WeChat mini-program.
 Contract: ``timetable/README.md`` §4.6 (§6.1 subscribe messages, §6.3
-course catalog, §6.5 agenda). Mounted at ``/api/v2/timetable/``.
+course catalog, §6.5 agenda, §8 catalog links and quick add, scoped edits
+and overrides, tags and the sources legend, share assets). Mounted at
+``/api/v2/timetable/``.
 
 Every endpoint requires a mini-program JWT (``WxJWTAuthentication`` +
 ``IsAuthenticated``) and a personal account; organization accounts get 403.
@@ -13,6 +15,7 @@ from __future__ import annotations
 
 import logging
 from datetime import date, datetime
+from types import SimpleNamespace
 
 from django.db import transaction
 from django.urls import reverse
@@ -38,17 +41,21 @@ from api.config import get_subscribe_template
 from api.timetable.serializers import (
     AgendaQuerySerializer,
     AgendaSerializer,
+    CatalogAddSerializer,
     CatalogEntrySerializer,
     CatalogQuerySerializer,
     DryRunResponseSerializer,
     EntryInSerializer,
+    EntryScopeSerializer,
     EntrySerializer,
     ErrorSerializer,
     IcsSerializer,
     ImportOutSerializer,
     ImportPortalSerializer,
     ImportTextSerializer,
+    SettingsOutSerializer,
     SettingsSerializer,
+    ShareAssetsSerializer,
     SubscribeGrantOutSerializer,
     SubscribeGrantSerializer,
     SubscribeTemplatesSerializer,
@@ -56,9 +63,16 @@ from api.timetable.serializers import (
     WeekQuerySerializer,
     WeekViewSerializer,
 )
-from timetable import catalog, reminders, services
+from timetable import catalog, reminders, services, share
 from timetable.calendar import calendar_for, calendars_for
-from timetable.models import AcademicTerm, TimetableEntry
+from timetable.exams import exams_for_entries
+from timetable.models import (
+    AcademicTerm,
+    CourseCatalogEntry,
+    TimetableEntry,
+    TimetableEntryOverride,
+)
+from timetable.overrides import resolve_week
 
 __all__ = [
     'ApiError',
@@ -74,11 +88,21 @@ __all__ = [
     'SubscribeTemplatesView',
     'SubscribeGrantView',
     'CatalogView',
+    'CatalogAddView',
+    'ShareAssetsView',
 ]
 
 logger = logging.getLogger(__name__)
 
 TAGS = ['课表']
+# Body keys of PATCH entries/<id>/ that belong to the scope, not the entry.
+_SCOPE_KEYS = ('scope', 'week', 'canceled')
+# API keys that need scope='all' (README §8.2): row-only annotations and
+# the recurrence of the entry.
+_ALL_SCOPE_KEYS = ('hidden', 'role', 'category', 'catalog_id',
+                   'week_start', 'week_end', 'parity')
+# Recurrence keys imported entries cannot change (re-import instead).
+_RECURRENCE_KEYS = ('week_start', 'week_end', 'parity')
 
 
 class ApiError(APIException):
@@ -188,6 +212,27 @@ _ERROR_RESPONSES = {
 }
 
 
+def _entry_queryset(person):
+    # Entries with everything the Entry payload needs.
+    return (TimetableEntry.objects.filter(person=person)
+            .select_related('term', 'catalog_entry').prefetch_related('overrides'))
+
+
+def _entry_payloads(entries, term: AcademicTerm | None = None) -> list[dict]:
+    """``Entry[]`` of entries of one term with one exam lookup for all of them."""
+    entries = list(entries)
+    if not entries:
+        return []
+    if term is None:
+        term = entries[0].term
+    exams = exams_for_entries(term, entries)
+    return EntrySerializer(entries, many=True, context={'exams': exams}).data
+
+
+def _entry_payload(entry: TimetableEntry) -> dict:
+    return _entry_payloads([entry], entry.term)[0]
+
+
 class TermsView(TimetableAPIView):
     """Active terms and the default (current or upcoming) term."""
 
@@ -277,14 +322,15 @@ class AgendaView(TimetableAPIView):
 
 class EntryViewSet(TimetableAPIMixin, viewsets.ViewSet):
     """
-    Stored entries of the caller. Manual entries are fully editable; imported
-    (portal/paste) entries can only be hidden/unhidden and are replaced by the
-    next import.
+    Stored entries of the caller. Manual entries are fully editable;
+    imported (portal/paste) entries take the student's annotations on the
+    row and every other edit as an override (README §8.2), so re-imports
+    keep them. Hidden entries are listed so they can be un-hidden.
     """
 
     def get_queryset(self, request):
         person = self.get_person(request)
-        return TimetableEntry.objects.filter(person=person).select_related('term')
+        return _entry_queryset(person)
 
     def get_entry(self, request, pk) -> TimetableEntry:
         entry = self.get_queryset(request).filter(pk=pk).first()
@@ -309,10 +355,22 @@ class EntryViewSet(TimetableAPIMixin, viewsets.ViewSet):
         term = self.resolve_term(request.query_params.get('term'))
         entries = queryset.filter(term=term).order_by(
             'weekday', 'start_section', 'start_time', 'id')
-        return Response(EntrySerializer(entries, many=True).data)
+        return Response(_entry_payloads(entries, term))
+
+    @extend_schema(
+        summary='条目详情',
+        description='一条存储条目的完整信息：目录课程、按周修改记录、匹配到的考试。',
+        responses={200: EntrySerializer,
+                   404: OpenApiResponse(response=ErrorSerializer, description='条目不存在'),
+                   **_ERROR_RESPONSES},
+        tags=TAGS,
+    )
+    def retrieve(self, request, pk=None):
+        return Response(_entry_payload(self.get_entry(request, pk)))
 
     @extend_schema(
         summary='新建手动条目',
+        description='可带 catalog_id（同学期课程目录行）、role、category、tag。',
         request=EntryInSerializer,
         responses={201: EntrySerializer,
                    400: OpenApiResponse(response=ErrorSerializer, description='参数错误'),
@@ -330,11 +388,18 @@ class EntryViewSet(TimetableAPIMixin, viewsets.ViewSet):
         entry = TimetableEntry.objects.create(
             person=person, term=term, source=TimetableEntry.Source.MANUAL,
             external_key=TimetableEntry.new_manual_key(), **fields)
-        return Response(EntrySerializer(entry).data, status=status.HTTP_201_CREATED)
+        return Response(_entry_payload(self.get_entry(request, entry.pk)),
+                        status=status.HTTP_201_CREATED)
 
     @extend_schema(
         summary='修改条目',
-        description='hidden 对任何来源都可修改；其它字段仅限手动条目。',
+        description=(
+            'scope=all（缺省）：手动条目直接修改；任何来源的 hidden/color/tag/role/category/'
+            'catalog_id 直接修改；导入条目的其它字段写入整个周次范围的修改记录，重新导入后仍然保留。'
+            'scope=single/following 需给出 week（在条目周次范围内），把给出的字段（可含 canceled）'
+            '写入该周 / 该周及以后的修改记录。hidden/role/category/catalog_id 与周次范围、'
+            '单双周只能在 scope=all 下修改（400 errors.scope）。'
+        ),
         request=EntryInSerializer,
         responses={200: EntrySerializer,
                    400: OpenApiResponse(response=ErrorSerializer, description='参数错误'),
@@ -346,17 +411,40 @@ class EntryViewSet(TimetableAPIMixin, viewsets.ViewSet):
         entry = self.get_entry(request, pk)
         data = request.data if isinstance(request.data, dict) else {}
         data = {key: value for key, value in data.items() if key != 'term'}
-        if not entry.is_manual() and any(key != 'hidden' for key in data):
-            raise PermissionDenied('导入的课程只能隐藏或显示，请重新导入以修改内容。')
-        serializer = EntryInSerializer(
-            entry, data=data, partial=True, context={'term': entry.term})
+        scope_serializer = EntryScopeSerializer(
+            data={key: data[key] for key in _SCOPE_KEYS if key in data},
+            context={'entry': entry})
+        scope_serializer.is_valid(raise_exception=True)
+        scope = scope_serializer.validated_data.get('scope') or 'all'
+        week = scope_serializer.validated_data.get('week')
+        canceled = scope_serializer.validated_data.get('canceled')
+        body = {key: value for key, value in data.items() if key not in _SCOPE_KEYS}
+        if scope != 'all':
+            blocked = [key for key in body if key in _ALL_SCOPE_KEYS]
+            if blocked:
+                raise ValidationError(
+                    {'scope': f'{"、".join(blocked)} 只能对整门课程（scope=all）修改'})
+        elif not entry.is_manual():
+            blocked = [key for key in body if key in _RECURRENCE_KEYS]
+            if blocked:
+                raise ValidationError(
+                    {blocked[0]: '导入的课程不能修改周次范围和单双周，请重新导入'})
+        if scope == 'all' and entry.is_manual():
+            base = entry
+        else:
+            base = _edit_base(entry, scope, week)
+        serializer = EntryInSerializer(base, data=body, partial=True,
+                                       context={'term': entry.term})
         serializer.is_valid(raise_exception=True)
-        changed = list(serializer.validated_data)
-        if changed:
-            for name, value in serializer.validated_data.items():
-                setattr(entry, name, value)
-            entry.save(update_fields=changed + ['updated_at'])
-        return Response(EntrySerializer(entry).data)
+        values = dict(serializer.validated_data)
+        values.pop('term', None)
+        if values or canceled is not None:
+            try:
+                services.update_entry(entry, values, scope=scope, week=week,
+                                      canceled=canceled)
+            except ValueError as exc:
+                raise ValidationError({'scope': str(exc)})
+        return Response(_entry_payload(self.get_entry(request, pk)))
 
     @extend_schema(
         summary='删除手动条目',
@@ -371,6 +459,60 @@ class EntryViewSet(TimetableAPIMixin, viewsets.ViewSet):
             raise PermissionDenied('导入的课程不能删除，可以将其隐藏。')
         entry.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
+
+    @extend_schema(
+        operation_id='v2_timetable_entries_overrides_reset',
+        summary='恢复全部修改',
+        description='删除该条目的所有按周修改记录（恢复导入/原始状态）。',
+        responses={204: OpenApiResponse(description='已恢复'),
+                   404: OpenApiResponse(response=ErrorSerializer, description='条目不存在'),
+                   **_ERROR_RESPONSES},
+        tags=TAGS,
+    )
+    def reset_overrides(self, request, pk=None):
+        entry = self.get_entry(request, pk)
+        TimetableEntryOverride.objects.filter(entry=entry).delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+    @extend_schema(
+        operation_id='v2_timetable_entries_overrides_destroy',
+        summary='恢复一条修改',
+        description='删除该条目的一条按周修改记录（恢复该次 / 该段）。',
+        responses={204: OpenApiResponse(description='已恢复'),
+                   404: OpenApiResponse(response=ErrorSerializer,
+                                        description='条目或修改记录不存在'),
+                   **_ERROR_RESPONSES},
+        tags=TAGS,
+    )
+    def delete_override(self, request, pk=None, oid=None):
+        entry = self.get_entry(request, pk)
+        deleted, _ = TimetableEntryOverride.objects.filter(entry=entry, pk=oid).delete()
+        if not deleted:
+            raise ApiError('timetable.override_not_found', '该修改记录不存在。',
+                           status.HTTP_404_NOT_FOUND)
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+def _edit_base(entry: TimetableEntry, scope: str, week: int | None) -> SimpleNamespace:
+    # The values a scoped edit is validated against: the entry with the
+    # override of the same range (if any) applied, so a partial body is
+    # checked against what the student currently sees for that range.
+    if scope == 'single':
+        bounds = (week, week)
+    elif scope == 'following':
+        bounds = (week, None)
+    else:
+        bounds = (None, None)
+    override = (TimetableEntryOverride.objects
+                .filter(entry=entry, week_start=bounds[0], week_end=bounds[1])
+                .order_by('id').first())
+    base = SimpleNamespace(**{name: getattr(entry, name)
+                              for name in EntryInSerializer._ENTRY_FIELDS})
+    if override is not None:
+        resolved = resolve_week(entry, [override], week or entry.week_start, entry.term)
+        for name, value in resolved.values.items():
+            setattr(base, name, value)
+    return base
 
 
 class _PkuBridge:
@@ -555,18 +697,21 @@ class SettingsView(TimetableAPIView):
 
     @extend_schema(
         summary='课表设置',
-        responses={200: SettingsSerializer, **_ERROR_RESPONSES},
+        description='含 hidden_tags、show_exams，以及只读的 sources（来源图例及其开关字段）'
+                    '和 tags（本人所有条目的标签）。',
+        responses={200: SettingsOutSerializer, **_ERROR_RESPONSES},
         tags=TAGS,
     )
     def get(self, request):
         person = self.get_person(request)
         settings = services.get_or_create_settings(person)
-        return Response(SettingsSerializer(settings).data)
+        return Response(services.settings_payload(person, settings))
 
     @extend_schema(
         summary='修改课表设置',
+        description='hidden_tags 会去重、去空白，每个标签最长 24 字。',
         request=SettingsSerializer,
-        responses={200: SettingsSerializer,
+        responses={200: SettingsOutSerializer,
                    400: OpenApiResponse(response=ErrorSerializer, description='参数错误'),
                    **_ERROR_RESPONSES},
         tags=TAGS,
@@ -578,7 +723,7 @@ class SettingsView(TimetableAPIView):
         serializer.is_valid(raise_exception=True)
         with transaction.atomic():
             serializer.save()
-        return Response(SettingsSerializer(settings).data)
+        return Response(services.settings_payload(person, settings))
 
 
 def _ics_payload(settings) -> dict:
@@ -663,12 +808,13 @@ class SubscribeGrantView(TimetableAPIView):
 
 
 class CatalogView(TimetableAPIView):
-    """Search the university course catalog of a term (manual-entry prefill)."""
+    """Search the course catalog of a term (manual-entry prefill, quick add)."""
 
     @extend_schema(
         summary='课程目录检索',
         description='按课程名 / 课程号 / 教师模糊匹配（icontains），最多 20 条；'
-                    'q 为空时返回空列表。term 缺省为当前学期。',
+                    'q 为空时返回空列表。term 缺省为当前学期。added 表示本人在该学期'
+                    '已有关联到这一行的条目。',
         parameters=[
             OpenApiParameter('term', str, OpenApiParameter.QUERY, required=False,
                              description='学期代码'),
@@ -682,9 +828,81 @@ class CatalogView(TimetableAPIView):
         tags=TAGS,
     )
     def get(self, request):
-        self.get_person(request)
+        person = self.get_person(request)
         query = CatalogQuerySerializer(data=request.query_params)
         query.is_valid(raise_exception=True)
         term = self.resolve_term(query.validated_data.get('term'))
-        entries = catalog.search_catalog(term, query.validated_data.get('q', ''))
-        return Response(CatalogEntrySerializer(entries, many=True).data)
+        rows = list(catalog.search_catalog(term, query.validated_data.get('q', '')))
+        added: set[int] = set()
+        if rows:
+            added = set(TimetableEntry.objects.filter(
+                person=person, term=term, catalog_entry__in=rows,
+            ).values_list('catalog_entry_id', flat=True))
+        serializer = CatalogEntrySerializer(rows, many=True, context={'added': added})
+        return Response(serializer.data)
+
+
+class CatalogAddView(TimetableAPIView):
+    """Quick-add a catalog row (旁听 by default) to the caller's timetable."""
+
+    @extend_schema(
+        summary='从课程目录加入课表',
+        description=(
+            '为课程目录行的每个（选中的）时段建一条手动条目并关联到该行，缺省身份为旁听。'
+            '404 timetable.catalog_not_found：该学期没有这一行；'
+            '409 timetable.catalog_already_added：已有关联条目；'
+            '400 timetable.catalog_no_slots：该行没有可解析的上课时间；'
+            '400 errors.slots：时段序号越界。'
+        ),
+        request=CatalogAddSerializer,
+        responses={201: EntrySerializer(many=True),
+                   400: OpenApiResponse(
+                       response=ErrorSerializer,
+                       description='timetable.catalog_no_slots / errors.slots'),
+                   404: OpenApiResponse(
+                       response=ErrorSerializer,
+                       description='timetable.catalog_not_found / 学期不存在'),
+                   409: OpenApiResponse(
+                       response=ErrorSerializer,
+                       description='timetable.catalog_already_added'),
+                   **_ERROR_RESPONSES},
+        tags=TAGS,
+    )
+    def post(self, request, pk=None):
+        person = self.get_person(request)
+        serializer = CatalogAddSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        data = serializer.validated_data
+        term = self.resolve_term(data.get('term'))
+        row = CourseCatalogEntry.objects.filter(pk=pk, term=term).first()
+        if row is None:
+            raise ApiError('timetable.catalog_not_found', '课程目录中没有该学期的这门课。',
+                           status.HTTP_404_NOT_FOUND)
+        try:
+            entries = services.quick_add_from_catalog(
+                person, term, row, role=data['role'], slot_indices=data.get('slots'))
+        except ValueError as exc:
+            raise ValidationError({'slots': f'时段序号越界（{exc}）'})
+        except services.CatalogAddError as exc:
+            if exc.code == services.CatalogAddError.ALREADY_ADDED:
+                raise ApiError(exc.code, exc.message, status.HTTP_409_CONFLICT)
+            raise ApiError(exc.code, exc.message, status.HTTP_400_BAD_REQUEST)
+        entries = list(_entry_queryset(person)
+                       .filter(pk__in=[entry.pk for entry in entries])
+                       .order_by('weekday', 'start_section', 'start_time', 'id'))
+        return Response(_entry_payloads(entries, term), status=status.HTTP_201_CREATED)
+
+
+class ShareAssetsView(TimetableAPIView):
+    """QR assets of the timetable poster (README §8.5)."""
+
+    @extend_schema(
+        summary='海报分享素材',
+        description='小程序码（wxacode.getUnlimited，服务端缓存 30 天）、公众号二维码和口号；'
+                    '无法生成时对应字段为 null，不报错。',
+        responses={200: ShareAssetsSerializer, **_ERROR_RESPONSES},
+        tags=TAGS,
+    )
+    def get(self, request):
+        self.get_person(request)
+        return Response(ShareAssetsSerializer(share.share_assets()).data)

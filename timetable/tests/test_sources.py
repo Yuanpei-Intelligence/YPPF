@@ -59,6 +59,32 @@ class LoadSourcesTests(TestCase):
         self.assertEqual([source.key for source in sources], ['stored', 'college'])
         self.assertEqual(len(logs.records), 4)
         self.assertTrue(all('skipped' in record.getMessage() for record in logs.records))
+        self.assertEqual([source.setting for source in sources], ['show_courses', 'show_college'])
+
+    def test_default_sources_and_setting_names(self):
+        """Every shipped source declares the settings boolean toggling it (§8.3)."""
+        from timetable.config import DEFAULT_SOURCES
+        sources = base.load_sources(DEFAULT_SOURCES)
+        self.assertEqual([(s.key, s.label, s.setting) for s in sources], [
+            ('stored', '课程', 'show_courses'),
+            ('college', '书院课', 'show_college'),
+            ('activity', '活动', 'show_activities'),
+            ('appoint', '预约', 'show_appointments'),
+            ('exam', '考试', 'show_exams'),
+        ])
+        for source in sources:
+            self.assertTrue(hasattr(TimetableSettings, source.setting))
+
+        class Bare:
+            key = 'bare'
+
+            def occurrences(self, person, term, week_from, week_to, settings):
+                return []
+
+        with patch.dict('sys.modules', {'timetable.tests.fake_source': type(
+                'module', (), {'Bare': Bare})()}):
+            loaded = base.load_sources(['timetable.tests.fake_source.Bare'])
+        self.assertEqual([(s.key, s.label, s.setting) for s in loaded], [('bare', 'bare', '')])
 
     def test_config_sources_are_cached(self):
         with patch('timetable.sources.base.CONFIG') as config:
@@ -480,7 +506,8 @@ class StoredSourceTests(TestCase):
         source = StoredEntriesSource()
         occurrences = source.occurrences(person, term, 1, 2, TimetableSettings(person=person))
         self.assertEqual([o.title for o in occurrences], ['可见', '可见'])
-        self.assertEqual((source.key, source.label), ('stored', '课程'))
+        self.assertEqual((source.key, source.label, source.setting),
+                         ('stored', '课程', 'show_courses'))
 
     def test_show_courses_toggle(self):
         term = make_term()

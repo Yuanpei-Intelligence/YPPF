@@ -20,6 +20,7 @@ DEFAULT_SOURCES = [
     'timetable.sources.college.CollegeCourseSource',
     'timetable.sources.activity.ActivitySource',
     'timetable.sources.appoint.AppointSource',
+    'timetable.sources.exam.ExamSource',
 ]
 
 

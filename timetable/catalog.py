@@ -1,7 +1,8 @@
 """
-Course catalog (``timetable/README.md`` §6.3): best-effort parsing of the
-起止周 / 上课时间 columns into timetable slots, upsert of imported rows and
-the search behind ``GET /api/v2/timetable/catalog/``.
+Course catalog (``timetable/README.md`` §6.3, §8.1): best-effort parsing of
+the 起止周 / 上课时间 columns into timetable slots, upsert of imported rows,
+the search behind ``GET /api/v2/timetable/catalog/`` and the matching that
+links imported timetable entries to catalog rows.
 
 Rows come from the PKU-Course-Crawler workbook through the
 ``import_course_catalog`` command; the parsers here are pure functions so
@@ -23,13 +24,25 @@ __all__ = [
     'SLOT_KEYS',
     'DEFAULT_WEEKS',
     'MAX_SEARCH_LIMIT',
+    'COURSE_CODE_DIGITS',
+    'CLASS_NO_DIGITS',
     'parse_catalog_slots',
     'parse_credits',
     'parse_term_code',
     'normalise_catalog_row',
     'upsert_catalog_rows',
     'search_catalog',
+    'normalise_course_code',
+    'normalise_class_no',
+    'normalise_name',
+    'CatalogIndex',
+    'match_catalog',
 ]
+
+# Numeric course codes / class numbers are zero-padded to these widths
+# (the university's format; ``import_course_catalog`` does the same).
+COURSE_CODE_DIGITS = 8
+CLASS_NO_DIGITS = 2
 
 SLOT_KEYS = ('weekday', 'start_section', 'end_section', 'week_start',
              'week_end', 'parity', 'room')
@@ -292,7 +305,9 @@ def upsert_catalog_rows(term: AcademicTerm,
     can be re-run and can import a workbook in parts. Returns
     ``(created, updated)``.
     """
-    default_weeks = (1, max(int(term.total_weeks), 1))
+    # A row without a week range spans the teaching weeks, not the exam
+    # weeks (README §8.4).
+    default_weeks = (1, max(int(term.teaching_weeks), 1))
     prepared: dict[tuple[str, str], dict[str, Any]] = {}
     for row in rows:
         fields = normalise_catalog_row(row, default_weeks=default_weeks)
@@ -347,3 +362,102 @@ def search_catalog(term: AcademicTerm, q: str,
                 | Q(course_code__icontains=q) | Q(teacher__icontains=q))
         .order_by('course_code', 'class_no', 'id')[:limit]
     )
+
+
+# ---------------------------------------------------------------------------
+# matching imported entries to catalog rows (README §8.1)
+# ---------------------------------------------------------------------------
+
+_ALL_SPACES_RE = re.compile(r'\s+')
+_BRACKET_MAP = str.maketrans({'（': '(', '）': ')', '【': '[', '】': ']'})
+
+
+def normalise_course_code(value: Any) -> str:
+    """A course code trimmed and, when numeric, zero-padded to 8 digits."""
+    text = _text(value)
+    if text.isdigit() and len(text) < COURSE_CODE_DIGITS:
+        text = text.zfill(COURSE_CODE_DIGITS)
+    return text
+
+
+def normalise_class_no(value: Any) -> str:
+    """A class number trimmed and, when numeric, zero-padded to 2 digits."""
+    text = _text(value)
+    if text.isdigit() and len(text) < CLASS_NO_DIGITS:
+        text = text.zfill(CLASS_NO_DIGITS)
+    return text
+
+
+def normalise_name(value: Any) -> str:
+    """
+    A course name or teacher for comparison: whitespace removed,
+    case-folded, full-width brackets unified with ASCII ones.
+    """
+    return _ALL_SPACES_RE.sub('', str(value or '')).casefold().translate(_BRACKET_MAP)
+
+
+class CatalogIndex:
+    """
+    In-memory lookup over the catalog rows of one term, built with one
+    query (``for_term``) so an import can match every block without
+    further queries. ``match`` implements the three steps of README §8.1.
+    """
+
+    def __init__(self, rows: Iterable[CourseCatalogEntry]):
+        self.by_code_class: dict[tuple[str, str], CourseCatalogEntry] = {}
+        self.by_code: dict[str, list[CourseCatalogEntry]] = {}
+        self.by_name: dict[str, list[CourseCatalogEntry]] = {}
+        for row in rows:
+            code = normalise_course_code(row.course_code)
+            class_no = normalise_class_no(row.class_no)
+            self.by_code_class.setdefault((code, class_no), row)
+            self.by_code.setdefault(code, []).append(row)
+            self.by_name.setdefault(normalise_name(row.name), []).append(row)
+
+    @classmethod
+    def for_term(cls, term: AcademicTerm) -> 'CatalogIndex':
+        """The index of every catalog row of ``term`` (one query)."""
+        return cls(CourseCatalogEntry.objects.filter(term=term).order_by('id'))
+
+    def match(self, *, course_code: str = '', class_no: str = '',
+              name: str = '', teacher: str = '') -> CourseCatalogEntry | None:
+        """
+        The catalog row a block belongs to, or ``None``:
+
+        1. ``course_code`` and ``class_no`` given → the exact row;
+        2. only ``course_code`` → the row of that code when the term has
+           exactly one;
+        3. otherwise the row whose name equals ``name`` (whitespace- and
+           case-insensitive) — narrowed by ``teacher`` when the block has
+           one and some row carries that teacher — when exactly one
+           matches. Ambiguity gives ``None``.
+        """
+        code = normalise_course_code(course_code)
+        class_no = normalise_class_no(class_no)
+        if code and class_no:
+            return self.by_code_class.get((code, class_no))
+        if code:
+            rows = self.by_code.get(code, [])
+            return rows[0] if len(rows) == 1 else None
+        key = normalise_name(name)
+        if not key:
+            return None
+        rows = self.by_name.get(key, [])
+        teacher_key = normalise_name(teacher)
+        if teacher_key:
+            narrowed = [row for row in rows
+                        if normalise_name(row.teacher) == teacher_key]
+            if narrowed:
+                rows = narrowed
+        return rows[0] if len(rows) == 1 else None
+
+
+def match_catalog(term: AcademicTerm, *, course_code: str = '', class_no: str = '',
+                  name: str = '', teacher: str = '') -> CourseCatalogEntry | None:
+    """
+    The catalog row of ``term`` that a lesson block refers to (see
+    ``CatalogIndex.match``), or ``None``. One query per call; callers
+    matching many blocks should build ``CatalogIndex.for_term`` once.
+    """
+    return CatalogIndex.for_term(term).match(
+        course_code=course_code, class_no=class_no, name=name, teacher=teacher)
