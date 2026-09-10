@@ -1363,8 +1363,14 @@ class ShareAssetsTests(TimetableAPITestCase):
         settings.enable()
         self.addCleanup(settings.disable)
 
+    # The shipped config points official_qrcode_url at a static file; these two
+    # tests pin an empty value so they do not depend on the local config.json.
+    NO_OFFICIAL_QR = {'miniapp_page': 'pages/timetable/index', 'env_version': 'release',
+                      'official_qrcode_url': '', 'slogan': '元培智慧书院 · YPPF'}
+
     def test_assets_and_cache(self):
-        with patch('timetable.share.fetch_miniapp_code', return_value=b'\x89PNGdata') as fetch:
+        with patch('timetable.share.fetch_miniapp_code', return_value=b'\x89PNGdata') as fetch, \
+                patch('timetable.share.get_share_config', return_value=self.NO_OFFICIAL_QR):
             response = self.client.get(self.url('share-assets'))
             self.assertEqual(response.status_code, status.HTTP_200_OK, response.data)
             self.assertEqual(set(response.data), {'miniapp_qrcode', 'official_qrcode', 'slogan'})
@@ -1383,6 +1389,7 @@ class ShareAssetsTests(TimetableAPITestCase):
 
     def test_failure_answers_null(self):
         with patch('timetable.share.fetch_miniapp_code', return_value=None), \
+                patch('timetable.share.get_share_config', return_value=self.NO_OFFICIAL_QR), \
                 self.assertNoLogs('timetable.share', level='ERROR'):
             response = self.client.get(self.url('share-assets'))
         self.assertEqual(response.status_code, status.HTTP_200_OK, response.data)
