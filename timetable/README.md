@@ -1194,9 +1194,14 @@ the stale image is still served (with a warning) — `null` only when no
 image was ever produced. URLs are built with `build_full_url` from
 `MEDIA_URL`, so `global.base_url` must be the public host and the media
 directory must be served (`boot/urls.py` does so in debug; production
-needs the web server to serve `MEDIA_ROOT`). A relative
-`official_qrcode_url` is resolved under `MEDIA_URL` (drop the file into
+needs the web server to serve `MEDIA_ROOT`). `official_qrcode_url`
+accepts an absolute URL, a site path with a leading `/` (joined with
+`global.base_url`; the repository ships
+`/static/assets/img/yppf_official_qrcode.png`, the template's default) or a
+bare name resolved under `MEDIA_URL` (drop the file into
 `MEDIA_ROOT/timetable/share/` and configure `timetable/share/<name>.png`).
+The mini-program bundles the same image (`src/static/share/`) as a
+fallback for when the endpoint answers `null` or fails.
 
 ### 8.6 API delta (routes)
 
@@ -1215,3 +1220,37 @@ Error codes follow the envelope of §4.6 (`{code, message, errors}`): new
 codes `timetable.catalog_not_found`, `timetable.catalog_already_added`,
 `timetable.catalog_no_slots`, `timetable.override_not_found`; validation
 errors use `errors.<field>`.
+
+## 9. Deployment checklist
+
+`python manage.py timetable_check` prints every item below as an `[OK]` /
+`[WARN]` / `[FAIL]` line and exits non-zero on failures (`--warn-only`
+for a preflight that must not block). The order to follow on a fresh
+deployment:
+
+1. `config.json` (see `config_template.json`): `pku_portal.enabled: true`
+   (optional `session_key`, else derived from `SECRET_KEY`);
+   `timetable.sources` including `timetable.sources.exam.ExamSource`;
+   `wx_miniapp.subscribe_templates.class_reminder.id` once the template is
+   approved; `wx_miniapp.share` — the official-account QR code ships at
+   `/static/assets/img/yppf_official_qrcode.png` (a leading `/` means a
+   site path joined with `global.base_url`, a bare name a file under
+   `MEDIA_URL`); `global.base_url` must be the public host.
+2. `python manage.py migrate` (`timetable.0004` carries a data step).
+3. `python manage.py import_academic_calendar timetable/data/calendar_26-27-1.json`
+   (then `calendar_26-27-2.json`): creates or updates the `AcademicTerm`
+   with `total_weeks` / `exam_week_start` and replaces the term's calendar
+   events; re-run whenever the university amends the calendar.
+4. `python manage.py import_course_catalog <xlsx> --term 26-27-1` (旁听 and
+   catalog linking) and, when the 教务部 table is published,
+   `python manage.py import_exam_schedule <xlsx|csv> --term 26-27-1 [--replace]`.
+5. Keep `python manage.py runscheduler` running (`collect_jobs` discovers
+   `timetable.jobs`; class reminders are sent every 5 minutes).
+6. Mini-program console: the subscribe-message template, `request` **and
+   `downloadFile`** legitimate domains for the backend host (the poster
+   loads the QR images from it), and a release whose `env_version`
+   matches `wx_miniapp.share.env_version`.
+7. First real-account check from the server (campus network, no OTP
+   expected): `POST /api/v2/pku/login/` then `POST /api/v2/timetable/import/portal/`;
+   the local probe `pku_probe.py` (kept outside the repository) shows the
+   raw portal payloads when a parser needs adjusting.

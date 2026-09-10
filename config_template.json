@@ -69,7 +69,7 @@
         "share": {
             "miniapp_page": "pages/timetable/index",
             "env_version": "release",
-            "official_qrcode_url": "",
+            "official_qrcode_url": "/static/assets/img/yppf_official_qrcode.png",
             "slogan": "元培智慧书院 · YPPF"
         }
     },

@@ -64,9 +64,14 @@ class ShareAssetsTests(SimpleTestCase):
         self.assertIsNone(share.official_qrcode_url())
         self.config.return_value['official_qrcode_url'] = 'https://example.com/oa.png'
         self.assertEqual(share.official_qrcode_url(), 'https://example.com/oa.png')
-        self.config.return_value['official_qrcode_url'] = '/timetable/share/oa.png'
+        # a site path (leading slash) is joined with base_url, not MEDIA_URL
+        self.config.return_value['official_qrcode_url'] = '/static/assets/img/yppf_official_qrcode.png'
         url = share.official_qrcode_url()
         self.assertTrue(url.startswith('http'))
-        self.assertTrue(url.endswith('/media/timetable/share/oa.png'))
+        self.assertTrue(url.endswith('/static/assets/img/yppf_official_qrcode.png'))
+        self.assertNotIn('/media/', url)
+        # a bare relative value lives under MEDIA_URL
         self.config.return_value['official_qrcode_url'] = 'oa.png'
         self.assertTrue(share.official_qrcode_url().endswith('/media/oa.png'))
+        self.config.return_value['official_qrcode_url'] = 'timetable/share/oa.png'
+        self.assertTrue(share.official_qrcode_url().endswith('/media/timetable/share/oa.png'))

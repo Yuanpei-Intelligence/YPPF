@@ -99,14 +99,18 @@ def miniapp_code_url(scene: str = SCENE, *, now: float | None = None) -> str | N
 def official_qrcode_url() -> str | None:
     """
     The configured official-account QR code as an absolute URL: an
-    absolute ``http(s)`` value is returned as is, anything else is a path
-    under ``MEDIA_URL``; empty configuration gives ``None``.
+    absolute ``http(s)`` value is returned as is, a site path starting with
+    ``/`` (the repository ships ``/static/assets/img/yppf_official_qrcode.png``)
+    is joined with ``global.base_url``, and any other relative value is a
+    path under ``MEDIA_URL``; empty configuration gives ``None``.
     """
     value = get_share_config()['official_qrcode_url']
     if not value:
         return None
     if value.startswith(('http://', 'https://')):
         return value
+    if value.startswith('/'):
+        return build_full_url(value)
     return _media_url(value)
 
 
