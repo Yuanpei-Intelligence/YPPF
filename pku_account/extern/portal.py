@@ -39,6 +39,7 @@ __all__ = [
     'PORTAL_COURSE_URL',
     'PORTAL_SCORE_URL',
     'PortalSessionExpired',
+    'PortalEndpointMissing',
     'PortalUnreachable',
     'PortalClient',
     'guess_term_code',
@@ -50,12 +51,22 @@ PORTAL_COURSE_URL = f'{PORTAL_BASE}/bizcenter/course/getCourseInfo.do'
 PORTAL_SCORE_URL = f'{PORTAL_BASE}/bizcenter/score/retrScores.do'
 _IAAA_HOST = 'iaaa.pku.edu.cn'
 _SESSION_EXPIRED_MESSAGE = '门户会话已失效，请重新登录'
+_ENDPOINT_MISSING_MESSAGE = '北京大学信息门户的接口已变更，暂时无法自动获取；课表可先使用粘贴导入'
 
 logger = logging.getLogger(__name__)
 
 
 class PortalSessionExpired(Exception):
     """The portal answered with its login page / IAAA redirect, not JSON."""
+
+
+class PortalEndpointMissing(PortalUnreachable):
+    """
+    The portal answered 404 for a data endpoint: it was removed or moved.
+
+    A subclass of :class:`PortalUnreachable` so every caller already maps it
+    to a temporary failure without invalidating the stored session.
+    """
 
 
 def guess_term_code(on: date | None = None) -> str:
@@ -199,6 +210,12 @@ class PortalClient:
         if response.status_code >= 500:
             logger.warning('portal answered HTTP %s', response.status_code)
             raise PortalUnreachable('北京大学信息门户暂时不可用')
+        if response.status_code == 404:
+            # A live session on a removed endpoint (bizcenter course/score went
+            # this way on 2026-09-10). Not a session problem: invalidating the
+            # session would only send the student into a re-login loop.
+            logger.warning('portal endpoint answered 404: %s', urlsplit(url).path)
+            raise PortalEndpointMissing(_ENDPOINT_MISSING_MESSAGE)
         if _host_of(getattr(response, 'url', '') or '') == _IAAA_HOST:
             raise PortalSessionExpired(_SESSION_EXPIRED_MESSAGE)
         try:

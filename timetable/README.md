@@ -92,6 +92,18 @@ GET  https://portal.pku.edu.cn/portal2017/bizcenter/score/retrScores.do
      → {"cjxx": [ {"xnd": "25-26", "xq": "1", "list": [ {"kcmc", "kch", "xf", "xqcj", "jd", ...} ]} ], ...}
 ```
 
+**2026-09-10: both endpoints above answer 404 with a live session** (verified
+with a real account; IAAA login and `ssoLogin.do` still work). The portal now
+exposes services as business-center tiles (`account/retrBizCenterAll.do`,
+`util/getPortletURL.do`); the replacement data path is being probed (tiles and
+the elective 选课结果 page). Until it lands, the server-side import answers
+503 `PORTAL_UNREACHABLE` with a hint to use paste import.
+
+A 404 is `PortalEndpointMissing` (a `PortalUnreachable` subclass): the
+endpoint is gone, the session is fine, so it is never invalidated (doing so
+sent students into a re-login loop) and the client logs
+`portal endpoint answered 404: <path>`.
+
 The portal returns an HTML login page (not JSON) once the session is gone:
 treat "response is not JSON" as `PortalSessionExpired`. IAAA responses whose
 `errors.msg` mention 验证码 / OTP / 二次验证 map to `CaptchaRequired` /

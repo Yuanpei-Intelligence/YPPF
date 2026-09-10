@@ -2,15 +2,19 @@
 Deployment checks of the pku_account app, run by ``python manage.py deploy_check``.
 
 Offline: the feature switch, the key that encrypts stored portal sessions and
-the number of bound accounts. Online: IAAA reachability and whether the portal
-data endpoints the importers call still exist — on 2026-09-10 the portal had
-removed ``bizcenter/course/getCourseInfo.do`` and ``bizcenter/score/retrScores.do``
-and answered 404 for them, which silently broke the server-side import. An
-endpoint that exists answers an unauthenticated request with a login page or
-a redirect instead.
+the sync health of the last week — students who log in but never get a
+successful import point at a portal-side change (on 2026-09-10 the portal
+removed ``bizcenter/course/getCourseInfo.do`` and ``bizcenter/score/retrScores.do``;
+the client now reports that as ``PortalEndpointMissing`` and logs
+``portal endpoint answered 404``). Online: IAAA reachability.
+
+There is deliberately no unauthenticated probe of the portal data endpoints:
+without a session the portal answers 401 for every ``bizcenter`` path,
+removed or not, so such a probe cannot tell a live endpoint from a dead one.
 """
 from __future__ import annotations
 
+from datetime import datetime, timedelta
 from typing import Iterator
 
 import requests
@@ -19,10 +23,11 @@ from django.core.exceptions import ImproperlyConfigured
 from pku_account.config import CONFIG
 from pku_account.crypto import get_fernet
 from pku_account.extern.iaaa import IAAA_OAUTH_URL
-from pku_account.extern.portal import PORTAL_COURSE_URL, PORTAL_SCORE_URL
 from pku_account.models import PkuAccount, PkuPortalSession
 
-__all__ = ['checks']
+__all__ = ['checks', 'RECENT_DAYS']
+
+RECENT_DAYS = 7
 
 
 def checks(*, online: bool = False) -> Iterator[tuple[str, str, str]]:
@@ -42,32 +47,32 @@ def checks(*, online: bool = False) -> Iterator[tuple[str, str, str]]:
         source = 'configured' if CONFIG.session_key else 'derived from SECRET_KEY'
         yield ('OK', 'pku_portal.session_key', source)
 
-    yield ('OK', 'pku accounts',
-           f'bound={PkuAccount.objects.count()} stored sessions={PkuPortalSession.objects.count()}')
+    yield _sync_health(datetime.now())
 
     if online:
         yield _iaaa_check()
-        yield _endpoint_check('portal course endpoint', PORTAL_COURSE_URL)
-        yield _endpoint_check('portal score endpoint', PORTAL_SCORE_URL)
+
+
+def _sync_health(now: datetime) -> tuple[str, str, str]:
+    since = now - timedelta(days=RECENT_DAYS)
+    bound = PkuAccount.objects.count()
+    logged_in = PkuAccount.objects.filter(last_login_at__gte=since).count()
+    synced = PkuAccount.objects.filter(last_sync_at__gte=since).count()
+    invalid = PkuPortalSession.objects.filter(invalid=True).count()
+    detail = (f'{bound} bound; last {RECENT_DAYS} days: {logged_in} logged in, '
+              f'{synced} imported; {invalid} stored session(s) invalid')
+    if logged_in and not synced:
+        return ('WARN', 'portal sync health',
+                f'{detail}: logins succeed but no portal import did, so the portal data '
+                f'endpoints may have changed (server log: "portal endpoint answered 404")')
+    return ('OK', 'portal sync health', detail)
 
 
 def _iaaa_check() -> tuple[str, str, str]:
     try:
-        response = requests.get(IAAA_OAUTH_URL, timeout=CONFIG.timeout)
+        response = requests.get(IAAA_OAUTH_URL, timeout=CONFIG.timeout, allow_redirects=False)
     except requests.RequestException as exc:
         return ('FAIL', 'IAAA reachable', f'unreachable ({exc.__class__.__name__})')
-    if response.status_code == 200:
-        return ('OK', 'IAAA reachable', 'oauth page answers 200')
+    if response.status_code < 400:
+        return ('OK', 'IAAA reachable', f'oauth page answers {response.status_code}')
     return ('WARN', 'IAAA reachable', f'oauth page answers {response.status_code}')
-
-
-def _endpoint_check(name: str, url: str) -> tuple[str, str, str]:
-    try:
-        response = requests.get(url, timeout=CONFIG.timeout, allow_redirects=False)
-    except requests.RequestException as exc:
-        return ('WARN', name, f'unreachable ({exc.__class__.__name__})')
-    if response.status_code == 404:
-        return ('FAIL', name,
-                'answers 404: the portal removed this endpoint, so the server-side '
-                'import fails until the fetcher is updated (paste import still works)')
-    return ('OK', name, f'present (unauthenticated request answers {response.status_code})')
