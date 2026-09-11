@@ -10,7 +10,7 @@ override's value, and ``ignore_calendar`` (「照常上课」, §11), which
 resolves into ``ResolvedWeek.ignore_calendar`` instead of a value. The
 functions here are pure: they read model instances but never query, so
 ``expand_entries`` can resolve every week of a term from one prefetched
-list.
+list, and an unsaved override counts as the newest of its width.
 """
 from __future__ import annotations
 
@@ -29,6 +29,7 @@ __all__ = [
     'ResolvedWeek',
     'applicable_overrides',
     'resolve_week',
+    'ignore_calendar_false_needed',
     'overrides_by_entry',
     'format_time',
 ]
@@ -91,13 +92,14 @@ def applicable_overrides(entry: TimetableEntry,
                          week: int) -> list[TimetableEntryOverride]:
     """
     The overrides of ``entry`` covering ``week`` in application order:
-    widest range first, equal widths by ascending id.
+    widest range first, equal widths by ascending id (an unsaved override,
+    which will get the next id, after the saved ones).
     """
     covering = [item for item in overrides if item.applies_to(week, entry)]
 
-    def order(item: TimetableEntryOverride) -> tuple[int, int]:
+    def order(item: TimetableEntryOverride) -> tuple[int, bool, int]:
         first, last = item.bounds(entry)
-        return (-(last - first), item.pk or 0)
+        return (-(last - first), item.pk is None, item.pk or 0)
 
     covering.sort(key=order)
     return covering
@@ -172,6 +174,38 @@ def resolve_week(entry: TimetableEntry, overrides: Iterable[TimetableEntryOverri
         # the entry's own times rather than producing a negative lesson.
         values['start_time'], values['end_time'] = entry.start_time, entry.end_time
     return ResolvedWeek(values, canceled, applied, ignore_calendar)
+
+
+def ignore_calendar_false_needed(entry: TimetableEntry,
+                                 overrides: Iterable[TimetableEntryOverride],
+                                 row: TimetableEntryOverride) -> bool:
+    """
+    Whether ``ignore_calendar: false`` on ``row`` (an override of ``entry``,
+    saved or not) changes the resolved 「照常上课」 flag of at least one week
+    the row covers (README §11.4): some week resolves ``true`` without the
+    key, because an override applied before ``row`` (a wider range, or the
+    same width with a smaller id) carries ``true`` and none applied after it
+    carries the key. When it changes nothing, the key can be dropped
+    instead of stored. ``overrides`` are the entry's overrides; ``row`` and
+    rows with its id among them are ignored in favour of ``row`` itself.
+    """
+    first, last = row.bounds(entry)
+    others = [item for item in overrides
+              if item is not row and (row.pk is None or item.pk != row.pk)]
+    fields = dict(row.fields) if isinstance(row.fields, dict) else {}
+    fields.pop('ignore_calendar', None)
+    variants = []
+    for variant_fields in (fields, {**fields, 'ignore_calendar': False}):
+        variant = TimetableEntryOverride(
+            pk=row.pk, week_start=row.week_start, week_end=row.week_end,
+            canceled=row.canceled, fields=variant_fields)
+        variants.append(others + [variant])
+    without, with_false = variants
+    for week in range(first, last + 1):
+        if (resolve_week(entry, without, week).ignore_calendar
+                != resolve_week(entry, with_false, week).ignore_calendar):
+            return True
+    return False
 
 
 def overrides_by_entry(

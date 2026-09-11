@@ -10,7 +10,12 @@ from timetable.models import (
     TimetableEntryOverride,
     TimetableSettings,
 )
-from timetable.overrides import applicable_overrides, overrides_by_entry, resolve_week
+from timetable.overrides import (
+    applicable_overrides,
+    ignore_calendar_false_needed,
+    overrides_by_entry,
+    resolve_week,
+)
 from timetable.sources.stored import StoredEntriesSource, expand_entries
 from timetable.tests.helpers import WEEK1_MONDAY, make_entry, make_person, make_term
 
@@ -130,6 +135,37 @@ class ResolutionTests(SimpleTestCase):
         resolved = resolve_week(self.entry, overrides, 4, self.term)
         self.assertNotIn('ignore_calendar', resolved.values)
         self.assertEqual((resolved.values['name'], resolved.modified), ('高数', True))
+
+    def test_ignore_calendar_false_needed(self):
+        """README §11.4: a false is needed only to beat a true applied before it."""
+        whole = _override(1, ignore_calendar=True)
+        single = _override(2, 5, 5, ignore_calendar=False)
+        self.assertTrue(ignore_calendar_false_needed(self.entry, [whole, single], single))
+        # Nothing true before it, or a malformed true: not needed.
+        self.assertFalse(ignore_calendar_false_needed(self.entry, [single], single))
+        self.assertFalse(ignore_calendar_false_needed(
+            self.entry, [_override(3, ignore_calendar='yes')], single))
+        # A narrower true inside the range wins its week either way.
+        following = _override(4, 4, None, ignore_calendar=False)
+        inner = _override(5, 6, 6, ignore_calendar=True)
+        self.assertFalse(ignore_calendar_false_needed(self.entry, [inner], following))
+        self.assertTrue(ignore_calendar_false_needed(self.entry, [whole, inner], following))
+        # Same width (weeks 2-12): the smaller id is applied first, an unsaved row last.
+        same_width = _override(6, 2, None, ignore_calendar=False)
+        self.assertTrue(ignore_calendar_false_needed(self.entry, [whole], same_width))
+        self.assertFalse(ignore_calendar_false_needed(
+            self.entry, [_override(7, ignore_calendar=True)], same_width))
+        unsaved = _override(None, 2, None, ignore_calendar=False)
+        self.assertEqual([o.pk for o in applicable_overrides(self.entry, [unsaved, whole], 3)],
+                         [1, None])
+        self.assertTrue(ignore_calendar_false_needed(
+            self.entry, [_override(7, ignore_calendar=True)], unsaved))
+        # A stale copy of the row (same id) is ignored in favour of the row itself.
+        stale = _override(2, 5, 5, ignore_calendar=True)
+        self.assertFalse(ignore_calendar_false_needed(self.entry, [stale], single))
+        # Other keys of the row do not matter.
+        roomy = _override(2, 5, 5, room='理教101', ignore_calendar=False)
+        self.assertTrue(ignore_calendar_false_needed(self.entry, [whole], roomy))
 
 
 class ExpansionTests(TestCase):
@@ -254,9 +290,48 @@ class UpdateEntryTests(TestCase):
         services.update_entry(self.imported, {'ignore_calendar': 1}, scope='single', week=3)
         services.update_entry(self.imported, {'ignore_calendar': True},
                               scope='following', week=5)
+        # A false that beats a wider true is stored in its own override.
         services.update_entry(self.imported, {'ignore_calendar': False},
-                              scope='single', week=3)
+                              scope='single', week=6)
         self.assertEqual([(o.week_start, o.week_end, o.fields)
                           for o in self.imported.overrides.order_by('id')],
-                         [(3, 3, {'ignore_calendar': False}),
-                          (5, None, {'ignore_calendar': True})])
+                         [(3, 3, {'ignore_calendar': True}),
+                          (5, None, {'ignore_calendar': True}),
+                          (6, 6, {'ignore_calendar': False})])
+
+    def test_ignore_calendar_false_leaves_no_trace(self):
+        """README §11.4: undoing 照常上课 removes the key where nothing wider is true."""
+        def rows(entry):
+            return [(o.week_start, o.week_end, o.canceled, o.fields)
+                    for o in entry.overrides.order_by('id')]
+
+        def modified(entry, week):
+            return [o.modified for o in expand_entries([entry], self.term, week, week)]
+
+        for scope, week in (('single', 3), ('following', 3), ('all', None)):
+            with self.subTest(scope=scope):
+                services.update_entry(self.imported, {'ignore_calendar': True},
+                                      scope=scope, week=week)
+                self.assertEqual(modified(self.imported, 3), [True])
+                services.update_entry(self.imported, {'ignore_calendar': False},
+                                      scope=scope, week=week)
+                self.assertEqual(rows(self.imported), [])
+                self.assertEqual(modified(self.imported, 3), [False])
+        services.update_entry(self.manual, {'ignore_calendar': True})
+        services.update_entry(self.manual, {'ignore_calendar': False})
+        self.assertEqual(rows(self.manual), [])
+        # A false with nothing to undo creates no override.
+        services.update_entry(self.imported, {'ignore_calendar': False}, scope='single', week=4)
+        services.update_entry(self.imported, {'ignore_calendar': False}, scope='following', week=4)
+        self.assertEqual(rows(self.imported), [])
+        # Other keys and canceled stay, and so does modified.
+        services.update_entry(self.imported, {'room': '理教101', 'ignore_calendar': True},
+                              scope='single', week=3)
+        services.update_entry(self.imported, {'ignore_calendar': False}, scope='single', week=3)
+        services.update_entry(self.imported, {'ignore_calendar': True}, scope='following', week=6)
+        services.update_entry(self.imported, {'ignore_calendar': False}, scope='following',
+                              week=6, canceled=True)
+        self.assertEqual(rows(self.imported),
+                         [(3, 3, False, {'room': '理教101'}), (6, None, True, {})])
+        self.assertEqual(modified(self.imported, 3), [True])
+        self.assertEqual(modified(self.imported, 6), [])

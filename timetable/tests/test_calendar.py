@@ -6,7 +6,7 @@ shipped 2026-2027 seed files.
 """
 import json
 import tempfile
-from datetime import date, datetime
+from datetime import date, datetime, time
 from io import StringIO
 from pathlib import Path
 from unittest.mock import patch
@@ -257,6 +257,104 @@ class CalendarAwareExpansionTests(TestCase):
                 ('周一课', '2026-10-10', 6, 5, '', 1),
             ])
 
+    def test_only_course_entries_follow_the_calendar(self):
+        """README §11.1: holidays suspend classes, not personal events (exams: see above)."""
+        make_event('swap', date(2026, 10, 10), name='按周一课表上课', follows_weekday=1)
+        manual, other = TimetableEntry.Source.MANUAL, TimetableEntry.Category.OTHER
+        evening = {'start_section': 0, 'end_section': 0,
+                   'start_time': time(19, 0), 'end_time': time(20, 0)}
+        # The smoke test's one-off 其它 entry on 国庆 (Thursday 10-01, week 4).
+        temp = make_entry(self.person, self.term, name='临时活动', weekday=4, week_start=4,
+                          week_end=4, start_section=0, end_section=0,
+                          start_time=time(13, 30), end_time=time(14, 30),
+                          source=manual, category=other)
+        manual_course = make_entry(self.person, self.term, name='手动课', weekday=4,
+                                   start_section=5, end_section=6, source=manual)
+        self.assertEqual(manual_course.category, TimetableEntry.Category.COURSE)
+        occurrences = expand_entries([self.thursday, manual_course, temp], self.term, 4, 4)
+        self.assertEqual(self.summary(occurrences), [
+            ('周四课', '2026-10-01', 4, 4, 'suspended', None),
+            ('手动课', '2026-10-01', 4, 4, 'suspended', None),
+            ('临时活动', '2026-10-01', 4, 4, '', None),
+        ])
+        self.assertEqual((occurrences[2].kind, occurrences[2].modified), ('custom', False))
+        # Week 5: 10-05 is 国庆 and 10-10 follows Monday. The 其它 entries stay on
+        # their own dates, normal, and the Monday one gets no copy on 10-10.
+        other_monday = make_entry(self.person, self.term, name='周一活动', weekday=1,
+                                  source=manual, category=other, **evening)
+        other_saturday = make_entry(self.person, self.term, name='周六活动', weekday=6,
+                                    source=manual, category=other, **evening)
+        entries = [self.monday, self.saturday, other_monday, other_saturday]
+        self.assertEqual(self.summary(expand_entries(entries, self.term, 5, 5)), [
+            ('周一课', '2026-10-05', 1, 5, 'suspended', None),
+            ('周一活动', '2026-10-05', 1, 5, '', None),
+            ('周一课', '2026-10-10', 6, 5, '', 1),
+            ('周六课', '2026-10-10', 6, 5, 'suspended', None),
+            ('周六活动', '2026-10-10', 6, 5, '', None),
+        ])
+        # 照常上课 on a 其它 entry changes nothing.
+        services.update_entry(other_monday, {'ignore_calendar': True}, scope='single', week=5)
+        self.assertEqual(
+            [(item.date.isoformat(), item.status, item.swap_from)
+             for item in expand_entries([other_monday], self.term, 5, 5)],
+            [('2026-10-05', '', None)])
+
+    def test_undoing_ignore_calendar_leaves_no_trace(self):
+        """README §11.4 in every scope, on 中秋 (09-25, week 3) and 国庆 (10-02, week 4)."""
+        calendar = [('2026-09-25', 'suspended', False), ('2026-10-02', 'suspended', False),
+                    ('2026-10-09', '', False)]
+        for scope, week in (('single', 4), ('following', 3), ('all', None)):
+            with self.subTest(scope=scope):
+                services.update_entry(self.friday, {'ignore_calendar': True},
+                                      scope=scope, week=week)
+                self.assertIn(('2026-10-02', '', True), self.fridays())
+                services.update_entry(self.friday, {'ignore_calendar': False},
+                                      scope=scope, week=week)
+                self.assertEqual((self.friday_rows(), self.fridays()), ([], calendar))
+        # A narrower true inside the range does not keep a false: it wins its week anyway.
+        services.update_entry(self.friday, {'ignore_calendar': True}, scope='following', week=3)
+        services.update_entry(self.friday, {'ignore_calendar': True}, scope='single', week=4)
+        services.update_entry(self.friday, {'ignore_calendar': False}, scope='following', week=3)
+        self.assertEqual(self.friday_rows(), [(4, 4, {'ignore_calendar': True})])
+        self.assertEqual(self.fridays(), [('2026-09-25', 'suspended', False),
+                                          ('2026-10-02', '', True), ('2026-10-09', '', False)])
+
+    def test_a_wider_true_keeps_the_explicit_false(self):
+        """README §11.4: the narrower false is stored and wins its weeks."""
+        services.update_entry(self.friday, {'ignore_calendar': True})
+        services.update_entry(self.friday, {'ignore_calendar': False}, scope='single', week=4)
+        self.assertEqual(self.friday_rows(), [(None, None, {'ignore_calendar': True}),
+                                              (4, 4, {'ignore_calendar': False})])
+        self.assertEqual(self.fridays(), [('2026-09-25', '', True),
+                                          ('2026-10-02', 'suspended', True),
+                                          ('2026-10-09', '', True)])
+        # following behaves the same way.
+        TimetableEntryOverride.objects.filter(entry=self.friday, week_start=4).delete()
+        services.update_entry(self.friday, {'ignore_calendar': False}, scope='following', week=4)
+        self.assertEqual(self.friday_rows(), [(None, None, {'ignore_calendar': True}),
+                                              (4, None, {'ignore_calendar': False})])
+        self.assertEqual(self.fridays(), [('2026-09-25', '', True),
+                                          ('2026-10-02', 'suspended', True),
+                                          ('2026-10-09', '', True)])
+        # From week 1 the range is as wide as the whole one; the newer override
+        # is applied after it, so its false is kept too.
+        services.update_entry(self.friday, {'ignore_calendar': False}, scope='following', week=1)
+        self.assertEqual(self.friday_rows()[2:], [(1, None, {'ignore_calendar': False})])
+        self.assertEqual(self.fridays()[0], ('2026-09-25', 'suspended', True))
+        # Undoing the whole-range true removes that override; the narrower
+        # falses were written by their own PATCHes and stay.
+        services.update_entry(self.friday, {'ignore_calendar': False})
+        self.assertEqual(self.friday_rows(), [(4, None, {'ignore_calendar': False}),
+                                              (1, None, {'ignore_calendar': False})])
+
+    def fridays(self):
+        return [(item.date.isoformat(), item.status, item.modified)
+                for item in expand_entries([self.friday], self.term, 3, 5)]
+
+    def friday_rows(self):
+        return [(o.week_start, o.week_end, o.fields)
+                for o in self.friday.overrides.order_by('id')]
+
     def test_ignore_calendar_holds_the_lesson(self):
         """「照常上课」 in every scope: held on no-class dates, no 调休 copy (§11)."""
         make_event('swap', date(2026, 10, 10), name='按周一课表上课', follows_weekday=1)
@@ -459,6 +557,22 @@ class IcsCalendarTests(TestCase):
         self.assertIn('DTSTART;TZID=Asia/Shanghai:20261001T080000', text)
         self.assertNotIn('20261002T', text)
         self.assertEqual(text.count('BEGIN:VEVENT'), 18 + 18 + 16)
+
+    def test_other_entries_are_exported_on_holidays(self):
+        """README §11.1: a 其它 entry on 国庆 is exported, the course lesson is not."""
+        term = make_term(week1_monday=FALL_WEEK1, total_weeks=18)
+        _, person = make_person()
+        fall_events()
+        make_entry(person, term, name='周四课', weekday=4, week_start=4, week_end=4)
+        make_entry(person, term, name='临时活动', weekday=4, week_start=4, week_end=4,
+                   start_section=0, end_section=0, start_time=time(13, 30),
+                   end_time=time(14, 30), source=TimetableEntry.Source.MANUAL,
+                   category=TimetableEntry.Category.OTHER)
+        with patch('timetable.ics.load_sources', return_value=[StoredEntriesSource()]):
+            text = build_ics(person, today=date(2026, 9, 1), now=datetime(2026, 9, 1, 12))
+        self.assertIn('DTSTART;TZID=Asia/Shanghai:20261001T133000', text)
+        self.assertNotIn('20261001T080000', text)
+        self.assertEqual(text.count('BEGIN:VEVENT'), 1)
 
 
 class CalendarSpecTests(SimpleTestCase):

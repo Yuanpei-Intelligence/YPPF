@@ -26,16 +26,19 @@ def expand_entries(entries: Iterable[TimetableEntry], term,
     """
     Expand entries into one occurrence per lesson in teaching weeks
     ``week_from..week_to`` of ``term``, honouring week range, parity, the
-    entries' overrides (§8.2) and the university calendar (§11):
+    entries' overrides (§8.2) and, for entries of category ``course`` only,
+    the university calendar (§11):
 
-    - a lesson whose own date is a holiday or exam date, or a 调休 swap
-      date that follows another weekday, is kept with ``status='suspended'``;
-    - a swap date carries the lessons of the weekday it follows as normal
-      occurrences with ``swap_from`` set to that weekday (week range and
-      parity judged by the swap date's own week);
-    - entries of category ``exam`` and weeks whose overrides resolve
-      ``ignore_calendar`` (「照常上课」) keep their own date as a normal
-      occurrence whatever the calendar says and get no swap copy.
+    - a course lesson whose own date is a holiday or exam date, or a 调休
+      swap date that follows another weekday, is kept with
+      ``status='suspended'``;
+    - a swap date carries the course lessons of the weekday it follows as
+      normal occurrences with ``swap_from`` set to that weekday (week range
+      and parity judged by the swap date's own week);
+    - entries of category ``other`` or ``exam``, and course weeks whose
+      overrides resolve ``ignore_calendar`` (「照常上课」), keep their own
+      date as a normal occurrence whatever the calendar says and get no
+      swap copy.
 
     An occurrence's ``date``/``weekday``/``week`` are always the real ones,
     so a swap day's lessons sit in that day's column, and ``id`` stays
@@ -75,12 +78,13 @@ def expand_entries(entries: Iterable[TimetableEntry], term,
                 continue
             weekday = resolved.values['weekday']
             own_day = term.date_of(week, weekday)
-            exempt = (entry.category == TimetableEntry.Category.EXAM
-                      or resolved.ignore_calendar)
-            status = '' if exempt or own_day in class_days else 'suspended'
-            occurrences.append(
-                _occurrence(entry, resolved, own_day, week, status=status))
-            if exempt:
+            # Holidays suspend classes, not personal events or exams.
+            follows_calendar = (entry.category == TimetableEntry.Category.COURSE
+                                and not resolved.ignore_calendar)
+            suspended = follows_calendar and own_day not in class_days
+            occurrences.append(_occurrence(entry, resolved, own_day, week,
+                                           status='suspended' if suspended else ''))
+            if not follows_calendar:
                 continue
             for on in swap_days.get(weekday, ()):
                 occurrences.append(

@@ -439,9 +439,12 @@ class EntryViewSet(TimetableAPIMixin, viewsets.ViewSet):
             'scope=single/following 需给出 week（在条目周次范围内），把给出的字段（可含 canceled）'
             '写入该周 / 该周及以后的修改记录。hidden/role/category/catalog_id 与周次范围、'
             '单双周只能在 scope=all 下修改（400 errors.scope）。'
-            'ignore_calendar（照常上课，布尔值）可用于任意 scope：true 时该范围内放假 / '
-            '停课复习考试日的课照常显示并提醒，调休日不再按被换星期复制这门课；false 恢复按校历'
-            '（删除修改记录亦可）。它总是写入修改记录，手动条目 scope=all 也一样。'
+            'ignore_calendar（照常上课，布尔值）可用于任意 scope，只对类别为课程的条目起作用'
+            '（其它、考试条目本来就不受校历影响）：true 时该范围内放假 / 停课复习考试日的课照常'
+            '显示并提醒，调休日不再按被换星期复制这门课，总是写入该范围的修改记录，手动条目 '
+            'scope=all 也一样；false 恢复按校历（删除修改记录亦可），只有更大范围的修改记录仍为 '
+            'true 时才存为 false，否则从该范围的修改记录中去掉此键，修改记录因此为空且未停课时'
+            '直接删除，这节课不再显示为已修改。'
         ),
         request=EntryInSerializer,
         responses={200: EntrySerializer,

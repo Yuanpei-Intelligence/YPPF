@@ -12,7 +12,13 @@ from semester.models import CalendarEvent
 from api.config import WXMiniappConfig
 from timetable import reminders, services
 from timetable.jobs import send_due_class_reminders
-from timetable.models import AcademicTerm, ReminderLog, SubscribeQuota, TimetableSettings
+from timetable.models import (
+    AcademicTerm,
+    ReminderLog,
+    SubscribeQuota,
+    TimetableEntry,
+    TimetableSettings,
+)
 from timetable.sources.base import Occurrence
 from timetable.sources.stored import StoredEntriesSource
 from timetable.tests.helpers import make_entry, make_person, make_term
@@ -135,6 +141,17 @@ class DueRemindersTests(ReminderTestCase):
         self.assertEqual(self.due(datetime(2026, 9, 21, 7, 40)),
                          [(self.person.pk, self.entry_id)])
         self.assertEqual(self.due(datetime(2026, 9, 26, 7, 40)), [])
+
+    def test_other_entries_on_a_holiday_are_reminded(self):
+        """README §11.1: the calendar suspends the course, not a 其它 entry the same day."""
+        CalendarEvent.objects.create(kind='holiday', start_date=MONDAY, end_date=MONDAY,
+                                     name='放假')
+        other = make_entry(self.person, self.term, name='社团例会', weekday=1, start_section=3,
+                           end_section=4, source=TimetableEntry.Source.MANUAL,
+                           category=TimetableEntry.Category.OTHER)
+        self.assertEqual(self.due(datetime(2026, 9, 21, 7, 40)), [])     # 高数 is suspended
+        self.assertEqual(self.due(datetime(2026, 9, 21, 9, 50)),
+                         [(self.person.pk, f'manual:{other.pk}:2026-09-21')])
 
     def test_canceled_excluded_and_every_source_used(self):
         items = [

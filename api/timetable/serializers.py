@@ -489,8 +489,9 @@ class EntryScopeSerializer(serializers.Serializer):
     canceled = serializers.BooleanField(required=False, allow_null=True)
     ignore_calendar = serializers.BooleanField(
         required=False,
-        help_text='true: the lesson is held on no-class calendar days of the range; '
-                  'false: back to the calendar (§11)')
+        help_text='true: a course lesson is held on no-class calendar days of the range; '
+                  'false: back to the calendar, kept only where a wider true needs '
+                  'beating and otherwise removed from the override (§11.4)')
 
     def validate(self, attrs):
         scope = attrs.get('scope') or 'all'

@@ -30,7 +30,7 @@ from timetable.models import (
     TimetableEntryOverride,
     TimetableSettings,
 )
-from timetable.overrides import format_time
+from timetable.overrides import format_time, ignore_calendar_false_needed
 from timetable.sources import pku_parsers
 from timetable.sources.base import (
     DateSpan,
@@ -860,9 +860,17 @@ def update_entry(entry: TimetableEntry, values: dict[str, Any], *,
     - ``OVERRIDE_ONLY_KEYS`` (``ignore_calendar``, §11) always go to the
       override of the scope's range, manual entries with ``scope='all'``
       included.
+    - ``ignore_calendar=False`` (undoing 「照常上课」, §11.4) is stored only
+      when it changes the resolved flag of a week of the range
+      (``overrides.ignore_calendar_false_needed``: a wider ``True`` needs
+      beating). Otherwise the key is removed from the range's override; an
+      override left with no keys and not canceled is deleted, and none is
+      created.
 
     ``ValueError`` names a key that is not allowed for the scope/source
-    (the API validates first and answers 400). Atomic; returns the entry.
+    (the API validates first and answers 400). Atomic, and serialised per
+    entry (row lock) because the undo reads the entry's other overrides;
+    returns the entry.
     """
     if scope not in SCOPES:
         raise ValueError(f'unknown scope {scope!r}')
@@ -895,9 +903,11 @@ def update_entry(entry: TimetableEntry, values: dict[str, Any], *,
                 setattr(entry, name, value)
             entry.save(update_fields=list(row_values) + ['updated_at'])
         if override_values or canceled is not None:
-            override = (TimetableEntryOverride.objects.select_for_update()
-                        .filter(entry=entry, week_start=bounds[0], week_end=bounds[1])
-                        .order_by('id').first())
+            TimetableEntry.objects.select_for_update().filter(pk=entry.pk).only('pk').first()
+            overrides = list(TimetableEntryOverride.objects.select_for_update()
+                             .filter(entry=entry).order_by('id'))
+            override = next((item for item in overrides
+                             if (item.week_start, item.week_end) == bounds), None)
             if override is None:
                 override = TimetableEntryOverride(
                     entry=entry, week_start=bounds[0], week_end=bounds[1])
@@ -907,5 +917,13 @@ def update_entry(entry: TimetableEntry, values: dict[str, Any], *,
             override.fields = fields
             if canceled is not None:
                 override.canceled = bool(canceled)
+            if ('ignore_calendar' in override_values and not fields['ignore_calendar']
+                    and not ignore_calendar_false_needed(entry, overrides, override)):
+                # Nothing wider is true: the undo leaves no trace (README §11.4).
+                del fields['ignore_calendar']
+                if not fields and not override.canceled:
+                    if override.pk is not None:
+                        override.delete()
+                    return entry
             override.save()
     return entry

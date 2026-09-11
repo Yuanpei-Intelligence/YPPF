@@ -419,8 +419,8 @@ def load_sources() -> list[EventSource]     # from CONFIG.sources, cached, impor
 
 - `stored.StoredEntriesSource` expands `TimetableEntry` rows (sections →
   times from `term.section_times`, parity, week range; the university
-  calendar and 照常上课 as in §11). `kind='course'` for portal/paste,
-  `'custom'` for manual.
+  calendar for course entries and 照常上课 as in §11). `kind='course'` for
+  portal/paste, `'custom'` for manual.
 - `college.CollegeCourseSource` (needs `app`): 书院课 the person selected
   (`CourseParticipant.status == SUCCESS`) in the YPPF semester that matches
   `term.yppf_year_semester()`. For each `CourseTime` and each week: if a
@@ -856,14 +856,16 @@ activities, applied activities and appointments are real events and are left
 untouched, except 书院课 lessons expanded from the weekly time, §11). As
 amended on 2026-09-11 (§11), lessons are no longer dropped:
 
-- a date covered by `HOLIDAY` or `EXAM` keeps its stored-entry lessons as
+- a date covered by `HOLIDAY` or `EXAM` keeps its course lessons as
   `status: 'suspended'` (shown muted next to the day label);
-- a `SWAP` date carries the lessons of entries whose `weekday ==
+- a `SWAP` date carries the lessons of course entries whose `weekday ==
   follows_weekday` (week range / parity checked against the swap date's own
-  week number, `swap_from` set) and suspends the entries of the real weekday;
+  week number, `swap_from` set) and suspends the course entries of the real
+  weekday;
 - `INFO` changes nothing, it is only surfaced as a label;
 - overlapping events: `HOLIDAY`/`EXAM` win over `SWAP`, which wins over `INFO`;
-- exam entries and lessons marked 照常上课 are exempt (§11).
+- only entries of category `course` follow the calendar: `other` and `exam`
+  entries, and course lessons marked 照常上课, are not affected (§11).
 
 JSON import format (`python manage.py import_academic_calendar <file>`, in
 `timetable`; upserts the `AcademicTerm` from `term`/`name`/`week1_monday`/
@@ -1145,6 +1147,9 @@ lie in `week_start..week_end`, else 400 `errors.week`):
   into `fields`; `canceled: true|false` allowed ("本次停课").
 - `following`: upsert the override with `(week, None)` (so a later re-import
   that shortens the entry still works); keys merged; `canceled` allowed.
+- In every scope `ignore_calendar: false` is kept only where it beats a
+  wider `true`; otherwise the key is removed, and an override left with no
+  keys and not canceled is deleted (§11.4).
 - `hidden`, `role`, `category`, `catalog_id` are rejected with a scope other
   than `all` (400 `errors.scope`).
 - Sections given without times derive times from the term table as in
@@ -1541,14 +1546,19 @@ lesson on a university-calendar no-class day stays visible, muted, instead
 of disappearing; a 调休 date shows which weekday's lessons it carries; and a
 student can mark a course that does not follow the holiday as 照常上课.
 Everything is additive: one new status value, one new occurrence field, one
-new override key.
+new override key. Amended the same day after the end-to-end smoke test:
+holidays suspend classes, not personal events, so the calendar applies to
+course entries only (§11.1); and undoing 照常上课 leaves no override
+behind unless a wider `true` needs beating (§11.4).
 
 ### 11.1 Stored entries (portal / paste / manual)
 
-For teaching week *w*, after the overrides of §8.2 are resolved (a canceled
-week still yields nothing):
+The calendar applies only to entries of category `course` (kind `course`):
+portal and paste imports, catalog quick adds, and manual entries the
+student filed as 课程. For teaching week *w*, after the overrides of §8.2
+are resolved (a canceled week still yields nothing):
 
-- **Suspended.** When the lesson's own date — the date of its resolved
+- **Suspended.** When a course lesson's own date — the date of its resolved
   `weekday` in *w*, so an override that moves a lesson onto a holiday is
   suspended too — is a `holiday` or `exam` date
   (`semester.calendar.NO_CLASS_KINDS`), or a `swap` date that follows
@@ -1556,17 +1566,20 @@ week still yields nothing):
   `status: 'suspended'`. `id`, times, sections, `ref` and `modified` are
   those of a normal occurrence; `swap_from` is null.
 - **Swapped.** A `swap` date *d* with `follows_weekday = N` carries every
-  lesson whose resolved weekday in the week of *d* is *N* as a normal
+  course lesson whose resolved weekday in the week of *d* is *N* as a normal
   occurrence: `date`/`weekday`/`week` are *d*'s, `start`/`end` the lesson's
   times on *d*, `id` `'{source}:{entry_id}:{d}'`, `swap_from: N`. Week range
   and parity are judged by *d*'s own teaching week. The lesson's own date in
   that week is decided on its own (typically a holiday, so it is suspended
   as well). Ids stay unique: a lesson is suspended only on its own date and
   copied only to other dates.
-- **Exempt.** An entry of category `exam` (kind `exam`) and a week whose
-  overrides resolve `ignore_calendar: true` keep their own date as a normal
-  occurrence whatever the calendar says, and get no swap copy, so nothing
-  is duplicated.
+- **Not affected.** Entries of category `other` (kind `custom`) or `exam`
+  (kind `exam`) never follow the calendar: every lesson stays on its own
+  weekday date as a normal occurrence (`status: ''`, `swap_from: null`,
+  reminded and exported) whatever kind the date has, and none is copied to
+  a swap date. A course week whose overrides resolve
+  `ignore_calendar: true` is held the same way (§11.4), so nothing is
+  duplicated.
 - Every other occurrence has `swap_from: null`. `info` dates, and a `swap`
   date that follows its own weekday, are ordinary class days; precedence is
   unchanged (holiday/exam over swap over info, §6.4).
@@ -1616,17 +1629,49 @@ PATCH /api/v2/timetable/entries/<id>/
   id; the last applied override carrying it wins), so a single week's
   `false` beats a whole-range `true`. A non-bool value stored through admin
   is ignored.
-- For weeks where it resolves `true`, the lesson on its own weekday date is
-  a normal occurrence even on a no-class day (reminded and exported), and it
-  gets no copy on a swap date. `canceled: true` still wins: a canceled week
-  yields nothing, held or not.
-- Undo: `PATCH` the same scope with `false` (stored as `false`, so the
-  override stays and the lesson keeps `modified: true`), or delete the
-  override with `DELETE entries/<id>/overrides/<oid>/` or `DELETE
-  entries/<id>/overrides/` (§8.2). Either way the calendar applies again.
+- For weeks where it resolves `true`, a course lesson on its own weekday
+  date is a normal occurrence even on a no-class day (reminded and
+  exported), and it gets no copy on a swap date. `canceled: true` still
+  wins: a canceled week yields nothing, held or not. Entries of category
+  `other` or `exam` never follow the calendar (§11.1); the key is accepted
+  for them and changes nothing.
+- Undo: `PATCH` the same scope with `false`, or delete the override with
+  `DELETE entries/<id>/overrides/<oid>/` or `DELETE entries/<id>/overrides/`
+  (§8.2). Either way the calendar applies again. A `PATCH … false` keeps
+  `false` only where it is needed to beat a wider `true`, the same way in
+  every scope (`single`, `following`, `all`):
+  - `false` is stored when some week of the scope's range would resolve
+    `true` without it: an override applied before this one (a wider range,
+    or the same range with a smaller id) carries `true`, and no override
+    applied after it carries the key. The narrower `false` wins in those
+    weeks.
+  - Otherwise `ignore_calendar` is removed from the scope's override. A
+    narrower `true` inside the range does not keep it, since the narrower
+    override wins its weeks either way. An override left with empty
+    `fields` and `canceled: false` is deleted, and none is created when the
+    scope had none, so the lesson is back to `modified: false` unless other
+    overrides still apply to it. An override that carries other keys
+    (`room`, …) or `canceled: true` keeps them and stays, so its weeks stay
+    `modified: true`.
 - Validation: the value is read by DRF's `BooleanField`, as `canceled` is;
   anything it does not read as a boolean (`"maybe"`, `null`, `2`, `[]`, an
   object) answers 400 `errors.ignore_calendar` and writes nothing.
+
+Undo examples on a Friday lesson (中秋 2026-09-25 in week 3, 国庆 2026-10-02
+in week 4):
+
+```http
+PATCH /api/v2/timetable/entries/<id>/
+{"scope": "single", "week": 4, "ignore_calendar": true}    // (4, 4) {ignore_calendar: true}: 10-02 held
+{"scope": "single", "week": 4, "ignore_calendar": false}   // nothing wider is true: (4, 4) deleted; 10-02 suspended, modified: false
+{"ignore_calendar": true}                                  // (null, null) {ignore_calendar: true}: 09-25 and 10-02 held
+{"scope": "single", "week": 4, "ignore_calendar": false}   // beats the whole-range true: (4, 4) {ignore_calendar: false}; 10-02 suspended, 09-25 held
+{"ignore_calendar": false}                                 // (null, null) deleted; (4, 4) keeps its false, so week 4 stays modified: true
+```
+
+With `{"scope": "single", "week": 4, "room": "理教101", "ignore_calendar": true}`
+instead, the undo leaves `(4, 4) {room: "理教101"}`: 10-02 is suspended and
+still `modified: true`.
 
 ### 11.5 Payloads
 
@@ -1669,18 +1714,36 @@ The Thursday lesson after `{"scope": "single", "week": 4, "ignore_calendar": tru
  "role": "enrolled", "tag": "", "modified": true, "swap_from": null}
 ```
 
+A manual entry of category `other` on 国庆 (the smoke test's 「临时活动」) is
+not affected by the calendar:
+
+```json
+{"id": "manual:31:2026-10-01", "source": "manual", "kind": "custom", "title": "临时活动",
+ "subtitle": "", "location": "", "start": "2026-10-01T13:30:00", "end": "2026-10-01T14:30:00",
+ "date": "2026-10-01", "week": 4, "weekday": 4, "start_section": null, "end_section": null,
+ "color_key": "临时活动", "status": "", "ref": {"entry_id": 31}, "hidden": false,
+ "role": "enrolled", "tag": "", "modified": false, "swap_from": null}
+```
+
 A client can tell a held lesson from the day payload: `status: ''` on a
 date whose `WeekDay.kind` / `AgendaDay.kind` is `holiday` or `exam` (or a
 `swap` date following another weekday, with `swap_from: null`), for a
-lesson that is not of kind `exam`.
+stored lesson of kind `course` (stored lessons of kinds `custom` and `exam`
+are never suspended).
 
 Implementation notes (as built): `timetable.sources.stored.expand_entries`
 decides each week's calendar once (`_week_calendar`: the dates holding
-their own weekday's lessons and the swap dates by followed weekday);
-`ResolvedWeek.ignore_calendar` carries the resolved flag;
-`services.OVERRIDE_ONLY_KEYS` routes `ignore_calendar` to the override in
-`update_entry`; the college source marks its expanded lessons with one
-extra calendar query per call (none when it expands nothing). OpenAPI:
+their own weekday's lessons and the swap dates by followed weekday) and
+applies it to an entry only when its `category` is `course` and the week
+does not resolve `ignore_calendar`; `ResolvedWeek.ignore_calendar` carries
+the resolved flag; `services.OVERRIDE_ONLY_KEYS` routes `ignore_calendar`
+to the override in `update_entry`, which locks the entry row, reads all
+its overrides in one query and asks the pure
+`overrides.ignore_calendar_false_needed` whether a `false` must be kept
+(it resolves each week of the range with and without the key; an unsaved
+override sorts as the newest of its width); the college source marks its
+expanded lessons with one extra calendar query per call (none when it
+expands nothing). OpenAPI:
 `OccurrenceSerializer.status` is a choice field whose enum is named
 `OccurrenceStatusEnum` through `SPECTACULAR_SETTINGS['ENUM_NAME_OVERRIDES']`,
 `swap_from` a nullable integer 1–7; the `PATCH entries/<id>/` description
