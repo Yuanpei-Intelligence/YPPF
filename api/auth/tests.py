@@ -5,11 +5,17 @@ import time
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timedelta
 from threading import Barrier
+from types import SimpleNamespace
 from unittest.mock import patch
 
 from django.core import signing
 from django.db import close_old_connections
-from django.test import TestCase, TransactionTestCase, override_settings
+from django.test import (
+    SimpleTestCase,
+    TestCase,
+    TransactionTestCase,
+    override_settings,
+)
 from django.urls import include, path
 from drf_spectacular.views import SpectacularAPIView
 from rest_framework_simplejwt.tokens import AccessToken
@@ -27,6 +33,7 @@ from api.auth.ticket import (
     consume_webview_ticket,
     create_webview_ticket,
 )
+from api.auth.wechat_api import WechatAPIError, get_wechat_access_token
 from api.config import CONFIG
 from generic.models import (
     PendingWechatBinding,
@@ -795,3 +802,23 @@ class WechatBindingConcurrencyTestCase(TransactionTestCase):
                 outcomes = self.run_request_race(requests)
             self.assertEqual(outcomes, [200, 400], (attempt, outcomes))
             PendingWechatBinding.objects.all().delete()
+
+
+class WechatAccessTokenErrorTestCase(SimpleTestCase):
+    @patch("api.auth.wechat_api.requests.get")
+    @patch("api.auth.wechat_api.cache")
+    def test_errcode_is_attached_to_a_value_error(self, cache, get):
+        cache.get.return_value = None
+        get.return_value.json.return_value = {
+            "errcode": 40125,
+            "errmsg": "invalid appsecret",
+        }
+        credentials = SimpleNamespace(appid="wx-test", secret="test-secret")
+        with patch("api.auth.wechat_api.CONFIG", credentials), \
+                self.assertLogs("api.auth.wechat_api", level="ERROR"), \
+                self.assertRaises(WechatAPIError) as raised:
+            get_wechat_access_token()
+
+        self.assertIsInstance(raised.exception, ValueError)
+        self.assertEqual(raised.exception.errcode, 40125)
+        cache.set.assert_not_called()

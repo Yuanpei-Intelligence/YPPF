@@ -16,6 +16,20 @@ WX_ACCESS_TOKEN_CACHE_KEY = "wx_miniapp_access_token"
 ACCESS_TOKEN_REFRESH_BUFFER = 300
 
 
+class WechatAPIError(ValueError):
+    """
+    WeChat answered with a non-zero ``errcode``.
+
+    Subclasses ``ValueError`` so existing callers keep working. ``errcode``
+    lets diagnostics such as ``deploy_check --online`` report the code alone,
+    without the message or any credential.
+    """
+
+    def __init__(self, message: str, errcode: int | str):
+        super().__init__(message)
+        self.errcode = errcode
+
+
 def get_wechat_access_token() -> str:
     """
     获取微信小程序 access_token。
@@ -27,7 +41,8 @@ def get_wechat_access_token() -> str:
         access_token 字符串
 
     Raises:
-        ValueError: 未配置 appid/secret 或微信接口返回错误
+        WechatAPIError: 微信接口返回 errcode（ValueError 子类，带 ``errcode``）
+        ValueError: 未配置 appid/secret、无法访问或未返回 access_token
     """
     token = cache.get(WX_ACCESS_TOKEN_CACHE_KEY)
     if token:
@@ -59,7 +74,7 @@ def get_wechat_access_token() -> str:
         errmsg = data.get("errmsg", "未知错误")
         logger.error(
             "get access_token failed: errcode=%s errmsg=%s", errcode, errmsg)
-        raise ValueError(f"微信接口错误: {errmsg}") from None
+        raise WechatAPIError(f"微信接口错误: {errmsg}", errcode) from None
 
     token = data.get("access_token")
     if not token:
