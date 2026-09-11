@@ -183,7 +183,10 @@ def send_wechat(
         if raise_on_failure:
             raise RuntimeError('WeChat message delivery failed')
         return logger.warning('没有可用用户')
-    content = f'{title}<title>{message}'
+    if message:
+        content = title + chr(10) + message
+    else:
+        content = title
     if card:
         if url is not None:
             url = build_full_url(url)
