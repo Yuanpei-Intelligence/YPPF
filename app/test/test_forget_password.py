@@ -1097,6 +1097,8 @@ class ForgetPasswordViewTests(TestCase):
         self.assertContains(response, 'inputmode="numeric"')
         self.assertContains(response, 'autocomplete="one-time-code"')
         html = response.content.decode()
+        self.assertRegex(html, r'<input[^>]+id="token"[^>]+data-code-prefill>')
+        self.assertRegex(html, r'<input[^>]+id="new_password"[^>]+data-code-prefill-focus>')
         self.assertLess(html.index("history.replaceState"),
                         html.index('<script src='))
 

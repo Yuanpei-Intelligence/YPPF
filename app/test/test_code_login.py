@@ -1,6 +1,7 @@
 from datetime import datetime, timedelta
 from threading import Barrier, Thread
 from unittest.mock import patch
+from urllib.parse import parse_qs, urlsplit
 
 from django.conf import settings
 from django.db import close_old_connections
@@ -88,7 +89,13 @@ class CodeLoginTests(TestCase):
         response = client.get(reverse('codeLogin'))
         self.assertContains(response, '登录验证码')
         self.assertNotContains(response, 'name="new_password"')
-        self.assertNotContains(response, 'history.replaceState')
+        self.assertContains(response, 'history.replaceState')
+        self.assertContains(response, 'data-code-prefill')
+        self.assertContains(response, 'data-code-prefill-focus')
+        html = response.content.decode()
+        self.assertRegex(html, r'<input[^>]+id="code"[^>]+data-code-prefill>')
+        self.assertRegex(html, r'<button[^>]+id="login-submit"[^>]+data-code-prefill-focus>')
+        self.assertLess(html.index('history.replaceState'), html.index('<script src='))
         self.assertEqual(client.post(reverse('codeLogin'), {'action': 'send', 'username': self.user.username}).status_code, 403)
         self.assertEqual(client.put(reverse('codeLogin'),
             HTTP_X_CSRFTOKEN=client.cookies[settings.CSRF_COOKIE_NAME].value).status_code, 405)
@@ -145,9 +152,24 @@ class CodeLoginTests(TestCase):
         send_verify_code(self.user.username, '123456')
         args, kwargs = send.call_args
         self.assertIn('登录验证码', args[2])
-        self.assertTrue(kwargs['url'].endswith('/codeLogin/'))
+        link = urlsplit(kwargs['url'])
+        self.assertEqual(link.path, '/codeLogin/')
+        self.assertEqual(link.query, '')
+        self.assertEqual(parse_qs(link.fragment), {
+            'username': [self.user.username], 'token': ['123456'],
+        })
         self.assertFalse(kwargs['multithread'])
         self.assertTrue(kwargs['raise_on_failure'])
+
+    @patch('extern.wechat.send_wechat')
+    def test_wechat_login_link_encodes_account_and_preserves_leading_zeros(self, send):
+        from extern.wechat import send_verify_code
+        send_verify_code('学生+test&name', '000042')
+        link = urlsplit(send.call_args.kwargs['url'])
+        self.assertEqual(link.query, '')
+        self.assertEqual(parse_qs(link.fragment), {
+            'username': ['学生+test&name'], 'token': ['000042'],
+        })
 
     @patch('extern.code_email.requests.post')
     def test_email_login_message_has_distinct_purpose(self, post):
