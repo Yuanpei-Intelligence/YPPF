@@ -1686,7 +1686,8 @@ def notifications(request: HttpRequest):
             count = notificaiton_set.count()
             notificaiton_set.update(
                 status=Notification.Status.DONE, finish_time=datetime.now())
-            succeed(f"成功将{count}条通知设为已读！", html_display)
+            if count:
+                succeed(f"成功将{count}条通知设为已读！", html_display)
         elif get_name == "deleteall":
             notificaiton_set = Notification.objects.activated().filter(
                 receiver=request.user,
