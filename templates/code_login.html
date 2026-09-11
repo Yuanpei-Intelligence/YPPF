@@ -14,13 +14,7 @@
             <input id="username" name="username" class="form-control" value="{{ username|default:'' }}" placeholder="学号/工号" autocomplete="username" required maxlength="150">
         </div>
         <div class="field-wrapper">
-            <div class="btn-group btn-block">
-                <button type="button" class="btn btn-outline-primary dropdown-toggle" data-toggle="dropdown">发送登录验证码</button>
-                <div class="dropdown-menu">
-                    <button type="submit" name="action" value="wechat" class="dropdown-item" formnovalidate>企业微信</button>
-                    <button type="submit" name="action" value="email" class="dropdown-item" formnovalidate>个人邮箱</button>
-                </div>
-            </div>
+            <button type="submit" name="action" value="send" class="btn btn-outline-primary btn-block" formnovalidate>发送登录验证码</button>
         </div>
         <div class="field-wrapper input">
             <label for="code">登录验证码</label>

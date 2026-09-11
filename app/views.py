@@ -1,5 +1,6 @@
 import json
 import random
+from functools import partial
 from datetime import datetime, timedelta
 from typing import cast, List, Tuple
 
@@ -10,7 +11,6 @@ from django.db.models import Q, F, Sum, QuerySet
 from django.contrib.auth.password_validation import CommonPasswordValidator, NumericPasswordValidator
 from django.core.exceptions import ValidationError
 
-from django.core.validators import validate_email
 from django.views.decorators.csrf import csrf_protect
 from django.views.decorators.http import require_http_methods
 
@@ -51,10 +51,7 @@ from app.utils import (
 from extern.wechat import (
     invite_to_wechat,
 )
-from extern.password_reset import (
-    queue_prepared_password_reset_email,
-    queue_prepared_password_reset_wechat,
-)
+from extern.code_delivery import queue_code_delivery
 from app.notification_utils import (
     notification_status_change,
     notification2Display,
@@ -1418,7 +1415,10 @@ def search(request: HttpRequest):
 @logger.secure_view()
 @utils.record_attack(Exception, as_attack=True)
 def forgetPassword(request: HttpRequest):
-    """Request or consume a one-time reset code without logging in."""
+    """Request or consume a one-time reset code without logging in.
+
+    action=send delivers one code to all available channels.
+    """
     if request.user.is_authenticated:
         return redirect("/welcome/")
 
@@ -1426,41 +1426,12 @@ def forgetPassword(request: HttpRequest):
     username = ""
     if request.method == "POST":
         action = request.POST.get("action", "")
-        if action in ("email", "wechat"):
+        if action == "send":
             request_form = PasswordResetRequestForm(request.POST)
             if request_form.is_valid():
                 username = request_form.cleaned_data["username"]
-                def prepare_delivery():
-                    if not utils.check_password_reset_request_rate(
-                        request, username
-                    ):
-                        return None
-                    user = User.objects.filter(username=username).first()
-                    person = None
-                    if user is not None:
-                        try:
-                            person = NaturalPerson.objects.get_by_user(user)
-                        except NaturalPerson.DoesNotExist:
-                            pass
-                    if person is not None:
-                        if action == "email":
-                            try:
-                                validate_email(person.email)
-                            except ValidationError:
-                                return None
-                            token = utils.create_password_reset_token(
-                                request, user)
-                            return person.name, person.email, token
-                        elif action == "wechat":
-                            token = utils.create_password_reset_token(
-                                request, user)
-                            return user.username, token
-                    return None
-
-                if action == "email":
-                    queue_prepared_password_reset_email(prepare_delivery)
-                else:
-                    queue_prepared_password_reset_wechat(prepare_delivery)
+                queue_code_delivery('password_reset', partial(
+                    utils.prepare_password_reset_delivery, request, username))
             display = succeed(
                 "若账号及联系方式有效，验证码将发送至已绑定渠道")
             display.update(alert=True, noshow=True, colddown=60)

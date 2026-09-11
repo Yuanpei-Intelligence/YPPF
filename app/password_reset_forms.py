@@ -6,7 +6,7 @@ from django import forms
 class PasswordResetRequestForm(forms.Form):
     username = forms.CharField(max_length=150)
     action = forms.ChoiceField(
-        choices=(("email", "email"), ("wechat", "wechat")))
+        choices=(("send", "send"),))
 
 
 class PasswordResetForm(forms.Form):

@@ -21,8 +21,8 @@ class CodeLoginTests(TestCase):
         self.request = RequestFactory().post('/codeLogin/')
         self.request.META['CSRF_COOKIE'] = 'fixed-device'
 
-    def issue(self, channel='email'):
-        return login_utils.prepare_login_delivery(self.request, self.user.username, channel, now=self.now)[-1]
+    def issue(self):
+        return login_utils.prepare_login_delivery(self.request, self.user.username, now=self.now)[-1]
 
     def consume(self, code, **kwargs):
         return login_utils.consume_login_code(self.request, self.user.username, code,
@@ -46,11 +46,11 @@ class CodeLoginTests(TestCase):
             reset = utils.create_password_reset_token(self.request, self.user, now=self.now)
         self.assertEqual(reset, '000043')
         with patch('app.login_utils.secrets.randbelow', side_effect=[43, 44]):
-            self.assertEqual(self.issue('wechat'), '000044')
+            self.assertEqual(self.issue(), '000044')
 
     def test_reissue_and_replay(self):
         first = self.issue()
-        second = self.issue('wechat')
+        second = self.issue()
         self.assertIsNone(self.consume(first))
         self.assertIsNotNone(self.consume(second))
         self.assertIsNone(self.consume(second))
@@ -74,13 +74,13 @@ class CodeLoginTests(TestCase):
         code = self.issue()
         self.assertIsNone(login_utils.consume_login_code(self.request, 'missing', code, now=self.now))
         NaturalPerson.objects.filter(person_id=self.user).update(email='')
-        self.assertIsNone(login_utils.prepare_login_delivery(self.request, self.user.username, 'email', now=self.now))
-        self.assertIsNotNone(self.consume(code))
+        replacement = login_utils.prepare_login_delivery(self.request, self.user.username, now=self.now)[-1]
+        self.assertIsNotNone(self.consume(replacement))
 
     def test_request_limits_are_shared_with_reset(self):
         for _ in range(3):
             self.issue()
-        self.assertIsNone(login_utils.prepare_login_delivery(self.request, self.user.username, 'email', now=self.now))
+        self.assertIsNone(login_utils.prepare_login_delivery(self.request, self.user.username, now=self.now))
         self.assertFalse(utils.check_password_reset_request_rate(self.request, self.user.username, now=self.now))
 
     def test_get_csrf_methods_and_separate_buttons(self):
@@ -89,11 +89,11 @@ class CodeLoginTests(TestCase):
         self.assertContains(response, '登录验证码')
         self.assertNotContains(response, 'name="new_password"')
         self.assertNotContains(response, 'history.replaceState')
-        self.assertEqual(client.post(reverse('codeLogin'), {'action': 'email', 'username': self.user.username}).status_code, 403)
+        self.assertEqual(client.post(reverse('codeLogin'), {'action': 'send', 'username': self.user.username}).status_code, 403)
         self.assertEqual(client.put(reverse('codeLogin'),
             HTTP_X_CSRFTOKEN=client.cookies[settings.CSRF_COOKIE_NAME].value).status_code, 405)
         html = client.get(reverse('login')).content.decode()
-        self.assertIn('>验证码登录</a>', html)
+        self.assertIn('href="/codeLogin/"', html)
         self.assertIn('<a href="/forgetpw/">忘记密码？</a>', html)
 
     def test_view_login_persists_session_and_still_requires_old_password(self):
@@ -127,10 +127,10 @@ class CodeLoginTests(TestCase):
         self.assertFalse(self.user.is_newuser)
         self.assertTrue(self.user.check_password('New-pass-123'))
 
-    @patch('app.login_views.queue_login_delivery')
+    @patch('app.login_views.queue_code_delivery')
     def test_missing_and_valid_account_receive_same_message(self, queue):
         for username in [self.user.username, 'missing']:
-            response = self.client.post(reverse('codeLogin'), {'username': username, 'action': 'email'})
+            response = self.client.post(reverse('codeLogin'), {'username': username, 'action': 'send'})
             self.assertContains(response, '若账号及联系方式有效')
         self.assertEqual(queue.call_count, 2)
 
@@ -149,12 +149,12 @@ class CodeLoginTests(TestCase):
         self.assertFalse(kwargs['multithread'])
         self.assertTrue(kwargs['raise_on_failure'])
 
-    @patch('extern.password_reset.requests.post')
+    @patch('extern.code_email.requests.post')
     def test_email_login_message_has_distinct_purpose(self, post):
         import json
-        from extern.login_code import deliver_login_email
+        from extern.code_email import send_code_email
         post.return_value.json.return_value = {'status': 200}
-        deliver_login_email('测试', 'test@example.com', '123456')
+        send_code_email('测试', 'test@example.com', '123456', title='登录')
         payload = json.loads(post.call_args.args[1])
         self.assertEqual(payload['subject'], 'YPPF登录')
         self.assertIn('登录验证码', payload['content'])
@@ -168,7 +168,7 @@ class CodeLoginConcurrencyTests(TransactionTestCase):
         now = datetime(2026, 9, 11, 12)
         request = RequestFactory().post('/codeLogin/')
         request.META['CSRF_COOKIE'] = 'fixed-device'
-        code = login_utils.prepare_login_delivery(request, user.username, 'email', now=now)[-1]
+        code = login_utils.prepare_login_delivery(request, user.username, now=now)[-1]
         barrier = Barrier(2)
         results, errors = [], []
         def consume():

@@ -1,3 +1,5 @@
+from functools import partial
+
 from django import forms
 from django.contrib import auth
 from django.shortcuts import redirect
@@ -6,14 +8,14 @@ from django.views.decorators.csrf import csrf_protect, ensure_csrf_cookie
 
 from app.login_utils import consume_login_code, prepare_login_delivery
 from app.utils import update_related_account_in_session
-from extern.login_code import queue_login_delivery
+from extern.code_delivery import queue_code_delivery
 from utils.http.utils import safe_local_redirect_target
 from utils.views import SecureTemplateView
 
 
 class LoginCodeForm(forms.Form):
     username = forms.CharField(max_length=150)
-    action = forms.ChoiceField(choices=[('email', 'email'), ('wechat', 'wechat'), ('login', 'login')])
+    action = forms.ChoiceField(choices=[('send', 'send'), ('login', 'login')])
     code = forms.RegexField(r'^[0-9]{6}$', max_length=6, required=False)
 
     def clean(self):
@@ -47,10 +49,9 @@ class CodeLogin(SecureTemplateView):
             self.extra_context['username'] = request.POST.get('username', '')
             if not form.is_valid():
                 self.extra_context['error'] = '请填写账号和6位数字登录验证码'
-            elif form.cleaned_data['action'] in ('email', 'wechat'):
-                channel = form.cleaned_data['action']
-                queue_login_delivery(channel, lambda: prepare_login_delivery(
-                    request, form.cleaned_data['username'], channel))
+            elif form.cleaned_data['action'] == 'send':
+                queue_code_delivery('login', partial(
+                    prepare_login_delivery, request, form.cleaned_data['username']))
                 self.extra_context['message'] = '若账号及联系方式有效，登录验证码将发送至已绑定渠道'
             else:
                 user = consume_login_code(request, form.cleaned_data['username'], form.cleaned_data['code'])

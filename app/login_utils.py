@@ -2,8 +2,6 @@
 import secrets
 from datetime import datetime, timedelta
 
-from django.core.exceptions import ValidationError
-from django.core.validators import validate_email
 from django.db import transaction
 from django.utils.crypto import constant_time_compare, salted_hmac
 
@@ -20,7 +18,8 @@ def password_state(password):
     return salted_hmac('app.website-login.password-state', password).hexdigest()
 
 
-def prepare_login_delivery(request, username, channel, *, now=None):
+def prepare_login_delivery(request, username, *, now=None):
+    """Issue one login code and return its account and registered recipients."""
     now = now or datetime.now()
     if not utils.check_password_reset_request_rate(request, username, now=now):
         return None
@@ -31,11 +30,6 @@ def prepare_login_delivery(request, username, channel, *, now=None):
         person = NaturalPerson.objects.filter(person_id=user).first()
         if person is None:
             return None
-        if channel == 'email':
-            try:
-                validate_email(person.email or '')
-            except ValidationError:
-                return None
         for _ in range(10):
             code = f'{secrets.randbelow(1_000_000):06d}'
             digest = login_code_digest(user.pk, code)
@@ -50,8 +44,7 @@ def prepare_login_delivery(request, username, channel, *, now=None):
         LoginChallenge.objects.create(
             user=user, token_digest=digest, password_digest=password_state(user.password),
             created_at=now, expires_at=now + timedelta(seconds=utils.PASSWORD_RESET_TOKEN_SECONDS))
-        return ((person.name, person.email, code) if channel == 'email'
-                else (user.username, code))
+        return user.pk, user.username, person.name, person.email, code
 
 
 def consume_login_code(request, username, code, *, now=None):

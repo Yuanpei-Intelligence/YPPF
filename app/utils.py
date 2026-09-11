@@ -280,6 +280,22 @@ def create_password_reset_token(
     return token
 
 
+def prepare_password_reset_delivery(request, username, *, now=None):
+    """Prepare a single reset code for both channels after reserving queue capacity."""
+    now = now or datetime.now()
+    if not check_password_reset_request_rate(request, username, now=now):
+        return None
+    with transaction.atomic():
+        user = User.objects.select_for_update().filter(username__iexact=username).first()
+        if user is None or not user.is_person() or not user.is_valid():
+            return None
+        person = NaturalPerson.objects.filter(person_id=user).first()
+        if person is None:
+            return None
+        code = create_password_reset_token(request, user, now=now)
+        return user.pk, user.username, person.name, person.email, code
+
+
 def _record_password_reset_failure(
     challenge: PasswordResetChallenge,
     now: datetime,
