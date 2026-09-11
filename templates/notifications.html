@@ -33,10 +33,18 @@
                                         <h5><i class="fa fa-ellipsis-h"></i></h5>
                                     </a>
                                     <div class="dropdown-menu" style="max-width: 200%; max-height: 300%;">
-                                         <button class="dropdown-item"
-                                         onclick="if(confirm('你确定要将全部消息标为已读吗?')){location.href = '/notifications/?read_name=readall';}" >全部已读</button>
-                                        <button class="dropdown-item"
-                                         onclick="if(confirm('你确定删除所有消息吗?')){location.href = '/notifications/?read_name=deleteall';}" >全部删除</button>
+                                        <form method="post" action="{% url 'notifications' %}"
+                                              onsubmit="return confirm('你确定要将全部消息标为已读吗?');">
+                                            {% csrf_token %}
+                                            <input type="hidden" name="action" value="readall">
+                                            <button type="submit" class="dropdown-item">全部已读</button>
+                                        </form>
+                                        <form method="post" action="{% url 'notifications' %}"
+                                              onsubmit="return confirm('你确定删除所有消息吗?');">
+                                            {% csrf_token %}
+                                            <input type="hidden" name="action" value="deleteall">
+                                            <button type="submit" class="dropdown-item">全部删除</button>
+                                        </form>
                                     </div>
                                     </div>
                                 </div>
@@ -284,7 +292,12 @@
     }
     async function save_read(func) {
         const { success } = await fetch(`/notifications/`, {
-            headers: { "Content-Type": `text/plain` },
+            headers: {
+                "Content-Type": `text/plain`,
+                "X-CSRFToken": document.querySelector(
+                    'input[name="csrfmiddlewaretoken"]'
+                ).value,
+            },
             method: `POST`,
             body: JSON.stringify({ id: this.id, function: func}),
         })

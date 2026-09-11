@@ -5,6 +5,10 @@ from typing import Literal
 
 from django.db import transaction
 from django.db.models import F
+from django.http import HttpResponseBadRequest, HttpResponseForbidden
+from django.shortcuts import get_object_or_404
+from django.views.decorators.csrf import csrf_protect
+from django.views.decorators.http import require_http_methods
 import csv
 import json
 
@@ -36,6 +40,8 @@ from app.activity_utils import (
     modify_participants,
     weekly_summary_orgs,
     available_participants,
+    checkin_activity,
+    valid_activity_checkin_verifier,
 )
 from app.comment_utils import addComment, showComment
 from app.utils import (
@@ -395,54 +401,53 @@ def getActivityInfo(request: HttpRequest):
         return HttpResponse(content, content_type=content_type)
 
 
+@csrf_protect
 @login_required(redirect_field_name="origin")
 @utils.check_user_access(redirect_url="/logout/")
+@require_http_methods(["GET", "HEAD", "POST"])
 @logger.secure_view()
 def checkinActivity(request: UserRequest, aid=None):
-    if not request.user.is_person():
-        return redirect(message_url(wrong('签到失败：请使用个人账号签到')))
     try:
-        np = get_person_or_org(request.user)
         aid = int(aid)
-        activity = Activity.objects.get(id=aid)
-        varifier = request.GET["auth"]
-    except:
-        return redirect(message_url(wrong('签到失败!')))
-    if varifier != GLOBAL_CONFIG.hasher.encode(str(aid)):
-        return redirect(message_url(wrong('签到失败：活动校验码不匹配')))
+    except (TypeError, ValueError):
+        return HttpResponseBadRequest("签到失败：无效的活动标识。")
+    if not request.user.is_person() or not request.user.active:
+        return HttpResponseForbidden("签到失败：请使用有效的个人账号签到。")
 
-    # context = wrong('发生意外错误')   # 理应在任何情况都生成context, 如果没有就让包装器捕获吧
-    if activity.status == Activity.Status.END:
-        context = wrong("活动已结束，不再开放签到。")
-    elif (
-        activity.status == Activity.Status.PROGRESSING or
-        (activity.status == Activity.Status.WAITING
-         and datetime.now() + timedelta(hours=1) >= activity.start)
-    ):
-        try:
-            with transaction.atomic():
-                participant = Participation.objects.select_for_update().get(
-                    SQ.sq(Participation.activity, activity),
-                    SQ.sq(Participation.person, np),
-                    status__in=[
-                        Participation.AttendStatus.UNATTENDED,
-                        Participation.AttendStatus.APPLYSUCCESS,
-                        Participation.AttendStatus.ATTENDED,
-                    ]
-                )
-                if participant.status == Participation.AttendStatus.ATTENDED:
-                    context = succeed("您已签到，无需重复签到!")
-                else:
-                    participant.status = Participation.AttendStatus.ATTENDED
-                    participant.save()
-                    context = succeed("签到成功!")
-        except:
-            context = wrong("您尚未报名该活动!")
+    try:
+        person = get_person_or_org(request.user, activate=True)
+    except NaturalPerson.DoesNotExist:
+        return HttpResponseForbidden("签到失败：个人资料不可用。")
 
+    if request.method in ("GET", "HEAD"):
+        activity = get_object_or_404(Activity, pk=aid)
+        verifier = request.GET.get("auth", "")
+        if not valid_activity_checkin_verifier(aid, verifier):
+            return HttpResponseBadRequest("签到失败：活动校验码不匹配。")
+        context = {
+            "activity": activity,
+            "auth": verifier,
+            "bar_display": utils.get_sidebar_and_navbar(
+                request.user,
+                navbar_name="活动签到",
+                title_name=activity.title,
+            ),
+        }
+        response = render(request, "activity/checkin_confirm.html", context)
+        response["Cache-Control"] = "no-store"
+        response["Referrer-Policy"] = "no-referrer"
+        return response
+
+    verifier = request.POST.get("auth", "")
+    try:
+        changed = checkin_activity(person, aid, verifier)
+    except ActivityException as exc:
+        return HttpResponseBadRequest(str(exc))
+
+    if changed:
+        context = succeed("签到成功!")
     else:
-        context = wrong("活动开始前一小时开放签到，请耐心等待!")
-
-    # TODO 在 activity_info 里加更多信息
+        context = succeed("您已签到，无需重复签到!")
     return redirect(message_url(context, f"/viewActivity/{aid}"))
 
 

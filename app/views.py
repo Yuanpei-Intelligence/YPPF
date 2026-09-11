@@ -11,6 +11,7 @@ from django.contrib.auth.password_validation import CommonPasswordValidator, Num
 from django.core.exceptions import ValidationError
 
 from django.core.validators import validate_email
+from django.http import HttpResponseBadRequest, HttpResponseForbidden
 from django.views.decorators.csrf import csrf_protect
 from django.views.decorators.http import require_http_methods
 
@@ -56,6 +57,8 @@ from extern.password_reset import (
     queue_prepared_password_reset_wechat,
 )
 from app.notification_utils import (
+    delete_all_read_notifications,
+    mark_all_notifications_read,
     notification_status_change,
     notification2Display,
 )
@@ -79,6 +82,7 @@ from semester.api import current_semester
 
 @csrf_protect
 @login_required(redirect_field_name="origin")
+@utils.check_user_access(redirect_url="/logout/")
 @require_POST
 @logger.secure_view()
 def shiftAccount(request: HttpRequest):
@@ -88,11 +92,20 @@ def shiftAccount(request: HttpRequest):
     if not username:
         return redirect(message_url(wrong('没有可切换的账户信息，请重新登录!')))
 
-    oname = request.POST.get("oname", "")
+    org_id = request.POST.get("org_id")
+    if org_id not in (None, ""):
+        try:
+            org_id = int(org_id)
+        except (TypeError, ValueError):
+            return HttpResponseBadRequest("无效的小组标识。")
 
-    # 不一定更新成功，但无所谓
-    update_related_account_in_session(
-        request, username, shift=True, oname=oname)
+    if not update_related_account_in_session(
+        request,
+        username,
+        shift=True,
+        org_id=org_id,
+    ):
+        return HttpResponseForbidden("没有切换到该账户的权限。")
 
     origin = safe_local_redirect_target(
         request, request.POST.get("origin"), "/welcome/"
@@ -597,7 +610,7 @@ def requestLoginOrg(request: UserRequest):
     auth.logout(request)
     auth.login(request, org.get_user())  # 切换到小组账号
     update_related_account_in_session(
-        request, request.user.username, oname=org.oname)
+        request, request.user.username, org_id=org.pk)
     return redirect(message_url(succeed(f'成功切换到{org}的账号!'), '/orginfo/'))
 
 
@@ -1669,57 +1682,60 @@ def saveSubscribeStatus(request: UserRequest):
     return JsonResponse({"success": True})
 
 
+@csrf_protect
 @login_required(redirect_field_name="origin")
 @utils.check_user_access(redirect_url="/logout/")
+@require_http_methods(["GET", "HEAD", "POST"])
 @logger.secure_view()
 def notifications(request: HttpRequest):
     html_display = {}
 
-    # 处理GET一键阅读或错误信息
-    if request.method == "GET" and request.GET:
-        get_name = request.GET.get("read_name", None)
-        if get_name == "readall":
-            notificaiton_set = Notification.objects.activated().filter(
-                receiver=request.user,
-                typename=Notification.Type.NEEDREAD,
-                status=Notification.Status.UNDONE)
-            count = notificaiton_set.count()
-            notificaiton_set.update(
-                status=Notification.Status.DONE, finish_time=datetime.now())
-            succeed(f"成功将{count}条通知设为已读！", html_display)
-        elif get_name == "deleteall":
-            notificaiton_set = Notification.objects.activated().filter(
-                receiver=request.user,
-                typename=Notification.Type.NEEDREAD,
-                status=Notification.Status.DONE)
-            count = notificaiton_set.count()
-            notificaiton_set.update(status=Notification.Status.DELETE)
-            succeed(f"您已成功删除{count}条通知！", html_display)
-        else:
-            # 读取外部错误信息
+    if request.method in ("GET", "HEAD"):
+        # GET parameters may carry display messages, but never commands.
+        if request.GET:
             my_messages.transfer_message_context(request.GET, html_display)
-
-    # 接下来处理POST相关的内容
-    elif request.method == "POST":
-        # 发生了通知处理的事件
-        try:
-            post_args = json.loads(request.body.decode("utf-8"))
-            notification_id = int(post_args['id'])
-            Notification.objects.activated().get(id=notification_id, receiver=request.user)
-        except:
-            wrong("请不要恶意发送post请求！！", html_display)
-            return JsonResponse({"success": False})
-        try:
-            if "cancel" in post_args['function']:
-                context = notification_status_change(
-                    notification_id, Notification.Status.DELETE)
-            else:
-                context = notification_status_change(notification_id)
-            my_messages.transfer_message_context(
-                context, html_display, normalize=False)
-        except:
-            wrong("删除通知的过程出现错误！请联系管理员。", html_display)
-        return JsonResponse({"success": my_messages.get_warning(html_display)[0] == SUCCEED})
+    else:
+        action = request.POST.get("action")
+        if action == "readall":
+            count = mark_all_notifications_read(request.user)
+            succeed(f"成功将{count}条通知设为已读！", html_display)
+        elif action == "deleteall":
+            count = delete_all_read_notifications(request.user)
+            succeed(f"您已成功删除{count}条通知！", html_display)
+        elif action:
+            return HttpResponseBadRequest("无效的通知批量操作。")
+        else:
+            # Preserve the legacy single-notification AJAX response shape.
+            try:
+                post_args = json.loads(request.body.decode("utf-8"))
+                notification_id = int(post_args['id'])
+                notification = Notification.objects.activated().get(
+                    id=notification_id,
+                    receiver=request.user,
+                )
+            except (KeyError, TypeError, ValueError, json.JSONDecodeError,
+                    Notification.DoesNotExist, UnicodeDecodeError):
+                wrong("无效的通知操作。", html_display)
+                return JsonResponse({"success": False}, status=400)
+            try:
+                if "cancel" in post_args['function']:
+                    context = notification_status_change(
+                        notification,
+                        Notification.Status.DELETE,
+                    )
+                else:
+                    context = notification_status_change(notification)
+                my_messages.transfer_message_context(
+                    context,
+                    html_display,
+                    normalize=False,
+                )
+            except (KeyError, TypeError):
+                wrong("无效的通知操作。", html_display)
+                return JsonResponse({"success": False}, status=400)
+            return JsonResponse({
+                "success": my_messages.get_warning(html_display)[0] == SUCCEED,
+            })
 
     done_notifications = Notification.objects.activated().filter(
         receiver=request.user,
@@ -1734,4 +1750,9 @@ def notifications(request: HttpRequest):
     # 新版侧边栏, 顶栏等的呈现，采用 bar_display, 必须放在render前最后一步
     bar_display = utils.get_sidebar_and_navbar(request.user,
                                                navbar_name="通知信箱")
-    return render(request, "notifications.html", locals())
+    context = {
+        "html_display": html_display,
+        "notes_list": notes_list,
+        "bar_display": bar_display,
+    }
+    return render(request, "notifications.html", context)

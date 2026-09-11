@@ -236,14 +236,14 @@
                             </li>
                             {% endif %}
                             {% if request.session.Incharge %}
-                            {% for oname in request.session.Incharge %}
+                            {% for account in request.session.InchargeAccounts %}
                             <li>
                                 <form method="post" action="{% url 'shiftAccount' %}"
                                       class="account-switch-form">
                                     {% csrf_token %}
-                                    <input type="hidden" name="oname" value="{{ oname }}">
+                                    <input type="hidden" name="org_id" value="{{ account.id }}">
                                     <button type="submit" class="account-switch-button">
-                                        {{ oname }}
+                                        {{ account.name }}
                                     </button>
                                 </form>
                             </li>
