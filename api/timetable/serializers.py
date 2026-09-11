@@ -1,9 +1,10 @@
 """
 Serializers of the timetable mini-program API. Contract: ``timetable/README.md`` §4.6
 (§6.1 subscribe messages, §6.3 course catalog, §6.5 agenda, §8 catalog
-links, scoped edits, tags, exams and share assets).
+links, scoped edits, tags, exams and share assets, §10 term overview).
 
-Response payloads for the week view, the agenda and the settings are plain
+Response payloads for the week view, the agenda, the term overview and the
+settings are plain
 dicts produced by ``timetable.services``; the serializers below document
 their shape for the OpenAPI schema and validate request bodies.
 """
@@ -25,7 +26,12 @@ from timetable.models import (
     TimetableEntryOverride,
     TimetableSettings,
 )
-from timetable.services import AGENDA_MAX_DAYS, NOTE_MAX_LENGTH, SCOPES
+from timetable.services import (
+    AGENDA_MAX_DAYS,
+    NOTE_MAX_LENGTH,
+    OVERVIEW_SLOT_KINDS,
+    SCOPES,
+)
 from timetable.sources.base import DATETIME_FORMAT
 
 __all__ = [
@@ -39,6 +45,9 @@ __all__ = [
     'AgendaQuerySerializer',
     'AgendaDaySerializer',
     'AgendaSerializer',
+    'OverviewSlotSerializer',
+    'OverviewExamSerializer',
+    'OverviewSerializer',
     'EntryCatalogSerializer',
     'EntryOverrideSerializer',
     'EntryExamSerializer',
@@ -70,6 +79,7 @@ MAX_SECTION = 20
 MAX_WEEK = 30
 CALENDAR_KINDS = list(CalendarEvent.Kind.values)
 OCCURRENCE_KINDS = ['course', 'college', 'activity', 'appoint', 'custom', 'exam']
+OVERVIEW_KINDS = list(OVERVIEW_SLOT_KINDS)
 
 
 class ErrorSerializer(serializers.Serializer):
@@ -215,6 +225,57 @@ class AgendaSerializer(serializers.Serializer):
     locals()['from'] = serializers.DateField()
     days = AgendaDaySerializer(many=True)
     sources = SourceLegendSerializer(many=True)
+
+
+class OverviewSlotSerializer(serializers.Serializer):
+    """One weekly slot of the term overview, §10."""
+
+    key = serializers.CharField(help_text='Stable within the response')
+    kind = serializers.ChoiceField(choices=OVERVIEW_KINDS)
+    source = serializers.CharField()
+    title = serializers.CharField()
+    subtitle = serializers.CharField(allow_blank=True)
+    location = serializers.CharField(allow_blank=True)
+    weekday = serializers.IntegerField(help_text='1=Mon..7=Sun')
+    start = serializers.CharField(help_text='HH:MM')
+    end = serializers.CharField(help_text='HH:MM')
+    start_section = serializers.IntegerField(allow_null=True)
+    end_section = serializers.IntegerField(allow_null=True)
+    weeks = serializers.ListField(
+        child=serializers.IntegerField(),
+        help_text='Teaching weeks the slot runs, ascending')
+    weeks_text = serializers.CharField(
+        help_text="'第3周' | '1-16周' | '1-15周 单周' | '2-16周 双周' | '1-8,10-16周'")
+    parity = serializers.ChoiceField(
+        choices=TimetableEntry.Parity.choices,
+        help_text='1 odd / 2 even when that pattern describes weeks, else 0')
+    color_key = serializers.CharField(allow_blank=True)
+    role = serializers.CharField(
+        allow_blank=True, help_text="'enrolled' | 'audit' | '' ('' for 书院课)")
+    tag = serializers.CharField(allow_blank=True, help_text='The entry tag (§8.3)')
+    ref = serializers.DictField(
+        child=serializers.IntegerField(allow_null=True),
+        help_text='{entry_id} of a stored entry, {course_id} of a 书院课')
+
+
+class OverviewExamSerializer(serializers.Serializer):
+    """One exam of the term overview, §10."""
+
+    title = serializers.CharField()
+    date = serializers.DateField()
+    start = serializers.CharField(help_text='HH:MM')
+    end = serializers.CharField(help_text='HH:MM')
+    location = serializers.CharField(allow_blank=True)
+    week = serializers.IntegerField(
+        allow_null=True, help_text='Teaching week; null outside 1..total_weeks')
+
+
+class OverviewSerializer(serializers.Serializer):
+    """``OverviewOut`` of §10."""
+
+    term = TermSerializer()
+    slots = OverviewSlotSerializer(many=True)
+    exams = OverviewExamSerializer(many=True)
 
 
 class EntryCatalogSerializer(serializers.ModelSerializer):

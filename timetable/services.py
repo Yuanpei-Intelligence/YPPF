@@ -1,7 +1,7 @@
 """
-Domain operations of the timetable app: settings, week view, agenda,
-imports, conflict detection, catalog quick-add and scoped entry edits.
-Contract: ``timetable/README.md`` §4.4, §6.5, §8.1–§8.4.
+Domain operations of the timetable app: settings, week view, agenda, term
+overview, imports, conflict detection, catalog quick-add and scoped entry
+edits. Contract: ``timetable/README.md`` §4.4, §6.5, §8.1–§8.4 and §10.
 
 The API layer calls these functions; nothing here touches credentials — the
 portal payload, and the elective 选课结果 page that stands in for an empty
@@ -38,12 +38,14 @@ from timetable.sources.base import (
     load_sources,
     occurrence_sort_key,
     occurrences_between,
+    rule_occurrences,
 )
 from timetable.sources.pku_parsers import LessonBlock, external_key
 from timetable.sources.stored import expand_entries
 
 __all__ = [
     'AGENDA_MAX_DAYS',
+    'OVERVIEW_SLOT_KINDS',
     'ROW_ONLY_KEYS',
     'ANNOTATION_KEYS',
     'SCOPES',
@@ -59,6 +61,8 @@ __all__ = [
     'term_payload',
     'week_view',
     'agenda',
+    'describe_weeks',
+    'term_overview',
     'elective_results_apply',
     'import_portal',
     'import_text',
@@ -73,6 +77,13 @@ __all__ = [
 
 # Longest agenda one call may return (``README`` §6.5).
 AGENDA_MAX_DAYS = 14
+# Occurrence kinds that form the weekly slots of the term overview (README
+# §10). ``exam`` occurrences are listed separately; every other kind
+# (activities, appointments) is a one-off event and left out.
+OVERVIEW_SLOT_KINDS = ('course', 'college', 'custom')
+_OVERVIEW_EXAM_KIND = 'exam'
+# Occurrence ``ref`` keys identifying a lesson across weeks, by preference.
+_LESSON_REF_KEYS = ('entry_id', 'course_id')
 # Entry keys that only ever live on the row and need ``scope='all'``
 # (README §8.2); ``catalog_entry`` is the model name of the API's ``catalog_id``.
 ROW_ONLY_KEYS = ('hidden', 'role', 'category', 'catalog_entry')
@@ -293,6 +304,152 @@ def agenda(person, start: date, days: int = 7) -> dict[str, Any]:
         'days': day_payloads,
         'sources': source_legend(sources),
     }
+
+
+def describe_weeks(weeks: Iterable[int]) -> tuple[str, int]:
+    """
+    ``(weeks_text, parity)`` of a collection of teaching weeks (README §10):
+    one week ``第3周``; consecutive weeks ``1-16周``; every other week from an
+    odd first week ``1-15周 单周`` (parity 1) or from an even one ``2-16周
+    双周`` (parity 2); anything else compressed ranges ``1-8,10-16周`` with
+    single weeks as plain numbers. Parity is 0 except for the single/double
+    patterns. Duplicates are ignored; no weeks give ``('', 0)``.
+    """
+    ordered = sorted({int(week) for week in weeks})
+    if not ordered:
+        return '', 0
+    first, last = ordered[0], ordered[-1]
+    if len(ordered) == 1:
+        return f'第{first}周', 0
+    if ordered == list(range(first, last + 1)):
+        return f'{first}-{last}周', 0
+    if ordered == list(range(first, last + 1, 2)):
+        if first % 2 == 1:
+            return f'{first}-{last}周 单周', 1
+        return f'{first}-{last}周 双周', 2
+    runs: list[list[int]] = []
+    for week in ordered:
+        if runs and week == runs[-1][-1] + 1:
+            runs[-1].append(week)
+        else:
+            runs.append([week])
+    parts = [f'{run[0]}-{run[-1]}' if len(run) > 1 else str(run[0]) for run in runs]
+    return f'{",".join(parts)}周', 0
+
+
+def term_overview(person, term: AcademicTerm, *,
+                  today: date | None = None) -> dict[str, Any]:
+    """
+    The ``OverviewOut`` payload of ``timetable/README.md`` §10: every weekly
+    slot of the person's timetable over teaching weeks ``1..total_weeks`` of
+    ``term`` and the term's exams, for the share poster.
+
+    Every loaded source is asked for its weekly rule
+    (``timetable.sources.base.rule_occurrences``) with the person's
+    settings, so the ``show_*`` toggles, hidden tags, hidden entries and
+    overrides apply as in the week view, while stored entries ignore
+    calendar suspensions (holidays and exam periods leave no gap). A
+    ``'canceled'`` occurrence (a canceled 书院课 activity) does not count.
+    Kinds of ``OVERVIEW_SLOT_KINDS`` are grouped by ``(source, lesson,
+    weekday, start, end, location, title)`` — the lesson being
+    ``ref['entry_id']``, else ``ref['course_id']``, else the title — with
+    their weeks unioned and the other fields taken from the earliest week;
+    ``exam`` occurrences are listed once each; other kinds are left out.
+    """
+    if today is None:
+        today = date.today()
+    settings = get_or_create_settings(person)
+    last_week = max(int(term.total_weeks), 1)
+    occurrences: list[Occurrence] = []
+    for source in load_sources():
+        occurrences.extend(rule_occurrences(source, person, term, 1, last_week, settings))
+    occurrences = [item for item in occurrences
+                   if not item.hidden and item.status != 'canceled']
+    occurrences.sort(key=occurrence_sort_key)
+    return {
+        'term': term_payload(term, today, calendar=calendar_for(term)),
+        'slots': _overview_slots(occurrences),
+        'exams': _overview_exams(term, occurrences),
+    }
+
+
+def _lesson_ref(occurrence: Occurrence) -> dict[str, int]:
+    # ``{name: id}`` of the reference identifying the occurrence's lesson
+    # across weeks (the stored entry, else the 书院课); empty when neither.
+    for name in _LESSON_REF_KEYS:
+        value = occurrence.ref.get(name)
+        if value is not None:
+            return {name: value}
+    return {}
+
+
+def _overview_slots(occurrences: list[Occurrence]) -> list[dict[str, Any]]:
+    # The ``slots`` of README §10 from date-sorted, already filtered occurrences.
+    groups: dict[tuple, list[Occurrence]] = {}
+    for item in occurrences:
+        if item.kind not in OVERVIEW_SLOT_KINDS:
+            continue
+        ref = _lesson_ref(item)
+        lesson = next(iter(ref.values())) if ref else item.title
+        key = (item.source, str(lesson), item.weekday, item.start.strftime('%H:%M'),
+               item.end.strftime('%H:%M'), item.location, item.title)
+        groups.setdefault(key, []).append(item)
+    slots: list[tuple[str, dict[str, Any]]] = []
+    for (source, lesson, weekday, start, end, location, title), items in groups.items():
+        first = items[0]
+        weeks = sorted({item.week for item in items})
+        weeks_text, parity = describe_weeks(weeks)
+        slots.append((lesson, {
+            'key': '',
+            'kind': first.kind,
+            'source': source,
+            'title': title,
+            'subtitle': first.subtitle,
+            'location': location,
+            'weekday': weekday,
+            'start': start,
+            'end': end,
+            'start_section': first.start_section,
+            'end_section': first.end_section,
+            'weeks': weeks,
+            'weeks_text': weeks_text,
+            'parity': parity,
+            'color_key': first.color_key,
+            'role': first.role,
+            'tag': first.tag,
+            'ref': _lesson_ref(first),
+        }))
+    slots.sort(key=lambda pair: (
+        pair[1]['weekday'], pair[1]['start'], pair[1]['end'], pair[1]['title'],
+        pair[1]['weeks'][0], pair[1]['location'], pair[1]['source']))
+    counts: dict[tuple[str, str], int] = {}
+    result: list[dict[str, Any]] = []
+    for lesson, slot in slots:
+        index = counts.get((slot['source'], lesson), 0)
+        counts[(slot['source'], lesson)] = index + 1
+        slot['key'] = f"{slot['source']}:{lesson}:{index}"
+        result.append(slot)
+    return result
+
+
+def _overview_exams(term: AcademicTerm,
+                    occurrences: list[Occurrence]) -> list[dict[str, Any]]:
+    # The ``exams`` of README §10: each exam once, ordered by date and time.
+    exams: dict[tuple[str, str, str, str, str], dict[str, Any]] = {}
+    for item in occurrences:
+        if item.kind != _OVERVIEW_EXAM_KIND:
+            continue
+        exam = {
+            'title': item.title,
+            'date': item.date.isoformat(),
+            'start': item.start.strftime('%H:%M'),
+            'end': item.end.strftime('%H:%M'),
+            'location': item.location,
+            'week': item.week if term.contains_week(item.week) else None,
+        }
+        key = (exam['date'], exam['start'], exam['end'], exam['title'], exam['location'])
+        exams.setdefault(key, exam)
+    return [exams[key] for key in sorted(exams)]
 
 
 def detect_conflicts(occurrences: Iterable[Occurrence]) -> list[list[str]]:

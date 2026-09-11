@@ -1,8 +1,8 @@
 """
-Event sources of the week view, the agenda and the ICS feed: the
-``Occurrence`` value object, the ``EventSource`` protocol, the ``DateSpan``
-of a date-based query and the config-driven registry ``load_sources``.
-Contract: ``timetable/README.md`` §4.3 and §6.5.
+Event sources of the week view, the agenda, the term overview and the ICS
+feed: the ``Occurrence`` value object, the ``EventSource`` protocol, the
+``DateSpan`` of a date-based query and the config-driven registry
+``load_sources``. Contract: ``timetable/README.md`` §4.3, §6.5 and §10.
 
 Sources that read other apps (``college``, ``activity``, ``appoint``) import
 those apps lazily inside ``occurrences`` and are only loaded when listed in
@@ -29,6 +29,7 @@ __all__ = [
     'week_span',
     'occurrences_between',
     'term_occurrences_between',
+    'rule_occurrences',
     'occurrence_sort_key',
 ]
 
@@ -163,6 +164,10 @@ class EventSource(Protocol):
     date-based sources such as activities implement it, term-based ones fall
     back to ``term_occurrences_between``. Callers ask for a date span through
     the module function ``occurrences_between``, which dispatches.
+    ``rule_occurrences`` (the weekly rule for the term overview, README §10)
+    is optional too: a source whose ``occurrences`` follow the university
+    calendar implements it to ignore calendar suspensions; the module
+    function ``rule_occurrences`` falls back to ``occurrences``.
     """
 
     key: str
@@ -180,6 +185,11 @@ class EventSource(Protocol):
     def occurrences_between(self, person, span: DateSpan,
                             settings) -> list[Occurrence]:
         """Occurrences of ``person`` on the dates of ``span`` (optional)."""
+        ...
+
+    def rule_occurrences(self, person, term, week_from: int, week_to: int,
+                         settings) -> list[Occurrence]:
+        """The weekly rule in ``week_from..week_to``, no calendar (optional)."""
         ...
 
 
@@ -213,6 +223,26 @@ def occurrences_between(source: EventSource, person, span: DateSpan,
         result = list(method(person, span, settings))
     else:
         result = term_occurrences_between(source, person, span, settings)
+    result.sort(key=occurrence_sort_key)
+    return result
+
+
+def rule_occurrences(source: EventSource, person, term, week_from: int,
+                     week_to: int, settings) -> list[Occurrence]:
+    """
+    Occurrences of the weekly rule of ``source`` for ``person`` in teaching
+    weeks ``week_from..week_to`` of ``term``, sorted (the term overview,
+    README §10). A source implementing ``rule_occurrences`` is asked
+    directly; any other one answers with its week-based ``occurrences``.
+    Empty when ``week_from > week_to``.
+    """
+    if week_from > week_to:
+        return []
+    method = getattr(source, 'rule_occurrences', None)
+    if callable(method):
+        result = list(method(person, term, week_from, week_to, settings))
+    else:
+        result = list(source.occurrences(person, term, week_from, week_to, settings))
     result.sort(key=occurrence_sort_key)
     return result
 

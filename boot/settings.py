@@ -204,5 +204,6 @@ SPECTACULAR_SETTINGS = {
         'TimetableEntryRoleEnum': 'timetable.models.ENTRY_ROLE_CHOICES',
         'CalendarKindEnum': 'api.timetable.serializers.CALENDAR_KINDS',
         'OccurrenceKindEnum': 'api.timetable.serializers.OCCURRENCE_KINDS',
+        'OverviewSlotKindEnum': 'api.timetable.serializers.OVERVIEW_KINDS',
     },
 }

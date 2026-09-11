@@ -2,8 +2,8 @@
 REST APIs of the timetable for the WeChat mini-program.
 Contract: ``timetable/README.md`` §4.6 (§6.1 subscribe messages, §6.3
 course catalog, §6.5 agenda, §8 catalog links and quick add, scoped edits
-and overrides, tags and the sources legend, share assets). Mounted at
-``/api/v2/timetable/``.
+and overrides, tags and the sources legend, share assets; §10 term
+overview). Mounted at ``/api/v2/timetable/``.
 
 Every endpoint requires a mini-program JWT (``WxJWTAuthentication`` +
 ``IsAuthenticated``) and a personal account; organization accounts get 403.
@@ -54,6 +54,7 @@ from api.timetable.serializers import (
     ImportOutSerializer,
     ImportPortalSerializer,
     ImportTextSerializer,
+    OverviewSerializer,
     SettingsOutSerializer,
     SettingsSerializer,
     ShareAssetsSerializer,
@@ -80,6 +81,7 @@ __all__ = [
     'TermsView',
     'WeekView',
     'AgendaView',
+    'OverviewView',
     'EntryViewSet',
     'ImportPortalView',
     'ImportTextView',
@@ -319,6 +321,41 @@ class AgendaView(TimetableAPIView):
         query.is_valid(raise_exception=True)
         start = query.validated_data.get('from') or date.today()
         return Response(services.agenda(person, start, query.validated_data['days']))
+
+
+class OverviewView(TimetableAPIView):
+    """
+    Every weekly slot and exam of one term for the share poster
+    (``services.term_overview``, README §10). Read-only; same person and
+    term rules as ``WeekView``.
+    """
+
+    @extend_schema(
+        summary='学期总览',
+        description=(
+            '整个学期（第 1..total_weeks 周）的课表，供海报使用。学校课表、书院课和自定义条目'
+            '按（来源、条目、星期、起止时间、地点、名称）合并为时段，给出上课周次 weeks、'
+            '周次文字 weeks_text（第3周 / 1-16周 / 1-15周 单周 / 2-16周 双周 / 1-8,10-16周）'
+            '和单双周 parity。放假、停课复习考试等校历停课不在周次中留空；按周停课会留空，'
+            '按周调整时间 / 星期 / 地点的那几次单独成一个时段。考试去重后列在 exams；'
+            '活动与地下室预约不列出。与周视图一样遵循来源开关、隐藏标签和隐藏条目。'
+            'term 缺省为当前学期。'
+        ),
+        parameters=[
+            OpenApiParameter('term', str, OpenApiParameter.QUERY, required=False,
+                             description='学期代码，如 26-27-1'),
+        ],
+        responses={
+            200: OverviewSerializer,
+            404: OpenApiResponse(response=ErrorSerializer, description='学期不存在'),
+            **_ERROR_RESPONSES,
+        },
+        tags=TAGS,
+    )
+    def get(self, request):
+        person = self.get_person(request)
+        term = self.resolve_term(request.query_params.get('term'))
+        return Response(services.term_overview(person, term))
 
 
 class EntryViewSet(TimetableAPIMixin, viewsets.ViewSet):

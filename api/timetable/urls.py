@@ -1,4 +1,7 @@
-"""URL routes for the timetable mini-program API. Contract: timetable/README.md §4.6, §6, §8.6."""
+"""
+URL routes for the timetable mini-program API.
+Contract: timetable/README.md §4.6, §6, §8.6, §10.
+"""
 from django.urls import path
 
 from api.timetable.views import (
@@ -10,6 +13,7 @@ from api.timetable.views import (
     IcsView,
     ImportPortalView,
     ImportTextView,
+    OverviewView,
     SettingsView,
     ShareAssetsView,
     SubscribeGrantView,
@@ -30,6 +34,7 @@ urlpatterns = [
     path('terms/', TermsView.as_view(), name='terms'),
     path('week/', WeekView.as_view(), name='week'),
     path('agenda/', AgendaView.as_view(), name='agenda'),
+    path('overview/', OverviewView.as_view(), name='overview'),
     path('entries/', entry_list, name='entry-list'),
     path('entries/<int:pk>/', entry_detail, name='entry-detail'),
     path('entries/<int:pk>/overrides/', entry_overrides, name='entry-overrides'),

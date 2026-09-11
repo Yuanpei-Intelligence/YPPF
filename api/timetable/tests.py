@@ -174,6 +174,7 @@ class AuthTests(TimetableAPITestCase):
             ('get', self.url('terms')),
             ('get', self.url('week')),
             ('get', self.url('agenda')),
+            ('get', self.url('overview')),
             ('get', self.url('entry-list')),
             ('post', self.url('entry-list')),
             ('get', self.url('entry-detail', pk=entry.pk)),
@@ -374,6 +375,72 @@ class AgendaTests(TimetableAPITestCase):
         self.assertEqual(response.status_code, status.HTTP_200_OK, response.data)
         self.assertEqual(response.data['from'], date.today().isoformat())
         self.assertEqual(len(response.data['days']), 7)
+
+
+class OverviewTests(TimetableAPITestCase):
+    """``overview/`` (README §10)."""
+
+    SLOT_KEYS = {
+        'key', 'kind', 'source', 'title', 'subtitle', 'location', 'weekday', 'start',
+        'end', 'start_section', 'end_section', 'weeks', 'weeks_text', 'parity',
+        'color_key', 'role', 'tag', 'ref',
+    }
+
+    def setUp(self):
+        super().setUp()
+        patcher = patch('timetable.services.load_sources',
+                        return_value=[StoredEntriesSource(), ExamSource()])
+        patcher.start()
+        self.addCleanup(patcher.stop)
+
+    def test_shape_and_default_term(self):
+        entry = make_entry(self.person, self.term, name='高数', weekday=1, week_end=15,
+                           parity=1, course_code='00130201', class_no='01')
+        make_entry(self.other_person, self.term, name='别人的课', weekday=1)
+        exam_day = self.term.date_of(16, 2)
+        CourseExam.objects.create(
+            term=self.term, course_code='00130201', class_no='01', name='高数',
+            start=datetime(exam_day.year, exam_day.month, exam_day.day, 8, 30),
+            end=datetime(exam_day.year, exam_day.month, exam_day.day, 10, 30),
+            room='考场A')
+        response = self.client.get(self.url('overview'))
+        self.assertEqual(response.status_code, status.HTTP_200_OK, response.data)
+        data = response.data
+        self.assertEqual(set(data), {'term', 'slots', 'exams'})
+        self.assertEqual((data['term']['code'], data['term']['current_week']),
+                         ('26-27-1', 2))
+        self.assertEqual(len(data['slots']), 1)
+        slot = data['slots'][0]
+        self.assertEqual(set(slot), self.SLOT_KEYS)
+        self.assertEqual(
+            (slot['key'], slot['kind'], slot['title'], slot['weekday'], slot['start'],
+             slot['end'], slot['weeks'], slot['weeks_text'], slot['parity'], slot['ref']),
+            (f'portal:{entry.pk}:0', 'course', '高数', 1, '08:00', '09:50',
+             list(range(1, 16, 2)), '1-15周 单周', 1, {'entry_id': entry.pk}))
+        self.assertEqual(data['exams'], [{
+            'title': '高数 考试', 'date': exam_day.isoformat(), 'start': '08:30',
+            'end': '10:30', 'location': '考场A', 'week': 16}])
+
+    def test_explicit_and_unknown_term(self):
+        make_entry(self.person, self.old_term, name='上学期课', weekday=2)
+        response = self.client.get(self.url('overview'), {'term': '25-26-2'})
+        self.assertEqual(response.status_code, status.HTTP_200_OK, response.data)
+        self.assertEqual(response.data['term']['code'], '25-26-2')
+        self.assertEqual([s['title'] for s in response.data['slots']], ['上学期课'])
+        # The default term has nothing: empty lists, not an error.
+        response = self.client.get(self.url('overview'), {'term': ''})
+        self.assertEqual(response.status_code, status.HTTP_200_OK, response.data)
+        self.assertEqual((response.data['slots'], response.data['exams']), ([], []))
+        response = self.client.get(self.url('overview'), {'term': 'no-such'})
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+        self.assertEqual(response.data['code'], 'TERM_NOT_FOUND')
+
+    def test_without_any_term(self):
+        self.term.delete()
+        self.old_term.delete()
+        response = self.client.get(self.url('overview'))
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+        self.assertEqual(response.data['code'], 'NO_CURRENT_TERM')
 
 
 class EntryTests(TimetableAPITestCase):

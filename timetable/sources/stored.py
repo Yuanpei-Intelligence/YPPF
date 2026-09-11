@@ -1,8 +1,9 @@
 """
 Source that expands stored ``TimetableEntry`` rows (portal/paste imports and
 manual entries) into occurrences, following the university calendar and
-the entries' per-week overrides.
-Contract: ``timetable/README.md`` §4.3, §6.4, §8.2 and §8.3.
+the entries' per-week overrides (or, for the term overview, only the
+overrides).
+Contract: ``timetable/README.md`` §4.3, §6.4, §8.2, §8.3 and §10.
 """
 from __future__ import annotations
 
@@ -115,6 +116,8 @@ class StoredEntriesSource:
     ``settings.show_courses`` and skips entries whose effective tag is in
     ``settings.hidden_tags`` (§8.3). Term-based: date-span queries go
     through the default ``timetable.sources.base.term_occurrences_between``.
+    ``rule_occurrences`` (the term overview, §10) expands the same entries
+    without the university calendar.
     """
 
     key = 'stored'
@@ -123,12 +126,32 @@ class StoredEntriesSource:
 
     def occurrences(self, person, term, week_from: int, week_to: int,
                     settings) -> list[Occurrence]:
+        return self._expand(person, term, week_from, week_to, settings, None)
+
+    def rule_occurrences(self, person, term, week_from: int, week_to: int,
+                         settings) -> list[Occurrence]:
+        """
+        The weekly rule of the entries in weeks ``week_from..week_to``: like
+        ``occurrences`` (toggle, hidden entries, hidden tags, overrides) but
+        expanded against an empty calendar, so holiday and exam dates keep
+        their lessons and a 调休 swap date adds none (README §10).
+        """
+        if week_from > week_to:
+            return []
+        calendar = AcademicCalendar(
+            term.date_of(week_from, 1), term.date_of(week_to, 7), ())
+        return self._expand(person, term, week_from, week_to, settings, calendar)
+
+    def _expand(self, person, term, week_from: int, week_to: int, settings,
+                calendar: AcademicCalendar | None) -> list[Occurrence]:
+        # The person's visible entries expanded with ``calendar`` (built from
+        # the database by ``expand_entries`` when None).
         if settings is not None and not settings.show_courses:
             return []
         entries = (TimetableEntry.objects
                    .filter(person=person, term=term, hidden=False)
                    .prefetch_related('overrides').order_by('id'))
-        occurrences = expand_entries(entries, term, week_from, week_to)
+        occurrences = expand_entries(entries, term, week_from, week_to, calendar)
         hidden_tags = settings.hidden_tag_set() if settings is not None else set()
         if hidden_tags:
             occurrences = [item for item in occurrences if item.tag not in hidden_tags]

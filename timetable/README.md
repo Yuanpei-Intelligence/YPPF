@@ -1441,3 +1441,80 @@ sync-health warning). The order to follow on a fresh deployment:
    `PKU_LOGIN_REQUIRED` once; the student logs in again);
    the local probe `pku_probe.py` (kept outside the repository) shows the
    raw portal payloads when a parser needs adjusting.
+
+## 10. Term overview (2026-09-11)
+
+The share poster shows every course of a term — all weeks, 单双周 — instead
+of one week. `GET /api/v2/timetable/overview/?term=<code>` has the auth,
+person check and term resolution of `week/`: `term` omitted → the default
+term, an unknown code → 404 `TERM_NOT_FOUND`, no term at all → 404
+`NO_CURRENT_TERM`; organization accounts get 403.
+
+```ts
+interface OverviewSlot {
+  key: string                  // stable within the response
+  kind: 'course' | 'college' | 'custom'
+  source: string
+  title: string; subtitle: string; location: string
+  weekday: number              // 1..7
+  start: string; end: string   // 'HH:MM'
+  start_section: number | null; end_section: number | null
+  weeks: number[]              // teaching weeks the slot runs, ascending
+  weeks_text: string           // see below
+  parity: 0 | 1 | 2            // 1 odd / 2 even when that pattern describes `weeks`, else 0
+  color_key: string; role: 'enrolled' | 'audit' | ''; tag: string
+  ref: Record<string, number | null>
+}
+interface OverviewExam { title: string; date: string; start: string; end: string; location: string; week: number | null }
+interface OverviewOut { term: Term; slots: OverviewSlot[]; exams: OverviewExam[] }
+```
+
+Semantics (`timetable.services.term_overview`):
+
+- The person's occurrences of teaching weeks `1..total_weeks` from every
+  registered source, filtered exactly as the week view filters them: the
+  `show_*` toggles, `hidden_tags` (on the effective tag, so an override that
+  re-tags one week hides only that week), hidden entries, and the overrides
+  of §8.2 — a canceled week drops that week; a week whose weekday, time,
+  room or name was changed forms its own slot.
+- A slot describes the timetable **rule**: calendar suspensions (holidays,
+  停课复习考试) do not punch gaps into `weeks`, and 调休 swap dates add
+  nothing. Sources expose the rule through the optional
+  `rule_occurrences(person, term, week_from, week_to, settings)`;
+  `timetable.sources.base.rule_occurrences` dispatches and falls back to
+  `occurrences`. `StoredEntriesSource` implements it by expanding its entries
+  against an empty `AcademicCalendar` (toggle, hidden entries, hidden tags
+  and overrides as in `occurrences`).
+- 书院课 (`college`) use the source's week-based `occurrences` as they are:
+  the weeks expanded from each `CourseTime` plus the weeks with a generated
+  activity, whose real time and location form their own slot when they
+  differ from the weekly time. The college source does not read the
+  calendar, so it has no `rule_occurrences`. A generated activity that was
+  canceled, aborted or rejected (`status='canceled'`) does not count — like
+  a canceled override week, it leaves a gap.
+- Kinds `course`, `college` and `custom` become slots. `exam` occurrences —
+  `ExamSource` and manual `category='exam'` entries (which come through the
+  rule expansion too, so one on a calendar exam date is listed although the
+  week view suppresses it) — are listed in `exams` once per `(date, start,
+  end, title, location)`, sorted by date and time, with `week` null outside
+  `1..total_weeks`. `activity` and `appoint` are one-off events and left out,
+  as is any other kind.
+- Grouping key: `(source, lesson, weekday, start, end, location, title)` where
+  `lesson` is `ref.entry_id`, else `ref.course_id`, else the title; `weeks`
+  are the union. `subtitle`, the sections, `color_key`, `role` and `tag` come
+  from the slot's earliest week (a teacher changed for one week does not
+  split the slot). `ref` keeps only the lesson reference (`{entry_id}` or
+  `{course_id}`, `{}` for other sources); per-week ids such as a 书院课's
+  `activity_id` are dropped. `key` is `'{source}:{lesson}:{n}'`, `n` counting
+  the slots of that lesson in response order.
+- `weeks_text`: one week `第3周`; consecutive weeks `a..b` → `1-16周`; every
+  other week from an odd `a` to `b` → `1-15周 单周` (`parity` 1), from an even
+  `a` → `2-16周 双周` (`parity` 2); anything else as compressed ranges,
+  single weeks as plain numbers (`1-8,10-16周`, `1-3,5,7-8周`). `parity` is 0
+  for every other pattern, a single week included.
+  `services.describe_weeks(weeks)` returns `(weeks_text, parity)`.
+- Order: `(weekday, start, end, title)`, ties by first week, location and
+  source. An empty term gives `slots: []` and `exams: []`.
+- OpenAPI: `OverviewSerializer` with `OverviewSlotSerializer` and
+  `OverviewExamSerializer`; the slot kind enum is named `OverviewSlotKindEnum`
+  through `SPECTACULAR_SETTINGS['ENUM_NAME_OVERRIDES']`.
