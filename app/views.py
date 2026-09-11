@@ -1418,13 +1418,12 @@ def search(request: HttpRequest):
 @logger.secure_view()
 @utils.record_attack(Exception, as_attack=True)
 def forgetPassword(request: HttpRequest):
-    """Request or consume a password-reset token without logging in."""
+    """Request or consume a one-time reset code without logging in."""
     if request.user.is_authenticated:
         return redirect("/welcome/")
 
     display = {}
     username = ""
-    token = ""
     if request.method == "POST":
         action = request.POST.get("action", "")
         if action in ("email", "wechat"):
@@ -1463,12 +1462,11 @@ def forgetPassword(request: HttpRequest):
                 else:
                     queue_prepared_password_reset_wechat(prepare_delivery)
             display = succeed(
-                "若账号及联系方式有效，重置凭证将发送至已绑定渠道")
+                "若账号及联系方式有效，验证码将发送至已绑定渠道")
             display.update(alert=True, noshow=True, colddown=60)
         elif action == "reset":
             reset_form = PasswordResetForm(request.POST)
             username = request.POST.get("username", "")
-            token = request.POST.get("token", "")
             if reset_form.is_valid():
                 try:
                     reset_succeeded = utils.reset_password_from_token(
@@ -1483,16 +1481,17 @@ def forgetPassword(request: HttpRequest):
                     if reset_succeeded:
                         return redirect(
                             reverse("index") + "?modinfo=success")
-                    display = wrong("重置凭证无效或已失效")
+                    display = wrong("验证码无效或已失效")
             else:
                 error = next(iter(reset_form.errors.values()))[0]
                 display = wrong(str(error))
         else:
-            display = wrong("重置凭证无效或已失效")
+            display = wrong("验证码无效或已失效")
 
     context = {
         "display": display,
         "username": username,
+        "token_seconds": CONFIG.password_reset_token_seconds,
     }
     return render(request, "forget_password.html", context)
 

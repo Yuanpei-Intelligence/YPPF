@@ -92,9 +92,10 @@ def _deliver_password_reset_email(
 ) -> None:
     message = (
         f"<h3><b>亲爱的{person_name}同学：</b></h3><br/>"
-        "您好！本次密码重置凭证为：<br/>"
+        "您好！本次密码重置验证码为：<br/>"
         f'<p style="color:orange">{token}</p>'
-        "凭证有效期较短，请尽快使用，且只能使用一次。<br/>"
+        f"验证码有效期为{CONFIG.password_reset_token_seconds}秒，"
+        "只能使用一次；重新获取后旧码失效。<br/>"
         "<br/>元培学院开发组<br/>"
         + datetime.now().strftime("%Y年%m月%d日")
     )

@@ -1,7 +1,7 @@
 import string
 import random
 import urllib.parse
-import uuid
+import secrets
 from io import BytesIO
 from datetime import datetime, timedelta
 from functools import wraps
@@ -12,7 +12,6 @@ import imghdr
 from django.conf import settings
 from django.contrib import auth
 from django.contrib.auth.password_validation import validate_password
-from django.core import signing
 from django.db.models import Q
 from django.shortcuts import redirect
 from django.utils.crypto import constant_time_compare, salted_hmac
@@ -35,8 +34,6 @@ from app.models import (
 )
 
 
-PASSWORD_RESET_PURPOSE = 'password-reset'
-PASSWORD_RESET_SIGNING_SALT = 'app.password-reset.token'
 PASSWORD_RESET_TOKEN_SECONDS = CONFIG.password_reset_token_seconds
 PASSWORD_RESET_TOKEN_ATTEMPTS = CONFIG.password_reset_token_attempts
 PASSWORD_RESET_WINDOW = timedelta(
@@ -220,34 +217,48 @@ def check_password_reset_request_rate(
     )
 
 
+def _password_reset_code_digest(user_id: int, code: str) -> str:
+    # Account scoping permits identical numeric codes for different users.
+    return _password_reset_digest(
+        f'{user_id}:{code}', salt='app.password-reset.code-v2')
+
+
 def create_password_reset_token(
     request: HttpRequest,
     user: User,
     *,
     now: datetime | None = None,
 ) -> str:
+    """Issue a six-digit code and atomically supersede this account's old codes.
+
+    Delivery must be arranged after this operation commits. No plaintext code
+    is persisted; retained digests also prevent reissuing a recent code.
+    """
     now = now or datetime.now()
     _, ip_address, device_identifier = _password_reset_context(
         request, user.username)
-    challenge_id = uuid.uuid4()
-    signed_value = signing.dumps(
-        {
-            'challenge': str(challenge_id),
-            'user': user.pk,
-            'purpose': PASSWORD_RESET_PURPOSE,
-        },
-        salt=PASSWORD_RESET_SIGNING_SALT,
-        compress=True,
-    )
-    token = f'{challenge_id}.{signed_value}'
-
     with transaction.atomic():
         locked_user = User.objects.select_for_update().get(pk=user.pk)
+        for _ in range(10):
+            token = f'{secrets.randbelow(1_000_000):06d}'
+            digest = _password_reset_code_digest(locked_user.pk, token)
+            if not PasswordResetChallenge.objects.filter(
+                token_digest=digest,
+            ).exists():
+                break
+        else:
+            logger.error('Password-reset code generation exhausted retries')
+            raise RuntimeError('Password-reset code generation failed')
+
+        old_challenges = list(
+            PasswordResetChallenge.objects.select_for_update().filter(
+                user=locked_user, consumed_at__isnull=True,
+                invalidated_at__isnull=True,
+            ).order_by('pk')
+        )
         PasswordResetChallenge.objects.create(
-            id=challenge_id,
             user=locked_user,
-            token_digest=_password_reset_digest(
-                token, salt='app.password-reset.token-digest'),
+            token_digest=digest,
             password_digest=_password_reset_digest(
                 locked_user.password,
                 salt='app.password-reset.password-state',
@@ -259,6 +270,9 @@ def create_password_reset_token(
             created_at=now,
             expires_at=now + timedelta(seconds=PASSWORD_RESET_TOKEN_SECONDS),
         )
+        for challenge in old_challenges:
+            challenge.invalidated_at = now
+            challenge.save(update_fields=['invalidated_at'])
     return token
 
 
@@ -287,6 +301,12 @@ def reset_password_from_token(
     *,
     now: datetime | None = None,
 ) -> bool:
+    """Consume the account's current code only after a valid password change.
+
+    Browser and IP identifiers are used for throttling, not code binding.
+    Invalid codes return False; password validation raises ValidationError
+    without consuming the code. Old signed credentials are not accepted.
+    """
     now = now or datetime.now()
     username, ip_address, device_identifier = _password_reset_context(
         request, username)
@@ -295,51 +315,28 @@ def reset_password_from_token(
     if not _consume_password_reset_limits(
         identifiers, PASSWORD_RESET_VERIFY_LIMITS, now):
         return False
+    if (not isinstance(token, str) or len(token) != 6
+            or not token.isascii() or not token.isdecimal()):
+        return False
     with transaction.atomic():
-        try:
-            challenge_prefix, signed_value = token.split('.', 1)
-            challenge_id = uuid.UUID(challenge_prefix)
-        except (AttributeError, TypeError, ValueError):
+        user = User.objects.select_for_update().filter(
+            username__iexact=username).first()
+        if user is None:
             return False
-
-        challenge_user = PasswordResetChallenge.objects.filter(
-            pk=challenge_id).values('user_id').first()
-        if challenge_user is None:
+        challenge = (
+            PasswordResetChallenge.objects.select_for_update().filter(
+                user=user, consumed_at__isnull=True,
+                invalidated_at__isnull=True,
+            ).order_by('-created_at', '-pk').first()
+        )
+        if challenge is None:
             return False
-        user = User.objects.select_for_update().get(
-            pk=challenge_user['user_id'])
-        challenge = PasswordResetChallenge.objects.select_for_update().get(
-            pk=challenge_id)
-        challenge_identifiers = {
-            **identifiers,
-            PasswordResetThrottle.Scope.VERIFY_ACCOUNT: user.username,
-        }
-        try:
-            payload = signing.loads(
-                signed_value,
-                salt=PASSWORD_RESET_SIGNING_SALT,
-                max_age=PASSWORD_RESET_TOKEN_SECONDS,
-            )
-        except signing.BadSignature:
-            if _record_password_reset_failure(challenge, now):
-                _lock_password_reset_limits(challenge_identifiers, now)
-            return False
-
-        # Recovery may continue in another browser or network; client
-        # identifiers remain part of throttling, not credential validity.
         valid = (
-            payload.get('purpose') == PASSWORD_RESET_PURPOSE
-            and payload.get('challenge') == str(challenge.id)
-            and payload.get('user') == user.pk
-            and User.objects.filter(
-                pk=user.pk, username__iexact=username).exists()
-            and challenge.consumed_at is None
-            and challenge.invalidated_at is None
-            and now <= challenge.expires_at
+            now <= challenge.expires_at
+            and challenge.failed_attempts < PASSWORD_RESET_TOKEN_ATTEMPTS
             and constant_time_compare(
                 challenge.token_digest,
-                _password_reset_digest(
-                    token, salt='app.password-reset.token-digest'),
+                _password_reset_code_digest(user.pk, token),
             )
             and constant_time_compare(
                 challenge.password_digest,
@@ -351,7 +348,7 @@ def reset_password_from_token(
         )
         if not valid:
             if _record_password_reset_failure(challenge, now):
-                _lock_password_reset_limits(challenge_identifiers, now)
+                _lock_password_reset_limits(identifiers, now)
             return False
 
         validate_password(new_password, user)

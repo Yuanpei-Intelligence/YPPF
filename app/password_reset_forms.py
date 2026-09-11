@@ -1,3 +1,5 @@
+import re
+
 from django import forms
 
 
@@ -15,6 +17,13 @@ class PasswordResetForm(forms.Form):
         max_length=256, strip=False, widget=forms.PasswordInput)
     confirm_password = forms.CharField(
         max_length=256, strip=False, widget=forms.PasswordInput)
+
+    def clean_token(self):
+        """Reject legacy signed credentials and accept only ASCII short codes."""
+        token = self.cleaned_data["token"]
+        if re.fullmatch(r"[0-9]{6}", token) is None:
+            raise forms.ValidationError("请输入6位数字验证码")
+        return token
 
     def clean(self):
         cleaned_data = super().clean()
