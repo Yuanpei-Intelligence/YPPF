@@ -50,6 +50,12 @@
 			[data-toggle="collapse"].collapsed .fa:before {
 				content: "\f067"; 
 			}
+		
+		.doctor-slider.expanded { display: -webkit-box; display: -ms-flexbox; display: flex; -ms-flex-wrap: wrap; flex-wrap: wrap; }
+		.doctor-slider.expanded .slick-list { overflow: visible !important; height: auto !important; }
+		.doctor-slider.expanded .slick-track { transform: none !important; width: 100% !important; display: -webkit-box; display: -ms-flexbox; display: flex; -ms-flex-wrap: wrap; flex-wrap: wrap; }
+		.doctor-slider.expanded .slick-slide { width: auto !important; float: none !important; height: auto !important; }
+		.doctor-slider.expanded .profile-widget { margin: 8px; }
 		</style>
 		{% endblock %}
 	
@@ -238,6 +244,13 @@
 			<!-- Clinic and Specialities -->
 		  
 
+			
+			{% if search_date %}
+			<div class="alert alert-info text-center">
+			已按日期 <b>{{ search_date|date:"Y年n月j日" }}</b> 筛选：当天可预约的地下室共 <b>{{ bookable_count }}</b> 间
+			<a href="index" class="alert-link">清除筛选</a>
+			</div>
+			{% endif %}
 			<!-- 功能房预约 -->
 			<section class="section section-doctor" >
 				<div class="container-fluid" >
@@ -245,6 +258,7 @@
 					<div class="col-lg-4">-->
 							<div class="section-header text-center">
 								<h2>功能房预约</h2>
+						<button type="button" class="btn btn-outline-primary btn-sm ml-2" onclick="toggleRoomExpand(this)">一键展开</button>
 								
 							</div>
 							<!--<div class="banner-wrapper">
@@ -323,6 +337,7 @@
 					<div class="col-lg-4">-->
 						<div class="section-header text-center">
 							<h2>研讨室预约</h2>
+						<button type="button" class="btn btn-outline-primary btn-sm ml-2" onclick="toggleRoomExpand(this)">一键展开</button>
 							
 						</div>
 						<div class="banner-wrapper">
@@ -430,6 +445,7 @@
 						<div class="col-lg-4">-->
 								<div class="section-header text-center">
 									<h2>俄文楼预约</h2>
+						<button type="button" class="btn btn-outline-primary btn-sm ml-2" onclick="toggleRoomExpand(this)">一键展开</button>
 									<p>个人面试 / 线上授课</p>
 								</div>
 								<!--<div class="banner-wrapper">
@@ -592,5 +608,23 @@
 		<!-- Custom JS -->
 		<script src="{% static 'Appointment/assets/js/script.js' %} "></script>
 		
+	
+		<script type="text/javascript">
+				function toggleRoomExpand(btn) {
+					var $section = $(btn).closest("section");
+					var $slider = $section.find(".doctor-slider");
+					if (!$slider.data("expanded")) {
+						$slider.slick("unslick");
+						$slider.addClass("expanded");
+						$slider.data("expanded", true);
+						$(btn).text("收起");
+					} else {
+						$slider.removeClass("expanded");
+						$slider.slick({ dots: false, autoplay: false, infinite: true, variableWidth: true });
+						$slider.data("expanded", false);
+						$(btn).text("一键展开");
+					}
+				}
+		</script>
 	</body>
 </html>

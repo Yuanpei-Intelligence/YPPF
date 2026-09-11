@@ -279,6 +279,31 @@ def credit(request):
     return render(request, 'Appointment/admin-credit.html', render_context)
 
 
+def _room_has_free_slot(room, search_date):
+    """#974: 判断房间在指定日期是否仍有可预约空位（任一30分钟时间块空闲即算）。"""
+    if room.Rstatus == Room.Status.FORBIDDEN:
+        return False
+    max_stamp_id = web_func.get_time_id(room, room.Rfinish, mode="leftopen")
+    if max_stamp_id < 0:
+        return False
+    booked = set()
+    appoints = Appoint.objects.not_canceled().filter(
+        Room_id=room.Rid,
+        Afinish__gte=search_date,
+        Astart__date__lt=search_date + timedelta(days=1),
+    )
+    for appoint in appoints:
+        for i in web_func.timerange2idlist(room.Rid, appoint.Astart, appoint.Afinish, max_stamp_id):
+            booked.add(i)
+    start_id = 0
+    if search_date == datetime.now().date():
+        start_id = max(start_id, web_func.get_time_id(room, datetime.now().time()))
+    for i in range(start_id, max_stamp_id + 1):
+        if i not in booked:
+            return True
+    return False
+
+
 @identity_check(redirect_field_name='origin', auth_func=lambda x: True)
 def index(request):  # 主页
     render_context = {}
@@ -369,12 +394,23 @@ def index(request):  # 主页
                 render_context.update(search_code=1,
                                       search_message="只能查看最近7天的情况!")
                 return render(request, 'Appointment/index.html', render_context)
-            # 到这里 搜索没问题 进行跳转
-            urls = my_messages.append_query(
-                reverse("Appointment:arrange_talk"),
-                year=year, month=month, day=day, type=check_type)
-            # YHT: added for Russian search
-            return redirect(urls)
+            # #974: 日期搜索直接展示当天可预约的地下室，而非跳转
+            search_date = re_time.date()
+            all_rooms = list(function_room_list) + list(talk_room_list) + list(russian_room_list)
+            bookable = {r.Rid for r in all_rooms if _room_has_free_slot(r, search_date)}
+            function_room_list = [r for r in function_room_list if r.Rid in bookable]
+            talk_room_list = [r for r in talk_room_list if r.Rid in bookable]
+            russian_room_list = [r for r in russian_room_list if r.Rid in bookable]
+            russ_len = len(russian_room_list)
+            render_context.update(
+                search_date=search_date,
+                bookable_count=len(bookable),
+                function_room_list=function_room_list,
+                talk_room_list=talk_room_list,
+                russian_room_list=russian_room_list,
+                russ_len=russ_len,
+            )
+            return render(request, 'Appointment/index.html', render_context)
 
     return render(request, 'Appointment/index.html', render_context)
 
