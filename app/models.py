@@ -1815,6 +1815,11 @@ class AcademicTextEntry(AcademicEntry):
 
     atype = models.SmallIntegerField('类型', choices=Type.choices)
     content = models.CharField('内容', max_length=4095)
+    start_date = models.DateField('开始日期', null=True, blank=True)
+    end_date = models.DateField('结束日期', null=True, blank=True, help_text='为空或null表示至今')
+
+    def __str__(self) -> str:
+        return self.content
 
 
 class ChatManager(models.Manager['Chat']):
