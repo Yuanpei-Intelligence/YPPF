@@ -1,0 +1,53 @@
+<article class="community-feed-card" id="profile-tag-story-{{ selection.id }}">
+    <header class="community-feed-header">
+        <a href="{{ selection.person.get_absolute_url }}">
+            <img class="community-avatar" src="{{ selection.person.get_user_ava }}"
+                alt="{{ selection.person.name }}的头像" loading="lazy">
+        </a>
+        <div class="community-feed-heading">
+            <a class="community-author" href="{{ selection.person.get_absolute_url }}">{{ selection.person.name }}</a>
+            <a class="community-subject" href="{{ selection.person.get_absolute_url }}">{{ selection.get_kind_display }} · {{ selection.tag.name }}</a>
+            <p>{{ selection.tag.category }} · {{ selection.updated_at|date:"Y.m.d H:i" }}</p>
+        </div>
+    </header>
+
+    <div class="community-feed-content">
+        {% include "profile/_story_display.html" with story=selection is_myself=False %}
+    </div>
+
+    <div class="community-feed-toolbar">
+        <span><i class="fa fa-thumbs-up"></i> {{ selection.like_count }}</span>
+        <span><i class="fa fa-comment"></i> {{ selection.display_comments|length }}</span>
+        {% if selection.can_interact %}
+        <form method="post" action="{% url 'toggleProfileTagStoryLike' selection.id %}">
+            {% csrf_token %}
+            <input type="hidden" name="next" value="{{ return_path }}#profile-tag-story-{{ selection.id }}">
+            <button type="submit" class="btn btn-sm {% if selection.viewer_has_liked %}btn-primary{% else %}btn-outline-primary{% endif %}">
+                {% if selection.viewer_has_liked %}取消点赞{% else %}点赞{% endif %}
+            </button>
+        </form>
+        {% endif %}
+    </div>
+
+    {% if selection.display_comments %}
+    <div class="community-feed-comments">
+        {% for comment in selection.display_comments %}
+        <p>
+            <a href="{{ comment.author.get_absolute_url }}"><strong>{{ comment.author.name }}</strong></a>：
+            {{ comment.content }}
+            <small>{{ comment.created_at|date:"m.d H:i" }}</small>
+        </p>
+        {% endfor %}
+    </div>
+    {% endif %}
+
+    {% if selection.can_interact %}
+    <form class="community-comment-form" method="post" action="{% url 'addProfileTagStoryComment' selection.id %}">
+        {% csrf_token %}
+        <input type="hidden" name="next" value="{{ return_path }}#profile-tag-story-{{ selection.id }}">
+        <input class="form-control" type="text" name="content" maxlength="300" required
+            placeholder="写下评论（最多 300 字）" aria-label="评论{{ selection.get_kind_display }}{{ selection.tag.name }}">
+        <button class="btn btn-primary" type="submit">评论</button>
+    </form>
+    {% endif %}
+</article>

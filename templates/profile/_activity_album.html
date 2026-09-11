@@ -1,0 +1,101 @@
+<details class="profile-album mt-4" id="activity-album" open>
+    <summary class="profile-album-summary">
+        <span>
+            <strong>活动相册</strong>
+            <small>按最近上传或编辑时间排列，点击标题可收起</small>
+        </span>
+        <span class="profile-album-count">{{ Profile.activity_album.paginator.count }} 条动态</span>
+    </summary>
+
+    <div class="profile-album-body">
+        {% if profile_album_message %}
+        <div class="alert alert-info">{{ profile_album_message }}</div>
+        {% endif %}
+
+        {% for story in Profile.activity_album %}
+        <article class="profile-feed-item" id="activity-story-{{ story.id }}">
+            <header class="profile-feed-header">
+                <div class="profile-feed-avatar">{{ context.person.name|slice:":1" }}</div>
+                <div class="profile-feed-heading">
+                    <strong>{{ context.person.name }}</strong>
+                    <a href="/viewActivity/{{ story.participation.activity.id }}">{{ story.participation.activity.title }}</a>
+                    <p>
+                        {{ story.participation.activity.organization_id.oname }} ·
+                        {{ story.participation.status }} ·
+                        {{ story.updated_at|date:"Y.m.d H:i" }}
+                    </p>
+                </div>
+            </header>
+
+            <div class="profile-feed-content">
+                {% if Profile.is_myself and story.description_status == "hidden_by_admin" %}
+                <div class="alert alert-warning py-2">该段文字已被管理员隐藏，仅自己可见。</div>
+                {% endif %}
+                {% include "profile/_story_display.html" with story=story is_myself=Profile.is_myself %}
+            </div>
+
+            <div class="profile-feed-toolbar">
+                <span><i class="fa fa-thumbs-up"></i> {{ story.like_count }}</span>
+                <span><i class="fa fa-comment"></i> {{ story.display_comments|length }}</span>
+                {% if Profile.is_myself %}
+                <button type="button" class="btn btn-sm btn-outline-primary" data-toggle="modal"
+                    data-target="#activityStoryModal-album-{{ story.participation.id }}">编辑</button>
+                <form method="post" action="{% url 'deleteActivityStory' story.id %}"
+                    onsubmit="return confirm('确认删除这条活动记录及其全部图片、评论和点赞吗？');">
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn-sm btn-outline-danger">删除</button>
+                </form>
+                {% endif %}
+                {% if story.can_interact %}
+                <form method="post" action="{% url 'toggleActivityStoryLike' story.id %}">
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn-sm {% if story.viewer_has_liked %}btn-primary{% else %}btn-outline-primary{% endif %}">
+                        {% if story.viewer_has_liked %}取消点赞{% else %}点赞{% endif %}
+                    </button>
+                </form>
+                {% endif %}
+            </div>
+
+            {% if story.display_comments %}
+            <div class="profile-feed-comments">
+                {% for comment in story.display_comments %}
+                <p><strong>{{ comment.author.name }}</strong>：{{ comment.content }}</p>
+                {% endfor %}
+            </div>
+            {% endif %}
+
+            {% if story.can_interact %}
+            <form class="profile-feed-comment-form" method="post" action="{% url 'addActivityStoryComment' story.id %}">
+                {% csrf_token %}
+                <input class="form-control" type="text" name="content" maxlength="300" required
+                    placeholder="写下评论（最多 300 字）" aria-label="评论 {{ story.participation.activity.title }}">
+                <button class="btn btn-primary" type="submit">评论</button>
+            </form>
+            {% endif %}
+        </article>
+
+        {% if Profile.is_myself %}
+            {% include "profile/_activity_story_modal.html" with participation=story.participation modal_prefix="album" %}
+        {% endif %}
+        {% empty %}
+        <div class="profile-album-empty">
+            <span class="profile-card-icon profile-card-icon-activity">行</span>
+            <p>还没有公开的活动图文。上传活动照片或文字后，会按时间出现在这里。</p>
+        </div>
+        {% endfor %}
+
+        {% if Profile.activity_album.paginator.num_pages > 1 %}
+        <nav class="profile-album-pagination" aria-label="活动相册分页">
+            {% if Profile.activity_album.has_previous %}
+            <a class="btn btn-sm btn-light"
+                href="?name={{ context.person.name|urlencode }}&id={{ context.person.person_id.id }}&album_page={{ Profile.activity_album.previous_page_number }}#activity-album">上一页</a>
+            {% endif %}
+            <span>第 {{ Profile.activity_album.number }} / {{ Profile.activity_album.paginator.num_pages }} 页</span>
+            {% if Profile.activity_album.has_next %}
+            <a class="btn btn-sm btn-light"
+                href="?name={{ context.person.name|urlencode }}&id={{ context.person.person_id.id }}&album_page={{ Profile.activity_album.next_page_number }}#activity-album">下一页</a>
+            {% endif %}
+        </nav>
+        {% endif %}
+    </div>
+</details>

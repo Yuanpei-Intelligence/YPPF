@@ -939,6 +939,201 @@ class AcademicTagAdmin(admin.ModelAdmin):
     list_filter = ["atype"]
 
 
+@admin.register(ProfileTagCategory)
+class ProfileTagCategoryAdmin(admin.ModelAdmin):
+    list_display = ["name", "parent", "sort_order", "is_active"]
+    list_editable = ["sort_order", "is_active"]
+    list_filter = ["is_active"]
+    search_fields = ["name", "parent__name"]
+    ordering = ["parent_id", "sort_order", "id"]
+
+
+@admin.register(ProfileTag)
+class ProfileTagAdmin(admin.ModelAdmin):
+    list_display = ["name", "category", "source", "applies_to", "status", "created_by", "created_at"]
+    list_filter = ["source", "applies_to", "status", "category"]
+    search_fields = ["name", "normalized_name", "created_by__name"]
+    readonly_fields = ["normalized_name", "created_at"]
+    autocomplete_fields = ["created_by"]
+    actions = ["show_tags", "hide_tags"]
+
+    @admin.action(description="恢复展示所选标签")
+    def show_tags(self, request, queryset):
+        updated = queryset.update(status=ProfileTag.Status.VISIBLE)
+        self.message_user(request, f"已恢复 {updated} 个标签。")
+
+    @admin.action(description="隐藏所选标签")
+    def hide_tags(self, request, queryset):
+        updated = queryset.update(status=ProfileTag.Status.HIDDEN)
+        self.message_user(request, f"已隐藏 {updated} 个标签。")
+
+
+@admin.register(PersonProfileTag)
+class PersonProfileTagAdmin(admin.ModelAdmin):
+    list_display = ["person", "kind", "tag", "description_status", "updated_at"]
+    list_filter = [
+        "kind", "description_status", "tag__source", "tag__status", "tag__category"
+    ]
+    search_fields = [
+        "person__name", "person__person_id__username", "tag__name", "description"
+    ]
+    autocomplete_fields = ["person", "tag"]
+    readonly_fields = ["created_at", "updated_at"]
+    actions = ["show_descriptions", "hide_descriptions"]
+
+    @admin.action(description="恢复展示所选文字说明")
+    def show_descriptions(self, request, queryset):
+        updated = queryset.update(
+            description_status=PersonProfileTag.ContentStatus.VISIBLE
+        )
+        self.message_user(request, f"已恢复 {updated} 条文字说明。")
+
+    @admin.action(description="隐藏所选文字说明")
+    def hide_descriptions(self, request, queryset):
+        updated = queryset.update(
+            description_status=PersonProfileTag.ContentStatus.HIDDEN
+        )
+        self.message_user(request, f"已隐藏 {updated} 条文字说明。")
+
+
+class ModeratedImageAdmin(admin.ModelAdmin):
+    list_filter = ["status", "created_at"]
+    readonly_fields = ["created_at"]
+    actions = ["show_images", "hide_images"]
+
+    @admin.action(description="恢复展示所选图片")
+    def show_images(self, request, queryset):
+        updated = queryset.update(status=queryset.model.Status.VISIBLE)
+        self.message_user(request, f"已恢复 {updated} 张图片。")
+
+    @admin.action(description="隐藏所选图片")
+    def hide_images(self, request, queryset):
+        updated = queryset.update(status=queryset.model.Status.HIDDEN)
+        self.message_user(request, f"已隐藏 {updated} 张图片。")
+
+
+@admin.register(PersonProfileTagImage)
+class PersonProfileTagImageAdmin(ModeratedImageAdmin):
+    list_display = ["selection", "status", "sort_order", "created_at"]
+    search_fields = [
+        "selection__person__name",
+        "selection__person__person_id__username",
+        "selection__tag__name",
+    ]
+
+
+@admin.register(ParticipationStory)
+class ParticipationStoryAdmin(admin.ModelAdmin):
+    list_display = ["participation", "description_status", "updated_at"]
+    list_filter = ["description_status", "participation__status"]
+    search_fields = [
+        "participation__person__name",
+        "participation__person__person_id__username",
+        "participation__activity__title",
+        "description",
+    ]
+    readonly_fields = ["created_at", "updated_at"]
+    actions = ["show_descriptions", "hide_descriptions"]
+
+    @admin.action(description="恢复展示所选文字说明")
+    def show_descriptions(self, request, queryset):
+        updated = queryset.update(
+            description_status=ParticipationStory.ContentStatus.VISIBLE
+        )
+        self.message_user(request, f"已恢复 {updated} 条文字说明。")
+
+    @admin.action(description="隐藏所选文字说明")
+    def hide_descriptions(self, request, queryset):
+        updated = queryset.update(
+            description_status=ParticipationStory.ContentStatus.HIDDEN
+        )
+        self.message_user(request, f"已隐藏 {updated} 条文字说明。")
+
+
+@admin.register(ParticipationStoryImage)
+class ParticipationStoryImageAdmin(ModeratedImageAdmin):
+    list_display = ["story", "status", "sort_order", "created_at"]
+    search_fields = [
+        "story__participation__person__name",
+        "story__participation__person__person_id__username",
+        "story__participation__activity__title",
+    ]
+
+
+@admin.register(ParticipationStoryLike)
+class ParticipationStoryLikeAdmin(admin.ModelAdmin):
+    list_display = ["story", "person", "created_at"]
+    search_fields = [
+        "story__participation__person__name",
+        "story__participation__activity__title",
+        "person__name",
+        "person__person_id__username",
+    ]
+    readonly_fields = ["created_at"]
+
+
+@admin.register(ParticipationStoryComment)
+class ParticipationStoryCommentAdmin(admin.ModelAdmin):
+    list_display = ["story", "author", "content", "status", "created_at"]
+    list_filter = ["status", "created_at"]
+    search_fields = [
+        "story__participation__person__name",
+        "story__participation__activity__title",
+        "author__name",
+        "author__person_id__username",
+        "content",
+    ]
+    readonly_fields = ["created_at"]
+    actions = ["show_comments", "hide_comments"]
+
+    @admin.action(description="恢复展示所选评论")
+    def show_comments(self, request, queryset):
+        updated = queryset.update(status=ParticipationStoryComment.Status.VISIBLE)
+        self.message_user(request, f"已恢复 {updated} 条评论。")
+
+    @admin.action(description="隐藏所选评论")
+    def hide_comments(self, request, queryset):
+        updated = queryset.update(status=ParticipationStoryComment.Status.HIDDEN)
+        self.message_user(request, f"已隐藏 {updated} 条评论。")
+
+
+@admin.register(PersonProfileTagLike)
+class PersonProfileTagLikeAdmin(admin.ModelAdmin):
+    list_display = ["selection", "person", "created_at"]
+    search_fields = [
+        "selection__person__name",
+        "selection__tag__name",
+        "person__name",
+        "person__person_id__username",
+    ]
+    readonly_fields = ["created_at"]
+
+
+@admin.register(PersonProfileTagComment)
+class PersonProfileTagCommentAdmin(admin.ModelAdmin):
+    list_display = ["selection", "author", "content", "status", "created_at"]
+    list_filter = ["status", "created_at"]
+    search_fields = [
+        "selection__person__name",
+        "selection__tag__name",
+        "author__name",
+        "author__person_id__username",
+        "content",
+    ]
+    readonly_fields = ["created_at"]
+    actions = ["show_comments", "hide_comments"]
+
+    @admin.action(description="恢复展示所选评论")
+    def show_comments(self, request, queryset):
+        updated = queryset.update(status=PersonProfileTagComment.Status.VISIBLE)
+        self.message_user(request, f"已恢复 {updated} 条评论。")
+
+    @admin.action(description="隐藏所选评论")
+    def hide_comments(self, request, queryset):
+        updated = queryset.update(status=PersonProfileTagComment.Status.HIDDEN)
+        self.message_user(request, f"已隐藏 {updated} 条评论。")
+
+
 class AcademicEntryAdmin(admin.ModelAdmin):
     actions = []
 

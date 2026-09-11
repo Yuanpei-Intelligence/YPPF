@@ -6,9 +6,10 @@ from typing import cast, List, Tuple
 from django.views.decorators.csrf import ensure_csrf_cookie
 from django.contrib import auth
 from django.db import transaction
-from django.db.models import Q, F, Sum, QuerySet
+from django.db.models import Q, F, Sum, QuerySet, Prefetch
 from django.contrib.auth.password_validation import CommonPasswordValidator, NumericPasswordValidator
 from django.core.exceptions import ValidationError
+from django.views.decorators.csrf import ensure_csrf_cookie
 
 from django.core.validators import validate_email
 from django.views.decorators.csrf import csrf_protect
@@ -34,6 +35,7 @@ from app.models import (
     Activity,
     ActivityPhoto,
     Participation,
+    ParticipationStoryImage,
     Notification,
     Wishes,
     Course,
@@ -69,6 +71,7 @@ from app.academic_utils import (
     get_tag_status,
     get_text_status,
 )
+from app.profile_utils import build_profile_context, prepare_participation_story
 
 from achievement.utils import personal_achievements
 from achievement.api import unlock_achievement, unlock_YQPoint_achievements
@@ -100,6 +103,7 @@ def shiftAccount(request: HttpRequest):
     return redirect(origin)
 
 
+@ensure_csrf_cookie
 @login_required(redirect_field_name="origin")
 @utils.check_user_access(redirect_url="/logout/")
 @logger.secure_view()
@@ -397,8 +401,26 @@ def stuinfo(request: UserRequest):
 
         # ------------------ 活动参与 ------------------ #
 
-        participants = Participation.objects.activated().filter(SQ.sq(
-                Participation.person, person))
+        profile_activity_statuses = [
+            Participation.AttendStatus.APPLYSUCCESS,
+            Participation.AttendStatus.ATTENDED,
+        ]
+        participants = Participation.objects.filter(
+            SQ.sq(Participation.person, person),
+            status__in=profile_activity_statuses,
+        )
+        display_participations = list(
+            participants.select_related("activity", "story").prefetch_related(
+                Prefetch(
+                    "story__images",
+                    queryset=ParticipationStoryImage.objects.all(),
+                )
+            )
+        )
+        participation_by_activity = {}
+        for participation in display_participations:
+            prepare_participation_story(participation, is_myself)
+            participation_by_activity[participation.activity_id] = participation
         activities = Activity.objects.activated().filter(
             # ~Q(status=Activity.Status.CANCELED), # 暂时可以呈现已取消的活动
             id__in=SQ.qsvlist(participants, Participation.activity),
@@ -406,8 +428,10 @@ def stuinfo(request: UserRequest):
         if request.user.is_person():
             # 因为上面筛选过活动，这里就不用筛选了
             # 之前那个写法是O(nm)的
-            activities_me = Participation.objects.activated().filter(SQ.sq(
-                Participation.person, oneself))
+            activities_me = Participation.objects.filter(
+                SQ.sq(Participation.person, oneself),
+                status__in=profile_activity_statuses,
+            )
             activities_me = set(SQ.qsvlist(activities_me, Participation.activity))
         else:
             activities_me = activities.filter(organization_id=oneself)
@@ -416,7 +440,10 @@ def stuinfo(request: UserRequest):
             activity in activities_me
             for activity in activities.values_list("id", flat=True)
         ]
-        activity_info = list(zip(activities, activity_is_same))
+        activity_info = [
+            (activity, same, participation_by_activity[activity.id])
+            for activity, same in zip(activities, activity_is_same)
+        ]
         activity_info.sort(key=lambda a: a[0].start, reverse=True)
         html_display["activity_info"] = list(activity_info) or None
 
@@ -427,7 +454,10 @@ def stuinfo(request: UserRequest):
                 id__in=SQ.qsvlist(participants, Participation.activity),
             ))
         history_activities.sort(key=lambda a: a.start, reverse=True)
-        html_display["history_act_info"] = list(history_activities) or None
+        html_display["history_act_info"] = [
+            (activity, participation_by_activity[activity.id])
+            for activity in history_activities
+        ] or None
 
         # 警告呈现信息
 
@@ -528,6 +558,17 @@ def stuinfo(request: UserRequest):
         achievement_params = dict(type_order_displays=achievement_by_types)
         render_context.update(Achievement=achievement_params)
 
+        # ------------------ 个人画像 ------------------ #
+        viewer_person = oneself if request.user.is_person() else None
+        render_context.update(
+            Profile=build_profile_context(
+                person,
+                is_myself,
+                viewer_person=viewer_person,
+                album_page_number=request.GET.get("album_page", 1),
+            )
+        )
+
         # ------------------ 前端准备 ------------------ #
         # 存储被查询人的信息
         _title = "我" if is_myself else (
@@ -551,6 +592,18 @@ def stuinfo(request: UserRequest):
 
         if request.session.get('alert_message'):
             render_context.update(load_alert_message=request.session.pop('alert_message'))
+        if request.session.get("profile_tag_errors"):
+            render_context.update(
+                profile_tag_errors=request.session.pop("profile_tag_errors")
+            )
+        if request.session.get("profile_story_errors"):
+            render_context.update(
+                profile_story_errors=request.session.pop("profile_story_errors")
+            )
+        if request.session.get("profile_album_message"):
+            render_context.update(
+                profile_album_message=request.session.pop("profile_album_message")
+            )
 
         # 浏览次数，必须在render之前
         # 为了防止发生错误的存储，让数据库直接更新浏览次数，并且不再显示包含本次浏览的数据

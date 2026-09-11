@@ -36,6 +36,106 @@
         grid-template-columns: repeat(3, 33.33%);
         grid-template-rows: repeat(3, 33.33%);
     }
+
+    .profile-panorama {
+        padding: 26px;
+        border-radius: 22px;
+        background: linear-gradient(145deg, #f8fbff 0%, #f5f2ff 52%, #fff8f2 100%);
+        border: 1px solid rgba(74, 101, 255, .12);
+        box-shadow: 0 14px 40px rgba(54, 67, 122, .08);
+    }
+    .profile-panorama-heading, .profile-card-title-row {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 18px;
+    }
+    .profile-panorama-heading h2 { font-weight: 700; color: #202746; }
+    .profile-eyebrow { color: #5c6ac4; font-size: 12px; font-weight: 700; letter-spacing: .14em; }
+    .profile-stat-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin: 22px 0; }
+    .profile-stat-grid div { padding: 14px 16px; border-radius: 14px; background: rgba(255,255,255,.74); }
+    .profile-stat-grid strong { display: block; color: #29335c; font-size: 23px; }
+    .profile-stat-grid span { color: #718096; font-size: 12px; }
+    .profile-panorama-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+    .profile-story-card { padding: 20px; border-radius: 17px; background: #fff; box-shadow: 0 8px 24px rgba(42, 51, 95, .06); }
+    .profile-card-title { display: flex; align-items: center; gap: 12px; margin-bottom: 16px; }
+    .profile-card-title h4 { margin: 0; color: #272d4d; font-weight: 700; }
+    .profile-card-title small { color: #8790aa; }
+    .profile-card-icon { display: inline-flex; align-items: center; justify-content: center; width: 40px; height: 40px; border-radius: 13px; font-weight: 700; flex: 0 0 auto; }
+    .profile-card-icon-interest { background: #fff0d7; color: #bd7010; }
+    .profile-card-icon-skill { background: #e8edff; color: #4b61c9; }
+    .profile-card-icon-activity { background: #e2f7ef; color: #178665; margin-right: 12px; }
+    .profile-chip-list, .profile-tag-choice-list { display: flex; flex-wrap: wrap; gap: 8px; }
+    .profile-chip { display: inline-flex; padding: 7px 12px; border-radius: 999px; font-size: 13px; }
+    .profile-chip-button { border: 0; cursor: pointer; font: inherit; }
+    .profile-chip-button:hover { filter: brightness(.96); transform: translateY(-1px); }
+    .profile-chip-interest { background: #fff5e4; color: #9b5b08; }
+    .profile-chip-skill { background: #edf0ff; color: #4253a9; }
+    .profile-empty { color: #9aa1b5; }
+    .profile-activity-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; }
+    .profile-activity-item { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 13px 15px; border-radius: 12px; background: #f8f9fc; color: #333a57; }
+    .profile-activity-item:hover { color: #3d52bd; background: #f1f3fb; }
+    .profile-activity-item p { margin: 4px 0 0; color: #9097aa; font-size: 12px; }
+    .profile-activity-actions { display: flex; align-items: center; gap: 8px; flex: 0 0 auto; }
+    .profile-activity-actions form { margin: 0; }
+    .profile-story-description { white-space: normal; overflow-wrap: anywhere; color: #3f4661; }
+    .profile-story-gallery, .profile-story-delete-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+    .profile-story-gallery figure { margin: 0; }
+    .profile-story-gallery img, .profile-story-delete-grid img { width: 100%; height: 150px; object-fit: cover; border-radius: 10px; background: #f3f4f8; }
+    .profile-story-gallery figcaption { padding-top: 4px; color: #b36b00; font-size: 12px; }
+    .profile-story-delete-grid label { padding: 8px; border: 1px solid #e3e6ef; border-radius: 10px; cursor: pointer; }
+    .profile-story-delete-grid span { display: block; padding-top: 6px; font-size: 12px; white-space: normal; }
+    .profile-album { border: 1px solid #e5e8f2; border-radius: 20px; background: #f8f9fc; overflow: hidden; box-shadow: 0 10px 30px rgba(42, 51, 95, .06); }
+    .profile-album-summary { display: flex; justify-content: space-between; align-items: center; gap: 16px; padding: 20px 24px; cursor: pointer; background: #fff; color: #2d3454; list-style: none; }
+    .profile-album-summary::-webkit-details-marker { display: none; }
+    .profile-album-summary strong { display: block; font-size: 20px; }
+    .profile-album-summary small { display: block; margin-top: 3px; color: #8b92a8; }
+    .profile-album-count { padding: 5px 10px; border-radius: 999px; background: #eef1ff; color: #5264bd; font-size: 12px; white-space: nowrap; }
+    .profile-album-body { padding: 18px; }
+    .profile-feed-item { max-width: 820px; margin: 0 auto 16px; padding: 20px; border-radius: 16px; background: #fff; border: 1px solid #eceef5; }
+    .profile-feed-header { display: flex; gap: 12px; align-items: flex-start; }
+    .profile-feed-avatar { display: flex; align-items: center; justify-content: center; width: 42px; height: 42px; flex: 0 0 42px; border-radius: 50%; background: linear-gradient(135deg, #5b6bc7, #7c8de8); color: #fff; font-weight: 700; }
+    .profile-feed-heading { min-width: 0; }
+    .profile-feed-heading strong, .profile-feed-heading a { display: block; }
+    .profile-feed-heading a { margin-top: 2px; color: #4154ae; font-weight: 600; }
+    .profile-feed-heading p { margin: 3px 0 0; color: #959caf; font-size: 12px; }
+    .profile-feed-content { margin: 14px 0; }
+    .profile-feed-toolbar { display: flex; align-items: center; flex-wrap: wrap; gap: 10px; padding-top: 10px; border-top: 1px solid #f0f1f5; color: #7d8499; }
+    .profile-feed-toolbar form { margin: 0; }
+    .profile-feed-comments { margin-top: 12px; padding: 10px 12px; border-radius: 10px; background: #f6f7fb; }
+    .profile-feed-comments p { margin: 4px 0; color: #555d75; overflow-wrap: anywhere; }
+    .profile-feed-comment-form { display: flex; gap: 8px; margin-top: 12px; }
+    .profile-feed-comment-form input { min-width: 0; }
+    .profile-feed-comment-form button { min-width: 72px; flex: 0 0 auto; white-space: nowrap; }
+    .profile-album-empty { padding: 28px; text-align: center; color: #939aaf; }
+    .profile-album-empty .profile-card-icon { margin: 0 auto 10px; }
+    .profile-album-pagination { display: flex; align-items: center; justify-content: center; gap: 12px; padding: 8px; color: #7d8499; }
+    .profile-more-link { white-space: nowrap; }
+    .profile-tag-category { margin: 10px 0 10px 12px; }
+    .profile-tag-category > summary { cursor: pointer; color: #394163; font-weight: 600; margin-bottom: 8px; }
+    .profile-tag-choice { cursor: pointer; margin: 0; }
+    .profile-tag-choice input { position: absolute; opacity: 0; pointer-events: none; }
+    .profile-tag-choice span { display: inline-block; padding: 6px 11px; border: 1px solid #d9deef; border-radius: 999px; color: #626a84; transition: .15s ease; }
+    .profile-tag-choice input:checked + span { color: #fff; border-color: #5b6bc7; background: #5b6bc7; }
+    .profile-tag-choice-custom input:checked + span { background: #258b70; border-color: #258b70; }
+    .profile-custom-current { padding: 12px; margin: 10px 0; border-radius: 12px; background: #f5f8f7; }
+    .profile-custom-current small { display: block; margin-bottom: 8px; color: #66756f; }
+    .profile-custom-fields { margin-top: 20px; padding-top: 16px; border-top: 1px solid #edf0f6; }
+    .profile-custom-fields label { display: block; color: #606881; font-size: 12px; margin-top: 10px; }
+    .profile-custom-fields input { margin-top: 4px; }
+    @media (max-width: 768px) {
+        .profile-panorama { padding: 18px; }
+        .profile-panorama-heading { align-items: flex-start; flex-direction: column; }
+        .profile-stat-grid { grid-template-columns: repeat(2, 1fr); }
+        .profile-panorama-grid, .profile-activity-grid { grid-template-columns: 1fr; }
+        .profile-story-gallery, .profile-story-delete-grid { grid-template-columns: repeat(2, 1fr); }
+        .profile-activity-item { align-items: flex-start; }
+        .profile-activity-actions { align-items: flex-end; flex-direction: column; }
+        .profile-album-summary { align-items: flex-start; padding: 16px; }
+        .profile-album-body { padding: 10px; }
+        .profile-feed-item { padding: 15px; }
+        .profile-feed-comment-form { align-items: stretch; flex-direction: column; }
+    }
     @media (max-width: 992px) { /* only on lg screens */
         .nav-tabs {
             display: flex;
@@ -110,10 +210,10 @@
     <!--  BEGIN SWITCH TAB  -->
     <ul class="nav nav-tabs nav-pills-slide d-lg-none" role="tablist">
         <li class="nav-item">
-            <b class="nav-link active" data-toggle="pill" role="tab" href="#information">个人信息</b>
+            <b class="nav-link active" data-toggle="pill" role="tab" href="#information">个人画像</b>
         </li>
         <li class="nav-item">
-            <b class="nav-link" data-toggle="pill" role="tab" href="#academic_map">学术地图</b>
+            <b class="nav-link" data-toggle="pill" role="tab" href="#academic_map">学术经历</b>
         </li>
         <li class="nav-item">
             <b class="nav-link" data-toggle="pill" role="tab" href="#organization">{{ context.title }}的小组</b>
@@ -127,10 +227,10 @@
     </ul>
     <ul class="nav nav-tabs nav-tabs-solid nav-justified d-none d-lg-flex" role="tablist">
         <li class="nav-item">
-            <b class="nav-link active" data-toggle="tab" role="tab" href="#information">个人信息</b>
+            <b class="nav-link active" data-toggle="tab" role="tab" href="#information">个人画像</b>
         </li>
         <li class="nav-item">
-            <b class="nav-link" data-toggle="tab" role="tab" href="#academic_map">学术地图</b>
+            <b class="nav-link" data-toggle="tab" role="tab" href="#academic_map">学术经历</b>
         </li>
         <li class="nav-item">
             <b class="nav-link" data-toggle="tab" role="tab" href="#organization">{{ context.title }}的小组</b>
@@ -148,6 +248,9 @@
         <!--  BEGIN INFORMATION TAB  -->
         <div class="tab-pane fade show active" id="information" role="tabpanel">
             <div class="col layout-top-spacing">
+
+                {% include "profile/_panorama.html" %}
+                {% include "profile/_activity_album.html" %}
 
                 <div class="user-profile layout-spacing">
                     <div class="widget-content widget-content-area">
@@ -1425,7 +1528,7 @@
                             <p class="w-100" style="text-align: center;">没有参与的活动</p>
                             {% else %}
                             <p class="w-100" id="custom-activity-none" style="display: none; text-align: center;">没有共同的活动</p>
-                            {% for act, same in html_display.activity_info %}
+                            {% for act, same, participation in html_display.activity_info %}
                             <div class="col-sm-12 col-md-6 mb-3 custom-activity-card custom-activity-issame-{{ same }}">
                                 <a href="/viewActivity/{{ act.id }}">
                                     <div class="d-flex b-skills">
@@ -1476,6 +1579,22 @@
                                         </div>
                                     </div>
                                 </a>
+                                {% if Profile.is_myself or participation.profile_story.display_description or participation.profile_story.display_images %}
+                                <div class="px-3 pb-3 d-flex flex-wrap" style="gap: 8px;">
+                                    <button type="button" class="btn btn-sm btn-outline-primary" data-toggle="modal"
+                                        data-target="#activityStoryModal-current-{{ participation.id }}">
+                                        {% if Profile.is_myself %}{% if participation.profile_story %}编辑我的记录{% else %}添加我的记录{% endif %}{% else %}查看记录{% endif %}
+                                    </button>
+                                    {% if Profile.is_myself and participation.profile_story %}
+                                    <form method="post" action="{% url 'deleteActivityStory' participation.profile_story.id %}"
+                                        onsubmit="return confirm('确认删除这条活动记录吗？');">
+                                        {% csrf_token %}
+                                        <button type="submit" class="btn btn-sm btn-outline-danger">删除</button>
+                                    </form>
+                                    {% endif %}
+                                </div>
+                                {% include "profile/_activity_story_modal.html" with participation=participation modal_prefix="current" %}
+                                {% endif %}
                             </div>
 
                             {% endfor %}
@@ -1491,7 +1610,7 @@
                             {% if html_display.history_act_info is None %}
                             <p class="w-100" style="text-align: center;">没有历史活动</p>
                             {% else %}
-                            {% for act in html_display.history_act_info %}
+                            {% for act, participation in html_display.history_act_info %}
                             <div class="col-sm-12 col-md-6 mb-3 custom-activity-card ">
                                 <a href="/viewActivity/{{ act.id }}">
                                     <div class="d-flex b-skills">
@@ -1542,6 +1661,22 @@
                                         </div>
                                     </div>
                                 </a>
+                                {% if Profile.is_myself or participation.profile_story.display_description or participation.profile_story.display_images %}
+                                <div class="px-3 pb-3 d-flex flex-wrap" style="gap: 8px;">
+                                    <button type="button" class="btn btn-sm btn-outline-primary" data-toggle="modal"
+                                        data-target="#activityStoryModal-history-{{ participation.id }}">
+                                        {% if Profile.is_myself %}{% if participation.profile_story %}编辑我的记录{% else %}添加我的记录{% endif %}{% else %}查看记录{% endif %}
+                                    </button>
+                                    {% if Profile.is_myself and participation.profile_story %}
+                                    <form method="post" action="{% url 'deleteActivityStory' participation.profile_story.id %}"
+                                        onsubmit="return confirm('确认删除这条活动记录吗？');">
+                                        {% csrf_token %}
+                                        <button type="submit" class="btn btn-sm btn-outline-danger">删除</button>
+                                    </form>
+                                    {% endif %}
+                                </div>
+                                {% include "profile/_activity_story_modal.html" with participation=participation modal_prefix="history" %}
+                                {% endif %}
                             </div>
 
                             {% endfor %}
@@ -1602,7 +1737,11 @@
                             {% if forloop.counter0|divisibleby:"3" %}<box>{% endif %}
                                 <td>
                                     <a data-toggle="modal" data-target="#achievementModal-{{ atype.title }}">
-                                        <img src="{{ atype.badge.url }}" class="achievement-img">
+                                        {% if atype.badge %}
+                                        <img src="{{ atype.badge.url }}" class="achievement-img" alt="{{ atype.title }}">
+                                        {% else %}
+                                        <div class="achievement-img d-flex align-items-center justify-content-center rounded bg-light text-muted" style="aspect-ratio: 1; font-size: 2rem;">成</div>
+                                        {% endif %}
                                     </a>
                                     <center>
                                         <p>{{ atype.title }}</p>
@@ -1619,7 +1758,11 @@
                                                     <div class="widget-content widget-content-area">
                                                         <center>
                                                             <h2>{{ atype.title }}</h2>
-                                                            <img src="{{ atype.badge.url }}" class="achievement-img">
+                                                            {% if atype.badge %}
+                                                            <img src="{{ atype.badge.url }}" class="achievement-img" alt="{{ atype.title }}">
+                                                            {% else %}
+                                                            <div class="achievement-img d-flex align-items-center justify-content-center rounded bg-light text-muted" style="aspect-ratio: 1; font-size: 2rem;">成</div>
+                                                            {% endif %}
                                                             <p>{{ atype.description }}</p>
                                                         </center>
                                                         <center>
