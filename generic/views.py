@@ -38,7 +38,7 @@ class Index(SecureTemplateView):
         # Modify password
         # Seems that after modification, log out by default?
         if self.request.GET.get('modinfo') is not None:
-            succeed("修改密码成功!", self.extra_context)
+            succeed("修改密码成功，请重新登录", self.extra_context)
         return self.render()
 
     def user_get(self) -> HttpResponse:
