@@ -2,7 +2,7 @@
 Event sources of the week view, the agenda, the term overview and the ICS
 feed: the ``Occurrence`` value object, the ``EventSource`` protocol, the
 ``DateSpan`` of a date-based query and the config-driven registry
-``load_sources``. Contract: ``timetable/README.md`` §4.3, §6.5 and §10.
+``load_sources``. Contract: ``timetable/README.md`` §4.3, §6.5, §10 and §11.
 
 Sources that read other apps (``college``, ``activity``, ``appoint``) import
 those apps lazily inside ``occurrences`` and are only loaded when listed in
@@ -56,15 +56,20 @@ class Occurrence:
     start_section: int | None = None
     end_section: int | None = None
     color_key: str = ''     # stable colouring key (course name or id)
-    status: str = ''        # '' | 'canceled' | 'checked_in' | 'applied'
+    # '' | 'canceled' | 'suspended' (a lesson the university calendar
+    # suspends, shown muted; README §11) | 'checked_in' | 'applied'
+    status: str = ''
     ref: dict = field(default_factory=dict)
     hidden: bool = False
     role: str = ''          # 'enrolled' | 'audit' | '' (live sources), README §8.2
     tag: str = ''           # the entry's tag, README §8.3
     modified: bool = False  # at least one override applied, README §8.2
+    # On a 调休 date: the weekday (1..7) whose lesson this occurrence
+    # carries; None otherwise (README §11).
+    swap_from: int | None = None
 
     def as_dict(self) -> dict[str, Any]:
-        """JSON shape of ``Occurrence`` in ``timetable/README.md`` §4.6 (+ §8.2)."""
+        """JSON shape of ``Occurrence`` in ``timetable/README.md`` §4.6 (+ §8.2, §11)."""
         return {
             'id': self.id,
             'source': self.source,
@@ -86,6 +91,7 @@ class Occurrence:
             'role': self.role,
             'tag': self.tag,
             'modified': self.modified,
+            'swap_from': self.swap_from,
         }
 
     def overlaps(self, other: 'Occurrence') -> bool:

@@ -1061,14 +1061,86 @@ class CalendarTests(TimetableAPITestCase):
         self.assertEqual(data['days'][5], {
             'date': data['week_dates'][5], 'weekday': 6, 'kind': 'swap',
             'label': '按周一课表上课', 'follows_weekday': 1})
-        self.assertEqual([(o['title'], o['weekday']) for o in data['occurrences']],
-                         [('周一课', 1), ('周一课', 6)])
-        self.assertEqual(data['occurrences'][1]['date'], data['week_dates'][5])
+        self.assertEqual(
+            [(o['title'], o['weekday'], o['status'], o['swap_from'])
+             for o in data['occurrences']],
+            [('周一课', 1, '', None), ('周四课', 4, 'suspended', None),
+             ('周一课', 6, '', 1), ('周六课', 6, 'suspended', None)])
+        self.assertEqual(data['occurrences'][2]['date'], data['week_dates'][5])
+        # The suspended Saturday lesson overlaps the swapped one without a conflict.
+        self.assertEqual(data['conflicts'], [])
         self.assertEqual([e['name'] for e in data['term']['calendar']], ['假期', '按周一课表上课'])
         response = self.client.get(self.url('week'), {'week': 3})
         self.assertEqual([day['kind'] for day in response.data['days']], [None] * 7)
         self.assertEqual([o['title'] for o in response.data['occurrences']],
                          ['周一课', '周四课', '周六课'])
+
+    def test_agenda_carries_status_and_swap_from(self):
+        """README §11 on ``agenda/``: suspended lessons and 调休 copies."""
+        week2 = self.term.week_dates(2)
+        response = self.client.get(self.url('agenda'),
+                                   {'from': week2[3].isoformat(), 'days': 3})
+        self.assertEqual(response.status_code, status.HTTP_200_OK, response.data)
+        days = response.data['days']
+        self.assertEqual(
+            [(day['kind'], [(o['title'], o['status'], o['swap_from'])
+                            for o in day['occurrences']]) for day in days],
+            [('holiday', [('周四课', 'suspended', None)]),
+             ('holiday', []),
+             ('swap', [('周一课', '', 1), ('周六课', 'suspended', None)])])
+        self.assertEqual((days[2]['occurrences'][0]['date'], days[2]['occurrences'][0]['weekday']),
+                         (week2[5].isoformat(), 6))
+
+    def test_ignore_calendar_patch(self):
+        """README §11: 照常上课 through the scoped PATCH, its undo and validation."""
+        thursday = TimetableEntry.objects.get(person=self.person, name='周四课')
+        manual = make_entry(self.person, self.term, name='自习', weekday=5,
+                            source=TimetableEntry.Source.MANUAL)
+
+        def patch_entry(entry, body):
+            return self.client.patch(self.url('entry-detail', pk=entry.pk), body, format='json')
+
+        def lessons(title):
+            occurrences = self.client.get(self.url('week')).data['occurrences']
+            return [(o['status'], o['swap_from'], o['modified'])
+                    for o in occurrences if o['title'] == title]
+
+        self.assertEqual(lessons('周四课'), [('suspended', None, False)])
+        response = patch_entry(thursday, {'scope': 'single', 'week': 2, 'ignore_calendar': True})
+        self.assertEqual(response.status_code, status.HTTP_200_OK, response.data)
+        self.assertEqual([(o['week_start'], o['week_end'], o['canceled'], o['fields'])
+                          for o in response.data['overrides']],
+                         [(2, 2, False, {'ignore_calendar': True})])
+        self.assertEqual(lessons('周四课'), [('', None, True)])
+        detail = self.client.get(self.url('entry-detail', pk=thursday.pk)).data
+        self.assertEqual(detail['overrides'][0]['fields'], {'ignore_calendar': True})
+        # false returns to the calendar (the override stays, so it is still modified).
+        response = patch_entry(thursday, {'scope': 'single', 'week': 2, 'ignore_calendar': False})
+        self.assertEqual(response.status_code, status.HTTP_200_OK, response.data)
+        self.assertEqual(response.data['overrides'][0]['fields'], {'ignore_calendar': False})
+        self.assertEqual(lessons('周四课'), [('suspended', None, True)])
+        # A manual entry keeps it in the whole-range override; deleting that restores.
+        self.assertEqual(lessons('自习'), [('suspended', None, False)])
+        response = patch_entry(manual, {'ignore_calendar': True})
+        self.assertEqual(response.status_code, status.HTTP_200_OK, response.data)
+        self.assertEqual([(o['week_start'], o['week_end'], o['fields'])
+                          for o in response.data['overrides']],
+                         [(None, None, {'ignore_calendar': True})])
+        self.assertEqual(lessons('自习'), [('', None, True)])
+        oid = response.data['overrides'][0]['id']
+        response = self.client.delete(self.url('entry-override-detail', pk=manual.pk, oid=oid))
+        self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
+        self.assertEqual(lessons('自习'), [('suspended', None, False)])
+        # Anything but a boolean is rejected and writes nothing.
+        for value in ('maybe', None, 2, [], {'a': 1}):
+            with self.subTest(value=value):
+                response = patch_entry(
+                    thursday, {'scope': 'single', 'week': 3, 'ignore_calendar': value})
+                self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST,
+                                 response.data)
+                self.assertEqual(response.data['code'], 'validation_error')
+                self.assertIn('ignore_calendar', response.data['errors'])
+        self.assertEqual(TimetableEntryOverride.objects.filter(entry=thursday).count(), 1)
 
 
 def _catalog_rows(term, old_term=None):

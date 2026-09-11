@@ -3,7 +3,8 @@ REST APIs of the timetable for the WeChat mini-program.
 Contract: ``timetable/README.md`` §4.6 (§6.1 subscribe messages, §6.3
 course catalog, §6.5 agenda, §8 catalog links and quick add, scoped edits
 and overrides, tags and the sources legend, share assets; §10 term
-overview). Mounted at ``/api/v2/timetable/``.
+overview; §11 calendar suspensions, 调休 and 照常上课). Mounted at
+``/api/v2/timetable/``.
 
 Every endpoint requires a mini-program JWT (``WxJWTAuthentication`` +
 ``IsAuthenticated``) and a personal account; organization accounts get 403.
@@ -98,8 +99,9 @@ __all__ = [
 logger = logging.getLogger(__name__)
 
 TAGS = ['课表']
-# Body keys of PATCH entries/<id>/ that belong to the scope, not the entry.
-_SCOPE_KEYS = ('scope', 'week', 'canceled')
+# Body keys of PATCH entries/<id>/ that are not entry fields: the scope and
+# the per-range flags ``canceled`` and ``ignore_calendar`` (README §8.2, §11).
+_SCOPE_KEYS = ('scope', 'week', 'canceled', 'ignore_calendar')
 # API keys that need scope='all' (README §8.2): row-only annotations and
 # the recurrence of the entry.
 _ALL_SCOPE_KEYS = ('hidden', 'role', 'category', 'catalog_id',
@@ -437,6 +439,9 @@ class EntryViewSet(TimetableAPIMixin, viewsets.ViewSet):
             'scope=single/following 需给出 week（在条目周次范围内），把给出的字段（可含 canceled）'
             '写入该周 / 该周及以后的修改记录。hidden/role/category/catalog_id 与周次范围、'
             '单双周只能在 scope=all 下修改（400 errors.scope）。'
+            'ignore_calendar（照常上课，布尔值）可用于任意 scope：true 时该范围内放假 / '
+            '停课复习考试日的课照常显示并提醒，调休日不再按被换星期复制这门课；false 恢复按校历'
+            '（删除修改记录亦可）。它总是写入修改记录，手动条目 scope=all 也一样。'
         ),
         request=EntryInSerializer,
         responses={200: EntrySerializer,
@@ -456,6 +461,7 @@ class EntryViewSet(TimetableAPIMixin, viewsets.ViewSet):
         scope = scope_serializer.validated_data.get('scope') or 'all'
         week = scope_serializer.validated_data.get('week')
         canceled = scope_serializer.validated_data.get('canceled')
+        ignore_calendar = scope_serializer.validated_data.get('ignore_calendar')
         body = {key: value for key, value in data.items() if key not in _SCOPE_KEYS}
         if scope != 'all':
             blocked = [key for key in body if key in _ALL_SCOPE_KEYS]
@@ -476,6 +482,8 @@ class EntryViewSet(TimetableAPIMixin, viewsets.ViewSet):
         serializer.is_valid(raise_exception=True)
         values = dict(serializer.validated_data)
         values.pop('term', None)
+        if ignore_calendar is not None:
+            values['ignore_calendar'] = ignore_calendar
         if values or canceled is not None:
             try:
                 services.update_entry(entry, values, scope=scope, week=week,

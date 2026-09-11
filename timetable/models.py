@@ -37,10 +37,11 @@ __all__ = [
 ]
 
 # Keys a ``TimetableEntryOverride.fields`` JSON may carry (README §8.2);
-# times are ``'HH:MM'`` strings. Order is the display order of the API.
+# times are ``'HH:MM'`` strings, ``ignore_calendar`` (「照常上课」, §11) a
+# bool. Order is the display order of the API.
 OVERRIDE_FIELD_KEYS = (
     'name', 'teacher', 'room', 'weekday', 'start_section', 'end_section',
-    'start_time', 'end_time', 'note', 'tag', 'color',
+    'start_time', 'end_time', 'note', 'tag', 'color', 'ignore_calendar',
 )
 # Longest tag of an entry and longest entry of ``TimetableSettings.hidden_tags``.
 TAG_MAX_LENGTH = 24

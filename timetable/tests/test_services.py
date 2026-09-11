@@ -434,8 +434,15 @@ class ExpandAndConflictTests(TestCase):
         e = _occurrence('e', tuesday, time(8, 0), time(9, 50))   # other date
         f = _occurrence('f', monday, time(13, 30), time(15, 0), hidden=True)
         g = _occurrence('g', monday, time(14, 0), time(15, 0))   # touches d, no overlap
-        groups = services.detect_conflicts([g, f, e, d, c, b, a])
+        # Canceled and suspended (§11) occurrences take part in no conflict.
+        h = _occurrence('h', monday, time(13, 15), time(13, 45), status='suspended')
+        i = _occurrence('i', monday, time(8, 30), time(9, 30), status='canceled')
+        j = _occurrence('j', tuesday, time(8, 30), time(9, 30), status='suspended')
+        groups = services.detect_conflicts([g, f, e, d, c, b, a, h, i, j])
         self.assertEqual(groups, [['a', 'b', 'c']])
+        # A 调休 copy is a real lesson and does conflict.
+        swapped = _occurrence('k', tuesday, time(9, 0), time(10, 0), swap_from=1)
+        self.assertEqual(services.detect_conflicts([j, swapped, e]), [['e', 'k']])
         self.assertEqual(services.detect_conflicts([a, e]), [])
         self.assertEqual(services.detect_conflicts([]), [])
 
@@ -473,9 +480,9 @@ class WeekViewTests(TestCase):
         self.assertEqual(set(first), {
             'id', 'source', 'kind', 'title', 'subtitle', 'location', 'start', 'end',
             'date', 'week', 'weekday', 'start_section', 'end_section', 'color_key',
-            'status', 'ref', 'hidden', 'role', 'tag', 'modified'})
-        self.assertEqual((first['role'], first['tag'], first['modified']),
-                         ('enrolled', '', False))
+            'status', 'ref', 'hidden', 'role', 'tag', 'modified', 'swap_from'})
+        self.assertEqual((first['role'], first['tag'], first['modified'], first['swap_from']),
+                         ('enrolled', '', False, None))
         self.assertEqual(first['start'], '2026-09-21T08:00:00')
         self.assertEqual(len(view['conflicts']), 1)
         self.assertEqual(set(view['conflicts'][0]), {o['id'] for o in view['occurrences']})
@@ -576,13 +583,15 @@ class AgendaTests(TestCase):
                           before['label']), (7, None, None, None, None))
         # Outside every term only the live source answers.
         self.assertEqual([o['title'] for o in before['occurrences']], ['迎新'])
+        # Every occurrence carries swap_from, null outside a 调休 copy (§11).
+        self.assertIsNone(before['occurrences'][0]['swap_from'])
         self.assertEqual((monday['term'], monday['week']), ('26-27-1', 1))
         self.assertEqual([o['title'] for o in monday['occurrences']], ['高数', '英语'])
         first = monday['occurrences'][0]
         self.assertEqual(set(first), {
             'id', 'source', 'kind', 'title', 'subtitle', 'location', 'start', 'end',
             'date', 'week', 'weekday', 'start_section', 'end_section', 'color_key',
-            'status', 'ref', 'hidden', 'role', 'tag', 'modified'})
+            'status', 'ref', 'hidden', 'role', 'tag', 'modified', 'swap_from'})
         self.assertEqual((first['start'], first['date'], first['week'], first['kind']),
                          ('2026-09-14T08:00:00', '2026-09-14', 1, 'course'))
         self.assertEqual(tuesday['occurrences'], [])            # hidden entry
@@ -618,13 +627,19 @@ class AgendaTests(TestCase):
         self.assertEqual((days['2026-09-13']['term'], days['2026-09-13']['kind'],
                           days['2026-09-13']['label']), (None, 'info', '注册日'))
         self.assertEqual((days['2026-09-14']['kind'], days['2026-09-14']['label']), (None, None))
+        # A holiday keeps its lesson, suspended; the swap date carries Monday's (§11).
         holiday = days['2026-09-16']
-        self.assertEqual((holiday['kind'], holiday['label'], holiday['occurrences']),
-                         ('holiday', '中秋节放假', []))
+        self.assertEqual((holiday['kind'], holiday['label']), ('holiday', '中秋节放假'))
+        self.assertEqual([(o['title'], o['status'], o['swap_from'])
+                          for o in holiday['occurrences']], [('周三课', 'suspended', None)])
         swap = days['2026-09-19']
         self.assertEqual((swap['kind'], swap['label']), ('swap', '按周一课表上课'))
-        self.assertEqual([(o['title'], o['weekday']) for o in swap['occurrences']],
-                         [('高数', 6), ('英语', 6)])
+        self.assertEqual([(o['title'], o['weekday'], o['status'], o['swap_from'])
+                          for o in swap['occurrences']],
+                         [('高数', 6, '', 1), ('英语', 6, '', 1)])
+        self.assertEqual([(o['title'], o['status'], o['swap_from'])
+                          for o in days['2026-09-14']['occurrences']],
+                         [('高数', '', None), ('英语', '', None)])
 
     def test_days_are_clamped_and_occurrences_sorted(self):
         monday = date(2026, 9, 14)

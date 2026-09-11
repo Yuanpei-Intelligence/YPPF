@@ -6,9 +6,11 @@ For a week *w* the applicable overrides (``week_start ≤ w ≤ week_end``,
 ``None`` bounds following the entry's own span) are applied in order of
 descending range width, then ascending id, so a narrower or newer override
 wins for every key — ``canceled`` included, which takes the last applied
-override's value. The functions here are pure: they read model instances
-but never query, so ``expand_entries`` can resolve every week of a term
-from one prefetched list.
+override's value, and ``ignore_calendar`` (「照常上课」, §11), which
+resolves into ``ResolvedWeek.ignore_calendar`` instead of a value. The
+functions here are pure: they read model instances but never query, so
+``expand_entries`` can resolve every week of a term from one prefetched
+list.
 """
 from __future__ import annotations
 
@@ -37,11 +39,15 @@ _TIME_KEYS = ('start_time', 'end_time')
 
 @dataclass
 class ResolvedWeek:
-    """The effective values of an entry in one week after its overrides."""
+    """
+    The effective values of an entry in one week after its overrides;
+    ``ignore_calendar`` is the resolved 「照常上课」 flag (README §11).
+    """
 
     values: dict[str, Any]
     canceled: bool = False
     applied: list[TimetableEntryOverride] = field(default_factory=list)
+    ignore_calendar: bool = False
 
     @property
     def modified(self) -> bool:
@@ -105,6 +111,8 @@ def resolve_week(entry: TimetableEntry, overrides: Iterable[TimetableEntryOverri
     times are coerced (a malformed value is ignored); when an override
     changes the sections without giving times, the times come from
     ``term.section_times`` (the entry's term when ``term`` is omitted).
+    ``ignore_calendar`` takes the last applied boolean (a non-bool value is
+    ignored) and is not part of ``values``.
     """
     values: dict[str, Any] = {
         'name': entry.name,
@@ -121,6 +129,7 @@ def resolve_week(entry: TimetableEntry, overrides: Iterable[TimetableEntryOverri
     }
     applied = applicable_overrides(entry, overrides, week)
     canceled = False
+    ignore_calendar = False
     sections_changed = False
     times_changed = False
     for override in applied:
@@ -130,7 +139,10 @@ def resolve_week(entry: TimetableEntry, overrides: Iterable[TimetableEntryOverri
             if key not in fields:
                 continue
             raw = fields[key]
-            if key == 'weekday':
+            if key == 'ignore_calendar':
+                if isinstance(raw, bool):
+                    ignore_calendar = raw
+            elif key == 'weekday':
                 weekday = _as_int(raw, 1, 7)
                 if weekday is not None:
                     values[key] = weekday
@@ -159,7 +171,7 @@ def resolve_week(entry: TimetableEntry, overrides: Iterable[TimetableEntryOverri
         # An inconsistent pair (e.g. only one time overridden) falls back to
         # the entry's own times rather than producing a negative lesson.
         values['start_time'], values['end_time'] = entry.start_time, entry.end_time
-    return ResolvedWeek(values, canceled, applied)
+    return ResolvedWeek(values, canceled, applied, ignore_calendar)
 
 
 def overrides_by_entry(

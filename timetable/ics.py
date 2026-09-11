@@ -40,8 +40,10 @@ def build_ics(person, *, today: date | None = None,
               now: datetime | None = None) -> str:
     """
     The calendar text for ``person``: every occurrence of every enabled
-    source in the active terms that have not ended before ``today``.
-    ``now`` (used for ``DTSTAMP``) may be naive local or timezone-aware.
+    source in the active terms that have not ended before ``today``,
+    except lessons the university calendar suspends (README §11; held
+    lessons and 调休 copies are exported). ``now`` (used for ``DTSTAMP``)
+    may be naive local or timezone-aware.
     """
     if today is None:
         today = date.today()
@@ -58,7 +60,8 @@ def build_ics(person, *, today: date | None = None,
         for source in sources:
             occurrences.extend(
                 source.occurrences(person, term, 1, term.total_weeks, settings))
-    occurrences = [item for item in occurrences if not item.hidden]
+    occurrences = [item for item in occurrences
+                   if not item.hidden and item.status != 'suspended']
     occurrences.sort(key=occurrence_sort_key)
 
     stamp = _utc_stamp(now)

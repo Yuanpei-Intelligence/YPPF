@@ -116,6 +116,21 @@ class ResolutionTests(SimpleTestCase):
         empty.fields = 'oops'
         self.assertEqual(resolve_week(self.entry, [empty], 3, self.term).values['name'], '高数')
 
+    def test_ignore_calendar_resolves_like_any_key(self):
+        """README §11: the last applied boolean wins; it is not one of the values."""
+        whole = _override(1, ignore_calendar=True)
+        single = _override(2, 5, 5, ignore_calendar=False)
+        malformed = _override(3, 7, 7, ignore_calendar='yes')
+        overrides = [malformed, single, whole]
+        self.assertTrue(resolve_week(self.entry, overrides, 4, self.term).ignore_calendar)
+        self.assertFalse(resolve_week(self.entry, overrides, 5, self.term).ignore_calendar)
+        self.assertTrue(resolve_week(self.entry, overrides, 7, self.term).ignore_calendar)
+        self.assertFalse(resolve_week(self.entry, [single], 4, self.term).ignore_calendar)
+        self.assertFalse(resolve_week(self.entry, [], 4, self.term).ignore_calendar)
+        resolved = resolve_week(self.entry, overrides, 4, self.term)
+        self.assertNotIn('ignore_calendar', resolved.values)
+        self.assertEqual((resolved.values['name'], resolved.modified), ('高数', True))
+
 
 class ExpansionTests(TestCase):
     """Overrides applied by ``expand_entries`` and the stored source."""
@@ -227,3 +242,21 @@ class UpdateEntryTests(TestCase):
         with self.assertRaises(ValueError):
             services.update_entry(self.imported, {'hidden': True}, scope='single', week=2)
         self.assertEqual(self.imported.overrides.count(), 2)
+
+    def test_ignore_calendar_always_lands_in_an_override(self):
+        """README §11: even a manual entry keeps 照常上课 off the row, in any scope."""
+        services.update_entry(self.manual, {'ignore_calendar': True, 'room': '图书馆'})
+        self.manual.refresh_from_db()
+        self.assertEqual(self.manual.room, '图书馆')
+        override = self.manual.overrides.get()
+        self.assertEqual((override.week_start, override.week_end, override.canceled,
+                          override.fields), (None, None, False, {'ignore_calendar': True}))
+        services.update_entry(self.imported, {'ignore_calendar': 1}, scope='single', week=3)
+        services.update_entry(self.imported, {'ignore_calendar': True},
+                              scope='following', week=5)
+        services.update_entry(self.imported, {'ignore_calendar': False},
+                              scope='single', week=3)
+        self.assertEqual([(o.week_start, o.week_end, o.fields)
+                          for o in self.imported.overrides.order_by('id')],
+                         [(3, 3, {'ignore_calendar': False}),
+                          (5, None, {'ignore_calendar': True})])

@@ -29,7 +29,12 @@ from timetable.calendar import (
     week_days,
 )
 from timetable.ics import build_ics
-from timetable.models import AcademicTerm, TimetableEntry, default_section_times
+from timetable.models import (
+    AcademicTerm,
+    TimetableEntry,
+    TimetableEntryOverride,
+    default_section_times,
+)
 from timetable.sources.stored import StoredEntriesSource, expand_entries
 from timetable.tests.helpers import make_entry, make_person, make_term
 
@@ -148,26 +153,45 @@ class CalendarAwareExpansionTests(TestCase):
 
     @staticmethod
     def summary(occurrences):
-        return [(item.title, item.date.isoformat(), item.weekday, item.week)
-                for item in occurrences]
+        return [(item.title, item.date.isoformat(), item.weekday, item.week,
+                 item.status, item.swap_from) for item in occurrences]
 
-    def test_holiday_dates_produce_nothing(self):
-        # 国庆 week 4 (2026-09-28..10-04): Mon-Wed classes, Thu-Sun none.
+    def test_holiday_dates_suspend_lessons(self):
+        # 国庆 week 4 (2026-09-28..10-04): Mon-Wed classes, Thu-Sun suspended (§11).
         occurrences = expand_entries(self.entries, self.term, 4, 4)
-        self.assertEqual(self.summary(occurrences), [('周一课', '2026-09-28', 1, 4)])
+        self.assertEqual(self.summary(occurrences), [
+            ('周一课', '2026-09-28', 1, 4, '', None),
+            ('周四课', '2026-10-01', 4, 4, 'suspended', None),
+            ('周五课', '2026-10-02', 5, 4, 'suspended', None),
+            ('周六课', '2026-10-03', 6, 4, 'suspended', None),
+        ])
         self.assertEqual(occurrences[0].id, f'portal:{self.monday.pk}:2026-09-28')
-        # Week 3: 中秋 (Friday 09-25) skipped, odd week has the 单周 lesson.
+        suspended = occurrences[1]
+        self.assertEqual(suspended.id, f'portal:{self.thursday.pk}:2026-10-01')
+        self.assertEqual((suspended.start, suspended.end),
+                         (datetime(2026, 10, 1, 10, 10), datetime(2026, 10, 1, 12, 0)))
+        self.assertEqual((suspended.start_section, suspended.end_section), (3, 4))
+        self.assertEqual(suspended.ref, {'entry_id': self.thursday.pk})
+        self.assertFalse(suspended.modified)
+        payload = suspended.as_dict()
+        self.assertEqual(
+            (payload['status'], payload['swap_from'], payload['date'], payload['week']),
+            ('suspended', None, '2026-10-01', 4))
+        # Week 3: 中秋 (Friday 09-25) suspended, odd week has the 单周 lesson.
         self.assertEqual(self.summary(expand_entries(self.entries, self.term, 3, 3)), [
-            ('周一课', '2026-09-21', 1, 3),
-            ('单周周一课', '2026-09-21', 1, 3),
-            ('周四课', '2026-09-24', 4, 3),
-            ('周六课', '2026-09-26', 6, 3),
+            ('周一课', '2026-09-21', 1, 3, '', None),
+            ('单周周一课', '2026-09-21', 1, 3, '', None),
+            ('周四课', '2026-09-24', 4, 3, '', None),
+            ('周五课', '2026-09-25', 5, 3, 'suspended', None),
+            ('周六课', '2026-09-26', 6, 3, '', None),
         ])
         # Week 5 (10-05..10-11): Mon-Wed still 国庆, Thursday onwards normal.
         self.assertEqual(self.summary(expand_entries(self.entries, self.term, 5, 5)), [
-            ('周四课', '2026-10-08', 4, 5),
-            ('周五课', '2026-10-09', 5, 5),
-            ('周六课', '2026-10-10', 6, 5),      # 运动会 is info only
+            ('周一课', '2026-10-05', 1, 5, 'suspended', None),
+            ('单周周一课', '2026-10-05', 1, 5, 'suspended', None),
+            ('周四课', '2026-10-08', 4, 5, '', None),
+            ('周五课', '2026-10-09', 5, 5, '', None),
+            ('周六课', '2026-10-10', 6, 5, '', None),      # 运动会 is info only
         ])
 
     def test_swap_date_carries_the_followed_weekday(self):
@@ -175,30 +199,131 @@ class CalendarAwareExpansionTests(TestCase):
         make_event('swap', date(2026, 10, 17), name='按周一课表上课', follows_weekday=1)   # Sat, week 6 (even)
         occurrences = expand_entries(self.entries, self.term, 5, 6)
         self.assertEqual(self.summary(occurrences), [
-            ('周四课', '2026-10-08', 4, 5),
-            ('周五课', '2026-10-09', 5, 5),
-            ('周一课', '2026-10-10', 6, 5),
-            ('单周周一课', '2026-10-10', 6, 5),   # parity judged by the swap date's week
-            ('周一课', '2026-10-12', 1, 6),
-            ('周四课', '2026-10-15', 4, 6),
-            ('周五课', '2026-10-16', 5, 6),
-            ('周一课', '2026-10-17', 6, 6),      # even week: no 单周 lesson
+            ('周一课', '2026-10-05', 1, 5, 'suspended', None),       # 国庆
+            ('单周周一课', '2026-10-05', 1, 5, 'suspended', None),
+            ('周四课', '2026-10-08', 4, 5, '', None),
+            ('周五课', '2026-10-09', 5, 5, '', None),
+            ('周一课', '2026-10-10', 6, 5, '', 1),
+            ('周六课', '2026-10-10', 6, 5, 'suspended', None),       # its own lesson gives way
+            ('单周周一课', '2026-10-10', 6, 5, '', 1),   # parity judged by the swap date's week
+            ('周一课', '2026-10-12', 1, 6, '', None),
+            ('周四课', '2026-10-15', 4, 6, '', None),
+            ('周五课', '2026-10-16', 5, 6, '', None),
+            ('周一课', '2026-10-17', 6, 6, '', 1),      # even week: no 单周 lesson
+            ('周六课', '2026-10-17', 6, 6, 'suspended', None),
         ])
-        swapped = occurrences[2]
+        swapped = occurrences[4]
         self.assertEqual(swapped.id, f'portal:{self.monday.pk}:2026-10-10')
         self.assertEqual(swapped.start, datetime(2026, 10, 10, 8, 0))
         self.assertEqual(swapped.end, datetime(2026, 10, 10, 9, 50))
         self.assertEqual((swapped.start_section, swapped.end_section), (1, 2))
         self.assertEqual(swapped.ref, {'entry_id': self.monday.pk})
+        self.assertEqual((swapped.as_dict()['status'], swapped.as_dict()['swap_from']), ('', 1))
         self.assertEqual(len({item.id for item in occurrences}), len(occurrences))
 
     def test_exam_week_and_holiday_beat_swap(self):
         long_entry = make_entry(self.person, self.term, name='长课', weekday=2, week_end=20)
-        self.assertEqual(self.summary(expand_entries([long_entry], self.term, 18, 20)),
-                         [('长课', '2027-01-05', 2, 18)])   # 01-12 exam, 01-19 寒假
+        self.assertEqual(self.summary(expand_entries([long_entry], self.term, 18, 20)), [
+            ('长课', '2027-01-05', 2, 18, '', None),
+            ('长课', '2027-01-12', 2, 19, 'suspended', None),     # 停课复习考试
+            ('长课', '2027-01-19', 2, 20, 'suspended', None),     # 寒假
+        ])
         make_event('swap', date(2026, 10, 1), name='假期内调休', follows_weekday=1)
-        self.assertEqual(self.summary(expand_entries(self.entries, self.term, 4, 4)),
-                         [('周一课', '2026-09-28', 1, 4)])
+        self.assertEqual(self.summary(expand_entries(self.entries, self.term, 4, 4)), [
+            ('周一课', '2026-09-28', 1, 4, '', None),
+            ('周四课', '2026-10-01', 4, 4, 'suspended', None),    # the holiday wins: no copy
+            ('周五课', '2026-10-02', 5, 4, 'suspended', None),
+            ('周六课', '2026-10-03', 6, 4, 'suspended', None),
+        ])
+
+    def test_exam_entries_are_never_suspended_or_swapped(self):
+        make_event('swap', date(2026, 10, 10), name='按周一课表上课', follows_weekday=1)
+        final = make_entry(self.person, self.term, name='期末考试', weekday=2,
+                           week_start=19, week_end=19, source=TimetableEntry.Source.MANUAL,
+                           category=TimetableEntry.Category.EXAM)
+        midterm = make_entry(self.person, self.term, name='期中考试', weekday=1,
+                             start_section=3, end_section=4, week_start=5, week_end=5,
+                             source=TimetableEntry.Source.MANUAL,
+                             category=TimetableEntry.Category.EXAM)
+        self.assertEqual(midterm.kind, 'exam')
+        # 2027-01-12 lies in 停课复习考试: the exam still takes place.
+        self.assertEqual(self.summary(expand_entries([final], self.term, 19, 19)),
+                         [('期末考试', '2027-01-12', 2, 19, '', None)])
+        # 10-05 is 国庆 and 10-10 follows Monday: the exam keeps its date, no copy.
+        self.assertEqual(
+            self.summary(expand_entries([self.monday, midterm], self.term, 5, 5)), [
+                ('周一课', '2026-10-05', 1, 5, 'suspended', None),
+                ('期中考试', '2026-10-05', 1, 5, '', None),
+                ('周一课', '2026-10-10', 6, 5, '', 1),
+            ])
+
+    def test_ignore_calendar_holds_the_lesson(self):
+        """「照常上课」 in every scope: held on no-class dates, no 调休 copy (§11)."""
+        make_event('swap', date(2026, 10, 10), name='按周一课表上课', follows_weekday=1)
+        # all: 周四课 is held whatever the calendar says (10-01 国庆).
+        services.update_entry(self.thursday, {'ignore_calendar': True})
+        # single: 周五课 only in week 4 (10-02 国庆); 中秋 (09-25, week 3) stays suspended.
+        services.update_entry(self.friday, {'ignore_calendar': True}, scope='single', week=4)
+        # following: 周一课 from week 5 on, held on 10-05 so not copied to 10-10.
+        services.update_entry(self.monday, {'ignore_calendar': True},
+                              scope='following', week=5)
+        occurrences = expand_entries(self.entries, self.term, 3, 5)
+        self.assertEqual(self.summary(occurrences), [
+            ('周一课', '2026-09-21', 1, 3, '', None),
+            ('单周周一课', '2026-09-21', 1, 3, '', None),
+            ('周四课', '2026-09-24', 4, 3, '', None),
+            ('周五课', '2026-09-25', 5, 3, 'suspended', None),
+            ('周六课', '2026-09-26', 6, 3, '', None),
+            ('周一课', '2026-09-28', 1, 4, '', None),
+            ('周四课', '2026-10-01', 4, 4, '', None),
+            ('周五课', '2026-10-02', 5, 4, '', None),
+            ('周六课', '2026-10-03', 6, 4, 'suspended', None),
+            ('周一课', '2026-10-05', 1, 5, '', None),
+            ('单周周一课', '2026-10-05', 1, 5, 'suspended', None),
+            ('周四课', '2026-10-08', 4, 5, '', None),
+            ('周五课', '2026-10-09', 5, 5, '', None),
+            ('周六课', '2026-10-10', 6, 5, 'suspended', None),
+            ('单周周一课', '2026-10-10', 6, 5, '', 1),
+        ])
+        by_key = {(item.title, item.date.isoformat()): item for item in occurrences}
+        self.assertTrue(by_key['周四课', '2026-10-01'].modified)
+        self.assertTrue(by_key['周五课', '2026-10-02'].modified)
+        self.assertFalse(by_key['周五课', '2026-09-25'].modified)
+        self.assertFalse(by_key['周一课', '2026-09-28'].modified)
+        # canceled still wins; false, or deleting the override, returns to the calendar.
+        services.update_entry(self.friday, {}, scope='single', week=4, canceled=True)
+        services.update_entry(self.thursday, {'ignore_calendar': False})
+        TimetableEntryOverride.objects.filter(entry=self.monday).delete()
+        self.assertEqual(self.summary(expand_entries(self.entries, self.term, 4, 5)), [
+            ('周一课', '2026-09-28', 1, 4, '', None),
+            ('周四课', '2026-10-01', 4, 4, 'suspended', None),
+            ('周六课', '2026-10-03', 6, 4, 'suspended', None),
+            ('周一课', '2026-10-05', 1, 5, 'suspended', None),
+            ('单周周一课', '2026-10-05', 1, 5, 'suspended', None),
+            ('周四课', '2026-10-08', 4, 5, '', None),
+            ('周五课', '2026-10-09', 5, 5, '', None),
+            ('周一课', '2026-10-10', 6, 5, '', 1),
+            ('周六课', '2026-10-10', 6, 5, 'suspended', None),
+            ('单周周一课', '2026-10-10', 6, 5, '', 1),
+        ])
+
+    def test_weekday_override_onto_a_holiday_is_suspended(self):
+        make_event('swap', date(2026, 10, 10), name='按周一课表上课', follows_weekday=1)
+        # Week 3: 周一课 moved to Friday 09-25 (中秋).
+        services.update_entry(self.monday, {'weekday': 5}, scope='single', week=3)
+        # Week 5: 周四课 moved to Monday 10-05 (国庆), so 10-10 carries it too.
+        services.update_entry(self.thursday, {'weekday': 1}, scope='single', week=5)
+        entries = [self.monday, self.thursday]
+        self.assertEqual(self.summary(expand_entries(entries, self.term, 3, 3)), [
+            ('周四课', '2026-09-24', 4, 3, '', None),
+            ('周一课', '2026-09-25', 5, 3, 'suspended', None),
+        ])
+        self.assertEqual(self.summary(expand_entries(entries, self.term, 5, 5)), [
+            ('周一课', '2026-10-05', 1, 5, 'suspended', None),
+            ('周四课', '2026-10-05', 1, 5, 'suspended', None),
+            ('周一课', '2026-10-10', 6, 5, '', 1),
+            ('周四课', '2026-10-10', 6, 5, '', 1),
+        ])
 
     def test_calendar_argument_and_queries(self):
         calendar = calendar_for(self.term)
@@ -213,19 +338,24 @@ class CalendarAwareExpansionTests(TestCase):
         with self.assertNumQueries(0):
             self.assertEqual(expand_entries([], self.term, 1, 18), [])
             self.assertEqual(expand_entries(self.entries, self.term, 6, 2), [])
-        # 18 Fridays minus 中秋 (09-25) and 国庆 (10-02); make_entry ends at week 16.
+        # 16 Fridays (make_entry ends at week 16); 中秋 (09-25) and 国庆 (10-02) suspended.
         fridays = [item for item in full if item.title == '周五课']
-        self.assertEqual(len(fridays), 14)
+        self.assertEqual(len(fridays), 16)
+        self.assertEqual([item.date for item in fridays if item.status == 'suspended'],
+                         [date(2026, 9, 25), date(2026, 10, 2)])
         # A calendar that is too narrow is replaced by one covering the range.
         narrow = calendar_between(date(2026, 9, 7), date(2026, 9, 13))
         with self.assertNumQueries(1):
             occurrences = expand_entries([self.friday], self.term, 1, 3, narrow, overrides={})
-        self.assertEqual([item.date for item in occurrences],
-                         [date(2026, 9, 11), date(2026, 9, 18)])
+        self.assertEqual([(item.date, item.status) for item in occurrences],
+                         [(date(2026, 9, 11), ''), (date(2026, 9, 18), ''),
+                          (date(2026, 9, 25), 'suspended')])
         # The stored source and the services alias go through the same code.
         source = StoredEntriesSource()
         occurrences = source.occurrences(self.person, self.term, 4, 4, None)
-        self.assertEqual([item.title for item in occurrences], ['周一课'])
+        self.assertEqual([(item.title, item.status) for item in occurrences],
+                         [('周一课', ''), ('周四课', 'suspended'), ('周五课', 'suspended'),
+                          ('周六课', 'suspended')])
         self.assertIs(services.expand_entries, expand_entries)
 
     def test_without_events_expansion_is_unchanged(self):
@@ -267,7 +397,8 @@ class WeekViewCalendarTests(TestCase):
         self.assertEqual(view['days'][0], {
             'date': '2026-09-28', 'weekday': 1, 'kind': None,
             'label': None, 'follows_weekday': None})
-        self.assertEqual([item['title'] for item in view['occurrences']], ['周一课'])
+        self.assertEqual([(item['title'], item['status']) for item in view['occurrences']],
+                         [('周一课', ''), ('周四课', 'suspended'), ('周六课', 'suspended')])
         self.assertEqual([event['name'] for event in view['term']['calendar']],
                          ['中秋节放假', '国庆节放假', '校本部秋季运动会', '按周一课表上课'])
         self.assertEqual(view['term']['calendar'][1], {
@@ -281,9 +412,14 @@ class WeekViewCalendarTests(TestCase):
             'date': '2026-10-10', 'weekday': 6, 'kind': 'swap',
             'label': '按周一课表上课', 'follows_weekday': 1})
         self.assertEqual(view['days'][6]['label'], '校本部秋季运动会')
-        self.assertEqual([(item['title'], item['date']) for item in view['occurrences']],
-                         [('周四课', '2026-10-08'), ('周一课', '2026-10-10')])
-        self.assertEqual(view['occurrences'][1]['weekday'], 6)
+        self.assertEqual(
+            [(item['title'], item['date'], item['status'], item['swap_from'])
+             for item in view['occurrences']],
+            [('周一课', '2026-10-05', 'suspended', None), ('周四课', '2026-10-08', '', None),
+             ('周一课', '2026-10-10', '', 1), ('周六课', '2026-10-10', 'suspended', None)])
+        self.assertEqual(view['occurrences'][2]['weekday'], 6)
+        # The swapped and the suspended Saturday lessons overlap without a conflict.
+        self.assertEqual(view['conflicts'], [])
 
     def test_term_payload_calendar(self):
         payload = services.term_payload(self.term, date(2026, 9, 7))
@@ -315,6 +451,14 @@ class IcsCalendarTests(TestCase):
         self.assertIn('DTSTART;TZID=Asia/Shanghai:20261010T080000', text)   # swap: Monday's class
         # Mondays 18 - 1 (10-05) + 1 (10-10); Thursdays 18 - 1; Fridays 18 - 2.
         self.assertEqual(text.count('BEGIN:VEVENT'), 18 + 17 + 16)
+        # A lesson held on 国庆 (照常上课, §11) is exported; suspended ones still are not.
+        thursday = TimetableEntry.objects.get(person=person, name='周四课')
+        services.update_entry(thursday, {'ignore_calendar': True}, scope='single', week=4)
+        with patch('timetable.ics.load_sources', return_value=[StoredEntriesSource()]):
+            text = build_ics(person, today=date(2026, 9, 1), now=datetime(2026, 9, 1, 12))
+        self.assertIn('DTSTART;TZID=Asia/Shanghai:20261001T080000', text)
+        self.assertNotIn('20261002T', text)
+        self.assertEqual(text.count('BEGIN:VEVENT'), 18 + 18 + 16)
 
 
 class CalendarSpecTests(SimpleTestCase):

@@ -8,8 +8,9 @@ from django.test import SimpleTestCase, TestCase
 from app.models import Notification
 from boot.config import GLOBAL_CONFIG
 from generic.models import User, UserWechatProfile
+from semester.models import CalendarEvent
 from api.config import WXMiniappConfig
-from timetable import reminders
+from timetable import reminders, services
 from timetable.jobs import send_due_class_reminders
 from timetable.models import AcademicTerm, ReminderLog, SubscribeQuota, TimetableSettings
 from timetable.sources.base import Occurrence
@@ -114,6 +115,26 @@ class DueRemindersTests(ReminderTestCase):
             channel=ReminderLog.Channel.NOTIFICATION,
             scheduled_for=datetime(2026, 9, 21, 7, 40))
         self.assertEqual(self.due(datetime(2026, 9, 21, 7, 40)), [])
+
+    def test_suspended_skipped_held_and_swapped_reminded(self):
+        """README §11: no reminder for a suspended lesson; held and 调休 ones are reminded."""
+        CalendarEvent.objects.create(kind='holiday', start_date=MONDAY, end_date=MONDAY,
+                                     name='放假')
+        saturday = date(2026, 9, 26)
+        CalendarEvent.objects.create(kind='swap', start_date=saturday, end_date=saturday,
+                                     name='按周一课表上课', follows_weekday=1)
+        # 13:00 on Saturday: suspended, because the swap date follows Monday.
+        make_entry(self.person, self.term, name='周六课', weekday=6, start_section=5,
+                   end_section=6)
+        self.assertEqual(self.due(datetime(2026, 9, 21, 7, 40)), [])
+        swapped = f'portal:{self.entry.pk}:2026-09-26'
+        self.assertEqual(self.due(datetime(2026, 9, 26, 7, 40)), [(self.person.pk, swapped)])
+        self.assertEqual(self.due(datetime(2026, 9, 26, 12, 40)), [])
+        # 照常上课 this week: reminded on the holiday, and no Saturday copy any more.
+        services.update_entry(self.entry, {'ignore_calendar': True}, scope='single', week=2)
+        self.assertEqual(self.due(datetime(2026, 9, 21, 7, 40)),
+                         [(self.person.pk, self.entry_id)])
+        self.assertEqual(self.due(datetime(2026, 9, 26, 7, 40)), [])
 
     def test_canceled_excluded_and_every_source_used(self):
         items = [

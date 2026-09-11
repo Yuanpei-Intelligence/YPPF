@@ -1,7 +1,8 @@
 """
 Serializers of the timetable mini-program API. Contract: ``timetable/README.md`` §4.6
 (§6.1 subscribe messages, §6.3 course catalog, §6.5 agenda, §8 catalog
-links, scoped edits, tags, exams and share assets, §10 term overview).
+links, scoped edits, tags, exams and share assets, §10 term overview,
+§11 calendar suspensions, 调休 and 照常上课).
 
 Response payloads for the week view, the agenda, the term overview and the
 settings are plain
@@ -79,6 +80,8 @@ MAX_SECTION = 20
 MAX_WEEK = 30
 CALENDAR_KINDS = list(CalendarEvent.Kind.values)
 OCCURRENCE_KINDS = ['course', 'college', 'activity', 'appoint', 'custom', 'exam']
+# Non-blank ``Occurrence.status`` values (§4.3, §11); '' (normal) is allowed too.
+OCCURRENCE_STATUSES = ['canceled', 'suspended', 'checked_in', 'applied']
 OVERVIEW_KINDS = list(OVERVIEW_SLOT_KINDS)
 
 
@@ -163,7 +166,11 @@ class OccurrenceSerializer(serializers.Serializer):
     start_section = serializers.IntegerField(allow_null=True)
     end_section = serializers.IntegerField(allow_null=True)
     color_key = serializers.CharField(allow_blank=True)
-    status = serializers.CharField(allow_blank=True)
+    status = serializers.ChoiceField(
+        choices=OCCURRENCE_STATUSES, allow_blank=True,
+        help_text="'' | 'canceled' | 'suspended' (a lesson on a no-class calendar day, "
+                  "or of its own weekday on a 调休 date; shown muted, §11) | "
+                  "'checked_in' | 'applied'")
     ref = serializers.DictField(child=serializers.IntegerField(allow_null=True))
     hidden = serializers.BooleanField()
     role = serializers.CharField(
@@ -172,6 +179,10 @@ class OccurrenceSerializer(serializers.Serializer):
     tag = serializers.CharField(allow_blank=True, help_text='The entry tag (§8.3)')
     modified = serializers.BooleanField(
         help_text='At least one override applied to this occurrence (§8.2)')
+    swap_from = serializers.IntegerField(
+        allow_null=True, min_value=1, max_value=7,
+        help_text='On a 调休 date: the weekday (1=Mon..7=Sun) whose lesson this is; '
+                  'null otherwise (§11)')
 
 
 class SourceLegendSerializer(serializers.Serializer):
@@ -467,14 +478,19 @@ class EntryScopeSerializer(serializers.Serializer):
     """
     The scope part of ``PATCH entries/<id>/`` (§8.2): ``scope`` (default
     ``all``), ``week`` (required for ``single``/``following``, inside the
-    entry's span — pass the entry as ``context['entry']``) and ``canceled``
-    (single/following only). The remaining keys of the body are entry
-    fields validated by ``EntryInSerializer``.
+    entry's span — pass the entry as ``context['entry']``), ``canceled``
+    (single/following only) and ``ignore_calendar`` (「照常上课」, any
+    scope, §11). The remaining keys of the body are entry fields validated
+    by ``EntryInSerializer``.
     """
 
     scope = serializers.ChoiceField(choices=list(SCOPES), required=False, default='all')
     week = serializers.IntegerField(required=False, allow_null=True)
     canceled = serializers.BooleanField(required=False, allow_null=True)
+    ignore_calendar = serializers.BooleanField(
+        required=False,
+        help_text='true: the lesson is held on no-class calendar days of the range; '
+                  'false: back to the calendar (§11)')
 
     def validate(self, attrs):
         scope = attrs.get('scope') or 'all'

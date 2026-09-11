@@ -405,9 +405,10 @@ class Occurrence:
     date: date; week: int; weekday: int
     start_section: int | None = None; end_section: int | None = None
     color_key: str = ''     # stable colouring key (course name or id)
-    status: str = ''        # '' | 'canceled' | 'checked_in' | 'applied'
+    status: str = ''        # '' | 'canceled' | 'suspended' (§11) | 'checked_in' | 'applied'
     ref: dict = field(default_factory=dict)   # {'entry_id'} | {'course_id','activity_id'} | {'activity_id'} | {'appoint_id'}
     hidden: bool = False
+    swap_from: int | None = None   # on a 调休 date: the weekday whose lesson this is (§11)
 
 class EventSource(Protocol):
     key: str; label: str
@@ -417,15 +418,17 @@ def load_sources() -> list[EventSource]     # from CONFIG.sources, cached, impor
 ```
 
 - `stored.StoredEntriesSource` expands `TimetableEntry` rows (sections →
-  times from `term.section_times`, parity, week range). `kind='course'` for
-  portal/paste, `'custom'` for manual.
+  times from `term.section_times`, parity, week range; the university
+  calendar and 照常上课 as in §11). `kind='course'` for portal/paste,
+  `'custom'` for manual.
 - `college.CollegeCourseSource` (needs `app`): 书院课 the person selected
   (`CourseParticipant.status == SUCCESS`) in the YPPF semester that matches
   `term.yppf_year_semester()`. For each `CourseTime` and each week: if a
   generated `Activity` (category `COURSE`, `course_time=ct`) starts in that
   week, use its real `start/end/location/status` (exclude canceled/aborted,
   `status='checked_in'` if the person's `Participation` is ATTENDED);
-  otherwise expand `ct.start + 7*k days` for `k in range(ct.cur_week, ct.end_week)`.
+  otherwise expand `ct.start + 7*k days` for `k in range(ct.cur_week, ct.end_week)`
+  (such an expanded lesson on a holiday or exam date is `'suspended'`, §11).
   `ref = {'course_id', 'activity_id' (or None)}`, subtitle = course teacher or
   organization name. Honour `settings.show_college`.
 - `activity.ActivitySource` (needs `app`): activities the person applied to
@@ -486,7 +489,8 @@ two terms is imported.
 `GET /timetable/ics/<token>.ics` (root-level route in `timetable/urls.py`,
 no auth, token = `TimetableSettings.ics_token`). `text/calendar; charset=utf-8`,
 `Cache-Control: private, max-age=3600`. One `VEVENT` per occurrence (no
-RRULE; ~200 events per term is fine), `X-WR-CALNAME: 元培课表`,
+RRULE; ~200 events per term is fine; lessons suspended by the calendar are
+omitted, §11), `X-WR-CALNAME: 元培课表`,
 `TZID=Asia/Shanghai`. Rotating the token (API) invalidates the old URL.
 
 ### 4.6 API — `/api/v2/timetable/` (`api/timetable/`)
@@ -538,7 +542,8 @@ interface WeekView {
 interface Occurrence { id: string; source: string; kind: 'course'|'college'|'activity'|'appoint'|'custom';
   title: string; subtitle: string; location: string; start: string; end: string; date: string;
   week: number; weekday: number; start_section: number | null; end_section: number | null;
-  color_key: string; status: string; ref: Record<string, number | null>; hidden: boolean }
+  color_key: string; status: string; ref: Record<string, number | null>; hidden: boolean;
+  swap_from: number | null }                  // status 'suspended' and swap_from: §11
 interface Entry { id: number; term: string; source: 'portal'|'paste'|'manual'; name: string; course_code: string;
   class_no: string; teacher: string; room: string; weekday: number; start_section: number; end_section: number;
   start_time: string; end_time: string; week_start: number; week_end: number; parity: 0|1|2;
@@ -643,7 +648,8 @@ class ReminderLog(models.Model):          # one row per (person, occurrence) eve
 
 Job: `@periodical('interval', 'timetable_class_reminders', minutes=5)` →
 for every `TimetableSettings` with `reminder_enabled`, take today's
-`week_view` occurrences (not hidden, not canceled) whose `start -
+`week_view` occurrences (not hidden, not canceled, not `'suspended'` — §11:
+held lessons and 调休 copies are reminded) whose `start -
 reminder_minutes` falls in `(now - 5min, now]`; skip ones already in
 `ReminderLog`; send. Sending = `reminders.send_class_reminder(person,
 occurrence)`: if `subscribe_templates.class_reminder.id` is set, the user has
@@ -847,15 +853,17 @@ def is_class_day(date) -> bool; def effective_weekday(date) -> int
 Semantics (used by `expand_entries`, `week_view` and the ICS feed — every
 stored-entry source, i.e. portal/paste/manual; live sources such as 书院课
 activities, applied activities and appointments are real events and are left
-untouched):
+untouched, except 书院课 lessons expanded from the weekly time, §11). As
+amended on 2026-09-11 (§11), lessons are no longer dropped:
 
-- a date covered by `HOLIDAY` or `EXAM` produces **no** stored-entry
-  occurrences (the mini-program shows the day label instead);
-- a `SWAP` date produces the occurrences of entries whose `weekday ==
+- a date covered by `HOLIDAY` or `EXAM` keeps its stored-entry lessons as
+  `status: 'suspended'` (shown muted next to the day label);
+- a `SWAP` date carries the lessons of entries whose `weekday ==
   follows_weekday` (week range / parity checked against the swap date's own
-  week number) and none of the entries of the real weekday;
+  week number, `swap_from` set) and suspends the entries of the real weekday;
 - `INFO` changes nothing, it is only surfaced as a label;
-- overlapping events: `HOLIDAY`/`EXAM` win over `SWAP`, which wins over `INFO`.
+- overlapping events: `HOLIDAY`/`EXAM` win over `SWAP`, which wins over `INFO`;
+- exam entries and lessons marked 照常上课 are exempt (§11).
 
 JSON import format (`python manage.py import_academic_calendar <file>`, in
 `timetable`; upserts the `AcademicTerm` from `term`/`name`/`week1_monday`/
@@ -905,8 +913,8 @@ interface WeekView { ...; days: WeekDay[] }                              // one 
 
 Mini-program: the date header shows `label` (red for holiday/exam, blue for
 swap "按周一", grey for info) and shades holiday/exam columns; the poster does
-the same; nothing else changes because the backend already omits the
-occurrences.
+the same. Suspended lessons come back muted and 调休 copies carry
+`swap_from` (§11).
 
 Implementation notes (as built): `Term.calendar` lists the events overlapping
 the term's **teaching span** `[week1_monday, date_of(total_weeks, 7)]`, so an
@@ -983,7 +991,9 @@ mean "omitted"; with no term at all `agenda/` still answers 200 with
 `term: null` days. In date mode 书院课 are taken from every successful,
 non-aborted enrolment and selected by date (week mode still filters by the
 YPPF semester). `show_courses` also silences class reminders for school
-courses, like the other three toggles do for theirs.
+courses, like the other three toggles do for theirs. Since §11 the days
+also list suspended lessons (`status: 'suspended'`) and 调休 copies
+(`swap_from`), exactly as `week/` does.
 
 ## 7. Verification
 
@@ -1109,7 +1119,8 @@ class TimetableEntryOverride(models.Model):
 ```
 
 `fields` keys ⊆ `{name, teacher, room, weekday, start_section, end_section,
-start_time, end_time, note, tag, color}`; times as `'HH:MM'`; a key that is
+start_time, end_time, note, tag, color, ignore_calendar}` (`ignore_calendar`
+is a bool, §11); times as `'HH:MM'`; a key that is
 present is the effective value, an absent key means "unchanged". Ranges may
 overlap; when expanding week *w*, the applicable overrides (`week_start ≤ w
 ≤ week_end`, `None` bounds open) are applied in order of **descending range
@@ -1128,6 +1139,8 @@ lie in `week_start..week_end`, else 400 `errors.week`):
   stored in the entry's whole-range override (`week_start=None,
   week_end=None`; created on demand, keys merged) so they survive
   re-import. `canceled` is rejected here (400) — hide or delete instead.
+  `ignore_calendar` (§11) always goes to that whole-range override, for
+  manual entries too.
 - `single`: upsert the override with `(week, week)`, merging the given keys
   into `fields`; `canceled: true|false` allowed ("本次停课").
 - `following`: upsert the override with `(week, None)` (so a later re-import
@@ -1143,7 +1156,7 @@ lie in `week_start..week_end`, else 400 `errors.week`):
 role: 'enrolled' | 'audit'; category: 'course' | 'exam' | 'other'; tag: string
 catalog: { id, course_code, name, class_no, teacher, credits, department, category, time_text, weeks_text, note } | null
 overrides: { id: number; week_start: number | null; week_end: number | null; canceled: boolean;
-             fields: Partial<{ name, teacher, room, weekday, start_section, end_section, start_time, end_time, note, tag, color }>;
+             fields: Partial<{ name, teacher, room, weekday, start_section, end_section, start_time, end_time, note, tag, color, ignore_calendar }>;
              updated_at: string }[]
 exam: { id, start, end, room, method, note } | null      // §8.4, first matching CourseExam by time
 ```
@@ -1158,7 +1171,8 @@ to this occurrence) and `note` is **not** added (details are fetched via
 `GET entries/<id>/` when the sheet opens; the occurrence stays small).
 Expansion honours overrides: an overridden `weekday` moves the lesson to
 that weekday of the same teaching week (calendar rules of the target date
-apply), `canceled` drops it, `hidden`/`hidden_tags` (§8.3) filter as before.
+apply), `canceled` drops it, `ignore_calendar` exempts the week from the
+calendar (§11), `hidden`/`hidden_tags` (§8.3) filter as before.
 ICS and reminders consume occurrences and therefore follow automatically.
 
 Implementation notes (as built): resolution is `timetable/overrides.py`
@@ -1479,8 +1493,8 @@ Semantics (`timetable.services.term_overview`):
   room or name was changed forms its own slot.
 - A slot describes the timetable **rule**: calendar suspensions (holidays,
   停课复习考试) do not punch gaps into `weeks`, and 调休 swap dates add
-  nothing. Sources expose the rule through the optional
-  `rule_occurrences(person, term, week_from, week_to, settings)`;
+  nothing, nor does 照常上课 (§11). Sources expose the rule through the
+  optional `rule_occurrences(person, term, week_from, week_to, settings)`;
   `timetable.sources.base.rule_occurrences` dispatches and falls back to
   `occurrences`. `StoredEntriesSource` implements it by expanding its entries
   against an empty `AcademicCalendar` (toggle, hidden entries, hidden tags
@@ -1488,14 +1502,15 @@ Semantics (`timetable.services.term_overview`):
 - 书院课 (`college`) use the source's week-based `occurrences` as they are:
   the weeks expanded from each `CourseTime` plus the weeks with a generated
   activity, whose real time and location form their own slot when they
-  differ from the weekly time. The college source does not read the
-  calendar, so it has no `rule_occurrences`. A generated activity that was
-  canceled, aborted or rejected (`status='canceled'`) does not count — like
-  a canceled override week, it leaves a gap.
+  differ from the weekly time. The college source has no
+  `rule_occurrences`: a lesson it marks `'suspended'` on a holiday or exam
+  date (§11) counts like a normal week, so it leaves no gap. A generated
+  activity that was canceled, aborted or rejected (`status='canceled'`)
+  does not count — like a canceled override week, it leaves a gap.
 - Kinds `course`, `college` and `custom` become slots. `exam` occurrences —
   `ExamSource` and manual `category='exam'` entries (which come through the
-  rule expansion too, so one on a calendar exam date is listed although the
-  week view suppresses it) — are listed in `exams` once per `(date, start,
+  rule expansion too; the week view keeps them on calendar exam dates as
+  well, §11) — are listed in `exams` once per `(date, start,
   end, title, location)`, sorted by date and time, with `week` null outside
   `1..total_weeks`. `activity` and `appoint` are one-off events and left out,
   as is any other kind.
@@ -1518,3 +1533,155 @@ Semantics (`timetable.services.term_overview`):
 - OpenAPI: `OverviewSerializer` with `OverviewSlotSerializer` and
   `OverviewExamSerializer`; the slot kind enum is named `OverviewSlotKindEnum`
   through `SPECTACULAR_SETTINGS['ENUM_NAME_OVERRIDES']`.
+
+## 11. Calendar suspensions, swaps and 照常上课 (2026-09-11)
+
+Product rules behind this section (from the maintainer, 2026-09-11): a
+lesson on a university-calendar no-class day stays visible, muted, instead
+of disappearing; a 调休 date shows which weekday's lessons it carries; and a
+student can mark a course that does not follow the holiday as 照常上课.
+Everything is additive: one new status value, one new occurrence field, one
+new override key.
+
+### 11.1 Stored entries (portal / paste / manual)
+
+For teaching week *w*, after the overrides of §8.2 are resolved (a canceled
+week still yields nothing):
+
+- **Suspended.** When the lesson's own date — the date of its resolved
+  `weekday` in *w*, so an override that moves a lesson onto a holiday is
+  suspended too — is a `holiday` or `exam` date
+  (`semester.calendar.NO_CLASS_KINDS`), or a `swap` date that follows
+  another weekday, the occurrence is still returned, with
+  `status: 'suspended'`. `id`, times, sections, `ref` and `modified` are
+  those of a normal occurrence; `swap_from` is null.
+- **Swapped.** A `swap` date *d* with `follows_weekday = N` carries every
+  lesson whose resolved weekday in the week of *d* is *N* as a normal
+  occurrence: `date`/`weekday`/`week` are *d*'s, `start`/`end` the lesson's
+  times on *d*, `id` `'{source}:{entry_id}:{d}'`, `swap_from: N`. Week range
+  and parity are judged by *d*'s own teaching week. The lesson's own date in
+  that week is decided on its own (typically a holiday, so it is suspended
+  as well). Ids stay unique: a lesson is suspended only on its own date and
+  copied only to other dates.
+- **Exempt.** An entry of category `exam` (kind `exam`) and a week whose
+  overrides resolve `ignore_calendar: true` keep their own date as a normal
+  occurrence whatever the calendar says, and get no swap copy, so nothing
+  is duplicated.
+- Every other occurrence has `swap_from: null`. `info` dates, and a `swap`
+  date that follows its own weekday, are ordinary class days; precedence is
+  unchanged (holiday/exam over swap over info, §6.4).
+
+`StoredEntriesSource.rule_occurrences` (the overview, §10) expands against
+an empty calendar, so it yields neither suspended lessons nor swap copies.
+
+### 11.2 Other sources
+
+- 书院课 (`college`): an occurrence expanded from a `CourseTime` (no
+  generated activity in that week) on a holiday or exam date is
+  `'suspended'`; a swap date changes nothing for 书院课. Activity-backed
+  occurrences keep their status (`''`, `'canceled'`, `'checked_in'`). There
+  are no overrides, hence no 照常上课, for 书院课.
+- `ExamSource` exams, applied activities and appointments are real events:
+  never suspended, `swap_from` always null.
+
+### 11.3 Consumers
+
+| Consumer | `status: 'suspended'` | swap copy, held lesson |
+|---|---|---|
+| `week/`, `agenda/` (§4.6, §6.5) | returned; the client mutes it | returned as normal |
+| `WeekView.conflicts` | ignored, like hidden and `'canceled'` | counted |
+| class reminders (§6.1) | never reminded | reminded (a swap copy under its own id) |
+| ICS feed (§4.5) | omitted | exported |
+| term overview (§10) | stored entries have none (rule expansion); a suspended 书院课 counts as a normal week, unlike `'canceled'` | the stored rule is unchanged; a held week is not a separate slot |
+
+### 11.4 照常上课: the override key `ignore_calendar`
+
+`TimetableEntryOverride.fields` accepts `ignore_calendar` (JSON bool). The
+mini-program sets it through the scoped `PATCH` of §8.2, in any scope:
+
+```http
+PATCH /api/v2/timetable/entries/<id>/
+{"scope": "single", "week": 4, "ignore_calendar": true}      // this week only → override (4, 4)
+{"scope": "following", "week": 4, "ignore_calendar": true}   // this and following weeks → (4, null)
+{"ignore_calendar": true}                                    // scope all → (null, null)
+```
+
+- It is never a row field: it always lands in the override of the scope's
+  range, for imported **and** manual entries (a manual entry with
+  `scope: 'all'` gets the whole-range override), merged with that range's
+  other keys and returned in `Entry.overrides[].fields` (`GET
+  entries/<id>/` and every `Entry` payload). `POST entries/` does not take
+  it.
+- It resolves like every override key (widest range first, then ascending
+  id; the last applied override carrying it wins), so a single week's
+  `false` beats a whole-range `true`. A non-bool value stored through admin
+  is ignored.
+- For weeks where it resolves `true`, the lesson on its own weekday date is
+  a normal occurrence even on a no-class day (reminded and exported), and it
+  gets no copy on a swap date. `canceled: true` still wins: a canceled week
+  yields nothing, held or not.
+- Undo: `PATCH` the same scope with `false` (stored as `false`, so the
+  override stays and the lesson keeps `modified: true`), or delete the
+  override with `DELETE entries/<id>/overrides/<oid>/` or `DELETE
+  entries/<id>/overrides/` (§8.2). Either way the calendar applies again.
+- Validation: the value is read by DRF's `BooleanField`, as `canceled` is;
+  anything it does not read as a boolean (`"maybe"`, `null`, `2`, `[]`, an
+  object) answers 400 `errors.ignore_calendar` and writes nothing.
+
+### 11.5 Payloads
+
+`Occurrence` (in `week/` and `agenda/`) gains `swap_from`; `status` gains
+`'suspended'`:
+
+```ts
+interface Occurrence { ...; status: '' | 'canceled' | 'suspended' | 'checked_in' | 'applied'; swap_from: number | null }
+```
+
+Examples on the 2026-2027 fall term (week 1 = 2026-09-07). A Thursday
+lesson on 国庆 (2026-10-01, week 4), suspended:
+
+```json
+{"id": "portal:12:2026-10-01", "source": "portal", "kind": "course", "title": "高等数学A（二）",
+ "subtitle": "张三", "location": "理教406", "start": "2026-10-01T10:10:00", "end": "2026-10-01T12:00:00",
+ "date": "2026-10-01", "week": 4, "weekday": 4, "start_section": 3, "end_section": 4,
+ "color_key": "高等数学A（二）", "status": "suspended", "ref": {"entry_id": 12}, "hidden": false,
+ "role": "enrolled", "tag": "", "modified": false, "swap_from": null}
+```
+
+A Monday lesson carried by a Saturday swap date (a `swap` row for
+2026-10-10 with `follows_weekday: 1`, week 5):
+
+```json
+{"id": "portal:7:2026-10-10", "source": "portal", "kind": "course", "title": "线性代数",
+ "subtitle": "李四", "location": "理教201", "start": "2026-10-10T08:00:00", "end": "2026-10-10T09:50:00",
+ "date": "2026-10-10", "week": 5, "weekday": 6, "start_section": 1, "end_section": 2,
+ "color_key": "线性代数", "status": "", "ref": {"entry_id": 7}, "hidden": false,
+ "role": "enrolled", "tag": "", "modified": false, "swap_from": 1}
+```
+
+The Thursday lesson after `{"scope": "single", "week": 4, "ignore_calendar": true}`:
+
+```json
+{"id": "portal:12:2026-10-01", "source": "portal", "kind": "course", "title": "高等数学A（二）",
+ "subtitle": "张三", "location": "理教406", "start": "2026-10-01T10:10:00", "end": "2026-10-01T12:00:00",
+ "date": "2026-10-01", "week": 4, "weekday": 4, "start_section": 3, "end_section": 4,
+ "color_key": "高等数学A（二）", "status": "", "ref": {"entry_id": 12}, "hidden": false,
+ "role": "enrolled", "tag": "", "modified": true, "swap_from": null}
+```
+
+A client can tell a held lesson from the day payload: `status: ''` on a
+date whose `WeekDay.kind` / `AgendaDay.kind` is `holiday` or `exam` (or a
+`swap` date following another weekday, with `swap_from: null`), for a
+lesson that is not of kind `exam`.
+
+Implementation notes (as built): `timetable.sources.stored.expand_entries`
+decides each week's calendar once (`_week_calendar`: the dates holding
+their own weekday's lessons and the swap dates by followed weekday);
+`ResolvedWeek.ignore_calendar` carries the resolved flag;
+`services.OVERRIDE_ONLY_KEYS` routes `ignore_calendar` to the override in
+`update_entry`; the college source marks its expanded lessons with one
+extra calendar query per call (none when it expands nothing). OpenAPI:
+`OccurrenceSerializer.status` is a choice field whose enum is named
+`OccurrenceStatusEnum` through `SPECTACULAR_SETTINGS['ENUM_NAME_OVERRIDES']`,
+`swap_from` a nullable integer 1–7; the `PATCH entries/<id>/` description
+names `ignore_calendar` (validated by `EntryScopeSerializer`).

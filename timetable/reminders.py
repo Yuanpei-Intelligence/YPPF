@@ -214,9 +214,11 @@ def reminder_content(occurrence: Occurrence) -> str:
 def occurrences_on(person, term: AcademicTerm, on: date, settings: TimetableSettings,
                    sources: Iterable[EventSource] | None = None) -> list[Occurrence]:
     """
-    Visible (not hidden, not canceled) occurrences of ``person`` on ``on``
-    from every enabled source, sorted by time. ``on`` must lie in a
-    teaching week of ``term``; otherwise the list is empty.
+    Visible (not hidden, not canceled, not suspended by the university
+    calendar — README §11) occurrences of ``person`` on ``on`` from every
+    enabled source, sorted by time; held lessons and 调休 copies are
+    included. ``on`` must lie in a teaching week of ``term``; otherwise the
+    list is empty.
     """
     week = term.week_of(on)
     if not term.contains_week(week):
@@ -228,7 +230,8 @@ def occurrences_on(person, term: AcademicTerm, on: date, settings: TimetableSett
         occurrences.extend(source.occurrences(person, term, week, week, settings))
     occurrences = [
         item for item in occurrences
-        if item.date == on and not item.hidden and item.status != 'canceled'
+        if item.date == on and not item.hidden
+        and item.status not in ('canceled', 'suspended')
     ]
     occurrences.sort(key=occurrence_sort_key)
     return occurrences

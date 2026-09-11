@@ -1,6 +1,6 @@
 """
 Source of 书院课 (YPPF course activities) the person has selected.
-Contract: ``timetable/README.md`` §4.3 and §6.5. Needs the ``app``
+Contract: ``timetable/README.md`` §4.3, §6.5 and §11. Needs the ``app``
 application, which is imported lazily inside the query.
 """
 from __future__ import annotations
@@ -8,6 +8,7 @@ from __future__ import annotations
 from datetime import date, datetime, timedelta
 from typing import Callable
 
+from semester.calendar import calendar_between
 from timetable.sources.base import (
     DateSpan,
     Occurrence,
@@ -33,7 +34,10 @@ class CollegeCourseSource:
     that week supplies the real time/location/status (canceled/aborted ones
     are kept as ``'canceled'``, an attended participation gives
     ``status='checked_in'``); otherwise the weekly time is expanded from
-    ``ct.start + 7k days`` for ``k in range(ct.cur_week, ct.end_week)``.
+    ``ct.start + 7k days`` for ``k in range(ct.cur_week, ct.end_week)``,
+    and such an expanded lesson on a holiday or exam date of the
+    university calendar is ``'suspended'`` (README §11; 调休 dates change
+    nothing for 书院课, and generated activities keep their own status).
     """
 
     key = 'college'
@@ -112,6 +116,8 @@ class CollegeCourseSource:
         )
 
         result: list[Occurrence] = []
+        # Lessons expanded from the weekly time (no generated activity).
+        expanded: list[Occurrence] = []
         for course_time in course_times:
             course = course_by_id[course_time.course_id]
             subtitle = course.teacher or course.organization.oname
@@ -143,7 +149,7 @@ class CollegeCourseSource:
                 on = start.date()
                 if _week_monday(on) in generated:
                     continue
-                result.append(Occurrence(
+                expanded.append(Occurrence(
                     id=f'college:{course_time.pk}:{on.isoformat()}',
                     source='college', kind='college',
                     title=course.name, subtitle=subtitle,
@@ -153,5 +159,19 @@ class CollegeCourseSource:
                     color_key=course.name, status='',
                     ref={'course_id': course.pk, 'activity_id': None},
                 ))
+        _suspend_on_no_class_days(expanded)
+        result.extend(expanded)
         result.sort(key=occurrence_sort_key)
         return result
+
+
+def _suspend_on_no_class_days(occurrences: list[Occurrence]) -> None:
+    # Mark the lessons that fall on a holiday or exam date of the university
+    # calendar 'suspended' (README §11): one calendar query, none when empty.
+    if not occurrences:
+        return
+    calendar = calendar_between(min(item.date for item in occurrences),
+                                max(item.date for item in occurrences))
+    for item in occurrences:
+        if not calendar.is_class_day(item.date):
+            item.status = 'suspended'

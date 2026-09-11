@@ -1,7 +1,7 @@
 """
 Domain operations of the timetable app: settings, week view, agenda, term
 overview, imports, conflict detection, catalog quick-add and scoped entry
-edits. Contract: ``timetable/README.md`` §4.4, §6.5, §8.1–§8.4 and §10.
+edits. Contract: ``timetable/README.md`` §4.4, §6.5, §8.1–§8.4, §10 and §11.
 
 The API layer calls these functions; nothing here touches credentials — the
 portal payload, and the elective 选课结果 page that stands in for an empty
@@ -48,6 +48,7 @@ __all__ = [
     'OVERVIEW_SLOT_KINDS',
     'ROW_ONLY_KEYS',
     'ANNOTATION_KEYS',
+    'OVERRIDE_ONLY_KEYS',
     'SCOPES',
     'ImportResult',
     'TimetableImportError',
@@ -89,6 +90,9 @@ _LESSON_REF_KEYS = ('entry_id', 'course_id')
 ROW_ONLY_KEYS = ('hidden', 'role', 'category', 'catalog_entry')
 # Student annotations updated on the row for entries of any source.
 ANNOTATION_KEYS = ('hidden', 'color', 'tag', 'role', 'category', 'catalog_entry')
+# Override keys that never live on the row, whatever the source and scope:
+# 「照常上课」 is stored in the override of the edited range (README §11).
+OVERRIDE_ONLY_KEYS = ('ignore_calendar',)
 SCOPES = ('all', 'single', 'following')
 
 
@@ -227,9 +231,12 @@ def week_view(person, term: AcademicTerm, week: int, *,
     The ``WeekView`` payload of ``timetable/README.md`` §4.6 for one
     teaching week (clamped to ``1..total_weeks``): occurrences of every
     enabled source, conflicts, the legend and the calendar label of each
-    day (§6.4). Stored-entry sources already follow the calendar (no
-    occurrences on holiday/exam dates, swapped weekdays), live sources
-    are real events and are left as they are.
+    day (§6.4). Sources apply the calendar themselves (§11): stored lessons
+    on holiday/exam dates come back ``'suspended'`` and a 调休 date carries
+    the followed weekday's lessons with ``swap_from``; 书院课 expanded from
+    the weekly time are suspended on no-class dates; other live sources are
+    real events. Suspended occurrences are listed but take no part in
+    ``conflicts``.
     """
     if today is None:
         today = date.today()
@@ -268,7 +275,8 @@ def agenda(person, start: date, days: int = 7) -> dict[str, Any]:
     term), its teaching week, its calendar label and the visible occurrences
     of every enabled source. Stored entries need a term and are absent on
     term-less dates; live sources (书院课 activities, applied activities,
-    appointments) are date-based and still appear. The legend lists every
+    appointments) are date-based and still appear. Suspended lessons and
+    调休 copies (§11) are listed as in ``week_view``. The legend lists every
     loaded source, as ``week_view`` does.
     """
     days = max(1, min(int(days), AGENDA_MAX_DAYS))
@@ -349,7 +357,9 @@ def term_overview(person, term: AcademicTerm, *,
     settings, so the ``show_*`` toggles, hidden tags, hidden entries and
     overrides apply as in the week view, while stored entries ignore
     calendar suspensions (holidays and exam periods leave no gap). A
-    ``'canceled'`` occurrence (a canceled 书院课 activity) does not count.
+    ``'canceled'`` occurrence (a canceled 书院课 activity) does not count;
+    a ``'suspended'`` one (a 书院课 lesson on a no-class date, §11) counts
+    like a normal week.
     Kinds of ``OVERVIEW_SLOT_KINDS`` are grouped by ``(source, lesson,
     weekday, start, end, location, title)`` — the lesson being
     ``ref['entry_id']``, else ``ref['course_id']``, else the title — with
@@ -455,12 +465,13 @@ def _overview_exams(term: AcademicTerm,
 def detect_conflicts(occurrences: Iterable[Occurrence]) -> list[list[str]]:
     """
     Groups of ids of occurrences that overlap in time on the same date.
-    Hidden and canceled occurrences are ignored. Overlap is transitive within a group
-    (A–B and B–C overlapping put A, B, C in one group).
+    Hidden, canceled and suspended (README §11) occurrences are ignored.
+    Overlap is transitive within a group (A–B and B–C overlapping put A, B,
+    C in one group).
     """
     by_date: dict[date, list[Occurrence]] = {}
     for item in occurrences:
-        if item.hidden or item.status == 'canceled':
+        if item.hidden or item.status in ('canceled', 'suspended'):
             continue
         by_date.setdefault(item.date, []).append(item)
     groups: list[list[str]] = []
@@ -819,7 +830,10 @@ def quick_add_from_catalog(person, term: AcademicTerm, row: CourseCatalogEntry, 
 # ---------------------------------------------------------------------------
 
 def _override_json(name: str, value: Any) -> Any:
-    # JSON value of an override field: times as 'HH:MM', the rest as given.
+    # JSON value of an override field: times as 'HH:MM', ignore_calendar a
+    # bool, the rest as given.
+    if name in OVERRIDE_ONLY_KEYS:
+        return bool(value)
     if isinstance(value, time):
         return format_time(value)
     if value is None:
@@ -843,6 +857,9 @@ def update_entry(entry: TimetableEntry, values: dict[str, Any], *,
     - ``scope='single'`` / ``'following'``: ``week`` must lie in the
       entry's span; the override ``(week, week)`` / ``(week, None)`` is
       upserted with the given override keys and ``canceled``.
+    - ``OVERRIDE_ONLY_KEYS`` (``ignore_calendar``, §11) always go to the
+      override of the scope's range, manual entries with ``scope='all'``
+      included.
 
     ``ValueError`` names a key that is not allowed for the scope/source
     (the API validates first and answers 400). Atomic; returns the entry.
@@ -858,7 +875,9 @@ def update_entry(entry: TimetableEntry, values: dict[str, Any], *,
     row_values: dict[str, Any] = {}
     override_values: dict[str, Any] = {}
     for name, value in values.items():
-        if scope == 'all' and (entry.is_manual() or name in ANNOTATION_KEYS):
+        if name in OVERRIDE_ONLY_KEYS:
+            override_values[name] = value
+        elif scope == 'all' and (entry.is_manual() or name in ANNOTATION_KEYS):
             row_values[name] = value
         elif name in OVERRIDE_FIELD_KEYS:
             override_values[name] = value

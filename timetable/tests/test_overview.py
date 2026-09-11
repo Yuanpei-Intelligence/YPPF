@@ -131,7 +131,7 @@ class TermOverviewTests(TestCase):
         self.assertEqual(len({slot['key'] for slot in slots}), len(slots))
 
     def test_calendar_suspensions_do_not_punch_gaps(self):
-        make_entry(self.person, self.term, name='周一课', weekday=1)
+        entry = make_entry(self.person, self.term, name='周一课', weekday=1)
         CalendarEvent.objects.create(kind='holiday', start_date=self.term.date_of(3, 1),
                                      end_date=self.term.date_of(3, 1), name='国庆节放假')
         CalendarEvent.objects.create(kind='exam', start_date=self.term.date_of(15, 1),
@@ -139,15 +139,36 @@ class TermOverviewTests(TestCase):
         CalendarEvent.objects.create(kind='swap', start_date=self.term.date_of(4, 6),
                                      end_date=self.term.date_of(4, 6),
                                      name='按周一课表上课', follows_weekday=1)
+        # 照常上课 in an exam-period week changes nothing in the rule (§11).
+        services.update_entry(entry, {'ignore_calendar': True}, scope='single', week=15)
         slots = self.overview()['slots']
         self.assertEqual([(s['weekday'], s['weeks'], s['weeks_text']) for s in slots],
                          [(1, list(range(1, 17)), '1-16周')])
-        # The week view does follow the calendar: nothing on the holiday, the
-        # swap Saturday carries the Monday lesson.
+        # The week view does follow the calendar: the holiday lesson is
+        # suspended, the swap Saturday carries the Monday lesson and the
+        # lesson held in week 15 is normal.
         week3 = services.week_view(self.person, self.term, 3, today=TODAY)
-        self.assertEqual(week3['occurrences'], [])
+        self.assertEqual([(o['weekday'], o['status']) for o in week3['occurrences']],
+                         [(1, 'suspended')])
         week4 = services.week_view(self.person, self.term, 4, today=TODAY)
-        self.assertEqual([o['weekday'] for o in week4['occurrences']], [1, 6])
+        self.assertEqual([(o['weekday'], o['status'], o['swap_from'])
+                          for o in week4['occurrences']], [(1, '', None), (6, '', 1)])
+        week15 = services.week_view(self.person, self.term, 15, today=TODAY)
+        self.assertEqual([(o['status'], o['modified']) for o in week15['occurrences']],
+                         [('', True)])
+
+    def test_suspended_college_lessons_count_as_normal_weeks(self):
+        """README §11: a suspended 书院课 lesson leaves no gap, unlike a canceled one."""
+        org, _ = make_organization()
+        make_college_course(org, self.person, datetime(2026, 9, 16, 14, 0))    # Wednesdays
+        holiday = self.term.date_of(3, 3)
+        CalendarEvent.objects.create(kind='holiday', start_date=holiday, end_date=holiday,
+                                     name='国庆节放假')
+        week3 = CollegeCourseSource().occurrences(self.person, self.term, 3, 3, None)
+        self.assertEqual([(o.date, o.status) for o in week3], [(holiday, 'suspended')])
+        slots = self.overview()['slots']
+        self.assertEqual([(s['kind'], s['weeks'], s['weeks_text']) for s in slots],
+                         [('college', list(range(1, 17)), '1-16周')])
 
     def test_overrides_cancel_move_and_change_weeks(self):
         entry = make_entry(self.person, self.term, name='高数', weekday=1, room='理教201')

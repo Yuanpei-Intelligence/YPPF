@@ -16,6 +16,7 @@ from app.models import (
 )
 from Appointment.models import Appoint, Participant, Room
 from generic.models import User
+from semester.models import CalendarEvent
 from utils.models.semester import Semester
 from timetable.models import TimetableSettings
 from timetable.sources import base
@@ -313,6 +314,34 @@ class CollegeCourseSourceTests(_AppFixtureMixin, TestCase):
         self.course.status = Course.Status.ABORT
         self.course.save(update_fields=['status'])
         self.assertEqual(self.occurrences(), [])
+
+    def test_expanded_lessons_on_no_class_days_are_suspended(self):
+        """README §11: only lessons expanded from the weekly time follow the calendar."""
+        # Week 2 (09-23) has an attended activity; weeks 4 (10-07) and 16 are expanded.
+        for on in (date(2026, 9, 23), date(2026, 10, 7)):
+            CalendarEvent.objects.create(kind='holiday', start_date=on, end_date=on, name='放假')
+        CalendarEvent.objects.create(kind='exam', start_date=date(2026, 12, 28),
+                                     end_date=date(2027, 1, 3), name='停课复习考试')
+        CalendarEvent.objects.create(kind='swap', start_date=date(2026, 10, 14),
+                                     end_date=date(2026, 10, 14), name='按周一课表上课',
+                                     follows_weekday=1)
+        by_week = {o.week: o for o in self.occurrences()}
+        self.assertEqual(sorted(by_week), list(range(1, 17)))
+        self.assertEqual([week for week, o in sorted(by_week.items())
+                          if o.status == 'suspended'], [4, 16])
+        self.assertEqual((by_week[2].status, by_week[2].ref['activity_id']),
+                         ('checked_in', self.week2.pk))
+        self.assertEqual(by_week[3].status, 'canceled')
+        self.assertEqual((by_week[4].date, by_week[4].start, by_week[4].ref['activity_id']),
+                         (date(2026, 10, 7), datetime(2026, 10, 7, 14, 0), None))
+        self.assertEqual(by_week[4].as_dict()['status'], 'suspended')
+        # A 调休 date changes nothing for 书院课.
+        self.assertEqual((by_week[5].status, by_week[5].swap_from), ('', None))
+        # The date-span path (agenda) marks them the same way.
+        span = DateSpan.load(date(2026, 10, 5), date(2026, 10, 11))
+        occurrences = self.source.occurrences_between(self.person, span, self.settings)
+        self.assertEqual([(o.date, o.status) for o in occurrences],
+                         [(date(2026, 10, 7), 'suspended')])
 
     def test_occurrences_between(self):
         span = DateSpan.load(date(2026, 9, 14), date(2026, 9, 27))        # weeks 1-2
