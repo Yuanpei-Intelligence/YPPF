@@ -35,6 +35,18 @@ delivery_id。日志不含学号、姓名、完整邮箱、验证码、密码、
 code_delivery.py 负责有界队列、逐渠道尝试和日志；code_email.py 只负责邮件传输，企业微信
 沿用 wechat.py。已删除旧的 extern/login_code.py、extern/password_reset.py 及其单渠道 wrapper。
 
+验证码业务按职责分为三个模块：
+
+- `app/login_utils.py`：登录码签发、消费及个人账号检查。
+- `app/password_reset_utils.py`：重置码签发、密码校验及原子改密；保留既有函数名
+  `create_password_reset_token`、`prepare_password_reset_delivery`、`reset_password_from_token`。
+- `app/auth_code_utils.py`：共享请求限流、摘要、跨用途码值去重、失败计数和过期清理。
+
+上述逻辑已从 `app/utils.py` 完全移出；视图直接导入对应业务函数，登录与重置模块互不依赖。
+配置仍使用既有 password_reset 键，数据库表、摘要 salt 和限流标识保持兼容，不需要迁移。
+定时清理调用 `auth_code_utils.cleanup_code_state`，保留既有 job ID 和任务函数名，
+避免影响已注册的调度任务。重置操作仍在账号锁内签发、替换或消费验证码。
+
 临时 SMTP 适配器仅用于本地测试，不代表企业微信接口已经配置。未配置的企业微信渠道会跳过。
 相关测试：`python manage.py test app.test.test_code_delivery app.test.test_code_login app.test.test_forget_password`。
 

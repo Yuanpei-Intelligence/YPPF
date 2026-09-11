@@ -21,7 +21,7 @@ from django.test import (
 from django.urls import reverse
 from django.utils.crypto import salted_hmac
 
-from app import models, utils
+from app import models, auth_code_utils as code_utils, password_reset_utils as reset_utils
 from app.password_reset_forms import PasswordResetForm
 from extern import code_email, wechat
 from extern.wechat import send_password_reset_token
@@ -46,13 +46,13 @@ class PasswordResetDomainTests(TestCase):
         self.request = self.make_request()
 
     def test_short_code_resets_only_its_bound_user(self):
-        token = utils.create_password_reset_token(
+        token = reset_utils.create_password_reset_token(
             self.request, self.user, now=self.now)
         challenge = models.PasswordResetChallenge.objects.get(user=self.user)
 
         self.assertNotIn(self.user.username, token)
         self.assertNotEqual(challenge.token_digest, token)
-        self.assertTrue(utils.reset_password_from_token(
+        self.assertTrue(reset_utils.reset_password_from_token(
             self.request,
             self.user.username,
             token,
@@ -63,10 +63,10 @@ class PasswordResetDomainTests(TestCase):
         self.assertTrue(self.user.check_password("Secure-pass-123"))
 
     def test_token_accepts_database_equivalent_username_casing(self):
-        token = utils.create_password_reset_token(
+        token = reset_utils.create_password_reset_token(
             self.request, self.user, now=self.now)
 
-        self.assertTrue(utils.reset_password_from_token(
+        self.assertTrue(reset_utils.reset_password_from_token(
             self.request,
             self.user.username.upper(),
             token,
@@ -75,12 +75,12 @@ class PasswordResetDomainTests(TestCase):
         ))
 
     def test_password_change_invalidates_an_outstanding_token(self):
-        token = utils.create_password_reset_token(
+        token = reset_utils.create_password_reset_token(
             self.request, self.user, now=self.now)
         self.user.set_password("owner-secured-password")
         self.user.save(update_fields=["password"])
 
-        self.assertFalse(utils.reset_password_from_token(
+        self.assertFalse(reset_utils.reset_password_from_token(
             self.request,
             self.user.username,
             token,
@@ -96,10 +96,10 @@ class PasswordResetDomainTests(TestCase):
         current_user.set_password("changed-password")
         current_user.save(update_fields=["password"])
 
-        token = utils.create_password_reset_token(
+        token = reset_utils.create_password_reset_token(
             self.request, stale_user, now=self.now)
 
-        self.assertTrue(utils.reset_password_from_token(
+        self.assertTrue(reset_utils.reset_password_from_token(
             self.request,
             current_user.username,
             token,
@@ -113,10 +113,10 @@ class PasswordResetDomainTests(TestCase):
             name="Other Reset User",
             password="other-password",
         )
-        token = utils.create_password_reset_token(
+        token = reset_utils.create_password_reset_token(
             self.request, self.user, now=self.now)
 
-        self.assertFalse(utils.reset_password_from_token(
+        self.assertFalse(reset_utils.reset_password_from_token(
             self.request,
             other_user.username,
             token,
@@ -129,10 +129,10 @@ class PasswordResetDomainTests(TestCase):
         self.assertTrue(other_user.check_password("other-password"))
 
     def test_token_accepts_a_different_browser_session(self):
-        token = utils.create_password_reset_token(
+        token = reset_utils.create_password_reset_token(
             self.request, self.user, now=self.now)
 
-        self.assertTrue(utils.reset_password_from_token(
+        self.assertTrue(reset_utils.reset_password_from_token(
             self.make_request(),
             self.user.username,
             token,
@@ -143,11 +143,11 @@ class PasswordResetDomainTests(TestCase):
         self.assertTrue(self.user.check_password("Secure-pass-123"))
 
     def test_token_accepts_a_different_ip_address(self):
-        token = utils.create_password_reset_token(
+        token = reset_utils.create_password_reset_token(
             self.request, self.user, now=self.now)
         self.request.META["REMOTE_ADDR"] = "192.0.2.99"
 
-        self.assertTrue(utils.reset_password_from_token(
+        self.assertTrue(reset_utils.reset_password_from_token(
             self.request,
             self.user.username,
             token,
@@ -159,11 +159,11 @@ class PasswordResetDomainTests(TestCase):
 
     def test_token_ignores_untrusted_forwarded_for(self):
         self.request.META["HTTP_X_FORWARDED_FOR"] = "198.51.100.1"
-        token = utils.create_password_reset_token(
+        token = reset_utils.create_password_reset_token(
             self.request, self.user, now=self.now)
         self.request.META["HTTP_X_FORWARDED_FOR"] = "203.0.113.99"
 
-        self.assertTrue(utils.reset_password_from_token(
+        self.assertTrue(reset_utils.reset_password_from_token(
             self.request,
             self.user.username,
             token,
@@ -171,18 +171,18 @@ class PasswordResetDomainTests(TestCase):
             now=self.now,
         ))
 
-    @patch("app.utils.secrets.randbelow", return_value=42)
+    @patch("app.auth_code_utils.secrets.randbelow", return_value=42)
     def test_code_preserves_leading_zeros_and_is_stored_as_keyed_digest(
         self, random_code: Mock,
     ):
-        token = utils.create_password_reset_token(
+        token = reset_utils.create_password_reset_token(
             self.request, self.user, now=self.now)
         self.assertEqual(token, "000042")
         challenge = models.PasswordResetChallenge.objects.get()
         self.assertEqual(challenge.token_digest, salted_hmac(
             "app.password-reset.code-v2", f"{self.user.pk}:{token}"
         ).hexdigest())
-        self.assertTrue(utils.reset_password_from_token(
+        self.assertTrue(reset_utils.reset_password_from_token(
             self.request, self.user.username, token, "Secure-pass-123",
             now=self.now,
         ))
@@ -191,43 +191,43 @@ class PasswordResetDomainTests(TestCase):
         other = User.objects.create_user(
             username="other-code-user", name="Other Code User",
             password="old-password")
-        with patch("app.utils.secrets.randbelow", return_value=42):
-            first = utils.create_password_reset_token(
+        with patch("app.auth_code_utils.secrets.randbelow", return_value=42):
+            first = reset_utils.create_password_reset_token(
                 self.request, self.user, now=self.now)
-            second = utils.create_password_reset_token(
+            second = reset_utils.create_password_reset_token(
                 self.request, other, now=self.now)
         self.assertEqual(first, second)
         self.assertEqual(models.PasswordResetChallenge.objects.count(), 2)
         for user in (self.user, other):
-            self.assertTrue(utils.reset_password_from_token(
+            self.assertTrue(reset_utils.reset_password_from_token(
                 self.request, user.username, first, "Secure-pass-123",
                 now=self.now,
             ))
 
     def test_generation_retries_a_retained_code(self):
-        with patch("app.utils.secrets.randbelow", return_value=42):
-            utils.create_password_reset_token(
+        with patch("app.auth_code_utils.secrets.randbelow", return_value=42):
+            reset_utils.create_password_reset_token(
                 self.request, self.user, now=self.now)
-        with patch("app.utils.secrets.randbelow", side_effect=[42, 43]) as rng:
-            token = utils.create_password_reset_token(
+        with patch("app.auth_code_utils.secrets.randbelow", side_effect=[42, 43]) as rng:
+            token = reset_utils.create_password_reset_token(
                 self.request, self.user, now=self.now)
         self.assertEqual(token, "000043")
         self.assertEqual(rng.call_count, 2)
 
     def test_collision_exhaustion_keeps_old_code_and_logs_no_secret(self):
-        with patch("app.utils.secrets.randbelow", return_value=42):
-            token = utils.create_password_reset_token(
+        with patch("app.auth_code_utils.secrets.randbelow", return_value=42):
+            token = reset_utils.create_password_reset_token(
                 self.request, self.user, now=self.now)
-        with patch("app.utils.secrets.randbelow", return_value=42) as rng:
-            with patch.object(utils.logger, "error") as log:
+        with patch("app.auth_code_utils.secrets.randbelow", return_value=42) as rng:
+            with patch.object(code_utils.logger, "error") as log:
                 with self.assertRaisesRegex(RuntimeError, "generation failed"):
-                    utils.create_password_reset_token(
+                    reset_utils.create_password_reset_token(
                         self.request, self.user, now=self.now)
         self.assertEqual(rng.call_count, 10)
         log.assert_called_once_with(
-            "Password-reset code generation exhausted retries")
+            "Verification code generation exhausted retries")
         self.assertEqual(models.PasswordResetChallenge.objects.count(), 1)
-        self.assertTrue(utils.reset_password_from_token(
+        self.assertTrue(reset_utils.reset_password_from_token(
             self.request, self.user.username, token, "Secure-pass-123",
             now=self.now,
         ))
@@ -249,40 +249,40 @@ class PasswordResetDomainTests(TestCase):
             device_digest="unused", ip_digest="unused",
             created_at=self.now, expires_at=self.now + timedelta(minutes=10),
         )
-        self.assertFalse(utils.reset_password_from_token(
+        self.assertFalse(reset_utils.reset_password_from_token(
             self.request, self.user.username, legacy_token, "Secure-pass-123",
             now=self.now,
         ))
-        code = utils.create_password_reset_token(
+        code = reset_utils.create_password_reset_token(
             self.request, self.user, now=self.now)
         self.assertIsNotNone(models.PasswordResetChallenge.objects.get(
             pk=challenge_id).invalidated_at)
-        self.assertTrue(utils.reset_password_from_token(
+        self.assertTrue(reset_utils.reset_password_from_token(
             self.request, self.user.username, code, "Secure-pass-123",
             now=self.now,
         ))
 
     def test_invalid_password_leaves_code_available(self):
-        token = utils.create_password_reset_token(
+        token = reset_utils.create_password_reset_token(
             self.request, self.user, now=self.now)
         with self.assertRaises(ValidationError):
-            utils.reset_password_from_token(
+            reset_utils.reset_password_from_token(
                 self.request, self.user.username, token, "123",
                 now=self.now,
             )
         challenge = models.PasswordResetChallenge.objects.get()
         self.assertIsNone(challenge.consumed_at)
         self.assertEqual(challenge.failed_attempts, 0)
-        self.assertTrue(utils.reset_password_from_token(
+        self.assertTrue(reset_utils.reset_password_from_token(
             self.request, self.user.username, token, "Secure-pass-123",
             now=self.now,
         ))
 
     def test_expired_token_does_not_change_password(self):
-        token = utils.create_password_reset_token(
+        token = reset_utils.create_password_reset_token(
             self.request, self.user, now=self.now)
 
-        self.assertFalse(utils.reset_password_from_token(
+        self.assertFalse(reset_utils.reset_password_from_token(
             self.request,
             self.user.username,
             token,
@@ -293,17 +293,17 @@ class PasswordResetDomainTests(TestCase):
         self.assertTrue(self.user.check_password("old-password"))
 
     def test_consumed_token_cannot_be_reused(self):
-        token = utils.create_password_reset_token(
+        token = reset_utils.create_password_reset_token(
             self.request, self.user, now=self.now)
 
-        self.assertTrue(utils.reset_password_from_token(
+        self.assertTrue(reset_utils.reset_password_from_token(
             self.request,
             self.user.username,
             token,
             "Secure-pass-123",
             now=self.now,
         ))
-        self.assertFalse(utils.reset_password_from_token(
+        self.assertFalse(reset_utils.reset_password_from_token(
             self.request,
             self.user.username,
             token,
@@ -314,29 +314,29 @@ class PasswordResetDomainTests(TestCase):
         self.assertTrue(self.user.check_password("Secure-pass-123"))
 
     def test_new_code_invalidates_old_code(self):
-        first = utils.create_password_reset_token(
+        first = reset_utils.create_password_reset_token(
             self.request, self.user, now=self.now)
-        second = utils.create_password_reset_token(
+        second = reset_utils.create_password_reset_token(
             self.request, self.user, now=self.now + timedelta(seconds=1))
         self.assertNotEqual(first, second)
         self.assertEqual(models.PasswordResetChallenge.objects.filter(
             user=self.user, invalidated_at__isnull=True).count(), 1)
-        self.assertFalse(utils.reset_password_from_token(
+        self.assertFalse(reset_utils.reset_password_from_token(
             self.request, self.user.username, first, "Secure-pass-123",
             now=self.now + timedelta(seconds=2),
         ))
-        self.assertTrue(utils.reset_password_from_token(
+        self.assertTrue(reset_utils.reset_password_from_token(
             self.request, self.user.username, second, "Secure-pass-123",
             now=self.now + timedelta(seconds=2),
         ))
 
     def test_fifth_wrong_code_invalidates_challenge(self):
-        token = utils.create_password_reset_token(
+        token = reset_utils.create_password_reset_token(
             self.request, self.user, now=self.now)
         bad_token = f"{(int(token) + 1) % 1_000_000:06d}"
 
         for _ in range(5):
-            self.assertFalse(utils.reset_password_from_token(
+            self.assertFalse(reset_utils.reset_password_from_token(
                 self.request,
                 self.user.username,
                 bad_token,
@@ -347,7 +347,7 @@ class PasswordResetDomainTests(TestCase):
         challenge = models.PasswordResetChallenge.objects.get(user=self.user)
         self.assertEqual(challenge.failed_attempts, 5)
         self.assertEqual(challenge.invalidated_at, self.now)
-        self.assertFalse(utils.reset_password_from_token(
+        self.assertFalse(reset_utils.reset_password_from_token(
             self.request,
             self.user.username,
             token,
@@ -356,11 +356,11 @@ class PasswordResetDomainTests(TestCase):
         ))
 
     def test_fifth_token_failure_temporarily_locks_reset_flow(self):
-        token = utils.create_password_reset_token(
+        token = reset_utils.create_password_reset_token(
             self.request, self.user, now=self.now)
         bad_token = f"{(int(token) + 1) % 1_000_000:06d}"
         for _ in range(5):
-            self.assertFalse(utils.reset_password_from_token(
+            self.assertFalse(reset_utils.reset_password_from_token(
                 self.request,
                 self.user.username,
                 bad_token,
@@ -368,9 +368,9 @@ class PasswordResetDomainTests(TestCase):
                 now=self.now,
             ))
 
-        locked_token = utils.create_password_reset_token(
+        locked_token = reset_utils.create_password_reset_token(
             self.request, self.user, now=self.now)
-        self.assertFalse(utils.reset_password_from_token(
+        self.assertFalse(reset_utils.reset_password_from_token(
             self.request,
             self.user.username,
             locked_token,
@@ -379,9 +379,9 @@ class PasswordResetDomainTests(TestCase):
         ))
 
         unlocked_at = self.now + timedelta(minutes=16)
-        unlocked_token = utils.create_password_reset_token(
+        unlocked_token = reset_utils.create_password_reset_token(
             self.request, self.user, now=unlocked_at)
-        self.assertTrue(utils.reset_password_from_token(
+        self.assertTrue(reset_utils.reset_password_from_token(
             self.request,
             self.user.username,
             unlocked_token,
@@ -390,11 +390,11 @@ class PasswordResetDomainTests(TestCase):
         ))
 
     def test_fifth_failure_locks_challenge_target_account(self):
-        token = utils.create_password_reset_token(
+        token = reset_utils.create_password_reset_token(
             self.request, self.user, now=self.now)
 
         for _ in range(5):
-            self.assertFalse(utils.reset_password_from_token(
+            self.assertFalse(reset_utils.reset_password_from_token(
                 self.request,
                 self.user.username,
                 f"{(int(token) + 1) % 1_000_000:06d}",
@@ -403,9 +403,9 @@ class PasswordResetDomainTests(TestCase):
             ))
 
         fresh_request = self.make_request(ip_address="198.51.100.99")
-        fresh_token = utils.create_password_reset_token(
+        fresh_token = reset_utils.create_password_reset_token(
             fresh_request, self.user, now=self.now)
-        self.assertFalse(utils.reset_password_from_token(
+        self.assertFalse(reset_utils.reset_password_from_token(
             fresh_request,
             self.user.username,
             fresh_token,
@@ -417,7 +417,7 @@ class PasswordResetDomainTests(TestCase):
 
     def test_fourth_account_request_is_rate_limited(self):
         results = [
-            utils.check_password_reset_request_rate(
+            code_utils.check_request_rate(
                 self.request, self.user.username, now=self.now)
             for _ in range(4)
         ]
@@ -426,12 +426,12 @@ class PasswordResetDomainTests(TestCase):
 
     def test_request_rate_recovers_after_window_and_lock(self):
         for _ in range(3):
-            self.assertTrue(utils.check_password_reset_request_rate(
+            self.assertTrue(code_utils.check_request_rate(
                 self.request, self.user.username, now=self.now))
-        self.assertFalse(utils.check_password_reset_request_rate(
+        self.assertFalse(code_utils.check_request_rate(
             self.request, self.user.username, now=self.now))
 
-        self.assertTrue(utils.check_password_reset_request_rate(
+        self.assertTrue(code_utils.check_request_rate(
             self.request,
             self.user.username,
             now=self.now + timedelta(minutes=16),
@@ -439,7 +439,7 @@ class PasswordResetDomainTests(TestCase):
 
     def test_account_request_limit_uses_canonical_username(self):
         results = [
-            utils.check_password_reset_request_rate(
+            code_utils.check_request_rate(
                 self.request,
                 (
                     self.user.username.upper()
@@ -461,7 +461,7 @@ class PasswordResetDomainTests(TestCase):
 
     def test_sixth_device_request_is_rate_limited(self):
         results = [
-            utils.check_password_reset_request_rate(
+            code_utils.check_request_rate(
                 self.request, f"device-user-{index}", now=self.now)
             for index in range(6)
         ]
@@ -470,13 +470,13 @@ class PasswordResetDomainTests(TestCase):
 
     def test_locked_device_does_not_persist_a_partial_account_row(self):
         for index in range(5):
-            self.assertTrue(utils.check_password_reset_request_rate(
+            self.assertTrue(code_utils.check_request_rate(
                 self.request, f"device-user-{index}", now=self.now))
         account_scope = models.PasswordResetThrottle.Scope.REQUEST_ACCOUNT
         account_rows = models.PasswordResetThrottle.objects.filter(
             scope=account_scope).count()
 
-        self.assertFalse(utils.check_password_reset_request_rate(
+        self.assertFalse(code_utils.check_request_rate(
             self.request, "new-username", now=self.now))
 
         self.assertEqual(
@@ -487,7 +487,7 @@ class PasswordResetDomainTests(TestCase):
 
     def test_eleventh_ip_request_is_rate_limited(self):
         results = [
-            utils.check_password_reset_request_rate(
+            code_utils.check_request_rate(
                 self.make_request(ip_address="198.51.100.20"),
                 f"ip-user-{index}",
                 now=self.now,
@@ -507,7 +507,7 @@ class PasswordResetDomainTests(TestCase):
             )
             SessionMiddleware(lambda request: None).process_request(request)
             request.META["CSRF_COOKIE"] = f"device-cookie-{index}"
-            results.append(utils.check_password_reset_request_rate(
+            results.append(code_utils.check_request_rate(
                 request,
                 f"anonymous-user-{index}",
                 now=self.now,
@@ -518,12 +518,12 @@ class PasswordResetDomainTests(TestCase):
         self.assertEqual(Session.objects.count(), session_count)
 
     @patch(
-        "app.utils._consume_password_reset_limits",
+        "app.auth_code_utils.consume_limits",
         side_effect=DatabaseError,
     )
     def test_throttle_backend_errors_fail_closed(self, consume: Mock):
         with self.assertRaises(DatabaseError):
-            utils.check_password_reset_request_rate(
+            code_utils.check_request_rate(
                 self.request,
                 self.user.username,
                 now=self.now,
@@ -532,12 +532,12 @@ class PasswordResetDomainTests(TestCase):
         self.assertFalse(models.PasswordResetChallenge.objects.exists())
 
     def test_eleventh_account_verification_is_rate_limited(self):
-        token = utils.create_password_reset_token(
+        token = reset_utils.create_password_reset_token(
             self.request, self.user, now=self.now)
         for index in range(10):
             request = self.make_request(
                 ip_address=f"203.0.113.{index + 1}")
-            self.assertFalse(utils.reset_password_from_token(
+            self.assertFalse(reset_utils.reset_password_from_token(
                 request,
                 self.user.username,
                 f"{uuid.uuid4()}.invalid",
@@ -545,7 +545,7 @@ class PasswordResetDomainTests(TestCase):
                 now=self.now,
             ))
 
-        self.assertFalse(utils.reset_password_from_token(
+        self.assertFalse(reset_utils.reset_password_from_token(
             self.request,
             self.user.username,
             token,
@@ -556,11 +556,11 @@ class PasswordResetDomainTests(TestCase):
         self.assertTrue(self.user.check_password("old-password"))
 
     def test_eleventh_device_verification_is_rate_limited(self):
-        token = utils.create_password_reset_token(
+        token = reset_utils.create_password_reset_token(
             self.request, self.user, now=self.now)
         for index in range(10):
             self.request.META["REMOTE_ADDR"] = f"198.51.100.{index + 1}"
-            self.assertFalse(utils.reset_password_from_token(
+            self.assertFalse(reset_utils.reset_password_from_token(
                 self.request,
                 f"verification-user-{index}",
                 f"{uuid.uuid4()}.invalid",
@@ -569,7 +569,7 @@ class PasswordResetDomainTests(TestCase):
             ))
         self.request.META["REMOTE_ADDR"] = "192.0.2.10"
 
-        self.assertFalse(utils.reset_password_from_token(
+        self.assertFalse(reset_utils.reset_password_from_token(
             self.request,
             self.user.username,
             token,
@@ -578,10 +578,10 @@ class PasswordResetDomainTests(TestCase):
         ))
 
     def test_eleventh_ip_verification_is_rate_limited(self):
-        token = utils.create_password_reset_token(
+        token = reset_utils.create_password_reset_token(
             self.request, self.user, now=self.now)
         for index in range(10):
-            self.assertFalse(utils.reset_password_from_token(
+            self.assertFalse(reset_utils.reset_password_from_token(
                 self.make_request(),
                 f"ip-verification-user-{index}",
                 f"{uuid.uuid4()}.invalid",
@@ -589,7 +589,7 @@ class PasswordResetDomainTests(TestCase):
                 now=self.now,
             ))
 
-        self.assertFalse(utils.reset_password_from_token(
+        self.assertFalse(reset_utils.reset_password_from_token(
             self.request,
             self.user.username,
             token,
@@ -598,9 +598,9 @@ class PasswordResetDomainTests(TestCase):
         ))
 
     def test_cleanup_removes_only_expired_password_reset_state(self):
-        expired_token = utils.create_password_reset_token(
+        expired_token = reset_utils.create_password_reset_token(
             self.request, self.user, now=self.now - timedelta(days=2))
-        active_token = utils.create_password_reset_token(
+        active_token = reset_utils.create_password_reset_token(
             self.request, self.user, now=self.now)
         expired_challenge_id = models.PasswordResetChallenge.objects.get(
             created_at=self.now - timedelta(days=2)).pk
@@ -617,7 +617,7 @@ class PasswordResetDomainTests(TestCase):
             window_started_at=self.now,
         )
 
-        utils.cleanup_password_reset_state(now=self.now)
+        code_utils.cleanup_code_state(now=self.now)
 
         self.assertFalse(models.PasswordResetChallenge.objects.filter(
             pk=expired_challenge_id).exists())
@@ -647,7 +647,7 @@ class PasswordResetConcurrencyTests(TransactionTestCase):
             name="Concurrent Reset User",
             password="old-password",
         )
-        token = utils.create_password_reset_token(
+        token = reset_utils.create_password_reset_token(
             self.make_request(),
             user,
             now=datetime(2026, 8, 16, 12, 0, 0),
@@ -661,7 +661,7 @@ class PasswordResetConcurrencyTests(TransactionTestCase):
             try:
                 request = self.make_request()
                 barrier.wait()
-                results.append(utils.reset_password_from_token(
+                results.append(reset_utils.reset_password_from_token(
                     request,
                     user.username,
                     token,
@@ -701,7 +701,7 @@ class PasswordResetConcurrencyTests(TransactionTestCase):
             close_old_connections()
             try:
                 barrier.wait()
-                results.append(utils.create_password_reset_token(
+                results.append(reset_utils.create_password_reset_token(
                     self.make_request(), user, now=now))
             except Exception as error:
                 errors.append(error)
@@ -719,7 +719,7 @@ class PasswordResetConcurrencyTests(TransactionTestCase):
         self.assertEqual(len(set(results)), 2)
         self.assertEqual(models.PasswordResetChallenge.objects.filter(
             user=user, invalidated_at__isnull=True).count(), 1)
-        outcomes = [utils.reset_password_from_token(
+        outcomes = [reset_utils.reset_password_from_token(
             self.make_request(), user.username, code, "Secure-pass-123",
             now=now,
         ) for code in results]
@@ -731,7 +731,7 @@ class PasswordResetConcurrencyTests(TransactionTestCase):
             name="Concurrent Failure User",
             password="old-password",
         )
-        token = utils.create_password_reset_token(
+        token = reset_utils.create_password_reset_token(
             self.make_request(),
             user,
             now=datetime(2026, 8, 16, 12, 0, 0),
@@ -746,7 +746,7 @@ class PasswordResetConcurrencyTests(TransactionTestCase):
             try:
                 request = self.make_request()
                 barrier.wait()
-                results.append(utils.reset_password_from_token(
+                results.append(reset_utils.reset_password_from_token(
                     request,
                     user.username,
                     bad_token,
@@ -1339,7 +1339,7 @@ class PasswordResetDeliveryTests(TestCase):
         args, kwargs = send_wechat.call_args
         self.assertIn(token, args[2])
         self.assertIn(
-            f"验证码有效期为{utils.CONFIG.password_reset_token_seconds}秒",
+            f"验证码有效期为{code_utils.CONFIG.password_reset_token_seconds}秒",
             args[2],
         )
         self.assertNotIn("十分钟", args[2])

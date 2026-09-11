@@ -4,7 +4,7 @@ from unittest.mock import Mock, patch
 from django.test import RequestFactory, TestCase
 from django.urls import reverse
 
-from app import login_utils, utils
+from app import login_utils, auth_code_utils as code_utils, password_reset_utils as reset_utils
 from app.models import LoginChallenge, NaturalPerson, PasswordResetChallenge
 from extern import code_delivery
 from generic.models import User
@@ -26,17 +26,17 @@ class DualCodeDeliveryTests(TestCase):
         self.assertEqual(login_utils.consume_login_code(self.request, self.user.username, args[-1], now=self.now).pk, self.user.pk)
 
     def test_one_reset_code_for_both_channels(self):
-        args = utils.prepare_password_reset_delivery(self.request, self.user.username, now=self.now)
+        args = reset_utils.prepare_password_reset_delivery(self.request, self.user.username, now=self.now)
         self.assertEqual(PasswordResetChallenge.objects.count(), 1)
-        self.assertTrue(utils.reset_password_from_token(self.request, self.user.username, args[-1], 'New-pass-123', now=self.now))
+        self.assertTrue(reset_utils.reset_password_from_token(self.request, self.user.username, args[-1], 'New-pass-123', now=self.now))
 
     def test_absent_email_does_not_block_wechat_preparation(self):
         NaturalPerson.objects.filter(person_id=self.user).update(email='')
         self.assertIsNotNone(login_utils.prepare_login_delivery(self.request, self.user.username, now=self.now))
-        self.assertIsNotNone(utils.prepare_password_reset_delivery(self.request, self.user.username, now=self.now))
+        self.assertIsNotNone(reset_utils.prepare_password_reset_delivery(self.request, self.user.username, now=self.now))
 
     def test_reset_missing_account_creates_no_code(self):
-        self.assertIsNone(utils.prepare_password_reset_delivery(self.request, 'missing', now=self.now))
+        self.assertIsNone(reset_utils.prepare_password_reset_delivery(self.request, 'missing', now=self.now))
         self.assertFalse(PasswordResetChallenge.objects.exists())
 
     def test_page_send_actions_prepare_once(self):

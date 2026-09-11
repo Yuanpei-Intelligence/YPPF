@@ -43,6 +43,7 @@ from app.models import (
     HomepageImage,
 )
 from app.password_reset_forms import PasswordResetForm, PasswordResetRequestForm
+from app.password_reset_utils import prepare_password_reset_delivery, reset_password_from_token
 from app.utils import (
     get_person_or_org,
     record_modify_with_session,
@@ -1431,7 +1432,7 @@ def forgetPassword(request: HttpRequest):
             if request_form.is_valid():
                 username = request_form.cleaned_data["username"]
                 queue_code_delivery('password_reset', partial(
-                    utils.prepare_password_reset_delivery, request, username))
+                    prepare_password_reset_delivery, request, username))
             display = succeed(
                 "若账号及联系方式有效，验证码将发送至已绑定渠道")
             display.update(alert=True, noshow=True, colddown=60)
@@ -1440,7 +1441,7 @@ def forgetPassword(request: HttpRequest):
             username = request.POST.get("username", "")
             if reset_form.is_valid():
                 try:
-                    reset_succeeded = utils.reset_password_from_token(
+                    reset_succeeded = reset_password_from_token(
                         request,
                         reset_form.cleaned_data["username"],
                         reset_form.cleaned_data["token"],

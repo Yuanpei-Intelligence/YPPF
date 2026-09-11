@@ -7,7 +7,7 @@ from django.db import close_old_connections
 from django.test import Client, RequestFactory, TestCase, TransactionTestCase
 from django.urls import reverse
 
-from app import login_utils, utils
+from app import login_utils, auth_code_utils as code_utils, password_reset_utils as reset_utils
 from app.models import LoginChallenge, NaturalPerson
 from generic.models import User
 
@@ -30,22 +30,22 @@ class CodeLoginTests(TestCase):
 
     def test_login_and_reset_cannot_exchange_codes_and_do_not_supersede_each_other(self):
         code = self.issue()
-        reset = utils.create_password_reset_token(self.request, self.user, now=self.now)
+        reset = reset_utils.create_password_reset_token(self.request, self.user, now=self.now)
         self.assertNotEqual(code, reset)
         self.assertIsNone(self.consume(reset))
-        self.assertFalse(utils.reset_password_from_token(self.request, self.user.username,
+        self.assertFalse(reset_utils.reset_password_from_token(self.request, self.user.username,
                                                          code, 'New-pass-123', now=self.now))
         self.assertEqual(self.consume(code).pk, self.user.pk)
-        self.assertTrue(utils.reset_password_from_token(self.request, self.user.username,
+        self.assertTrue(reset_utils.reset_password_from_token(self.request, self.user.username,
                                                         reset, 'New-pass-123', now=self.now))
 
     def test_cross_purpose_collision_is_retried_both_directions(self):
-        with patch('app.login_utils.secrets.randbelow', return_value=42):
+        with patch('app.auth_code_utils.secrets.randbelow', return_value=42):
             self.assertEqual(self.issue(), '000042')
-        with patch('app.utils.secrets.randbelow', side_effect=[42, 43]):
-            reset = utils.create_password_reset_token(self.request, self.user, now=self.now)
+        with patch('app.auth_code_utils.secrets.randbelow', side_effect=[42, 43]):
+            reset = reset_utils.create_password_reset_token(self.request, self.user, now=self.now)
         self.assertEqual(reset, '000043')
-        with patch('app.login_utils.secrets.randbelow', side_effect=[43, 44]):
+        with patch('app.auth_code_utils.secrets.randbelow', side_effect=[43, 44]):
             self.assertEqual(self.issue(), '000044')
 
     def test_reissue_and_replay(self):
@@ -57,7 +57,7 @@ class CodeLoginTests(TestCase):
 
     def test_expiry_and_password_change(self):
         code = self.issue()
-        self.assertIsNone(self.consume(code, now=self.now + timedelta(seconds=utils.PASSWORD_RESET_TOKEN_SECONDS)))
+        self.assertIsNone(self.consume(code, now=self.now + timedelta(seconds=code_utils.CODE_SECONDS)))
         self.user.set_password('Changed-pass-123')
         self.user.save(update_fields=['password'])
         self.assertIsNone(self.consume(code))
@@ -81,7 +81,7 @@ class CodeLoginTests(TestCase):
         for _ in range(3):
             self.issue()
         self.assertIsNone(login_utils.prepare_login_delivery(self.request, self.user.username, now=self.now))
-        self.assertFalse(utils.check_password_reset_request_rate(self.request, self.user.username, now=self.now))
+        self.assertFalse(code_utils.check_request_rate(self.request, self.user.username, now=self.now))
 
     def test_get_csrf_methods_and_separate_buttons(self):
         client = Client(enforce_csrf_checks=True)
@@ -136,7 +136,7 @@ class CodeLoginTests(TestCase):
 
     def test_cleanup(self):
         self.issue()
-        utils.cleanup_password_reset_state(now=self.now + timedelta(days=3))
+        code_utils.cleanup_code_state(now=self.now + timedelta(days=3))
         self.assertFalse(LoginChallenge.objects.exists())
 
     @patch('extern.wechat.send_wechat')
