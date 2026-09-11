@@ -31,6 +31,7 @@ from app.models import (
     ModifyRecord,
     PasswordResetChallenge,
     PasswordResetThrottle,
+    LoginChallenge,
 )
 
 
@@ -157,6 +158,7 @@ def cleanup_password_reset_state(
     with transaction.atomic():
         PasswordResetChallenge.objects.filter(
             expires_at__lt=cutoff).delete()
+        LoginChallenge.objects.filter(expires_at__lt=cutoff).delete()
         PasswordResetThrottle.objects.filter(
             Q(locked_until__isnull=True) | Q(locked_until__lte=now),
             window_started_at__lt=cutoff,
@@ -234,6 +236,8 @@ def create_password_reset_token(
     Delivery must be arranged after this operation commits. No plaintext code
     is persisted; retained digests also prevent reissuing a recent code.
     """
+    from app.login_utils import login_code_digest
+
     now = now or datetime.now()
     _, ip_address, device_identifier = _password_reset_context(
         request, user.username)
@@ -242,9 +246,9 @@ def create_password_reset_token(
         for _ in range(10):
             token = f'{secrets.randbelow(1_000_000):06d}'
             digest = _password_reset_code_digest(locked_user.pk, token)
-            if not PasswordResetChallenge.objects.filter(
-                token_digest=digest,
-            ).exists():
+            if (not PasswordResetChallenge.objects.filter(token_digest=digest).exists()
+                    and not LoginChallenge.objects.filter(
+                        token_digest=login_code_digest(locked_user.pk, token)).exists()):
                 break
         else:
             logger.error('Password-reset code generation exhausted retries')

@@ -130,6 +130,32 @@ body {
     font-size: 14px;
 }
 .form-form .form-form-wrap form .field-wrapper input:focus { border-bottom: 1px solid #1b55e2; box-shadow: none; }
+.form-form .form-form-wrap form .field-wrapper.input.login-password {
+    padding-bottom: 8px;
+}
+.form-form .form-form-wrap form .login-recovery {
+    display: flex;
+    justify-content: flex-end;
+    margin: 0 0 20px;
+}
+.form-form .form-form-wrap form .login-recovery a {
+    padding: 4px 0 4px 12px;
+    color: #68758a;
+    font-size: 13px;
+    line-height: 20px;
+    text-underline-offset: 4px;
+    transition: color 0.15s ease;
+}
+.form-form .form-form-wrap form .login-recovery a:hover,
+.form-form .form-form-wrap form .login-recovery a:focus-visible {
+    color: #1b55e2;
+    text-decoration: underline;
+}
+.form-form .form-form-wrap form .login-recovery a:focus-visible {
+    outline: 2px solid #1b55e2;
+    outline-offset: 3px;
+    border-radius: 2px;
+}
 .form-form .form-form-wrap form .field-wrapper {}
 .form-form .form-form-wrap form .field-wrapper.toggle-pass {
     align-self: center;

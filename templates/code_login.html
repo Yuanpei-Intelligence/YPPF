@@ -1,0 +1,47 @@
+{% extends "forget_password.html" %}
+{% block credential_script %}{% endblock %}
+{% block page_title %}验证码登录{% endblock %}
+{% block heading %}验证码登录{% endblock %}
+{% block auth_form %}
+<form class="text-left" method="post" id="login-code-form">
+    {% csrf_token %}
+    <div class="form">
+        <div class="field-wrapper input">
+            <div class="d-flex justify-content-between">
+                <label for="username">账户</label>
+            </div>
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-at-sign" aria-hidden="true"><circle cx="12" cy="12" r="4"></circle><path d="M16 8v5a3 3 0 0 0 6 0v-1a10 10 0 1 0-3.92 7.94"></path></svg>
+            <input id="username" name="username" class="form-control" value="{{ username|default:'' }}" placeholder="学号/工号" autocomplete="username" required maxlength="150">
+        </div>
+        <div class="field-wrapper">
+            <div class="btn-group btn-block">
+                <button type="button" class="btn btn-outline-primary dropdown-toggle" data-toggle="dropdown">发送登录验证码</button>
+                <div class="dropdown-menu">
+                    <button type="submit" name="action" value="wechat" class="dropdown-item" formnovalidate>企业微信</button>
+                    <button type="submit" name="action" value="email" class="dropdown-item" formnovalidate>个人邮箱</button>
+                </div>
+            </div>
+        </div>
+        <div class="field-wrapper input">
+            <label for="code">登录验证码</label>
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-lock" aria-hidden="true"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
+            <input id="code" name="code" class="form-control" placeholder="6位数字登录验证码" inputmode="numeric" autocomplete="one-time-code" maxlength="6">
+        </div>
+        <div class="field-wrapper">
+            <button type="submit" name="action" value="login" id="login-submit" class="btn btn-primary">登录</button>
+        </div>
+        {% if error %}<div class="alert alert-warning mt-3" role="alert">{{ error }}</div>{% endif %}
+        {% if message %}<div class="alert alert-success mt-3" role="status">{{ message }}</div>{% endif %}
+    </div>
+</form>
+{% endblock %}
+{% block form_script %}
+<script>
+    document.getElementById('login-code-form').addEventListener('keydown', function (event) {
+        if (event.key === 'Enter' && event.target.tagName === 'INPUT') {
+            event.preventDefault();
+            this.requestSubmit(document.getElementById('login-submit'));
+        }
+    });
+</script>
+{% endblock %}

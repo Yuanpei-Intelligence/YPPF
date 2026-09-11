@@ -90,9 +90,13 @@ def _deliver_password_reset_email(
     email: str,
     token: str,
 ) -> None:
+    _deliver_code_email(person_name, email, token, title='密码重置')
+
+
+def _deliver_code_email(person_name: str, email: str, token: str, *, title: str) -> None:
     message = (
         f"<h3><b>亲爱的{person_name}同学：</b></h3><br/>"
-        "您好！本次密码重置验证码为：<br/>"
+        f"您好！本次{title}验证码为：<br/>"
         f'<p style="color:orange">{token}</p>'
         f"验证码有效期为{CONFIG.password_reset_token_seconds}秒，"
         "只能使用一次；重新获取后旧码失效。<br/>"
@@ -102,7 +106,7 @@ def _deliver_password_reset_email(
     post_data = json.dumps({
         "sender": "元培学院开发组",
         "toaddrs": [email],
-        "subject": "YPPF密码重置",
+        "subject": f"YPPF{title}",
         "content": message,
         "html": True,
         "private_level": 0,

@@ -219,10 +219,11 @@ def send_wechat(
         )
 
 
-def send_verify_code(stu_id: str | int, captcha: str, url: str | None = '/forgetpw/'):
+def send_verify_code(stu_id: str | int, captcha: str, url: str | None = '/codeLogin/'):
+    """Send a LOGIN code synchronously; never persist credentials in scheduler jobs."""
     time = datetime.now().strftime('%m月%d日 %H:%M:%S')
     message = (
-        "您的账号正在进行企业微信验证\n本次请求的验证码为："
+        "您的账号正在登录\n本次登录验证码为："
         f"<div class=\"highlight\">{captcha}</div>"
         f"发送时间：{time}"
     )
@@ -230,7 +231,7 @@ def send_verify_code(stu_id: str | int, captcha: str, url: str | None = '/forget
     btntxt = "登录" if url is not None else None
     send_wechat([stu_id], 'YPPF登录验证', message,
                 card=True, url=url, btntxt=btntxt,
-                task_id=f'wechat_verify: {stu_id}')
+                multithread=False, raise_on_failure=True)
 
 
 def send_password_reset_token(stu_id: str | int, token: str):

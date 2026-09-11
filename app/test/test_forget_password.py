@@ -1074,7 +1074,7 @@ class ForgetPasswordViewTests(TestCase):
             "new_password": "Secure-pass-123",
             "confirm_password": "Secure-pass-123",
         })
-        self.assertContains(response, "凭证格式已更新，请重新获取验证码")
+        self.assertContains(response, "请输入6位数字验证码")
         challenge = models.PasswordResetChallenge.objects.get()
         self.assertIsNone(challenge.consumed_at)
         self.assertEqual(challenge.failed_attempts, 0)
@@ -1440,7 +1440,7 @@ class PasswordResetDeliveryTests(TestCase):
         args, kwargs = send_wechat.call_args
         self.assertIn(token, args[2])
         self.assertIn(
-            "只能使用一次；重新获取后旧码失效",
+            f"验证码有效期为{utils.CONFIG.password_reset_token_seconds}秒",
             args[2],
         )
         self.assertNotIn("十分钟", args[2])
