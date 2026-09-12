@@ -110,6 +110,10 @@ def require_contract(view_func):
         contract = BirthboardContract.objects.filter(user=request.user).first()
         if contract is None or not contract.signed:
             return redirect("birthboard_contract")
+        if contract.protocol_version and \
+                contract.protocol_version != CONFIG.protocol_version:
+            # 协议更新后需重新签署（protocol_version=0 为历史签署，豁免）
+            return redirect("birthboard_contract")
         return view_func(request, *args, **kwargs)
     return wrapper
 
@@ -603,7 +607,10 @@ def birthboard_contract(request):
     return render(
         request,
         "birthboard/contract.html",
-        {"contract_signed": bool(contract and contract.signed)},
+        {"contract_signed": bool(
+            contract and contract.signed
+            and (not contract.protocol_version
+                 or contract.protocol_version == CONFIG.protocol_version))},
     )
 
 
@@ -618,7 +625,8 @@ def birthboard_sign_contract(request):
     contract, _ = BirthboardContract.objects.get_or_create(user=request.user)
     contract.signed = True
     contract.signed_at = datetime.now()
-    contract.save(update_fields=["signed", "signed_at"])
+    contract.protocol_version = CONFIG.protocol_version
+    contract.save(update_fields=["signed", "signed_at", "protocol_version"])
     return JsonResponse({"ok": True})
 
 
@@ -640,9 +648,15 @@ def birthboard_like_count(request):
 @check_user_access(redirect_url="/logout/")
 @require_http_methods(["POST"])
 def birthboard_like_add(request):
-    """制作名单点赞接口：累计点赞量 +1，返回新值。"""
+    """制作名单点赞接口：累计点赞量 +1，返回新值；按用户+日限流。"""
+    today = datetime.now().date()
+    rate_key = f'birthboard_like:{request.user.pk}:{today.isoformat()}'
+    count_today = cache.get(rate_key) or 0
+    if count_today >= CONFIG.like_daily_limit:
+        return JsonResponse({'ok': False, 'msg': '今日点赞次数已达上限'}, status=429)
     like, _ = BirthboardLike.objects.get_or_create(pk=1)
     BirthboardLike.objects.filter(pk=like.pk).update(count=F("count") + 1)
+    cache.set(rate_key, count_today + 1, timeout=86400)
     like.refresh_from_db()
     return JsonResponse({"count": like.count})
 
@@ -791,7 +805,7 @@ def birthboard(request):
                 })
             # 校验图片尺寸
             width, height = get_image_dimensions(image)
-            if width != 1920 or height != 1080:
+            if width is None or height is None or width != 1920 or height != 1080:
                 messages.error(request, "图片不符合要求，需1920x1080")
                 current_user_id = str(request.user.username)
                 return render(request, "birthboard/birthboard.html", {"form": form, "users": users, "json_context": json_context, "contact_email": contact_email, "contributor_orgs": contributor_orgs, "template_download_url": template_download_url, "current_user_id": current_user_id, "confirm_tab_total_count": _get_confirm_tab_total_count(request, request.user), "today_entry_reminders": today_entry_reminders, "birthboard_date_rule": birthboard_date_rule_json})

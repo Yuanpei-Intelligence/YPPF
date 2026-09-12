@@ -2,7 +2,7 @@ from django import forms
 from django.contrib.auth import get_user_model
 
 from birthboard.config import CONFIG
-from birthboard.models import BirthboardRejectedIssue
+from birthboard.models import BirthboardRecord, BirthboardRejectedIssue
 
 User = get_user_model()
 
@@ -57,6 +57,32 @@ class BirthboardForm(forms.Form):
             limit_mb = CONFIG.max_image_bytes // (1024 * 1024)
             raise forms.ValidationError(f'图片大小不能超过 {limit_mb} MB。')
         return image
+
+    def clean(self):
+        """限制同一寿星同一天的投放条数（防止一人一天占满播出单）。"""
+        cleaned = super().clean()
+        receiver = cleaned.get('receiver')
+        date = cleaned.get('date')
+        if not receiver or not date:
+            return cleaned
+        active_statuses = [
+            BirthboardRecord.Status.WAITING_CONFIRM,
+            BirthboardRecord.Status.WAITING_RECEIVER,
+            BirthboardRecord.Status.WAITING_APPROVE,
+            BirthboardRecord.Status.READY,
+            BirthboardRecord.Status.ONGOING,
+        ]
+        count = BirthboardRecord.objects.filter(
+            receiver_username=receiver.username,
+            date=date,
+            status__in=active_statuses,
+        ).count()
+        if count >= CONFIG.max_per_receiver_per_date:
+            raise forms.ValidationError(
+                f'该用户同一天已有 {CONFIG.max_per_receiver_per_date} 条投放，'
+                '无法继续提交。'
+            )
+        return cleaned
 
 
 class BirthboardRejectForm(forms.Form):

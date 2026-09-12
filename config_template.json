@@ -135,6 +135,14 @@
         "max_senders": 20,
         "sender_username": "yppf_birthboard",
         "sender_name": "生日灯牌",
+        "display_lock_timeout": 120,
+        "display_lock_heartbeat": 30,
+        "not_found_as_success": true,
+        "takedown_max_failures": 5,
+        "max_per_receiver_per_date": 1,
+        "like_daily_limit": 1,
+        "batch_atomic": false,
+        "protocol_version": 1,
         "contributor_orgs": [
             {
                 "name": "叁拾伍圆设计实验室",

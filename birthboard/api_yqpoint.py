@@ -7,6 +7,7 @@ from django.views.decorators.csrf import csrf_protect
 from django.views.decorators.http import require_POST
 
 from app.utils import check_user_access
+from birthboard.config import CONFIG
 from birthboard.models import BirthboardRecord
 from birthboard.utils import calculate_per_cost
 
@@ -60,6 +61,8 @@ def check_yqpoint(request):
             except (TypeError, ValueError):
                 sender_count = None
             divisor = sender_count if sender_count and sender_count > 0 else 1
+            # 无 record_id 时，人数仅在合法范围内参与计算，避免被客户端随意放大
+            divisor = max(1, min(divisor, CONFIG.max_senders))
             per = calculate_per_cost(mode, divisor)
 
         user = request.user

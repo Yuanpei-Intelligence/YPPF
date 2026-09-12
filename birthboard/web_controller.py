@@ -9,11 +9,12 @@ from pathlib import Path
 import sys
 from typing import Any
 from time import perf_counter
-import logging
 
-from birthboard.config import shihannet
+from record.log.utils import get_logger
 
-logger = logging.getLogger(__name__)
+from birthboard.config import CONFIG, shihannet
+
+logger = get_logger(__name__)
 
 def _step_result(ok, retryable=False, pending=None, result=None, error=None):
     return {
@@ -33,12 +34,12 @@ def _solve_captcha(page, ocr, max_retry=6):
             img_bytes = captcha_img.screenshot(timeout=3000)
             raw_code = ocr.classification(img_bytes)
             code = re.sub(r"\D", "", raw_code)
-            print(f"识别原始: {raw_code} -> 纯数字: {code}")
+            logger.info('识别原始: %s -> 纯数字: %s', raw_code, code)
             if len(code) == 4:
                 return code
-            print(f"验证码长度不对，刷新重试 {retry + 1}/{max_retry}")
+            logger.warning('验证码长度不对，刷新重试 %s/%s', retry + 1, max_retry)
         except Exception:
-            print(f"验证码加载失败 {retry + 1}/{max_retry}")
+            logger.warning('验证码加载失败 %s/%s', retry + 1, max_retry)
 
         page.locator("img#safecode").click()
         page.wait_for_timeout(1000)
@@ -66,7 +67,7 @@ def open_and_login(playwright, url, username, password, max_login_retry=5):
     for attempt in range(1, max_login_retry + 1):
         browser = None
         try:
-            print(f"\n===== 开始登录（第 {attempt}/{max_login_retry} 次）=====")
+            logger.info('===== 开始登录（第 %s/%s 次）=====', attempt, max_login_retry)
             browser = playwright.chromium.launch(
                 headless=shihannet.headless,
                 slow_mo=shihannet.slow_mo_ms,
@@ -97,7 +98,7 @@ def open_and_login(playwright, url, username, password, max_login_retry=5):
             if error_popup.is_visible(timeout=1500):
                 raise RuntimeError("验证码错误弹窗")
 
-            print("登录成功")
+            logger.info('登录成功')
             # 登录成功后点击左侧树节点的展开箭头（原 #ext-gen1105 为动态 id），
             # 改为定位左侧树中可见的展开图标。
             tree_elbow = page.locator(
@@ -109,7 +110,7 @@ def open_and_login(playwright, url, username, password, max_login_retry=5):
                 pass
             return browser, page
         except Exception as error:
-            print(f"登录失败: {error}")
+            logger.warning('登录失败: %s', error)
             if browser is not None:
                 try:
                     browser.close()
@@ -515,9 +516,13 @@ def upload_material(page, image_path):
     # 上传确认按钮：取最后一个“上传”按钮（通常是当前上传弹窗的确认）。
     _safe_click(media_frame.get_by_role("button", name="上传").last, "上传确认按钮(角色)", page, timeout=2500)
 
-    _safe_click(media_frame.locator(".x-tool-close").first, "上传弹窗关闭按钮", page, timeout=1500)
+    closed = _safe_click(media_frame.locator(".x-tool-close").first, "上传弹窗关闭按钮", page, timeout=1500)
     _close_visible_popup(media_frame, page)
     print(f"素材上传完成: {image_path}")
+    if not closed:
+        logger.warning(
+            '[web_controller] upload popup close failed: %s', image_path)
+        return _step_result(False, retryable=True, error="上传弹窗关闭失败")
     return _step_result(True, result=image_path)
 
 def delete_material(page, image_name):
@@ -611,18 +616,25 @@ def delete_material(page, image_name):
             print(f"未找到可删除素材: {filename}")
             not_matched.append(name)
 
-    if len(not_matched) > 0:
-        print("有未匹配到素材：" + ", ".join(not_matched))
-        if len(not_matched) == len(names):
+    if not_matched:
+        if CONFIG.not_found_as_success:
+            for n in not_matched:
+                logger.info('[web_controller] delete_material not_found_as_success: %s', n)
+        elif len(not_matched) == len(names):
             return _step_result(False, retryable=True, pending=not_matched, result=not_matched, error="有未匹配到素材")
+
+    if not selected_rows:
+        # 没有任何匹配行：按「未找到即下架成功」语义视为目标已不在屏上
+        if CONFIG.not_found_as_success:
+            logger.info('[web_controller] delete_material nothing matched, treat as success')
+            return _step_result(True, result=image_name)
+        return _step_result(False, retryable=True, error="未找到可删除素材")
 
     # 删除按钮：按文本“删除”定位，不再依赖动态 id。
     _safe_click(frame.get_by_role("button", name="删除").first, "删除按钮(角色)", page, timeout=2500)
     frame.get_by_role("button", name="是").click()
     frame.get_by_role("button", name="确定").click()
     print(f"素材删除完成: {image_name}")
-    if len(not_matched) > 0:
-        return _step_result(False, retryable=True, pending=not_matched, result=not_matched, error="有未匹配到素材")
     return _step_result(True, result=image_name)
 
 # def build_playlist(page, image_name, date):
@@ -1172,12 +1184,20 @@ def delete_playlist(page, image_name, playlist_name="0-1点生日三联", debug=
             _dbg(f"素材未命中: {filename}")
             not_matched.append(filename)
 
-    if len(not_matched) > 0:
-        print("有未匹配到的删除素材："+", ".join(not_matched))
-        if len(not_matched) == len(names):
+    if not_matched:
+        if CONFIG.not_found_as_success:
+            for n in not_matched:
+                logger.info('[web_controller] delete_playlist not_found_as_success: %s', n)
+        elif len(not_matched) == len(names):
             page.locator("[id=\"42-tab\"]").content_frame.get_by_role("button", name="返回").click()
             return _step_result(False, retryable=True, pending=not_matched, result=not_matched, error="有未匹配到素材")
-   
+
+    if not selected_rows:
+        if CONFIG.not_found_as_success:
+            logger.info('[web_controller] delete_playlist nothing matched, treat as success')
+            return _step_result(True, result=image_name)
+        return _step_result(False, retryable=True, error="未找到播出单素材")
+
     print(f"已选中播出单素材行数: {len(selected_rows)}")
 
     if page.is_closed():
@@ -1203,8 +1223,6 @@ def delete_playlist(page, image_name, playlist_name="0-1点生日三联", debug=
         return _step_result(False, retryable=True, error="保存按钮点击失败")
     _click_optional_confirm(page, play_frame, max_clicks=2)
     print(f"播出单素材删除完成: {image_name}")
-    if len(not_matched) > 0:
-        return _step_result(False, retryable=True, pending=not_matched, result=not_matched, error="有未匹配到素材")
     return _step_result(True, result=image_name)
 
 def update_list(page, up_image_name=None, del_image_name=None):
@@ -1388,12 +1406,12 @@ def _run_step_with_restart(playwright, browser, page, url, username, password, l
     while attempt <= max_retries:
         step_start = perf_counter()
         try:
-            print(f"开始步骤: {label}（第 {attempt}/{max_retries} 次）")
+            logger.info('开始步骤: %s（第 %s/%s 次）', label, attempt, max_retries)
             result = func(page, *current_args)
         except Exception as e:
             outcome = _step_failed(label, e)
             elapsed = perf_counter() - step_start
-            print(f"步骤失败[{label}]，耗时 {_format_seconds(elapsed)}: {outcome.error}")
+            logger.warning('步骤失败[%s]，耗时 %s: %s', label, _format_seconds(elapsed), outcome.error)
             if attempt >= max_retries:
                 return browser, page, outcome
             browser, page = _restart_browser(playwright, browser, url, username, password)
@@ -1403,16 +1421,16 @@ def _run_step_with_restart(playwright, browser, page, url, username, password, l
         outcome = _normalize_step_result(label, result)
         if outcome.ok:
             elapsed = perf_counter() - step_start
-            print(f"步骤成功[{label}]，耗时 {_format_seconds(elapsed)}")
+            logger.info('步骤成功[%s]，耗时 %s', label, _format_seconds(elapsed))
             return browser, page, outcome
 
         if outcome.retryable and outcome.pending:
             elapsed = perf_counter() - step_start
-            print(f"步骤未完全完成[{label}]，耗时 {_format_seconds(elapsed)}，剩余: {', '.join(outcome.pending)}")
+            logger.warning('步骤未完全完成[%s]，耗时 %s，剩余: %s', label, _format_seconds(elapsed), ', '.join(outcome.pending))
             current_args = (outcome.pending,) + current_args[1:]
         else:
             elapsed = perf_counter() - step_start
-            print(f"步骤未达到预期效果[{label}]，耗时 {_format_seconds(elapsed)}，返回值: {outcome.result}")
+            logger.warning('步骤未达到预期效果[%s]，耗时 %s，返回值: %s', label, _format_seconds(elapsed), outcome.result)
 
         if attempt >= max_retries:
             return browser, page, outcome

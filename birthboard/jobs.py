@@ -1,5 +1,7 @@
 from datetime import timedelta, datetime
 import os
+import threading
+import time
 import uuid
 
 from django.db import transaction
@@ -21,6 +23,7 @@ from birthboard.notify import (
     notify_broadcast_ended,
     notify_broadcast_ending_soon,
 )
+from birthboard.config import CONFIG
 
 logger = bb_get_logger(__name__)
 
@@ -61,28 +64,73 @@ def _get_abs_image_path(image_field) -> str | None:
     return os.path.abspath(name)
 
 
-def _acquire_update_lock(timeout: int = 60 * 60) -> str | None:
-    """Acquire the cross-process display lock without replacing its owner."""
+# 锁持有期间的心跳线程句柄：token -> threading.Event，释放时置位并回收。
+_lock_heartbeat_stops: dict = {}
+
+
+def _lock_payload(token: str) -> dict:
+    return {'token': token, 'ts': time.time()}
+
+
+def _lock_is_stale(payload, timeout: int) -> bool:
+    """判断锁是否已过期可回收；无法解析（旧版 True/字符串）视为仍有效。"""
+    if not isinstance(payload, dict) or 'ts' not in payload:
+        return False
+    return time.time() - float(payload['ts']) > timeout
+
+
+def _lock_heartbeat_loop(token: str, stop, timeout: int) -> None:
+    interval = max(1, min(int(CONFIG.display_lock_heartbeat), timeout // 2 or 1))
+    while not stop.wait(interval):
+        try:
+            cur = cache.get(_BB_UPDATE_LOCK_KEY)
+            if isinstance(cur, dict) and cur.get('token') == token:
+                cache.set(_BB_UPDATE_LOCK_KEY, _lock_payload(token), timeout=timeout)
+        except Exception:
+            logger.exception(
+                '[birthboard.jobs] display lock heartbeat failed token=%s', token)
+
+
+def _acquire_update_lock(timeout: int | None = None) -> str | None:
+    """跨进程投屏锁：token + 时间戳 + 心跳续期，持有者崩溃或超时后可被回收。"""
+    timeout = timeout or int(CONFIG.display_lock_timeout)
     token = uuid.uuid4().hex
     try:
-        if cache.add(_BB_UPDATE_LOCK_KEY, token, timeout=timeout):
-            return token
+        existing = cache.get(_BB_UPDATE_LOCK_KEY)
+        if existing is not None and not _lock_is_stale(existing, timeout):
+            return None
+        if existing is not None:
+            # 过期锁回收（旧持有者崩溃/未释放）
+            cache.delete(_BB_UPDATE_LOCK_KEY)
+            logger.warning(
+                '[birthboard.jobs] reclaimed stale display lock token=%s', token)
+        if not cache.add(_BB_UPDATE_LOCK_KEY, _lock_payload(token), timeout=timeout):
+            return None
+        stop = threading.Event()
+        _lock_heartbeat_stops[token] = stop
+        threading.Thread(
+            target=_lock_heartbeat_loop, args=(token, stop, timeout),
+            daemon=True, name='birthboard-display-lock-heartbeat',
+        ).start()
+        return token
     except Exception:
         logger.exception(
-            '[birthboard.jobs] failed to acquire display update lock'
-        )
-    return None
+            '[birthboard.jobs] failed to acquire display update lock')
+        return None
 
 
 def _release_update_lock(token: str) -> None:
-    """Release the display lock only when this process still owns it."""
+    """释放锁：只删除自己持有的 token，并回收心跳线程。"""
+    stop = _lock_heartbeat_stops.pop(token, None)
+    if stop is not None:
+        stop.set()
     try:
-        if cache.get(_BB_UPDATE_LOCK_KEY) == token:
+        cur = cache.get(_BB_UPDATE_LOCK_KEY)
+        if isinstance(cur, dict) and cur.get('token') == token:
             cache.delete(_BB_UPDATE_LOCK_KEY)
     except Exception:
         logger.exception(
-            '[birthboard.jobs] failed to release display update lock'
-        )
+            '[birthboard.jobs] failed to release display update lock')
 
 
 def _get_mode_duration_days(record: BirthboardRecord) -> int:
@@ -120,6 +168,27 @@ def attempt_pending_takedown(record_id: int) -> bool:
         _release_update_lock(lock_token)
 
 
+def _register_takedown_failure(record_id: int) -> None:
+    """下架失败计数 +1；达到阈值后打告警并停止自动重试。"""
+    max_fail = int(CONFIG.takedown_max_failures)
+    with transaction.atomic():
+        rec = BirthboardRecord.objects.select_for_update().filter(
+            pk=record_id).first()
+        if rec is None:
+            return
+        rec.takedown_fail_count = (rec.takedown_fail_count or 0) + 1
+        rec.save(update_fields=['takedown_fail_count'])
+        count = rec.takedown_fail_count
+    if max_fail > 0 and count >= max_fail:
+        logger.error(
+            '[birthboard.jobs] pending takedown exceeded max failures, '
+            'stopping auto retry record_id=%s failures=%s', record_id, count)
+    else:
+        logger.warning(
+            '[birthboard.jobs] display takedown incomplete record_id=%s '
+            'failures=%s', record_id, count)
+
+
 def _attempt_pending_takedown(record_id: int) -> bool:
     """Try to remove a rejected/revoked active image from every display list.
 
@@ -138,6 +207,7 @@ def _attempt_pending_takedown(record_id: int) -> bool:
             '[birthboard.jobs] pending takedown has no image record_id=%s',
             record_id,
         )
+        _register_takedown_failure(record_id)
         return False
 
     from playwright.sync_api import sync_playwright
@@ -169,6 +239,7 @@ def _attempt_pending_takedown(record_id: int) -> bool:
             '[birthboard.jobs] display takedown failed record_id=%s',
             record_id,
         )
+        _register_takedown_failure(record_id)
         return False
     finally:
         if browser is not None:
@@ -181,10 +252,7 @@ def _attempt_pending_takedown(record_id: int) -> bool:
                 )
 
     if not getattr(outcome, 'ok', False):
-        logger.error(
-            '[birthboard.jobs] display takedown incomplete record_id=%s',
-            record_id,
-        )
+        _register_takedown_failure(record_id)
         return False
 
     with transaction.atomic():
@@ -193,7 +261,9 @@ def _attempt_pending_takedown(record_id: int) -> bool:
         )
         if locked_record.display_takedown_pending:
             locked_record.display_takedown_pending = False
-            locked_record.save(update_fields=['display_takedown_pending'])
+            locked_record.takedown_fail_count = 0
+            locked_record.save(update_fields=[
+                'display_takedown_pending', 'takedown_fail_count'])
     return True
 
 
@@ -204,11 +274,12 @@ def _attempt_pending_takedown(record_id: int) -> bool:
 )
 def birthboard_retry_pending_takedowns():
     """Retry durable display takedowns that did not complete immediately."""
-    record_ids = list(
-        BirthboardRecord.objects.filter(display_takedown_pending=True)
-        .order_by('id')
-        .values_list('id', flat=True)
-    )
+    max_fail = int(CONFIG.takedown_max_failures)
+    qs = BirthboardRecord.objects.filter(display_takedown_pending=True)
+    if max_fail > 0:
+        # 连续失败达到阈值后停止自动重试，避免长期咬死锁
+        qs = qs.exclude(takedown_fail_count__gte=max_fail)
+    record_ids = list(qs.order_by('id').values_list('id', flat=True))
     for record_id in record_ids:
         attempt_pending_takedown(record_id)
 

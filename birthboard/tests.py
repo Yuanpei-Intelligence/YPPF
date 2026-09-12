@@ -7,6 +7,7 @@ from django.core.management import call_command
 from django.urls import reverse
 
 import os
+import time
 from datetime import datetime, timedelta
 from unittest.mock import patch
 
@@ -862,10 +863,25 @@ class BirthboardLikeTests(TestCase):
 
 	def test_like_add_increments_and_accumulates(self):
 		"""点赞接口每次 +1，并跨请求累积。"""
+		from datetime import date
+		rate_key = f"birthboard_like:{self.user.pk}:{date.today().isoformat()}"
+		cache.delete(rate_key)
 		self.assertEqual(self.client.post("/birthboard/api/like_add/").json()["count"], 1)
+		cache.delete(rate_key)  # 每用户每日限流，清掉以验证全局累积
 		self.assertEqual(self.client.post("/birthboard/api/like_add/").json()["count"], 2)
 		resp = self.client.get("/birthboard/api/like_count/")
 		self.assertEqual(resp.json()["count"], 2)
+
+	def test_like_add_rate_limited_per_user_per_day(self):
+		"""每用户每日只能点一次赞，第二次应被限流。"""
+		from datetime import date
+		rate_key = f"birthboard_like:{self.user.pk}:{date.today().isoformat()}"
+		cache.delete(rate_key)
+		first = self.client.post("/birthboard/api/like_add/")
+		self.assertEqual(first.status_code, 200)
+		second = self.client.post("/birthboard/api/like_add/")
+		self.assertEqual(second.status_code, 429)
+		self.assertFalse(second.json()["ok"])
 
 	def test_like_requires_login(self):
 		"""未登录访问点赞接口应被重定向。"""
@@ -1569,3 +1585,51 @@ class BirthboardNotifySenderTests(TestCase):
             title='生日祝福投放待初审', receiver=user_a).exists())
         self.assertFalse(Notification.objects.filter(
             title='生日祝福投放待初审', receiver=user_b).exists())
+
+
+class BirthboardTakedownLockTests(TestCase):
+    """P0：投屏锁可回收、pending 下架熔断。"""
+
+    def test_acquire_lock_and_release(self):
+        cache.delete(bb_jobs._BB_UPDATE_LOCK_KEY)
+        token = bb_jobs._acquire_update_lock()
+        self.assertIsNotNone(token)
+        # 同进程再抢不到
+        self.assertIsNone(bb_jobs._acquire_update_lock())
+        bb_jobs._release_update_lock(token)
+        self.assertIsNone(cache.get(bb_jobs._BB_UPDATE_LOCK_KEY))
+
+    def test_stale_lock_is_reclaimed(self):
+        cache.delete(bb_jobs._BB_UPDATE_LOCK_KEY)
+        # 写入一个已过期的旧锁
+        cache.set(bb_jobs._BB_UPDATE_LOCK_KEY,
+                  {'token': 'dead', 'ts': time.time() - 3600}, timeout=300)
+        token = bb_jobs._acquire_update_lock(timeout=120)
+        self.assertIsNotNone(token)
+        cur = cache.get(bb_jobs._BB_UPDATE_LOCK_KEY)
+        self.assertEqual(cur['token'], token)
+        bb_jobs._release_update_lock(token)
+
+    def test_register_takedown_failure_increments_and_stops_after_max(self):
+        from birthboard.models import BirthboardRecord
+        record = BirthboardRecord.objects.create(
+            receiver_username='tkd_recv',
+            receiver_name='Receiver',
+            date=timezone.now().date() + timedelta(days=3),
+            mode=0,
+            per_cost=10,
+            image=SimpleUploadedFile('t.jpg', b'fake', content_type='image/jpeg'),
+        )
+        for _ in range(int(bb_jobs.CONFIG.takedown_max_failures)):
+            bb_jobs._register_takedown_failure(record.id)
+        record.refresh_from_db()
+        self.assertEqual(
+            record.takedown_fail_count,
+            int(bb_jobs.CONFIG.takedown_max_failures))
+        # 达到阈值后，重试任务应跳过该记录
+        record.display_takedown_pending = True
+        record.save(update_fields=['display_takedown_pending'])
+        max_fail = int(bb_jobs.CONFIG.takedown_max_failures)
+        qs = BirthboardRecord.objects.filter(display_takedown_pending=True)
+        qs = qs.exclude(takedown_fail_count__gte=max_fail)
+        self.assertFalse(qs.filter(id=record.id).exists())

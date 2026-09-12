@@ -77,11 +77,13 @@ class BirthboardRecordAdmin(admin.ModelAdmin):
         "status",
         "per_cost",
         "is_anonymous",
+        "display_takedown_pending",
+        "takedown_fail_count",
         "thumbnail_preview",
         "created_at",
     )
     list_display_links = ("id", "receiver_name")
-    list_filter = ("status", "date", "is_anonymous")
+    list_filter = ("status", "date", "is_anonymous", "display_takedown_pending")
     search_fields = ("receiver_name", "receiver_username", "id")
     date_hierarchy = "date"
     # 详情页同时内联展示参与者明细与变更审计记录（只读）

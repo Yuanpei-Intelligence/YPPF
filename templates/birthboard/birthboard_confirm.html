@@ -90,7 +90,7 @@
                     <span class="textLb">发起人</span>&thinsp;{{ activity.senders.0.user.get_full_name|default:activity.senders.0.user.username }}&thinsp;<span class="textLb">人均元气值</span>&thinsp;{{ activity.per_cost }}&thinsp;<span class="textLb">{% if activity.is_anonymous %}匿名{% else %}实名{% endif %}</span>
                 </div>
                 {% endif %}
-                {% if activity.is_receiver and not activity.is_anonymous or activity.senders %}
+                {% if activity.is_sender or activity.is_receiver and not activity.is_anonymous %}
                 <table class="lddq" style="width:100%; border-collapse:collapse;">
                     <colgroup>
                         <col style="width: 30%;">
