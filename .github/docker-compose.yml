@@ -38,6 +38,7 @@ services:
     working_dir: /workspace
     environment:
       - YPPF_DEBUG=true
+      - PLAYWRIGHT_BROWSERS_PATH=/ms-playwright
     depends_on:
       mysql:
         condition: service_healthy
@@ -50,6 +51,7 @@ services:
   yppf:
     image: yppf_local
     tty: true
+    shm_size: "1gb"
     depends_on:
       mysql:
         condition: service_healthy
@@ -64,6 +66,7 @@ services:
       - DB_PASSWORD=secret
       - DB_DATABASE=yppf
       - YPPF_DEBUG=true
+      - PLAYWRIGHT_BROWSERS_PATH=/ms-playwright
     volumes:
       - ../:/workspace
     command: python3 manage.py runserver
@@ -76,11 +79,13 @@ services:
 
   scheduler:
     image: yppf_local
+    shm_size: "1gb"
     volumes:
       - ../:/workspace
     working_dir: /workspace
     environment:
       - YPPF_DEBUG=true
+      - PLAYWRIGHT_BROWSERS_PATH=/ms-playwright
     depends_on:
       mysql:
         condition: service_healthy
