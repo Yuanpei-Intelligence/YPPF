@@ -228,6 +228,11 @@ Use the following decision rules:
   administrator relationship matters. Do not trust a client-supplied
   username, `account_id`, or other JWT display claim as the authorization
   decision by itself.
+- Endpoints of a feature that is still being rolled out add
+  `rollout.permissions.feature_permission('<key>')` after `IsAuthenticated`.
+  An authenticated account without access receives HTTP 403 with
+  `{"code": "feature_not_enabled", "message": ..., "errors": {}, "feature": "<key>"}`;
+  unauthenticated requests still receive 401. See `rollout/README.md`.
 - Reserve `TicketAuthentication` for the `/redirect/` WebView bridge and
   reserve `signed_openid` for `/wx/bind/`. `signed_openid` is a signed random
   versioned, purpose-bound nonce backed by a digest-only pending row;

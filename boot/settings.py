@@ -73,6 +73,7 @@ INSTALLED_APPS = [
     "dormitory",
     "feedback",
     "achievement",
+    "rollout",
 ]
 
 
@@ -103,6 +104,8 @@ TEMPLATES = [
                 "django.contrib.auth.context_processors.auth",
                 "django.contrib.messages.context_processors.messages",
                 "django.template.context_processors.media",
+                # Lazy: queries only when a template reads rollout_features.
+                "rollout.context_processors.rollout_features",
             ],
         },
     },
