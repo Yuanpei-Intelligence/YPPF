@@ -1,6 +1,8 @@
 """
 Tests for feedback API.
 """
+from unittest import mock
+
 from django.test import TestCase
 from django.urls import reverse
 from rest_framework.test import APIClient, APITestCase
@@ -9,6 +11,8 @@ from rest_framework import status as http_status
 from generic.models import User
 from app.models import NaturalPerson, Organization, OrganizationType
 from feedback.models import FeedbackType, Feedback
+from rollout.config import CONFIG as rollout_config
+from rollout.models import Feature
 
 
 class FeedbackAPITestCase(APITestCase):
@@ -423,3 +427,210 @@ class FeedbackAPITestCase(APITestCase):
             "publisher_public",
         ):
             self.assertIn(field, data, f"Field '{field}' missing in response")
+
+
+class PreviewFeedbackAPITestCase(APITestCase):
+    """Feedback about an experimental feature must reach the configured group."""
+
+    def setUp(self):
+        self.client = APIClient()
+        self.person_user = User.objects.create_user(
+            username="preview_feedback_person",
+            name="体验用户",
+            usertype=User.Type.STUDENT,
+            password="testpass123",
+        )
+        self.person = NaturalPerson.objects.create(self.person_user, name="体验用户")
+        teacher_user = User.objects.create_user(
+            username="preview_feedback_teacher",
+            name="负责老师",
+            usertype=User.Type.TEACHER,
+            password="testpass123",
+        )
+        teacher = NaturalPerson.objects.create(
+            teacher_user, name="负责老师", identity=NaturalPerson.Identity.TEACHER
+        )
+        self.org_type = OrganizationType.objects.create(
+            otype_id=101,
+            otype_name="项目组类型",
+            incharge=teacher,
+            job_name_list=["成员"],
+        )
+        project_user = User.objects.create_user(
+            username="preview_feedback_project",
+            name="项目组",
+            usertype=User.Type.ORG,
+            password="testpass123",
+        )
+        self.org = Organization.objects.create(
+            organization_id=project_user,
+            oname=rollout_config.feedback_org_name,
+            otype=self.org_type,
+        )
+        other_user = User.objects.create_user(
+            username="preview_feedback_other",
+            name="其他小组",
+            usertype=User.Type.ORG,
+            password="testpass123",
+        )
+        self.other_org = Organization.objects.create(
+            organization_id=other_user, oname="其他小组", otype=self.org_type
+        )
+        self.preview_type = FeedbackType.objects.create(
+            id=11,
+            name=rollout_config.feedback_type_name,
+            org_type=self.org_type,
+            org=self.org,
+            flexible=FeedbackType.Flexible.ALL_DEFAULT,
+        )
+        FeedbackType.objects.create(
+            id=12,
+            name="普通反馈",
+            org_type=self.org_type,
+            org=self.other_org,
+            flexible=FeedbackType.Flexible.ALL_DEFAULT,
+        )
+        Feature.objects.create(key="grades", name="我的成绩", stage=Feature.Stage.PREVIEW)
+
+        notification = mock.patch("api.feedback.views.make_relevant_notification")
+        notification.start()
+        self.addCleanup(notification.stop)
+
+        self.client.force_authenticate(user=self.person_user)
+        self.list_url = reverse("api:feedback:feedback-list")
+
+    def _payload(self, **overrides):
+        payload = {
+            "type": rollout_config.feedback_type_name,
+            "title": "成绩页显示错位",
+            "content": "第二学期的成绩没有对齐",
+            "otype": self.org_type.otype_name,
+            "org": rollout_config.feedback_org_name,
+            "publisher_public": False,
+            "post_type": "directly_submit",
+            "feature_key": "grades",
+            "client_info": {
+                "platform": "mp-weixin",
+                "env_version": "release",
+                "app_version": "1.4.0",
+            },
+        }
+        payload.update(overrides)
+        return payload
+
+    def test_preview_feedback_records_feature_and_client(self):
+        response = self.client.post(self.list_url, self._payload(), format="json")
+        self.assertEqual(response.status_code, http_status.HTTP_201_CREATED, response.data)
+        self.assertEqual(response.data["feature_key"], "grades")
+
+        feedback = Feedback.objects.get(pk=response.data["id"])
+        self.assertEqual(feedback.feature_key, "grades")
+        self.assertEqual(feedback.client_info["env_version"], "release")
+        self.assertEqual(feedback.type, self.preview_type)
+        self.assertEqual(feedback.org, self.org)
+        self.assertFalse(feedback.publisher_public)
+
+    def test_unknown_feature_key_is_rejected(self):
+        response = self.client.post(
+            self.list_url, self._payload(feature_key="missing"), format="json")
+        self.assertEqual(response.status_code, http_status.HTTP_400_BAD_REQUEST)
+        self.assertIn("feature_key", response.data)
+
+    def test_preview_feedback_to_another_group_is_rejected(self):
+        response = self.client.post(
+            self.list_url, self._payload(org="其他小组"), format="json")
+        self.assertEqual(response.status_code, http_status.HTTP_400_BAD_REQUEST)
+        self.assertIn("org", response.data)
+        self.assertFalse(Feedback.objects.exists())
+
+    def test_preview_feedback_with_another_type_is_rejected(self):
+        response = self.client.post(
+            self.list_url, self._payload(type="普通反馈"), format="json")
+        self.assertEqual(response.status_code, http_status.HTTP_400_BAD_REQUEST)
+        self.assertIn("type", response.data)
+
+    def test_client_info_is_bounded(self):
+        invalid_values = [
+            {f"key{index}": "value" for index in range(9)},
+            {"k" * 33: "value"},
+            {"page": "p" * 129},
+        ]
+        for client_info in invalid_values:
+            with self.subTest(client_info=client_info):
+                response = self.client.post(
+                    self.list_url, self._payload(client_info=client_info), format="json")
+                self.assertEqual(response.status_code, http_status.HTTP_400_BAD_REQUEST)
+                self.assertIn("client_info", response.data)
+
+    def test_regular_feedback_is_unaffected(self):
+        payload = self._payload(type="普通反馈", org="其他小组")
+        del payload["feature_key"]
+        del payload["client_info"]
+        response = self.client.post(self.list_url, payload, format="json")
+        self.assertEqual(response.status_code, http_status.HTTP_201_CREATED, response.data)
+        feedback = Feedback.objects.get(pk=response.data["id"])
+        self.assertEqual(feedback.feature_key, "")
+        self.assertEqual(feedback.client_info, {})
+
+    def test_submitting_a_preview_draft_checks_routing(self):
+        draft = Feedback.objects.create(
+            type=self.preview_type,
+            title="草稿标题",
+            content="草稿内容",
+            person=self.person,
+            org_type=self.org_type,
+            org=self.org,
+            feature_key="grades",
+            issue_status=Feedback.IssueStatus.DRAFTED,
+        )
+        detail_url = reverse("api:feedback:feedback-detail", kwargs={"pk": draft.id})
+
+        response = self.client.patch(detail_url, {
+            "post_type": "submit_draft",
+            "otype": self.org_type.otype_name,
+            "org": "其他小组",
+        }, format="json")
+        self.assertEqual(response.status_code, http_status.HTTP_400_BAD_REQUEST)
+        self.assertIn("org", response.data)
+
+        response = self.client.patch(detail_url, {
+            "post_type": "submit_draft",
+            "otype": self.org_type.otype_name,
+            "org": rollout_config.feedback_org_name,
+        }, format="json")
+        self.assertEqual(response.status_code, http_status.HTTP_200_OK, response.data)
+        draft.refresh_from_db()
+        self.assertEqual(draft.issue_status, Feedback.IssueStatus.ISSUED)
+
+    def test_preview_draft_may_omit_the_receiving_group(self):
+        response = self.client.post(
+            self.list_url,
+            self._payload(post_type="save", otype="", org=""),
+            format="json",
+        )
+        self.assertEqual(response.status_code, http_status.HTTP_201_CREATED, response.data)
+        feedback = Feedback.objects.get(pk=response.data["id"])
+        self.assertEqual(feedback.issue_status, Feedback.IssueStatus.DRAFTED)
+        self.assertEqual(feedback.feature_key, "grades")
+
+    def test_modifying_a_preview_draft_keeps_routing(self):
+        draft = Feedback.objects.create(
+            type=self.preview_type,
+            title="草稿标题",
+            content="草稿内容",
+            person=self.person,
+            org_type=self.org_type,
+            org=self.org,
+            feature_key="grades",
+            issue_status=Feedback.IssueStatus.DRAFTED,
+        )
+        detail_url = reverse("api:feedback:feedback-detail", kwargs={"pk": draft.id})
+        for change, field in (({"org": "其他小组"}, "org"), ({"type": "普通反馈"}, "type")):
+            with self.subTest(change=change):
+                response = self.client.patch(
+                    detail_url, {"post_type": "modify", **change}, format="json")
+                self.assertEqual(response.status_code, http_status.HTTP_400_BAD_REQUEST)
+                self.assertIn(field, response.data)
+        draft.refresh_from_db()
+        self.assertEqual(draft.org, self.org)
+        self.assertEqual(draft.type, self.preview_type)

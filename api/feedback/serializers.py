@@ -6,6 +6,35 @@ from django.db import transaction
 
 from app.models import Organization, OrganizationType
 from feedback.models import FeedbackType, Feedback
+from rollout.api import preview_feedback_routing_errors
+from rollout.models import Feature
+
+
+CLIENT_INFO_MAX_ITEMS = 8
+CLIENT_INFO_MAX_KEY_LENGTH = 32
+
+
+def _validate_client_info(value: dict) -> dict:
+    """Bound the client environment strings attached to feedback."""
+    if len(value) > CLIENT_INFO_MAX_ITEMS:
+        raise serializers.ValidationError(
+            f"客户端信息最多 {CLIENT_INFO_MAX_ITEMS} 项。")
+    if any(len(key) > CLIENT_INFO_MAX_KEY_LENGTH for key in value):
+        raise serializers.ValidationError(
+            f"客户端信息的字段名不能超过 {CLIENT_INFO_MAX_KEY_LENGTH} 个字符。")
+    return value
+
+
+def _validate_preview_routing(feedback_type, otype: str, org: str) -> None:
+    """
+    Require preview feedback to use the configured type and receiving group.
+
+    :raises serializers.ValidationError: A routing field points elsewhere.
+    """
+    errors = preview_feedback_routing_errors(
+        feedback_type.name if feedback_type is not None else None, otype, org)
+    if errors:
+        raise serializers.ValidationError(errors)
 
 
 class OrganizationTypeSerializer(serializers.ModelSerializer):
@@ -121,6 +150,7 @@ class FeedbackSerializer(serializers.ModelSerializer):
             "org",
             "org_name",
             "url",
+            "feature_key",
             "issue_status",
             "issue_status_display",
             "read_status",
@@ -171,6 +201,19 @@ class FeedbackCreateSerializer(serializers.Serializer):
         default="",
         help_text="相关链接",
     )
+    feature_key = serializers.SlugField(
+        max_length=64,
+        allow_blank=True,
+        required=False,
+        default="",
+        help_text="灰度功能标识；填写时反馈类型与接收小组须为体验反馈的配置",
+    )
+    client_info = serializers.DictField(
+        child=serializers.CharField(max_length=128, allow_blank=True),
+        required=False,
+        default=dict,
+        help_text="客户端环境（如小程序版本），最多 8 项，不含个人信息",
+    )
 
     def validate_type(self, value):
         try:
@@ -196,6 +239,14 @@ class FeedbackCreateSerializer(serializers.Serializer):
         except Organization.DoesNotExist:
             raise serializers.ValidationError("数据库没有对应小组，请联系管理员！")
 
+    def validate_feature_key(self, value):
+        if value and not Feature.objects.filter(key=value).exists():
+            raise serializers.ValidationError("没有这个灰度功能。")
+        return value
+
+    def validate_client_info(self, value):
+        return _validate_client_info(value)
+
     def validate(self, attrs):
         post_type = attrs.get("post_type", "directly_submit")
         if post_type == "directly_submit":
@@ -213,6 +264,9 @@ class FeedbackCreateSerializer(serializers.Serializer):
                 )
             if not attrs.get("content", "").strip():
                 raise serializers.ValidationError({"content": "反馈内容不能为空哦！"})
+        if attrs.get("feature_key"):
+            _validate_preview_routing(
+                attrs.get("type"), attrs.get("otype", ""), attrs.get("org", ""))
         return attrs
 
     def create(self, validated_data):
@@ -256,6 +310,8 @@ class FeedbackCreateSerializer(serializers.Serializer):
                 org=org_obj,
                 publisher_public=validated_data["publisher_public"],
                 url=validated_data.get("url", "") or "",
+                feature_key=validated_data.get("feature_key", ""),
+                client_info=validated_data.get("client_info") or {},
                 issue_status=issue_status,
             )
         return feedback
@@ -339,6 +395,14 @@ class FeedbackUpdateSerializer(serializers.Serializer):
                 )
             if not str(content).strip():
                 raise serializers.ValidationError({"content": "反馈内容不能为空哦！"})
+        # Preview feedback keeps its feature key, so every modification and
+        # submission must keep the configured routing as well.
+        if self.instance is not None and self.instance.feature_key:
+            _validate_preview_routing(
+                attrs.get("type") or self.instance.type,
+                attrs.get("otype", ""),
+                attrs.get("org", ""),
+            )
         return attrs
 
     def update(self, instance, validated_data):
