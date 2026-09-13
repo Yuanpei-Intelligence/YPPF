@@ -145,6 +145,7 @@
                                                                         </div>
                                                                         {% if act.course_time %}
                                                                         <form method="POST" id="cancel-details">
+                                                                            {% csrf_token %}
                                                                         <div class="modal-body">
 
                                                                             <input type="radio" id="cancel_only" name="post_type" value="cancel_only" checked="checked"/>
@@ -167,6 +168,7 @@
                                                                         <div class="modal-footer">
                                                                             <button type="button" class="btn btn-secondary" data-dismiss="modal">再想想</button>
                                                                             <form method="POST" id="cancel-details">
+                                                                                {% csrf_token %}
                                                                                 <input type="hidden" name="cancel-action" value="{{act.id}}">
                                                                                 <button type="button" class="btn btn-primary" onclick="this.form.submit()" data-dismiss="modal">确认</button>
                                                                             </form>

@@ -927,8 +927,12 @@ def cancel_activity(request, activity):
     activity.save()
 
 
+@transaction.atomic
 def withdraw_activity_for_person(person: Person, activity: Activity):
-    '''取消个人报名，仅抛出可向用户展示的 ActivityException。'''
+    '''按 Activity -> Participation 锁定；业务拒绝抛出 ActivityException。'''
+    # 此操作不再获取 Course 或学生锁，兼容课程退选的锁顺序。
+    caller_activity = activity
+    activity = Activity.objects.select_for_update().get(pk=activity.pk)
     try:
         participant = Participation.objects.select_for_update().get(
             SQ.sq(Participation.activity, activity),
@@ -946,8 +950,10 @@ def withdraw_activity_for_person(person: Person, activity: Activity):
     participant.status = Participation.AttendStatus.CANCELED
     activity.current_participants -= 1
 
-    participant.save()
-    activity.save()
+    participant.save(update_fields=["status"])
+    activity.save(update_fields=["current_participants"])
+    # 保留调用方用传入对象构造响应的接口约定。
+    caller_activity.current_participants = activity.current_participants
     return participant
 
 

@@ -7,12 +7,15 @@ course_views.py
 from app.views_dependency import *
 from app.models import (
     NaturalPerson,
+    Organization,
     Semester,
     Activity,
     Course,
     CourseRecord,
+    CourseTime,
 )
 from app.course_utils import (
+    lock_course_activity as _lock_course_activity,
     cancel_course_activity,
     create_single_course_activity,
     modify_course_activity,
@@ -26,10 +29,21 @@ from app.course_utils import (
     download_select_info,
 )
 from app.utils import get_person_or_org
+from app.course_forms import CourseSelectionForm, CourseSurveyForm
+from app.course_survey_utils import (
+    get_course_prerequisite_survey, has_completed_course_survey, submit_course_survey,
+)
+from questionnaire.models import AnswerText, Question, Survey
+from rest_framework.exceptions import ValidationError as SurveyValidationError
 
 from datetime import datetime
+import logging
 
 from django.db import transaction
+from django.core.exceptions import ImproperlyConfigured, PermissionDenied
+from django.http import HttpResponseForbidden
+from django.views.decorators.csrf import csrf_protect
+from django.views.decorators.http import require_http_methods
 
 from utils.config.cast import str_to_time
 
@@ -48,8 +62,10 @@ __all__ = [
 APP_CONFIG = CONFIG.course
 
 
+@csrf_protect
 @login_required(redirect_field_name="origin")
 @utils.check_user_access(redirect_url="/logout/")
+@require_http_methods(["GET", "POST"])
 @logger.secure_view()
 def editCourseActivity(request: HttpRequest, aid: int):
     """
@@ -65,7 +81,7 @@ def editCourseActivity(request: HttpRequest, aid: int):
     try:
         aid = int(aid)
         activity = Activity.objects.get(id=aid)
-    except:
+    except (ValueError, Activity.DoesNotExist):
         return redirect(message_url(wrong("活动不存在!")))
 
     # 检查用户身份
@@ -102,11 +118,16 @@ def editCourseActivity(request: HttpRequest, aid: int):
         try:
             # 只能修改自己的活动
             with transaction.atomic():
-                activity = Activity.objects.select_for_update().get(id=aid)
-                assert activity.organization_id == me, "无法修改其他课程小组的活动!"
+                activity = _lock_course_activity(activity, me)
+                if activity.status != Activity.Status.UNPUBLISHED:
+                    return redirect(message_url(
+                        wrong("课程活动已变更，请刷新后重试。"), request.path))
                 modify_course_activity(request, activity)
+                activity.refresh_from_db()
             succeed("修改成功。", html_display)
-        except AssertionError as err_info:
+        except PermissionDenied as err_info:
+            return HttpResponseForbidden(str(err_info))
+        except (AssertionError, ValueError) as err_info:
             return redirect(message_url(wrong(str(err_info)),
                                         request.get_full_path()))
         except Exception as e:
@@ -131,11 +152,20 @@ def editCourseActivity(request: HttpRequest, aid: int):
     # 判断本活动是否为长期定时活动
     course_time_tag = (activity.course_time is not None)
 
-    return render(request, "course/lesson_add.html", locals())
+    context = {
+        "html_display": html_display, "bar_display": bar_display,
+        "title": title, "location": location, "start": start, "end": end,
+        "edit": edit, "publish_day": publish_day, "need_apply": need_apply,
+        "course_time_tag": course_time_tag,
+        "activity": activity,
+    }
+    return render(request, "course/lesson_add.html", context)
 
 
+@csrf_protect
 @login_required(redirect_field_name="origin")
 @utils.check_user_access(redirect_url="/logout/")
+@require_http_methods(["GET", "POST"])
 @logger.secure_view()
 def addSingleCourseActivity(request: HttpRequest):
     """
@@ -194,8 +224,10 @@ def addSingleCourseActivity(request: HttpRequest):
     return render(request, "course/lesson_add.html", locals())
 
 
+@csrf_protect
 @login_required(redirect_field_name='origin')
 @utils.check_user_access(redirect_url="/logout/")
+@require_http_methods(["GET", "POST"])
 @logger.secure_view()
 def showCourseActivity(request: HttpRequest):
     """
@@ -271,15 +303,17 @@ def showCourseActivity(request: HttpRequest):
         ]:
             return redirect(message_url(wrong('该课程活动已结束，不可取消!'), request.path))
 
-        assert activity.status not in [
-            Activity.Status.REVIEWING,
-            # Activity.Status.APPLYING,
-        ], "课程活动状态非法"  # 课程活动不应出现审核状态
-
         # 取消活动
-        with transaction.atomic():
-            activity = Activity.objects.select_for_update().get(id=aid)
-            error = cancel_course_activity(request, activity, cancel_all)
+        try:
+            with transaction.atomic():
+                activity = _lock_course_activity(activity, me)
+                if cancel_all and activity.course_time_id is None:
+                    raise ValueError("单次活动没有可取消的长期课程时段。")
+                error = cancel_course_activity(request, activity, cancel_all)
+        except PermissionDenied as err_info:
+            return HttpResponseForbidden(str(err_info))
+        except ValueError as err_info:
+            return redirect(message_url(wrong(str(err_info)), request.path))
 
         # 无返回值表示取消成功，有则失败
         if error is None:
@@ -288,7 +322,12 @@ def showCourseActivity(request: HttpRequest):
         else:
             return redirect(message_url(wrong(error)), request.path)
 
-    return render(request, "course/show_course_activity.html", locals())
+    context = {
+        "html_display": html_display, "bar_display": bar_display,
+        "future_activity_list": future_activity_list,
+        "finished_activity_list": finished_activity_list,
+    }
+    return render(request, "course/show_course_activity.html", context)
 
 
 @login_required(redirect_field_name="origin")
@@ -433,8 +472,10 @@ def showCourseRecord(request: UserRequest) -> HttpResponse:
     return render(request, "course/course_record.html", render_context)
 
 
+@csrf_protect
 @login_required(redirect_field_name="origin")
 @utils.check_user_access(redirect_url="/logout/")
+@require_http_methods(['GET', 'HEAD', 'POST'])
 @logger.secure_view()
 def selectCourse(request: HttpRequest):
     """
@@ -443,6 +484,7 @@ def selectCourse(request: HttpRequest):
     2. 在预选和补退选阶段，学生可以通过点击课程对应的按钮实现选课或者退选，
     且点击后页面显示发生相应的变化
     3. 显示选课结果
+    启用前置问卷时，学生必须先提交配置匹配的问卷；草稿不放行。
 
     用户权限：学生和老师可以进入，组织不能进入；只有学生可以进行选课
     
@@ -462,6 +504,42 @@ def selectCourse(request: HttpRequest):
 
     is_student = (me.identity == NaturalPerson.Identity.STUDENT)
 
+    # Only students need the prerequisite, before course display or selection POST.
+    try:
+        survey = get_course_prerequisite_survey(request.user) if is_student else None
+    except ImproperlyConfigured:
+        logging.getLogger(__name__).error('Course prerequisite survey configuration is invalid')
+        return render(request, 'course/prerequisite_survey.html', {'unavailable': True}, status=503)
+    if survey is not None and not has_completed_course_survey(request.user, survey):
+        now = datetime.now()
+        if survey.status != Survey.Status.PUBLISHED or not survey.start_time <= now <= survey.end_time:
+            return render(request, 'course/prerequisite_survey.html', {'unavailable': True}, status=503)
+        initial = {}
+        for answer in AnswerText.objects.filter(
+                answersheet__creator=request.user, answersheet__survey=survey,
+        ).select_related('question'):
+            initial[str(answer.question_id)] = (
+                [segment.strip() for segment in answer.body.split(',')]
+                if answer.question.type == Question.Type.MULTIPLE else answer.body)
+        submitting = request.method == 'POST' and request.POST.get('action') == 'submit_survey'
+        form = CourseSurveyForm(survey, request.POST if submitting else None, initial=initial)
+        status = 200 if request.method != 'POST' else 403
+        if submitting:
+            status = 400
+            if form.is_valid():
+                try:
+                    submit_course_survey(request.user, survey, form.cleaned_data)
+                except SurveyValidationError as exc:
+                    form.add_error(None, '；'.join(str(message) for message in exc.detail))
+                else:
+                    return redirect(request.path)
+        return render(request, 'course/prerequisite_survey.html', {
+            'survey': survey, 'form': form,
+            'bar_display': utils.get_sidebar_and_navbar(request.user, '书院课程'),
+        }, status=status)
+    if request.method == 'POST' and request.POST.get('action') == 'submit_survey':
+        return redirect(request.path)
+
     # 暂时不启用意愿点机制
     # if not is_staff:
     #     html_display["willing_point"] = remaining_willingness_point(me)
@@ -479,22 +557,14 @@ def selectCourse(request: HttpRequest):
             return redirect(message_url(html_display, request.path))
 
         # 参数: 课程id，操作action: select/cancel
-        try:
-            course_id = request.POST.get('courseid')
-            action = request.POST.get('action')
-
-            # 合法性检查
-            assert action == "select" or action == "cancel"
-            assert Course.objects.activated().filter(id=course_id).exists()
-
-        except:
-            wrong("出现预料之外的错误！如有需要，请联系管理员。", html_display)
-        try:
-            # 对学生的选课状态进行变更
-            context = registration_status_change(course_id, me, action)
-            return redirect(message_url(context, request.path))
-        except:
-            wrong("选课过程出现错误！请联系管理员。", html_display)
+        form = CourseSelectionForm(request.POST)
+        if not form.is_valid():
+            return redirect(message_url(wrong('选课参数无效。'), request.path))
+        course_id = form.cleaned_data['courseid']
+        if not Course.objects.activated().filter(id=course_id).exists():
+            return redirect(message_url(wrong('课程不存在。'), request.path))
+        context = registration_status_change(course_id, me, form.cleaned_data['action'])
+        return redirect(message_url(context, request.path))
 
     html_display["current_year"] = GLOBAL_CONFIG.acadamic_year
     html_display["semester"] = ("春" if GLOBAL_CONFIG.semester == Semester.SPRING else "秋")
@@ -539,7 +609,12 @@ def selectCourse(request: HttpRequest):
     selected_display = course_to_display(selected_courses, me)
 
     bar_display = utils.get_sidebar_and_navbar(request.user, "书院课程")
-    return render(request, "course/select_course.html", locals())
+    return render(request, "course/select_course.html", {
+        'html_display': html_display, 'is_student': is_student,
+        'is_drawing': is_drawing, 'courses': courses,
+        'unselected_display': unselected_display, 'selected_display': selected_display,
+        'bar_display': bar_display,
+    })
 
 
 @login_required(redirect_field_name="origin")

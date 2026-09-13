@@ -26,7 +26,12 @@ class SafeLocalRedirectTargetTestCase(SimpleTestCase):
         base = GLOBAL_CONFIG.base_url.rstrip("/")
         target = f"{base}/inside?x=1"
         self.assertEqual(
-            safe_local_redirect_target(self.request, target, "/fallback/"),
+            safe_local_redirect_target(
+                self.request,
+                target,
+                "/fallback/",
+                allow_site_absolute=True,
+            ),
             target,
         )
 
@@ -37,7 +42,12 @@ class SafeLocalRedirectTargetTestCase(SimpleTestCase):
         request = self.factory.get('/', secure=True)
         target = f'{base}/inside'
         self.assertEqual(
-            safe_local_redirect_target(request, target, '/fallback/'),
+            safe_local_redirect_target(
+                request,
+                target,
+                '/fallback/',
+                allow_site_absolute=True,
+            ),
             '/fallback/',
         )
 
@@ -131,6 +141,30 @@ class WebviewRedirectSafetyTestCase(TestCase):
             response = self.client.get(f"/redirect/?{query}")
         self.assertEqual(response.status_code, 302)
         self.assertEqual(response["Location"], target)
+
+    @patch("utils.http.utils.GLOBAL_CONFIG")
+    def test_webview_accepts_only_configured_absolute_host(self, config):
+        config.base_url = "https://site.example:8443"
+        cases = (
+            ("/inside?x=1#part", "/inside?x=1#part"),
+            ("https://site.example:8443/inside?x=1#part",
+             "https://site.example:8443/inside?x=1#part"),
+            ("https://site.example/inside", "/"),
+            ("https://site.example:8443.evil.example/inside", "/"),
+            ("https://site.example:8443@evil.example/inside", "/"),
+            ("//site.example:8443/inside", "/"),
+            ("http://site.example:8443/inside", "/"),
+            ("https://evil.example/inside", "/"),
+        )
+        for target, expected in cases:
+            with self.subTest(target=target), patch(
+                "generic.views.TicketAuthentication.authenticate",
+                return_value=(self.user, None),
+            ):
+                query = urlencode({"ticket": "fresh", "to": target})
+                response = self.client.get(f"/redirect/?{query}", secure=True)
+                self.assertEqual(response.status_code, 302)
+                self.assertEqual(response["Location"], expected)
 
     def test_real_ticket_creates_one_session_only(self):
         ticket = create_webview_ticket(self.user.pk)

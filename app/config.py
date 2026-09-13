@@ -110,6 +110,8 @@ class EmailConfig(Config):
 
 
 class CourseConfig(Config):
+    prerequisite_survey = LazySetting('prerequisite_survey', default={}, type=dict)
+
     # str format: %Y-%m-%d %H:%M:%S
     yx_election_start = LazySetting('yx_election_start', type=str)
     yx_election_end = LazySetting('yx_election_end', type=str)

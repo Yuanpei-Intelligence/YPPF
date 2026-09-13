@@ -2059,6 +2059,19 @@ class HomepageImage(models.Model):
     objects: HomepageImageManager = HomepageImageManager()
 
 
+class LoginChallenge(models.Model):
+    """One-use website login proof, separate from password-reset credentials."""
+    user = models.ForeignKey(User, on_delete=models.CASCADE,
+                             related_name='login_challenges')
+    token_digest = models.CharField(max_length=64, unique=True)
+    password_digest = models.CharField(max_length=64)
+    created_at = models.DateTimeField()
+    expires_at = models.DateTimeField(db_index=True)
+    failed_attempts = models.PositiveSmallIntegerField(default=0)
+    consumed_at = models.DateTimeField(null=True, blank=True)
+    invalidated_at = models.DateTimeField(null=True, blank=True)
+
+
 class PasswordResetChallenge(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     user = models.ForeignKey(

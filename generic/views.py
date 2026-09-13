@@ -38,7 +38,7 @@ class Index(SecureTemplateView):
         # Modify password
         # Seems that after modification, log out by default?
         if self.request.GET.get('modinfo') is not None:
-            succeed("修改密码成功!", self.extra_context)
+            succeed("修改密码成功，请重新登录", self.extra_context)
         # 小程序 webview 内会话过期/未登录时，不展示网站登录表单，
         # 而是提示返回小程序重新进入，避免用户在小程序里陷入登录死循环。
         if 'miniProgram' in self.request.META.get('HTTP_USER_AGENT', ''):
@@ -149,5 +149,7 @@ def redirect_to_webview(request: HttpRequest) -> HttpResponse:
         return HttpResponse('ticket is required', status=400)
     user, _ = auth_tuple
     login(request, user)
-    to = safe_local_redirect_target(request, request.GET.get("to"), "/")
+    to = safe_local_redirect_target(
+        request, request.GET.get("to"), "/", allow_site_absolute=True
+    )
     return redirect(to)

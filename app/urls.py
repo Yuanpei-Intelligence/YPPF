@@ -10,6 +10,7 @@
 - 同一类页面风格相同
 """
 from django.urls import path
+from app.login_views import CodeLogin
 
 from app import (
     views,
@@ -30,6 +31,7 @@ urlpatterns = [
     path("shiftAccount/", views.shiftAccount, name="shiftAccount"),
     # path("org/", views.org, name="org"),
     path("forgetpw/", views.forgetPassword, name="forgetpw"),
+    path("codeLogin/", CodeLogin.as_view(), name="codeLogin"),
     path("modpw/", views.modpw, name="modpw"),
 ] + [
     # 用户画像和互动

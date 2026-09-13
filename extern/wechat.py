@@ -11,6 +11,9 @@ import requests
 import json
 from typing import Iterable, Callable, Any
 from datetime import datetime, timedelta
+from urllib.parse import urlencode
+
+from app.config import CONFIG as APP_CONFIG
 
 from extern.config import wechat_config as CONFIG
 from extern.multithread import get_caller, scheduler_enabled
@@ -216,10 +219,11 @@ def send_wechat(
         )
 
 
-def send_verify_code(stu_id: str | int, captcha: str, url: str | None = '/forgetpw/'):
+def send_verify_code(stu_id: str | int, captcha: str, url: str | None = '/codeLogin/'):
+    """Send a LOGIN code synchronously; never persist credentials in scheduler jobs."""
     time = datetime.now().strftime('%m月%d日 %H:%M:%S')
     message = (
-        "您的账号正在进行企业微信验证\n本次请求的验证码为："
+        "您的账号正在登录\n本次登录验证码为："
         f"<div class=\"highlight\">{captcha}</div>"
         f"发送时间：{time}"
     )
@@ -227,23 +231,27 @@ def send_verify_code(stu_id: str | int, captcha: str, url: str | None = '/forget
     btntxt = "登录" if url is not None else None
     send_wechat([stu_id], 'YPPF登录验证', message,
                 card=True, url=url, btntxt=btntxt,
-                task_id=f'wechat_verify: {stu_id}')
+                multithread=False, raise_on_failure=True)
 
 
 def send_password_reset_token(stu_id: str | int, token: str):
+    """Deliver a short code with a client-only prefill link, without logging it."""
     time = datetime.now().strftime('%m月%d日 %H:%M:%S')
     message = (
-        "您的账号正在重置密码\n本次请求的重置凭证为："
+        "您的账号正在重置密码\n本次验证码为："
         f"<div class=\"highlight\">{token}</div>"
-        "凭证有效期较短，请尽快使用，且只能使用一次。\n"
+        f"验证码有效期为{APP_CONFIG.password_reset_token_seconds}秒，"
         f"发送时间：{time}"
     )
+    # Fragments support cross-browser prefill without putting credentials
+    # in website GET requests or access logs.
+    fragment = urlencode({'username': str(stu_id), 'token': token})
     send_wechat(
         [stu_id],
         'YPPF密码重置',
         message,
         card=True,
-        url='/forgetpw/',
+        url=f'/forgetpw/#{fragment}',
         btntxt='重置密码',
         multithread=False,
         raise_on_failure=True,
