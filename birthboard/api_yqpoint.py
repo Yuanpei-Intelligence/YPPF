@@ -10,6 +10,7 @@ from app.utils import check_user_access
 from birthboard.config import CONFIG
 from birthboard.models import BirthboardRecord
 from birthboard.utils import calculate_per_cost
+from generic.models import User
 
 __all__ = ['check_yqpoint']
 
@@ -24,7 +25,8 @@ def check_yqpoint(request):
     """
     返回当前登录用户本人的元气值余额及是否足够。
     出于隐私考虑，仅允许查询本人余额，不接受查询他人的用户名列表。
-    若提供 record_id，则优先按记录中的 per_cost 作为所需值；否则按 mode 计算。
+    若提供 record_id，则优先按记录中的 per_cost 作为所需值；否则根据
+    送出者账号列表计算人数，不信任客户端的 sender_count。
     """
     try:
         data = json.loads(request.body.decode())
@@ -55,14 +57,33 @@ def check_yqpoint(request):
 
         if per is None:
             mode = int(data.get('mode', 0))
-            sender_count = data.get('sender_count', None)
-            try:
-                sender_count = int(sender_count)
-            except (TypeError, ValueError):
-                sender_count = None
-            divisor = sender_count if sender_count and sender_count > 0 else 1
-            # 无 record_id 时，人数仅在合法范围内参与计算，避免被客户端随意放大
-            divisor = max(1, min(divisor, CONFIG.max_senders))
+            sender_usernames = data.get('senders')
+            if not isinstance(sender_usernames, list):
+                sender_usernames = [request.user.username]
+            sender_usernames = {
+                value for value in sender_usernames
+                if isinstance(value, str) and value
+            }
+            if request.user.username not in sender_usernames:
+                return JsonResponse(
+                    {'ok': False, 'msg': '发起人必须包含在送出者列表中'},
+                    status=400,
+                )
+            if len(sender_usernames) > CONFIG.max_senders:
+                return JsonResponse(
+                    {'ok': False, 'msg': '送出者人数超过上限'},
+                    status=400,
+                )
+            divisor = User.objects.filter(
+                username__in=sender_usernames,
+                utype__in=User.Type.Persons(),
+                active=True,
+            ).count()
+            if divisor != len(sender_usernames):
+                return JsonResponse(
+                    {'ok': False, 'msg': '送出者列表包含无效账号'},
+                    status=400,
+                )
             per = calculate_per_cost(mode, divisor)
 
         user = request.user

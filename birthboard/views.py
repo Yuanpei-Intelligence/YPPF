@@ -72,6 +72,11 @@ from birthboard.config import CONFIG
 _BB_UPDATE_LOCK_KEY = "birthboard:update_in_progress"
 logger = logging.getLogger(__name__)
 
+
+class ReceiverDailyLimitReached(Exception):
+    """Raised when a concurrent submission exhausts the receiver/day limit."""
+
+
 __all__ = [
     'require_contract',
     'birthboard',
@@ -110,9 +115,8 @@ def require_contract(view_func):
         contract = BirthboardContract.objects.filter(user=request.user).first()
         if contract is None or not contract.signed:
             return redirect("birthboard_contract")
-        if contract.protocol_version and \
-                contract.protocol_version != CONFIG.protocol_version:
-            # 协议更新后需重新签署（protocol_version=0 为历史签署，豁免）
+        if contract.protocol_version != CONFIG.protocol_version:
+            # 协议版本不一致（包括迁移前的版本 0）时必须重新签署。
             return redirect("birthboard_contract")
         return view_func(request, *args, **kwargs)
     return wrapper
@@ -609,8 +613,7 @@ def birthboard_contract(request):
         "birthboard/contract.html",
         {"contract_signed": bool(
             contract and contract.signed
-            and (not contract.protocol_version
-                 or contract.protocol_version == CONFIG.protocol_version))},
+            and contract.protocol_version == CONFIG.protocol_version)},
     )
 
 
@@ -651,12 +654,16 @@ def birthboard_like_add(request):
     """制作名单点赞接口：累计点赞量 +1，返回新值；按用户+日限流。"""
     today = datetime.now().date()
     rate_key = f'birthboard_like:{request.user.pk}:{today.isoformat()}'
-    count_today = cache.get(rate_key) or 0
-    if count_today >= CONFIG.like_daily_limit:
+    claimed_slot = False
+    for slot in range(max(0, int(CONFIG.like_daily_limit))):
+        slot_key = rate_key if slot == 0 else f'{rate_key}:{slot}'
+        if cache.add(slot_key, 1, timeout=86400):
+            claimed_slot = True
+            break
+    if not claimed_slot:
         return JsonResponse({'ok': False, 'msg': '今日点赞次数已达上限'}, status=429)
     like, _ = BirthboardLike.objects.get_or_create(pk=1)
     BirthboardLike.objects.filter(pk=like.pk).update(count=F("count") + 1)
-    cache.set(rate_key, count_today + 1, timeout=86400)
     like.refresh_from_db()
     return JsonResponse({"count": like.count})
 
@@ -759,6 +766,10 @@ def birthboard(request):
     from generic.utils import to_search_indices
     user_infos = to_search_indices(users, active=True)
     json_context = {'user_infos': user_infos, 'max_senders': CONFIG.max_senders}
+    if request.method == 'POST':
+        initial = request.session.pop('birthboard_resubmit_initial', None)
+    else:
+        initial = request.session.get('birthboard_resubmit_initial')
     today_entry_reminders = _get_today_entry_reminders(request.user)
     birthboard_date_rule = _get_birthboard_date_rule()
     birthboard_date_rule_json = _serialize_birthboard_date_rule(birthboard_date_rule)
@@ -769,11 +780,6 @@ def birthboard(request):
     contributor_orgs = CONFIG.contributor_orgs
     # 海报"模版下载"链接（配置 birthboard.template_download_url）
     template_download_url = CONFIG.template_download_url
-
-    if request.method == 'POST':
-        initial = request.session.pop('birthboard_resubmit_initial', None)
-    else:
-        initial = request.session.get('birthboard_resubmit_initial')
 
     if request.method == "POST":
         # If client provided receiver_pk (hidden field), map it to 'receiver' before form binding.
@@ -832,6 +838,23 @@ def birthboard(request):
             try:
                 from generic.models import YQPointRecord
                 with transaction.atomic():
+                    # Serialize submissions for the same receiver, then repeat
+                    # the form-level check inside the authoritative transaction.
+                    User.objects.select_for_update().only('pk').get(pk=receiver.pk)
+                    active_statuses = {
+                        BirthboardRecord.Status.WAITING_CONFIRM,
+                        BirthboardRecord.Status.WAITING_RECEIVER,
+                        BirthboardRecord.Status.WAITING_APPROVE,
+                        BirthboardRecord.Status.READY,
+                        BirthboardRecord.Status.ONGOING,
+                    }
+                    active_count = BirthboardRecord.objects.filter(
+                        receiver_username=receiver.username,
+                        date=date,
+                        status__in=active_statuses,
+                    ).count()
+                    if active_count >= CONFIG.max_per_receiver_per_date:
+                        raise ReceiverDailyLimitReached
                     # 重命名图片文件：投放日期 + 提交时间 + 计数器 + 原文件名
                     image.name = _generate_birthboard_image_filename(image, date)
                     
@@ -906,6 +929,13 @@ def birthboard(request):
                     )
                 for sender in invited_senders:
                     notify_invite_sender(record, sender, initiator_name, per)
+            except ReceiverDailyLimitReached:
+                form.add_error(
+                    None,
+                    f'该用户同一天最多只能有 '
+                    f'{CONFIG.max_per_receiver_per_date} 条有效投放。',
+                )
+                return render(request, "birthboard/birthboard.html", {"form": form, "users": users, "json_context": json_context, "contact_email": contact_email, "contributor_orgs": contributor_orgs, "template_download_url": template_download_url, "confirm_tab_total_count": _get_confirm_tab_total_count(request, request.user), "today_entry_reminders": today_entry_reminders, "birthboard_date_rule": birthboard_date_rule_json})
             except Exception:
                 logger.exception(
                     'birthboard record creation failed actor_id=%s',

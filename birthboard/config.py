@@ -36,7 +36,7 @@ class BirthboardConfig(Config):
         type=str,
     )
     # 投屏同步跨进程锁：持有超时（秒）与心跳间隔（秒）。持有者进程崩溃或超时后
-    # 锁可被回收，避免 15 分钟重试任务长期咬死夜间投放。
+    # 锁可被回收，避免补偿重试任务长期咬死夜间投放。
     display_lock_timeout = LazySetting('display_lock_timeout', default=120, type=int)
     display_lock_heartbeat = LazySetting(
         'display_lock_heartbeat', default=30, type=int)
@@ -46,9 +46,9 @@ class BirthboardConfig(Config):
     takedown_max_failures = LazySetting('takedown_max_failures', default=5, type=int)
     # 同一寿星同一天处于非终止态的投放记录数上限。
     max_per_receiver_per_date = LazySetting(
-        'max_per_receiver_per_date', default=1, type=int)
+        'max_per_receiver_per_date', default=10, type=int)
     # 点赞限流：每用户每日次数。
-    like_daily_limit = LazySetting('like_daily_limit', default=1, type=int)
+    like_daily_limit = LazySetting('like_daily_limit', default=100, type=int)
     # 协议版本：升高后已签署用户需重新签署。
     protocol_version = LazySetting('protocol_version', default=1, type=int)
     # 整批回滚开关：True 保持旧语义（任一图失败则整批回滚）。

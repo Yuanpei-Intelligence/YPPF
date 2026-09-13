@@ -1,13 +1,14 @@
 from datetime import timedelta, datetime
+import fcntl
 import os
 import threading
 import time
 import uuid
 
+from django.conf import settings
+from django.core.cache import cache
 from django.db import transaction
 from django.utils import timezone
-from django.core.cache import cache
-from django.conf import settings
 
 from record.log.utils import get_logger as bb_get_logger
 
@@ -66,17 +67,11 @@ def _get_abs_image_path(image_field) -> str | None:
 
 # 锁持有期间的心跳线程句柄：token -> threading.Event，释放时置位并回收。
 _lock_heartbeat_stops: dict = {}
+_lock_file_handles: dict = {}
 
 
 def _lock_payload(token: str) -> dict:
     return {'token': token, 'ts': time.time()}
-
-
-def _lock_is_stale(payload, timeout: int) -> bool:
-    """判断锁是否已过期可回收；无法解析（旧版 True/字符串）视为仍有效。"""
-    if not isinstance(payload, dict) or 'ts' not in payload:
-        return False
-    return time.time() - float(payload['ts']) > timeout
 
 
 def _lock_heartbeat_loop(token: str, stop, timeout: int) -> None:
@@ -92,20 +87,26 @@ def _lock_heartbeat_loop(token: str, stop, timeout: int) -> None:
 
 
 def _acquire_update_lock(timeout: int | None = None) -> str | None:
-    """跨进程投屏锁：token + 时间戳 + 心跳续期，持有者崩溃或超时后可被回收。"""
+    """获取跨进程投屏锁。
+
+    ``flock`` 提供原子互斥与进程崩溃自动释放；缓存中的 token 仅用于
+    web 进程快速判断锁状态，不再承担互斥正确性。web 与 scheduler 必须共享
+    FileBasedCache 目录。
+    """
     timeout = timeout or int(CONFIG.display_lock_timeout)
     token = uuid.uuid4().hex
+    cache_location = settings.CACHES['default']['LOCATION']
+    os.makedirs(cache_location, exist_ok=True)
+    lock_path = os.path.join(cache_location, 'birthboard-display.lock')
+    lock_file = open(lock_path, 'a+', encoding='utf-8')
     try:
-        existing = cache.get(_BB_UPDATE_LOCK_KEY)
-        if existing is not None and not _lock_is_stale(existing, timeout):
+        try:
+            fcntl.flock(lock_file.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
+        except BlockingIOError:
+            lock_file.close()
             return None
-        if existing is not None:
-            # 过期锁回收（旧持有者崩溃/未释放）
-            cache.delete(_BB_UPDATE_LOCK_KEY)
-            logger.warning(
-                '[birthboard.jobs] reclaimed stale display lock token=%s', token)
-        if not cache.add(_BB_UPDATE_LOCK_KEY, _lock_payload(token), timeout=timeout):
-            return None
+        cache.set(_BB_UPDATE_LOCK_KEY, _lock_payload(token), timeout=timeout)
+        _lock_file_handles[token] = lock_file
         stop = threading.Event()
         _lock_heartbeat_stops[token] = stop
         threading.Thread(
@@ -114,6 +115,8 @@ def _acquire_update_lock(timeout: int | None = None) -> str | None:
         ).start()
         return token
     except Exception:
+        if not lock_file.closed:
+            lock_file.close()
         logger.exception(
             '[birthboard.jobs] failed to acquire display update lock')
         return None
@@ -131,6 +134,13 @@ def _release_update_lock(token: str) -> None:
     except Exception:
         logger.exception(
             '[birthboard.jobs] failed to release display update lock')
+    finally:
+        lock_file = _lock_file_handles.pop(token, None)
+        if lock_file is not None:
+            try:
+                fcntl.flock(lock_file.fileno(), fcntl.LOCK_UN)
+            finally:
+                lock_file.close()
 
 
 def _get_mode_duration_days(record: BirthboardRecord) -> int:
@@ -270,7 +280,7 @@ def _attempt_pending_takedown(record_id: int) -> bool:
 @periodical(
     'interval',
     'birthboard_retry_pending_takedowns',
-    minutes=15,
+    minutes=3,
 )
 def birthboard_retry_pending_takedowns():
     """Retry durable display takedowns that did not complete immediately."""
@@ -632,6 +642,8 @@ def birthboard_nightly_update_2345(
         # roll back a removal that has already succeeded on the display.
         stop_update_ok = not to_stop
         start_update_ok = not to_start
+        stop_outcome = None
+        start_outcome = None
         try:
             url = shihannet.url
             username = shihannet.username
@@ -672,7 +684,7 @@ def birthboard_nightly_update_2345(
                             stop_update_ok = bool(
                                 getattr(stop_outcome, 'ok', False)
                             )
-                        if stop_update_ok and to_start:
+                        if (stop_update_ok or not CONFIG.batch_atomic) and to_start:
                             browser, page, start_outcome = _run_update_cycle(
                                 playwright=p,
                                 browser=browser,
@@ -699,7 +711,16 @@ def birthboard_nightly_update_2345(
             elif to_start:
                 start_update_ok = False
 
-        if not stop_update_ok:
+        failed_stop_records = _failed_records_for_outcome(
+            stop_records, stop_outcome, batch_atomic=CONFIG.batch_atomic,
+        )
+        failed_start_records = _failed_records_for_outcome(
+            start_records, start_outcome, batch_atomic=CONFIG.batch_atomic,
+        )
+        if not stop_update_ok and CONFIG.batch_atomic:
+            failed_start_records = list(start_records)
+
+        if failed_stop_records:
             # A required removal failed. Roll back both phases and do not add
             # new content while stale content may still be present.
             logger.error(
@@ -708,20 +729,30 @@ def birthboard_nightly_update_2345(
                 len(to_start),
                 len(to_stop),
             )
-            _revert_nightly_transitions(start_records, stop_records, target_date)
-        elif not start_update_ok:
+            _revert_nightly_transitions(
+                failed_start_records, failed_stop_records, target_date,
+            )
+        elif failed_start_records:
             logger.error(
                 '[birthboard.jobs] nightly_update_2345: display upload failed, '
                 'reverting start transitions to_start=%s',
                 len(to_start),
             )
-            _revert_nightly_transitions(start_records, [], target_date)
+            _revert_nightly_transitions(failed_start_records, [], target_date)
 
-        if start_update_ok:
-            for record in start_records:
+        failed_start_ids = {record.pk for record in failed_start_records}
+        failed_stop_ids = {record.pk for record in failed_stop_records}
+        for record in start_records:
+            _log_display_sync_result(
+                record, target_date, 'start', record.pk not in failed_start_ids,
+            )
+            if record.pk not in failed_start_ids:
                 notify_broadcast_started(record)
-        if stop_update_ok:
-            for record in stop_records:
+        for record in stop_records:
+            _log_display_sync_result(
+                record, target_date, 'stop', record.pk not in failed_stop_ids,
+            )
+            if record.pk not in failed_stop_ids:
                 end_date = record.date + timedelta(
                     days=_get_mode_duration_days(record)
                 )
@@ -838,6 +869,38 @@ def birthboard_nightly_retry_0005():
 #         )
 #     finally:
 #         _set_update_lock(False)
+
+def _failed_records_for_outcome(records, outcome, *, batch_atomic):
+    """Map a controller outcome's pending filenames back to database rows."""
+    if not records or (outcome is not None and getattr(outcome, 'ok', False)):
+        return []
+    pending = list(getattr(outcome, 'pending', None) or []) if outcome else []
+    if batch_atomic or not pending:
+        return list(records)
+    pending_names = {os.path.basename(str(value)) for value in pending}
+    return [
+        record for record in records
+        if os.path.basename(_get_abs_image_path(record.image) or '') in pending_names
+    ]
+
+
+def _log_display_sync_result(record, target_date, phase, ok):
+    """Persist the per-poster external display outcome for reconciliation."""
+    ChangeRecord.log(
+        record=record,
+        actor=None,
+        action=ChangeRecord.Action.UPDATE,
+        before_status=record.status,
+        after_status=record.status,
+        detail={
+            'scope': 'nightly_display_sync',
+            'date': str(target_date),
+            'phase': phase,
+            'result': 'success' if ok else 'failed',
+            'image_name': os.path.basename(record.image.name),
+        },
+    )
+
 
 def _revert_nightly_transitions(
     start_records: list, stop_records: list, target_date

@@ -518,7 +518,7 @@ def upload_material(page, image_path):
 
     closed = _safe_click(media_frame.locator(".x-tool-close").first, "上传弹窗关闭按钮", page, timeout=1500)
     _close_visible_popup(media_frame, page)
-    print(f"素材上传完成: {image_path}")
+    logger.info('素材上传完成: %s', image_path)
     if not closed:
         logger.warning(
             '[web_controller] upload popup close failed: %s', image_path)
@@ -634,7 +634,7 @@ def delete_material(page, image_name):
     _safe_click(frame.get_by_role("button", name="删除").first, "删除按钮(角色)", page, timeout=2500)
     frame.get_by_role("button", name="是").click()
     frame.get_by_role("button", name="确定").click()
-    print(f"素材删除完成: {image_name}")
+    logger.info('素材删除完成: %s', image_name)
     return _step_result(True, result=image_name)
 
 # def build_playlist(page, image_name, date):
@@ -1002,7 +1002,7 @@ def update_playlist(page, image_name, playlist_name="0-1点生日三联", debug=
         return
     _click_optional_confirm(page, play_frame, max_clicks=2)
 
-    print(f"播出单导入完成: {image_name}")
+    logger.info('播出单导入完成: %s', image_name)
     if len(not_matched) > 0:
         return _step_result(False, retryable=True, pending=not_matched, result=not_matched, error="有未匹配到素材")
     return _step_result(True, result=image_name)
@@ -1198,7 +1198,7 @@ def delete_playlist(page, image_name, playlist_name="0-1点生日三联", debug=
             return _step_result(True, result=image_name)
         return _step_result(False, retryable=True, error="未找到播出单素材")
 
-    print(f"已选中播出单素材行数: {len(selected_rows)}")
+    logger.info('已选中播出单素材行数: %s', len(selected_rows))
 
     if page.is_closed():
         print("页面已关闭，终止删除流程")
@@ -1222,7 +1222,7 @@ def delete_playlist(page, image_name, playlist_name="0-1点生日三联", debug=
     if not _safe_click(play_frame.get_by_role("button", name="保存"), "保存按钮", page):
         return _step_result(False, retryable=True, error="保存按钮点击失败")
     _click_optional_confirm(page, play_frame, max_clicks=2)
-    print(f"播出单素材删除完成: {image_name}")
+    logger.info('播出单素材删除完成: %s', image_name)
     return _step_result(True, result=image_name)
 
 def update_list(page, up_image_name=None, del_image_name=None):
@@ -1230,7 +1230,7 @@ def update_list(page, up_image_name=None, del_image_name=None):
     del_image_name = del_image_name or []
     if up_image_name:
         if del_image_name:
-            print("同时指定了上传和删除素材，优先执行删除后再上传")
+            logger.info('同时指定了上传和删除素材，优先执行删除后再上传')
             upload_material(page, up_image_name)
 
             temp = update_playlist(page, up_image_name, "生日三联")
@@ -1456,7 +1456,7 @@ def _run_update_cycle(playwright, browser, page, url, username, password, up_ima
             ]
             deletion_step_count = 3
         else:
-            print("仅指定了上传素材，执行上传和播单更新")
+            logger.info('仅指定了上传素材，执行上传和播单更新')
             workflow = [
                 ("上传素材", upload_material, (up_image_name,)),
                 ("更新播单-生日三联", update_playlist, (up_image_name, "生日三联")),
@@ -1466,7 +1466,7 @@ def _run_update_cycle(playwright, browser, page, url, username, password, up_ima
             ]
     else:
         if del_image_name:
-            print("仅指定了删除素材，执行删除和播出单更新")
+            logger.info('仅指定了删除素材，执行删除和播出单更新')
             workflow = [
                 ("从播单删除-生日三联", delete_playlist, (del_image_name, "生日三联")),
                 ("从播单删除-1号横屏", delete_playlist, (del_image_name, "1号横屏")),
@@ -1498,7 +1498,7 @@ def _run_update_cycle(playwright, browser, page, url, username, password, up_ima
             args=args,
         )
         if not outcome.ok:
-            print(f"步骤[{label}]最终失败: {outcome.error or outcome.result}")
+            logger.error('步骤[%s]最终失败: %s', label, outcome.error or outcome.result)
             if step_index < deletion_step_count:
                 # Takedown targets are independent. Continue so a failure on
                 # one playlist cannot leave the same content active on the

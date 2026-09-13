@@ -265,6 +265,49 @@ class BirthboardNightlyJobsTests(TestCase):
 		self.assertEqual(rec_start.status, BirthboardRecord.Status.READY)  # 已回退
 		self.assertEqual(rec_finish.status, BirthboardRecord.Status.ONGOING)  # 已回退
 
+	@patch("playwright.sync_api.sync_playwright")
+	@patch("birthboard.web_controller._run_update_cycle")
+	@patch("birthboard.web_controller.open_and_login")
+	def test_nightly_update_only_reverts_pending_images(
+		self, mock_open, mock_update, mock_playwright,
+	):
+		mock_open.return_value = (object(), object())
+		target_date = datetime.now().date() + timedelta(days=1)
+		first = BirthboardRecord.objects.create(
+			receiver_username="partial-1", receiver_name="Partial 1",
+			date=target_date, mode=0, per_cost=1,
+			image=SimpleUploadedFile("partial-1.jpg", b"one"),
+			status=BirthboardRecord.Status.READY,
+		)
+		second = BirthboardRecord.objects.create(
+			receiver_username="partial-2", receiver_name="Partial 2",
+			date=target_date, mode=0, per_cost=1,
+			image=SimpleUploadedFile("partial-2.jpg", b"two"),
+			status=BirthboardRecord.Status.READY,
+		)
+		partial = type("Outcome", (), {
+			"ok": False,
+			"pending": [os.path.basename(second.image.name)],
+			"error": "one image failed",
+		})()
+		mock_update.return_value = (object(), object(), partial)
+
+		bb_jobs.birthboard_nightly_update_2345(
+			target_date=target_date, send_starting_reminder=False,
+		)
+
+		first.refresh_from_db()
+		second.refresh_from_db()
+		self.assertEqual(first.status, BirthboardRecord.Status.ONGOING)
+		self.assertEqual(second.status, BirthboardRecord.Status.READY)
+		results = ChangeRecord.objects.filter(
+			detail__scope='nightly_display_sync',
+		).values_list('record_id', 'detail')
+		self.assertEqual(
+			{record_id: detail['result'] for record_id, detail in results},
+			{first.id: 'success', second.id: 'failed'},
+		)
+
 	def test_0005_retry_targets_current_date_without_duplicate_reminder(self):
 		retry_date = datetime(2026, 9, 2).date()
 		with patch(
@@ -847,6 +890,10 @@ class BirthboardLikeTests(TestCase):
 	"""制作名单点赞量接口测试。"""
 
 	def setUp(self):
+		self.like_limit_patch = patch.object(
+			bb_views.CONFIG, 'like_daily_limit', 1,
+		)
+		self.like_limit_patch.start()
 		self.user = User.objects.create_user(username="liker", name="Liker", password="test")
 		self.user.utype = User.Type.STUDENT
 		self.user.is_newuser = False
@@ -854,6 +901,9 @@ class BirthboardLikeTests(TestCase):
 		from birthboard.models import BirthboardContract
 		BirthboardContract.objects.create(user=self.user, signed=True)
 		self.client.login(username="liker", password="test")
+
+	def tearDown(self):
+		self.like_limit_patch.stop()
 
 	def test_like_count_initial_zero(self):
 		"""初始累计点赞量为 0。"""
@@ -964,8 +1014,9 @@ class BirthboardCheckYqpointTests(TestCase):
 		self.user.YQpoint = 42
 		self.user.save(update_fields=["utype", "is_newuser", "YQpoint"])
 		self.other = User.objects.create_user(username="other_cq", name="OtherCq", password="test")
+		self.other.utype = User.Type.STUDENT
 		self.other.YQpoint = 999
-		self.other.save(update_fields=["YQpoint"])
+		self.other.save(update_fields=["utype", "YQpoint"])
 		self.client.force_login(self.user)
 
 	def test_only_returns_self_balance(self):
@@ -982,6 +1033,42 @@ class BirthboardCheckYqpointTests(TestCase):
 		self.assertIn("me_cq", data["result"])
 		self.assertNotIn("other_cq", data["result"])
 		self.assertEqual(data["result"]["me_cq"]["balance"], 42)
+
+	def test_ignores_forged_sender_count(self):
+		import json
+		resp = self.client.post(
+			reverse("check_yqpoint"),
+			data=json.dumps({
+				"senders": ["me_cq"], "mode": 0, "sender_count": 20,
+			}),
+			content_type="application/json",
+		)
+		self.assertEqual(resp.status_code, 200)
+		self.assertEqual(resp.json()["result"]["me_cq"]["need"], 35)
+
+
+class BirthboardContractVersionTests(TestCase):
+	"""Protocol upgrades require every historical signer to sign again."""
+
+	def test_version_zero_signature_is_not_accepted(self):
+		from birthboard.models import BirthboardContract
+
+		user = User.objects.create_user(
+			username='old_contract_user', name='Old Contract', password='test',
+			usertype=User.Type.STUDENT,
+		)
+		user.is_newuser = False
+		user.save(update_fields=['is_newuser'])
+		BirthboardContract.objects.create(
+			user=user, signed=True, protocol_version=0,
+		)
+		self.client.force_login(user)
+
+		response = self.client.get(reverse('birthboard'))
+
+		self.assertRedirects(
+			response, reverse('birthboard_contract'), fetch_redirect_response=False,
+		)
 
 
 class BirthboardSecurityRegressionTests(TestCase):
@@ -1033,6 +1120,10 @@ class BirthboardSecurityRegressionTests(TestCase):
             image_bytes.getvalue(),
             content_type='image/png',
         )
+
+    def test_direct_birthboard_media_path_is_denied(self):
+        response = self.client.get('/media/birthboard_images/known-poster.jpg')
+        self.assertEqual(response.status_code, 404)
 
     def _record(self, status):
         return BirthboardRecord.objects.create(

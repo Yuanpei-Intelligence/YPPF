@@ -189,7 +189,7 @@ class BirthboardContract(models.Model):
     user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='birthboard_contract')
     signed = models.BooleanField('已签署', default=False)
     signed_at = models.DateTimeField('签署时间', null=True, blank=True)
-    protocol_version = models.PositiveIntegerField('协议版本', default=0)
+    protocol_version = models.PositiveIntegerField('协议版本', default=1)
     restricted_until = models.DateTimeField(
         '限制参与至',
         null=True,

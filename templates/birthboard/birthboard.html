@@ -1649,6 +1649,7 @@
         const userInfos = CONTEXT.user_infos;
         // 送出者人数上限（与后端 clean_senders 保持一致）
         const maxSenders = CONTEXT.max_senders;
+
         // console.log(currentUserId);
         // console.log(currentUserName);
         // 初始化被祝福用户下拉框（排除自己）
@@ -2420,7 +2421,7 @@
           });
           // console.log('【DEBUG】所有隐藏input[name=senders] value:', debugInputs);
           // 余额校验仅检查本人，不检查受邀者
-          let senderUsernamesForCheck = [currentUserId];
+          let senderUsernamesForCheck = senderUsernames.slice();
           let hasError = false;
           let firstErrorTop = null;
           // 清除旧的错误样式和提示
