@@ -3,7 +3,10 @@ import html
 from datetime import datetime, timedelta, date
 
 from django.views.decorators.csrf import csrf_protect
-from django.views.decorators.http import require_POST
+from django.views.decorators.http import require_GET, require_POST
+from django.contrib.auth.decorators import login_required
+from django.http import Http404, JsonResponse
+from django.views.decorators.cache import never_cache
 from django.shortcuts import render, redirect
 from django.urls import reverse
 from django.contrib import auth
@@ -41,6 +44,8 @@ from Appointment.appoint.manage import (
     cancel_appoint,
 )
 from Appointment import jobs
+from app.utils import check_user_access
+from Appointment.utils.instructions import needs_dormitory_agreement, mark_instructions_read
 from Appointment.config import appointment_config as CONFIG
 
 
@@ -401,10 +406,47 @@ def agreement(request):
     return render(request, 'Appointment/agreement.html', render_context)
 
 
-@identity_check(redirect_field_name='origin')
+@login_required(redirect_field_name='origin')
+@check_user_access()
+@require_GET
 def instructions(request):
-    render_context = {}
+    if needs_dormitory_agreement(request.user):
+        return redirect('/dormitory/agreement/')
+    participant = Participant.objects.filter(Sid=request.user).first()
+    render_context = {'participant': participant}
     return render(request, 'Appointment/instructions.html', render_context)
+
+
+@never_cache
+@login_required(redirect_field_name='origin')
+@check_user_access()
+@require_GET
+def instructions_status(request):
+    """先检查住宿协议；无需签署后才查询当前账户的规范阅读状态。"""
+    dormitory_required = needs_dormitory_agreement(request.user)
+    needs_reading = False
+    if not dormitory_required:
+        needs_reading = Participant.objects.filter(
+            Sid=request.user, has_read_instructions=False).exists()
+    return JsonResponse({
+        'needs_dormitory_agreement': dormitory_required,
+        'needs_instructions': needs_reading,
+    })
+
+
+@csrf_protect
+@login_required(redirect_field_name='origin')
+@check_user_access()
+@require_POST
+def confirm_instructions(request):
+    """确认当前账户已阅读规范，不接受客户端指定其他账户。"""
+    if needs_dormitory_agreement(request.user):
+        return redirect('/dormitory/agreement/')
+    try:
+        mark_instructions_read(request.user)
+    except Participant.DoesNotExist:
+        raise Http404('地下室账户不存在')
+    return redirect('Appointment:instructions')
 
 
 @identity_check(redirect_field_name='origin')

@@ -1,34 +1,35 @@
-const user_agreement_path = '/agreement'
-const dorm_path = '/dormitory/agreement';
-const modpw_path = '/modpw';
-const query_path = '/dormitory/agreement-query-fixme';
+(function () {
+    'use strict';
 
-function skipThisPage() {
-    var current_url = window.location.pathname;
-    return current_url.includes(dorm_path) || current_url.includes(user_agreement_path) || current_url.includes(modpw_path);
-}
-
-function getAgreementState() {
-    return fetch(query_path)
-        .then(response => response.json())
-        .then(data => {
-            // Bad design:
-            // If user do not have to sign,
-            // or user has signed, return is not empty.
-            return data.length > 0;
-        })
-        .catch(error => {
-            console.error('Error fetching agreement state:', error);
-            return true; // Pretend user has signed on network error.
-        });
-}
-
-$(function() {
-    if (!skipThisPage()) {
-        getAgreementState().then(signed => {
-            if (!signed) {
-                window.location.href = dorm_path;
-            }
-        });
+    const script = document.currentScript;
+    const statusUrl = script.dataset.statusUrl;
+    const instructionsUrl = script.dataset.instructionsUrl;
+    const dormitoryUrl = script.dataset.dormitoryUrl;
+    const path = window.location.pathname.replace(/\/$/, '');
+    // 签署和首次登录页面先完成各自流程，不弹出阅读提醒。
+    if (['/agreement', '/modpw', dormitoryUrl.replace(/\/$/, '')].includes(path)) {
+        return;
     }
-});
+
+    fetch(statusUrl, {credentials: 'same-origin', cache: 'no-store'})
+        .then(response => {
+            if (!response.ok || response.redirected) {
+                throw new Error('Unable to check agreement status');
+            }
+            return response.json();
+        })
+        .then(state => {
+            if (state.needs_dormitory_agreement) {
+                window.location.assign(dormitoryUrl);
+                return;
+            }
+            if (state.needs_instructions && path !== instructionsUrl
+                    && window.confirm('您尚未查看地下室使用规范，是否现在前往查看？选择取消可稍后查看。')) {
+                window.location.assign(instructionsUrl);
+            }
+        })
+        .catch(() => {
+            // 检查失败不推断协议已签署；下次进入页面时重试。
+            console.error('暂时无法检查协议和规范阅读状态，请刷新页面重试。');
+        });
+}());

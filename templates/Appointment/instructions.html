@@ -59,7 +59,8 @@
                         <div class="form-form">
                             <div class="form-content">
         
-                                <form class="text-left" id="form" method="POST">
+                                <form class="text-left" id="form" method="POST" action="{% url 'Appointment:confirm_instructions' %}">
+                                    {% csrf_token %}
         
                                     <div class="widget-content widget-content-area">
         
@@ -114,6 +115,15 @@
                                             <br/>
                                         </div>
                                     </div>
+                                    {% if participant %}
+                                    <div class="text-center pb-4">
+                                        {% if participant.has_read_instructions %}
+                                        <p class="text-success" role="status">您已确认阅读地下室使用规范。</p>
+                                        {% else %}
+                                        <button type="submit" class="btn btn-primary">我已阅读地下室使用规范</button>
+                                        {% endif %}
+                                    </div>
+                                    {% endif %}
                                 </form>
         
         

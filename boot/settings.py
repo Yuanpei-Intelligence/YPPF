@@ -83,6 +83,7 @@ MIDDLEWARE = [
     # Request validation remains explicit on each mutating website view.
     "utils.http.middleware.CsrfCookieMiddleware",
     "django.contrib.auth.middleware.AuthenticationMiddleware",
+    "Appointment.middleware.InstructionsReminderMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
 ]
