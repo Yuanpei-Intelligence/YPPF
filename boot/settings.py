@@ -73,6 +73,9 @@ INSTALLED_APPS = [
     "dormitory",
     "feedback",
     "achievement",
+    "pku_account",
+    "timetable",
+    "academic_record",
 ]
 
 
@@ -193,4 +196,15 @@ SPECTACULAR_SETTINGS = {
     'VERSION': '2.0',
     'SERVE_INCLUDE_SCHEMA': False,
     'SCHEMA_PATH_PREFIX': '/api/',
+    # Choice sets that share a field name with another module's enum get an
+    # explicit component name instead of a hashed suffix.
+    'ENUM_NAME_OVERRIDES': {
+        'ActivityCategoryEnum': 'api.activity.serializers.ACTIVITY_CATEGORY_CHOICES',
+        'TimetableEntryCategoryEnum': 'timetable.models.ENTRY_CATEGORY_CHOICES',
+        'TimetableEntryRoleEnum': 'timetable.models.ENTRY_ROLE_CHOICES',
+        'CalendarKindEnum': 'api.timetable.serializers.CALENDAR_KINDS',
+        'OccurrenceKindEnum': 'api.timetable.serializers.OCCURRENCE_KINDS',
+        'OccurrenceStatusEnum': 'api.timetable.serializers.OCCURRENCE_STATUSES',
+        'OverviewSlotKindEnum': 'api.timetable.serializers.OVERVIEW_KINDS',
+    },
 }

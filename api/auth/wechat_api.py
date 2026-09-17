@@ -51,7 +51,8 @@ def get_wechat_access_token() -> str:
         resp.raise_for_status()
         data = resp.json()
     except requests.RequestException as exc:
-        logger.warning("get access_token request failed: %s", exc)
+        # 只记异常类名：requests 的异常文本会带上请求 URL，而 URL 里含 appsecret
+        logger.warning("get access_token request failed: %s", type(exc).__name__)
         raise ValueError("无法访问微信接口") from exc
 
     errcode = data.get("errcode")
