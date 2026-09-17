@@ -67,6 +67,7 @@ class Participant(models.Model):
 
     hidden = models.BooleanField('不可搜索', default=False)
     longterm = models.BooleanField('可长期预约', default=False)
+    has_read_instructions = models.BooleanField('已查看地下室使用规范', default=False)
 
     # TODO: pht 2022-02-20 通过新的模型实现，允许每个房间有自己的规则
     # 用户许可的字段，需要许可的房间刷卡时检查是否通过了许可

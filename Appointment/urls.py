@@ -33,7 +33,9 @@ urlpatterns = [
     path('admin-index.html', views.account, name='account'),
     path('admin-credit.html', views.credit, name='credit'),
     path('agreement', views.agreement, name='agreement'),
-    path('instructions', views.instructions, name='instructions')
+    path('instructions', views.instructions, name='instructions'),
+    path('instructions/status', views.instructions_status, name='instructions_status'),
+    path('instructions/confirm', views.confirm_instructions, name='confirm_instructions'),
 ] + [
     # 预约
     path('arrange_time', views.arrange_time, name='arrange_time'),
