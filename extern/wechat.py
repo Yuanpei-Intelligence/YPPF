@@ -11,7 +11,7 @@ import requests
 import json
 from typing import Iterable, Callable, Any
 from datetime import datetime, timedelta
-from urllib.parse import urlencode
+from urllib.parse import urlencode, urlsplit, urlunsplit
 
 from app.config import CONFIG as APP_CONFIG
 
@@ -219,6 +219,13 @@ def send_wechat(
         )
 
 
+def _code_prefill_url(url: str, username: str | int, code: str) -> str:
+    """Keep credentials in a browser-only fragment, outside HTTP GET requests."""
+    parts = urlsplit(url)
+    fragment = urlencode({'username': str(username), 'token': code})
+    return urlunsplit(parts._replace(fragment=fragment))
+
+
 def send_verify_code(stu_id: str | int, captcha: str, url: str | None = '/codeLogin/'):
     """Send a LOGIN code synchronously; never persist credentials in scheduler jobs."""
     time = datetime.now().strftime('%m月%d日 %H:%M:%S')
@@ -227,7 +234,7 @@ def send_verify_code(stu_id: str | int, captcha: str, url: str | None = '/codeLo
         f"<div class=\"highlight\">{captcha}</div>"
         f"发送时间：{time}"
     )
-    url = build_full_url(url) if url is not None else None
+    url = _code_prefill_url(build_full_url(url), stu_id, captcha) if url is not None else None
     btntxt = "登录" if url is not None else None
     send_wechat([stu_id], 'YPPF登录验证', message,
                 card=True, url=url, btntxt=btntxt,
@@ -243,15 +250,12 @@ def send_password_reset_token(stu_id: str | int, token: str):
         f"验证码有效期为{APP_CONFIG.password_reset_token_seconds}秒，"
         f"发送时间：{time}"
     )
-    # Fragments support cross-browser prefill without putting credentials
-    # in website GET requests or access logs.
-    fragment = urlencode({'username': str(stu_id), 'token': token})
     send_wechat(
         [stu_id],
         'YPPF密码重置',
         message,
         card=True,
-        url=f'/forgetpw/#{fragment}',
+        url=_code_prefill_url('/forgetpw/', stu_id, token),
         btntxt='重置密码',
         multithread=False,
         raise_on_failure=True,
