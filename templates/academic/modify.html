@@ -18,6 +18,18 @@ select[readonly] {
     <link rel="stylesheet" type="text/css" href="{% static "plugins/dropify/dropify.min.css" %}">
     <link href="{% static "assets/css/users/account-setting.css" %}" rel="stylesheet" type="text/css" />
     <link href="{% static "assets/css/select2/select2.min.css" %}" rel="stylesheet" />
+    <link href="{% static "assets/css/select2/select2        // 切换"至今"checkbox时禁用/启用结束日期输入
+        function toggleTillNow(checkbox) {
+            var timeContainer = checkbox.parentNode.parentNode.parentNode;
+            var endInput = timeContainer.children[1].children[0];
+            if (checkbox.checked) {
+                endInput.value = '';
+                endInput.disabled = true;
+            } else {
+                endInput.disabled = false;
+            }
+        }%}" rel="stylesheet" />
+
     <!--  END CUSTOM STYLE FILE  -->
 
         <div class="container">
@@ -181,17 +193,47 @@ select[readonly] {
                                             </div>
                                             <div>
                                                 {% for scientific_research in scientific_research_list %}
-                                                    <textarea type="text" id="scientific_research_{{forloop.counter0}}" name="scientific_research_{{forloop.counter0}}" 
-                                                        class="form-control" aria-label="Default" placeholder="在此处填写你的本科生科研经历~" rows="3" style="margin-bottom:5px;">{{scientific_research}}</textarea>
-                                                    <div align="right"><button type="button" class="btn btn-danger btn-md mb-4 mr-2" align="right"
-                                                        value="delete" name="delete_btn" onclick="del_entry.call(this)">删除</button></div>
+                                                    <div class="row" style="margin-bottom:5px;">
+                                                        <div class="col-md-4">
+                                                            <div class="mb-2">
+                                                                <input type="date" id="scientific_research_{{forloop.counter0}}_start" name="scientific_research_{{forloop.counter0}}_start" class="form-control" placeholder="开始日期" value="{{scientific_research.start_date|date:'Y-m-d'|default:''}}">
+                                                            </div>
+                                                            <div class="mb-2">
+                                                                <input type="date" id="scientific_research_{{forloop.counter0}}_end" name="scientific_research_{{forloop.counter0}}_end" class="form-control" placeholder="结束日期" value="{{scientific_research.end_date|date:'Y-m-d'|default:''}}" {% if scientific_research.end_date == None %}disabled{% endif %}>
+                                                            </div>
+                                                            <div>
+                                                                <div class="form-check">
+                                                                    <input class="form-check-input" type="checkbox" id="scientific_research_{{forloop.counter0}}_tillnow" name="scientific_research_{{forloop.counter0}}_tillnow" value="1" {% if scientific_research.end_date == None %}checked{% endif %} onclick="toggleTillNow(this)">
+                                                                    <label class="form-check-label" for="scientific_research_{{forloop.counter0}}_tillnow">至今</label>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                        <div class="col-md-8">
+                                                            <textarea type="text" id="scientific_research_{{forloop.counter0}}" name="scientific_research_{{forloop.counter0}}" class="form-control" aria-label="Default" placeholder="在此处填写你的本科生科研经历~" rows="3">{{scientific_research.content}}</textarea>
+                                                            <div align="right"><button type="button" class="btn btn-danger btn-md mb-4 mr-2" align="right" value="delete" name="delete_btn" onclick="del_entry.call(this)">删除</button></div>
+                                                        </div>
+                                                    </div>
                                                 {% endfor %}
-                                                <textarea type="text" id="scientific_research_{{scientific_research_num}}" name="scientific_research_{{scientific_research_num}}" 
-                                                    class="form-control" aria-label="Default" placeholder="在此处填写你的本科生科研经历~" rows="3" style="margin-bottom:5px;"
-                                                    {% if scientific_research_list %} hidden {% endif %}></textarea>
-                                                <div align="right" {% if scientific_research_list %} hidden {% endif %}>
-                                                    <button type="button" class="btn btn-danger btn-md mb-4 mr-2" align="right"
-                                                    value="delete" name="delete_btn" onclick="del_entry.call(this)">删除</button></div>
+                                                <div class="row" style="margin-bottom:5px;" {% if scientific_research_list %} hidden {% endif %}>
+                                                    <div class="col-md-4">
+                                                        <div class="mb-2">
+                                                            <input type="date" id="scientific_research_{{scientific_research_num}}_start" name="scientific_research_{{scientific_research_num}}_start" class="form-control" placeholder="开始日期">
+                                                        </div>
+                                                        <div class="mb-2">
+                                                            <input type="date" id="scientific_research_{{scientific_research_num}}_end" name="scientific_research_{{scientific_research_num}}_end" class="form-control" placeholder="结束日期">
+                                                        </div>
+                                                        <div>
+                                                            <div class="form-check">
+                                                                <input class="form-check-input" type="checkbox" id="scientific_research_{{scientific_research_num}}_tillnow" name="scientific_research_{{scientific_research_num}}_tillnow" value="1" onclick="toggleTillNow(this)">
+                                                                <label class="form-check-label" for="scientific_research_{{scientific_research_num}}_tillnow">至今</label>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                    <div class="col-md-8">
+                                                        <textarea type="text" id="scientific_research_{{scientific_research_num}}" name="scientific_research_{{scientific_research_num}}" class="form-control" aria-label="Default" placeholder="在此处填写你的本科生科研经历~" rows="3"></textarea>
+                                                        <div align="right"><button type="button" class="btn btn-danger btn-md mb-4 mr-2" align="right" value="delete" name="delete_btn" onclick="del_entry.call(this)">删除</button></div>
+                                                    </div>
+                                                </div>
                                             </div>
                                             <div align="center">
                                                 <a href="javascript:;" onclick="add_textarea.call(this, 'scientific_research', '本科生科研经历')">
@@ -229,17 +271,47 @@ select[readonly] {
                                             </div>
                                             <div>
                                                 {% for challenge_cup in challenge_cup_list %}
-                                                    <textarea type="text" id="challenge_cup_{{forloop.counter0}}" name="challenge_cup_{{forloop.counter0}}" 
-                                                        class="form-control" aria-label="Default" placeholder="在此处填写你的挑战杯经历~" rows="3" style="margin-bottom:5px;">{{challenge_cup}}</textarea>
-                                                    <div align="right"><button type="button" class="btn btn-danger btn-md mb-4 mr-2" align="right"
-                                                        value="delete" name="delete_btn" onclick="del_entry.call(this)">删除</button></div>
+                                                    <div class="row" style="margin-bottom:5px;">
+                                                        <div class="col-md-4">
+                                                            <div class="mb-2">
+                                                                <input type="date" id="challenge_cup_{{forloop.counter0}}_start" name="challenge_cup_{{forloop.counter0}}_start" class="form-control" placeholder="开始日期" value="{{challenge_cup.start_date|date:'Y-m-d'|default:''}}">
+                                                            </div>
+                                                            <div class="mb-2">
+                                                                <input type="date" id="challenge_cup_{{forloop.counter0}}_end" name="challenge_cup_{{forloop.counter0}}_end" class="form-control" placeholder="结束日期" value="{{challenge_cup.end_date|date:'Y-m-d'|default:''}}" {% if challenge_cup.end_date == None %}disabled{% endif %}>
+                                                            </div>
+                                                            <div>
+                                                                <div class="form-check">
+                                                                    <input class="form-check-input" type="checkbox" id="challenge_cup_{{forloop.counter0}}_tillnow" name="challenge_cup_{{forloop.counter0}}_tillnow" value="1" {% if challenge_cup.end_date == None %}checked{% endif %} onclick="toggleTillNow(this)">
+                                                                    <label class="form-check-label" for="challenge_cup_{{forloop.counter0}}_tillnow">至今</label>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                        <div class="col-md-8">
+                                                            <textarea type="text" id="challenge_cup_{{forloop.counter0}}" name="challenge_cup_{{forloop.counter0}}" class="form-control" aria-label="Default" placeholder="在此处填写你的挑战杯经历~" rows="3">{{challenge_cup.content}}</textarea>
+                                                            <div align="right"><button type="button" class="btn btn-danger btn-md mb-4 mr-2" align="right" value="delete" name="delete_btn" onclick="del_entry.call(this)">删除</button></div>
+                                                        </div>
+                                                    </div>
                                                 {% endfor %}
-                                                <textarea type="text" id="challenge_cup_{{challenge_cup_num}}" name="challenge_cup_{{challenge_cup_num}}" 
-                                                    class="form-control" aria-label="Default" placeholder="在此处填写你的挑战杯经历~" rows="3" style="margin-bottom:5px;"
-                                                    {% if challenge_cup_list %} hidden {% endif %}></textarea>
-                                                <div align="right" {% if challenge_cup_list %} hidden {% endif %}>
-                                                    <button type="button" class="btn btn-danger btn-md mb-4 mr-2" align="right"
-                                                    value="delete" name="delete_btn" onclick="del_entry.call(this)">删除</button></div>
+                                                <div class="row" style="margin-bottom:5px;" {% if challenge_cup_list %} hidden {% endif %}>
+                                                    <div class="col-md-4">
+                                                        <div class="mb-2">
+                                                            <input type="date" id="challenge_cup_{{challenge_cup_num}}_start" name="challenge_cup_{{challenge_cup_num}}_start" class="form-control" placeholder="开始日期">
+                                                        </div>
+                                                        <div class="mb-2">
+                                                            <input type="date" id="challenge_cup_{{challenge_cup_num}}_end" name="challenge_cup_{{challenge_cup_num}}_end" class="form-control" placeholder="结束日期">
+                                                        </div>
+                                                        <div>
+                                                            <div class="form-check">
+                                                                <input class="form-check-input" type="checkbox" id="challenge_cup_{{challenge_cup_num}}_tillnow" name="challenge_cup_{{challenge_cup_num}}_tillnow" value="1" onclick="toggleTillNow(this)">
+                                                                <label class="form-check-label" for="challenge_cup_{{challenge_cup_num}}_tillnow">至今</label>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                    <div class="col-md-8">
+                                                        <textarea type="text" id="challenge_cup_{{challenge_cup_num}}" name="challenge_cup_{{challenge_cup_num}}" class="form-control" aria-label="Default" placeholder="在此处填写你的挑战杯经历~" rows="3"></textarea>
+                                                        <div align="right"><button type="button" class="btn btn-danger btn-md mb-4 mr-2" align="right" value="delete" name="delete_btn" onclick="del_entry.call(this)">删除</button></div>
+                                                    </div>
+                                                </div>
                                             </div>
                                             <div align="center">
                                                 <a href="javascript:;" onclick="add_textarea.call(this, 'challenge_cup', '挑战杯经历')">
@@ -277,17 +349,47 @@ select[readonly] {
                                             </div>
                                             <div>
                                                 {% for internship in internship_list %}
-                                                    <textarea type="text" id="internship_{{forloop.counter0}}" name="internship_{{forloop.counter0}}" 
-                                                        class="form-control" aria-label="Default" placeholder="在此处填写你的实习经历~" rows="3" style="margin-bottom:5px;">{{internship}}</textarea>
-                                                    <div align="right"><button type="button" class="btn btn-danger btn-md mb-4 mr-2" align="right"
-                                                        value="delete" name="delete_btn" onclick="del_entry.call(this)">删除</button></div>
+                                                    <div class="row" style="margin-bottom:5px;">
+                                                        <div class="col-md-4">
+                                                            <div class="mb-2">
+                                                                <input type="date" id="internship_{{forloop.counter0}}_start" name="internship_{{forloop.counter0}}_start" class="form-control" placeholder="开始日期" value="{{internship.start_date|date:'Y-m-d'|default:''}}">
+                                                            </div>
+                                                            <div class="mb-2">
+                                                                <input type="date" id="internship_{{forloop.counter0}}_end" name="internship_{{forloop.counter0}}_end" class="form-control" placeholder="结束日期" value="{{internship.end_date|date:'Y-m-d'|default:''}}" {% if internship.end_date == None %}disabled{% endif %}>
+                                                            </div>
+                                                            <div>
+                                                                <div class="form-check">
+                                                                    <input class="form-check-input" type="checkbox" id="internship_{{forloop.counter0}}_tillnow" name="internship_{{forloop.counter0}}_tillnow" value="1" {% if internship.end_date == None %}checked{% endif %} onclick="toggleTillNow(this)">
+                                                                    <label class="form-check-label" for="internship_{{forloop.counter0}}_tillnow">至今</label>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                        <div class="col-md-8">
+                                                            <textarea type="text" id="internship_{{forloop.counter0}}" name="internship_{{forloop.counter0}}" class="form-control" aria-label="Default" placeholder="在此处填写你的实习经历~" rows="3">{{internship.content}}</textarea>
+                                                            <div align="right"><button type="button" class="btn btn-danger btn-md mb-4 mr-2" align="right" value="delete" name="delete_btn" onclick="del_entry.call(this)">删除</button></div>
+                                                        </div>
+                                                    </div>
                                                 {% endfor %}
-                                                <textarea type="text" id="internship_{{internship_num}}" name="internship_{{internship_num}}" class="form-control" 
-                                                    aria-label="Default" placeholder="在此处填写你的实习经历~" rows="3" style="margin-bottom:5px;"
-                                                    {% if internship_list %} hidden {% endif %}></textarea>
-                                                <div align="right" {% if internship_list %} hidden {% endif %}>
-                                                    <button type="button" class="btn btn-danger btn-md mb-4 mr-2" align="right"
-                                                    value="delete" name="delete_btn" onclick="del_entry.call(this)">删除</button></div>
+                                                <div class="row" style="margin-bottom:5px;" {% if internship_list %} hidden {% endif %}>
+                                                    <div class="col-md-4">
+                                                        <div class="mb-2">
+                                                            <input type="date" id="internship_{{internship_num}}_start" name="internship_{{internship_num}}_start" class="form-control" placeholder="开始日期">
+                                                        </div>
+                                                        <div class="mb-2">
+                                                            <input type="date" id="internship_{{internship_num}}_end" name="internship_{{internship_num}}_end" class="form-control" placeholder="结束日期">
+                                                        </div>
+                                                        <div>
+                                                            <div class="form-check">
+                                                                <input class="form-check-input" type="checkbox" id="internship_{{internship_num}}_tillnow" name="internship_{{internship_num}}_tillnow" value="1" onclick="toggleTillNow(this)">
+                                                                <label class="form-check-label" for="internship_{{internship_num}}_tillnow">至今</label>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                    <div class="col-md-8">
+                                                        <textarea type="text" id="internship_{{internship_num}}" name="internship_{{internship_num}}" class="form-control" aria-label="Default" placeholder="在此处填写你的实习经历~" rows="3"></textarea>
+                                                        <div align="right"><button type="button" class="btn btn-danger btn-md mb-4 mr-2" align="right" value="delete" name="delete_btn" onclick="del_entry.call(this)">删除</button></div>
+                                                    </div>
+                                                </div>
                                             </div>
                                             <div align="center">
                                                 <a href="javascript:;" onclick="add_textarea.call(this, 'internship', '实习经历')">
@@ -325,17 +427,47 @@ select[readonly] {
                                             </div>
                                             <div>
                                                 {% for scientific_direction in scientific_direction_list %}
-                                                    <textarea type="text" id="scientific_direction_{{forloop.counter0}}" name="scientific_direction_{{forloop.counter0}}" 
-                                                        class="form-control" aria-label="Default" placeholder="在此处填写你的科研方向~" rows="3" style="margin-bottom:5px;">{{scientific_direction}}</textarea>
-                                                    <div align="right"><button type="button" class="btn btn-danger btn-md mb-4 mr-2" align="right"
-                                                        value="delete" name="delete_btn" onclick="del_entry.call(this)">删除</button></div>
+                                                    <div class="row" style="margin-bottom:5px;">
+                                                        <div class="col-md-4">
+                                                            <div class="mb-2">
+                                                                <input type="date" id="scientific_direction_{{forloop.counter0}}_start" name="scientific_direction_{{forloop.counter0}}_start" class="form-control" placeholder="开始日期" value="{{scientific_direction.start_date|date:'Y-m-d'|default:''}}">
+                                                            </div>
+                                                            <div class="mb-2">
+                                                                <input type="date" id="scientific_direction_{{forloop.counter0}}_end" name="scientific_direction_{{forloop.counter0}}_end" class="form-control" placeholder="结束日期" value="{{scientific_direction.end_date|date:'Y-m-d'|default:''}}" {% if scientific_direction.end_date == None %}disabled{% endif %}>
+                                                            </div>
+                                                            <div>
+                                                                <div class="form-check">
+                                                                    <input class="form-check-input" type="checkbox" id="scientific_direction_{{forloop.counter0}}_tillnow" name="scientific_direction_{{forloop.counter0}}_tillnow" value="1" {% if scientific_direction.end_date == None %}checked{% endif %} onclick="toggleTillNow(this)">
+                                                                    <label class="form-check-label" for="scientific_direction_{{forloop.counter0}}_tillnow">至今</label>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                        <div class="col-md-8">
+                                                            <textarea type="text" id="scientific_direction_{{forloop.counter0}}" name="scientific_direction_{{forloop.counter0}}" class="form-control" aria-label="Default" placeholder="在此处填写你的科研方向~" rows="3">{{scientific_direction.content}}</textarea>
+                                                            <div align="right"><button type="button" class="btn btn-danger btn-md mb-4 mr-2" align="right" value="delete" name="delete_btn" onclick="del_entry.call(this)">删除</button></div>
+                                                        </div>
+                                                    </div>
                                                 {% endfor %}
-                                                <textarea type="text" id="scientific_direction_{{scientific_direction_num}}" name="scientific_direction_{{scientific_direction_num}}" 
-                                                    class="form-control" aria-label="Default" placeholder="在此处填写你的科研方向~" rows="3" style="margin-bottom:5px;"
-                                                    {% if scientific_direction_list %} hidden {% endif %}></textarea>
-                                                <div align="right" {% if scientific_direction_list %} hidden {% endif %}>
-                                                    <button type="button" class="btn btn-danger btn-md mb-4 mr-2" align="right"
-                                                    value="delete" name="delete_btn" onclick="del_entry.call(this)">删除</button></div>
+                                                <div class="row" style="margin-bottom:5px;" {% if scientific_direction_list %} hidden {% endif %}>
+                                                    <div class="col-md-4">
+                                                        <div class="mb-2">
+                                                            <input type="date" id="scientific_direction_{{scientific_direction_num}}_start" name="scientific_direction_{{scientific_direction_num}}_start" class="form-control" placeholder="开始日期">
+                                                        </div>
+                                                        <div class="mb-2">
+                                                            <input type="date" id="scientific_direction_{{scientific_direction_num}}_end" name="scientific_direction_{{scientific_direction_num}}_end" class="form-control" placeholder="结束日期">
+                                                        </div>
+                                                        <div>
+                                                            <div class="form-check">
+                                                                <input class="form-check-input" type="checkbox" id="scientific_direction_{{scientific_direction_num}}_tillnow" name="scientific_direction_{{scientific_direction_num}}_tillnow" value="1" onclick="toggleTillNow(this)">
+                                                                <label class="form-check-label" for="scientific_direction_{{scientific_direction_num}}_tillnow">至今</label>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                    <div class="col-md-8">
+                                                        <textarea type="text" id="scientific_direction_{{scientific_direction_num}}" name="scientific_direction_{{scientific_direction_num}}" class="form-control" aria-label="Default" placeholder="在此处填写你的科研方向~" rows="3"></textarea>
+                                                        <div align="right"><button type="button" class="btn btn-danger btn-md mb-4 mr-2" align="right" value="delete" name="delete_btn" onclick="del_entry.call(this)">删除</button></div>
+                                                    </div>
+                                                </div>
                                             </div>
                                             <div align="center">
                                                 <a href="javascript:;" onclick="add_textarea.call(this, 'scientific_direction', '科研方向')">
@@ -373,17 +505,47 @@ select[readonly] {
                                             </div>
                                             <div>
                                                 {% for graduation in graduation_list %}
-                                                    <textarea type="text" id="graduation_{{forloop.counter0}}" name="graduation_{{forloop.counter0}}" 
-                                                        class="form-control" aria-label="Default" placeholder="在此处填写你的毕业去向~" rows="3" style="margin-bottom:5px;">{{graduation}}</textarea>
-                                                    <div align="right"><button type="button" class="btn btn-danger btn-md mb-4 mr-2" align="right"
-                                                        value="delete" name="delete_btn" onclick="del_entry.call(this)">删除</button></div>
+                                                    <div class="row" style="margin-bottom:5px;">
+                                                        <div class="col-md-4">
+                                                            <div class="mb-2">
+                                                                <input type="date" id="graduation_{{forloop.counter0}}_start" name="graduation_{{forloop.counter0}}_start" class="form-control" placeholder="开始日期" value="{{graduation.start_date|date:'Y-m-d'|default:''}}">
+                                                            </div>
+                                                            <div class="mb-2">
+                                                                <input type="date" id="graduation_{{forloop.counter0}}_end" name="graduation_{{forloop.counter0}}_end" class="form-control" placeholder="结束日期" value="{{graduation.end_date|date:'Y-m-d'|default:''}}" {% if graduation.end_date == None %}disabled{% endif %}>
+                                                            </div>
+                                                            <div>
+                                                                <div class="form-check">
+                                                                    <input class="form-check-input" type="checkbox" id="graduation_{{forloop.counter0}}_tillnow" name="graduation_{{forloop.counter0}}_tillnow" value="1" {% if graduation.end_date == None %}checked{% endif %} onclick="toggleTillNow(this)">
+                                                                    <label class="form-check-label" for="graduation_{{forloop.counter0}}_tillnow">至今</label>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                        <div class="col-md-8">
+                                                            <textarea type="text" id="graduation_{{forloop.counter0}}" name="graduation_{{forloop.counter0}}" class="form-control" aria-label="Default" placeholder="在此处填写你的毕业去向~" rows="3">{{graduation.content}}</textarea>
+                                                            <div align="right"><button type="button" class="btn btn-danger btn-md mb-4 mr-2" align="right" value="delete" name="delete_btn" onclick="del_entry.call(this)">删除</button></div>
+                                                        </div>
+                                                    </div>
                                                 {% endfor %}
-                                                <textarea type="text" id="graduation_{{graduation_num}}" name="graduation_{{graduation_num}}" 
-                                                    class="form-control" aria-label="Default" placeholder="在此处填写你的毕业去向~" rows="3" style="margin-bottom:5px;"
-                                                    {% if graduation_list %} hidden {% endif %}></textarea>
-                                                <div align="right" {% if graduation_list %} hidden {% endif %}>
-                                                    <button type="button" class="btn btn-danger btn-md mb-4 mr-2" align="right"
-                                                    value="delete" name="delete_btn" onclick="del_entry.call(this)">删除</button></div>
+                                                <div class="row" style="margin-bottom:5px;" {% if graduation_list %} hidden {% endif %}>
+                                                    <div class="col-md-4">
+                                                        <div class="mb-2">
+                                                            <input type="date" id="graduation_{{graduation_num}}_start" name="graduation_{{graduation_num}}_start" class="form-control" placeholder="开始日期">
+                                                        </div>
+                                                        <div class="mb-2">
+                                                            <input type="date" id="graduation_{{graduation_num}}_end" name="graduation_{{graduation_num}}_end" class="form-control" placeholder="结束日期">
+                                                        </div>
+                                                        <div>
+                                                            <div class="form-check">
+                                                                <input class="form-check-input" type="checkbox" id="graduation_{{graduation_num}}_tillnow" name="graduation_{{graduation_num}}_tillnow" value="1" onclick="toggleTillNow(this)">
+                                                                <label class="form-check-label" for="graduation_{{graduation_num}}_tillnow">至今</label>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                    <div class="col-md-8">
+                                                        <textarea type="text" id="graduation_{{graduation_num}}" name="graduation_{{graduation_num}}" class="form-control" aria-label="Default" placeholder="在此处填写你的毕业去向~" rows="3"></textarea>
+                                                        <div align="right"><button type="button" class="btn btn-danger btn-md mb-4 mr-2" align="right" value="delete" name="delete_btn" onclick="del_entry.call(this)">删除</button></div>
+                                                    </div>
+                                                </div>
                                             </div>
                                             <div align="center">
                                                 <a href="javascript:;" onclick="add_textarea.call(this, 'graduation', '毕业去向')">
@@ -446,6 +608,16 @@ select[readonly] {
     <script src={% static "assets/js/users/account-settings.js" %}></script>
     <script src={% static "assets/js/select2/select2.min.js" %}></script>
     <script>
+        // 切换“至今”checkbox时禁用/启用结束日期输入
+        function toggleTillNow(checkbox) {
+            var endInput = checkbox.parentNode.parentNode.previousElementSibling.children[0];
+            if (checkbox.checked) {
+                endInput.value = '';
+                endInput.disabled = true;
+            } else {
+                endInput.disabled = false;
+            }
+        }
         let major_data = {{major_list|safe}};
         let minor_data = {{minor_list|safe}};
         let double_degree_data = {{double_degree_list|safe}};
@@ -498,31 +670,70 @@ select[readonly] {
             const num_input = this.parentNode.nextElementSibling;
             const show_num_input = num_input.nextElementSibling;
             const textarea_div = this.parentNode.previousElementSibling;
-            const textareas = textarea_div.children;
-            for (var i = 0; i < textareas.length; i += 2) {
-                const textarea_value = $('#' + type + '_' + String(i/2)).val();
-                textareas[i].innerHTML = textarea_value;
-            }
-            num_input.value = String(Number(num_input.value) + 1);
+            
+            // 更新计数器
+            const newNum = Number(num_input.value) + 1;
+            num_input.value = String(newNum);
             show_num_input.value = String(Number(show_num_input.value) + 1);
-            textarea_div.innerHTML += '<textarea type="text" id="' + type + "_" + num_input.value 
-                + '" name="' + type + "_" + num_input.value + '" class="form-control" aria-label="Default" ' 
-                + 'placeholder="在此处填写你的' + type_zh + '~" rows="3" style="margin-bottom:5px;"></textarea>';
-            textarea_div.innerHTML += '<div align="right"><button type="button" class="btn btn-danger btn-md mb-4 mr-2" ' 
-                + 'align="right" value="delete" name="delete_btn" onclick="del_entry.call(this)">删除</button></div>';
+            
+            // 创建完整的row结构，匹配新的纵向布局模板
+            const rowHTML = `
+                <div class="row" style="margin-bottom:5px;">
+                    <div class="col-md-4">
+                        <div class="mb-2">
+                            <input type="date" id="${type}_${newNum}_start" name="${type}_${newNum}_start" class="form-control" placeholder="开始日期">
+                        </div>
+                        <div class="mb-2">
+                            <input type="date" id="${type}_${newNum}_end" name="${type}_${newNum}_end" class="form-control" placeholder="结束日期">
+                        </div>
+                        <div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="${type}_${newNum}_tillnow" name="${type}_${newNum}_tillnow" value="1" onclick="toggleTillNow(this)">
+                                <label class="form-check-label" for="${type}_${newNum}_tillnow">至今</label>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-8">
+                        <textarea type="text" id="${type}_${newNum}" name="${type}_${newNum}" class="form-control" aria-label="Default" placeholder="在此处填写你的${type_zh}~" rows="3"></textarea>
+                        <div align="right"><button type="button" class="btn btn-danger btn-md mb-4 mr-2" align="right" value="delete" name="delete_btn" onclick="del_entry.call(this)">删除</button></div>
+                    </div>
+                </div>
+            `;
+            
+            // 使用insertAdjacentHTML避免重新渲染整个容器
+            textarea_div.insertAdjacentHTML('beforeend', rowHTML);
         }
 
         function del_entry () {
             if (confirm("是否确认删除？")) {
-                const on_delete_textarea = this.parentNode.previousElementSibling;
-                const show_num_input = this.parentNode.parentNode.nextElementSibling.nextElementSibling.nextElementSibling;
+                // 新的DOM结构：button -> div -> col-md-4 -> row -> container
+                const deleteDiv = this.parentNode;
+                const col = deleteDiv.parentNode;
+                const row = col.parentNode;
+                const container = row.parentNode;
+                
+                // 找到textarea
+                const textarea = col.querySelector('textarea');
+                
+                // 找到show_num_input - 它在container的兄弟元素中
+                const centerDiv = container.nextElementSibling;
+                const numInput = centerDiv.nextElementSibling;
+                const show_num_input = numInput.nextElementSibling;
+                
                 if (show_num_input.value == "0") 
                     return alert("不能将输入框全部删除哦！如果不想保留该项目，直接不填写输入框即可~");
                 else {
                     show_num_input.value = String(Number(show_num_input.value) - 1);
-                    $('#' + on_delete_textarea.id).val("");
-                    on_delete_textarea.hidden = true;
-                    this.hidden = true;
+                    
+                    // 清空整行中的所有输入
+                    const inputs = row.querySelectorAll('input, textarea');
+                    inputs.forEach(input => {
+                        input.value = '';
+                        if (input.type === 'checkbox') input.checked = false;
+                    });
+                    
+                    // 隐藏整行
+                    row.hidden = true;
                 }
             }
         }
