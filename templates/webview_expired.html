@@ -1,0 +1,47 @@
+{% load static %}
+<!doctype html>
+<html lang="zh-CN">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>请返回小程序</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'PingFang SC', 'Microsoft YaHei', sans-serif;
+            background: #f5f6f8; color: #222; margin: 0; padding: 24px; box-sizing: border-box;
+            min-height: 100vh; display: flex; flex-direction: column;
+            align-items: center; justify-content: center; text-align: center;
+        }
+        h1 { font-size: 18px; margin: 0 0 12px; }
+        p { font-size: 14px; color: #666; margin: 0 0 24px; line-height: 1.6; }
+        button {
+            font-size: 15px; color: #fff; background: #1b55e2; border: none;
+            border-radius: 12px; padding: 12px 32px; cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+    <h1>登录已过期</h1>
+    <p>请在微信小程序内重新进入本页面，会自动完成登录。</p>
+    <button type="button" id="back-btn">返回小程序</button>
+
+    <script>
+        // 小程序 webview 内：点击返回小程序；非小程序环境（此页理论不会渲染）无副作用
+        (function () {
+            function onReady() {
+                if (!window.wx || !wx.miniProgram) return;
+                var backBtn = document.getElementById('back-btn');
+                if (backBtn) {
+                    backBtn.addEventListener('click', function () {
+                        wx.miniProgram.navigateBack();
+                    });
+                }
+            }
+            var s = document.createElement('script');
+            s.src = 'https://res.wx.qq.com/open/js/jweixin-1.6.0.js';
+            s.onload = onReady;
+            document.head.appendChild(s);
+        })();
+    </script>
+</body>
+</html>

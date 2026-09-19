@@ -7,6 +7,7 @@ from rpyc.utils.server import ThreadedServer
 
 from record.log.utils import get_logger
 from scheduler.config import scheduler_config as CONFIG
+from scheduler.management.commands.collect_jobs import collect_periodical_jobs
 from utils.health_check import db_connection_healthy
 
 TZ = settings.TIME_ZONE
@@ -32,6 +33,7 @@ class Command(BaseCommand):
 
         scheduler = BackgroundScheduler(timezone=TZ)
         scheduler.add_jobstore(DjangoJobStore(), "default")
+        collect_periodical_jobs(scheduler, output=self.stdout)
         scheduler.start()
 
         protocol_config = {

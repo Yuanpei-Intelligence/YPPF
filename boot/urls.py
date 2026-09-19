@@ -6,8 +6,22 @@ from django.contrib import admin
 from django.urls import path, include
 from django.conf import settings
 from django.conf.urls.static import static
+from django.http import Http404
+
+
+def deny_direct_birthboard_media(request, path):
+    """Prevent bypassing the participant/reviewer poster authorization view."""
+    raise Http404
 
 urlpatterns = [
+    path(
+        'media/birthboard_images/<path:path>',
+        deny_direct_birthboard_media,
+    ),
+    path(
+        'media/birthboard_thumbnails/<path:path>',
+        deny_direct_birthboard_media,
+    ),
     path("admin/", admin.site.urls),
     path('api-auth/', include('rest_framework.urls')),
     path('api/', include('api.urls')),
@@ -22,6 +36,7 @@ urlpatterns = [
     path("", include("record.urls")),
     path("", include("app.urls")),
     path("", include("feedback.urls")),
+    path("birthboard/", include("birthboard.urls")),
 ]
 
 # 生产环境下自动返回空列表，请通过docker或服务器设置手动serve静态文件和媒体文件

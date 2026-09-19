@@ -73,6 +73,7 @@ INSTALLED_APPS = [
     "dormitory",
     "feedback",
     "achievement",
+    "birthboard",
 ]
 
 
@@ -104,6 +105,7 @@ TEMPLATES = [
                 "django.contrib.auth.context_processors.auth",
                 "django.contrib.messages.context_processors.messages",
                 "django.template.context_processors.media",
+                "django.template.context_processors.csrf",
             ],
         },
     },

@@ -1,0 +1,67 @@
+/* ===== birthboard 系页面共享字体声明 =====
+   思源黑体为单个可变字体文件（约 14M），全站只声明一次，各页面统一引入
+   本文件，避免 birthboard.css / birthboard_confirm.css 各自下载一次。
+   优先使用本地已安装的相同/相近字体（src 中的 local() 在前），本机没有时
+   才下载 woff2，进一步减少大体积字体的网络传输。
+   MyfontC 与 MyfontT/TE/LB/B 都指向同一个可变字体文件：浏览器对同一 URL
+   在同一文档内只下载一次（按 URL 去重），多个 family 名仅为兼容 confirm/
+   approve 页的旧引用而保留，font-weight 分别对应 300/400/700 等字重。 */
+@font-face {
+    font-family: 'MyfontC';
+    src: local('Source Han Sans SC'), local('Source Han Sans CN'),
+         url('fonts/SourceHanSansSC-VF.otf.woff2') format('woff2');
+    font-weight: 300;
+    font-style: normal;
+    unicode-range: U+4E00-9FFF; /* 汉字范围 */
+    font-display: swap;
+}
+@font-face {
+    font-family: 'MyfontT';
+    src: local('Source Han Sans SC'), local('Source Han Sans CN'),
+         url('fonts/SourceHanSansSC-VF.otf.woff2') format('woff2');
+    font-weight: 300;
+    font-style: normal;
+    unicode-range: U+4E00-9FFF; /* 汉字范围 */
+    font-display: swap;
+}
+@font-face {
+    font-family: 'MyfontTE';
+    src: local('Source Han Sans SC'), local('Source Han Sans CN'),
+         url('fonts/SourceHanSansSC-VF.otf.woff2') format('woff2');
+    font-weight: 300;
+    font-style: normal;
+    font-display: swap;
+}
+@font-face {
+    font-family: 'MyfontLB';
+    src: local('Source Han Sans SC'), local('Source Han Sans CN'),
+         url('fonts/SourceHanSansSC-VF.otf.woff2') format('woff2');
+    font-weight: 400;
+    font-style: normal;
+    unicode-range: U+4E00-9FFF; /* 汉字范围 */
+    font-display: swap;
+}
+@font-face {
+    font-family: 'MyfontB';
+    src: local('Source Han Sans SC'), local('Source Han Sans CN'),
+         url('fonts/SourceHanSansSC-VF.otf.woff2') format('woff2');
+    font-weight: 700;
+    font-style: normal;
+    unicode-range: U+4E00-9FFF; /* 汉字范围 */
+    font-display: swap;
+}
+@font-face {
+    font-family: 'MyfontE';
+    src: local('Fira Code'), local('FiraCode'), local('Fira Code Light'),
+         url('fonts/FiraCode-Light.woff2') format('woff2');
+    font-weight: 400;
+    font-style: normal;
+    unicode-range: U+0000-007F; /* 英文和数字范围 */
+}
+@font-face {
+    font-family: 'Numbers';
+    src: local('Georgia'), url('fonts/georgia.woff') format('woff');
+    font-weight: 400;
+    font-style: normal;
+    unicode-range: U+0000-007F; /* 英文和数字范围 */
+}
