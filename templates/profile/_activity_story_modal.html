@@ -1,0 +1,61 @@
+<div class="modal fade" id="activityStoryModal-{{ modal_prefix }}-{{ participation.id }}" tabindex="-1" role="dialog"
+    aria-labelledby="activityStoryModalLabel-{{ modal_prefix }}-{{ participation.id }}" aria-hidden="true">
+    <div class="modal-dialog modal-lg" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <div>
+                    <h4 class="modal-title" id="activityStoryModalLabel-{{ modal_prefix }}-{{ participation.id }}">{{ participation.activity.title }}</h4>
+                    <p class="text-muted mb-0">{{ participation.status }} · {{ participation.activity.start|date:"Y.m.d" }}</p>
+                </div>
+                <button type="button" class="close" data-dismiss="modal" aria-label="关闭"><span aria-hidden="true">&times;</span></button>
+            </div>
+            <div class="modal-body">
+                {% include "profile/_story_display.html" with story=participation.profile_story is_myself=Profile.is_myself %}
+                {% if Profile.is_myself %}
+                <hr>
+                <form method="post" enctype="multipart/form-data" action="{% url 'updateActivityStory' participation.id %}">
+                    {% csrf_token %}
+                    <div class="form-group">
+                        <label for="activity-description-{{ modal_prefix }}-{{ participation.id }}">我的说明（最多 500 字）</label>
+                        {% if participation.profile_story.description_status == "hidden_by_admin" %}
+                        <div class="alert alert-warning py-2">当前文字已被管理员隐藏；修改文字后会重新公开。</div>
+                        {% endif %}
+                        <textarea class="form-control" id="activity-description-{{ modal_prefix }}-{{ participation.id }}"
+                            name="description" maxlength="500" rows="4">{{ participation.profile_story.description }}</textarea>
+                    </div>
+                    {% if participation.profile_story.display_images %}
+                    <div class="form-group">
+                        <label class="d-block">删除已有图片</label>
+                        <div class="profile-story-delete-grid">
+                            {% for story_image in participation.profile_story.display_images %}
+                            <label>
+                                <img src="{{ story_image.image.url }}" alt="已有图片 {{ forloop.counter }}">
+                                <span><input type="checkbox" name="delete_images" value="{{ story_image.id }}"> 删除{% if story_image.status == "hidden_by_admin" %}（已被管理员隐藏）{% endif %}</span>
+                            </label>
+                            {% endfor %}
+                        </div>
+                    </div>
+                    {% endif %}
+                    <div class="form-group">
+                        <label for="activity-images-{{ modal_prefix }}-{{ participation.id }}">新增图片</label>
+                        <input class="form-control-file" id="activity-images-{{ modal_prefix }}-{{ participation.id }}"
+                            type="file" name="images" accept="image/jpeg,image/png,image/webp" multiple>
+                        <small class="form-text text-muted">最多保留 6 张；单张不超过 5 MB；支持 JPEG、PNG、WebP。</small>
+                    </div>
+                    <div class="text-right">
+                        <button type="button" class="btn btn-light" data-dismiss="modal">取消</button>
+                        <button type="submit" class="btn btn-primary">保存活动记录</button>
+                    </div>
+                </form>
+                {% if participation.profile_story %}
+                <form class="mt-2 text-right" method="post" action="{% url 'deleteActivityStory' participation.profile_story.id %}"
+                    onsubmit="return confirm('确认删除这条活动记录及其全部图片、评论和点赞吗？');">
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn-sm btn-outline-danger">删除整条活动记录</button>
+                </form>
+                {% endif %}
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>

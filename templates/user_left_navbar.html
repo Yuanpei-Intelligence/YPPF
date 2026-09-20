@@ -24,6 +24,29 @@
                     </div>
                 </a>
             </li>
+            <li class="menu">
+                <a href="#communityBoards" data-toggle="collapse" aria-expanded="false" class="dropdown-toggle">
+                    <div>
+                        <svg viewBox="0 0 24 24" width="24" height="24" stroke="currentColor" stroke-width="2"
+                            fill="none" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M21 15a4 4 0 0 1-4 4H8l-5 3V7a4 4 0 0 1 4-4h10a4 4 0 0 1 4 4z"></path>
+                            <line x1="8" y1="9" x2="16" y2="9"></line>
+                            <line x1="8" y1="13" x2="14" y2="13"></line>
+                        </svg>
+                        <span>社区看板</span>
+                    </div>
+                    <div>
+                        <svg viewBox="0 0 24 24" width="24" height="24" stroke="currentColor" stroke-width="2"
+                            fill="none" stroke-linecap="round" stroke-linejoin="round">
+                            <polyline points="9 18 15 12 9 6"></polyline>
+                        </svg>
+                    </div>
+                </a>
+                <ul class="collapse submenu list-unstyled" id="communityBoards" data-parent="#accordionExample">
+                    <li><a href="{% url 'activityCommunity' %}">活动动态</a></li>
+                    <li><a href="{% url 'skillCommunity' %}">兴趣与技能</a></li>
+                </ul>
+            </li>
             {% if bar_display.has_basement_permission %}
             <li class="menu">
                 <a href="{{bar_display.underground_url}}" aria-expanded="false" class="dropdown-toggle">

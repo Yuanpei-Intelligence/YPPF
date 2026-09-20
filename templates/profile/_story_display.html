@@ -1,0 +1,18 @@
+{% if story and story.display_description %}
+<p class="profile-story-description">{{ story.display_description|linebreaksbr }}</p>
+{% endif %}
+{% if story and story.display_images %}
+<div class="profile-story-gallery">
+    {% for story_image in story.display_images %}
+    <figure>
+        <img src="{{ story_image.image.url }}" alt="个人记录图片 {{ forloop.counter }}" loading="lazy">
+        {% if is_myself and story_image.status == "hidden_by_admin" %}
+        <figcaption>该图片已被管理员隐藏，仅自己可见</figcaption>
+        {% endif %}
+    </figure>
+    {% endfor %}
+</div>
+{% endif %}
+{% if not story or not story.display_description and not story.display_images %}
+<p class="profile-empty mb-0">还没有添加图文说明。</p>
+{% endif %}

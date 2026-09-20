@@ -1,0 +1,17 @@
+<details class="profile-tag-category" open>
+    <summary>{{ node.name }}</summary>
+    {% if node.tags %}
+    <div class="profile-tag-choice-list">
+        {% for tag in node.tags %}
+        <label class="profile-tag-choice">
+            <input type="checkbox" name="{{ kind }}_tags" value="{{ tag.id }}"
+                {% if tag.selected %}checked{% endif %}>
+            <span>{{ tag.name }}</span>
+        </label>
+        {% endfor %}
+    </div>
+    {% endif %}
+    {% for child in node.children %}
+        {% include "profile/_tag_category.html" with node=child kind=kind %}
+    {% endfor %}
+</details>

@@ -1,0 +1,85 @@
+<div class="modal fade" id="tagStoryModal-{{ selection.id }}" tabindex="-1" role="dialog"
+    aria-labelledby="tagStoryModalLabel-{{ selection.id }}" aria-hidden="true">
+    <div class="modal-dialog modal-lg" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <div>
+                    <h4 class="modal-title" id="tagStoryModalLabel-{{ selection.id }}">{{ selection.tag.name }}</h4>
+                    <p class="text-muted mb-0">{{ selection.get_kind_display }} · {{ selection.tag.category }}</p>
+                </div>
+                <button type="button" class="close" data-dismiss="modal" aria-label="关闭"><span aria-hidden="true">&times;</span></button>
+            </div>
+            <div class="modal-body">
+                {% include "profile/_story_display.html" with story=selection is_myself=Profile.is_myself %}
+                {% if selection.kind == "skill" or selection.kind == "interest" %}
+                <div class="profile-feed-toolbar mt-3" id="tag-story-interactions-{{ selection.id }}">
+                    <span><i class="fa fa-thumbs-up"></i> {{ selection.like_count }}</span>
+                    <span><i class="fa fa-comment"></i> {{ selection.display_comments|length }}</span>
+                    {% if selection.can_interact %}
+                    <form method="post" action="{% url 'toggleProfileTagStoryLike' selection.id %}">
+                        {% csrf_token %}
+                        <input type="hidden" name="next" value="{{ selection.person.get_absolute_url }}#information">
+                        <button type="submit" class="btn btn-sm {% if selection.viewer_has_liked %}btn-primary{% else %}btn-outline-primary{% endif %}">
+                            {% if selection.viewer_has_liked %}取消点赞{% else %}点赞{% endif %}
+                        </button>
+                    </form>
+                    {% endif %}
+                </div>
+                {% if selection.display_comments %}
+                <div class="profile-feed-comments">
+                    {% for comment in selection.display_comments %}
+                    <p><a href="{{ comment.author.get_absolute_url }}"><strong>{{ comment.author.name }}</strong></a>：{{ comment.content }}</p>
+                    {% endfor %}
+                </div>
+                {% endif %}
+                {% if selection.can_interact %}
+                <form class="profile-feed-comment-form" method="post" action="{% url 'addProfileTagStoryComment' selection.id %}">
+                    {% csrf_token %}
+                    <input type="hidden" name="next" value="{{ selection.person.get_absolute_url }}#information">
+                    <input class="form-control" type="text" name="content" maxlength="300" required
+                        placeholder="写下评论（最多 300 字）" aria-label="评论技能{{ selection.tag.name }}">
+                    <button class="btn btn-primary" type="submit">评论</button>
+                </form>
+                {% endif %}
+                {% endif %}
+                {% if Profile.is_myself %}
+                <hr>
+                <form method="post" enctype="multipart/form-data" action="{% url 'updateTagStory' selection.id %}">
+                    {% csrf_token %}
+                    <div class="form-group">
+                        <label for="tag-description-{{ selection.id }}">我的说明（最多 500 字）</label>
+                        {% if selection.description_status == "hidden_by_admin" %}
+                        <div class="alert alert-warning py-2">当前文字已被管理员隐藏；修改文字后会重新公开。</div>
+                        {% endif %}
+                        <textarea class="form-control" id="tag-description-{{ selection.id }}" name="description"
+                            maxlength="500" rows="4">{{ selection.description }}</textarea>
+                    </div>
+                    {% if selection.display_images %}
+                    <div class="form-group">
+                        <label class="d-block">删除已有图片</label>
+                        <div class="profile-story-delete-grid">
+                            {% for story_image in selection.display_images %}
+                            <label>
+                                <img src="{{ story_image.image.url }}" alt="已有图片 {{ forloop.counter }}">
+                                <span><input type="checkbox" name="delete_images" value="{{ story_image.id }}"> 删除{% if story_image.status == "hidden_by_admin" %}（已被管理员隐藏）{% endif %}</span>
+                            </label>
+                            {% endfor %}
+                        </div>
+                    </div>
+                    {% endif %}
+                    <div class="form-group">
+                        <label for="tag-images-{{ selection.id }}">新增图片</label>
+                        <input class="form-control-file" id="tag-images-{{ selection.id }}" type="file" name="images"
+                            accept="image/jpeg,image/png,image/webp" multiple>
+                        <small class="form-text text-muted">最多保留 6 张；单张不超过 5 MB；支持 JPEG、PNG、WebP。</small>
+                    </div>
+                    <div class="text-right">
+                        <button type="button" class="btn btn-light" data-dismiss="modal">取消</button>
+                        <button type="submit" class="btn btn-primary">保存图文说明</button>
+                    </div>
+                </form>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>

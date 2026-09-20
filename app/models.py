@@ -82,6 +82,16 @@ __all__ = [
     'CourseTime',
     'CourseParticipant',
     'CourseRecord',
+    'ProfileTagCategory',
+    'ProfileTag',
+    'PersonProfileTag',
+    'PersonProfileTagImage',
+    'PersonProfileTagLike',
+    'PersonProfileTagComment',
+    'ParticipationStory',
+    'ParticipationStoryImage',
+    'ParticipationStoryLike',
+    'ParticipationStoryComment',
     'AcademicTag',
     'AcademicEntry',
     'AcademicTagEntry',
@@ -1198,6 +1208,135 @@ class Participation(models.Model):
     objects: ParticipationManager = ParticipationManager()
 
 
+class ParticipationStory(models.Model):
+    """A student's public note attached to one eligible activity participation."""
+
+    class ContentStatus(models.TextChoices):
+        VISIBLE = "visible", "正常展示"
+        HIDDEN = "hidden_by_admin", "管理员隐藏"
+
+    class Meta:
+        verbose_name = "3.个人活动记录"
+        verbose_name_plural = verbose_name
+        ordering = ["-updated_at", "id"]
+
+    participation = models.OneToOneField(
+        Participation,
+        verbose_name="活动参与记录",
+        related_name="story",
+        on_delete=models.CASCADE,
+    )
+    description = models.TextField("文字说明", max_length=500, blank=True, default="")
+    description_status = models.CharField(
+        "文字状态",
+        max_length=24,
+        choices=ContentStatus.choices,
+        default=ContentStatus.VISIBLE,
+    )
+    created_at = models.DateTimeField("创建时间", auto_now_add=True)
+    updated_at = models.DateTimeField("更新时间", auto_now=True)
+
+    def __str__(self):
+        return f"{self.participation.person} / {self.participation.activity.title}"
+
+
+class ParticipationStoryImage(models.Model):
+    """One independently moderated image in an activity story."""
+
+    class Status(models.TextChoices):
+        VISIBLE = "visible", "正常展示"
+        HIDDEN = "hidden_by_admin", "管理员隐藏"
+
+    class Meta:
+        verbose_name = "3.个人活动记录图片"
+        verbose_name_plural = verbose_name
+        ordering = ["sort_order", "created_at", "id"]
+
+    story = models.ForeignKey(
+        ParticipationStory,
+        verbose_name="活动记录",
+        related_name="images",
+        on_delete=models.CASCADE,
+    )
+    image = models.ImageField(
+        "图片", upload_to="profile/activity/%Y/%m/"
+    )
+    sort_order = models.PositiveSmallIntegerField("排序", default=0)
+    status = models.CharField(
+        "状态", max_length=24, choices=Status.choices, default=Status.VISIBLE
+    )
+    created_at = models.DateTimeField("上传时间", auto_now_add=True)
+
+    def __str__(self):
+        return f"{self.story} / 图片 {self.pk}"
+
+
+class ParticipationStoryLike(models.Model):
+    """A natural person's like on one public activity story."""
+
+    class Meta:
+        verbose_name = "3.个人活动记录点赞"
+        verbose_name_plural = verbose_name
+        ordering = ["created_at", "id"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["story", "person"],
+                name="unique_participation_story_like",
+            ),
+        ]
+
+    story = models.ForeignKey(
+        ParticipationStory,
+        verbose_name="活动记录",
+        related_name="likes",
+        on_delete=models.CASCADE,
+    )
+    person = models.ForeignKey(
+        NaturalPerson,
+        verbose_name="点赞人",
+        related_name="activity_story_likes",
+        on_delete=models.CASCADE,
+    )
+    created_at = models.DateTimeField("点赞时间", auto_now_add=True)
+
+    def __str__(self):
+        return f"{self.person} / {self.story}"
+
+
+class ParticipationStoryComment(models.Model):
+    """A public, independently moderated comment on an activity story."""
+
+    class Status(models.TextChoices):
+        VISIBLE = "visible", "正常展示"
+        HIDDEN = "hidden_by_admin", "管理员隐藏"
+
+    class Meta:
+        verbose_name = "3.个人活动记录评论"
+        verbose_name_plural = verbose_name
+        ordering = ["created_at", "id"]
+
+    story = models.ForeignKey(
+        ParticipationStory,
+        verbose_name="活动记录",
+        related_name="story_comments",
+        on_delete=models.CASCADE,
+    )
+    author = models.ForeignKey(
+        NaturalPerson,
+        verbose_name="评论人",
+        related_name="activity_story_comments",
+        on_delete=models.CASCADE,
+    )
+    content = models.TextField("评论内容", max_length=300)
+    status = models.CharField(
+        "状态", max_length=24, choices=Status.choices, default=Status.VISIBLE
+    )
+    created_at = models.DateTimeField("评论时间", auto_now_add=True)
+
+    def __str__(self):
+        return f"{self.author} / {self.story} / {self.content[:20]}"
+
+
 class NotificationManager(models.Manager['Notification']):
     def activated(self):
         return self.exclude(status=Notification.Status.DELETE)
@@ -1746,6 +1885,254 @@ class CourseRecord(models.Model):
             return self.course.name
         return self.extra_name
     get_course_name.short_description = "课程名"
+
+
+class ProfileTagCategory(models.Model):
+    """兴趣与技能候选池中的一个分类节点。"""
+
+    class Meta:
+        verbose_name = "P.个人画像标签分类"
+        verbose_name_plural = verbose_name
+        ordering = ["sort_order", "id"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["parent", "name"],
+                name="unique_profile_tag_category_under_parent",
+            ),
+        ]
+
+    name = models.CharField("分类名称", max_length=32)
+    slug = models.SlugField("分类标识", max_length=48, unique=True)
+    parent = models.ForeignKey(
+        "self",
+        verbose_name="上级分类",
+        related_name="children",
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+    )
+    sort_order = models.PositiveSmallIntegerField("排序", default=0)
+    is_active = models.BooleanField("可用", default=True)
+
+    def __str__(self):
+        if self.parent_id:
+            return f"{self.parent} / {self.name}"
+        return self.name
+
+
+class ProfileTag(models.Model):
+    """官方候选或用户在某一大类下创建的公开画像标签。"""
+
+    class Source(models.TextChoices):
+        OFFICIAL = "official", "官方候选"
+        CUSTOM = "custom", "用户自定义"
+
+    class Status(models.TextChoices):
+        VISIBLE = "visible", "正常展示"
+        HIDDEN = "hidden", "管理员隐藏"
+
+    class AppliesTo(models.TextChoices):
+        INTEREST = "interest", "兴趣候选"
+        SKILL = "skill", "技能候选"
+        BOTH = "both", "兴趣与技能"
+
+    class Meta:
+        verbose_name = "P.个人画像标签"
+        verbose_name_plural = verbose_name
+        ordering = ["category__sort_order", "name", "id"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["category", "normalized_name"],
+                name="unique_profile_tag_name_per_category",
+            ),
+        ]
+
+    category = models.ForeignKey(
+        ProfileTagCategory,
+        verbose_name="所属分类",
+        related_name="tags",
+        on_delete=models.PROTECT,
+    )
+    name = models.CharField("标签名称", max_length=24)
+    normalized_name = models.CharField("规范化名称", max_length=24, editable=False)
+    source = models.CharField(
+        "来源", max_length=16, choices=Source.choices, default=Source.CUSTOM
+    )
+    applies_to = models.CharField(
+        "适用类型",
+        max_length=16,
+        choices=AppliesTo.choices,
+        default=AppliesTo.INTEREST,
+    )
+    status = models.CharField(
+        "状态", max_length=16, choices=Status.choices, default=Status.VISIBLE
+    )
+    created_by = models.ForeignKey(
+        NaturalPerson,
+        verbose_name="创建人",
+        related_name="created_profile_tags",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+    )
+    created_at = models.DateTimeField("创建时间", auto_now_add=True)
+
+    @staticmethod
+    def normalize_name(name: str) -> str:
+        return " ".join(name.strip().split()).casefold()
+
+    def save(self, *args, **kwargs):
+        # normalized_name 只用于同一分类内去重，必须跟随名称同步更新。
+        self.name = " ".join(self.name.strip().split())
+        self.normalized_name = self.normalize_name(self.name)
+        super().save(*args, **kwargs)
+
+    def __str__(self):
+        return f"{self.category} / {self.name}"
+
+
+class PersonProfileTag(models.Model):
+    """一个人选择的兴趣或技能标签；画像标签按产品约定全部公开。"""
+
+    class Kind(models.TextChoices):
+        INTEREST = "interest", "兴趣"
+        SKILL = "skill", "技能"
+
+    class ContentStatus(models.TextChoices):
+        VISIBLE = "visible", "正常展示"
+        HIDDEN = "hidden_by_admin", "管理员隐藏"
+
+    class Meta:
+        verbose_name = "P.个人画像标签选择"
+        verbose_name_plural = verbose_name
+        ordering = ["kind", "created_at", "id"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["person", "tag", "kind"],
+                name="unique_person_profile_tag_kind",
+            ),
+        ]
+
+    person = models.ForeignKey(
+        NaturalPerson,
+        verbose_name="人员",
+        related_name="profile_tag_selections",
+        on_delete=models.CASCADE,
+    )
+    tag = models.ForeignKey(
+        ProfileTag,
+        verbose_name="标签",
+        related_name="person_selections",
+        on_delete=models.CASCADE,
+    )
+    kind = models.CharField("类型", max_length=16, choices=Kind.choices)
+    description = models.TextField("文字说明", max_length=500, blank=True, default="")
+    description_status = models.CharField(
+        "文字状态",
+        max_length=24,
+        choices=ContentStatus.choices,
+        default=ContentStatus.VISIBLE,
+    )
+    created_at = models.DateTimeField("选择时间", auto_now_add=True)
+    updated_at = models.DateTimeField("更新时间", auto_now=True)
+
+    def __str__(self):
+        return f"{self.person} / {self.get_kind_display()} / {self.tag.name}"
+
+
+class PersonProfileTagImage(models.Model):
+    """One independently moderated image attached to a selected profile tag."""
+
+    class Status(models.TextChoices):
+        VISIBLE = "visible", "正常展示"
+        HIDDEN = "hidden_by_admin", "管理员隐藏"
+
+    class Meta:
+        verbose_name = "P.个人画像标签图片"
+        verbose_name_plural = verbose_name
+        ordering = ["sort_order", "created_at", "id"]
+
+    selection = models.ForeignKey(
+        PersonProfileTag,
+        verbose_name="标签选择",
+        related_name="images",
+        on_delete=models.CASCADE,
+    )
+    image = models.ImageField("图片", upload_to="profile/tag/%Y/%m/")
+    sort_order = models.PositiveSmallIntegerField("排序", default=0)
+    status = models.CharField(
+        "状态", max_length=24, choices=Status.choices, default=Status.VISIBLE
+    )
+    created_at = models.DateTimeField("上传时间", auto_now_add=True)
+
+    def __str__(self):
+        return f"{self.selection} / 图片 {self.pk}"
+
+
+class PersonProfileTagLike(models.Model):
+    """A natural person's like on one public skill story."""
+
+    class Meta:
+        verbose_name = "P.个人技能记录点赞"
+        verbose_name_plural = verbose_name
+        ordering = ["created_at", "id"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["selection", "person"],
+                name="unique_person_profile_tag_like",
+            ),
+        ]
+
+    selection = models.ForeignKey(
+        PersonProfileTag,
+        verbose_name="技能记录",
+        related_name="likes",
+        on_delete=models.CASCADE,
+    )
+    person = models.ForeignKey(
+        NaturalPerson,
+        verbose_name="点赞人",
+        related_name="skill_story_likes",
+        on_delete=models.CASCADE,
+    )
+    created_at = models.DateTimeField("点赞时间", auto_now_add=True)
+
+    def __str__(self):
+        return f"{self.person} / {self.selection}"
+
+
+class PersonProfileTagComment(models.Model):
+    """A public, independently moderated comment on a skill story."""
+
+    class Status(models.TextChoices):
+        VISIBLE = "visible", "正常展示"
+        HIDDEN = "hidden_by_admin", "管理员隐藏"
+
+    class Meta:
+        verbose_name = "P.个人技能记录评论"
+        verbose_name_plural = verbose_name
+        ordering = ["created_at", "id"]
+
+    selection = models.ForeignKey(
+        PersonProfileTag,
+        verbose_name="技能记录",
+        related_name="story_comments",
+        on_delete=models.CASCADE,
+    )
+    author = models.ForeignKey(
+        NaturalPerson,
+        verbose_name="评论人",
+        related_name="skill_story_comments",
+        on_delete=models.CASCADE,
+    )
+    content = models.TextField("评论内容", max_length=300)
+    status = models.CharField(
+        "状态", max_length=24, choices=Status.choices, default=Status.VISIBLE
+    )
+    created_at = models.DateTimeField("评论时间", auto_now_add=True)
+
+    def __str__(self):
+        return f"{self.author} / {self.selection} / {self.content[:20]}"
 
 
 # 学术地图相关模型
