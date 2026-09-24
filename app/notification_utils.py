@@ -379,7 +379,7 @@ def notification2Display(notifications: QuerySet[Notification]) -> List[dict]:
     :return: 通知的列表，其中每一项是一个包含通知具体信息的字典
     :rtype: List[dict]
     """
-    notifications.select_related("sender")
+    notifications = notifications.select_related("sender")
 
     displays = []
     for notification in notifications:
