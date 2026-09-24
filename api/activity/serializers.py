@@ -7,6 +7,10 @@ from drf_spectacular.utils import extend_schema_field
 from app.models import Activity, Participation
 from app.utils import get_person_or_org
 
+# Named in SPECTACULAR_SETTINGS['ENUM_NAME_OVERRIDES'] so the schema keeps a
+# stable component name for the activity category enum.
+ACTIVITY_CATEGORY_CHOICES = Activity.ActivityCategory.choices
+
 
 class ActivitySummarySerializer(serializers.ModelSerializer):
     """Serializer for activity summary display."""

@@ -53,7 +53,25 @@
         "token_expire_minutes": 120,
         "signed_openid_ttl_minutes": 10,
         "binding_max_failed_attempts": 5,
-        "ticket_ttl_seconds": 60
+        "ticket_ttl_seconds": 60,
+        "subscribe_templates": {
+            "class_reminder": {
+                "id": "",
+                "fields": {
+                    "course": "thing1",
+                    "time": "time2",
+                    "location": "thing3",
+                    "note": "thing4"
+                },
+                "page": "pages/timetable/index"
+            }
+        },
+        "share": {
+            "miniapp_page": "pages/timetable/index",
+            "env_version": "release",
+            "official_qrcode_url": "/static/assets/img/yppf_official_qrcode.png",
+            "slogan": "元培智慧书院 · YPPF"
+        }
     },
     "email": {
         "url": "",
@@ -134,5 +152,24 @@
     },
     "dormitory": {
         "routine_qa_survey_title": "default title"
+    },
+    "pku_portal": {
+        "enabled": false,
+        "session_key": "",
+        "timeout": 15,
+        "max_login_failures": 5,
+        "lock_seconds": 900
+    },
+    "timetable": {
+        "sources": [
+            "timetable.sources.stored.StoredEntriesSource",
+            "timetable.sources.college.CollegeCourseSource",
+            "timetable.sources.activity.ActivitySource",
+            "timetable.sources.appoint.AppointSource",
+            "timetable.sources.exam.ExamSource"
+        ],
+        "reminder_default_minutes": 20,
+        "reminder_lookahead_minutes": 60,
+        "subscribe_quota_cap": 50
     }
 }

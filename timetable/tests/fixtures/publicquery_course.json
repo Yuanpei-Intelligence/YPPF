@@ -1,0 +1,56 @@
+{
+  "success": true,
+  "remark": "",
+  "course": [
+    {
+      "timeNum": "第一节",
+      "mon": {"courseName": "", "parity": "", "sty": ""},
+      "tue": {"courseName": "<font color = 'red'><b>量子力学(主)<br>上课信息：1-15周 单周 二教411  教师：教师甲 备注：示例备注一。<br>考试信息：20260618 星期四 上午 二教411<br>量子力学习题(主)<br>上课信息：1-15周 双周 二教410  教师：教师甲 备注：示例备注二。<br>考试信息： </b></font>", "parity": "", "sty": "white"},
+      "wed": {"courseName": "", "parity": "", "sty": ""},
+      "thu": {"courseName": "", "parity": "", "sty": ""},
+      "fri": {"courseName": "", "parity": "", "sty": ""},
+      "sat": {"courseName": "", "parity": "", "sty": ""},
+      "sun": {"courseName": "", "parity": "", "sty": ""}
+    },
+    {
+      "timeNum": "第二节",
+      "mon": {"courseName": "", "parity": "", "sty": ""},
+      "tue": {"courseName": "<font color = 'red'><b>量子力学(主)<br>上课信息：1-15周 单周 二教411  教师：教师甲 备注：示例备注一。<br>考试信息：20260618 星期四 上午 二教411<br>量子力学习题(主)<br>上课信息：1-15周 双周 二教410  教师：教师甲 备注：示例备注二。<br>考试信息： </b></font>", "parity": "", "sty": "white"},
+      "wed": {"courseName": "", "parity": "", "sty": ""},
+      "thu": {"courseName": "", "parity": "", "sty": ""},
+      "fri": {"courseName": "", "parity": "", "sty": ""},
+      "sat": {"courseName": "", "parity": "", "sty": ""},
+      "sun": {"courseName": "", "parity": "", "sty": ""}
+    },
+    {
+      "timeNum": "第三节",
+      "mon": {"courseName": "", "parity": "", "sty": ""},
+      "tue": {"courseName": "广义相对论(主)<br>上课信息：1-15周 每周   教师：教师丙 备注：研本合上；上课地点：理教309<br>考试信息： ", "parity": "", "sty": "background-color: lightblue"},
+      "wed": {"courseName": "", "parity": "", "sty": ""},
+      "thu": {"courseName": "量子力学(主)<br>上课信息：1-15周 每周 二教411  教师：教师甲 备注：示例备注一。<br>考试信息：20260618 星期四 上午 二教411", "parity": "", "sty": "background-color: lightcyan"},
+      "fri": {"courseName": "固体物理学(主)<br>上课信息：1-15周 每周 三教507  教师：教师乙 备注：示例备注三。<br>考试信息：20260621 星期七 下午 二教505", "parity": "", "sty": "background-color: lightgrey"},
+      "sat": {"courseName": "", "parity": "", "sty": ""},
+      "sun": {"courseName": "", "parity": "", "sty": ""}
+    },
+    {
+      "timeNum": "第四节",
+      "mon": {"courseName": "", "parity": "", "sty": ""},
+      "tue": {"courseName": "广义相对论(主)<br>上课信息：1-15周 每周   教师：教师丙 备注：研本合上；上课地点：理教309<br>考试信息： ", "parity": "", "sty": "background-color: lightblue"},
+      "wed": {"courseName": "", "parity": "", "sty": ""},
+      "thu": {"courseName": "量子力学(主)<br>上课信息：1-15周 每周 二教411  教师：教师甲 备注：示例备注一。<br>考试信息：20260618 星期四 上午 二教411", "parity": "", "sty": "background-color: lightcyan"},
+      "fri": {"courseName": "固体物理学(主)<br>上课信息：1-15周 每周 三教507  教师：教师乙 备注：示例备注三。<br>考试信息：20260621 星期七 下午 二教505", "parity": "", "sty": "background-color: lightgrey"},
+      "sat": {"courseName": "", "parity": "", "sty": ""},
+      "sun": {"courseName": "", "parity": "", "sty": ""}
+    },
+    {
+      "timeNum": "第五节",
+      "mon": {"courseName": "", "parity": "", "sty": ""},
+      "tue": {"courseName": "", "parity": "", "sty": ""},
+      "wed": {"courseName": "", "parity": "", "sty": ""},
+      "thu": {"courseName": "", "parity": "", "sty": ""},
+      "fri": {"courseName": "", "parity": "", "sty": ""},
+      "sat": {"courseName": "", "parity": "", "sty": ""},
+      "sun": {"courseName": "", "parity": "", "sty": ""}
+    }
+  ]
+}
