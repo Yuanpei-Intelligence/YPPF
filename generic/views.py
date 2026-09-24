@@ -67,10 +67,15 @@ class Index(SecureTemplateView):
 
     def prepare_login(self) -> SecureView.HandlerType:
         self.ip_check()
-        assert 'username' in self.request.POST
-        assert 'password' in self.request.POST
         _user = self.request.user
-        assert not _user.is_authenticated or not cast(User, _user).is_valid()
+        if _user.is_authenticated and cast(User, _user).is_valid():
+            # 已登录的有效用户重复提交登录表单（重复点击、回退后重新提交等），
+            # 与GET的行为保持一致直接跳转，避免断言失败导致500/403
+            return self.redirect('welcome')
+        if 'username' not in self.request.POST:
+            return self.wrong('请输入用户名')
+        if 'password' not in self.request.POST:
+            return self.wrong('请输入密码')
         username = self.request.POST['username']
         # Check weather username exists
         if not SQ.sfilter(User.username, username).exists():
