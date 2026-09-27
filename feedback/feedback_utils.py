@@ -23,6 +23,7 @@ from feedback.models import (
     FeedbackType,
     Feedback,
 )
+from rollout.api import preview_feedback_routing_errors
 
 
 __all__ = [
@@ -124,6 +125,17 @@ def update_feedback(feedback, me, request: HttpRequest):
         context = check_feedback(request, post_type, me)
         if context['warn_code'] == 1:
             return context
+
+        # Preview feedback from the mini program keeps its feature key, so the
+        # website must not route it away from the configured receiving group.
+        if feedback is not None and feedback.feature_key:
+            routing_errors = preview_feedback_routing_errors(
+                str(info.get('type')),
+                str(info.get('otype') or ''),
+                str(info.get('org') or ''),
+            )
+            if routing_errors:
+                return wrong(next(iter(routing_errors.values())))
         
         # TODO：删除草稿的功能
         content = dict(
