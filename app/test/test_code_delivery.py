@@ -84,14 +84,17 @@ class DualCodeDeliveryTests(TestCase):
                     self.assertNotIn(secret, lines)
 
     def test_email_failure_does_not_prevent_wechat(self):
-        with patch.object(code_delivery.CONFIG.email, 'url', 'https://mail.test'), patch.object(code_delivery.wechat_config, 'api_url', 'https://wechat.test'), patch('extern.code_delivery.send_code_email', side_effect=RuntimeError('SECRET-CODE')), patch('extern.code_delivery.send_verify_code') as wechat, patch.object(code_delivery.logger, 'warning') as log:
+        with patch.object(code_delivery.CONFIG.email, 'url', 'https://mail.test'), patch.object(code_delivery.wechat_config, 'api_url', 'https://wechat.test'), patch('extern.code_delivery.send_code_email', side_effect=RuntimeError('delivery operation failed')), patch('extern.code_delivery.send_verify_code') as wechat, patch.object(code_delivery.logger, 'warning') as log:
             code_delivery.deliver_code('login', 'id', self.user.pk, self.user.username, '姓名', 'test@example.com', 'SECRET-CODE')
             wechat.assert_called_once()
             self.assertNotIn('SECRET-CODE', str(log.call_args))
+            self.assertTrue(log.call_args.kwargs['exc_info'])
             self.assertIn('RuntimeError', str(log.call_args))
+            self.assertEqual(str(log.call_args.kwargs['exc_info'][1]),
+                             'delivery operation failed')
 
     def test_wechat_failure_keeps_email_success(self):
-        with patch.object(code_delivery.CONFIG.email, 'url', 'https://mail.test'), patch.object(code_delivery.wechat_config, 'api_url', 'https://wechat.test'), patch('extern.code_delivery.send_code_email') as email, patch('extern.code_delivery.send_password_reset_token', side_effect=RuntimeError('SECRET-CODE')), patch.object(code_delivery.logger, 'info') as info, patch.object(code_delivery.logger, 'warning') as warning:
+        with patch.object(code_delivery.CONFIG.email, 'url', 'https://mail.test'), patch.object(code_delivery.wechat_config, 'api_url', 'https://wechat.test'), patch('extern.code_delivery.send_code_email') as email, patch('extern.code_delivery.send_password_reset_token', side_effect=RuntimeError('delivery operation failed')), patch.object(code_delivery.logger, 'info') as info, patch.object(code_delivery.logger, 'warning') as warning:
             code_delivery.deliver_code('password_reset', 'id', self.user.pk, self.user.username, '姓名', 'test@example.com', 'SECRET-CODE')
             email.assert_called_once()
             self.assertEqual(info.call_count, 1)
@@ -141,22 +144,41 @@ class DualCodeDeliveryTests(TestCase):
             prepare.assert_not_called()
             release.assert_called_once_with()
 
-    def test_preparation_failure_unblocks_worker_without_logging_secrets(self):
+    def test_preparation_failure_unblocks_worker_and_logs_error(self):
         with patch.object(code_delivery._delivery_slots, 'acquire', return_value=True), patch.object(code_delivery._delivery_slots, 'release') as release, patch.object(code_delivery._delivery_executor, 'submit') as submit, patch('extern.code_delivery.deliver_code') as deliver, patch.object(code_delivery.logger, 'error') as log:
             with self.assertRaises(RuntimeError):
-                code_delivery.queue_code_delivery('login', Mock(side_effect=RuntimeError('SECRET-CODE')))
+                code_delivery.queue_code_delivery('login', Mock(side_effect=RuntimeError('delivery operation failed')))
             worker, purpose, delivery_id, future = submit.call_args.args
             self.assertIsNone(future.result())
             worker(purpose, delivery_id, future)
             release.assert_called_once_with()
             deliver.assert_not_called()
             self.assertNotIn('SECRET-CODE', str(log.call_args))
+            self.assertTrue(log.call_args.kwargs['exc_info'])
 
-    def test_worker_failure_releases_slot_and_redacts_error(self):
+    def test_worker_failure_releases_slot_and_logs_error(self):
         from concurrent.futures import Future
         future = Future()
         future.set_result((self.user.pk, self.user.username, '测试', 'test@example.com', 'SECRET-CODE'))
-        with patch.object(code_delivery._delivery_slots, 'release') as release, patch('extern.code_delivery.deliver_code', side_effect=RuntimeError('SECRET-CODE')), patch.object(code_delivery.logger, 'error') as log:
+        with patch.object(code_delivery._delivery_slots, 'release') as release, patch('extern.code_delivery.deliver_code', side_effect=RuntimeError('delivery operation failed')), patch.object(code_delivery.logger, 'error') as log:
             code_delivery._run_delivery('login', 'test-id', future)
             release.assert_called_once_with()
             self.assertNotIn('SECRET-CODE', str(log.call_args))
+            self.assertTrue(log.call_args.kwargs['exc_info'])
+
+    def test_provider_failure_log_contains_details_and_traceback(self):
+        with (
+            patch('extern.code_delivery._send_email',
+                  side_effect=RuntimeError('provider unavailable')),
+            patch('extern.code_delivery._send_wechat', return_value=None),
+            self.assertLogs(code_delivery.logger, level='WARNING') as captured,
+        ):
+            code_delivery.deliver_code(
+                'login', 'test-id', self.user.pk, self.user.username,
+                'test', 'test@example.com', 'SECRET-CODE',
+            )
+        message = '\n'.join(captured.output)
+        self.assertIn('RuntimeError: provider unavailable', message)
+        self.assertIn('Traceback (most recent call last)', message)
+        self.assertIn('channel=email status=failed', message)
+        self.assertNotIn('SECRET-CODE', message)

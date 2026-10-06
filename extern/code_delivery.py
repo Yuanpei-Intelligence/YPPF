@@ -53,17 +53,18 @@ def deliver_code(purpose: Purpose, delivery_id: str, account_id: int,
     )
     for channel, send in channels:
         started = monotonic()
+        exc_info = None
         try:
             reason = send()
             status = 'skipped' if reason else 'accepted'
             reason = reason or 'provider_accepted'
         except Exception as error:
-            # Provider response bodies and exception messages may contain credentials.
             status, reason = 'failed', type(error).__name__
+            exc_info = (type(error), error, error.__traceback__)
         log = logger.warning if status == 'failed' else logger.info
         log('delivery_id=%s account_id=%s purpose=%s channel=%s status=%s reason=%s elapsed_ms=%d',
             delivery_id, account_id, purpose, channel, status, reason,
-            int((monotonic() - started) * 1000))
+            int((monotonic() - started) * 1000), exc_info=exc_info)
 
 
 def _run_delivery(purpose: Purpose, delivery_id: str,
@@ -74,7 +75,7 @@ def _run_delivery(purpose: Purpose, delivery_id: str,
             deliver_code(purpose, delivery_id, *args)
     except Exception as error:
         logger.error('delivery_id=%s purpose=%s status=failed reason=%s',
-                     delivery_id, purpose, type(error).__name__)
+                     delivery_id, purpose, type(error).__name__, exc_info=True)
     finally:
         _delivery_slots.release()
 
@@ -93,7 +94,10 @@ def queue_code_delivery(purpose: Purpose, prepare: Callable[[], DeliveryArgs | N
         _delivery_executor.submit(_run_delivery, purpose, delivery_id, prepared)
     except RuntimeError:
         _delivery_slots.release()
-        logger.warning('delivery_id=%s purpose=%s status=queue_rejected reason=unavailable', delivery_id, purpose)
+        logger.warning(
+            'delivery_id=%s purpose=%s status=queue_rejected reason=unavailable',
+            delivery_id, purpose, exc_info=True,
+        )
         return False
 
     try:
@@ -102,7 +106,7 @@ def queue_code_delivery(purpose: Purpose, prepare: Callable[[], DeliveryArgs | N
         # Unblock the worker even if preparation is interrupted; it releases the slot.
         prepared.set_result(None)
         logger.error('delivery_id=%s purpose=%s status=preparation_failed reason=%s',
-                     delivery_id, purpose, type(error).__name__)
+                     delivery_id, purpose, type(error).__name__, exc_info=True)
         raise
     logger.info('delivery_id=%s purpose=%s status=%s', delivery_id, purpose,
                 'prepared' if args is not None else 'skipped')
