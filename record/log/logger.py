@@ -114,8 +114,7 @@ class Logger(logging.Logger):
 
     def on_exception(self, message: str = '', *,
                      request: HttpRequest | None = None,
-                     raise_exc: bool | None = None,
-                     redact_exception: Exception | None = None) -> None:
+                     raise_exc: bool | None = None) -> None:
         '''
         Log exception and raise it if needed.
 
@@ -123,24 +122,13 @@ class Logger(logging.Logger):
             message (str, optional): 基础日志信息. Defaults to ''.
             request (HttpRequest, optional): 记录请求信息. Defaults to None.
             raise_exc (bool, optional): 是否抛出异常，不提供则根据debug模式决定
-            redact_exception (Exception, optional): 保留异常类型和调用栈，
-                但不记录可能包含请求数据的异常消息。
         '''
         if request is not None:
             msgs = self._request_msgs(request)
             if message:
                 msgs.append(message)
             message = '\n'.join(msgs)
-        exc_info = True
-        if redact_exception is not None:
-            exception_type = type(redact_exception).__qualname__
-            message = f'Except {exception_type}\n{message}'
-            exc_info = (
-                type(redact_exception),
-                Exception("exception details redacted"),
-                redact_exception.__traceback__,
-            )
-        self.exception(message, exc_info=exc_info, stacklevel=2)
+        self.exception(message, stacklevel=2)
         if raise_exc is None:
             raise_exc = self.debug_mode
         if raise_exc:
@@ -185,7 +173,7 @@ class Logger(logging.Logger):
                  as_view: bool = False,
                  raise_exc: bool | None = None) -> Listener[Exception]:
         def _listener(exc: Exception, func: Callable, args: tuple, kwargs: dict):
-            msgs = []
+            msgs = [f'Except {type(exc).__qualname__}: {exc}']
             if as_view:
                 request = self._get_request_arg(*args, **kwargs)
                 msgs.extend(self._request_msgs(request))
@@ -197,6 +185,5 @@ class Logger(logging.Logger):
             self.on_exception(
                 '\n'.join(msgs),
                 raise_exc=raise_exc,
-                redact_exception=exc,
             )
         return _listener
