@@ -156,6 +156,17 @@ STATICFILES_DIRS = (os.path.join(_configurables.static_dir, "static/"),)
 MEDIA_URL = "/media/"
 MEDIA_ROOT = os.path.join(_configurables.static_dir, "media/")
 
+# New uploads are renamed in SaltedHashStorage before they reach disk.
+# staticfiles must stay explicit: defining STORAGES replaces Django's defaults.
+STORAGES = {
+    "default": {
+        "BACKEND": "utils.storage.SaltedHashStorage",
+    },
+    "staticfiles": {
+        "BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage",
+    },
+}
+
 
 # Disordered settings
 LANGUAGE_CODE = "zh-Hans"

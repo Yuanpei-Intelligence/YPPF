@@ -530,6 +530,54 @@ contradicts the HTTP status. Preserve an existing AJAX response shape when
 changing a legacy endpoint and document that shape in the view docstring.
 Mini-program DRF endpoints additionally follow `api/AGENTS.md`.
 
+### Uploaded file names
+
+New user uploads are renamed in the application layer before the bytes are
+written and before the relative path is stored. The client filename is not a
+storage key and must not be written into `MEDIA_ROOT` or a `FileField`.
+
+The stored basename is at most 32 characters, including the extension and any
+collision suffix. It is the leading lowercase hex of SHA-256 over the raw
+file bytes with the UTF-8 salt appended (`sha256(file_bytes + salt_bytes)`),
+followed by a 16-character lowercase hex nonce drawn per upload, then the
+extension. The nonce is not derived from the file, so identical uploads do
+not share a predictable name and the salted digest alone is not the stored
+key. The salt is the existing `global.hash_salt`, read as `GLOBAL_CONFIG.salt`
+(the same value used by `MySHA256Hasher`). Do not add a separate upload salt.
+Changing `hash_salt` affects later upload names and the other hashes that
+already use it; previously stored filenames stay as they are. Do not log the
+salt or the nonce. The `upload_to` directory is not counted in the 32
+characters.
+
+`utils.storage.SaltedHashStorage` is `STORAGES['default']` and applies this
+rule in `save()`. Keep the directory produced by `upload_to`. Keep a
+lowercase image extension only when it is allowlisted (`.jpg`, `.jpeg`,
+`.png`, `.gif`, `.bmp`, `.webp`, `.tif`, `.tiff`, `.ico`, `.rgb`); otherwise
+use an extension sniffed from the content, or no extension. Reject names that
+escape the storage root. A collision suffix is allowed only when the whole
+basename remains at most 32 characters, and it must not restore the client
+basename. Give every new `FileField` or `ImageField` `max_length` of at
+least 255 so the directory plus that basename fit, and leave `storage`
+unset so the field uses this backend.
+
+Every current upload channel goes through that backend: personal and
+organization avatar/wallpaper, organization-application avatar, activity
+announcement and summary images (including the weekly summary), comment
+images (activity, feedback, academic chat, and organization/position
+applications), course photos and QR codes, and admin uploads such as prize
+images, homepage images, profile QR codes, and achievement badges/icons.
+The mini-program API reads stored media URLs and does not accept uploads.
+A new channel must assign the uploaded file to a `FileField`/`ImageField` or
+call `default_storage.save()`. Do not open `MEDIA_ROOT` and write the client
+name, and do not put a second storage class on the field.
+
+Access uses the relative path already stored on the field (`FieldFile.url`,
+`image_url()`, `get_user_ava()`, and the wallpaper helper). Build those URLs
+only after `save()` returns. Previously stored names, default avatars, preset
+image paths, and a `FieldFile` copied from an existing row stay unchanged:
+assigning a string or an already committed file does not call `save()`. Do
+not rename or migrate old files.
+
 ### Time and scheduling
 
 `USE_TZ` is intentionally false. Domain and database datetimes are therefore
@@ -973,4 +1021,7 @@ serialize only the fields required by the feature, scope object access before
 retrieval, and log an internal primary key or a deliberately masked identifier
 instead of a full personal profile. New exports and bulk-management commands
 must enforce an explicit permission, avoid predictable public filenames, and
-document where the output is stored and who may receive it.
+document where the output is stored and who may receive it. User uploads
+follow the uploaded-file naming standard above. Upload names use the existing
+`global.hash_salt`; keep that value in `config.json`, and do not log it or
+commit a production value.
