@@ -44,6 +44,7 @@ from app.models import (
 )
 from app.password_reset_forms import PasswordResetForm, PasswordResetRequestForm
 from app.password_reset_utils import prepare_password_reset_delivery, reset_password_from_token
+from app.image_upload import sanitize_uploaded_image
 from app.utils import (
     get_person_or_org,
     record_modify_with_session,
@@ -965,6 +966,14 @@ def accountSetting(request: UserRequest):
                 'gender', 'ava', 'wallpaper', 'accept_promote', 'wechat_receive_level']]
             if html_display['warn_code'] == 1:
                 return render(request, "person_account_setting.html", locals())
+            try:
+                attr_dict['ava'] = sanitize_uploaded_image(attr_dict.get('ava'))
+                attr_dict['wallpaper'] = sanitize_uploaded_image(
+                    attr_dict.get('wallpaper'))
+            except ValidationError as exc:
+                html_display['warn_code'] = 1
+                html_display['warn_message'] = exc.messages[0]
+                return render(request, "person_account_setting.html", locals())
 
             modify_info = []
             if attr_dict['gender'] != useroj.get_gender_display():
@@ -1037,6 +1046,13 @@ def accountSetting(request: UserRequest):
             attr_check_list = [attr for attr in attr_dict.keys()]
             if html_display['warn_code'] == 1:
                 return render(request, "person_account_setting.html", locals())
+            try:
+                ava = sanitize_uploaded_image(ava)
+                wallpaper = sanitize_uploaded_image(wallpaper)
+            except ValidationError as exc:
+                html_display['warn_code'] = 1
+                html_display['warn_message'] = exc.messages[0]
+                return render(request, "org_account_setting.html", locals())
 
             modify_info = []
             if ava:

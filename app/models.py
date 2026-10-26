@@ -308,14 +308,14 @@ class NaturalPerson(models.Model):
     telephone = models.CharField("电话", max_length=20, null=True, blank=True)
     biography = models.TextField("自我介绍", max_length=1024, default="还没有填写哦～")
     avatar = models.ImageField(
-        upload_to=f"avatar/", blank=True, max_length=255)
+        upload_to=f"avatar/", blank=True)
     wallpaper = models.ImageField(
-        upload_to=f"wallpaper/", blank=True, max_length=255)
+        upload_to=f"wallpaper/", blank=True)
     inform_share = models.BooleanField(default=True)  # 是否第一次展示有关分享的帮助
     last_time_login = models.DateTimeField("上次登录时间", blank=True, null=True)
     objects: NaturalPersonManager = NaturalPersonManager()
     QRcode = models.ImageField(
-        upload_to=f"QRcode/", blank=True, max_length=255)
+        upload_to=f"QRcode/", blank=True)
     visit_times = models.IntegerField("浏览次数", default=0)  # 浏览主页的次数
 
     class Identity(models.IntegerChoices):
@@ -634,11 +634,11 @@ class Organization(models.Model):
     introduction = models.TextField(
         "介绍", null=True, blank=True, default="这里暂时没有介绍哦~")
     avatar = models.ImageField(
-        upload_to=f"avatar/", blank=True, max_length=255)
+        upload_to=f"avatar/", blank=True)
     QRcode = models.ImageField(
-        upload_to=f"QRcode/", blank=True, max_length=255)  # 二维码字段
+        upload_to=f"QRcode/", blank=True)  # 二维码字段
     wallpaper = models.ImageField(
-        upload_to=f"wallpaper/", blank=True, max_length=255)
+        upload_to=f"wallpaper/", blank=True)
     visit_times = models.IntegerField("浏览次数", default=0)  # 浏览主页的次数
 
     inform_share = models.BooleanField(default=True)  # 是否第一次展示有关分享的帮助
@@ -1008,7 +1008,7 @@ class Activity(CommentBase):
     introduction = models.TextField("活动简介", max_length=225, blank=True)
 
     QRcode = models.ImageField(
-        upload_to=f"QRcode/", blank=True, max_length=255)  # 二维码字段
+        upload_to=f"QRcode/", blank=True)  # 二维码字段
 
     # url,活动二维码
 
@@ -1153,7 +1153,7 @@ class ActivityPhoto(models.Model):
     type = models.SmallIntegerField(choices=PhotoType.choices)
     image = models.ImageField(
         upload_to=f"activity/photo/%Y/%m/", verbose_name=u'活动图片',
-        null=True, blank=True, max_length=255)
+        null=True, blank=True)
     activity = models.ForeignKey(
         Activity, related_name="photos", on_delete=models.CASCADE)
     activity_id: int
@@ -1295,7 +1295,7 @@ class CommentPhoto(models.Model):
 
     image = models.ImageField(
         upload_to=f"comment/%Y/%m/", verbose_name="评论图片",
-        null=True, blank=True, max_length=255,
+        null=True, blank=True,
     )
     comment = models.ForeignKey(
         Comment, related_name="comment_photos", on_delete=models.CASCADE
@@ -1322,7 +1322,6 @@ class ModifyOrganization(CommentBase):
     avatar = models.ImageField(
         upload_to=f"avatar/", verbose_name="小组头像",
         default="avatar/org_default.png", null=True, blank=True,
-        max_length=255,
     )
     pos = models.ForeignKey(User, on_delete=models.CASCADE)
 
@@ -1622,12 +1621,12 @@ class Course(models.Model):
     # 暂时只允许上传一张图片
     photo = models.ImageField(verbose_name="宣传图片",
                               upload_to=f"course/photo/%Y/",
-                              blank=True, max_length=255)
+                              blank=True)
 
     # 课程群二维码
     QRcode = models.ImageField(upload_to=f"course/QRcode/%Y/",
                                blank=True,
-                               null=True, max_length=255)
+                               null=True)
 
     objects: CourseManager = CourseManager()
 
@@ -1902,8 +1901,7 @@ class Prize(models.Model):
     stock = models.IntegerField('参考库存', default=0)
     reference_price = models.IntegerField('参考价格')
     image = models.ImageField(
-        '图片', upload_to=f'prize/%Y-%m/', null=True, blank=True,
-        max_length=255)
+        '图片', upload_to=f'prize/%Y-%m/', null=True, blank=True)
     provider = models.ForeignKey(User, verbose_name='提供者', on_delete=models.CASCADE,
                                  null=True, blank=True)
 
@@ -2026,7 +2024,7 @@ class ActivitySummary(models.Model):
     status = models.SmallIntegerField(choices=Status.choices, default=0)
     image = models.ImageField(
         upload_to=f"ActivitySummary/photo/%Y/%m/",
-        verbose_name='活动总结图片', null=True, blank=True, max_length=255)
+        verbose_name='活动总结图片', null=True, blank=True)
     time = models.DateTimeField("申请时间", auto_now_add=True)
 
     def __str__(self):
@@ -2061,7 +2059,7 @@ class HomepageImage(models.Model):
 
     redirect_url = models.CharField("跳转URL", max_length = 50, default = "", blank = True)
     image = models.ImageField(
-        "图片", upload_to="homepage_image/", max_length=255)
+        "图片", upload_to="homepage_image/")
     description = models.CharField("图片说明", max_length = 50, default = "", blank = True)
     upload_date = models.DateTimeField("上传时间", auto_now_add=True)
     sort_id = models.SmallIntegerField("展示顺序", default = 0)

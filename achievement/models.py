@@ -14,9 +14,9 @@ class AchievementType(models.Model):
     title = models.CharField('名称', max_length=100)
     description = models.TextField('描述', blank=True)
     badge = models.ImageField(
-        '徽章', upload_to='achievement/badges/', max_length=255)
+        '徽章', upload_to='achievement/badges/')
     avatar = models.ImageField(
-        '图标', upload_to='achievement/avatars/', max_length=255)
+        '图标', upload_to='achievement/avatars/')
 
     @admin_only
     def __str__(self):
