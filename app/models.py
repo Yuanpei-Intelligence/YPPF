@@ -448,9 +448,11 @@ class NaturalPerson(models.Model):
         return self.permissions.get(perm_name, False)
 
     # 设置本模型的权限字典中某个权限字段为value
-    def set_permission(self, perm_name: str, value: bool):
+    def set_permission(self, perm_name: str, value: bool, defer_save: bool = False):
+        """Set a permission, leaving persistence to the caller when deferred."""
         self.permissions[perm_name] = value
-        self.save(update_fields=['permissions'])
+        if not defer_save:
+            self.save(update_fields=['permissions'])
 
     # 授予本模型某个权限字段
     def grant_permission(self, perm_name: str):

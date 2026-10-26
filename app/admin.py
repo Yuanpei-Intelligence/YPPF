@@ -63,13 +63,14 @@ class NaturalPersonForm(ModelForm):
             self.fields['gain_credit'].initial = self.instance.has_permission('gain_credit')
     
     def save(self, commit=True):
+        """Collect permission edits without writing until the form is committed."""
         instance = super().save(commit=False)
-        # 更新权限字段
-        instance.set_permission('select_course', self.cleaned_data['select_course'])
-        instance.set_permission('underground_appointment', self.cleaned_data['underground_appointment'])
-        instance.set_permission('gain_credit', self.cleaned_data['gain_credit'])
+        # Admin saves new objects after form.save(commit=False).
+        for key in ('select_course', 'underground_appointment', 'gain_credit'):
+            instance.set_permission(key, self.cleaned_data[key], defer_save=True)
         if commit:
             instance.save()
+            self.save_m2m()
         return instance
 
 # 后台模型
