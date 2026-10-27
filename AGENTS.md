@@ -530,6 +530,38 @@ contradicts the HTTP status. Preserve an existing AJAX response shape when
 changing a legacy endpoint and document that shape in the view docstring.
 Mini-program DRF endpoints additionally follow `api/AGENTS.md`.
 
+### Uploaded file names
+
+New user-uploaded images are decoded with Pillow and re-encoded before the
+bytes are written and before the relative path is stored. Call
+`app.image_upload.sanitize_uploaded_image` at the upload assignment, before
+`save()`. Do not put this logic in a storage backend or in `STORAGES`.
+Generated files such as thumbnails, and tests that save non-image bytes,
+must keep the default storage.
+
+The client filename is not a storage key. The stored basename is
+`secrets.token_hex(16)` plus `.jpg` or `.png`. The extension comes only from
+the re-encoded image: PNG when the image has an alpha channel or the source
+is PNG, otherwise JPEG at quality 90. GIF keeps the first frame. Accepted
+source formats are
+JPEG, PNG, GIF, BMP, TIFF, and WEBP. A file that cannot be decoded raises
+`ValidationError` with a Chinese message, and the caller must not write that
+upload. Do not copy EXIF, comments, or the original `info`. Do not include
+`global.hash_salt` or the client filename in the stored name. The `upload_to`
+directory is unchanged and is not part of the random basename.
+
+`if_image()` may still run as an early check. It does not replace
+re-encoding. Preset paths, default avatars, and a `FieldFile` copied from an
+existing row stay unchanged. Do not rename or migrate old files, and do not
+widen image-path columns for this naming scheme.
+
+Channels that must call the function: personal and organization
+avatar/wallpaper, organization-application avatar, newly uploaded activity
+announcement images (a copy of an existing activity photo stays as stored),
+activity summary and weekly summary images, comment images, and course
+photos and QR codes. Admin uploads are outside this rule. The mini-program
+API reads stored media URLs and does not accept uploads.
+
 ### Time and scheduling
 
 `USE_TZ` is intentionally false. Domain and database datetimes are therefore
@@ -973,4 +1005,7 @@ serialize only the fields required by the feature, scope object access before
 retrieval, and log an internal primary key or a deliberately masked identifier
 instead of a full personal profile. New exports and bulk-management commands
 must enforce an explicit permission, avoid predictable public filenames, and
-document where the output is stored and who may receive it.
+document where the output is stored and who may receive it. User uploads follow the uploaded-file naming standard above. Do not put
+`global.hash_salt` into upload filenames. Keep that value in `config.json`
+for the hashes that already use it, and do not log it or commit a production
+value.

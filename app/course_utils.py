@@ -22,7 +22,9 @@ check_course_time_conflict: 检查当前选择的课是否与已选的课上课�
 """
 from functools import partial
 
-from django.core.exceptions import PermissionDenied
+from django.core.exceptions import PermissionDenied, ValidationError
+
+from app.image_upload import sanitize_uploaded_image
 from app.utils_dependency import *
 from app.models import (
     User,
@@ -1263,6 +1265,10 @@ def course_base_check(request, if_new=None):
         if announcephoto:
             pic = announcephoto
             assert if_image(pic) == 2, "课程预告图片文件类型错误！"
+            try:
+                pic = sanitize_uploaded_image(pic)
+            except ValidationError as exc:
+                raise AssertionError("课程预告图片文件类型错误！") from exc
         else:
             for i in range(5):
                 if request.POST.get(f'picture{i+1}'):
@@ -1272,6 +1278,11 @@ def course_base_check(request, if_new=None):
         if if_new is None:
             assert context["photo"] is not None, "缺少课程预告图片！"
         assert if_image(context["QRcode"]) != 1, "微信群二维码图片文件类型错误！"
+        if context["QRcode"] is not None:
+            try:
+                context["QRcode"] = sanitize_uploaded_image(context["QRcode"])
+            except ValidationError as exc:
+                raise AssertionError("微信群二维码图片文件类型错误！") from exc
     except Exception as e:
         return wrong(str(e))
 

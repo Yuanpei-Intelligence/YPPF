@@ -1,4 +1,8 @@
+from django.core.exceptions import ValidationError
+
 from utils.http import UserRequest
+
+from app.image_upload import sanitize_uploaded_image
 
 from app.utils_dependency import *
 from app.models import (
@@ -73,15 +77,20 @@ def addComment(request: UserRequest, comment_base, receiver=None, *,
         comment_images = request.FILES.getlist('comment_images')
         if not text and not comment_images:
             return wrong("内容为空，无法发送！")
+        encoded_images = []
         for comment_image in comment_images:
             if if_image(comment_image) != 2:
+                return wrong("附件只支持图片格式。")
+            try:
+                encoded_images.append(sanitize_uploaded_image(comment_image))
+            except ValidationError:
                 return wrong("附件只支持图片格式。")
         try:
             with transaction.atomic():
                 new_comment = Comment.objects.create(
                     commentbase=comment_base, commentator=request.user, text=text
                 )
-                for comment_image in comment_images:
+                for comment_image in encoded_images:
                     CommentPhoto.objects.create(
                         image=comment_image, comment=new_comment
                     )
