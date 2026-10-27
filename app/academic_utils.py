@@ -247,9 +247,9 @@ def get_js_tag_list(author: NaturalPerson, type: AcademicTag.Type,
 
 
 def get_text_list(author: NaturalPerson, type: AcademicTextEntry.Type,
-                  status_in: list[AcademicEntry.EntryStatus] | None = None) -> list[str]:
+                  status_in: list[AcademicEntry.EntryStatus] | None = None) -> list:
     """
-    获取自己的所有类型为type的TextEntry的内容列表。
+    获取自己的所有类型为type的TextEntry的对象列表。
 
     :param author: 作者自然人信息
     :type author: NaturalPerson
@@ -257,14 +257,13 @@ def get_text_list(author: NaturalPerson, type: AcademicTextEntry.Type,
     :type type: AcademicTextEntry.Type
     :param status_in: 所要检索的状态的列表，默认为None，表示搜索全部
     :type status_in: list
-    :return: 含有所有类型为type的TextEntry的content的list
-    :rtype: list[str]
+    :return: 含有所有类型为type的TextEntry对象的list
+    :rtype: list[AcademicTextEntry]
     """
     all_my_text = AcademicTextEntry.objects.activated().filter(person=author, atype=type)
     if status_in is not None:
         all_my_text = all_my_text.filter(status__in=status_in)
-    text_list = [text.content for text in all_my_text]
-    return text_list
+    return list(all_my_text.order_by('-id'))
 
 
 def get_tag_status(person: NaturalPerson, type: AcademicTag.Type) -> str:
@@ -360,6 +359,8 @@ def update_tag_entry(person: NaturalPerson,
 
 def update_text_entry(person: NaturalPerson,
                       contents: list[str],
+                      start_dates: list[str],
+                      end_dates: list[str],
                       status: bool,
                       type: AcademicTextEntry.Type) -> None:
     """
@@ -367,8 +368,12 @@ def update_text_entry(person: NaturalPerson,
 
     :param person: 需要更新学术地图的人
     :type person: NaturalPerson
-    :param tag_ids: 含有一系列TextEntry的内容的list
-    :type tag_ids: list[str]
+    :param contents: 含有一系列TextEntry的内容的list
+    :type contents: list[str]
+    :param start_dates: 对应内容的开始日期字符串（YYYY-MM-DD或空字符串）
+    :type start_dates: list[str]
+    :param end_dates: 对应内容的结束日期字符串（YYYY-MM-DD或空字符串，空表示至今）
+    :type end_dates: list[str]
     :param status: 该用户所有类型为type的TextEntry的公开状态
     :type status: bool
     :param type: contents对应的TextEntry的类型
@@ -382,15 +387,25 @@ def update_text_entry(person: NaturalPerson,
                       AcademicEntry.EntryStatus.PRIVATE)
     previous_num = len(all_text_entries)
 
-    # 即将修改/创建的entry总数一定不小于原有的，因此先遍历原有的entry，判断是否更改/删除
+        # 即将修改/创建的entry总数一定不小于原有的，因此先遍历原有的entry，判断是否更改/删除
     for i, entry in enumerate(all_text_entries):
-        if entry.content != contents[i]:
-            # 内容发生修改，需要先将原有的content设置为“已弃用”
+        # 正确处理时间字段的比较逻辑，避免None与空字符串比较问题
+        current_start = str(entry.start_date) if entry.start_date else ""
+        current_end = str(entry.end_date) if entry.end_date else ""
+        new_start = start_dates[i] if start_dates[i] else ""
+        new_end = end_dates[i] if end_dates[i] else ""
+        
+        if (entry.content != contents[i] or 
+            current_start != new_start or 
+            current_end != new_end):
+            # 内容或时间发生修改，需要先将原有的entry设置为"已弃用"
             entry.status = AcademicEntry.EntryStatus.OUTDATE
             entry.save()
             if contents[i] != "":  # 只有新的entry的内容不为空才创建
                 AcademicTextEntry.objects.create(
                     person=person, atype=type, content=contents[i],
+                    start_date=start_dates[i] or None,
+                    end_date=end_dates[i] or None,
                     status=updated_status,
                 )
         elif entry.status != updated_status:
@@ -399,10 +414,13 @@ def update_text_entry(person: NaturalPerson,
             entry.save()
 
     # 接下来遍历的entry均为需要新建的
-    for content in contents[previous_num:]:
+    for j, content in enumerate(contents[previous_num:]):
+        idx = previous_num + j
         if content != "":
             AcademicTextEntry.objects.create(
                 person=person, atype=type, content=content,
+                start_date=start_dates[idx] or None,
+                end_date=end_dates[idx] or None,
                 status=AcademicEntry.EntryStatus.WAIT_AUDIT if status == "公开"
                 else AcademicEntry.EntryStatus.PRIVATE
             )
@@ -429,16 +447,40 @@ def update_academic_map(request: HttpRequest) -> dict:
     internship_num = int(request.POST['internship_num'])
     scientific_direction_num = int(request.POST['scientific_direction_num'])
     graduation_num = int(request.POST['graduation_num'])
-    scientific_research = [request.POST[f'scientific_research_{i}']
+    scientific_research = [request.POST.get(f'scientific_research_{i}', '')
                            for i in range(scientific_research_num+1)]
-    challenge_cup = [request.POST[f'challenge_cup_{i}']
+    scientific_research_start = [request.POST.get(f'scientific_research_{i}_start', '')
+                                 for i in range(scientific_research_num+1)]
+    scientific_research_end = [request.POST.get(f'scientific_research_{i}_end', '')
+                               for i in range(scientific_research_num+1)]
+
+    challenge_cup = [request.POST.get(f'challenge_cup_{i}', '')
                      for i in range(challenge_cup_num+1)]
-    internship = [request.POST[f'internship_{i}']
+    challenge_cup_start = [request.POST.get(f'challenge_cup_{i}_start', '')
+                          for i in range(challenge_cup_num+1)]
+    challenge_cup_end = [request.POST.get(f'challenge_cup_{i}_end', '')
+                        for i in range(challenge_cup_num+1)]
+
+    internship = [request.POST.get(f'internship_{i}', '')
                   for i in range(internship_num+1)]
-    scientific_direction = [request.POST[f'scientific_direction_{i}']
+    internship_start = [request.POST.get(f'internship_{i}_start', '')
+                       for i in range(internship_num+1)]
+    internship_end = [request.POST.get(f'internship_{i}_end', '')
+                     for i in range(internship_num+1)]
+
+    scientific_direction = [request.POST.get(f'scientific_direction_{i}', '')
                             for i in range(scientific_direction_num+1)]
-    graduation = [request.POST[f'graduation_{i}']
+    scientific_direction_start = [request.POST.get(f'scientific_direction_{i}_start', '')
+                                 for i in range(scientific_direction_num+1)]
+    scientific_direction_end = [request.POST.get(f'scientific_direction_{i}_end', '')
+                               for i in range(scientific_direction_num+1)]
+
+    graduation = [request.POST.get(f'graduation_{i}', '')
                   for i in range(graduation_num+1)]
+    graduation_start = [request.POST.get(f'graduation_{i}_start', '')
+                       for i in range(graduation_num+1)]
+    graduation_end = [request.POST.get(f'graduation_{i}_end', '')
+                     for i in range(graduation_num+1)]
 
     # 对上述五个列表中的所有填写项目，检查是否超过数据库要求的字数上限
     def max_length_of(items): return max(
@@ -482,23 +524,23 @@ def update_academic_map(request: HttpRequest) -> dict:
 
         # 然后更新自己的TextEntry
         update_text_entry(
-            me, scientific_research, scientific_research_status,
+            me, scientific_research, scientific_research_start, scientific_research_end, scientific_research_status,
             AcademicTextEntry.Type.SCIENTIFIC_RESEARCH
         )
         update_text_entry(
-            me, challenge_cup, challenge_cup_status,
+            me, challenge_cup, challenge_cup_start, challenge_cup_end, challenge_cup_status,
             AcademicTextEntry.Type.CHALLENGE_CUP
         )
         update_text_entry(
-            me, internship, internship_status,
+            me, internship, internship_start, internship_end, internship_status,
             AcademicTextEntry.Type.INTERNSHIP
         )
         update_text_entry(
-            me, scientific_direction, scientific_direction_status,
+            me, scientific_direction, scientific_direction_start, scientific_direction_end, scientific_direction_status,
             AcademicTextEntry.Type.SCIENTIFIC_DIRECTION
         )
         update_text_entry(
-            me, graduation, graduation_status,
+            me, graduation, graduation_start, graduation_end, graduation_status,
             AcademicTextEntry.Type.GRADUATION
         )
 
