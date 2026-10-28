@@ -1,3 +1,5 @@
+import logging
+
 from django.contrib.auth.models import AnonymousUser
 from django.test import RequestFactory, SimpleTestCase
 
@@ -27,3 +29,29 @@ class RequestLoggingTestCase(SimpleTestCase):
         self.assertNotIn("Data:", message)
         for value in (*post_secrets, query_secret):
             self.assertNotIn(value, message)
+
+
+class ExceptionLoggingTestCase(SimpleTestCase):
+    def test_secure_func_logs_original_exception_and_preserves_raise_behavior(self):
+        for raise_exc in (False, True):
+            with self.subTest(raise_exc=raise_exc):
+                logger = Logger('exception-details-test')
+                logger.setLevel(logging.DEBUG)
+                error = ValueError('invalid operation state')
+
+                @logger.secure_func(raise_exc=raise_exc, fail_value='failed')
+                def failing_func():
+                    raise error
+
+                with self.assertLogs(logger, level='ERROR') as captured:
+                    if raise_exc:
+                        with self.assertRaises(ValueError) as raised:
+                            failing_func()
+                        self.assertIs(raised.exception, error)
+                    else:
+                        self.assertEqual(failing_func(), 'failed')
+
+                self.assertIs(captured.records[0].exc_info[1], error)
+                message = '\n'.join(captured.output)
+                self.assertIn('ValueError: invalid operation state', message)
+                self.assertIn('failing_func', message)
