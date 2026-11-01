@@ -70,13 +70,19 @@
                                     <p style="text-align: center;">{{empty_info}}</p>
                                     <br />
                                     {% else %}
+                                    <div class="input-group mb-3">
+                                        <div class="input-group-prepend">
+                                            <span class="input-group-text"><i class="fa fa-search"></i></span>
+                                        </div>
+                                        <input type="text" class="form-control org-search" placeholder="搜索小组名称或状态" oninput="filterOrgCards(this)">
+                                    </div>
                                     <div class="bio-skill-box">
                                         <div class="row">
 
 
 {% for instance in shown_instances %}
     {% with instance.get_instance.get_status_display as status %}
-<div class="col-12 col-xl-6 col-lg-12 mb-xl-4 mb-4 ">
+<div class="col-12 col-xl-6 col-lg-12 mb-xl-4 mb-4 org-card">
 
     <div class=" b-skills">
 
@@ -177,4 +183,17 @@
 
 {% endwith %}
 
+{% block add_js_file %}
+<script type="text/javascript">
+    function filterOrgCards(input) {
+        var pane = input.closest('.tab-pane');
+        if (!pane) return;
+        var kw = input.value.trim().toLowerCase();
+        var cards = pane.querySelectorAll('.org-card');
+        for (var i = 0; i < cards.length; i++) {
+            var text = cards[i].textContent.toLowerCase();
+            cards[i].style.display = (kw === '' || text.indexOf(kw) !== -1) ? '' : 'none';
+        }
+    }
+</script>
 {% endblock %}
