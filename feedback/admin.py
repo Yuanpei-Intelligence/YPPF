@@ -8,8 +8,9 @@ from feedback.models import (
 # Register your models here.
 @admin.register(Feedback)
 class FeedbackAdmin(admin.ModelAdmin):
-    list_display = ["type", "title", "person", "org", "feedback_time",]
-    search_fields = ("person__name", "org__oname",)
+    list_display = ["type", "title", "person", "org", "feature_key", "feedback_time",]
+    list_filter = ["feature_key"]
+    search_fields = ("person__name", "org__oname", "feature_key",)
 
 
 @admin.register(FeedbackType)

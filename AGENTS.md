@@ -837,6 +837,29 @@ Follow these rules when adding or consuming settings:
   existing `config.json`; it may contain local secrets and must never be added
   to Git.
 
+### Runtime feature rollout
+
+`config.json` is read once per process, so it cannot open a feature to some
+accounts at runtime. Release an experimental feature that should first reach
+an allow list, preview channel members, a targeted group or a percentage of
+accounts through the `rollout` application:
+
+- Reference the feature by a stable key and check it only through
+  `rollout.api.is_feature_enabled()`/`enabled_features()`, the DRF permission
+  `rollout.permissions.feature_permission()`, the website decorator
+  `rollout.permissions.feature_required()` or the `rollout_features` template
+  variable. Do not reuse `is_staff`, `NaturalPerson.permissions`, Django
+  groups or `debug_stuids` as rollout switches.
+- The backend is authoritative. Hiding an entry in a template or in the mini
+  program is not access control: gate every entry point of the feature
+  (website view, API endpoint, scheduled job) with the same key.
+- Keep experimental code isolated and its migrations additive, so the feature
+  can be switched off without affecting the rest of the site. Remove the checks
+  in a follow-up change once the feature is fully released.
+
+`rollout/README.md` documents the stages, the evaluation order, the API
+contract, preview feedback and the release checklist.
+
 ### Comments and docstrings
 
 - Comments must explain intent, constraints, non-obvious domain behavior, or

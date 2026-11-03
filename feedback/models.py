@@ -59,6 +59,13 @@ class Feedback(CommentBase):
     org: Organization = models.ForeignKey(
         Organization, on_delete=models.CASCADE, null=True, blank=True)
     url = models.URLField("相关链接", max_length=256, default="", blank=True)
+    # Preview feedback records the experimental feature it is about; see
+    # rollout/README.md. Kept as a plain key so feedback outlives the feature.
+    feature_key = models.CharField(
+        "灰度功能标识", max_length=64, default="", blank=True, db_index=True)
+    client_info = models.JSONField(
+        "客户端信息", default=dict, blank=True,
+        help_text="提交时的客户端环境（如小程序版本），用于排查问题")
 
     class IssueStatus(models.IntegerChoices):
         DRAFTED = (0, "草稿")

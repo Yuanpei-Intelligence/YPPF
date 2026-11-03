@@ -134,5 +134,14 @@
     },
     "dormitory": {
         "routine_qa_survey_title": "default title"
+    },
+    "rollout": {
+        "preview_channel": {
+            "open": true
+        },
+        "feedback": {
+            "type_name": "体验反馈",
+            "org_name": "智慧书院项目组"
+        }
     }
 }
