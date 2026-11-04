@@ -1,0 +1,4 @@
+<div class="alert {% if bookable_count %}alert-info{% else %}alert-warning{% endif %} text-center py-2">
+	{{ search_date|date:"n月j日" }}{% if search_start %} {{ search_start }}{% endif %}{% if search_finish %}~{{ search_finish }}{% endif %}{% if search_capacity %} · {{ search_capacity }}人{% endif %}
+	{% if bookable_count %}可预约房间共 <b>{{ bookable_count }}</b> 间{% else %}没有符合条件的房间，可放宽时段或人数再试{% endif %}
+</div>
