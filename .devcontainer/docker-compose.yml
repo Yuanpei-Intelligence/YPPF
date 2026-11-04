@@ -19,6 +19,7 @@ services:
   yppf:
     build: ..
     tty: true
+    shm_size: "1gb"
     depends_on:
       mysql:
         condition: service_healthy
@@ -29,6 +30,7 @@ services:
       - DB_USER=root
       - DB_PASSWORD=secret
       - DB_DATABASE=yppf
+      - PLAYWRIGHT_BROWSERS_PATH=/ms-playwright
     volumes:
       - ../:/workspace
 

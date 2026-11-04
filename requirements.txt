@@ -35,3 +35,7 @@ django_apscheduler
 # 可选应用依赖
 pymssql
 cryptography
+
+# birthboard 依赖
+playwright
+ddddocr

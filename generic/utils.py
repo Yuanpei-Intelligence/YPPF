@@ -22,18 +22,20 @@ def to_search_indices(
     Returns:
     - search_indices: 搜索索引列表，每个索引包含以下字段
         - id: 用户id（学号）
+        - pk: 用户主键（供前端提交时作为关联 id）
         - text: 用户名称
         - pinyin: 用户名称拼音
         - acronym: 用户名称缩写
     '''
     if active is not None:
         users = users.filter(active=active)
-    index_values = users.values_list('username', 'name', 'pinyin', 'acronym')
+    index_values = users.values_list('id', 'username', 'name', 'pinyin', 'acronym')
     search_indices = []
     for user in index_values:
-        uid, name, pinyin, acronym = user
+        user_pk, uid, name, pinyin, acronym = user
         search_indices.append({
             'id': uid,
+            'pk': user_pk,
             'text': name + uid[:2],
             'pinyin': pinyin,
             'acronym': acronym,

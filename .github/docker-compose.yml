@@ -38,6 +38,7 @@ services:
     working_dir: /workspace
     environment:
       - YPPF_DEBUG=true
+      - PLAYWRIGHT_BROWSERS_PATH=/ms-playwright
     depends_on:
       mysql:
         condition: service_healthy
@@ -50,6 +51,7 @@ services:
   yppf:
     image: yppf_local
     tty: true
+    shm_size: "1gb"
     depends_on:
       mysql:
         condition: service_healthy
@@ -64,8 +66,10 @@ services:
       - DB_PASSWORD=secret
       - DB_DATABASE=yppf
       - YPPF_DEBUG=true
+      - PLAYWRIGHT_BROWSERS_PATH=/ms-playwright
     volumes:
       - ../:/workspace
+      - django-cache:/var/tmp/django_cache
     command: python3 manage.py runserver
 
     healthcheck:
@@ -76,11 +80,18 @@ services:
 
   scheduler:
     image: yppf_local
+    shm_size: "1gb"
     volumes:
       - ../:/workspace
+      - django-cache:/var/tmp/django_cache
     working_dir: /workspace
     environment:
+      - DB_HOST=mysql
+      - DB_USER=root
+      - DB_PASSWORD=secret
+      - DB_DATABASE=yppf
       - YPPF_DEBUG=true
+      - PLAYWRIGHT_BROWSERS_PATH=/ms-playwright
     depends_on:
       mysql:
         condition: service_healthy
@@ -99,3 +110,4 @@ services:
 volumes:
   yppf-mysql-data:
   yppf-mysql-config:
+  django-cache:

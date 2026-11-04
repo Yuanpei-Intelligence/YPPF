@@ -10,13 +10,19 @@ can be found at https://github.com/HelloWorldZTR/YPPF-mini
 ## Develop Environment
 
 Prefer the repository's Dev Container setup. The host only needs Docker with
-`docker compose` subcommand. The container image is based on Python 3.11 and
-installs `requirements.txt`; Compose also starts a MySQL 8 server, waits for it
-to become healthy, mounts the repository at `/workspace`, and sets
-`YPPF_DEBUG=true` plus the development database connection variables. The
-optional `.devcontainer/dev_requirements.txt` is installed automatically by a
+`docker compose` subcommand. The container image is based on Python 3.11
+(Debian 12 / Bookworm) and installs `requirements.txt`, Playwright Chromium
+(shared at `/ms-playwright`), and the OpenCV system libraries used by
+`ddddocr`. Compose also starts a MySQL 8 server, waits for it to become
+healthy, mounts the repository at `/workspace`, and sets `YPPF_DEBUG=true`
+plus the development database connection variables. The `yppf` service uses
+`shm_size: 1gb` so Chromium can launch inside the container. The optional
+`.devcontainer/dev_requirements.txt` is installed automatically by a
 Dev Container client, but currently only adds IPython and is not required for
-tests.
+tests. Birthboard display sync needs real `shihannet` values in the local
+`config.json` (the template only has placeholders) and a separate
+`python manage.py runscheduler` process; the default Dev Container Compose
+does not start the scheduler.
 
 From the repository root, create a local configuration only when it does not
 already exist. Never overwrite an existing `config.json`, because it is
