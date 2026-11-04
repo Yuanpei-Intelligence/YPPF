@@ -76,6 +76,53 @@ Do not add `-v` to `down` unless intentionally deleting the persistent
 development database. The CI baseline is the same Django test runner,
 `python manage.py test`.
 
+### Deployment check
+
+`python manage.py deploy_check` runs the deployment self-checks that installed
+apps ship as `<app package>/deploy_checks.py`. It prints one
+`[OK]`/`[WARN]`/`[FAIL] name: detail` line per check, grouped by app label,
+and a summary line:
+
+```bash
+docker compose -f .devcontainer/docker-compose.yml exec -T yppf python manage.py deploy_check
+```
+
+It exits non-zero when any check fails. `--warn-only` always exits 0 and
+`--strict` also fails on warnings. `--app LABEL` (repeatable) limits the run
+to those app labels; an unknown label is an error. `--format json` prints a
+list of `{app, level, name, detail}` objects instead of text. `--online` also
+probes external services: the mini-program access token (through the cached
+helper, so a running site's token is not replaced), the scheduler RPC and the
+library database.
+
+A plugin module exposes exactly this function:
+
+```python
+def checks(*, online: bool = False) -> Iterable[tuple[str, str, str]]:
+    """Yield (level, name, detail); level is 'OK', 'WARN' or 'FAIL'."""
+```
+
+- Yield plain tuples and import nothing from the command module. Shared
+  helpers such as `production_level()`, `resolve_setting()` and `url_host()`
+  live in `utils/deploy_check.py`.
+- `FAIL` means an operator must act because something is broken or insecure;
+  `WARN` means a degraded feature or a value that looks unintended. A problem
+  that only matters in production is `FAIL` outside debug mode and `WARN`
+  when `YPPF_DEBUG=true` (`production_level()`).
+- Never print from a plugin and never yield secrets: report whether a token,
+  password, appsecret or salt is set, only the scheme and host of a URL, and
+  exception class names rather than messages.
+- Keep checks fast and perform network I/O only when `online` is true. A
+  plugin that fails to import or raises is reported as one `FAIL` line naming
+  the exception class; Django's `--traceback` option adds the message.
+- Test a plugin with mocked configuration, database state and network calls.
+
+After a deployment, run the check from the server's restart script once
+`migrate` has run: `python manage.py deploy_check --warn-only` records
+problems without blocking the restart, and
+`python manage.py deploy_check --online` is a fuller probe that exits
+non-zero on failures.
+
 ## Codebase Structure
 
 ### Overview
