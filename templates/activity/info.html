@@ -4,6 +4,41 @@
 
 {% block mainpage %}
 
+<style>
+    .activity-history-board { max-width: 930px; margin: 28px auto 0; }
+    .activity-history-heading { display: flex; justify-content: space-between; align-items: flex-end; gap: 12px; margin-bottom: 14px; }
+    .activity-history-heading h3 { margin: 0; color: #262d4b; font-weight: 700; }
+    .activity-history-heading p { margin: 3px 0 0; color: #8d95a9; }
+    .community-feed-card { margin-bottom: 16px; padding: 20px; border-radius: 17px; background: #fff; border: 1px solid #e9ecf4; box-shadow: 0 8px 26px rgba(42, 51, 95, .06); }
+    .community-feed-header { display: flex; gap: 12px; align-items: flex-start; }
+    .community-avatar { width: 46px; height: 46px; border-radius: 50%; object-fit: cover; background: #eef0f6; }
+    .community-feed-heading { min-width: 0; }
+    .community-author, .community-subject { display: block; }
+    .community-author { color: #262d4b; font-weight: 700; }
+    .community-subject { margin-top: 2px; color: #4559b6; font-weight: 600; }
+    .community-feed-heading p { margin: 3px 0 0; color: #9299ad; font-size: 12px; }
+    .community-feed-content { margin: 15px 0; }
+    .community-feed-content .profile-story-description { color: #3f4661; overflow-wrap: anywhere; }
+    .community-feed-content .profile-story-gallery { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+    .community-feed-content .profile-story-gallery figure { margin: 0; }
+    .community-feed-content .profile-story-gallery img { width: 100%; height: 190px; border-radius: 11px; object-fit: cover; background: #f2f4f8; }
+    .community-feed-toolbar { display: flex; align-items: center; flex-wrap: wrap; gap: 11px; padding-top: 11px; border-top: 1px solid #f0f1f5; color: #7d8499; }
+    .community-feed-toolbar form { margin: 0; }
+    .community-feed-comments { margin-top: 12px; padding: 10px 13px; border-radius: 11px; background: #f6f7fb; }
+    .community-feed-comments p { margin: 5px 0; color: #555d75; overflow-wrap: anywhere; }
+    .community-feed-comments small { margin-left: 6px; color: #9aa1b4; }
+    .community-comment-form { display: flex; gap: 8px; margin-top: 12px; }
+    .community-comment-form input { min-width: 0; }
+    .activity-history-pagination { display: flex; justify-content: center; align-items: center; gap: 12px; margin: 18px 0; }
+    @media (max-width: 768px) {
+        .activity-history-board { padding: 0 10px; }
+        .community-feed-card { padding: 15px; }
+        .community-feed-content .profile-story-gallery { grid-template-columns: repeat(2, 1fr); }
+        .community-feed-content .profile-story-gallery img { height: 145px; }
+        .community-comment-form { flex-direction: column; }
+    }
+</style>
+
 <!--  BEGIN CONTENT AREA  -->
 <div id="content" class="main-content pb-3" style="overflow: hidden;">
 
@@ -630,6 +665,38 @@
             {% endif %}
 
         </div>
+
+        <section class="activity-history-board" id="activity-history" aria-labelledby="activity-history-title">
+            <div class="activity-history-heading">
+                <div>
+                    <h3 id="activity-history-title">活动历史上传</h3>
+                    <p>参与者为这个活动公开上传的全部图文记录，按最近更新排序。</p>
+                </div>
+                <a class="btn btn-sm btn-outline-primary" href="{% url 'activityCommunity' %}">查看活动社区</a>
+            </div>
+
+            {% if activity_story_message %}
+            <div class="alert alert-info">{{ activity_story_message }}</div>
+            {% endif %}
+
+            {% for story in activity_story_page %}
+                {% include "community/_activity_feed_item.html" with story=story return_path=activity_story_return_path %}
+            {% empty %}
+            <div class="community-feed-card text-center text-muted">暂时还没有参与者上传公开记录。</div>
+            {% endfor %}
+
+            {% if activity_story_page.paginator.num_pages > 1 %}
+            <nav class="activity-history-pagination" aria-label="活动历史上传分页">
+                {% if activity_story_page.has_previous %}
+                <a class="btn btn-light" href="?story_page={{ activity_story_page.previous_page_number }}#activity-history">上一页</a>
+                {% endif %}
+                <span>第 {{ activity_story_page.number }} / {{ activity_story_page.paginator.num_pages }} 页</span>
+                {% if activity_story_page.has_next %}
+                <a class="btn btn-light" href="?story_page={{ activity_story_page.next_page_number }}#activity-history">下一页</a>
+                {% endif %}
+            </nav>
+            {% endif %}
+        </section>
     </div>
 </div>
 

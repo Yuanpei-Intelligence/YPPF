@@ -1,0 +1,207 @@
+<section class="profile-panorama mb-4" aria-labelledby="profile-panorama-title">
+    <div class="profile-panorama-heading">
+        <div>
+            <p class="profile-eyebrow mb-1">MY YUANPEI</p>
+            <h2 id="profile-panorama-title" class="mb-1">{{ context.person.name }}的个人画像</h2>
+            <p class="text-muted mb-0">从兴趣、技能和真实参与中，看见一个更完整的人。</p>
+        </div>
+        {% if Profile.is_myself %}
+        <button type="button" class="btn btn-primary" data-toggle="modal" data-target="#profileTagModal">
+            编辑兴趣与技能
+        </button>
+        {% endif %}
+    </div>
+
+    {% if request.GET.tags == "success" %}
+    <div class="alert alert-success mt-3 mb-0">兴趣与技能已更新。</div>
+    {% elif request.GET.tags == "invalid" %}
+    <div class="alert alert-warning mt-3 mb-0">标签未保存，请检查数量或自定义内容后重试。</div>
+    {% endif %}
+    {% if request.GET.story == "success" %}
+    <div class="alert alert-success mt-3 mb-0">图文说明已更新并公开展示。</div>
+    {% elif request.GET.story == "invalid" %}
+    <div class="alert alert-warning mt-3 mb-0">
+        图文说明未保存。
+        {% for field, errors in profile_story_errors.items %}
+            {% for error in errors %}{{ error.message }}{% endfor %}
+        {% endfor %}
+    </div>
+    {% endif %}
+
+    <div class="profile-stat-grid">
+        <div><strong>{{ Profile.activity_count }}</strong><span>活动足迹</span></div>
+        <div><strong>{{ Profile.organization_count }}</strong><span>小组经历</span></div>
+        <div><strong>{{ Profile.course_count }}</strong><span>书院课程</span></div>
+        <div><strong>{{ Profile.academic_count }}</strong><span>学术经历</span></div>
+    </div>
+
+    <div class="profile-panorama-grid">
+        <article class="profile-story-card profile-tag-card">
+            <div class="profile-card-title">
+                <span class="profile-card-icon profile-card-icon-interest">趣</span>
+                <div><h4>我的兴趣</h4><small>让我愿意投入时间的事</small></div>
+            </div>
+            <div class="profile-chip-list">
+                {% for selection in Profile.interest_selections %}
+                <button type="button" class="profile-chip profile-chip-button profile-chip-interest"
+                    title="{{ selection.tag.category }}" data-toggle="modal" data-target="#tagStoryModal-{{ selection.id }}">
+                    {{ selection.tag.name }}{% if selection.display_description or selection.display_images %}<span aria-label="有图文说明"> ·</span>{% endif %}
+                </button>
+                {% empty %}
+                <p class="profile-empty mb-0">还没有填写兴趣标签。</p>
+                {% endfor %}
+            </div>
+        </article>
+
+        <article class="profile-story-card profile-tag-card">
+            <div class="profile-card-title">
+                <span class="profile-card-icon profile-card-icon-skill">技</span>
+                <div><h4>我的技能</h4><small>我正在积累和愿意分享的能力</small></div>
+            </div>
+            <div class="profile-chip-list">
+                {% for selection in Profile.skill_selections %}
+                <button type="button" class="profile-chip profile-chip-button profile-chip-skill"
+                    title="{{ selection.tag.category }}" data-toggle="modal" data-target="#tagStoryModal-{{ selection.id }}">
+                    {{ selection.tag.name }}{% if selection.display_description or selection.display_images %}<span aria-label="有图文说明"> ·</span>{% endif %}
+                </button>
+                {% empty %}
+                <p class="profile-empty mb-0">还没有填写技能标签。</p>
+                {% endfor %}
+            </div>
+        </article>
+    </div>
+
+    <article class="profile-story-card mt-3">
+        <div class="profile-card-title profile-card-title-row">
+            <div class="d-flex align-items-center">
+                <span class="profile-card-icon profile-card-icon-activity">行</span>
+                <div><h4>最近的活动足迹</h4><small>已报名和已参与的活动都会留在这里</small></div>
+            </div>
+            <a href="#activity" class="profile-more-link" data-toggle="tab">查看全部</a>
+        </div>
+        <div class="profile-activity-grid">
+            {% for participation in Profile.recent_activities %}
+            <div class="profile-activity-item">
+                <div>
+                    <a href="/viewActivity/{{ participation.activity.id }}"><strong>{{ participation.activity.title }}</strong></a>
+                    <p>{{ participation.activity.organization_id.oname }} · {{ participation.activity.start|date:"Y.m.d" }}</p>
+                </div>
+                <div class="profile-activity-actions">
+                    {% if participation.status == "已参与" %}
+                    <span class="badge badge-success">已参与</span>
+                    {% else %}
+                    <span class="badge badge-primary">已报名</span>
+                    {% endif %}
+                    {% if Profile.is_myself or participation.profile_story.display_description or participation.profile_story.display_images %}
+                    <button type="button" class="btn btn-sm btn-outline-primary" data-toggle="modal"
+                        data-target="#activityStoryModal-recent-{{ participation.id }}">
+                        {% if Profile.is_myself %}{% if participation.profile_story %}编辑记录{% else %}添加记录{% endif %}{% else %}查看记录{% endif %}
+                    </button>
+                    {% if Profile.is_myself and participation.profile_story %}
+                    <form method="post" action="{% url 'deleteActivityStory' participation.profile_story.id %}"
+                        onsubmit="return confirm('确认删除这条活动记录吗？');">
+                        {% csrf_token %}
+                        <button type="submit" class="btn btn-sm btn-outline-danger">删除</button>
+                    </form>
+                    {% endif %}
+                    {% endif %}
+                </div>
+            </div>
+            {% if Profile.is_myself or participation.profile_story.display_description or participation.profile_story.display_images %}
+                {% include "profile/_activity_story_modal.html" with participation=participation modal_prefix="recent" %}
+            {% endif %}
+            {% empty %}
+            <p class="profile-empty mb-0">报名活动后，这里会自动形成你的活动足迹。</p>
+            {% endfor %}
+        </div>
+    </article>
+</section>
+
+{% for selection in Profile.interest_selections %}
+    {% include "profile/_tag_story_modal.html" with selection=selection %}
+{% endfor %}
+{% for selection in Profile.skill_selections %}
+    {% include "profile/_tag_story_modal.html" with selection=selection %}
+{% endfor %}
+
+{% if Profile.is_myself %}
+<div class="modal fade" id="profileTagModal" tabindex="-1" role="dialog" aria-labelledby="profileTagModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-xl" role="document">
+        <div class="modal-content">
+            <form method="post" action="{% url 'updateProfileTags' %}">
+                {% csrf_token %}
+                <div class="modal-header">
+                    <div>
+                        <h4 class="modal-title" id="profileTagModalLabel">编辑兴趣与技能</h4>
+                        <p class="text-muted mb-0">从官方候选池选择；没有合适的，可以在大分类下直接创建。</p>
+                    </div>
+                    <button type="button" class="close" data-dismiss="modal" aria-label="关闭"><span aria-hidden="true">&times;</span></button>
+                </div>
+                <div class="modal-body">
+                    <div class="row">
+                        <div class="col-lg-6 mb-4 mb-lg-0">
+                            <h5>兴趣标签</h5>
+                            {% if Profile.custom_interest_tags %}
+                            <div class="profile-custom-current">
+                                <small>我的自定义标签</small>
+                                <div class="profile-tag-choice-list">
+                                    {% for tag in Profile.custom_interest_tags %}
+                                    <label class="profile-tag-choice profile-tag-choice-custom">
+                                        <input type="checkbox" name="interest_tags" value="{{ tag.id }}" checked>
+                                        <span>{{ tag.name }}</span>
+                                    </label>
+                                    {% endfor %}
+                                </div>
+                            </div>
+                            {% endif %}
+                            {% for node in Profile.interest_tag_tree %}
+                                {% include "profile/_tag_category.html" with node=node kind="interest" %}
+                            {% endfor %}
+                            <div class="profile-custom-fields">
+                                <h6>没有合适的？按大类自由填写</h6>
+                                {% for category in Profile.root_categories %}
+                                <label>{{ category.name }}
+                                    <input class="form-control" name="custom_interest_{{ category.id }}" maxlength="1024" placeholder="多个标签用逗号分隔">
+                                </label>
+                                {% endfor %}
+                            </div>
+                        </div>
+                        <div class="col-lg-6">
+                            <h5>技能标签</h5>
+                            {% if Profile.custom_skill_tags %}
+                            <div class="profile-custom-current">
+                                <small>我的自定义标签</small>
+                                <div class="profile-tag-choice-list">
+                                    {% for tag in Profile.custom_skill_tags %}
+                                    <label class="profile-tag-choice profile-tag-choice-custom">
+                                        <input type="checkbox" name="skill_tags" value="{{ tag.id }}" checked>
+                                        <span>{{ tag.name }}</span>
+                                    </label>
+                                    {% endfor %}
+                                </div>
+                            </div>
+                            {% endif %}
+                            {% for node in Profile.skill_tag_tree %}
+                                {% include "profile/_tag_category.html" with node=node kind="skill" %}
+                            {% endfor %}
+                            <div class="profile-custom-fields">
+                                <h6>没有合适的？按大类自由填写</h6>
+                                {% for category in Profile.root_categories %}
+                                <label>{{ category.name }}
+                                    <input class="form-control" name="custom_skill_{{ category.id }}" maxlength="1024" placeholder="多个标签用逗号分隔">
+                                </label>
+                                {% endfor %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <span class="text-muted mr-auto">自定义标签会立即公开展示；管理员可处理违规内容。</span>
+                    <button type="button" class="btn btn-light" data-dismiss="modal">取消</button>
+                    <button type="submit" class="btn btn-primary">保存画像标签</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endif %}

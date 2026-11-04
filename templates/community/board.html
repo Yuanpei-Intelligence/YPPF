@@ -1,0 +1,87 @@
+{% extends "base.html" %}
+
+{% block add_css_file %}
+<style>
+    .community-shell { max-width: 940px; margin: 0 auto; padding: 28px 16px 50px; }
+    .community-hero { padding: 26px; border-radius: 20px; color: #fff; background: linear-gradient(135deg, #4d62c7, #6579dc 58%, #43a38d); box-shadow: 0 16px 38px rgba(61, 79, 167, .22); }
+    .community-hero h2 { margin: 0 0 6px; color: #fff; font-weight: 700; }
+    .community-hero p { margin: 0; color: rgba(255,255,255,.82); }
+    .community-board-tabs { display: flex; gap: 10px; margin: 18px 0; }
+    .community-board-tabs a { flex: 1; padding: 13px 16px; border-radius: 13px; color: #66708e; background: #fff; border: 1px solid #e5e8f2; text-align: center; font-weight: 600; }
+    .community-board-tabs a.active { color: #fff; border-color: #5368c9; background: #5368c9; }
+    .community-feed-card { margin-bottom: 16px; padding: 20px; border-radius: 17px; background: #fff; border: 1px solid #e9ecf4; box-shadow: 0 8px 26px rgba(42, 51, 95, .06); }
+    .community-feed-header { display: flex; gap: 12px; align-items: flex-start; }
+    .community-avatar { width: 46px; height: 46px; border-radius: 50%; object-fit: cover; background: #eef0f6; }
+    .community-feed-heading { min-width: 0; }
+    .community-author, .community-subject { display: block; }
+    .community-author { color: #262d4b; font-weight: 700; }
+    .community-subject { margin-top: 2px; color: #4559b6; font-weight: 600; }
+    .community-feed-heading p { margin: 3px 0 0; color: #9299ad; font-size: 12px; }
+    .community-feed-content { margin: 15px 0; }
+    .community-feed-content .profile-story-description { color: #3f4661; overflow-wrap: anywhere; }
+    .community-feed-content .profile-story-gallery { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+    .community-feed-content .profile-story-gallery figure { margin: 0; }
+    .community-feed-content .profile-story-gallery img { width: 100%; height: 190px; border-radius: 11px; object-fit: cover; background: #f2f4f8; }
+    .community-feed-toolbar { display: flex; align-items: center; flex-wrap: wrap; gap: 11px; padding-top: 11px; border-top: 1px solid #f0f1f5; color: #7d8499; }
+    .community-feed-toolbar form { margin: 0; }
+    .community-feed-comments { margin-top: 12px; padding: 10px 13px; border-radius: 11px; background: #f6f7fb; }
+    .community-feed-comments p { margin: 5px 0; color: #555d75; overflow-wrap: anywhere; }
+    .community-feed-comments small { margin-left: 6px; color: #9aa1b4; }
+    .community-comment-form { display: flex; gap: 8px; margin-top: 12px; }
+    .community-comment-form input { min-width: 0; }
+    .community-pagination { display: flex; justify-content: center; align-items: center; gap: 12px; margin-top: 22px; }
+    .community-empty { padding: 55px 20px; border-radius: 17px; color: #9299ad; background: #fff; text-align: center; }
+    @media (max-width: 768px) {
+        .community-shell { padding: 18px 10px 36px; }
+        .community-hero { padding: 20px; }
+        .community-feed-card { padding: 15px; }
+        .community-feed-content .profile-story-gallery { grid-template-columns: repeat(2, 1fr); }
+        .community-feed-content .profile-story-gallery img { height: 145px; }
+        .community-comment-form { flex-direction: column; }
+    }
+</style>
+{% endblock %}
+
+{% block mainpage %}
+<main id="content" class="main-content">
+    <div class="community-shell">
+        <section class="community-hero">
+            <h2>{{ board_title }}</h2>
+            <p>{{ board_description }}，按最近上传或编辑时间排列。</p>
+        </section>
+
+        <nav class="community-board-tabs" aria-label="社区看板切换">
+            <a href="{% url 'activityCommunity' %}" {% if board == "activities" %}class="active" aria-current="page"{% endif %}>活动动态</a>
+            <a href="{% url 'skillCommunity' %}" {% if board == "skills" %}class="active" aria-current="page"{% endif %}>兴趣与技能</a>
+        </nav>
+
+        {% if interaction_message %}
+        <div class="alert alert-info">{{ interaction_message }}</div>
+        {% endif %}
+
+        <section aria-label="{{ board_title }}列表">
+            {% if board == "activities" %}
+                {% for story in feed_page %}
+                    {% include "community/_activity_feed_item.html" with story=story return_path=return_path %}
+                {% empty %}
+                    <div class="community-empty">暂时还没有公开的活动动态。</div>
+                {% endfor %}
+            {% else %}
+                {% for selection in feed_page %}
+                    {% include "community/_skill_feed_item.html" with selection=selection return_path=return_path %}
+                {% empty %}
+                    <div class="community-empty">暂时还没有公开的兴趣或技能动态。</div>
+                {% endfor %}
+            {% endif %}
+        </section>
+
+        {% if feed_page.paginator.num_pages > 1 %}
+        <nav class="community-pagination" aria-label="动态分页">
+            {% if feed_page.has_previous %}<a class="btn btn-light" href="?page={{ feed_page.previous_page_number }}">上一页</a>{% endif %}
+            <span>第 {{ feed_page.number }} / {{ feed_page.paginator.num_pages }} 页</span>
+            {% if feed_page.has_next %}<a class="btn btn-light" href="?page={{ feed_page.next_page_number }}">下一页</a>{% endif %}
+        </nav>
+        {% endif %}
+    </div>
+</main>
+{% endblock %}
