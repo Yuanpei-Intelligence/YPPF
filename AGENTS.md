@@ -540,9 +540,12 @@ Generated files such as thumbnails, and tests that save non-image bytes,
 must keep the default storage.
 
 The client filename is not a storage key. The stored basename is
-`secrets.token_hex(16)` plus the extension of the re-encoded image. Choose
-that encoding so a newly uploaded picture still looks like the file the
-browser shows today: PNG stays PNG, GIF keeps every frame, and an animated
+`secrets.token_hex(16)` plus the extension of the re-encoded image. Those
+32 hex characters stay intact even when storage appends a short suffix for
+a path that already exists. Current upload directories plus that suffix
+still fit the existing 100-character path column. Choose the encoding so a
+newly uploaded picture still looks like the file the browser shows today:
+PNG stays PNG, GIF keeps every frame, and an animated
 WebP stays animated. Apply EXIF orientation to the pixels before dropping
 EXIF, so a phone JPEG is not saved sideways. JPEG, and an MPO Pillow can
 open, are stored as JPEG at quality 90. BMP or TIFF with an alpha channel

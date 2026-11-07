@@ -1,9 +1,14 @@
 """用户上传图片在保存前会重新编码。"""
 
 import io
+import posixpath
 import re
+import tempfile
+from unittest.mock import patch
 
 from django.core.exceptions import ValidationError
+from django.core.files.base import ContentFile
+from django.core.files.storage import FileSystemStorage
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import SimpleTestCase
 from PIL import Image, ImageOps
@@ -175,3 +180,25 @@ class SanitizeUploadedImageTests(SimpleTestCase):
 
     def test_none_stays_none(self):
         self.assertIsNone(sanitize_uploaded_image(None))
+
+    def test_collision_keeps_the_full_random_basename(self):
+        fixed = '0123456789abcdef' * 2
+        image = Image.new('RGB', (2, 2), (4, 5, 6))
+        directory = tempfile.mkdtemp()
+        storage = FileSystemStorage(location=directory)
+        prefix = 'ActivitySummary/photo/2026/11/'
+        with patch('app.image_upload.secrets.token_hex', return_value=fixed):
+            first = sanitize_uploaded_image(_upload('a.jpg', image, 'JPEG'))
+            second = sanitize_uploaded_image(_upload('b.jpg', image, 'JPEG'))
+
+        self.assertEqual(first.name, fixed + '.jpg')
+        self.assertEqual(second.name, first.name)
+        saved_first = storage.save(prefix + first.name, ContentFile(first.read()))
+        saved_second = storage.save(
+            prefix + second.name, ContentFile(second.read()), max_length=100)
+        second_base = posixpath.basename(saved_second)
+
+        self.assertNotEqual(saved_first, saved_second)
+        self.assertIn(fixed, second_base)
+        self.assertLessEqual(len(saved_second), 100)
+        self.assertTrue(second_base.endswith('.jpg'))

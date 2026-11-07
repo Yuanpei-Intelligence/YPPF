@@ -37,6 +37,10 @@ services:
       - ../:/workspace
     working_dir: /workspace
     environment:
+      - DB_HOST=mysql
+      - DB_USER=root
+      - DB_PASSWORD=secret
+      - DB_DATABASE=yppf
       - YPPF_DEBUG=true
     depends_on:
       mysql:
@@ -44,8 +48,8 @@ services:
     # 等待20秒，保证containers处于就绪状态
     command: >
       bash -c "sleep 20 &&
-      python3 manage.py makemigrations &&
-      python3 manage.py migrate" 
+      python3 manage.py makemigrations --noinput &&
+      python3 manage.py migrate --noinput" 
 
   yppf:
     image: yppf_local
@@ -72,7 +76,8 @@ services:
       test: ["CMD", "curl", "-f", "http://127.0.0.1:8000/healthcheck/"]
       interval: 5s
       timeout: 5s
-      retries: 3
+      retries: 12
+      start_period: 40s
 
   scheduler:
     image: yppf_local
@@ -80,6 +85,10 @@ services:
       - ../:/workspace
     working_dir: /workspace
     environment:
+      - DB_HOST=mysql
+      - DB_USER=root
+      - DB_PASSWORD=secret
+      - DB_DATABASE=yppf
       - YPPF_DEBUG=true
     depends_on:
       mysql:
@@ -92,7 +101,8 @@ services:
       test: ["CMD", "python3", "manage.py", "scheduler_health"]
       interval: 5s
       timeout: 5s
-      retries: 3
+      retries: 12
+      start_period: 40s
 
 
 
