@@ -545,16 +545,16 @@ The client filename is not a storage key. The stored basename is
 a path that already exists. Current upload directories plus that suffix
 still fit the existing 100-character path column. Choose the encoding so a
 newly uploaded picture still looks like the file the browser shows today:
-PNG stays PNG, GIF keeps every frame, and an animated
-WebP stays animated. Apply EXIF orientation to the pixels before dropping
-EXIF, so a phone JPEG is not saved sideways. JPEG, and an MPO Pillow can
-open, are stored as JPEG at quality 90. BMP or TIFF with an alpha channel
-becomes PNG; otherwise those become JPEG. A file Pillow cannot decode,
-including HEIC, raises `ValidationError` with a Chinese message, and the
-caller must not write that upload. Do not copy comments or the original
-`info`. Do not include `global.hash_salt` or the client filename in the
-stored name. The `upload_to` directory is unchanged and is not part of the
-random basename.
+PNG stays PNG, GIF keeps every frame and each frame's disposal method, and
+an animated WebP stays animated. Apply EXIF orientation to the pixels before
+dropping EXIF, so a phone JPEG is not saved sideways. JPEG, and an MPO
+Pillow can open, are stored as JPEG at quality 90. BMP, TIFF, JPEG2000, or
+AVIF with an alpha channel becomes PNG; otherwise those become JPEG. A file
+Pillow cannot decode, including HEIC on the production build, raises
+`ValidationError` with a Chinese message, and the caller must not write
+that upload. Do not copy comments or the original `info`. Do not include
+`global.hash_salt` or the client filename in the stored name. The
+`upload_to` directory is unchanged and is not part of the random basename.
 
 `if_image()` may still run as an early check. It does not replace
 re-encoding. Preset paths, default avatars, and a `FieldFile` copied from an

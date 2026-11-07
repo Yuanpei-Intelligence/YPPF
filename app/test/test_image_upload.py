@@ -113,6 +113,71 @@ class SanitizeUploadedImageTests(SimpleTestCase):
         self.assertNotIn(b'SECRET-GIF', encoded)
         self.assertNotIn(b'TRAILER-SECRET', encoded)
 
+    def test_partial_gif_keeps_each_frame_disposal(self):
+        canvas = (6, 6)
+        first = Image.new('RGB', canvas, (255, 0, 0))
+        second = Image.new('RGBA', canvas, (0, 0, 0, 0))
+        second.paste(Image.new('RGBA', (2, 2), (0, 255, 0, 255)), (4, 4))
+        third = Image.new('RGBA', canvas, (0, 0, 0, 0))
+        third.paste(Image.new('RGBA', (2, 2), (0, 0, 255, 255)), (0, 0))
+        buffer = io.BytesIO()
+        first.save(
+            buffer, format='GIF', save_all=True, append_images=[second, third],
+            duration=[100, 100, 100], loop=0, disposal=[2, 2, 2],
+            transparency=0, comment=b'SECRET-GIF',
+        )
+        payload = buffer.getvalue() + b'<?php'
+        source = Image.open(io.BytesIO(payload))
+        uploaded = SimpleUploadedFile('delta.gif', payload)
+
+        result = sanitize_uploaded_image(uploaded)
+        encoded = result.read()
+        reopened = Image.open(io.BytesIO(encoded))
+
+        self.assertTrue(result.name.endswith('.gif'))
+        self.assertEqual(reopened.n_frames, source.n_frames)
+        for index in range(source.n_frames):
+            source.seek(index)
+            reopened.seek(index)
+            self.assertEqual(reopened.disposal_method, source.disposal_method)
+        source.seek(2)
+        reopened.seek(2)
+        source_pixel = source.convert('RGBA').getpixel((5, 5))
+        saved_pixel = reopened.convert('RGBA').getpixel((5, 5))
+        corner = reopened.convert('RGBA').getpixel((0, 0))
+        self.assertEqual(source_pixel[3], 0)
+        self.assertEqual(saved_pixel[3], 0)
+        self.assertGreater(corner[2], 200)
+        self.assertNotIn(b'SECRET-GIF', encoded)
+        self.assertNotIn(b'<?php', encoded)
+
+    def test_jpeg2000_and_avif_are_reencoded(self):
+        jpeg2000 = _upload(
+            'scan.jp2', Image.new('RGB', (8, 6), (1, 2, 3)), 'JPEG2000')
+        jpeg2000 = SimpleUploadedFile(
+            'scan.jp2', jpeg2000.read() + b'<?php')
+        opaque_avif = _upload(
+            'photo.avif', Image.new('RGB', (8, 6), (4, 5, 6)), 'AVIF')
+        alpha = Image.new('RGBA', (4, 4), (9, 8, 7, 128))
+        alpha_file = io.BytesIO()
+        alpha.save(alpha_file, format='AVIF')
+        alpha_avif = SimpleUploadedFile('sticker.avif', alpha_file.getvalue())
+
+        jpeg2000_result = sanitize_uploaded_image(jpeg2000)
+        opaque_result = sanitize_uploaded_image(opaque_avif)
+        alpha_result = sanitize_uploaded_image(alpha_avif)
+        jpeg2000_bytes = jpeg2000_result.read()
+        alpha_image = Image.open(io.BytesIO(alpha_result.read()))
+
+        self.assertTrue(jpeg2000_result.name.endswith('.jpg'))
+        self.assertTrue(opaque_result.name.endswith('.jpg'))
+        self.assertTrue(alpha_result.name.endswith('.png'))
+        self.assertEqual(
+            Image.open(io.BytesIO(jpeg2000_bytes)).size, (8, 6))
+        self.assertNotIn(b'<?php', jpeg2000_bytes)
+        self.assertIn('A', alpha_image.mode)
+        self.assertLess(alpha_image.getpixel((0, 0))[3], 255)
+
     def test_exif_orientation_is_applied_to_pixels(self):
         image = Image.new('RGB', (20, 40), (0, 0, 180))
         image.paste(Image.new('RGB', (20, 10), (220, 0, 0)), (0, 0))
