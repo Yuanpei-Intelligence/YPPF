@@ -14,7 +14,6 @@ See Also:
     - :module:`scheduler.cancel`
 """
 
-import six
 from threading import Event
 from functools import update_wrapper
 
@@ -92,7 +91,7 @@ def start_scheduler() -> BackgroundScheduler:
     scheduler.add_jobstore(DjangoJobStore(), "default")
     scheduler._event = Event()  # type: ignore
     with scheduler._jobstores_lock:                                # type: ignore
-        for alias, store in six.iteritems(scheduler._jobstores):   # type: ignore
+        for alias, store in scheduler._jobstores.items():  # type: ignore
             store.start(scheduler, alias)
     scheduler.state = 1  # STATE_RUNNING
     return scheduler
