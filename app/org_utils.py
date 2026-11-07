@@ -1,7 +1,10 @@
 import random
 from datetime import datetime, timedelta
 
+from django.core.exceptions import ValidationError
 from django.db.models import Q
+
+from app.image_upload import sanitize_uploaded_image
 
 from app.utils_dependency import *
 from app.models import (
@@ -143,6 +146,12 @@ def check_neworg_request(request, org: Organization = None):
     context["avatar"] = request.FILES.get("avatar")
     if context["avatar"] is not None:
         if if_image(context["avatar"]) == 1:
+            context["warn_code"] = 1
+            context["warn_message"] = "小组的头像应当为图片格式！"
+            return context
+        try:
+            context["avatar"] = sanitize_uploaded_image(context["avatar"])
+        except ValidationError:
             context["warn_code"] = 1
             context["warn_message"] = "小组的头像应当为图片格式！"
             return context

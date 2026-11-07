@@ -18,6 +18,9 @@ from datetime import datetime, timedelta
 
 import qrcode
 import requests
+from django.core.exceptions import ValidationError
+
+from app.image_upload import sanitize_uploaded_image
 import utils.models.query as SQ
 from generic.models import User, YQPointRecord
 from scheduler.adder import ScheduleAdder
@@ -474,6 +477,10 @@ def activity_base_check(request, edit=False):
     if len(announcephoto) > 0:
         pic = announcephoto[0]
         assert if_image(pic) == 2
+        try:
+            pic = sanitize_uploaded_image(pic)
+        except ValidationError as exc:
+            raise AssertionError(exc.messages[0]) from exc
     else:
         if request.POST.get("picture1"):
             pic = request.POST.get("picture1")

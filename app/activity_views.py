@@ -1,12 +1,13 @@
-import os
+import csv
 import io
+import json
+import os
 from datetime import datetime, timedelta
 from typing import Literal
 
+from django.core.exceptions import ValidationError
 from django.db import transaction
 from django.db.models import F
-import csv
-import json
 
 from generic.models import User
 from generic.utils import to_search_indices
@@ -21,6 +22,7 @@ from app.models import (
     Participation,
     ActivitySummary,
 )
+from app.image_upload import sanitize_uploaded_image
 from app.activity_utils import (
     ActivityException,
     create_activity,
@@ -981,14 +983,14 @@ def activitySummary(request: UserRequest):
             photo_num = len(summary_photos)
             if photo_num != 1:
                 return redirect(message_url(wrong('图片内容为空或有多张图片！'), full_path))
-            for image in summary_photos:
-                if utils.if_image(image) != 2:
-                    return redirect(message_url(wrong("上传的总结图片只支持图片格式！"), full_path))
+            summary_image = _encoded_summary_image(summary_photos[0])
+            if summary_image is None:
+                return redirect(message_url(wrong("上传的总结图片只支持图片格式！"), full_path))
             # 新建activity summary
             application: ActivitySummary = ActivitySummary.objects.create(
                 status=ActivitySummary.Status.WAITING,
                 activity=activity,
-                image=summary_photos[0]
+                image=summary_image
             )
             context = succeed(
                 f'活动“{application.activity.title}”的申请已成功发送，' +
@@ -1001,9 +1003,12 @@ def activitySummary(request: UserRequest):
             photo_num = len(summary_photos)
             if photo_num > 1:
                 return redirect(message_url(wrong('有多张图片！'), full_path))
-            for image in summary_photos:
-                if utils.if_image(image) != 2:
-                    return redirect(message_url(wrong("上传的总结图片只支持图片格式！"), full_path))
+            summary_image = None
+            if photo_num > 0:
+                summary_image = _encoded_summary_image(summary_photos[0])
+                if summary_image is None:
+                    return redirect(message_url(
+                        wrong("上传的总结图片只支持图片格式！"), full_path))
             if len(now_participant_uids) == 0:
                 return redirect(message_url(wrong('参与人员不能为空'), full_path))
             available_uids = SQ.qsvlist(available_participants(), User.username)
@@ -1012,8 +1017,8 @@ def activitySummary(request: UserRequest):
 
             with transaction.atomic():
                 # 修改活动总结图片
-                if photo_num > 0:
-                    application.image = summary_photos[0]
+                if summary_image is not None:
+                    application.image = summary_image
                     application.save()
                 # 修改参与人员
                 modify_participants(application.activity, now_participant_uids)
@@ -1103,6 +1108,16 @@ def activitySummary(request: UserRequest):
     return render(request, "activity/summary_application.html", render_context)
 
 
+def _encoded_summary_image(image):
+    """重新编码活动总结图片。不是可用图片时返回 None。"""
+    if utils.if_image(image) != 2:
+        return None
+    try:
+        return sanitize_uploaded_image(image)
+    except ValidationError:
+        return None
+
+
 class WeeklyActivitySummary(ProfileTemplateView):
 
     template_name = "activity/weekly_summary.html"
@@ -1132,13 +1147,13 @@ class WeeklyActivitySummary(ProfileTemplateView):
         # 检查总结图片合法性
         photo_num = len(summary_photos)
         if photo_num == 1:
-            for image in summary_photos:
-                if utils.if_image(image) != 2:
-                    return redirect(
-                        message_url(wrong("上传的总结图片只支持图片格式！")))
+            summary_image = _encoded_summary_image(summary_photos[0])
+            if summary_image is None:
+                return redirect(
+                    message_url(wrong("上传的总结图片只支持图片格式！")))
         else:
             return redirect(message_url(wrong('图片内容为空或有多张图片！'), self.request.path))
-        self.context['summary_pic'] = summary_photos[0]
+        self.context['summary_pic'] = summary_image
         return self.post
 
     def get(self):
