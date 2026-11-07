@@ -6,11 +6,11 @@ import re
 from django.core.exceptions import ValidationError
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import SimpleTestCase
-from PIL import Image
+from PIL import Image, ImageOps
 
 from app.image_upload import sanitize_uploaded_image
 
-_NAME = re.compile(r'^[0-9a-f]{32}\.(jpg|png)$')
+_NAME = re.compile(r'^[0-9a-f]{32}\.(jpg|png|gif|webp)$')
 
 
 def _upload(name: str, image: Image.Image, fmt: str, **save_kwargs):
@@ -76,34 +76,102 @@ class SanitizeUploadedImageTests(SimpleTestCase):
         opaque_bytes = opaque_result.read()
         transparent_bytes = transparent_result.read()
 
-        self.assertRegex(opaque_result.name, r'^[0-9a-f]{32}\.jpg$')
+        self.assertRegex(opaque_result.name, r'^[0-9a-f]{32}\.png$')
         self.assertRegex(transparent_result.name, r'^[0-9a-f]{32}\.png$')
         self.assertNotIn(b'<?php', opaque_bytes)
         self.assertNotIn(b'<?php', transparent_bytes)
-        self.assertEqual(Image.open(io.BytesIO(opaque_bytes)).format, 'JPEG')
+        self.assertEqual(Image.open(io.BytesIO(opaque_bytes)).format, 'PNG')
         self.assertEqual(Image.open(io.BytesIO(transparent_bytes)).format, 'PNG')
+        self.assertEqual(
+            Image.open(io.BytesIO(opaque_bytes)).getpixel((0, 0)), (1, 2, 3))
 
-    def test_animated_gif_keeps_only_the_first_frame(self):
+    def test_animated_gif_keeps_later_frames(self):
         first = Image.new('RGB', (2, 2), (255, 0, 0))
         second = Image.new('RGB', (2, 2), (0, 255, 0))
         buffer = io.BytesIO()
         first.save(
-            buffer, format='GIF', save_all=True,
-            append_images=[second], loop=0, duration=100,
+            buffer, format='GIF', save_all=True, append_images=[second],
+            loop=0, duration=[40, 80], comment=b'SECRET-GIF',
         )
-        uploaded = SimpleUploadedFile('motion.gif', buffer.getvalue())
+        uploaded = SimpleUploadedFile(
+            'motion.gif', buffer.getvalue() + b'TRAILER-SECRET')
+
+        result = sanitize_uploaded_image(uploaded)
+        encoded = result.read()
+        reopened = Image.open(io.BytesIO(encoded))
+        reopened.seek(1)
+
+        self.assertRegex(result.name, _NAME)
+        self.assertTrue(result.name.endswith('.gif'))
+        self.assertEqual(reopened.n_frames, 2)
+        self.assertEqual(reopened.convert('RGB').getpixel((0, 0)), (0, 255, 0))
+        self.assertNotIn(b'SECRET-GIF', encoded)
+        self.assertNotIn(b'TRAILER-SECRET', encoded)
+
+    def test_exif_orientation_is_applied_to_pixels(self):
+        image = Image.new('RGB', (20, 40), (0, 0, 180))
+        image.paste(Image.new('RGB', (20, 10), (220, 0, 0)), (0, 0))
+        exif = Image.Exif()
+        exif[0x0112] = 6
+        buffer = io.BytesIO()
+        image.save(buffer, format='JPEG', exif=exif.tobytes(), quality=95)
+        uploaded = SimpleUploadedFile('phone.jpg', buffer.getvalue())
+        expected = ImageOps.exif_transpose(Image.open(io.BytesIO(buffer.getvalue())))
 
         result = sanitize_uploaded_image(uploaded)
         reopened = Image.open(io.BytesIO(result.read()))
 
-        self.assertRegex(result.name, _NAME)
         self.assertTrue(result.name.endswith('.jpg'))
-        self.assertEqual(getattr(reopened, 'n_frames', 1), 1)
-        self.assertEqual(reopened.size, (2, 2))
-        red, green, blue = reopened.convert('RGB').getpixel((0, 0))
-        self.assertGreater(red, 250)
-        self.assertLess(green, 5)
-        self.assertLess(blue, 5)
+        self.assertEqual(reopened.size, expected.size)
+        self.assertEqual(reopened.size, (40, 20))
+        self.assertNotEqual(reopened.getexif().get(0x0112), 6)
+        right = reopened.getpixel((reopened.size[0] - 1, 0))
+        left = reopened.getpixel((0, 0))
+        self.assertGreater(right[0], 180)
+        self.assertLess(right[1], 40)
+        self.assertLess(left[0], 40)
+        self.assertGreater(left[2], 140)
+
+    def test_animated_webp_keeps_later_frames(self):
+        first = Image.new('RGB', (8, 8), (255, 0, 0))
+        second = Image.new('RGB', (8, 8), (0, 0, 255))
+        buffer = io.BytesIO()
+        first.save(
+            buffer, format='WEBP', save_all=True, append_images=[second],
+            duration=[40, 40], loop=0,
+        )
+        payload = buffer.getvalue()
+        source = Image.open(io.BytesIO(payload))
+        source.seek(1)
+        expected = source.convert('RGB').getpixel((0, 0))
+        uploaded = SimpleUploadedFile('motion.webp', payload + b'<?php')
+
+        result = sanitize_uploaded_image(uploaded)
+        encoded = result.read()
+        reopened = Image.open(io.BytesIO(encoded))
+        reopened.seek(1)
+
+        self.assertTrue(result.name.endswith('.webp'))
+        self.assertEqual(reopened.n_frames, 2)
+        self.assertEqual(reopened.convert('RGB').getpixel((0, 0)), expected)
+        self.assertNotEqual(expected[0], 255)
+        self.assertNotIn(b'<?php', encoded)
+
+    def test_mpo_is_accepted_as_jpeg(self):
+        first = Image.new('RGB', (8, 6), (10, 20, 30))
+        second = Image.new('RGB', (8, 6), (200, 0, 0))
+        buffer = io.BytesIO()
+        first.save(
+            buffer, format='MPO', save_all=True, append_images=[second])
+        uploaded = SimpleUploadedFile('camera.mpo', buffer.getvalue() + b'<?php')
+
+        result = sanitize_uploaded_image(uploaded)
+        encoded = result.read()
+        reopened = Image.open(io.BytesIO(encoded))
+
+        self.assertTrue(result.name.endswith('.jpg'))
+        self.assertEqual(reopened.size, (8, 6))
+        self.assertNotIn(b'<?php', encoded)
 
     def test_none_stays_none(self):
         self.assertIsNone(sanitize_uploaded_image(None))
