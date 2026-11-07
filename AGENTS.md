@@ -541,8 +541,8 @@ must keep the default storage.
 
 The client filename is not a storage key. The stored basename is
 `secrets.token_hex(16)` plus `.jpg` or `.png`. The extension comes only from
-the re-encoded image: PNG when the image has an alpha channel or the source
-is PNG, otherwise JPEG at quality 90. GIF keeps the first frame. Accepted
+the re-encoded image: PNG when the image has an alpha channel, otherwise
+JPEG at quality 90. GIF keeps the first frame. Accepted
 source formats are
 JPEG, PNG, GIF, BMP, TIFF, and WEBP. A file that cannot be decoded raises
 `ValidationError` with a Chinese message, and the caller must not write that

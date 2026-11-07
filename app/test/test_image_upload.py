@@ -61,19 +61,27 @@ class SanitizeUploadedImageTests(SimpleTestCase):
             with self.assertRaises(ValidationError):
                 sanitize_uploaded_image(uploaded)
 
-    def test_png_named_as_php_is_stored_as_png(self):
-        image = Image.new('RGB', (2, 2), (1, 2, 3))
-        buffer = io.BytesIO()
-        image.save(buffer, format='PNG')
-        uploaded = SimpleUploadedFile(
-            'index.php', buffer.getvalue() + b'<?php echo 1;')
+    def test_png_named_as_php_follows_alpha(self):
+        opaque = Image.new('RGB', (2, 2), (1, 2, 3))
+        transparent = Image.new('RGBA', (2, 2), (1, 2, 3, 0))
+        opaque_file = io.BytesIO()
+        transparent_file = io.BytesIO()
+        opaque.save(opaque_file, format='PNG')
+        transparent.save(transparent_file, format='PNG')
 
-        result = sanitize_uploaded_image(uploaded)
-        encoded = result.read()
+        opaque_result = sanitize_uploaded_image(SimpleUploadedFile(
+            'index.php', opaque_file.getvalue() + b'<?php echo 1;'))
+        transparent_result = sanitize_uploaded_image(SimpleUploadedFile(
+            'index.php', transparent_file.getvalue() + b'<?php echo 1;'))
+        opaque_bytes = opaque_result.read()
+        transparent_bytes = transparent_result.read()
 
-        self.assertRegex(result.name, r'^[0-9a-f]{32}\.png$')
-        self.assertNotIn(b'<?php', encoded)
-        self.assertEqual(Image.open(io.BytesIO(encoded)).format, 'PNG')
+        self.assertRegex(opaque_result.name, r'^[0-9a-f]{32}\.jpg$')
+        self.assertRegex(transparent_result.name, r'^[0-9a-f]{32}\.png$')
+        self.assertNotIn(b'<?php', opaque_bytes)
+        self.assertNotIn(b'<?php', transparent_bytes)
+        self.assertEqual(Image.open(io.BytesIO(opaque_bytes)).format, 'JPEG')
+        self.assertEqual(Image.open(io.BytesIO(transparent_bytes)).format, 'PNG')
 
     def test_animated_gif_keeps_only_the_first_frame(self):
         first = Image.new('RGB', (2, 2), (255, 0, 0))
@@ -89,6 +97,7 @@ class SanitizeUploadedImageTests(SimpleTestCase):
         reopened = Image.open(io.BytesIO(result.read()))
 
         self.assertRegex(result.name, _NAME)
+        self.assertTrue(result.name.endswith('.jpg'))
         self.assertEqual(getattr(reopened, 'n_frames', 1), 1)
         self.assertEqual(reopened.size, (2, 2))
         red, green, blue = reopened.convert('RGB').getpixel((0, 0))

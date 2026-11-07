@@ -21,9 +21,8 @@ def sanitize_uploaded_image(uploaded) -> ContentFile | None:
 
     空上传原样返回，让调用方继续走“没传图片”的分支。打不开、超出像素
     限制，或格式不在 JPEG、PNG、GIF、BMP、TIFF、WEBP 中时，抛出
-    ValidationError。GIF 只保留第一帧。有透明通道或源文件是 PNG 时存 PNG，
-    否则存 JPEG。文件名是 32 位十六进制加编码结果的扩展名，不带目录，
-    也不使用客户端原名。
+    ValidationError。GIF 只保留第一帧。有透明通道时存 PNG，否则存 JPEG。
+    文件名是 32 位十六进制加编码结果的扩展名，不带目录，也不使用客户端原名。
     """
     if not uploaded:
         return uploaded
@@ -60,13 +59,11 @@ def _has_alpha(image: Image.Image) -> bool:
 def _reencode(image: Image.Image) -> tuple[bytes, str]:
     """重新编码。新图不带原图的 info、EXIF 或注释。
 
-    有透明通道，或源文件本身是 PNG 时存 PNG。其余存 JPEG。
-    PNG 不转成 JPEG，这样客户端把 PNG 命名成 `.php` 时扩展名仍是 `.png`。
+    扩展名只看编码结果：有透明通道存 PNG，否则存 JPEG。
     """
     buffer = io.BytesIO()
-    if _has_alpha(image) or image.format == 'PNG':
-        mode = 'RGBA' if _has_alpha(image) else 'RGB'
-        _without_metadata(image, mode).save(buffer, format='PNG')
+    if _has_alpha(image):
+        _without_metadata(image, 'RGBA').save(buffer, format='PNG')
         return buffer.getvalue(), '.png'
     _without_metadata(image, 'RGB').save(
         buffer, format='JPEG', quality=_JPEG_QUALITY)
