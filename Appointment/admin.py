@@ -117,12 +117,13 @@ class RoomClassAdmin(admin.ModelAdmin):
 class RoomAdmin(admin.ModelAdmin):
     list_display = ('Rid', 'Rtitle', 'Rmin', 'Rmax', 'Rstart', 'Rfinish',
                     'Rstatus_display', 'RIsAllNight', 'Rpresent', 'Rlatest_time',
-                    'RneedAgree',
+                    'RneedAgree', 'allow_free_access',
                     )
     list_display_links = ('Rid', )
-    list_editable = ('Rtitle', 'Rmin', 'Rmax', 'Rstart', 'Rfinish', 'RneedAgree')
+    list_editable = ('Rtitle', 'Rmin', 'Rmax', 'Rstart', 'Rfinish', 'RneedAgree',
+                     'allow_free_access')
     search_fields = ('Rid', 'Rtitle')
-    list_filter = ('Rstatus', 'RIsAllNight', 'RneedAgree')
+    list_filter = ('Rstatus', 'RIsAllNight', 'RneedAgree', 'allow_free_access')
 
     @as_display('预约状态')
     def Rstatus_display(self, obj):
