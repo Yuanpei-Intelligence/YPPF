@@ -20,5 +20,5 @@ urlpatterns = [
 
 # 生产环境下自动返回空列表，请通过docker或服务器设置手动serve静态文件和媒体文件
 # Static的URL配置在安装staticfiles应用时被默认覆盖，可通过--nostatic禁用
-# urlpatterns += static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)
+urlpatterns += static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)
 urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

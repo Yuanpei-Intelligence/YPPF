@@ -314,7 +314,6 @@ def index(request):  # 主页
 
     quick_reservable_rooms = [
         room for room in Room.objects.permitted()
-        if room.check_user_perm(user)
     ]
     room_info = [(room, room.Rid in occupied_rooms,
                   format_time(room_appointments[room.Rid]))

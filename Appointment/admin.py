@@ -1,6 +1,7 @@
 import string
 import openpyxl
 import pypinyin
+import re
 from datetime import datetime, timedelta
 
 from django import forms
@@ -468,6 +469,9 @@ class AppointAdmin(admin.ModelAdmin):
                                 sid = str(row[2]).strip() if row[2] else ""
                                 room_name = str(
                                     row[3]).strip() if row[3] else ""
+                                non_chinese_parts = re.findall(r'[^\u4e00-\u9fff]+', room_name)
+                                # 去除纯空白项并拼接为一个字符串（也可以返回列表，看你需求）
+                                room_name = ''.join(part for part in non_chinese_parts if not part.isspace())
                                 create_time_str = str(
                                     row[4]).strip() if row[4] else ""
                                 appoint_times_str = str(
@@ -504,7 +508,7 @@ class AppointAdmin(admin.ModelAdmin):
 
                                 # 2. 获取房间
                                 try:
-                                    room = Room.objects.get(Rtitle=room_name)
+                                    room = Room.objects.get(Rid=room_name)
                                 except Room.DoesNotExist:
                                     skipped_rows.append(
                                         f"第 {row_idx} 行房间 '{room_name}' 不存在，已跳过。")

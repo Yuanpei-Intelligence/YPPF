@@ -70,6 +70,7 @@ def start_appoint(appoint_id: int):
                         return
             appoint.Astatus = Appoint.Status.PROCESSING
             logger.info(f"预约{appoint_id}成功开始: 状态变为进行中")
+            logger.info(f'预约{appoint.pk}对门禁{entrance_guard.door_id}授权列表：{stu_ids}')
         else:
             appoint.Astatus = Appoint.Status.CONFIRMED
             logger.error(f"预约{appoint_id}开始时已经结束")
@@ -119,6 +120,8 @@ def finish_appoint(appoint_id: int):
                 logger.error(f'预约{appoint.pk}对门禁{entrance_guard.door_id}授权失败：{e}')
                 # 撤销权限失败，让预约保持在 PROCESSING 状态
                 return
+
+    logger.info(f'预约{appoint.pk}对门禁{entrance_guard.door_id}权限撤销：{stu_ids}')
 
     # TODO: 人数检查
     appoint.Astatus = Appoint.Status.CONFIRMED

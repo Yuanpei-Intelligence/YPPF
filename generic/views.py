@@ -71,7 +71,7 @@ class Index(SecureTemplateView):
             # Allow org to login with orgname
             org = SQ.sfilter(Organization.oname, username).first()
             if org is None:
-                return self.wrong('用户名不存在')
+                return self.wrong('用户名或密码错误')
             username = cast(Organization, org).get_user().username
         self.username = username
         self.password = self.request.POST['password']
@@ -81,7 +81,7 @@ class Index(SecureTemplateView):
         # Try login
         userinfo = auth.authenticate(username=self.username, password=self.password)
         if userinfo is None:
-            return self.wrong('密码错误')
+            return self.wrong('用户名或密码错误')
 
         # special user
         auth.login(self.request, userinfo)

@@ -36,7 +36,10 @@ class EntranceGuard():
     def __exit__(self, exc_type, exc_value, exc_tb):
         self._SDK.logout_device(self._uid)
 
-    def query_users(self, employee_ids: list[int]) -> list[dict]:
+    def query_users(self, employee_ids: list[str]) -> list[dict]:
+        employee_ids = list(filter(lambda x: x, employee_ids))
+        if not employee_ids:
+            return []
         handle = self._SDK.get_user_query_handle(self._uid)
         resp = self._SDK.access_user_json_api(handle, {
             "UserInfoSearchCond": {
@@ -52,6 +55,7 @@ class EntranceGuard():
         })
         resp = json.loads(resp.decode())
         if "UserInfoSearch" not in resp or "UserInfo" not in resp["UserInfoSearch"]:
+            print(resp)
             raise HaikangAPIError(f"Failed to query users: {employee_ids}")
         return resp["UserInfoSearch"]["UserInfo"]
 
@@ -75,10 +79,10 @@ class EntranceGuard():
         if failed_list:
             raise HaikangAPIError(f"Failed to modify users: {failed_list}")
 
-    def grant_access(self, employee_ids: list[int]):
+    def grant_access(self, employee_ids: list[str]):
         return self._modify_users(employee_ids, True)
 
-    def revoke_access(self, employee_ids: list[int]):
+    def revoke_access(self, employee_ids: list[str]):
         return self._modify_users(employee_ids, False)
 
 
