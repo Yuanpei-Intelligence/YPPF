@@ -1,6 +1,7 @@
 import string
 import openpyxl
 import pypinyin
+import re
 from datetime import datetime, timedelta
 
 from django import forms
@@ -116,12 +117,13 @@ class RoomClassAdmin(admin.ModelAdmin):
 class RoomAdmin(admin.ModelAdmin):
     list_display = ('Rid', 'Rtitle', 'Rmin', 'Rmax', 'Rstart', 'Rfinish',
                     'Rstatus_display', 'RIsAllNight', 'Rpresent', 'Rlatest_time',
-                    'RneedAgree',
+                    'RneedAgree', 'allow_free_access',
                     )
     list_display_links = ('Rid', )
-    list_editable = ('Rtitle', 'Rmin', 'Rmax', 'Rstart', 'Rfinish', 'RneedAgree')
+    list_editable = ('Rtitle', 'Rmin', 'Rmax', 'Rstart', 'Rfinish', 'RneedAgree',
+                     'allow_free_access')
     search_fields = ('Rid', 'Rtitle')
-    list_filter = ('Rstatus', 'RIsAllNight', 'RneedAgree')
+    list_filter = ('Rstatus', 'RIsAllNight', 'RneedAgree', 'allow_free_access')
 
     @as_display('预约状态')
     def Rstatus_display(self, obj):
@@ -468,6 +470,9 @@ class AppointAdmin(admin.ModelAdmin):
                                 sid = str(row[2]).strip() if row[2] else ""
                                 room_name = str(
                                     row[3]).strip() if row[3] else ""
+                                non_chinese_parts = re.findall(r'[^\u4e00-\u9fff]+', room_name)
+                                # 去除纯空白项并拼接为一个字符串（也可以返回列表，看你需求）
+                                room_name = ''.join(part for part in non_chinese_parts if not part.isspace())
                                 create_time_str = str(
                                     row[4]).strip() if row[4] else ""
                                 appoint_times_str = str(
@@ -504,7 +509,7 @@ class AppointAdmin(admin.ModelAdmin):
 
                                 # 2. 获取房间
                                 try:
-                                    room = Room.objects.get(Rtitle=room_name)
+                                    room = Room.objects.get(Rid=room_name)
                                 except Room.DoesNotExist:
                                     skipped_rows.append(
                                         f"第 {row_idx} 行房间 '{room_name}' 不存在，已跳过。")

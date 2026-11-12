@@ -68,6 +68,7 @@ INSTALLED_APPS = [
     'dm',
     "scheduler",
     "feedback",
+    "corsheaders",
 ]
 
 
@@ -79,10 +80,15 @@ MIDDLEWARE = [
     "django.contrib.auth.middleware.AuthenticationMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
+    "corsheaders.middleware.CorsMiddleware"
+]
+
+CORS_ALLOWED_ORIGINS = [
+    "http://192.168.99.11",
 ]
 
 # TODO: Fix this
-CSRF_TRUSTED_ORIGINS = [config.GLOBAL_CONFIG.base_url]
+CSRF_TRUSTED_ORIGINS = [config.GLOBAL_CONFIG.base_url, 'http://iaiappoint.pku.edu.cn']
 
 # Templates
 TEMPLATES = [
@@ -135,7 +141,8 @@ DATABASES = {
 # staticfiles应用默认只搜寻STATICFILES_DIRS和%APP%/static目录，不符合项目需求
 # 由于使用统一static，无需支持collectstatic，废弃STATIC_ROOT
 STATIC_URL = "/static/"
-STATICFILES_DIRS = (os.path.join(_configurables.static_dir, "static/"),)
+STATIC_ROOT = os.path.join(_configurables.static_dir, "static/")
+# STATICFILES_DIRS = (os.path.join(_configurables.static_dir, "static/"),)
 
 # Media files (user uploaded imgs)
 MEDIA_URL = "/media/"

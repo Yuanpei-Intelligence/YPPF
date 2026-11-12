@@ -32,7 +32,7 @@ __all__ = [
 ]
 
 
-DEBUG = True  # WARNING! TODO: Set to False in main branch
+DEBUG = False  # WARNING! TODO: Set to False in main branch
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 

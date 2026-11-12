@@ -22,7 +22,7 @@ def set_scheduler(appoint: Appoint) -> bool:
     Returns:
         bool: 是否设置成功，当不符合条件时返回False
     '''
-    start_ahead = appoint.Astart - timedelta(minutes=10)
+    start_ahead = appoint.Astart - timedelta(minutes=20)
     start = appoint.Astart
     finish = appoint.Afinish
     current_time = datetime.now() + timedelta(seconds=5)

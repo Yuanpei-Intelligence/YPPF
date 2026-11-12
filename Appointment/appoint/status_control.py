@@ -2,11 +2,8 @@ from datetime import datetime, timedelta
 
 from django.db import transaction
 
-from Appointment.config import appointment_config as CONFIG
 from Appointment.models import Appoint
-from Appointment.appoint.judge import appoint_violate
-from Appointment.utils.log import logger, get_user_logger
-from Appointment.extern.wechat import MessageType, notify_appoint
+from Appointment.utils.log import logger
 from Appointment.haikang_api import HaikangSDK, HaikangAPIError
 
 
@@ -70,6 +67,7 @@ def start_appoint(appoint_id: int):
                         return
             appoint.Astatus = Appoint.Status.PROCESSING
             logger.info(f"预约{appoint_id}成功开始: 状态变为进行中")
+            logger.info(f'预约{appoint.pk}对门禁{entrance_guard.door_id}授权列表：{stu_ids}')
         else:
             appoint.Astatus = Appoint.Status.CONFIRMED
             logger.error(f"预约{appoint_id}开始时已经结束")
@@ -102,6 +100,14 @@ def finish_appoint(appoint_id: int):
 
     # 更新设备权限
     stu_ids = set(appoint.students_manager.values_list('cross_sys_uid', flat=True))
+    if appoint.Room.allow_free_access:
+        # 常驻权限独立于预约，不应随预约结束而撤销。
+        permanent_stu_ids = {
+            student.cross_sys_uid
+            for student in appoint.students_manager.select_related('Sid')
+            if student.Sid.has_perm('Appointment.can_access_rooms_freely')
+        }
+        stu_ids -= permanent_stu_ids
     # 若该房间还有晚结束且进行中的预约，不能撤销重复人员的权限
     # TODO: Likely to race lock for next appoint's start
     # Do we need to do something?
@@ -112,6 +118,8 @@ def finish_appoint(appoint_id: int):
         next_stu_ids = set(next_appoint.students_manager.values_list('cross_sys_uid', flat=True))
         stu_ids = stu_ids - next_stu_ids
     for entrance_guard in appoint.Room.entrance_guards.all():
+        if not stu_ids:
+            break
         with HaikangSDK.get_entrace_guard_device(entrance_guard) as device:
             try:
                 device.revoke_access(stu_ids)
@@ -119,6 +127,8 @@ def finish_appoint(appoint_id: int):
                 logger.error(f'预约{appoint.pk}对门禁{entrance_guard.door_id}授权失败：{e}')
                 # 撤销权限失败，让预约保持在 PROCESSING 状态
                 return
+
+        logger.info(f'预约{appoint.pk}对门禁{entrance_guard.door_id}权限撤销：{stu_ids}')
 
     # TODO: 人数检查
     appoint.Astatus = Appoint.Status.CONFIRMED

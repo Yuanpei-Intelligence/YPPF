@@ -151,6 +151,7 @@ class Room(models.Model):
         # 可以临时修改来生成 migrations 文件，但具体的权限不要留在 develop 分支里
         permissions = [
             ('can_book_example_rooms', '可预约样例房间'),
+            ('can_access_rooms_freely', '随意进出会议室'),
         ]
 
     # 房间编号我不确定是否需要。如果地下室有门牌的话（例如B101）保留房间编号比较好
@@ -180,6 +181,9 @@ class Room(models.Model):
         UNLIMITED = 1, '无需预约'  # 允许使用
         FORBIDDEN = 2, '禁止使用'  # 禁止使用
     quick_reservable = models.BooleanField('支持临时预约', default=False)
+    allow_free_access = models.BooleanField(
+        '是否可被随意进出', default=False,
+        help_text='预约结束时，保留具有“随意进出会议室”权限的参与者在本房间的门禁权限。')
 
     Rstatus = models.SmallIntegerField('房间状态', choices=Status.choices, default=0)
 
