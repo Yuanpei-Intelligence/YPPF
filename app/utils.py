@@ -1,3 +1,4 @@
+import os
 import string
 import random
 import urllib.parse
@@ -7,7 +8,6 @@ from functools import wraps
 from typing import cast, overload, Literal
 
 import xlwt
-import imghdr
 from django.contrib import auth
 from django.shortcuts import redirect
 from utils.http.dependency import HttpResponse, HttpRequest, UserRequest
@@ -362,13 +362,36 @@ def get_url_params(request, html_display):
                 html_display[key] = value
 
 
+def _image_type(image) -> str | None:
+    '''按文件头判断图片类型，与 imghdr.what 对 jpeg/png/rgb/bmp 的判断一致
+
+    imghdr 已在 Python 3.13 中移除（PEP 594）。
+    '''
+    if isinstance(image, (str, os.PathLike)):
+        with open(image, 'rb') as f:
+            h = f.read(32)
+    else:
+        location = image.tell()
+        h = image.read(32)
+        image.seek(location)
+    if h[6:10] in (b'JFIF', b'Exif') or h[:4] == b'\xff\xd8\xff\xdb':
+        return 'jpeg'
+    if h.startswith(b'\211PNG\r\n\032\n'):
+        return 'png'
+    if h.startswith(b'\001\332'):
+        return 'rgb'
+    if h.startswith(b'BM'):
+        return 'bmp'
+    return None
+
+
 def if_image(image):
     '''判断是否为图片'''
     if image is None:
         return 0
     imgType_list = {"jpg", "bmp", "png", "jpeg", "rgb", "tif"}
 
-    if imghdr.what(image) in imgType_list:
+    if _image_type(image) in imgType_list:
         return 2  # 为图片
     return 1  # 不是图片
 

@@ -40,8 +40,8 @@ ALERT_FIELD = 'alert_message'
 # 类型信息
 MESSAGECONTEXT = TypedDict(
     'dict',
-    warn_code=int, warn_message=str,
-    alert_message=str,
+    {'warn_code': int, 'warn_message': str,
+     'alert_message': str},
 )
 
 
